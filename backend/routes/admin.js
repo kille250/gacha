@@ -119,4 +119,43 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
 	}
   });
 
+// In routes/admin.js - Coins hinzufügen
+router.post('/add-coins', auth, adminAuth, async (req, res) => {
+  try {
+    const { userId, amount } = req.body;
+    
+    if (!userId || !amount || isNaN(amount)) {
+      return res.status(400).json({ 
+        error: 'User ID and valid amount are required' 
+      });
+    }
+    
+    const user = await User.findByPk(userId);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Coins zum Benutzerkonto hinzufügen
+    const oldBalance = user.points;
+    await user.increment('points', { by: parseInt(amount) });
+    await user.reload();
+    
+    // Log erstellen
+    console.log(`Admin (ID: ${req.user.id}) added ${amount} coins to User ${user.username} (ID: ${userId}). Old balance: ${oldBalance}, New balance: ${user.points}`);
+    
+    res.json({
+      message: `${amount} coins added to ${user.username}`,
+      user: {
+        id: user.id,
+        username: user.username,
+        points: user.points
+      }
+    });
+  } catch (err) {
+    console.error('Error adding coins:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

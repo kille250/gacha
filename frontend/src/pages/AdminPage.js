@@ -1,10 +1,10 @@
-// src/pages/AdminPage.js
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
+import { FaCoins, FaUsers, FaImage } from 'react-icons/fa';
 
 const AdminPage = () => {
   const { user } = useContext(AuthContext);
@@ -21,6 +21,13 @@ const AdminPage = () => {
     series: '',
     rarity: 'common'
   });
+  
+  // Coin-Management
+  const [coinForm, setCoinForm] = useState({
+    userId: '',
+    amount: 100
+  });
+  const [coinMessage, setCoinMessage] = useState(null);
   
   // Datei-Feld
   const [selectedFile, setSelectedFile] = useState(null);
@@ -46,7 +53,7 @@ const AdminPage = () => {
       setLoading(false);
     }
   };
-
+  
   const fetchCharacters = async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/characters', {
@@ -63,6 +70,13 @@ const AdminPage = () => {
   const handleCharacterChange = (e) => {
     setNewCharacter({
       ...newCharacter,
+      [e.target.name]: e.target.value
+    });
+  };
+  
+  const handleCoinFormChange = (e) => {
+    setCoinForm({
+      ...coinForm,
       [e.target.name]: e.target.value
     });
   };
@@ -135,25 +149,61 @@ const AdminPage = () => {
       setError(err.response?.data?.error || 'Failed to add character');
     }
   };
-
-  // Füge diese Hilfsfunktion zur AdminPage.js hinzu
-const getImageUrl = (imagePath) => {
-	if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
-	
-	// Prüfe, ob es eine volle URL ist
-	if (imagePath.startsWith('http')) {
-	  return imagePath;
-	}
-	
-	// Prüfe auf hochgeladene Bilder im uploads-Verzeichnis
-	if (imagePath.startsWith('/uploads')) {
-	  return `http://localhost:5000${imagePath}`;
-	}
-	
-	// Prüfe, ob es ein einfacher Dateiname oder ein vollständiger Pfad ist
-	return imagePath.includes('/') 
-	  ? imagePath 
-	  : `/images/characters/${imagePath}`;
+  
+  const handleAddCoins = async (e) => {
+    e.preventDefault();
+    setCoinMessage(null);
+    setError(null);
+    
+    try {
+      const response = await axios.post(
+        'http://localhost:5000/api/admin/add-coins',
+        coinForm,
+        {
+          headers: {
+            'x-auth-token': localStorage.getItem('token')
+          }
+        }
+      );
+      
+      setCoinMessage(response.data.message);
+      
+      // Benutzerliste neu laden
+      fetchUsers();
+      
+      // Formular zurücksetzen
+      setCoinForm({
+        userId: '',
+        amount: 100
+      });
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add coins');
+    }
+  };
+  
+  // Hilfsfunktion für Bildpfade
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
+    
+    // Prüfe, ob es eine volle URL ist
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // Prüfe auf hochgeladene Bilder im uploads-Verzeichnis
+    if (imagePath.startsWith('/uploads')) {
+      return `http://localhost:5000${imagePath}`;
+    }
+    
+    // Prüfe auf image- Präfix, was auf ein hochgeladenes Bild hinweist
+    if (imagePath.startsWith('image-')) {
+      return `http://localhost:5000/uploads/characters/${imagePath}`;
+    }
+    
+    // Prüfe, ob es ein einfacher Dateiname oder ein vollständiger Pfad ist
+    return imagePath.includes('/') 
+      ? imagePath 
+      : `/images/characters/${imagePath}`;
   };
   
   // Nur Admin-Zugriff erlauben
@@ -187,69 +237,127 @@ const getImageUrl = (imagePath) => {
         </SuccessMessage>
       )}
       
-      <AdminSection>
-        <h2>Add New Character</h2>
-        <CharacterForm onSubmit={addCharacterWithImage}>
-          <FormGroup>
-            <label>Character Name</label>
-            <input 
-              type="text" 
-              name="name" 
-              value={newCharacter.name} 
-              onChange={handleCharacterChange} 
-              required 
-            />
-          </FormGroup>
+      <AdminGrid>
+        <AdminSection>
+          <h2><FaCoins /> Add Coins to User</h2>
           
-          <FormGroup>
-            <label>Series</label>
-            <input 
-              type="text" 
-              name="series" 
-              value={newCharacter.series} 
-              onChange={handleCharacterChange} 
-              required 
-            />
-          </FormGroup>
+          <form onSubmit={handleAddCoins}>
+            <CoinFormGrid>
+              <FormGroup>
+                <label>Select User</label>
+                <select
+                  name="userId"
+                  value={coinForm.userId}
+                  onChange={handleCoinFormChange}
+                  required
+                >
+                  <option value="">-- Select User --</option>
+                  {users.map(user => (
+                    <option key={user.id} value={user.id}>
+                      {user.username} (Current: {user.points} coins)
+                    </option>
+                  ))}
+                </select>
+              </FormGroup>
+              
+              <FormGroup>
+                <label>Amount to Add</label>
+                <input
+                  type="number"
+                  name="amount"
+                  min="1"
+                  max="10000"
+                  value={coinForm.amount}
+                  onChange={handleCoinFormChange}
+                  required
+                />
+              </FormGroup>
+              
+              <div></div>
+              
+              <Button type="submit" color="#27ae60">
+                <FaCoins /> Add Coins
+              </Button>
+            </CoinFormGrid>
+          </form>
           
-          <FormGroup>
-            <label>Rarity</label>
-            <select 
-              name="rarity" 
-              value={newCharacter.rarity} 
-              onChange={handleCharacterChange}
+          {coinMessage && (
+            <SuccessMessage 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
             >
-              <option value="common">Common</option>
-              <option value="uncommon">Uncommon</option>
-              <option value="rare">Rare</option>
-              <option value="epic">Epic</option>
-              <option value="legendary">Legendary</option>
-            </select>
-          </FormGroup>
-          
-          <FormGroup>
-            <label>Character Image</label>
-            <input 
-              type="file" 
-              id="character-image"
-              accept="image/*"
-              onChange={handleFileChange}
-              required
-            />
-            {uploadedImage && (
-              <ImagePreview>
-                <ImagePreviewLabel>Preview:</ImagePreviewLabel>
-                <img src={uploadedImage} alt="Preview" />
-              </ImagePreview>
-            )}
-          </FormGroup>
-          
-          <Button type="submit">Add Character</Button>
-        </CharacterForm>
-      </AdminSection>
+              {coinMessage}
+            </SuccessMessage>
+          )}
+        </AdminSection>
+        
+        <AdminSection>
+          <h2><FaImage /> Add New Character</h2>
+          <CharacterForm onSubmit={addCharacterWithImage}>
+            <FormGroup>
+              <label>Character Name</label>
+              <input 
+                type="text" 
+                name="name" 
+                value={newCharacter.name} 
+                onChange={handleCharacterChange} 
+                required 
+              />
+            </FormGroup>
+            
+            <FormGroup>
+              <label>Series</label>
+              <input 
+                type="text" 
+                name="series" 
+                value={newCharacter.series} 
+                onChange={handleCharacterChange} 
+                required 
+              />
+            </FormGroup>
+            
+            <FormGroup>
+              <label>Rarity</label>
+              <select 
+                name="rarity" 
+                value={newCharacter.rarity} 
+                onChange={handleCharacterChange}
+              >
+                <option value="common">Common</option>
+                <option value="uncommon">Uncommon</option>
+                <option value="rare">Rare</option>
+                <option value="epic">Epic</option>
+                <option value="legendary">Legendary</option>
+              </select>
+            </FormGroup>
+            
+            <FormGroup>
+              <label>Character Image</label>
+              <input 
+                type="file" 
+                id="character-image"
+                accept="image/*"
+                onChange={handleFileChange}
+                required
+              />
+              {uploadedImage && (
+                <ImagePreview>
+                  <ImagePreviewLabel>Preview:</ImagePreviewLabel>
+                  <img src={uploadedImage} alt="Preview" />
+                </ImagePreview>
+              )}
+            </FormGroup>
+            
+            <Button type="submit" fullWidth color="#3498db">
+              <FaImage /> Add Character
+            </Button>
+          </CharacterForm>
+        </AdminSection>
+      </AdminGrid>
       
       <AdminSection>
-        <h2>User Management</h2>
+        <h2><FaUsers /> User Management</h2>
         {loading ? (
           <p>Loading users...</p>
         ) : (
@@ -278,35 +386,33 @@ const getImageUrl = (imagePath) => {
         )}
       </AdminSection>
       
-	  <AdminSection>
-		<h2>Character Management</h2>
-		{characters.length === 0 ? (
-			<p>No characters found.</p>
-		) : (
-			<CharacterGrid>
-			{characters.map(char => (
-				<CharacterCard key={char.id}>
-				{/* Verbesserte Bildpfadverarbeitung */}
-				<img 
-					src={getImageUrl(char.image)}
-					alt={char.name} 
-					onError={(e) => {
-					// Nur einmal zum Placeholder umleiten, um Endlosschleifen zu vermeiden
-					if (!e.target.src.includes('placeholder.com')) {
-						e.target.src = 'https://via.placeholder.com/150?text=No+Image';
-					}
-					}}
-				/>
-				<CharacterInfo>
-					<h3>{char.name}</h3>
-					<p>{char.series}</p>
-					<RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
-				</CharacterInfo>
-				</CharacterCard>
-			))}
-			</CharacterGrid>
-		)}
-		</AdminSection>
+      <AdminSection>
+        <h2>Character Management</h2>
+        {characters.length === 0 ? (
+          <p>No characters found.</p>
+        ) : (
+          <CharacterGrid>
+            {characters.map(char => (
+              <CharacterCard key={char.id}>
+                <img 
+                  src={getImageUrl(char.image)}
+                  alt={char.name} 
+                  onError={(e) => {
+                    if (!e.target.src.includes('placeholder.com')) {
+                      e.target.src = 'https://via.placeholder.com/150?text=No+Image';
+                    }
+                  }}
+                />
+                <CharacterInfo>
+                  <h3>{char.name}</h3>
+                  <p>{char.series}</p>
+                  <RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
+                </CharacterInfo>
+              </CharacterCard>
+            ))}
+          </CharacterGrid>
+        )}
+      </AdminSection>
     </AdminContainer>
   );
 };
@@ -329,6 +435,17 @@ const AdminHeader = styled.div`
   }
 `;
 
+const AdminGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  gap: 20px;
+  margin-bottom: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
 const AdminSection = styled.section`
   background-color: white;
   border-radius: 8px;
@@ -340,10 +457,23 @@ const AdminSection = styled.section`
     margin-top: 0;
     border-bottom: 1px solid #eee;
     padding-bottom: 10px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
   }
 `;
 
 const CharacterForm = styled.form`
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const CoinFormGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 20px;
@@ -371,17 +501,22 @@ const FormGroup = styled.div`
 `;
 
 const Button = styled.button`
-  grid-column: 1 / -1;
-  background-color: #3498db;
+  grid-column: ${props => props.fullWidth ? "1 / -1" : "auto"};
+  background-color: ${props => props.color || "#3498db"};
   color: white;
   border: none;
   padding: 12px;
   border-radius: 4px;
   font-weight: bold;
   cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: opacity 0.2s;
   
   &:hover {
-    background-color: #2980b9;
+    opacity: 0.8;
   }
 `;
 
@@ -418,7 +553,7 @@ const SuccessMessage = styled(motion.div)`
   color: #155724;
   padding: 12px;
   border-radius: 4px;
-  margin-bottom: 20px;
+  margin: 10px 0;
 `;
 
 const ImagePreview = styled.div`
