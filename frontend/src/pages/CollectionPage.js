@@ -31,7 +31,7 @@ const CollectionPage = () => {
     
     if (imageSrc.startsWith('/uploads')) {
       // Vollständiger Pfad für hochgeladene Bilder
-      return `http://https://gachaapi.solidbooru.online${imageSrc}`;
+      return `https://gachaapi.solidbooru.online${imageSrc}`;
     } else {
       // Relativer Pfad für vorhandene Bilder
       return `/images/characters/${imageSrc}`;

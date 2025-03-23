@@ -36,7 +36,7 @@ const GachaPage = () => {
 		  
 		  // WICHTIG: Benutzerdaten aktualisieren nach dem Würfeln
 		  try {
-			const userResponse = await axios.get('http://https://gachaapi.solidbooru.online/api/auth/me', {
+			const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
 			  headers: {
 				'x-auth-token': localStorage.getItem('token')
 			  }
@@ -68,7 +68,7 @@ const GachaPage = () => {
 	  await claimCharacter(currentChar.id);
 	  
 	  // Benutzerdaten aktualisieren
-	  const userResponse = await axios.get('http://https://gachaapi.solidbooru.online/api/auth/me', {
+	  const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
 		headers: {
 		  'x-auth-token': localStorage.getItem('token')
 		}
@@ -88,7 +88,7 @@ const getImagePath = (imageSrc) => {
 	
 	if (imageSrc.startsWith('/uploads')) {
 	  // Vollständiger Pfad für hochgeladene Bilder
-	  return `http://https://gachaapi.solidbooru.online${imageSrc}`;
+	  return `https://gachaapi.solidbooru.online${imageSrc}`;
 	} else {
 	  // Relativer Pfad für vorhandene Bilder
 	  return `/images/characters/${imageSrc}`;

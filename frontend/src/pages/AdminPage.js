@@ -41,7 +41,7 @@ const AdminPage = () => {
   
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('http://https://gachaapi.solidbooru.online/api/admin/users', {
+      const response = await axios.get('https://gachaapi.solidbooru.online/api/admin/users', {
         headers: {
           'x-auth-token': localStorage.getItem('token')
         }
@@ -56,7 +56,7 @@ const AdminPage = () => {
   
   const fetchCharacters = async () => {
     try {
-      const response = await axios.get('http://https://gachaapi.solidbooru.online/api/characters', {
+      const response = await axios.get('https://gachaapi.solidbooru.online/api/characters', {
         headers: {
           'x-auth-token': localStorage.getItem('token')
         }
@@ -115,7 +115,7 @@ const AdminPage = () => {
       formData.append('rarity', newCharacter.rarity);
       
       const response = await axios.post(
-        'http://https://gachaapi.solidbooru.online/api/admin/characters/upload', 
+        'https://gachaapi.solidbooru.online/api/admin/characters/upload', 
         formData, 
         {
           headers: {
@@ -157,7 +157,7 @@ const AdminPage = () => {
     
     try {
       const response = await axios.post(
-        'http://https://gachaapi.solidbooru.online/api/admin/add-coins',
+        'https://gachaapi.solidbooru.online/api/admin/add-coins',
         coinForm,
         {
           headers: {
@@ -192,12 +192,12 @@ const AdminPage = () => {
     
     // Prüfe auf hochgeladene Bilder im uploads-Verzeichnis
     if (imagePath.startsWith('/uploads')) {
-      return `http://https://gachaapi.solidbooru.online${imagePath}`;
+      return `https://gachaapi.solidbooru.online${imagePath}`;
     }
     
     // Prüfe auf image- Präfix, was auf ein hochgeladenes Bild hinweist
     if (imagePath.startsWith('image-')) {
-      return `http://https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
+      return `https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
     }
     
     // Prüfe, ob es ein einfacher Dateiname oder ein vollständiger Pfad ist

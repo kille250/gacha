@@ -1,6 +1,6 @@
 import axios from 'axios';
 
-const API_URL = 'http://https://gachaapi.solidbooru.online/api';
+const API_URL = 'https://gachaapi.solidbooru.online/api';
 
 const api = axios.create({
   baseURL: API_URL,
