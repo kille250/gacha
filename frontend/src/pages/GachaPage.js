@@ -1,11 +1,13 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdReplay, MdFavorite } from 'react-icons/md';
+import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment } from 'react-icons/md';
+import { FaGem, FaDice, FaTrophy } from 'react-icons/fa';
 import axios from 'axios';
 import { rollCharacter, claimCharacter } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
+import confetti from 'canvas-confetti';
 
 const rarityColors = {
   common: '#a0a0a0',
@@ -15,6 +17,14 @@ const rarityColors = {
   legendary: '#ff9800'
 };
 
+const rarityIcons = {
+  common: <FaDice />,
+  uncommon: <MdStars />,
+  rare: <FaGem />,
+  epic: <MdLocalFireDepartment />,
+  legendary: <FaTrophy />
+};
+
 const GachaPage = () => {
   const [currentChar, setCurrentChar] = useState(null);
   const [isRolling, setIsRolling] = useState(false);
@@ -22,6 +32,26 @@ const GachaPage = () => {
   const [error, setError] = useState(null);
   const { user, setUser } = useContext(AuthContext);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [rollCount, setRollCount] = useState(0);
+  const [lastRarities, setLastRarities] = useState([]);
+
+  // Effect to show confetti for rare pulls
+  useEffect(() => {
+    if (currentChar && (currentChar.rarity === 'legendary' || currentChar.rarity === 'epic')) {
+      setTimeout(() => {
+        confetti({
+          particleCount: currentChar.rarity === 'legendary' ? 200 : 100,
+          spread: 70,
+          origin: { y: 0.6 },
+          colors: [
+            rarityColors[currentChar.rarity], 
+            '#ffffff', 
+            '#gold'
+          ]
+        });
+      }, 300);
+    }
+  }, [currentChar]);
 
   const handleRoll = async () => {
     try {
@@ -29,12 +59,21 @@ const GachaPage = () => {
       setShowCard(false);
       setError(null);
       
+      // Increment roll count
+      setRollCount(prev => prev + 1);
+      
       // Simulate spinning animation
       setTimeout(async () => {
         try {
           const character = await rollCharacter();
           setCurrentChar(character);
           setShowCard(true);
+          
+          // Update rarities history (keep last 5)
+          setLastRarities(prev => {
+            const updated = [character.rarity, ...prev];
+            return updated.slice(0, 5);
+          });
           
           // User data update after roll
           try {
@@ -55,7 +94,7 @@ const GachaPage = () => {
           setError(err.response?.data?.error || 'Failed to roll character');
           setIsRolling(false);
         }
-      }, 1500);
+      }, 2000);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll character');
       setIsRolling(false);
@@ -67,6 +106,9 @@ const GachaPage = () => {
     
     try {
       await claimCharacter(currentChar.id);
+      
+      // Display success effect
+      showClaimSuccess();
       
       // Update user data
       const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
@@ -82,6 +124,16 @@ const GachaPage = () => {
     }
   };
 
+  const showClaimSuccess = () => {
+    // Simple confetti to confirm the claim
+    confetti({
+      particleCount: 50,
+      spread: 30,
+      origin: { y: 0.7 },
+      colors: ['#1abc9c', '#3498db', '#2ecc71']
+    });
+  };
+  
   const openPreview = () => {
     if (currentChar) {
       setPreviewOpen(true);
@@ -112,12 +164,46 @@ const GachaPage = () => {
 
   return (
     <GachaContainer>
+      <ParticlesBackground />
+      
       <GachaHeader>
-        <h1>Summon Characters</h1>
-        <PointsCounter>🪙 {user?.points || 0} points</PointsCounter>
+        <SiteTitle>
+          <span>Gacha</span>
+          <GlowingSpan>Master</GlowingSpan>
+        </SiteTitle>
+        <HeaderControls>
+          <RollCountDisplay>
+            <FaDice /> {rollCount} Rolls
+          </RollCountDisplay>
+          <PointsCounter>
+            <CoinIcon>🪙</CoinIcon> 
+            <PointsAmount>{user?.points || 0}</PointsAmount>
+          </PointsCounter>
+        </HeaderControls>
       </GachaHeader>
 
       {error && <ErrorMessage>{error}</ErrorMessage>}
+
+      <RarityHistoryBar>
+        {lastRarities.length > 0 && (
+          <>
+            <HistoryLabel>Recent pulls:</HistoryLabel>
+            <RarityList>
+              {lastRarities.map((rarity, index) => (
+                <RarityBubble 
+                  key={index} 
+                  rarity={rarity}
+                  initial={{ scale: 0, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  transition={{ delay: index * 0.1 }}
+                >
+                  {rarityIcons[rarity] || rarityIcons.common}
+                </RarityBubble>
+              ))}
+            </RarityList>
+          </>
+        )}
+      </RarityHistoryBar>
 
       <GachaSection>
         <AnimatePresence mode="wait">
@@ -127,30 +213,51 @@ const GachaPage = () => {
               initial={{ rotateY: 90, opacity: 0 }}
               animate={{ rotateY: 0, opacity: 1 }}
               exit={{ rotateY: -90, opacity: 0 }}
-              transition={{ duration: 0.5 }}
+              transition={{ duration: 0.7, type: "spring", stiffness: 70 }}
               rarity={currentChar?.rarity}
+              whileHover={{ scale: 1.03 }}
             >
-              <CardImage 
-                src={getImagePath(currentChar?.image)} 
-                alt={currentChar?.name}
-                onClick={openPreview}
-                style={{ cursor: 'pointer' }}
-                onError={(e) => {
-                  if (!e.target.src.includes('placeholder.com')) {
-                    e.target.src = 'https://via.placeholder.com/300?text=No+Image';
-                  }
-                }}
-              />
+              <CardImageContainer>
+                <RarityGlow rarity={currentChar?.rarity} />
+                <CardImage 
+                  src={getImagePath(currentChar?.image)} 
+                  alt={currentChar?.name}
+                  onClick={openPreview}
+                  onError={(e) => {
+                    if (!e.target.src.includes('placeholder.com')) {
+                      e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                    }
+                  }}
+                />
+                <ZoomIconOverlay>
+                  <ZoomIcon>🔍</ZoomIcon>
+                </ZoomIconOverlay>
+              </CardImageContainer>
+              
               <CardContent>
                 <CharName>{currentChar?.name}</CharName>
                 <CharSeries>{currentChar?.series}</CharSeries>
-                <RarityBadge rarity={currentChar?.rarity}>{currentChar?.rarity}</RarityBadge>
+                <RarityBadge rarity={currentChar?.rarity}>
+                  {rarityIcons[currentChar?.rarity]} {currentChar?.rarity}
+                </RarityBadge>
               </CardContent>
+              
               <CardActions>
-                <ActionButton onClick={handleClaim} disabled={!currentChar}>
+                <ActionButton 
+                  onClick={handleClaim} 
+                  disabled={!currentChar}
+                  primary
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <MdFavorite /> Claim
                 </ActionButton>
-                <ActionButton onClick={handleRoll} disabled={isRolling}>
+                <ActionButton 
+                  onClick={handleRoll} 
+                  disabled={isRolling || (user?.points < 100)}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
                   <MdReplay /> Roll Again
                 </ActionButton>
               </CardActions>
@@ -162,18 +269,21 @@ const GachaPage = () => {
               animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
             >
-              <Spinner />
-              <p>Rolling...</p>
+              <SpinnerContainer>
+                <Spinner />
+              </SpinnerContainer>
+              <LoadingText>Summoning character...</LoadingText>
             </LoadingContainer>
           ) : (
             <EmptyState
               key="empty"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
             >
-              <h3>Try your luck!</h3>
-              <p>Roll to discover new characters</p>
+              <EmptyStateIcon>✨</EmptyStateIcon>
+              <h3>Roll to Discover Characters!</h3>
+              <p>Try your luck and build your collection</p>
             </EmptyState>
           )}
         </AnimatePresence>
@@ -181,11 +291,21 @@ const GachaPage = () => {
         <RollButton 
           onClick={handleRoll} 
           disabled={isRolling || (user?.points < 100)}
-          whileHover={{ scale: 1.05 }}
+          whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(110, 72, 170, 0.5)" }}
           whileTap={{ scale: 0.95 }}
+          initial={{ y: 20, opacity: 0 }}
+          animate={{ y: 0, opacity: 1 }}
+          transition={{ delay: 0.3 }}
         >
-          💫 Roll Character (100 points)
+          {isRolling ? 
+            "Summoning..." : 
+            <>💫 Roll Character <RollCost>(100 points)</RollCost></>
+          }
         </RollButton>
+        
+        <RollHint>
+          You have enough points for <strong>{Math.floor((user?.points || 0) / 100)}</strong> more rolls
+        </RollHint>
       </GachaSection>
       
       <ImagePreviewModal 
@@ -200,12 +320,43 @@ const GachaPage = () => {
   );
 };
 
+// Styled Components
+const ParticlesBackground = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-image: 
+    radial-gradient(circle at 10% 20%, rgba(216, 241, 230, 0.1) 0%, transparent 80%),
+    radial-gradient(circle at 90% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 70%);
+  pointer-events: none;
+  z-index: -1;
+`;
+
 const GachaContainer = styled.div`
   min-height: 100vh;
-  background-image: url('/images/backgrounds/gacha-bg.jpg');
+  background-image: linear-gradient(135deg, #141e30 0%, #243b55 100%);
   background-size: cover;
   background-position: center;
   padding: 20px;
+  position: relative;
+  overflow: hidden;
+  
+  &::after {
+    content: "";
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-image: url('/images/backgrounds/gacha-bg.jpg');
+    background-size: cover;
+    background-position: center;
+    opacity: 0.15;
+    z-index: -2;
+    pointer-events: none;
+  }
 `;
 
 const GachaHeader = styled.div`
@@ -214,21 +365,126 @@ const GachaHeader = styled.div`
   align-items: center;
   color: white;
   padding: 20px;
+  backdrop-filter: blur(5px);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 16px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  margin-bottom: 20px;
+`;
+
+const SiteTitle = styled.h1`
+  margin: 0;
+  font-size: 32px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  font-family: 'Poppins', sans-serif;
+  font-weight: 700;
+  letter-spacing: 1px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const GlowingSpan = styled.span`
+  background: linear-gradient(90deg, #6e48aa, #9e5594);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  text-shadow: none;
+  position: relative;
   
-  h1 {
-    margin: 0;
-    font-size: 32px;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: -5px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: linear-gradient(90deg, #6e48aa, #9e5594);
+    border-radius: 3px;
   }
 `;
 
+const HeaderControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 15px;
+`;
+
+const RollCountDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  color: white;
+  padding: 8px 16px;
+  border-radius: 20px;
+  font-weight: 500;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
 const PointsCounter = styled.div`
-  background: rgba(0, 0, 0, 0.5);
-  color: #fff;
-  padding: 10px 20px;
+  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+  color: white;
+  padding: 8px 16px;
   border-radius: 20px;
   font-weight: bold;
   font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+`;
+
+const CoinIcon = styled.span`
+  font-size: 22px;
+  animation: coinPulse 3s infinite;
+  
+  @keyframes coinPulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.1); }
+    100% { transform: scale(1); }
+  }
+`;
+
+const PointsAmount = styled.span`
+  font-weight: bold;
+`;
+
+const RarityHistoryBar = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  margin-bottom: 20px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+`;
+
+const HistoryLabel = styled.span`
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+`;
+
+const RarityList = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const RarityBubble = styled(motion.div)`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: ${props => rarityColors[props.rarity]};
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 `;
 
 const GachaSection = styled.div`
@@ -236,40 +492,104 @@ const GachaSection = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 70vh;
+  height: calc(100vh - 240px);
+  min-height: 500px;
 `;
 
 const CharacterCard = styled(motion.div)`
-  background: rgba(255, 255, 255, 0.9);
+  background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
-  width: 300px;
+  width: 320px;
   overflow: hidden;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  box-shadow: ${props => `0 15px 40px rgba(
+    ${props.rarity === 'legendary' ? '255, 152, 0' : 
+      props.rarity === 'epic' ? '156, 39, 176' : 
+      props.rarity === 'rare' ? '33, 150, 243' : '0, 0, 0'}, 
+    ${props.rarity === 'common' ? '0.3' : '0.5'})`};
   margin-bottom: 30px;
   border: 3px solid ${props => rarityColors[props.rarity] || rarityColors.common};
+  transform-style: preserve-3d;
+  perspective: 1000px;
+`;
+
+const CardImageContainer = styled.div`
+  position: relative;
+  width: 100%;
+  height: 340px;
+  overflow: hidden;
+  cursor: pointer;
+`;
+
+const RarityGlow = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: ${props => {
+    const color = rarityColors[props.rarity] || rarityColors.common;
+    return props.rarity === 'legendary' || props.rarity === 'epic' ? 
+      `linear-gradient(45deg, ${color}33, transparent, ${color}33)` : 
+      'none';
+  }};
+  pointer-events: none;
+  z-index: 1;
 `;
 
 const CardImage = styled.img`
   width: 100%;
-  height: 300px;
+  height: 100%;
   object-fit: cover;
-  cursor: pointer;
-  transition: transform 0.3s ease;
+  transition: transform 0.6s ease;
   
   &:hover {
-    transform: scale(1.05);
+    transform: scale(1.07);
   }
+`;
+
+const ZoomIconOverlay = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+  pointer-events: none;
+  
+  ${CardImageContainer}:hover & {
+    opacity: 1;
+  }
+`;
+
+const ZoomIcon = styled.div`
+  font-size: 32px;
+  color: white;
+  background: rgba(0, 0, 0, 0.5);
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const CardContent = styled.div`
   padding: 20px;
   position: relative;
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.8));
 `;
 
 const CharName = styled.h2`
   margin: 0 0 5px 0;
   font-size: 24px;
   color: #333;
+  font-weight: 700;
+  letter-spacing: 0.5px;
 `;
 
 const CharSeries = styled.p`
@@ -278,40 +598,53 @@ const CharSeries = styled.p`
   font-style: italic;
 `;
 
-const RarityBadge = styled.span`
+const RarityBadge = styled.div`
   position: absolute;
   top: -15px;
   right: 20px;
   background: ${props => rarityColors[props.rarity] || rarityColors.common};
   color: white;
-  padding: 5px 10px;
-  border-radius: 10px;
+  padding: 6px 12px;
+  border-radius: 30px;
   font-size: 12px;
   font-weight: bold;
   text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  
+  @keyframes shiny {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.3); }
+    100% { filter: brightness(1); }
+  }
+  
+  animation: ${props => ['legendary', 'epic'].includes(props.rarity) ? 'shiny 2s infinite' : 'none'};
 `;
 
 const CardActions = styled.div`
   display: flex;
-  border-top: 1px solid #eee;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
 `;
 
-const ActionButton = styled.button`
+const ActionButton = styled(motion.button)`
   flex: 1;
-  background: none;
+  background: ${props => props.primary ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'none'};
+  color: ${props => props.primary ? 'white' : '#555'};
   border: none;
   padding: 15px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 5px;
+  gap: 8px;
   font-size: 16px;
-  color: #555;
   cursor: pointer;
-  transition: background-color 0.2s;
+  transition: all 0.3s;
+  font-weight: ${props => props.primary ? 'bold' : 'normal'};
   
   &:hover {
-    background-color: #f5f5f5;
+    background-color: ${props => props.primary ? 'none' : '#f0f0f0'};
   }
   
   &:first-child {
@@ -329,16 +662,56 @@ const RollButton = styled(motion.button)`
   color: white;
   border: none;
   border-radius: 50px;
-  padding: 16px 32px;
-  font-size: 18px;
+  padding: 18px 36px;
+  font-size: 22px;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 5px 20px rgba(110, 72, 170, 0.4);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  letter-spacing: 0.5px;
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: -10%;
+    left: -10%;
+    right: -10%;
+    bottom: -10%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
+  }
+  
+  &:hover::before {
+    transform: translateX(100%);
+  }
   
   &:disabled {
-    background: #aaa;
+    background: #666;
     cursor: not-allowed;
+    box-shadow: none;
+    
+    &::before {
+      display: none;
+    }
   }
+`;
+
+const RollCost = styled.span`
+  font-size: 14px;
+  opacity: 0.8;
+  margin-left: 5px;
+`;
+
+const RollHint = styled.p`
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  margin-top: 15px;
+  text-align: center;
 `;
 
 const LoadingContainer = styled(motion.div)`
@@ -347,58 +720,104 @@ const LoadingContainer = styled(motion.div)`
   align-items: center;
   justify-content: center;
   margin-bottom: 30px;
-  
-  p {
-    margin-top: 20px;
-    color: white;
-    font-size: 18px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
-  }
+`;
+
+const SpinnerContainer = styled.div`
+  width: 120px;
+  height: 120px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 50%;
+  box-shadow: 0 0 30px rgba(110, 72, 170, 0.5);
 `;
 
 const Spinner = styled.div`
   width: 80px;
   height: 80px;
-  border: 8px solid rgba(255, 255, 255, 0.3);
+  border: 8px solid rgba(255, 255, 255, 0.15);
   border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s linear infinite;
+  border-top-color: #9e5594;
+  border-left-color: #6e48aa;
+  animation: spin 1.2s linear infinite;
   
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
 `;
 
+const LoadingText = styled.p`
+  margin-top: 25px;
+  color: white;
+  font-size: 20px;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  font-weight: 500;
+  letter-spacing: 0.5px;
+`;
+
 const EmptyState = styled(motion.div)`
   text-align: center;
   color: white;
   padding: 40px;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(255, 255, 255, 0.1);
   border-radius: 16px;
   margin-bottom: 30px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-width: 350px;
   
   h3 {
-    font-size: 24px;
-    margin: 0 0 10px 0;
+    font-size: 28px;
+    margin: 0 0 15px 0;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
+    font-weight: 700;
+    background: linear-gradient(135deg, #fff, #ccc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
   }
   
   p {
     margin: 0;
     font-size: 16px;
-    opacity: 0.8;
+    opacity: 0.9;
+    line-height: 1.5;
   }
 `;
 
-const ErrorMessage = styled.div`
+const EmptyStateIcon = styled.div`
+  font-size: 42px;
+  margin-bottom: 15px;
+  animation: float 3s ease-in-out infinite;
+  
+  @keyframes float {
+    0% { transform: translateY(0px); }
+    50% { transform: translateY(-10px); }
+    100% { transform: translateY(0px); }
+  }
+`;
+
+const ErrorMessage = styled(motion.div)`
   background: rgba(220, 53, 69, 0.9);
   color: white;
-  padding: 15px;
+  padding: 15px 20px;
   border-radius: 8px;
   margin: 20px auto;
   max-width: 600px;
   text-align: center;
-  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  font-weight: 500;
+  border-left: 5px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  
+  &::before {
+    content: "⚠️";
+    font-size: 18px;
+  }
 `;
 
 export default GachaPage;
