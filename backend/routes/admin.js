@@ -158,4 +158,117 @@ router.post('/add-coins', auth, adminAuth, async (req, res) => {
   }
 });
 
+router.put('/characters/:id', auth, adminAuth, async (req, res) => {
+  try {
+    const characterId = req.params.id;
+    const { name, series, rarity } = req.body;
+
+    // Suche den Charakter
+    const character = await Character.findByPk(characterId);
+    
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    // Aktualisiere die Charakterdaten
+    if (name) character.name = name;
+    if (series) character.series = series;
+    if (rarity) character.rarity = rarity;
+
+    await character.save();
+
+    // Log die Änderung
+    console.log(`Admin (ID: ${req.user.id}) edited character ${character.id} (${character.name})`);
+
+    res.json({
+      message: 'Character updated successfully',
+      character
+    });
+  } catch (err) {
+    console.error('Error updating character:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// In routes/admin.js - Route zum Aktualisieren des Bildes eines Charakters
+router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), async (req, res) => {
+  try {
+    const characterId = req.params.id;
+    
+    // Suche den Charakter
+    const character = await Character.findByPk(characterId);
+    
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+    
+    // Überprüfe, ob ein Bild hochgeladen wurde
+    if (!req.file) {
+      return res.status(400).json({ error: 'No image uploaded' });
+    }
+
+    // Speichere das alte Bild, um es später zu löschen, wenn es ein hochgeladenes Bild war
+    const oldImage = character.image;
+    
+    // Aktualisiere den Bildpfad
+    character.image = req.file.filename;
+    await character.save();
+
+    // Wenn das alte Bild ein hochgeladenes Bild war, lösche es
+    if (oldImage && oldImage.startsWith('image-') && fs.existsSync(`public/uploads/characters/${oldImage}`)) {
+      fs.unlinkSync(`public/uploads/characters/${oldImage}`);
+      console.log(`Deleted old image: ${oldImage}`);
+    }
+
+    // Log die Änderung
+    console.log(`Admin (ID: ${req.user.id}) updated image for character ${character.id} (${character.name})`);
+
+    res.json({
+      message: 'Character image updated successfully',
+      character
+    });
+  } catch (err) {
+    console.error('Error updating character image:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// In routes/admin.js - Route zum Löschen eines Charakters
+router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
+  try {
+    const characterId = req.params.id;
+    
+    // Suche den Charakter
+    const character = await Character.findByPk(characterId);
+    
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+    
+    // Speichere Charakterdaten für die Antwort
+    const deletedChar = { ...character.get() };
+    
+    // Lösche den Charakter
+    await character.destroy();
+    
+    // Wenn das Bild ein hochgeladenes Bild war, lösche es
+    const image = character.image;
+    if (image && image.startsWith('image-') && fs.existsSync(`public/uploads/characters/${image}`)) {
+      fs.unlinkSync(`public/uploads/characters/${image}`);
+      console.log(`Deleted image for deleted character: ${image}`);
+    }
+
+    // Log die Löschung
+    console.log(`Admin (ID: ${req.user.id}) deleted character ${deletedChar.id} (${deletedChar.name})`);
+
+    res.json({
+      message: 'Character deleted successfully',
+      character: deletedChar
+    });
+  } catch (err) {
+    console.error('Error deleting character:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

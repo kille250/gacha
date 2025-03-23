@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaCoins, FaUsers, FaImage } from 'react-icons/fa';
+import { FaCoins, FaUsers, FaImage, FaEdit, FaTrash } from 'react-icons/fa';
 
 const AdminPage = () => {
   const { user } = useContext(AuthContext);
@@ -14,6 +14,17 @@ const AdminPage = () => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
+  
+  // Edit Character State
+  const [editingCharacter, setEditingCharacter] = useState(null);
+  const [editForm, setEditForm] = useState({
+    name: '',
+    series: '',
+    rarity: 'common'
+  });
+  const [isEditing, setIsEditing] = useState(false);
+  const [editImageFile, setEditImageFile] = useState(null);
+  const [editImagePreview, setEditImagePreview] = useState(null);
   
   // Neue Charakter-Felder
   const [newCharacter, setNewCharacter] = useState({
@@ -67,16 +78,10 @@ const AdminPage = () => {
     }
   };
   
+  // Character Functions
   const handleCharacterChange = (e) => {
     setNewCharacter({
       ...newCharacter,
-      [e.target.name]: e.target.value
-    });
-  };
-  
-  const handleCoinFormChange = (e) => {
-    setCoinForm({
-      ...coinForm,
       [e.target.name]: e.target.value
     });
   };
@@ -148,6 +153,133 @@ const AdminPage = () => {
       console.error('Error adding character:', err);
       setError(err.response?.data?.error || 'Failed to add character');
     }
+  };
+  
+  // Edit Character Functions
+  const handleEditCharacter = (character) => {
+    setEditingCharacter(character);
+    setEditForm({
+      name: character.name,
+      series: character.series,
+      rarity: character.rarity || 'common'
+    });
+    setEditImagePreview(getImageUrl(character.image));
+    setIsEditing(true);
+  };
+  
+  const handleCloseEdit = () => {
+    setIsEditing(false);
+    setEditingCharacter(null);
+    setEditImageFile(null);
+    setEditImagePreview(null);
+  };
+  
+  const handleEditFormChange = (e) => {
+    setEditForm({
+      ...editForm,
+      [e.target.name]: e.target.value
+    });
+  };
+  
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    setEditImageFile(file);
+    
+    // Bildvorschau aktualisieren
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setEditImagePreview(e.target.result);
+      };
+      reader.readAsDataURL(file);
+    } else {
+      setEditImagePreview(editingCharacter ? getImageUrl(editingCharacter.image) : null);
+    }
+  };
+  
+  const handleSaveCharacter = async (e) => {
+    e.preventDefault();
+    setError(null);
+    setSuccessMessage(null);
+    
+    if (!editingCharacter) return;
+    
+    try {
+      // Aktualisiere die Charakterdetails
+      const response = await axios.put(
+        `https://gachaapi.solidbooru.online/api/admin/characters/${editingCharacter.id}`,
+        editForm,
+        {
+          headers: {
+            'x-auth-token': localStorage.getItem('token')
+          }
+        }
+      );
+      
+      // Wenn ein neues Bild ausgewählt wurde, lade es hoch
+      if (editImageFile) {
+        const formData = new FormData();
+        formData.append('image', editImageFile);
+        
+        await axios.put(
+          `https://gachaapi.solidbooru.online/api/admin/characters/${editingCharacter.id}/image`,
+          formData,
+          {
+            headers: {
+              'x-auth-token': localStorage.getItem('token'),
+              'Content-Type': 'multipart/form-data'
+            }
+          }
+        );
+      }
+      
+      setSuccessMessage('Character updated successfully!');
+      
+      // Aktualisiere die Charakterliste
+      fetchCharacters();
+      
+      // Schließe das Bearbeitungsformular
+      handleCloseEdit();
+    } catch (err) {
+      console.error('Error updating character:', err);
+      setError(err.response?.data?.error || 'Failed to update character');
+    }
+  };
+  
+  const handleDeleteCharacter = async (characterId) => {
+    if (!window.confirm('Are you sure you want to delete this character?')) {
+      return;
+    }
+    
+    setError(null);
+    setSuccessMessage(null);
+    
+    try {
+      await axios.delete(
+        `https://gachaapi.solidbooru.online/api/admin/characters/${characterId}`,
+        {
+          headers: {
+            'x-auth-token': localStorage.getItem('token')
+          }
+        }
+      );
+      
+      setSuccessMessage('Character deleted successfully!');
+      
+      // Aktualisiere die Charakterliste
+      fetchCharacters();
+    } catch (err) {
+      console.error('Error deleting character:', err);
+      setError(err.response?.data?.error || 'Failed to delete character');
+    }
+  };
+  
+  // Coins Functions
+  const handleCoinFormChange = (e) => {
+    setCoinForm({
+      ...coinForm,
+      [e.target.name]: e.target.value
+    });
   };
   
   const handleAddCoins = async (e) => {
@@ -407,16 +539,118 @@ const AdminPage = () => {
                   <h3>{char.name}</h3>
                   <p>{char.series}</p>
                   <RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
+                  <CardActions>
+                    <ActionButton type="button" onClick={() => handleEditCharacter(char)}>
+                      <FaEdit /> Edit
+                    </ActionButton>
+                    <ActionButton type="button" danger onClick={() => handleDeleteCharacter(char.id)}>
+                      <FaTrash /> Delete
+                    </ActionButton>
+                  </CardActions>
                 </CharacterInfo>
               </CharacterCard>
             ))}
           </CharacterGrid>
         )}
       </AdminSection>
+      
+      {/* Edit Character Modal */}
+      <EditCharacterModal 
+        show={isEditing} 
+        onClose={handleCloseEdit} 
+        character={editingCharacter} 
+        editForm={editForm} 
+        onEditFormChange={handleEditFormChange} 
+        onImageChange={handleEditImageChange}
+        onSubmit={handleSaveCharacter}
+        imagePreview={editImagePreview}
+      />
     </AdminContainer>
   );
 };
 
+// Edit Character Modal
+const EditCharacterModal = ({ show, onClose, character, editForm, onEditFormChange, onImageChange, onSubmit, imagePreview }) => {
+  if (!show || !character) return null;
+  
+  return (
+    <ModalOverlay>
+      <ModalContent>
+        <ModalHeader>
+          <h3>Edit Character: {character.name}</h3>
+          <CloseButton onClick={onClose}>&times;</CloseButton>
+        </ModalHeader>
+        
+        <ModalBody>
+          <form onSubmit={onSubmit}>
+            <FormGroup>
+              <label>Character Name</label>
+              <input 
+                type="text" 
+                name="name" 
+                value={editForm.name} 
+                onChange={onEditFormChange} 
+                required 
+              />
+            </FormGroup>
+            
+            <FormGroup>
+              <label>Series</label>
+              <input 
+                type="text" 
+                name="series" 
+                value={editForm.series} 
+                onChange={onEditFormChange} 
+                required 
+              />
+            </FormGroup>
+            
+            <FormGroup>
+              <label>Rarity</label>
+              <select 
+                name="rarity" 
+                value={editForm.rarity} 
+                onChange={onEditFormChange}
+              >
+                <option value="common">Common</option>
+                <option value="uncommon">Uncommon</option>
+                <option value="rare">Rare</option>
+                <option value="epic">Epic</option>
+                <option value="legendary">Legendary</option>
+              </select>
+            </FormGroup>
+            
+            <FormGroup>
+              <label>Character Image</label>
+              <input 
+                type="file" 
+                accept="image/*"
+                onChange={onImageChange}
+              />
+              {imagePreview && (
+                <ImagePreview>
+                  <ImagePreviewLabel>Current/New Image:</ImagePreviewLabel>
+                  <img src={imagePreview} alt="Character preview" />
+                </ImagePreview>
+              )}
+            </FormGroup>
+            
+            <ButtonGroup>
+              <Button type="submit" color="#27ae60">
+                Save Changes
+              </Button>
+              <Button type="button" onClick={onClose} color="#7f8c8d">
+                Cancel
+              </Button>
+            </ButtonGroup>
+          </form>
+        </ModalBody>
+      </ModalContent>
+    </ModalOverlay>
+  );
+};
+
+// Styled Components
 const AdminContainer = styled.div`
   min-height: 100vh;
   background-color: #f5f7fa;
@@ -627,6 +861,87 @@ const RarityTag = styled.div`
   color: white;
   text-transform: uppercase;
   font-weight: bold;
+`;
+
+const CardActions = styled.div`
+  display: flex;
+  margin-top: 12px;
+  gap: 8px;
+`;
+
+const ActionButton = styled.button`
+  background-color: ${props => props.danger ? '#e74c3c' : '#3498db'};
+  color: white;
+  border: none;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  
+  &:hover {
+    opacity: 0.8;
+  }
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+`;
+
+const ModalContent = styled.div`
+  background-color: white;
+  border-radius: 8px;
+  width: 90%;
+  max-width: 600px;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 20px;
+  border-bottom: 1px solid #eee;
+  
+  h3 {
+    margin: 0;
+  }
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  font-size: 24px;
+  cursor: pointer;
+  color: #777;
+  
+  &:hover {
+    color: #333;
+  }
+`;
+
+const ModalBody = styled.div`
+  padding: 20px;
+`;
+
+const ButtonGroup = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 20px;
+  justify-content: flex-end;
 `;
 
 export default AdminPage;
