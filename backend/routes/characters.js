@@ -13,9 +13,72 @@ router.post('/roll', auth, async (req, res) => {
 	  user.points -= 100;
 	  await user.save();
   
-	  // Zufälligen Charakter abrufen
+	  // Alle Charaktere nach Seltenheit gruppieren
 	  const characters = await Character.findAll();
-	  const randomChar = characters[Math.floor(Math.random() * characters.length)];
+	  const charactersByRarity = {
+		common: characters.filter(char => char.rarity === 'common'),
+		uncommon: characters.filter(char => char.rarity === 'uncommon'),
+		rare: characters.filter(char => char.rarity === 'rare'),
+		epic: characters.filter(char => char.rarity === 'epic'),
+		legendary: characters.filter(char => char.rarity === 'legendary')
+	  };
+  
+	  // Dropchancen definieren (in Prozent)
+	  const dropRates = {
+		common: 60,     // 60% Chance
+		uncommon: 25,   // 25% Chance
+		rare: 10,       // 10% Chance
+		epic: 4,        // 4% Chance
+		legendary: 1    // 1% Chance
+	  };
+  
+	  // Bestimme die Rarität basierend auf Wahrscheinlichkeit
+	  const rarityRoll = Math.random() * 100; // Zufallszahl zwischen 0 und 100
+	  let selectedRarity;
+	  let cumulativeRate = 0;
+  
+	  for (const [rarity, rate] of Object.entries(dropRates)) {
+		cumulativeRate += rate;
+		if (rarityRoll <= cumulativeRate) {
+		  selectedRarity = rarity;
+		  break;
+		}
+	  }
+  
+	  // Fallback für den unwahrscheinlichen Fall, dass nichts ausgewählt wurde
+	  if (!selectedRarity) selectedRarity = 'common';
+  
+	  // Prüfe, ob Charaktere der ausgewählten Rarität existieren
+	  if (!charactersByRarity[selectedRarity] || charactersByRarity[selectedRarity].length === 0) {
+		// Fallback: Wähle die nächstniedrigere Rarität mit verfügbaren Charakteren
+		const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+		const rarityIndex = rarityOrder.indexOf(selectedRarity);
+		
+		for (let i = rarityIndex + 1; i < rarityOrder.length; i++) {
+		  const fallbackRarity = rarityOrder[i];
+		  if (charactersByRarity[fallbackRarity]?.length > 0) {
+			selectedRarity = fallbackRarity;
+			break;
+		  }
+		}
+		
+		// Wenn immer noch keine Charaktere gefunden wurden, wähle einen zufälligen aus allen
+		if (!charactersByRarity[selectedRarity] || charactersByRarity[selectedRarity].length === 0) {
+		  const randomChar = characters[Math.floor(Math.random() * characters.length)];
+		  
+		  // Protokolliere den Roll
+		  console.log(`User ${user.username} (ID: ${user.id}) rolled ${randomChar.name} (Fallback random)`);
+		  
+		  return res.json(randomChar);
+		}
+	  }
+  
+	  // Zufälligen Charakter aus der gewählten Rarität auswählen
+	  const rareCharacters = charactersByRarity[selectedRarity];
+	  const randomChar = rareCharacters[Math.floor(Math.random() * rareCharacters.length)];
+  
+	  // Protokolliere den Roll für Analyse-Zwecke
+	  console.log(`User ${user.username} (ID: ${user.id}) rolled ${randomChar.name} (${selectedRarity})`);
   
 	  res.json(randomChar);
 	} catch (err) {
