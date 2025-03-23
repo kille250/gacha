@@ -1,12 +1,9 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTimes } from 'react-icons/fa';
+import { MdCheckCircle } from 'react-icons/md';
 
-const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity }) => {
-  if (!isOpen) return null;
-  
-  // Verhindere, dass Klicks auf das Modal zum Schließen führen
+const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned }) => {
   const handleModalClick = (e) => {
     e.stopPropagation();
   };
@@ -28,8 +25,14 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity }) => 
             onClick={handleModalClick}
           >
             <CloseButton onClick={onClose}>
-              <FaTimes />
+              <span aria-hidden="true">&times;</span>
             </CloseButton>
+            
+            {isOwned && (
+              <OwnedBadge>
+                <MdCheckCircle /> In Your Collection
+              </OwnedBadge>
+            )}
             
             <ImageContainer rarity={rarity}>
               <LargeImage src={image} alt={name} />
@@ -38,7 +41,9 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity }) => 
             <CharacterDetails>
               <CharacterName>{name}</CharacterName>
               {series && <CharacterSeries>{series}</CharacterSeries>}
-              {rarity && <RarityBadge rarity={rarity}>{rarity}</RarityBadge>}
+              <RarityBadge rarity={rarity}>
+                {rarity}
+              </RarityBadge>
             </CharacterDetails>
           </ModalContent>
         </ModalOverlay>
@@ -73,11 +78,11 @@ const ModalContent = styled(motion.div)`
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
-  margin: 0 15px; /* Seitliche Ränder auf kleinen Bildschirmen */
-  
+  margin: 0 15px;
+
   @media (max-width: 480px) {
     max-height: 80vh;
-    margin: 0 10px; /* Kleinere Ränder auf sehr kleinen Bildschirmen */
+    margin: 0 10px;
   }
 `;
 
@@ -85,7 +90,7 @@ const CloseButton = styled.button`
   position: absolute;
   top: 10px;
   right: 10px;
-  background-color: rgba(0, 0, 0, 0.2);
+  background-color: rgba(0, 0, 0, 0.3);
   color: white;
   border: none;
   border-radius: 50%;
@@ -96,23 +101,51 @@ const CloseButton = styled.button`
   justify-content: center;
   cursor: pointer;
   z-index: 10;
-  
+  font-size: 24px;
+  transition: background-color 0.2s;
+
   &:hover {
     background-color: rgba(0, 0, 0, 0.5);
   }
-  
+
   @media (max-width: 480px) {
     width: 32px;
     height: 32px;
-    top: 8px;
-    right: 8px;
+    font-size: 20px;
+  }
+`;
+
+const OwnedBadge = styled.div`
+  position: absolute;
+  bottom: 15px;
+  left: 15px;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 5;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(2px);
+
+  svg {
+    font-size: 18px;
+  }
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+    padding: 6px 12px;
   }
 `;
 
 const ImageContainer = styled.div`
   width: 100%;
   height: 500px;
-  max-height: 60vh; /* Weniger Höhe auf mobilen Geräten */
+  max-height: 60vh;
   overflow: hidden;
   position: relative;
   border-bottom: 4px solid ${props => {
@@ -125,7 +158,7 @@ const ImageContainer = styled.div`
     };
     return rarityColors[props.rarity] || '#a0a0a0';
   }};
-  
+
   @media (max-width: 480px) {
     height: auto;
     max-height: 50vh;
@@ -136,16 +169,17 @@ const LargeImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  
+
   @media (max-width: 480px) {
-    object-fit: contain; /* Zeigt das ganze Bild, ggf. mit Rändern */
+    object-fit: contain;
   }
 `;
 
 const CharacterDetails = styled.div`
   padding: 20px;
   position: relative;
-  
+  background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9));
+
   @media (max-width: 480px) {
     padding: 15px;
   }
@@ -155,10 +189,10 @@ const CharacterName = styled.h2`
   margin: 0 0 5px 0;
   font-size: 28px;
   color: #333;
-  
+  text-align: center;
+
   @media (max-width: 480px) {
     font-size: 24px;
-    margin-right: 80px; /* Platz für das Rarität-Badge */
   }
 `;
 
@@ -167,19 +201,15 @@ const CharacterSeries = styled.p`
   font-size: 16px;
   color: #666;
   font-style: italic;
+  text-align: center;
 `;
 
-const RarityBadge = styled.span`
+const RarityBadge = styled.div`
   position: absolute;
   top: -15px;
-  right: 20px;
-  font-size: 14px;
-  padding: 5px 15px;
-  border-radius: 15px;
-  text-transform: uppercase;
-  font-weight: bold;
-  color: white;
-  background-color: ${props => {
+  left: 50%;
+  transform: translateX(-50%);
+  background: ${props => {
     const rarityColors = {
       common: '#a0a0a0',
       uncommon: '#4caf50',
@@ -189,7 +219,19 @@ const RarityBadge = styled.span`
     };
     return rarityColors[props.rarity] || '#a0a0a0';
   }};
-  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  color: white;
+  padding: 6px 20px;
+  border-radius: 30px;
+  font-size: 14px;
+  font-weight: bold;
+  text-transform: uppercase;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+
+  @media (max-width: 480px) {
+    font-size: 12px;
+    padding: 4px 15px;
+  }
 `;
 
 export default ImagePreviewModal;

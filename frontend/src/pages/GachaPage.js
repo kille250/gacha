@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment } from 'react-icons/md';
+import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment, MdCheckCircle } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy } from 'react-icons/fa';
 import axios from 'axios';
 import { rollCharacter, claimCharacter } from '../utils/api';
@@ -34,6 +34,32 @@ const GachaPage = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [rollCount, setRollCount] = useState(0);
   const [lastRarities, setLastRarities] = useState([]);
+  const [userCollection, setUserCollection] = useState([]);
+
+  // Sammlung beim Laden der Seite abrufen
+  useEffect(() => {
+    fetchUserCollection();
+  }, []);
+
+  // Collection abrufen
+  const fetchUserCollection = async () => {
+    try {
+      const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
+        headers: {
+          'x-auth-token': localStorage.getItem('token')
+        }
+      });
+      setUserCollection(response.data);
+    } catch (err) {
+      console.error("Error fetching user collection:", err);
+    }
+  };
+
+  // Prüfen, ob Charakter in Sammlung vorhanden
+  const isCharacterInCollection = () => {
+    if (!currentChar || !userCollection.length) return false;
+    return userCollection.some(char => char.id === currentChar.id);
+  };
 
   // Effect to show confetti for rare pulls
   useEffect(() => {
@@ -119,6 +145,9 @@ const GachaPage = () => {
       
       setUser(userResponse.data);
       localStorage.setItem('user', JSON.stringify(userResponse.data));
+      
+      // Nach erfolgreichem Claim die Sammlung aktualisieren
+      fetchUserCollection();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to claim character');
     }
@@ -219,6 +248,7 @@ const GachaPage = () => {
             >
               <CardImageContainer>
                 <RarityGlow rarity={currentChar?.rarity} />
+                {isCharacterInCollection() && <CollectionBadge>In Collection</CollectionBadge>}
                 <CardImage 
                   src={getImagePath(currentChar?.image)} 
                   alt={currentChar?.name}
@@ -245,12 +275,17 @@ const GachaPage = () => {
               <CardActions>
                 <ActionButton 
                   onClick={handleClaim} 
-                  disabled={!currentChar}
-                  primary
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+                  disabled={!currentChar || isCharacterInCollection()}
+                  primary={!isCharacterInCollection()}
+                  owned={isCharacterInCollection()}
+                  whileHover={{ scale: isCharacterInCollection() ? 1.0 : 1.05 }}
+                  whileTap={{ scale: isCharacterInCollection() ? 1.0 : 0.95 }}
                 >
-                  <MdFavorite /> Claim
+                  {isCharacterInCollection() ? (
+                    <><MdCheckCircle /> Already Owned</>
+                  ) : (
+                    <><MdFavorite /> Claim</>
+                  )}
                 </ActionButton>
                 <ActionButton 
                   onClick={handleRoll} 
@@ -315,6 +350,7 @@ const GachaPage = () => {
         name={currentChar?.name || ''}
         series={currentChar?.series || ''}
         rarity={currentChar?.rarity || 'common'}
+        isOwned={isCharacterInCollection()}
       />
     </GachaContainer>
   );
@@ -553,6 +589,29 @@ const CardImageContainer = styled.div`
   }
 `;
 
+const CollectionBadge = styled.div`
+  position: absolute;
+  left: 10px;
+  top: 10px;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 30px;
+  z-index: 5;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  
+  &::before {
+    content: "✓";
+    font-size: 14px;
+    font-weight: bold;
+  }
+`;
+
 const RarityGlow = styled.div`
   position: absolute;
   top: 0;
@@ -671,8 +730,14 @@ const CardActions = styled.div`
 
 const ActionButton = styled(motion.button)`
   flex: 1;
-  background: ${props => props.primary ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'none'};
-  color: ${props => props.primary ? 'white' : '#555'};
+  background: ${props => {
+    if (props.owned) return '#f1f8f1';
+    return props.primary ? 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)' : 'none';
+  }};
+  color: ${props => {
+    if (props.owned) return '#28a745';
+    return props.primary ? 'white' : '#555';
+  }};
   border: none;
   padding: 15px;
   display: flex;
@@ -680,12 +745,15 @@ const ActionButton = styled(motion.button)`
   justify-content: center;
   gap: 8px;
   font-size: 16px;
-  cursor: pointer;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   transition: all 0.3s;
-  font-weight: ${props => props.primary ? 'bold' : 'normal'};
+  font-weight: ${props => (props.primary || props.owned) ? 'bold' : 'normal'};
   
   &:hover {
-    background-color: ${props => props.primary ? 'none' : '#f0f0f0'};
+    background-color: ${props => {
+      if (props.owned) return '#f1f8f1';
+      return props.primary ? 'none' : '#f0f0f0';
+    }};
   }
   
   &:first-child {
@@ -693,8 +761,12 @@ const ActionButton = styled(motion.button)`
   }
   
   &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
+    opacity: ${props => props.owned ? 1 : 0.5};
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 14px;
+    padding: 12px 8px;
   }
 `;
 
