@@ -24,6 +24,22 @@ const GlobalStyle = createGlobalStyle`
   
   body {
     background: #f5f5f5;
+    overflow-x: hidden; /* Verhindert horizontales Scrollen */
+    width: 100%;
+    max-width: 100vw;
+  }
+  
+  #root {
+    width: 100%;
+    max-width: 100vw;
+    overflow-x: hidden;
+  }
+
+  /* Für mobile Endgeräte */
+  @media (max-width: 768px) {
+    html, body {
+      overflow-x: hidden;
+    }
   }
   
   /* Add Poppins font */
@@ -76,12 +92,16 @@ function App() {
 
 const AppContainer = styled.div`
   min-height: 100vh;
+  max-width: 100vw; /* Verhindert horizontales Scrollen */
+  overflow-x: hidden; /* Verhindert horizontales Scrollen */
 `;
 
 const MainLayout = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  max-width: 100%; /* Wichtig für korrekte Anzeige */
+  box-sizing: border-box; /* Wichitg für konsistentes Layout */
 `;
 
 export default App;
