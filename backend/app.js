@@ -17,7 +17,7 @@ app.use('/api/characters', require('./routes/characters'));
 app.use('/api/admin', require('./routes/admin')); // Admin-Routen hinzufügen
 
 // Database sync
-sequelize.sync({ force: true }).then(async () => {
+sequelize.sync({ force: false }).then(async () => {
   console.log('Database synced');
   
   // Seed sample data
