@@ -32,7 +32,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
 	try {
-	  const response = await axios.post('http://localhost:5000/api/auth/login', {
+	  const response = await axios.post('http://https://gachaapi.solidbooru.online/api/auth/login', {
 		username,
 		password
 	  });
@@ -40,7 +40,7 @@ export const AuthProvider = ({ children }) => {
 	  localStorage.setItem('token', response.data.token);
 	  
 	  // Benutzerdaten vom Backend abrufen
-	  const userResponse = await axios.get('http://localhost:5000/api/auth/me', {
+	  const userResponse = await axios.get('http://https://gachaapi.solidbooru.online/api/auth/me', {
 		headers: {
 		  'x-auth-token': response.data.token
 		}
@@ -62,7 +62,7 @@ export const AuthProvider = ({ children }) => {
   // Registrierungsfunktion hinzufügen
   const register = async (username, password) => {
 	try {
-	  const response = await axios.post('http://localhost:5000/api/auth/signup', {
+	  const response = await axios.post('http://https://gachaapi.solidbooru.online/api/auth/signup', {
 		username,
 		password
 	  });
@@ -70,7 +70,7 @@ export const AuthProvider = ({ children }) => {
 	  localStorage.setItem('token', response.data.token);
 	  
 	  // Benutzerdaten vom Backend abrufen
-	  const userResponse = await axios.get('http://localhost:5000/api/auth/me', {
+	  const userResponse = await axios.get('http://https://gachaapi.solidbooru.online/api/auth/me', {
 		headers: {
 		  'x-auth-token': response.data.token
 		}
