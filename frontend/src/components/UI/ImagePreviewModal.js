@@ -73,6 +73,12 @@ const ModalContent = styled(motion.div)`
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   display: flex;
   flex-direction: column;
+  margin: 0 15px; /* Seitliche Ränder auf kleinen Bildschirmen */
+  
+  @media (max-width: 480px) {
+    max-height: 80vh;
+    margin: 0 10px; /* Kleinere Ränder auf sehr kleinen Bildschirmen */
+  }
 `;
 
 const CloseButton = styled.button`
@@ -94,12 +100,19 @@ const CloseButton = styled.button`
   &:hover {
     background-color: rgba(0, 0, 0, 0.5);
   }
+  
+  @media (max-width: 480px) {
+    width: 32px;
+    height: 32px;
+    top: 8px;
+    right: 8px;
+  }
 `;
 
 const ImageContainer = styled.div`
   width: 100%;
   height: 500px;
-  max-height: 70vh;
+  max-height: 60vh; /* Weniger Höhe auf mobilen Geräten */
   overflow: hidden;
   position: relative;
   border-bottom: 4px solid ${props => {
@@ -112,23 +125,41 @@ const ImageContainer = styled.div`
     };
     return rarityColors[props.rarity] || '#a0a0a0';
   }};
+  
+  @media (max-width: 480px) {
+    height: auto;
+    max-height: 50vh;
+  }
 `;
 
 const LargeImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
+  
+  @media (max-width: 480px) {
+    object-fit: contain; /* Zeigt das ganze Bild, ggf. mit Rändern */
+  }
 `;
 
 const CharacterDetails = styled.div`
   padding: 20px;
   position: relative;
+  
+  @media (max-width: 480px) {
+    padding: 15px;
+  }
 `;
 
 const CharacterName = styled.h2`
   margin: 0 0 5px 0;
   font-size: 28px;
   color: #333;
+  
+  @media (max-width: 480px) {
+    font-size: 24px;
+    margin-right: 80px; /* Platz für das Rarität-Badge */
+  }
 `;
 
 const CharacterSeries = styled.p`

@@ -341,7 +341,7 @@ const GachaContainer = styled.div`
   background-position: center;
   padding: 20px;
   position: relative;
-  overflow: hidden;
+  overflow-x: hidden; /* Horizontales Scrollen verhindern */
   
   &::after {
     content: "";
@@ -356,6 +356,10 @@ const GachaContainer = styled.div`
     opacity: 0.15;
     z-index: -2;
     pointer-events: none;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 15px 10px; /* Kleinere Seitenränder auf kleinen Bildschirmen */
   }
 `;
 
@@ -462,11 +466,23 @@ const RarityHistoryBar = styled.div`
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.05);
+  
+  @media (max-width: 480px) {
+    padding: 10px;
+    flex-wrap: wrap; /* Erlaubt Umbrüche bei kleinen Bildschirmen */
+    justify-content: center;
+  }
 `;
 
 const HistoryLabel = styled.span`
   color: rgba(255, 255, 255, 0.7);
   font-size: 14px;
+  
+  @media (max-width: 480px) {
+    width: 100%; /* Volle Breite, damit die Bubbles darunter angezeigt werden*/
+    text-align: center;
+    margin-bottom: 5px;
+  }
 `;
 
 const RarityList = styled.div`
@@ -491,15 +507,23 @@ const GachaSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  height: calc(100vh - 240px);
-  min-height: 500px;
+  justify-content: flex-start; /* Geändert von center zu flex-start */
+  padding: 20px 0 40px 0;
+  min-height: 400px;
+  overflow-y: auto; /* Erlaubt Scrollen wenn nötig */
+  
+  @media (max-width: 768px) {
+    padding-bottom: 80px; /* Mehr Platz am unteren Rand auf Mobilgeräten */
+    height: auto; /* Höhe nicht fixieren */
+    min-height: 0; /* Keine Mindesthöhe erzwingen */
+  }
 `;
 
 const CharacterCard = styled(motion.div)`
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
   width: 320px;
+  max-width: 90vw; /* Niemals breiter als der Viewport */
   overflow: hidden;
   box-shadow: ${props => `0 15px 40px rgba(
     ${props.rarity === 'legendary' ? '255, 152, 0' : 
@@ -510,6 +534,11 @@ const CharacterCard = styled(motion.div)`
   border: 3px solid ${props => rarityColors[props.rarity] || rarityColors.common};
   transform-style: preserve-3d;
   perspective: 1000px;
+  
+  @media (max-width: 480px) {
+    width: 280px; /* Etwas schmaler auf sehr kleinen Bildschirmen */
+    margin-bottom: 20px;
+  }
 `;
 
 const CardImageContainer = styled.div`
@@ -518,6 +547,10 @@ const CardImageContainer = styled.div`
   height: 340px;
   overflow: hidden;
   cursor: pointer;
+  
+  @media (max-width: 480px) {
+    height: 280px; /* Weniger Bildhöhe auf sehr kleinen Bildschirmen */
+  }
 `;
 
 const RarityGlow = styled.div`
@@ -613,6 +646,7 @@ const RarityBadge = styled.div`
   align-items: center;
   gap: 5px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 5; /* Höherer z-index um Sichtbarkeit zu gewährleisten */
   
   @keyframes shiny {
     0% { filter: brightness(1); }
@@ -621,6 +655,13 @@ const RarityBadge = styled.div`
   }
   
   animation: ${props => ['legendary', 'epic'].includes(props.rarity) ? 'shiny 2s infinite' : 'none'};
+  
+  @media (max-width: 480px) {
+    right: 10px; /* Etwas näher am Rand auf kleinen Bildschirmen */
+    top: -12px;
+    padding: 4px 10px;
+    font-size: 10px;
+  }
 `;
 
 const CardActions = styled.div`
@@ -699,12 +740,24 @@ const RollButton = styled(motion.button)`
       display: none;
     }
   }
+  
+  @media (max-width: 480px) {
+    padding: 14px 28px;
+    font-size: 18px;
+    width: 85%; /* Breite begrenzen */
+    max-width: 300px;
+    justify-content: center;
+  }
 `;
 
 const RollCost = styled.span`
   font-size: 14px;
   opacity: 0.8;
   margin-left: 5px;
+  
+  @media (max-width: 480px) {
+    font-size: 12px;
+  }
 `;
 
 const RollHint = styled.p`
