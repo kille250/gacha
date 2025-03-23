@@ -5,6 +5,7 @@ import { MdReplay, MdFavorite } from 'react-icons/md';
 import axios from 'axios';
 import { rollCharacter, claimCharacter } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
+import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 const rarityColors = {
   common: '#a0a0a0',
@@ -20,79 +21,93 @@ const GachaPage = () => {
   const [showCard, setShowCard] = useState(false);
   const [error, setError] = useState(null);
   const { user, setUser } = useContext(AuthContext);
+  const [previewOpen, setPreviewOpen] = useState(false);
 
   const handleRoll = async () => {
-	try {
-	  setIsRolling(true);
-	  setShowCard(false);
-	  setError(null);
-	  
-	  // Simulate spinning animation
-	  setTimeout(async () => {
-		try {
-		  const character = await rollCharacter();
-		  setCurrentChar(character);
-		  setShowCard(true);
-		  
-		  // WICHTIG: Benutzerdaten aktualisieren nach dem Würfeln
-		  try {
-			const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-			  headers: {
-				'x-auth-token': localStorage.getItem('token')
-			  }
-			});
-			
-			// Benutzerstatus aktualisieren mit aktuellen Daten vom Server
-			setUser(userResponse.data);
-			localStorage.setItem('user', JSON.stringify(userResponse.data));
-		  } catch (userErr) {
-			console.error("Error updating user data after roll:", userErr);
-		  }
-		  
-		  setIsRolling(false);
-		} catch (err) {
-		  setError(err.response?.data?.error || 'Failed to roll character');
-		  setIsRolling(false);
-		}
-	  }, 1500);
-	} catch (err) {
-	  setError(err.response?.data?.error || 'Failed to roll character');
-	  setIsRolling(false);
-	}
+    try {
+      setIsRolling(true);
+      setShowCard(false);
+      setError(null);
+      
+      // Simulate spinning animation
+      setTimeout(async () => {
+        try {
+          const character = await rollCharacter();
+          setCurrentChar(character);
+          setShowCard(true);
+          
+          // User data update after roll
+          try {
+            const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
+              headers: {
+                'x-auth-token': localStorage.getItem('token')
+              }
+            });
+            
+            setUser(userResponse.data);
+            localStorage.setItem('user', JSON.stringify(userResponse.data));
+          } catch (userErr) {
+            console.error("Error updating user data after roll:", userErr);
+          }
+          
+          setIsRolling(false);
+        } catch (err) {
+          setError(err.response?.data?.error || 'Failed to roll character');
+          setIsRolling(false);
+        }
+      }, 1500);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to roll character');
+      setIsRolling(false);
+    }
   };
 
   const handleClaim = async () => {
-	if (!currentChar) return;
-	
-	try {
-	  await claimCharacter(currentChar.id);
-	  
-	  // Benutzerdaten aktualisieren
-	  const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-		headers: {
-		  'x-auth-token': localStorage.getItem('token')
-		}
-	  });
-	  
-	  // Benutzerstatus aktualisieren mit aktuellen Daten vom Server
-	  setUser(userResponse.data);
-	  localStorage.setItem('user', JSON.stringify(userResponse.data));
-	} catch (err) {
-	  setError(err.response?.data?.error || 'Failed to claim character');
-	}
+    if (!currentChar) return;
+    
+    try {
+      await claimCharacter(currentChar.id);
+      
+      // Update user data
+      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
+        headers: {
+          'x-auth-token': localStorage.getItem('token')
+        }
+      });
+      
+      setUser(userResponse.data);
+      localStorage.setItem('user', JSON.stringify(userResponse.data));
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to claim character');
+    }
   };
 
-  // In GachaPage.js und CollectionPage.js - Bildanzeige anpassen
-const getImagePath = (imageSrc) => {
-	if (!imageSrc) return 'https://via.placeholder.com/300?text=No+Image';
-	
-	if (imageSrc.startsWith('/uploads')) {
-	  // Vollständiger Pfad für hochgeladene Bilder
-	  return `https://gachaapi.solidbooru.online${imageSrc}`;
-	} else {
-	  // Relativer Pfad für vorhandene Bilder
-	  return `/images/characters/${imageSrc}`;
-	}
+  const openPreview = () => {
+    if (currentChar) {
+      setPreviewOpen(true);
+    }
+  };
+  
+  const closePreview = () => {
+    setPreviewOpen(false);
+  };
+  
+  const getImagePath = (imageSrc) => {
+    if (!imageSrc) return 'https://via.placeholder.com/300?text=No+Image';
+    
+    if (imageSrc.startsWith('http')) {
+      return imageSrc;
+    }
+    
+    if (imageSrc.startsWith('/uploads')) {
+      return `https://gachaapi.solidbooru.online${imageSrc}`;
+    }
+    
+    if (imageSrc.startsWith('image-')) {
+      return `https://gachaapi.solidbooru.online/uploads/characters/${imageSrc}`;
+    }
+    
+    return `/images/characters/${imageSrc}`;
   };
 
   return (
@@ -116,12 +131,16 @@ const getImagePath = (imageSrc) => {
               rarity={currentChar?.rarity}
             >
               <CardImage 
-				src={getImagePath(currentChar?.image)} 
-				alt={currentChar?.name}
-				onError={(e) => {
-			    e.target.src = 'https://via.placeholder.com/300?text=Image+Not+Found';
-			  }}
-			  />
+                src={getImagePath(currentChar?.image)} 
+                alt={currentChar?.name}
+                onClick={openPreview}
+                style={{ cursor: 'pointer' }}
+                onError={(e) => {
+                  if (!e.target.src.includes('placeholder.com')) {
+                    e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                  }
+                }}
+              />
               <CardContent>
                 <CharName>{currentChar?.name}</CharName>
                 <CharSeries>{currentChar?.series}</CharSeries>
@@ -168,6 +187,15 @@ const getImagePath = (imageSrc) => {
           💫 Roll Character (100 points)
         </RollButton>
       </GachaSection>
+      
+      <ImagePreviewModal 
+        isOpen={previewOpen}
+        onClose={closePreview}
+        image={currentChar ? getImagePath(currentChar.image) : ''}
+        name={currentChar?.name || ''}
+        series={currentChar?.series || ''}
+        rarity={currentChar?.rarity || 'common'}
+      />
     </GachaContainer>
   );
 };
@@ -225,6 +253,12 @@ const CardImage = styled.img`
   width: 100%;
   height: 300px;
   object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.3s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
 `;
 
 const CardContent = styled.div`
@@ -282,6 +316,11 @@ const ActionButton = styled.button`
   
   &:first-child {
     border-right: 1px solid #eee;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 

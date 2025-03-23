@@ -2,12 +2,15 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { getCollection } from '../utils/api';
+import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 const CollectionPage = () => {
   const [collection, setCollection] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [filter, setFilter] = useState('all');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewChar, setPreviewChar] = useState(null);
   
   useEffect(() => {
     fetchCollection();
@@ -25,17 +28,31 @@ const CollectionPage = () => {
     }
   };
   
-  // Hilfsfunktion für Bildpfade
+  const openPreview = (character) => {
+    setPreviewChar(character);
+    setPreviewOpen(true);
+  };
+  
+  const closePreview = () => {
+    setPreviewOpen(false);
+  };
+  
   const getImagePath = (imageSrc) => {
     if (!imageSrc) return 'https://via.placeholder.com/200?text=No+Image';
     
-    if (imageSrc.startsWith('/uploads')) {
-      // Vollständiger Pfad für hochgeladene Bilder
-      return `https://gachaapi.solidbooru.online${imageSrc}`;
-    } else {
-      // Relativer Pfad für vorhandene Bilder
-      return `/images/characters/${imageSrc}`;
+    if (imageSrc.startsWith('http')) {
+      return imageSrc;
     }
+    
+    if (imageSrc.startsWith('/uploads')) {
+      return `https://gachaapi.solidbooru.online${imageSrc}`;
+    }
+    
+    if (imageSrc.startsWith('image-')) {
+      return `https://gachaapi.solidbooru.online/uploads/characters/${imageSrc}`;
+    }
+    
+    return `/images/characters/${imageSrc}`;
   };
 
   const filteredCollection = filter === 'all' 
@@ -104,8 +121,12 @@ const CollectionPage = () => {
               <CharImage 
                 src={getImagePath(char.image)} 
                 alt={char.name}
+                onClick={() => openPreview(char)}
+                style={{ cursor: 'pointer' }}
                 onError={(e) => {
-                  e.target.src = 'https://via.placeholder.com/200?text=Image+Not+Found';
+                  if (!e.target.src.includes('placeholder.com')) {
+                    e.target.src = 'https://via.placeholder.com/200?text=No+Image';
+                  }
                 }}
               />
               <CharDetails>
@@ -117,6 +138,15 @@ const CollectionPage = () => {
           ))}
         </CharacterGrid>
       )}
+      
+      <ImagePreviewModal 
+        isOpen={previewOpen}
+        onClose={closePreview}
+        image={previewChar ? getImagePath(previewChar.image) : ''}
+        name={previewChar?.name || ''}
+        series={previewChar?.series || ''}
+        rarity={previewChar?.rarity || 'common'}
+      />
     </CollectionContainer>
   );
 };
@@ -192,6 +222,12 @@ const CharImage = styled.img`
   width: 100%;
   height: 200px;
   object-fit: cover;
+  cursor: pointer;
+  transition: transform 0.2s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
 `;
 
 const CharDetails = styled.div`
