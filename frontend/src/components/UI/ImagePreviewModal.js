@@ -148,10 +148,6 @@ const ImageContainer = styled.div`
   max-height: 60vh;
   overflow: hidden;
   position: relative;
-  padding: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   border-bottom: 4px solid ${props => {
     const rarityColors = {
       common: '#a0a0a0',
@@ -162,6 +158,7 @@ const ImageContainer = styled.div`
     };
     return rarityColors[props.rarity] || '#a0a0a0';
   }};
+
   @media (max-width: 480px) {
     height: auto;
     max-height: 50vh;
