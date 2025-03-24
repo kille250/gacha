@@ -7,15 +7,21 @@ const { User, Character } = require('../models'); // This should now work
 router.post('/roll-multi', auth, async (req, res) => {
 	try {
 	  const count = Math.min(req.body.count || 10, 20); // Limit to max 20 characters per request
-	  const requiredPoints = count * 100;
+	  const basePoints = count * 100;
+	  
+	  // Apply discount based on count (matching frontend logic)
+	  let discount = 0;
+	  if (count >= 10) discount = 0.1;       // 10% discount for 10+ pulls
+	  else if (count >= 5) discount = 0.05;  // 5% discount for 5-9 pulls
+	  
+	  // Calculate final cost with discount
+	  const finalCost = Math.floor(basePoints * (1 - discount));
 	  
 	  const user = await User.findByPk(req.user.id);
-	  if (user.points < requiredPoints) 
-		return res.status(400).json({ error: `Not enough points. Required: ${requiredPoints}` });
+	  if (user.points < finalCost) 
+		return res.status(400).json({ error: `Not enough points. Required: ${finalCost}` });
 	  
-	  // Deduct points (with 10% discount for multi-pulls)
-	  const discount = count >= 10 ? 0.1 : 0;
-	  const finalCost = Math.floor(requiredPoints * (1 - discount));
+	  // Deduct points with discount applied
 	  user.points -= finalCost;
 	  await user.save();
 	  
@@ -116,7 +122,7 @@ router.post('/roll-multi', auth, async (req, res) => {
 	  }
 	  
 	  // Log the multi-roll for analysis
-	  console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll with ${hasRarePlus ? 'rare+' : 'no rare+'} result`);
+	  console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
 	  
 	  res.json(results);
 	  
