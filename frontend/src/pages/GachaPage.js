@@ -1,13 +1,31 @@
-import React, { useState, useContext, useEffect } from 'react';
+import React, { useState, useContext, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment, MdCheckCircle } from 'react-icons/md';
+import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy } from 'react-icons/fa';
 import axios from 'axios';
 import { rollCharacter, claimCharacter } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import confetti from 'canvas-confetti';
+
+// Custom API function for multi-roll
+const rollMultipleCharacters = async (count = 10) => {
+  try {
+    const response = await axios.post(
+      'https://gachaapi.solidbooru.online/api/characters/roll-multi',
+      { count },
+      {
+        headers: {
+          'x-auth-token': localStorage.getItem('token')
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
 
 const rarityColors = {
   common: '#a0a0a0',
@@ -27,21 +45,26 @@ const rarityIcons = {
 
 const GachaPage = () => {
   const [currentChar, setCurrentChar] = useState(null);
+  const [multiRollResults, setMultiRollResults] = useState([]);
   const [isRolling, setIsRolling] = useState(false);
   const [showCard, setShowCard] = useState(false);
+  const [showMultiResults, setShowMultiResults] = useState(false);
   const [error, setError] = useState(null);
   const { user, setUser } = useContext(AuthContext);
   const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewChar, setPreviewChar] = useState(null);
   const [rollCount, setRollCount] = useState(0);
   const [lastRarities, setLastRarities] = useState([]);
   const [userCollection, setUserCollection] = useState([]);
+  const [skipAnimations, setSkipAnimations] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
 
-  // Sammlung beim Laden der Seite abrufen
+  // Fetch user collection on page load
   useEffect(() => {
     fetchUserCollection();
   }, []);
 
-  // Collection abrufen
+  // Fetch user collection
   const fetchUserCollection = async () => {
     try {
       const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
@@ -55,40 +78,66 @@ const GachaPage = () => {
     }
   };
 
-  // Prüfen, ob Charakter in Sammlung vorhanden
-  const isCharacterInCollection = () => {
-    if (!currentChar || !userCollection.length) return false;
-    return userCollection.some(char => char.id === currentChar.id);
-  };
+  // Update user data from API
+  const updateUserData = useCallback(async () => {
+    try {
+      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
+        headers: {
+          'x-auth-token': localStorage.getItem('token')
+        }
+      });
+      
+      setUser(userResponse.data);
+      localStorage.setItem('user', JSON.stringify(userResponse.data));
+    } catch (userErr) {
+      console.error("Error updating user data:", userErr);
+    }
+  }, [setUser]);
+
+  // Check if character is in collection
+  const isCharacterInCollection = useCallback((character) => {
+    if (!character || !userCollection.length) return false;
+    return userCollection.some(char => char.id === character.id);
+  }, [userCollection]);
+
+  // Show confetti effect for rare pulls
+  const showRarePullEffect = useCallback((rarity) => {
+    if (rarity === 'legendary' || rarity === 'epic') {
+      confetti({
+        particleCount: rarity === 'legendary' ? 200 : 100,
+        spread: 70,
+        origin: { y: 0.6 },
+        colors: [
+          rarityColors[rarity], 
+          '#ffffff', 
+          '#gold'
+        ]
+      });
+    }
+  }, []);
 
   // Effect to show confetti for rare pulls
   useEffect(() => {
-    if (currentChar && (currentChar.rarity === 'legendary' || currentChar.rarity === 'epic')) {
-      setTimeout(() => {
-        confetti({
-          particleCount: currentChar.rarity === 'legendary' ? 200 : 100,
-          spread: 70,
-          origin: { y: 0.6 },
-          colors: [
-            rarityColors[currentChar.rarity], 
-            '#ffffff', 
-            '#gold'
-          ]
-        });
-      }, 300);
+    if (currentChar && !skipAnimations) {
+      showRarePullEffect(currentChar.rarity);
     }
-  }, [currentChar]);
+  }, [currentChar, skipAnimations, showRarePullEffect]);
 
+  // Single roll function
   const handleRoll = async () => {
     try {
       setIsRolling(true);
       setShowCard(false);
+      setShowMultiResults(false);
       setError(null);
+      setMultiRollResults([]);
       
       // Increment roll count
       setRollCount(prev => prev + 1);
       
-      // Simulate spinning animation
+      // Simulate spinning animation (shorter duration)
+      const animationDuration = skipAnimations ? 0 : 1200;
+      
       setTimeout(async () => {
         try {
           const character = await rollCharacter();
@@ -101,53 +150,105 @@ const GachaPage = () => {
             return updated.slice(0, 5);
           });
           
-          // User data update after roll
-          try {
-            const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-              headers: {
-                'x-auth-token': localStorage.getItem('token')
-              }
-            });
-            
-            setUser(userResponse.data);
-            localStorage.setItem('user', JSON.stringify(userResponse.data));
-          } catch (userErr) {
-            console.error("Error updating user data after roll:", userErr);
-          }
-          
+          // Update user data after roll
+          await updateUserData();
           setIsRolling(false);
         } catch (err) {
           setError(err.response?.data?.error || 'Failed to roll character');
           setIsRolling(false);
         }
-      }, 2000);
+      }, animationDuration);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll character');
       setIsRolling(false);
     }
   };
 
-  const handleClaim = async () => {
-    if (!currentChar) return;
-    
+  // Multi roll function (new)
+  const handleMultiRoll = async () => {
+    if (user?.points < 1000) {
+      setError("Not enough points for a 10x roll");
+      return;
+    }
+
     try {
-      await claimCharacter(currentChar.id);
+      setIsRolling(true);
+      setShowCard(false);
+      setShowMultiResults(false);
+      setError(null);
+      
+      // Increment roll count by 10
+      setRollCount(prev => prev + 10);
+      
+      // Shorter animation for multi-roll
+      const animationDuration = skipAnimations ? 0 : 1200;
+      
+      setTimeout(async () => {
+        try {
+          // Call multi-roll API
+          const characters = await rollMultipleCharacters(10);
+          setMultiRollResults(characters);
+          setShowMultiResults(true);
+          
+          // Update rarities history with best pull
+          const bestRarity = findBestRarity(characters);
+          setLastRarities(prev => {
+            const updated = [bestRarity, ...prev];
+            return updated.slice(0, 5);
+          });
+          
+          // Show confetti for good pulls
+          const hasRare = characters.some(char => char.rarity === 'rare' || char.rarity === 'epic' || char.rarity === 'legendary');
+          if (hasRare && !skipAnimations) {
+            confetti({
+              particleCount: 150,
+              spread: 90,
+              origin: { y: 0.5 },
+            });
+          }
+          
+          // Update user data after roll
+          await updateUserData();
+          setIsRolling(false);
+        } catch (err) {
+          setError(err.response?.data?.error || 'Failed to roll multiple characters');
+          setIsRolling(false);
+        }
+      }, animationDuration);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to roll multiple characters');
+      setIsRolling(false);
+    }
+  };
+
+  // Helper to find the best rarity from a list of characters
+  const findBestRarity = (characters) => {
+    const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    let bestRarityIndex = 0;
+    
+    characters.forEach(char => {
+      const charRarityIndex = rarityOrder.indexOf(char.rarity);
+      if (charRarityIndex > bestRarityIndex) {
+        bestRarityIndex = charRarityIndex;
+      }
+    });
+    
+    return rarityOrder[bestRarityIndex];
+  };
+
+  // Claim character function
+  const handleClaim = async (characterId) => {
+    try {
+      await claimCharacter(characterId);
       
       // Display success effect
       showClaimSuccess();
       
       // Update user data
-      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
+      await updateUserData();
       
-      setUser(userResponse.data);
-      localStorage.setItem('user', JSON.stringify(userResponse.data));
-      
-      // Nach erfolgreichem Claim die Sammlung aktualisieren
-      fetchUserCollection();
+      // Update collection after claiming
+      await fetchUserCollection();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to claim character');
     }
@@ -163,14 +264,17 @@ const GachaPage = () => {
     });
   };
   
-  const openPreview = () => {
-    if (currentChar) {
+  // Preview a character
+  const openPreview = (character) => {
+    if (character) {
+      setPreviewChar(character);
       setPreviewOpen(true);
     }
   };
   
   const closePreview = () => {
     setPreviewOpen(false);
+    setPreviewChar(null);
   };
   
   const getImagePath = (imageSrc) => {
@@ -191,6 +295,11 @@ const GachaPage = () => {
     return `/images/characters/${imageSrc}`;
   };
 
+  // Toggle animation skipping
+  const toggleSkipAnimations = () => {
+    setSkipAnimations(prev => !prev);
+  };
+
   return (
     <GachaContainer>
       <ParticlesBackground />
@@ -208,11 +317,27 @@ const GachaPage = () => {
             <CoinIcon>🪙</CoinIcon> 
             <PointsAmount>{user?.points || 0}</PointsAmount>
           </PointsCounter>
+          <SettingsButton onClick={() => setShowSettings(!showSettings)}>
+            ⚙️
+          </SettingsButton>
         </HeaderControls>
       </GachaHeader>
 
-      {error && <ErrorMessage>{error}</ErrorMessage>}
+      {showSettings && (
+        <SettingsPanel>
+          <SettingItem>
+            <label>Skip Animations</label>
+            <Switch 
+              checked={skipAnimations} 
+              onChange={toggleSkipAnimations} 
+            />
+          </SettingItem>
+          <CloseButton onClick={() => setShowSettings(false)}>×</CloseButton>
+        </SettingsPanel>
+      )}
 
+      {error && <ErrorMessage>{error}</ErrorMessage>}
+      
       <RarityHistoryBar>
         {lastRarities.length > 0 && (
           <>
@@ -236,23 +361,23 @@ const GachaPage = () => {
 
       <GachaSection>
         <AnimatePresence mode="wait">
-          {showCard ? (
+          {showCard && !showMultiResults ? (
             <CharacterCard
               key="character"
               initial={{ rotateY: 90, opacity: 0 }}
               animate={{ rotateY: 0, opacity: 1 }}
               exit={{ rotateY: -90, opacity: 0 }}
-              transition={{ duration: 0.7, type: "spring", stiffness: 70 }}
+              transition={{ duration: skipAnimations ? 0.2 : 0.4, type: "spring", stiffness: 70 }}
               rarity={currentChar?.rarity}
               whileHover={{ scale: 1.03 }}
             >
               <CardImageContainer>
                 <RarityGlow rarity={currentChar?.rarity} />
-                {isCharacterInCollection() && <CollectionBadge>In Collection</CollectionBadge>}
+                {isCharacterInCollection(currentChar) && <CollectionBadge>In Collection</CollectionBadge>}
                 <CardImage 
                   src={getImagePath(currentChar?.image)} 
                   alt={currentChar?.name}
-                  onClick={openPreview}
+                  onClick={() => openPreview(currentChar)}
                   onError={(e) => {
                     if (!e.target.src.includes('placeholder.com')) {
                       e.target.src = 'https://via.placeholder.com/300?text=No+Image';
@@ -274,14 +399,14 @@ const GachaPage = () => {
               
               <CardActions>
                 <ActionButton 
-                  onClick={handleClaim} 
-                  disabled={!currentChar || isCharacterInCollection()}
-                  primary={!isCharacterInCollection()}
-                  owned={isCharacterInCollection()}
-                  whileHover={{ scale: isCharacterInCollection() ? 1.0 : 1.05 }}
-                  whileTap={{ scale: isCharacterInCollection() ? 1.0 : 0.95 }}
+                  onClick={() => handleClaim(currentChar.id)} 
+                  disabled={!currentChar || isCharacterInCollection(currentChar)}
+                  primary={!isCharacterInCollection(currentChar)}
+                  owned={isCharacterInCollection(currentChar)}
+                  whileHover={{ scale: isCharacterInCollection(currentChar) ? 1.0 : 1.05 }}
+                  whileTap={{ scale: isCharacterInCollection(currentChar) ? 1.0 : 0.95 }}
                 >
-                  {isCharacterInCollection() ? (
+                  {isCharacterInCollection(currentChar) ? (
                     <><MdCheckCircle /> Already Owned</>
                   ) : (
                     <><MdFavorite /> Claim</>
@@ -297,6 +422,61 @@ const GachaPage = () => {
                 </ActionButton>
               </CardActions>
             </CharacterCard>
+          ) : showMultiResults ? (
+            <MultiRollSection
+              key="multiResults"
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              <MultiRollHeader>
+                <h2>10× Roll Results</h2>
+                <MultiRollCloseButton onClick={() => setShowMultiResults(false)}>×</MultiRollCloseButton>
+              </MultiRollHeader>
+
+              <MultiCharactersGrid>
+                {multiRollResults.map((character, index) => (
+                  <MultiCharacterCard 
+                    key={index}
+                    initial={{ scale: 0.8, opacity: 0 }}
+                    animate={{ scale: 1, opacity: 1 }}
+                    transition={{ delay: skipAnimations ? 0 : index * 0.05 }}
+                    rarity={character.rarity}
+                    whileHover={{ scale: 1.05, zIndex: 5 }}
+                  >
+                    <MultiCardImageContainer onClick={() => openPreview(character)}>
+                      <RarityGlowMulti rarity={character.rarity} />
+                      {isCharacterInCollection(character) && <CollectionBadgeMini>✓</CollectionBadgeMini>}
+                      <MultiCardImage 
+                        src={getImagePath(character.image)} 
+                        alt={character.name}
+                        onError={(e) => {
+                          if (!e.target.src.includes('placeholder.com')) {
+                            e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                          }
+                        }}
+                      />
+                    </MultiCardImageContainer>
+                    
+                    <MultiCardContent>
+                      <MultiCharName>{character.name}</MultiCharName>
+                      <MultiRarityBadge rarity={character.rarity}>
+                        {rarityIcons[character.rarity]} {character.rarity}
+                      </MultiRarityBadge>
+                    </MultiCardContent>
+                    
+                    <MultiCardClaimButton
+                      disabled={isCharacterInCollection(character)} 
+                      onClick={() => handleClaim(character.id)}
+                      owned={isCharacterInCollection(character)}
+                      whileHover={isCharacterInCollection(character) ? {} : { scale: 1.05 }}
+                    >
+                      {isCharacterInCollection(character) ? "Owned" : "Claim"}
+                    </MultiCardClaimButton>
+                  </MultiCharacterCard>
+                ))}
+              </MultiCharactersGrid>
+            </MultiRollSection>
           ) : isRolling ? (
             <LoadingContainer
               key="loading"
@@ -307,7 +487,7 @@ const GachaPage = () => {
               <SpinnerContainer>
                 <Spinner />
               </SpinnerContainer>
-              <LoadingText>Summoning character...</LoadingText>
+              <LoadingText>Summoning character{multiRollResults.length > 0 ? 's' : ''}...</LoadingText>
             </LoadingContainer>
           ) : (
             <EmptyState
@@ -323,34 +503,60 @@ const GachaPage = () => {
           )}
         </AnimatePresence>
 
-        <RollButton 
-          onClick={handleRoll} 
-          disabled={isRolling || (user?.points < 100)}
-          whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(110, 72, 170, 0.5)" }}
-          whileTap={{ scale: 0.95 }}
-          initial={{ y: 20, opacity: 0 }}
-          animate={{ y: 0, opacity: 1 }}
-          transition={{ delay: 0.3 }}
-        >
-          {isRolling ? 
-            "Summoning..." : 
-            <>💫 Roll Character <RollCost>(100 points)</RollCost></>
-          }
-        </RollButton>
+        <RollButtonsContainer>
+          <RollButton 
+            onClick={handleRoll} 
+            disabled={isRolling || (user?.points < 100)}
+            whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(110, 72, 170, 0.5)" }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.2 }}
+          >
+            {isRolling ? 
+              "Summoning..." : 
+              <>💫 Single Pull <RollCost>(100 pts)</RollCost></>
+            }
+          </RollButton>
+
+          <MultiRollButton 
+            onClick={handleMultiRoll} 
+            disabled={isRolling || (user?.points < 1000)}
+            whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(110, 72, 170, 0.5)" }}
+            whileTap={{ scale: 0.95 }}
+            initial={{ y: 20, opacity: 0 }}
+            animate={{ y: 0, opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            {isRolling ? 
+              "Summoning..." : 
+              <>🎯 10× Pull <RollCost>(1000 pts)</RollCost></>
+            }
+          </MultiRollButton>
+        </RollButtonsContainer>
         
         <RollHint>
-          You have enough points for <strong>{Math.floor((user?.points || 0) / 100)}</strong> more rolls
+          You have enough points for <strong>{Math.floor((user?.points || 0) / 100)}</strong> single pulls 
+          or <strong>{Math.floor((user?.points || 0) / 1000)}</strong> multi-pulls
         </RollHint>
+
+        {skipAnimations && (
+          <SkipAnimationsIndicator>
+            <MdFastForward /> Fast Mode Enabled
+          </SkipAnimationsIndicator>
+        )}
       </GachaSection>
       
       <ImagePreviewModal 
         isOpen={previewOpen}
         onClose={closePreview}
-        image={currentChar ? getImagePath(currentChar.image) : ''}
-        name={currentChar?.name || ''}
-        series={currentChar?.series || ''}
-        rarity={currentChar?.rarity || 'common'}
-        isOwned={isCharacterInCollection()}
+        image={previewChar ? getImagePath(previewChar.image) : ''}
+        name={previewChar?.name || ''}
+        series={previewChar?.series || ''}
+        rarity={previewChar?.rarity || 'common'}
+        isOwned={previewChar ? isCharacterInCollection(previewChar) : false}
+        onClaim={previewChar && !isCharacterInCollection(previewChar) ? 
+          () => handleClaim(previewChar.id) : undefined}
       />
     </GachaContainer>
   );
@@ -377,7 +583,7 @@ const GachaContainer = styled.div`
   background-position: center;
   padding: 20px;
   position: relative;
-  overflow-x: hidden; /* Horizontales Scrollen verhindern */
+  overflow-x: hidden;
   
   &::after {
     content: "";
@@ -394,8 +600,8 @@ const GachaContainer = styled.div`
     pointer-events: none;
   }
   
-  @media (max-width: 480px) {
-    padding: 15px 10px; /* Kleinere Seitenränder auf kleinen Bildschirmen */
+  @media (max-width: 768px) {
+    padding: 15px 10px;
   }
 `;
 
@@ -404,18 +610,23 @@ const GachaHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   color: white;
-  padding: 20px;
+  padding: 15px;
   backdrop-filter: blur(5px);
   background: rgba(0, 0, 0, 0.2);
   border-radius: 16px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 20px;
+  margin-bottom: 15px;
+  
+  @media (max-width: 480px) {
+    padding: 12px;
+    flex-wrap: wrap;
+  }
 `;
 
 const SiteTitle = styled.h1`
   margin: 0;
-  font-size: 32px;
+  font-size: 28px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   font-family: 'Poppins', sans-serif;
   font-weight: 700;
@@ -423,6 +634,10 @@ const SiteTitle = styled.h1`
   display: flex;
   align-items: center;
   gap: 8px;
+  
+  @media (max-width: 480px) {
+    font-size: 24px;
+  }
 `;
 
 const GlowingSpan = styled.span`
@@ -447,7 +662,105 @@ const GlowingSpan = styled.span`
 const HeaderControls = styled.div`
   display: flex;
   align-items: center;
-  gap: 15px;
+  gap: 10px;
+  
+  @media (max-width: 480px) {
+    gap: 8px;
+  }
+`;
+
+const SettingsButton = styled.button`
+  background: rgba(0, 0, 0, 0.3);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 18px;
+  transition: all 0.3s;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.5);
+  }
+`;
+
+const SettingsPanel = styled.div`
+  position: relative;
+  background: rgba(20, 30, 48, 0.9);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  padding: 15px;
+  margin-bottom: 15px;
+  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
+`;
+
+const SettingItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  color: white;
+  padding: 8px 0;
+  
+  label {
+    font-weight: 500;
+  }
+`;
+
+const Switch = styled.input.attrs({ type: 'checkbox' })`
+  appearance: none;
+  width: 50px;
+  height: 26px;
+  background-color: #555;
+  border-radius: 13px;
+  position: relative;
+  cursor: pointer;
+  transition: background-color 0.3s;
+  
+  &:checked {
+    background-color: #6e48aa;
+  }
+  
+  &::before {
+    content: '';
+    position: absolute;
+    width: 20px;
+    height: 20px;
+    border-radius: 50%;
+    background-color: white;
+    top: 3px;
+    left: 3px;
+    transition: transform 0.3s;
+  }
+  
+  &:checked::before {
+    transform: translateX(24px);
+  }
+`;
+
+const CloseButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 30px;
+  height: 30px;
+  border-radius: 50%;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+  }
 `;
 
 const RollCountDisplay = styled.div`
@@ -456,10 +769,15 @@ const RollCountDisplay = styled.div`
   gap: 8px;
   background: rgba(0, 0, 0, 0.3);
   color: white;
-  padding: 8px 16px;
+  padding: 8px 12px;
   border-radius: 20px;
   font-weight: 500;
   border: 1px solid rgba(255, 255, 255, 0.1);
+  
+  @media (max-width: 480px) {
+    padding: 6px 10px;
+    font-size: 14px;
+  }
 `;
 
 const PointsCounter = styled.div`
@@ -474,10 +792,15 @@ const PointsCounter = styled.div`
   gap: 8px;
   border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+  
+  @media (max-width: 480px) {
+    padding: 6px 12px;
+    font-size: 16px;
+  }
 `;
 
 const CoinIcon = styled.span`
-  font-size: 22px;
+  font-size: 20px;
   animation: coinPulse 3s infinite;
   
   @keyframes coinPulse {
@@ -495,18 +818,19 @@ const RarityHistoryBar = styled.div`
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 15px;
+  padding: 12px;
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
-  margin-bottom: 20px;
+  margin-bottom: 15px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
   backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.05);
   
   @media (max-width: 480px) {
-    padding: 10px;
-    flex-wrap: wrap; /* Erlaubt Umbrüche bei kleinen Bildschirmen */
+    padding: 8px;
+    flex-wrap: wrap;
     justify-content: center;
+    gap: 10px;
   }
 `;
 
@@ -515,7 +839,7 @@ const HistoryLabel = styled.span`
   font-size: 14px;
   
   @media (max-width: 480px) {
-    width: 100%; /* Volle Breite, damit die Bubbles darunter angezeigt werden*/
+    width: 100%;
     text-align: center;
     margin-bottom: 5px;
   }
@@ -524,18 +848,20 @@ const HistoryLabel = styled.span`
 const RarityList = styled.div`
   display: flex;
   gap: 8px;
+  flex-wrap: wrap;
+  justify-content: center;
 `;
 
 const RarityBubble = styled(motion.div)`
-  width: 36px;
-  height: 36px;
+  width: 32px;
+  height: 32px;
   border-radius: 50%;
   background: ${props => rarityColors[props.rarity]};
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 16px;
+  font-size: 14px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
 `;
 
@@ -543,15 +869,12 @@ const GachaSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: flex-start; /* Geändert von center zu flex-start */
+  justify-content: flex-start;
   padding: 20px 0 40px 0;
   min-height: 400px;
-  overflow-y: auto; /* Erlaubt Scrollen wenn nötig */
   
   @media (max-width: 768px) {
-    padding-bottom: 80px; /* Mehr Platz am unteren Rand auf Mobilgeräten */
-    height: auto; /* Höhe nicht fixieren */
-    min-height: 0; /* Keine Mindesthöhe erzwingen */
+    padding-bottom: 80px;
   }
 `;
 
@@ -559,33 +882,33 @@ const CharacterCard = styled(motion.div)`
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
   width: 320px;
-  max-width: 90vw; /* Niemals breiter als der Viewport */
+  max-width: 90vw;
   overflow: hidden;
   box-shadow: ${props => `0 15px 40px rgba(
     ${props.rarity === 'legendary' ? '255, 152, 0' : 
       props.rarity === 'epic' ? '156, 39, 176' : 
       props.rarity === 'rare' ? '33, 150, 243' : '0, 0, 0'}, 
     ${props.rarity === 'common' ? '0.3' : '0.5'})`};
-  margin-bottom: 30px;
+  margin-bottom: 20px;
   border: 3px solid ${props => rarityColors[props.rarity] || rarityColors.common};
   transform-style: preserve-3d;
   perspective: 1000px;
   
   @media (max-width: 480px) {
-    width: 280px; /* Etwas schmaler auf sehr kleinen Bildschirmen */
-    margin-bottom: 20px;
+    width: 280px;
+    margin-bottom: 15px;
   }
 `;
 
 const CardImageContainer = styled.div`
   position: relative;
   width: 100%;
-  height: 340px;
+  height: 320px;
   overflow: hidden;
   cursor: pointer;
   
   @media (max-width: 480px) {
-    height: 280px; /* Weniger Bildhöhe auf sehr kleinen Bildschirmen */
+    height: 280px;
   }
 `;
 
@@ -632,10 +955,10 @@ const CardImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.6s ease;
+  transition: transform 0.4s ease;
   
   &:hover {
-    transform: scale(1.07);
+    transform: scale(1.05);
   }
 `;
 
@@ -659,11 +982,11 @@ const ZoomIconOverlay = styled.div`
 `;
 
 const ZoomIcon = styled.div`
-  font-size: 32px;
+  font-size: 28px;
   color: white;
   background: rgba(0, 0, 0, 0.5);
-  width: 60px;
-  height: 60px;
+  width: 50px;
+  height: 50px;
   border-radius: 50%;
   display: flex;
   align-items: center;
@@ -671,14 +994,14 @@ const ZoomIcon = styled.div`
 `;
 
 const CardContent = styled.div`
-  padding: 20px;
+  padding: 15px;
   position: relative;
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.8));
 `;
 
 const CharName = styled.h2`
   margin: 0 0 5px 0;
-  font-size: 24px;
+  font-size: 22px;
   color: #333;
   font-weight: 700;
   letter-spacing: 0.5px;
@@ -688,6 +1011,7 @@ const CharSeries = styled.p`
   margin: 0;
   color: #666;
   font-style: italic;
+  font-size: 14px;
 `;
 
 const RarityBadge = styled.div`
@@ -705,7 +1029,7 @@ const RarityBadge = styled.div`
   align-items: center;
   gap: 5px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-  z-index: 5; /* Höherer z-index um Sichtbarkeit zu gewährleisten */
+  z-index: 5;
   
   @keyframes shiny {
     0% { filter: brightness(1); }
@@ -716,7 +1040,7 @@ const RarityBadge = styled.div`
   animation: ${props => ['legendary', 'epic'].includes(props.rarity) ? 'shiny 2s infinite' : 'none'};
   
   @media (max-width: 480px) {
-    right: 10px; /* Etwas näher am Rand auf kleinen Bildschirmen */
+    right: 10px;
     top: -12px;
     padding: 4px 10px;
     font-size: 10px;
@@ -739,12 +1063,12 @@ const ActionButton = styled(motion.button)`
     return props.primary ? 'white' : '#555';
   }};
   border: none;
-  padding: 15px;
+  padding: 12px;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: 8px;
-  font-size: 16px;
+  font-size: 15px;
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   transition: all 0.3s;
   font-weight: ${props => (props.primary || props.owned) ? 'bold' : 'normal'};
@@ -765,8 +1089,214 @@ const ActionButton = styled(motion.button)`
   }
   
   @media (max-width: 480px) {
-    font-size: 14px;
-    padding: 12px 8px;
+    font-size: 13px;
+    padding: 10px 6px;
+  }
+`;
+
+// New Multi-Roll Components
+const MultiRollSection = styled(motion.div)`
+  background: rgba(255, 255, 255, 0.95);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 820px;
+  margin: 0 auto 20px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  
+  @media (max-width: 768px) {
+    max-width: 95%;
+  }
+`;
+
+const MultiRollHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
+  padding: 15px 20px;
+  color: white;
+  
+  h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+  }
+`;
+
+const MultiRollCloseButton = styled.button`
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+`;
+
+const MultiCharactersGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-gap: 15px;
+  padding: 20px;
+  
+  @media (max-width: 640px) {
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    padding: 15px;
+    grid-gap: 10px;
+  }
+`;
+
+const MultiCharacterCard = styled(motion.div)`
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 2px solid ${props => rarityColors[props.rarity] || rarityColors.common};
+  height: 250px;
+  
+  @media (max-width: 480px) {
+    height: 220px;
+  }
+`;
+
+const MultiCardImageContainer = styled.div`
+  position: relative;
+  height: 160px;
+  overflow: hidden;
+  cursor: pointer;
+  
+  @media (max-width: 480px) {
+    height: 140px;
+  }
+`;
+
+const RarityGlowMulti = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: ${props => {
+    const color = rarityColors[props.rarity] || rarityColors.common;
+    return props.rarity === 'legendary' || props.rarity === 'epic' ? 
+      `linear-gradient(45deg, ${color}33, transparent, ${color}33)` : 
+      'none';
+  }};
+  pointer-events: none;
+  z-index: 1;
+`;
+
+const MultiCardImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.4s ease;
+  
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
+const CollectionBadgeMini = styled.div`
+  position: absolute;
+  top: 5px;
+  left: 5px;
+  background: linear-gradient(135deg, #28a745, #20c997);
+  color: white;
+  font-size: 11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+`;
+
+const MultiCardContent = styled.div`
+  padding: 10px;
+  position: relative;
+`;
+
+const MultiCharName = styled.h3`
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const MultiRarityBadge = styled.div`
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  background: ${props => rarityColors[props.rarity] || rarityColors.common};
+  color: white;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 5;
+  
+  @keyframes shiny {
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.3); }
+    100% { filter: brightness(1); }
+  }
+  
+  animation: ${props => ['legendary', 'epic'].includes(props.rarity) ? 'shiny 2s infinite' : 'none'};
+`;
+
+const MultiCardClaimButton = styled(motion.button)`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: ${props => props.owned ? '#f1f8f1' : 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'};
+  color: ${props => props.owned ? '#28a745' : 'white'};
+  border: none;
+  padding: 8px 0;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  
+  &:disabled {
+    opacity: ${props => props.owned ? 1 : 0.5};
+  }
+  
+  &:before {
+    content: ${props => props.owned ? '"✓ "' : '""'};
+  }
+`;
+
+const RollButtonsContainer = styled.div`
+  display: flex;
+  gap: 15px;
+  margin-bottom: 15px;
+  
+  @media (max-width: 768px) {
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    gap: 10px;
   }
 `;
 
@@ -775,8 +1305,8 @@ const RollButton = styled(motion.button)`
   color: white;
   border: none;
   border-radius: 50px;
-  padding: 18px 36px;
-  font-size: 22px;
+  padding: 15px 30px;
+  font-size: 18px;
   font-weight: bold;
   cursor: pointer;
   box-shadow: 0 5px 20px rgba(110, 72, 170, 0.4);
@@ -813,13 +1343,16 @@ const RollButton = styled(motion.button)`
     }
   }
   
-  @media (max-width: 480px) {
-    padding: 14px 28px;
-    font-size: 18px;
-    width: 85%; /* Breite begrenzen */
+  @media (max-width: 768px) {
+    width: 100%;
     max-width: 300px;
-    justify-content: center;
+    padding: 12px 25px;
+    font-size: 16px;
   }
+`;
+
+const MultiRollButton = styled(RollButton)`
+  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
 `;
 
 const RollCost = styled.span`
@@ -839,6 +1372,18 @@ const RollHint = styled.p`
   text-align: center;
 `;
 
+const SkipAnimationsIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  color: #9e5594;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  margin-top: 15px;
+`;
+
 const LoadingContainer = styled(motion.div)`
   display: flex;
   flex-direction: column;
@@ -848,8 +1393,8 @@ const LoadingContainer = styled(motion.div)`
 `;
 
 const SpinnerContainer = styled.div`
-  width: 120px;
-  height: 120px;
+  width: 100px;
+  height: 100px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -859,13 +1404,13 @@ const SpinnerContainer = styled.div`
 `;
 
 const Spinner = styled.div`
-  width: 80px;
-  height: 80px;
-  border: 8px solid rgba(255, 255, 255, 0.15);
+  width: 70px;
+  height: 70px;
+  border: 6px solid rgba(255, 255, 255, 0.15);
   border-radius: 50%;
   border-top-color: #9e5594;
   border-left-color: #6e48aa;
-  animation: spin 1.2s linear infinite;
+  animation: spin 1s linear infinite;
   
   @keyframes spin {
     to { transform: rotate(360deg); }
@@ -873,9 +1418,9 @@ const Spinner = styled.div`
 `;
 
 const LoadingText = styled.p`
-  margin-top: 25px;
+  margin-top: 20px;
   color: white;
-  font-size: 20px;
+  font-size: 18px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
   font-weight: 500;
   letter-spacing: 0.5px;
@@ -894,7 +1439,7 @@ const EmptyState = styled(motion.div)`
   max-width: 350px;
   
   h3 {
-    font-size: 28px;
+    font-size: 24px;
     margin: 0 0 15px 0;
     text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
     font-weight: 700;
@@ -912,7 +1457,7 @@ const EmptyState = styled(motion.div)`
 `;
 
 const EmptyStateIcon = styled.div`
-  font-size: 42px;
+  font-size: 36px;
   margin-bottom: 15px;
   animation: float 3s ease-in-out infinite;
   
@@ -926,9 +1471,9 @@ const EmptyStateIcon = styled.div`
 const ErrorMessage = styled(motion.div)`
   background: rgba(220, 53, 69, 0.9);
   color: white;
-  padding: 15px 20px;
+  padding: 12px 20px;
   border-radius: 8px;
-  margin: 20px auto;
+  margin: 15px auto;
   max-width: 600px;
   text-align: center;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
@@ -942,6 +1487,12 @@ const ErrorMessage = styled(motion.div)`
   &::before {
     content: "⚠️";
     font-size: 18px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 10px 15px;
+    font-size: 14px;
+    margin: 10px auto;
   }
 `;
 
