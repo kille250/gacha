@@ -4,7 +4,7 @@ import styled from 'styled-components';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaCoins, FaUsers, FaImage, FaEdit, FaTrash } from 'react-icons/fa';
+import { FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch} from 'react-icons/fa';
 
 const AdminPage = () => {
   const { user } = useContext(AuthContext);
