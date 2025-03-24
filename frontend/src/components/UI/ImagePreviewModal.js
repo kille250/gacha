@@ -144,11 +144,9 @@ const OwnedBadge = styled.div`
 
 const ImageContainer = styled.div`
   width: 100%;
-  padding-top: 10px;
-  padding-bottom: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  height: 500px;
+  max-height: 60vh;
+  overflow: hidden;
   position: relative;
   border-bottom: 4px solid ${props => {
     const rarityColors = {
@@ -160,16 +158,22 @@ const ImageContainer = styled.div`
     };
     return rarityColors[props.rarity] || '#a0a0a0';
   }};
-  max-height: 60vh;
+
+  @media (max-width: 480px) {
+    height: auto;
+    max-height: 50vh;
+  }
 `;
 
 const LargeImage = styled.img`
-  max-width: 100%;
-  max-height: 60vh;
+  width: 100%;
+  height: 100%;
   object-fit: contain;
-  display: block;
-`;
 
+  @media (max-width: 480px) {
+    object-fit: contain;
+  }
+`;
 
 const CharacterDetails = styled.div`
   padding: 20px;
