@@ -171,7 +171,7 @@ const ImageContainer = styled.div`
 const LargeImage = styled.img`
   width: 100%;
   height: 100%;
-  object-fit: contain;
+  object-fit: cover;
 
   @media (max-width: 480px) {
     object-fit: contain;
