@@ -14,6 +14,41 @@ const AdminPage = () => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
+
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(10);
+
+  // Gefilterte und paginierte Charaktere
+  const filteredCharacters = characters.filter(character => {
+    const query = searchQuery.toLowerCase();
+    return (
+      character.name.toLowerCase().includes(query) ||
+      character.series.toLowerCase().includes(query)
+    );
+  });
+
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentCharacters = filteredCharacters.slice(indexOfFirstItem, indexOfLastItem);
+  const totalPages = Math.ceil(filteredCharacters.length / itemsPerPage);
+
+  // Suchfunktion Handler
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
+  // Items pro Seite Handler
+  const handleItemsPerPageChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  // Pagination Handler
+  const handlePageChange = (newPage) => {
+    setCurrentPage(Math.max(1, Math.min(totalPages, newPage)));
+  };
   
   // Edit Character State
   const [editingCharacter, setEditingCharacter] = useState(null);
@@ -519,13 +554,37 @@ const AdminPage = () => {
       </AdminSection>
       
       <AdminSection>
-        <h2>Character Management</h2>
-        {characters.length === 0 ? (
-          <p>No characters found.</p>
+        <ManagementHeader>
+          <h2><FaUsers /> Character Management</h2>
+          <SearchContainer>
+            <SearchInputWrapper>
+              <FaSearch />
+              <SearchInput
+                type="text"
+                placeholder="Search characters..."
+                value={searchQuery}
+                onChange={handleSearchChange}
+              />
+            </SearchInputWrapper>
+            <ItemsPerPageSelect
+              value={itemsPerPage}
+              onChange={handleItemsPerPageChange}
+            >
+              <option value="10">10 per page</option>
+              <option value="20">20 per page</option>
+              <option value="50">50 per page</option>
+              <option value="100">100 per page</option>
+            </ItemsPerPageSelect>
+          </SearchContainer>
+        </ManagementHeader>
+
+        {currentCharacters.length === 0 ? (
+          <EmptyMessage>No characters found</EmptyMessage>
         ) : (
-          <CharacterGrid>
-            {characters.map(char => (
-              <CharacterCard key={char.id}>
+          <>
+            <CharacterGrid>
+              {currentCharacters.map(char => (
+                <CharacterCard key={char.id}>
                 <img 
                   src={getImageUrl(char.image)}
                   alt={char.name} 
@@ -548,9 +607,30 @@ const AdminPage = () => {
                     </ActionButton>
                   </CardActions>
                 </CharacterInfo>
-              </CharacterCard>
-            ))}
-          </CharacterGrid>
+                </CharacterCard>
+              ))}
+            </CharacterGrid>
+
+            <PaginationContainer>
+              <PaginationButton 
+                onClick={() => handlePageChange(currentPage - 1)}
+                disabled={currentPage === 1}
+              >
+                Previous
+              </PaginationButton>
+              
+              <PageInfo>
+                Page {currentPage} of {totalPages}
+              </PageInfo>
+
+              <PaginationButton 
+                onClick={() => handlePageChange(currentPage + 1)}
+                disabled={currentPage === totalPages}
+              >
+                Next
+              </PaginationButton>
+            </PaginationContainer>
+          </>
         )}
       </AdminSection>
       
@@ -942,6 +1022,92 @@ const ButtonGroup = styled.div`
   gap: 10px;
   margin-top: 20px;
   justify-content: flex-end;
+`;
+
+const ManagementHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 15px;
+`;
+
+const SearchContainer = styled.div`
+  display: flex;
+  gap: 15px;
+  align-items: center;
+`;
+
+const SearchInputWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  background: white;
+  border-radius: 8px;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  flex-grow: 1;
+`;
+
+const SearchInput = styled.input`
+  border: none;
+  outline: none;
+  margin-left: 8px;
+  flex-grow: 1;
+  font-size: 14px;
+`;
+
+const ItemsPerPageSelect = styled.select`
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid #ddd;
+  background: white;
+  font-size: 14px;
+`;
+
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 20px;
+  margin-top: 30px;
+`;
+
+const PaginationButton = styled.button`
+  padding: 8px 20px;
+  background-color: #3498db;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover:not(:disabled) {
+    background-color: #2980b9;
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    background-color: #bdc3c7;
+    cursor: not-allowed;
+    opacity: 0.7;
+  }
+`;
+
+const PageInfo = styled.span`
+  font-size: 14px;
+  color: #666;
+  min-width: 100px;
+  text-align: center;
+`;
+
+const EmptyMessage = styled.div`
+  text-align: center;
+  padding: 40px;
+  color: #666;
+  font-size: 18px;
+  background: #f8f9fa;
+  border-radius: 12px;
 `;
 
 export default AdminPage;
