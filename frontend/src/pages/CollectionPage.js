@@ -11,7 +11,7 @@ const CollectionPage = () => {
   const [error, setError] = useState(null);
   const [rarityFilter, setRarityFilter] = useState('all');
   const [seriesFilter, setSeriesFilter] = useState('all');
-  const [showNotOwned, setShowNotOwned] = useState(true);
+  const [ownershipFilter, setOwnershipFilter] = useState('all'); // New filter: all, owned, not-owned
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChar, setPreviewChar] = useState(null);
   const [uniqueSeries, setUniqueSeries] = useState([]);
@@ -78,9 +78,11 @@ const CollectionPage = () => {
     // First, decide which dataset to use
     let characters = [...allCharacters];
     
-    // Filter by ownership if needed
-    if (!showNotOwned) {
+    // Filter by ownership
+    if (ownershipFilter === 'owned') {
       characters = characters.filter(char => ownedCharIds.has(char.id));
+    } else if (ownershipFilter === 'not-owned') {
+      characters = characters.filter(char => !ownedCharIds.has(char.id));
     }
     
     // Apply rarity filter
@@ -97,11 +99,48 @@ const CollectionPage = () => {
   };
 
   const filteredCharacters = getFilteredCharacters();
+  const ownedCount = collection.length;
+  const totalCount = allCharacters.length;
+  const completionPercentage = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
   
   return (
     <CollectionContainer>
       <CollectionHeader>
         <h1>Character Collection</h1>
+        <CollectionStats>
+          <StatItem>
+            <StatValue>{ownedCount}/{totalCount}</StatValue>
+            <StatLabel>Characters Collected</StatLabel>
+          </StatItem>
+          <StatItem>
+            <ProgressBar percentage={completionPercentage}>
+              <ProgressText>{completionPercentage}% Complete</ProgressText>
+            </ProgressBar>
+          </StatItem>
+        </CollectionStats>
+        
+        <FilterSection>
+          <FilterLabel>Show:</FilterLabel>
+          <OwnershipToggle>
+            <OwnershipButton 
+              active={ownershipFilter === 'all'} 
+              onClick={() => setOwnershipFilter('all')}>
+              All Characters
+            </OwnershipButton>
+            <OwnershipButton 
+              active={ownershipFilter === 'owned'} 
+              onClick={() => setOwnershipFilter('owned')}
+              color="rgba(46, 204, 113, 0.8)">
+              Owned Only
+            </OwnershipButton>
+            <OwnershipButton 
+              active={ownershipFilter === 'not-owned'} 
+              onClick={() => setOwnershipFilter('not-owned')}
+              color="rgba(231, 76, 60, 0.8)">
+              Missing Only
+            </OwnershipButton>
+          </OwnershipToggle>
+        </FilterSection>
         
         <FilterSection>
           <FilterLabel>Rarity:</FilterLabel>
@@ -162,22 +201,6 @@ const CollectionPage = () => {
             ))}
           </SeriesFilterContainer>
         </FilterSection>
-        
-        <FilterSection>
-          <FilterLabel>Show Characters:</FilterLabel>
-          <ToggleContainer>
-            <ToggleButton 
-              active={showNotOwned} 
-              onClick={() => setShowNotOwned(true)}>
-              All Characters
-            </ToggleButton>
-            <ToggleButton 
-              active={!showNotOwned} 
-              onClick={() => setShowNotOwned(false)}>
-              Owned Only
-            </ToggleButton>
-          </ToggleContainer>
-        </FilterSection>
       </CollectionHeader>
       
       {error && <ErrorMessage>{error}</ErrorMessage>}
@@ -193,38 +216,49 @@ const CollectionPage = () => {
           <p>Try adjusting your filters to see more characters</p>
         </EmptyCollection>
       ) : (
-        <CharacterGrid>
-          {filteredCharacters.map((char) => {
-            const isOwned = ownedCharIds.has(char.id);
-            return (
-              <CharacterItem
-                key={char.id}
-                rarity={char.rarity}
-                isOwned={isOwned}
-                whileHover={{ y: -5, scale: 1.03 }}
-                transition={{ type: 'spring', stiffness: 300 }}
-              >
-                <CharImage 
-                  src={getImagePath(char.image)} 
-                  alt={char.name}
-                  onClick={() => openPreview({...char, isOwned})}
+        <>
+          <ResultCount>
+            Showing {filteredCharacters.length} character{filteredCharacters.length !== 1 ? 's' : ''}
+          </ResultCount>
+          <CharacterGrid>
+            {filteredCharacters.map((char) => {
+              const isOwned = ownedCharIds.has(char.id);
+              return (
+                <CharacterItem
+                  key={char.id}
+                  rarity={char.rarity}
                   isOwned={isOwned}
-                  onError={(e) => {
-                    if (!e.target.src.includes('placeholder.com')) {
-                      e.target.src = 'https://via.placeholder.com/200?text=No+Image';
-                    }
-                  }}
-                />
-                <CharDetails isOwned={isOwned}>
-                  <CharName isOwned={isOwned}>{char.name}</CharName>
-                  <CharSeries isOwned={isOwned}>{char.series}</CharSeries>
-                  <RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
-                  {!isOwned && <NotOwnedOverlay>Not Owned</NotOwnedOverlay>}
-                </CharDetails>
-              </CharacterItem>
-            );
-          })}
-        </CharacterGrid>
+                  whileHover={{ y: -5, scale: 1.03 }}
+                  transition={{ type: 'spring', stiffness: 300 }}
+                >
+                  {!isOwned && (
+                    <NotOwnedBadge>
+                      <NotOwnedIcon>⛔</NotOwnedIcon>
+                      <span>Not Owned</span>
+                    </NotOwnedBadge>
+                  )}
+                  
+                  <CharImage 
+                    src={getImagePath(char.image)} 
+                    alt={char.name}
+                    onClick={() => openPreview({...char, isOwned})}
+                    isOwned={isOwned}
+                    onError={(e) => {
+                      if (!e.target.src.includes('placeholder.com')) {
+                        e.target.src = 'https://via.placeholder.com/200?text=No+Image';
+                      }
+                    }}
+                  />
+                  <CharDetails isOwned={isOwned}>
+                    <CharName isOwned={isOwned}>{char.name}</CharName>
+                    <CharSeries isOwned={isOwned}>{char.series}</CharSeries>
+                    <RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
+                  </CharDetails>
+                </CharacterItem>
+              );
+            })}
+          </CharacterGrid>
+        </>
       )}
       
       <ImagePreviewModal 
@@ -249,7 +283,7 @@ const CollectionContainer = styled.div`
 
 const CollectionHeader = styled.div`
   text-align: center;
-  margin-bottom: 40px;
+  margin-bottom: 30px;
   color: white;
   
   h1 {
@@ -259,15 +293,81 @@ const CollectionHeader = styled.div`
   }
 `;
 
+const CollectionStats = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 20px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  padding: 15px;
+  max-width: 600px;
+  margin: 0 auto 25px auto;
+`;
+
+const StatItem = styled.div`
+  margin: 5px 0;
+  width: 100%;
+`;
+
+const StatValue = styled.div`
+  font-size: 18px;
+  font-weight: bold;
+  margin-bottom: 5px;
+`;
+
+const StatLabel = styled.div`
+  font-size: 14px;
+  opacity: 0.8;
+`;
+
+const ProgressBar = styled.div`
+  width: 100%;
+  height: 20px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  position: relative;
+  margin-top: 5px;
+  
+  &:before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    height: 100%;
+    width: ${props => props.percentage}%;
+    background: linear-gradient(90deg, #4CAF50, #8BC34A);
+    transition: width 0.5s ease;
+  }
+`;
+
+const ProgressText = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: bold;
+  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+`;
+
 const FilterSection = styled.div`
-  margin-bottom: 15px;
+  margin-bottom: 20px;
+  background: rgba(0, 0, 0, 0.1);
+  padding: 15px;
+  border-radius: 10px;
 `;
 
 const FilterLabel = styled.div`
   font-size: 14px;
-  margin-bottom: 8px;
+  margin-bottom: 10px;
   font-weight: 500;
-  color: rgba(255, 255, 255, 0.8);
+  color: rgba(255, 255, 255, 0.9);
 `;
 
 const FilterContainer = styled.div`
@@ -284,6 +384,37 @@ const SeriesFilterContainer = styled.div`
   flex-wrap: wrap;
   max-width: 800px;
   margin: 0 auto;
+`;
+
+const OwnershipToggle = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin: 0 auto;
+  max-width: 600px;
+`;
+
+const OwnershipButton = styled.button`
+  background: ${props => props.active ? 
+    (props.color || 'rgba(255, 255, 255, 0.3)') : 
+    'rgba(255, 255, 255, 0.05)'};
+  color: white;
+  border: 2px solid ${props => props.active ? 'white' : 'rgba(255, 255, 255, 0.2)'};
+  border-radius: 20px;
+  padding: 10px 20px;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.2s;
+  opacity: ${props => props.active ? 1 : 0.7};
+  flex: 1;
+  max-width: 180px;
+  font-weight: ${props => props.active ? 'bold' : 'normal'};
+  
+  &:hover {
+    background: ${props => props.color || 'rgba(255, 255, 255, 0.1)'};
+    opacity: 1;
+  }
 `;
 
 const FilterButton = styled.button`
@@ -311,29 +442,11 @@ const SeriesFilterButton = styled(FilterButton)`
   margin-bottom: 5px;
 `;
 
-const ToggleContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 30px;
-  padding: 4px;
-  width: fit-content;
-  margin: 0 auto;
-`;
-
-const ToggleButton = styled.button`
-  background: ${props => props.active ? 'rgba(255, 255, 255, 0.9)' : 'transparent'};
-  color: ${props => props.active ? '#333' : 'white'};
-  border: none;
-  border-radius: 30px;
-  padding: 8px 16px;
+const ResultCount = styled.div`
+  text-align: center;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 20px;
   font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: ${props => props.active ? 'rgba(255, 255, 255, 0.9)' : 'rgba(255, 255, 255, 0.1)'};
-  }
 `;
 
 const CharacterGrid = styled.div`
@@ -362,12 +475,33 @@ const CharacterItem = styled(motion.div)`
   position: relative;
 `;
 
+const NotOwnedBadge = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: rgba(0, 0, 0, 0.7);
+  color: white;
+  padding: 6px 0;
+  font-size: 12px;
+  text-align: center;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+`;
+
+const NotOwnedIcon = styled.span`
+  font-size: 14px;
+`;
+
 const CharImage = styled.img`
   width: 100%;
   height: 200px;
   object-fit: cover;
   cursor: pointer;
-  transition: transform 0.2s ease;
+  transition: transform 0.2s ease, filter 0.3s ease;
   filter: ${props => props.isOwned ? 'none' : 'grayscale(80%)'};
   
   &:hover {
@@ -379,13 +513,12 @@ const CharImage = styled.img`
 const CharDetails = styled.div`
   padding: 15px;
   position: relative;
-  opacity: ${props => props.isOwned ? 1 : 0.7};
+  opacity: ${props => props.isOwned ? 1 : 0.8};
 `;
 
 const CharName = styled.h3`
   margin: 0 0 5px 0;
   font-size: 18px;
-  color: #333;
   color: ${props => props.isOwned ? '#333' : '#555'};
 `;
 
@@ -406,18 +539,6 @@ const RarityTag = styled.span`
   padding: 3px 8px;
   border-radius: 10px;
   text-transform: uppercase;
-  font-weight: bold;
-`;
-
-const NotOwnedOverlay = styled.div`
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  font-size: 12px;
-  padding: 4px 8px;
-  border-radius: 4px;
   font-weight: bold;
 `;
 
