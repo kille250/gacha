@@ -70,6 +70,10 @@ const GachaPage = () => {
   const currentMultiPullCost = calculateMultiPullCost(multiPullCount);
 
   useEffect(() => {
+    refreshUser();
+  }, [refreshUser]);
+
+  useEffect(() => {
     fetchUserCollection();
   }, []);
 
