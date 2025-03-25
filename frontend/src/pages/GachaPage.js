@@ -50,7 +50,7 @@ const GachaPage = () => {
   const [showCard, setShowCard] = useState(false);
   const [showMultiResults, setShowMultiResults] = useState(false);
   const [error, setError] = useState(null);
-  const { user, setUser } = useContext(AuthContext);
+  const { user, setUser, refreshUser } = useContext(AuthContext);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChar, setPreviewChar] = useState(null);
   const [rollCount, setRollCount] = useState(0);
@@ -122,16 +122,8 @@ const GachaPage = () => {
   }, [setUser]);
 
   useEffect(() => {
-    window.addEventListener('user-updated', updateUserData);
-    
-    return () => {
-      window.removeEventListener('user-updated', updateUserData);
-    };
-  }, [updateUserData]);
-  
-  useEffect(() => {
-    updateUserData();
-  }, []);
+    refreshUser();
+  }, [refreshUser]);
 
   // Check if character is in collection
   const isCharacterInCollection = useCallback((character) => {

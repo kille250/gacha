@@ -78,27 +78,6 @@ const AdminPage = () => {
       fetchCharacters();
     }
   }, [user]);
-  
-// Funktion, die bei jedem user-updated Event ausgeführt wird
-const updateLocalUserData = () => {
-  // Aktualisieren Sie den lokalen Benutzerkontext aus dem localStorage
-  try {
-    const savedUser = JSON.parse(localStorage.getItem('user'));
-    if (savedUser && setUser) {
-      setUser(savedUser);
-    }
-  } catch (err) {
-    console.error("Error updating local user data:", err);
-  }
-};
-
-useEffect(() => {
-  window.addEventListener('user-updated', updateLocalUserData);
-  
-  return () => {
-    window.removeEventListener('user-updated', updateLocalUserData);
-  };
-}, []);
 
 const updateUserData = async () => {
   try {
@@ -380,10 +359,7 @@ const updateUserData = async () => {
         );
         
         if (coinForm.userId === user?.id) {
-          setUser(updatedUserResponse.data);
-          localStorage.setItem('user', JSON.stringify(updatedUserResponse.data));
-          
-          window.dispatchEvent(new Event('user-updated'));
+          await refreshUser();
         }
       }
       

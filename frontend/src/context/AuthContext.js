@@ -1,5 +1,5 @@
 // src/context/AuthContext.js
-import React, { createContext, useState, useEffect } from 'react';
+import React, { createContext, useState, useEffect, useCallback } from 'react';
 import axios from 'axios';
 
 export const AuthContext = createContext();
@@ -8,6 +8,29 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+
+  // Refresh user data from the server
+  const refreshUser = useCallback(async () => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return null;
+      
+      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
+        headers: {
+          'x-auth-token': token
+        }
+      });
+      
+      const userData = userResponse.data;
+      setCurrentUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      return userData;
+    } catch (error) {
+      console.error('Error refreshing user data:', error);
+      return null;
+    }
+  }, []);
 
   useEffect(() => {
     const checkLoggedIn = async () => {
@@ -18,7 +41,7 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       
-      // Verwende lokalen Benutzer aus localStorage
+      // Use local user from localStorage
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         setCurrentUser(JSON.parse(storedUser));
@@ -26,67 +49,64 @@ export const AuthProvider = ({ children }) => {
       
       setLoading(false);
     };
-
+    
     checkLoggedIn();
   }, []);
 
   const login = async (username, password) => {
-	try {
-	  const response = await axios.post('https://gachaapi.solidbooru.online/api/auth/login', {
-		username,
-		password
-	  });
-	  
-	  localStorage.setItem('token', response.data.token);
-	  
-	  // Benutzerdaten vom Backend abrufen
-	  const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-		headers: {
-		  'x-auth-token': response.data.token
-		}
-	  });
-	  
-	  // Benutzerobjekt speichern (enthält jetzt auch isAdmin)
-	  const userData = userResponse.data;
-	  setCurrentUser(userData);
-	  localStorage.setItem('user', JSON.stringify(userData));
-	  
-	  return true;
-	} catch (err) {
-	  console.error("Login error:", err);
-	  setError(err.response?.data?.error || 'Login failed');
-	  return false;
-	}
+    try {
+      const response = await axios.post('https://gachaapi.solidbooru.online/api/auth/login', {
+        username,
+        password
+      });
+      
+      localStorage.setItem('token', response.data.token);
+      
+      // Get user data from backend
+      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
+        headers: {
+          'x-auth-token': response.data.token
+        }
+      });
+      
+      const userData = userResponse.data;
+      setCurrentUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      return true;
+    } catch (err) {
+      console.error("Login error:", err);
+      setError(err.response?.data?.error || 'Login failed');
+      return false;
+    }
   };
 
-  // Registrierungsfunktion hinzufügen
   const register = async (username, password) => {
-	try {
-	  const response = await axios.post('https://gachaapi.solidbooru.online/api/auth/signup', {
-		username,
-		password
-	  });
-	  
-	  localStorage.setItem('token', response.data.token);
-	  
-	  // Benutzerdaten vom Backend abrufen
-	  const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-		headers: {
-		  'x-auth-token': response.data.token
-		}
-	  });
-	  
-	  // Tatsächliche Benutzerdaten vom Server speichern
-	  const userData = userResponse.data;
-	  setCurrentUser(userData);
-	  localStorage.setItem('user', JSON.stringify(userData));
-	  
-	  return true;
-	} catch (err) {
-	  console.error("Registration error:", err);
-	  setError(err.response?.data?.error || 'Registration failed');
-	  return false;
-	}
+    try {
+      const response = await axios.post('https://gachaapi.solidbooru.online/api/auth/signup', {
+        username,
+        password
+      });
+      
+      localStorage.setItem('token', response.data.token);
+      
+      // Get user data from backend
+      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
+        headers: {
+          'x-auth-token': response.data.token
+        }
+      });
+      
+      const userData = userResponse.data;
+      setCurrentUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      return true;
+    } catch (err) {
+      console.error("Registration error:", err);
+      setError(err.response?.data?.error || 'Registration failed');
+      return false;
+    }
   };
 
   const logout = () => {
@@ -101,9 +121,10 @@ export const AuthProvider = ({ children }) => {
       loading, 
       error, 
       login, 
-      register, // Wichtig: register zur Verfügung stellen
+      register,
       logout,
-      setUser: setCurrentUser
+      setUser: setCurrentUser,
+      refreshUser
     }}>
       {children}
     </AuthContext.Provider>
