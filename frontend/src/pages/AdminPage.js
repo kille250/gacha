@@ -79,6 +79,27 @@ const AdminPage = () => {
     }
   }, [user]);
 
+  useEffect(() => {
+    window.addEventListener('user-updated', updateLocalUserData);
+    
+    return () => {
+      window.removeEventListener('user-updated', updateLocalUserData);
+    };
+  }, []);
+  
+  // Funktion, die bei jedem user-updated Event ausgeführt wird
+  const updateLocalUserData = () => {
+    // Aktualisieren Sie den lokalen Benutzerkontext aus dem localStorage
+    try {
+      const savedUser = JSON.parse(localStorage.getItem('user'));
+      if (savedUser && setUser) {
+        setUser(savedUser);
+      }
+    } catch (err) {
+      console.error("Error updating local user data:", err);
+    }
+  };
+
 const updateUserData = async () => {
   try {
     const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
@@ -344,18 +365,28 @@ const updateUserData = async () => {
         }
       );
       
-      // Zeige Erfolgsmeldung
       setCoinMessage(response.data.message);
       
-      // Aktualisiere Benutzerliste
       await fetchUsers();
       
-      // Aktualisiere auch die Benutzerdaten im Kontext
-      if (coinForm.userId === user?.id) {
-        await updateUserData();
+      if (coinForm.userId) {
+        const updatedUserResponse = await axios.get(
+          `https://gachaapi.solidbooru.online/api/users/${coinForm.userId}`,
+          {
+            headers: {
+              'x-auth-token': localStorage.getItem('token')
+            }
+          }
+        );
+        
+        if (coinForm.userId === user?.id) {
+          setUser(updatedUserResponse.data);
+          localStorage.setItem('user', JSON.stringify(updatedUserResponse.data));
+          
+          window.dispatchEvent(new Event('user-updated'));
+        }
       }
       
-      // Formular zurücksetzen
       setCoinForm({
         userId: '',
         amount: 100
@@ -365,26 +396,21 @@ const updateUserData = async () => {
     }
   };
   
-  // Hilfsfunktion für Bildpfade
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
     
-    // Prüfe, ob es eine volle URL ist
     if (imagePath.startsWith('http')) {
       return imagePath;
     }
     
-    // Prüfe auf hochgeladene Bilder im uploads-Verzeichnis
     if (imagePath.startsWith('/uploads')) {
       return `https://gachaapi.solidbooru.online${imagePath}`;
     }
     
-    // Prüfe auf image- Präfix, was auf ein hochgeladenes Bild hinweist
     if (imagePath.startsWith('image-')) {
       return `https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
     }
     
-    // Prüfe, ob es ein einfacher Dateiname oder ein vollständiger Pfad ist
     return imagePath.includes('/') 
       ? imagePath 
       : `/images/characters/${imagePath}`;

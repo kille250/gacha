@@ -91,6 +91,18 @@ const GachaPage = () => {
     }
   }, [user?.points, maxPossiblePulls]);
 
+  useEffect(() => {
+    window.addEventListener('user-updated', updateUserData);
+    
+    return () => {
+      window.removeEventListener('user-updated', updateUserData);
+    };
+  }, [updateUserData]);
+  
+  useEffect(() => {
+    updateUserData();
+  }, []);
+
   // Fetch user collection
   const fetchUserCollection = async () => {
     try {
