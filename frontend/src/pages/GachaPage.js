@@ -1,7 +1,7 @@
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove } from 'react-icons/md';
+import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdClose } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy } from 'react-icons/fa';
 import axios from 'axios';
 import { rollCharacter, claimCharacter } from '../utils/api';
@@ -55,7 +55,7 @@ const GachaPage = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [multiPullCount, setMultiPullCount] = useState(10);
   const [multiPullMenuOpen, setMultiPullMenuOpen] = useState(false);
-
+  
   // Calculate maximum possible pulls based on user points
   const maxPossiblePulls = Math.min(10, Math.floor((user?.points || 0) / 100));
   
@@ -68,21 +68,35 @@ const GachaPage = () => {
   };
   
   const currentMultiPullCost = calculateMultiPullCost(multiPullCount);
-
+  
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
-
+  
   useEffect(() => {
     fetchUserCollection();
   }, []);
-
+  
   useEffect(() => {
     if (multiPullCount > maxPossiblePulls) {
       setMultiPullCount(Math.max(1, maxPossiblePulls));
     }
   }, [user?.points, maxPossiblePulls, multiPullCount]);
-
+  
+  // Handle clicks outside of multi-pull menu
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (multiPullMenuOpen && !event.target.closest('.multi-pull-container')) {
+        setMultiPullMenuOpen(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+    };
+  }, [multiPullMenuOpen]);
+  
   const fetchUserCollection = async () => {
     try {
       const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
@@ -93,11 +107,11 @@ const GachaPage = () => {
       console.error("Error fetching user collection:", err);
     }
   };
-
+  
   const isCharacterInCollection = useCallback((character) => {
     return userCollection.some(char => char.id === character.id);
   }, [userCollection]);
-
+  
   const showRarePullEffect = useCallback((rarity) => {
     if (['legendary', 'epic'].includes(rarity)) {
       confetti({
@@ -108,13 +122,13 @@ const GachaPage = () => {
       });
     }
   }, []);
-
+  
   useEffect(() => {
     if (currentChar && !skipAnimations) {
       showRarePullEffect(currentChar.rarity);
     }
   }, [currentChar, skipAnimations, showRarePullEffect]);
-
+  
   const handleRoll = async () => {
     try {
       setIsRolling(true);
@@ -123,7 +137,6 @@ const GachaPage = () => {
       setError(null);
       setMultiRollResults([]);
       setRollCount(prev => prev + 1);
-
       const animationDuration = skipAnimations ? 0 : 1200;
       
       setTimeout(async () => {
@@ -144,7 +157,7 @@ const GachaPage = () => {
       setIsRolling(false);
     }
   };
-
+  
   const handleMultiRoll = async () => {
     const cost = calculateMultiPullCost(multiPullCount);
     
@@ -152,7 +165,6 @@ const GachaPage = () => {
       setError(`Not enough points for a ${multiPullCount}× roll. Required: ${cost} points`);
       return;
     }
-
     try {
       setIsRolling(true);
       setShowCard(false);
@@ -160,7 +172,6 @@ const GachaPage = () => {
       setError(null);
       setMultiPullMenuOpen(false);
       setRollCount(prev => prev + multiPullCount);
-
       const animationDuration = skipAnimations ? 0 : 1200;
       
       setTimeout(async () => {
@@ -187,14 +198,14 @@ const GachaPage = () => {
       setIsRolling(false);
     }
   };
-
+  
   const adjustMultiPullCount = (amount) => {
     const newCount = multiPullCount + amount;
     if (newCount >= 1 && newCount <= maxPossiblePulls) {
       setMultiPullCount(newCount);
     }
   };
-
+  
   const findBestRarity = (characters) => {
     const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
     return characters.reduce((best, char) => {
@@ -202,7 +213,7 @@ const GachaPage = () => {
       return currentIndex > rarityOrder.indexOf(best) ? char.rarity : best;
     }, 'common');
   };
-
+  
   const handleClaim = async (characterId) => {
     try {
       await claimCharacter(characterId);
@@ -213,7 +224,7 @@ const GachaPage = () => {
       setError(err.response?.data?.error || 'Failed to claim character');
     }
   };
-
+  
   const getImagePath = (imageSrc) => {
     if (!imageSrc) return 'https://via.placeholder.com/300?text=No+Image';
     if (imageSrc.startsWith('http')) return imageSrc;
@@ -221,22 +232,22 @@ const GachaPage = () => {
     if (imageSrc.startsWith('image-')) return `https://gachaapi.solidbooru.online/uploads/characters/${imageSrc}`;
     return imageSrc.includes('/') ? imageSrc : `/images/characters/${imageSrc}`;
   };
-
+  
   const toggleSkipAnimations = () => setSkipAnimations(prev => !prev);
   const toggleMultiPullMenu = () => setMultiPullMenuOpen(prev => !prev);
-
+  
   const openPreview = (character) => {
     if (character) {
       setPreviewChar(character);
       setPreviewOpen(true);
     }
   };
-
+  
   const closePreview = () => {
     setPreviewOpen(false);
     setPreviewChar(null);
   };
-
+  
   return (
     <GachaContainer>
       <ParticlesBackground />
@@ -259,7 +270,7 @@ const GachaPage = () => {
           </SettingsButton>
         </HeaderControls>
       </GachaHeader>
-
+      
       {showSettings && (
         <SettingsPanel>
           <SettingItem>
@@ -272,9 +283,9 @@ const GachaPage = () => {
           <CloseButton onClick={() => setShowSettings(false)}>×</CloseButton>
         </SettingsPanel>
       )}
-
+      
       {error && <ErrorMessage>{error}</ErrorMessage>}
-
+      
       <RarityHistoryBar>
         {lastRarities.length > 0 && (
           <>
@@ -295,7 +306,7 @@ const GachaPage = () => {
           </>
         )}
       </RarityHistoryBar>
-
+      
       <GachaSection>
         <AnimatePresence mode="wait">
           {showCard && !showMultiResults ? (
@@ -438,7 +449,7 @@ const GachaPage = () => {
             </EmptyState>
           )}
         </AnimatePresence>
-
+        
         <RollButtonsContainer>
           <RollButton 
             onClick={handleRoll} 
@@ -455,7 +466,7 @@ const GachaPage = () => {
             }
           </RollButton>
           
-          <MultiPullContainer>
+          <MultiPullContainer className="multi-pull-container">
             <MultiRollButton 
               onClick={multiPullMenuOpen ? handleMultiRoll : toggleMultiPullMenu}
               disabled={isRolling || (user?.points < 100)}
@@ -477,61 +488,67 @@ const GachaPage = () => {
               )}
             </MultiRollButton>
             
-            {multiPullMenuOpen && (
-              <MultiPullMenu
-                initial={{ opacity: 0, y: 10 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: 10 }}
-              >
-                <MultiPullAdjuster>
-                  <AdjustButton 
-                    onClick={() => adjustMultiPullCount(-1)}
-                    disabled={multiPullCount <= 1}
-                  >
-                    <MdRemove />
-                  </AdjustButton>
-                  <PullCountDisplay>{multiPullCount}</PullCountDisplay>
-                  <AdjustButton 
-                    onClick={() => adjustMultiPullCount(1)}
-                    disabled={multiPullCount >= maxPossiblePulls}
-                  >
-                    <MdAdd />
-                  </AdjustButton>
-                </MultiPullAdjuster>
-                
-                <PullSlider 
-                  type="range" 
-                  min="1" 
-                  max={maxPossiblePulls}
-                  value={multiPullCount}
-                  onChange={(e) => setMultiPullCount(parseInt(e.target.value))}
-                />
-                
-                <DiscountInfo>
-                  {multiPullCount >= 10 ? (
-                    <strong>10% discount applied!</strong>
-                  ) : multiPullCount >= 5 ? (
-                    <span>5% discount applied</span>
-                  ) : multiPullCount > 1 ? (
-                    <span>Pull 5+ for 5% discount</span>
-                  ) : (
-                    <span>Increase count for discounts</span>
-                  )}
-                </DiscountInfo>
-                
-                <ConfirmButton 
-                  onClick={handleMultiRoll}
-                  disabled={user?.points < currentMultiPullCost}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
+            <AnimatePresence>
+              {multiPullMenuOpen && (
+                <MultiPullMenu
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  exit={{ opacity: 0, scale: 0.95 }}
                 >
-                  Pull {multiPullCount} for {currentMultiPullCost} points
-                </ConfirmButton>
-              </MultiPullMenu>
-            )}
+                  <ClosePullMenuButton onClick={toggleMultiPullMenu}>
+                    <MdClose />
+                  </ClosePullMenuButton>
+                  
+                  <MultiPullAdjuster>
+                    <AdjustButton 
+                      onClick={() => adjustMultiPullCount(-1)}
+                      disabled={multiPullCount <= 1}
+                    >
+                      <MdRemove />
+                    </AdjustButton>
+                    <PullCountDisplay>{multiPullCount}</PullCountDisplay>
+                    <AdjustButton 
+                      onClick={() => adjustMultiPullCount(1)}
+                      disabled={multiPullCount >= maxPossiblePulls}
+                    >
+                      <MdAdd />
+                    </AdjustButton>
+                  </MultiPullAdjuster>
+                  
+                  <PullSlider 
+                    type="range" 
+                    min="1" 
+                    max={maxPossiblePulls || 1}
+                    value={multiPullCount}
+                    onChange={(e) => setMultiPullCount(parseInt(e.target.value))}
+                  />
+                  
+                  <DiscountInfo>
+                    {multiPullCount >= 10 ? (
+                      <strong>10% discount applied!</strong>
+                    ) : multiPullCount >= 5 ? (
+                      <span>5% discount applied</span>
+                    ) : multiPullCount > 1 ? (
+                      <span>Pull 5+ for 5% discount</span>
+                    ) : (
+                      <span>Increase count for discounts</span>
+                    )}
+                  </DiscountInfo>
+                  
+                  <ConfirmButton 
+                    onClick={handleMultiRoll}
+                    disabled={user?.points < currentMultiPullCost}
+                    whileHover={{ scale: 1.05 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    Pull {multiPullCount} for {currentMultiPullCost} points
+                  </ConfirmButton>
+                </MultiPullMenu>
+              )}
+            </AnimatePresence>
           </MultiPullContainer>
         </RollButtonsContainer>
-
+        
         <RollHint>
           You have enough points for <strong>{Math.floor((user?.points || 0) / 100)}</strong> single pulls
           {maxPossiblePulls > 1 && ` or up to a ${maxPossiblePulls}× multi-pull`}
@@ -543,7 +560,7 @@ const GachaPage = () => {
           </SkipAnimationsIndicator>
         )}
       </GachaSection>
-
+      
       <ImagePreviewModal 
         isOpen={previewOpen}
         onClose={closePreview}
@@ -871,7 +888,7 @@ const GachaSection = styled.div`
   min-height: 400px;
   
   @media (max-width: 768px) {
-    padding-bottom: 80px;
+    padding-bottom: 120px;  /* Increased bottom padding for mobile */
   }
 `;
 
@@ -1288,6 +1305,8 @@ const RollButtonsContainer = styled.div`
   display: flex;
   gap: 15px;
   margin-bottom: 15px;
+  position: relative;
+  z-index: 5;
   
   @media (max-width: 768px) {
     flex-direction: column;
@@ -1366,25 +1385,66 @@ const MultiRollButton = styled(RollButton)`
   position: relative;
   z-index: 2;
   
-  ${props => props.active && `
-    border-radius: 15px 15px 0 0;
-    box-shadow: 0 5px 20px rgba(16, 29, 59, 0.4);
-  `}
+  /* Desktop styling with rounded top corners when active */
+  @media (min-width: 769px) {
+    ${props => props.active && `
+      border-radius: 15px 15px 0 0;
+      box-shadow: 0 5px 20px rgba(16, 29, 59, 0.4);
+    `}
+  }
+  
+  /* Mobile styling keeps full rounded corners */
+  @media (max-width: 768px) {
+    border-radius: 50px;
+  }
 `;
 
 const MultiPullMenu = styled(motion.div)`
   position: absolute;
-  top: 100%;
   left: 0;
   right: 0;
   background: linear-gradient(180deg, #1a365d 0%, #2c5282 100%);
-  border-radius: 0 0 15px 15px;
   padding: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
   display: flex;
   flex-direction: column;
   gap: 15px;
   z-index: 1;
+  
+  /* Position above button on mobile */
+  @media (max-width: 768px) {
+    bottom: 100%;
+    margin-bottom: 10px;
+    border-radius: 15px;
+  }
+  
+  /* Position below button on desktop */
+  @media (min-width: 769px) {
+    top: 100%;
+    border-radius: 0 0 15px 15px;
+  }
+`;
+
+const ClosePullMenuButton = styled.button`
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  cursor: pointer;
+  z-index: 2;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
 `;
 
 const MultiPullAdjuster = styled.div`
@@ -1392,6 +1452,7 @@ const MultiPullAdjuster = styled.div`
   align-items: center;
   justify-content: space-between;
   gap: 10px;
+  margin-top: 5px;
 `;
 
 const AdjustButton = styled.button`
@@ -1411,6 +1472,12 @@ const AdjustButton = styled.button`
   &:hover {
     background: ${props => props.disabled ? 'rgba(255, 255, 255, 0.2)' : 'rgba(255, 255, 255, 0.3)'};
   }
+  
+  /* Slightly larger buttons on mobile for better touch targets */
+  @media (max-width: 768px) {
+    width: 44px;
+    height: 44px;
+  }
 `;
 
 const PullCountDisplay = styled.div`
@@ -1419,6 +1486,12 @@ const PullCountDisplay = styled.div`
   color: white;
   width: 50px;
   text-align: center;
+  
+  /* Slightly larger text on mobile */
+  @media (max-width: 768px) {
+    font-size: 36px;
+    width: 60px;
+  }
 `;
 
 const PullSlider = styled.input`
@@ -1449,6 +1522,22 @@ const PullSlider = styled.input`
     border: 2px solid white;
     box-shadow: 0 0 5px rgba(0, 0, 0, 0.5);
   }
+  
+  /* Larger touch target for mobile */
+  @media (max-width: 768px) {
+    height: 10px;
+    margin: 5px 0;
+    
+    &::-webkit-slider-thumb {
+      width: 30px;
+      height: 30px;
+    }
+    
+    &::-moz-range-thumb {
+      width: 30px;
+      height: 30px;
+    }
+  }
 `;
 
 const DiscountInfo = styled.div`
@@ -1458,6 +1547,11 @@ const DiscountInfo = styled.div`
   
   strong {
     color: #ffda44;
+  }
+  
+  @media (max-width: 768px) {
+    font-size: 16px;
+    margin-bottom: 5px;
   }
 `;
 
@@ -1471,11 +1565,18 @@ const ConfirmButton = styled(motion.button)`
   font-size: 16px;
   cursor: pointer;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  margin-top: 5px;
   
   &:disabled {
     background: #555;
     cursor: not-allowed;
     opacity: 0.7;
+  }
+  
+  @media (max-width: 768px) {
+    padding: 15px;
+    font-size: 18px;
+    margin-top: 10px;
   }
 `;
 
