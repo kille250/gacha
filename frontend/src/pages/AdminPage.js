@@ -14,11 +14,9 @@ const AdminPage = () => {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
-
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
-
   // Gefilterte und paginierte Charaktere
   const filteredCharacters = characters.filter(character => {
     const query = searchQuery.toLowerCase();
@@ -27,24 +25,20 @@ const AdminPage = () => {
       character.series.toLowerCase().includes(query)
     );
   });
-
   const indexOfLastItem = currentPage * itemsPerPage;
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentCharacters = filteredCharacters.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredCharacters.length / itemsPerPage);
-
   // Suchfunktion Handler
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
-
   // Items pro Seite Handler
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
     setCurrentPage(1);
   };
-
   // Pagination Handler
   const handlePageChange = (newPage) => {
     setCurrentPage(Math.max(1, Math.min(totalPages, newPage)));
@@ -440,10 +434,8 @@ const AdminPage = () => {
                 />
               </FormGroup>
               
-              <div></div>
-              
               <Button type="submit" color="#27ae60">
-                <FaCoins /> Add Coins
+                <FaCoins /> <span>Add Coins</span>
               </Button>
             </CoinFormGrid>
           </form>
@@ -501,7 +493,7 @@ const AdminPage = () => {
             
             <FormGroup>
               <label>Character Image</label>
-              <input 
+              <FileInput 
                 type="file" 
                 id="character-image"
                 accept="image/*"
@@ -517,7 +509,7 @@ const AdminPage = () => {
             </FormGroup>
             
             <Button type="submit" fullWidth color="#3498db">
-              <FaImage /> Add Character
+              <FaImage /> <span>Add Character</span>
             </Button>
           </CharacterForm>
         </AdminSection>
@@ -577,7 +569,6 @@ const AdminPage = () => {
             </ItemsPerPageSelect>
           </SearchContainer>
         </ManagementHeader>
-
         {currentCharacters.length === 0 ? (
           <EmptyMessage>No characters found</EmptyMessage>
         ) : (
@@ -610,7 +601,6 @@ const AdminPage = () => {
                 </CharacterCard>
               ))}
             </CharacterGrid>
-
             <PaginationContainer>
               <PaginationButton 
                 onClick={() => handlePageChange(currentPage - 1)}
@@ -622,7 +612,6 @@ const AdminPage = () => {
               <PageInfo>
                 Page {currentPage} of {totalPages}
               </PageInfo>
-
               <PaginationButton 
                 onClick={() => handlePageChange(currentPage + 1)}
                 disabled={currentPage === totalPages}
@@ -702,7 +691,7 @@ const EditCharacterModal = ({ show, onClose, character, editForm, onEditFormChan
             
             <FormGroup>
               <label>Character Image</label>
-              <input 
+              <FileInput 
                 type="file" 
                 accept="image/*"
                 onChange={onImageChange}
@@ -717,10 +706,10 @@ const EditCharacterModal = ({ show, onClose, character, editForm, onEditFormChan
             
             <ButtonGroup>
               <Button type="submit" color="#27ae60">
-                Save Changes
+                <span>Save Changes</span>
               </Button>
               <Button type="button" onClick={onClose} color="#7f8c8d">
-                Cancel
+                <span>Cancel</span>
               </Button>
             </ButtonGroup>
           </form>
@@ -756,22 +745,30 @@ const AdminHeader = styled.div`
 `;
 
 const AdminGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); // Reduced from 500px to 300px
+  display: flex;
+  flex-direction: column;
   gap: 20px;
   margin-bottom: 20px;
   
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+  @media (min-width: 992px) {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
   }
 `;
 
 const AdminSection = styled.section`
   background-color: white;
   border-radius: 8px;
-  padding: 20px;
-  margin-bottom: 30px;
+  padding: 15px;
+  margin-bottom: 20px;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+  width: 100%;
+  box-sizing: border-box;
+  
+  @media (min-width: 768px) {
+    padding: 20px;
+    margin-bottom: 30px;
+  }
   
   h2 {
     margin-top: 0;
@@ -780,43 +777,53 @@ const AdminSection = styled.section`
     display: flex;
     align-items: center;
     gap: 8px;
+    font-size: 1.2rem;
+    word-wrap: break-word;
   }
 `;
 
 const CharacterForm = styled.form`
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
-  
-  @media (min-width: 768px) {
-    grid-template-columns: 1fr 1fr;
-  }
 `;
 
 const CoinFormGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
+  display: flex;
+  flex-direction: column;
   gap: 20px;
-  
-  @media (min-width: 768px) {
-    grid-template-columns: 1fr 1fr;
-  }
 `;
 
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
   gap: 8px;
+  width: 100%;
   
   label {
     font-weight: bold;
     color: #555;
+    font-size: 0.9rem;
   }
   
   input, select {
     padding: 10px;
     border: 1px solid #ddd;
     border-radius: 4px;
+    width: 100%;
+    font-size: 0.9rem;
+    max-width: 100%;
+    box-sizing: border-box;
+  }
+`;
+
+const FileInput = styled.input`
+  font-size: 0.9rem;
+  width: 100%;
+  
+  &::file-selector-button {
+    font-size: 0.8rem;
+    padding: 8px;
   }
 `;
 
@@ -834,10 +841,19 @@ const Button = styled.button`
   justify-content: center;
   gap: 8px;
   transition: opacity 0.2s;
-  word-break: break-word;
-  white-space: normal;
   text-align: center;
-  width: 100%; // Ensure buttons take full width on mobile
+  width: 100%;
+  font-size: 0.9rem;
+  
+  svg {
+    flex-shrink: 0;
+  }
+  
+  span {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
   
   &:hover {
     opacity: 0.8;
@@ -890,12 +906,14 @@ const SuccessMessage = styled(motion.div)`
 
 const ImagePreview = styled.div`
   margin-top: 10px;
+  width: 100%;
   
   img {
     max-width: 100%;
     max-height: 200px;
     border-radius: 4px;
     border: 1px solid #ddd;
+    object-fit: contain;
   }
 `;
 
@@ -907,10 +925,18 @@ const ImagePreviewLabel = styled.div`
 
 const CharacterGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); // Reduced from 200px to 150px
-  gap: 15px;
-  max-width: 100%;
-  overflow-x: hidden;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); // Even smaller on mobile 
+  gap: 10px;
+  width: 100%;
+  
+  @media (min-width: 480px) {
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+    gap: 15px;
+  }
+  
+  @media (min-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
+  }
 `;
 
 const CharacterCard = styled.div`
@@ -1049,6 +1075,7 @@ const ButtonGroup = styled.div`
   flex-direction: column;
   gap: 10px;
   margin-top: 20px;
+  width: 100%;
   
   @media (min-width: 480px) {
     flex-direction: row;
@@ -1057,6 +1084,11 @@ const ButtonGroup = styled.div`
   
   button {
     width: 100%;
+    
+    @media (min-width: 480px) {
+      width: auto;
+      min-width: 120px;
+    }
   }
 `;
 
@@ -1104,11 +1136,16 @@ const SearchInput = styled.input`
 `;
 
 const ItemsPerPageSelect = styled.select`
-  padding: 8px 12px;
+  padding: 8px;
   border-radius: 8px;
   border: 1px solid #ddd;
   background: white;
   font-size: 14px;
+  width: 100%;
+  
+  @media (min-width: 768px) {
+    width: auto;
+  }
 `;
 
 const PaginationContainer = styled.div`
