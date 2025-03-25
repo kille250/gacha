@@ -9,17 +9,12 @@ import { AuthContext } from '../context/AuthContext';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import confetti from 'canvas-confetti';
 
-// Custom API function for multi-roll
 const rollMultipleCharacters = async (count = 10) => {
   try {
     const response = await axios.post(
       'https://gachaapi.solidbooru.online/api/characters/roll-multi',
       { count },
-      {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      }
+      { headers: { 'x-auth-token': localStorage.getItem('token') } }
     );
     return response.data;
   } catch (error) {
@@ -44,13 +39,13 @@ const rarityIcons = {
 };
 
 const GachaPage = () => {
+  const { user, refreshUser } = useContext(AuthContext);
   const [currentChar, setCurrentChar] = useState(null);
   const [multiRollResults, setMultiRollResults] = useState([]);
   const [isRolling, setIsRolling] = useState(false);
   const [showCard, setShowCard] = useState(false);
   const [showMultiResults, setShowMultiResults] = useState(false);
   const [error, setError] = useState(null);
-  const { user, setUser, refreshUser } = useContext(AuthContext);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChar, setPreviewChar] = useState(null);
   const [rollCount, setRollCount] = useState(0);
@@ -60,44 +55,34 @@ const GachaPage = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [multiPullCount, setMultiPullCount] = useState(10);
   const [multiPullMenuOpen, setMultiPullMenuOpen] = useState(false);
-  
+
   // Calculate maximum possible pulls based on user points
   const maxPossiblePulls = Math.min(10, Math.floor((user?.points || 0) / 100));
-
-  // Calculate multi-pull cost with discount
+  
   const calculateMultiPullCost = (count) => {
     const baseCost = count * 100;
-    // Apply 10% discount for 10 pulls, 5% for 5-9 pulls
     let discount = 0;
     if (count >= 10) discount = 0.1;
     else if (count >= 5) discount = 0.05;
-    
     return Math.floor(baseCost * (1 - discount));
   };
-
-  // Cost for current multi-pull setting
-  const currentMultiPullCost = calculateMultiPullCost(multiPullCount);
   
-  // Fetch user collection on page load
+  const currentMultiPullCost = calculateMultiPullCost(multiPullCount);
+
   useEffect(() => {
     fetchUserCollection();
   }, []);
 
-  // Reset multi-pull count when user points change
   useEffect(() => {
-    // Adjust multi-pull count if user doesn't have enough points
     if (multiPullCount > maxPossiblePulls) {
       setMultiPullCount(Math.max(1, maxPossiblePulls));
     }
-  }, [user?.points, maxPossiblePulls]);
+  }, [user?.points, maxPossiblePulls, multiPullCount]);
 
-  // Fetch user collection
   const fetchUserCollection = async () => {
     try {
       const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
+        headers: { 'x-auth-token': localStorage.getItem('token') }
       });
       setUserCollection(response.data);
     } catch (err) {
@@ -105,56 +90,27 @@ const GachaPage = () => {
     }
   };
 
-  // Update user data from API
-  const updateUserData = useCallback(async () => {
-    try {
-      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
-      
-      setUser(userResponse.data);
-      localStorage.setItem('user', JSON.stringify(userResponse.data));
-    } catch (userErr) {
-      console.error("Error updating user data:", userErr);
-    }
-  }, [setUser]);
-
-  useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
-
-  // Check if character is in collection
   const isCharacterInCollection = useCallback((character) => {
-    if (!character || !userCollection.length) return false;
     return userCollection.some(char => char.id === character.id);
   }, [userCollection]);
 
-  // Show confetti effect for rare pulls
   const showRarePullEffect = useCallback((rarity) => {
-    if (rarity === 'legendary' || rarity === 'epic') {
+    if (['legendary', 'epic'].includes(rarity)) {
       confetti({
         particleCount: rarity === 'legendary' ? 200 : 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: [
-          rarityColors[rarity], 
-          '#ffffff', 
-          '#gold'
-        ]
+        colors: [rarityColors[rarity], '#ffffff', '#gold']
       });
     }
   }, []);
 
-  // Effect to show confetti for rare pulls
   useEffect(() => {
     if (currentChar && !skipAnimations) {
       showRarePullEffect(currentChar.rarity);
     }
   }, [currentChar, skipAnimations, showRarePullEffect]);
 
-  // Single roll function
   const handleRoll = async () => {
     try {
       setIsRolling(true);
@@ -162,11 +118,8 @@ const GachaPage = () => {
       setShowMultiResults(false);
       setError(null);
       setMultiRollResults([]);
-      
-      // Increment roll count
       setRollCount(prev => prev + 1);
-      
-      // Simulate spinning animation (shorter duration)
+
       const animationDuration = skipAnimations ? 0 : 1200;
       
       setTimeout(async () => {
@@ -174,18 +127,11 @@ const GachaPage = () => {
           const character = await rollCharacter();
           setCurrentChar(character);
           setShowCard(true);
-          
-          // Update rarities history (keep last 5)
-          setLastRarities(prev => {
-            const updated = [character.rarity, ...prev];
-            return updated.slice(0, 5);
-          });
-          
-          // Update user data after roll
-          await updateUserData();
-          setIsRolling(false);
+          setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
+          await refreshUser();
         } catch (err) {
           setError(err.response?.data?.error || 'Failed to roll character');
+        } finally {
           setIsRolling(false);
         }
       }, animationDuration);
@@ -195,7 +141,6 @@ const GachaPage = () => {
     }
   };
 
-  // Multi roll function
   const handleMultiRoll = async () => {
     const cost = calculateMultiPullCost(multiPullCount);
     
@@ -210,42 +155,26 @@ const GachaPage = () => {
       setShowMultiResults(false);
       setError(null);
       setMultiPullMenuOpen(false);
-      
-      // Increment roll count
       setRollCount(prev => prev + multiPullCount);
-      
-      // Shorter animation for multi-roll
+
       const animationDuration = skipAnimations ? 0 : 1200;
       
       setTimeout(async () => {
         try {
-          // Call multi-roll API with dynamic count
           const characters = await rollMultipleCharacters(multiPullCount);
           setMultiRollResults(characters);
           setShowMultiResults(true);
-          
-          // Update rarities history with best pull
           const bestRarity = findBestRarity(characters);
-          setLastRarities(prev => {
-            const updated = [bestRarity, ...prev];
-            return updated.slice(0, 5);
-          });
+          setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
           
-          // Show confetti for good pulls
-          const hasRare = characters.some(char => char.rarity === 'rare' || char.rarity === 'epic' || char.rarity === 'legendary');
-          if (hasRare && !skipAnimations) {
-            confetti({
-              particleCount: 150,
-              spread: 90,
-              origin: { y: 0.5 },
-            });
+          if (characters.some(char => ['rare', 'epic', 'legendary'].includes(char.rarity)) && !skipAnimations) {
+            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
           }
           
-          // Update user data after roll
-          await updateUserData();
-          setIsRolling(false);
+          await refreshUser();
         } catch (err) {
           setError(err.response?.data?.error || 'Failed to roll multiple characters');
+        } finally {
           setIsRolling(false);
         }
       }, animationDuration);
@@ -255,97 +184,53 @@ const GachaPage = () => {
     }
   };
 
-  // Increment/decrement multi-pull count
   const adjustMultiPullCount = (amount) => {
     const newCount = multiPullCount + amount;
-    // Ensure count is between 1 and max possible pulls
     if (newCount >= 1 && newCount <= maxPossiblePulls) {
       setMultiPullCount(newCount);
     }
   };
 
-  // Helper to find the best rarity from a list of characters
   const findBestRarity = (characters) => {
     const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-    let bestRarityIndex = 0;
-    
-    characters.forEach(char => {
-      const charRarityIndex = rarityOrder.indexOf(char.rarity);
-      if (charRarityIndex > bestRarityIndex) {
-        bestRarityIndex = charRarityIndex;
-      }
-    });
-    
-    return rarityOrder[bestRarityIndex];
+    return characters.reduce((best, char) => {
+      const currentIndex = rarityOrder.indexOf(char.rarity);
+      return currentIndex > rarityOrder.indexOf(best) ? char.rarity : best;
+    }, 'common');
   };
 
-  // Claim character function
   const handleClaim = async (characterId) => {
     try {
       await claimCharacter(characterId);
-      
-      // Display success effect
-      showClaimSuccess();
-      
-      // Update user data
-      await updateUserData();
-      
-      // Update collection after claiming
+      confetti({ particleCount: 50, spread: 30, origin: { y: 0.7 }, colors: ['#1abc9c', '#3498db', '#2ecc71'] });
+      await refreshUser();
       await fetchUserCollection();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to claim character');
     }
   };
 
-  const showClaimSuccess = () => {
-    // Simple confetti to confirm the claim
-    confetti({
-      particleCount: 50,
-      spread: 30,
-      origin: { y: 0.7 },
-      colors: ['#1abc9c', '#3498db', '#2ecc71']
-    });
+  const getImagePath = (imageSrc) => {
+    if (!imageSrc) return 'https://via.placeholder.com/300?text=No+Image';
+    if (imageSrc.startsWith('http')) return imageSrc;
+    if (imageSrc.startsWith('/uploads')) return `https://gachaapi.solidbooru.online${imageSrc}`;
+    if (imageSrc.startsWith('image-')) return `https://gachaapi.solidbooru.online/uploads/characters/${imageSrc}`;
+    return imageSrc.includes('/') ? imageSrc : `/images/characters/${imageSrc}`;
   };
-  
-  // Preview a character
+
+  const toggleSkipAnimations = () => setSkipAnimations(prev => !prev);
+  const toggleMultiPullMenu = () => setMultiPullMenuOpen(prev => !prev);
+
   const openPreview = (character) => {
     if (character) {
       setPreviewChar(character);
       setPreviewOpen(true);
     }
   };
-  
+
   const closePreview = () => {
     setPreviewOpen(false);
     setPreviewChar(null);
-  };
-  
-  const getImagePath = (imageSrc) => {
-    if (!imageSrc) return 'https://via.placeholder.com/300?text=No+Image';
-    
-    if (imageSrc.startsWith('http')) {
-      return imageSrc;
-    }
-    
-    if (imageSrc.startsWith('/uploads')) {
-      return `https://gachaapi.solidbooru.online${imageSrc}`;
-    }
-    
-    if (imageSrc.startsWith('image-')) {
-      return `https://gachaapi.solidbooru.online/uploads/characters/${imageSrc}`;
-    }
-    
-    return `/images/characters/${imageSrc}`;
-  };
-
-  // Toggle animation skipping
-  const toggleSkipAnimations = () => {
-    setSkipAnimations(prev => !prev);
-  };
-
-  // Toggle multi-pull menu
-  const toggleMultiPullMenu = () => {
-    setMultiPullMenuOpen(prev => !prev);
   };
 
   return (
@@ -385,7 +270,7 @@ const GachaPage = () => {
       )}
 
       {error && <ErrorMessage>{error}</ErrorMessage>}
-      
+
       <RarityHistoryBar>
         {lastRarities.length > 0 && (
           <>
@@ -481,7 +366,6 @@ const GachaPage = () => {
                 <h2>{multiRollResults.length}× Roll Results</h2>
                 <MultiRollCloseButton onClick={() => setShowMultiResults(false)}>×</MultiRollCloseButton>
               </MultiRollHeader>
-
               <MultiCharactersGrid>
                 {multiRollResults.map((character, index) => (
                   <MultiCharacterCard 
@@ -566,7 +450,7 @@ const GachaPage = () => {
               <>💫 Single Pull <RollCost>(100 pts)</RollCost></>
             }
           </RollButton>
-
+          
           <MultiPullContainer>
             <MultiRollButton 
               onClick={multiPullMenuOpen ? handleMultiRoll : toggleMultiPullMenu}
@@ -588,7 +472,7 @@ const GachaPage = () => {
                 </>
               )}
             </MultiRollButton>
-
+            
             {multiPullMenuOpen && (
               <MultiPullMenu
                 initial={{ opacity: 0, y: 10 }}
@@ -610,7 +494,7 @@ const GachaPage = () => {
                     <MdAdd />
                   </AdjustButton>
                 </MultiPullAdjuster>
-
+                
                 <PullSlider 
                   type="range" 
                   min="1" 
@@ -618,7 +502,7 @@ const GachaPage = () => {
                   value={multiPullCount}
                   onChange={(e) => setMultiPullCount(parseInt(e.target.value))}
                 />
-
+                
                 <DiscountInfo>
                   {multiPullCount >= 10 ? (
                     <strong>10% discount applied!</strong>
@@ -630,7 +514,7 @@ const GachaPage = () => {
                     <span>Increase count for discounts</span>
                   )}
                 </DiscountInfo>
-
+                
                 <ConfirmButton 
                   onClick={handleMultiRoll}
                   disabled={user?.points < currentMultiPullCost}
@@ -643,19 +527,19 @@ const GachaPage = () => {
             )}
           </MultiPullContainer>
         </RollButtonsContainer>
-        
+
         <RollHint>
           You have enough points for <strong>{Math.floor((user?.points || 0) / 100)}</strong> single pulls
           {maxPossiblePulls > 1 && ` or up to a ${maxPossiblePulls}× multi-pull`}
         </RollHint>
-
+        
         {skipAnimations && (
           <SkipAnimationsIndicator>
             <MdFastForward /> Fast Mode Enabled
           </SkipAnimationsIndicator>
         )}
       </GachaSection>
-      
+
       <ImagePreviewModal 
         isOpen={previewOpen}
         onClose={closePreview}

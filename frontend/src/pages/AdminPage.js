@@ -4,10 +4,10 @@ import styled from 'styled-components';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
-import { FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch} from 'react-icons/fa';
+import { FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
 
 const AdminPage = () => {
-  const { user, setUser } = useContext(AuthContext);
+  const { user, setUser, refreshUser } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -17,6 +17,7 @@ const AdminPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  
   // Gefilterte und paginierte Charaktere
   const filteredCharacters = characters.filter(character => {
     const query = searchQuery.toLowerCase();
@@ -29,16 +30,19 @@ const AdminPage = () => {
   const indexOfFirstItem = indexOfLastItem - itemsPerPage;
   const currentCharacters = filteredCharacters.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredCharacters.length / itemsPerPage);
+  
   // Suchfunktion Handler
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
+  
   // Items pro Seite Handler
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
     setCurrentPage(1);
   };
+  
   // Pagination Handler
   const handlePageChange = (newPage) => {
     setCurrentPage(Math.max(1, Math.min(totalPages, newPage)));
@@ -78,23 +82,6 @@ const AdminPage = () => {
       fetchCharacters();
     }
   }, [user]);
-
-const updateUserData = async () => {
-  try {
-    const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-      headers: {
-        'x-auth-token': localStorage.getItem('token')
-      }
-    });
-    
-    if (setUser) {
-      setUser(userResponse.data);
-      localStorage.setItem('user', JSON.stringify(userResponse.data));
-    }
-  } catch (err) {
-    console.error("Error updating user data:", err);
-  }
-};
   
   const fetchUsers = async () => {
     try {
@@ -165,7 +152,7 @@ const updateUserData = async () => {
       formData.append('series', newCharacter.series);
       formData.append('rarity', newCharacter.rarity);
       
-      const response = await axios.post(
+      await axios.post(
         'https://gachaapi.solidbooru.online/api/admin/characters/upload', 
         formData, 
         {
@@ -252,7 +239,7 @@ const updateUserData = async () => {
     
     try {
       // Aktualisiere die Charakterdetails
-      const response = await axios.put(
+      await axios.put(
         `https://gachaapi.solidbooru.online/api/admin/characters/${editingCharacter.id}`,
         editForm,
         {
@@ -348,19 +335,9 @@ const updateUserData = async () => {
       
       await fetchUsers();
       
-      if (coinForm.userId) {
-        const updatedUserResponse = await axios.get(
-          `https://gachaapi.solidbooru.online/api/users/${coinForm.userId}`,
-          {
-            headers: {
-              'x-auth-token': localStorage.getItem('token')
-            }
-          }
-        );
-        
-        if (coinForm.userId === user?.id) {
-          await refreshUser();
-        }
+      // If we add coins to the current user, refresh user data
+      if (coinForm.userId === user?.id) {
+        await refreshUser();
       }
       
       setCoinForm({
@@ -372,21 +349,26 @@ const updateUserData = async () => {
     }
   };
   
+  // Hilfsfunktion für Bildpfade
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
     
+    // Prüfe, ob es eine volle URL ist
     if (imagePath.startsWith('http')) {
       return imagePath;
     }
     
+    // Prüfe auf hochgeladene Bilder im uploads-Verzeichnis
     if (imagePath.startsWith('/uploads')) {
       return `https://gachaapi.solidbooru.online${imagePath}`;
     }
     
+    // Prüfe auf image- Präfix, was auf ein hochgeladenes Bild hinweist
     if (imagePath.startsWith('image-')) {
       return `https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
     }
     
+    // Prüfe, ob es ein einfacher Dateiname oder ein vollständiger Pfad ist
     return imagePath.includes('/') 
       ? imagePath 
       : `/images/characters/${imagePath}`;
@@ -950,7 +932,7 @@ const ImagePreviewLabel = styled.div`
 
 const CharacterGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr)); // Even smaller on mobile 
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 10px;
   width: 100%;
   
@@ -985,7 +967,7 @@ const CharacterInfo = styled.div`
     margin: 0 0 4px 0;
     font-size: 16px;
     word-break: break-word;
-    padding-right: 10px; // Give space for the rarity tag
+    padding-right: 10px;
   }
   
   p {
