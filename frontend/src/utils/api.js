@@ -57,4 +57,9 @@ export const getCurrentUser = () => {
 	}
   };
 
+export const getAllCharacters = async () => {
+  const response = await axios.get('/api/characters');
+  return response.data;
+};
+
 export default api;
