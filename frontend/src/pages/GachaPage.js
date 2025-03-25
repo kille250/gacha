@@ -91,18 +91,6 @@ const GachaPage = () => {
     }
   }, [user?.points, maxPossiblePulls]);
 
-  useEffect(() => {
-    window.addEventListener('user-updated', updateUserData);
-    
-    return () => {
-      window.removeEventListener('user-updated', updateUserData);
-    };
-  }, [updateUserData]);
-  
-  useEffect(() => {
-    updateUserData();
-  }, []);
-
   // Fetch user collection
   const fetchUserCollection = async () => {
     try {
@@ -132,6 +120,18 @@ const GachaPage = () => {
       console.error("Error updating user data:", userErr);
     }
   }, [setUser]);
+
+  useEffect(() => {
+    window.addEventListener('user-updated', updateUserData);
+    
+    return () => {
+      window.removeEventListener('user-updated', updateUserData);
+    };
+  }, [updateUserData]);
+  
+  useEffect(() => {
+    updateUserData();
+  }, []);
 
   // Check if character is in collection
   const isCharacterInCollection = useCallback((character) => {
