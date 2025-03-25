@@ -734,7 +734,13 @@ const EditCharacterModal = ({ show, onClose, character, editForm, onEditFormChan
 const AdminContainer = styled.div`
   min-height: 100vh;
   background-color: #f5f7fa;
-  padding: 20px;
+  padding: 10px;
+  max-width: 100vw;
+  overflow-x: hidden;
+  
+  @media (min-width: 768px) {
+    padding: 20px;
+  }
 `;
 
 const AdminHeader = styled.div`
@@ -751,7 +757,7 @@ const AdminHeader = styled.div`
 
 const AdminGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(500px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); // Reduced from 500px to 300px
   gap: 20px;
   margin-bottom: 20px;
   
@@ -779,21 +785,21 @@ const AdminSection = styled.section`
 
 const CharacterForm = styled.form`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
   
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr 1fr;
   }
 `;
 
 const CoinFormGrid = styled.div`
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr;
   gap: 20px;
   
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr 1fr;
   }
 `;
 
@@ -828,6 +834,10 @@ const Button = styled.button`
   justify-content: center;
   gap: 8px;
   transition: opacity 0.2s;
+  word-break: break-word;
+  white-space: normal;
+  text-align: center;
+  width: 100%; // Ensure buttons take full width on mobile
   
   &:hover {
     opacity: 0.8;
@@ -837,6 +847,14 @@ const Button = styled.button`
 const UserTable = styled.table`
   width: 100%;
   border-collapse: collapse;
+  display: block;
+  overflow-x: auto;
+  white-space: nowrap;
+  
+  @media (min-width: 768px) {
+    display: table;
+    white-space: normal;
+  }
   
   th, td {
     padding: 12px;
@@ -889,8 +907,10 @@ const ImagePreviewLabel = styled.div`
 
 const CharacterGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); // Reduced from 200px to 150px
+  gap: 15px;
+  max-width: 100%;
+  overflow-x: hidden;
 `;
 
 const CharacterCard = styled.div`
@@ -912,13 +932,17 @@ const CharacterInfo = styled.div`
   
   h3 {
     margin: 0 0 4px 0;
-    font-size: 18px;
+    font-size: 16px;
+    word-break: break-word;
+    padding-right: 10px; // Give space for the rarity tag
   }
   
   p {
     margin: 0;
     color: #666;
-    font-size: 14px;
+    font-size: 12px;
+    word-break: break-word;
+    margin-bottom: 6px;
   }
 `;
 
@@ -953,13 +977,15 @@ const ActionButton = styled.button`
   background-color: ${props => props.danger ? '#e74c3c' : '#3498db'};
   color: white;
   border: none;
-  padding: 4px 8px;
+  padding: 6px 8px;
   border-radius: 4px;
-  font-size: 12px;
+  font-size: 11px;
   cursor: pointer;
   display: flex;
   align-items: center;
   gap: 4px;
+  flex: 1;
+  justify-content: center;
   
   &:hover {
     opacity: 0.8;
@@ -982,11 +1008,12 @@ const ModalOverlay = styled.div`
 const ModalContent = styled.div`
   background-color: white;
   border-radius: 8px;
-  width: 90%;
+  width: 95%;
   max-width: 600px;
   max-height: 90vh;
   overflow-y: auto;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  margin: 10px;
 `;
 
 const ModalHeader = styled.div`
@@ -1019,24 +1046,43 @@ const ModalBody = styled.div`
 
 const ButtonGroup = styled.div`
   display: flex;
+  flex-direction: column;
   gap: 10px;
   margin-top: 20px;
-  justify-content: flex-end;
+  
+  @media (min-width: 480px) {
+    flex-direction: row;
+    justify-content: flex-end;
+  }
+  
+  button {
+    width: 100%;
+  }
 `;
 
 const ManagementHeader = styled.div`
   display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-  flex-wrap: wrap;
+  flex-direction: column;
   gap: 15px;
+  margin-bottom: 20px;
+  
+  @media (min-width: 768px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+  }
 `;
 
 const SearchContainer = styled.div`
   display: flex;
-  gap: 15px;
-  align-items: center;
+  flex-direction: column;
+  gap: 10px;
+  width: 100%;
+  
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+  }
 `;
 
 const SearchInputWrapper = styled.div`
@@ -1069,24 +1115,25 @@ const PaginationContainer = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 20px;
+  gap: 10px;
   margin-top: 30px;
+  flex-wrap: wrap;
 `;
 
 const PaginationButton = styled.button`
-  padding: 8px 20px;
+  padding: 8px 15px;
   background-color: #3498db;
   color: white;
   border: none;
   border-radius: 6px;
   cursor: pointer;
   transition: all 0.2s;
+  font-size: 13px;
   
   &:hover:not(:disabled) {
     background-color: #2980b9;
     transform: translateY(-1px);
   }
-
   &:disabled {
     background-color: #bdc3c7;
     cursor: not-allowed;
