@@ -7,7 +7,7 @@ import { motion } from 'framer-motion';
 import { FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch} from 'react-icons/fa';
 
 const AdminPage = () => {
-  const { user } = useContext(AuthContext);
+  const { user, setUser } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -78,6 +78,23 @@ const AdminPage = () => {
       fetchCharacters();
     }
   }, [user]);
+
+const updateUserData = async () => {
+  try {
+    const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
+      headers: {
+        'x-auth-token': localStorage.getItem('token')
+      }
+    });
+    
+    if (setUser) {
+      setUser(userResponse.data);
+      localStorage.setItem('user', JSON.stringify(userResponse.data));
+    }
+  } catch (err) {
+    console.error("Error updating user data:", err);
+  }
+};
   
   const fetchUsers = async () => {
     try {
@@ -327,10 +344,16 @@ const AdminPage = () => {
         }
       );
       
+      // Zeige Erfolgsmeldung
       setCoinMessage(response.data.message);
       
-      // Benutzerliste neu laden
-      fetchUsers();
+      // Aktualisiere Benutzerliste
+      await fetchUsers();
+      
+      // Aktualisiere auch die Benutzerdaten im Kontext
+      if (coinForm.userId === user?.id) {
+        await updateUserData();
+      }
       
       // Formular zurücksetzen
       setCoinForm({
