@@ -11,25 +11,21 @@ export const AuthProvider = ({ children }) => {
 
   // Refresh user data from the server
   const refreshUser = useCallback(async () => {
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) return null;
-      
-      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-        headers: {
-          'x-auth-token': token
-        }
-      });
-      
-      const userData = userResponse.data;
-      setCurrentUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
-      
-      return userData;
-    } catch (error) {
-      console.error('Error refreshing user data:', error);
-      return null;
-    }
+	try {
+	  const token = localStorage.getItem('token');
+	  if (!token) return;
+	  
+	  const response = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
+		headers: { 'x-auth-token': token }
+	  });
+	  
+	  const newUserData = { ...response.data };
+	  setCurrentUser(newUserData);
+	  localStorage.setItem('user', JSON.stringify(newUserData));
+	  
+	} catch (error) {
+	  console.error('Error refreshing user:', error);
+	}
   }, []);
 
   useEffect(() => {
