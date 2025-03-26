@@ -41,7 +41,8 @@ const Navigation = () => {
       if (!rewardStatus.checked) {
         setRewardStatus(prev => ({ 
           ...prev, 
-          timeRemaining: "Checking..." 
+          timeRemaining: "Checking...",
+          available: false // Make sure we don't show as clickable while checking
         }));
       }
       
@@ -53,7 +54,9 @@ const Navigation = () => {
       const lastReward = response.data.lastDailyReward ? new Date(response.data.lastDailyReward) : null;
       const now = new Date();
       
+      // Check if user has NEVER claimed a reward OR if 24 hours have passed
       if (!lastReward || now - lastReward > 24 * 60 * 60 * 1000) {
+        console.log('Reward is available');
         setRewardStatus({
           available: true,
           loading: false,
@@ -62,6 +65,8 @@ const Navigation = () => {
           checked: true
         });
       } else {
+        // User has claimed within last 24 hours, show countdown
+        console.log('Reward is NOT available, last claimed:', lastReward);
         const remainingTime = 24 * 60 * 60 * 1000 - (now - lastReward);
         const hours = Math.floor(remainingTime / (60 * 60 * 1000));
         const minutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
@@ -69,7 +74,7 @@ const Navigation = () => {
         const nextTime = new Date(lastReward.getTime() + 24 * 60 * 60 * 1000);
         
         setRewardStatus({
-          available: false,
+          available: false, // Explicitly set to false
           loading: false,
           timeRemaining: `${hours}h ${minutes}m`,
           nextRewardTime: nextTime,
@@ -81,11 +86,12 @@ const Navigation = () => {
       setRewardStatus(prev => ({
         ...prev,
         loading: false,
+        available: false, // Make sure it's not clickable on error
         checked: true,
         timeRemaining: "Check failed"
       }));
     }
-  }, [user, rewardStatus.checked]);
+  }, [user]);
 
   // Update timer periodically
   useEffect(() => {
