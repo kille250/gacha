@@ -4,6 +4,60 @@ const jwt = require('jsonwebtoken'); // WICHTIG: jwt importieren
 const auth = require('../middleware/auth');
 const { User } = require('../models');
 
+router.post('/daily-reward', auth, async (req, res) => {
+	try {
+	  const user = await User.findByPk(req.user.id);
+	  
+	  if (!user) {
+		return res.status(404).json({ error: 'User not found' });
+	  }
+	  
+	  const now = new Date();
+	  const lastReward = user.lastDailyReward ? new Date(user.lastDailyReward) : null;
+	  
+	  // Check if 24 hours have passed since last reward
+	  if (lastReward && now - lastReward < 24 * 60 * 60 * 1000) {
+		// Calculate remaining time in hours:minutes:seconds
+		const remainingTime = 24 * 60 * 60 * 1000 - (now - lastReward);
+		const hours = Math.floor(remainingTime / (60 * 60 * 1000));
+		const minutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+		const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
+		
+		return res.status(400).json({ 
+		  error: 'You already collected your daily reward', 
+		  nextRewardTime: {
+			hours,
+			minutes,
+			seconds,
+			timestamp: new Date(lastReward.getTime() + 24 * 60 * 60 * 1000)
+		  }
+		});
+	  }
+	  
+	  // Daily reward amount (can be randomized or fixed)
+	  const rewardAmount = Math.floor(Math.random() * 100) + 100; // Random between 100-200
+	  
+	  // Update user
+	  await user.increment('points', { by: rewardAmount });
+	  user.lastDailyReward = now;
+	  await user.save();
+	  
+	  res.json({ 
+		message: 'Daily reward collected!',
+		rewardAmount,
+		user: {
+		  id: user.id,
+		  username: user.username,
+		  points: user.points,
+		  lastDailyReward: user.lastDailyReward
+		} 
+	  });
+	} catch (err) {
+	  console.error('Daily reward error:', err);
+	  res.status(500).json({ error: 'Server error' });
+	}
+  });
+
 router.post('/signup', async (req, res) => {
 	console.log('Signup request received:', req.body);
 	

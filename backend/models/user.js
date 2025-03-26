@@ -32,6 +32,10 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false,
     },
+    lastDailyReward: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
   },
   {
     sequelize,
