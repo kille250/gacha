@@ -15,27 +15,28 @@ router.post('/daily-reward', auth, async (req, res) => {
 	  const now = new Date();
 	  const lastReward = user.lastDailyReward ? new Date(user.lastDailyReward) : null;
 	  
-	  // Check if 24 hours have passed since last reward
-	  if (lastReward && now - lastReward < 24 * 60 * 60 * 1000) {
-		// Calculate remaining time in hours:minutes:seconds
-		const remainingTime = 24 * 60 * 60 * 1000 - (now - lastReward);
-		const hours = Math.floor(remainingTime / (60 * 60 * 1000));
-		const minutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+	  // Check if 1 hour has passed since last reward (changed from 24 hours)
+	  const rewardInterval = 60 * 60 * 1000; // 1 hour in milliseconds
+	  
+	  if (lastReward && now - lastReward < rewardInterval) {
+		// Calculate remaining time in minutes:seconds
+		const remainingTime = rewardInterval - (now - lastReward);
+		const minutes = Math.floor(remainingTime / (60 * 1000));
 		const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
 		
 		return res.status(400).json({ 
-		  error: 'You already collected your daily reward', 
+		  error: 'You already collected your hourly reward', 
 		  nextRewardTime: {
-			hours,
+			hours: 0, // Keep for compatibility
 			minutes,
 			seconds,
-			timestamp: new Date(lastReward.getTime() + 24 * 60 * 60 * 1000)
+			timestamp: new Date(lastReward.getTime() + rewardInterval)
 		  }
 		});
 	  }
 	  
-	  // Daily reward amount (can be randomized or fixed)
-	  const rewardAmount = Math.floor(Math.random() * 100) + 100; // Random between 100-200
+	  // Hourly reward amount
+	  const rewardAmount = Math.floor(Math.random() * 800) + 200; // Random between 200-1000
 	  
 	  // Update user
 	  await user.increment('points', { by: rewardAmount });
@@ -43,7 +44,7 @@ router.post('/daily-reward', auth, async (req, res) => {
 	  await user.save();
 	  
 	  res.json({ 
-		message: 'Daily reward collected!',
+		message: 'Hourly reward collected!',
 		rewardAmount,
 		user: {
 		  id: user.id,
@@ -53,7 +54,7 @@ router.post('/daily-reward', auth, async (req, res) => {
 		} 
 	  });
 	} catch (err) {
-	  console.error('Daily reward error:', err);
+	  console.error('Hourly reward error:', err);
 	  res.status(500).json({ error: 'Server error' });
 	}
   });

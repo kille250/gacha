@@ -22,8 +22,8 @@ const Navigation = () => {
     show: false,
     amount: 0
   });
-
-  // Check if daily reward is available - improved version
+  
+  // Check if hourly reward is available - updated for 1 hour interval
   const checkRewardAvailability = useCallback(async () => {
     if (!user) {
       setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
@@ -54,9 +54,12 @@ const Navigation = () => {
       const lastReward = response.data.lastDailyReward ? new Date(response.data.lastDailyReward) : null;
       const now = new Date();
       
-      // Check if user has NEVER claimed a reward OR if 24 hours have passed
-      if (!lastReward || now - lastReward > 24 * 60 * 60 * 1000) {
-        console.log('Reward is available');
+      // Define the reward interval as 1 hour 
+      const rewardInterval = 60 * 60 * 1000; // 1 hour in milliseconds
+      
+      // Check if user has NEVER claimed a reward OR if 1 hour has passed
+      if (!lastReward || now - lastReward > rewardInterval) {
+        console.log('Hourly reward is available');
         setRewardStatus({
           available: true,
           loading: false,
@@ -65,18 +68,18 @@ const Navigation = () => {
           checked: true
         });
       } else {
-        // User has claimed within last 24 hours, show countdown
-        console.log('Reward is NOT available, last claimed:', lastReward);
-        const remainingTime = 24 * 60 * 60 * 1000 - (now - lastReward);
-        const hours = Math.floor(remainingTime / (60 * 60 * 1000));
-        const minutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+        // User has claimed within last hour, show countdown
+        console.log('Hourly reward is NOT available, last claimed:', lastReward);
+        const remainingTime = rewardInterval - (now - lastReward);
+        const minutes = Math.floor(remainingTime / (60 * 1000));
+        const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
         
-        const nextTime = new Date(lastReward.getTime() + 24 * 60 * 60 * 1000);
+        const nextTime = new Date(lastReward.getTime() + rewardInterval);
         
         setRewardStatus({
           available: false, // Explicitly set to false
           loading: false,
-          timeRemaining: `${hours}h ${minutes}m`,
+          timeRemaining: `${minutes}m ${seconds}s`,
           nextRewardTime: nextTime,
           checked: true
         });
@@ -92,10 +95,10 @@ const Navigation = () => {
       }));
     }
   }, [user]);
-
-  // Update timer periodically
+  
+  // Update timer periodically - more frequent updates for hourly rewards
   useEffect(() => {
-    // Update the timer every minute
+    // Update the timer every second for more precise countdown
     const updateTimer = () => {
       if (!rewardStatus.nextRewardTime) return;
       
@@ -113,36 +116,36 @@ const Navigation = () => {
       } else {
         // Still counting down
         const remainingTime = nextReward - now;
-        const hours = Math.floor(remainingTime / (60 * 60 * 1000));
-        const minutes = Math.floor((remainingTime % (60 * 60 * 1000)) / (60 * 1000));
+        const minutes = Math.floor(remainingTime / (60 * 1000));
+        const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
         
         setRewardStatus(prev => ({
           ...prev,
-          timeRemaining: `${hours}h ${minutes}m`
+          timeRemaining: `${minutes}m ${seconds}s`
         }));
       }
     };
-
-    const timerInterval = setInterval(updateTimer, 60000); // Update every minute
+    
+    const timerInterval = setInterval(updateTimer, 1000); // Update every second
     
     return () => clearInterval(timerInterval);
   }, [rewardStatus.nextRewardTime]);
-
+  
   // Initial check and periodic refresh
   useEffect(() => {
     // We check availability immediately when user changes or component mounts
     checkRewardAvailability();
     
-    // Full refresh every 5 minutes to ensure sync with server
+    // Full refresh more frequently for hourly rewards
     const refreshInterval = setInterval(() => {
       checkRewardAvailability();
-    }, 5 * 60 * 1000);
+    }, 60 * 1000); // Check every minute
     
     return () => clearInterval(refreshInterval);
   }, [checkRewardAvailability]);
-
-  // Claim the daily reward
-  const claimDailyReward = async () => {
+  
+  // Claim the hourly reward
+  const claimHourlyReward = async () => {
     // Prevent multiple clicks or claiming when not available
     if (rewardStatus.loading || !rewardStatus.available) return;
     
@@ -166,12 +169,13 @@ const Navigation = () => {
       
       // Update reward status
       const now = new Date();
-      const nextRewardTime = new Date(now.getTime() + 24 * 60 * 60 * 1000);
+      const rewardInterval = 60 * 60 * 1000; // 1 hour
+      const nextRewardTime = new Date(now.getTime() + rewardInterval);
       
       setRewardStatus({
         available: false,
         loading: false,
-        timeRemaining: '23h 59m',
+        timeRemaining: '59m 59s',
         nextRewardTime: nextRewardTime,
         checked: true
       });
@@ -192,7 +196,7 @@ const Navigation = () => {
         setRewardStatus({
           available: false,
           loading: false,
-          timeRemaining: `${err.response.data.nextRewardTime.hours}h ${err.response.data.nextRewardTime.minutes}m`,
+          timeRemaining: `${err.response.data.nextRewardTime.minutes}m ${err.response.data.nextRewardTime.seconds}s`,
           nextRewardTime: new Date(err.response.data.nextRewardTime.timestamp),
           checked: true
         });
@@ -210,12 +214,12 @@ const Navigation = () => {
       }
     }
   };
-
+  
   const handleLogout = () => {
     logout();
     navigate('/login');
   };
-
+  
   return (
     <NavContainer>
       <NavLinks>
@@ -256,13 +260,13 @@ const Navigation = () => {
       </NavLinks>
       
       <UserControls>
-        {/* Daily Reward Button - Fixed version */}
+        {/* Hourly Reward Button */}
         {user && (
           <RewardButton
-            available={rewardStatus.checked && rewardStatus.available} // Only available if checked and actually available
+            available={rewardStatus.checked && rewardStatus.available}
             whileHover={rewardStatus.available && rewardStatus.checked ? { scale: 1.1 } : {}}
             whileTap={rewardStatus.available && rewardStatus.checked ? { scale: 0.95 } : {}}
-            onClick={rewardStatus.available && rewardStatus.checked ? claimDailyReward : undefined}
+            onClick={rewardStatus.available && rewardStatus.checked ? claimHourlyReward : undefined}
             disabled={!rewardStatus.available || rewardStatus.loading || !rewardStatus.checked}
             data-state={rewardStatus.loading ? 'loading' : rewardStatus.available ? 'available' : 'unavailable'}
           >
@@ -271,7 +275,7 @@ const Navigation = () => {
             ) : rewardStatus.available && rewardStatus.checked ? (
               <>
                 <FaGift className="pulse-icon" />
-                <span>Claim Daily</span>
+                <span>Claim Hourly</span>
               </>
             ) : (
               <>
@@ -305,7 +309,7 @@ const Navigation = () => {
           >
             <MdCelebration className="celebration-icon" />
             <div>
-              <p>Daily Reward Claimed!</p>
+              <p>Hourly Reward Claimed!</p>
               <h3>+{rewardPopup.amount} coins</h3>
             </div>
           </RewardPopup>
