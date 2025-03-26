@@ -43,6 +43,16 @@ app.use('/api/admin', require('./routes/admin')); // Admin-Routen hinzufügen
 // Database sync
 sequelize.sync({ force: false }).then(async () => {
   console.log('Database synced');
+
+  try {
+    await sequelize.query(
+      `ALTER TABLE Users ADD COLUMN lastDailyReward DATETIME;`
+    );
+    console.log('Added lastDailyReward column to Users table');
+  } catch (err) {
+    // Column might already exist, which is fine
+    console.log('Note about lastDailyReward column:', err.message);
+  }
   
   // Seed sample data
   await Character.bulkCreate([
