@@ -14,7 +14,7 @@ const Navigation = () => {
   const [rewardStatus, setRewardStatus] = useState({
     available: false,        // Default to false
     loading: true,           // Start with loading state to prevent premature display
-    timeRemaining: null,
+    timeRemaining: "Checking...",
     nextRewardTime: null,
     checked: false           // Flag to indicate if we've checked availability yet
   });
@@ -31,12 +31,18 @@ const Navigation = () => {
     }
     
     try {
-      setRewardStatus(prev => ({ ...prev, loading: true }));
-      
       const token = localStorage.getItem('token');
       if (!token) {
         setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
         return;
+      }
+      
+      // First quickly update UI to show we're checking
+      if (!rewardStatus.checked) {
+        setRewardStatus(prev => ({ 
+          ...prev, 
+          timeRemaining: "Checking..." 
+        }));
       }
       
       const response = await axios.get(
@@ -75,10 +81,11 @@ const Navigation = () => {
       setRewardStatus(prev => ({
         ...prev,
         loading: false,
-        checked: true
+        checked: true,
+        timeRemaining: "Check failed"
       }));
     }
-  }, [user]);
+  }, [user, rewardStatus.checked]);
 
   // Update timer periodically
   useEffect(() => {
