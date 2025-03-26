@@ -4,7 +4,6 @@ const cors = require('cors');
 const sequelize = require('./config/db');
 const { User, Character } = require('./models');
 const schedule = require('node-schedule');
-const { User } = require('./models');
 
 const app = express();
 
