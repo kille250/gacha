@@ -12,10 +12,11 @@ const Navigation = () => {
   const { user, logout, refreshUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const [rewardStatus, setRewardStatus] = useState({
-    available: false,
-    loading: false,
+    available: false,        // Default to false
+    loading: true,           // Start with loading state to prevent premature display
     timeRemaining: null,
-    nextRewardTime: null
+    nextRewardTime: null,
+    checked: false           // Flag to indicate if we've checked availability yet
   });
   const [rewardPopup, setRewardPopup] = useState({
     show: false,
@@ -24,11 +25,19 @@ const Navigation = () => {
 
   // Check if daily reward is available - improved version
   const checkRewardAvailability = useCallback(async () => {
-    if (!user) return; // Don't check if user isn't logged in
+    if (!user) {
+      setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
+      return;
+    }
     
     try {
+      setRewardStatus(prev => ({ ...prev, loading: true }));
+      
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
+        return;
+      }
       
       const response = await axios.get(
         'https://gachaapi.solidbooru.online/api/auth/me', 
@@ -43,7 +52,8 @@ const Navigation = () => {
           available: true,
           loading: false,
           timeRemaining: null,
-          nextRewardTime: null
+          nextRewardTime: null,
+          checked: true
         });
       } else {
         const remainingTime = 24 * 60 * 60 * 1000 - (now - lastReward);
@@ -56,14 +66,16 @@ const Navigation = () => {
           available: false,
           loading: false,
           timeRemaining: `${hours}h ${minutes}m`,
-          nextRewardTime: nextTime
+          nextRewardTime: nextTime,
+          checked: true
         });
       }
     } catch (err) {
       console.error('Error checking reward:', err);
       setRewardStatus(prev => ({
         ...prev,
-        loading: false
+        loading: false,
+        checked: true
       }));
     }
   }, [user]);
@@ -105,6 +117,7 @@ const Navigation = () => {
 
   // Initial check and periodic refresh
   useEffect(() => {
+    // We check availability immediately when user changes or component mounts
     checkRewardAvailability();
     
     // Full refresh every 5 minutes to ensure sync with server
@@ -117,8 +130,8 @@ const Navigation = () => {
 
   // Claim the daily reward
   const claimDailyReward = async () => {
-    // Prevent multiple clicks
-    if (rewardStatus.loading) return;
+    // Prevent multiple clicks or claiming when not available
+    if (rewardStatus.loading || !rewardStatus.available) return;
     
     setRewardStatus(prev => ({ ...prev, loading: true }));
     
@@ -146,7 +159,8 @@ const Navigation = () => {
         available: false,
         loading: false,
         timeRemaining: '23h 59m',
-        nextRewardTime: nextRewardTime
+        nextRewardTime: nextRewardTime,
+        checked: true
       });
       
       // Update user data with new points
@@ -166,7 +180,8 @@ const Navigation = () => {
           available: false,
           loading: false,
           timeRemaining: `${err.response.data.nextRewardTime.hours}h ${err.response.data.nextRewardTime.minutes}m`,
-          nextRewardTime: new Date(err.response.data.nextRewardTime.timestamp)
+          nextRewardTime: new Date(err.response.data.nextRewardTime.timestamp),
+          checked: true
         });
       } else {
         // Generic error handling
@@ -228,18 +243,19 @@ const Navigation = () => {
       </NavLinks>
       
       <UserControls>
-        {/* Daily Reward Button - Improved version */}
+        {/* Daily Reward Button - Fixed version */}
         {user && (
           <RewardButton
-            available={rewardStatus.available}
-            whileHover={rewardStatus.available ? { scale: 1.1 } : {}}
-            whileTap={rewardStatus.available ? { scale: 0.95 } : {}}
-            onClick={rewardStatus.available ? claimDailyReward : undefined}
-            disabled={!rewardStatus.available || rewardStatus.loading}
+            available={rewardStatus.checked && rewardStatus.available} // Only available if checked and actually available
+            whileHover={rewardStatus.available && rewardStatus.checked ? { scale: 1.1 } : {}}
+            whileTap={rewardStatus.available && rewardStatus.checked ? { scale: 0.95 } : {}}
+            onClick={rewardStatus.available && rewardStatus.checked ? claimDailyReward : undefined}
+            disabled={!rewardStatus.available || rewardStatus.loading || !rewardStatus.checked}
+            data-state={rewardStatus.loading ? 'loading' : rewardStatus.available ? 'available' : 'unavailable'}
           >
             {rewardStatus.loading ? (
               <LoadingSpinner />
-            ) : rewardStatus.available ? (
+            ) : rewardStatus.available && rewardStatus.checked ? (
               <>
                 <FaGift className="pulse-icon" />
                 <span>Claim Daily</span>
@@ -285,8 +301,6 @@ const Navigation = () => {
     </NavContainer>
   );
 };
-
-// Existing styled components...
 
 const NavContainer = styled.nav`
   display: flex;
