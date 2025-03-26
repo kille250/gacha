@@ -3,11 +3,11 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle } from 'react-icons/md';
 
-const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned }) => {
+const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned, onClaim }) => {
   const handleModalClick = (e) => {
     e.stopPropagation();
   };
-
+  
   return (
     <AnimatePresence>
       {isOpen && (
@@ -44,6 +44,12 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
               <RarityBadge rarity={rarity}>
                 {rarity}
               </RarityBadge>
+              
+              {onClaim && !isOwned && (
+                <ClaimButton onClick={onClaim}>
+                  Add to Collection
+                </ClaimButton>
+              )}
             </CharacterDetails>
           </ModalContent>
         </ModalOverlay>
@@ -79,7 +85,7 @@ const ModalContent = styled(motion.div)`
   display: flex;
   flex-direction: column;
   margin: 0 15px;
-
+  
   @media (max-width: 480px) {
     max-height: 80vh;
     margin: 0 10px;
@@ -103,11 +109,11 @@ const CloseButton = styled.button`
   z-index: 10;
   font-size: 24px;
   transition: background-color 0.2s;
-
+  
   &:hover {
     background-color: rgba(0, 0, 0, 0.5);
   }
-
+  
   @media (max-width: 480px) {
     width: 32px;
     height: 32px;
@@ -117,7 +123,7 @@ const CloseButton = styled.button`
 
 const OwnedBadge = styled.div`
   position: absolute;
-  bottom: 15px;
+  top: 15px;
   left: 15px;
   background: linear-gradient(135deg, #28a745, #20c997);
   color: white;
@@ -131,14 +137,16 @@ const OwnedBadge = styled.div`
   z-index: 5;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(2px);
-
+  
   svg {
     font-size: 18px;
   }
-
+  
   @media (max-width: 480px) {
     font-size: 12px;
     padding: 6px 12px;
+    top: 10px;
+    left: 10px;
   }
 `;
 
@@ -158,7 +166,7 @@ const ImageContainer = styled.div`
     };
     return rarityColors[props.rarity] || '#a0a0a0';
   }};
-
+  
   @media (max-width: 480px) {
     height: auto;
     max-height: 50vh;
@@ -169,7 +177,7 @@ const LargeImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: contain;
-
+  
   @media (max-width: 480px) {
     object-fit: contain;
   }
@@ -179,7 +187,7 @@ const CharacterDetails = styled.div`
   padding: 20px;
   position: relative;
   background: linear-gradient(to bottom, rgba(255, 255, 255, 0), rgba(255, 255, 255, 0.9));
-
+  
   @media (max-width: 480px) {
     padding: 15px;
   }
@@ -190,7 +198,8 @@ const CharacterName = styled.h2`
   font-size: 28px;
   color: #333;
   text-align: center;
-
+  margin-top: 10px;
+  
   @media (max-width: 480px) {
     font-size: 24px;
   }
@@ -227,10 +236,39 @@ const RarityBadge = styled.div`
   text-transform: uppercase;
   box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   white-space: nowrap;
-
+  
   @media (max-width: 480px) {
     font-size: 12px;
     padding: 4px 15px;
+  }
+`;
+
+const ClaimButton = styled.button`
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 30px;
+  padding: 10px 20px;
+  margin: 15px auto 5px auto;
+  display: block;
+  font-weight: bold;
+  font-size: 16px;
+  cursor: pointer;
+  box-shadow: 0 4px 10px rgba(118, 75, 162, 0.3);
+  transition: all 0.3s;
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(118, 75, 162, 0.4);
+  }
+  
+  &:active {
+    transform: translateY(0);
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 14px;
+    padding: 8px 16px;
   }
 `;
 
