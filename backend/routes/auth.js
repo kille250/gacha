@@ -144,7 +144,7 @@ router.post('/signup', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
 	try {
 	  const user = await User.findByPk(req.user.id, {
-		attributes: ['id', 'username', 'points', 'isAdmin']
+		attributes: ['id', 'username', 'points', 'isAdmin', 'lastDailyReward']
 	  });
 	  
 	  if (!user) {
