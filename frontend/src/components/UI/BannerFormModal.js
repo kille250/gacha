@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaImage, FaVideo, FaCalendar } from 'react-icons/fa';
+import { FaImage, FaVideo, FaCalendar, FaSearch } from 'react-icons/fa';
 
 const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [formData, setFormData] = useState({
@@ -15,24 +15,27 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     active: true,
     selectedCharacters: []
   });
-  
   const [imageFile, setImageFile] = useState(null);
   const [videoFile, setVideoFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
-  
+  const [characterSearch, setCharacterSearch] = useState('');
+
+  // Filter characters based on search term
+  const filteredCharacters = characters.filter(char => 
+    char.name.toLowerCase().includes(characterSearch.toLowerCase())
+  );
+
   // Reset and populate form when banner changes
   useEffect(() => {
     if (banner) {
       // Format dates for input fields
-      const startDate = banner.startDate 
-        ? new Date(banner.startDate).toISOString().split('T')[0] 
+      const startDate = banner.startDate
+        ? new Date(banner.startDate).toISOString().split('T')[0]
         : new Date().toISOString().split('T')[0];
-        
-      const endDate = banner.endDate 
-        ? new Date(banner.endDate).toISOString().split('T')[0] 
+      const endDate = banner.endDate
+        ? new Date(banner.endDate).toISOString().split('T')[0]
         : '';
-      
       setFormData({
         name: banner.name || '',
         description: banner.description || '',
@@ -41,15 +44,14 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
         endDate,
         featured: banner.featured || false,
         costMultiplier: banner.costMultiplier || 1.5,
-        rateMultiplier: banner.rateMultiplier || 5.0, 
+        rateMultiplier: banner.rateMultiplier || 5.0,
         active: banner.active !== false,
         selectedCharacters: banner.Characters?.map(char => char.id) || []
       });
-      
       // Set previews if available
       if (banner.image) {
-        const imageUrl = banner.image.startsWith('http') 
-          ? banner.image 
+        const imageUrl = banner.image.startsWith('http')
+          ? banner.image
           : banner.image.startsWith('/uploads')
             ? `https://gachaapi.solidbooru.online${banner.image}`
             : `/images/banners/${banner.image}`;
@@ -57,10 +59,9 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       } else {
         setImagePreview(null);
       }
-      
       if (banner.videoUrl) {
-        const videoUrl = banner.videoUrl.startsWith('http') 
-          ? banner.videoUrl 
+        const videoUrl = banner.videoUrl.startsWith('http')
+          ? banner.videoUrl
           : banner.videoUrl.startsWith('/uploads')
             ? `https://gachaapi.solidbooru.online${banner.videoUrl}`
             : `/videos/${banner.videoUrl}`;
@@ -85,11 +86,11 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       setImagePreview(null);
       setVideoPreview(null);
     }
-    
     setImageFile(null);
     setVideoFile(null);
+    setCharacterSearch(''); // Reset search when modal opens/changes
   }, [banner, show]);
-  
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -97,11 +98,10 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       [name]: type === 'checkbox' ? checked : value
     }));
   };
-  
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     setImageFile(file);
-    
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -110,11 +110,10 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       reader.readAsDataURL(file);
     }
   };
-  
+
   const handleVideoChange = (e) => {
     const file = e.target.files[0];
     setVideoFile(file);
-    
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -123,11 +122,10 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       reader.readAsDataURL(file);
     }
   };
-  
+
   const handleCharacterToggle = (charId) => {
     setFormData(prev => {
       const selectedCharacters = [...prev.selectedCharacters];
-      
       if (selectedCharacters.includes(charId)) {
         return {
           ...prev,
@@ -141,12 +139,10 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       }
     });
   };
-  
+
   const handleSubmit = (e) => {
     e.preventDefault();
-    
     const submitData = new FormData();
-    
     // Add all form fields
     Object.keys(formData).forEach(key => {
       if (key === 'selectedCharacters') {
@@ -157,21 +153,18 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
         submitData.append(key, formData[key]);
       }
     });
-    
     // Add files if present
     if (imageFile) {
       submitData.append('image', imageFile);
     }
-    
     if (videoFile) {
       submitData.append('video', videoFile);
     }
-    
     onSubmit(submitData);
   };
-  
+
   if (!show) return null;
-  
+
   return (
     <ModalOverlay>
       <ModalContent>
@@ -179,78 +172,72 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
           <h3>{banner ? 'Edit Banner' : 'Create New Banner'}</h3>
           <CloseButton onClick={onClose}>&times;</CloseButton>
         </ModalHeader>
-        
         <ModalBody>
           <form onSubmit={handleSubmit}>
             <FormGroup>
               <label>Banner Name*</label>
-              <input 
-                type="text" 
-                name="name" 
-                value={formData.name} 
-                onChange={handleChange} 
-                required 
+              <input
+                type="text"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                required
               />
             </FormGroup>
-            
             <FormGroup>
               <label>Series*</label>
-              <input 
-                type="text" 
-                name="series" 
-                value={formData.series} 
-                onChange={handleChange} 
-                required 
+              <input
+                type="text"
+                name="series"
+                value={formData.series}
+                onChange={handleChange}
+                required
               />
             </FormGroup>
-            
             <FormGroup>
               <label>Description</label>
-              <textarea 
-                name="description" 
-                value={formData.description} 
-                onChange={handleChange} 
+              <textarea
+                name="description"
+                value={formData.description}
+                onChange={handleChange}
                 rows={3}
               />
             </FormGroup>
-            
             <FormRow>
               <FormGroup>
                 <label>Start Date*</label>
                 <DateInput>
                   <FaCalendar />
-                  <input 
-                    type="date" 
-                    name="startDate" 
-                    value={formData.startDate} 
-                    onChange={handleChange} 
-                    required 
+                  <input
+                    type="date"
+                    name="startDate"
+                    value={formData.startDate}
+                    onChange={handleChange}
+                    required
                   />
                 </DateInput>
               </FormGroup>
-              
               <FormGroup>
                 <label>End Date (optional)</label>
                 <DateInput>
                   <FaCalendar />
-                  <input 
-                    type="date" 
-                    name="endDate" 
-                    value={formData.endDate} 
-                    onChange={handleChange} 
+                  <input
+                    type="date"
+                    name="endDate"
+                    value={formData.endDate}
+                    onChange={handleChange}
                   />
                 </DateInput>
               </FormGroup>
             </FormRow>
-            
             <FormRow>
               <FormGroup>
                 <label>Cost Multiplier</label>
-                <input 
-                  type="number" 
-                  name="costMultiplier" 
-                  value={formData.costMultiplier} 
-                  onChange={handleChange} 
+                <input
+                  type="number"
+                  name="costMultiplier"
+                  value={formData.costMultiplier}
+                  onChange={handleChange}
                   step="0.1"
                   min="1"
                   max="10"
@@ -259,14 +246,13 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   Standard pull = 100 points, this banner = {Math.floor(100 * formData.costMultiplier)} points
                 </FormHint>
               </FormGroup>
-              
               <FormGroup>
                 <label>Rate Multiplier</label>
-                <input 
-                  type="number" 
-                  name="rateMultiplier" 
-                  value={formData.rateMultiplier} 
-                  onChange={handleChange} 
+                <input
+                  type="number"
+                  name="rateMultiplier"
+                  value={formData.rateMultiplier}
+                  onChange={handleChange}
                   step="0.1"
                   min="1"
                   max="10"
@@ -276,37 +262,34 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                 </FormHint>
               </FormGroup>
             </FormRow>
-            
             <CheckboxGroup>
               <CheckboxControl>
-                <input 
-                  type="checkbox" 
-                  id="featured" 
-                  name="featured" 
-                  checked={formData.featured} 
-                  onChange={handleChange} 
+                <input
+                  type="checkbox"
+                  id="featured"
+                  name="featured"
+                  checked={formData.featured}
+                  onChange={handleChange}
                 />
                 <label htmlFor="featured">Featured Banner (shown first)</label>
               </CheckboxControl>
-              
               <CheckboxControl>
-                <input 
-                  type="checkbox" 
-                  id="active" 
-                  name="active" 
-                  checked={formData.active} 
-                  onChange={handleChange} 
+                <input
+                  type="checkbox"
+                  id="active"
+                  name="active"
+                  checked={formData.active}
+                  onChange={handleChange}
                 />
                 <label htmlFor="active">Active</label>
               </CheckboxControl>
             </CheckboxGroup>
-            
             <FormGroup>
               <label>Banner Image</label>
               <FileInput>
                 <FaImage />
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   accept="image/*"
                   onChange={handleImageChange}
                   required={!banner} // Required only for new banner
@@ -318,13 +301,12 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                 </ImagePreview>
               )}
             </FormGroup>
-            
             <FormGroup>
               <label>Promotional Video (optional)</label>
               <FileInput>
                 <FaVideo />
-                <input 
-                  type="file" 
+                <input
+                  type="file"
                   accept="video/*"
                   onChange={handleVideoChange}
                 />
@@ -335,46 +317,62 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                 </VideoPreview>
               )}
             </FormGroup>
-            
             <FormGroup>
               <label>Banner Characters</label>
               <FormHint>Select characters that are featured in this banner</FormHint>
-              
               <CharacterSelector>
-                <SelectedCount>
-                  {formData.selectedCharacters.length} characters selected
-                </SelectedCount>
-                
+                <SelectorHeader>
+                  <SelectedCount>
+                    {formData.selectedCharacters.length} characters selected
+                  </SelectedCount>
+                  <SearchWrapper>
+                    <SearchIcon>
+                      <FaSearch />
+                    </SearchIcon>
+                    <SearchInput
+                      type="text"
+                      placeholder="Search characters..."
+                      value={characterSearch}
+                      onChange={(e) => setCharacterSearch(e.target.value)}
+                    />
+                    {characterSearch && (
+                      <ClearButton onClick={() => setCharacterSearch('')}>×</ClearButton>
+                    )}
+                  </SearchWrapper>
+                </SelectorHeader>
                 <CharacterGrid>
-                  {characters.map(char => (
-                    <CharacterOption 
-                      key={char.id}
-                      selected={formData.selectedCharacters.includes(char.id)}
-                      rarity={char.rarity}
-                      onClick={() => handleCharacterToggle(char.id)}
-                    >
-                      <CharOptionImage 
-                        src={getImageUrl(char.image)}
-                        alt={char.name}
-                        onError={(e) => {
-                          if (!e.target.src.includes('placeholder.com')) {
-                            e.target.src = 'https://via.placeholder.com/150?text=No+Image';
-                          }
-                        }}
-                      />
-                      <CharOptionInfo>
-                        <CharOptionName>{char.name}</CharOptionName>
-                        <CharOptionRarity>{char.rarity}</CharOptionRarity>
-                      </CharOptionInfo>
-                      <CharOptionCheck>
-                        {formData.selectedCharacters.includes(char.id) && '✓'}
-                      </CharOptionCheck>
-                    </CharacterOption>
-                  ))}
+                  {filteredCharacters.length > 0 ? (
+                    filteredCharacters.map(char => (
+                      <CharacterOption
+                        key={char.id}
+                        selected={formData.selectedCharacters.includes(char.id)}
+                        rarity={char.rarity}
+                        onClick={() => handleCharacterToggle(char.id)}
+                      >
+                        <CharOptionImage
+                          src={getImageUrl(char.image)}
+                          alt={char.name}
+                          onError={(e) => {
+                            if (!e.target.src.includes('placeholder.com')) {
+                              e.target.src = 'https://via.placeholder.com/150?text=No+Image';
+                            }
+                          }}
+                        />
+                        <CharOptionInfo>
+                          <CharOptionName>{char.name}</CharOptionName>
+                          <CharOptionRarity>{char.rarity}</CharOptionRarity>
+                        </CharOptionInfo>
+                        <CharOptionCheck>
+                          {formData.selectedCharacters.includes(char.id) && '✓'}
+                        </CharOptionCheck>
+                      </CharacterOption>
+                    ))
+                  ) : (
+                    <NoResults>No characters found matching "{characterSearch}"</NoResults>
+                  )}
                 </CharacterGrid>
               </CharacterSelector>
             </FormGroup>
-            
             <ButtonGroup>
               <SubmitButton type="submit">
                 {banner ? 'Update Banner' : 'Create Banner'}
@@ -422,7 +420,6 @@ const ModalHeader = styled.div`
   align-items: center;
   padding: 15px 20px;
   border-bottom: 1px solid #eee;
-  
   h3 {
     margin: 0;
     color: #333;
@@ -435,7 +432,6 @@ const CloseButton = styled.button`
   font-size: 24px;
   cursor: pointer;
   color: #777;
-  
   &:hover {
     color: #333;
   }
@@ -447,18 +443,16 @@ const ModalBody = styled.div`
 
 const FormGroup = styled.div`
   margin-bottom: 20px;
-  
   label {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
     color: #333;
   }
-  
-  input[type="text"], 
+  input[type="text"],
   input[type="number"],
   input[type="date"],
-  textarea, 
+  textarea,
   select {
     width: 100%;
     padding: 10px;
@@ -466,7 +460,6 @@ const FormGroup = styled.div`
     border-radius: 4px;
     font-size: 14px;
   }
-  
   textarea {
     resize: vertical;
     min-height: 80px;
@@ -477,12 +470,10 @@ const FormRow = styled.div`
   display: flex;
   gap: 20px;
   margin-bottom: 20px;
-  
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 10px;
   }
-  
   ${FormGroup} {
     flex: 1;
     margin-bottom: 0;
@@ -495,17 +486,14 @@ const DateInput = styled.div`
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 0 10px;
-  
   svg {
     color: #666;
     margin-right: 10px;
   }
-  
   input {
     border: none;
     flex: 1;
     padding: 10px 0;
-    
     &:focus {
       outline: none;
     }
@@ -518,13 +506,11 @@ const FileInput = styled.div`
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 0 10px;
-  
   svg {
     color: #666;
     margin-right: 10px;
     font-size: 18px;
   }
-  
   input {
     flex: 1;
     padding: 10px 0;
@@ -535,7 +521,6 @@ const CheckboxGroup = styled.div`
   display: flex;
   gap: 20px;
   margin-bottom: 20px;
-  
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 10px;
@@ -545,11 +530,9 @@ const CheckboxGroup = styled.div`
 const CheckboxControl = styled.div`
   display: flex;
   align-items: center;
-  
   input {
     margin-right: 8px;
   }
-  
   label {
     margin: 0;
     display: inline;
@@ -566,7 +549,6 @@ const FormHint = styled.p`
 const ImagePreview = styled.div`
   margin-top: 10px;
   width: 100%;
-  
   img {
     max-width: 100%;
     max-height: 250px;
@@ -578,7 +560,6 @@ const ImagePreview = styled.div`
 const VideoPreview = styled.div`
   margin-top: 10px;
   width: 100%;
-  
   video {
     max-width: 100%;
     max-height: 250px;
@@ -607,7 +588,6 @@ const BaseButton = styled.button`
 const SubmitButton = styled(BaseButton)`
   background-color: #3498db;
   color: white;
-  
   &:hover {
     background-color: #2980b9;
   }
@@ -616,7 +596,6 @@ const SubmitButton = styled(BaseButton)`
 const CancelButton = styled(BaseButton)`
   background-color: #f1f1f1;
   color: #333;
-  
   &:hover {
     background-color: #ddd;
   }
@@ -630,12 +609,59 @@ const CharacterSelector = styled.div`
   overflow-y: auto;
 `;
 
-const SelectedCount = styled.div`
+const SelectorHeader = styled.div`
   padding: 10px;
   background-color: #f8f9fa;
   border-bottom: 1px solid #ddd;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const SelectedCount = styled.div`
   font-size: 13px;
   color: #666;
+`;
+
+const SearchWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  position: relative;
+  background-color: white;
+  border-radius: 4px;
+  border: 1px solid #ddd;
+  overflow: hidden;
+`;
+
+const SearchIcon = styled.div`
+  padding: 0 10px;
+  color: #666;
+  display: flex;
+  align-items: center;
+`;
+
+const SearchInput = styled.input`
+  flex: 1;
+  border: none;
+  padding: 8px 0;
+  font-size: 14px;
+  
+  &:focus {
+    outline: none;
+  }
+`;
+
+const ClearButton = styled.button`
+  background: none;
+  border: none;
+  color: #999;
+  font-size: 18px;
+  cursor: pointer;
+  padding: 0 10px;
+  
+  &:hover {
+    color: #666;
+  }
 `;
 
 const CharacterGrid = styled.div`
@@ -643,6 +669,13 @@ const CharacterGrid = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px;
   padding: 10px;
+`;
+
+const NoResults = styled.div`
+  padding: 20px;
+  text-align: center;
+  color: #666;
+  grid-column: 1 / -1;
 `;
 
 const rarityColors = {
@@ -661,7 +694,6 @@ const CharacterOption = styled.div`
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
-  
   &:hover {
     transform: translateY(-3px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
@@ -711,19 +743,15 @@ const CharOptionCheck = styled.div`
 
 const getImageUrl = (imagePath) => {
   if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
-  
   if (imagePath.startsWith('http')) {
     return imagePath;
   }
-  
   if (imagePath.startsWith('/uploads')) {
     return `https://gachaapi.solidbooru.online${imagePath}`;
   }
-  
   if (imagePath.startsWith('image-')) {
     return `https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
   }
-  
   return imagePath.includes('/') ? imagePath : `/images/characters/${imagePath}`;
 };
 
