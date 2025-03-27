@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { getCollection, getAllCharacters } from '../utils/api';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
+import { FaSearch } from 'react-icons/fa';
 
 const CollectionPage = () => {
   const [collection, setCollection] = useState([]);
@@ -15,6 +16,9 @@ const CollectionPage = () => {
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChar, setPreviewChar] = useState(null);
   const [uniqueSeries, setUniqueSeries] = useState([]);
+  const [searchQuery, setSearchQuery] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage, setItemsPerPage] = useState(20);
   
   useEffect(() => {
     fetchData();
@@ -41,6 +45,20 @@ const CollectionPage = () => {
       setError(err.response?.data?.error || 'Failed to load data');
       setLoading(false);
     }
+  };
+
+  const handleSearchChange = (e) => {
+    setSearchQuery(e.target.value);
+    setCurrentPage(1);
+  };
+
+  const handleItemsPerPageChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  const handlePageChange = (newPage) => {
+    setCurrentPage(Math.max(1, Math.min(totalPages, newPage)));
   };
   
   const openPreview = (character) => {
@@ -69,7 +87,6 @@ const CollectionPage = () => {
     
     return `/images/characters/${imageSrc}`;
   };
-
   // Create a map of owned character IDs for quick lookup
   const ownedCharIds = new Set(collection.map(char => char.id));
   
@@ -95,10 +112,24 @@ const CollectionPage = () => {
       characters = characters.filter(char => char.series === seriesFilter);
     }
     
+    // Apply search filter
+    if (searchQuery.trim() !== '') {
+      const query = searchQuery.toLowerCase();
+      characters = characters.filter(char => 
+        char.name.toLowerCase().includes(query) || 
+        (char.series && char.series.toLowerCase().includes(query))
+      );
+    }
+    
     return characters;
   };
 
   const filteredCharacters = getFilteredCharacters();
+  const totalPages = Math.ceil(filteredCharacters.length / itemsPerPage);
+  const indexOfLastItem = currentPage * itemsPerPage;
+  const indexOfFirstItem = indexOfLastItem - itemsPerPage;
+  const currentCharacters = filteredCharacters.slice(indexOfFirstItem, indexOfLastItem);
+
   const ownedCount = collection.length;
   const totalCount = allCharacters.length;
   const completionPercentage = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
@@ -201,6 +232,27 @@ const CollectionPage = () => {
             ))}
           </SeriesFilterContainer>
         </FilterSection>
+        
+        <SearchFilterSection>
+          <SearchInputWrapper>
+            <FaSearch />
+            <SearchInput
+              type="text"
+              placeholder="Search characters..."
+              value={searchQuery}
+              onChange={handleSearchChange}
+            />
+          </SearchInputWrapper>
+          <ItemsPerPageSelect
+            value={itemsPerPage}
+            onChange={handleItemsPerPageChange}
+          >
+            <option value="20">20 per page</option>
+            <option value="40">40 per page</option>
+            <option value="60">60 per page</option>
+            <option value="100">100 per page</option>
+          </ItemsPerPageSelect>
+        </SearchFilterSection>
       </CollectionHeader>
       
       {error && <ErrorMessage>{error}</ErrorMessage>}
@@ -218,10 +270,10 @@ const CollectionPage = () => {
       ) : (
         <>
           <ResultCount>
-            Showing {filteredCharacters.length} character{filteredCharacters.length !== 1 ? 's' : ''}
+            Showing {currentCharacters.length} of {filteredCharacters.length} character{filteredCharacters.length !== 1 ? 's' : ''}
           </ResultCount>
           <CharacterGrid>
-            {filteredCharacters.map((char) => {
+            {currentCharacters.map((char) => {
               const isOwned = ownedCharIds.has(char.id);
               return (
                 <CharacterItem
@@ -258,6 +310,26 @@ const CollectionPage = () => {
               );
             })}
           </CharacterGrid>
+          
+          <PaginationContainer>
+            <PaginationButton 
+              onClick={() => handlePageChange(currentPage - 1)}
+              disabled={currentPage === 1}
+            >
+              Previous
+            </PaginationButton>
+            
+            <PageInfo>
+              Page {currentPage} of {totalPages}
+            </PageInfo>
+            
+            <PaginationButton 
+              onClick={() => handlePageChange(currentPage + 1)}
+              disabled={currentPage === totalPages}
+            >
+              Next
+            </PaginationButton>
+          </PaginationContainer>
         </>
       )}
       
@@ -273,14 +345,12 @@ const CollectionPage = () => {
     </CollectionContainer>
   );
 };
-
 // Styled Components
 const CollectionContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
   padding: 20px;
 `;
-
 const CollectionHeader = styled.div`
   text-align: center;
   margin-bottom: 30px;
@@ -292,7 +362,6 @@ const CollectionHeader = styled.div`
     text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
   }
 `;
-
 const CollectionStats = styled.div`
   display: flex;
   flex-direction: column;
@@ -304,23 +373,19 @@ const CollectionStats = styled.div`
   max-width: 600px;
   margin: 0 auto 25px auto;
 `;
-
 const StatItem = styled.div`
   margin: 5px 0;
   width: 100%;
 `;
-
 const StatValue = styled.div`
   font-size: 18px;
   font-weight: bold;
   margin-bottom: 5px;
 `;
-
 const StatLabel = styled.div`
   font-size: 14px;
   opacity: 0.8;
 `;
-
 const ProgressBar = styled.div`
   width: 100%;
   height: 20px;
@@ -341,7 +406,6 @@ const ProgressBar = styled.div`
     transition: width 0.5s ease;
   }
 `;
-
 const ProgressText = styled.div`
   position: absolute;
   top: 0;
@@ -355,28 +419,24 @@ const ProgressText = styled.div`
   font-weight: bold;
   text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
 `;
-
 const FilterSection = styled.div`
   margin-bottom: 20px;
   background: rgba(0, 0, 0, 0.1);
   padding: 15px;
   border-radius: 10px;
 `;
-
 const FilterLabel = styled.div`
   font-size: 14px;
   margin-bottom: 10px;
   font-weight: 500;
   color: rgba(255, 255, 255, 0.9);
 `;
-
 const FilterContainer = styled.div`
   display: flex;
   justify-content: center;
   gap: 10px;
   flex-wrap: wrap;
 `;
-
 const SeriesFilterContainer = styled.div`
   display: flex;
   justify-content: center;
@@ -385,7 +445,6 @@ const SeriesFilterContainer = styled.div`
   max-width: 800px;
   margin: 0 auto;
 `;
-
 const OwnershipToggle = styled.div`
   display: flex;
   justify-content: center;
@@ -394,7 +453,6 @@ const OwnershipToggle = styled.div`
   margin: 0 auto;
   max-width: 600px;
 `;
-
 const OwnershipButton = styled.button`
   background: ${props => props.active ? 
     (props.color || 'rgba(255, 255, 255, 0.3)') : 
@@ -416,7 +474,6 @@ const OwnershipButton = styled.button`
     opacity: 1;
   }
 `;
-
 const FilterButton = styled.button`
   background: ${props => props.active ? 
     (props.color ? props.color : 'rgba(255, 255, 255, 0.2)') : 
@@ -435,20 +492,17 @@ const FilterButton = styled.button`
     opacity: 1;
   }
 `;
-
 const SeriesFilterButton = styled(FilterButton)`
   font-size: 12px;
   padding: 6px 12px;
   margin-bottom: 5px;
 `;
-
 const ResultCount = styled.div`
   text-align: center;
   color: rgba(255, 255, 255, 0.7);
   margin-bottom: 20px;
   font-size: 14px;
 `;
-
 const CharacterGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
@@ -456,7 +510,6 @@ const CharacterGrid = styled.div`
   max-width: 1200px;
   margin: 0 auto;
 `;
-
 const rarityColors = {
   common: '#a0a0a0',
   uncommon: '#4caf50',
@@ -464,7 +517,6 @@ const rarityColors = {
   epic: '#9c27b0',
   legendary: '#ff9800'
 };
-
 const CharacterItem = styled(motion.div)`
   background: rgba(255, 255, 255, ${props => props.isOwned ? 0.9 : 0.5});
   border-radius: 12px;
@@ -474,7 +526,6 @@ const CharacterItem = styled(motion.div)`
   transition: transform 0.3s;
   position: relative;
 `;
-
 const NotOwnedBadge = styled.div`
   position: absolute;
   top: 0;
@@ -491,11 +542,9 @@ const NotOwnedBadge = styled.div`
   justify-content: center;
   gap: 6px;
 `;
-
 const NotOwnedIcon = styled.span`
   font-size: 14px;
 `;
-
 const CharImage = styled.img`
   width: 100%;
   height: 200px;
@@ -509,26 +558,22 @@ const CharImage = styled.img`
     filter: ${props => props.isOwned ? 'none' : 'grayscale(40%)'};
   }
 `;
-
 const CharDetails = styled.div`
   padding: 15px;
   position: relative;
   opacity: ${props => props.isOwned ? 1 : 0.8};
 `;
-
 const CharName = styled.h3`
   margin: 0 0 5px 0;
   font-size: 18px;
   color: ${props => props.isOwned ? '#333' : '#555'};
 `;
-
 const CharSeries = styled.p`
   margin: 0;
   font-size: 14px;
   color: ${props => props.isOwned ? '#777' : '#999'};
   font-style: italic;
 `;
-
 const RarityTag = styled.span`
   position: absolute;
   top: -12px;
@@ -541,7 +586,6 @@ const RarityTag = styled.span`
   text-transform: uppercase;
   font-weight: bold;
 `;
-
 const LoadingContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -555,7 +599,6 @@ const LoadingContainer = styled.div`
     font-size: 18px;
   }
 `;
-
 const Spinner = styled.div`
   width: 50px;
   height: 50px;
@@ -568,7 +611,6 @@ const Spinner = styled.div`
     to { transform: rotate(360deg); }
   }
 `;
-
 const EmptyCollection = styled.div`
   text-align: center;
   background: rgba(255, 255, 255, 0.1);
@@ -588,7 +630,6 @@ const EmptyCollection = styled.div`
     opacity: 0.8;
   }
 `;
-
 const ErrorMessage = styled.div`
   background: rgba(220, 53, 69, 0.9);
   color: white;
@@ -596,6 +637,114 @@ const ErrorMessage = styled.div`
   border-radius: 8px;
   margin: 20px auto;
   max-width: 600px;
+  text-align: center;
+`;
+
+const SearchFilterSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin: 20px 0;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  padding: 15px;
+  
+  @media (min-width: 768px) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+  }
+`;
+
+const SearchInputWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 25px;
+  padding: 8px 15px;
+  flex-grow: 1;
+  max-width: 500px;
+  margin: 0 auto;
+  width: 100%;
+  
+  svg {
+    color: #555;
+    margin-right: 8px;
+  }
+  
+  @media (min-width: 768px) {
+    margin: 0;
+  }
+`;
+
+const SearchInput = styled.input`
+  background: transparent;
+  border: none;
+  outline: none;
+  color: #333;
+  font-size: 16px;
+  width: 100%;
+  padding: 5px 0;
+  
+  &::placeholder {
+    color: #999;
+  }
+`;
+
+const ItemsPerPageSelect = styled.select`
+  padding: 10px 15px;
+  border-radius: 25px;
+  border: none;
+  background: rgba(255, 255, 255, 0.9);
+  color: #333;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  max-width: 200px;
+  margin: 0 auto;
+  width: 100%;
+  
+  @media (min-width: 768px) {
+    margin: 0;
+    width: auto;
+  }
+`;
+
+const PaginationContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: 15px;
+  margin: 30px 0;
+  flex-wrap: wrap;
+`;
+
+const PaginationButton = styled.button`
+  padding: 10px 20px;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-radius: 25px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 14px;
+  font-weight: 500;
+  
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.2);
+    transform: translateY(-2px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const PageInfo = styled.span`
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  min-width: 120px;
   text-align: center;
 `;
 
