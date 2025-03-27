@@ -221,84 +221,86 @@ const Navigation = () => {
   };
   
   return (
-    <NavContainer>
-      <NavLinks>
-        <NavItem
-          isActive={location.pathname === '/gacha'}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <StyledLink to="/gacha">
-            <MdDashboard />
-            <span>Gacha</span>
-          </StyledLink>
-        </NavItem>
-        
-        <NavItem
-          isActive={location.pathname === '/collection'}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <StyledLink to="/collection">
-            <MdCollections />
-            <span>Collection</span>
-          </StyledLink>
-        </NavItem>
-        
-        {user?.isAdmin && (
+    <>
+      <NavContainer>
+        <NavLinks>
           <NavItem
-            isActive={location.pathname === '/admin'}
+            isActive={location.pathname === '/gacha'}
             whileHover={{ scale: 1.1 }}
             whileTap={{ scale: 0.95 }}
           >
-            <StyledLink to="/admin">
-              <MdSettings />
-              <span>Admin</span>
+            <StyledLink to="/gacha">
+              <MdDashboard />
+              <span>Gacha</span>
             </StyledLink>
           </NavItem>
-        )}
-      </NavLinks>
-      
-      <UserControls>
-        {/* Hourly Reward Button */}
-        {user && (
-          <RewardButton
-            available={rewardStatus.checked && rewardStatus.available}
-            whileHover={rewardStatus.available && rewardStatus.checked ? { scale: 1.1 } : {}}
-            whileTap={rewardStatus.available && rewardStatus.checked ? { scale: 0.95 } : {}}
-            onClick={rewardStatus.available && rewardStatus.checked ? claimHourlyReward : undefined}
-            disabled={!rewardStatus.available || rewardStatus.loading || !rewardStatus.checked}
-            data-state={rewardStatus.loading ? 'loading' : rewardStatus.available ? 'available' : 'unavailable'}
+          
+          <NavItem
+            isActive={location.pathname === '/collection'}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
           >
-            {rewardStatus.loading ? (
-              <LoadingSpinner />
-            ) : rewardStatus.available && rewardStatus.checked ? (
-              <>
-                <FaGift className="pulse-icon" />
-                <span>Claim Hourly</span>
-              </>
-            ) : (
-              <>
-                <MdAccessTimeFilled />
-                <TimeRemaining>{rewardStatus.timeRemaining || "Wait..."}</TimeRemaining>
-              </>
-            )}
-          </RewardButton>
-        )}
+            <StyledLink to="/collection">
+              <MdCollections />
+              <span>Collection</span>
+            </StyledLink>
+          </NavItem>
+          
+          {user?.isAdmin && (
+            <NavItem
+              isActive={location.pathname === '/admin'}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <StyledLink to="/admin">
+                <MdSettings />
+                <span>Admin</span>
+              </StyledLink>
+            </NavItem>
+          )}
+        </NavLinks>
         
-        <Username>{user?.username || 'User'}</Username>
-        
-        <LogoutButton 
-          onClick={handleLogout}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.95 }}
-        >
-          <MdExitToApp />
-          <span>Logout</span>
-        </LogoutButton>
-      </UserControls>
+        <UserControls>
+          {/* Hourly Reward Button */}
+          {user && (
+            <RewardButton
+              available={rewardStatus.checked && rewardStatus.available}
+              whileHover={rewardStatus.available && rewardStatus.checked ? { scale: 1.1 } : {}}
+              whileTap={rewardStatus.available && rewardStatus.checked ? { scale: 0.95 } : {}}
+              onClick={rewardStatus.available && rewardStatus.checked ? claimHourlyReward : undefined}
+              disabled={!rewardStatus.available || rewardStatus.loading || !rewardStatus.checked}
+              data-state={rewardStatus.loading ? 'loading' : rewardStatus.available ? 'available' : 'unavailable'}
+            >
+              {rewardStatus.loading ? (
+                <LoadingSpinner />
+              ) : rewardStatus.available && rewardStatus.checked ? (
+                <>
+                  <FaGift className="pulse-icon" />
+                  <span>Claim Hourly</span>
+                </>
+              ) : (
+                <>
+                  <MdAccessTimeFilled />
+                  <TimeRemaining>{rewardStatus.timeRemaining || "Wait..."}</TimeRemaining>
+                </>
+              )}
+            </RewardButton>
+          )}
+          
+          <Username>{user?.username || 'User'}</Username>
+          
+          <LogoutButton 
+            onClick={handleLogout}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <MdExitToApp />
+            <span>Logout</span>
+          </LogoutButton>
+        </UserControls>
+      </NavContainer>
       
-      {/* Success Popup */}
+      {/* Success Popup - Moved outside NavContainer */}
       <AnimatePresence>
         {rewardPopup.show && (
           <RewardPopup
@@ -315,7 +317,7 @@ const Navigation = () => {
           </RewardPopup>
         )}
       </AnimatePresence>
-    </NavContainer>
+    </>
   );
 };
 
@@ -333,7 +335,6 @@ const NavContainer = styled.nav`
   width: 100%;
   box-sizing: border-box;
   max-width: 100vw;
-  overflow: hidden;
   
   @media (max-width: 768px) {
     padding: 12px 15px;
@@ -526,7 +527,7 @@ const LoadingSpinner = styled.div`
 
 const RewardPopup = styled(motion.div)`
   position: fixed;
-  top: 80px;
+  top: 100px; // Increased to position below navbar
   left: 50%;
   transform: translateX(-50%);
   background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
