@@ -20,7 +20,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdClose, MdHelp } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy, FaArrowRight } from 'react-icons/fa';
 import axios from 'axios';
-import { rollCharacter, claimCharacter, getActiveBanners } from '../utils/api';
+import { rollCharacter, getActiveBanners } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import confetti from 'canvas-confetti';
@@ -168,6 +168,7 @@ const GachaPage = () => {
           setShowCard(true);
           setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
           await refreshUser();
+          await fetchUserCollection();
         } catch (err) {
           setError(err.response?.data?.error || 'Failed to roll character');
         } finally {
@@ -210,6 +211,7 @@ const GachaPage = () => {
           }
           
           await refreshUser();
+          await fetchUserCollection();
         } catch (err) {
           setError(err.response?.data?.error || 'Failed to roll multiple characters');
         } finally {
@@ -235,17 +237,6 @@ const GachaPage = () => {
       const currentIndex = rarityOrder.indexOf(char.rarity);
       return currentIndex > rarityOrder.indexOf(best) ? char.rarity : best;
     }, 'common');
-  };
-  
-  const handleClaim = async (characterId) => {
-    try {
-      await claimCharacter(characterId);
-      confetti({ particleCount: 50, spread: 30, origin: { y: 0.7 }, colors: ['#1abc9c', '#3498db', '#2ecc71'] });
-      await refreshUser();
-      await fetchUserCollection();
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to claim character');
-    }
   };
   
   const getImagePath = (imageSrc) => {
@@ -447,7 +438,7 @@ const GachaPage = () => {
               >
                 <CardImageContainer>
                   <RarityGlow rarity={currentChar?.rarity} />
-                  {isCharacterInCollection(currentChar) && <CollectionBadge>In Collection</CollectionBadge>}
+                  <CollectionBadge>Added to Collection</CollectionBadge> {/* Always show this now */}
                   <CardImage 
                     src={getImagePath(currentChar?.image)} 
                     alt={currentChar?.name}
@@ -472,19 +463,12 @@ const GachaPage = () => {
                 </CardContent>
                 
                 <CardActions>
+                  {/* Replace claim button with info */}
                   <ActionButton 
-                    onClick={() => handleClaim(currentChar.id)} 
-                    disabled={!currentChar || isCharacterInCollection(currentChar)}
-                    primary={!isCharacterInCollection(currentChar)}
-                    owned={isCharacterInCollection(currentChar)}
-                    whileHover={{ scale: isCharacterInCollection(currentChar) ? 1.0 : 1.05 }}
-                    whileTap={{ scale: isCharacterInCollection(currentChar) ? 1.0 : 0.95 }}
+                    primary={true}
+                    disabled={true}
                   >
-                    {isCharacterInCollection(currentChar) ? (
-                      <><MdCheckCircle /> Already Owned</>
-                    ) : (
-                      <><MdFavorite /> Claim</>
-                    )}
+                    <><MdCheckCircle /> Added to Collection</>
                   </ActionButton>
                   <ActionButton 
                     onClick={handleRoll} 
@@ -519,7 +503,7 @@ const GachaPage = () => {
                     >
                       <MultiCardImageContainer onClick={() => openPreview(character)}>
                         <RarityGlowMulti rarity={character.rarity} />
-                        {isCharacterInCollection(character) && <CollectionBadgeMini>✓</CollectionBadgeMini>}
+                        <CollectionBadgeMini>✓</CollectionBadgeMini> {/* Always show this for all characters */}
                         <MultiCardImage 
                           src={getImagePath(character.image)} 
                           alt={character.name}
@@ -538,13 +522,9 @@ const GachaPage = () => {
                         </MultiRarityBadge>
                       </MultiCardContent>
                       
-                      <MultiCardClaimButton
-                        disabled={isCharacterInCollection(character)} 
-                        onClick={() => handleClaim(character.id)}
-                        owned={isCharacterInCollection(character)}
-                        whileHover={isCharacterInCollection(character) ? {} : { scale: 1.05 }}
-                      >
-                        {isCharacterInCollection(character) ? "Owned" : "Claim"}
+                      {/* Replace claim button with info */}
+                      <MultiCardClaimButton disabled={true}>
+                        Collected
                       </MultiCardClaimButton>
                     </EnhancedMultiCharacterCard>
                   ))}
@@ -698,10 +678,9 @@ const GachaPage = () => {
         name={previewChar?.name || ''}
         series={previewChar?.series || ''}
         rarity={previewChar?.rarity || 'common'}
-        isOwned={previewChar ? isCharacterInCollection(previewChar) : false}
+        isOwned={true} // Always true now since all characters are automatically added
         isBannerCharacter={previewChar?.isBannerCharacter}
-        onClaim={previewChar && !isCharacterInCollection(previewChar) ? 
-          () => handleClaim(previewChar.id) : undefined}
+        // Remove onClaim prop completely
       />
       
       {/* Help Modal */}
@@ -756,7 +735,6 @@ const GachaPage = () => {
                 <HelpSection>
                   <h3>Tips</h3>
                   <ul>
-                    <li>Characters must be claimed to add them to your collection</li>
                     <li>Toggle Fast Mode to skip animations</li>
                     <li>Check special banners for featured characters</li>
                   </ul>

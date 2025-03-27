@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle } from 'react-icons/md';
 
-const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned, onClaim }) => {
+const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned }) => {
   const handleModalClick = (e) => {
     e.stopPropagation();
   };

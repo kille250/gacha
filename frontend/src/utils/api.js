@@ -1,11 +1,8 @@
 import axios from 'axios';
-
 const API_URL = 'https://gachaapi.solidbooru.online/api';
-
 const api = axios.create({
   baseURL: API_URL,
 });
-
 // Request interceptor to add auth token to every request
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
@@ -14,7 +11,6 @@ api.interceptors.request.use(config => {
   }
   return config;
 });
-
 export const rollCharacter = async () => {
   try {
     const response = await api.post('/characters/roll');
@@ -24,16 +20,7 @@ export const rollCharacter = async () => {
     throw error;
   }
 };
-
-export const claimCharacter = async (charId) => {
-  try {
-    const response = await api.post('/characters/claim', { charId });
-    return response.data;
-  } catch (error) {
-    console.error('Error claiming character:', error);
-    throw error;
-  }
-};
+// Removing claimCharacter function as it's no longer needed
 
 export const getCollection = async () => {
   try {
@@ -44,26 +31,22 @@ export const getCollection = async () => {
     throw error;
   }
 };
-
 export const getCurrentUser = () => {
-	const userString = localStorage.getItem('user');
-	if (!userString) return null;
-	
-	try {
-	  return JSON.parse(userString);
-	} catch (err) {
-	  console.error('Error parsing user from localStorage:', err);
-	  return null;
-	}
+    const userString = localStorage.getItem('user');
+    if (!userString) return null;
+    
+    try {
+      return JSON.parse(userString);
+    } catch (err) {
+      console.error('Error parsing user from localStorage:', err);
+      return null;
+    }
   };
-
 export const getAllCharacters = async () => {
   const response = await api.get('/characters');
   return response.data;
 };
-
 // Add these functions to your api.js file
-
 // Get all active banners
 export const getActiveBanners = async () => {
   try {
@@ -75,7 +58,6 @@ export const getActiveBanners = async () => {
     throw error;
   }
 };
-
 // Get a single banner by ID
 export const getBannerById = async (bannerId) => {
   try {
@@ -87,7 +69,6 @@ export const getBannerById = async (bannerId) => {
     throw error;
   }
 };
-
 // Roll on a specific banner
 export const rollOnBanner = async (bannerId) => {
   try {
@@ -101,7 +82,6 @@ export const rollOnBanner = async (bannerId) => {
     throw error;
   }
 };
-
 // Multi-roll on a banner
 export const multiRollOnBanner = async (bannerId, count = 10) => {
   try {
@@ -115,7 +95,6 @@ export const multiRollOnBanner = async (bannerId, count = 10) => {
     throw error;
   }
 };
-
 // Admin functions
 export const createBanner = async (formData) => {
   try {
@@ -134,7 +113,6 @@ export const createBanner = async (formData) => {
     throw error;
   }
 };
-
 export const updateBanner = async (bannerId, formData) => {
   try {
     const response = await axios.put(
@@ -152,7 +130,6 @@ export const updateBanner = async (bannerId, formData) => {
     throw error;
   }
 };
-
 export const deleteBanner = async (bannerId) => {
   try {
     const response = await axios.delete(
@@ -164,5 +141,4 @@ export const deleteBanner = async (bannerId) => {
     throw error;
   }
 };
-
 export default api;

@@ -19,9 +19,9 @@ import {
   import { useParams, useNavigate } from 'react-router-dom';
   import styled from 'styled-components';
   import { motion, AnimatePresence } from 'framer-motion';
-  import { getBannerById, rollOnBanner, multiRollOnBanner, claimCharacter } from '../utils/api';
+  import { getBannerById, rollOnBanner, multiRollOnBanner } from '../utils/api';
   import { AuthContext } from '../context/AuthContext';
-  import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdClose, MdArrowBack, MdInfo } from 'react-icons/md';
+  import { MdReplay, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdClose, MdArrowBack, MdInfo } from 'react-icons/md';
   import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight } from 'react-icons/fa';
   import confetti from 'canvas-confetti';
   import ImagePreviewModal from '../components/UI/ImagePreviewModal';
@@ -182,6 +182,7 @@ import {
 			setShowCard(true);
 			setLastRarities(prev => [result.character.rarity, ...prev.slice(0, 4)]);
 			await refreshUser();
+			await fetchUserCollection();
 		  } catch (err) {
 			setError(err.response?.data?.error || 'Failed to roll on banner');
 		  } finally {
@@ -226,6 +227,7 @@ import {
 			}
 			
 			await refreshUser();
+			await fetchUserCollection();
 		  } catch (err) {
 			setError(err.response?.data?.error || 'Failed to multi-roll');
 		  } finally {
@@ -251,17 +253,6 @@ import {
 		const currentIndex = rarityOrder.indexOf(char.rarity);
 		return currentIndex > rarityOrder.indexOf(best) ? char.rarity : best;
 	  }, 'common');
-	};
-	
-	const handleClaim = async (characterId) => {
-	  try {
-		await claimCharacter(characterId);
-		confetti({ particleCount: 50, spread: 30, origin: { y: 0.7 }, colors: ['#1abc9c', '#3498db', '#2ecc71'] });
-		await refreshUser();
-		await fetchUserCollection();
-	  } catch (err) {
-		setError(err.response?.data?.error || 'Failed to claim character');
-	  }
 	};
 	
 	const getImagePath = (imageSrc) => {
@@ -504,7 +495,7 @@ import {
 				>
 				  <CardImageContainer>
 					<RarityGlow rarity={currentChar?.rarity} />
-					{isCharacterInCollection(currentChar) && <CollectionBadge>In Collection</CollectionBadge>}
+					<CollectionBadge>Added to Collection</CollectionBadge>
 					{currentChar?.isBannerCharacter && <BannerBadge>Banner Character</BannerBadge>}
 					<CardImage 
 					  src={getImagePath(currentChar?.image)} 
@@ -531,18 +522,10 @@ import {
 				  
 				  <CardActions>
 					<ActionButton 
-					  onClick={() => handleClaim(currentChar.id)} 
-					  disabled={!currentChar || isCharacterInCollection(currentChar)}
-					  primary={!isCharacterInCollection(currentChar)}
-					  owned={isCharacterInCollection(currentChar)}
-					  whileHover={{ scale: isCharacterInCollection(currentChar) ? 1.0 : 1.05 }}
-					  whileTap={{ scale: isCharacterInCollection(currentChar) ? 1.0 : 0.95 }}
+					  primary={true}
+					  disabled={true}
 					>
-					  {isCharacterInCollection(currentChar) ? (
-						<><MdCheckCircle /> Already Owned</>
-					  ) : (
-						<><MdFavorite /> Claim</>
-					  )}
+					  <><MdCheckCircle /> Added to Collection</>
 					</ActionButton>
 					<ActionButton 
 					  onClick={handleRoll} 
@@ -577,9 +560,9 @@ import {
 						isBannerCharacter={character.isBannerCharacter}
 						whileHover={{ scale: 1.05, zIndex: 5 }}
 					  >
-						<MultiCardImageContainer onClick={() => openPreview({...character, isOwned: isCharacterInCollection(character)})}>
+						<MultiCardImageContainer onClick={() => openPreview({...character, isOwned: true})}>
 						  <RarityGlowMulti rarity={character.rarity} />
-						  {isCharacterInCollection(character) && <CollectionBadgeMini>✓</CollectionBadgeMini>}
+						  <CollectionBadgeMini>✓</CollectionBadgeMini>
 						  {character.isBannerCharacter && <BannerBadgeMini>★</BannerBadgeMini>}
 						  <MultiCardImage 
 							src={getImagePath(character.image)} 
@@ -599,13 +582,8 @@ import {
 						  </MultiRarityBadge>
 						</MultiCardContent>
 						
-						<MultiCardClaimButton
-						  disabled={isCharacterInCollection(character)} 
-						  onClick={() => handleClaim(character.id)}
-						  owned={isCharacterInCollection(character)}
-						  whileHover={isCharacterInCollection(character) ? {} : { scale: 1.05 }}
-						>
-						  {isCharacterInCollection(character) ? "Owned" : "Claim"}
+						<MultiCardClaimButton disabled={true}>
+						  Collected
 						</MultiCardClaimButton>
 					  </EnhancedMultiCharacterCard>
 					))}
@@ -761,10 +739,8 @@ import {
 		  name={previewChar?.name || ''}
 		  series={previewChar?.series || ''}
 		  rarity={previewChar?.rarity || 'common'}
-		  isOwned={previewChar ? isCharacterInCollection(previewChar) : false}
+		  isOwned={true}
 		  isBannerCharacter={previewChar?.isBannerCharacter}
-		  onClaim={previewChar && !isCharacterInCollection(previewChar) ? 
-			() => handleClaim(previewChar.id) : undefined}
 		/>
 		
 		{/* Banner Info Panel */}
