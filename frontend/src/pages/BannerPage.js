@@ -130,21 +130,6 @@ const BannerPage = () => {
     refreshUser();
     fetchUserCollection();
   }, [refreshUser]);
-
-  const claimCharacter = async (characterId) => {
-	try {
-	  const response = await axios.post(
-		`https://gachaapi.solidbooru.online/api/characters/claim/${characterId}`,
-		{},
-		{
-		  headers: { 'x-auth-token': localStorage.getItem('token') }
-		}
-	  );
-	  return response.data;
-	} catch (error) {
-	  throw error;
-	}
-  };
   
   const fetchUserCollection = async () => {
     try {
