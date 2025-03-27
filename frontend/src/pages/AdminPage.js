@@ -381,18 +381,18 @@ const AdminPage = () => {
       : `/images/characters/${imagePath}`;
   };
 
-  const fetchBanners = async () => {
-    try {
-      const response = await axios.get('https://gachaapi.solidbooru.online/api/banners', {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
-      setBanners(response.data);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load banners');
-    }
-  };
+ const fetchBanners = async () => {
+  try {
+    const response = await axios.get('https://gachaapi.solidbooru.online/api/banners?showAll=true', {
+      headers: {
+        'x-auth-token': localStorage.getItem('token')
+      }
+    });
+    setBanners(response.data);
+  } catch (err) {
+    setError(err.response?.data?.error || 'Failed to load banners');
+  }
+};
   
   useEffect(() => {
     if (user?.isAdmin) {

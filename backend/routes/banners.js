@@ -49,19 +49,21 @@ const upload = multer({
 
 // Get all active banners
 router.get('/', async (req, res) => {
-  try {
-    const banners = await Banner.findAll({
-      where: { active: true },
-      include: [{ model: Character }],
-      order: [['featured', 'DESC'], ['createdAt', 'DESC']]
-    });
-    
-    res.json(banners);
-  } catch (err) {
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+	try {
+	  const query = req.query.showAll === 'true' ? {} : { where: { active: true } };
+	  
+	  const banners = await Banner.findAll({
+		...query,
+		include: [{ model: Character }],
+		order: [['featured', 'DESC'], ['createdAt', 'DESC']]
+	  });
+	  
+	  res.json(banners);
+	} catch (err) {
+	  console.error(err);
+	  res.status(500).json({ error: 'Server error' });
+	}
+  });
 
 // Get a specific banner by ID
 router.get('/:id', async (req, res) => {
