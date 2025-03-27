@@ -130,6 +130,21 @@ const BannerPage = () => {
     refreshUser();
     fetchUserCollection();
   }, [refreshUser]);
+
+  const claimCharacter = async (characterId) => {
+	try {
+	  const response = await axios.post(
+		`https://gachaapi.solidbooru.online/api/characters/claim/${characterId}`,
+		{},
+		{
+		  headers: { 'x-auth-token': localStorage.getItem('token') }
+		}
+	  );
+	  return response.data;
+	} catch (error) {
+	  throw error;
+	}
+  };
   
   const fetchUserCollection = async () => {
     try {
@@ -999,15 +1014,25 @@ const BannerBadgeMini = styled.div`
 `;
 
 const MultiCharacterCard = styled(motion.div)`
+  background: white;
+  border-radius: 12px;
+  overflow: hidden;
+  position: relative;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  border: 2px solid ${props => rarityColors[props.rarity] || rarityColors.common};
+  height: 250px;
   /* Add special border for banner characters in multi-roll view */
-  border: ${props => props.isBannerCharacter ? 
-    `2px solid #ffd700` : 
+  border: ${props => props.isBannerCharacter ?
+    `2px solid #ffd700` :
     `2px solid ${rarityColors[props.rarity] || rarityColors.common}`};
-  
   /* If it's a banner character, add a subtle gold background */
-  background: ${props => props.isBannerCharacter ? 
-    'linear-gradient(to bottom, rgba(255, 215, 0, 0.05), white)' : 
+  background: ${props => props.isBannerCharacter ?
+    'linear-gradient(to bottom, rgba(255, 215, 0, 0.05), white)' :
     'white'};
+    
+  @media (max-width: 480px) {
+    height: 220px;
+  }
 `;
 
 const SettingsButton = styled.button`
