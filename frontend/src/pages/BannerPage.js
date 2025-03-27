@@ -560,7 +560,7 @@ import {
 						isBannerCharacter={character.isBannerCharacter}
 						whileHover={{ scale: 1.05, zIndex: 5 }}
 					  >
-						<MultiCardImageContainer onClick={() => openPreview({...character, isOwned: true})}>
+						<MultiCardImageContainer onClick={() => openPreview({...character, isOwned: isCharacterInCollection(character)})}>
 						  <RarityGlowMulti rarity={character.rarity} />
 						  <CollectionBadgeMini>✓</CollectionBadgeMini>
 						  {character.isBannerCharacter && <BannerBadgeMini>★</BannerBadgeMini>}
@@ -739,7 +739,7 @@ import {
 		  name={previewChar?.name || ''}
 		  series={previewChar?.series || ''}
 		  rarity={previewChar?.rarity || 'common'}
-		  isOwned={true}
+		  isOwned={previewChar ? isCharacterInCollection(previewChar) : false}
 		  isBannerCharacter={previewChar?.isBannerCharacter}
 		/>
 		
