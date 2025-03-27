@@ -44,12 +44,6 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
               <RarityBadge rarity={rarity}>
                 {rarity}
               </RarityBadge>
-              
-              {onClaim && !isOwned && (
-                <ClaimButton onClick={onClaim}>
-                  Add to Collection
-                </ClaimButton>
-              )}
             </CharacterDetails>
           </ModalContent>
         </ModalOverlay>
