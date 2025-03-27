@@ -2,14 +2,13 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import styled, { createGlobalStyle } from 'styled-components';
-
 // Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
 import GachaPage from './pages/GachaPage';
 import CollectionPage from './pages/CollectionPage';
 import AdminPage from './pages/AdminPage';
-
+import BannerPage from './pages/BannerPage';
 // Components
 import Navigation from './components/Navigation/Navigation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
@@ -34,7 +33,6 @@ const GlobalStyle = createGlobalStyle`
     max-width: 100vw;
     overflow-x: hidden;
   }
-
   /* Für mobile Endgeräte */
   @media (max-width: 768px) {
     html, body {
@@ -80,6 +78,12 @@ function App() {
                   <Navigation />
                   <CollectionPage />
                 </MainLayout>
+              </ProtectedRoute>
+            } />
+            {/* Add Banner Page Route - Note: No Navigation component as it has its own */}
+            <Route path="/banner/:bannerId" element={
+              <ProtectedRoute>
+                <BannerPage />
               </ProtectedRoute>
             } />
             <Route path="/" element={<Navigate to="/login" replace />} />

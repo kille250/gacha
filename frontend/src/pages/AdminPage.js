@@ -1,6 +1,9 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
+import { FaPlus, FaVideo } from 'react-icons/fa';
+import { createBanner, updateBanner, deleteBanner } from '../utils/api';
+import BannerFormModal from '../components/UI/BannerFormModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -17,6 +20,10 @@ const AdminPage = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(10);
+  const [banners, setBanners] = useState([]);
+  const [isAddingBanner, setIsAddingBanner] = useState(false);
+  const [isEditingBanner, setIsEditingBanner] = useState(false);
+  const [editingBanner, setEditingBanner] = useState(null);
   
   // Gefilterte und paginierte Charaktere
   const filteredCharacters = characters.filter(character => {
@@ -373,6 +380,91 @@ const AdminPage = () => {
       ? imagePath 
       : `/images/characters/${imagePath}`;
   };
+
+ const fetchBanners = async () => {
+  try {
+    const response = await axios.get('https://gachaapi.solidbooru.online/api/banners?showAll=true', {
+      headers: {
+        'x-auth-token': localStorage.getItem('token')
+      }
+    });
+    setBanners(response.data);
+  } catch (err) {
+    setError(err.response?.data?.error || 'Failed to load banners');
+  }
+};
+  
+  useEffect(() => {
+    if (user?.isAdmin) {
+      fetchUsers();
+      fetchCharacters();
+      fetchBanners(); // Add this
+    }
+  }, [user]);
+  
+  const getBannerImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://via.placeholder.com/300x150?text=Banner';
+    
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    if (imagePath.startsWith('/uploads')) {
+      return `https://gachaapi.solidbooru.online${imagePath}`;
+    }
+    
+    return `/images/banners/${imagePath}`;
+  };
+  
+  const handleEditBanner = (banner) => {
+    setEditingBanner(banner);
+    setIsEditingBanner(true);
+  };
+  
+  const handleAddBanner = async (formData) => {
+    try {
+      setSuccessMessage(null);
+      setError(null);
+      
+      await createBanner(formData);
+      await fetchBanners();
+      setSuccessMessage('Banner added successfully!');
+      setIsAddingBanner(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to add banner');
+    }
+  };
+  
+  const handleUpdateBanner = async (formData) => {
+    try {
+      setSuccessMessage(null);
+      setError(null);
+      
+      await updateBanner(editingBanner.id, formData);
+      await fetchBanners();
+      setSuccessMessage('Banner updated successfully!');
+      setIsEditingBanner(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update banner');
+    }
+  };
+  
+  const handleDeleteBanner = async (bannerId) => {
+    if (!window.confirm('Are you sure you want to delete this banner?')) {
+      return;
+    }
+    
+    try {
+      setSuccessMessage(null);
+      setError(null);
+      
+      await deleteBanner(bannerId);
+      await fetchBanners();
+      setSuccessMessage('Banner deleted successfully!');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete banner');
+    }
+  };
   
   // Nur Admin-Zugriff erlauben
   if (!user?.isAdmin) {
@@ -629,6 +721,93 @@ const AdminPage = () => {
           </>
         )}
       </AdminSection>
+
+      <AdminSection>
+        <h2><FaImage /> Banner Management</h2>
+        <ManagementHeader>
+          <Button 
+            onClick={() => setIsAddingBanner(true)} 
+            color="#3498db" 
+            style={{ marginBottom: '20px' }}
+          >
+            <FaPlus /> <span>Add New Banner</span>
+          </Button>
+        </ManagementHeader>
+
+        {banners.length === 0 ? (
+          <EmptyMessage>No banners found</EmptyMessage>
+        ) : (
+          <BannerGrid>
+            {banners.map(banner => (
+              <BannerCard key={banner.id}>
+                <BannerImage
+                  src={getBannerImageUrl(banner.image)}
+                  alt={banner.name}
+                  onError={(e) => {
+                    if (!e.target.src.includes('placeholder.com')) {
+                      e.target.src = 'https://via.placeholder.com/300x150?text=Banner';
+                    }
+                  }}
+                />
+                <BannerInfo>
+                  <h3>{banner.name}</h3>
+                  <SeriesTag>{banner.series}</SeriesTag>
+                  {banner.featured && <FeaturedTag>Featured</FeaturedTag>}
+                  <StatusTag active={banner.active}>
+                    {banner.active ? 'Active' : 'Inactive'}
+                  </StatusTag>
+                  
+                  <p>{banner.description}</p>
+                  
+                  {banner.endDate && (
+                    <DateInfo>
+                      Ends: {new Date(banner.endDate).toLocaleDateString()}
+                    </DateInfo>
+                  )}
+                  
+                  <BannerFeatures>
+                    <FeatureItem>
+                      <strong>Cost:</strong> {Math.floor(100 * banner.costMultiplier)} per pull
+                    </FeatureItem>
+                    <FeatureItem>
+                      <strong>Characters:</strong> {banner.Characters.length}
+                    </FeatureItem>
+                    {banner.videoUrl && (
+                      <FeatureItem>
+                        <FaVideo /> Has Video
+                      </FeatureItem>
+                    )}
+                  </BannerFeatures>
+
+                  <CardActions>
+                    <ActionButton onClick={() => handleEditBanner(banner)}>
+                      <FaEdit /> Edit
+                    </ActionButton>
+                    <ActionButton danger onClick={() => handleDeleteBanner(banner.id)}>
+                      <FaTrash /> Delete
+                    </ActionButton>
+                  </CardActions>
+                </BannerInfo>
+              </BannerCard>
+            ))}
+          </BannerGrid>
+        )}
+      </AdminSection>
+
+      <BannerFormModal
+        show={isAddingBanner}
+        onClose={() => setIsAddingBanner(false)}
+        onSubmit={handleAddBanner}
+        characters={characters}
+      />
+
+      <BannerFormModal
+        show={isEditingBanner}
+        onClose={() => setIsEditingBanner(false)}
+        onSubmit={handleUpdateBanner}
+        banner={editingBanner}
+        characters={characters}
+      />
       
       {/* Edit Character Modal */}
       <EditCharacterModal 
@@ -1199,6 +1378,110 @@ const EmptyMessage = styled.div`
   font-size: 18px;
   background: #f8f9fa;
   border-radius: 12px;
+`;
+
+const BannerGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  width: 100%;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const BannerCard = styled.div`
+  background-color: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #eee;
+  display: flex;
+  flex-direction: column;
+`;
+
+const BannerImage = styled.img`
+  width: 100%;
+  height: 150px;
+  object-fit: cover;
+`;
+
+const BannerInfo = styled.div`
+  padding: 15px;
+  flex: 1;
+  
+  h3 {
+    margin: 0 0 10px 0;
+    font-size: 18px;
+  }
+  
+  p {
+    font-size: 14px;
+    color: #666;
+    margin-top: 10px;
+    margin-bottom: 10px;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+`;
+
+const SeriesTag = styled.span`
+  display: inline-block;
+  background-color: #e9f7fe;
+  color: #3498db;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-right: 5px;
+  margin-bottom: 5px;
+`;
+
+const FeaturedTag = styled.span`
+  display: inline-block;
+  background-color: #fff8e1;
+  color: #ffa000;
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-right: 5px;
+  margin-bottom: 5px;
+  font-weight: bold;
+`;
+
+const StatusTag = styled.span`
+  display: inline-block;
+  background-color: ${props => props.active ? '#e8f5e9' : '#ffebee'};
+  color: ${props => props.active ? '#4caf50' : '#f44336'};
+  padding: 3px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  margin-bottom: 5px;
+`;
+
+const DateInfo = styled.div`
+  font-size: 12px;
+  color: #666;
+  margin-top: 5px;
+`;
+
+const BannerFeatures = styled.div`
+  margin: 10px 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+`;
+
+const FeatureItem = styled.div`
+  font-size: 13px;
+  color: #555;
+  
+  strong {
+    color: #333;
+    margin-right: 5px;
+  }
 `;
 
 export default AdminPage;
