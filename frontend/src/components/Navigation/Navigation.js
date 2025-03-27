@@ -300,21 +300,23 @@ const Navigation = () => {
         </UserControls>
       </NavContainer>
       
-      {/* Success Popup - Moved outside NavContainer */}
+      {/* Success Popup - Moved outside NavContainer with better positioning */}
       <AnimatePresence>
         {rewardPopup.show && (
-          <RewardPopup
-            initial={{ opacity: 0, y: -50 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -50 }}
-            transition={{ type: 'spring', damping: 20 }}
-          >
-            <MdCelebration className="celebration-icon" />
-            <div>
-              <p>Hourly Reward Claimed!</p>
-              <h3>+{rewardPopup.amount} coins</h3>
-            </div>
-          </RewardPopup>
+          <PopupContainer>
+            <RewardPopup
+              initial={{ opacity: 0, y: -50 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -50 }}
+              transition={{ type: 'spring', damping: 20 }}
+            >
+              <MdCelebration className="celebration-icon" />
+              <div>
+                <p>Hourly Reward Claimed!</p>
+                <h3>+{rewardPopup.amount} coins</h3>
+              </div>
+            </RewardPopup>
+          </PopupContainer>
         )}
       </AnimatePresence>
     </>
@@ -525,14 +527,24 @@ const LoadingSpinner = styled.div`
   }
 `;
 
-const RewardPopup = styled(motion.div)`
+// New container to properly center the popup
+const PopupContainer = styled.div`
   position: fixed;
   top: 100px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: max-content; /* Allow the popup to size to its content */
-  margin: 0 auto; /* Center horizontally */
-  max-width: 90%; /* Ensure it doesn't overflow on small screens */
+  left: 0;
+  right: 0;
+  display: flex;
+  justify-content: center;
+  z-index: 1000;
+  pointer-events: none; /* Allow clicking through the container */
+  
+  > * {
+    pointer-events: auto; /* Re-enable pointer events for children */
+  }
+`;
+
+// Updated popup styling to work with the container
+const RewardPopup = styled(motion.div)`
   background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
   color: white;
   padding: 15px 25px;
@@ -541,9 +553,9 @@ const RewardPopup = styled(motion.div)`
   display: flex;
   align-items: center;
   gap: 15px;
-  z-index: 1000;
+  max-width: 90%;
   
-  /* Create a parent container for the popup content to ensure proper alignment */
+  /* Content structure */
   > div {
     display: flex;
     flex-direction: column;
@@ -554,21 +566,21 @@ const RewardPopup = styled(motion.div)`
     margin: 0;
     font-size: 14px;
     opacity: 0.9;
-    white-space: nowrap; /* Prevent text wrapping */
+    white-space: nowrap;
   }
   
   h3 {
     margin: 5px 0 0;
     font-size: 20px;
     color: #ffcc33;
-    white-space: nowrap; /* Prevent text wrapping */
+    white-space: nowrap;
   }
   
   .celebration-icon {
     font-size: 28px;
     color: #ffcc33;
     animation: bounce 1s infinite alternate;
-    flex-shrink: 0; /* Prevent icon from shrinking */
+    flex-shrink: 0;
   }
   
   @keyframes bounce {
@@ -576,7 +588,6 @@ const RewardPopup = styled(motion.div)`
     to { transform: scale(1.2); }
   }
   
-  /* More specific media query handling */
   @media (max-width: 480px) {
     padding: 12px 20px;
     max-width: 85%;
