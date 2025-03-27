@@ -62,4 +62,107 @@ export const getAllCharacters = async () => {
   return response.data;
 };
 
+// Add these functions to your api.js file
+
+// Get all active banners
+export const getActiveBanners = async () => {
+  try {
+    const response = await axios.get('https://gachaapi.solidbooru.online/api/banners', {
+      headers: { 'x-auth-token': localStorage.getItem('token') }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get a single banner by ID
+export const getBannerById = async (bannerId) => {
+  try {
+    const response = await axios.get(`https://gachaapi.solidbooru.online/api/banners/${bannerId}`, {
+      headers: { 'x-auth-token': localStorage.getItem('token') }
+    });
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Roll on a specific banner
+export const rollOnBanner = async (bannerId) => {
+  try {
+    const response = await axios.post(
+      `https://gachaapi.solidbooru.online/api/banners/${bannerId}/roll`,
+      {},
+      { headers: { 'x-auth-token': localStorage.getItem('token') } }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Multi-roll on a banner
+export const multiRollOnBanner = async (bannerId, count = 10) => {
+  try {
+    const response = await axios.post(
+      `https://gachaapi.solidbooru.online/api/banners/${bannerId}/roll-multi`,
+      { count },
+      { headers: { 'x-auth-token': localStorage.getItem('token') } }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Admin functions
+export const createBanner = async (formData) => {
+  try {
+    const response = await axios.post(
+      'https://gachaapi.solidbooru.online/api/banners',
+      formData,
+      { 
+        headers: { 
+          'x-auth-token': localStorage.getItem('token'),
+          'Content-Type': 'multipart/form-data' 
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const updateBanner = async (bannerId, formData) => {
+  try {
+    const response = await axios.put(
+      `https://gachaapi.solidbooru.online/api/banners/${bannerId}`,
+      formData,
+      { 
+        headers: { 
+          'x-auth-token': localStorage.getItem('token'),
+          'Content-Type': 'multipart/form-data' 
+        }
+      }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+export const deleteBanner = async (bannerId) => {
+  try {
+    const response = await axios.delete(
+      `https://gachaapi.solidbooru.online/api/banners/${bannerId}`,
+      { headers: { 'x-auth-token': localStorage.getItem('token') } }
+    );
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 export default api;

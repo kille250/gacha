@@ -1,43 +1,31 @@
 import {
-  LoadingContainer, SpinnerContainer, Spinner, LoadingText,
-  ErrorMessage, PointsCounter, CoinIcon, PointsAmount,
-  RarityHistoryBar, HistoryLabel, RarityList, RarityBubble,
-  GachaSection, CharacterCard, CardImageContainer, RarityGlow,
-  CollectionBadge, CardImage, ZoomIconOverlay, ZoomIcon,
-  CardContent, CharName, CharSeries, RarityBadge, CardActions,
-  ActionButton, MultiRollSection, MultiRollHeader, MultiRollCloseButton,
-  MultiCharactersGrid, MultiCardImageContainer, RarityGlowMulti,
-  CollectionBadgeMini, MultiCardImage, MultiCardContent, MultiCharName,
-  MultiRarityBadge, MultiCardClaimButton, EmptyState, EmptyStateIcon,
-  RollButtonsContainer, RollButton, RollCost, MultiPullContainer,
-  MultiRollButton, MultiPullMenu, ClosePullMenuButton, MultiPullAdjuster,
-  AdjustButton, PullCountDisplay, PullSlider, DiscountInfo, ConfirmButton,
-  RollHint, rarityColors
-} from '../components/GachaStyles';
-import React, { useState, useContext, useEffect, useCallback } from 'react';
+	LoadingContainer, SpinnerContainer, Spinner, LoadingText,
+	ErrorMessage, PointsCounter, CoinIcon, PointsAmount,
+	RarityHistoryBar, HistoryLabel, RarityList, RarityBubble,
+	GachaSection, CharacterCard, CardImageContainer, RarityGlow,
+	CollectionBadge, CardImage, ZoomIconOverlay, ZoomIcon,
+	CardContent, CharName, CharSeries, RarityBadge, CardActions,
+	ActionButton, MultiRollSection, MultiRollHeader, MultiRollCloseButton,
+	MultiCharactersGrid, MultiCardImageContainer, RarityGlowMulti,
+	CollectionBadgeMini, MultiCardImage, MultiCardContent, MultiCharName,
+	MultiRarityBadge, MultiCardClaimButton, EmptyState, EmptyStateIcon,
+	RollButtonsContainer, RollButton, RollCost, MultiPullContainer,
+	MultiRollButton, MultiPullMenu, ClosePullMenuButton, MultiPullAdjuster,
+	AdjustButton, PullCountDisplay, PullSlider, DiscountInfo, ConfirmButton,
+	RollHint, rarityColors
+  } from '../components/GachaStyles';
+import axios from 'axios';
+import React, { useState, useEffect, useContext, useCallback } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdClose } from 'react-icons/md';
-import { FaGem, FaDice, FaTrophy } from 'react-icons/fa';
-import axios from 'axios';
-import { rollCharacter, claimCharacter, getActiveBanners } from '../utils/api';
+import { getBannerById, rollOnBanner, multiRollOnBanner, claimCharacter } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
-import ImagePreviewModal from '../components/UI/ImagePreviewModal';
+import { MdReplay, MdFavorite, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdClose, MdArrowBack } from 'react-icons/md';
+import { FaGem, FaDice, FaTrophy, FaPlay, FaPause } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
-import { useNavigate } from 'react-router-dom';
+import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
-const rollMultipleCharacters = async (count = 10) => {
-  try {
-    const response = await axios.post(
-      'https://gachaapi.solidbooru.online/api/characters/roll-multi',
-      { count },
-      { headers: { 'x-auth-token': localStorage.getItem('token') } }
-    );
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
-};
 
 const rarityIcons = {
   common: <FaDice />,
@@ -47,9 +35,12 @@ const rarityIcons = {
   legendary: <FaTrophy />
 };
 
-const GachaPage = () => {
+const BannerPage = () => {
+  const { bannerId } = useParams();
   const navigate = useNavigate();
   const { user, refreshUser } = useContext(AuthContext);
+  
+  const [banner, setBanner] = useState(null);
   const [currentChar, setCurrentChar] = useState(null);
   const [multiRollResults, setMultiRollResults] = useState([]);
   const [isRolling, setIsRolling] = useState(false);
@@ -65,33 +56,58 @@ const GachaPage = () => {
   const [showSettings, setShowSettings] = useState(false);
   const [multiPullCount, setMultiPullCount] = useState(10);
   const [multiPullMenuOpen, setMultiPullMenuOpen] = useState(false);
-  const [banners, setBanners] = useState([]);
+  const [isVideoPlaying, setIsVideoPlaying] = useState(false);
+  const [loading, setLoading] = useState(true);
   
-  // Calculate maximum possible pulls based on user points
-  const maxPossiblePulls = Math.min(10, Math.floor((user?.points || 0) / 100));
+  // Calculate cost based on banner's multiplier
+  const calculateSinglePullCost = useCallback(() => {
+    if (!banner) return 100;
+    return Math.floor(100 * (banner.costMultiplier || 1.5));
+  }, [banner]);
   
-  const calculateMultiPullCost = (count) => {
-    const baseCost = count * 100;
+  // Calculate multi-pull cost with discount
+  const calculateMultiPullCost = useCallback((count) => {
+    if (!banner) return count * 100;
+    
+    const baseCost = count * calculateSinglePullCost();
     let discount = 0;
     if (count >= 10) discount = 0.1;
     else if (count >= 5) discount = 0.05;
     return Math.floor(baseCost * (1 - discount));
-  };
+  }, [banner, calculateSinglePullCost]);
   
-  const currentMultiPullCost = calculateMultiPullCost(multiPullCount);
+  // Calculate max possible pulls
+  const maxPossiblePulls = useCallback(() => {
+    const singlePullCost = calculateSinglePullCost();
+    return Math.max(1, Math.min(10, Math.floor((user?.points || 0) / singlePullCost)));
+  }, [user?.points, calculateSinglePullCost]);
   
+  // Update costs when banner changes
+  const currentMultiPullCost = useCallback(() => {
+    return calculateMultiPullCost(multiPullCount);
+  }, [calculateMultiPullCost, multiPullCount]);
+  
+  // Fetch banner data
   useEffect(() => {
-    refreshUser();
-  }, [refreshUser]);
+    const fetchBanner = async () => {
+      try {
+        setLoading(true);
+        const data = await getBannerById(bannerId);
+        setBanner(data);
+        setLoading(false);
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to load banner');
+        setLoading(false);
+      }
+    };
+    
+    fetchBanner();
+  }, [bannerId]);
   
+  // Update possible pull count when user points change
   useEffect(() => {
-    fetchUserCollection();
-    fetchBanners();
-  }, []);
-  
-  useEffect(() => {
-    if (multiPullCount > maxPossiblePulls) {
-      setMultiPullCount(Math.max(1, maxPossiblePulls));
+    if (multiPullCount > maxPossiblePulls()) {
+      setMultiPullCount(Math.max(1, maxPossiblePulls()));
     }
   }, [user?.points, maxPossiblePulls, multiPullCount]);
   
@@ -109,6 +125,12 @@ const GachaPage = () => {
     };
   }, [multiPullMenuOpen]);
   
+  // Refresh user data and fetch collection
+  useEffect(() => {
+    refreshUser();
+    fetchUserCollection();
+  }, [refreshUser]);
+  
   const fetchUserCollection = async () => {
     try {
       const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
@@ -117,15 +139,6 @@ const GachaPage = () => {
       setUserCollection(response.data);
     } catch (err) {
       console.error("Error fetching user collection:", err);
-    }
-  };
-
-  const fetchBanners = async () => {
-    try {
-      const bannersData = await getActiveBanners();
-      setBanners(bannersData);
-    } catch (err) {
-      console.error("Error fetching banners:", err);
     }
   };
   
@@ -144,6 +157,7 @@ const GachaPage = () => {
     }
   }, []);
   
+  // Show confetti effect for rare pulls
   useEffect(() => {
     if (currentChar && !skipAnimations) {
       showRarePullEffect(currentChar.rarity);
@@ -162,30 +176,32 @@ const GachaPage = () => {
       
       setTimeout(async () => {
         try {
-          const character = await rollCharacter();
-          setCurrentChar(character);
+          // Roll on banner instead of standard gacha
+          const result = await rollOnBanner(bannerId);
+          setCurrentChar(result.character);
           setShowCard(true);
-          setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
+          setLastRarities(prev => [result.character.rarity, ...prev.slice(0, 4)]);
           await refreshUser();
         } catch (err) {
-          setError(err.response?.data?.error || 'Failed to roll character');
+          setError(err.response?.data?.error || 'Failed to roll on banner');
         } finally {
           setIsRolling(false);
         }
       }, animationDuration);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to roll character');
+      setError(err.response?.data?.error || 'Failed to roll on banner');
       setIsRolling(false);
     }
   };
   
   const handleMultiRoll = async () => {
-    const cost = calculateMultiPullCost(multiPullCount);
+    const cost = currentMultiPullCost();
     
     if (user?.points < cost) {
       setError(`Not enough points for a ${multiPullCount}× roll. Required: ${cost} points`);
       return;
     }
+    
     try {
       setIsRolling(true);
       setShowCard(false);
@@ -197,32 +213,34 @@ const GachaPage = () => {
       
       setTimeout(async () => {
         try {
-          const characters = await rollMultipleCharacters(multiPullCount);
-          setMultiRollResults(characters);
+          const result = await multiRollOnBanner(bannerId, multiPullCount);
+          setMultiRollResults(result.characters);
           setShowMultiResults(true);
-          const bestRarity = findBestRarity(characters);
+          
+          // Find best rarity
+          const bestRarity = findBestRarity(result.characters);
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
           
-          if (characters.some(char => ['rare', 'epic', 'legendary'].includes(char.rarity)) && !skipAnimations) {
+          if (result.characters.some(char => ['rare', 'epic', 'legendary'].includes(char.rarity)) && !skipAnimations) {
             confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
           }
           
           await refreshUser();
         } catch (err) {
-          setError(err.response?.data?.error || 'Failed to roll multiple characters');
+          setError(err.response?.data?.error || 'Failed to multi-roll');
         } finally {
           setIsRolling(false);
         }
       }, animationDuration);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to roll multiple characters');
+      setError(err.response?.data?.error || 'Failed to multi-roll');
       setIsRolling(false);
     }
   };
   
   const adjustMultiPullCount = (amount) => {
     const newCount = multiPullCount + amount;
-    if (newCount >= 1 && newCount <= maxPossiblePulls) {
+    if (newCount >= 1 && newCount <= maxPossiblePulls()) {
       setMultiPullCount(newCount);
     }
   };
@@ -254,18 +272,18 @@ const GachaPage = () => {
     return imageSrc.includes('/') ? imageSrc : `/images/characters/${imageSrc}`;
   };
   
-  const getBannerImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://via.placeholder.com/300x150?text=Banner';
-    
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    
-    if (imagePath.startsWith('/uploads')) {
-      return `https://gachaapi.solidbooru.online${imagePath}`;
-    }
-    
-    return `/images/banners/${imagePath}`;
+  const getBannerImagePath = (imageSrc) => {
+    if (!imageSrc) return 'https://via.placeholder.com/1200x400?text=Banner';
+    if (imageSrc.startsWith('http')) return imageSrc;
+    if (imageSrc.startsWith('/uploads')) return `https://gachaapi.solidbooru.online${imageSrc}`;
+    return `/images/banners/${imageSrc}`;
+  };
+  
+  const getVideoPath = (videoSrc) => {
+    if (!videoSrc) return null;
+    if (videoSrc.startsWith('http')) return videoSrc;
+    if (videoSrc.startsWith('/uploads')) return `https://gachaapi.solidbooru.online${videoSrc}`;
+    return `/videos/${videoSrc}`;
   };
   
   const toggleSkipAnimations = () => setSkipAnimations(prev => !prev);
@@ -283,48 +301,126 @@ const GachaPage = () => {
     setPreviewChar(null);
   };
   
+  const toggleVideoPlay = () => {
+    setIsVideoPlaying(!isVideoPlaying);
+    
+    const video = document.getElementById('banner-video');
+    if (video) {
+      if (isVideoPlaying) {
+        video.pause();
+      } else {
+        video.play();
+      }
+    }
+  };
+  
+  // Handle video ended event
+  const handleVideoEnded = () => {
+    setIsVideoPlaying(false);
+  };
+  
+  if (loading) {
+    return (
+      <LoadingContainer>
+        <SpinnerContainer>
+          <Spinner />
+        </SpinnerContainer>
+        <LoadingText>Loading banner...</LoadingText>
+      </LoadingContainer>
+    );
+  }
+  
+  if (!banner) {
+    return (
+      <ErrorContainer>
+        <ErrorMessage>Banner not found or has expired</ErrorMessage>
+        <BackButton onClick={() => navigate('/gacha')}>
+          <MdArrowBack /> Back to Gacha
+        </BackButton>
+      </ErrorContainer>
+    );
+  }
+  
+  // Calculate single and multi pull costs
+  const singlePullCost = calculateSinglePullCost();
+  const multiPullCostValue = currentMultiPullCost();
+  
   return (
-    <GachaContainer>
-      <ParticlesBackground />
+    <BannerContainer backgroundImage={getBannerImagePath(banner.image)}>
+      <NavBar>
+        <BackButton onClick={() => navigate('/gacha')}>
+          <MdArrowBack /> Back
+        </BackButton>
+        
+        <PointsCounter>
+          <CoinIcon>🪙</CoinIcon> 
+          <PointsAmount>{user?.points || 0}</PointsAmount>
+        </PointsCounter>
+      </NavBar>
       
-      <GachaHeader>
-        <SiteTitle>
-          <span>Gacha</span>
-          <GlowingSpan>Master</GlowingSpan>
-        </SiteTitle>
-        <HeaderControls>
-          <RollCountDisplay>
-            <FaDice /> {rollCount} Rolls
-          </RollCountDisplay>
-          <PointsCounter>
-            <CoinIcon>🪙</CoinIcon> 
-            <PointsAmount>{user?.points || 0}</PointsAmount>
-          </PointsCounter>
-          <SettingsButton onClick={() => setShowSettings(!showSettings)}>
-            ⚙️
-          </SettingsButton>
-        </HeaderControls>
-      </GachaHeader>
-      
-      {showSettings && (
-        <SettingsPanel>
-          <SettingItem>
-            <label>Skip Animations</label>
-            <Switch 
-              checked={skipAnimations} 
-              onChange={toggleSkipAnimations} 
-            />
-          </SettingItem>
-          <CloseButton onClick={() => setShowSettings(false)}>×</CloseButton>
-        </SettingsPanel>
-      )}
+      <BannerHero>
+        <BannerTitle>{banner.name}</BannerTitle>
+        <BannerSeries>{banner.series}</BannerSeries>
+        
+        {banner.description && (
+          <BannerDescription>{banner.description}</BannerDescription>
+        )}
+        
+        <PullCost>
+          <CostBadge>{singlePullCost} points per pull</CostBadge>
+          <DateBadge>
+            {banner.endDate ? (
+              `Ends: ${new Date(banner.endDate).toLocaleDateString()}`
+            ) : (
+              'Limited-Time Banner'
+            )}
+          </DateBadge>
+        </PullCost>
+        
+        {banner.Characters && banner.Characters.length > 0 && (
+          <FeaturedCharacters>
+            <FeaturedLabel>Featured Characters</FeaturedLabel>
+            <CharacterAvatars>
+              {banner.Characters.slice(0, 6).map(char => (
+                <CharacterAvatar 
+                  key={char.id} 
+                  rarity={char.rarity}
+                  onClick={() => openPreview({...char, isOwned: isCharacterInCollection(char)})}
+                >
+                  <img src={getImagePath(char.image)} alt={char.name} />
+                </CharacterAvatar>
+              ))}
+              {banner.Characters.length > 6 && (
+                <MoreCharacters>+{banner.Characters.length - 6} more</MoreCharacters>
+              )}
+            </CharacterAvatars>
+          </FeaturedCharacters>
+        )}
+        
+        {banner.videoUrl && (
+          <VideoSection>
+            <VideoContainer>
+              <BannerVideo 
+                id="banner-video"
+                src={getVideoPath(banner.videoUrl)}
+                poster={getBannerImagePath(banner.image)}
+                onEnded={handleVideoEnded}
+              />
+              <VideoControls onClick={toggleVideoPlay}>
+                {isVideoPlaying ? <FaPause /> : <FaPlay />}
+              </VideoControls>
+            </VideoContainer>
+            <VideoCaption>Watch Promotional Video</VideoCaption>
+          </VideoSection>
+        )}
+      </BannerHero>
       
       {error && <ErrorMessage>{error}</ErrorMessage>}
       
       <RarityHistoryBar>
         {lastRarities.length > 0 && (
           <>
-            <HistoryLabel>Recent pulls:</HistoryLabel>
+            <HistoryLabel>Recent banner pulls:</HistoryLabel>
             <RarityList>
               {lastRarities.map((rarity, index) => (
                 <RarityBubble 
@@ -341,51 +437,6 @@ const GachaPage = () => {
           </>
         )}
       </RarityHistoryBar>
-
-      {banners.length > 0 && (
-        <BannersSection>
-          <BannersTitle>Special Banners</BannersTitle>
-          <BannersScroller>
-            {banners.map(banner => (
-              <BannerCard 
-                key={banner.id}
-                featured={banner.featured}
-                onClick={() => navigate(`/banner/${banner.id}`)}
-                whileHover={{ y: -5, scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                <BannerImage
-                  src={getBannerImageUrl(banner.image)}
-                  alt={banner.name}
-                  onError={(e) => {
-                    if (!e.target.src.includes('placeholder.com')) {
-                      e.target.src = 'https://via.placeholder.com/300x150?text=Banner';
-                    }
-                  }}
-                />
-                <BannerCardInfo>
-                  <BannerName>{banner.name}</BannerName>
-                  <BannerSeriesName>{banner.series}</BannerSeriesName>
-                  
-                  {banner.endDate && (
-                    <BannerEndDate>
-                      Ends: {new Date(banner.endDate).toLocaleDateString()}
-                    </BannerEndDate>
-                  )}
-                  
-                  <BannerCostLabel>
-                    {Math.floor(100 * (banner.costMultiplier || 1.5))} points per pull
-                  </BannerCostLabel>
-                  
-                  <BannerButton>
-                    Roll on Banner →
-                  </BannerButton>
-                </BannerCardInfo>
-              </BannerCard>
-            ))}
-          </BannersScroller>
-        </BannersSection>
-      )}
       
       <GachaSection>
         <AnimatePresence mode="wait">
@@ -398,10 +449,12 @@ const GachaPage = () => {
               transition={{ duration: skipAnimations ? 0.2 : 0.4, type: "spring", stiffness: 70 }}
               rarity={currentChar?.rarity}
               whileHover={{ scale: 1.03 }}
+              isBannerCharacter={currentChar?.isBannerCharacter}
             >
               <CardImageContainer>
                 <RarityGlow rarity={currentChar?.rarity} />
                 {isCharacterInCollection(currentChar) && <CollectionBadge>In Collection</CollectionBadge>}
+                {currentChar?.isBannerCharacter && <BannerBadge>Banner Character</BannerBadge>}
                 <CardImage 
                   src={getImagePath(currentChar?.image)} 
                   alt={currentChar?.name}
@@ -442,7 +495,7 @@ const GachaPage = () => {
                 </ActionButton>
                 <ActionButton 
                   onClick={handleRoll} 
-                  disabled={isRolling || (user?.points < 100)}
+                  disabled={isRolling || (user?.points < singlePullCost)}
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
@@ -458,9 +511,10 @@ const GachaPage = () => {
               exit={{ opacity: 0, y: -20 }}
             >
               <MultiRollHeader>
-                <h2>{multiRollResults.length}× Roll Results</h2>
+                <h2>{multiRollResults.length}× Roll Results • {banner.name}</h2>
                 <MultiRollCloseButton onClick={() => setShowMultiResults(false)}>×</MultiRollCloseButton>
               </MultiRollHeader>
+              
               <MultiCharactersGrid>
                 {multiRollResults.map((character, index) => (
                   <MultiCharacterCard 
@@ -469,11 +523,13 @@ const GachaPage = () => {
                     animate={{ scale: 1, opacity: 1 }}
                     transition={{ delay: skipAnimations ? 0 : index * 0.05 }}
                     rarity={character.rarity}
+                    isBannerCharacter={character.isBannerCharacter}
                     whileHover={{ scale: 1.05, zIndex: 5 }}
                   >
-                    <MultiCardImageContainer onClick={() => openPreview(character)}>
+                    <MultiCardImageContainer onClick={() => openPreview({...character, isOwned: isCharacterInCollection(character)})}>
                       <RarityGlowMulti rarity={character.rarity} />
                       {isCharacterInCollection(character) && <CollectionBadgeMini>✓</CollectionBadgeMini>}
+                      {character.isBannerCharacter && <BannerBadgeMini>★</BannerBadgeMini>}
                       <MultiCardImage 
                         src={getImagePath(character.image)} 
                         alt={character.name}
@@ -524,8 +580,8 @@ const GachaPage = () => {
               exit={{ opacity: 0, y: -20 }}
             >
               <EmptyStateIcon>✨</EmptyStateIcon>
-              <h3>Roll to Discover Characters!</h3>
-              <p>Try your luck and build your collection</p>
+              <h3>Roll on {banner.name}</h3>
+              <p>A special banner featuring {banner.series} characters</p>
             </EmptyState>
           )}
         </AnimatePresence>
@@ -533,7 +589,7 @@ const GachaPage = () => {
         <RollButtonsContainer>
           <RollButton 
             onClick={handleRoll} 
-            disabled={isRolling || (user?.points < 100)}
+            disabled={isRolling || (user?.points < singlePullCost)}
             whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(110, 72, 170, 0.5)" }}
             whileTap={{ scale: 0.95 }}
             initial={{ y: 20, opacity: 0 }}
@@ -542,14 +598,14 @@ const GachaPage = () => {
           >
             {isRolling ? 
               "Summoning..." : 
-              <>💫 Single Pull <RollCost>(100 pts)</RollCost></>
+              <>💫 Single Pull <RollCost>({singlePullCost} pts)</RollCost></>
             }
           </RollButton>
           
           <MultiPullContainer className="multi-pull-container">
             <MultiRollButton 
               onClick={multiPullMenuOpen ? handleMultiRoll : toggleMultiPullMenu}
-              disabled={isRolling || (user?.points < 100)}
+              disabled={isRolling || (user?.points < singlePullCost)}
               whileHover={{ scale: 1.05, boxShadow: "0 10px 25px rgba(110, 72, 170, 0.5)" }}
               whileTap={{ scale: 0.95 }}
               initial={{ y: 20, opacity: 0 }}
@@ -561,7 +617,7 @@ const GachaPage = () => {
                 <>
                   🎯 {multiPullCount}× Pull{" "}
                   <RollCost>
-                    ({currentMultiPullCost} pts
+                    ({multiPullCostValue} pts
                     {multiPullCount >= 10 ? " • 10% OFF" : multiPullCount >= 5 ? " • 5% OFF" : ""})
                   </RollCost>
                 </>
@@ -589,7 +645,7 @@ const GachaPage = () => {
                     <PullCountDisplay>{multiPullCount}</PullCountDisplay>
                     <AdjustButton 
                       onClick={() => adjustMultiPullCount(1)}
-                      disabled={multiPullCount >= maxPossiblePulls}
+                      disabled={multiPullCount >= maxPossiblePulls()}
                     >
                       <MdAdd />
                     </AdjustButton>
@@ -598,7 +654,7 @@ const GachaPage = () => {
                   <PullSlider 
                     type="range" 
                     min="1" 
-                    max={maxPossiblePulls || 1}
+                    max={maxPossiblePulls() || 1}
                     value={multiPullCount}
                     onChange={(e) => setMultiPullCount(parseInt(e.target.value))}
                   />
@@ -617,11 +673,11 @@ const GachaPage = () => {
                   
                   <ConfirmButton 
                     onClick={handleMultiRoll}
-                    disabled={user?.points < currentMultiPullCost}
+                    disabled={user?.points < multiPullCostValue}
                     whileHover={{ scale: 1.05 }}
                     whileTap={{ scale: 0.95 }}
                   >
-                    Pull {multiPullCount} for {currentMultiPullCost} points
+                    Pull {multiPullCount} for {multiPullCostValue} points
                   </ConfirmButton>
                 </MultiPullMenu>
               )}
@@ -630,15 +686,17 @@ const GachaPage = () => {
         </RollButtonsContainer>
         
         <RollHint>
-          You have enough points for <strong>{Math.floor((user?.points || 0) / 100)}</strong> single pulls
-          {maxPossiblePulls > 1 && ` or up to a ${maxPossiblePulls}× multi-pull`}
+          You have enough points for <strong>{Math.floor((user?.points || 0) / singlePullCost)}</strong> single pulls
+          {maxPossiblePulls() > 1 && ` or up to a ${maxPossiblePulls()}× multi-pull`}
         </RollHint>
         
-        {skipAnimations && (
-          <SkipAnimationsIndicator>
-            <MdFastForward /> Fast Mode Enabled
-          </SkipAnimationsIndicator>
-        )}
+        <SettingsButton onClick={toggleSkipAnimations}>
+          {skipAnimations ? (
+            <><MdFastForward /> Fast Mode On</>
+          ) : (
+            <><MdFastForward style={{ opacity: 0.5 }} /> Animation Mode</>
+          )}
+        </SettingsButton>
       </GachaSection>
       
       <ImagePreviewModal 
@@ -653,374 +711,335 @@ const GachaPage = () => {
         onClaim={previewChar && !isCharacterInCollection(previewChar) ? 
           () => handleClaim(previewChar.id) : undefined}
       />
-    </GachaContainer>
+    </BannerContainer>
   );
 };
 
-// Styled Components
-const ParticlesBackground = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-image: 
-    radial-gradient(circle at 10% 20%, rgba(216, 241, 230, 0.1) 0%, transparent 80%),
-    radial-gradient(circle at 90% 80%, rgba(118, 75, 162, 0.1) 0%, transparent 70%);
-  pointer-events: none;
-  z-index: -1;
-`;
+// Styled components (use most of them from GachaPage but add these new styles)
 
-const GachaContainer = styled.div`
+const BannerContainer = styled.div`
   min-height: 100vh;
-  background-image: linear-gradient(135deg, #141e30 0%, #243b55 100%);
+  background: linear-gradient(
+    to bottom,
+    rgba(0, 0, 0, 0.7) 0%,
+    rgba(20, 30, 48, 0.9) 60%,
+    rgba(20, 30, 48, 1) 100%
+  );
   background-size: cover;
-  background-position: center;
-  padding: 20px;
+  background-position: center top;
+  background-attachment: fixed;
   position: relative;
-  overflow-x: hidden;
+  padding: 20px;
   
-  &::after {
+  &::before {
     content: "";
     position: fixed;
     top: 0;
     left: 0;
     right: 0;
     bottom: 0;
-    background-image: url('/images/backgrounds/gacha-bg.jpg');
+    background-image: url(${props => props.backgroundImage});
     background-size: cover;
-    background-position: center;
-    opacity: 0.15;
-    z-index: -2;
-    pointer-events: none;
-  }
-  
-  @media (max-width: 768px) {
-    padding: 15px 10px;
+    background-position: center top;
+    opacity: 0.3;
+    z-index: -1;
   }
 `;
 
-const GachaHeader = styled.div`
+const NavBar = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  color: white;
-  padding: 15px;
-  backdrop-filter: blur(5px);
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 16px;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  margin-bottom: 15px;
-  
-  @media (max-width: 480px) {
-    padding: 12px;
-    flex-wrap: wrap;
-  }
+  margin-bottom: 20px;
 `;
 
-const SiteTitle = styled.h1`
-  margin: 0;
-  font-size: 28px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  font-family: 'Poppins', sans-serif;
-  font-weight: 700;
-  letter-spacing: 1px;
+const BackButton = styled.button`
+  background: rgba(0, 0, 0, 0.5);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 8px 15px;
   display: flex;
   align-items: center;
   gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 500;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.7);
+  }
+`;
+
+const BannerHero = styled.div`
+  text-align: center;
+  color: white;
+  margin-bottom: 30px;
+  padding: 20px;
+  background: rgba(0, 0, 0, 0.5);
+  border-radius: 16px;
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const BannerTitle = styled.h1`
+  font-size: 32px;
+  margin: 0 0 10px 0;
+  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
   
   @media (max-width: 480px) {
     font-size: 24px;
   }
 `;
 
-const GlowingSpan = styled.span`
-  background: linear-gradient(90deg, #6e48aa, #9e5594);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  text-shadow: none;
-  position: relative;
-  
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: -5px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #6e48aa, #9e5594);
-    border-radius: 3px;
-  }
-`;
-
-const HeaderControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  
-  @media (max-width: 480px) {
-    gap: 8px;
-  }
-`;
-
-const SettingsButton = styled.button`
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
+const BannerSeries = styled.h2`
   font-size: 18px;
-  transition: all 0.3s;
-  
-  &:hover {
-    background: rgba(0, 0, 0, 0.5);
-  }
-`;
-
-const SettingsPanel = styled.div`
-  position: relative;
-  background: rgba(20, 30, 48, 0.9);
-  backdrop-filter: blur(10px);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 12px;
-  padding: 15px;
-  margin-bottom: 15px;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.3);
-`;
-
-const SettingItem = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  color: white;
-  padding: 8px 0;
-  
-  label {
-    font-weight: 500;
-  }
-`;
-
-const Switch = styled.input.attrs({ type: 'checkbox' })`
-  appearance: none;
-  width: 50px;
-  height: 26px;
-  background-color: #555;
-  border-radius: 13px;
-  position: relative;
-  cursor: pointer;
-  transition: background-color 0.3s;
-  
-  &:checked {
-    background-color: #6e48aa;
-  }
-  
-  &::before {
-    content: '';
-    position: absolute;
-    width: 20px;
-    height: 20px;
-    border-radius: 50%;
-    background-color: white;
-    top: 3px;
-    left: 3px;
-    transition: transform 0.3s;
-  }
-  
-  &:checked::before {
-    transform: translateX(24px);
-  }
-`;
-
-const CloseButton = styled.button`
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: none;
-  border: none;
-  color: white;
-  font-size: 24px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 30px;
-  height: 30px;
-  border-radius: 50%;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-  }
-`;
-
-const RollCountDisplay = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 20px;
+  margin: 0 0 15px 0;
+  color: #ffd700;
   font-weight: 500;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  text-transform: uppercase;
+  letter-spacing: 1px;
   
   @media (max-width: 480px) {
-    padding: 6px 10px;
+    font-size: 16px;
+  }
+`;
+
+const BannerDescription = styled.p`
+  font-size: 16px;
+  max-width: 800px;
+  margin: 0 auto 20px;
+  line-height: 1.6;
+  
+  @media (max-width: 480px) {
     font-size: 14px;
   }
 `;
 
-// Banner Section Components
-const BannersSection = styled.div`
-  margin-bottom: 20px;
-`;
-
-const BannersTitle = styled.h2`
-  color: white;
-  font-size: 22px;
-  margin: 0 0 15px 0;
-  text-align: center;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-`;
-
-const BannersScroller = styled.div`
+const PullCost = styled.div`
   display: flex;
+  justify-content: center;
   gap: 15px;
-  overflow-x: auto;
-  padding: 10px 5px 20px;
-  -webkit-overflow-scrolling: touch;
-  
-  &::-webkit-scrollbar {
-    height: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 10px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 10px;
-  }
-`;
-
-const BannerCard = styled(motion.div)`
-  width: 300px;
-  flex-shrink: 0;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 5px 20px rgba(0, 0, 0, 0.2);
-  cursor: pointer;
-  border: ${props => props.featured ? 
-    '2px solid rgba(255, 215, 0, 0.7)' : 
-    '1px solid rgba(255, 255, 255, 0.1)'};
-  
-  ${props => props.featured && `
-    position: relative;
-    
-    &::after {
-      content: "Featured";
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: linear-gradient(135deg, #ffd700, #ff9500);
-      color: white;
-      font-size: 11px;
-      font-weight: bold;
-      padding: 3px 10px;
-      border-radius: 20px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-    }
-  `}
+  margin-bottom: 20px;
   
   @media (max-width: 480px) {
-    width: 280px;
+    flex-direction: column;
+    gap: 10px;
   }
 `;
 
-const BannerImage = styled.img`
-  width: 100%;
-  height: 120px;
-  object-fit: cover;
-`;
-
-const BannerCardInfo = styled.div`
-  padding: 15px;
-`;
-
-const BannerName = styled.h3`
-  margin: 0 0 5px 0;
-  color: white;
-  font-size: 18px;
-`;
-
-const BannerSeriesName = styled.p`
-  margin: 0 0 10px 0;
+const CostBadge = styled.div`
+  background: rgba(255, 215, 0, 0.2);
+  border: 1px solid rgba(255, 215, 0, 0.5);
   color: #ffd700;
-  font-size: 14px;
+  padding: 8px 15px;
+  border-radius: 50px;
+  font-weight: bold;
 `;
 
-const BannerEndDate = styled.div`
-  font-size: 12px;
+const DateBadge = styled.div`
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 50px;
+`;
+
+const FeaturedCharacters = styled.div`
+  margin: 20px auto;
+  max-width: 800px;
+`;
+
+const FeaturedLabel = styled.div`
+  font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
   margin-bottom: 10px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
 `;
 
-const BannerCostLabel = styled.div`
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.9);
-  margin-bottom: 15px;
-  font-weight: 500;
+const CharacterAvatars = styled.div`
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 10px;
 `;
 
-const BannerButton = styled.button`
-  width: 100%;
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
-  color: white;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 25px;
-  padding: 8px 0;
-  font-size: 14px;
-  font-weight: 500;
+const CharacterAvatar = styled.div`
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  overflow: hidden;
   cursor: pointer;
+  border: 2px solid ${props => rarityColors[props.rarity]};
   transition: all 0.2s;
   
-  &:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
   }
-`;
-
-const MultiCharacterCard = styled(motion.div)`
-  background: white;
-  border-radius: 12px;
-  overflow: hidden;
-  position: relative;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-  border: 2px solid ${props => rarityColors[props.rarity] || rarityColors.common};
-  height: 250px;
+  
+  &:hover {
+    transform: scale(1.1);
+    box-shadow: 0 0 15px ${props => rarityColors[props.rarity]};
+  }
   
   @media (max-width: 480px) {
-    height: 220px;
+    width: 50px;
+    height: 50px;
   }
 `;
 
-const SkipAnimationsIndicator = styled.div`
+const MoreCharacters = styled.div`
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  
+  @media (max-width: 480px) {
+    width: 50px;
+    height: 50px;
+    font-size: 10px;
+  }
+`;
+
+const VideoSection = styled.div`
+  margin: 20px auto;
+  max-width: 600px;
+`;
+
+const VideoContainer = styled.div`
+  position: relative;
+  border-radius: 12px;
+  overflow: hidden;
+  box-shadow: 0 5px 30px rgba(0, 0, 0, 0.3);
+`;
+
+const BannerVideo = styled.video`
+  width: 100%;
+  display: block;
+`;
+
+const VideoControls = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  opacity: 0.7;
+  transition: opacity 0.3s;
+  cursor: pointer;
+  
+  svg {
+    font-size: 50px;
+    color: white;
+  }
+  
+  &:hover {
+    opacity: 1;
+  }
+`;
+
+const VideoCaption = styled.div`
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.8);
+  text-align: center;
+  margin-top: 10px;
+`;
+
+const BannerBadge = styled.div`
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  background: linear-gradient(135deg, #ffd700, #ff9500);
+  color: white;
+  font-size: 12px;
+  font-weight: bold;
+  padding: 6px 12px;
+  border-radius: 30px;
+  z-index: 5;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
   display: flex;
   align-items: center;
   gap: 5px;
-  color: #9e5594;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  margin-top: 15px;
+  
+  &::before {
+    content: "★";
+    font-size: 14px;
+  }
 `;
 
-export default GachaPage;
+const BannerBadgeMini = styled.div`
+  position: absolute;
+  top: 5px;
+  right: 5px;
+  background: linear-gradient(135deg, #ffd700, #ff9500);
+  color: white;
+  font-size: 11px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+`;
+
+const MultiCharacterCard = styled(motion.div)`
+  /* Add special border for banner characters in multi-roll view */
+  border: ${props => props.isBannerCharacter ? 
+    `2px solid #ffd700` : 
+    `2px solid ${rarityColors[props.rarity] || rarityColors.common}`};
+  
+  /* If it's a banner character, add a subtle gold background */
+  background: ${props => props.isBannerCharacter ? 
+    'linear-gradient(to bottom, rgba(255, 215, 0, 0.05), white)' : 
+    'white'};
+`;
+
+const SettingsButton = styled.button`
+  background: rgba(255, 255, 255, 0.1);
+  color: white;
+  border: none;
+  padding: 8px 15px;
+  border-radius: 50px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  margin: 15px auto 0;
+  font-size: 13px;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+`;
+
+const ErrorContainer = styled.div`
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, #141e30 0%, #243b55 100%);
+  color: white;
+  gap: 20px;
+  padding: 20px;
+  text-align: center;
+`;
+
+export default BannerPage;

@@ -38,10 +38,11 @@ app.use(express.static('public'));
 // Routes
 app.use('/api/auth', require('./routes/auth'));
 app.use('/api/characters', require('./routes/characters'));
-app.use('/api/admin', require('./routes/admin')); // Admin-Routen hinzufügen
+app.use('/api/admin', require('./routes/admin')); 
+app.use('/api/banners', require('./routes/banners'));
 
 // Database sync
-sequelize.sync({ force: false }).then(async () => {
+sequelize.sync({ force: true }).then(async () => {
   console.log('Database synced');
   
   // Seed sample data
