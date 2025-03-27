@@ -707,50 +707,63 @@ const GachaPage = () => {
       {/* Help Modal */}
       <AnimatePresence>
         {showHelpModal && (
-          <HelpModal
-            initial={{ opacity: 0, scale: 0.9 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.9 }}
-            transition={{ duration: 0.2 }}
+          <ModalOverlay
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={(e) => {
+              // Only close if clicking the overlay itself, not its children
+              if (e.target === e.currentTarget) {
+                toggleHelpModal();
+              }
+            }}
           >
-            <HelpModalHeader>
-              <h2>How to Play</h2>
-              <CloseButton onClick={toggleHelpModal}>×</CloseButton>
-            </HelpModalHeader>
-            
-            <HelpModalContent>
-              <HelpSection>
-                <h3>Getting Started</h3>
-                <p>Use your points to pull characters and build your collection!</p>
-                <ul>
-                  <li>Single Pull costs 100 points</li>
-                  <li>Multi Pulls offer discounts (5% for 5+ pulls, 10% for 10+ pulls)</li>
-                  <li>Special banners have unique characters with different rates</li>
-                </ul>
-              </HelpSection>
+            <HelpModal
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              transition={{ duration: 0.2 }}
+              onClick={(e) => e.stopPropagation()} // Prevent clicks from bubbling to overlay
+            >
+              <HelpModalHeader>
+                <h2>How to Play</h2>
+                <CloseButton onClick={toggleHelpModal}>×</CloseButton>
+              </HelpModalHeader>
               
-              <HelpSection>
-                <h3>Rarities</h3>
-                <RarityGuide>
-                  {Object.entries(rarityColors).map(([rarity, color]) => (
-                    <RarityItem key={rarity}>
-                      <RarityBubble rarity={rarity}>{rarityIcons[rarity]}</RarityBubble>
-                      <span>{rarity.charAt(0).toUpperCase() + rarity.slice(1)}</span>
-                    </RarityItem>
-                  ))}
-                </RarityGuide>
-              </HelpSection>
-              
-              <HelpSection>
-                <h3>Tips</h3>
-                <ul>
-                  <li>Characters must be claimed to add them to your collection</li>
-                  <li>Toggle Fast Mode to skip animations</li>
-                  <li>Check special banners for featured characters</li>
-                </ul>
-              </HelpSection>
-            </HelpModalContent>
-          </HelpModal>
+              <HelpModalContent>
+                <HelpSection>
+                  <h3>Getting Started</h3>
+                  <p>Use your points to pull characters and build your collection!</p>
+                  <ul>
+                    <li>Single Pull costs 100 points</li>
+                    <li>Multi Pulls offer discounts (5% for 5+ pulls, 10% for 10+ pulls)</li>
+                    <li>Special banners have unique characters with different rates</li>
+                  </ul>
+                </HelpSection>
+                
+                <HelpSection>
+                  <h3>Rarities</h3>
+                  <RarityGuide>
+                    {Object.entries(rarityColors).map(([rarity, color]) => (
+                      <RarityItem key={rarity}>
+                        <RarityBubble rarity={rarity}>{rarityIcons[rarity]}</RarityBubble>
+                        <span>{rarity.charAt(0).toUpperCase() + rarity.slice(1)}</span>
+                      </RarityItem>
+                    ))}
+                  </RarityGuide>
+                </HelpSection>
+                
+                <HelpSection>
+                  <h3>Tips</h3>
+                  <ul>
+                    <li>Characters must be claimed to add them to your collection</li>
+                    <li>Toggle Fast Mode to skip animations</li>
+                    <li>Check special banners for featured characters</li>
+                  </ul>
+                </HelpSection>
+              </HelpModalContent>
+            </HelpModal>
+          </ModalOverlay>
         )}
       </AnimatePresence>
     </GachaContainer>
@@ -1255,12 +1268,22 @@ const SkipAnimationsIndicator = styled.div`
   margin-top: 15px;
 `;
 
+const ModalOverlay = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(0, 0, 0, 0.5);
+  z-index: 999;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  backdrop-filter: blur(2px);
+`;
+
 // Help Modal Components
 const HelpModal = styled(motion.div)`
-  position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
   width: 90%;
   max-width: 500px;
   background: rgba(20, 30, 48, 0.95);
@@ -1269,17 +1292,16 @@ const HelpModal = styled(motion.div)`
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   color: white;
-  z-index: 1000; /* Increased z-index to ensure it appears above other elements */
+  z-index: 1000;
   overflow: hidden;
-  display: flex;
-  flex-direction: column;
   
-  /* Adding margin: 0 auto ensures it's centered horizontally */
-  margin: 0 auto;
+  /* Remove position fixed and transform since the overlay will handle positioning */
+  position: relative;
   
   @media (max-width: 480px) {
     width: 95%;
     max-height: 90vh;
+    overflow-y: auto;
   }
 `;
 
