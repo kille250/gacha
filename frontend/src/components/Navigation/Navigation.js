@@ -527,9 +527,12 @@ const LoadingSpinner = styled.div`
 
 const RewardPopup = styled(motion.div)`
   position: fixed;
-  top: 100px; // Increased to position below navbar
+  top: 100px;
   left: 50%;
   transform: translateX(-50%);
+  width: max-content; /* Allow the popup to size to its content */
+  margin: 0 auto; /* Center horizontally */
+  max-width: 90%; /* Ensure it doesn't overflow on small screens */
   background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
   color: white;
   padding: 15px 25px;
@@ -540,22 +543,32 @@ const RewardPopup = styled(motion.div)`
   gap: 15px;
   z-index: 1000;
   
+  /* Create a parent container for the popup content to ensure proper alignment */
+  > div {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+  }
+  
   p {
     margin: 0;
     font-size: 14px;
     opacity: 0.9;
+    white-space: nowrap; /* Prevent text wrapping */
   }
   
   h3 {
     margin: 5px 0 0;
     font-size: 20px;
     color: #ffcc33;
+    white-space: nowrap; /* Prevent text wrapping */
   }
   
   .celebration-icon {
     font-size: 28px;
     color: #ffcc33;
     animation: bounce 1s infinite alternate;
+    flex-shrink: 0; /* Prevent icon from shrinking */
   }
   
   @keyframes bounce {
@@ -563,6 +576,7 @@ const RewardPopup = styled(motion.div)`
     to { transform: scale(1.2); }
   }
   
+  /* More specific media query handling */
   @media (max-width: 480px) {
     padding: 12px 20px;
     max-width: 85%;
