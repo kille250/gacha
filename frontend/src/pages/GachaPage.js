@@ -1269,8 +1269,13 @@ const HelpModal = styled(motion.div)`
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
   color: white;
-  z-index: 100;
+  z-index: 1000; /* Increased z-index to ensure it appears above other elements */
   overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  
+  /* Adding margin: 0 auto ensures it's centered horizontally */
+  margin: 0 auto;
   
   @media (max-width: 480px) {
     width: 95%;
