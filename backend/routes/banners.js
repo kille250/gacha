@@ -13,17 +13,20 @@ const User = require('../models/user');
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
     const uploadDir = file.mimetype.startsWith('video/') 
-      ? 'uploads/videos' 
-      : 'uploads/banners';
+      ? 'public/uploads/videos' 
+      : 'public/uploads/banners';
     
     // Create directory if it doesn't exist
     fs.mkdirSync(uploadDir, { recursive: true });
+    console.log(`Storing file in: ${uploadDir}`);
     cb(null, uploadDir);
   },
   filename: function(req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const ext = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + ext);
+    const filename = file.fieldname + '-' + uniqueSuffix + ext;
+    console.log(`Generated filename: ${filename}`);
+    cb(null, filename);
   }
 });
 
@@ -79,13 +82,16 @@ router.get('/:id', async (req, res) => {
 });
 
 // Admin routes below require authentication and admin privileges
-
 // Create a new banner (admin only)
 router.post('/', [auth, admin], upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'video', maxCount: 1 }
 ]), async (req, res) => {
   try {
+    console.log('Processing banner creation request');
+    console.log('Request body:', req.body);
+    console.log('Files received:', req.files ? Object.keys(req.files) : 'No files');
+
     const { 
       name, description, series, startDate, endDate, 
       featured, costMultiplier, rateMultiplier, active 
@@ -100,11 +106,15 @@ router.post('/', [auth, admin], upload.fields([
     
     if (req.files) {
       if (req.files.image) {
+        console.log('Image file details:', req.files.image[0]);
         imagePath = `/uploads/banners/${req.files.image[0].filename}`;
+        console.log('Image path set to:', imagePath);
       }
       
       if (req.files.video) {
+        console.log('Video file details:', req.files.video[0]);
         videoPath = `/uploads/videos/${req.files.video[0].filename}`;
+        console.log('Video path set to:', videoPath);
       }
     }
     
@@ -122,6 +132,8 @@ router.post('/', [auth, admin], upload.fields([
       rateMultiplier: parseFloat(rateMultiplier || 5.0),
       active: active !== 'false'
     });
+
+    console.log('Banner created with ID:', banner.id);
     
     // Add characters to banner if provided
     if (characterIds.length > 0) {
@@ -131,6 +143,7 @@ router.post('/', [auth, admin], upload.fields([
       
       if (characters.length > 0) {
         await banner.addCharacters(characters);
+        console.log(`Added ${characters.length} characters to banner`);
       }
     }
     
@@ -141,7 +154,7 @@ router.post('/', [auth, admin], upload.fields([
     
     res.status(201).json(createdBanner);
   } catch (err) {
-    console.error(err);
+    console.error('Error creating banner:', err);
     res.status(500).json({ error: 'Server error: ' + err.message });
   }
 });
@@ -152,6 +165,9 @@ router.put('/:id', [auth, admin], upload.fields([
   { name: 'video', maxCount: 1 }
 ]), async (req, res) => {
   try {
+    console.log(`Processing banner update for ID: ${req.params.id}`);
+    console.log('Files received:', req.files ? Object.keys(req.files) : 'No files');
+
     const banner = await Banner.findByPk(req.params.id);
     if (!banner) return res.status(404).json({ error: 'Banner not found' });
     
@@ -178,29 +194,36 @@ router.put('/:id', [auth, admin], upload.fields([
     // Handle file uploads
     if (req.files) {
       if (req.files.image) {
+        console.log('New image file:', req.files.image[0].filename);
         // Delete old image if exists
         if (banner.image && banner.image.startsWith('/uploads/')) {
           const oldPath = path.join(__dirname, '..', 'public', banner.image);
           if (fs.existsSync(oldPath)) {
             fs.unlinkSync(oldPath);
+            console.log('Deleted old image file:', oldPath);
           }
         }
         banner.image = `/uploads/banners/${req.files.image[0].filename}`;
+        console.log('Updated banner image path:', banner.image);
       }
       
       if (req.files.video) {
+        console.log('New video file:', req.files.video[0].filename);
         // Delete old video if exists
         if (banner.videoUrl && banner.videoUrl.startsWith('/uploads/')) {
           const oldPath = path.join(__dirname, '..', 'public', banner.videoUrl);
           if (fs.existsSync(oldPath)) {
             fs.unlinkSync(oldPath);
+            console.log('Deleted old video file:', oldPath);
           }
         }
         banner.videoUrl = `/uploads/videos/${req.files.video[0].filename}`;
+        console.log('Updated banner video path:', banner.videoUrl);
       }
     }
     
     await banner.save();
+    console.log('Banner saved successfully');
     
     // Update character associations if provided
     if (req.body.characterIds) {
@@ -210,6 +233,7 @@ router.put('/:id', [auth, admin], upload.fields([
       });
       
       await banner.setCharacters(characters);
+      console.log(`Updated banner characters: ${characters.length} characters`);
     }
     
     // Return updated banner with characters
@@ -219,7 +243,7 @@ router.put('/:id', [auth, admin], upload.fields([
     
     res.json(updatedBanner);
   } catch (err) {
-    console.error(err);
+    console.error('Error updating banner:', err);
     res.status(500).json({ error: 'Server error: ' + err.message });
   }
 });
@@ -235,6 +259,7 @@ router.delete('/:id', [auth, admin], async (req, res) => {
       const imagePath = path.join(__dirname, '..', 'public', banner.image);
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
+        console.log('Deleted image file:', imagePath);
       }
     }
     
@@ -242,13 +267,15 @@ router.delete('/:id', [auth, admin], async (req, res) => {
       const videoPath = path.join(__dirname, '..', 'public', banner.videoUrl);
       if (fs.existsSync(videoPath)) {
         fs.unlinkSync(videoPath);
+        console.log('Deleted video file:', videoPath);
       }
     }
     
     await banner.destroy();
+    console.log(`Banner ID ${req.params.id} deleted successfully`);
     res.json({ message: 'Banner deleted successfully' });
   } catch (err) {
-    console.error(err);
+    console.error('Error deleting banner:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
