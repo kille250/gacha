@@ -79,7 +79,7 @@ import {
 	// Calculate max possible pulls
 	const maxPossiblePulls = useCallback(() => {
 	  const singlePullCost = calculateSinglePullCost();
-	  return Math.max(1, Math.min(100, Math.floor((user?.points || 0) / singlePullCost)));
+	  return Math.max(1, Math.min(20, Math.floor((user?.points || 0) / singlePullCost)));
 	}, [user?.points, calculateSinglePullCost]);
 	
 	// Current costs

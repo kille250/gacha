@@ -69,7 +69,7 @@ const GachaPage = () => {
   const [showHelpModal, setShowHelpModal] = useState(false);
   
   // Calculate maximum possible pulls based on user points
-  const maxPossiblePulls = Math.min(100, Math.floor((user?.points || 0) / 100));
+  const maxPossiblePulls = Math.min(20, Math.floor((user?.points || 0) / 100));
   
   const calculateMultiPullCost = (count) => {
     const baseCost = count * 100;
