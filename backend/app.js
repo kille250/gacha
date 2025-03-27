@@ -52,7 +52,7 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/banners', require('./routes/banners'));
 
 // Database sync
-sequelize.sync({ force: true }).then(async () => {
+sequelize.sync({ force: false }).then(async () => {
   console.log('Database synced');
   
   // Seed sample data
