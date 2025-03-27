@@ -5,7 +5,9 @@ const admin = require('../middleware/adminAuth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
-const { Banner, Character, User } = require('../models');
+const Banner = require('../models/banner');
+const Character = require('../models/character');
+const User = require('../models/user');
 
 // Configure storage for banner images and videos
 const storage = multer.diskStorage({

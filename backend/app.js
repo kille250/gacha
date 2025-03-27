@@ -2,8 +2,18 @@ require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
 const sequelize = require('./config/db');
-const { User, Character } = require('./models');
+const Banner = require('./models/banner');
+const Character = require('./models/character');
+const User = require('./models/user');
 const schedule = require('node-schedule');
+
+// Set up associations after all models are loaded
+Banner.belongsToMany(Character, { through: 'BannerCharacters' });
+Character.belongsToMany(Banner, { through: 'BannerCharacters' });
+
+// Other associations
+User.belongsToMany(Character, { through: 'UserCharacters' });
+Character.belongsToMany(User, { through: 'UserCharacters' });
 
 const app = express();
 

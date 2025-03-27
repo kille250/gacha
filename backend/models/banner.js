@@ -1,6 +1,5 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
-const Character = require('./character');
 
 const Banner = sequelize.define('Banner', {
   name: {
@@ -42,16 +41,12 @@ const Banner = sequelize.define('Banner', {
   },
   rateMultiplier: {
     type: DataTypes.FLOAT,
-    defaultValue: 5.0 // 5x higher chance of getting banner characters
+    defaultValue: 5.0
   },
   active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
   }
 });
-
-// Set up association with characters
-Banner.belongsToMany(Character, { through: 'BannerCharacters' });
-Character.belongsToMany(Banner, { through: 'BannerCharacters' });
 
 module.exports = Banner;
