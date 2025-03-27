@@ -21,9 +21,10 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [videoPreview, setVideoPreview] = useState(null);
   const [characterSearch, setCharacterSearch] = useState('');
 
-  // Filter characters based on search term
+  // Filter characters based on search term (match name OR series)
   const filteredCharacters = characters.filter(char => 
-    char.name.toLowerCase().includes(characterSearch.toLowerCase())
+    char.name.toLowerCase().includes(characterSearch.toLowerCase()) ||
+    (char.series && char.series.toLowerCase().includes(characterSearch.toLowerCase()))
   );
 
   // Reset and populate form when banner changes
@@ -331,7 +332,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                     </SearchIcon>
                     <SearchInput
                       type="text"
-                      placeholder="Search characters..."
+                      placeholder="Search by character name or series..."
                       value={characterSearch}
                       onChange={(e) => setCharacterSearch(e.target.value)}
                     />
@@ -360,6 +361,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                         />
                         <CharOptionInfo>
                           <CharOptionName>{char.name}</CharOptionName>
+                          <CharOptionSeries>{char.series}</CharOptionSeries>
                           <CharOptionRarity>{char.rarity}</CharOptionRarity>
                         </CharOptionInfo>
                         <CharOptionCheck>
@@ -719,10 +721,20 @@ const CharOptionName = styled.div`
   text-overflow: ellipsis;
 `;
 
+const CharOptionSeries = styled.div`
+  font-size: 11px;
+  color: #555;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  margin-top: 2px;
+`;
+
 const CharOptionRarity = styled.div`
   font-size: 11px;
   color: #777;
   text-transform: capitalize;
+  margin-top: 2px;
 `;
 
 const CharOptionCheck = styled.div`
