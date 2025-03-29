@@ -9,7 +9,11 @@ import {
   RollButtonsContainer, RollButton, RollCost,
   MultiRollButton, PullCountDisplay,
   PullSlider, DiscountInfo, ConfirmButton,
-  RollHint, rarityColors
+  RollHint, rarityColors, ModalOverlay, NewMultiPullPanel, PanelHeader, 
+  CloseButton, PanelContent, CurrentSelection, SelectionValue, SelectionCost,
+  DiscountTag, PresetOptions, PresetButton, DiscountBadge, SliderContainer,
+  PullCountAdjuster, AdjustBtn, PullInfoGraphic, PullInfoCard, PullInfoIcon,
+  PullInfoLabel, PullInfoValue, ErrorNote
 } from '../components/GachaStyles';
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
@@ -75,7 +79,7 @@ const MultiPullMenu = ({
     
     return recommendations;
   };
-
+  
   return (
     <AnimatePresence>
       {isOpen && (
@@ -218,7 +222,7 @@ const GachaPage = () => {
   const [multiPullMenuOpen, setMultiPullMenuOpen] = useState(false);
   const [banners, setBanners] = useState([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
-
+  
   // Calculate maximum possible pulls based on user points
   const maxPossiblePulls = Math.min(20, Math.floor((user?.points || 0) / 100));
   
@@ -789,7 +793,6 @@ const GachaPage = () => {
 };
 
 // ==================== STYLED COMPONENTS ====================
-
 // Main container styles
 const MainContainer = styled.div`
   min-height: 100vh;
@@ -1453,212 +1456,6 @@ const EmptyBanners = styled.div`
   justify-content: center;
   height: 200px;
   color: rgba(255, 255, 255, 0.7);
-`;
-
-// New Multi Pull Menu Components
-const ModalOverlay = styled(motion.div)`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  backdrop-filter: blur(3px);
-`;
-
-const NewMultiPullPanel = styled(motion.div)`
-  background: linear-gradient(135deg, #1e293b, #0f172a);
-  border-radius: 16px;
-  width: 90%;
-  max-width: 450px;
-  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  overflow: hidden;
-`;
-
-const PanelHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 15px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  
-  h2 {
-    margin: 0;
-    font-size: 20px;
-    font-weight: 600;
-  }
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  color: white;
-  font-size: 24px;
-  cursor: pointer;
-`;
-
-const PanelContent = styled.div`
-  padding: 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-`;
-
-const CurrentSelection = styled.div`
-  text-align: center;
-  padding: 15px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 15px;
-`;
-
-const SelectionValue = styled.div`
-  font-size: 32px;
-  font-weight: bold;
-  color: #9e5594;
-`;
-
-const SelectionCost = styled.div`
-  font-size: 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-`;
-
-const DiscountTag = styled.span`
-  background: #9e5594;
-  padding: 3px 6px;
-  border-radius: 4px;
-  font-size: 12px;
-  font-weight: bold;
-`;
-
-const PresetOptions = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: 8px;
-  justify-content: center;
-`;
-
-const PresetButton = styled.button`
-  padding: 8px 15px;
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, ${props => props.active ? 0.3 : 0.1});
-  background: ${props => props.active ? 'rgba(158, 85, 148, 0.3)' : 'rgba(0, 0, 0, 0.2)'};
-  color: ${props => props.disabled ? 'rgba(255, 255, 255, 0.5)' : 'white'};
-  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-  position: relative;
-  transition: all 0.2s;
-  
-  &:hover:not(:disabled) {
-    background: ${props => props.active ? 'rgba(158, 85, 148, 0.4)' : 'rgba(0, 0, 0, 0.3)'};
-  }
-  
-  ${props => props.active && `
-    font-weight: bold;
-    box-shadow: 0 0 10px rgba(158, 85, 148, 0.5);
-  `}
-`;
-
-const DiscountBadge = styled.span`
-  position: absolute;
-  top: -8px;
-  right: -8px;
-  background: #9e5594;
-  color: white;
-  font-size: 10px;
-  font-weight: bold;
-  padding: 2px 5px;
-  border-radius: 10px;
-`;
-
-const SliderContainer = styled.div`
-  padding: 10px 5px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-`;
-
-const PullCountAdjuster = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: 15px;
-`;
-
-const AdjustBtn = styled.button`
-  width: 36px;
-  height: 36px;
-  border-radius: 18px;
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s;
-  &:hover:not(:disabled) {
-    background: rgba(0, 0, 0, 0.4);
-  }
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const PullInfoGraphic = styled.div`
-  display: flex;
-  gap: 10px;
-  justify-content: center;
-  flex-wrap: wrap;
-`;
-
-const PullInfoCard = styled.div`
-  background: ${props => props.accent ? 'rgba(158, 85, 148, 0.3)' : 'rgba(0, 0, 0, 0.2)'};
-  border-radius: 10px;
-  padding: 12px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 85px;
-  flex: 1;
-  gap: 5px;
-  border: 1px solid ${props => props.accent ? 'rgba(158, 85, 148, 0.5)' : 'rgba(255, 255, 255, 0.1)'};
-`;
-
-const PullInfoIcon = styled.div`
-  font-size: 20px;
-  margin-bottom: 5px;
-`;
-
-const PullInfoLabel = styled.div`
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-`;
-
-const PullInfoValue = styled.div`
-  font-weight: bold;
-  font-size: 16px;
-`;
-
-const ErrorNote = styled.div`
-  font-size: 14px;
-  color: #ff6b6b;
-  text-align: center;
-  
-  span {
-    font-weight: bold;
-  }
 `;
 
 // Modal components

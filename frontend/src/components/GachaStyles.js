@@ -53,6 +53,34 @@ export const LoadingText = styled.p`
   letter-spacing: 0.5px;
 `;
 
+export const ErrorMessage = styled(motion.div)`
+  background: rgba(220, 53, 69, 0.9);
+  color: white;
+  padding: 12px 20px;
+  border-radius: 8px;
+  margin: 15px auto;
+  max-width: 600px;
+  text-align: center;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  font-weight: 500;
+  border-left: 5px solid rgba(255, 255, 255, 0.5);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  
+  &::before {
+    content: "⚠️";
+    font-size: 18px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 10px 15px;
+    font-size: 14px;
+    margin: 10px auto;
+  }
+`;
+
 export const PointsCounter = styled.div`
   background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
   color: white;
@@ -85,37 +113,6 @@ export const CoinIcon = styled.span`
 
 export const PointsAmount = styled.span`
   font-weight: bold;
-`;
-
-// ...copy all the other styled components from GachaPage.js
-
-// export const all the remaining styled components you need for both pages
-export const ErrorMessage = styled(motion.div)`
-  background: rgba(220, 53, 69, 0.9);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  margin: 15px auto;
-  max-width: 600px;
-  text-align: center;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  font-weight: 500;
-  border-left: 5px solid rgba(255, 255, 255, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  
-  &::before {
-    content: "⚠️";
-    font-size: 18px;
-  }
-  
-  @media (max-width: 480px) {
-    padding: 10px 15px;
-    font-size: 14px;
-    margin: 10px auto;
-  }
 `;
 
 export const RarityHistoryBar = styled.div`
@@ -182,9 +179,6 @@ export const GachaSection = styled.div`
   }
 `;
 
-// ...continue with all the remaining styled components
-
-// Add everything your BannerPage needs from the ESLint errors
 export const CharacterCard = styled(motion.div)`
   background: rgba(255, 255, 255, 0.95);
   border-radius: 16px;
@@ -549,9 +543,9 @@ export const MultiRarityBadge = styled.div`
   z-index: 5;
   
   @keyframes shiny {
-	0% { filter: brightness(1); }
-	50% { filter: brightness(1.3); }
-	100% { filter: brightness(1); }
+    0% { filter: brightness(1); }
+    50% { filter: brightness(1.3); }
+    100% { filter: brightness(1); }
   }
   
   animation: ${props => ['legendary', 'epic'].includes(props.rarity) ? 'shiny 2s infinite' : 'none'};
@@ -924,4 +918,209 @@ export const RollHint = styled.p`
   font-size: 14px;
   margin-top: 15px;
   text-align: center;
+`;
+
+// New styles from BannerPage and GachaPage that were not in GachaStyles
+export const ModalOverlay = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(3px);
+`;
+
+export const NewMultiPullPanel = styled(motion.div)`
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  overflow: hidden;
+`;
+
+export const PanelHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+  }
+`;
+
+export const CloseButton = styled.button`
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+`;
+
+export const PanelContent = styled.div`
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+export const CurrentSelection = styled.div`
+  text-align: center;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+`;
+
+export const SelectionValue = styled.div`
+  font-size: 32px;
+  font-weight: bold;
+  color: #9e5594;
+`;
+
+export const SelectionCost = styled.div`
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+export const DiscountTag = styled.span`
+  background: #9e5594;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+`;
+
+export const PresetOptions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+`;
+
+export const PresetButton = styled.button`
+  padding: 8px 15px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, ${props => props.active ? 0.3 : 0.1});
+  background: ${props => props.active ? 'rgba(158, 85, 148, 0.3)' : 'rgba(0, 0, 0, 0.2)'};
+  color: ${props => props.disabled ? 'rgba(255, 255, 255, 0.5)' : 'white'};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  position: relative;
+  transition: all 0.2s;
+  
+  &:hover:not(:disabled) {
+    background: ${props => props.active ? 'rgba(158, 85, 148, 0.4)' : 'rgba(0, 0, 0, 0.3)'};
+  }
+  
+  ${props => props.active && `
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(158, 85, 148, 0.5);
+  `}
+`;
+
+export const DiscountBadge = styled.span`
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #9e5594;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 5px;
+  border-radius: 10px;
+`;
+
+export const SliderContainer = styled.div`
+  padding: 10px 5px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+`;
+
+export const PullCountAdjuster = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 15px;
+`;
+
+export const AdjustBtn = styled.button`
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+  &:hover:not(:disabled) {
+    background: rgba(0, 0, 0, 0.4);
+  }
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+export const PullInfoGraphic = styled.div`
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+  flex-wrap: wrap;
+`;
+
+export const PullInfoCard = styled.div`
+  background: ${props => props.accent ? 'rgba(158, 85, 148, 0.3)' : 'rgba(0, 0, 0, 0.2)'};
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 85px;
+  flex: 1;
+  gap: 5px;
+  border: 1px solid ${props => props.accent ? 'rgba(158, 85, 148, 0.5)' : 'rgba(255, 255, 255, 0.1)'};
+`;
+
+export const PullInfoIcon = styled.div`
+  font-size: 20px;
+  margin-bottom: 5px;
+`;
+
+export const PullInfoLabel = styled.div`
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+export const PullInfoValue = styled.div`
+  font-weight: bold;
+  font-size: 16px;
+`;
+
+export const ErrorNote = styled.div`
+  font-size: 14px;
+  color: #ff6b6b;
+  text-align: center;
+  
+  span {
+    font-weight: bold;
+  }
 `;
