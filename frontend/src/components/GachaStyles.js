@@ -625,11 +625,11 @@ export const RollButtonsContainer = styled.div`
   max-width: 580px;
   margin-left: auto;
   margin-right: auto;
-  justify-content: center; // Center the buttons horizontally
+  justify-content: center; // Add this to center buttons horizontally
   
   @media (max-width: 768px) {
     flex-direction: column;
-    align-items: center;
+    align-items: center; // Add this to center buttons when stacked
     width: 100%;
     gap: 10px;
   }
@@ -708,6 +708,7 @@ export const MultiPullContainer = styled.div`
   @media (max-width: 768px) {
     width: 100%;
     max-width: 300px;
+    margin: 0 auto; // Center it
   }
 `;
 
