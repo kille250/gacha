@@ -641,49 +641,51 @@ export const RollButton = styled(motion.button)`
   color: white;
   border: none;
   border-radius: 50px;
-  padding: 15px 30px;
-  font-size: 18px;
+  padding: 12px 20px; // Reduced padding
+  font-size: 16px; // Reduced font size
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 5px 20px rgba(110, 72, 170, 0.4);
+  box-shadow: 0 5px 15px rgba(110, 72, 170, 0.4); // Slightly reduced shadow
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
+  max-width: 250px; // Add maximum width
+  margin: 0 auto;
   
   &::before {
-	content: '';
-	position: absolute;
-	top: -10%;
-	left: -10%;
-	right: -10%;
-	bottom: -10%;
-	background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
-	transform: translateX(-100%);
-	transition: transform 0.5s;
+    content: '';
+    position: absolute;
+    top: -10%;
+    left: -10%;
+    right: -10%;
+    bottom: -10%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transform: translateX(-100%);
+    transition: transform 0.5s;
   }
   
   &:hover::before {
-	transform: translateX(100%);
+    transform: translateX(100%);
   }
   
   &:disabled {
-	background: #666;
-	cursor: not-allowed;
-	box-shadow: none;
-	
-	&::before {
-	  display: none;
-	}
+    background: #666;
+    cursor: not-allowed;
+    box-shadow: none;
+    
+    &::before {
+      display: none;
+    }
   }
   
   @media (max-width: 768px) {
-	width: 100%;
-	max-width: 300px;
-	padding: 12px 25px;
-	font-size: 16px;
+    width: 100%;
+    padding: 10px 20px;
+    font-size: 15px;
   }
 `;
 
@@ -712,6 +714,7 @@ export const MultiRollButton = styled(RollButton)`
     ? 'linear-gradient(135deg, #2c5282, #0f2942)' 
     : 'linear-gradient(135deg, #4b6cb7 0%, #182848 100%)'};
   width: 100%;
+  max-width: 280px; // Add maximum width
   position: relative;
   z-index: 2;
   
@@ -726,6 +729,7 @@ export const MultiRollButton = styled(RollButton)`
   /* Mobile styling keeps full rounded corners */
   @media (max-width: 768px) {
     border-radius: 50px;
+    max-width: 280px; // Keep the same max-width on mobile
   }
 `;
 
