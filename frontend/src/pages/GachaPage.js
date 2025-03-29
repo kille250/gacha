@@ -1332,14 +1332,13 @@ const BannerCard = styled(motion.div)`
 
 const BannerImage = styled.img`
   width: 180px;
-  height: 130px;
-  object-fit: cover;
+  max-height: 130px;
+  object-fit: contain;
   object-position: center;
   flex-shrink: 0;
-  
   @media (max-width: 768px) {
     width: 100%;
-    height: 140px;
+    max-height: 140px;
   }
 `;
 
