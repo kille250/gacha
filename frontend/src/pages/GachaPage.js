@@ -971,6 +971,19 @@ const SectionHeading = styled.h2`
   gap: 10px;
   margin: 0 0 20px 0;
   font-size: 22px;
+  position: relative;
+  padding-bottom: 10px;
+  
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    width: 60px;
+    height: 3px;
+    background: linear-gradient(90deg, #6e48aa, #9e5594);
+    border-radius: 3px;
+  }
   
   @media (max-width: 768px) {
     font-size: 20px;
@@ -1271,7 +1284,6 @@ const BannersList = styled.div`
   display: flex;
   flex-direction: column;
   gap: 15px;
-  
   @media (max-width: 1100px) and (min-width: 769px) {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1289,6 +1301,12 @@ const BannerCard = styled(motion.div)`
     '1px solid rgba(255, 255, 255, 0.1)'
   };
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
   
   ${props => props.featured && `
     position: relative;
@@ -1307,37 +1325,44 @@ const BannerCard = styled(motion.div)`
       z-index: 1;
     }
   `}
-  
   @media (max-width: 768px) {
     flex-direction: column;
   }
 `;
 
 const BannerImage = styled.img`
-  width: 130px;
+  width: 180px;
   height: 130px;
   object-fit: cover;
+  object-position: center;
+  flex-shrink: 0;
   
   @media (max-width: 768px) {
     width: 100%;
-    height: 120px;
+    height: 140px;
   }
 `;
 
 const BannerInfo = styled.div`
   padding: 15px;
   flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
 `;
 
 const BannerTitle = styled.h3`
   margin: 0 0 5px 0;
   font-size: 18px;
+  font-weight: 600;
+  color: #fff;
 `;
 
 const BannerSeries = styled.div`
   margin: 0 0 10px 0;
   color: #ffd700;
   font-size: 14px;
+  font-weight: 500;
 `;
 
 const BannerEnd = styled.div`
@@ -1352,7 +1377,7 @@ const BannerCost = styled.div`
 `;
 
 const ViewBannerBtn = styled.button`
-  background: linear-gradient(135deg, rgba(255, 255, 255, 0.1), rgba(255, 255, 255, 0.05));
+  background: linear-gradient(135deg, rgba(110, 72, 170, 0.5), rgba(158, 85, 148, 0.5));
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
   padding: 8px 15px;
@@ -1364,9 +1389,14 @@ const ViewBannerBtn = styled.button`
   cursor: pointer;
   font-size: 14px;
   transition: all 0.2s;
+  font-weight: 500;
+  align-self: flex-start;
+  margin-top: auto;
   
   &:hover {
-    background: linear-gradient(135deg, rgba(255, 255, 255, 0.2), rgba(255, 255, 255, 0.1));
+    background: linear-gradient(135deg, rgba(110, 72, 170, 0.7), rgba(158, 85, 148, 0.7));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 `;
 
