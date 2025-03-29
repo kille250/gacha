@@ -213,7 +213,7 @@ const GachaPage = () => {
   const [previewChar, setPreviewChar] = useState(null);
   const [rollCount, setRollCount] = useState(0);
   const [lastRarities, setLastRarities] = useState([]);
-  const [userCollection, setUserCollection] = useState([]);
+  const [setUserCollection] = useState([]);
   const [skipAnimations, setSkipAnimations] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [multiPullCount, setMultiPullCount] = useState(10);
