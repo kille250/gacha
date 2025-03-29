@@ -867,7 +867,6 @@ import {
 	position: relative;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 	border: 2px solid ${props => rarityColors[props.rarity] || rarityColors.common};
-	height: 250px;
 	/* Add special border for banner characters in multi-roll view */
 	border: ${props => props.isBannerCharacter ?
 	  `2px solid #ffd700` :
