@@ -682,10 +682,12 @@ export const RollButton = styled(motion.button)`
   }
   
   @media (max-width: 768px) {
-    width: 100%; 
-    flex: none; // Remove flex on mobile
+    width: 80%; /* Control width of buttons on mobile */
+    max-width: 280px;
+    flex: none;
     padding: 10px 20px;
     font-size: 15px;
+    margin: 0 auto; /* Additional centering */
   }
 `;
 
@@ -728,7 +730,10 @@ export const MultiRollButton = styled(RollButton)`
   
   /* Mobile styling keeps full rounded corners */
   @media (max-width: 768px) {
+    width: 80%; /* Match the single roll button width */
+    max-width: 280px;
     border-radius: 50px;
+    margin: 0 auto; /* Additional centering */
   }
 `;
 
