@@ -241,7 +241,7 @@ const GachaPage = () => {
   useEffect(() => {
     fetchUserCollection();
     fetchBanners();
-  }, []);
+  }, [fetchUserCollection]);
   
   // Set default multiPullCount based on user points
   useEffect(() => {
@@ -249,7 +249,7 @@ const GachaPage = () => {
     setMultiPullCount(Math.max(1, defaultCount));
   }, [user?.points, maxPossiblePulls]);
   
-  const fetchUserCollection = async () => {
+  const fetchUserCollection = useCallback(async () => {
     try {
       const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
         headers: { 'x-auth-token': localStorage.getItem('token') }
@@ -258,7 +258,7 @@ const GachaPage = () => {
     } catch (err) {
       console.error("Error fetching user collection:", err);
     }
-  };
+  }, []);
   
   const fetchBanners = async () => {
     try {
@@ -1254,11 +1254,15 @@ const RollControls = styled.div`
   gap: 15px;
   margin-bottom: 15px;
   justify-content: center;
-  max-width: 600px; // Add a max-width to constrain button size
+  max-width: 600px;
   margin-left: auto;
   margin-right: auto;
+  
   @media (max-width: 768px) {
     flex-direction: column;
+    width: 100%;
+    gap: 10px;
+    align-items: center; /* This ensures buttons are centered on mobile */
   }
 `;
 

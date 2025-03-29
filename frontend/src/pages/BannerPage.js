@@ -270,18 +270,18 @@ import {
 	useEffect(() => {
 	  refreshUser();
 	  fetchUserCollection();
-	}, [refreshUser]);
+	}, [refreshUser, fetchUserCollection]);
   
-	const fetchUserCollection = async () => {
-	  try {
-		const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
-		  headers: { 'x-auth-token': localStorage.getItem('token') }
-		});
-		setUserCollection(response.data);
-	  } catch (err) {
-		console.error("Error fetching user collection:", err);
-	  }
-	};
+	const fetchUserCollection = useCallback(async () => {
+		try {
+		  const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
+			headers: { 'x-auth-token': localStorage.getItem('token') }
+		  });
+		  setUserCollection(response.data);
+		} catch (err) {
+		  console.error("Error fetching user collection:", err);
+		}
+	  }, []);
   
 	const isCharacterInCollection = useCallback((character) => {
 	  return userCollection.some(char => char.id === character.id);
