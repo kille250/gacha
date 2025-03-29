@@ -581,10 +581,6 @@ import {
 							{rarityIcons[character.rarity]} {character.rarity}
 						  </MultiRarityBadge>
 						</MultiCardContent>
-						
-						<MultiCardClaimButton disabled={true}>
-						  Collected
-						</MultiCardClaimButton>
 					  </EnhancedMultiCharacterCard>
 					))}
 				  </EnhancedMultiCharactersGrid>
