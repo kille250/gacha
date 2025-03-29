@@ -623,10 +623,14 @@ export const EmptyStateIcon = styled.div`
 
 export const RollButtonsContainer = styled.div`
   display: flex;
-  gap: 15px;
+  gap: 10px; // Reduce gap from 15px to 10px
   margin-bottom: 15px;
   position: relative;
   z-index: 5;
+  width: 100%;
+  max-width: 580px; // Add maximum width for container
+  margin-left: auto;
+  margin-right: auto;
   
   @media (max-width: 768px) {
     flex-direction: column;
@@ -641,11 +645,11 @@ export const RollButton = styled(motion.button)`
   color: white;
   border: none;
   border-radius: 50px;
-  padding: 12px 20px; // Reduced padding
-  font-size: 16px; // Reduced font size
+  padding: 12px 20px; // Reduced from original
+  font-size: 16px;
   font-weight: bold;
   cursor: pointer;
-  box-shadow: 0 5px 15px rgba(110, 72, 170, 0.4); // Slightly reduced shadow
+  box-shadow: 0 5px 15px rgba(110, 72, 170, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -653,8 +657,8 @@ export const RollButton = styled(motion.button)`
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
-  max-width: 250px; // Add maximum width
-  margin: 0 auto;
+  width: 100%; // Take full width of parent
+  max-width: 280px; // Increased slightly to match container
   
   &::before {
     content: '';
@@ -714,7 +718,7 @@ export const MultiRollButton = styled(RollButton)`
     ? 'linear-gradient(135deg, #2c5282, #0f2942)' 
     : 'linear-gradient(135deg, #4b6cb7 0%, #182848 100%)'};
   width: 100%;
-  max-width: 280px; // Add maximum width
+  max-width: 280px;
   position: relative;
   z-index: 2;
   
@@ -729,7 +733,6 @@ export const MultiRollButton = styled(RollButton)`
   /* Mobile styling keeps full rounded corners */
   @media (max-width: 768px) {
     border-radius: 50px;
-    max-width: 280px; // Keep the same max-width on mobile
   }
 `;
 
