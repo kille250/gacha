@@ -1281,12 +1281,16 @@ const BannersColumn = styled.div`
 `;
 
 const BannersList = styled.div`
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 15px;
-  @media (max-width: 1100px) and (min-width: 769px) {
-    display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
   }
 `;
 
@@ -1295,6 +1299,7 @@ const BannerCard = styled(motion.div)`
   border-radius: 12px;
   overflow: hidden;
   display: flex;
+  flex-direction: column; /* Always use vertical layout like mobile */
   cursor: pointer;
   border: ${props => props.featured ?
     '2px solid rgba(255, 215, 0, 0.7)' :
@@ -1325,21 +1330,13 @@ const BannerCard = styled(motion.div)`
       z-index: 1;
     }
   `}
-  @media (max-width: 768px) {
-    flex-direction: column;
-  }
 `;
 
 const BannerImage = styled.img`
-  width: 180px;
-  max-height: 130px;
-  object-fit: contain;
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
   object-position: center;
-  flex-shrink: 0;
-  @media (max-width: 768px) {
-    width: 100%;
-    max-height: 140px;
-  }
 `;
 
 const BannerInfo = styled.div`
