@@ -237,6 +237,17 @@ const GachaPage = () => {
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
+
+  const fetchUserCollection = useCallback(async () => {
+    try {
+      const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      setUserCollection(response.data);
+    } catch (err) {
+      console.error("Error fetching user collection:", err);
+    }
+  }, []);
   
   useEffect(() => {
     fetchUserCollection();
@@ -248,17 +259,6 @@ const GachaPage = () => {
     const defaultCount = Math.min(10, maxPossiblePulls);
     setMultiPullCount(Math.max(1, defaultCount));
   }, [user?.points, maxPossiblePulls]);
-  
-  const fetchUserCollection = useCallback(async () => {
-    try {
-      const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
-      setUserCollection(response.data);
-    } catch (err) {
-      console.error("Error fetching user collection:", err);
-    }
-  }, []);
   
   const fetchBanners = async () => {
     try {

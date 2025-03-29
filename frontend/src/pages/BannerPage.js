@@ -265,13 +265,7 @@ import {
 		document.removeEventListener('mousedown', handleClickOutside);
 	  };
 	}, [multiPullMenuOpen]);
-  
-	// Refresh user data and fetch collection
-	useEffect(() => {
-	  refreshUser();
-	  fetchUserCollection();
-	}, [refreshUser, fetchUserCollection]);
-  
+
 	const fetchUserCollection = useCallback(async () => {
 		try {
 		  const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
@@ -282,6 +276,12 @@ import {
 		  console.error("Error fetching user collection:", err);
 		}
 	  }, []);
+  
+	// Refresh user data and fetch collection
+	useEffect(() => {
+	  refreshUser();
+	  fetchUserCollection();
+	}, [refreshUser, fetchUserCollection]);
   
 	const isCharacterInCollection = useCallback((character) => {
 	  return userCollection.some(char => char.id === character.id);
