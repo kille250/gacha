@@ -16,7 +16,7 @@ import {
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdReplay, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdClose, MdHelp } from 'react-icons/md';
+import { MdReplay, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdHelp } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy, FaArrowRight } from 'react-icons/fa';
 import axios from 'axios';
 import { rollCharacter, getActiveBanners } from '../utils/api';
@@ -268,10 +268,6 @@ const GachaPage = () => {
       console.error("Error fetching banners:", err);
     }
   };
-  
-  const isCharacterInCollection = useCallback((character) => {
-    return userCollection.some(char => char.id === character.id);
-  }, [userCollection]);
   
   const showRarePullEffect = useCallback((rarity) => {
     if (['legendary', 'epic'].includes(rarity)) {

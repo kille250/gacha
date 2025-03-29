@@ -24,7 +24,7 @@ import {
   import { motion, AnimatePresence } from 'framer-motion';
   import { getBannerById, rollOnBanner, multiRollOnBanner } from '../utils/api';
   import { AuthContext } from '../context/AuthContext';
-  import { MdReplay, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdClose, MdArrowBack, MdInfo } from 'react-icons/md';
+  import { MdReplay, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdArrowBack, MdInfo } from 'react-icons/md';
   import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight } from 'react-icons/fa';
   import confetti from 'canvas-confetti';
   import ImagePreviewModal from '../components/UI/ImagePreviewModal';
