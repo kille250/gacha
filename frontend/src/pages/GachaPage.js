@@ -599,42 +599,44 @@ const GachaPage = () => {
             </SectionHeading>
             
             {banners.length > 0 ? (
-              <BannersList>
-                {banners.map(banner => (
-                  <BannerCard
-                    key={banner.id}
-                    featured={banner.featured}
-                    onClick={() => navigate(`/banner/${banner.id}`)}
-                    whileHover={{ y: -5 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <BannerImage
-                      src={getBannerImageUrl(banner.image)}
-                      alt={banner.name}
-                      onError={(e) => {
-                        if (!e.target.src.includes('placeholder.com')) {
-                          e.target.src = 'https://via.placeholder.com/300x150?text=Banner';
-                        }
-                      }}
-                    />
-                    <BannerInfo>
-                      <BannerTitle>{banner.name}</BannerTitle>
-                      <BannerSeries>{banner.series}</BannerSeries>
-                      {banner.endDate && (
-                        <BannerEnd>
-                          Ends: {new Date(banner.endDate).toLocaleDateString()}
-                        </BannerEnd>
-                      )}
-                      <BannerCost>
-                        {Math.floor(100 * (banner.costMultiplier || 1.5))} points per pull
-                      </BannerCost>
-                      <ViewBannerBtn>
-                        Roll on Banner <FaArrowRight size={14} />
-                      </ViewBannerBtn>
-                    </BannerInfo>
-                  </BannerCard>
-                ))}
-              </BannersList>
+              <BannersListWrapper>
+                <BannersList>
+                  {banners.map(banner => (
+                    <BannerCard
+                      key={banner.id}
+                      featured={banner.featured}
+                      onClick={() => navigate(`/banner/${banner.id}`)}
+                      whileHover={{ y: -5 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <BannerImage
+                        src={getBannerImageUrl(banner.image)}
+                        alt={banner.name}
+                        onError={(e) => {
+                          if (!e.target.src.includes('placeholder.com')) {
+                            e.target.src = 'https://via.placeholder.com/300x150?text=Banner';
+                          }
+                        }}
+                      />
+                      <BannerInfo>
+                        <BannerTitle>{banner.name}</BannerTitle>
+                        <BannerSeries>{banner.series}</BannerSeries>
+                        {banner.endDate && (
+                          <BannerEnd>
+                            Ends: {new Date(banner.endDate).toLocaleDateString()}
+                          </BannerEnd>
+                        )}
+                        <BannerCost>
+                          {Math.floor(100 * (banner.costMultiplier || 1.5))} points per pull
+                        </BannerCost>
+                        <ViewBannerBtn>
+                          Roll on Banner <FaArrowRight size={14} />
+                        </ViewBannerBtn>
+                      </BannerInfo>
+                    </BannerCard>
+                  ))}
+                </BannersList>
+              </BannersListWrapper>
             ) : (
               <EmptyBanners>
                 <p>No special banners available right now.</p>
@@ -1274,9 +1276,14 @@ const BannersColumn = styled.div`
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   padding: 25px;
+  display: flex;
+  flex-direction: column;
+  max-height: 800px; /* Limit the maximum height */
   
   @media (max-width: 768px) {
     padding: 20px 15px;
+    /* Adjust height for mobile to ensure it doesn't take too much space */
+    max-height: 600px;
   }
 `;
 
@@ -1284,6 +1291,31 @@ const BannersList = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 15px;
+  overflow-y: auto;
+  padding-right: 10px; /* Add space for scrollbar */
+  max-height: 100%;
+  padding-bottom: 20px; /* Space for the fade effect */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(158, 85, 148, 0.5) rgba(0, 0, 0, 0.2);
+  
+  /* Custom scrollbar for webkit browsers */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(158, 85, 148, 0.5);
+    border-radius: 10px;
+    
+    &:hover {
+      background: rgba(158, 85, 148, 0.7);
+    }
+  }
   
   @media (max-width: 768px) {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
@@ -1291,6 +1323,26 @@ const BannersList = styled.div`
   
   @media (max-width: 480px) {
     grid-template-columns: 1fr;
+  }
+`;
+
+const BannersListWrapper = styled.div`
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  
+  /* Add fade effect at the bottom to indicate scrollable content */
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3));
+    pointer-events: none;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
   }
 `;
 
