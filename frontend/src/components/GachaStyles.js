@@ -635,7 +635,7 @@ export const RollButtonsContainer = styled.div`
   
   @media (max-width: 768px) {
     flex-direction: column;
-    align-items: center; // Already centered on mobile
+    align-items: center;
     width: 100%;
     gap: 10px;
   }
@@ -646,7 +646,7 @@ export const RollButton = styled(motion.button)`
   color: white;
   border: none;
   border-radius: 50px;
-  padding: 12px 20px; // Reduced from original
+  padding: 12px 20px;
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
@@ -658,8 +658,8 @@ export const RollButton = styled(motion.button)`
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
-  width: 100%; // Take full width of parent
-  max-width: 280px; // Increased slightly to match container
+  flex: 1; // Make buttons take equal space
+  max-width: 280px; // But still cap their maximum width
   
   &::before {
     content: '';
@@ -688,7 +688,8 @@ export const RollButton = styled(motion.button)`
   }
   
   @media (max-width: 768px) {
-    width: 100%;
+    width: 100%; 
+    flex: none; // Remove flex on mobile
     padding: 10px 20px;
     font-size: 15px;
   }
