@@ -623,18 +623,19 @@ export const EmptyStateIcon = styled.div`
 
 export const RollButtonsContainer = styled.div`
   display: flex;
-  gap: 10px; // Reduce gap from 15px to 10px
+  gap: 10px;
   margin-bottom: 15px;
   position: relative;
   z-index: 5;
   width: 100%;
-  max-width: 580px; // Add maximum width for container
+  max-width: 580px;
   margin-left: auto;
   margin-right: auto;
+  justify-content: center; // Center the buttons horizontally
   
   @media (max-width: 768px) {
     flex-direction: column;
-    align-items: center;
+    align-items: center; // Already centered on mobile
     width: 100%;
     gap: 10px;
   }
