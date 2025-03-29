@@ -1256,6 +1256,10 @@ const RollControls = styled.div`
   display: flex;
   gap: 15px;
   margin-bottom: 15px;
+  justify-content: center;
+  max-width: 600px; // Add a max-width to constrain button size
+  margin-left: auto;
+  margin-right: auto;
   @media (max-width: 768px) {
     flex-direction: column;
   }
