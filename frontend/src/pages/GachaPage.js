@@ -6,8 +6,8 @@ import {
   ActionButton, MultiRollHeader, MultiRollCloseButton,
   MultiCardContent, MultiCharName,
   MultiRarityBadge, MultiCardClaimButton, EmptyState, EmptyStateIcon,
-  RollButtonsContainer, RollButton, RollCost, 
-  MultiRollButton, ClosePullMenuButton, PullCountDisplay,
+  RollButtonsContainer, RollButton, RollCost,
+  MultiRollButton, PullCountDisplay,
   PullSlider, DiscountInfo, ConfirmButton,
   RollHint, rarityColors
 } from '../components/GachaStyles';
@@ -22,7 +22,7 @@ import { AuthContext } from '../context/AuthContext';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
-  
+
 const rollMultipleCharacters = async (count = 10) => {
   try {
     const response = await axios.post(
@@ -35,7 +35,7 @@ const rollMultipleCharacters = async (count = 10) => {
     throw error;
   }
 };
-
+  
 const rarityIcons = {
   common: <FaDice />,
   uncommon: <MdHelp />,
@@ -44,6 +44,160 @@ const rarityIcons = {
   legendary: <FaTrophy />
 };
 
+// New MultiPullMenu component
+const MultiPullMenu = ({ 
+  isOpen, 
+  onClose, 
+  multiPullCount, 
+  setMultiPullCount, 
+  maxPossiblePulls, 
+  currentMultiPullCost, 
+  onConfirm,
+  userPoints
+}) => {
+  // Get recommended pull counts based on maxPossiblePulls
+  const getRecommendedPulls = () => {
+    const recommendations = [];
+    
+    // Always recommend single pull
+    recommendations.push(1);
+    
+    // Add 5-pull if possible (first discount tier)
+    if (maxPossiblePulls >= 5) recommendations.push(5);
+    
+    // Add 10-pull if possible (max discount tier)
+    if (maxPossiblePulls >= 10) recommendations.push(10);
+    
+    // Add max possible if it's not already included and is greater than 10
+    if (maxPossiblePulls > 10 && !recommendations.includes(maxPossiblePulls)) {
+      recommendations.push(maxPossiblePulls);
+    }
+    
+    return recommendations;
+  };
+
+  return (
+    <AnimatePresence>
+      {isOpen && (
+        <ModalOverlay
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          exit={{ opacity: 0 }}
+          onClick={onClose}
+        >
+          <NewMultiPullPanel
+            onClick={(e) => e.stopPropagation()}
+            initial={{ scale: 0.9, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.9, opacity: 0 }}
+          >
+            <PanelHeader>
+              <h2>Multi Pull Settings</h2>
+              <CloseButton onClick={onClose}>×</CloseButton>
+            </PanelHeader>
+            
+            <PanelContent>
+              <CurrentSelection>
+                <SelectionValue>{multiPullCount}×</SelectionValue>
+                <SelectionCost>
+                  {currentMultiPullCost} points
+                  {multiPullCount >= 10 && <DiscountTag>10% OFF</DiscountTag>}
+                  {multiPullCount >= 5 && multiPullCount < 10 && <DiscountTag>5% OFF</DiscountTag>}
+                </SelectionCost>
+              </CurrentSelection>
+              
+              <PresetOptions>
+                {getRecommendedPulls().map(count => (
+                  <PresetButton 
+                    key={count} 
+                    onClick={() => setMultiPullCount(count)}
+                    active={multiPullCount === count}
+                    disabled={userPoints < (count * 100 * (count >= 10 ? 0.9 : count >= 5 ? 0.95 : 1))}
+                  >
+                    {count}× Pull
+                    {count >= 10 && <DiscountBadge>-10%</DiscountBadge>}
+                    {count >= 5 && count < 10 && <DiscountBadge>-5%</DiscountBadge>}
+                  </PresetButton>
+                ))}
+                <PresetButton 
+                  onClick={() => {}}
+                  active={!getRecommendedPulls().includes(multiPullCount)}
+                  disabled={false}
+                >
+                  Custom
+                </PresetButton>
+              </PresetOptions>
+              
+              <SliderContainer>
+                <PullCountAdjuster>
+                  <AdjustBtn
+                    onClick={() => setMultiPullCount(Math.max(1, multiPullCount - 1))}
+                    disabled={multiPullCount <= 1}
+                  >
+                    <MdRemove />
+                  </AdjustBtn>
+                  <PullCountDisplay>{multiPullCount}</PullCountDisplay>
+                  <AdjustBtn
+                    onClick={() => setMultiPullCount(Math.min(maxPossiblePulls, multiPullCount + 1))}
+                    disabled={multiPullCount >= maxPossiblePulls}
+                  >
+                    <MdAdd />
+                  </AdjustBtn>
+                </PullCountAdjuster>
+                
+                <PullSlider
+                  type="range"
+                  min="1"
+                  max={maxPossiblePulls || 1}
+                  value={multiPullCount}
+                  onChange={(e) => setMultiPullCount(parseInt(e.target.value))}
+                />
+              </SliderContainer>
+              
+              <PullInfoGraphic>
+                <PullInfoCard>
+                  <PullInfoIcon>💰</PullInfoIcon>
+                  <PullInfoLabel>Total Cost</PullInfoLabel>
+                  <PullInfoValue>{currentMultiPullCost} pts</PullInfoValue>
+                </PullInfoCard>
+                
+                <PullInfoCard>
+                  <PullInfoIcon>⭐</PullInfoIcon>
+                  <PullInfoLabel>Pull Count</PullInfoLabel>
+                  <PullInfoValue>{multiPullCount}×</PullInfoValue>
+                </PullInfoCard>
+                
+                {multiPullCount >= 5 && (
+                  <PullInfoCard accent={true}>
+                    <PullInfoIcon>🎁</PullInfoIcon>
+                    <PullInfoLabel>Discount</PullInfoLabel>
+                    <PullInfoValue>{multiPullCount >= 10 ? '10%' : '5%'}</PullInfoValue>
+                  </PullInfoCard>
+                )}
+              </PullInfoGraphic>
+              
+              <ConfirmButton
+                onClick={onConfirm}
+                disabled={userPoints < currentMultiPullCost}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <FaDice size={16} /> Pull {multiPullCount}× for {currentMultiPullCost} points
+              </ConfirmButton>
+              
+              {userPoints < currentMultiPullCost && (
+                <ErrorNote>
+                  <span>Not enough points.</span> You need {currentMultiPullCost - userPoints} more.
+                </ErrorNote>
+              )}
+            </PanelContent>
+          </NewMultiPullPanel>
+        </ModalOverlay>
+      )}
+    </AnimatePresence>
+  );
+};
+  
 const GachaPage = () => {
   const navigate = useNavigate();
   const { user, refreshUser } = useContext(AuthContext);
@@ -64,7 +218,7 @@ const GachaPage = () => {
   const [multiPullMenuOpen, setMultiPullMenuOpen] = useState(false);
   const [banners, setBanners] = useState([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
-  
+
   // Calculate maximum possible pulls based on user points
   const maxPossiblePulls = Math.min(20, Math.floor((user?.points || 0) / 100));
   
@@ -92,19 +246,6 @@ const GachaPage = () => {
     const defaultCount = Math.min(10, maxPossiblePulls);
     setMultiPullCount(Math.max(1, defaultCount));
   }, [user?.points, maxPossiblePulls]);
-  
-  // Handle clicks outside of multi-pull menu
-  useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (multiPullMenuOpen && !event.target.closest('.multi-pull-container')) {
-        setMultiPullMenuOpen(false);
-      }
-    };
-    document.addEventListener('mousedown', handleClickOutside);
-    return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-    };
-  }, [multiPullMenuOpen]);
   
   const fetchUserCollection = async () => {
     try {
@@ -157,6 +298,7 @@ const GachaPage = () => {
       setRollCount(prev => prev + 1);
       
       const animationDuration = skipAnimations ? 0 : 1200;
+      
       setTimeout(async () => {
         try {
           const character = await rollCharacter();
@@ -193,11 +335,13 @@ const GachaPage = () => {
       setRollCount(prev => prev + multiPullCount);
       
       const animationDuration = skipAnimations ? 0 : 1200;
+      
       setTimeout(async () => {
         try {
           const characters = await rollMultipleCharacters(multiPullCount);
           setMultiRollResults(characters);
           setShowMultiResults(true);
+          
           const bestRarity = findBestRarity(characters);
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
           
@@ -216,13 +360,6 @@ const GachaPage = () => {
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll multiple characters');
       setIsRolling(false);
-    }
-  };
-  
-  const adjustMultiPullCount = (amount) => {
-    const newCount = multiPullCount + amount;
-    if (newCount >= 1 && newCount <= maxPossiblePulls) {
-      setMultiPullCount(newCount);
     }
   };
   
@@ -254,7 +391,6 @@ const GachaPage = () => {
   };
   
   const toggleSkipAnimations = () => setSkipAnimations(prev => !prev);
-  const toggleMultiPullMenu = () => setMultiPullMenuOpen(prev => !prev);
   const toggleHelpModal = () => setShowHelpModal(prev => !prev);
   
   const openPreview = (character) => {
@@ -278,18 +414,15 @@ const GachaPage = () => {
             <span>Gacha</span>
             <GlowingText>Master</GlowingText>
           </Logo>
-          
           <UserStats>
             <StatsBadge>
               <FaDice />
               <span>{rollCount} Rolls</span>
             </StatsBadge>
-            
             <PointsDisplay>
               <CoinIcon>🪙</CoinIcon>
               <PointsAmount>{user?.points || 0}</PointsAmount>
             </PointsDisplay>
-            
             <ControlButtons>
               <CircleButton onClick={toggleHelpModal} title="Help">
                 <MdHelp />
@@ -300,7 +433,7 @@ const GachaPage = () => {
             </ControlButtons>
           </UserStats>
         </Header>
-
+    
         {/* Settings Panel */}
         <AnimatePresence>
           {showSettings && (
@@ -311,7 +444,7 @@ const GachaPage = () => {
             >
               <SettingGroup>
                 <SettingLabel>Skip Animations</SettingLabel>
-                <ToggleSwitch 
+                <ToggleSwitch
                   checked={skipAnimations}
                   onChange={toggleSkipAnimations}
                 />
@@ -391,7 +524,6 @@ const GachaPage = () => {
                       />
                       <ZoomIndicator>🔍</ZoomIndicator>
                     </CardImageWrapper>
-                    
                     <CardContent>
                       <CharName>{currentChar?.name}</CharName>
                       <CharSeries>{currentChar?.series}</CharSeries>
@@ -399,7 +531,6 @@ const GachaPage = () => {
                         {rarityIcons[currentChar?.rarity]} {currentChar?.rarity}
                       </RarityBadge>
                     </CardContent>
-                    
                     <CardActions>
                       <ActionButton
                         primary={true}
@@ -428,7 +559,6 @@ const GachaPage = () => {
                       <h2>{multiRollResults.length}× Pull Results</h2>
                       <MultiRollCloseButton onClick={() => setShowMultiResults(false)}>×</MultiRollCloseButton>
                     </MultiRollHeader>
-                    
                     <MultiCardsGrid>
                       {multiRollResults.map((character, index) => (
                         <MultiCardContainer
@@ -499,84 +629,28 @@ const GachaPage = () => {
                 )}
               </RollButton>
               
-              <MultiPullContainer className="multi-pull-container">
-                <MultiRollButton
-                  onClick={multiPullMenuOpen ? handleMultiRoll : toggleMultiPullMenu}
-                  disabled={isRolling || (user?.points < 100)}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
-                  active={multiPullMenuOpen}
-                >
-                  {isRolling ? "Summoning..." : (
-                    <>
-                      🎯 {multiPullCount}× Pull{" "}
-                      <RollCost>
-                        ({currentMultiPullCost} pts
-                        {multiPullCount >= 10 ? " • 10% OFF" : multiPullCount >= 5 ? " • 5% OFF" : ""})
-                      </RollCost>
-                    </>
-                  )}
-                </MultiRollButton>
-                
-                <AnimatePresence>
-                  {multiPullMenuOpen && (
-                    <MultiPullPanel
-                      initial={{ opacity: 0, scale: 0.95 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0, scale: 0.95 }}
-                    >
-                      <ClosePullMenuButton onClick={toggleMultiPullMenu}>
-                        <MdClose />
-                      </ClosePullMenuButton>
-                      
-                      <PullCountAdjuster>
-                        <AdjustBtn
-                          onClick={() => adjustMultiPullCount(-1)}
-                          disabled={multiPullCount <= 1}
-                        >
-                          <MdRemove />
-                        </AdjustBtn>
-                        <PullCountDisplay>{multiPullCount}</PullCountDisplay>
-                        <AdjustBtn
-                          onClick={() => adjustMultiPullCount(1)}
-                          disabled={multiPullCount >= maxPossiblePulls}
-                        >
-                          <MdAdd />
-                        </AdjustBtn>
-                      </PullCountAdjuster>
-                      
-                      <PullSlider
-                        type="range"
-                        min="1"
-                        max={maxPossiblePulls || 1}
-                        value={multiPullCount}
-                        onChange={(e) => setMultiPullCount(parseInt(e.target.value))}
-                      />
-                      
-                      <DiscountInfo>
-                        {multiPullCount >= 10 ? (
-                          <strong>10% discount applied!</strong>
-                        ) : multiPullCount >= 5 ? (
-                          <span>5% discount applied</span>
-                        ) : multiPullCount > 1 ? (
-                          <span>Pull 5+ for 5% discount</span>
-                        ) : (
-                          <span>Increase count for discounts</span>
-                        )}
-                      </DiscountInfo>
-                      
-                      <ConfirmButton
-                        onClick={handleMultiRoll}
-                        disabled={user?.points < currentMultiPullCost}
-                        whileHover={{ scale: 1.03 }}
-                        whileTap={{ scale: 0.97 }}
-                      >
-                        Pull {multiPullCount} for {currentMultiPullCost} points
-                      </ConfirmButton>
-                    </MultiPullPanel>
-                  )}
-                </AnimatePresence>
-              </MultiPullContainer>
+              <MultiRollButton
+                onClick={isRolling ? null : () => setMultiPullMenuOpen(true)}
+                disabled={isRolling || (user?.points < 100)}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                {isRolling ? "Summoning..." : (
+                  <>🎯 Multi Pull <RollCost>(100+ pts)</RollCost></>
+                )}
+              </MultiRollButton>
+              
+              {/* New Multi Pull Menu as a Modal */}
+              <MultiPullMenu 
+                isOpen={multiPullMenuOpen}
+                onClose={() => setMultiPullMenuOpen(false)}
+                multiPullCount={multiPullCount}
+                setMultiPullCount={setMultiPullCount}
+                maxPossiblePulls={maxPossiblePulls}
+                currentMultiPullCost={currentMultiPullCost}
+                onConfirm={handleMultiRoll}
+                userPoints={user?.points || 0}
+              />
             </RollControls>
             
             <RollHint>
@@ -677,7 +751,6 @@ const GachaPage = () => {
                 <h2>How to Play</h2>
                 <CloseButton onClick={toggleHelpModal}>×</CloseButton>
               </HelpModalHeader>
-              
               <HelpModalContent>
                 <HelpSection>
                   <h3>Getting Started</h3>
@@ -688,7 +761,6 @@ const GachaPage = () => {
                     <li>Special banners have unique characters with different rates</li>
                   </ul>
                 </HelpSection>
-                
                 <HelpSection>
                   <h3>Rarities</h3>
                   <RarityGuide>
@@ -700,7 +772,6 @@ const GachaPage = () => {
                     ))}
                   </RarityGuide>
                 </HelpSection>
-                
                 <HelpSection>
                   <h3>Tips</h3>
                   <ul>
@@ -717,7 +788,9 @@ const GachaPage = () => {
   );
 };
 
-// Modern styled components for the redesigned layout
+// ==================== STYLED COMPONENTS ====================
+
+// Main container styles
 const MainContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, #141e30 0%, #243b55 100%);
@@ -739,17 +812,16 @@ const MainContainer = styled.div`
     pointer-events: none;
   }
 `;
-
+  
 const Dashboard = styled.div`
   width: 100%;
   max-width: 1400px;
   padding: 20px;
-  
   @media (max-width: 768px) {
     padding: 15px 10px;
   }
 `;
-
+  
 const Header = styled.header`
   display: flex;
   justify-content: space-between;
@@ -761,13 +833,12 @@ const Header = styled.header`
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   margin-bottom: 20px;
-  
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 15px;
   }
 `;
-
+  
 const Logo = styled.div`
   font-size: 28px;
   font-weight: 700;
@@ -776,18 +847,16 @@ const Logo = styled.div`
   align-items: center;
   gap: 8px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  
   @media (max-width: 768px) {
     font-size: 24px;
   }
 `;
-
+  
 const GlowingText = styled.span`
   background: linear-gradient(90deg, #6e48aa, #9e5594);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   position: relative;
-  
   &::after {
     content: "";
     position: absolute;
@@ -799,23 +868,21 @@ const GlowingText = styled.span`
     border-radius: 3px;
   }
 `;
-
+  
 const UserStats = styled.div`
   display: flex;
   align-items: center;
   gap: 15px;
-  
   @media (max-width: 768px) {
     width: 100%;
     justify-content: space-between;
   }
-  
   @media (max-width: 480px) {
     flex-wrap: wrap;
     justify-content: center;
   }
 `;
-
+  
 const StatsBadge = styled.div`
   display: flex;
   align-items: center;
@@ -826,7 +893,7 @@ const StatsBadge = styled.div`
   font-weight: 500;
   border: 1px solid rgba(255, 255, 255, 0.1);
 `;
-
+  
 const PointsDisplay = styled.div`
   display: flex;
   align-items: center;
@@ -838,12 +905,12 @@ const PointsDisplay = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.2);
   font-size: 16px;
 `;
-
+  
 const ControlButtons = styled.div`
   display: flex;
   gap: 8px;
 `;
-
+  
 const CircleButton = styled.button`
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -857,13 +924,12 @@ const CircleButton = styled.button`
   cursor: pointer;
   font-size: 18px;
   transition: all 0.2s;
-  
   &:hover {
     background: rgba(0, 0, 0, 0.5);
     transform: translateY(-2px);
   }
 `;
-
+  
 const SettingsPanel = styled(motion.div)`
   background: rgba(20, 30, 48, 0.9);
   backdrop-filter: blur(5px);
@@ -874,17 +940,17 @@ const SettingsPanel = styled(motion.div)`
   position: relative;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 `;
-
+  
 const SettingGroup = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
 `;
-
+  
 const SettingLabel = styled.span`
   font-weight: 500;
 `;
-
+  
 const ToggleSwitch = styled.input.attrs({ type: 'checkbox' })`
   appearance: none;
   width: 46px;
@@ -894,11 +960,9 @@ const ToggleSwitch = styled.input.attrs({ type: 'checkbox' })`
   position: relative;
   cursor: pointer;
   transition: all 0.3s;
-  
   &:checked {
     background-color: #6e48aa;
   }
-  
   &::before {
     content: '';
     position: absolute;
@@ -910,12 +974,11 @@ const ToggleSwitch = styled.input.attrs({ type: 'checkbox' })`
     left: 3px;
     transition: transform 0.3s;
   }
-  
   &:checked::before {
     transform: translateX(22px);
   }
 `;
-
+  
 const PanelCloseBtn = styled.button`
   position: absolute;
   top: 10px;
@@ -930,12 +993,11 @@ const PanelCloseBtn = styled.button`
   justify-content: center;
   width: 24px;
   height: 24px;
-  
   &:hover {
     opacity: 0.8;
   }
 `;
-
+  
 const ErrorAlert = styled(motion.div)`
   background: #d32f2f;
   color: white;
@@ -947,7 +1009,7 @@ const ErrorAlert = styled(motion.div)`
   justify-content: space-between;
   box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
 `;
-
+  
 const ErrorCloseBtn = styled.button`
   background: none;
   border: none;
@@ -955,18 +1017,17 @@ const ErrorCloseBtn = styled.button`
   font-size: 20px;
   cursor: pointer;
 `;
-
+  
 // Content area with responsive layout
 const ContentArea = styled.div`
   display: grid;
   grid-template-columns: 3fr 2fr;
   gap: 20px;
-  
   @media (max-width: 1100px) {
     grid-template-columns: 1fr;
   }
 `;
-
+  
 const SectionHeading = styled.h2`
   display: flex;
   align-items: center;
@@ -975,7 +1036,6 @@ const SectionHeading = styled.h2`
   font-size: 22px;
   position: relative;
   padding-bottom: 10px;
-  
   &::after {
     content: "";
     position: absolute;
@@ -986,16 +1046,15 @@ const SectionHeading = styled.h2`
     background: linear-gradient(90deg, #6e48aa, #9e5594);
     border-radius: 3px;
   }
-  
   @media (max-width: 768px) {
     font-size: 20px;
   }
 `;
-
+  
 const SectionIcon = styled.span`
   font-size: 24px;
 `;
-
+  
 // Left column (Gacha rolling area)
 const GachaColumn = styled.div`
   background: rgba(0, 0, 0, 0.2);
@@ -1003,12 +1062,11 @@ const GachaColumn = styled.div`
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   padding: 25px;
-  
   @media (max-width: 768px) {
     padding: 20px 15px;
   }
 `;
-
+  
 // Rarity tracker component
 const RarityTracker = styled.div`
   display: flex;
@@ -1018,7 +1076,6 @@ const RarityTracker = styled.div`
   border-radius: 25px;
   padding: 10px 20px;
   margin-bottom: 20px;
-  
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: flex-start;
@@ -1026,18 +1083,18 @@ const RarityTracker = styled.div`
     padding: 15px;
   }
 `;
-
+  
 const TrackerLabel = styled.span`
   font-weight: 500;
   white-space: nowrap;
 `;
-
+  
 const RarityBubbles = styled.div`
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 `;
-
+  
 const RarityDot = styled(motion.div)`
   width: 32px;
   height: 32px;
@@ -1050,7 +1107,7 @@ const RarityDot = styled(motion.div)`
   font-size: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 `;
-
+  
 // Results display area
 const ResultsDisplay = styled.div`
   min-height: 400px;
@@ -1058,12 +1115,11 @@ const ResultsDisplay = styled.div`
   align-items: center;
   justify-content: center;
   margin-bottom: 30px;
-  
   @media (max-width: 768px) {
     min-height: 300px;
   }
 `;
-
+  
 // Character card components
 const CharacterCardContainer = styled(motion.div)`
   background: white;
@@ -1071,38 +1127,36 @@ const CharacterCardContainer = styled(motion.div)`
   overflow: hidden;
   width: 100%;
   max-width: 350px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2), 
-              0 0 15px ${props => rarityColors[props.rarity] || 'rgba(0,0,0,0)'};
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2),
+    0 0 15px ${props => rarityColors[props.rarity] || 'rgba(0,0,0,0)'};
   border: 2px solid ${props => rarityColors[props.rarity] || '#ddd'};
-  
   @media (max-width: 480px) {
     max-width: 300px;
   }
 `;
-
+  
 const CardImageWrapper = styled.div`
   position: relative;
   height: 300px;
   cursor: pointer;
   overflow: hidden;
-  
   @media (max-width: 480px) {
     height: 250px;
   }
 `;
-
+  
 const RarityIndicator = styled.div`
   position: absolute;
   inset: 0;
-  background: 
-    radial-gradient(circle at 50% 80%, 
-      ${props => rarityColors[props.rarity] || 'transparent'} 0%, 
-      transparent 60%);
+  background:
+    radial-gradient(circle at 50% 80%,
+    ${props => rarityColors[props.rarity] || 'transparent'} 0%,
+    transparent 60%);
   opacity: 0.7;
   z-index: 1;
   pointer-events: none;
 `;
-
+  
 const CollectionLabel = styled.div`
   position: absolute;
   top: 10px;
@@ -1115,18 +1169,17 @@ const CollectionLabel = styled.div`
   z-index: 2;
   font-weight: 500;
 `;
-
+  
 const CharacterImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s;
-  
   &:hover {
     transform: scale(1.05);
   }
 `;
-
+  
 const ZoomIndicator = styled.div`
   position: absolute;
   bottom: 10px;
@@ -1141,7 +1194,7 @@ const ZoomIndicator = styled.div`
   justify-content: center;
   z-index: 2;
 `;
-
+  
 // Multi roll components
 const MultiRollDisplayScroller = styled(motion.div)`
   background: white;
@@ -1152,7 +1205,7 @@ const MultiRollDisplayScroller = styled(motion.div)`
   color: #333;
   max-height: 70vh;
 `;
-
+  
 const MultiCardsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -1160,12 +1213,11 @@ const MultiCardsGrid = styled.div`
   padding: 20px;
   overflow-y: auto;
   max-height: calc(70vh - 60px);
-  
   @media (max-width: 768px) {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   }
 `;
-
+  
 const MultiCardContainer = styled(motion.div)`
   position: relative;
   border-radius: 12px;
@@ -1177,13 +1229,13 @@ const MultiCardContainer = styled(motion.div)`
   display: flex;
   flex-direction: column;
 `;
-
+  
 const MultiCardImage = styled.img`
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
 `;
-
+  
 const MultiCharBadge = styled.div`
   position: absolute;
   top: 5px;
@@ -1198,31 +1250,338 @@ const MultiCharBadge = styled.div`
   justify-content: center;
   font-size: 12px;
 `;
-
+  
 // Roll controls
 const RollControls = styled.div`
   display: flex;
   gap: 15px;
   margin-bottom: 15px;
-  
   @media (max-width: 768px) {
     flex-direction: column;
   }
 `;
 
-// Multi pull panel
-const MultiPullPanel = styled(motion.div)`
-  position: absolute;
-  top: calc(100% + 10px);
+// Fast mode indicator
+const FastModeIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  color: #9e5594;
+  background: rgba(255, 255, 255, 0.2);
+  padding: 5px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  margin-top: 15px;
+`;
+  
+// Right column (Banners)
+const BannersColumn = styled.div`
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(5px);
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  padding: 25px;
+  display: flex;
+  flex-direction: column;
+  max-height: 800px; /* Limit the maximum height */
+  @media (max-width: 768px) {
+    padding: 20px 15px;
+    /* Adjust height for mobile to ensure it doesn't take too much space */
+    max-height: 600px;
+  }
+`;
+  
+const BannersList = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 15px;
+  overflow-y: auto;
+  padding-right: 10px; /* Add space for scrollbar */
+  max-height: 100%;
+  padding-bottom: 20px; /* Space for the fade effect */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(158, 85, 148, 0.5) rgba(0, 0, 0, 0.2);
+  /* Custom scrollbar for webkit browsers */
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  &::-webkit-scrollbar-track {
+    background: rgba(0, 0, 0, 0.2);
+    border-radius: 10px;
+  }
+  &::-webkit-scrollbar-thumb {
+    background: rgba(158, 85, 148, 0.5);
+    border-radius: 10px;
+    &:hover {
+      background: rgba(158, 85, 148, 0.7);
+    }
+  }
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+  @media (max-width: 480px) {
+    grid-template-columns: 1fr;
+  }
+`;
+  
+const BannersListWrapper = styled.div`
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  /* Add fade effect at the bottom to indicate scrollable content */
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3));
+    pointer-events: none;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
+  }
+`;
+  
+const BannerCard = styled(motion.div)`
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column; /* Always use vertical layout like mobile */
+  cursor: pointer;
+  border: ${props => props.featured ?
+    '2px solid rgba(255, 215, 0, 0.7)' :
+    '1px solid rgba(255, 255, 255, 0.1)'
+  };
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  &:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  }
+  ${props => props.featured && `
+    position: relative;
+    &::after {
+      content: "Featured";
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: linear-gradient(135deg, #ffd700, #ff9500);
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+      padding: 3px 10px;
+      border-radius: 20px;
+      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+      z-index: 1;
+    }
+  `}
+`;
+  
+const BannerImage = styled.img`
+  width: 100%;
+  height: 140px;
+  object-fit: cover;
+  object-position: center;
+`;
+  
+const BannerInfo = styled.div`
+  padding: 15px;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+`;
+  
+const BannerTitle = styled.h3`
+  margin: 0 0 5px 0;
+  font-size: 18px;
+  font-weight: 600;
+  color: #fff;
+`;
+  
+const BannerSeries = styled.div`
+  margin: 0 0 10px 0;
+  color: #ffd700;
+  font-size: 14px;
+  font-weight: 500;
+`;
+  
+const BannerEnd = styled.div`
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  margin-bottom: 10px;
+`;
+  
+const BannerCost = styled.div`
+  font-size: 13px;
+  margin-bottom: 15px;
+`;
+  
+const ViewBannerBtn = styled.button`
+  background: linear-gradient(135deg, rgba(110, 72, 170, 0.5), rgba(158, 85, 148, 0.5));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  transition: all 0.2s;
+  font-weight: 500;
+  align-self: flex-start;
+  margin-top: auto;
+  &:hover {
+    background: linear-gradient(135deg, rgba(110, 72, 170, 0.7), rgba(158, 85, 148, 0.7));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  }
+`;
+  
+const EmptyBanners = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 200px;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+// New Multi Pull Menu Components
+const ModalOverlay = styled(motion.div)`
+  position: fixed;
+  top: 0;
   left: 0;
   right: 0;
-  background: rgba(30, 40, 60, 0.95);
-  backdrop-filter: blur(10px);
-  border-radius: 12px;
-  padding: 20px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 100;
+  backdrop-filter: blur(3px);
+`;
+
+const NewMultiPullPanel = styled(motion.div)`
+  background: linear-gradient(135deg, #1e293b, #0f172a);
+  border-radius: 16px;
+  width: 90%;
+  max-width: 450px;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5);
   border: 1px solid rgba(255, 255, 255, 0.1);
-  z-index: 10;
+  color: white;
+  overflow: hidden;
+`;
+
+const PanelHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(0, 0, 0, 0.2);
+  padding: 15px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  
+  h2 {
+    margin: 0;
+    font-size: 20px;
+    font-weight: 600;
+  }
+`;
+
+const CloseButton = styled.button`
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+`;
+
+const PanelContent = styled.div`
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const CurrentSelection = styled.div`
+  text-align: center;
+  padding: 15px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px;
+`;
+
+const SelectionValue = styled.div`
+  font-size: 32px;
+  font-weight: bold;
+  color: #9e5594;
+`;
+
+const SelectionCost = styled.div`
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const DiscountTag = styled.span`
+  background: #9e5594;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: bold;
+`;
+
+const PresetOptions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  justify-content: center;
+`;
+
+const PresetButton = styled.button`
+  padding: 8px 15px;
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, ${props => props.active ? 0.3 : 0.1});
+  background: ${props => props.active ? 'rgba(158, 85, 148, 0.3)' : 'rgba(0, 0, 0, 0.2)'};
+  color: ${props => props.disabled ? 'rgba(255, 255, 255, 0.5)' : 'white'};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  position: relative;
+  transition: all 0.2s;
+  
+  &:hover:not(:disabled) {
+    background: ${props => props.active ? 'rgba(158, 85, 148, 0.4)' : 'rgba(0, 0, 0, 0.3)'};
+  }
+  
+  ${props => props.active && `
+    font-weight: bold;
+    box-shadow: 0 0 10px rgba(158, 85, 148, 0.5);
+  `}
+`;
+
+const DiscountBadge = styled.span`
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: #9e5594;
+  color: white;
+  font-size: 10px;
+  font-weight: bold;
+  padding: 2px 5px;
+  border-radius: 10px;
+`;
+
+const SliderContainer = styled.div`
+  padding: 10px 5px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 10px;
 `;
 
 const PullCountAdjuster = styled.div`
@@ -1244,233 +1603,61 @@ const AdjustBtn = styled.button`
   justify-content: center;
   cursor: pointer;
   transition: all 0.2s;
-  
   &:hover:not(:disabled) {
     background: rgba(0, 0, 0, 0.4);
   }
-  
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
 `;
 
-// Fast mode indicator
-const FastModeIndicator = styled.div`
+const PullInfoGraphic = styled.div`
   display: flex;
-  align-items: center;
+  gap: 10px;
   justify-content: center;
+  flex-wrap: wrap;
+`;
+
+const PullInfoCard = styled.div`
+  background: ${props => props.accent ? 'rgba(158, 85, 148, 0.3)' : 'rgba(0, 0, 0, 0.2)'};
+  border-radius: 10px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 85px;
+  flex: 1;
   gap: 5px;
-  color: #9e5594;
-  background: rgba(255, 255, 255, 0.2);
-  padding: 5px 12px;
-  border-radius: 20px;
-  font-size: 12px;
-  margin-top: 15px;
+  border: 1px solid ${props => props.accent ? 'rgba(158, 85, 148, 0.5)' : 'rgba(255, 255, 255, 0.1)'};
 `;
 
-// Right column (Banners)
-const BannersColumn = styled.div`
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(5px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 25px;
-  display: flex;
-  flex-direction: column;
-  max-height: 800px; /* Limit the maximum height */
-  
-  @media (max-width: 768px) {
-    padding: 20px 15px;
-    /* Adjust height for mobile to ensure it doesn't take too much space */
-    max-height: 600px;
-  }
+const PullInfoIcon = styled.div`
+  font-size: 20px;
+  margin-bottom: 5px;
 `;
 
-const BannersList = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 15px;
-  overflow-y: auto;
-  padding-right: 10px; /* Add space for scrollbar */
-  max-height: 100%;
-  padding-bottom: 20px; /* Space for the fade effect */
-  scrollbar-width: thin;
-  scrollbar-color: rgba(158, 85, 148, 0.5) rgba(0, 0, 0, 0.2);
-  
-  /* Custom scrollbar for webkit browsers */
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: rgba(0, 0, 0, 0.2);
-    border-radius: 10px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: rgba(158, 85, 148, 0.5);
-    border-radius: 10px;
-    
-    &:hover {
-      background: rgba(158, 85, 148, 0.7);
-    }
-  }
-  
-  @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-  }
-  
-  @media (max-width: 480px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const BannersListWrapper = styled.div`
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-  
-  /* Add fade effect at the bottom to indicate scrollable content */
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 40px;
-    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3));
-    pointer-events: none;
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
-  }
-`;
-
-const BannerCard = styled(motion.div)`
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column; /* Always use vertical layout like mobile */
-  cursor: pointer;
-  border: ${props => props.featured ?
-    '2px solid rgba(255, 215, 0, 0.7)' :
-    '1px solid rgba(255, 255, 255, 0.1)'
-  };
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
-  
-  &:hover {
-    transform: translateY(-5px);
-    box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
-  }
-  
-  ${props => props.featured && `
-    position: relative;
-    &::after {
-      content: "Featured";
-      position: absolute;
-      top: 10px;
-      right: 10px;
-      background: linear-gradient(135deg, #ffd700, #ff9500);
-      color: white;
-      font-size: 12px;
-      font-weight: bold;
-      padding: 3px 10px;
-      border-radius: 20px;
-      box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
-      z-index: 1;
-    }
-  `}
-`;
-
-const BannerImage = styled.img`
-  width: 100%;
-  height: 140px;
-  object-fit: cover;
-  object-position: center;
-`;
-
-const BannerInfo = styled.div`
-  padding: 15px;
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-  justify-content: space-between;
-`;
-
-const BannerTitle = styled.h3`
-  margin: 0 0 5px 0;
-  font-size: 18px;
-  font-weight: 600;
-  color: #fff;
-`;
-
-const BannerSeries = styled.div`
-  margin: 0 0 10px 0;
-  color: #ffd700;
-  font-size: 14px;
-  font-weight: 500;
-`;
-
-const BannerEnd = styled.div`
+const PullInfoLabel = styled.div`
   font-size: 12px;
   color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 10px;
 `;
 
-const BannerCost = styled.div`
-  font-size: 13px;
-  margin-bottom: 15px;
+const PullInfoValue = styled.div`
+  font-weight: bold;
+  font-size: 16px;
 `;
 
-const ViewBannerBtn = styled.button`
-  background: linear-gradient(135deg, rgba(110, 72, 170, 0.5), rgba(158, 85, 148, 0.5));
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 8px 15px;
-  border-radius: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  cursor: pointer;
+const ErrorNote = styled.div`
   font-size: 14px;
-  transition: all 0.2s;
-  font-weight: 500;
-  align-self: flex-start;
-  margin-top: auto;
+  color: #ff6b6b;
+  text-align: center;
   
-  &:hover {
-    background: linear-gradient(135deg, rgba(110, 72, 170, 0.7), rgba(158, 85, 148, 0.7));
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  span {
+    font-weight: bold;
   }
-`;
-
-const EmptyBanners = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  height: 200px;
-  color: rgba(255, 255, 255, 0.7);
 `;
 
 // Modal components
-const ModalOverlay = styled(motion.div)`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  backdrop-filter: blur(3px);
-`;
-
 const HelpModal = styled(motion.div)`
   background: rgba(20, 30, 48, 0.95);
   border-radius: 16px;
@@ -1481,66 +1668,49 @@ const HelpModal = styled(motion.div)`
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
 `;
-
+  
 const HelpModalHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 15px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  
   h2 {
     margin: 0;
   }
 `;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  color: white;
-  font-size: 24px;
-  cursor: pointer;
-`;
-
+  
 const HelpModalContent = styled.div`
   padding: 20px;
   max-height: 70vh;
   overflow-y: auto;
 `;
-
+  
 const HelpSection = styled.div`
   margin-bottom: 25px;
-  
   h3 {
     margin: 0 0 10px 0;
     color: #9e5594;
   }
-  
   ul {
     padding-left: 20px;
-    
     li {
       margin-bottom: 8px;
     }
   }
 `;
-
+  
 const RarityGuide = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
   margin-top: 10px;
 `;
-
+  
 const RarityItem = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-`;
-
-const MultiPullContainer = styled.div`
-  position: relative;
-  flex: 1;
 `;
 
 export default GachaPage;
