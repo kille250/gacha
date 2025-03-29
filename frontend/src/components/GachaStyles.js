@@ -640,7 +640,8 @@ export const RollButton = styled(motion.button)`
   color: white;
   border: none;
   border-radius: 50px;
-  padding: 12px 20px;
+  padding: 10px 18px; /* Reduced padding for all screen sizes */
+  line-height: 1.2; /* Control line height for better vertical sizing */
   font-size: 16px;
   font-weight: bold;
   cursor: pointer;
@@ -652,8 +653,7 @@ export const RollButton = styled(motion.button)`
   letter-spacing: 0.5px;
   position: relative;
   overflow: hidden;
-  flex: 1; // Make buttons take equal space
-  max-width: 280px; // But still cap their maximum width
+  height: auto; /* Let content determine height */
   
   &::before {
     content: '';
@@ -682,12 +682,15 @@ export const RollButton = styled(motion.button)`
   }
   
   @media (max-width: 768px) {
-    width: 80%; /* Control width of buttons on mobile */
+    width: 80%;
     max-width: 280px;
-    flex: none;
-    padding: 10px 20px;
-    font-size: 15px;
-    margin: 0 auto; /* Additional centering */
+    margin: 0 auto;
+    padding: 8px 16px; /* Even smaller for mobile */
+    font-size: 14px;
+    
+    svg {
+      font-size: 14px;
+    }
   }
 `;
 
