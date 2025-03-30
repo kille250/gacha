@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled } from 'react-icons/md';
-import { FaGift } from 'react-icons/fa';
+import { FaGift, FaTicketAlt } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 
@@ -243,6 +243,16 @@ const Navigation = () => {
             <StyledLink to="/collection">
               <MdCollections />
               <span>Collection</span>
+            </StyledLink>
+          </NavItem>
+          <NavItem
+            isActive={location.pathname === '/coupons'}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            <StyledLink to="/coupons">
+              <FaTicketAlt />
+              <span>Coupons</span>
             </StyledLink>
           </NavItem>
           

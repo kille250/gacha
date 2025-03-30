@@ -9,6 +9,7 @@ import GachaPage from './pages/GachaPage';
 import CollectionPage from './pages/CollectionPage';
 import AdminPage from './pages/AdminPage';
 import BannerPage from './pages/BannerPage';
+import CouponPage from './pages/CouponPage';
 // Components
 import Navigation from './components/Navigation/Navigation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
@@ -45,6 +46,16 @@ const GlobalStyle = createGlobalStyle`
 `;
 
 function App() {
+  // Add these console logs
+  console.log("LoginPage:", typeof LoginPage);
+  console.log("RegisterPage:", typeof RegisterPage);
+  console.log("GachaPage:", typeof GachaPage);
+  console.log("CollectionPage:", typeof CollectionPage);
+  console.log("AdminPage:", typeof AdminPage);
+  console.log("BannerPage:", typeof BannerPage);
+  console.log("CouponPage:", typeof CouponPage);
+  console.log("Navigation:", typeof Navigation);
+  console.log("ProtectedRoute:", typeof ProtectedRoute);
   return (
     <AuthProvider>
       <Router>
@@ -53,6 +64,14 @@ function App() {
           <Routes>
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/coupons" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Navigation />
+                  <CouponPage />
+                </MainLayout>
+              </ProtectedRoute>
+            } />
             <Route 
               path="/admin" 
               element={

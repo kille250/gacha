@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import axios from 'axios';
 import styled from 'styled-components';
-import { FaPlus, FaVideo } from 'react-icons/fa';
+import { FaPlus, FaVideo, FaTicketAlt, FaTimes, FaCheck, FaCalendarAlt } from 'react-icons/fa';
 import { createBanner, updateBanner, deleteBanner } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
+import CouponFormModal from '../components/UI/CouponFormModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -24,6 +25,10 @@ const AdminPage = () => {
   const [isAddingBanner, setIsAddingBanner] = useState(false);
   const [isEditingBanner, setIsEditingBanner] = useState(false);
   const [editingBanner, setEditingBanner] = useState(null);
+  const [coupons, setCoupons] = useState([]);
+  const [isAddingCoupon, setIsAddingCoupon] = useState(false);
+  const [isEditingCoupon, setIsEditingCoupon] = useState(false);
+  const [editingCoupon, setEditingCoupon] = useState(null);
   
   // Gefilterte und paginierte Charaktere
   const filteredCharacters = characters.filter(character => {
@@ -87,6 +92,8 @@ const AdminPage = () => {
     if (user?.isAdmin) {
       fetchUsers();
       fetchCharacters();
+      fetchBanners();
+      fetchCoupons();
     }
   }, [user]);
   
@@ -115,6 +122,32 @@ const AdminPage = () => {
       setCharacters(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load characters');
+    }
+  };
+
+  const fetchBanners = async () => {
+    try {
+      const response = await axios.get('https://gachaapi.solidbooru.online/api/banners?showAll=true', {
+        headers: {
+          'x-auth-token': localStorage.getItem('token')
+        }
+      });
+      setBanners(response.data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to load banners');
+    }
+  };
+
+  const fetchCoupons = async () => {
+    try {
+      const response = await axios.get('https://gachaapi.solidbooru.online/api/coupons/admin', {
+        headers: {
+          'x-auth-token': localStorage.getItem('token')
+        }
+      });
+      setCoupons(response.data);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to load coupons');
     }
   };
   
@@ -356,52 +389,7 @@ const AdminPage = () => {
     }
   };
   
-  // Hilfsfunktion für Bildpfade
-  const getImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
-    
-    // Prüfe, ob es eine volle URL ist
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    
-    // Prüfe auf hochgeladene Bilder im uploads-Verzeichnis
-    if (imagePath.startsWith('/uploads')) {
-      return `https://gachaapi.solidbooru.online${imagePath}`;
-    }
-    
-    // Prüfe auf image- Präfix, was auf ein hochgeladenes Bild hinweist
-    if (imagePath.startsWith('image-')) {
-      return `https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
-    }
-    
-    // Prüfe, ob es ein einfacher Dateiname oder ein vollständiger Pfad ist
-    return imagePath.includes('/') 
-      ? imagePath 
-      : `/images/characters/${imagePath}`;
-  };
-
- const fetchBanners = async () => {
-  try {
-    const response = await axios.get('https://gachaapi.solidbooru.online/api/banners?showAll=true', {
-      headers: {
-        'x-auth-token': localStorage.getItem('token')
-      }
-    });
-    setBanners(response.data);
-  } catch (err) {
-    setError(err.response?.data?.error || 'Failed to load banners');
-  }
-};
-  
-  useEffect(() => {
-    if (user?.isAdmin) {
-      fetchUsers();
-      fetchCharacters();
-      fetchBanners(); // Add this
-    }
-  }, [user]);
-  
+  // Banner Functions
   const getBannerImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/300x150?text=Banner';
     
@@ -464,6 +452,91 @@ const AdminPage = () => {
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to delete banner');
     }
+  };
+
+  // Coupon Functions
+  const handleEditCoupon = (coupon) => {
+    setEditingCoupon(coupon);
+    setIsEditingCoupon(true);
+  };
+  
+  const handleAddCoupon = async (formData) => {
+    try {
+      setSuccessMessage(null);
+      setError(null);
+      
+      await axios.post('https://gachaapi.solidbooru.online/api/coupons/admin', formData, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      
+      await fetchCoupons();
+      setSuccessMessage('Coupon created successfully!');
+      setIsAddingCoupon(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to create coupon');
+    }
+  };
+  
+  const handleUpdateCoupon = async (formData) => {
+    try {
+      setSuccessMessage(null);
+      setError(null);
+      
+      await axios.put(`https://gachaapi.solidbooru.online/api/coupons/admin/${editingCoupon.id}`, formData, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      
+      await fetchCoupons();
+      setSuccessMessage('Coupon updated successfully!');
+      setIsEditingCoupon(false);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to update coupon');
+    }
+  };
+  
+  const handleDeleteCoupon = async (couponId) => {
+    if (!window.confirm('Are you sure you want to delete this coupon?')) {
+      return;
+    }
+    
+    try {
+      setSuccessMessage(null);
+      setError(null);
+      
+      await axios.delete(`https://gachaapi.solidbooru.online/api/coupons/admin/${couponId}`, {
+        headers: { 'x-auth-token': localStorage.getItem('token') }
+      });
+      
+      await fetchCoupons();
+      setSuccessMessage('Coupon deleted successfully!');
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to delete coupon');
+    }
+  };
+  
+  // Hilfsfunktion für Bildpfade
+  const getImageUrl = (imagePath) => {
+    if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
+    
+    // Prüfe, ob es eine volle URL ist
+    if (imagePath.startsWith('http')) {
+      return imagePath;
+    }
+    
+    // Prüfe auf hochgeladene Bilder im uploads-Verzeichnis
+    if (imagePath.startsWith('/uploads')) {
+      return `https://gachaapi.solidbooru.online${imagePath}`;
+    }
+    
+    // Prüfe auf image- Präfix, was auf ein hochgeladenes Bild hinweist
+    if (imagePath.startsWith('image-')) {
+      return `https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
+    }
+    
+    // Prüfe, ob es ein einfacher Dateiname oder ein vollständiger Pfad ist
+    return imagePath.includes('/') 
+      ? imagePath 
+      : `/images/characters/${imagePath}`;
   };
   
   // Nur Admin-Zugriff erlauben
@@ -733,7 +806,6 @@ const AdminPage = () => {
             <FaPlus /> <span>Add New Banner</span>
           </Button>
         </ManagementHeader>
-
         {banners.length === 0 ? (
           <EmptyMessage>No banners found</EmptyMessage>
         ) : (
@@ -778,7 +850,6 @@ const AdminPage = () => {
                       </FeatureItem>
                     )}
                   </BannerFeatures>
-
                   <CardActions>
                     <ActionButton onClick={() => handleEditBanner(banner)}>
                       <FaEdit /> Edit
@@ -794,18 +865,96 @@ const AdminPage = () => {
         )}
       </AdminSection>
 
+      <AdminSection>
+        <h2><FaTicketAlt /> Coupon Management</h2>
+        <ManagementHeader>
+          <Button 
+            onClick={() => setIsAddingCoupon(true)} 
+            color="#3498db" 
+            style={{ marginBottom: '20px' }}
+          >
+            <FaPlus /> <span>Create New Coupon</span>
+          </Button>
+        </ManagementHeader>
+        {coupons.length === 0 ? (
+          <EmptyMessage>No coupons found</EmptyMessage>
+        ) : (
+          <CouponGrid>
+            {coupons.map(coupon => (
+              <CouponCard key={coupon.id}>
+                <CouponHeader>
+                  <h3>{coupon.code}</h3>
+                  <StatusDot active={coupon.isActive} />
+                </CouponHeader>
+                
+                <CouponInfo>
+                  <p>{coupon.description || 'No description'}</p>
+                  
+                  <CouponTypeTag type={coupon.type}>
+                    {coupon.type === 'coins' ? (
+                      <><FaCoins /> {coupon.value} Coins</>
+                    ) : coupon.type === 'character' ? (
+                      <><FaUsers /> Character: {coupon.Character?.name || 'Unknown'}</>
+                    ) : (
+                      <>{coupon.type}</>
+                    )}
+                  </CouponTypeTag>
+                  
+                  <CouponDetails>
+                    <CouponDetail>
+                      <strong>Uses:</strong> {coupon.currentUses}/{coupon.maxUses === -1 ? '∞' : coupon.maxUses}
+                    </CouponDetail>
+                    <CouponDetail>
+                      <strong>Per User:</strong> {coupon.usesPerUser === -1 ? '∞' : coupon.usesPerUser}
+                    </CouponDetail>
+                    {(coupon.startDate || coupon.endDate) && (
+                      <CouponDetail>
+                        <FaCalendarAlt /> 
+                        {coupon.startDate ? new Date(coupon.startDate).toLocaleDateString() : 'Any'} - {coupon.endDate ? new Date(coupon.endDate).toLocaleDateString() : 'No Expiry'}
+                      </CouponDetail>
+                    )}
+                  </CouponDetails>
+                  
+                  <CardActions>
+                    <ActionButton onClick={() => handleEditCoupon(coupon)}>
+                      <FaEdit /> Edit
+                    </ActionButton>
+                    <ActionButton danger onClick={() => handleDeleteCoupon(coupon.id)}>
+                      <FaTrash /> Delete
+                    </ActionButton>
+                  </CardActions>
+                </CouponInfo>
+              </CouponCard>
+            ))}
+          </CouponGrid>
+        )}
+      </AdminSection>
+      
       <BannerFormModal
         show={isAddingBanner}
         onClose={() => setIsAddingBanner(false)}
         onSubmit={handleAddBanner}
         characters={characters}
       />
-
       <BannerFormModal
         show={isEditingBanner}
         onClose={() => setIsEditingBanner(false)}
         onSubmit={handleUpdateBanner}
         banner={editingBanner}
+        characters={characters}
+      />
+
+      <CouponFormModal
+        show={isAddingCoupon}
+        onClose={() => setIsAddingCoupon(false)}
+        onSubmit={handleAddCoupon}
+        characters={characters}
+      />
+      <CouponFormModal
+        show={isEditingCoupon}
+        onClose={() => setIsEditingCoupon(false)}
+        onSubmit={handleUpdateCoupon}
+        coupon={editingCoupon}
         characters={characters}
       />
       
@@ -917,7 +1066,6 @@ const AdminContainer = styled.div`
     padding: 20px;
   }
 `;
-
 const AdminHeader = styled.div`
   background-color: #2c3e50;
   color: white;
@@ -929,7 +1077,6 @@ const AdminHeader = styled.div`
     margin: 0;
   }
 `;
-
 const AdminGrid = styled.div`
   display: flex;
   flex-direction: column;
@@ -941,7 +1088,6 @@ const AdminGrid = styled.div`
     grid-template-columns: repeat(2, 1fr);
   }
 `;
-
 const AdminSection = styled.section`
   background-color: white;
   border-radius: 8px;
@@ -967,19 +1113,16 @@ const AdminSection = styled.section`
     word-wrap: break-word;
   }
 `;
-
 const CharacterForm = styled.form`
   display: flex;
   flex-direction: column;
   gap: 20px;
 `;
-
 const CoinFormGrid = styled.div`
   display: flex;
   flex-direction: column;
   gap: 20px;
 `;
-
 const FormGroup = styled.div`
   display: flex;
   flex-direction: column;
@@ -1002,7 +1145,6 @@ const FormGroup = styled.div`
     box-sizing: border-box;
   }
 `;
-
 const FileInput = styled.input`
   font-size: 0.9rem;
   width: 100%;
@@ -1012,7 +1154,6 @@ const FileInput = styled.input`
     padding: 8px;
   }
 `;
-
 const Button = styled.button`
   grid-column: ${props => props.fullWidth ? "1 / -1" : "auto"};
   background-color: ${props => props.color || "#3498db"};
@@ -1045,7 +1186,6 @@ const Button = styled.button`
     opacity: 0.8;
   }
 `;
-
 const UserTable = styled.table`
   width: 100%;
   border-collapse: collapse;
@@ -1073,7 +1213,6 @@ const UserTable = styled.table`
     background-color: #f8f9fa;
   }
 `;
-
 const ErrorMessage = styled(motion.div)`
   background-color: #f8d7da;
   color: #721c24;
@@ -1081,7 +1220,6 @@ const ErrorMessage = styled(motion.div)`
   border-radius: 4px;
   margin-bottom: 20px;
 `;
-
 const SuccessMessage = styled(motion.div)`
   background-color: #d4edda;
   color: #155724;
@@ -1089,7 +1227,6 @@ const SuccessMessage = styled(motion.div)`
   border-radius: 4px;
   margin: 10px 0;
 `;
-
 const ImagePreview = styled.div`
   margin-top: 10px;
   width: 100%;
@@ -1102,13 +1239,11 @@ const ImagePreview = styled.div`
     object-fit: contain;
   }
 `;
-
 const ImagePreviewLabel = styled.div`
   font-size: 12px;
   color: #666;
   margin-bottom: 4px;
 `;
-
 const CharacterGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
@@ -1124,7 +1259,6 @@ const CharacterGrid = styled.div`
     grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
   }
 `;
-
 const CharacterCard = styled.div`
   background-color: white;
   border-radius: 8px;
@@ -1137,7 +1271,6 @@ const CharacterCard = styled.div`
     object-fit: cover;
   }
 `;
-
 const CharacterInfo = styled.div`
   padding: 12px;
   position: relative;
@@ -1157,7 +1290,6 @@ const CharacterInfo = styled.div`
     margin-bottom: 6px;
   }
 `;
-
 const rarityColors = {
   common: '#a0a0a0',
   uncommon: '#4caf50',
@@ -1165,7 +1297,6 @@ const rarityColors = {
   epic: '#9c27b0',
   legendary: '#ff9800'
 };
-
 const RarityTag = styled.div`
   position: absolute;
   top: -12px;
@@ -1178,13 +1309,11 @@ const RarityTag = styled.div`
   text-transform: uppercase;
   font-weight: bold;
 `;
-
 const CardActions = styled.div`
   display: flex;
   margin-top: 12px;
   gap: 8px;
 `;
-
 const ActionButton = styled.button`
   background-color: ${props => props.danger ? '#e74c3c' : '#3498db'};
   color: white;
@@ -1203,7 +1332,6 @@ const ActionButton = styled.button`
     opacity: 0.8;
   }
 `;
-
 const ModalOverlay = styled.div`
   position: fixed;
   top: 0;
@@ -1216,7 +1344,6 @@ const ModalOverlay = styled.div`
   justify-content: center;
   z-index: 1000;
 `;
-
 const ModalContent = styled.div`
   background-color: white;
   border-radius: 8px;
@@ -1227,7 +1354,6 @@ const ModalContent = styled.div`
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
   margin: 10px;
 `;
-
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
@@ -1239,7 +1365,6 @@ const ModalHeader = styled.div`
     margin: 0;
   }
 `;
-
 const CloseButton = styled.button`
   background: none;
   border: none;
@@ -1251,11 +1376,9 @@ const CloseButton = styled.button`
     color: #333;
   }
 `;
-
 const ModalBody = styled.div`
   padding: 20px;
 `;
-
 const ButtonGroup = styled.div`
   display: flex;
   flex-direction: column;
@@ -1277,7 +1400,6 @@ const ButtonGroup = styled.div`
     }
   }
 `;
-
 const ManagementHeader = styled.div`
   display: flex;
   flex-direction: column;
@@ -1290,7 +1412,6 @@ const ManagementHeader = styled.div`
     align-items: center;
   }
 `;
-
 const SearchContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -1302,7 +1423,6 @@ const SearchContainer = styled.div`
     align-items: center;
   }
 `;
-
 const SearchInputWrapper = styled.div`
   display: flex;
   align-items: center;
@@ -1312,7 +1432,6 @@ const SearchInputWrapper = styled.div`
   border: 1px solid #ddd;
   flex-grow: 1;
 `;
-
 const SearchInput = styled.input`
   border: none;
   outline: none;
@@ -1320,7 +1439,6 @@ const SearchInput = styled.input`
   flex-grow: 1;
   font-size: 14px;
 `;
-
 const ItemsPerPageSelect = styled.select`
   padding: 8px;
   border-radius: 8px;
@@ -1333,7 +1451,6 @@ const ItemsPerPageSelect = styled.select`
     width: auto;
   }
 `;
-
 const PaginationContainer = styled.div`
   display: flex;
   justify-content: center;
@@ -1342,7 +1459,6 @@ const PaginationContainer = styled.div`
   margin-top: 30px;
   flex-wrap: wrap;
 `;
-
 const PaginationButton = styled.button`
   padding: 8px 15px;
   background-color: #3498db;
@@ -1363,14 +1479,12 @@ const PaginationButton = styled.button`
     opacity: 0.7;
   }
 `;
-
 const PageInfo = styled.span`
   font-size: 14px;
   color: #666;
   min-width: 100px;
   text-align: center;
 `;
-
 const EmptyMessage = styled.div`
   text-align: center;
   padding: 40px;
@@ -1379,7 +1493,6 @@ const EmptyMessage = styled.div`
   background: #f8f9fa;
   border-radius: 12px;
 `;
-
 const BannerGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1390,7 +1503,6 @@ const BannerGrid = styled.div`
     grid-template-columns: 1fr;
   }
 `;
-
 const BannerCard = styled.div`
   background-color: white;
   border-radius: 8px;
@@ -1400,13 +1512,11 @@ const BannerCard = styled.div`
   display: flex;
   flex-direction: column;
 `;
-
 const BannerImage = styled.img`
   width: 100%;
   height: 150px;
   object-fit: cover;
 `;
-
 const BannerInfo = styled.div`
   padding: 15px;
   flex: 1;
@@ -1427,7 +1537,6 @@ const BannerInfo = styled.div`
     overflow: hidden;
   }
 `;
-
 const SeriesTag = styled.span`
   display: inline-block;
   background-color: #e9f7fe;
@@ -1438,7 +1547,6 @@ const SeriesTag = styled.span`
   margin-right: 5px;
   margin-bottom: 5px;
 `;
-
 const FeaturedTag = styled.span`
   display: inline-block;
   background-color: #fff8e1;
@@ -1450,7 +1558,6 @@ const FeaturedTag = styled.span`
   margin-bottom: 5px;
   font-weight: bold;
 `;
-
 const StatusTag = styled.span`
   display: inline-block;
   background-color: ${props => props.active ? '#e8f5e9' : '#ffebee'};
@@ -1460,20 +1567,17 @@ const StatusTag = styled.span`
   font-size: 12px;
   margin-bottom: 5px;
 `;
-
 const DateInfo = styled.div`
   font-size: 12px;
   color: #666;
   margin-top: 5px;
 `;
-
 const BannerFeatures = styled.div`
   margin: 10px 0;
   display: flex;
   flex-direction: column;
   gap: 5px;
 `;
-
 const FeatureItem = styled.div`
   font-size: 13px;
   color: #555;
@@ -1481,6 +1585,107 @@ const FeatureItem = styled.div`
   strong {
     color: #333;
     margin-right: 5px;
+  }
+`;
+
+// Coupon styled components
+const CouponGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+  gap: 20px;
+  
+  @media (max-width: 768px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const CouponCard = styled.div`
+  background-color: white;
+  border-radius: 10px;
+  overflow: hidden;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  border: 1px solid #eee;
+  transition: transform 0.2s, box-shadow 0.2s;
+  
+  &:hover {
+    transform: translateY(-3px);
+    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
+  }
+`;
+
+const CouponHeader = styled.div`
+  background-color: #f9f9f9;
+  padding: 12px 15px;
+  border-bottom: 1px solid #eee;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  
+  h3 {
+    margin: 0;
+    font-family: monospace;
+    font-size: 18px;
+    font-weight: bold;
+    letter-spacing: 1px;
+  }
+`;
+
+const StatusDot = styled.div`
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background-color: ${props => props.active ? '#4caf50' : '#f44336'};
+`;
+
+const CouponInfo = styled.div`
+  padding: 15px;
+  
+  p {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 14px;
+    color: #555;
+  }
+`;
+
+const CouponTypeTag = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 14px;
+  font-weight: bold;
+  margin-bottom: 10px;
+  color: white;
+  background-color: ${props => {
+    switch(props.type) {
+      case 'coins': return '#f39c12';
+      case 'character': return '#3498db';
+      default: return '#95a5a6';
+    }
+  }};
+`;
+
+const CouponDetails = styled.div`
+  margin: 10px 0 15px 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const CouponDetail = styled.div`
+  font-size: 13px;
+  color: #666;
+  border: 1px solid #eee;
+  padding: 4px 8px;
+  border-radius: 4px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  
+  strong {
+    color: #333;
   }
 `;
 

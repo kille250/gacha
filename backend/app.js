@@ -50,6 +50,7 @@ app.use('/api/auth', require('./routes/auth'));
 app.use('/api/characters', require('./routes/characters'));
 app.use('/api/admin', require('./routes/admin')); 
 app.use('/api/banners', require('./routes/banners'));
+app.use('/api/coupons', require('./routes/coupons'));
 
 // Database sync
 sequelize.sync({ force: false }).then(async () => {
