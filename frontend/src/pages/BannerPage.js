@@ -18,7 +18,7 @@ import {
 	PullInfoLabel, PullInfoValue, ErrorNote
   } from '../components/GachaStyles';
   import axios from 'axios';
-  import React, { useState, useEffect, useContext, useCallback } from 'react';
+  import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
   import { useParams, useNavigate } from 'react-router-dom';
   import styled from 'styled-components';
   import { motion, AnimatePresence } from 'framer-motion';
@@ -180,6 +180,7 @@ import {
   };
   
   const BannerPage = () => {
+	const videoRef = useRef(null);
 	const { bannerId } = useParams();
 	const navigate = useNavigate();
 	const { user, refreshUser } = useContext(AuthContext);
@@ -421,16 +422,24 @@ import {
 	};
   
 	const toggleVideoPlay = () => {
-	  setIsVideoPlaying(!isVideoPlaying);
-	  const video = document.getElementById('banner-video');
-	  if (video) {
+		if (!videoRef.current) return;
+	
 		if (isVideoPlaying) {
-		  video.pause();
+		  videoRef.current.pause();
+		  setIsVideoPlaying(false);
 		} else {
-		  video.play();
+		  videoRef.current.play()
+			.then(() => {
+			  setIsVideoPlaying(true);
+			})
+			.catch((error) => {
+			  console.error('Error playing video:', error);
+			  setIsVideoPlaying(false);
+			  // Optional: Show error to user
+			  setError('Video playback failed. Please try again.');
+			});
 		}
-	  }
-	};
+	  };
   
 	// Handle video ended event
 	const handleVideoEnded = () => {
@@ -550,12 +559,15 @@ import {
 		{banner.videoUrl && (
 		  <VideoSection>
 			<VideoContainer>
-			  <BannerVideo
+			<BannerVideo
+				ref={videoRef}
 				id="banner-video"
 				src={getVideoPath(banner.videoUrl)}
 				poster={getBannerImagePath(banner.image)}
 				onEnded={handleVideoEnded}
-			  />
+				playsInline  // Required for iOS
+				webkit-playsinline="true" // For older iOS
+				/>
 			  <VideoControls onClick={toggleVideoPlay}>
 				{isVideoPlaying ? <FaPause /> : <FaPlay />}
 			  </VideoControls>
