@@ -2,7 +2,7 @@
 const User = require('./user');
 const Character = require('./character');
 const Coupon = require('./coupon');
-const CouponRedemption = require("./couponredemption");
+const CouponRedemption = require("./couponRedemption");
 
 // Set up associations
 User.belongsToMany(Character, { through: 'UserCharacters' });
