@@ -245,6 +245,7 @@ const Navigation = () => {
               <span>Collection</span>
             </StyledLink>
           </NavItem>
+          
           <NavItem
             isActive={location.pathname === '/coupons'}
             whileHover={{ scale: 1.1 }}
@@ -259,6 +260,7 @@ const Navigation = () => {
           {user?.isAdmin && (
             <NavItem
               isActive={location.pathname === '/admin'}
+              isAdmin={true}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -309,6 +311,20 @@ const Navigation = () => {
           </LogoutButton>
         </UserControls>
       </NavContainer>
+      
+      {/* Admin Floating Button for Mobile */}
+      {user?.isAdmin && (
+        <AdminButton
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+          onClick={() => navigate('/admin')}
+          initial={{ opacity: 0, scale: 0.8 }}
+          animate={{ opacity: 1, scale: 1 }}
+          transition={{ duration: 0.3 }}
+        >
+          <MdSettings />
+        </AdminButton>
+      )}
       
       {/* Success Popup - Moved outside NavContainer with better positioning */}
       <AnimatePresence>
@@ -370,6 +386,36 @@ const NavItem = styled(motion.li)`
   padding: 8px 15px;
   border-radius: 20px;
   background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent'};
+  
+  /* Special styling for admin option */
+  ${props => props.isAdmin && `
+    background: ${props.isActive ? 'rgba(255, 99, 71, 0.3)' : 'rgba(255, 99, 71, 0.15)'};
+    
+    @media (max-width: 480px) {
+      display: flex;  /* Ensure it displays on mobile */
+      border: 1px solid rgba(255, 99, 71, 0.6);
+      
+      /* Add a subtle indicator to make it stand out */
+      position: relative;
+      overflow: visible;
+      
+      &::after {
+        content: '';
+        position: absolute;
+        top: -3px;
+        right: -3px;
+        width: 8px;
+        height: 8px;
+        background-color: #ff6347;
+        border-radius: 50%;
+      }
+      
+      /* Make the icon red */
+      svg {
+        color: #ff6347;
+      }
+    }
+  `}
   
   @media (max-width: 480px) {
     padding: 6px 10px;
@@ -537,6 +583,30 @@ const LoadingSpinner = styled.div`
   }
 `;
 
+// Additional floating admin button for mobile
+const AdminButton = styled(motion.button)`
+  display: none; /* Hidden on desktop */
+  
+  @media (max-width: 480px) {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    position: fixed;
+    right: 15px;
+    bottom: 15px;
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    background: linear-gradient(135deg, #ff7e5f, #feb47b);
+    border: none;
+    color: white;
+    font-size: 24px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
+    z-index: 100;
+    cursor: pointer;
+  }
+`;
+
 // New container to properly center the popup
 const PopupContainer = styled.div`
   position: fixed;
@@ -613,39 +683,6 @@ const RewardPopup = styled(motion.div)`
     .celebration-icon {
       font-size: 24px;
     }
-  }
-`;
-
-// Tooltip that appears when hovering over the timer
-const RewardTooltip = styled.div`
-  position: absolute;
-  bottom: -40px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: rgba(0, 0, 0, 0.8);
-  color: white;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 12px;
-  white-space: nowrap;
-  pointer-events: none;
-  opacity: 0;
-  transition: opacity 0.2s;
-  z-index: 10;
-  
-  ${RewardButton}:hover & {
-    opacity: 1;
-  }
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: -6px;
-    left: 50%;
-    transform: translateX(-50%);
-    border-left: 6px solid transparent;
-    border-right: 6px solid transparent;
-    border-bottom: 6px solid rgba(0, 0, 0, 0.8);
   }
 `;
 
