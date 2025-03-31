@@ -452,8 +452,6 @@ const Navigation = () => {
   );
 };
 
-// Existing styling components...
-
 const NavContainer = styled.nav`
   display: flex;
   justify-content: space-between;
@@ -471,7 +469,11 @@ const NavContainer = styled.nav`
   
   @media (max-width: 768px) {
     padding: 12px 15px;
-    flex-wrap: wrap;
+  }
+  
+  /* Noch kompaktere Darstellung für kleine iPhones */
+  @media (max-width: 380px) {
+    padding: 10px 10px;
   }
 `;
 
@@ -481,9 +483,14 @@ const NavLinks = styled.ul`
   gap: 20px;
   margin: 0;
   padding: 0;
+  flex-wrap: nowrap; /* Verhindert Umbruch der Navigation */
   
   @media (max-width: 480px) {
-    gap: 10px;
+    gap: 8px; /* Weniger Abstand zwischen den Elementen */
+  }
+  
+  @media (max-width: 380px) {
+    gap: 4px; /* Minimaler Abstand für sehr kleine Bildschirme */
   }
 `;
 
@@ -494,6 +501,11 @@ const NavItem = styled(motion.li)`
   
   @media (max-width: 480px) {
     padding: 6px 10px;
+  }
+  
+  @media (max-width: 380px) {
+    /* Noch kompakter für iPhone */
+    padding: 6px 8px;
   }
 `;
 
@@ -520,9 +532,18 @@ const StyledLink = styled(Link)`
   
   @media (max-width: 480px) {
     font-size: 14px;
+    gap: 5px; /* Weniger Abstand zwischen Icon und Text */
     
     span {
-      @media (max-width: 360px) {
+      font-size: 13px;
+      
+      @media (max-width: 380px) {
+        max-width: 45px; /* Begrenzte Textbreite */
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      @media (max-width: 340px) {
         display: none;
       }
     }
@@ -555,8 +576,17 @@ const RadioButton = styled.button`
   @media (max-width: 480px) {
     font-size: 14px;
     
+    /* Für kleine iPhones: Text bei Bedarf kürzen oder ausblenden */
     span {
-      @media (max-width: 360px) {
+      font-size: 13px;
+      
+      @media (max-width: 375px) {
+        max-width: 40px;
+        overflow: hidden;
+        text-overflow: ellipsis;
+      }
+      
+      @media (max-width: 340px) {
         display: none;
       }
     }
