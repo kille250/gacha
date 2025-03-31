@@ -32,7 +32,7 @@ const Navigation = () => {
   // Toggle radio playback
   const toggleRadio = () => {
     if (!audioRef.current) {
-      audioRef.current = new Audio('https://radio.solidbooru.online/public/solidbooru');
+      audioRef.current = new Audio('https://radio.solidbooru.online/listen/solidbooru/radio.mp3');
       audioRef.current.volume = radioVolume;
     }
     
