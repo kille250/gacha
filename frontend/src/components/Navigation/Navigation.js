@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled } from 'react-icons/md';
+import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings } from 'react-icons/md';
 import { FaGift, FaTicketAlt } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
@@ -224,6 +224,7 @@ const Navigation = () => {
     <>
       <NavContainer>
         <NavLinks>
+          {/* On mobile, we'll hide Admin from the top nav completely */}
           <NavItem
             isActive={location.pathname === '/gacha'}
             whileHover={{ scale: 1.1 }}
@@ -257,10 +258,10 @@ const Navigation = () => {
             </StyledLink>
           </NavItem>
           
+          {/* Show admin in the top nav only on desktop */}
           {user?.isAdmin && (
-            <NavItem
+            <DesktopOnlyNavItem
               isActive={location.pathname === '/admin'}
-              isAdmin={true}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
@@ -268,7 +269,7 @@ const Navigation = () => {
                 <MdSettings />
                 <span>Admin</span>
               </StyledLink>
-            </NavItem>
+            </DesktopOnlyNavItem>
           )}
         </NavLinks>
         
@@ -312,9 +313,9 @@ const Navigation = () => {
         </UserControls>
       </NavContainer>
       
-      {/* Admin Floating Button for Mobile */}
+      {/* Full Admin Floating Button - Now optimized for iPhone */}
       {user?.isAdmin && (
-        <AdminButton
+        <AdminFloatingButton
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
           onClick={() => navigate('/admin')}
@@ -322,8 +323,9 @@ const Navigation = () => {
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.3 }}
         >
-          <MdSettings />
-        </AdminButton>
+          <MdAdminPanelSettings />
+          <span>Admin</span>
+        </AdminFloatingButton>
       )}
       
       {/* Success Popup - Moved outside NavContainer with better positioning */}
@@ -387,38 +389,15 @@ const NavItem = styled(motion.li)`
   border-radius: 20px;
   background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent'};
   
-  /* Special styling for admin option */
-  ${props => props.isAdmin && `
-    background: ${props.isActive ? 'rgba(255, 99, 71, 0.3)' : 'rgba(255, 99, 71, 0.15)'};
-    
-    @media (max-width: 480px) {
-      display: flex;  /* Ensure it displays on mobile */
-      border: 1px solid rgba(255, 99, 71, 0.6);
-      
-      /* Add a subtle indicator to make it stand out */
-      position: relative;
-      overflow: visible;
-      
-      &::after {
-        content: '';
-        position: absolute;
-        top: -3px;
-        right: -3px;
-        width: 8px;
-        height: 8px;
-        background-color: #ff6347;
-        border-radius: 50%;
-      }
-      
-      /* Make the icon red */
-      svg {
-        color: #ff6347;
-      }
-    }
-  `}
-  
   @media (max-width: 480px) {
     padding: 6px 10px;
+  }
+`;
+
+// Desktop-only nav item for admin
+const DesktopOnlyNavItem = styled(NavItem)`
+  @media (max-width: 600px) {
+    display: none; /* Hide on mobile and small tablets */
   }
 `;
 
@@ -583,27 +562,50 @@ const LoadingSpinner = styled.div`
   }
 `;
 
-// Additional floating admin button for mobile
-const AdminButton = styled(motion.button)`
+// Completely redesigned floating admin button for better iPhone visibility
+const AdminFloatingButton = styled(motion.button)`
   display: none; /* Hidden on desktop */
   
-  @media (max-width: 480px) {
+  @media (max-width: 600px) {
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 8px;
     position: fixed;
-    right: 15px;
-    bottom: 15px;
-    width: 48px;
-    height: 48px;
-    border-radius: 50%;
-    background: linear-gradient(135deg, #ff7e5f, #feb47b);
-    border: none;
+    bottom: 20px;
+    right: 20px;
+    padding: 10px 16px;
+    border-radius: 30px;
+    background: linear-gradient(135deg, #ff416c, #ff4b2b);
     color: white;
-    font-size: 24px;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.3);
-    z-index: 100;
+    font-size: 16px;
+    font-weight: 500;
+    border: none;
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+    z-index: 1000;
     cursor: pointer;
+    
+    /* Ensure visibility on iPhone */
+    -webkit-tap-highlight-color: transparent;
+    
+    /* Add breathing effect to make it more noticeable */
+    animation: breathe 3s infinite ease-in-out;
+    
+    svg {
+      font-size: 20px;
+    }
+    
+    /* Ensure it's definitely visible on all devices */
+    @media (max-width: 360px) {
+      bottom: 15px;
+      right: 15px;
+      padding: 8px 14px;
+    }
+    
+    @keyframes breathe {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
   }
 `;
 
