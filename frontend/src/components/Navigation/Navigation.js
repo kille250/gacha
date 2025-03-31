@@ -576,14 +576,15 @@ const RadioButton = styled.button`
   @media (max-width: 480px) {
     font-size: 14px;
     
-    /* Für kleine iPhones: Text bei Bedarf kürzen oder ausblenden */
     span {
       font-size: 13px;
+      display: inline-block; /* Wichtig für die Textbegrenzung */
       
-      @media (max-width: 375px) {
-        max-width: 40px;
+      @media (max-width: 380px) {
+        max-width: 40px; /* Begrenzt die Breite */
         overflow: hidden;
         text-overflow: ellipsis;
+        white-space: nowrap;
       }
       
       @media (max-width: 340px) {
