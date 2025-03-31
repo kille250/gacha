@@ -1,9 +1,9 @@
-import React, { useContext, useState, useEffect, useCallback } from 'react';
+import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings } from 'react-icons/md';
-import { FaGift, FaTicketAlt } from 'react-icons/fa';
+import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings, MdRadio, MdVolumeUp, MdVolumeOff } from 'react-icons/md';
+import { FaGift, FaTicketAlt, FaPlay, FaStop } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
 
@@ -23,6 +23,49 @@ const Navigation = () => {
     amount: 0
   });
   
+  // Radio player state
+  const [radioPlaying, setRadioPlaying] = useState(false);
+  const [radioVolume, setRadioVolume] = useState(0.7);
+  const [showRadioControls, setShowRadioControls] = useState(false);
+  const audioRef = useRef(null);
+  
+  // Toggle radio playback
+  const toggleRadio = () => {
+    if (!audioRef.current) {
+      audioRef.current = new Audio('https://radio.solidbooru.online/public/solidbooru');
+      audioRef.current.volume = radioVolume;
+    }
+    
+    if (radioPlaying) {
+      audioRef.current.pause();
+      setRadioPlaying(false);
+    } else {
+      audioRef.current.play().catch(error => {
+        console.error("Radio playback error:", error);
+        // Let the user know there was an error
+        alert("Couldn't play radio. Please try again or check your connection.");
+      });
+      setRadioPlaying(true);
+    }
+  };
+  
+  // Update radio volume
+  useEffect(() => {
+    if (audioRef.current) {
+      audioRef.current.volume = radioVolume;
+    }
+  }, [radioVolume]);
+  
+  // Cleanup audio on component unmount
+  useEffect(() => {
+    return () => {
+      if (audioRef.current) {
+        audioRef.current.pause();
+        audioRef.current = null;
+      }
+    };
+  }, []);
+
   // Check if hourly reward is available - updated for 1 hour interval
   const checkRewardAvailability = useCallback(async () => {
     if (!user) {
@@ -216,6 +259,11 @@ const Navigation = () => {
   };
   
   const handleLogout = () => {
+    // Stop radio playback on logout
+    if (radioPlaying && audioRef.current) {
+      audioRef.current.pause();
+      audioRef.current = null;
+    }
     logout();
     navigate('/login');
   };
@@ -258,6 +306,19 @@ const Navigation = () => {
             </StyledLink>
           </NavItem>
           
+          {/* Radio Button */}
+          <NavItem
+            isActive={radioPlaying}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowRadioControls(!showRadioControls)}
+          >
+            <RadioButton playing={radioPlaying}>
+              <MdRadio />
+              <span>Radio</span>
+            </RadioButton>
+          </NavItem>
+
           {/* Show admin in the top nav only on desktop */}
           {user?.isAdmin && (
             <DesktopOnlyNavItem
@@ -300,7 +361,7 @@ const Navigation = () => {
             </RewardButton>
           )}
           
-          <Username>{user?.username || 'User'}</Username>
+          <Username>{user?.username || "User"}</Username>
           
           <LogoutButton 
             onClick={handleLogout}
@@ -312,6 +373,46 @@ const Navigation = () => {
           </LogoutButton>
         </UserControls>
       </NavContainer>
+      
+      {/* Radio Controls Panel */}
+      <AnimatePresence>
+        {showRadioControls && (
+          <RadioControls
+            initial={{ opacity: 0, y: -20 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -20 }}
+            transition={{ duration: 0.2 }}
+          >
+            <RadioControlsHeader>
+              <h4>SolidBooru Radio</h4>
+            </RadioControlsHeader>
+            
+            <RadioControlsBody>
+              <PlayButton 
+                onClick={toggleRadio}
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                {radioPlaying ? <FaStop /> : <FaPlay />}
+                <span>{radioPlaying ? 'Stop' : 'Play'}</span>
+              </PlayButton>
+              
+              <VolumeControl>
+                {radioVolume === 0 ? <MdVolumeOff /> : <MdVolumeUp />}
+                <input
+                  type="range"
+                  min="0"
+                  max="1"
+                  step="0.05"
+                  value={radioVolume}
+                  onChange={(e) => setRadioVolume(parseFloat(e.target.value))}
+                />
+              </VolumeControl>
+            </RadioControlsBody>
+            
+          </RadioControls>
+        )}
+      </AnimatePresence>
       
       {/* Full Admin Floating Button - Now optimized for iPhone */}
       {user?.isAdmin && (
@@ -350,6 +451,8 @@ const Navigation = () => {
     </>
   );
 };
+
+// Existing styling components...
 
 const NavContainer = styled.nav`
   display: flex;
@@ -426,6 +529,134 @@ const StyledLink = styled(Link)`
     
     svg {
       font-size: 18px;
+    }
+  }
+`;
+
+// Radio button styling
+const RadioButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  cursor: pointer;
+  padding: 0;
+  white-space: nowrap;
+  
+  svg {
+    font-size: 20px;
+    color: ${props => props.playing ? '#1DB954' : 'white'};
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 14px;
+    
+    span {
+      @media (max-width: 360px) {
+        display: none;
+      }
+    }
+    
+    svg {
+      font-size: 18px;
+    }
+  }
+`;
+
+// Radio controls panel
+const RadioControls = styled(motion.div)`
+  position: fixed;
+  top: 80px;
+  left: 20px;
+  width: 300px;
+  background: rgba(30, 30, 30, 0.95);
+  backdrop-filter: blur(10px);
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
+  z-index: 150;
+  overflow: hidden;
+  
+  @media (max-width: 480px) {
+    width: calc(100% - 40px);
+    left: 20px;
+  }
+`;
+
+const RadioControlsHeader = styled.div`
+  padding: 15px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  
+  h4 {
+    margin: 0;
+    color: white;
+    font-size: 18px;
+    font-weight: 500;
+  }
+`;
+
+const RadioControlsBody = styled.div`
+  padding: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+`;
+
+const PlayButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  padding: 12px;
+  border-radius: 30px;
+  background: #1DB954;
+  color: white;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  
+  svg {
+    font-size: 18px;
+  }
+`;
+
+const VolumeControl = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 0 10px;
+  
+  svg {
+    color: white;
+    font-size: 22px;
+  }
+  
+  input[type=range] {
+    flex: 1;
+    -webkit-appearance: none;
+    height: 5px;
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 5px;
+    
+    &::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #1DB954;
+      cursor: pointer;
+    }
+    
+    &::-moz-range-thumb {
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: #1DB954;
+      cursor: pointer;
+      border: none;
     }
   }
 `;
