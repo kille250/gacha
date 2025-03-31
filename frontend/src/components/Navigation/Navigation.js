@@ -454,9 +454,10 @@ const Navigation = () => {
 
 const NavContainer = styled.nav`
   display: flex;
+  flex-wrap: wrap; /* Allow wrapping to new lines as needed */
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
+  padding: min(15px, 3vw) min(20px, 4vw); /* Responsive padding */
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
   color: white;
@@ -465,61 +466,43 @@ const NavContainer = styled.nav`
   z-index: 100;
   width: 100%;
   box-sizing: border-box;
+  row-gap: 10px; /* Gap between rows when wrapped */
   
+  /* Ensure responsive spacing */
   @media (max-width: 768px) {
-    padding: 12px 15px;
-  }
-  
-  @media (max-width: 600px) {
-    /* Switch to column layout for mobile */
-    flex-direction: column;
-    padding: 10px 15px;
-    gap: 12px;
+    padding: min(12px, 2.5vw) min(15px, 3vw);
+    row-gap: 8px;
   }
 `;
 
 const NavLinks = styled.ul`
   display: flex;
+  flex-wrap: wrap; /* Allow items to wrap */
   list-style: none;
-  gap: 20px;
+  gap: min(20px, 3vw); /* Responsive gap */
   margin: 0;
   padding: 0;
   
   @media (max-width: 768px) {
-    gap: 15px;
+    gap: min(15px, 2.5vw);
   }
   
-  @media (max-width: 600px) {
-    width: 100%; /* Take full width on mobile */
-    justify-content: space-between; /* Evenly distribute items */
-    gap: 10px;
-  }
-  
-  @media (max-width: 380px) {
-    gap: 5px;
+  @media (max-width: 480px) {
+    gap: min(10px, 2vw);
+    justify-content: center; /* Center items when wrapped */
   }
 `;
 
 const NavItem = styled(motion.li)`
-  padding: 8px 15px;
+  padding: min(8px, 1.5vw) min(15px, 2.5vw); /* Responsive padding */
   border-radius: 20px;
   background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent'};
+  margin: 2px; /* Small margin to prevent items from touching */
+  flex-shrink: 0; /* Prevent shrinking below text size */
   
   @media (max-width: 768px) {
-    padding: 6px 12px;
-  }
-  
-  @media (max-width: 600px) {
-    /* Allow text to display again even on small screens */
-    padding: 8px 12px;
-    flex: 1; /* Let items grow evenly */
-    text-align: center;
-    display: flex;
-    justify-content: center;
-  }
-  
-  @media (max-width: 380px) {
-    padding: 6px 8px;
+    padding: min(6px, 1.2vw) min(12px, 2vw);
+    border-radius: 15px;
   }
 `;
 
@@ -533,46 +516,21 @@ const DesktopOnlyNavItem = styled(NavItem)`
 const StyledLink = styled(Link)`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: min(8px, 1.5vw); /* Responsive gap */
   color: white;
   text-decoration: none;
-  font-size: 16px;
+  font-size: clamp(12px, 1vw + 6px, 16px); /* Fluid typography */
   font-weight: 500;
   white-space: nowrap;
   
   svg {
-    font-size: 20px;
+    font-size: clamp(16px, 1.2vw + 6px, 20px); /* Fluid icon size */
   }
   
-  @media (max-width: 768px) {
-    font-size: 14px;
-    gap: 6px;
-    
-    svg {
-      font-size: 18px;
-    }
-  }
-  
-  @media (max-width: 600px) {
-    /* Center content and keep text visible */
-    justify-content: center;
-    font-size: 13px;
-    gap: 4px;
-    
+  /* For very small screens, we can still use media queries to hide text if absolutely necessary */
+  @media (max-width: 350px) {
     span {
-      display: inline-block;
-    }
-    
-    svg {
-      font-size: 16px;
-    }
-  }
-  
-  @media (max-width: 380px) {
-    font-size: 12px;
-    /* Keep text visible but constrain width if needed */
-    span {
-      max-width: 60px;
+      max-width: 50px;
       overflow: hidden;
       text-overflow: ellipsis;
     }
@@ -583,52 +541,18 @@ const StyledLink = styled(Link)`
 const RadioButton = styled.button`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: min(8px, 1.5vw);
   background: none;
   border: none;
   color: white;
-  font-size: 16px;
+  font-size: clamp(12px, 1vw + 6px, 16px);
   font-weight: 500;
   cursor: pointer;
   padding: 0;
   
   svg {
-    font-size: 20px;
+    font-size: clamp(16px, 1.2vw + 6px, 20px);
     color: ${props => props.playing ? '#1DB954' : 'white'};
-  }
-  
-  @media (max-width: 768px) {
-    font-size: 14px;
-    gap: 6px;
-    
-    svg {
-      font-size: 18px;
-    }
-  }
-  
-  @media (max-width: 600px) {
-    /* Center content and keep text visible */
-    justify-content: center;
-    font-size: 13px;
-    gap: 4px;
-    
-    span {
-      display: inline-block;
-    }
-    
-    svg {
-      font-size: 16px;
-    }
-  }
-  
-  @media (max-width: 380px) {
-    font-size: 12px;
-    /* Keep text visible but constrain width if needed */
-    span {
-      max-width: 60px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
   }
 `;
 
@@ -728,92 +652,75 @@ const VolumeControl = styled.div`
 
 const UserControls = styled.div`
   display: flex;
+  flex-wrap: wrap; /* Allow wrapping */
   align-items: center;
-  gap: 15px;
+  gap: min(15px, 2.5vw); /* Responsive gap */
+  margin: 0;
   
   @media (max-width: 768px) {
-    gap: 12px;
+    gap: min(12px, 2vw);
   }
   
-  @media (max-width: 600px) {
-    width: 100%; /* Take full width on mobile */
-    justify-content: space-between; /* Evenly distribute items */
-    gap: 10px;
+  @media (max-width: 480px) {
+    gap: min(8px, 1.5vw);
+    justify-content: center; /* Center items when wrapped */
   }
 `;
 
 const Username = styled.span`
   font-weight: 500;
   opacity: 0.8;
-  
-  @media (max-width: 600px) {
-    /* Keep visible in the two-line layout */
-    display: block;
-  }
-  
-  @media (max-width: 380px) {
-    font-size: 12px;
-    max-width: 80px;
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-  }
+  font-size: clamp(12px, 0.8vw + 8px, 14px);
+  max-width: clamp(50px, 20vw, 150px);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 `;
 
 const LogoutButton = styled(motion.button)`
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: min(5px, 1vw);
   background: rgba(255, 255, 255, 0.1);
   border: none;
   color: white;
-  padding: 8px 15px;
+  padding: min(8px, 1.5vw) min(15px, 2.5vw);
   border-radius: 20px;
   cursor: pointer;
-  font-size: 14px;
+  font-size: clamp(12px, 0.8vw + 8px, 14px);
   
   &:hover {
     background: rgba(255, 255, 255, 0.2);
   }
   
-  @media (max-width: 768px) {
-    padding: 6px 12px;
+  svg {
+    font-size: clamp(14px, 1vw + 8px, 18px);
   }
   
-  @media (max-width: 600px) {
-    /* Keep text visible in two-line layout */
-    padding: 8px 12px;
-    
-    span {
-      display: inline-block;
-    }
-  }
-  
-  @media (max-width: 380px) {
-    padding: 6px 8px;
-    font-size: 12px;
+  @media (max-width: 350px) {
+    padding: 6px 10px;
   }
 `;
 
 const RewardButton = styled(motion.button)`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: min(8px, 1.5vw);
   background: ${props => props.available 
     ? 'linear-gradient(135deg, #ffb347, #ffcc33)' 
     : 'rgba(255, 255, 255, 0.1)'};
   border: none;
   color: white;
-  padding: 8px 15px;
+  padding: min(8px, 1.5vw) min(15px, 2.5vw);
   border-radius: 20px;
   cursor: ${props => props.available ? 'pointer' : 'default'};
-  font-size: 14px;
+  font-size: clamp(12px, 0.8vw + 8px, 14px);
   transition: all 0.3s ease;
   position: relative;
   overflow: hidden;
   
   svg {
-    font-size: 18px;
+    font-size: clamp(14px, 1vw + 8px, 18px);
     color: ${props => props.available ? 'white' : 'rgba(255, 255, 255, 0.7)'};
   }
   
@@ -822,33 +729,13 @@ const RewardButton = styled(motion.button)`
     cursor: not-allowed;
   }
   
-  @media (max-width: 768px) {
-    padding: 6px 12px;
-  }
-  
-  @media (max-width: 600px) {
-    /* Keep text visible in two-line layout */
-    padding: 8px 15px;
-    
-    span {
-      display: inline-block;
-    }
-  }
-  
-  @media (max-width: 380px) {
+  @media (max-width: 350px) {
     padding: 6px 10px;
-    font-size: 12px;
-    
-    span {
-      max-width: 80px; /* Allow more space for timer text */
-      overflow: hidden;
-      text-overflow: ellipsis;
-    }
   }
 `;
 
 const TimeRemaining = styled.span`
-  font-size: 13px;
+  font-size: clamp(11px, 0.7vw + 8px, 13px);
   opacity: 0.8;
   white-space: nowrap;
 `;
