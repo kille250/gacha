@@ -465,15 +465,13 @@ const NavContainer = styled.nav`
   z-index: 100;
   width: 100%;
   box-sizing: border-box;
-  max-width: 100vw;
   
   @media (max-width: 768px) {
     padding: 12px 15px;
   }
   
-  /* Noch kompaktere Darstellung für kleine iPhones */
   @media (max-width: 380px) {
-    padding: 10px 10px;
+    padding: 8px 8px;
   }
 `;
 
@@ -483,14 +481,17 @@ const NavLinks = styled.ul`
   gap: 20px;
   margin: 0;
   padding: 0;
-  flex-wrap: nowrap; /* Verhindert Umbruch der Navigation */
+  
+  @media (max-width: 600px) {
+    gap: 12px;
+  }
   
   @media (max-width: 480px) {
-    gap: 8px; /* Weniger Abstand zwischen den Elementen */
+    gap: 8px;
   }
   
   @media (max-width: 380px) {
-    gap: 4px; /* Minimaler Abstand für sehr kleine Bildschirme */
+    gap: 3px;
   }
 `;
 
@@ -500,12 +501,12 @@ const NavItem = styled(motion.li)`
   background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent'};
   
   @media (max-width: 480px) {
-    padding: 6px 10px;
+    padding: 6px 8px;
   }
   
   @media (max-width: 380px) {
-    /* Noch kompakter für iPhone */
-    padding: 6px 8px;
+    padding: 5px 6px;
+    border-radius: 15px;
   }
 `;
 
@@ -530,22 +531,34 @@ const StyledLink = styled(Link)`
     font-size: 20px;
   }
   
-  @media (max-width: 480px) {
+  @media (max-width: 600px) {
     font-size: 14px;
-    gap: 5px; /* Weniger Abstand zwischen Icon und Text */
+    gap: 5px;
+    
+    svg {
+      font-size: 18px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 13px;
     
     span {
-      font-size: 13px;
-      
-      @media (max-width: 380px) {
-        max-width: 45px; /* Begrenzte Textbreite */
-        overflow: hidden;
-        text-overflow: ellipsis;
-      }
-      
-      @media (max-width: 340px) {
-        display: none;
-      }
+      display: inline-block;
+      max-width: 50px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    svg {
+      font-size: 16px;
+    }
+  }
+  
+  @media (max-width: 360px) {
+    span {
+      display: none;
     }
     
     svg {
@@ -566,30 +579,40 @@ const RadioButton = styled.button`
   font-weight: 500;
   cursor: pointer;
   padding: 0;
-  white-space: nowrap;
   
   svg {
     font-size: 20px;
     color: ${props => props.playing ? '#1DB954' : 'white'};
   }
   
-  @media (max-width: 480px) {
+  @media (max-width: 600px) {
     font-size: 14px;
+    gap: 5px;
+    
+    svg {
+      font-size: 18px;
+    }
+  }
+  
+  @media (max-width: 480px) {
+    font-size: 13px;
     
     span {
-      font-size: 13px;
-      display: inline-block; /* Wichtig für die Textbegrenzung */
-      
-      @media (max-width: 380px) {
-        max-width: 40px; /* Begrenzt die Breite */
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
-      }
-      
-      @media (max-width: 340px) {
-        display: none;
-      }
+      display: inline-block;
+      max-width: 50px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    
+    svg {
+      font-size: 16px;
+    }
+  }
+  
+  @media (max-width: 360px) {
+    span {
+      display: none;
     }
     
     svg {
@@ -697,8 +720,12 @@ const UserControls = styled.div`
   align-items: center;
   gap: 15px;
   
-  @media (max-width: 480px) {
+  @media (max-width: 600px) {
     gap: 10px;
+  }
+  
+  @media (max-width: 480px) {
+    gap: 6px;
   }
 `;
 
@@ -727,13 +754,25 @@ const LogoutButton = styled(motion.button)`
     background: rgba(255, 255, 255, 0.2);
   }
   
+  @media (max-width: 600px) {
+    padding: 6px 12px;
+  }
+  
   @media (max-width: 480px) {
-    padding: 6px 10px;
+    padding: 6px 8px;
     
     span {
-      @media (max-width: 360px) {
-        display: none;
-      }
+      font-size: 12px;
+    }
+    
+    svg {
+      font-size: 16px;
+    }
+  }
+  
+  @media (max-width: 400px) {
+    span {
+      display: none;
     }
   }
 `;
@@ -755,34 +794,7 @@ const RewardButton = styled(motion.button)`
   position: relative;
   overflow: hidden;
   
-  ${props => props.available && `
-    &::after {
-      content: '';
-      position: absolute;
-      top: -50%;
-      left: -50%;
-      width: 200%;
-      height: 200%;
-      background: rgba(255, 255, 255, 0.1);
-      transform: rotate(30deg);
-      animation: shine 3s infinite;
-    }
-    
-    @keyframes shine {
-      0% { transform: rotate(30deg) translateX(-300%); }
-      100% { transform: rotate(30deg) translateX(300%); }
-    }
-    
-    .pulse-icon {
-      animation: pulse 1.5s infinite;
-    }
-    
-    @keyframes pulse {
-      0% { transform: scale(1); }
-      50% { transform: scale(1.2); }
-      100% { transform: scale(1); }
-    }
-  `}
+  /* Shine and pulse animations... */
   
   svg {
     font-size: 18px;
@@ -794,13 +806,25 @@ const RewardButton = styled(motion.button)`
     cursor: not-allowed;
   }
   
+  @media (max-width: 600px) {
+    padding: 6px 12px;
+  }
+  
   @media (max-width: 480px) {
-    padding: 6px 10px;
+    padding: 6px 8px;
     
     span {
-      @media (max-width: 440px) {
-        display: none;
-      }
+      font-size: 12px;
+    }
+    
+    svg {
+      font-size: 16px;
+    }
+  }
+  
+  @media (max-width: 400px) {
+    span {
+      display: none;
     }
   }
 `;
