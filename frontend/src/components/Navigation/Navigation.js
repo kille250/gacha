@@ -470,8 +470,11 @@ const NavContainer = styled.nav`
     padding: 12px 15px;
   }
   
-  @media (max-width: 380px) {
-    padding: 8px 8px;
+  @media (max-width: 600px) {
+    /* Switch to column layout for mobile */
+    flex-direction: column;
+    padding: 10px 15px;
+    gap: 12px;
   }
 `;
 
@@ -482,16 +485,18 @@ const NavLinks = styled.ul`
   margin: 0;
   padding: 0;
   
-  @media (max-width: 600px) {
-    gap: 12px;
+  @media (max-width: 768px) {
+    gap: 15px;
   }
   
-  @media (max-width: 480px) {
-    gap: 8px;
+  @media (max-width: 600px) {
+    width: 100%; /* Take full width on mobile */
+    justify-content: space-between; /* Evenly distribute items */
+    gap: 10px;
   }
   
   @media (max-width: 380px) {
-    gap: 3px;
+    gap: 5px;
   }
 `;
 
@@ -500,13 +505,21 @@ const NavItem = styled(motion.li)`
   border-radius: 20px;
   background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent'};
   
-  @media (max-width: 480px) {
-    padding: 6px 8px;
+  @media (max-width: 768px) {
+    padding: 6px 12px;
+  }
+  
+  @media (max-width: 600px) {
+    /* Allow text to display again even on small screens */
+    padding: 8px 12px;
+    flex: 1; /* Let items grow evenly */
+    text-align: center;
+    display: flex;
+    justify-content: center;
   }
   
   @media (max-width: 380px) {
-    padding: 5px 6px;
-    border-radius: 15px;
+    padding: 6px 8px;
   }
 `;
 
@@ -531,24 +544,23 @@ const StyledLink = styled(Link)`
     font-size: 20px;
   }
   
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     font-size: 14px;
-    gap: 5px;
+    gap: 6px;
     
     svg {
       font-size: 18px;
     }
   }
   
-  @media (max-width: 480px) {
+  @media (max-width: 600px) {
+    /* Center content and keep text visible */
+    justify-content: center;
     font-size: 13px;
+    gap: 4px;
     
     span {
       display: inline-block;
-      max-width: 50px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
     
     svg {
@@ -556,13 +568,13 @@ const StyledLink = styled(Link)`
     }
   }
   
-  @media (max-width: 360px) {
+  @media (max-width: 380px) {
+    font-size: 12px;
+    /* Keep text visible but constrain width if needed */
     span {
-      display: none;
-    }
-    
-    svg {
-      font-size: 18px;
+      max-width: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 `;
@@ -585,24 +597,23 @@ const RadioButton = styled.button`
     color: ${props => props.playing ? '#1DB954' : 'white'};
   }
   
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     font-size: 14px;
-    gap: 5px;
+    gap: 6px;
     
     svg {
       font-size: 18px;
     }
   }
   
-  @media (max-width: 480px) {
+  @media (max-width: 600px) {
+    /* Center content and keep text visible */
+    justify-content: center;
     font-size: 13px;
+    gap: 4px;
     
     span {
       display: inline-block;
-      max-width: 50px;
-      overflow: hidden;
-      text-overflow: ellipsis;
-      white-space: nowrap;
     }
     
     svg {
@@ -610,13 +621,13 @@ const RadioButton = styled.button`
     }
   }
   
-  @media (max-width: 360px) {
+  @media (max-width: 380px) {
+    font-size: 12px;
+    /* Keep text visible but constrain width if needed */
     span {
-      display: none;
-    }
-    
-    svg {
-      font-size: 18px;
+      max-width: 60px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 `;
@@ -720,12 +731,14 @@ const UserControls = styled.div`
   align-items: center;
   gap: 15px;
   
-  @media (max-width: 600px) {
-    gap: 10px;
+  @media (max-width: 768px) {
+    gap: 12px;
   }
   
-  @media (max-width: 480px) {
-    gap: 6px;
+  @media (max-width: 600px) {
+    width: 100%; /* Take full width on mobile */
+    justify-content: space-between; /* Evenly distribute items */
+    gap: 10px;
   }
 `;
 
@@ -733,8 +746,17 @@ const Username = styled.span`
   font-weight: 500;
   opacity: 0.8;
   
-  @media (max-width: 480px) {
-    display: none;
+  @media (max-width: 600px) {
+    /* Keep visible in the two-line layout */
+    display: block;
+  }
+  
+  @media (max-width: 380px) {
+    font-size: 12px;
+    max-width: 80px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 `;
 
@@ -754,26 +776,22 @@ const LogoutButton = styled(motion.button)`
     background: rgba(255, 255, 255, 0.2);
   }
   
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     padding: 6px 12px;
   }
   
-  @media (max-width: 480px) {
-    padding: 6px 8px;
+  @media (max-width: 600px) {
+    /* Keep text visible in two-line layout */
+    padding: 8px 12px;
     
     span {
-      font-size: 12px;
-    }
-    
-    svg {
-      font-size: 16px;
+      display: inline-block;
     }
   }
   
-  @media (max-width: 400px) {
-    span {
-      display: none;
-    }
+  @media (max-width: 380px) {
+    padding: 6px 8px;
+    font-size: 12px;
   }
 `;
 
@@ -794,8 +812,6 @@ const RewardButton = styled(motion.button)`
   position: relative;
   overflow: hidden;
   
-  /* Shine and pulse animations... */
-  
   svg {
     font-size: 18px;
     color: ${props => props.available ? 'white' : 'rgba(255, 255, 255, 0.7)'};
@@ -806,25 +822,27 @@ const RewardButton = styled(motion.button)`
     cursor: not-allowed;
   }
   
-  @media (max-width: 600px) {
+  @media (max-width: 768px) {
     padding: 6px 12px;
   }
   
-  @media (max-width: 480px) {
-    padding: 6px 8px;
+  @media (max-width: 600px) {
+    /* Keep text visible in two-line layout */
+    padding: 8px 15px;
     
     span {
-      font-size: 12px;
-    }
-    
-    svg {
-      font-size: 16px;
+      display: inline-block;
     }
   }
   
-  @media (max-width: 400px) {
+  @media (max-width: 380px) {
+    padding: 6px 10px;
+    font-size: 12px;
+    
     span {
-      display: none;
+      max-width: 80px; /* Allow more space for timer text */
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
   }
 `;
