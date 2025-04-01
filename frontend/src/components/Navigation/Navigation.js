@@ -2,7 +2,7 @@ import React, { useContext, useState, useEffect, useCallback, useRef } from 'rea
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings, MdRadio, MdVolumeUp, MdVolumeOff } from 'react-icons/md';
+import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings, MdRadio, MdVolumeUp, MdVolumeOff, MdMenu, MdClose } from 'react-icons/md';
 import { FaGift, FaTicketAlt, FaPlay, FaStop } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import axios from 'axios';
@@ -23,11 +23,19 @@ const Navigation = () => {
     amount: 0
   });
   
+  // Mobile menu state
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
   // Radio player state
   const [radioPlaying, setRadioPlaying] = useState(false);
   const [radioVolume, setRadioVolume] = useState(0.7);
   const [showRadioControls, setShowRadioControls] = useState(false);
   const audioRef = useRef(null);
+
+  // Close mobile menu when location changes
+  useEffect(() => {
+    setMobileMenuOpen(false);
+  }, [location]);
   
   // Toggle radio playback
   const toggleRadio = () => {
@@ -267,73 +275,56 @@ const Navigation = () => {
     navigate('/login');
   };
   
+  // Navigation items for both desktop and mobile menus
+  const navItems = [
+    { path: '/gacha', label: 'Gacha', icon: <MdDashboard />, adminOnly: false },
+    { path: '/collection', label: 'Collection', icon: <MdCollections />, adminOnly: false },
+    { path: '/coupons', label: 'Coupons', icon: <FaTicketAlt />, adminOnly: false },
+    { path: '/admin', label: 'Admin', icon: <MdSettings />, adminOnly: true },
+  ];
+
   return (
     <>
       <NavContainer>
-        <MainNav>
-          <NavGroup>
-            <NavItem
-              isActive={location.pathname === '/gacha'}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <StyledLink to="/gacha">
-                <MdDashboard />
-                <span>Gacha</span>
-              </StyledLink>
-            </NavItem>
-            
-            <NavItem
-              isActive={location.pathname === '/collection'}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <StyledLink to="/collection">
-                <MdCollections />
-                <span>Collection</span>
-              </StyledLink>
-            </NavItem>
-            
-            <NavItem
-              isActive={location.pathname === '/coupons'}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <StyledLink to="/coupons">
-                <FaTicketAlt />
-                <span>Coupons</span>
-              </StyledLink>
-            </NavItem>
-          </NavGroup>
-          
-          <NavGroup>
-            <NavItem
-              isActive={radioPlaying}
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.95 }}
-              onClick={() => setShowRadioControls(!showRadioControls)}
-            >
-              <RadioButton playing={radioPlaying}>
-                <MdRadio />
-                <span>Radio</span>
-              </RadioButton>
-            </NavItem>
-            
-            {/* Admin becomes a standard nav item on desktop */}
-            {user?.isAdmin && (
-              <DesktopOnlyNavItem
-                isActive={location.pathname === '/admin'}
+        {/* Mobile Hamburger Button */}
+        <HamburgerButton 
+          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+          whileHover={{ scale: 1.1 }}
+          whileTap={{ scale: 0.9 }}
+        >
+          {mobileMenuOpen ? <MdClose /> : <MdMenu />}
+        </HamburgerButton>
+
+        {/* Desktop Navigation */}
+        <DesktopNav>
+          {navItems.map(item => (
+            (!item.adminOnly || (item.adminOnly && user?.isAdmin)) && (
+              <NavItem
+                key={item.path}
+                isActive={location.pathname === item.path}
                 whileHover={{ scale: 1.1 }}
                 whileTap={{ scale: 0.95 }}
               >
-                <StyledLink to="/admin">
-                  <MdSettings />
-                  <span>Admin</span>
+                <StyledLink to={item.path}>
+                  {item.icon}
+                  <span>{item.label}</span>
                 </StyledLink>
-              </DesktopOnlyNavItem>
-            )}
-          </NavGroup>
-        </MainNav>
+              </NavItem>
+            )
+          ))}
+          
+          <NavItem
+            isActive={radioPlaying}
+            whileHover={{ scale: 1.1 }}
+            whileTap={{ scale: 0.95 }}
+            onClick={() => setShowRadioControls(!showRadioControls)}
+          >
+            <RadioButton playing={radioPlaying}>
+              <MdRadio />
+              <span>Radio</span>
+            </RadioButton>
+          </NavItem>
+        </DesktopNav>
         
         <UserControls>
           {user && (
@@ -373,6 +364,71 @@ const Navigation = () => {
           </LogoutButton>
         </UserControls>
       </NavContainer>
+      
+      {/* Mobile Menu (Drawer) */}
+      <AnimatePresence>
+        {mobileMenuOpen && (
+          <MobileMenuOverlay
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={() => setMobileMenuOpen(false)}
+          >
+            <MobileMenu
+              initial={{ x: "-100%" }}
+              animate={{ x: 0 }}
+              exit={{ x: "-100%" }}
+              transition={{ type: "spring", damping: 20 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <MobileMenuHeader>
+                <h3>Menu</h3>
+                <CloseButton 
+                  onClick={() => setMobileMenuOpen(false)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <MdClose />
+                </CloseButton>
+              </MobileMenuHeader>
+              
+              <MobileNavItems>
+                {navItems.map(item => (
+                  (!item.adminOnly || (item.adminOnly && user?.isAdmin)) && (
+                    <MobileNavItem
+                      key={item.path}
+                      isActive={location.pathname === item.path}
+                      onClick={() => setMobileMenuOpen(false)}
+                      whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <StyledLink to={item.path}>
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </StyledLink>
+                    </MobileNavItem>
+                  )
+                ))}
+                
+                <MobileNavItem
+                  isActive={radioPlaying}
+                  onClick={() => {
+                    setShowRadioControls(!showRadioControls);
+                    setMobileMenuOpen(false);
+                  }}
+                  whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <RadioButton playing={radioPlaying}>
+                    <MdRadio />
+                    <span>Radio</span>
+                  </RadioButton>
+                </MobileNavItem>
+              </MobileNavItems>
+            </MobileMenu>
+          </MobileMenuOverlay>
+        )}
+      </AnimatePresence>
       
       {/* Radio Controls Panel */}
       <AnimatePresence>
@@ -453,47 +509,46 @@ const Navigation = () => {
 
 const NavContainer = styled.nav`
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
   color: white;
+  padding: 12px 16px;
   position: sticky;
   top: 0;
   z-index: 100;
   width: 100%;
   box-sizing: border-box;
+`;
+
+// Hamburger menu button (mobile only)
+const HamburgerButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: none;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  padding: 4px;
   
   @media (min-width: 769px) {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-    padding: 12px 20px;
+    display: none;
   }
 `;
 
-const MainNav = styled.div`
-  display: flex;
-  justify-content: space-between;
-  width: 100%;
-  padding: 12px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  
-  @media (min-width: 769px) {
-    width: auto;
-    border-bottom: none;
-    padding: 0;
-  }
-`;
-
-const NavGroup = styled.ul`
-  display: flex;
+// Desktop navigation
+const DesktopNav = styled.ul`
+  display: none;
   list-style: none;
   gap: 15px;
   margin: 0;
   padding: 0;
   
-  @media (max-width: 480px) {
-    gap: 10px;
+  @media (min-width: 769px) {
+    display: flex;
   }
 `;
 
@@ -501,18 +556,6 @@ const NavItem = styled(motion.li)`
   padding: 8px 15px;
   border-radius: 20px;
   background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent'};
-  
-  @media (max-width: 480px) {
-    padding: 6px 12px;
-    border-radius: 15px;
-  }
-`;
-
-// Desktop-only nav item for admin
-const DesktopOnlyNavItem = styled(NavItem)`
-  @media (max-width: 600px) {
-    display: none;
-  }
 `;
 
 const StyledLink = styled(Link)`
@@ -523,17 +566,81 @@ const StyledLink = styled(Link)`
   text-decoration: none;
   font-size: 14px;
   font-weight: 500;
-  white-space: nowrap;
   
   svg {
     font-size: 18px;
   }
+`;
+
+// Mobile menu overlay
+const MobileMenuOverlay = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  display: flex;
+`;
+
+// Mobile menu drawer
+const MobileMenu = styled(motion.div)`
+  width: 75%;
+  max-width: 300px;
+  height: 100%;
+  background: #121212;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+`;
+
+const MobileMenuHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   
-  @media (max-width: 350px) {
-    span {
-      max-width: 50px;
-      overflow: hidden;
-      text-overflow: ellipsis;
+  h3 {
+    margin: 0;
+    font-size: 18px;
+    font-weight: 600;
+  }
+`;
+
+const CloseButton = styled(motion.button)`
+  background: none;
+  border: none;
+  color: white;
+  font-size: 22px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+`;
+
+const MobileNavItems = styled.ul`
+  list-style: none;
+  margin: 0;
+  padding: 0;
+`;
+
+const MobileNavItem = styled(motion.li)`
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent'};
+  
+  a, button {
+    width: 100%;
+    justify-content: flex-start;
+    font-size: 16px;
+    
+    svg {
+      font-size: 20px;
     }
   }
 `;
@@ -560,8 +667,8 @@ const RadioButton = styled.button`
 // Radio controls panel
 const RadioControls = styled(motion.div)`
   position: fixed;
-  top: 120px;
-  left: 20px;
+  top: 70px;
+  right: 20px;
   width: 300px;
   background: rgba(30, 30, 30, 0.95);
   backdrop-filter: blur(10px);
@@ -572,11 +679,7 @@ const RadioControls = styled(motion.div)`
   
   @media (max-width: 480px) {
     width: calc(100% - 40px);
-    left: 20px;
-  }
-
-  @media (min-width: 769px) {
-    top: 80px;
+    right: 20px;
   }
 `;
 
@@ -658,16 +761,10 @@ const VolumeControl = styled.div`
 const UserControls = styled.div`
   display: flex;
   align-items: center;
-  justify-content: flex-end;
-  gap: 15px;
-  padding: 12px 20px;
+  gap: 12px;
   
   @media (max-width: 480px) {
     gap: 10px;
-  }
-  
-  @media (min-width: 769px) {
-    padding: 0;
   }
 `;
 
@@ -675,13 +772,13 @@ const Username = styled.span`
   font-weight: 500;
   opacity: 0.8;
   font-size: 14px;
-  max-width: 120px;
+  max-width: 100px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
   
   @media (max-width: 350px) {
-    max-width: 70px;
+    max-width: 60px;
   }
 `;
 
@@ -705,8 +802,16 @@ const LogoutButton = styled(motion.button)`
     font-size: 16px;
   }
   
-  @media (max-width: 350px) {
-    padding: 6px 10px;
+  @media (max-width: 480px) {
+    padding: 8px;
+    
+    span {
+      display: none;
+    }
+    
+    svg {
+      margin: 0;
+    }
   }
 `;
 
@@ -735,8 +840,12 @@ const RewardButton = styled(motion.button)`
     cursor: not-allowed;
   }
   
-  @media (max-width: 350px) {
-    padding: 6px 10px;
+  @media (max-width: 480px) {
+    padding: 8px;
+    
+    span {
+      display: none;
+    }
   }
 `;
 
@@ -744,6 +853,11 @@ const TimeRemaining = styled.span`
   font-size: 13px;
   opacity: 0.8;
   white-space: nowrap;
+  
+  @media (max-width: 480px) {
+    display: block !important;
+    max-width: 60px;
+  }
 `;
 
 const LoadingSpinner = styled.div`
@@ -760,43 +874,37 @@ const LoadingSpinner = styled.div`
 `;
 
 const AdminFloatingButton = styled(motion.button)`
-  display: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  padding: 10px 16px;
+  border-radius: 30px;
+  background: linear-gradient(135deg, #ff416c, #ff4b2b);
+  color: white;
+  font-size: 16px;
+  font-weight: 500;
+  border: none;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
+  z-index: 1000;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  animation: breathe 3s infinite ease-in-out;
   
-  @media (max-width: 600px) {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 8px;
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    padding: 10px 16px;
-    border-radius: 30px;
-    background: linear-gradient(135deg, #ff416c, #ff4b2b);
-    color: white;
-    font-size: 16px;
-    font-weight: 500;
-    border: none;
-    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-    z-index: 1000;
-    cursor: pointer;
-    -webkit-tap-highlight-color: transparent;
-    animation: breathe 3s infinite ease-in-out;
-    
-    svg {
-      font-size: 20px;
-    }
-    
-    @media (max-width: 360px) {
-      bottom: 15px;
-      right: 15px;
-      padding: 8px 14px;
-    }
-    
-    @keyframes breathe {
-      0%, 100% { transform: scale(1); }
-      50% { transform: scale(1.05); }
-    }
+  svg {
+    font-size: 20px;
+  }
+  
+  @media (min-width: 769px) {
+    display: none;
+  }
+  
+  @keyframes breathe {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
   }
 `;
 
