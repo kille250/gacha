@@ -12,11 +12,11 @@ const Navigation = () => {
   const { user, logout, refreshUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const [rewardStatus, setRewardStatus] = useState({
-    available: false,        // Default to false
-    loading: true,           // Start with loading state to prevent premature display
+    available: false,       
+    loading: true,         
     timeRemaining: "Checking...",
     nextRewardTime: null,
-    checked: false           // Flag to indicate if we've checked availability yet
+    checked: false          
   });
   const [rewardPopup, setRewardPopup] = useState({
     show: false,
@@ -42,7 +42,6 @@ const Navigation = () => {
     } else {
       audioRef.current.play().catch(error => {
         console.error("Radio playback error:", error);
-        // Let the user know there was an error
         alert("Couldn't play radio. Please try again or check your connection.");
       });
       setRadioPlaying(true);
@@ -271,71 +270,72 @@ const Navigation = () => {
   return (
     <>
       <NavContainer>
-        <NavLinks>
-          {/* On mobile, we'll hide Admin from the top nav completely */}
-          <NavItem
-            isActive={location.pathname === '/gacha'}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <StyledLink to="/gacha">
-              <MdDashboard />
-              <span>Gacha</span>
-            </StyledLink>
-          </NavItem>
-          
-          <NavItem
-            isActive={location.pathname === '/collection'}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <StyledLink to="/collection">
-              <MdCollections />
-              <span>Collection</span>
-            </StyledLink>
-          </NavItem>
-          
-          <NavItem
-            isActive={location.pathname === '/coupons'}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            <StyledLink to="/coupons">
-              <FaTicketAlt />
-              <span>Coupons</span>
-            </StyledLink>
-          </NavItem>
-          
-          {/* Radio Button */}
-          <NavItem
-            isActive={radioPlaying}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
-            onClick={() => setShowRadioControls(!showRadioControls)}
-          >
-            <RadioButton playing={radioPlaying}>
-              <MdRadio />
-              <span>Radio</span>
-            </RadioButton>
-          </NavItem>
-
-          {/* Show admin in the top nav only on desktop */}
-          {user?.isAdmin && (
-            <DesktopOnlyNavItem
-              isActive={location.pathname === '/admin'}
+        <MainNav>
+          <NavGroup>
+            <NavItem
+              isActive={location.pathname === '/gacha'}
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.95 }}
             >
-              <StyledLink to="/admin">
-                <MdSettings />
-                <span>Admin</span>
+              <StyledLink to="/gacha">
+                <MdDashboard />
+                <span>Gacha</span>
               </StyledLink>
-            </DesktopOnlyNavItem>
-          )}
-        </NavLinks>
+            </NavItem>
+            
+            <NavItem
+              isActive={location.pathname === '/collection'}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <StyledLink to="/collection">
+                <MdCollections />
+                <span>Collection</span>
+              </StyledLink>
+            </NavItem>
+            
+            <NavItem
+              isActive={location.pathname === '/coupons'}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <StyledLink to="/coupons">
+                <FaTicketAlt />
+                <span>Coupons</span>
+              </StyledLink>
+            </NavItem>
+          </NavGroup>
+          
+          <NavGroup>
+            <NavItem
+              isActive={radioPlaying}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setShowRadioControls(!showRadioControls)}
+            >
+              <RadioButton playing={radioPlaying}>
+                <MdRadio />
+                <span>Radio</span>
+              </RadioButton>
+            </NavItem>
+            
+            {/* Admin becomes a standard nav item on desktop */}
+            {user?.isAdmin && (
+              <DesktopOnlyNavItem
+                isActive={location.pathname === '/admin'}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <StyledLink to="/admin">
+                  <MdSettings />
+                  <span>Admin</span>
+                </StyledLink>
+              </DesktopOnlyNavItem>
+            )}
+          </NavGroup>
+        </MainNav>
         
         <UserControls>
-          {/* Hourly Reward Button */}
           {user && (
             <RewardButton
               available={rewardStatus.checked && rewardStatus.available}
@@ -409,12 +409,11 @@ const Navigation = () => {
                 />
               </VolumeControl>
             </RadioControlsBody>
-            
           </RadioControls>
         )}
       </AnimatePresence>
       
-      {/* Full Admin Floating Button - Now optimized for iPhone */}
+      {/* Admin Floating Button */}
       {user?.isAdmin && (
         <AdminFloatingButton
           whileHover={{ scale: 1.1 }}
@@ -429,7 +428,7 @@ const Navigation = () => {
         </AdminFloatingButton>
       )}
       
-      {/* Success Popup - Moved outside NavContainer with better positioning */}
+      {/* Success Popup */}
       <AnimatePresence>
         {rewardPopup.show && (
           <PopupContainer>
@@ -454,10 +453,7 @@ const Navigation = () => {
 
 const NavContainer = styled.nav`
   display: flex;
-  flex-wrap: wrap; /* Allow wrapping to new lines as needed */
-  justify-content: space-between;
-  align-items: center;
-  padding: min(15px, 3vw) min(20px, 4vw); /* Responsive padding */
+  flex-direction: column;
   background: rgba(0, 0, 0, 0.7);
   backdrop-filter: blur(8px);
   color: white;
@@ -466,42 +462,48 @@ const NavContainer = styled.nav`
   z-index: 100;
   width: 100%;
   box-sizing: border-box;
-  row-gap: 10px; /* Gap between rows when wrapped */
   
-  /* Ensure responsive spacing */
-  @media (max-width: 768px) {
-    padding: min(12px, 2.5vw) min(15px, 3vw);
-    row-gap: 8px;
+  @media (min-width: 769px) {
+    flex-direction: row;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
   }
 `;
 
-const NavLinks = styled.ul`
+const MainNav = styled.div`
   display: flex;
-  flex-wrap: wrap; /* Allow items to wrap */
+  justify-content: space-between;
+  width: 100%;
+  padding: 12px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  
+  @media (min-width: 769px) {
+    width: auto;
+    border-bottom: none;
+    padding: 0;
+  }
+`;
+
+const NavGroup = styled.ul`
+  display: flex;
   list-style: none;
-  gap: min(20px, 3vw); /* Responsive gap */
+  gap: 15px;
   margin: 0;
   padding: 0;
   
-  @media (max-width: 768px) {
-    gap: min(15px, 2.5vw);
-  }
-  
   @media (max-width: 480px) {
-    gap: min(10px, 2vw);
-    justify-content: center; /* Center items when wrapped */
+    gap: 10px;
   }
 `;
 
 const NavItem = styled(motion.li)`
-  padding: min(8px, 1.5vw) min(15px, 2.5vw); /* Responsive padding */
+  padding: 8px 15px;
   border-radius: 20px;
   background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent'};
-  margin: 2px; /* Small margin to prevent items from touching */
-  flex-shrink: 0; /* Prevent shrinking below text size */
   
-  @media (max-width: 768px) {
-    padding: min(6px, 1.2vw) min(12px, 2vw);
+  @media (max-width: 480px) {
+    padding: 6px 12px;
     border-radius: 15px;
   }
 `;
@@ -509,25 +511,24 @@ const NavItem = styled(motion.li)`
 // Desktop-only nav item for admin
 const DesktopOnlyNavItem = styled(NavItem)`
   @media (max-width: 600px) {
-    display: none; /* Hide on mobile and small tablets */
+    display: none;
   }
 `;
 
 const StyledLink = styled(Link)`
   display: flex;
   align-items: center;
-  gap: min(8px, 1.5vw); /* Responsive gap */
+  gap: 8px;
   color: white;
   text-decoration: none;
-  font-size: clamp(12px, 1vw + 6px, 16px); /* Fluid typography */
+  font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
   
   svg {
-    font-size: clamp(16px, 1.2vw + 6px, 20px); /* Fluid icon size */
+    font-size: 18px;
   }
   
-  /* For very small screens, we can still use media queries to hide text if absolutely necessary */
   @media (max-width: 350px) {
     span {
       max-width: 50px;
@@ -541,17 +542,17 @@ const StyledLink = styled(Link)`
 const RadioButton = styled.button`
   display: flex;
   align-items: center;
-  gap: min(8px, 1.5vw);
+  gap: 8px;
   background: none;
   border: none;
   color: white;
-  font-size: clamp(12px, 1vw + 6px, 16px);
+  font-size: 14px;
   font-weight: 500;
   cursor: pointer;
   padding: 0;
   
   svg {
-    font-size: clamp(16px, 1.2vw + 6px, 20px);
+    font-size: 18px;
     color: ${props => props.playing ? '#1DB954' : 'white'};
   }
 `;
@@ -559,7 +560,7 @@ const RadioButton = styled.button`
 // Radio controls panel
 const RadioControls = styled(motion.div)`
   position: fixed;
-  top: 80px;
+  top: 120px;
   left: 20px;
   width: 300px;
   background: rgba(30, 30, 30, 0.95);
@@ -572,6 +573,10 @@ const RadioControls = styled(motion.div)`
   @media (max-width: 480px) {
     width: calc(100% - 40px);
     left: 20px;
+  }
+
+  @media (min-width: 769px) {
+    top: 80px;
   }
 `;
 
@@ -652,49 +657,52 @@ const VolumeControl = styled.div`
 
 const UserControls = styled.div`
   display: flex;
-  flex-wrap: wrap; /* Allow wrapping */
   align-items: center;
-  gap: min(15px, 2.5vw); /* Responsive gap */
-  margin: 0;
-  
-  @media (max-width: 768px) {
-    gap: min(12px, 2vw);
-  }
+  justify-content: flex-end;
+  gap: 15px;
+  padding: 12px 20px;
   
   @media (max-width: 480px) {
-    gap: min(8px, 1.5vw);
-    justify-content: center; /* Center items when wrapped */
+    gap: 10px;
+  }
+  
+  @media (min-width: 769px) {
+    padding: 0;
   }
 `;
 
 const Username = styled.span`
   font-weight: 500;
   opacity: 0.8;
-  font-size: clamp(12px, 0.8vw + 8px, 14px);
-  max-width: clamp(50px, 20vw, 150px);
+  font-size: 14px;
+  max-width: 120px;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  
+  @media (max-width: 350px) {
+    max-width: 70px;
+  }
 `;
 
 const LogoutButton = styled(motion.button)`
   display: flex;
   align-items: center;
-  gap: min(5px, 1vw);
+  gap: 8px;
   background: rgba(255, 255, 255, 0.1);
   border: none;
   color: white;
-  padding: min(8px, 1.5vw) min(15px, 2.5vw);
+  padding: 8px 15px;
   border-radius: 20px;
   cursor: pointer;
-  font-size: clamp(12px, 0.8vw + 8px, 14px);
+  font-size: 14px;
   
   &:hover {
     background: rgba(255, 255, 255, 0.2);
   }
   
   svg {
-    font-size: clamp(14px, 1vw + 8px, 18px);
+    font-size: 16px;
   }
   
   @media (max-width: 350px) {
@@ -705,22 +713,20 @@ const LogoutButton = styled(motion.button)`
 const RewardButton = styled(motion.button)`
   display: flex;
   align-items: center;
-  gap: min(8px, 1.5vw);
+  gap: 8px;
   background: ${props => props.available 
     ? 'linear-gradient(135deg, #ffb347, #ffcc33)' 
     : 'rgba(255, 255, 255, 0.1)'};
   border: none;
   color: white;
-  padding: min(8px, 1.5vw) min(15px, 2.5vw);
+  padding: 8px 15px;
   border-radius: 20px;
   cursor: ${props => props.available ? 'pointer' : 'default'};
-  font-size: clamp(12px, 0.8vw + 8px, 14px);
+  font-size: 14px;
   transition: all 0.3s ease;
-  position: relative;
-  overflow: hidden;
   
   svg {
-    font-size: clamp(14px, 1vw + 8px, 18px);
+    font-size: 16px;
     color: ${props => props.available ? 'white' : 'rgba(255, 255, 255, 0.7)'};
   }
   
@@ -735,7 +741,7 @@ const RewardButton = styled(motion.button)`
 `;
 
 const TimeRemaining = styled.span`
-  font-size: clamp(11px, 0.7vw + 8px, 13px);
+  font-size: 13px;
   opacity: 0.8;
   white-space: nowrap;
 `;
@@ -753,9 +759,8 @@ const LoadingSpinner = styled.div`
   }
 `;
 
-// Completely redesigned floating admin button for better iPhone visibility
 const AdminFloatingButton = styled(motion.button)`
-  display: none; /* Hidden on desktop */
+  display: none;
   
   @media (max-width: 600px) {
     display: flex;
@@ -775,18 +780,13 @@ const AdminFloatingButton = styled(motion.button)`
     box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
     z-index: 1000;
     cursor: pointer;
-    
-    /* Ensure visibility on iPhone */
     -webkit-tap-highlight-color: transparent;
-    
-    /* Add breathing effect to make it more noticeable */
     animation: breathe 3s infinite ease-in-out;
     
     svg {
       font-size: 20px;
     }
     
-    /* Ensure it's definitely visible on all devices */
     @media (max-width: 360px) {
       bottom: 15px;
       right: 15px;
@@ -800,7 +800,6 @@ const AdminFloatingButton = styled(motion.button)`
   }
 `;
 
-// New container to properly center the popup
 const PopupContainer = styled.div`
   position: fixed;
   top: 100px;
@@ -809,14 +808,13 @@ const PopupContainer = styled.div`
   display: flex;
   justify-content: center;
   z-index: 1000;
-  pointer-events: none; /* Allow clicking through the container */
+  pointer-events: none;
   
   > * {
-    pointer-events: auto; /* Re-enable pointer events for children */
+    pointer-events: auto;
   }
 `;
 
-// Updated popup styling to work with the container
 const RewardPopup = styled(motion.div)`
   background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
   color: white;
@@ -828,7 +826,6 @@ const RewardPopup = styled(motion.div)`
   gap: 15px;
   max-width: 90%;
   
-  /* Content structure */
   > div {
     display: flex;
     flex-direction: column;
