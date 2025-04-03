@@ -2,8 +2,8 @@ import React from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle } from 'react-icons/md';
-
-const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned }) => {
+  
+const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned, isVideo, isBannerCharacter }) => {
   const handleModalClick = (e) => {
     e.stopPropagation();
   };
@@ -17,7 +17,7 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
           exit={{ opacity: 0 }}
           onClick={onClose}
         >
-          <ModalContent 
+          <ModalContent
             initial={{ scale: 0.8, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.8, opacity: 0 }}
@@ -34,8 +34,37 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
               </OwnedBadge>
             )}
             
+            {isBannerCharacter && (
+              <BannerCharBadge>
+                ★ Banner Character
+              </BannerCharBadge>
+            )}
+            
             <ImageContainer rarity={rarity}>
-              <LargeImage src={image} alt={name} />
+              {isVideo ? (
+                <MediaVideo 
+                  src={image} 
+                  autoPlay 
+                  loop
+                  playsInline
+                  muted
+                  onError={(e) => {
+                    if (!e.target.src.includes('placeholder.com')) {
+                      e.target.src = 'https://via.placeholder.com/300?text=No+Media';
+                    }
+                  }} 
+                />
+              ) : (
+                <LargeImage 
+                  src={image} 
+                  alt={name}
+                  onError={(e) => {
+                    if (!e.target.src.includes('placeholder.com')) {
+                      e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                    }
+                  }}
+                />
+              )}
             </ImageContainer>
             
             <CharacterDetails>
@@ -51,7 +80,7 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
     </AnimatePresence>
   );
 };
-
+  
 // Styled Components
 const ModalOverlay = styled(motion.div)`
   position: fixed;
@@ -66,7 +95,7 @@ const ModalOverlay = styled(motion.div)`
   z-index: 1000;
   padding: 20px;
 `;
-
+  
 const ModalContent = styled(motion.div)`
   background-color: white;
   border-radius: 20px;
@@ -85,7 +114,7 @@ const ModalContent = styled(motion.div)`
     margin: 0 10px;
   }
 `;
-
+  
 const CloseButton = styled.button`
   position: absolute;
   top: 10px;
@@ -114,7 +143,7 @@ const CloseButton = styled.button`
     font-size: 20px;
   }
 `;
-
+  
 const OwnedBadge = styled.div`
   position: absolute;
   top: 15px;
@@ -144,6 +173,30 @@ const OwnedBadge = styled.div`
   }
 `;
 
+const BannerCharBadge = styled.div`
+  position: absolute;
+  top: 15px;
+  right: 55px;
+  background: linear-gradient(135deg, #ffd700, #ff9500);
+  color: white;
+  padding: 8px 15px;
+  border-radius: 30px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  font-weight: bold;
+  z-index: 5;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  
+  @media (max-width: 480px) {
+    font-size: 12px;
+    padding: 6px 12px;
+    top: 10px;
+    right: 50px;
+  }
+`;
+  
 const ImageContainer = styled.div`
   width: 100%;
   height: 500px;
@@ -166,7 +219,7 @@ const ImageContainer = styled.div`
     max-height: 50vh;
   }
 `;
-
+  
 const LargeImage = styled.img`
   width: 100%;
   height: 100%;
@@ -177,6 +230,16 @@ const LargeImage = styled.img`
   }
 `;
 
+const MediaVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  
+  @media (max-width: 480px) {
+    object-fit: contain;
+  }
+`;
+  
 const CharacterDetails = styled.div`
   padding: 20px;
   position: relative;
@@ -186,7 +249,7 @@ const CharacterDetails = styled.div`
     padding: 15px;
   }
 `;
-
+  
 const CharacterName = styled.h2`
   margin: 0 0 5px 0;
   font-size: 28px;
@@ -198,7 +261,7 @@ const CharacterName = styled.h2`
     font-size: 24px;
   }
 `;
-
+  
 const CharacterSeries = styled.p`
   margin: 0;
   font-size: 16px;
@@ -206,7 +269,7 @@ const CharacterSeries = styled.p`
   font-style: italic;
   text-align: center;
 `;
-
+  
 const RarityBadge = styled.div`
   position: absolute;
   top: -15px;
@@ -236,34 +299,5 @@ const RarityBadge = styled.div`
     padding: 4px 15px;
   }
 `;
-
-const ClaimButton = styled.button`
-  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-  color: white;
-  border: none;
-  border-radius: 30px;
-  padding: 10px 20px;
-  margin: 15px auto 5px auto;
-  display: block;
-  font-weight: bold;
-  font-size: 16px;
-  cursor: pointer;
-  box-shadow: 0 4px 10px rgba(118, 75, 162, 0.3);
-  transition: all 0.3s;
   
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 15px rgba(118, 75, 162, 0.4);
-  }
-  
-  &:active {
-    transform: translateY(0);
-  }
-  
-  @media (max-width: 480px) {
-    font-size: 14px;
-    padding: 8px 16px;
-  }
-`;
-
 export default ImagePreviewModal;
