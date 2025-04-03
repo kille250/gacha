@@ -1072,6 +1072,7 @@ import {
 	border-radius: 12px;
 	overflow: hidden;
 	position: relative;
+	height: 210px;
 	box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
 	border: 2px solid ${props => rarityColors[props.rarity] || rarityColors.common};
 	/* Add special border for banner characters in multi-roll view */
@@ -1082,6 +1083,7 @@ import {
 	background: ${props => props.isBannerCharacter ?
 	  'linear-gradient(to bottom, rgba(255, 215, 0, 0.05), white)' :
 	  'white'};
+
   `;
   
   const CharacterResultsArea = styled.div`
