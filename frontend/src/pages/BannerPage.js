@@ -922,15 +922,19 @@ import {
 	width: 100%;
 	max-width: 1000px;
 	margin: 0 auto;
+
+	display: flex;
+	flex-direction: column;
+	max-height: calc(70vh - 60px);
   `;
   
   const EnhancedMultiCharactersGrid = styled(MultiCharactersGrid)`
 	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+	overflow-y: auto;
+	max-height: calc(70vh - 130px); /* Platz f  r Header ber  cksichtigen */
+	padding: 10px;
 	@media (max-width: 600px) {
-	  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-	}
-	@media (max-width: 480px) {
-	  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 	}
   `;
   
@@ -957,10 +961,12 @@ import {
   const CharacterResultsArea = styled.div`
 	width: 100%;
 	min-height: 450px;
+	max-height: calc(70vh - 60px);
 	display: flex;
 	justify-content: center;
 	align-items: center;
 	margin-bottom: 20px;
+	overflow-y: auto;
 	@media (max-width: 480px) {
 	  min-height: 350px;
 	}
