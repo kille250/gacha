@@ -7,7 +7,7 @@ import {
   MultiRarityBadge, EmptyState, EmptyStateIcon, RollButton, RollCost,
   MultiRollButton, PullCountDisplay,
   PullSlider, ConfirmButton,
-  RollHint, rarityColors, ModalOverlay, NewMultiPullPanel, PanelHeader, 
+  RollHint, rarityColors, ModalOverlay, NewMultiPullPanel, PanelHeader,
   CloseButton, PanelContent, CurrentSelection, SelectionValue, SelectionCost,
   DiscountTag, PresetOptions, PresetButton, DiscountBadge, SliderContainer,
   PullCountAdjuster, AdjustBtn, PullInfoGraphic, PullInfoCard, PullInfoIcon,
@@ -24,7 +24,7 @@ import { AuthContext } from '../context/AuthContext';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
-
+  
 const rollMultipleCharacters = async (count = 10) => {
   try {
     const response = await axios.post(
@@ -37,7 +37,7 @@ const rollMultipleCharacters = async (count = 10) => {
     throw error;
   }
 };
-  
+
 const rarityIcons = {
   common: <FaDice />,
   uncommon: <MdHelp />,
@@ -45,36 +45,45 @@ const rarityIcons = {
   epic: <MdHelp />,
   legendary: <FaTrophy />
 };
+  
+// Check if a file is a video
+const isVideo = (file) => {
+  if (!file) return false;
+  
+  if (typeof file === 'string') {
+    const lowerCasePath = file.toLowerCase();
+    return lowerCasePath.endsWith('.mp4') || 
+           lowerCasePath.endsWith('.webm') || 
+           lowerCasePath.includes('video');
+  }
+  
+  return false;
+};
 
 // New MultiPullMenu component
-const MultiPullMenu = ({ 
-  isOpen, 
-  onClose, 
-  multiPullCount, 
-  setMultiPullCount, 
-  maxPossiblePulls, 
-  currentMultiPullCost, 
+const MultiPullMenu = ({
+  isOpen,
+  onClose,
+  multiPullCount,
+  setMultiPullCount,
+  maxPossiblePulls,
+  currentMultiPullCost,
   onConfirm,
   userPoints
 }) => {
   // Get recommended pull counts based on maxPossiblePulls
   const getRecommendedPulls = () => {
     const recommendations = [];
-    
     // Always recommend single pull
     recommendations.push(1);
-    
     // Add 5-pull if possible (first discount tier)
     if (maxPossiblePulls >= 5) recommendations.push(5);
-    
     // Add 10-pull if possible (max discount tier)
     if (maxPossiblePulls >= 10) recommendations.push(10);
-    
     // Add max possible if it's not already included and is greater than 10
     if (maxPossiblePulls > 10 && !recommendations.includes(maxPossiblePulls)) {
       recommendations.push(maxPossiblePulls);
     }
-    
     return recommendations;
   };
   
@@ -97,7 +106,6 @@ const MultiPullMenu = ({
               <h2>Multi Pull Settings</h2>
               <CloseButton onClick={onClose}>×</CloseButton>
             </PanelHeader>
-            
             <PanelContent>
               <CurrentSelection>
                 <SelectionValue>{multiPullCount}×</SelectionValue>
@@ -107,11 +115,10 @@ const MultiPullMenu = ({
                   {multiPullCount >= 5 && multiPullCount < 10 && <DiscountTag>5% OFF</DiscountTag>}
                 </SelectionCost>
               </CurrentSelection>
-              
               <PresetOptions>
                 {getRecommendedPulls().map(count => (
-                  <PresetButton 
-                    key={count} 
+                  <PresetButton
+                    key={count}
                     onClick={() => setMultiPullCount(count)}
                     active={multiPullCount === count}
                     disabled={userPoints < (count * 100 * (count >= 10 ? 0.9 : count >= 5 ? 0.95 : 1))}
@@ -121,7 +128,7 @@ const MultiPullMenu = ({
                     {count >= 5 && count < 10 && <DiscountBadge>-5%</DiscountBadge>}
                   </PresetButton>
                 ))}
-                <PresetButton 
+                <PresetButton
                   onClick={() => {}}
                   active={!getRecommendedPulls().includes(multiPullCount)}
                   disabled={false}
@@ -129,7 +136,6 @@ const MultiPullMenu = ({
                   Custom
                 </PresetButton>
               </PresetOptions>
-              
               <SliderContainer>
                 <PullCountAdjuster>
                   <AdjustBtn
@@ -146,7 +152,6 @@ const MultiPullMenu = ({
                     <MdAdd />
                   </AdjustBtn>
                 </PullCountAdjuster>
-                
                 <PullSlider
                   type="range"
                   min="1"
@@ -155,20 +160,17 @@ const MultiPullMenu = ({
                   onChange={(e) => setMultiPullCount(parseInt(e.target.value))}
                 />
               </SliderContainer>
-              
               <PullInfoGraphic>
                 <PullInfoCard>
                   <PullInfoIcon>💰</PullInfoIcon>
                   <PullInfoLabel>Total Cost</PullInfoLabel>
                   <PullInfoValue>{currentMultiPullCost} pts</PullInfoValue>
                 </PullInfoCard>
-                
                 <PullInfoCard>
                   <PullInfoIcon>⭐</PullInfoIcon>
                   <PullInfoLabel>Pull Count</PullInfoLabel>
                   <PullInfoValue>{multiPullCount}×</PullInfoValue>
                 </PullInfoCard>
-                
                 {multiPullCount >= 5 && (
                   <PullInfoCard accent={true}>
                     <PullInfoIcon>🎁</PullInfoIcon>
@@ -177,7 +179,6 @@ const MultiPullMenu = ({
                   </PullInfoCard>
                 )}
               </PullInfoGraphic>
-              
               <ConfirmButton
                 onClick={onConfirm}
                 disabled={userPoints < currentMultiPullCost}
@@ -186,7 +187,6 @@ const MultiPullMenu = ({
               >
                 <FaDice size={16} /> Pull {multiPullCount}× for {currentMultiPullCost} points
               </ConfirmButton>
-              
               {userPoints < currentMultiPullCost && (
                 <ErrorNote>
                   <span>Not enough points.</span> You need {currentMultiPullCost - userPoints} more.
@@ -199,7 +199,7 @@ const MultiPullMenu = ({
     </AnimatePresence>
   );
 };
-  
+
 const GachaPage = () => {
   const navigate = useNavigate();
   const { user, refreshUser } = useContext(AuthContext);
@@ -237,7 +237,7 @@ const GachaPage = () => {
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
-
+  
   const fetchUserCollection = useCallback(async () => {
     try {
       const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
@@ -294,9 +294,7 @@ const GachaPage = () => {
       setError(null);
       setMultiRollResults([]);
       setRollCount(prev => prev + 1);
-      
       const animationDuration = skipAnimations ? 0 : 1200;
-      
       setTimeout(async () => {
         try {
           const character = await rollCharacter();
@@ -331,22 +329,17 @@ const GachaPage = () => {
       setError(null);
       setMultiPullMenuOpen(false);
       setRollCount(prev => prev + multiPullCount);
-      
       const animationDuration = skipAnimations ? 0 : 1200;
-      
       setTimeout(async () => {
         try {
           const characters = await rollMultipleCharacters(multiPullCount);
           setMultiRollResults(characters);
           setShowMultiResults(true);
-          
           const bestRarity = findBestRarity(characters);
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
-          
           if (characters.some(char => ['rare', 'epic', 'legendary'].includes(char.rarity)) && !skipAnimations) {
             confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
           }
-          
           await refreshUser();
           await fetchUserCollection();
         } catch (err) {
@@ -402,6 +395,32 @@ const GachaPage = () => {
     setPreviewOpen(false);
     setPreviewChar(null);
   };
+
+  // Media content component for displaying either image or video
+  const MediaContent = ({ src, alt, onClick, onError }) => {
+    if (isVideo(src)) {
+      return (
+        <CharacterVideo
+          src={src}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onClick={onClick}
+          onError={onError}
+        />
+      );
+    }
+    
+    return (
+      <CharacterImage
+        src={src}
+        alt={alt}
+        onClick={onClick}
+        onError={onError}
+      />
+    );
+  };
   
   return (
     <MainContainer>
@@ -431,7 +450,7 @@ const GachaPage = () => {
             </ControlButtons>
           </UserStats>
         </Header>
-    
+        
         {/* Settings Panel */}
         <AnimatePresence>
           {showSettings && (
@@ -474,7 +493,6 @@ const GachaPage = () => {
               <SectionIcon>🎲</SectionIcon>
               <span>Standard Gacha</span>
             </SectionHeading>
-            
             <RarityTracker>
               {lastRarities.length > 0 && (
                 <>
@@ -508,18 +526,37 @@ const GachaPage = () => {
                     transition={{ duration: skipAnimations ? 0.2 : 0.4 }}
                     rarity={currentChar?.rarity}
                   >
-                    <CardImageWrapper onClick={() => openPreview(currentChar)}>
+                    <CardImageWrapper onClick={() => openPreview({...currentChar, isVideo: isVideo(currentChar.image)})}>
                       <RarityIndicator rarity={currentChar?.rarity} />
                       <CollectionLabel>Added to Collection</CollectionLabel>
-                      <CharacterImage
-                        src={getImagePath(currentChar?.image)}
-                        alt={currentChar?.name}
-                        onError={(e) => {
-                          if (!e.target.src.includes('placeholder.com')) {
-                            e.target.src = 'https://via.placeholder.com/300?text=No+Image';
-                          }
-                        }}
-                      />
+                      
+                      {isVideo(currentChar?.image) ? (
+                        <CharacterVideo
+                          src={getImagePath(currentChar?.image)}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          onClick={() => openPreview({...currentChar, isVideo: true})}
+                          onError={(e) => {
+                            if (!e.target.src.includes('placeholder.com')) {
+                              e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                            }
+                          }}
+                        />
+                      ) : (
+                        <CharacterImage
+                          src={getImagePath(currentChar?.image)}
+                          alt={currentChar?.name}
+                          onClick={() => openPreview(currentChar)}
+                          onError={(e) => {
+                            if (!e.target.src.includes('placeholder.com')) {
+                              e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                            }
+                          }}
+                        />
+                      )}
+                      
                       <ZoomIndicator>🔍</ZoomIndicator>
                     </CardImageWrapper>
                     <CardContent>
@@ -565,17 +602,33 @@ const GachaPage = () => {
                           animate={{ scale: 1, opacity: 1 }}
                           transition={{ delay: skipAnimations ? 0 : index * 0.05 }}
                           rarity={character.rarity}
-                          onClick={() => openPreview(character)}
+                          onClick={() => openPreview({...character, isVideo: isVideo(character.image)})}
                         >
-                          <MultiCardImage
-                            src={getImagePath(character.image)}
-                            alt={character.name}
-                            onError={(e) => {
-                              if (!e.target.src.includes('placeholder.com')) {
-                                e.target.src = 'https://via.placeholder.com/300?text=No+Image';
-                              }
-                            }}
-                          />
+                          {isVideo(character.image) ? (
+                            <MultiCardVideo
+                              src={getImagePath(character.image)}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              onError={(e) => {
+                                if (!e.target.src.includes('placeholder.com')) {
+                                  e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                                }
+                              }}
+                            />
+                          ) : (
+                            <MultiCardImage
+                              src={getImagePath(character.image)}
+                              alt={character.name}
+                              onError={(e) => {
+                                if (!e.target.src.includes('placeholder.com')) {
+                                  e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                                }
+                              }}
+                            />
+                          )}
+                          
                           <MultiCharBadge>✓</MultiCharBadge>
                           <MultiCardContent>
                             <MultiCharName>{character.name}</MultiCharName>
@@ -626,7 +679,6 @@ const GachaPage = () => {
                   <>💫 Single Pull <RollCost>(100 pts)</RollCost></>
                 )}
               </RollButton>
-              
               <MultiRollButton
                 onClick={isRolling ? null : () => setMultiPullMenuOpen(true)}
                 disabled={isRolling || (user?.points < 100)}
@@ -639,7 +691,7 @@ const GachaPage = () => {
               </MultiRollButton>
               
               {/* New Multi Pull Menu as a Modal */}
-              <MultiPullMenu 
+              <MultiPullMenu
                 isOpen={multiPullMenuOpen}
                 onClose={() => setMultiPullMenuOpen(false)}
                 multiPullCount={multiPullCount}
@@ -650,12 +702,10 @@ const GachaPage = () => {
                 userPoints={user?.points || 0}
               />
             </RollControls>
-            
             <RollHint>
               You have enough points for <strong>{Math.floor((user?.points || 0) / 100)}</strong> single pulls
               {maxPossiblePulls > 1 && ` or up to a ${maxPossiblePulls}× multi-pull`}
             </RollHint>
-            
             {skipAnimations && (
               <FastModeIndicator>
                 <MdFastForward /> Fast Mode Enabled
@@ -669,7 +719,6 @@ const GachaPage = () => {
               <SectionIcon>🏆</SectionIcon>
               <span>Special Banners</span>
             </SectionHeading>
-            
             {banners.length > 0 ? (
               <BannersListWrapper>
                 <BannersList>
@@ -728,6 +777,7 @@ const GachaPage = () => {
         rarity={previewChar?.rarity || 'common'}
         isOwned={true}
         isBannerCharacter={previewChar?.isBannerCharacter}
+        isVideo={previewChar?.isVideo || isVideo(previewChar?.image)}
       />
       
       {/* Help Modal */}
@@ -785,7 +835,7 @@ const GachaPage = () => {
     </MainContainer>
   );
 };
-
+  
 // ==================== STYLED COMPONENTS ====================
 // Main container styles
 const MainContainer = styled.div`
@@ -794,6 +844,7 @@ const MainContainer = styled.div`
   color: white;
   display: flex;
   justify-content: center;
+  
   &::after {
     content: "";
     position: fixed;
@@ -809,16 +860,17 @@ const MainContainer = styled.div`
     pointer-events: none;
   }
 `;
-  
+
 const Dashboard = styled.div`
   width: 100%;
   max-width: 1400px;
   padding: 20px;
+  
   @media (max-width: 768px) {
     padding: 15px 10px;
   }
 `;
-  
+
 const Header = styled.header`
   display: flex;
   justify-content: space-between;
@@ -830,12 +882,13 @@ const Header = styled.header`
   border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
   margin-bottom: 20px;
+  
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 15px;
   }
 `;
-  
+
 const Logo = styled.div`
   font-size: 28px;
   font-weight: 700;
@@ -844,16 +897,18 @@ const Logo = styled.div`
   align-items: center;
   gap: 8px;
   text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
+  
   @media (max-width: 768px) {
     font-size: 24px;
   }
 `;
-  
+
 const GlowingText = styled.span`
   background: linear-gradient(90deg, #6e48aa, #9e5594);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   position: relative;
+  
   &::after {
     content: "";
     position: absolute;
@@ -865,21 +920,23 @@ const GlowingText = styled.span`
     border-radius: 3px;
   }
 `;
-  
+
 const UserStats = styled.div`
   display: flex;
   align-items: center;
   gap: 15px;
+  
   @media (max-width: 768px) {
     width: 100%;
     justify-content: space-between;
   }
+  
   @media (max-width: 480px) {
     flex-wrap: wrap;
     justify-content: center;
   }
 `;
-  
+
 const StatsBadge = styled.div`
   display: flex;
   align-items: center;
@@ -890,7 +947,7 @@ const StatsBadge = styled.div`
   font-weight: 500;
   border: 1px solid rgba(255, 255, 255, 0.1);
 `;
-  
+
 const PointsDisplay = styled.div`
   display: flex;
   align-items: center;
@@ -902,12 +959,12 @@ const PointsDisplay = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.2);
   font-size: 16px;
 `;
-  
+
 const ControlButtons = styled.div`
   display: flex;
   gap: 8px;
 `;
-  
+
 const CircleButton = styled.button`
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -921,12 +978,13 @@ const CircleButton = styled.button`
   cursor: pointer;
   font-size: 18px;
   transition: all 0.2s;
+  
   &:hover {
     background: rgba(0, 0, 0, 0.5);
     transform: translateY(-2px);
   }
 `;
-  
+
 const SettingsPanel = styled(motion.div)`
   background: rgba(20, 30, 48, 0.9);
   backdrop-filter: blur(5px);
@@ -937,17 +995,17 @@ const SettingsPanel = styled(motion.div)`
   position: relative;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 `;
-  
+
 const SettingGroup = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
 `;
-  
+
 const SettingLabel = styled.span`
   font-weight: 500;
 `;
-  
+
 const ToggleSwitch = styled.input.attrs({ type: 'checkbox' })`
   appearance: none;
   width: 46px;
@@ -957,9 +1015,11 @@ const ToggleSwitch = styled.input.attrs({ type: 'checkbox' })`
   position: relative;
   cursor: pointer;
   transition: all 0.3s;
+  
   &:checked {
     background-color: #6e48aa;
   }
+  
   &::before {
     content: '';
     position: absolute;
@@ -971,11 +1031,12 @@ const ToggleSwitch = styled.input.attrs({ type: 'checkbox' })`
     left: 3px;
     transition: transform 0.3s;
   }
+  
   &:checked::before {
     transform: translateX(22px);
   }
 `;
-  
+
 const PanelCloseBtn = styled.button`
   position: absolute;
   top: 10px;
@@ -990,11 +1051,12 @@ const PanelCloseBtn = styled.button`
   justify-content: center;
   width: 24px;
   height: 24px;
+  
   &:hover {
     opacity: 0.8;
   }
 `;
-  
+
 const ErrorAlert = styled(motion.div)`
   background: #d32f2f;
   color: white;
@@ -1006,7 +1068,7 @@ const ErrorAlert = styled(motion.div)`
   justify-content: space-between;
   box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
 `;
-  
+
 const ErrorCloseBtn = styled.button`
   background: none;
   border: none;
@@ -1014,17 +1076,18 @@ const ErrorCloseBtn = styled.button`
   font-size: 20px;
   cursor: pointer;
 `;
-  
+
 // Content area with responsive layout
 const ContentArea = styled.div`
   display: grid;
   grid-template-columns: 3fr 2fr;
   gap: 20px;
+  
   @media (max-width: 1100px) {
     grid-template-columns: 1fr;
   }
 `;
-  
+
 const SectionHeading = styled.h2`
   display: flex;
   align-items: center;
@@ -1033,6 +1096,7 @@ const SectionHeading = styled.h2`
   font-size: 22px;
   position: relative;
   padding-bottom: 10px;
+  
   &::after {
     content: "";
     position: absolute;
@@ -1043,15 +1107,16 @@ const SectionHeading = styled.h2`
     background: linear-gradient(90deg, #6e48aa, #9e5594);
     border-radius: 3px;
   }
+  
   @media (max-width: 768px) {
     font-size: 20px;
   }
 `;
-  
+
 const SectionIcon = styled.span`
   font-size: 24px;
 `;
-  
+
 // Left column (Gacha rolling area)
 const GachaColumn = styled.div`
   background: rgba(0, 0, 0, 0.2);
@@ -1059,11 +1124,12 @@ const GachaColumn = styled.div`
   border-radius: 16px;
   border: 1px solid rgba(255, 255, 255, 0.05);
   padding: 25px;
+  
   @media (max-width: 768px) {
     padding: 20px 15px;
   }
 `;
-  
+
 // Rarity tracker component
 const RarityTracker = styled.div`
   display: flex;
@@ -1073,6 +1139,7 @@ const RarityTracker = styled.div`
   border-radius: 25px;
   padding: 10px 20px;
   margin-bottom: 20px;
+  
   @media (max-width: 768px) {
     flex-direction: column;
     align-items: flex-start;
@@ -1080,18 +1147,18 @@ const RarityTracker = styled.div`
     padding: 15px;
   }
 `;
-  
+
 const TrackerLabel = styled.span`
   font-weight: 500;
   white-space: nowrap;
 `;
-  
+
 const RarityBubbles = styled.div`
   display: flex;
   gap: 10px;
   flex-wrap: wrap;
 `;
-  
+
 const RarityDot = styled(motion.div)`
   width: 32px;
   height: 32px;
@@ -1104,7 +1171,7 @@ const RarityDot = styled(motion.div)`
   font-size: 16px;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
 `;
-  
+
 // Results display area
 const ResultsDisplay = styled.div`
   min-height: 400px;
@@ -1112,11 +1179,12 @@ const ResultsDisplay = styled.div`
   align-items: center;
   justify-content: center;
   margin-bottom: 30px;
+  
   @media (max-width: 768px) {
     min-height: 300px;
   }
 `;
-  
+
 // Character card components
 const CharacterCardContainer = styled(motion.div)`
   background: white;
@@ -1127,21 +1195,23 @@ const CharacterCardContainer = styled(motion.div)`
   box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2),
     0 0 15px ${props => rarityColors[props.rarity] || 'rgba(0,0,0,0)'};
   border: 2px solid ${props => rarityColors[props.rarity] || '#ddd'};
+  
   @media (max-width: 480px) {
     max-width: 300px;
   }
 `;
-  
+
 const CardImageWrapper = styled.div`
   position: relative;
   height: 300px;
   cursor: pointer;
   overflow: hidden;
+  
   @media (max-width: 480px) {
     height: 250px;
   }
 `;
-  
+
 const RarityIndicator = styled.div`
   position: absolute;
   inset: 0;
@@ -1153,7 +1223,7 @@ const RarityIndicator = styled.div`
   z-index: 1;
   pointer-events: none;
 `;
-  
+
 const CollectionLabel = styled.div`
   position: absolute;
   top: 10px;
@@ -1166,17 +1236,29 @@ const CollectionLabel = styled.div`
   z-index: 2;
   font-weight: 500;
 `;
-  
+
 const CharacterImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
   transition: transform 0.3s;
+  
   &:hover {
     transform: scale(1.05);
   }
 `;
+
+const CharacterVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.3s;
   
+  &:hover {
+    transform: scale(1.05);
+  }
+`;
+
 const ZoomIndicator = styled.div`
   position: absolute;
   bottom: 10px;
@@ -1191,7 +1273,7 @@ const ZoomIndicator = styled.div`
   justify-content: center;
   z-index: 2;
 `;
-  
+
 // Multi roll components
 const MultiRollDisplayScroller = styled(motion.div)`
   background: white;
@@ -1202,7 +1284,7 @@ const MultiRollDisplayScroller = styled(motion.div)`
   color: #333;
   max-height: 70vh;
 `;
-  
+
 const MultiCardsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
@@ -1210,11 +1292,12 @@ const MultiCardsGrid = styled.div`
   padding: 20px;
   overflow-y: auto;
   max-height: calc(70vh - 60px);
+  
   @media (max-width: 768px) {
     grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   }
 `;
-  
+
 const MultiCardContainer = styled(motion.div)`
   position: relative;
   border-radius: 12px;
@@ -1226,13 +1309,19 @@ const MultiCardContainer = styled(motion.div)`
   display: flex;
   flex-direction: column;
 `;
-  
+
 const MultiCardImage = styled.img`
   width: 100%;
   aspect-ratio: 1 / 1;
   object-fit: cover;
 `;
-  
+
+const MultiCardVideo = styled.video`
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+`;
+
 const MultiCharBadge = styled.div`
   position: absolute;
   top: 5px;
@@ -1247,7 +1336,7 @@ const MultiCharBadge = styled.div`
   justify-content: center;
   font-size: 12px;
 `;
-  
+
 // Roll controls
 const RollControls = styled.div`
   display: flex;
@@ -1265,7 +1354,7 @@ const RollControls = styled.div`
     align-items: center; /* This ensures buttons are centered on mobile */
   }
 `;
-
+  
 // Fast mode indicator
 const FastModeIndicator = styled.div`
   display: flex;
@@ -1279,7 +1368,7 @@ const FastModeIndicator = styled.div`
   font-size: 12px;
   margin-top: 15px;
 `;
-  
+
 // Right column (Banners)
 const BannersColumn = styled.div`
   background: rgba(0, 0, 0, 0.2);
@@ -1290,13 +1379,14 @@ const BannersColumn = styled.div`
   display: flex;
   flex-direction: column;
   max-height: 800px; /* Limit the maximum height */
+  
   @media (max-width: 768px) {
     padding: 20px 15px;
     /* Adjust height for mobile to ensure it doesn't take too much space */
     max-height: 600px;
   }
 `;
-  
+
 const BannersList = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1307,33 +1397,40 @@ const BannersList = styled.div`
   padding-bottom: 20px; /* Space for the fade effect */
   scrollbar-width: thin;
   scrollbar-color: rgba(158, 85, 148, 0.5) rgba(0, 0, 0, 0.2);
+  
   /* Custom scrollbar for webkit browsers */
   &::-webkit-scrollbar {
     width: 8px;
   }
+  
   &::-webkit-scrollbar-track {
     background: rgba(0, 0, 0, 0.2);
     border-radius: 10px;
   }
+  
   &::-webkit-scrollbar-thumb {
     background: rgba(158, 85, 148, 0.5);
     border-radius: 10px;
+    
     &:hover {
       background: rgba(158, 85, 148, 0.7);
     }
   }
+  
   @media (max-width: 768px) {
     grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
   }
+  
   @media (max-width: 480px) {
     grid-template-columns: 1fr;
   }
 `;
-  
+
 const BannersListWrapper = styled.div`
   flex: 1;
   overflow: hidden;
   position: relative;
+  
   /* Add fade effect at the bottom to indicate scrollable content */
   &::after {
     content: "";
@@ -1348,7 +1445,7 @@ const BannersListWrapper = styled.div`
     border-bottom-right-radius: 16px;
   }
 `;
-  
+
 const BannerCard = styled(motion.div)`
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
@@ -1362,12 +1459,15 @@ const BannerCard = styled(motion.div)`
   };
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
+  
   &:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 20px rgba(0, 0, 0, 0.3);
   }
+  
   ${props => props.featured && `
     position: relative;
+    
     &::after {
       content: "Featured";
       position: absolute;
@@ -1384,14 +1484,14 @@ const BannerCard = styled(motion.div)`
     }
   `}
 `;
-  
+
 const BannerImage = styled.img`
   width: 100%;
   height: 140px;
   object-fit: cover;
   object-position: center;
 `;
-  
+
 const BannerInfo = styled.div`
   padding: 15px;
   flex: 1;
@@ -1399,32 +1499,32 @@ const BannerInfo = styled.div`
   flex-direction: column;
   justify-content: space-between;
 `;
-  
+
 const BannerTitle = styled.h3`
   margin: 0 0 5px 0;
   font-size: 18px;
   font-weight: 600;
   color: #fff;
 `;
-  
+
 const BannerSeries = styled.div`
   margin: 0 0 10px 0;
   color: #ffd700;
   font-size: 14px;
   font-weight: 500;
 `;
-  
+
 const BannerEnd = styled.div`
   font-size: 12px;
   color: rgba(255, 255, 255, 0.7);
   margin-bottom: 10px;
 `;
-  
+
 const BannerCost = styled.div`
   font-size: 13px;
   margin-bottom: 15px;
 `;
-  
+
 const ViewBannerBtn = styled.button`
   background: linear-gradient(135deg, rgba(110, 72, 170, 0.5), rgba(158, 85, 148, 0.5));
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1441,13 +1541,14 @@ const ViewBannerBtn = styled.button`
   font-weight: 500;
   align-self: flex-start;
   margin-top: auto;
+  
   &:hover {
     background: linear-gradient(135deg, rgba(110, 72, 170, 0.7), rgba(158, 85, 148, 0.7));
     transform: translateY(-2px);
     box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 `;
-  
+
 const EmptyBanners = styled.div`
   display: flex;
   align-items: center;
@@ -1455,7 +1556,7 @@ const EmptyBanners = styled.div`
   height: 200px;
   color: rgba(255, 255, 255, 0.7);
 `;
-
+  
 // Modal components
 const HelpModal = styled(motion.div)`
   background: rgba(20, 30, 48, 0.95);
@@ -1467,49 +1568,53 @@ const HelpModal = styled(motion.div)`
   border: 1px solid rgba(255, 255, 255, 0.1);
   overflow: hidden;
 `;
-  
+
 const HelpModalHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 15px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  
   h2 {
     margin: 0;
   }
 `;
-  
+
 const HelpModalContent = styled.div`
   padding: 20px;
   max-height: 70vh;
   overflow-y: auto;
 `;
-  
+
 const HelpSection = styled.div`
   margin-bottom: 25px;
+  
   h3 {
     margin: 0 0 10px 0;
     color: #9e5594;
   }
+  
   ul {
     padding-left: 20px;
+    
     li {
       margin-bottom: 8px;
     }
   }
 `;
-  
+
 const RarityGuide = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 15px;
   margin-top: 10px;
 `;
-  
+
 const RarityItem = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
 `;
-
+  
 export default GachaPage;
