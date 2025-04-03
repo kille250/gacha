@@ -283,13 +283,11 @@ router.delete('/:id', [auth, admin], async (req, res) => {
 });
 
 // Roll on a specific banner
-// Roll on a specific banner
 router.post('/:id/roll', auth, async (req, res) => {
 	try {
 	  const banner = await Banner.findByPk(req.params.id, {
 		include: [{ model: Character }]
 	  });
-	  
 	  if (!banner) return res.status(404).json({ error: 'Banner not found' });
 	  if (!banner.active) return res.status(400).json({ error: 'This banner is no longer active' });
 	  
@@ -298,7 +296,6 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  if (banner.startDate && new Date(banner.startDate) > now) {
 		return res.status(400).json({ error: 'This banner has not started yet' });
 	  }
-	  
 	  if (banner.endDate && new Date(banner.endDate) < now) {
 		return res.status(400).json({ error: 'This banner has already ended' });
 	  }
@@ -308,10 +305,9 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  
 	  // Calculate cost
 	  const cost = Math.floor(100 * banner.costMultiplier);
-	  
 	  if (user.points < cost) {
-		return res.status(400).json({ 
-		  error: `Not enough points. Banner pulls cost ${cost} points.` 
+		return res.status(400).json({
+		  error: `Not enough points. Banner pulls cost ${cost} points.`
 		});
 	  }
 	  
@@ -343,24 +339,42 @@ router.post('/:id/roll', auth, async (req, res) => {
 		legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
 	  };
 	  
-	  // Define drop rates
+	  // Define standard drop rates
 	  const standardDropRates = {
-		common: 60,    // 60% chance
-		uncommon: 25,  // 25% chance
-		rare: 10,      // 10% chance
-		epic: 4,       // 4% chance
-		legendary: 1   // 1% chance
+		common: 60, // 60% chance
+		uncommon: 25, // 25% chance
+		rare: 10, // 10% chance
+		epic: 4, // 4% chance
+		legendary: 1 // 1% chance
 	  };
 	  
-	  // Banner characters get higher drop rates
-	  // This makes it more likely to get the on-banner characters
-	  const bannerDropRates = {
-		common: 35,     // 35% chance
-		uncommon: 25,   // 25% chance
-		rare: 20,       // 20% chance
-		epic: 15,       // 15% chance
-		legendary: 5    // 5% chance
+	  // Define base banner drop rates
+	  const baseDropRates = {
+		common: 35, // 35% chance
+		uncommon: 25, // 25% chance
+		rare: 20, // 20% chance
+		epic: 15, // 15% chance
+		legendary: 5 // 5% chance
 	  };
+	  
+	  // Apply the rate multiplier to adjust rates for banner
+	  const bannerDropRates = {};
+	  // Cap the multiplier effect to prevent extreme values
+	  const effectiveMultiplier = Math.min(banner.rateMultiplier, 5.0);
+	  const rateAdjustment = (effectiveMultiplier - 1) * 0.2; // Scale the effect
+	  
+	  // Adjust rates based on multiplier
+	  bannerDropRates.legendary = Math.min(baseDropRates.legendary * (1 + rateAdjustment * 4), 15); // Cap at 15%
+	  bannerDropRates.epic = Math.min(baseDropRates.epic * (1 + rateAdjustment * 3), 25); // Cap at 25%
+	  bannerDropRates.rare = Math.min(baseDropRates.rare * (1 + rateAdjustment * 2), 30); // Cap at 30%
+	  bannerDropRates.uncommon = Math.min(baseDropRates.uncommon * (1 + rateAdjustment), 30); // Cap at 30%
+	  
+	  // Calculate remaining percentage for common to ensure total is 100%
+	  const totalHigherRarities = bannerDropRates.legendary + bannerDropRates.epic + 
+								  bannerDropRates.rare + bannerDropRates.uncommon;
+	  bannerDropRates.common = Math.max(100 - totalHigherRarities, 5); // Ensure at least 5% common
+	  
+	  console.log(`Banner ${banner.name} rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
 	  
 	  // Determine if we pull from banner or standard pool
 	  // Banner has a significantly higher chance
@@ -373,7 +387,6 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  const rarityRoll = Math.random() * 100;
 	  let selectedRarity;
 	  let cumulativeRate = 0;
-	  
 	  for (const [rarity, rate] of Object.entries(dropRates)) {
 		cumulativeRate += rate;
 		if (rarityRoll <= cumulativeRate) {
@@ -388,19 +401,16 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  // Decide whether to pull from banner or standard pool
 	  let characterPool;
 	  let characterPoolSource;
-	  
 	  if (pullFromBanner && bannerCharactersByRarity[selectedRarity]?.length > 0) {
 		characterPool = bannerCharactersByRarity[selectedRarity];
 		characterPoolSource = 'banner';
 	  } else {
 		characterPool = allCharactersByRarity[selectedRarity];
 		characterPoolSource = 'standard';
-		
 		// If no characters in standard pool for this rarity, find next available rarity
 		if (!characterPool || characterPool.length === 0) {
 		  const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
 		  const rarityIndex = rarityOrder.indexOf(selectedRarity);
-		  
 		  for (let i = rarityIndex + 1; i < rarityOrder.length; i++) {
 			const fallbackRarity = rarityOrder[i];
 			if (allCharactersByRarity[fallbackRarity]?.length > 0) {
@@ -420,7 +430,7 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  // Select a random character
 	  const randomChar = characterPool[Math.floor(Math.random() * characterPool.length)];
 	  
-	  // Auto-claim the character - Add this new line
+	  // Auto-claim the character
 	  await user.addCharacter(randomChar);
 	  
 	  // Log the pull for analysis
@@ -442,11 +452,9 @@ router.post('/:id/roll', auth, async (req, res) => {
 router.post('/:id/roll-multi', auth, async (req, res) => {
 	try {
 	  const count = Math.min(req.body.count || 10, 20); // Limit to max 20 characters
-	  
 	  const banner = await Banner.findByPk(req.params.id, {
 		include: [{ model: Character }]
 	  });
-	  
 	  if (!banner) return res.status(404).json({ error: 'Banner not found' });
 	  if (!banner.active) return res.status(400).json({ error: 'This banner is no longer active' });
 	  
@@ -455,7 +463,6 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	  if (banner.startDate && new Date(banner.startDate) > now) {
 		return res.status(400).json({ error: 'This banner has not started yet' });
 	  }
-	  
 	  if (banner.endDate && new Date(banner.endDate) < now) {
 		return res.status(400).json({ error: 'This banner has already ended' });
 	  }
@@ -465,18 +472,17 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	  
 	  // Apply bulk discount
 	  let discount = 0;
-	  if (count >= 10) discount = 0.1;       // 10% discount for 10+ pulls
-	  else if (count >= 5) discount = 0.05;  // 5% discount for 5-9 pulls
+	  if (count >= 10) discount = 0.1; // 10% discount for 10+ pulls
+	  else if (count >= 5) discount = 0.05; // 5% discount for 5-9 pulls
 	  
 	  // Calculate final cost
 	  const finalCost = Math.floor(baseCost * (1 - discount));
 	  
 	  // Get the user
 	  const user = await User.findByPk(req.user.id);
-	  
 	  if (user.points < finalCost) {
-		return res.status(400).json({ 
-		  error: `Not enough points. This multi-pull costs ${finalCost} points.` 
+		return res.status(400).json({
+		  error: `Not enough points. This multi-pull costs ${finalCost} points.`
 		});
 	  }
 	  
@@ -508,25 +514,50 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
 	  };
 	  
-	  // Define drop rates
+	  // Define standard drop rates
 	  const standardDropRates = {
-		common: 55,    // 55% chance
-		uncommon: 25,  // 25% chance
-		rare: 12,      // 12% chance
-		epic: 6,       // 6% chance
-		legendary: 2   // 2% chance
+		common: 55, // 55% chance
+		uncommon: 25, // 25% chance
+		rare: 12, // 12% chance
+		epic: 6, // 6% chance
+		legendary: 2 // 2% chance
 	  };
 	  
-	  // Banner has better rates for higher rarities
-	  const bannerDropRates = {
-		common: 30,    // 30% chance
-		uncommon: 30,  // 30% chance
-		rare: 20,      // 20% chance
-		epic: 15,      // 15% chance
-		legendary: 5   // 5% chance
+	  // Define base banner drop rates
+	  const baseDropRates = {
+		common: 30, // 30% chance
+		uncommon: 30, // 30% chance
+		rare: 20, // 20% chance
+		epic: 15, // 15% chance
+		legendary: 5 // 5% chance
 	  };
 	  
+	  // Apply the rate multiplier to adjust rates for banner
+	  const bannerDropRates = {};
+	  // Cap the multiplier effect to prevent extreme values
+	  const effectiveMultiplier = Math.min(banner.rateMultiplier, 5.0);
+	  const rateAdjustment = (effectiveMultiplier - 1) * 0.2; // Scale the effect
+	  
+	  // Adjust rates based on multiplier
+	  bannerDropRates.legendary = Math.min(baseDropRates.legendary * (1 + rateAdjustment * 4), 15); // Cap at 15%
+	  bannerDropRates.epic = Math.min(baseDropRates.epic * (1 + rateAdjustment * 3), 25); // Cap at 25%
+	  bannerDropRates.rare = Math.min(baseDropRates.rare * (1 + rateAdjustment * 2), 30); // Cap at 30%
+	  bannerDropRates.uncommon = Math.min(baseDropRates.uncommon * (1 + rateAdjustment), 30); // Cap at 30%
+	  
+	  // Calculate remaining percentage for common to ensure total is 100%
+	  const totalHigherRarities = bannerDropRates.legendary + bannerDropRates.epic + 
+								  bannerDropRates.rare + bannerDropRates.uncommon;
+	  bannerDropRates.common = Math.max(100 - totalHigherRarities, 5); // Ensure at least 5% common
+	  
+	  console.log(`Banner ${banner.name} multi-roll rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
+	  
+	  // Guaranteed pity mechanics
 	  const guaranteedRare = count >= 10; // Guarantee at least one rare+ for 10-pulls
+	  
+	  // Define pity rates (these are not affected by rateMultiplier)
+	  const pityRates = {
+		rare: 70, epic: 25, legendary: 5
+	  };
 	  
 	  let results = [];
 	  let hasRarePlus = false; // Track if we've already rolled a rare or better
@@ -537,25 +568,19 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		const isLastRoll = (i === count - 1);
 		const needsPity = guaranteedRare && isLastRoll && !hasRarePlus;
 		
-		// Pity rates only include rare+
-		const pityRates = {
-		  rare: 70, epic: 25, legendary: 5
-		};
-		
 		// Determine if this pull is from the banner pool
 		// Banner rate increases for the last few pulls
 		const bannerChance = (i >= count - 3) ? 0.85 : 0.7; // 70% normally, 85% for last 3
 		const pullFromBanner = Math.random() < bannerChance;
 		
 		// Select appropriate rates
-		const currentRates = needsPity ? pityRates : 
-							(pullFromBanner ? bannerDropRates : standardDropRates);
+		const currentRates = needsPity ? pityRates :
+		  (pullFromBanner ? bannerDropRates : standardDropRates);
 		
 		// Determine rarity
 		const rarityRoll = Math.random() * 100;
 		let selectedRarity;
 		let cumulativeRate = 0;
-		
 		for (const [rarity, rate] of Object.entries(currentRates)) {
 		  cumulativeRate += rate;
 		  if (rarityRoll <= cumulativeRate) {
@@ -575,18 +600,15 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		// Decide character pool
 		let characterPool;
 		let isBannerChar = false;
-		
 		if (pullFromBanner && bannerCharactersByRarity[selectedRarity]?.length > 0) {
 		  characterPool = bannerCharactersByRarity[selectedRarity];
 		  isBannerChar = true;
 		} else {
 		  characterPool = allCharactersByRarity[selectedRarity];
-		  
 		  // If no characters available at this rarity, fallback
 		  if (!characterPool || characterPool.length === 0) {
 			const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
 			const rarityIndex = rarityOrder.indexOf(selectedRarity);
-			
 			for (let j = rarityIndex + 1; j < rarityOrder.length; j++) {
 			  const fallbackRarity = rarityOrder[j];
 			  if (allCharactersByRarity[fallbackRarity]?.length > 0) {
@@ -606,7 +628,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		// Get random character
 		const randomChar = characterPool[Math.floor(Math.random() * characterPool.length)];
 		
-		// Auto-claim the character - Add this new line
+		// Auto-claim the character
 		await user.addCharacter(randomChar);
 		
 		// Check if it's actually a banner character (might have fallen back)
@@ -631,6 +653,6 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	  console.error(err);
 	  res.status(500).json({ error: 'Server error' });
 	}
-});
+  });
 
 module.exports = router;
