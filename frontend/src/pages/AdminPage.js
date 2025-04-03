@@ -529,9 +529,21 @@ const AdminPage = () => {
   // Check if a file is a video
   const isVideo = (file) => {
     if (!file) return false;
-    return file.type.startsWith('video/') || 
-          (typeof file === 'string' && 
-           (file.endsWith('.mp4') || file.endsWith('.webm')));
+    
+    // If it's a File object with type property
+    if (file.type && file.type.startsWith('video/')) {
+      return true;
+    }
+    
+    // If it's a string (path/URL)
+    if (typeof file === 'string') {
+      const lowerCasePath = file.toLowerCase();
+      return lowerCasePath.endsWith('.mp4') || 
+             lowerCasePath.endsWith('.webm') || 
+             lowerCasePath.includes('video');
+    }
+    
+    return false;
   };
 
   // Nur Admin-Zugriff erlauben
