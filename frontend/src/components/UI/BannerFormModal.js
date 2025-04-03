@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FaImage, FaVideo, FaCalendar, FaSearch } from 'react-icons/fa';
-
+  
 const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [formData, setFormData] = useState({
     name: '',
@@ -20,13 +20,27 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [imagePreview, setImagePreview] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
   const [characterSearch, setCharacterSearch] = useState('');
+  
+  // Check if a file is a video
+  const isVideo = (src) => {
+    if (!src) return false;
+    
+    if (typeof src === 'string') {
+      const lowerCasePath = src.toLowerCase();
+      return lowerCasePath.endsWith('.mp4') || 
+             lowerCasePath.endsWith('.webm') || 
+             lowerCasePath.includes('video');
+    }
+    
+    return src.type && src.type.startsWith('video/');
+  };
 
   // Filter characters based on search term (match name OR series)
-  const filteredCharacters = characters.filter(char => 
+  const filteredCharacters = characters.filter(char =>
     char.name.toLowerCase().includes(characterSearch.toLowerCase()) ||
     (char.series && char.series.toLowerCase().includes(characterSearch.toLowerCase()))
   );
-
+  
   // Reset and populate form when banner changes
   useEffect(() => {
     if (banner) {
@@ -91,7 +105,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     setVideoFile(null);
     setCharacterSearch(''); // Reset search when modal opens/changes
   }, [banner, show]);
-
+  
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -99,7 +113,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       [name]: type === 'checkbox' ? checked : value
     }));
   };
-
+  
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     setImageFile(file);
@@ -111,7 +125,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       reader.readAsDataURL(file);
     }
   };
-
+  
   const handleVideoChange = (e) => {
     const file = e.target.files[0];
     setVideoFile(file);
@@ -123,7 +137,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       reader.readAsDataURL(file);
     }
   };
-
+  
   const handleCharacterToggle = (charId) => {
     setFormData(prev => {
       const selectedCharacters = [...prev.selectedCharacters];
@@ -140,7 +154,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       }
     });
   };
-
+  
   const handleSubmit = (e) => {
     e.preventDefault();
     const submitData = new FormData();
@@ -163,9 +177,43 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     }
     onSubmit(submitData);
   };
-
+  
+  // Render character media (image or video)
+  const renderCharacterMedia = (char) => {
+    const mediaSrc = getImageUrl(char.image);
+    
+    if (isVideo(char.image)) {
+      return (
+        <CharOptionVideo
+          src={mediaSrc}
+          autoPlay
+          loop
+          muted
+          playsInline
+          onError={(e) => {
+            if (!e.target.src.includes('placeholder.com')) {
+              e.target.src = 'https://via.placeholder.com/150?text=No+Media';
+            }
+          }}
+        />
+      );
+    }
+    
+    return (
+      <CharOptionImage
+        src={mediaSrc}
+        alt={char.name}
+        onError={(e) => {
+          if (!e.target.src.includes('placeholder.com')) {
+            e.target.src = 'https://via.placeholder.com/150?text=No+Image';
+          }
+        }}
+      />
+    );
+  };
+  
   if (!show) return null;
-
+  
   return (
     <ModalOverlay>
       <ModalContent>
@@ -350,15 +398,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                         rarity={char.rarity}
                         onClick={() => handleCharacterToggle(char.id)}
                       >
-                        <CharOptionImage
-                          src={getImageUrl(char.image)}
-                          alt={char.name}
-                          onError={(e) => {
-                            if (!e.target.src.includes('placeholder.com')) {
-                              e.target.src = 'https://via.placeholder.com/150?text=No+Image';
-                            }
-                          }}
-                        />
+                        {renderCharacterMedia(char)}
                         <CharOptionInfo>
                           <CharOptionName>{char.name}</CharOptionName>
                           <CharOptionSeries>{char.series}</CharOptionSeries>
@@ -389,7 +429,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     </ModalOverlay>
   );
 };
-
+  
 // Styled components
 const ModalOverlay = styled.div`
   position: fixed;
@@ -405,7 +445,7 @@ const ModalOverlay = styled.div`
   overflow-y: auto;
   padding: 20px;
 `;
-
+  
 const ModalContent = styled.div`
   background-color: white;
   border-radius: 8px;
@@ -415,42 +455,46 @@ const ModalContent = styled.div`
   overflow-y: auto;
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 `;
-
+  
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: 15px 20px;
   border-bottom: 1px solid #eee;
+  
   h3 {
     margin: 0;
     color: #333;
   }
 `;
-
+  
 const CloseButton = styled.button`
   background: none;
   border: none;
   font-size: 24px;
   cursor: pointer;
   color: #777;
+  
   &:hover {
     color: #333;
   }
 `;
-
+  
 const ModalBody = styled.div`
   padding: 20px;
 `;
-
+  
 const FormGroup = styled.div`
   margin-bottom: 20px;
+  
   label {
     display: block;
     margin-bottom: 8px;
     font-weight: 600;
     color: #333;
   }
+  
   input[type="text"],
   input[type="number"],
   input[type="date"],
@@ -462,95 +506,107 @@ const FormGroup = styled.div`
     border-radius: 4px;
     font-size: 14px;
   }
+  
   textarea {
     resize: vertical;
     min-height: 80px;
   }
 `;
-
+  
 const FormRow = styled.div`
   display: flex;
   gap: 20px;
   margin-bottom: 20px;
+  
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 10px;
   }
+  
   ${FormGroup} {
     flex: 1;
     margin-bottom: 0;
   }
 `;
-
+  
 const DateInput = styled.div`
   display: flex;
   align-items: center;
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 0 10px;
+  
   svg {
     color: #666;
     margin-right: 10px;
   }
+  
   input {
     border: none;
     flex: 1;
     padding: 10px 0;
+    
     &:focus {
       outline: none;
     }
   }
 `;
-
+  
 const FileInput = styled.div`
   display: flex;
   align-items: center;
   border: 1px solid #ddd;
   border-radius: 4px;
   padding: 0 10px;
+  
   svg {
     color: #666;
     margin-right: 10px;
     font-size: 18px;
   }
+  
   input {
     flex: 1;
     padding: 10px 0;
   }
 `;
-
+  
 const CheckboxGroup = styled.div`
   display: flex;
   gap: 20px;
   margin-bottom: 20px;
+  
   @media (max-width: 768px) {
     flex-direction: column;
     gap: 10px;
   }
 `;
-
+  
 const CheckboxControl = styled.div`
   display: flex;
   align-items: center;
+  
   input {
     margin-right: 8px;
   }
+  
   label {
     margin: 0;
     display: inline;
   }
 `;
-
+  
 const FormHint = styled.p`
   font-size: 12px;
   color: #666;
   margin-top: 5px;
   margin-bottom: 0;
 `;
-
+  
 const ImagePreview = styled.div`
   margin-top: 10px;
   width: 100%;
+  
   img {
     max-width: 100%;
     max-height: 250px;
@@ -558,10 +614,11 @@ const ImagePreview = styled.div`
     border: 1px solid #eee;
   }
 `;
-
+  
 const VideoPreview = styled.div`
   margin-top: 10px;
   width: 100%;
+  
   video {
     max-width: 100%;
     max-height: 250px;
@@ -569,14 +626,14 @@ const VideoPreview = styled.div`
     border: 1px solid #eee;
   }
 `;
-
+  
 const ButtonGroup = styled.div`
   display: flex;
   justify-content: flex-end;
   gap: 10px;
   margin-top: 20px;
 `;
-
+  
 const BaseButton = styled.button`
   padding: 10px 20px;
   border-radius: 4px;
@@ -586,23 +643,25 @@ const BaseButton = styled.button`
   font-size: 14px;
   transition: background-color 0.2s;
 `;
-
+  
 const SubmitButton = styled(BaseButton)`
   background-color: #3498db;
   color: white;
+  
   &:hover {
     background-color: #2980b9;
   }
 `;
-
+  
 const CancelButton = styled(BaseButton)`
   background-color: #f1f1f1;
   color: #333;
+  
   &:hover {
     background-color: #ddd;
   }
 `;
-
+  
 const CharacterSelector = styled.div`
   margin-top: 10px;
   border: 1px solid #ddd;
@@ -610,7 +669,7 @@ const CharacterSelector = styled.div`
   max-height: 400px;
   overflow-y: auto;
 `;
-
+  
 const SelectorHeader = styled.div`
   padding: 10px;
   background-color: #f8f9fa;
@@ -619,12 +678,12 @@ const SelectorHeader = styled.div`
   flex-direction: column;
   gap: 8px;
 `;
-
+  
 const SelectedCount = styled.div`
   font-size: 13px;
   color: #666;
 `;
-
+  
 const SearchWrapper = styled.div`
   display: flex;
   align-items: center;
@@ -634,14 +693,14 @@ const SearchWrapper = styled.div`
   border: 1px solid #ddd;
   overflow: hidden;
 `;
-
+  
 const SearchIcon = styled.div`
   padding: 0 10px;
   color: #666;
   display: flex;
   align-items: center;
 `;
-
+  
 const SearchInput = styled.input`
   flex: 1;
   border: none;
@@ -652,7 +711,7 @@ const SearchInput = styled.input`
     outline: none;
   }
 `;
-
+  
 const ClearButton = styled.button`
   background: none;
   border: none;
@@ -665,21 +724,21 @@ const ClearButton = styled.button`
     color: #666;
   }
 `;
-
+  
 const CharacterGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: 10px;
   padding: 10px;
 `;
-
+  
 const NoResults = styled.div`
   padding: 20px;
   text-align: center;
   color: #666;
   grid-column: 1 / -1;
 `;
-
+  
 const rarityColors = {
   common: '#a0a0a0',
   uncommon: '#4caf50',
@@ -687,7 +746,7 @@ const rarityColors = {
   epic: '#9c27b0',
   legendary: '#ff9800'
 };
-
+  
 const CharacterOption = styled.div`
   border: 2px solid ${props => props.selected ? rarityColors[props.rarity] : '#ddd'};
   border-radius: 8px;
@@ -696,12 +755,13 @@ const CharacterOption = styled.div`
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
+  
   &:hover {
     transform: translateY(-3px);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
   }
 `;
-
+  
 const CharOptionImage = styled.img`
   width: 100%;
   height: 100px;
@@ -709,10 +769,17 @@ const CharOptionImage = styled.img`
   display: block;
 `;
 
+const CharOptionVideo = styled.video`
+  width: 100%;
+  height: 100px;
+  object-fit: cover;
+  display: block;
+`;
+  
 const CharOptionInfo = styled.div`
   padding: 8px;
 `;
-
+  
 const CharOptionName = styled.div`
   font-size: 12px;
   font-weight: bold;
@@ -720,7 +787,7 @@ const CharOptionName = styled.div`
   overflow: hidden;
   text-overflow: ellipsis;
 `;
-
+  
 const CharOptionSeries = styled.div`
   font-size: 11px;
   color: #555;
@@ -729,14 +796,14 @@ const CharOptionSeries = styled.div`
   text-overflow: ellipsis;
   margin-top: 2px;
 `;
-
+  
 const CharOptionRarity = styled.div`
   font-size: 11px;
   color: #777;
   text-transform: capitalize;
   margin-top: 2px;
 `;
-
+  
 const CharOptionCheck = styled.div`
   position: absolute;
   top: 5px;
@@ -752,7 +819,7 @@ const CharOptionCheck = styled.div`
   color: #4caf50;
   font-size: 14px;
 `;
-
+  
 const getImageUrl = (imagePath) => {
   if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
   if (imagePath.startsWith('http')) {
@@ -766,5 +833,5 @@ const getImageUrl = (imagePath) => {
   }
   return imagePath.includes('/') ? imagePath : `/images/characters/${imagePath}`;
 };
-
+  
 export default BannerFormModal;
