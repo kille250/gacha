@@ -46,8 +46,8 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
                   src={image} 
                   autoPlay 
                   loop
-                  controls
                   playsInline
+                  muted
                   onError={(e) => {
                     if (!e.target.src.includes('placeholder.com')) {
                       e.target.src = 'https://via.placeholder.com/300?text=No+Media';
