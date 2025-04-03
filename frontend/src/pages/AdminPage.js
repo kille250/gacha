@@ -767,7 +767,7 @@ const AdminPage = () => {
               {currentCharacters.map(char => (
                 <CharacterCard key={char.id}>
                   {isVideo(char.image) ? (
-                    <MediaTag as="video" autoPlay loop muted>
+                    <MediaTag as="video" autoPlay loop muted playsInline>
                       <source src={getImageUrl(char.image)} 
                               type={char.image.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
                       Your browser does not support the video tag.
@@ -1066,7 +1066,7 @@ const EditCharacterModal = ({ show, onClose, character, editForm, onEditFormChan
               {imagePreview && (isVideo(editImageFile) || isVideo(character.image)) && (
                 <ImagePreview>
                   <ImagePreviewLabel>Current/New Video:</ImagePreviewLabel>
-                  <MediaTag as="video" controls>
+                  <MediaTag as="video" controls playsInline>
                     <source src={imagePreview} 
                             type={editImageFile ? 
                                   editImageFile.type : 
