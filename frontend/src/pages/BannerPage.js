@@ -11,7 +11,7 @@ import {
 	MultiRarityBadge, EmptyState, EmptyStateIcon,
 	RollButtonsContainer, RollButton, RollCost, MultiPullContainer,
 	MultiRollButton, PullCountDisplay, PullSlider, ConfirmButton,
-	RollHint, rarityColors, ModalOverlay, NewMultiPullPanel, PanelHeader, 
+	RollHint, rarityColors, ModalOverlay, NewMultiPullPanel, PanelHeader,
 	CloseButton, PanelContent, CurrentSelection, SelectionValue, SelectionCost,
 	DiscountTag, PresetOptions, PresetButton, DiscountBadge, SliderContainer,
 	PullCountAdjuster, AdjustBtn, PullInfoGraphic, PullInfoCard, PullInfoIcon,
@@ -35,6 +35,26 @@ import {
 	rare: <FaGem />,
 	epic: <MdLocalFireDepartment />,
 	legendary: <FaTrophy />
+  };
+  
+  // Check if a file is a video
+  const isVideo = (file) => {
+	if (!file) return false;
+	
+	// If it's a string (path/URL)
+	if (typeof file === 'string') {
+	  const lowerCasePath = file.toLowerCase();
+	  return lowerCasePath.endsWith('.mp4') || 
+			 lowerCasePath.endsWith('.webm') || 
+			 lowerCasePath.includes('video');
+	}
+	
+	// If it's a File object with type property
+	if (file.type && file.type.startsWith('video/')) {
+	  return true;
+	}
+	
+	return false;
   };
   
   // New MultiPullMenu component for BannerPage
@@ -266,17 +286,17 @@ import {
 		document.removeEventListener('mousedown', handleClickOutside);
 	  };
 	}, [multiPullMenuOpen]);
-
+	
 	const fetchUserCollection = useCallback(async () => {
-		try {
-		  const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
-			headers: { 'x-auth-token': localStorage.getItem('token') }
-		  });
-		  setUserCollection(response.data);
-		} catch (err) {
-		  console.error("Error fetching user collection:", err);
-		}
-	  }, []);
+	  try {
+		const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
+		  headers: { 'x-auth-token': localStorage.getItem('token') }
+		});
+		setUserCollection(response.data);
+	  } catch (err) {
+		console.error("Error fetching user collection:", err);
+	  }
+	}, []);
   
 	// Refresh user data and fetch collection
 	useEffect(() => {
@@ -342,6 +362,7 @@ import {
 		setError(`Not enough points for a ${multiPullCount}× roll. Required: ${cost} points`);
 		return;
 	  }
+	  
 	  try {
 		setIsRolling(true);
 		setShowCard(false);
@@ -422,28 +443,53 @@ import {
 	};
   
 	const toggleVideoPlay = () => {
-		if (!videoRef.current) return;
-	
-		if (isVideoPlaying) {
-		  videoRef.current.pause();
+	  if (!videoRef.current) return;
+	  if (isVideoPlaying) {
+		videoRef.current.pause();
+		setIsVideoPlaying(false);
+	  } else {
+		videoRef.current.play()
+		.then(() => {
+		  setIsVideoPlaying(true);
+		})
+		.catch((error) => {
+		  console.error('Error playing video:', error);
 		  setIsVideoPlaying(false);
-		} else {
-		  videoRef.current.play()
-			.then(() => {
-			  setIsVideoPlaying(true);
-			})
-			.catch((error) => {
-			  console.error('Error playing video:', error);
-			  setIsVideoPlaying(false);
-			  // Optional: Show error to user
-			  setError('Video playback failed. Please try again.');
-			});
-		}
-	  };
+		  // Optional: Show error to user
+		  setError('Video playback failed. Please try again.');
+		});
+	  }
+	};
   
 	// Handle video ended event
 	const handleVideoEnded = () => {
 	  setIsVideoPlaying(false);
+	};
+  
+	// Media content component for displaying images or videos
+	const MediaContent = ({ src, alt, onClick, onError }) => {
+	  if (isVideo(src)) {
+		return (
+		  <CardVideo 
+			src={getImagePath(src)}
+			autoPlay
+			loop
+			muted
+			playsInline
+			onClick={onClick}
+			onError={onError}
+		  />
+		);
+	  }
+	  
+	  return (
+		<CardImage
+		  src={src}
+		  alt={alt}
+		  onClick={onClick}
+		  onError={onError}
+		/>
+	  );
 	};
   
 	if (loading) {
@@ -489,7 +535,7 @@ import {
 			</IconButton>
 		  </NavControls>
 		</NavBar>
-  
+		
 		{/* Banner Hero */}
 		<BannerHero>
 		  <HeroContent>
@@ -509,7 +555,7 @@ import {
 			  </DateBadge>
 			</PullCost>
 		  </HeroContent>
-  
+		  
 		  {/* Featured Characters Preview */}
 		  {banner.Characters && banner.Characters.length > 0 && (
 			<FeaturedCharacters>
@@ -527,15 +573,25 @@ import {
 					whileHover={{ scale: 1.1 }}
 					whileTap={{ scale: 0.95 }}
 				  >
-					<img
-					  src={getImagePath(char.image)}
-					  alt={char.name}
-					  onError={(e) => {
-						if (!e.target.src.includes('placeholder.com')) {
-						  e.target.src = 'https://via.placeholder.com/300?text=No+Image';
-						}
-					  }}
-					/>
+					{isVideo(char.image) ? (
+					  <AvatarVideo
+						src={getImagePath(char.image)}
+						autoPlay
+						loop
+						muted
+						playsInline
+					  />
+					) : (
+					  <img
+						src={getImagePath(char.image)}
+						alt={char.name}
+						onError={(e) => {
+						  if (!e.target.src.includes('placeholder.com')) {
+							e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+						  }
+						}}
+					  />
+					)}
 					{isCharacterInCollection(char) && (
 					  <OwnedIndicator>✓</OwnedIndicator>
 					)}
@@ -554,20 +610,20 @@ import {
 			</FeaturedCharacters>
 		  )}
 		</BannerHero>
-  
+		
 		{/* Promotional Video */}
 		{banner.videoUrl && (
 		  <VideoSection>
 			<VideoContainer>
-			<BannerVideo
+			  <BannerVideo
 				ref={videoRef}
 				id="banner-video"
 				src={getVideoPath(banner.videoUrl)}
 				poster={getBannerImagePath(banner.image)}
 				onEnded={handleVideoEnded}
-				playsInline  // Required for iOS
+				playsInline // Required for iOS
 				webkit-playsinline="true" // For older iOS
-				/>
+			  />
 			  <VideoControls onClick={toggleVideoPlay}>
 				{isVideoPlaying ? <FaPause /> : <FaPlay />}
 			  </VideoControls>
@@ -575,7 +631,7 @@ import {
 			<VideoCaption>Watch Promotional Video</VideoCaption>
 		  </VideoSection>
 		)}
-  
+		
 		{/* Error Display */}
 		<AnimatePresence>
 		  {error && (
@@ -589,7 +645,7 @@ import {
 			</ErrorMessage>
 		  )}
 		</AnimatePresence>
-  
+		
 		{/* Rarity History */}
 		<RarityHistoryBar>
 		  {lastRarities.length > 0 && (
@@ -611,7 +667,7 @@ import {
 			</>
 		  )}
 		</RarityHistoryBar>
-  
+		
 		{/* Character Results Section - Modified for better width usage */}
 		<EnhancedGachaSection>
 		  <CharacterResultsArea>
@@ -631,16 +687,34 @@ import {
 					<RarityGlow rarity={currentChar?.rarity} />
 					<CollectionBadge>Added to Collection</CollectionBadge>
 					{currentChar?.isBannerCharacter && <BannerBadge>Banner Character</BannerBadge>}
-					<CardImage
-					  src={getImagePath(currentChar?.image)}
-					  alt={currentChar?.name}
-					  onClick={() => openPreview(currentChar)}
-					  onError={(e) => {
-						if (!e.target.src.includes('placeholder.com')) {
-						  e.target.src = 'https://via.placeholder.com/300?text=No+Image';
-						}
-					  }}
-					/>
+					
+					{isVideo(currentChar?.image) ? (
+					  <CardVideo
+						src={getImagePath(currentChar?.image)}
+						autoPlay
+						loop
+						muted
+						playsInline
+						onClick={() => openPreview(currentChar)}
+						onError={(e) => {
+						  if (!e.target.src.includes('placeholder.com')) {
+							e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+						  }
+						}}
+					  />
+					) : (
+					  <CardImage
+						src={getImagePath(currentChar?.image)}
+						alt={currentChar?.name}
+						onClick={() => openPreview(currentChar)}
+						onError={(e) => {
+						  if (!e.target.src.includes('placeholder.com')) {
+							e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+						  }
+						}}
+					  />
+					)}
+					
 					<ZoomIconOverlay>
 					  <ZoomIcon>🔍</ZoomIcon>
 					</ZoomIconOverlay>
@@ -695,15 +769,31 @@ import {
 						  <RarityGlowMulti rarity={character.rarity} />
 						  <CollectionBadgeMini>✓</CollectionBadgeMini>
 						  {character.isBannerCharacter && <BannerBadgeMini>★</BannerBadgeMini>}
-						  <MultiCardImage
-							src={getImagePath(character.image)}
-							alt={character.name}
-							onError={(e) => {
-							  if (!e.target.src.includes('placeholder.com')) {
-								e.target.src = 'https://via.placeholder.com/300?text=No+Image';
-							  }
-							}}
-						  />
+						  
+						  {isVideo(character.image) ? (
+							<MultiCardVideo
+							  src={getImagePath(character.image)}
+							  autoPlay
+							  loop
+							  muted
+							  playsInline
+							  onError={(e) => {
+								if (!e.target.src.includes('placeholder.com')) {
+								  e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+								}
+							  }}
+							/>
+						  ) : (
+							<MultiCardImage
+							  src={getImagePath(character.image)}
+							  alt={character.name}
+							  onError={(e) => {
+								if (!e.target.src.includes('placeholder.com')) {
+								  e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+								}
+							  }}
+							/>
+						  )}
 						</MultiCardImageContainer>
 						<MultiCardContent>
 						  <MultiCharName>{character.name}</MultiCharName>
@@ -741,7 +831,7 @@ import {
 			  )}
 			</AnimatePresence>
 		  </CharacterResultsArea>
-  
+		  
 		  {/* Roll Buttons */}
 		  <RollButtonsContainer>
 			<RollButton
@@ -806,7 +896,7 @@ import {
 			)}
 		  </AnimationToggle>
 		</EnhancedGachaSection>
-  
+		
 		{/* Character Preview Modal */}
 		<ImagePreviewModal
 		  isOpen={previewOpen}
@@ -817,8 +907,9 @@ import {
 		  rarity={previewChar?.rarity || 'common'}
 		  isOwned={previewChar ? isCharacterInCollection(previewChar) : false}
 		  isBannerCharacter={previewChar?.isBannerCharacter}
+		  isVideo={previewChar ? isVideo(previewChar.image) : false}
 		/>
-  
+		
 		{/* Banner Info Panel */}
 		<AnimatePresence>
 		  {showInfoPanel && (
@@ -856,15 +947,25 @@ import {
 						onClick={() => openPreview({...char, isOwned: isCharacterInCollection(char)})}
 					  >
 						<FeaturedCharThumb rarity={char.rarity}>
-						  <img
-							src={getImagePath(char.image)}
-							alt={char.name}
-							onError={(e) => {
-							  if (!e.target.src.includes('placeholder.com')) {
-								e.target.src = 'https://via.placeholder.com/300?text=No+Image';
-							  }
-							}}
-						  />
+						  {isVideo(char.image) ? (
+							<FeaturedVideo
+							  src={getImagePath(char.image)}
+							  autoPlay
+							  loop
+							  muted
+							  playsInline
+							/>
+						  ) : (
+							<img
+							  src={getImagePath(char.image)}
+							  alt={char.name}
+							  onError={(e) => {
+								if (!e.target.src.includes('placeholder.com')) {
+								  e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+								}
+							  }}
+							/>
+						  )}
 						</FeaturedCharThumb>
 						<FeaturedCharInfo>
 						  <FeaturedCharName>{char.name}</FeaturedCharName>
@@ -903,6 +1004,32 @@ import {
 	);
   };
   
+  // New video-specific styled components
+  const CardVideo = styled.video`
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	border-radius: 12px;
+  `;
+  
+  const MultiCardVideo = styled.video`
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+  `;
+  
+  const AvatarVideo = styled.video`
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+  `;
+  
+  const FeaturedVideo = styled.video`
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+  `;
+  
   // New and enhanced styled components for better width management
   const EnhancedGachaSection = styled(GachaSection)`
 	width: 100%;
@@ -913,6 +1040,7 @@ import {
 	border-radius: 16px;
 	backdrop-filter: blur(5px);
 	border: 1px solid rgba(255, 255, 255, 0.05);
+	
 	@media (max-width: 768px) {
 	  padding: 15px 10px;
 	}
@@ -922,7 +1050,7 @@ import {
 	width: 100%;
 	max-width: 1000px;
 	margin: 0 auto;
-
+	
 	display: flex;
 	flex-direction: column;
 	max-height: calc(70vh - 60px);
@@ -931,10 +1059,11 @@ import {
   const EnhancedMultiCharactersGrid = styled(MultiCharactersGrid)`
 	grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
 	overflow-y: auto;
-	max-height: calc(70vh - 130px); /* Platz f  r Header ber  cksichtigen */
+	max-height: calc(70vh - 130px); /* Platz für Header berücksichtigen */
 	padding: 10px;
+	
 	@media (max-width: 600px) {
-	grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+	  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
 	}
   `;
   
@@ -953,6 +1082,7 @@ import {
 	background: ${props => props.isBannerCharacter ?
 	  'linear-gradient(to bottom, rgba(255, 215, 0, 0.05), white)' :
 	  'white'};
+	  
 	@media (max-width: 480px) {
 	  height: 210px;
 	}
@@ -967,6 +1097,7 @@ import {
 	align-items: center;
 	margin-bottom: 20px;
 	overflow-y: auto;
+	
 	@media (max-width: 480px) {
 	  min-height: 350px;
 	}
@@ -986,6 +1117,7 @@ import {
 	background-attachment: fixed;
 	position: relative;
 	padding: 20px;
+	
 	&::before {
 	  content: "";
 	  position: fixed;
@@ -999,6 +1131,7 @@ import {
 	  opacity: 0.3;
 	  z-index: -1;
 	}
+	
 	@media (max-width: 768px) {
 	  padding: 15px 10px;
 	}
@@ -1009,6 +1142,7 @@ import {
 	justify-content: space-between;
 	align-items: center;
 	margin-bottom: 20px;
+	
 	@media (max-width: 480px) {
 	  margin-bottom: 15px;
 	}
@@ -1018,6 +1152,7 @@ import {
 	display: flex;
 	align-items: center;
 	gap: 10px;
+	
 	@media (max-width: 480px) {
 	  gap: 6px;
 	}
@@ -1033,6 +1168,7 @@ import {
 	border-radius: 20px;
 	font-weight: 500;
 	border: 1px solid rgba(255, 255, 255, 0.1);
+	
 	@media (max-width: 480px) {
 	  padding: 6px 10px;
 	  font-size: 14px;
@@ -1052,10 +1188,12 @@ import {
 	font-size: 14px;
 	font-weight: 500;
 	transition: all 0.2s;
+	
 	&:hover {
 	  background: rgba(0, 0, 0, 0.7);
 	  transform: translateX(-3px);
 	}
+	
 	@media (max-width: 480px) {
 	  padding: 6px 12px;
 	  font-size: 13px;
@@ -1075,9 +1213,11 @@ import {
 	cursor: pointer;
 	font-size: 18px;
 	transition: all 0.3s;
+	
 	&:hover {
 	  background: rgba(0, 0, 0, 0.5);
 	}
+	
 	@media (max-width: 480px) {
 	  width: 36px;
 	  height: 36px;
@@ -1094,6 +1234,7 @@ import {
 	backdrop-filter: blur(10px);
 	border: 1px solid rgba(255, 255, 255, 0.1);
 	box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+	
 	@media (max-width: 768px) {
 	  padding: 20px 15px;
 	}
@@ -1109,6 +1250,7 @@ import {
 	margin: 0 0 10px 0;
 	text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
 	line-height: 1.2;
+	
 	@media (max-width: 480px) {
 	  font-size: 28px;
 	}
@@ -1121,6 +1263,7 @@ import {
 	font-weight: 500;
 	text-transform: uppercase;
 	letter-spacing: 1px;
+	
 	@media (max-width: 480px) {
 	  font-size: 16px;
 	}
@@ -1132,6 +1275,7 @@ import {
 	margin: 0 auto 20px;
 	line-height: 1.6;
 	color: rgba(255, 255, 255, 0.9);
+	
 	@media (max-width: 480px) {
 	  font-size: 14px;
 	}
@@ -1143,6 +1287,7 @@ import {
 	gap: 15px;
 	margin-bottom: 5px;
 	flex-wrap: wrap;
+	
 	@media (max-width: 480px) {
 	  gap: 10px;
 	}
@@ -1155,6 +1300,7 @@ import {
 	padding: 8px 15px;
 	border-radius: 50px;
 	font-weight: bold;
+	
 	@media (max-width: 480px) {
 	  padding: 6px 12px;
 	  font-size: 14px;
@@ -1167,6 +1313,7 @@ import {
 	color: white;
 	padding: 8px 15px;
 	border-radius: 50px;
+	
 	@media (max-width: 480px) {
 	  padding: 6px 12px;
 	  font-size: 14px;
@@ -1213,14 +1360,17 @@ import {
 	border: 2px solid ${props => rarityColors[props.rarity] || rarityColors.common};
 	transition: all 0.2s;
 	position: relative;
-	img {
+	
+	img, video {
 	  width: 100%;
 	  height: 100%;
 	  object-fit: cover;
 	}
+	
 	&:hover {
 	  box-shadow: 0 0 15px ${props => rarityColors[props.rarity]};
 	}
+	
 	${props => props.owned && `
 	  &::after {
 		content: "";
@@ -1232,6 +1382,7 @@ import {
 		background: rgba(0, 0, 0, 0.4);
 	  }
 	`}
+	
 	@media (max-width: 480px) {
 	  width: 55px;
 	  height: 55px;
@@ -1270,9 +1421,11 @@ import {
 	font-weight: bold;
 	cursor: pointer;
 	border: 1px solid rgba(255, 255, 255, 0.2);
+	
 	&:hover {
 	  background: rgba(255, 255, 255, 0.2);
 	}
+	
 	@media (max-width: 480px) {
 	  width: 55px;
 	  height: 55px;
@@ -1311,11 +1464,13 @@ import {
 	opacity: 0.7;
 	transition: opacity 0.3s;
 	cursor: pointer;
+	
 	svg {
 	  font-size: 50px;
 	  color: white;
 	  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.5));
 	}
+	
 	&:hover {
 	  opacity: 1;
 	}
@@ -1343,6 +1498,7 @@ import {
 	display: flex;
 	align-items: center;
 	gap: 5px;
+	
 	&::before {
 	  content: "★";
 	  font-size: 14px;
@@ -1380,6 +1536,7 @@ import {
 	margin: 15px auto 0;
 	font-size: 13px;
 	transition: all 0.2s;
+	
 	&:hover {
 	  background: rgba(255, 255, 255, 0.2);
 	}
@@ -1407,6 +1564,7 @@ import {
 	margin-left: 10px;
 	opacity: 0.7;
 	transition: opacity 0.2s;
+	
 	&:hover {
 	  opacity: 1;
 	}
@@ -1436,9 +1594,11 @@ import {
 	align-items: center;
 	padding: 15px 20px;
 	border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+	
 	h2 {
 	  margin: 0;
 	  font-size: 22px;
+	  
 	  @media (max-width: 480px) {
 		font-size: 18px;
 	  }
@@ -1460,6 +1620,7 @@ import {
 	width: 30px;
 	height: 30px;
 	border-radius: 50%;
+	
 	&:hover {
 	  background: rgba(255, 255, 255, 0.1);
 	}
@@ -1473,12 +1634,14 @@ import {
   
   const InfoSection = styled.div`
 	margin-bottom: 30px;
+	
 	h3 {
 	  margin: 0 0 15px 0;
 	  font-size: 18px;
 	  color: #9e5594;
 	  position: relative;
 	  padding-bottom: 10px;
+	  
 	  &::after {
 		content: "";
 		position: absolute;
@@ -1489,6 +1652,7 @@ import {
 		background: linear-gradient(90deg, #6e48aa, #9e5594);
 	  }
 	}
+	
 	p {
 	  margin: 0 0 15px 0;
 	  font-size: 15px;
@@ -1534,6 +1698,7 @@ import {
 	background: rgba(255, 255, 255, 0.05);
 	cursor: pointer;
 	transition: all 0.2s;
+	
 	&:hover {
 	  background: rgba(255, 255, 255, 0.1);
 	}
@@ -1545,7 +1710,8 @@ import {
 	border-radius: 8px;
 	overflow: hidden;
 	border: 2px solid ${props => rarityColors[props.rarity] || rarityColors.common};
-	img {
+	
+	img, video {
 	  width: 100%;
 	  height: 100%;
 	  object-fit: cover;
@@ -1580,6 +1746,7 @@ import {
 	display: flex;
 	align-items: center;
 	gap: 5px;
+	
 	&::before {
 	  content: "✓";
 	}
@@ -1607,6 +1774,7 @@ import {
 	font-weight: 500;
 	cursor: pointer;
 	box-shadow: 0 4px 15px rgba(110, 72, 170, 0.4);
+	
 	&:disabled {
 	  background: #555;
 	  cursor: not-allowed;
