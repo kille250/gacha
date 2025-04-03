@@ -1082,10 +1082,6 @@ import {
 	background: ${props => props.isBannerCharacter ?
 	  'linear-gradient(to bottom, rgba(255, 215, 0, 0.05), white)' :
 	  'white'};
-	  
-	@media (max-width: 480px) {
-	  height: 210px;
-	}
   `;
   
   const CharacterResultsArea = styled.div`
