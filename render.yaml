@@ -34,7 +34,6 @@ services:
   - type: web
     name: gacha-frontend
     runtime: static
-    region: frankfurt
     plan: free
     rootDir: frontend
     buildCommand: npm install && npm run build
