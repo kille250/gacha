@@ -99,7 +99,7 @@ const Navigation = () => {
         timeRemaining: "Check failed"
       }));
     }
-  }, [user]);
+  }, [user, rewardStatus.checked]);
   
   // Update timer periodically - more frequent updates for hourly rewards
   useEffect(() => {

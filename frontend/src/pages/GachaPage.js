@@ -208,7 +208,6 @@ const GachaPage = () => {
   const [previewChar, setPreviewChar] = useState(null);
   const [rollCount, setRollCount] = useState(0);
   const [lastRarities, setLastRarities] = useState([]);
-  const [userCollection, setUserCollection] = useState([]);
   const [skipAnimations, setSkipAnimations] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [multiPullCount, setMultiPullCount] = useState(10);
@@ -378,32 +377,6 @@ const GachaPage = () => {
   const closePreview = () => {
     setPreviewOpen(false);
     setPreviewChar(null);
-  };
-
-  // Media content component for displaying either image or video
-  const MediaContent = ({ src, alt, onClick, onError }) => {
-    if (isVideo(src)) {
-      return (
-        <CharacterVideo
-          src={src}
-          autoPlay
-          loop
-          muted
-          playsInline
-          onClick={onClick}
-          onError={onError}
-        />
-      );
-    }
-    
-    return (
-      <CharacterImage
-        src={src}
-        alt={alt}
-        onClick={onClick}
-        onError={onError}
-      />
-    );
   };
   
   return (

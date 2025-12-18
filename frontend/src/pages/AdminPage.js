@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
-import { FaPlus, FaVideo, FaTicketAlt, FaTimes, FaCheck, FaCalendarAlt } from 'react-icons/fa';
+import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt } from 'react-icons/fa';
 import api, { createBanner, updateBanner, deleteBanner, getAssetUrl } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
@@ -10,7 +10,7 @@ import { motion } from 'framer-motion';
 import { FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
 
 const AdminPage = () => {
-  const { user, setUser, refreshUser } = useContext(AuthContext);
+  const { user, refreshUser } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [loading, setLoading] = useState(true);

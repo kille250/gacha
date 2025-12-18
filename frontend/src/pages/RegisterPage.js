@@ -8,7 +8,6 @@ import { AuthContext } from '../context/AuthContext';
 const RegisterPage = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
   const { register, error } = useContext(AuthContext); // register aus AuthContext beziehen
   const navigate = useNavigate();
 

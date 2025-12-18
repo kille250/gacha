@@ -456,32 +456,6 @@ import {
 	  setIsVideoPlaying(false);
 	};
   
-	// Media content component for displaying images or videos
-	const MediaContent = ({ src, alt, onClick, onError }) => {
-	  if (isVideo(src)) {
-		return (
-		  <CardVideo 
-			src={getImagePath(src)}
-			autoPlay
-			loop
-			muted
-			playsInline
-			onClick={onClick}
-			onError={onError}
-		  />
-		);
-	  }
-	  
-	  return (
-		<CardImage
-		  src={src}
-		  alt={alt}
-		  onClick={onClick}
-		  onError={onError}
-		/>
-	  );
-	};
-  
 	if (loading) {
 	  return (
 		<LoadingContainer>

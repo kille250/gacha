@@ -133,34 +133,6 @@ const CollectionPage = () => {
   const totalCount = allCharacters.length;
   const completionPercentage = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
 
-  // Media content component for displaying images or videos
-  const MediaContent = ({ src, alt, onClick, onError, isOwned }) => {
-    if (isVideo(src)) {
-      return (
-        <CharVideo
-          src={src}
-          autoPlay
-          loop
-          muted
-          playsInline
-          onClick={onClick}
-          onError={onError}
-          isOwned={isOwned}
-        />
-      );
-    }
-    
-    return (
-      <CharImage
-        src={src}
-        alt={alt}
-        onClick={onClick}
-        onError={onError}
-        isOwned={isOwned}
-      />
-    );
-  };
-
   return (
     <CollectionContainer>
       <CollectionHeader>
