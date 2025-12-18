@@ -27,8 +27,11 @@ router.post('/roll-multi', auth, async (req, res) => {
     // Logic for pity system
     const guaranteedRare = count >= 10; // Guarantee at least one rare+ for 10-pulls
     
-    // Get all characters grouped by rarity
-    const characters = await Character.findAll();
+    // Get all characters, filtered by R18 preference
+    const allCharacters = await Character.findAll();
+    const characters = user.allowR18 
+      ? allCharacters 
+      : allCharacters.filter(char => !char.isR18);
     const charactersByRarity = {
       common: characters.filter(char => char.rarity === 'common'),
       uncommon: characters.filter(char => char.rarity === 'uncommon'),
@@ -144,8 +147,11 @@ router.post('/roll', auth, async (req, res) => {
     user.points -= 100;
     await user.save();
     
-    // Alle Charaktere nach Seltenheit gruppieren
-    const characters = await Character.findAll();
+    // Alle Charaktere nach Seltenheit gruppieren (filtered by R18 preference)
+    const allCharacters = await Character.findAll();
+    const characters = user.allowR18 
+      ? allCharacters 
+      : allCharacters.filter(char => !char.isR18);
     const charactersByRarity = {
       common: characters.filter(char => char.rarity === 'common'),
       uncommon: characters.filter(char => char.rarity === 'uncommon'),

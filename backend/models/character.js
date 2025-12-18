@@ -17,6 +17,10 @@ const Character = sequelize.define('Character', {
   rarity: {
     type: DataTypes.STRING,
     defaultValue: 'common'
+  },
+  isR18: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 });
 

@@ -145,7 +145,7 @@ router.post('/signup', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
 	try {
 	  const user = await User.findByPk(req.user.id, {
-		attributes: ['id', 'username', 'points', 'isAdmin', 'lastDailyReward']
+		attributes: ['id', 'username', 'points', 'isAdmin', 'lastDailyReward', 'allowR18']
 	  });
 	  
 	  if (!user) {
@@ -158,6 +158,29 @@ router.get('/me', auth, async (req, res) => {
 	  res.status(500).json({ error: 'Server error' });
 	}
   });
+
+// Toggle R18 content preference
+router.post('/toggle-r18', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Toggle the R18 preference
+    user.allowR18 = !user.allowR18;
+    await user.save();
+    
+    res.json({ 
+      message: user.allowR18 ? 'R18 content enabled' : 'R18 content disabled',
+      allowR18: user.allowR18
+    });
+  } catch (err) {
+    console.error('Toggle R18 error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // Allen Benutzern Punkte hinzufügen
 router.post('/add-points', auth, async (req, res) => {

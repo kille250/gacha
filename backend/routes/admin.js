@@ -58,7 +58,7 @@ router.get('/users', auth, adminAuth, async (req, res) => {
 // Neuen Charakter hinzufügen (nur Admin)
 router.post('/characters', auth, adminAuth, async (req, res) => {
   try {
-    const { name, image, series, rarity } = req.body;
+    const { name, image, series, rarity, isR18 } = req.body;
     if (!name || !image || !series || !rarity) {
       return res.status(400).json({ error: 'All fields are required' });
     }
@@ -66,7 +66,8 @@ router.post('/characters', auth, adminAuth, async (req, res) => {
       name,
       image,
       series,
-      rarity
+      rarity,
+      isR18: isR18 || false
     });
     res.status(201).json(character);
   } catch (err) {
@@ -80,7 +81,7 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
     if (!req.file) {
       return res.status(400).json({ error: 'No image or video uploaded' });
     }
-    const { name, series, rarity } = req.body;
+    const { name, series, rarity, isR18 } = req.body;
     if (!name || !series || !rarity) {
       // Lösche die hochgeladene Datei, wenn die anderen Daten fehlen
       fs.unlinkSync(req.file.path);
@@ -92,7 +93,8 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
       name,
       image: imagePath,
       series,
-      rarity
+      rarity,
+      isR18: isR18 === 'true' || isR18 === true
     });
     res.status(201).json({
       message: 'Character added successfully',
@@ -148,7 +150,7 @@ router.post('/add-coins', auth, adminAuth, async (req, res) => {
 router.put('/characters/:id', auth, adminAuth, async (req, res) => {
   try {
     const characterId = req.params.id;
-    const { name, series, rarity } = req.body;
+    const { name, series, rarity, isR18 } = req.body;
 
     // Suche den Charakter
     const character = await Character.findByPk(characterId);
@@ -160,6 +162,7 @@ router.put('/characters/:id', auth, adminAuth, async (req, res) => {
     if (name) character.name = name;
     if (series) character.series = series;
     if (rarity) character.rarity = rarity;
+    if (typeof isR18 !== 'undefined') character.isR18 = isR18;
 
     await character.save();
 

@@ -25,6 +25,23 @@ const Navigation = () => {
   
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  
+  // R18 toggle state
+  const [isTogglingR18, setIsTogglingR18] = useState(false);
+  
+  // Toggle R18 content preference
+  const toggleR18 = async () => {
+    if (isTogglingR18) return;
+    setIsTogglingR18(true);
+    try {
+      await api.post('/auth/toggle-r18');
+      await refreshUser();
+    } catch (err) {
+      console.error('Failed to toggle R18 preference:', err);
+    } finally {
+      setIsTogglingR18(false);
+    }
+  };
 
   // Close mobile menu when location changes
   useEffect(() => {
@@ -288,6 +305,17 @@ const Navigation = () => {
           
           <Username>{user?.username || "User"}</Username>
           
+          <R18Toggle
+            active={user?.allowR18}
+            onClick={toggleR18}
+            disabled={isTogglingR18}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+            title={user?.allowR18 ? "R18 content enabled - Click to disable" : "R18 content disabled - Click to enable"}
+          >
+            🔞
+          </R18Toggle>
+          
           <LogoutButton 
             onClick={handleLogout}
             whileHover={{ scale: 1.1 }}
@@ -343,6 +371,18 @@ const Navigation = () => {
                     </MobileNavItem>
                   )
                 ))}
+                
+                {/* R18 Toggle in Mobile Menu */}
+                <MobileR18Toggle
+                  active={user?.allowR18}
+                  onClick={toggleR18}
+                  disabled={isTogglingR18}
+                  whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  <span>🔞</span>
+                  <span>{user?.allowR18 ? "R18 Enabled" : "R18 Disabled"}</span>
+                </MobileR18Toggle>
               </MobileNavItems>
             </MobileMenu>
           </MobileMenuOverlay>
@@ -525,6 +565,28 @@ const MobileNavItem = styled(motion.li)`
   }
 `;
 
+const MobileR18Toggle = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  background: ${props => props.active ? 'rgba(231, 76, 60, 0.2)' : 'transparent'};
+  cursor: pointer;
+  color: white;
+  font-size: 16px;
+  opacity: ${props => props.disabled ? 0.5 : 1};
+  
+  span:first-child {
+    font-size: 20px;
+  }
+  
+  span:last-child {
+    color: ${props => props.active ? '#e74c3c' : 'rgba(255, 255, 255, 0.7)'};
+    font-weight: ${props => props.active ? '600' : '400'};
+  }
+`;
+
 const UserControls = styled.div`
   display: flex;
   align-items: center;
@@ -546,6 +608,33 @@ const Username = styled.span`
   
   @media (max-width: 350px) {
     max-width: 60px;
+  }
+`;
+
+const R18Toggle = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  background: ${props => props.active 
+    ? 'linear-gradient(135deg, #e74c3c, #c0392b)' 
+    : 'rgba(255, 255, 255, 0.1)'};
+  border: 2px solid ${props => props.active ? '#e74c3c' : 'transparent'};
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 16px;
+  opacity: ${props => props.disabled ? 0.5 : 1};
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: ${props => props.active 
+      ? 'linear-gradient(135deg, #c0392b, #a93226)' 
+      : 'rgba(255, 255, 255, 0.2)'};
+  }
+  
+  @media (max-width: 480px) {
+    display: none;
   }
 `;
 

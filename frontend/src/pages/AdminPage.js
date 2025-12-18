@@ -65,7 +65,8 @@ const AdminPage = () => {
   const [editForm, setEditForm] = useState({
     name: '',
     series: '',
-    rarity: 'common'
+    rarity: 'common',
+    isR18: false
   });
   const [isEditing, setIsEditing] = useState(false);
   const [editImageFile, setEditImageFile] = useState(null);
@@ -75,7 +76,8 @@ const AdminPage = () => {
   const [newCharacter, setNewCharacter] = useState({
     name: '',
     series: '',
-    rarity: 'common'
+    rarity: 'common',
+    isR18: false
   });
 
   // Coin-Management
@@ -175,6 +177,7 @@ const AdminPage = () => {
       formData.append('name', newCharacter.name);
       formData.append('series', newCharacter.series);
       formData.append('rarity', newCharacter.rarity);
+      formData.append('isR18', newCharacter.isR18);
       
       await api.post('/admin/characters/upload', formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
@@ -190,7 +193,8 @@ const AdminPage = () => {
       setNewCharacter({
         name: '',
         series: '',
-        rarity: 'common'
+        rarity: 'common',
+        isR18: false
       });
       setSelectedFile(null);
       setUploadedImage(null);
@@ -210,7 +214,8 @@ const AdminPage = () => {
     setEditForm({
       name: character.name,
       series: character.series,
-      rarity: character.rarity || 'common'
+      rarity: character.rarity || 'common',
+      isR18: character.isR18 || false
     });
     setEditImagePreview(getImageUrl(character.image));
     setIsEditing(true);
@@ -585,6 +590,18 @@ const AdminPage = () => {
             </FormGroup>
             
             <FormGroup>
+              <CheckboxLabel>
+                <input
+                  type="checkbox"
+                  name="isR18"
+                  checked={newCharacter.isR18}
+                  onChange={(e) => setNewCharacter({...newCharacter, isR18: e.target.checked})}
+                />
+                <span>🔞 R18 Content (Adult Only)</span>
+              </CheckboxLabel>
+            </FormGroup>
+            
+            <FormGroup>
               <label>Character Image/Video</label>
               <FileInput
                 type="file"
@@ -699,7 +716,7 @@ const AdminPage = () => {
                     />
                   )}
                   <CharacterInfo>
-                    <h3>{char.name}</h3>
+                    <h3>{char.name} {char.isR18 && <R18Badge>🔞</R18Badge>}</h3>
                     <p>{char.series}</p>
                     <RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
                     <CardActions>
@@ -903,6 +920,7 @@ const AdminPage = () => {
         character={editingCharacter}
         editForm={editForm}
         onEditFormChange={handleEditFormChange}
+        onR18Change={(e) => setEditForm({...editForm, isR18: e.target.checked})}
         onImageChange={handleEditImageChange}
         onSubmit={handleSaveCharacter}
         imagePreview={editImagePreview}
@@ -914,7 +932,7 @@ const AdminPage = () => {
 };
 
 // Edit Character Modal
-const EditCharacterModal = ({ show, onClose, character, editForm, onEditFormChange, onImageChange, onSubmit, imagePreview, isVideo, editImageFile }) => {
+const EditCharacterModal = ({ show, onClose, character, editForm, onEditFormChange, onR18Change, onImageChange, onSubmit, imagePreview, isVideo, editImageFile }) => {
   if (!show || !character) return null;
   
   return (
@@ -961,6 +979,18 @@ const EditCharacterModal = ({ show, onClose, character, editForm, onEditFormChan
                 <option value="epic">Epic</option>
                 <option value="legendary">Legendary</option>
               </select>
+            </FormGroup>
+            
+            <FormGroup>
+              <CheckboxLabel>
+                <input
+                  type="checkbox"
+                  name="isR18"
+                  checked={editForm.isR18}
+                  onChange={onR18Change}
+                />
+                <span>🔞 R18 Content (Adult Only)</span>
+              </CheckboxLabel>
             </FormGroup>
             
             <FormGroup>
@@ -1287,6 +1317,31 @@ const RarityTag = styled.div`
   color: white;
   text-transform: uppercase;
   font-weight: bold;
+`;
+
+const R18Badge = styled.span`
+  font-size: 14px;
+  margin-left: 4px;
+  vertical-align: middle;
+`;
+
+const CheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  font-size: 14px;
+  
+  input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+  }
+  
+  span {
+    color: #e74c3c;
+    font-weight: 500;
+  }
 `;
 
 const CardActions = styled.div`
