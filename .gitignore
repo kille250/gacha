@@ -1,0 +1,41 @@
+# Dependencies
+node_modules/
+
+# Environment files
+.env
+.env.local
+.env.*.local
+
+# Database
+*.sqlite
+*.sqlite3
+database.sqlite
+
+# Logs
+logs/
+*.log
+npm-debug.log*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Build outputs
+frontend/build/
+dist/
+
+# Uploads (keep structure, ignore content)
+backend/public/uploads/characters/*
+backend/public/uploads/banners/*
+backend/public/uploads/videos/*
+!backend/public/uploads/*/.gitkeep
+
+# Test coverage
+coverage/
+
