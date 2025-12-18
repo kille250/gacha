@@ -1121,29 +1121,28 @@ const CharacterForm = styled.form`
 `;
 
 const MultiUploadButton = styled.button`
-  background: linear-gradient(135deg, #00d9ff 0%, #00a8cc 100%);
+  background-color: #9b59b6;
+  color: white;
   border: none;
-  color: #000;
-  padding: 14px 24px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 1rem;
+  padding: 12px;
+  border-radius: 4px;
+  font-weight: bold;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
-  margin-bottom: 20px;
-  transition: all 0.3s;
-  box-shadow: 0 4px 15px rgba(0, 217, 255, 0.2);
-  
-  &:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 6px 25px rgba(0, 217, 255, 0.35);
-  }
+  gap: 8px;
+  transition: opacity 0.2s;
+  width: 100%;
+  font-size: 0.9rem;
+  margin-bottom: 15px;
   
   svg {
-    font-size: 1.2rem;
+    flex-shrink: 0;
+  }
+  
+  &:hover {
+    opacity: 0.8;
   }
 `;
 
