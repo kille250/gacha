@@ -232,19 +232,9 @@ const GachaPage = () => {
     refreshUser();
   }, [refreshUser]);
   
-  const fetchUserCollection = useCallback(async () => {
-    try {
-      const response = await api.get('/characters/collection');
-      setUserCollection(response.data);
-    } catch (err) {
-      console.error("Error fetching user collection:", err);
-    }
-  }, []);
-  
   useEffect(() => {
-    fetchUserCollection();
     fetchBanners();
-  }, [fetchUserCollection]);
+  }, []);
   
   // Set default multiPullCount based on user points
   useEffect(() => {

@@ -19,7 +19,6 @@ const RegisterPage = () => {
       return;
     }
     
-    setIsSubmitting(true);
     console.log("Registering user:", username);
     
     try {
@@ -31,8 +30,6 @@ const RegisterPage = () => {
       }
     } catch (err) {
       console.error("Registration error:", err);
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
