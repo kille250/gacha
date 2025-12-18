@@ -168,16 +168,25 @@ router.post('/toggle-r18', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
+    // Debug: Log current DB value
+    console.log(`[R18 Toggle] User ${user.id} - DB value before: ${user.allowR18} (type: ${typeof user.allowR18})`);
+    
     // Get current value (handle null/undefined as false)
     const currentValue = user.allowR18 === true;
     const newValue = !currentValue;
     
+    console.log(`[R18 Toggle] Current: ${currentValue}, New: ${newValue}`);
+    
     // Use update() to ensure the change is persisted
     await user.update({ allowR18: newValue });
     
+    // Verify the update by re-fetching
+    await user.reload();
+    console.log(`[R18 Toggle] DB value after reload: ${user.allowR18}`);
+    
     res.json({ 
       message: newValue ? 'R18 content enabled' : 'R18 content disabled',
-      allowR18: newValue
+      allowR18: user.allowR18
     });
   } catch (err) {
     console.error('Toggle R18 error:', err);
