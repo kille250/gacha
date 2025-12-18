@@ -284,7 +284,6 @@ const GachaPage = () => {
           setShowCard(true);
           setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
           await refreshUser();
-          await fetchUserCollection();
         } catch (err) {
           setError(err.response?.data?.error || 'Failed to roll character');
         } finally {
@@ -323,7 +322,6 @@ const GachaPage = () => {
             confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
           }
           await refreshUser();
-          await fetchUserCollection();
         } catch (err) {
           setError(err.response?.data?.error || 'Failed to roll multiple characters');
         } finally {
