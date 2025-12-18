@@ -168,13 +168,16 @@ router.post('/toggle-r18', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Toggle the R18 preference
-    user.allowR18 = !user.allowR18;
-    await user.save();
+    // Get current value (handle null/undefined as false)
+    const currentValue = user.allowR18 === true;
+    const newValue = !currentValue;
+    
+    // Use update() to ensure the change is persisted
+    await user.update({ allowR18: newValue });
     
     res.json({ 
-      message: user.allowR18 ? 'R18 content enabled' : 'R18 content disabled',
-      allowR18: user.allowR18
+      message: newValue ? 'R18 content enabled' : 'R18 content disabled',
+      allowR18: newValue
     });
   } catch (err) {
     console.error('Toggle R18 error:', err);
