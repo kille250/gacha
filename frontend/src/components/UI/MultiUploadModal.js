@@ -1,7 +1,7 @@
 import React, { useState, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCloudUploadAlt, FaTimes, FaImage, FaVideo, FaTrash, FaCopy, FaCheck, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaTimes, FaImage, FaVideo, FaTrash, FaCopy, FaCheck, FaExclamationTriangle, FaMagic } from 'react-icons/fa';
 
 const MultiUploadModal = ({ show, onClose, onSuccess }) => {
   const [files, setFiles] = useState([]);
@@ -9,12 +9,61 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadResult, setUploadResult] = useState(null);
   const [dragActive, setDragActive] = useState(false);
+  const [generatingNames, setGeneratingNames] = useState(false);
   const fileInputRef = useRef(null);
 
   // Default values for bulk apply
   const [bulkSeries, setBulkSeries] = useState('');
   const [bulkRarity, setBulkRarity] = useState('common');
   const [bulkIsR18, setBulkIsR18] = useState(false);
+
+  // Fetch random names from online API
+  const fetchRandomNames = async (count) => {
+    try {
+      const response = await fetch(`https://randomuser.me/api/?results=${count}&nat=us,gb,jp,de,fr&inc=name`);
+      const data = await response.json();
+      return data.results.map(user => {
+        const { first, last } = user.name;
+        return `${first} ${last}`;
+      });
+    } catch (error) {
+      console.error('Failed to fetch random names:', error);
+      // Fallback names if API fails
+      const fallbackNames = [
+        'Sakura', 'Hikari', 'Yuki', 'Luna', 'Aria', 'Nova', 'Ember', 'Iris',
+        'Kai', 'Ryu', 'Hiro', 'Akira', 'Ren', 'Sora', 'Yuto', 'Haruki'
+      ];
+      return Array(count).fill(null).map(() => 
+        fallbackNames[Math.floor(Math.random() * fallbackNames.length)]
+      );
+    }
+  };
+
+  // Generate random name for a single file
+  const regenerateName = useCallback(async (id) => {
+    const names = await fetchRandomNames(1);
+    setFiles(prev => prev.map(f => {
+      if (f.id === id) {
+        return { ...f, name: names[0] };
+      }
+      return f;
+    }));
+  }, []);
+
+  // Regenerate all names with random names from API
+  const regenerateAllNames = useCallback(async () => {
+    if (files.length === 0) return;
+    setGeneratingNames(true);
+    try {
+      const names = await fetchRandomNames(files.length);
+      setFiles(prev => prev.map((f, index) => ({
+        ...f,
+        name: names[index] || `Character ${index + 1}`
+      })));
+    } finally {
+      setGeneratingNames(false);
+    }
+  }, [files.length]);
 
   const handleDrag = useCallback((e) => {
     e.preventDefault();
@@ -37,7 +86,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
       id: `${Date.now()}-${index}-${Math.random().toString(36).substr(2, 9)}`,
       file,
       preview: URL.createObjectURL(file),
-      name: file.name.replace(/\.[^/.]+$/, '').replace(/[-_]/g, ' '),
+      name: '', // Empty - user clicks "Generate Names" to fill
       series: bulkSeries,
       rarity: bulkRarity,
       isR18: bulkIsR18,
@@ -215,6 +264,9 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
               <ApplyBulkButton onClick={applyBulkToAll} disabled={files.length === 0}>
                 Apply to All ({files.length})
               </ApplyBulkButton>
+              <RegenerateNamesButton onClick={regenerateAllNames} disabled={files.length === 0 || generatingNames}>
+                <FaMagic /> {generatingNames ? 'Generating...' : 'Generate Names'}
+              </RegenerateNamesButton>
             </BulkSettingsGrid>
           </BulkSettingsSection>
 
@@ -273,7 +325,12 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
                       
                       <FileMetadata>
                         <MetaField>
-                          <label>Name *</label>
+                          <label>
+                            Name *
+                            <CopyButton onClick={() => regenerateName(fileData.id)} title="Regenerate from filename">
+                              <FaMagic />
+                            </CopyButton>
+                          </label>
                           <input
                             type="text"
                             value={fileData.name}
@@ -533,6 +590,30 @@ const ApplyBulkButton = styled.button`
   &:hover:not(:disabled) {
     transform: translateY(-2px);
     box-shadow: 0 5px 20px rgba(0, 217, 255, 0.3);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const RegenerateNamesButton = styled.button`
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+  border: none;
+  color: #fff;
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 5px 20px rgba(155, 89, 182, 0.3);
   }
   
   &:disabled {
