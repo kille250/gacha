@@ -14,6 +14,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     costMultiplier: 1.5,
     rateMultiplier: 5.0,
     active: true,
+    isR18: false,
     selectedCharacters: []
   });
   const [imageFile, setImageFile] = useState(null);
@@ -62,6 +63,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
         costMultiplier: banner.costMultiplier || 1.5,
         rateMultiplier: banner.rateMultiplier || 5.0,
         active: banner.active !== false,
+        isR18: banner.isR18 || false,
         selectedCharacters: banner.Characters?.map(char => char.id) || []
       });
       // Set previews if available
@@ -87,6 +89,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
         costMultiplier: 1.5,
         rateMultiplier: 5.0,
         active: true,
+        isR18: false,
         selectedCharacters: []
       });
       setImagePreview(null);
@@ -322,6 +325,16 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   onChange={handleChange}
                 />
                 <label htmlFor="active">Active</label>
+              </CheckboxControl>
+              <CheckboxControl $r18>
+                <input
+                  type="checkbox"
+                  id="isR18"
+                  name="isR18"
+                  checked={formData.isR18}
+                  onChange={handleChange}
+                />
+                <label htmlFor="isR18">🔞 R18 Content (Adult Only)</label>
               </CheckboxControl>
             </CheckboxGroup>
             <FormGroup>
@@ -584,6 +597,10 @@ const CheckboxControl = styled.div`
   label {
     margin: 0;
     display: inline;
+    ${props => props.$r18 && `
+      color: #e74c3c;
+      font-weight: 500;
+    `}
   }
 `;
   

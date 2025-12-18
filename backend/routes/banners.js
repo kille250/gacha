@@ -57,7 +57,7 @@ const upload = multer({
   }
 });
 
-// Get all active banners (filters R18 characters based on user preference)
+// Get all active banners (filters R18 banners and characters based on user preference)
 router.get('/', async (req, res) => {
   try {
     const query = req.query.showAll === 'true' ? {} : { where: { active: true } };
@@ -78,14 +78,16 @@ router.get('/', async (req, res) => {
       } catch (e) { /* Invalid token - use default */ }
     }
     
-    // Filter R18 characters from each banner if user hasn't enabled R18
-    const filteredBanners = banners.map(banner => {
-      const bannerData = banner.get({ plain: true });
-      if (!allowR18) {
-        bannerData.Characters = bannerData.Characters.filter(char => !char.isR18);
-      }
-      return bannerData;
-    });
+    // Filter R18 banners and characters if user hasn't enabled R18
+    const filteredBanners = banners
+      .filter(banner => allowR18 || !banner.isR18) // Filter out R18 banners
+      .map(banner => {
+        const bannerData = banner.get({ plain: true });
+        if (!allowR18) {
+          bannerData.Characters = bannerData.Characters.filter(char => !char.isR18);
+        }
+        return bannerData;
+      });
     
     res.json(filteredBanners);
   } catch (err) {
@@ -94,7 +96,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get a specific banner by ID (filters R18 characters based on user preference)
+// Get a specific banner by ID (filters R18 banners and characters based on user preference)
 router.get('/:id', async (req, res) => {
   try {
     const banner = await Banner.findByPk(req.params.id, {
@@ -113,6 +115,11 @@ router.get('/:id', async (req, res) => {
         const decoded = jwt.verify(token, process.env.JWT_SECRET);
         allowR18 = await getUserAllowR18(decoded.user.id);
       } catch (e) { /* Invalid token - use default */ }
+    }
+    
+    // Block access to R18 banner if user hasn't enabled R18
+    if (banner.isR18 && !allowR18) {
+      return res.status(403).json({ error: 'This banner requires R18 content to be enabled' });
     }
     
     // Filter R18 characters if user hasn't enabled R18
@@ -141,7 +148,7 @@ router.post('/', [auth, admin], upload.fields([
 
     const { 
       name, description, series, startDate, endDate, 
-      featured, costMultiplier, rateMultiplier, active 
+      featured, costMultiplier, rateMultiplier, active, isR18 
     } = req.body;
     
     // Optional fields
@@ -177,7 +184,8 @@ router.post('/', [auth, admin], upload.fields([
       featured: featured === 'true',
       costMultiplier: parseFloat(costMultiplier || 1.5),
       rateMultiplier: parseFloat(rateMultiplier || 5.0),
-      active: active !== 'false'
+      active: active !== 'false',
+      isR18: isR18 === 'true' || isR18 === true
     });
 
     console.log('Banner created with ID:', banner.id);
@@ -221,13 +229,13 @@ router.put('/:id', [auth, admin], upload.fields([
     // Update fields if provided
     const fields = [
       'name', 'description', 'series', 'startDate', 'endDate',
-      'featured', 'costMultiplier', 'rateMultiplier', 'active'
+      'featured', 'costMultiplier', 'rateMultiplier', 'active', 'isR18'
     ];
     
     fields.forEach(field => {
       if (req.body[field] !== undefined) {
-        if (field === 'featured') {
-          banner[field] = req.body[field] === 'true';
+        if (field === 'featured' || field === 'isR18') {
+          banner[field] = req.body[field] === 'true' || req.body[field] === true;
         } else if (field === 'active') {
           banner[field] = req.body[field] !== 'false';
         } else if (field === 'costMultiplier' || field === 'rateMultiplier') {

@@ -46,6 +46,10 @@ const Banner = sequelize.define('Banner', {
   active: {
     type: DataTypes.BOOLEAN,
     defaultValue: true
+  },
+  isR18: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 });
 
