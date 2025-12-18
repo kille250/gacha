@@ -8,16 +8,15 @@ const fs = require('fs');
 const Banner = require('../models/banner');
 const Character = require('../models/character');
 const User = require('../models/user');
+const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
 
 // Configure storage for banner images and videos
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
     const uploadDir = file.mimetype.startsWith('video/') 
-      ? 'public/uploads/videos' 
-      : 'public/uploads/banners';
+      ? UPLOAD_DIRS.videos 
+      : UPLOAD_DIRS.banners;
     
-    // Create directory if it doesn't exist
-    fs.mkdirSync(uploadDir, { recursive: true });
     console.log(`Storing file in: ${uploadDir}`);
     cb(null, uploadDir);
   },
@@ -109,13 +108,13 @@ router.post('/', [auth, admin], upload.fields([
     if (req.files) {
       if (req.files.image) {
         console.log('Image file details:', req.files.image[0]);
-        imagePath = `/uploads/banners/${req.files.image[0].filename}`;
+        imagePath = getUrlPath('banners', req.files.image[0].filename);
         console.log('Image path set to:', imagePath);
       }
       
       if (req.files.video) {
         console.log('Video file details:', req.files.video[0]);
-        videoPath = `/uploads/videos/${req.files.video[0].filename}`;
+        videoPath = getUrlPath('videos', req.files.video[0].filename);
         console.log('Video path set to:', videoPath);
       }
     }
@@ -199,13 +198,14 @@ router.put('/:id', [auth, admin], upload.fields([
         console.log('New image file:', req.files.image[0].filename);
         // Delete old image if exists
         if (banner.image && banner.image.startsWith('/uploads/')) {
-          const oldPath = path.join(__dirname, '..', 'public', banner.image);
+          const oldFilename = path.basename(banner.image);
+          const oldPath = getFilePath('banners', oldFilename);
           if (fs.existsSync(oldPath)) {
             fs.unlinkSync(oldPath);
             console.log('Deleted old image file:', oldPath);
           }
         }
-        banner.image = `/uploads/banners/${req.files.image[0].filename}`;
+        banner.image = getUrlPath('banners', req.files.image[0].filename);
         console.log('Updated banner image path:', banner.image);
       }
       
@@ -213,13 +213,14 @@ router.put('/:id', [auth, admin], upload.fields([
         console.log('New video file:', req.files.video[0].filename);
         // Delete old video if exists
         if (banner.videoUrl && banner.videoUrl.startsWith('/uploads/')) {
-          const oldPath = path.join(__dirname, '..', 'public', banner.videoUrl);
+          const oldFilename = path.basename(banner.videoUrl);
+          const oldPath = getFilePath('videos', oldFilename);
           if (fs.existsSync(oldPath)) {
             fs.unlinkSync(oldPath);
             console.log('Deleted old video file:', oldPath);
           }
         }
-        banner.videoUrl = `/uploads/videos/${req.files.video[0].filename}`;
+        banner.videoUrl = getUrlPath('videos', req.files.video[0].filename);
         console.log('Updated banner video path:', banner.videoUrl);
       }
     }
@@ -258,7 +259,8 @@ router.delete('/:id', [auth, admin], async (req, res) => {
     
     // Delete associated files
     if (banner.image && banner.image.startsWith('/uploads/')) {
-      const imagePath = path.join(__dirname, '..', 'public', banner.image);
+      const filename = path.basename(banner.image);
+      const imagePath = getFilePath('banners', filename);
       if (fs.existsSync(imagePath)) {
         fs.unlinkSync(imagePath);
         console.log('Deleted image file:', imagePath);
@@ -266,7 +268,8 @@ router.delete('/:id', [auth, admin], async (req, res) => {
     }
     
     if (banner.videoUrl && banner.videoUrl.startsWith('/uploads/')) {
-      const videoPath = path.join(__dirname, '..', 'public', banner.videoUrl);
+      const filename = path.basename(banner.videoUrl);
+      const videoPath = getFilePath('videos', filename);
       if (fs.existsSync(videoPath)) {
         fs.unlinkSync(videoPath);
         console.log('Deleted video file:', videoPath);

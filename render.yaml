@@ -29,6 +29,11 @@ services:
         generateValue: true
     healthCheckPath: /api/health
     autoDeploy: true
+    # Persistent disk for file uploads (10GB at /var/data)
+    disk:
+      name: gacha-uploads
+      mountPath: /var/data
+      sizeGB: 10
 
   # Frontend Static Site
   - type: web
@@ -52,4 +57,3 @@ services:
         source: /*
         destination: /index.html
     autoDeploy: true
-

@@ -7,11 +7,12 @@ const fs = require('fs');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { User, Character } = require('../models');
+const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
 
 // Konfiguration für Multer (Dateispeicherung)
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
-    cb(null, 'public/uploads/characters/');
+    cb(null, UPLOAD_DIRS.characters);
   },
   filename: function(req, file, cb) {
     // Sichere Dateinamen mit Zeitstempel
@@ -86,7 +87,7 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
       return res.status(400).json({ error: 'All fields are required' });
     }
     // Speichere den relativen Pfad zur Bild- oder Videodatei
-    const imagePath = `/uploads/characters/${req.file.filename}`;
+    const imagePath = getUrlPath('characters', req.file.filename);
     const character = await Character.create({
       name,
       image: imagePath,
@@ -193,14 +194,18 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
     const oldImage = character.image;
     
     // Aktualisiere den Bildpfad
-    const newImagePath = `/uploads/characters/${req.file.filename}`;
+    const newImagePath = getUrlPath('characters', req.file.filename);
     character.image = newImagePath;
     await character.save();
 
     // Wenn das alte Bild ein hochgeladenes Bild war, lösche es
-    if (oldImage && oldImage.startsWith('/uploads/') && fs.existsSync(`public${oldImage}`)) {
-      fs.unlinkSync(`public${oldImage}`);
-      console.log(`Deleted old image/video: ${oldImage}`);
+    if (oldImage && oldImage.startsWith('/uploads/')) {
+      const oldFilename = path.basename(oldImage);
+      const oldFilePath = getFilePath('characters', oldFilename);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+        console.log(`Deleted old image/video: ${oldImage}`);
+      }
     }
 
     // Log die Änderung
@@ -230,9 +235,13 @@ router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
     
     // Wenn das Bild ein hochgeladenes Bild war, lösche es
     const image = character.image;
-    if (image && image.startsWith('/uploads/') && fs.existsSync(`public${image}`)) {
-      fs.unlinkSync(`public${image}`);
-      console.log(`Deleted media for deleted character: ${image}`);
+    if (image && image.startsWith('/uploads/')) {
+      const filename = path.basename(image);
+      const filePath = getFilePath('characters', filename);
+      if (fs.existsSync(filePath)) {
+        fs.unlinkSync(filePath);
+        console.log(`Deleted media for deleted character: ${image}`);
+      }
     }
     
     // Lösche den Charakter

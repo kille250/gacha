@@ -1,11 +1,16 @@
 require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
+const path = require('path');
 const sequelize = require('./config/db');
+const { initUploadDirs, UPLOAD_BASE, isProduction } = require('./config/upload');
 const Banner = require('./models/banner');
 const Character = require('./models/character');
 const User = require('./models/user');
 const schedule = require('node-schedule');
+
+// Create upload directories on startup
+initUploadDirs();
 
 // Set up associations after all models are loaded
 Banner.belongsToMany(Character, { through: 'BannerCharacters' });
@@ -60,11 +65,19 @@ schedule.scheduleJob('0 0 * * *', async function() {
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions)); // Handle preflight requests
 app.use(express.json());
+
+// Serve static files from public folder
 app.use(express.static('public'));
+
+// Serve uploaded files from persistent disk (or local uploads)
+// Maps /uploads/* to the correct filesystem location
+app.use('/uploads', express.static(UPLOAD_BASE));
+
+console.log(`Serving uploads from: ${UPLOAD_BASE} (production: ${isProduction})`);
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  res.json({ status: 'ok', timestamp: new Date().toISOString(), uploadPath: UPLOAD_BASE });
 });
 
 // Routes
