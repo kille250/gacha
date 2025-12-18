@@ -2,6 +2,7 @@ import React, { useState, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCloudUploadAlt, FaTimes, FaImage, FaVideo, FaTrash, FaCopy, FaCheck, FaExclamationTriangle, FaMagic } from 'react-icons/fa';
+import { API_URL } from '../../utils/api';
 
 const MultiUploadModal = ({ show, onClose, onSuccess }) => {
   const [files, setFiles] = useState([]);
@@ -163,13 +164,13 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     }));
     formData.append('metadata', JSON.stringify(metadata));
 
-    const response = await fetch('/api/admin/characters/multi-upload', {
-      method: 'POST',
-      headers: {
-        'x-auth-token': token
-      },
-      body: formData
-    });
+const response = await fetch(`${API_URL}/admin/characters/multi-upload`, {
+        method: 'POST',
+        headers: {
+          'x-auth-token': token
+        },
+        body: formData
+      });
 
     const text = await response.text();
     

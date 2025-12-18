@@ -225,8 +225,19 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
 });
 
 // Multi-upload characters endpoint
-router.post('/characters/multi-upload', auth, adminAuth, upload.array('images', 50), async (req, res) => {
+router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
+  // Wrap multer to catch errors
+  upload.array('images', 50)(req, res, (err) => {
+    if (err) {
+      console.error('Multer error:', err);
+      return res.status(400).json({ error: `Upload error: ${err.message}` });
+    }
+    next();
+  });
+}, async (req, res) => {
   try {
+    console.log(`Multi-upload request received: ${req.files?.length || 0} files`);
+    
     if (!req.files || req.files.length === 0) {
       return res.status(400).json({ error: 'No files uploaded' });
     }
@@ -285,11 +296,14 @@ router.post('/characters/multi-upload', auth, adminAuth, upload.array('images', 
 
     console.log(`Admin (ID: ${req.user.id}) bulk uploaded ${createdCharacters.length} characters (${errors.length} errors)`);
 
-    res.status(201).json({
+    const responseData = {
       message: `Successfully created ${createdCharacters.length} characters`,
       characters: createdCharacters,
       errors: errors.length > 0 ? errors : undefined
-    });
+    };
+    
+    console.log('Sending response:', JSON.stringify(responseData).substring(0, 200));
+    return res.status(201).json(responseData);
   } catch (err) {
     console.error('Multi-upload error:', err);
     // Clean up any uploaded files on error
@@ -298,7 +312,7 @@ router.post('/characters/multi-upload', auth, adminAuth, upload.array('images', 
         try { fs.unlinkSync(file.path); } catch (unlinkErr) {}
       });
     }
-    res.status(500).json({ error: err.message || 'Server error' });
+    return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 
