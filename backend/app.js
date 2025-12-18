@@ -89,39 +89,34 @@ const PORT = process.env.PORT || 5000;
 // Run migrations and start server
 async function startServer() {
   try {
-    // First sync basic structure
+    // Sync database structure
     await sequelize.sync();
     console.log('Database synced');
     
-    // Run migrations for schema changes
+    // Run schema migrations
     const queryInterface = sequelize.getQueryInterface();
     const Sequelize = require('sequelize');
     
-    // Check and add allowR18 column to Users
-    const usersTable = await queryInterface.describeTable('Users');
-    if (!usersTable.allowR18) {
-      await queryInterface.addColumn('Users', 'allowR18', {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
-      });
-      console.log('✓ Added allowR18 column to Users');
-    } else {
-      console.log('✓ allowR18 column already exists');
-    }
+    // Define pending migrations
+    const migrations = [
+      { table: 'Users', column: 'allowR18', type: Sequelize.BOOLEAN, defaultValue: false },
+      { table: 'Characters', column: 'isR18', type: Sequelize.BOOLEAN, defaultValue: false }
+    ];
     
-    // Check and add isR18 column to Characters
-    const charactersTable = await queryInterface.describeTable('Characters');
-    if (!charactersTable.isR18) {
-      await queryInterface.addColumn('Characters', 'isR18', {
-        type: Sequelize.BOOLEAN,
-        defaultValue: false
-      });
-      console.log('✓ Added isR18 column to Characters');
-    } else {
-      console.log('✓ isR18 column already exists');
+    // Apply migrations silently
+    for (const migration of migrations) {
+      try {
+        const tableDesc = await queryInterface.describeTable(migration.table);
+        if (!tableDesc[migration.column]) {
+          await queryInterface.addColumn(migration.table, migration.column, {
+            type: migration.type,
+            defaultValue: migration.defaultValue
+          });
+        }
+      } catch (err) {
+        // Table might not exist yet, ignore
+      }
     }
-    
-    console.log('Migrations completed');
     
     // Start server
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
