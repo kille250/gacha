@@ -87,16 +87,16 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/banners', require('./routes/banners'));
 app.use('/api/coupons', require('./routes/coupons'));
 
-// Database sync - alter: true adds new columns without losing data
-sequelize.sync({ alter: true }).then(async () => {
-  console.log('Database synced');
-  
-  // Seed sample data
-  await Character.bulkCreate([
-  ]);
-
-  console.log('Sample characters added');
-});
-
 const PORT = process.env.PORT || 5000;
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+
+// Database sync - alter: true adds new columns without losing data
+// Server starts ONLY after database is ready
+sequelize.sync({ alter: true }).then(async () => {
+  console.log('Database synced successfully');
+  
+  // Start server after DB is ready
+  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+}).catch(err => {
+  console.error('Failed to sync database:', err);
+  process.exit(1);
+});
