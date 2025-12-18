@@ -1,10 +1,10 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { User, Character } = require('../models'); // This should now work
+const { User, Character } = require('../models');
 const sequelize = require('../config/db');
 
-// Helper to get user's allowR18 setting via raw SQL (bypasses Sequelize model caching)
+// Get user's R18 preference via raw SQL
 async function getUserAllowR18(userId) {
   const [rows] = await sequelize.query(
     `SELECT "allowR18" FROM "Users" WHERE "id" = :userId`,

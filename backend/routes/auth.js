@@ -1,8 +1,9 @@
 const express = require('express');
 const router = express.Router();
-const jwt = require('jsonwebtoken'); // WICHTIG: jwt importieren
+const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
 const { User } = require('../models');
+const sequelize = require('../config/db');
 
 router.post('/daily-reward', auth, async (req, res) => {
 	try {
@@ -60,8 +61,6 @@ router.post('/daily-reward', auth, async (req, res) => {
   });
 
 router.post('/signup', async (req, res) => {
-	console.log('Signup request received:', req.body);
-	
 	const { username, password } = req.body;
 	
 	if (!username || !password) {
@@ -141,39 +140,31 @@ router.post('/signup', async (req, res) => {
 	}
   });
 
-// routes/auth.js
 router.get('/me', auth, async (req, res) => {
-	try {
-	  const sequelize = require('../config/db');
-	  
-	  // Use raw SQL to ensure we get allowR18 correctly
-	  const [rows] = await sequelize.query(
-	    `SELECT "id", "username", "points", "isAdmin", "lastDailyReward", "allowR18" 
-	     FROM "Users" WHERE "id" = :userId`,
-	    { replacements: { userId: req.user.id } }
-	  );
-	  
-	  if (!rows || rows.length === 0) {
-		return res.status(404).json({ error: 'User not found' });
-	  }
-	  
-	  const user = rows[0];
-	  // Ensure allowR18 has a boolean value (default to false if null)
-	  user.allowR18 = user.allowR18 === true;
-	  
-	  res.json(user);
-	} catch (err) {
-	  console.error('Get user error:', err);
-	  res.status(500).json({ error: 'Server error' });
-	}
-  });
+  try {
+    const [rows] = await sequelize.query(
+      `SELECT "id", "username", "points", "isAdmin", "lastDailyReward", "allowR18" 
+       FROM "Users" WHERE "id" = :userId`,
+      { replacements: { userId: req.user.id } }
+    );
+    
+    if (!rows || rows.length === 0) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const user = rows[0];
+    user.allowR18 = user.allowR18 === true;
+    
+    res.json(user);
+  } catch (err) {
+    console.error('Get user error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // Toggle R18 content preference
 router.post('/toggle-r18', auth, async (req, res) => {
   try {
-    const sequelize = require('../config/db');
-    
-    // Use raw SQL to get current value (bypasses Sequelize model caching issues)
     const [rows] = await sequelize.query(
       `SELECT "allowR18" FROM "Users" WHERE "id" = :userId`,
       { replacements: { userId: req.user.id } }
@@ -186,30 +177,17 @@ router.post('/toggle-r18', auth, async (req, res) => {
     const currentValue = rows[0].allowR18 === true;
     const newValue = !currentValue;
     
-    console.log(`[R18 Toggle] User ${req.user.id} - Current DB value: ${rows[0].allowR18}, New value: ${newValue}`);
-    
-    // Use raw SQL to update (more reliable with PostgreSQL)
     await sequelize.query(
       `UPDATE "Users" SET "allowR18" = :newValue WHERE "id" = :userId`,
       { replacements: { newValue, userId: req.user.id } }
     );
     
-    // Verify the update with raw SQL
-    const [verifyRows] = await sequelize.query(
-      `SELECT "allowR18" FROM "Users" WHERE "id" = :userId`,
-      { replacements: { userId: req.user.id } }
-    );
-    
-    const finalValue = verifyRows[0]?.allowR18 ?? newValue;
-    console.log(`[R18 Toggle] After update - DB value: ${finalValue}`);
-    
     res.json({ 
-      message: finalValue ? 'R18 content enabled' : 'R18 content disabled',
-      allowR18: finalValue
+      message: newValue ? 'R18 content enabled' : 'R18 content disabled',
+      allowR18: newValue
     });
   } catch (err) {
     console.error('Toggle R18 error:', err);
-    console.error('Error stack:', err.stack);
     res.status(500).json({ error: 'Server error' });
   }
 });

@@ -89,56 +89,33 @@ const PORT = process.env.PORT || 5000;
 // Run migrations and start server
 async function startServer() {
   try {
-    // First, do a basic sync to create tables if they don't exist
     await sequelize.sync();
-    console.log('Database synced (basic)');
+    console.log('Database synced');
     
-    // Manually add columns that might be missing (PostgreSQL)
+    // Add columns that might be missing (PostgreSQL only)
     if (process.env.DATABASE_URL) {
-      console.log('[Migration] Running PostgreSQL column migrations...');
-      
-      // Helper function to add column if it doesn't exist
       async function addColumnIfNotExists(table, column, type, defaultValue) {
         try {
-          // Check if column exists
-          const [cols] = await sequelize.query(`
-            SELECT column_name FROM information_schema.columns 
-            WHERE table_name = '${table}' AND column_name = '${column}';
-          `);
-          
+          const [cols] = await sequelize.query(
+            `SELECT column_name FROM information_schema.columns 
+             WHERE table_name = '${table}' AND column_name = '${column}';`
+          );
           if (cols.length === 0) {
-            // Column doesn't exist, add it
-            await sequelize.query(`
-              ALTER TABLE "${table}" ADD COLUMN "${column}" ${type} DEFAULT ${defaultValue};
-            `);
-            console.log(`[Migration] ✓ Added ${table}.${column}`);
-          } else {
-            console.log(`[Migration] ✓ ${table}.${column} already exists`);
+            await sequelize.query(
+              `ALTER TABLE "${table}" ADD COLUMN "${column}" ${type} DEFAULT ${defaultValue};`
+            );
+            console.log(`[Migration] Added ${table}.${column}`);
           }
         } catch (err) {
           console.error(`[Migration] Error with ${table}.${column}:`, err.message);
         }
       }
       
-      // Add missing columns
       await addColumnIfNotExists('Users', 'allowR18', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');
-      
-      // Verify the columns exist
-      try {
-        const [results] = await sequelize.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'Users';`);
-        console.log('[Startup] Users columns:', results.map(r => r.column_name).join(', '));
-        
-        const [charResults] = await sequelize.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'Characters';`);
-        console.log('[Startup] Characters columns:', charResults.map(r => r.column_name).join(', '));
-      } catch (e) {
-        console.log('[Startup] Could not list columns:', e.message);
-      }
     }
     
-    // Start server
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-    
   } catch (err) {
     console.error('Failed to start server:', err);
     process.exit(1);
