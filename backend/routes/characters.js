@@ -53,22 +53,22 @@ router.post('/roll-multi', auth, async (req, res) => {
       legendary: characters.filter(char => char.rarity === 'legendary')
     };
     
-    // Define drop rates (in percent)
+    // Define drop rates (in percent) - challenging rates
     const standardDropRates = {
-      common: 60, // 60% chance
-      uncommon: 25, // 25% chance
-      rare: 10, // 10% chance
-      epic: 4, // 4% chance
-      legendary: 1 // 1% chance
+      common: 70,     // 70% chance
+      uncommon: 20,   // 20% chance
+      rare: 7,        // 7% chance
+      epic: 2.5,      // 2.5% chance
+      legendary: 0.5  // 0.5% chance
     };
     
     // Slightly better drop rates for multi-pulls
     const multiPullRates = {
-      common: 55, // 55% chance
-      uncommon: 25, // 25% chance
-      rare: 12, // 12% chance
-      epic: 6, // 6% chance
-      legendary: 2 // 2% chance
+      common: 65,     // 65% chance
+      uncommon: 22,   // 22% chance
+      rare: 9,        // 9% chance
+      epic: 3.5,      // 3.5% chance
+      legendary: 0.5  // 0.5% chance
     };
     
     const dropRates = count >= 10 ? multiPullRates : standardDropRates;
@@ -81,8 +81,8 @@ router.post('/roll-multi', auth, async (req, res) => {
       const isLastRoll = (i === count - 1);
       const needsPity = guaranteedRare && isLastRoll && !hasRarePlus;
       
-      // If pity is needed, use modified rates that exclude common & uncommon
-      const currentRates = needsPity ? { rare: 70, epic: 25, legendary: 5 } : dropRates;
+      // If pity is needed, use modified rates that exclude common & uncommon (more balanced)
+      const currentRates = needsPity ? { rare: 85, epic: 14, legendary: 1 } : dropRates;
       
       // Determine rarity based on probability
       const rarityRoll = Math.random() * 100;

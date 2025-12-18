@@ -396,40 +396,40 @@ router.post('/:id/roll', auth, async (req, res) => {
 		legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
 	  };
 	  
-	  // Define standard drop rates
+	  // Define standard drop rates - challenging rates
 	  const standardDropRates = {
-		common: 60, // 60% chance
-		uncommon: 25, // 25% chance
-		rare: 10, // 10% chance
-		epic: 4, // 4% chance
-		legendary: 1 // 1% chance
+		common: 70,     // 70% chance
+		uncommon: 20,   // 20% chance
+		rare: 7,        // 7% chance
+		epic: 2.5,      // 2.5% chance
+		legendary: 0.5  // 0.5% chance
 	  };
 	  
-	  // Define base banner drop rates
+	  // Define base banner drop rates (slightly better than standard)
 	  const baseDropRates = {
-		common: 35, // 35% chance
-		uncommon: 25, // 25% chance
-		rare: 20, // 20% chance
-		epic: 15, // 15% chance
-		legendary: 5 // 5% chance
+		common: 60,     // 60% chance
+		uncommon: 22,   // 22% chance
+		rare: 12,       // 12% chance
+		epic: 5,        // 5% chance
+		legendary: 1    // 1% chance
 	  };
 	  
 	  // Apply the rate multiplier to adjust rates for banner
 	  const bannerDropRates = {};
 	  // Cap the multiplier effect to prevent extreme values
 	  const effectiveMultiplier = Math.min(banner.rateMultiplier, 5.0);
-	  const rateAdjustment = (effectiveMultiplier - 1) * 0.2; // Scale the effect
+	  const rateAdjustment = (effectiveMultiplier - 1) * 0.1; // Reduced scaling effect
 	  
-	  // Adjust rates based on multiplier
-	  bannerDropRates.legendary = Math.min(baseDropRates.legendary * (1 + rateAdjustment * 4), 15); // Cap at 15%
-	  bannerDropRates.epic = Math.min(baseDropRates.epic * (1 + rateAdjustment * 3), 25); // Cap at 25%
-	  bannerDropRates.rare = Math.min(baseDropRates.rare * (1 + rateAdjustment * 2), 30); // Cap at 30%
-	  bannerDropRates.uncommon = Math.min(baseDropRates.uncommon * (1 + rateAdjustment), 30); // Cap at 30%
+	  // Adjust rates based on multiplier (with lower caps)
+	  bannerDropRates.legendary = Math.min(baseDropRates.legendary * (1 + rateAdjustment * 2), 3); // Cap at 3%
+	  bannerDropRates.epic = Math.min(baseDropRates.epic * (1 + rateAdjustment * 1.5), 10); // Cap at 10%
+	  bannerDropRates.rare = Math.min(baseDropRates.rare * (1 + rateAdjustment), 18); // Cap at 18%
+	  bannerDropRates.uncommon = Math.min(baseDropRates.uncommon * (1 + rateAdjustment * 0.5), 25); // Cap at 25%
 	  
 	  // Calculate remaining percentage for common to ensure total is 100%
 	  const totalHigherRarities = bannerDropRates.legendary + bannerDropRates.epic + 
 								  bannerDropRates.rare + bannerDropRates.uncommon;
-	  bannerDropRates.common = Math.max(100 - totalHigherRarities, 5); // Ensure at least 5% common
+	  bannerDropRates.common = Math.max(100 - totalHigherRarities, 40); // Ensure at least 40% common
 	  
 	  console.log(`Banner ${banner.name} rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
 	  
@@ -579,49 +579,49 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
 	  };
 	  
-	  // Define standard drop rates
+	  // Define standard drop rates - challenging multi-pull rates
 	  const standardDropRates = {
-		common: 55, // 55% chance
-		uncommon: 25, // 25% chance
-		rare: 12, // 12% chance
-		epic: 6, // 6% chance
-		legendary: 2 // 2% chance
+		common: 65,     // 65% chance
+		uncommon: 22,   // 22% chance
+		rare: 9,        // 9% chance
+		epic: 3.5,      // 3.5% chance
+		legendary: 0.5  // 0.5% chance
 	  };
 	  
-	  // Define base banner drop rates
+	  // Define base banner drop rates (slightly better than standard)
 	  const baseDropRates = {
-		common: 30, // 30% chance
-		uncommon: 30, // 30% chance
-		rare: 20, // 20% chance
-		epic: 15, // 15% chance
-		legendary: 5 // 5% chance
+		common: 55,     // 55% chance
+		uncommon: 24,   // 24% chance
+		rare: 14,       // 14% chance
+		epic: 6,        // 6% chance
+		legendary: 1    // 1% chance
 	  };
 	  
 	  // Apply the rate multiplier to adjust rates for banner
 	  const bannerDropRates = {};
 	  // Cap the multiplier effect to prevent extreme values
 	  const effectiveMultiplier = Math.min(banner.rateMultiplier, 5.0);
-	  const rateAdjustment = (effectiveMultiplier - 1) * 0.2; // Scale the effect
+	  const rateAdjustment = (effectiveMultiplier - 1) * 0.1; // Reduced scaling effect
 	  
-	  // Adjust rates based on multiplier
-	  bannerDropRates.legendary = Math.min(baseDropRates.legendary * (1 + rateAdjustment * 4), 15); // Cap at 15%
-	  bannerDropRates.epic = Math.min(baseDropRates.epic * (1 + rateAdjustment * 3), 25); // Cap at 25%
-	  bannerDropRates.rare = Math.min(baseDropRates.rare * (1 + rateAdjustment * 2), 30); // Cap at 30%
-	  bannerDropRates.uncommon = Math.min(baseDropRates.uncommon * (1 + rateAdjustment), 30); // Cap at 30%
+	  // Adjust rates based on multiplier (with lower caps)
+	  bannerDropRates.legendary = Math.min(baseDropRates.legendary * (1 + rateAdjustment * 2), 3); // Cap at 3%
+	  bannerDropRates.epic = Math.min(baseDropRates.epic * (1 + rateAdjustment * 1.5), 12); // Cap at 12%
+	  bannerDropRates.rare = Math.min(baseDropRates.rare * (1 + rateAdjustment), 20); // Cap at 20%
+	  bannerDropRates.uncommon = Math.min(baseDropRates.uncommon * (1 + rateAdjustment * 0.5), 28); // Cap at 28%
 	  
 	  // Calculate remaining percentage for common to ensure total is 100%
 	  const totalHigherRarities = bannerDropRates.legendary + bannerDropRates.epic + 
 								  bannerDropRates.rare + bannerDropRates.uncommon;
-	  bannerDropRates.common = Math.max(100 - totalHigherRarities, 5); // Ensure at least 5% common
+	  bannerDropRates.common = Math.max(100 - totalHigherRarities, 35); // Ensure at least 35% common
 	  
 	  console.log(`Banner ${banner.name} multi-roll rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
 	  
 	  // Guaranteed pity mechanics
 	  const guaranteedRare = count >= 10; // Guarantee at least one rare+ for 10-pulls
 	  
-	  // Define pity rates (these are not affected by rateMultiplier)
+	  // Define pity rates (these are not affected by rateMultiplier) - more balanced
 	  const pityRates = {
-		rare: 70, epic: 25, legendary: 5
+		rare: 85, epic: 14, legendary: 1
 	  };
 	  
 	  let results = [];
