@@ -144,13 +144,22 @@ router.post('/signup', async (req, res) => {
 // routes/auth.js
 router.get('/me', auth, async (req, res) => {
 	try {
-	  const user = await User.findByPk(req.user.id, {
-		attributes: ['id', 'username', 'points', 'isAdmin', 'lastDailyReward', 'allowR18']
-	  });
+	  const sequelize = require('../config/db');
 	  
-	  if (!user) {
+	  // Use raw SQL to ensure we get allowR18 correctly
+	  const [rows] = await sequelize.query(
+	    `SELECT "id", "username", "points", "isAdmin", "lastDailyReward", "allowR18" 
+	     FROM "Users" WHERE "id" = :userId`,
+	    { replacements: { userId: req.user.id } }
+	  );
+	  
+	  if (!rows || rows.length === 0) {
 		return res.status(404).json({ error: 'User not found' });
 	  }
+	  
+	  const user = rows[0];
+	  // Ensure allowR18 has a boolean value (default to false if null)
+	  user.allowR18 = user.allowR18 === true;
 	  
 	  res.json(user);
 	} catch (err) {
@@ -162,39 +171,41 @@ router.get('/me', auth, async (req, res) => {
 // Toggle R18 content preference
 router.post('/toggle-r18', auth, async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id);
+    const sequelize = require('../config/db');
     
-    if (!user) {
+    // Use raw SQL to get current value (bypasses Sequelize model caching issues)
+    const [rows] = await sequelize.query(
+      `SELECT "allowR18" FROM "Users" WHERE "id" = :userId`,
+      { replacements: { userId: req.user.id } }
+    );
+    
+    if (!rows || rows.length === 0) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Debug: Log current value from Sequelize model
-    console.log(`[R18 Toggle] User ${user.id} - Sequelize value: ${user.allowR18} (type: ${typeof user.allowR18})`);
-    console.log(`[R18 Toggle] User dataValues:`, user.dataValues);
-    
-    // Get current value (handle null/undefined as false)
-    const currentValue = user.allowR18 === true;
+    const currentValue = rows[0].allowR18 === true;
     const newValue = !currentValue;
     
-    console.log(`[R18 Toggle] Current: ${currentValue}, New: ${newValue}`);
+    console.log(`[R18 Toggle] User ${req.user.id} - Current DB value: ${rows[0].allowR18}, New value: ${newValue}`);
     
-    // Use Sequelize update with explicit field
-    await User.update(
-      { allowR18: newValue },
-      { where: { id: req.user.id } }
+    // Use raw SQL to update (more reliable with PostgreSQL)
+    await sequelize.query(
+      `UPDATE "Users" SET "allowR18" = :newValue WHERE "id" = :userId`,
+      { replacements: { newValue, userId: req.user.id } }
     );
     
-    // Re-fetch the user to get updated value
-    const updatedUser = await User.findByPk(req.user.id, {
-      attributes: ['id', 'username', 'points', 'isAdmin', 'allowR18']
-    });
+    // Verify the update with raw SQL
+    const [verifyRows] = await sequelize.query(
+      `SELECT "allowR18" FROM "Users" WHERE "id" = :userId`,
+      { replacements: { userId: req.user.id } }
+    );
     
-    console.log(`[R18 Toggle] After update - allowR18: ${updatedUser.allowR18}`);
-    console.log(`[R18 Toggle] Updated dataValues:`, updatedUser.dataValues);
+    const finalValue = verifyRows[0]?.allowR18 ?? newValue;
+    console.log(`[R18 Toggle] After update - DB value: ${finalValue}`);
     
     res.json({ 
-      message: newValue ? 'R18 content enabled' : 'R18 content disabled',
-      allowR18: updatedUser.allowR18 ?? newValue
+      message: finalValue ? 'R18 content enabled' : 'R18 content disabled',
+      allowR18: finalValue
     });
   } catch (err) {
     console.error('Toggle R18 error:', err);

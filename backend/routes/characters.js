@@ -2,6 +2,16 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { User, Character } = require('../models'); // This should now work
+const sequelize = require('../config/db');
+
+// Helper to get user's allowR18 setting via raw SQL (bypasses Sequelize model caching)
+async function getUserAllowR18(userId) {
+  const [rows] = await sequelize.query(
+    `SELECT "allowR18" FROM "Users" WHERE "id" = :userId`,
+    { replacements: { userId } }
+  );
+  return rows[0]?.allowR18 === true;
+}
 
 // Multi-roll endpoint (10 characters at once)
 router.post('/roll-multi', auth, async (req, res) => {
@@ -27,9 +37,12 @@ router.post('/roll-multi', auth, async (req, res) => {
     // Logic for pity system
     const guaranteedRare = count >= 10; // Guarantee at least one rare+ for 10-pulls
     
+    // Get user's R18 preference via raw SQL
+    const allowR18 = await getUserAllowR18(req.user.id);
+    
     // Get all characters, filtered by R18 preference
     const allCharacters = await Character.findAll();
-    const characters = user.allowR18 
+    const characters = allowR18 
       ? allCharacters 
       : allCharacters.filter(char => !char.isR18);
     const charactersByRarity = {
@@ -147,9 +160,12 @@ router.post('/roll', auth, async (req, res) => {
     user.points -= 100;
     await user.save();
     
+    // Get user's R18 preference via raw SQL
+    const allowR18 = await getUserAllowR18(req.user.id);
+    
     // Alle Charaktere nach Seltenheit gruppieren (filtered by R18 preference)
     const allCharacters = await Character.findAll();
-    const characters = user.allowR18 
+    const characters = allowR18 
       ? allCharacters 
       : allCharacters.filter(char => !char.isR18);
     const charactersByRarity = {
