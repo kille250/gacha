@@ -243,11 +243,19 @@ router.post('/roll', auth, async (req, res) => {
   }
 });
 
-// Get user's collection
+// Get user's collection (filtered by R18 preference)
 router.get('/collection', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
-    const characters = await user.getCharacters();
+    const allowR18 = await getUserAllowR18(req.user.id);
+    
+    let characters = await user.getCharacters();
+    
+    // Filter out R18 characters if user hasn't enabled R18 content
+    if (!allowR18) {
+      characters = characters.filter(char => !char.isR18);
+    }
+    
     res.json(characters);
   } catch (err) {
     console.error(err);
@@ -255,10 +263,31 @@ router.get('/collection', auth, async (req, res) => {
   }
 });
 
-// Get all characters
+// Get all characters (filtered by R18 preference if authenticated)
 router.get('/', async (req, res) => {
   try {
-    const characters = await Character.findAll();
+    let characters = await Character.findAll();
+    
+    // If user is authenticated, filter based on their R18 preference
+    // Check for auth token without requiring it
+    const token = req.header('x-auth-token');
+    if (token) {
+      try {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        const allowR18 = await getUserAllowR18(decoded.user.id);
+        if (!allowR18) {
+          characters = characters.filter(char => !char.isR18);
+        }
+      } catch (e) {
+        // Invalid token - filter out R18 by default
+        characters = characters.filter(char => !char.isR18);
+      }
+    } else {
+      // No auth - filter out R18 by default
+      characters = characters.filter(char => !char.isR18);
+    }
+    
     res.json(characters);
   } catch (err) {
     console.error(err);

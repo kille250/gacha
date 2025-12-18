@@ -5,10 +5,21 @@ const admin = require('../middleware/adminAuth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const jwt = require('jsonwebtoken');
 const Banner = require('../models/banner');
 const Character = require('../models/character');
 const User = require('../models/user');
+const sequelize = require('../config/db');
 const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
+
+// Get user's R18 preference via raw SQL
+async function getUserAllowR18(userId) {
+  const [rows] = await sequelize.query(
+    `SELECT "allowR18" FROM "Users" WHERE "id" = :userId`,
+    { replacements: { userId } }
+  );
+  return rows[0]?.allowR18 === true;
+}
 
 // Configure storage for banner images and videos
 const storage = multer.diskStorage({
@@ -46,25 +57,44 @@ const upload = multer({
   }
 });
 
-// Get all active banners
+// Get all active banners (filters R18 characters based on user preference)
 router.get('/', async (req, res) => {
-	try {
-	  const query = req.query.showAll === 'true' ? {} : { where: { active: true } };
-	  
-	  const banners = await Banner.findAll({
-		...query,
-		include: [{ model: Character }],
-		order: [['featured', 'DESC'], ['createdAt', 'DESC']]
-	  });
-	  
-	  res.json(banners);
-	} catch (err) {
-	  console.error(err);
-	  res.status(500).json({ error: 'Server error' });
-	}
-  });
+  try {
+    const query = req.query.showAll === 'true' ? {} : { where: { active: true } };
+    
+    const banners = await Banner.findAll({
+      ...query,
+      include: [{ model: Character }],
+      order: [['featured', 'DESC'], ['createdAt', 'DESC']]
+    });
+    
+    // Check R18 preference
+    let allowR18 = false;
+    const token = req.header('x-auth-token');
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        allowR18 = await getUserAllowR18(decoded.user.id);
+      } catch (e) { /* Invalid token - use default */ }
+    }
+    
+    // Filter R18 characters from each banner if user hasn't enabled R18
+    const filteredBanners = banners.map(banner => {
+      const bannerData = banner.get({ plain: true });
+      if (!allowR18) {
+        bannerData.Characters = bannerData.Characters.filter(char => !char.isR18);
+      }
+      return bannerData;
+    });
+    
+    res.json(filteredBanners);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
-// Get a specific banner by ID
+// Get a specific banner by ID (filters R18 characters based on user preference)
 router.get('/:id', async (req, res) => {
   try {
     const banner = await Banner.findByPk(req.params.id, {
@@ -75,7 +105,23 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Banner not found' });
     }
     
-    res.json(banner);
+    // Check R18 preference
+    let allowR18 = false;
+    const token = req.header('x-auth-token');
+    if (token) {
+      try {
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        allowR18 = await getUserAllowR18(decoded.user.id);
+      } catch (e) { /* Invalid token - use default */ }
+    }
+    
+    // Filter R18 characters if user hasn't enabled R18
+    const bannerData = banner.get({ plain: true });
+    if (!allowR18) {
+      bannerData.Characters = bannerData.Characters.filter(char => !char.isR18);
+    }
+    
+    res.json(bannerData);
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -318,11 +364,19 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  user.points -= cost;
 	  await user.save();
 	  
-	  // Get all banner characters
-	  const bannerCharacters = banner.Characters;
+	  // Get user's R18 preference
+	  const allowR18 = await getUserAllowR18(req.user.id);
 	  
-	  // Get all characters for fallback
-	  const allCharacters = await Character.findAll();
+	  // Get all banner characters (filtered by R18)
+	  const bannerCharacters = allowR18 
+	    ? banner.Characters 
+	    : banner.Characters.filter(char => !char.isR18);
+	  
+	  // Get all characters for fallback (filtered by R18)
+	  const allChars = await Character.findAll();
+	  const allCharacters = allowR18 
+	    ? allChars 
+	    : allChars.filter(char => !char.isR18);
 	  
 	  // Group all characters by rarity
 	  const allCharactersByRarity = {
@@ -493,11 +547,19 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	  user.points -= finalCost;
 	  await user.save();
 	  
-	  // Get banner characters
-	  const bannerCharacters = banner.Characters;
+	  // Get user's R18 preference
+	  const allowR18 = await getUserAllowR18(req.user.id);
 	  
-	  // Get all characters for fallback
-	  const allCharacters = await Character.findAll();
+	  // Get banner characters (filtered by R18)
+	  const bannerCharacters = allowR18 
+	    ? banner.Characters 
+	    : banner.Characters.filter(char => !char.isR18);
+	  
+	  // Get all characters for fallback (filtered by R18)
+	  const allChars = await Character.findAll();
+	  const allCharacters = allowR18 
+	    ? allChars 
+	    : allChars.filter(char => !char.isR18);
 	  
 	  // Group all characters by rarity
 	  const allCharactersByRarity = {
