@@ -11,7 +11,6 @@ import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 // Import centralized animations and components
 import {
-  rarityColors,
   cardVariants,
   cardVariantsFast,
   containerVariants,
@@ -22,6 +21,7 @@ import {
 } from '../components/PullAnimations';
 
 import {
+  rarityColors,
   theme,
   LoadingWrapper,
   SpinnerOrb,

@@ -11,7 +11,6 @@ import { useNavigate } from 'react-router-dom';
 
 // Import centralized styles and components
 import {
-  rarityColors,
   cardVariants,
   cardVariantsFast,
   containerVariants,
@@ -21,6 +20,7 @@ import {
 } from '../components/PullAnimations';
 
 import {
+  rarityColors,
   theme,
   LoadingWrapper,
   SpinnerOrb,
