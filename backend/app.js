@@ -87,8 +87,8 @@ app.use('/api/admin', require('./routes/admin'));
 app.use('/api/banners', require('./routes/banners'));
 app.use('/api/coupons', require('./routes/coupons'));
 
-// Database sync
-sequelize.sync({ force: false }).then(async () => {
+// Database sync - alter: true adds new columns without losing data
+sequelize.sync({ alter: true }).then(async () => {
   console.log('Database synced');
   
   // Seed sample data
