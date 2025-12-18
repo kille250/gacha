@@ -1,8 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
-import axios from 'axios';
 import styled from 'styled-components';
 import { FaPlus, FaVideo, FaTicketAlt, FaTimes, FaCheck, FaCalendarAlt } from 'react-icons/fa';
-import { createBanner, updateBanner, deleteBanner } from '../utils/api';
+import api, { createBanner, updateBanner, deleteBanner, getAssetUrl } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
 import { AuthContext } from '../context/AuthContext';
@@ -100,11 +99,7 @@ const AdminPage = () => {
 
   const fetchUsers = async () => {
     try {
-      const response = await axios.get('https://gachaapi.solidbooru.online/api/admin/users', {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
+      const response = await api.get('/admin/users');
       setUsers(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load users');
@@ -115,11 +110,7 @@ const AdminPage = () => {
 
   const fetchCharacters = async () => {
     try {
-      const response = await axios.get('https://gachaapi.solidbooru.online/api/characters', {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
+      const response = await api.get('/characters');
       setCharacters(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load characters');
@@ -128,11 +119,7 @@ const AdminPage = () => {
 
   const fetchBanners = async () => {
     try {
-      const response = await axios.get('https://gachaapi.solidbooru.online/api/banners?showAll=true', {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
+      const response = await api.get('/banners?showAll=true');
       setBanners(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load banners');
@@ -141,11 +128,7 @@ const AdminPage = () => {
 
   const fetchCoupons = async () => {
     try {
-      const response = await axios.get('https://gachaapi.solidbooru.online/api/coupons/admin', {
-        headers: {
-          'x-auth-token': localStorage.getItem('token')
-        }
-      });
+      const response = await api.get('/coupons/admin');
       setCoupons(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load coupons');
@@ -193,16 +176,9 @@ const AdminPage = () => {
       formData.append('series', newCharacter.series);
       formData.append('rarity', newCharacter.rarity);
       
-      await axios.post(
-        'https://gachaapi.solidbooru.online/api/admin/characters/upload',
-        formData,
-        {
-          headers: {
-            'x-auth-token': localStorage.getItem('token'),
-            'Content-Type': 'multipart/form-data'
-          }
-        }
-      );
+      await api.post('/admin/characters/upload', formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       
       // Zeige Erfolgsmeldung
       setSuccessMessage('Character added successfully!');
@@ -279,31 +255,16 @@ const AdminPage = () => {
     
     try {
       // Aktualisiere die Charakterdetails
-      await axios.put(
-        `https://gachaapi.solidbooru.online/api/admin/characters/${editingCharacter.id}`,
-        editForm,
-        {
-          headers: {
-            'x-auth-token': localStorage.getItem('token')
-          }
-        }
-      );
+      await api.put(`/admin/characters/${editingCharacter.id}`, editForm);
       
       // Wenn ein neues Bild ausgewählt wurde, lade es hoch
       if (editImageFile) {
         const formData = new FormData();
         formData.append('image', editImageFile);
         
-        await axios.put(
-          `https://gachaapi.solidbooru.online/api/admin/characters/${editingCharacter.id}/image`,
-          formData,
-          {
-            headers: {
-              'x-auth-token': localStorage.getItem('token'),
-              'Content-Type': 'multipart/form-data'
-            }
-          }
-        );
+        await api.put(`/admin/characters/${editingCharacter.id}/image`, formData, {
+          headers: { 'Content-Type': 'multipart/form-data' }
+        });
       }
       
       setSuccessMessage('Character updated successfully!');
@@ -328,14 +289,7 @@ const AdminPage = () => {
     setSuccessMessage(null);
     
     try {
-      await axios.delete(
-        `https://gachaapi.solidbooru.online/api/admin/characters/${characterId}`,
-        {
-          headers: {
-            'x-auth-token': localStorage.getItem('token')
-          }
-        }
-      );
+      await api.delete(`/admin/characters/${characterId}`);
       
       setSuccessMessage('Character deleted successfully!');
       
@@ -361,15 +315,7 @@ const AdminPage = () => {
     setError(null);
     
     try {
-      const response = await axios.post(
-        'https://gachaapi.solidbooru.online/api/admin/add-coins',
-        coinForm,
-        {
-          headers: {
-            'x-auth-token': localStorage.getItem('token')
-          }
-        }
-      );
+      const response = await api.post('/admin/add-coins', coinForm);
       
       setCoinMessage(response.data.message);
       await fetchUsers();
@@ -391,13 +337,7 @@ const AdminPage = () => {
   // Banner Functions
   const getBannerImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/300x150?text=Banner';
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    if (imagePath.startsWith('/uploads')) {
-      return `https://gachaapi.solidbooru.online${imagePath}`;
-    }
-    return `/images/banners/${imagePath}`;
+    return getAssetUrl(imagePath);
   };
 
   const handleEditBanner = (banner) => {
@@ -457,9 +397,7 @@ const AdminPage = () => {
     try {
       setSuccessMessage(null);
       setError(null);
-      await axios.post('https://gachaapi.solidbooru.online/api/coupons/admin', formData, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
+      await api.post('/coupons/admin', formData);
       await fetchCoupons();
       setSuccessMessage('Coupon created successfully!');
       setIsAddingCoupon(false);
@@ -472,9 +410,7 @@ const AdminPage = () => {
     try {
       setSuccessMessage(null);
       setError(null);
-      await axios.put(`https://gachaapi.solidbooru.online/api/coupons/admin/${editingCoupon.id}`, formData, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
+      await api.put(`/coupons/admin/${editingCoupon.id}`, formData);
       await fetchCoupons();
       setSuccessMessage('Coupon updated successfully!');
       setIsEditingCoupon(false);
@@ -491,9 +427,7 @@ const AdminPage = () => {
     try {
       setSuccessMessage(null);
       setError(null);
-      await axios.delete(`https://gachaapi.solidbooru.online/api/coupons/admin/${couponId}`, {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
+      await api.delete(`/coupons/admin/${couponId}`);
       await fetchCoupons();
       setSuccessMessage('Coupon deleted successfully!');
     } catch (err) {
@@ -504,26 +438,7 @@ const AdminPage = () => {
   // Hilfsfunktion für Bildpfade
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
-    
-    // Prüfe, ob es eine volle URL ist
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    
-    // Prüfe auf hochgeladene Bilder im uploads-Verzeichnis
-    if (imagePath.startsWith('/uploads')) {
-      return `https://gachaapi.solidbooru.online${imagePath}`;
-    }
-    
-    // Prüfe auf image- Präfix, was auf ein hochgeladenes Bild hinweist
-    if (imagePath.startsWith('image-')) {
-      return `https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
-    }
-    
-    // Prüfe, ob es ein einfacher Dateiname oder ein vollständiger Pfad ist
-    return imagePath.includes('/')
-      ? imagePath
-      : `/images/characters/${imagePath}`;
+    return getAssetUrl(imagePath);
   };
 
   // Check if a file is a video

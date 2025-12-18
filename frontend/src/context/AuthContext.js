@@ -1,6 +1,6 @@
 // src/context/AuthContext.js
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import axios from 'axios';
+import api from '../utils/api';
 
 export const AuthContext = createContext();
 
@@ -11,21 +11,19 @@ export const AuthProvider = ({ children }) => {
 
   // Refresh user data from the server
   const refreshUser = useCallback(async () => {
-	try {
-	  const token = localStorage.getItem('token');
-	  if (!token) return;
-	  
-	  const response = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-		headers: { 'x-auth-token': token }
-	  });
-	  
-	  const newUserData = { ...response.data };
-	  setCurrentUser(newUserData);
-	  localStorage.setItem('user', JSON.stringify(newUserData));
-	  
-	} catch (error) {
-	  console.error('Error refreshing user:', error);
-	}
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) return;
+      
+      const response = await api.get('/auth/me');
+      
+      const newUserData = { ...response.data };
+      setCurrentUser(newUserData);
+      localStorage.setItem('user', JSON.stringify(newUserData));
+      
+    } catch (error) {
+      console.error('Error refreshing user:', error);
+    }
   }, []);
 
   useEffect(() => {
@@ -51,7 +49,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      const response = await axios.post('https://gachaapi.solidbooru.online/api/auth/login', {
+      const response = await api.post('/auth/login', {
         username,
         password
       });
@@ -59,11 +57,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', response.data.token);
       
       // Get user data from backend
-      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-        headers: {
-          'x-auth-token': response.data.token
-        }
-      });
+      const userResponse = await api.get('/auth/me');
       
       const userData = userResponse.data;
       setCurrentUser(userData);
@@ -79,7 +73,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, password) => {
     try {
-      const response = await axios.post('https://gachaapi.solidbooru.online/api/auth/signup', {
+      const response = await api.post('/auth/signup', {
         username,
         password
       });
@@ -87,11 +81,7 @@ export const AuthProvider = ({ children }) => {
       localStorage.setItem('token', response.data.token);
       
       // Get user data from backend
-      const userResponse = await axios.get('https://gachaapi.solidbooru.online/api/auth/me', {
-        headers: {
-          'x-auth-token': response.data.token
-        }
-      });
+      const userResponse = await api.get('/auth/me');
       
       const userData = userResponse.data;
       setCurrentUser(userData);

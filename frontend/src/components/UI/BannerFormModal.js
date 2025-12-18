@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FaImage, FaVideo, FaCalendar, FaSearch } from 'react-icons/fa';
+import { getAssetUrl } from '../../utils/api';
   
 const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [formData, setFormData] = useState({
@@ -65,22 +66,12 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       });
       // Set previews if available
       if (banner.image) {
-        const imageUrl = banner.image.startsWith('http')
-          ? banner.image
-          : banner.image.startsWith('/uploads')
-            ? `https://gachaapi.solidbooru.online${banner.image}`
-            : `/images/banners/${banner.image}`;
-        setImagePreview(imageUrl);
+        setImagePreview(getAssetUrl(banner.image));
       } else {
         setImagePreview(null);
       }
       if (banner.videoUrl) {
-        const videoUrl = banner.videoUrl.startsWith('http')
-          ? banner.videoUrl
-          : banner.videoUrl.startsWith('/uploads')
-            ? `https://gachaapi.solidbooru.online${banner.videoUrl}`
-            : `/videos/${banner.videoUrl}`;
-        setVideoPreview(videoUrl);
+        setVideoPreview(getAssetUrl(banner.videoUrl));
       } else {
         setVideoPreview(null);
       }
@@ -822,16 +813,7 @@ const CharOptionCheck = styled.div`
   
 const getImageUrl = (imagePath) => {
   if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
-  if (imagePath.startsWith('http')) {
-    return imagePath;
-  }
-  if (imagePath.startsWith('/uploads')) {
-    return `https://gachaapi.solidbooru.online${imagePath}`;
-  }
-  if (imagePath.startsWith('image-')) {
-    return `https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
-  }
-  return imagePath.includes('/') ? imagePath : `/images/characters/${imagePath}`;
+  return getAssetUrl(imagePath);
 };
   
 export default BannerFormModal;

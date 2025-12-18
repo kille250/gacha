@@ -17,12 +17,11 @@ import {
 	PullCountAdjuster, AdjustBtn, PullInfoGraphic, PullInfoCard, PullInfoIcon,
 	PullInfoLabel, PullInfoValue, ErrorNote
   } from '../components/GachaStyles';
-  import axios from 'axios';
   import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
   import { useParams, useNavigate } from 'react-router-dom';
   import styled from 'styled-components';
   import { motion, AnimatePresence } from 'framer-motion';
-  import { getBannerById, rollOnBanner, multiRollOnBanner } from '../utils/api';
+  import api, { getBannerById, rollOnBanner, multiRollOnBanner, getAssetUrl } from '../utils/api';
   import { AuthContext } from '../context/AuthContext';
   import { MdReplay, MdStars, MdLocalFireDepartment, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdArrowBack, MdInfo } from 'react-icons/md';
   import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight } from 'react-icons/fa';
@@ -289,9 +288,7 @@ import {
 	
 	const fetchUserCollection = useCallback(async () => {
 	  try {
-		const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
-		  headers: { 'x-auth-token': localStorage.getItem('token') }
-		});
+		const response = await api.get('/characters/collection');
 		setUserCollection(response.data);
 	  } catch (err) {
 		console.error("Error fetching user collection:", err);
@@ -406,24 +403,17 @@ import {
   
 	const getImagePath = (imageSrc) => {
 	  if (!imageSrc) return 'https://via.placeholder.com/300?text=No+Image';
-	  if (imageSrc.startsWith('http')) return imageSrc;
-	  if (imageSrc.startsWith('/uploads')) return `https://gachaapi.solidbooru.online${imageSrc}`;
-	  if (imageSrc.startsWith('image-')) return `https://gachaapi.solidbooru.online/uploads/characters/${imageSrc}`;
-	  return imageSrc.includes('/') ? imageSrc : `/images/characters/${imageSrc}`;
+	  return getAssetUrl(imageSrc);
 	};
   
 	const getBannerImagePath = (imageSrc) => {
 	  if (!imageSrc) return 'https://via.placeholder.com/1200x400?text=Banner';
-	  if (imageSrc.startsWith('http')) return imageSrc;
-	  if (imageSrc.startsWith('/uploads')) return `https://gachaapi.solidbooru.online${imageSrc}`;
-	  return `/images/banners/${imageSrc}`;
+	  return getAssetUrl(imageSrc);
 	};
   
 	const getVideoPath = (videoSrc) => {
 	  if (!videoSrc) return null;
-	  if (videoSrc.startsWith('http')) return videoSrc;
-	  if (videoSrc.startsWith('/uploads')) return `https://gachaapi.solidbooru.online${videoSrc}`;
-	  return `/videos/${videoSrc}`;
+	  return getAssetUrl(videoSrc);
 	};
   
 	const toggleSkipAnimations = () => setSkipAnimations(prev => !prev);

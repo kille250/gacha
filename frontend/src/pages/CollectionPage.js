@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { getCollection, getAllCharacters } from '../utils/api';
+import { getCollection, getAllCharacters, getAssetUrl } from '../utils/api';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch } from 'react-icons/fa';
   
@@ -83,16 +83,7 @@ const CollectionPage = () => {
 
   const getImagePath = (imageSrc) => {
     if (!imageSrc) return 'https://via.placeholder.com/200?text=No+Image';
-    if (imageSrc.startsWith('http')) {
-      return imageSrc;
-    }
-    if (imageSrc.startsWith('/uploads')) {
-      return `https://gachaapi.solidbooru.online${imageSrc}`;
-    }
-    if (imageSrc.startsWith('image-')) {
-      return `https://gachaapi.solidbooru.online/uploads/characters/${imageSrc}`;
-    }
-    return `/images/characters/${imageSrc}`;
+    return getAssetUrl(imageSrc);
   };
 
   // Create a map of owned character IDs for quick lookup

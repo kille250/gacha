@@ -1,9 +1,20 @@
 import axios from 'axios';
 
 // Use environment variable for API URL, with fallback for local development
-const API_URL = process.env.REACT_APP_API_URL 
-  ? `https://${process.env.REACT_APP_API_URL}/api`
-  : 'http://localhost:5000/api';
+const API_BASE = process.env.REACT_APP_API_URL 
+  ? `https://${process.env.REACT_APP_API_URL}`
+  : 'http://localhost:5000';
+
+export const API_URL = `${API_BASE}/api`;
+
+// Helper to get full URL for uploaded assets (images, videos)
+export const getAssetUrl = (path) => {
+  if (!path) return '';
+  if (path.startsWith('http')) return path;
+  if (path.startsWith('/uploads')) return `${API_BASE}${path}`;
+  if (path.startsWith('image-')) return `${API_BASE}/uploads/characters/${path}`;
+  return `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
+};
 
 const api = axios.create({
   baseURL: API_URL,

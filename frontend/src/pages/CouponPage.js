@@ -2,8 +2,8 @@
 import React, { useState, useContext, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import axios from 'axios';
 import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy } from 'react-icons/fa';
+import api, { getAssetUrl } from '../utils/api';
 import { MdHelp } from 'react-icons/md';
 import { AuthContext } from '../context/AuthContext';
 
@@ -40,11 +40,7 @@ const CouponPage = () => {
     setRewardInfo(null);
     
     try {
-      const response = await axios.post(
-        'https://gachaapi.solidbooru.online/api/coupons/redeem',
-        { code: couponCode },
-        { headers: { 'x-auth-token': localStorage.getItem('token') } }
-      );
+      const response = await api.post('/coupons/redeem', { code: couponCode });
       
       setSuccess(response.data.message);
       setRewardInfo(response.data);
@@ -248,22 +244,7 @@ const CouponPage = () => {
 // Helper to get character image URL
 const getCharacterImage = (imagePath) => {
   if (!imagePath) return 'https://via.placeholder.com/150?text=Character';
-  
-  if (imagePath.startsWith('http')) {
-    return imagePath;
-  }
-  
-  if (imagePath.startsWith('/uploads')) {
-    return `https://gachaapi.solidbooru.online${imagePath}`;
-  }
-  
-  if (imagePath.startsWith('image-')) {
-    return `https://gachaapi.solidbooru.online/uploads/characters/${imagePath}`;
-  }
-  
-  return imagePath.includes('/')
-    ? imagePath
-    : `/images/characters/${imagePath}`;
+  return getAssetUrl(imagePath);
 };
 
 // Styled Components

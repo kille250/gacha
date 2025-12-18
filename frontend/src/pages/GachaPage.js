@@ -18,8 +18,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdReplay, MdCheckCircle, MdFastForward, MdAdd, MdRemove, MdHelp } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy, FaArrowRight } from 'react-icons/fa';
-import axios from 'axios';
-import { rollCharacter, getActiveBanners } from '../utils/api';
+import api, { rollCharacter, getActiveBanners, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import confetti from 'canvas-confetti';
@@ -27,11 +26,7 @@ import { useNavigate } from 'react-router-dom';
   
 const rollMultipleCharacters = async (count = 10) => {
   try {
-    const response = await axios.post(
-      'https://gachaapi.solidbooru.online/api/characters/roll-multi',
-      { count },
-      { headers: { 'x-auth-token': localStorage.getItem('token') } }
-    );
+    const response = await api.post('/characters/roll-multi', { count });
     return response.data;
   } catch (error) {
     throw error;
@@ -240,9 +235,7 @@ const GachaPage = () => {
   
   const fetchUserCollection = useCallback(async () => {
     try {
-      const response = await axios.get('https://gachaapi.solidbooru.online/api/characters/collection', {
-        headers: { 'x-auth-token': localStorage.getItem('token') }
-      });
+      const response = await api.get('/characters/collection');
       setUserCollection(response.data);
     } catch (err) {
       console.error("Error fetching user collection:", err);
@@ -364,21 +357,12 @@ const GachaPage = () => {
   
   const getImagePath = (imageSrc) => {
     if (!imageSrc) return 'https://via.placeholder.com/300?text=No+Image';
-    if (imageSrc.startsWith('http')) return imageSrc;
-    if (imageSrc.startsWith('/uploads')) return `https://gachaapi.solidbooru.online${imageSrc}`;
-    if (imageSrc.startsWith('image-')) return `https://gachaapi.solidbooru.online/uploads/characters/${imageSrc}`;
-    return imageSrc.includes('/') ? imageSrc : `/images/characters/${imageSrc}`;
+    return getAssetUrl(imageSrc);
   };
   
   const getBannerImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/300x150?text=Banner';
-    if (imagePath.startsWith('http')) {
-      return imagePath;
-    }
-    if (imagePath.startsWith('/uploads')) {
-      return `https://gachaapi.solidbooru.online${imagePath}`;
-    }
-    return `/images/banners/${imagePath}`;
+    return getAssetUrl(imagePath);
   };
   
   const toggleSkipAnimations = () => setSkipAnimations(prev => !prev);

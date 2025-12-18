@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings, MdRadio, MdVolumeUp, MdVolumeOff, MdMenu, MdClose } from 'react-icons/md';
 import { FaGift, FaTicketAlt, FaPlay, FaStop } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
-import axios from 'axios';
+import api from '../../utils/api';
 
 const Navigation = () => {
   const location = useLocation();
@@ -96,10 +96,7 @@ const Navigation = () => {
         }));
       }
       
-      const response = await axios.get(
-        'https://gachaapi.solidbooru.online/api/auth/me', 
-        { headers: { 'x-auth-token': token } }
-      );
+      const response = await api.get('/auth/me');
       
       const lastReward = response.data.lastDailyReward ? new Date(response.data.lastDailyReward) : null;
       const now = new Date();
@@ -205,11 +202,7 @@ const Navigation = () => {
       const token = localStorage.getItem('token');
       if (!token) return;
       
-      const response = await axios.post(
-        'https://gachaapi.solidbooru.online/api/auth/daily-reward',
-        {},
-        { headers: { 'x-auth-token': token } }
-      );
+      const response = await api.post('/auth/daily-reward');
       
       // Show success popup
       setRewardPopup({
