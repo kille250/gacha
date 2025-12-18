@@ -147,6 +147,45 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     }
   };
 
+  // Upload a single batch of files
+  const uploadBatch = async (batchFiles, token) => {
+    const formData = new FormData();
+    
+    batchFiles.forEach(f => {
+      formData.append('images', f.file);
+    });
+
+    const metadata = batchFiles.map(f => ({
+      name: f.name,
+      series: f.series,
+      rarity: f.rarity,
+      isR18: f.isR18
+    }));
+    formData.append('metadata', JSON.stringify(metadata));
+
+    const response = await fetch('/api/admin/characters/multi-upload', {
+      method: 'POST',
+      headers: {
+        'x-auth-token': token
+      },
+      body: formData
+    });
+
+    const text = await response.text();
+    
+    if (!text) {
+      throw new Error('Server returned empty response');
+    }
+    
+    const result = JSON.parse(text);
+    
+    if (!response.ok) {
+      throw new Error(result.error || 'Upload failed');
+    }
+    
+    return result;
+  };
+
   const handleUpload = async () => {
     if (files.length === 0) return;
 
@@ -161,48 +200,55 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     setUploadProgress(0);
     setUploadResult(null);
 
+    const token = localStorage.getItem('token');
+    const BATCH_SIZE = 10; // Upload 10 files at a time
+    const batches = [];
+    
+    // Split files into batches
+    for (let i = 0; i < files.length; i += BATCH_SIZE) {
+      batches.push(files.slice(i, i + BATCH_SIZE));
+    }
+
+    let totalCreated = 0;
+    const allErrors = [];
+
     try {
-      const formData = new FormData();
-      
-      // Add all files
-      files.forEach(f => {
-        formData.append('images', f.file);
-      });
-
-      // Add metadata as JSON
-      const metadata = files.map(f => ({
-        name: f.name,
-        series: f.series,
-        rarity: f.rarity,
-        isR18: f.isR18
-      }));
-      formData.append('metadata', JSON.stringify(metadata));
-
-      const token = localStorage.getItem('token');
-      const response = await fetch('/api/admin/characters/multi-upload', {
-        method: 'POST',
-        headers: {
-          'x-auth-token': token
-        },
-        body: formData
-      });
-
-      const result = await response.json();
-
-      if (!response.ok) {
-        throw new Error(result.error || 'Upload failed');
+      for (let i = 0; i < batches.length; i++) {
+        const batch = batches[i];
+        setUploadProgress(Math.round((i / batches.length) * 100));
+        
+        try {
+          const result = await uploadBatch(batch, token);
+          totalCreated += result.characters?.length || 0;
+          if (result.errors) {
+            allErrors.push(...result.errors);
+          }
+        } catch (batchErr) {
+          // Add error for each file in failed batch
+          batch.forEach(f => {
+            allErrors.push({ filename: f.file.name, error: batchErr.message });
+          });
+        }
       }
 
-      setUploadResult(result);
+      setUploadProgress(100);
+      
+      const finalResult = {
+        message: `Successfully created ${totalCreated} characters`,
+        errors: allErrors.length > 0 ? allErrors : undefined
+      };
+      
+      setUploadResult(finalResult);
       
       // Clean up previews
       files.forEach(f => URL.revokeObjectURL(f.preview));
       setFiles([]);
       
-      if (onSuccess) {
-        onSuccess(result);
+      if (onSuccess && totalCreated > 0) {
+        onSuccess(finalResult);
       }
     } catch (err) {
+      console.error('Upload error:', err);
       setUploadResult({ error: err.message });
     } finally {
       setUploading(false);
@@ -426,7 +472,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
           </CancelButton>
           <UploadButton onClick={handleUpload} disabled={uploading || files.length === 0}>
             {uploading ? (
-              <>Uploading...</>
+              <>Uploading... {uploadProgress}%</>
             ) : (
               <>Upload {files.length} Character{files.length !== 1 ? 's' : ''}</>
             )}
