@@ -4,21 +4,18 @@ const cors = require('cors');
 const path = require('path');
 const sequelize = require('./config/db');
 const { initUploadDirs, UPLOAD_BASE, isProduction } = require('./config/upload');
-const Banner = require('./models/banner');
-const Character = require('./models/character');
-const User = require('./models/user');
 const schedule = require('node-schedule');
+
+// Import all models from index.js (includes associations)
+const { User, Character, Coupon, CouponRedemption } = require('./models');
+const Banner = require('./models/banner');
 
 // Create upload directories on startup
 initUploadDirs();
 
-// Set up associations after all models are loaded
+// Set up Banner associations (not in models/index.js)
 Banner.belongsToMany(Character, { through: 'BannerCharacters' });
 Character.belongsToMany(Banner, { through: 'BannerCharacters' });
-
-// Other associations
-User.belongsToMany(Character, { through: 'UserCharacters' });
-Character.belongsToMany(User, { through: 'UserCharacters' });
 
 const app = express();
 
@@ -90,13 +87,12 @@ app.use('/api/coupons', require('./routes/coupons'));
 const PORT = process.env.PORT || 5000;
 
 // Database sync - alter: true adds new columns without losing data
-// Server starts ONLY after database is ready
-sequelize.sync({ alter: true }).then(async () => {
-  console.log('Database synced successfully');
-  
-  // Start server after DB is ready
-  app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-}).catch(err => {
-  console.error('Failed to sync database:', err);
-  process.exit(1);
-});
+sequelize.sync({ alter: true })
+  .then(() => {
+    console.log('Database synced successfully');
+    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+  })
+  .catch(err => {
+    console.error('Failed to sync database:', err);
+    process.exit(1);
+  });
