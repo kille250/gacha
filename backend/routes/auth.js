@@ -168,8 +168,9 @@ router.post('/toggle-r18', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Debug: Log current DB value
-    console.log(`[R18 Toggle] User ${user.id} - DB value before: ${user.allowR18} (type: ${typeof user.allowR18})`);
+    // Debug: Log current value from Sequelize model
+    console.log(`[R18 Toggle] User ${user.id} - Sequelize value: ${user.allowR18} (type: ${typeof user.allowR18})`);
+    console.log(`[R18 Toggle] User dataValues:`, user.dataValues);
     
     // Get current value (handle null/undefined as false)
     const currentValue = user.allowR18 === true;
@@ -177,19 +178,27 @@ router.post('/toggle-r18', auth, async (req, res) => {
     
     console.log(`[R18 Toggle] Current: ${currentValue}, New: ${newValue}`);
     
-    // Use update() to ensure the change is persisted
-    await user.update({ allowR18: newValue });
+    // Use Sequelize update with explicit field
+    await User.update(
+      { allowR18: newValue },
+      { where: { id: req.user.id } }
+    );
     
-    // Verify the update by re-fetching
-    await user.reload();
-    console.log(`[R18 Toggle] DB value after reload: ${user.allowR18}`);
+    // Re-fetch the user to get updated value
+    const updatedUser = await User.findByPk(req.user.id, {
+      attributes: ['id', 'username', 'points', 'isAdmin', 'allowR18']
+    });
+    
+    console.log(`[R18 Toggle] After update - allowR18: ${updatedUser.allowR18}`);
+    console.log(`[R18 Toggle] Updated dataValues:`, updatedUser.dataValues);
     
     res.json({ 
       message: newValue ? 'R18 content enabled' : 'R18 content disabled',
-      allowR18: user.allowR18
+      allowR18: updatedUser.allowR18 ?? newValue
     });
   } catch (err) {
     console.error('Toggle R18 error:', err);
+    console.error('Error stack:', err.stack);
     res.status(500).json({ error: 'Server error' });
   }
 });

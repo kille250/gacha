@@ -89,55 +89,22 @@ const PORT = process.env.PORT || 5000;
 // Run migrations and start server
 async function startServer() {
   try {
-    // Sync database structure
-    await sequelize.sync();
-    console.log('Database synced');
+    // Sync database structure with alter: true to add missing columns
+    // This ensures model definitions match database schema
+    await sequelize.sync({ alter: true });
+    console.log('Database synced with alter: true');
     
-    // Run schema migrations
-    const queryInterface = sequelize.getQueryInterface();
-    const Sequelize = require('sequelize');
-    
-    // Define pending migrations
-    // Note: Sequelize converts camelCase to snake_case in PostgreSQL
-    const migrations = [
-      { table: 'Users', column: 'allowR18', dbColumn: 'allowR18', type: Sequelize.BOOLEAN, defaultValue: false },
-      { table: 'Characters', column: 'isR18', dbColumn: 'isR18', type: Sequelize.BOOLEAN, defaultValue: false }
-    ];
-    
-    // Apply migrations using raw SQL (more reliable with PostgreSQL)
+    // Verify the columns exist and log them for debugging
     if (process.env.DATABASE_URL) {
-      console.log('[Migration] Running PostgreSQL migrations...');
-      
-      // First, check what columns exist
       try {
         const [results] = await sequelize.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'Users';`);
-        console.log('[Migration] Users columns:', results.map(r => r.column_name).join(', '));
+        console.log('[Startup] Users columns:', results.map(r => r.column_name).join(', '));
+        
+        const [charResults] = await sequelize.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'Characters';`);
+        console.log('[Startup] Characters columns:', charResults.map(r => r.column_name).join(', '));
       } catch (e) {
-        console.log('[Migration] Could not list columns:', e.message);
+        console.log('[Startup] Could not list columns:', e.message);
       }
-      
-      for (const migration of migrations) {
-        try {
-          // Use unquoted column names - PostgreSQL will lowercase them
-          // But Sequelize by default uses camelCase, so we need quoted names
-          const sql = `ALTER TABLE "${migration.table}" ADD COLUMN IF NOT EXISTS "${migration.column}" BOOLEAN DEFAULT ${migration.defaultValue};`;
-          console.log(`[Migration] Running: ${sql}`);
-          await sequelize.query(sql);
-          console.log(`[Migration] ✓ ${migration.table}.${migration.column} ready`);
-        } catch (err) {
-          console.error(`[Migration] ERROR on ${migration.table}.${migration.column}:`, err.message);
-        }
-      }
-      
-      // Verify columns after migration
-      try {
-        const [results] = await sequelize.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'Users';`);
-        console.log('[Migration] Users columns after:', results.map(r => r.column_name).join(', '));
-      } catch (e) {
-        console.log('[Migration] Could not verify columns:', e.message);
-      }
-      
-      console.log('[Migration] Completed');
     }
     
     // Start server
