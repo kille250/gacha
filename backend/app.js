@@ -103,19 +103,23 @@ async function startServer() {
       { table: 'Characters', column: 'isR18', type: Sequelize.BOOLEAN, defaultValue: false }
     ];
     
-    // Apply migrations silently
-    for (const migration of migrations) {
-      try {
-        const tableDesc = await queryInterface.describeTable(migration.table);
-        if (!tableDesc[migration.column]) {
-          await queryInterface.addColumn(migration.table, migration.column, {
-            type: migration.type,
-            defaultValue: migration.defaultValue
-          });
+    // Apply migrations using raw SQL (more reliable with PostgreSQL)
+    if (process.env.DATABASE_URL) {
+      console.log('[Migration] Running PostgreSQL migrations...');
+      
+      for (const migration of migrations) {
+        try {
+          // Use raw SQL - PostgreSQL uses double quotes for identifiers
+          const sql = `ALTER TABLE "${migration.table}" ADD COLUMN IF NOT EXISTS "${migration.column}" BOOLEAN DEFAULT ${migration.defaultValue};`;
+          console.log(`[Migration] Running: ${sql}`);
+          await sequelize.query(sql);
+          console.log(`[Migration] ✓ ${migration.table}.${migration.column} ready`);
+        } catch (err) {
+          console.error(`[Migration] ERROR on ${migration.table}.${migration.column}:`, err.message);
         }
-      } catch (err) {
-        // Table might not exist yet, ignore
       }
+      
+      console.log('[Migration] Completed');
     }
     
     // Start server
