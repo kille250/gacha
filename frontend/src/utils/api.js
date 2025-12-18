@@ -1,9 +1,19 @@
 import axios from 'axios';
 
 // Use environment variable for API URL, with fallback for local development
-const API_BASE = process.env.REACT_APP_API_URL 
-  ? `https://${process.env.REACT_APP_API_URL}`
-  : 'http://localhost:5000';
+const getApiBase = () => {
+  const envUrl = process.env.REACT_APP_API_URL;
+  if (!envUrl) return 'http://localhost:5000';
+  
+  // If URL already has a dot, it's a full domain
+  if (envUrl.includes('.')) {
+    return `https://${envUrl}`;
+  }
+  // Otherwise, it's just the service name - add .onrender.com
+  return `https://${envUrl}.onrender.com`;
+};
+
+const API_BASE = getApiBase();
 
 export const API_URL = `${API_BASE}/api`;
 
