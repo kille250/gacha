@@ -1,18 +1,3 @@
-import {
-  LoadingContainer, SpinnerContainer, Spinner, LoadingText,
-  CoinIcon, PointsAmount,
-  CardContent, CharName, CharSeries, RarityBadge, CardActions,
-  ActionButton, MultiRollHeader, MultiRollCloseButton,
-  MultiCardContent, MultiCharName,
-  MultiRarityBadge, EmptyState, EmptyStateIcon, RollButton, RollCost,
-  MultiRollButton, PullCountDisplay,
-  PullSlider, ConfirmButton,
-  RollHint, rarityColors, ModalOverlay, NewMultiPullPanel, PanelHeader,
-  CloseButton, PanelContent, CurrentSelection, SelectionValue, SelectionCost,
-  DiscountTag, PresetOptions, PresetButton, DiscountBadge, SliderContainer,
-  PullCountAdjuster, AdjustBtn, PullInfoGraphic, PullInfoCard, PullInfoIcon,
-  PullInfoLabel, PullInfoValue, ErrorNote
-} from '../components/GachaStyles';
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -23,7 +8,66 @@ import { AuthContext } from '../context/AuthContext';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import confetti from 'canvas-confetti';
 import { useNavigate } from 'react-router-dom';
-  
+
+// Import centralized styles and components
+import {
+  rarityColors,
+  cardVariants,
+  cardVariantsFast,
+  containerVariants,
+  modalVariants,
+  overlayVariants,
+  gridItemVariants
+} from '../components/PullAnimations';
+
+import {
+  theme,
+  LoadingWrapper,
+  SpinnerOrb,
+  SpinnerRing,
+  LoadingLabel,
+  CoinEmoji,
+  RarityDot,
+  ModalBackdrop,
+  PullSettingsPanel,
+  PanelHead,
+  PanelCloseBtn,
+  PanelBody,
+  SelectionDisplay,
+  SelectionCount,
+  SelectionCost,
+  DiscountChip,
+  PresetGrid,
+  PresetChip,
+  DiscountLabel,
+  SliderBox,
+  CountAdjuster,
+  AdjustButton,
+  CountDisplay,
+  PullSliderInput,
+  InfoCardRow,
+  InfoCard,
+  InfoIcon,
+  InfoLabel,
+  InfoValue,
+  ConfirmPullBtn,
+  ErrorHint
+} from '../components/PullComponents';
+
+// ==================== CONSTANTS ====================
+
+const SINGLE_PULL_COST = 100;
+
+const rarityIcons = {
+  common: <FaDice />,
+  uncommon: <MdHelp />,
+  rare: <FaGem />,
+  epic: <MdHelp />,
+  legendary: <FaTrophy />
+};
+
+// ==================== API HELPERS ====================
+
 const rollMultipleCharacters = async (count = 10) => {
   try {
     const response = await api.post('/characters/roll-multi', { count });
@@ -33,29 +77,20 @@ const rollMultipleCharacters = async (count = 10) => {
   }
 };
 
-const rarityIcons = {
-  common: <FaDice />,
-  uncommon: <MdHelp />,
-  rare: <FaGem />,
-  epic: <MdHelp />,
-  legendary: <FaTrophy />
-};
-  
 // Check if a file is a video
 const isVideo = (file) => {
   if (!file) return false;
-  
   if (typeof file === 'string') {
     const lowerCasePath = file.toLowerCase();
     return lowerCasePath.endsWith('.mp4') || 
            lowerCasePath.endsWith('.webm') || 
            lowerCasePath.includes('video');
   }
-  
   return false;
 };
 
-// New MultiPullMenu component
+// ==================== MULTI PULL MENU COMPONENT ====================
+
 const MultiPullMenu = ({
   isOpen,
   onClose,
@@ -66,16 +101,10 @@ const MultiPullMenu = ({
   onConfirm,
   userPoints
 }) => {
-  // Get recommended pull counts based on maxPossiblePulls
   const getRecommendedPulls = () => {
-    const recommendations = [];
-    // Always recommend single pull
-    recommendations.push(1);
-    // Add 5-pull if possible (first discount tier)
+    const recommendations = [1];
     if (maxPossiblePulls >= 5) recommendations.push(5);
-    // Add 10-pull if possible (max discount tier)
     if (maxPossiblePulls >= 10) recommendations.push(10);
-    // Add max possible if it's not already included and is greater than 10
     if (maxPossiblePulls > 10 && !recommendations.includes(maxPossiblePulls)) {
       recommendations.push(maxPossiblePulls);
     }
@@ -85,119 +114,129 @@ const MultiPullMenu = ({
   return (
     <AnimatePresence>
       {isOpen && (
-        <ModalOverlay
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
+        <ModalBackdrop
+          variants={overlayVariants}
+          initial="hidden"
+          animate="visible"
+          exit="exit"
           onClick={onClose}
         >
-          <NewMultiPullPanel
+          <PullSettingsPanel
             onClick={(e) => e.stopPropagation()}
-            initial={{ scale: 0.9, opacity: 0 }}
-            animate={{ scale: 1, opacity: 1 }}
-            exit={{ scale: 0.9, opacity: 0 }}
+            variants={modalVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
           >
-            <PanelHeader>
+            <PanelHead>
               <h2>Multi Pull Settings</h2>
-              <CloseButton onClick={onClose}>×</CloseButton>
-            </PanelHeader>
-            <PanelContent>
-              <CurrentSelection>
-                <SelectionValue>{multiPullCount}×</SelectionValue>
+              <PanelCloseBtn onClick={onClose}>×</PanelCloseBtn>
+            </PanelHead>
+            <PanelBody>
+              <SelectionDisplay>
+                <SelectionCount>{multiPullCount}×</SelectionCount>
                 <SelectionCost>
                   {currentMultiPullCost} points
-                  {multiPullCount >= 10 && <DiscountTag>10% OFF</DiscountTag>}
-                  {multiPullCount >= 5 && multiPullCount < 10 && <DiscountTag>5% OFF</DiscountTag>}
+                  {multiPullCount >= 10 && <DiscountChip>10% OFF</DiscountChip>}
+                  {multiPullCount >= 5 && multiPullCount < 10 && <DiscountChip>5% OFF</DiscountChip>}
                 </SelectionCost>
-              </CurrentSelection>
-              <PresetOptions>
+              </SelectionDisplay>
+              
+              <PresetGrid>
                 {getRecommendedPulls().map(count => (
-                  <PresetButton
+                  <PresetChip
                     key={count}
                     onClick={() => setMultiPullCount(count)}
                     active={multiPullCount === count}
                     disabled={userPoints < (count * 100 * (count >= 10 ? 0.9 : count >= 5 ? 0.95 : 1))}
                   >
                     {count}× Pull
-                    {count >= 10 && <DiscountBadge>-10%</DiscountBadge>}
-                    {count >= 5 && count < 10 && <DiscountBadge>-5%</DiscountBadge>}
-                  </PresetButton>
+                    {count >= 10 && <DiscountLabel>-10%</DiscountLabel>}
+                    {count >= 5 && count < 10 && <DiscountLabel>-5%</DiscountLabel>}
+                  </PresetChip>
                 ))}
-                <PresetButton
+                <PresetChip
                   onClick={() => {}}
                   active={!getRecommendedPulls().includes(multiPullCount)}
-                  disabled={false}
                 >
                   Custom
-                </PresetButton>
-              </PresetOptions>
-              <SliderContainer>
-                <PullCountAdjuster>
-                  <AdjustBtn
+                </PresetChip>
+              </PresetGrid>
+              
+              <SliderBox>
+                <CountAdjuster>
+                  <AdjustButton
                     onClick={() => setMultiPullCount(Math.max(1, multiPullCount - 1))}
                     disabled={multiPullCount <= 1}
                   >
                     <MdRemove />
-                  </AdjustBtn>
-                  <PullCountDisplay>{multiPullCount}</PullCountDisplay>
-                  <AdjustBtn
+                  </AdjustButton>
+                  <CountDisplay>{multiPullCount}</CountDisplay>
+                  <AdjustButton
                     onClick={() => setMultiPullCount(Math.min(maxPossiblePulls, multiPullCount + 1))}
                     disabled={multiPullCount >= maxPossiblePulls}
                   >
                     <MdAdd />
-                  </AdjustBtn>
-                </PullCountAdjuster>
-                <PullSlider
+                  </AdjustButton>
+                </CountAdjuster>
+                <PullSliderInput
                   type="range"
                   min="1"
                   max={maxPossiblePulls || 1}
                   value={multiPullCount}
                   onChange={(e) => setMultiPullCount(parseInt(e.target.value))}
                 />
-              </SliderContainer>
-              <PullInfoGraphic>
-                <PullInfoCard>
-                  <PullInfoIcon>💰</PullInfoIcon>
-                  <PullInfoLabel>Total Cost</PullInfoLabel>
-                  <PullInfoValue>{currentMultiPullCost} pts</PullInfoValue>
-                </PullInfoCard>
-                <PullInfoCard>
-                  <PullInfoIcon>⭐</PullInfoIcon>
-                  <PullInfoLabel>Pull Count</PullInfoLabel>
-                  <PullInfoValue>{multiPullCount}×</PullInfoValue>
-                </PullInfoCard>
+              </SliderBox>
+              
+              <InfoCardRow>
+                <InfoCard>
+                  <InfoIcon>💰</InfoIcon>
+                  <InfoLabel>Total Cost</InfoLabel>
+                  <InfoValue>{currentMultiPullCost} pts</InfoValue>
+                </InfoCard>
+                <InfoCard>
+                  <InfoIcon>⭐</InfoIcon>
+                  <InfoLabel>Pull Count</InfoLabel>
+                  <InfoValue>{multiPullCount}×</InfoValue>
+                </InfoCard>
                 {multiPullCount >= 5 && (
-                  <PullInfoCard accent={true}>
-                    <PullInfoIcon>🎁</PullInfoIcon>
-                    <PullInfoLabel>Discount</PullInfoLabel>
-                    <PullInfoValue>{multiPullCount >= 10 ? '10%' : '5%'}</PullInfoValue>
-                  </PullInfoCard>
+                  <InfoCard accent>
+                    <InfoIcon>🎁</InfoIcon>
+                    <InfoLabel>Discount</InfoLabel>
+                    <InfoValue>{multiPullCount >= 10 ? '10%' : '5%'}</InfoValue>
+                  </InfoCard>
                 )}
-              </PullInfoGraphic>
-              <ConfirmButton
+              </InfoCardRow>
+              
+              <ConfirmPullBtn
                 onClick={onConfirm}
                 disabled={userPoints < currentMultiPullCost}
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
               >
                 <FaDice size={16} /> Pull {multiPullCount}× for {currentMultiPullCost} points
-              </ConfirmButton>
+              </ConfirmPullBtn>
+              
               {userPoints < currentMultiPullCost && (
-                <ErrorNote>
+                <ErrorHint>
                   <span>Not enough points.</span> You need {currentMultiPullCost - userPoints} more.
-                </ErrorNote>
+                </ErrorHint>
               )}
-            </PanelContent>
-          </NewMultiPullPanel>
-        </ModalOverlay>
+            </PanelBody>
+          </PullSettingsPanel>
+        </ModalBackdrop>
       )}
     </AnimatePresence>
   );
 };
 
+// ==================== MAIN COMPONENT ====================
+
 const GachaPage = () => {
   const navigate = useNavigate();
   const { user, refreshUser } = useContext(AuthContext);
+  
+  // State
   const [currentChar, setCurrentChar] = useState(null);
   const [multiRollResults, setMultiRollResults] = useState([]);
   const [isRolling, setIsRolling] = useState(false);
@@ -215,11 +254,11 @@ const GachaPage = () => {
   const [banners, setBanners] = useState([]);
   const [showHelpModal, setShowHelpModal] = useState(false);
   
-  // Calculate maximum possible pulls based on user points
-  const maxPossiblePulls = Math.min(20, Math.floor((user?.points || 0) / 100));
+  // Computed values
+  const maxPossiblePulls = Math.min(20, Math.floor((user?.points || 0) / SINGLE_PULL_COST));
   
   const calculateMultiPullCost = (count) => {
-    const baseCost = count * 100;
+    const baseCost = count * SINGLE_PULL_COST;
     let discount = 0;
     if (count >= 10) discount = 0.1;
     else if (count >= 5) discount = 0.05;
@@ -228,6 +267,7 @@ const GachaPage = () => {
   
   const currentMultiPullCost = calculateMultiPullCost(multiPullCount);
   
+  // Effects
   useEffect(() => {
     refreshUser();
   }, [refreshUser]);
@@ -236,12 +276,12 @@ const GachaPage = () => {
     fetchBanners();
   }, []);
   
-  // Set default multiPullCount based on user points
   useEffect(() => {
     const defaultCount = Math.min(10, maxPossiblePulls);
     setMultiPullCount(Math.max(1, defaultCount));
   }, [user?.points, maxPossiblePulls]);
   
+  // Callbacks
   const fetchBanners = async () => {
     try {
       const bannersData = await getActiveBanners();
@@ -257,7 +297,7 @@ const GachaPage = () => {
         particleCount: rarity === 'legendary' ? 200 : 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: [rarityColors[rarity], '#ffffff', '#gold']
+        colors: [rarityColors[rarity], '#ffffff', '#ffd700']
       });
     }
   }, []);
@@ -268,6 +308,7 @@ const GachaPage = () => {
     }
   }, [currentChar, skipAnimations, showRarePullEffect]);
   
+  // Handlers
   const handleRoll = async () => {
     try {
       setIsRolling(true);
@@ -276,7 +317,9 @@ const GachaPage = () => {
       setError(null);
       setMultiRollResults([]);
       setRollCount(prev => prev + 1);
+      
       const animationDuration = skipAnimations ? 0 : 1200;
+      
       setTimeout(async () => {
         try {
           const character = await rollCharacter();
@@ -310,7 +353,9 @@ const GachaPage = () => {
       setError(null);
       setMultiPullMenuOpen(false);
       setRollCount(prev => prev + multiPullCount);
+      
       const animationDuration = skipAnimations ? 0 : 1200;
+      
       setTimeout(async () => {
         try {
           const characters = await rollMultipleCharacters(multiPullCount);
@@ -318,6 +363,7 @@ const GachaPage = () => {
           setShowMultiResults(true);
           const bestRarity = findBestRarity(characters);
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
+          
           if (characters.some(char => ['rare', 'epic', 'legendary'].includes(char.rarity)) && !skipAnimations) {
             confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
           }
@@ -352,9 +398,6 @@ const GachaPage = () => {
     return getAssetUrl(imagePath);
   };
   
-  const toggleSkipAnimations = () => setSkipAnimations(prev => !prev);
-  const toggleHelpModal = () => setShowHelpModal(prev => !prev);
-  
   const openPreview = (character) => {
     if (character) {
       setPreviewChar(character);
@@ -367,77 +410,83 @@ const GachaPage = () => {
     setPreviewChar(null);
   };
   
+  // Animation variants based on skip mode
+  const currentCardVariants = skipAnimations ? cardVariantsFast : cardVariants;
+  
   return (
-    <MainContainer>
+    <PageContainer>
       <Dashboard>
-        {/* Header bar with points and other info */}
+        {/* Header */}
         <Header>
           <Logo>
             <span>Gacha</span>
-            <GlowingText>Master</GlowingText>
+            <LogoAccent>Master</LogoAccent>
           </Logo>
-          <UserStats>
-            <StatsBadge>
+          <HeaderStats>
+            <StatChip>
               <FaDice />
               <span>{rollCount} Rolls</span>
-            </StatsBadge>
-            <PointsDisplay>
-              <CoinIcon>🪙</CoinIcon>
-              <PointsAmount>{user?.points || 0}</PointsAmount>
-            </PointsDisplay>
+            </StatChip>
+            <PointsChip>
+              <CoinEmoji>🪙</CoinEmoji>
+              <span>{user?.points || 0}</span>
+            </PointsChip>
             <ControlButtons>
-              <CircleButton onClick={toggleHelpModal} title="Help">
+              <IconBtn onClick={() => setShowHelpModal(true)} title="Help">
                 <MdHelp />
-              </CircleButton>
-              <CircleButton onClick={() => setShowSettings(!showSettings)} title="Settings">
+              </IconBtn>
+              <IconBtn onClick={() => setShowSettings(!showSettings)} title="Settings">
                 ⚙️
-              </CircleButton>
+              </IconBtn>
             </ControlButtons>
-          </UserStats>
+          </HeaderStats>
         </Header>
         
         {/* Settings Panel */}
         <AnimatePresence>
           {showSettings && (
-            <SettingsPanel
+            <SettingsBar
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: -10 }}
             >
-              <SettingGroup>
-                <SettingLabel>Skip Animations</SettingLabel>
+              <SettingRow>
+                <span>Skip Animations</span>
                 <ToggleSwitch
+                  type="checkbox"
                   checked={skipAnimations}
-                  onChange={toggleSkipAnimations}
+                  onChange={() => setSkipAnimations(prev => !prev)}
                 />
-              </SettingGroup>
-              <PanelCloseBtn onClick={() => setShowSettings(false)}>×</PanelCloseBtn>
-            </SettingsPanel>
+              </SettingRow>
+              <CloseSettingsBtn onClick={() => setShowSettings(false)}>×</CloseSettingsBtn>
+            </SettingsBar>
           )}
         </AnimatePresence>
         
-        {/* Error message */}
+        {/* Error Alert */}
         <AnimatePresence>
           {error && (
-            <ErrorAlert
+            <ErrorBar
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
               {error}
-              <ErrorCloseBtn onClick={() => setError(null)}>×</ErrorCloseBtn>
-            </ErrorAlert>
+              <CloseErrorBtn onClick={() => setError(null)}>×</CloseErrorBtn>
+            </ErrorBar>
           )}
         </AnimatePresence>
         
-        {/* Content area with 2-column layout for desktop */}
-        <ContentArea>
-          {/* Left column for gacha pulls */}
-          <GachaColumn>
-            <SectionHeading>
+        {/* Main Content */}
+        <ContentGrid>
+          {/* Gacha Section */}
+          <GachaSection>
+            <SectionTitle>
               <SectionIcon>🎲</SectionIcon>
               <span>Standard Gacha</span>
-            </SectionHeading>
+            </SectionTitle>
+            
+            {/* Rarity Tracker */}
             <RarityTracker>
               {lastRarities.length > 0 && (
                 <>
@@ -459,30 +508,29 @@ const GachaPage = () => {
               )}
             </RarityTracker>
             
-            {/* Character/Results Display */}
-            <ResultsDisplay>
+            {/* Results Display */}
+            <ResultsArea>
               <AnimatePresence mode="wait">
                 {showCard && !showMultiResults ? (
-                  <CharacterCardContainer
+                  <CharacterCard
                     key="character"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: skipAnimations ? 0.2 : 0.4 }}
+                    variants={currentCardVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
                     rarity={currentChar?.rarity}
                   >
-                    <CardImageWrapper onClick={() => openPreview({...currentChar, isVideo: isVideo(currentChar.image)})}>
-                      <RarityIndicator rarity={currentChar?.rarity} />
-                      <CollectionLabel>Added to Collection</CollectionLabel>
+                    <CardMedia onClick={() => openPreview({...currentChar, isVideo: isVideo(currentChar.image)})}>
+                      <RarityGlow rarity={currentChar?.rarity} />
+                      <CollectedLabel>Added to Collection</CollectedLabel>
                       
                       {isVideo(currentChar?.image) ? (
-                        <CharacterVideo
+                        <CardVideo
                           src={getImagePath(currentChar?.image)}
                           autoPlay
                           loop
                           muted
                           playsInline
-                          onClick={() => openPreview({...currentChar, isVideo: true})}
                           onError={(e) => {
                             if (!e.target.src.includes('placeholder.com')) {
                               e.target.src = 'https://via.placeholder.com/300?text=No+Image';
@@ -490,10 +538,9 @@ const GachaPage = () => {
                           }}
                         />
                       ) : (
-                        <CharacterImage
+                        <CardImage
                           src={getImagePath(currentChar?.image)}
                           alt={currentChar?.name}
-                          onClick={() => openPreview(currentChar)}
                           onError={(e) => {
                             if (!e.target.src.includes('placeholder.com')) {
                               e.target.src = 'https://via.placeholder.com/300?text=No+Image';
@@ -502,55 +549,58 @@ const GachaPage = () => {
                         />
                       )}
                       
-                      <ZoomIndicator>🔍</ZoomIndicator>
-                    </CardImageWrapper>
-                    <CardContent>
+                      <ZoomHint>🔍</ZoomHint>
+                    </CardMedia>
+                    
+                    <CardDetails>
                       <CharName>{currentChar?.name}</CharName>
                       <CharSeries>{currentChar?.series}</CharSeries>
                       <RarityBadge rarity={currentChar?.rarity}>
                         {rarityIcons[currentChar?.rarity]} {currentChar?.rarity}
                       </RarityBadge>
-                    </CardContent>
+                    </CardDetails>
+                    
                     <CardActions>
-                      <ActionButton
-                        primary={true}
-                        disabled={true}
-                      >
-                        <><MdCheckCircle /> Added to Collection</>
-                      </ActionButton>
-                      <ActionButton
+                      <ActionBtn primary disabled>
+                        <MdCheckCircle /> Added to Collection
+                      </ActionBtn>
+                      <ActionBtn
                         onClick={handleRoll}
-                        disabled={isRolling || (user?.points < 100)}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
+                        disabled={isRolling || (user?.points < SINGLE_PULL_COST)}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
                       >
                         <MdReplay /> Roll Again
-                      </ActionButton>
+                      </ActionBtn>
                     </CardActions>
-                  </CharacterCardContainer>
+                  </CharacterCard>
+                  
                 ) : showMultiResults ? (
-                  <MultiRollDisplayScroller
+                  <MultiResultsPanel
                     key="multiResults"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
                   >
-                    <MultiRollHeader>
+                    <MultiHeader>
                       <h2>{multiRollResults.length}× Pull Results</h2>
-                      <MultiRollCloseButton onClick={() => setShowMultiResults(false)}>×</MultiRollCloseButton>
-                    </MultiRollHeader>
-                    <MultiCardsGrid>
+                      <CloseMultiBtn onClick={() => setShowMultiResults(false)}>×</CloseMultiBtn>
+                    </MultiHeader>
+                    <MultiGrid>
                       {multiRollResults.map((character, index) => (
-                        <MultiCardContainer
+                        <MiniCard
                           key={index}
-                          initial={{ scale: 0.9, opacity: 0 }}
-                          animate={{ scale: 1, opacity: 1 }}
-                          transition={{ delay: skipAnimations ? 0 : index * 0.05 }}
+                          custom={index}
+                          variants={gridItemVariants}
+                          initial="hidden"
+                          animate="visible"
+                          whileHover="hover"
                           rarity={character.rarity}
                           onClick={() => openPreview({...character, isVideo: isVideo(character.image)})}
                         >
                           {isVideo(character.image) ? (
-                            <MultiCardVideo
+                            <MiniCardVideo
                               src={getImagePath(character.image)}
                               autoPlay
                               loop
@@ -563,7 +613,7 @@ const GachaPage = () => {
                               }}
                             />
                           ) : (
-                            <MultiCardImage
+                            <MiniCardImage
                               src={getImagePath(character.image)}
                               alt={character.name}
                               onError={(e) => {
@@ -574,49 +624,53 @@ const GachaPage = () => {
                             />
                           )}
                           
-                          <MultiCharBadge>✓</MultiCharBadge>
-                          <MultiCardContent>
-                            <MultiCharName>{character.name}</MultiCharName>
-                            <MultiRarityBadge rarity={character.rarity}>
+                          <CollectedDot>✓</CollectedDot>
+                          <MiniCardInfo>
+                            <MiniCharName>{character.name}</MiniCharName>
+                            <MiniRarityBadge rarity={character.rarity}>
                               {rarityIcons[character.rarity]} {character.rarity}
-                            </MultiRarityBadge>
-                          </MultiCardContent>
-                        </MultiCardContainer>
+                            </MiniRarityBadge>
+                          </MiniCardInfo>
+                        </MiniCard>
                       ))}
-                    </MultiCardsGrid>
-                  </MultiRollDisplayScroller>
+                    </MultiGrid>
+                  </MultiResultsPanel>
+                  
                 ) : isRolling ? (
-                  <LoadingContainer
+                  <LoadingWrapper
                     key="loading"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
                   >
-                    <SpinnerContainer>
-                      <Spinner />
-                    </SpinnerContainer>
-                    <LoadingText>Summoning character{multiRollResults.length > 0 ? 's' : ''}...</LoadingText>
-                  </LoadingContainer>
+                    <SpinnerOrb>
+                      <SpinnerRing />
+                    </SpinnerOrb>
+                    <LoadingLabel>Summoning character{multiRollResults.length > 0 ? 's' : ''}...</LoadingLabel>
+                  </LoadingWrapper>
+                  
                 ) : (
                   <EmptyState
                     key="empty"
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
                   >
-                    <EmptyStateIcon>✨</EmptyStateIcon>
+                    <EmptyIcon>✨</EmptyIcon>
                     <h3>Roll to Discover Characters!</h3>
                     <p>Try your luck and build your collection</p>
                   </EmptyState>
                 )}
               </AnimatePresence>
-            </ResultsDisplay>
+            </ResultsArea>
             
             {/* Roll Buttons */}
             <RollControls>
               <RollButton
                 onClick={handleRoll}
-                disabled={isRolling || (user?.points < 100)}
+                disabled={isRolling || (user?.points < SINGLE_PULL_COST)}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
               >
@@ -624,18 +678,17 @@ const GachaPage = () => {
                   <>💫 Single Pull <RollCost>(100 pts)</RollCost></>
                 )}
               </RollButton>
-              <MultiRollButton
+              <MultiRollBtn
                 onClick={isRolling ? null : () => setMultiPullMenuOpen(true)}
-                disabled={isRolling || (user?.points < 100)}
+                disabled={isRolling || (user?.points < SINGLE_PULL_COST)}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
               >
                 {isRolling ? "Summoning..." : (
                   <>🎯 Multi Pull <RollCost>(100+ pts)</RollCost></>
                 )}
-              </MultiRollButton>
+              </MultiRollBtn>
               
-              {/* New Multi Pull Menu as a Modal */}
               <MultiPullMenu
                 isOpen={multiPullMenuOpen}
                 onClose={() => setMultiPullMenuOpen(false)}
@@ -647,25 +700,28 @@ const GachaPage = () => {
                 userPoints={user?.points || 0}
               />
             </RollControls>
+            
             <RollHint>
-              You have enough points for <strong>{Math.floor((user?.points || 0) / 100)}</strong> single pulls
+              You have enough points for <strong>{Math.floor((user?.points || 0) / SINGLE_PULL_COST)}</strong> single pulls
               {maxPossiblePulls > 1 && ` or up to a ${maxPossiblePulls}× multi-pull`}
             </RollHint>
+            
             {skipAnimations && (
-              <FastModeIndicator>
+              <FastModeTag>
                 <MdFastForward /> Fast Mode Enabled
-              </FastModeIndicator>
+              </FastModeTag>
             )}
-          </GachaColumn>
+          </GachaSection>
           
-          {/* Right column for banners */}
-          <BannersColumn>
-            <SectionHeading>
+          {/* Banners Section */}
+          <BannersSection>
+            <SectionTitle>
               <SectionIcon>🏆</SectionIcon>
               <span>Special Banners</span>
-            </SectionHeading>
+            </SectionTitle>
+            
             {banners.length > 0 ? (
-              <BannersListWrapper>
+              <BannersScroller>
                 <BannersList>
                   {banners.map(banner => (
                     <BannerCard
@@ -702,14 +758,14 @@ const GachaPage = () => {
                     </BannerCard>
                   ))}
                 </BannersList>
-              </BannersListWrapper>
+              </BannersScroller>
             ) : (
               <EmptyBanners>
                 <p>No special banners available right now.</p>
               </EmptyBanners>
             )}
-          </BannersColumn>
-        </ContentArea>
+          </BannersSection>
+        </ContentGrid>
       </Dashboard>
       
       {/* Character Preview Modal */}
@@ -728,24 +784,26 @@ const GachaPage = () => {
       {/* Help Modal */}
       <AnimatePresence>
         {showHelpModal && (
-          <ModalOverlay
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={toggleHelpModal}
+          <ModalBackdrop
+            variants={overlayVariants}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={() => setShowHelpModal(false)}
           >
             <HelpModal
-              initial={{ scale: 0.9 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.9 }}
+              variants={modalVariants}
+              initial="hidden"
+              animate="visible"
+              exit="exit"
               onClick={(e) => e.stopPropagation()}
             >
-              <HelpModalHeader>
+              <HelpHeader>
                 <h2>How to Play</h2>
-                <CloseButton onClick={toggleHelpModal}>×</CloseButton>
-              </HelpModalHeader>
-              <HelpModalContent>
-                <HelpSection>
+                <PanelCloseBtn onClick={() => setShowHelpModal(false)}>×</PanelCloseBtn>
+              </HelpHeader>
+              <HelpContent>
+                <HelpBlock>
                   <h3>Getting Started</h3>
                   <p>Use your points to pull characters and build your collection!</p>
                   <ul>
@@ -753,8 +811,8 @@ const GachaPage = () => {
                     <li>Multi Pulls offer discounts (5% for 5+ pulls, 10% for 10+ pulls)</li>
                     <li>Special banners have unique characters with different rates</li>
                   </ul>
-                </HelpSection>
-                <HelpSection>
+                </HelpBlock>
+                <HelpBlock>
                   <h3>Rarities</h3>
                   <RarityGuide>
                     {Object.entries(rarityColors).map(([rarity, color]) => (
@@ -764,26 +822,27 @@ const GachaPage = () => {
                       </RarityItem>
                     ))}
                   </RarityGuide>
-                </HelpSection>
-                <HelpSection>
+                </HelpBlock>
+                <HelpBlock>
                   <h3>Tips</h3>
                   <ul>
                     <li>Toggle Fast Mode to skip animations</li>
                     <li>Check special banners for featured characters</li>
                   </ul>
-                </HelpSection>
-              </HelpModalContent>
+                </HelpBlock>
+              </HelpContent>
             </HelpModal>
-          </ModalOverlay>
+          </ModalBackdrop>
         )}
       </AnimatePresence>
-    </MainContainer>
+    </PageContainer>
   );
 };
-  
+
 // ==================== STYLED COMPONENTS ====================
-// Main container styles
-const MainContainer = styled.div`
+
+// Layout
+const PageContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(135deg, #141e30 0%, #243b55 100%);
   color: white;
@@ -793,10 +852,7 @@ const MainContainer = styled.div`
   &::after {
     content: "";
     position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
+    inset: 0;
     background-image: url('/images/backgrounds/gacha-bg.jpg');
     background-size: cover;
     background-position: center;
@@ -816,6 +872,17 @@ const Dashboard = styled.div`
   }
 `;
 
+const ContentGrid = styled.div`
+  display: grid;
+  grid-template-columns: 3fr 2fr;
+  gap: 20px;
+  
+  @media (max-width: 1100px) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+// Header
 const Header = styled.header`
   display: flex;
   justify-content: space-between;
@@ -848,7 +915,7 @@ const Logo = styled.div`
   }
 `;
 
-const GlowingText = styled.span`
+const LogoAccent = styled.span`
   background: linear-gradient(90deg, #6e48aa, #9e5594);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
@@ -866,7 +933,7 @@ const GlowingText = styled.span`
   }
 `;
 
-const UserStats = styled.div`
+const HeaderStats = styled.div`
   display: flex;
   align-items: center;
   gap: 15px;
@@ -882,7 +949,7 @@ const UserStats = styled.div`
   }
 `;
 
-const StatsBadge = styled.div`
+const StatChip = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -893,7 +960,7 @@ const StatsBadge = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
-const PointsDisplay = styled.div`
+const PointsChip = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
@@ -910,7 +977,7 @@ const ControlButtons = styled.div`
   gap: 8px;
 `;
 
-const CircleButton = styled.button`
+const IconBtn = styled.button`
   background: rgba(0, 0, 0, 0.3);
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: white;
@@ -930,7 +997,8 @@ const CircleButton = styled.button`
   }
 `;
 
-const SettingsPanel = styled(motion.div)`
+// Settings
+const SettingsBar = styled(motion.div)`
   background: rgba(20, 30, 48, 0.9);
   backdrop-filter: blur(5px);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -941,28 +1009,24 @@ const SettingsPanel = styled(motion.div)`
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
 `;
 
-const SettingGroup = styled.div`
+const SettingRow = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
 `;
 
-const SettingLabel = styled.span`
-  font-weight: 500;
-`;
-
-const ToggleSwitch = styled.input.attrs({ type: 'checkbox' })`
+const ToggleSwitch = styled.input`
   appearance: none;
   width: 46px;
   height: 24px;
-  background-color: #555;
+  background: #555;
   border-radius: 12px;
   position: relative;
   cursor: pointer;
   transition: all 0.3s;
   
   &:checked {
-    background-color: #6e48aa;
+    background: #6e48aa;
   }
   
   &::before {
@@ -971,7 +1035,7 @@ const ToggleSwitch = styled.input.attrs({ type: 'checkbox' })`
     width: 18px;
     height: 18px;
     border-radius: 50%;
-    background-color: white;
+    background: white;
     top: 3px;
     left: 3px;
     transition: transform 0.3s;
@@ -982,7 +1046,7 @@ const ToggleSwitch = styled.input.attrs({ type: 'checkbox' })`
   }
 `;
 
-const PanelCloseBtn = styled.button`
+const CloseSettingsBtn = styled.button`
   position: absolute;
   top: 10px;
   right: 10px;
@@ -991,18 +1055,14 @@ const PanelCloseBtn = styled.button`
   color: white;
   font-size: 20px;
   cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 24px;
-  height: 24px;
   
   &:hover {
     opacity: 0.8;
   }
 `;
 
-const ErrorAlert = styled(motion.div)`
+// Error
+const ErrorBar = styled(motion.div)`
   background: #d32f2f;
   color: white;
   padding: 12px 20px;
@@ -1014,7 +1074,7 @@ const ErrorAlert = styled(motion.div)`
   box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
 `;
 
-const ErrorCloseBtn = styled.button`
+const CloseErrorBtn = styled.button`
   background: none;
   border: none;
   color: white;
@@ -1022,18 +1082,8 @@ const ErrorCloseBtn = styled.button`
   cursor: pointer;
 `;
 
-// Content area with responsive layout
-const ContentArea = styled.div`
-  display: grid;
-  grid-template-columns: 3fr 2fr;
-  gap: 20px;
-  
-  @media (max-width: 1100px) {
-    grid-template-columns: 1fr;
-  }
-`;
-
-const SectionHeading = styled.h2`
+// Section
+const SectionTitle = styled.h2`
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1062,8 +1112,8 @@ const SectionIcon = styled.span`
   font-size: 24px;
 `;
 
-// Left column (Gacha rolling area)
-const GachaColumn = styled.div`
+// Gacha Section
+const GachaSection = styled.div`
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(5px);
   border-radius: 16px;
@@ -1075,7 +1125,6 @@ const GachaColumn = styled.div`
   }
 `;
 
-// Rarity tracker component
 const RarityTracker = styled.div`
   display: flex;
   align-items: center;
@@ -1104,21 +1153,7 @@ const RarityBubbles = styled.div`
   flex-wrap: wrap;
 `;
 
-const RarityDot = styled(motion.div)`
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: ${props => rarityColors[props.rarity] || '#555'};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 16px;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
-`;
-
-// Results display area
-const ResultsDisplay = styled.div`
+const ResultsArea = styled.div`
   min-height: 400px;
   display: flex;
   align-items: center;
@@ -1130,15 +1165,16 @@ const ResultsDisplay = styled.div`
   }
 `;
 
-// Character card components
-const CharacterCardContainer = styled(motion.div)`
+// Character Card
+const CharacterCard = styled(motion.div)`
   background: white;
   border-radius: 16px;
   overflow: hidden;
   width: 100%;
   max-width: 350px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2),
-    0 0 15px ${props => rarityColors[props.rarity] || 'rgba(0,0,0,0)'};
+  box-shadow: 
+    0 10px 25px rgba(0, 0, 0, 0.2),
+    0 0 15px ${props => rarityColors[props.rarity] || 'transparent'};
   border: 2px solid ${props => rarityColors[props.rarity] || '#ddd'};
   
   @media (max-width: 480px) {
@@ -1146,7 +1182,7 @@ const CharacterCardContainer = styled(motion.div)`
   }
 `;
 
-const CardImageWrapper = styled.div`
+const CardMedia = styled.div`
   position: relative;
   height: 300px;
   cursor: pointer;
@@ -1157,19 +1193,20 @@ const CardImageWrapper = styled.div`
   }
 `;
 
-const RarityIndicator = styled.div`
+const RarityGlow = styled.div`
   position: absolute;
   inset: 0;
-  background:
-    radial-gradient(circle at 50% 80%,
+  background: radial-gradient(
+    circle at 50% 80%,
     ${props => rarityColors[props.rarity] || 'transparent'} 0%,
-    transparent 60%);
+    transparent 60%
+  );
   opacity: 0.7;
   z-index: 1;
   pointer-events: none;
 `;
 
-const CollectionLabel = styled.div`
+const CollectedLabel = styled.div`
   position: absolute;
   top: 10px;
   left: 10px;
@@ -1182,7 +1219,7 @@ const CollectionLabel = styled.div`
   font-weight: 500;
 `;
 
-const CharacterImage = styled.img`
+const CardImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1193,7 +1230,7 @@ const CharacterImage = styled.img`
   }
 `;
 
-const CharacterVideo = styled.video`
+const CardVideo = styled.video`
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -1204,7 +1241,7 @@ const CharacterVideo = styled.video`
   }
 `;
 
-const ZoomIndicator = styled.div`
+const ZoomHint = styled.div`
   position: absolute;
   bottom: 10px;
   right: 10px;
@@ -1219,8 +1256,89 @@ const ZoomIndicator = styled.div`
   z-index: 2;
 `;
 
-// Multi roll components
-const MultiRollDisplayScroller = styled(motion.div)`
+const CardDetails = styled.div`
+  padding: 15px;
+  position: relative;
+  background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.8));
+`;
+
+const CharName = styled.h2`
+  margin: 0 0 5px 0;
+  font-size: 22px;
+  color: #333;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+`;
+
+const CharSeries = styled.p`
+  margin: 0;
+  color: #666;
+  font-style: italic;
+  font-size: 14px;
+`;
+
+const RarityBadge = styled.div`
+  position: absolute;
+  top: -15px;
+  right: 20px;
+  background: ${props => rarityColors[props.rarity] || rarityColors.common};
+  color: white;
+  padding: 6px 12px;
+  border-radius: 30px;
+  font-size: 12px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
+  z-index: 5;
+  
+  ${props => ['legendary', 'epic'].includes(props.rarity) && `
+    animation: shiny 2s infinite;
+    
+    @keyframes shiny {
+      0%, 100% { filter: brightness(1); }
+      50% { filter: brightness(1.3); }
+    }
+  `}
+`;
+
+const CardActions = styled.div`
+  display: flex;
+  border-top: 1px solid rgba(0, 0, 0, 0.05);
+`;
+
+const ActionBtn = styled(motion.button)`
+  flex: 1;
+  background: ${props => props.primary ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'transparent'};
+  color: ${props => props.primary ? 'white' : '#555'};
+  border: none;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  font-size: 15px;
+  font-weight: ${props => props.primary ? 'bold' : 'normal'};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.2s;
+  
+  &:first-child {
+    border-right: 1px solid #eee;
+  }
+  
+  &:hover:not(:disabled) {
+    background: ${props => props.primary ? 'linear-gradient(135deg, #667eea, #764ba2)' : '#f5f5f5'};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+  }
+`;
+
+// Multi-roll
+const MultiResultsPanel = styled(motion.div)`
   background: white;
   border-radius: 16px;
   width: 100%;
@@ -1230,7 +1348,40 @@ const MultiRollDisplayScroller = styled(motion.div)`
   max-height: 70vh;
 `;
 
-const MultiCardsGrid = styled.div`
+const MultiHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: linear-gradient(135deg, #4b6cb7, #182848);
+  padding: 15px 20px;
+  color: white;
+  
+  h2 {
+    margin: 0;
+    font-size: 22px;
+    font-weight: 600;
+  }
+`;
+
+const CloseMultiBtn = styled.button`
+  background: transparent;
+  border: none;
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 50%;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+  }
+`;
+
+const MultiGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
   gap: 15px;
@@ -1243,31 +1394,31 @@ const MultiCardsGrid = styled.div`
   }
 `;
 
-const MultiCardContainer = styled(motion.div)`
+const MiniCard = styled(motion.div)`
   position: relative;
   border-radius: 12px;
   overflow: hidden;
   border: 2px solid ${props => rarityColors[props.rarity] || '#ddd'};
   background: white;
-  box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
   cursor: pointer;
   display: flex;
   flex-direction: column;
 `;
 
-const MultiCardImage = styled.img`
+const MiniCardImage = styled.img`
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1;
   object-fit: cover;
 `;
 
-const MultiCardVideo = styled.video`
+const MiniCardVideo = styled.video`
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 1;
   object-fit: cover;
 `;
 
-const MultiCharBadge = styled.div`
+const CollectedDot = styled.div`
   position: absolute;
   top: 5px;
   left: 5px;
@@ -1282,7 +1433,79 @@ const MultiCharBadge = styled.div`
   font-size: 12px;
 `;
 
-// Roll controls
+const MiniCardInfo = styled.div`
+  padding: 10px;
+  position: relative;
+`;
+
+const MiniCharName = styled.h3`
+  margin: 0;
+  font-size: 14px;
+  color: #333;
+  font-weight: 600;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const MiniRarityBadge = styled.div`
+  position: absolute;
+  top: -10px;
+  right: 10px;
+  background: ${props => rarityColors[props.rarity] || rarityColors.common};
+  color: white;
+  padding: 3px 8px;
+  border-radius: 20px;
+  font-size: 10px;
+  font-weight: bold;
+  text-transform: uppercase;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  box-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+  z-index: 5;
+`;
+
+// Empty State
+const EmptyState = styled(motion.div)`
+  text-align: center;
+  color: white;
+  padding: 40px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 16px;
+  backdrop-filter: blur(5px);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
+  max-width: 350px;
+  
+  h3 {
+    font-size: 24px;
+    margin: 0 0 15px 0;
+    background: linear-gradient(135deg, #fff, #ccc);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    font-weight: 700;
+  }
+  
+  p {
+    margin: 0;
+    font-size: 16px;
+    opacity: 0.9;
+  }
+`;
+
+const EmptyIcon = styled.div`
+  font-size: 36px;
+  margin-bottom: 15px;
+  animation: float 3s ease-in-out infinite;
+  
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-10px); }
+  }
+`;
+
+// Roll Controls
 const RollControls = styled.div`
   display: flex;
   gap: 15px;
@@ -1294,14 +1517,84 @@ const RollControls = styled.div`
   
   @media (max-width: 768px) {
     flex-direction: column;
-    width: 100%;
+    align-items: center;
     gap: 10px;
-    align-items: center; /* This ensures buttons are centered on mobile */
   }
 `;
+
+const RollButton = styled(motion.button)`
+  background: linear-gradient(135deg, #6e48aa, #9e5594);
+  color: white;
+  border: none;
+  border-radius: 50px;
+  padding: 12px 24px;
+  font-size: 16px;
+  font-weight: bold;
+  cursor: pointer;
+  box-shadow: 0 5px 15px rgba(110, 72, 170, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  position: relative;
+  overflow: hidden;
   
-// Fast mode indicator
-const FastModeIndicator = styled.div`
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+    transition: left 0.5s;
+  }
+  
+  &:hover::before {
+    left: 100%;
+  }
+  
+  &:disabled {
+    background: #666;
+    cursor: not-allowed;
+    box-shadow: none;
+    
+    &::before { display: none; }
+  }
+  
+  @media (max-width: 768px) {
+    width: 80%;
+    max-width: 280px;
+    padding: 10px 20px;
+    font-size: 14px;
+  }
+`;
+
+const MultiRollBtn = styled(RollButton)`
+  background: linear-gradient(135deg, #4b6cb7, #182848);
+`;
+
+const RollCost = styled.span`
+  font-size: 14px;
+  opacity: 0.8;
+  
+  @media (max-width: 480px) {
+    font-size: 12px;
+  }
+`;
+
+const RollHint = styled.p`
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 14px;
+  margin-top: 15px;
+  text-align: center;
+  
+  strong {
+    color: white;
+  }
+`;
+
+const FastModeTag = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1314,8 +1607,8 @@ const FastModeIndicator = styled.div`
   margin-top: 15px;
 `;
 
-// Right column (Banners)
-const BannersColumn = styled.div`
+// Banners Section
+const BannersSection = styled.div`
   background: rgba(0, 0, 0, 0.2);
   backdrop-filter: blur(5px);
   border-radius: 16px;
@@ -1323,12 +1616,30 @@ const BannersColumn = styled.div`
   padding: 25px;
   display: flex;
   flex-direction: column;
-  max-height: 800px; /* Limit the maximum height */
+  max-height: 800px;
   
   @media (max-width: 768px) {
     padding: 20px 15px;
-    /* Adjust height for mobile to ensure it doesn't take too much space */
     max-height: 600px;
+  }
+`;
+
+const BannersScroller = styled.div`
+  flex: 1;
+  overflow: hidden;
+  position: relative;
+  
+  &::after {
+    content: "";
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 40px;
+    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3));
+    pointer-events: none;
+    border-bottom-left-radius: 16px;
+    border-bottom-right-radius: 16px;
   }
 `;
 
@@ -1337,13 +1648,12 @@ const BannersList = styled.div`
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
   gap: 15px;
   overflow-y: auto;
-  padding-right: 10px; /* Add space for scrollbar */
+  padding-right: 10px;
   max-height: 100%;
-  padding-bottom: 20px; /* Space for the fade effect */
+  padding-bottom: 20px;
   scrollbar-width: thin;
   scrollbar-color: rgba(158, 85, 148, 0.5) rgba(0, 0, 0, 0.2);
   
-  /* Custom scrollbar for webkit browsers */
   &::-webkit-scrollbar {
     width: 8px;
   }
@@ -1371,37 +1681,16 @@ const BannersList = styled.div`
   }
 `;
 
-const BannersListWrapper = styled.div`
-  flex: 1;
-  overflow: hidden;
-  position: relative;
-  
-  /* Add fade effect at the bottom to indicate scrollable content */
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    height: 40px;
-    background: linear-gradient(to bottom, transparent, rgba(0, 0, 0, 0.3));
-    pointer-events: none;
-    border-bottom-left-radius: 16px;
-    border-bottom-right-radius: 16px;
-  }
-`;
-
 const BannerCard = styled(motion.div)`
   background: rgba(0, 0, 0, 0.3);
   border-radius: 12px;
   overflow: hidden;
   display: flex;
-  flex-direction: column; /* Always use vertical layout like mobile */
+  flex-direction: column;
   cursor: pointer;
-  border: ${props => props.featured ?
-    '2px solid rgba(255, 215, 0, 0.7)' :
-    '1px solid rgba(255, 255, 255, 0.1)'
-  };
+  border: ${props => props.featured 
+    ? '2px solid rgba(255, 215, 0, 0.7)' 
+    : '1px solid rgba(255, 255, 255, 0.1)'};
   box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
   transition: transform 0.3s ease, box-shadow 0.3s ease;
   
@@ -1434,7 +1723,6 @@ const BannerImage = styled.img`
   width: 100%;
   height: 140px;
   object-fit: cover;
-  object-position: center;
 `;
 
 const BannerInfo = styled.div`
@@ -1442,7 +1730,6 @@ const BannerInfo = styled.div`
   flex: 1;
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
 `;
 
 const BannerTitle = styled.h3`
@@ -1490,7 +1777,6 @@ const ViewBannerBtn = styled.button`
   &:hover {
     background: linear-gradient(135deg, rgba(110, 72, 170, 0.7), rgba(158, 85, 148, 0.7));
     transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
   }
 `;
 
@@ -1501,8 +1787,8 @@ const EmptyBanners = styled.div`
   height: 200px;
   color: rgba(255, 255, 255, 0.7);
 `;
-  
-// Modal components
+
+// Help Modal
 const HelpModal = styled(motion.div)`
   background: rgba(20, 30, 48, 0.95);
   border-radius: 16px;
@@ -1514,25 +1800,23 @@ const HelpModal = styled(motion.div)`
   overflow: hidden;
 `;
 
-const HelpModalHeader = styled.div`
+const HelpHeader = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: 15px 20px;
   border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   
-  h2 {
-    margin: 0;
-  }
+  h2 { margin: 0; }
 `;
 
-const HelpModalContent = styled.div`
+const HelpContent = styled.div`
   padding: 20px;
   max-height: 70vh;
   overflow-y: auto;
 `;
 
-const HelpSection = styled.div`
+const HelpBlock = styled.div`
   margin-bottom: 25px;
   
   h3 {
@@ -1561,5 +1845,5 @@ const RarityItem = styled.div`
   align-items: center;
   gap: 8px;
 `;
-  
+
 export default GachaPage;
