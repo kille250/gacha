@@ -17,6 +17,22 @@ Character.belongsToMany(User, { through: 'UserCharacters' });
 
 const app = express();
 
+// CORS configuration - allow frontend origins
+const corsOptions = {
+  origin: function (origin, callback) {
+    // Allow requests with no origin (mobile apps, curl, etc)
+    if (!origin) return callback(null, true);
+    // Allow all onrender.com subdomains and localhost
+    if (origin.includes('onrender.com') || origin.includes('localhost')) {
+      return callback(null, true);
+    }
+    callback(null, true); // Allow all origins for now
+  },
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization']
+};
+
 schedule.scheduleJob('0 0 * * *', async function() {
   console.log('Running daily rewards job');
   try {
@@ -41,9 +57,15 @@ schedule.scheduleJob('0 0 * * *', async function() {
 });
 
 // Middleware
-app.use(cors());
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions)); // Handle preflight requests
 app.use(express.json());
 app.use(express.static('public'));
+
+// Health check endpoint
+app.get('/api/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
 
 // Routes
 app.use('/api/auth', require('./routes/auth'));
