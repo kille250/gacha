@@ -89,13 +89,42 @@ const PORT = process.env.PORT || 5000;
 // Run migrations and start server
 async function startServer() {
   try {
-    // Sync database structure with alter: true to add missing columns
-    // This ensures model definitions match database schema
-    await sequelize.sync({ alter: true });
-    console.log('Database synced with alter: true');
+    // First, do a basic sync to create tables if they don't exist
+    await sequelize.sync();
+    console.log('Database synced (basic)');
     
-    // Verify the columns exist and log them for debugging
+    // Manually add columns that might be missing (PostgreSQL)
     if (process.env.DATABASE_URL) {
+      console.log('[Migration] Running PostgreSQL column migrations...');
+      
+      // Helper function to add column if it doesn't exist
+      async function addColumnIfNotExists(table, column, type, defaultValue) {
+        try {
+          // Check if column exists
+          const [cols] = await sequelize.query(`
+            SELECT column_name FROM information_schema.columns 
+            WHERE table_name = '${table}' AND column_name = '${column}';
+          `);
+          
+          if (cols.length === 0) {
+            // Column doesn't exist, add it
+            await sequelize.query(`
+              ALTER TABLE "${table}" ADD COLUMN "${column}" ${type} DEFAULT ${defaultValue};
+            `);
+            console.log(`[Migration] ✓ Added ${table}.${column}`);
+          } else {
+            console.log(`[Migration] ✓ ${table}.${column} already exists`);
+          }
+        } catch (err) {
+          console.error(`[Migration] Error with ${table}.${column}:`, err.message);
+        }
+      }
+      
+      // Add missing columns
+      await addColumnIfNotExists('Users', 'allowR18', 'BOOLEAN', 'false');
+      await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');
+      
+      // Verify the columns exist
       try {
         const [results] = await sequelize.query(`SELECT column_name FROM information_schema.columns WHERE table_name = 'Users';`);
         console.log('[Startup] Users columns:', results.map(r => r.column_name).join(', '));
