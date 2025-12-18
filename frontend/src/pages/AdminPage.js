@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
-import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt } from 'react-icons/fa';
+import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt } from 'react-icons/fa';
 import api, { createBanner, updateBanner, deleteBanner, getAssetUrl } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
+import MultiUploadModal from '../components/UI/MultiUploadModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
@@ -28,6 +29,7 @@ const AdminPage = () => {
   const [isAddingCoupon, setIsAddingCoupon] = useState(false);
   const [isEditingCoupon, setIsEditingCoupon] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
+  const [isMultiUploadOpen, setIsMultiUploadOpen] = useState(false);
 
   // Gefilterte und paginierte Charaktere
   const filteredCharacters = characters.filter(character => {
@@ -551,6 +553,9 @@ const AdminPage = () => {
         
         <AdminSection>
           <h2><FaImage /> Add New Character</h2>
+          <MultiUploadButton onClick={() => setIsMultiUploadOpen(true)}>
+            <FaCloudUploadAlt /> Multi-Upload Characters
+          </MultiUploadButton>
           <CharacterForm onSubmit={addCharacterWithImage}>
             <FormGroup>
               <label>Character Name</label>
@@ -913,6 +918,15 @@ const AdminPage = () => {
         characters={characters}
       />
       
+      <MultiUploadModal
+        show={isMultiUploadOpen}
+        onClose={() => setIsMultiUploadOpen(false)}
+        onSuccess={(result) => {
+          setSuccessMessage(result.message);
+          fetchCharacters();
+        }}
+      />
+
       {/* Edit Character Modal */}
       <EditCharacterModal
         show={isEditing}
@@ -1104,6 +1118,33 @@ const CharacterForm = styled.form`
   display: flex;
   flex-direction: column;
   gap: 20px;
+`;
+
+const MultiUploadButton = styled.button`
+  background: linear-gradient(135deg, #00d9ff 0%, #00a8cc 100%);
+  border: none;
+  color: #000;
+  padding: 14px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 1rem;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+  margin-bottom: 20px;
+  transition: all 0.3s;
+  box-shadow: 0 4px 15px rgba(0, 217, 255, 0.2);
+  
+  &:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 25px rgba(0, 217, 255, 0.35);
+  }
+  
+  svg {
+    font-size: 1.2rem;
+  }
 `;
 
 const CoinFormGrid = styled.div`

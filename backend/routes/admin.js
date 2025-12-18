@@ -224,6 +224,84 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
   }
 });
 
+// Multi-upload characters endpoint
+router.post('/characters/multi-upload', auth, adminAuth, upload.array('images', 50), async (req, res) => {
+  try {
+    if (!req.files || req.files.length === 0) {
+      return res.status(400).json({ error: 'No files uploaded' });
+    }
+
+    // Parse metadata array from request body
+    let metadata = [];
+    try {
+      metadata = JSON.parse(req.body.metadata || '[]');
+    } catch (e) {
+      // Clean up uploaded files on parse error
+      req.files.forEach(file => {
+        try { fs.unlinkSync(file.path); } catch (err) {}
+      });
+      return res.status(400).json({ error: 'Invalid metadata format' });
+    }
+
+    // Validate we have metadata for each file
+    if (metadata.length !== req.files.length) {
+      req.files.forEach(file => {
+        try { fs.unlinkSync(file.path); } catch (err) {}
+      });
+      return res.status(400).json({ 
+        error: `Metadata count (${metadata.length}) doesn't match file count (${req.files.length})` 
+      });
+    }
+
+    const createdCharacters = [];
+    const errors = [];
+
+    for (let i = 0; i < req.files.length; i++) {
+      const file = req.files[i];
+      const meta = metadata[i];
+
+      // Validate required fields
+      if (!meta.name || !meta.series || !meta.rarity) {
+        errors.push({ index: i, filename: file.originalname, error: 'Missing required fields (name, series, rarity)' });
+        try { fs.unlinkSync(file.path); } catch (err) {}
+        continue;
+      }
+
+      try {
+        const imagePath = getUrlPath('characters', file.filename);
+        const character = await Character.create({
+          name: meta.name,
+          image: imagePath,
+          series: meta.series,
+          rarity: meta.rarity || 'common',
+          isR18: meta.isR18 === true || meta.isR18 === 'true'
+        });
+        createdCharacters.push(character);
+      } catch (err) {
+        errors.push({ index: i, filename: file.originalname, error: err.message });
+        try { fs.unlinkSync(file.path); } catch (unlinkErr) {}
+      }
+    }
+
+    console.log(`Admin (ID: ${req.user.id}) bulk uploaded ${createdCharacters.length} characters (${errors.length} errors)`);
+
+    res.status(201).json({
+      message: `Successfully created ${createdCharacters.length} characters`,
+      characters: createdCharacters,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    console.error('Multi-upload error:', err);
+    // Clean up any uploaded files on error
+    if (req.files) {
+      req.files.forEach(file => {
+        try { fs.unlinkSync(file.path); } catch (unlinkErr) {}
+      });
+    }
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
 // In routes/admin.js - Route zum Löschen eines Charakters
 router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
   try {
