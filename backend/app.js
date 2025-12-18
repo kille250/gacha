@@ -86,13 +86,50 @@ app.use('/api/coupons', require('./routes/coupons'));
 
 const PORT = process.env.PORT || 5000;
 
-// Database sync - alter: true adds new columns without losing data
-sequelize.sync({ alter: true })
-  .then(() => {
-    console.log('Database synced successfully');
+// Run migrations and start server
+async function startServer() {
+  try {
+    // First sync basic structure
+    await sequelize.sync();
+    console.log('Database synced');
+    
+    // Run migrations for schema changes
+    const queryInterface = sequelize.getQueryInterface();
+    const Sequelize = require('sequelize');
+    
+    // Check and add allowR18 column to Users
+    const usersTable = await queryInterface.describeTable('Users');
+    if (!usersTable.allowR18) {
+      await queryInterface.addColumn('Users', 'allowR18', {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      });
+      console.log('✓ Added allowR18 column to Users');
+    } else {
+      console.log('✓ allowR18 column already exists');
+    }
+    
+    // Check and add isR18 column to Characters
+    const charactersTable = await queryInterface.describeTable('Characters');
+    if (!charactersTable.isR18) {
+      await queryInterface.addColumn('Characters', 'isR18', {
+        type: Sequelize.BOOLEAN,
+        defaultValue: false
+      });
+      console.log('✓ Added isR18 column to Characters');
+    } else {
+      console.log('✓ isR18 column already exists');
+    }
+    
+    console.log('Migrations completed');
+    
+    // Start server
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
-  })
-  .catch(err => {
-    console.error('Failed to sync database:', err);
+    
+  } catch (err) {
+    console.error('Failed to start server:', err);
     process.exit(1);
-  });
+  }
+}
+
+startServer();
