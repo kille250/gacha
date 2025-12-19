@@ -60,16 +60,77 @@ router.post('/daily-reward', auth, async (req, res) => {
 	}
   });
 
+// ===========================================
+// SECURITY: Input validation helpers
+// ===========================================
+const validateUsername = (username) => {
+  if (!username || typeof username !== 'string') {
+    return { valid: false, error: 'Username is required' };
+  }
+  
+  const trimmed = username.trim();
+  
+  if (trimmed.length < 3) {
+    return { valid: false, error: 'Username must be at least 3 characters' };
+  }
+  
+  if (trimmed.length > 30) {
+    return { valid: false, error: 'Username must be at most 30 characters' };
+  }
+  
+  // Only allow alphanumeric characters, underscores, and hyphens
+  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
+    return { valid: false, error: 'Username can only contain letters, numbers, underscores, and hyphens' };
+  }
+  
+  // Block reserved usernames
+  const reserved = ['admin', 'administrator', 'root', 'system', 'moderator', 'mod', 'support', 'help'];
+  if (reserved.includes(trimmed.toLowerCase())) {
+    return { valid: false, error: 'This username is reserved' };
+  }
+  
+  return { valid: true, value: trimmed };
+};
+
+const validatePassword = (password) => {
+  if (!password || typeof password !== 'string') {
+    return { valid: false, error: 'Password is required' };
+  }
+  
+  if (password.length < 8) {
+    return { valid: false, error: 'Password must be at least 8 characters' };
+  }
+  
+  if (password.length > 128) {
+    return { valid: false, error: 'Password must be at most 128 characters' };
+  }
+  
+  // Require at least one number and one letter
+  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+    return { valid: false, error: 'Password must contain at least one letter and one number' };
+  }
+  
+  return { valid: true };
+};
+
 router.post('/signup', async (req, res) => {
 	const { username, password } = req.body;
 	
-	if (!username || !password) {
-	  return res.status(400).json({ error: 'Username and password are required' });
+	// Validate username
+	const usernameValidation = validateUsername(username);
+	if (!usernameValidation.valid) {
+	  return res.status(400).json({ error: usernameValidation.error });
+	}
+	
+	// Validate password
+	const passwordValidation = validatePassword(password);
+	if (!passwordValidation.valid) {
+	  return res.status(400).json({ error: passwordValidation.error });
 	}
 	
 	try {
 	  // Überprüfe, ob der Benutzer bereits existiert
-	  const existingUser = await User.findOne({ where: { username } });
+	  const existingUser = await User.findOne({ where: { username: usernameValidation.value } });
 	  if (existingUser) {
 		return res.status(400).json({ error: 'Username already exists' });
 	  }
@@ -80,7 +141,7 @@ router.post('/signup', async (req, res) => {
 	  
 	  // Benutzer erstellen
 	  const user = await User.create({
-		username,
+		username: usernameValidation.value,
 		password,
 		points: 1000,
 		isAdmin: isFirstUser // Erster Benutzer wird Admin
@@ -112,8 +173,13 @@ router.post('/signup', async (req, res) => {
   router.post('/login', async (req, res) => {
 	const { username, password } = req.body;
 	
+	// Basic validation (don't reveal which field is wrong)
+	if (!username || !password) {
+	  return res.status(401).json({ error: 'Invalid credentials' });
+	}
+	
 	try {
-	  const user = await User.findOne({ where: { username } });
+	  const user = await User.findOne({ where: { username: username.trim() } });
 	  if (!user || !user.validPassword(password)) {
 		return res.status(401).json({ error: 'Invalid credentials' });
 	  }
@@ -188,38 +254,6 @@ router.post('/toggle-r18', auth, async (req, res) => {
     });
   } catch (err) {
     console.error('Toggle R18 error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-// Allen Benutzern Punkte hinzufügen
-router.post('/add-points', auth, async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id);
-    
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    const { points } = req.body;
-    
-    if (!points || isNaN(points)) {
-      return res.status(400).json({ error: 'Valid points value is required' });
-    }
-    
-    await user.increment('points', { by: parseInt(points) });
-    await user.reload();
-    
-    res.json({ 
-      message: 'Points added successfully',
-      user: {
-        id: user.id,
-        username: user.username,
-        points: user.points
-      } 
-    });
-  } catch (err) {
-    console.error('Add points error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

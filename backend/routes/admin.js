@@ -118,23 +118,45 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
 router.post('/add-coins', auth, adminAuth, async (req, res) => {
   try {
     const { userId, amount } = req.body;
-    if (!userId || !amount || isNaN(amount)) {
+    
+    // Validate userId
+    if (!userId || isNaN(userId)) {
       return res.status(400).json({
-        error: 'User ID and valid amount are required'
+        error: 'Valid User ID is required'
       });
     }
+    
+    // Validate amount - must be a positive integer
+    const parsedAmount = parseInt(amount);
+    if (isNaN(parsedAmount) || parsedAmount <= 0) {
+      return res.status(400).json({
+        error: 'Amount must be a positive number'
+      });
+    }
+    
+    // Cap maximum coins that can be added at once (prevent accidental huge values)
+    const MAX_COINS_PER_OPERATION = 1000000;
+    if (parsedAmount > MAX_COINS_PER_OPERATION) {
+      return res.status(400).json({
+        error: `Amount cannot exceed ${MAX_COINS_PER_OPERATION} coins per operation`
+      });
+    }
+    
     const user = await User.findByPk(userId);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
+    
     // Coins zum Benutzerkonto hinzufügen
     const oldBalance = user.points;
-    await user.increment('points', { by: parseInt(amount) });
+    await user.increment('points', { by: parsedAmount });
     await user.reload();
+    
     // Log erstellen
-    console.log(`Admin (ID: ${req.user.id}) added ${amount} coins to User ${user.username} (ID: ${userId}). Old balance: ${oldBalance}, New balance: ${user.points}`);
+    console.log(`Admin (ID: ${req.user.id}) added ${parsedAmount} coins to User ${user.username} (ID: ${userId}). Old balance: ${oldBalance}, New balance: ${user.points}`);
+    
     res.json({
-      message: `${amount} coins added to ${user.username}`,
+      message: `${parsedAmount} coins added to ${user.username}`,
       user: {
         id: user.id,
         username: user.username,
