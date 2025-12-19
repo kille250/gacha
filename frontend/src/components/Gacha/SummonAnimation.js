@@ -692,15 +692,18 @@ const Particle = styled.div`
 `;
 
 const CircleContainer = styled.div`
-  position: relative;
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) ${props => props.$isVisible ? 'scale(1)' : 'scale(0)'};
   width: 400px;
   height: 400px;
   display: flex;
   align-items: center;
   justify-content: center;
-  transform: ${props => props.$isVisible ? 'scale(1)' : 'scale(0)'};
   opacity: ${props => props.$isVisible ? 1 : 0};
   transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+  pointer-events: none;
   
   @media (max-width: 768px) {
     width: 300px;
