@@ -1,6 +1,6 @@
 // src/context/AuthContext.js
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import api from '../utils/api';
+import api, { invalidateCache } from '../utils/api';
 
 export const AuthContext = createContext();
 
@@ -9,11 +9,15 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  // Refresh user data from the server
+  // Refresh user data from the server (forces fresh fetch by clearing auth cache)
   const refreshUser = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
       if (!token) return;
+      
+      // Clear auth cache to ensure fresh data
+      const { clearCache } = await import('../utils/api');
+      clearCache('/auth/me');
       
       const response = await api.get('/auth/me');
       
@@ -21,8 +25,10 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(newUserData);
       localStorage.setItem('user', JSON.stringify(newUserData));
       
+      return newUserData;
     } catch (error) {
       console.error('Error refreshing user:', error);
+      return null;
     }
   }, []);
 
@@ -31,25 +37,31 @@ export const AuthProvider = ({ children }) => {
       const token = localStorage.getItem('token');
       
       if (!token) {
+        // No token - ensure clean state
+        localStorage.removeItem('user');
+        setCurrentUser(null);
         setLoading(false);
         return;
       }
       
-      // First load from localStorage for instant display
-      const storedUser = localStorage.getItem('user');
-      if (storedUser) {
-        setCurrentUser(JSON.parse(storedUser));
-      }
-      
-      // Then fetch fresh data from server
+      // Always fetch fresh data from server when token exists
+      // Don't trust localStorage as it might be from a different session
       try {
+        // Clear auth cache to ensure we get fresh data on initial load
+        invalidateCache();
+        
         const response = await api.get('/auth/me');
         const freshUserData = { ...response.data };
         setCurrentUser(freshUserData);
         localStorage.setItem('user', JSON.stringify(freshUserData));
       } catch (error) {
         console.error('Error fetching fresh user data:', error);
-        // If fetch fails but we have stored user, keep using that
+        // Token is likely invalid - clear everything
+        if (error.response?.status === 401 || error.response?.status === 403) {
+          localStorage.removeItem('token');
+          localStorage.removeItem('user');
+          setCurrentUser(null);
+        }
       }
       
       setLoading(false);
@@ -60,6 +72,11 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
+      // Clear any existing cached data before login
+      invalidateCache();
+      setCurrentUser(null);
+      localStorage.removeItem('user');
+      
       const response = await api.post('/auth/login', {
         username,
         password
@@ -67,7 +84,10 @@ export const AuthProvider = ({ children }) => {
       
       localStorage.setItem('token', response.data.token);
       
-      // Get user data from backend
+      // Clear cache again after token is set (new token = new cache namespace)
+      invalidateCache();
+      
+      // Get user data from backend (fresh, uncached)
       const userResponse = await api.get('/auth/me');
       
       const userData = userResponse.data;
@@ -84,6 +104,11 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, password) => {
     try {
+      // Clear any existing cached data before registration
+      invalidateCache();
+      setCurrentUser(null);
+      localStorage.removeItem('user');
+      
       const response = await api.post('/auth/signup', {
         username,
         password
@@ -91,7 +116,10 @@ export const AuthProvider = ({ children }) => {
       
       localStorage.setItem('token', response.data.token);
       
-      // Get user data from backend
+      // Clear cache after token is set
+      invalidateCache();
+      
+      // Get user data from backend (fresh, uncached)
       const userResponse = await api.get('/auth/me');
       
       const userData = userResponse.data;
@@ -107,6 +135,8 @@ export const AuthProvider = ({ children }) => {
   };
 
   const logout = () => {
+    // Clear all cached API data first (before removing token)
+    invalidateCache();
     localStorage.removeItem('token');
     localStorage.removeItem('user');
     setCurrentUser(null);

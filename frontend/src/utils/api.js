@@ -52,7 +52,10 @@ const getCacheTTL = (url) => {
 };
 
 const getCacheKey = (config) => {
-  return `${config.method || 'get'}:${config.url}`;
+  // Include auth token in cache key so different users get different cached responses
+  const token = localStorage.getItem('token');
+  const tokenHash = token ? token.slice(-8) : 'noauth'; // Use last 8 chars of token as identifier
+  return `${config.method || 'get'}:${config.url}:${tokenHash}`;
 };
 
 // Clear cache for a specific pattern
