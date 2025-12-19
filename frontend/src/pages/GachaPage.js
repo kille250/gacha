@@ -271,6 +271,118 @@ const GachaPage = () => {
           )}
         </AnimatePresence>
         
+        {/* Netflix-Style Banners Section */}
+        {banners.length > 0 && (
+          <BannersSection>
+            {/* Featured Hero Banner */}
+            {banners.filter(b => b.featured).length > 0 && (
+              <HeroBanner
+                onClick={() => navigate(`/banner/${banners.find(b => b.featured).id}`)}
+                whileHover={{ scale: 1.005 }}
+                whileTap={{ scale: 0.995 }}
+              >
+                <HeroBannerImage src={getBannerImage(banners.find(b => b.featured).image)} alt="" />
+                <HeroBannerOverlay />
+                <HeroBannerContent>
+                  <HeroBadge>
+                    <FaStar /> Featured Event
+                  </HeroBadge>
+                  <HeroTitle>{banners.find(b => b.featured).name}</HeroTitle>
+                  <HeroMeta>
+                    <HeroSeries>{banners.find(b => b.featured).series}</HeroSeries>
+                    <HeroDivider>•</HeroDivider>
+                    <HeroStats>
+                      {banners.find(b => b.featured).Characters?.length || 0} Characters
+                    </HeroStats>
+                  </HeroMeta>
+                  <HeroDescription>
+                    {banners.find(b => b.featured).description || 'Limited time banner with exclusive characters!'}
+                  </HeroDescription>
+                  <HeroCTA whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+                    <span>Roll Now</span>
+                    <span>{Math.floor(100 * (banners.find(b => b.featured).costMultiplier || 1.5))} pts</span>
+                  </HeroCTA>
+                </HeroBannerContent>
+                <HeroGradient />
+              </HeroBanner>
+            )}
+            
+            {/* Horizontal Carousel */}
+            <BannerCarouselSection>
+              <CarouselHeader>
+                <CarouselTitle>
+                  <span>🎬</span>
+                  All Banners
+                </CarouselTitle>
+                <CarouselNav>
+                  <NavButton onClick={() => {
+                    const el = document.getElementById('banner-carousel');
+                    if (el) el.scrollBy({ left: -340, behavior: 'smooth' });
+                  }}>
+                    <FaChevronRight style={{ transform: 'rotate(180deg)' }} />
+                  </NavButton>
+                  <NavButton onClick={() => {
+                    const el = document.getElementById('banner-carousel');
+                    if (el) el.scrollBy({ left: 340, behavior: 'smooth' });
+                  }}>
+                    <FaChevronRight />
+                  </NavButton>
+                </CarouselNav>
+              </CarouselHeader>
+              
+              <BannerCarousel id="banner-carousel">
+                {banners.map((banner, index) => (
+                  <NetflixBannerCard
+                    key={banner.id}
+                    featured={banner.featured}
+                    onClick={() => navigate(`/banner/${banner.id}`)}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    whileHover="hover"
+                  >
+                    <NetflixCardInner variants={{ hover: { scale: 1.05, y: -8 } }}>
+                      <NetflixImageContainer>
+                        <NetflixBannerImage src={getBannerImage(banner.image)} alt={banner.name} />
+                        <NetflixImageOverlay />
+                        {banner.featured && (
+                          <NetflixFeaturedRibbon>
+                            <FaStar /> Featured
+                          </NetflixFeaturedRibbon>
+                        )}
+                        <NetflixPlayIcon variants={{ hover: { opacity: 1, scale: 1 } }}>
+                          <FaChevronRight />
+                        </NetflixPlayIcon>
+                      </NetflixImageContainer>
+                      
+                      <NetflixCardInfo variants={{ hover: { opacity: 1, y: 0 } }}>
+                        <NetflixCardTitle>{banner.name}</NetflixCardTitle>
+                        <NetflixCardMeta>
+                          <NetflixSeries>{banner.series}</NetflixSeries>
+                          <NetflixCharCount>
+                            {banner.Characters?.length || 0} chars
+                          </NetflixCharCount>
+                        </NetflixCardMeta>
+                        <NetflixCardFooter>
+                          <NetflixCost>
+                            <span>🪙</span>
+                            {Math.floor(100 * (banner.costMultiplier || 1.5))}
+                          </NetflixCost>
+                          {banner.rateMultiplier > 1 && (
+                            <NetflixBoost>
+                              {banner.rateMultiplier}× rates
+                            </NetflixBoost>
+                          )}
+                        </NetflixCardFooter>
+                      </NetflixCardInfo>
+                    </NetflixCardInner>
+                  </NetflixBannerCard>
+                ))}
+              </BannerCarousel>
+            </BannerCarouselSection>
+          </BannersSection>
+        )}
+        
         {/* Main Content */}
         <MainLayout>
           {/* Gacha Section */}
@@ -465,48 +577,6 @@ const GachaPage = () => {
             />
           </GachaContainer>
           
-          {/* Banners Sidebar */}
-          <BannersSidebar>
-            <SectionHeader>
-              <SectionTitle>
-                <span>🏆</span>
-                Special Banners
-              </SectionTitle>
-            </SectionHeader>
-            
-            {banners.length > 0 ? (
-              <BannersList>
-                {banners.map(banner => (
-                  <BannerCard
-                    key={banner.id}
-                    featured={banner.featured}
-                    onClick={() => navigate(`/banner/${banner.id}`)}
-                    whileHover={{ y: -4, scale: 1.01 }}
-                    whileTap={{ scale: 0.99 }}
-                  >
-                    <BannerImageWrapper>
-                      <BannerImage src={getBannerImage(banner.image)} alt={banner.name} />
-                      {banner.featured && <FeaturedBadge>Featured</FeaturedBadge>}
-                    </BannerImageWrapper>
-                    <BannerContent>
-                      <BannerMeta>
-                        <BannerName>{banner.name}</BannerName>
-                        <BannerSeries>{banner.series}</BannerSeries>
-                      </BannerMeta>
-                      <BannerFooter>
-                        <BannerCost>{Math.floor(100 * (banner.costMultiplier || 1.5))} pts</BannerCost>
-                        <BannerArrow><FaChevronRight /></BannerArrow>
-                      </BannerFooter>
-                    </BannerContent>
-                  </BannerCard>
-                ))}
-              </BannersList>
-            ) : (
-              <NoBannersMessage>
-                <Text secondary>No special banners available</Text>
-              </NoBannersMessage>
-            )}
-          </BannersSidebar>
         </MainLayout>
       </Container>
       
@@ -657,15 +727,13 @@ const CloseAlertBtn = styled.button`
   font-size: 18px;
 `;
 
-// Main Layout
+// Main Layout - Now single column since banners have their own section
 const MainLayout = styled.div`
   display: grid;
-  grid-template-columns: 1fr 380px;
+  grid-template-columns: 1fr;
   gap: ${theme.spacing['2xl']};
-  
-  @media (max-width: ${theme.breakpoints.lg}) {
-    grid-template-columns: 1fr;
-  }
+  max-width: 900px;
+  margin: 0 auto;
 `;
 
 // Gacha Container - Clean card with subtle depth
@@ -1154,128 +1222,381 @@ const FastModeToggle = styled.button`
   }
 `;
 
-// Banners Sidebar - Clean and minimal
-const BannersSidebar = styled.section`
-  background: rgba(255, 255, 255, 0.03);
-  backdrop-filter: blur(40px);
+// ==================== NETFLIX-STYLE BANNERS ====================
+
+const BannersSection = styled.section`
+  margin-bottom: ${theme.spacing['3xl']};
+`;
+
+// Hero Featured Banner
+const HeroBanner = styled(motion.div)`
+  position: relative;
+  height: 400px;
   border-radius: 24px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: ${theme.spacing.xl};
-  height: fit-content;
-  position: sticky;
-  top: 100px;
-  box-shadow: 
-    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-    0 20px 50px -12px rgba(0, 0, 0, 0.4);
-  
-  @media (max-width: ${theme.breakpoints.lg}) {
-    position: static;
-  }
-`;
-
-const BannersList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 16px;
-  max-height: 500px;
-  overflow-y: auto;
-  ${scrollbarStyles}
-`;
-
-const BannerCard = styled(motion.div)`
-  background: rgba(255, 255, 255, 0.04);
-  border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid ${props => props.featured ? 'rgba(255, 159, 10, 0.4)' : 'rgba(255, 255, 255, 0.06)'};
-  transition: all 0.3s ease;
+  margin-bottom: ${theme.spacing['2xl']};
   
-  &:hover {
-    background: rgba(255, 255, 255, 0.06);
-    border-color: ${props => props.featured ? 'rgba(255, 159, 10, 0.6)' : 'rgba(255, 255, 255, 0.12)'};
+  @media (max-width: ${theme.breakpoints.md}) {
+    height: 320px;
   }
 `;
 
-const BannerImageWrapper = styled.div`
-  position: relative;
-  height: 110px;
-  overflow: hidden;
-`;
-
-const BannerImage = styled.img`
+const HeroBannerImage = styled.img`
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  transition: transform 8s ease-out;
   
-  ${BannerCard}:hover & {
+  ${HeroBanner}:hover & {
     transform: scale(1.05);
   }
 `;
 
-const FeaturedBadge = styled.div`
+const HeroBannerOverlay = styled.div`
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: linear-gradient(135deg, #FF9F0A 0%, #FF6B00 100%);
-  color: white;
-  padding: 5px 12px;
-  border-radius: 100px;
-  font-size: 11px;
-  font-weight: 600;
-  letter-spacing: 0.02em;
-  box-shadow: 0 2px 8px rgba(255, 107, 0, 0.4);
+  inset: 0;
+  background: linear-gradient(
+    90deg,
+    rgba(0, 0, 0, 0.85) 0%,
+    rgba(0, 0, 0, 0.6) 40%,
+    rgba(0, 0, 0, 0.2) 70%,
+    transparent 100%
+  );
 `;
 
-const BannerContent = styled.div`
-  padding: 16px;
+const HeroGradient = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 150px;
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
+  pointer-events: none;
 `;
 
-const BannerMeta = styled.div`
-  margin-bottom: 12px;
-`;
-
-const BannerName = styled.h4`
-  font-size: 15px;
-  font-weight: 600;
-  margin: 0 0 4px;
-  letter-spacing: -0.01em;
-`;
-
-const BannerSeries = styled.p`
-  font-size: 13px;
-  color: #FF9F0A;
-  margin: 0;
-  font-weight: 500;
-`;
-
-const BannerFooter = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const BannerCost = styled.span`
-  font-size: 13px;
-  color: ${theme.colors.textTertiary};
-  font-weight: 500;
-`;
-
-const BannerArrow = styled.span`
-  color: rgba(255, 255, 255, 0.3);
-  font-size: 12px;
-  transition: transform 0.2s ease;
+const HeroBannerContent = styled.div`
+  position: absolute;
+  left: 0;
+  bottom: 0;
+  padding: 48px;
+  max-width: 500px;
+  z-index: 2;
   
-  ${BannerCard}:hover & {
-    transform: translateX(3px);
-    color: rgba(255, 255, 255, 0.5);
+  @media (max-width: ${theme.breakpoints.md}) {
+    padding: 32px;
   }
 `;
 
-const NoBannersMessage = styled.div`
-  text-align: center;
-  padding: 40px 20px;
-  color: ${theme.colors.textTertiary};
+const HeroBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: linear-gradient(135deg, #E50914 0%, #B20710 100%);
+  color: white;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  margin-bottom: 16px;
+  
+  svg {
+    font-size: 10px;
+  }
+`;
+
+const HeroTitle = styled.h2`
+  font-size: clamp(32px, 5vw, 48px);
+  font-weight: 800;
+  margin: 0 0 12px;
+  letter-spacing: -0.03em;
+  line-height: 1.1;
+  text-shadow: 0 4px 20px rgba(0, 0, 0, 0.5);
+`;
+
+const HeroMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 12px;
+`;
+
+const HeroSeries = styled.span`
+  font-size: 15px;
+  color: #46D369;
+  font-weight: 600;
+`;
+
+const HeroDivider = styled.span`
+  color: rgba(255, 255, 255, 0.4);
+`;
+
+const HeroStats = styled.span`
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const HeroDescription = styled.p`
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.8);
+  margin: 0 0 24px;
+  line-height: 1.5;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+`;
+
+const HeroCTA = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 14px 28px;
+  background: white;
+  color: #141414;
+  border: none;
+  border-radius: 6px;
+  font-size: 16px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  span:last-child {
+    opacity: 0.6;
+    font-weight: 500;
+  }
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.85);
+  }
+`;
+
+// Carousel Section
+const BannerCarouselSection = styled.div``;
+
+const CarouselHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+`;
+
+const CarouselTitle = styled.h3`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 22px;
+  font-weight: 700;
+  margin: 0;
+  letter-spacing: -0.02em;
+`;
+
+const CarouselNav = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const NavButton = styled.button`
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    border-color: rgba(255, 255, 255, 0.2);
+  }
+`;
+
+const BannerCarousel = styled.div`
+  display: flex;
+  gap: 20px;
+  overflow-x: auto;
+  overflow-y: visible;
+  padding: 20px 4px 40px;
+  margin: -20px -4px -40px;
+  scroll-behavior: smooth;
+  scroll-snap-type: x mandatory;
+  
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
+`;
+
+const NetflixBannerCard = styled(motion.div)`
+  flex: 0 0 320px;
+  scroll-snap-align: start;
+  cursor: pointer;
+  perspective: 1000px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex: 0 0 280px;
+  }
+`;
+
+const NetflixCardInner = styled(motion.div)`
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(20, 20, 20, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  transition: all 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4);
+  
+  ${NetflixBannerCard}:hover & {
+    border-color: rgba(255, 255, 255, 0.2);
+    box-shadow: 
+      0 20px 60px rgba(0, 0, 0, 0.6),
+      0 0 40px rgba(229, 9, 20, 0.15);
+  }
+`;
+
+const NetflixImageContainer = styled.div`
+  position: relative;
+  height: 180px;
+  overflow: hidden;
+`;
+
+const NetflixBannerImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  transition: transform 0.6s cubic-bezier(0.25, 0.46, 0.45, 0.94);
+  
+  ${NetflixBannerCard}:hover & {
+    transform: scale(1.1);
+  }
+`;
+
+const NetflixImageOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    to top,
+    rgba(20, 20, 20, 1) 0%,
+    rgba(20, 20, 20, 0.4) 50%,
+    transparent 100%
+  );
+`;
+
+const NetflixFeaturedRibbon = styled.div`
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 10px;
+  background: linear-gradient(135deg, #E50914 0%, #B20710 100%);
+  color: white;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  
+  svg {
+    font-size: 9px;
+  }
+`;
+
+const NetflixPlayIcon = styled(motion.div)`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  background: rgba(255, 255, 255, 0.95);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #141414;
+  font-size: 18px;
+  opacity: 0;
+  z-index: 2;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+  transition: all 0.3s ease;
+  
+  svg {
+    margin-left: 3px;
+  }
+`;
+
+const NetflixCardInfo = styled(motion.div)`
+  padding: 16px;
+`;
+
+const NetflixCardTitle = styled.h4`
+  font-size: 17px;
+  font-weight: 700;
+  margin: 0 0 8px;
+  color: white;
+  letter-spacing: -0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const NetflixCardMeta = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+`;
+
+const NetflixSeries = styled.span`
+  font-size: 13px;
+  color: #46D369;
+  font-weight: 600;
+`;
+
+const NetflixCharCount = styled.span`
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+`;
+
+const NetflixCardFooter = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const NetflixCost = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 5px 12px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  font-size: 13px;
+  font-weight: 600;
+  color: white;
+`;
+
+const NetflixBoost = styled.span`
+  padding: 5px 10px;
+  background: linear-gradient(135deg, #46D369 0%, #2EBD4E 100%);
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
 `;
 
 // Help Modal
