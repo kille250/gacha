@@ -8,6 +8,20 @@ const sequelize = require('./config/db');
 const { initUploadDirs, UPLOAD_BASE, isProduction } = require('./config/upload');
 const schedule = require('node-schedule');
 
+// ===========================================
+// SECURITY: Validate required environment variables at startup
+// ===========================================
+if (!process.env.JWT_SECRET) {
+  console.error('FATAL ERROR: JWT_SECRET environment variable is not set.');
+  console.error('Please set JWT_SECRET before starting the server.');
+  process.exit(1);
+}
+
+if (process.env.JWT_SECRET.length < 32) {
+  console.error('FATAL ERROR: JWT_SECRET must be at least 32 characters long.');
+  process.exit(1);
+}
+
 // Import all models from index.js (includes associations)
 const { User, Character, Coupon, CouponRedemption } = require('./models');
 const Banner = require('./models/banner');
@@ -143,6 +157,24 @@ const rollLimiter = rateLimit({
   legacyHeaders: false,
 });
 
+// Rate limit for coupon redemption (prevent brute-force guessing)
+const couponLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 30, // 30 redemption attempts per 15 minutes
+  message: { error: 'Too many coupon redemption attempts, please try again later.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
+// Rate limit for fishing (prevent spam casting)
+const fishingLimiter = rateLimit({
+  windowMs: 1 * 60 * 1000, // 1 minute
+  max: 30, // 30 casts per minute
+  message: { error: 'Fishing too fast! Wait a moment.' },
+  standardHeaders: true,
+  legacyHeaders: false,
+});
+
 // NO global rate limiter - only apply to specific sensitive routes
 
 // Serve static files from public folder
@@ -182,10 +214,12 @@ app.use('/api/admin', require('./routes/admin'));
 const bannerRoutes = require('./routes/banners');
 app.use('/api/banners', bannerRoutes);
 
-// Coupon routes
+// Coupon routes - rate limit redemption endpoint
+app.use('/api/coupons/redeem', couponLimiter);
 app.use('/api/coupons', require('./routes/coupons'));
 
-// Fishing minigame routes
+// Fishing minigame routes - rate limit casting
+app.use('/api/fishing/cast', fishingLimiter);
 app.use('/api/fishing', require('./routes/fishing'));
 
 const PORT = process.env.PORT || 5000;

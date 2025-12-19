@@ -1,5 +1,6 @@
 const express = require('express');
 const router = express.Router();
+const crypto = require('crypto');
 const auth = require('../middleware/auth');
 const { User } = require('../models');
 
@@ -103,8 +104,8 @@ router.post('/cast', auth, async (req, res) => {
     // Random wait time before fish bites (1.5 to 6 seconds)
     const waitTime = Math.floor(Math.random() * 4500) + 1500;
     
-    // Create session
-    const sessionId = `${req.user.id}-${Date.now()}`;
+    // Create session with cryptographically random ID
+    const sessionId = crypto.randomBytes(32).toString('hex');
     const session = {
       sessionId,
       fish,

@@ -5,6 +5,16 @@ const auth = require('../middleware/auth');
 const admin = require('../middleware/adminAuth');
 const { Coupon, CouponRedemption, User, Character } = require('../models');
 
+// ===========================================
+// SECURITY: Input validation helpers
+// ===========================================
+
+// Validate that a value is a positive integer
+const isValidId = (value) => {
+  const num = parseInt(value, 10);
+  return !isNaN(num) && num > 0 && String(num) === String(value);
+};
+
 // ADMIN: Get all coupons
 router.get('/admin', [auth, admin], async (req, res) => {
   try {
@@ -93,6 +103,12 @@ router.post('/admin', [auth, admin], async (req, res) => {
 router.put('/admin/:id', [auth, admin], async (req, res) => {
   try {
     const couponId = req.params.id;
+    
+    // Validate coupon ID
+    if (!isValidId(couponId)) {
+      return res.status(400).json({ error: 'Invalid coupon ID' });
+    }
+    
     const {
       code,
       description,
@@ -155,6 +171,11 @@ router.put('/admin/:id', [auth, admin], async (req, res) => {
 // ADMIN: Delete a coupon
 router.delete('/admin/:id', [auth, admin], async (req, res) => {
   try {
+    // Validate coupon ID
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid coupon ID' });
+    }
+    
     const coupon = await Coupon.findByPk(req.params.id);
     if (!coupon) {
       return res.status(404).json({ error: 'Coupon not found' });

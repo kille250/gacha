@@ -12,6 +12,37 @@ const User = require('../models/user');
 const sequelize = require('../config/db');
 const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
 
+// ===========================================
+// SECURITY: Input validation helpers
+// ===========================================
+
+// Validate that a value is a positive integer
+const isValidId = (value) => {
+  const num = parseInt(value, 10);
+  return !isNaN(num) && num > 0 && String(num) === String(value);
+};
+
+// Validate an array of IDs
+const validateIdArray = (arr) => {
+  if (!Array.isArray(arr)) return false;
+  return arr.every(id => isValidId(id));
+};
+
+// Safely parse characterIds from request body
+const parseCharacterIds = (characterIdsStr) => {
+  if (!characterIdsStr) return [];
+  try {
+    const parsed = JSON.parse(characterIdsStr);
+    if (!Array.isArray(parsed)) return null;
+    // Ensure all values are positive integers
+    const validated = parsed.map(id => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
+    if (validated.length !== parsed.length) return null;
+    return validated;
+  } catch (e) {
+    return null;
+  }
+};
+
 // Get user's R18 preference via raw SQL
 async function getUserAllowR18(userId) {
   const [rows] = await sequelize.query(
@@ -99,6 +130,11 @@ router.get('/', async (req, res) => {
 // Get a specific banner by ID (filters R18 banners and characters based on user preference)
 router.get('/:id', async (req, res) => {
   try {
+    // Validate banner ID is a positive integer
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid banner ID' });
+    }
+    
     const banner = await Banner.findByPk(req.params.id, {
       include: [{ model: Character }]
     });
@@ -151,8 +187,11 @@ router.post('/', [auth, admin], upload.fields([
       featured, costMultiplier, rateMultiplier, active, isR18 
     } = req.body;
     
-    // Optional fields
-    const characterIds = req.body.characterIds ? JSON.parse(req.body.characterIds) : [];
+    // Parse and validate characterIds
+    const characterIds = parseCharacterIds(req.body.characterIds);
+    if (characterIds === null) {
+      return res.status(400).json({ error: 'Invalid characterIds format. Must be an array of positive integers.' });
+    }
     
     // Handle file uploads
     let imagePath = null;
@@ -220,6 +259,11 @@ router.put('/:id', [auth, admin], upload.fields([
   { name: 'video', maxCount: 1 }
 ]), async (req, res) => {
   try {
+    // Validate banner ID
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid banner ID' });
+    }
+    
     console.log(`Processing banner update for ID: ${req.params.id}`);
     console.log('Files received:', req.files ? Object.keys(req.files) : 'No files');
 
@@ -284,7 +328,11 @@ router.put('/:id', [auth, admin], upload.fields([
     
     // Update character associations if provided
     if (req.body.characterIds) {
-      const characterIds = JSON.parse(req.body.characterIds);
+      const characterIds = parseCharacterIds(req.body.characterIds);
+      if (characterIds === null) {
+        return res.status(400).json({ error: 'Invalid characterIds format. Must be an array of positive integers.' });
+      }
+      
       const characters = await Character.findAll({
         where: { id: characterIds }
       });
@@ -308,6 +356,11 @@ router.put('/:id', [auth, admin], upload.fields([
 // Delete a banner (admin only)
 router.delete('/:id', [auth, admin], async (req, res) => {
   try {
+    // Validate banner ID
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid banner ID' });
+    }
+    
     const banner = await Banner.findByPk(req.params.id);
     if (!banner) return res.status(404).json({ error: 'Banner not found' });
     
@@ -342,6 +395,11 @@ router.delete('/:id', [auth, admin], async (req, res) => {
 // Roll on a specific banner
 router.post('/:id/roll', auth, async (req, res) => {
 	try {
+	  // Validate banner ID
+	  if (!isValidId(req.params.id)) {
+		return res.status(400).json({ error: 'Invalid banner ID' });
+	  }
+	  
 	  const banner = await Banner.findByPk(req.params.id, {
 		include: [{ model: Character }]
 	  });
@@ -517,6 +575,11 @@ router.post('/:id/roll', auth, async (req, res) => {
 // Multi-roll on a banner (similar to standard multi-roll but with banner rates)
 router.post('/:id/roll-multi', auth, async (req, res) => {
 	try {
+	  // Validate banner ID
+	  if (!isValidId(req.params.id)) {
+		return res.status(400).json({ error: 'Invalid banner ID' });
+	  }
+	  
 	  const count = Math.min(req.body.count || 10, 20); // Limit to max 20 characters
 	  const banner = await Banner.findByPk(req.params.id, {
 		include: [{ model: Character }]

@@ -9,6 +9,16 @@ const adminAuth = require('../middleware/adminAuth');
 const { User, Character } = require('../models');
 const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
 
+// ===========================================
+// SECURITY: Input validation helpers
+// ===========================================
+
+// Validate that a value is a positive integer
+const isValidId = (value) => {
+  const num = parseInt(value, 10);
+  return !isNaN(num) && num > 0 && String(num) === String(value);
+};
+
 // Konfiguration für Multer (Dateispeicherung)
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
@@ -204,6 +214,12 @@ router.post('/add-coins', auth, adminAuth, async (req, res) => {
 router.put('/characters/:id', auth, adminAuth, async (req, res) => {
   try {
     const characterId = req.params.id;
+    
+    // Validate character ID
+    if (!isValidId(characterId)) {
+      return res.status(400).json({ error: 'Invalid character ID' });
+    }
+    
     const { name, series, rarity, isR18 } = req.body;
 
     // Suche den Charakter
@@ -237,6 +253,12 @@ router.put('/characters/:id', auth, adminAuth, async (req, res) => {
 router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), async (req, res) => {
   try {
     const characterId = req.params.id;
+    
+    // Validate character ID
+    if (!isValidId(characterId)) {
+      return res.status(400).json({ error: 'Invalid character ID' });
+    }
+    
     // Suche den Charakter
     const character = await Character.findByPk(characterId);
     if (!character) {
@@ -374,6 +396,12 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
 router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
   try {
     const characterId = req.params.id;
+    
+    // Validate character ID
+    if (!isValidId(characterId)) {
+      return res.status(400).json({ error: 'Invalid character ID' });
+    }
+    
     // Suche den Charakter
     const character = await Character.findByPk(characterId);
     if (!character) {
