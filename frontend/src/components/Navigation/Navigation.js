@@ -36,6 +36,9 @@ const Navigation = () => {
   // R18 toggle state
   const [isTogglingR18, setIsTogglingR18] = useState(false);
   
+  // Track if we just claimed to prevent race conditions
+  const [justClaimed, setJustClaimed] = useState(false);
+  
   // Change language handler
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -179,9 +182,6 @@ const Navigation = () => {
   useEffect(() => {
     checkRewardAvailability();
   }, [user?.lastDailyReward, checkRewardAvailability]);
-  
-  // Track if we just claimed to prevent race conditions
-  const [justClaimed, setJustClaimed] = useState(false);
   
   // Claim the hourly reward
   const claimHourlyReward = async () => {
