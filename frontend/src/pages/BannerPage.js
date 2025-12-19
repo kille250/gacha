@@ -87,7 +87,6 @@ const BannerPage = () => {
   const [showSummonAnimation, setShowSummonAnimation] = useState(false);
   const [pendingCharacter, setPendingCharacter] = useState(null);
   const [showMultiSummonAnimation, setShowMultiSummonAnimation] = useState(false);
-  const [multiSummonIndex, setMultiSummonIndex] = useState(0);
   const [pendingMultiResults, setPendingMultiResults] = useState([]);
 
   // Computed values
@@ -176,29 +175,24 @@ const BannerPage = () => {
       setMultiRollResults([]);
       setRollCount(prev => prev + 1);
       
-      try {
-        const result = await rollOnBanner(bannerId);
-        const character = result.character;
-        setPendingCharacter(character);
-        
-        if (skipAnimations) {
-          // Skip animation - show card directly
-          setCurrentChar(character);
-          setShowCard(true);
-          setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
-          showRarePullEffect(character.rarity);
-          setIsRolling(false);
-        } else {
-          // Show summoning animation
-          setShowSummonAnimation(true);
-        }
-        
-        await refreshUser();
-        await fetchUserCollection();
-      } catch (err) {
-        setError(err.response?.data?.error || 'Failed to roll on banner');
+      const result = await rollOnBanner(bannerId);
+      const character = result.character;
+      
+      if (skipAnimations) {
+        // Skip animation - show card directly
+        setCurrentChar(character);
+        setShowCard(true);
+        setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
+        showRarePullEffect(character.rarity);
         setIsRolling(false);
+      } else {
+        // Show summoning animation
+        setPendingCharacter(character);
+        setShowSummonAnimation(true);
       }
+      
+      await refreshUser();
+      await fetchUserCollection();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll on banner');
       setIsRolling(false);
@@ -230,49 +224,39 @@ const BannerPage = () => {
       setMultiPullMenuOpen(false);
       setRollCount(prev => prev + multiPullCount);
       
-      try {
-        const result = await multiRollOnBanner(bannerId, multiPullCount);
-        const characters = result.characters;
+      const result = await multiRollOnBanner(bannerId, multiPullCount);
+      const characters = result.characters;
+      
+      if (skipAnimations) {
+        // Skip animation - show results directly
+        setMultiRollResults(characters);
+        setShowMultiResults(true);
         
-        if (skipAnimations) {
-          // Skip animation - show results directly
-          setMultiRollResults(characters);
-          setShowMultiResults(true);
-          
-          const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-          const bestRarity = characters.reduce((best, char) => {
-            const idx = rarityOrder.indexOf(char.rarity);
-            return idx > rarityOrder.indexOf(best) ? char.rarity : best;
-          }, 'common');
-          
-          setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
-          
-          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
-            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
-          }
-          setIsRolling(false);
-        } else {
-          // Show multi-summon animation
-          setPendingMultiResults(characters);
-          setMultiSummonIndex(0);
-          setShowMultiSummonAnimation(true);
+        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+        const bestRarity = characters.reduce((best, char) => {
+          const idx = rarityOrder.indexOf(char.rarity);
+          return idx > rarityOrder.indexOf(best) ? char.rarity : best;
+        }, 'common');
+        
+        setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
+        
+        if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
+          confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
         }
-        
-        await refreshUser();
-        await fetchUserCollection();
-      } catch (err) {
-        setError(err.response?.data?.error || 'Failed to multi-roll');
         setIsRolling(false);
+      } else {
+        // Show multi-summon animation
+        setPendingMultiResults(characters);
+        setShowMultiSummonAnimation(true);
       }
+      
+      await refreshUser();
+      await fetchUserCollection();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to multi-roll');
       setIsRolling(false);
     }
   };
-  
-  const handleMultiSummonNext = useCallback(() => {
-    setMultiSummonIndex(prev => prev + 1);
-  }, []);
   
   const handleMultiSummonComplete = useCallback(() => {
     setMultiRollResults(pendingMultiResults);
@@ -287,7 +271,6 @@ const BannerPage = () => {
     setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
     setShowMultiSummonAnimation(false);
     setPendingMultiResults([]);
-    setMultiSummonIndex(0);
     setIsRolling(false);
   }, [pendingMultiResults]);
 
@@ -647,7 +630,6 @@ const BannerPage = () => {
             rarity={pendingCharacter.rarity}
             character={pendingCharacter}
             onComplete={handleSummonComplete}
-            onSkip={handleSummonComplete}
             skipEnabled={true}
             getImagePath={getImagePath}
           />
@@ -660,10 +642,7 @@ const BannerPage = () => {
           <MultiSummonAnimation
             isActive={showMultiSummonAnimation}
             characters={pendingMultiResults}
-            currentIndex={multiSummonIndex}
-            onRevealNext={handleMultiSummonNext}
             onComplete={handleMultiSummonComplete}
-            onSkip={handleMultiSummonComplete}
             skipEnabled={true}
             getImagePath={getImagePath}
           />

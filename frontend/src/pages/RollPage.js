@@ -81,7 +81,6 @@ const RollPage = () => {
   const [showSummonAnimation, setShowSummonAnimation] = useState(false);
   const [pendingCharacter, setPendingCharacter] = useState(null);
   const [showMultiSummonAnimation, setShowMultiSummonAnimation] = useState(false);
-  const [multiSummonIndex, setMultiSummonIndex] = useState(0);
   const [pendingMultiResults, setPendingMultiResults] = useState([]);
   
   // Computed values
@@ -128,27 +127,22 @@ const RollPage = () => {
       setRollCount(prev => prev + 1);
       
       // Fetch character immediately
-      try {
-        const character = await rollCharacter();
-        setPendingCharacter(character);
-        
-        if (skipAnimations) {
-          // Skip animation - show card directly
-          setCurrentChar(character);
-          setShowCard(true);
-          setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
-          showRarePullEffect(character.rarity);
-          setIsRolling(false);
-        } else {
-          // Show summoning animation
-          setShowSummonAnimation(true);
-        }
-        
-        await refreshUser();
-      } catch (err) {
-        setError(err.response?.data?.error || 'Failed to roll character');
+      const character = await rollCharacter();
+      
+      if (skipAnimations) {
+        // Skip animation - show card directly
+        setCurrentChar(character);
+        setShowCard(true);
+        setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
+        showRarePullEffect(character.rarity);
         setIsRolling(false);
+      } else {
+        // Show summoning animation
+        setPendingCharacter(character);
+        setShowSummonAnimation(true);
       }
+      
+      await refreshUser();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll character');
       setIsRolling(false);
@@ -181,47 +175,37 @@ const RollPage = () => {
       setMultiPullMenuOpen(false);
       setRollCount(prev => prev + multiPullCount);
       
-      try {
-        const characters = await rollMultipleCharacters(multiPullCount);
+      const characters = await rollMultipleCharacters(multiPullCount);
+      
+      if (skipAnimations) {
+        // Skip animation - show results directly
+        setMultiRollResults(characters);
+        setShowMultiResults(true);
         
-        if (skipAnimations) {
-          // Skip animation - show results directly
-          setMultiRollResults(characters);
-          setShowMultiResults(true);
-          
-          const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-          const bestRarity = characters.reduce((best, char) => {
-            const idx = rarityOrder.indexOf(char.rarity);
-            return idx > rarityOrder.indexOf(best) ? char.rarity : best;
-          }, 'common');
-          
-          setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
-          
-          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
-            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
-          }
-          setIsRolling(false);
-        } else {
-          // Show multi-summon animation
-          setPendingMultiResults(characters);
-          setMultiSummonIndex(0);
-          setShowMultiSummonAnimation(true);
+        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+        const bestRarity = characters.reduce((best, char) => {
+          const idx = rarityOrder.indexOf(char.rarity);
+          return idx > rarityOrder.indexOf(best) ? char.rarity : best;
+        }, 'common');
+        
+        setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
+        
+        if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
+          confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
         }
-        
-        await refreshUser();
-      } catch (err) {
-        setError(err.response?.data?.error || 'Failed to roll');
         setIsRolling(false);
+      } else {
+        // Show multi-summon animation
+        setPendingMultiResults(characters);
+        setShowMultiSummonAnimation(true);
       }
+      
+      await refreshUser();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll');
       setIsRolling(false);
     }
   };
-  
-  const handleMultiSummonNext = useCallback(() => {
-    setMultiSummonIndex(prev => prev + 1);
-  }, []);
   
   const handleMultiSummonComplete = useCallback(() => {
     setMultiRollResults(pendingMultiResults);
@@ -236,7 +220,6 @@ const RollPage = () => {
     setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
     setShowMultiSummonAnimation(false);
     setPendingMultiResults([]);
-    setMultiSummonIndex(0);
     setIsRolling(false);
   }, [pendingMultiResults]);
   
@@ -496,7 +479,6 @@ const RollPage = () => {
             rarity={pendingCharacter.rarity}
             character={pendingCharacter}
             onComplete={handleSummonComplete}
-            onSkip={handleSummonComplete}
             skipEnabled={true}
             getImagePath={getImagePath}
           />
@@ -509,10 +491,7 @@ const RollPage = () => {
           <MultiSummonAnimation
             isActive={showMultiSummonAnimation}
             characters={pendingMultiResults}
-            currentIndex={multiSummonIndex}
-            onRevealNext={handleMultiSummonNext}
             onComplete={handleMultiSummonComplete}
-            onSkip={handleMultiSummonComplete}
             skipEnabled={true}
             getImagePath={getImagePath}
           />
