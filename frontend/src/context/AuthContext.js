@@ -35,10 +35,21 @@ export const AuthProvider = ({ children }) => {
         return;
       }
       
-      // Use local user from localStorage
+      // First load from localStorage for instant display
       const storedUser = localStorage.getItem('user');
       if (storedUser) {
         setCurrentUser(JSON.parse(storedUser));
+      }
+      
+      // Then fetch fresh data from server
+      try {
+        const response = await api.get('/auth/me');
+        const freshUserData = { ...response.data };
+        setCurrentUser(freshUserData);
+        localStorage.setItem('user', JSON.stringify(freshUserData));
+      } catch (error) {
+        console.error('Error fetching fresh user data:', error);
+        // If fetch fails but we have stored user, keep using that
       }
       
       setLoading(false);

@@ -143,7 +143,11 @@ router.post('/roll-multi', auth, async (req, res) => {
     // Log the multi-roll for analysis
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
     
-    res.json(results);
+    // Return characters with updated points balance
+    res.json({
+      characters: results,
+      updatedPoints: user.points
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -222,7 +226,10 @@ router.post('/roll', auth, async (req, res) => {
         await user.addCharacter(randomChar);
         // Protokolliere den Roll
         console.log(`User ${user.username} (ID: ${user.id}) rolled ${randomChar.name} (Fallback random)`);
-        return res.json(randomChar);
+        return res.json({
+          ...randomChar.toJSON(),
+          updatedPoints: user.points
+        });
       }
     }
     
@@ -236,7 +243,11 @@ router.post('/roll', auth, async (req, res) => {
     // Protokolliere den Roll für Analyse-Zwecke
     console.log(`User ${user.username} (ID: ${user.id}) rolled ${randomChar.name} (${selectedRarity})`);
     
-    res.json(randomChar);
+    // Return character with updated points balance
+    res.json({
+      ...randomChar.toJSON(),
+      updatedPoints: user.points
+    });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });

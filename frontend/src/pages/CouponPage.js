@@ -15,7 +15,7 @@ import {
 } from '../styles/DesignSystem';
 
 const CouponPage = () => {
-  const { user, refreshUser } = useContext(AuthContext);
+  const { user, setUser } = useContext(AuthContext);
   const [couponCode, setCouponCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -52,8 +52,10 @@ const CouponPage = () => {
       setRewardInfo(response.data);
       setCouponCode('');
       
-      if (response.data.type === 'coins') {
-        await refreshUser();
+      // Update points immediately from response
+      const { updatedPoints } = response.data;
+      if (updatedPoints !== undefined && user) {
+        setUser({ ...user, points: updatedPoints });
       }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to redeem coupon');

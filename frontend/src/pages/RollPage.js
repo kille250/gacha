@@ -59,7 +59,7 @@ const isVideo = (file) => {
 
 const RollPage = () => {
   const navigate = useNavigate();
-  const { user, refreshUser } = useContext(AuthContext);
+  const { user, refreshUser, setUser } = useContext(AuthContext);
   
   // State
   const [currentChar, setCurrentChar] = useState(null);
@@ -122,7 +122,13 @@ const RollPage = () => {
       setRollCount(prev => prev + 1);
       
       // Fetch character immediately
-      const character = await rollCharacter();
+      const result = await rollCharacter();
+      const { updatedPoints, ...character } = result;
+      
+      // Update points immediately from response
+      if (updatedPoints !== undefined && user) {
+        setUser({ ...user, points: updatedPoints });
+      }
       
       if (skipAnimations) {
         // Skip animation - show card directly
@@ -136,8 +142,6 @@ const RollPage = () => {
         setPendingCharacter(character);
         setShowSummonAnimation(true);
       }
-      
-      await refreshUser();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll character');
       setIsRolling(false);
@@ -171,7 +175,13 @@ const RollPage = () => {
       setError(null);
       setRollCount(prev => prev + count);
       
-      const characters = await rollMultipleCharacters(count);
+      const result = await rollMultipleCharacters(count);
+      const { characters, updatedPoints } = result;
+      
+      // Update points immediately from response
+      if (updatedPoints !== undefined && user) {
+        setUser({ ...user, points: updatedPoints });
+      }
       
       if (skipAnimations) {
         // Skip animation - show results directly
@@ -195,8 +205,6 @@ const RollPage = () => {
         setPendingMultiResults(characters);
         setShowMultiSummonAnimation(true);
       }
-      
-      await refreshUser();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll');
       setIsRolling(false);

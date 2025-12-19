@@ -505,7 +505,8 @@ router.post('/:id/roll', auth, async (req, res) => {
 		character: randomChar,
 		isBannerCharacter: bannerCharacters.some(c => c.id === randomChar.id),
 		bannerName: banner.name,
-		cost
+		cost,
+		updatedPoints: user.points
 	  });
 	} catch (err) {
 	  console.error(err);
@@ -720,7 +721,8 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	  res.json({
 		characters: results,
 		bannerName: banner.name,
-		cost: finalCost
+		cost: finalCost,
+		updatedPoints: user.points
 	  });
 	} catch (err) {
 	  console.error(err);

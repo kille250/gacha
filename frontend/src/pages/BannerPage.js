@@ -60,7 +60,7 @@ const BannerPage = () => {
   const videoRef = useRef(null);
   const { bannerId } = useParams();
   const navigate = useNavigate();
-  const { user, refreshUser } = useContext(AuthContext);
+  const { user, refreshUser, setUser } = useContext(AuthContext);
   
   // State
   const [banner, setBanner] = useState(null);
@@ -169,7 +169,12 @@ const BannerPage = () => {
       setRollCount(prev => prev + 1);
       
       const result = await rollOnBanner(bannerId);
-      const character = result.character;
+      const { character, updatedPoints } = result;
+      
+      // Update points immediately from response
+      if (updatedPoints !== undefined && user) {
+        setUser({ ...user, points: updatedPoints });
+      }
       
       if (skipAnimations) {
         // Skip animation - show card directly
@@ -184,7 +189,6 @@ const BannerPage = () => {
         setShowSummonAnimation(true);
       }
       
-      await refreshUser();
       await fetchUserCollection();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll on banner');
@@ -220,7 +224,12 @@ const BannerPage = () => {
       setRollCount(prev => prev + count);
       
       const result = await multiRollOnBanner(bannerId, count);
-      const characters = result.characters;
+      const { characters, updatedPoints } = result;
+      
+      // Update points immediately from response
+      if (updatedPoints !== undefined && user) {
+        setUser({ ...user, points: updatedPoints });
+      }
       
       if (skipAnimations) {
         // Skip animation - show results directly
@@ -245,7 +254,6 @@ const BannerPage = () => {
         setShowMultiSummonAnimation(true);
       }
       
-      await refreshUser();
       await fetchUserCollection();
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to multi-roll');
