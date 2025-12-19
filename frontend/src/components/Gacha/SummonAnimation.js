@@ -1071,7 +1071,9 @@ export const MultiSummonAnimation = ({
   }, []);
 
   const handleCloseSkippedResults = useCallback(() => {
-    setShowSkippedResults(false);
+    // Don't reset showSkippedResults here - it will be reset by the useEffect 
+    // when isActive becomes false. Setting it here causes a race condition where
+    // the animation briefly reappears before isActive is set to false.
     if (onComplete) {
       onComplete();
     }
