@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight } from 'react-icons/md';
 import { FaFish } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
-import api from '../utils/api';
+import api, { clearCache } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, Heading2, Text, IconButton, motionVariants } from '../styles/DesignSystem';
 
@@ -83,7 +83,7 @@ const isAtWaterEdge = (x, y, direction) => {
 
 const FishingPage = () => {
   const navigate = useNavigate();
-  const { user, refreshUser } = useContext(AuthContext);
+  const { user, setUser, refreshUser } = useContext(AuthContext);
   const gameLoopRef = useRef(null);
   const keysPressed = useRef(new Set());
   
@@ -308,7 +308,12 @@ const FishingPage = () => {
             ? { fish: result.fish, reward: result.reward }
             : prev.bestCatch
         }));
-        refreshUser();
+        // Update user points immediately from the response
+        if (result.newPoints !== null && result.newPoints !== undefined) {
+          setUser(prev => ({ ...prev, points: result.newPoints }));
+          // Clear the auth cache so next refresh gets fresh data
+          clearCache('/auth/me');
+        }
       } else {
         setGameState(GAME_STATES.FAILURE);
       }
@@ -325,7 +330,7 @@ const FishingPage = () => {
       setGameState(GAME_STATES.WALKING);
       setSessionId(null);
     }
-  }, [gameState, sessionId, refreshUser]);
+  }, [gameState, sessionId, setUser]);
   
   // Handle missing the fish
   const handleMiss = useCallback(async (sid) => {
