@@ -25,13 +25,17 @@ const app = express();
 // SECURITY: Allowed origins whitelist
 // ===========================================
 const ALLOWED_ORIGINS = [
+  // Local development
   'http://localhost:3000',
   'http://localhost:5000',
   'http://127.0.0.1:3000',
-  'http://127.0.0.1:5000'
+  'http://127.0.0.1:5000',
+  // Production domains
+  'https://gacha.solidbooru.online',
+  'https://gacha-api-qkqv.onrender.com'
 ];
 
-// Add production domains from environment variable
+// Add additional domains from environment variables
 if (process.env.FRONTEND_URL) {
   ALLOWED_ORIGINS.push(process.env.FRONTEND_URL);
 }
@@ -42,8 +46,9 @@ if (process.env.BACKEND_URL) {
 // Add Render.com domains if in production
 if (isProduction) {
   // Allow any onrender.com subdomain in production
-  // You should replace these with your actual Render domains
   ALLOWED_ORIGINS.push(/\.onrender\.com$/);
+  // Allow solidbooru.online subdomains
+  ALLOWED_ORIGINS.push(/\.solidbooru\.online$/);
 }
 
 // CORS configuration - strict origin validation
