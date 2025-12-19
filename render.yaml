@@ -40,8 +40,11 @@ services:
     name: gacha-frontend
     runtime: static
     rootDir: frontend
-    buildCommand: npm install && npm run build
+    buildCommand: npm ci && npm run build
     staticPublishPath: build
+    buildFilter:
+      paths:
+        - frontend/**
     envVars:
       - key: REACT_APP_API_URL
         fromService:

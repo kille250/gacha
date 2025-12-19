@@ -18,9 +18,6 @@ import Navigation from './components/Navigation/Navigation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 
 const GlobalStyle = createGlobalStyle`
-  /* Import SF Pro-like font */
-  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-  
   * {
     box-sizing: border-box;
     margin: 0;
