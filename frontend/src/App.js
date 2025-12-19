@@ -12,6 +12,7 @@ import CollectionPage from './pages/CollectionPage';
 import AdminPage from './pages/AdminPage';
 import BannerPage from './pages/BannerPage';
 import CouponPage from './pages/CouponPage';
+import RollPage from './pages/RollPage';
 
 // Components
 import Navigation from './components/Navigation/Navigation';
@@ -167,6 +168,12 @@ function App() {
                     <CollectionPage />
                   </PageContent>
                 </MainLayout>
+              </ProtectedRoute>
+            } />
+            {/* Roll Page - Full screen without navigation */}
+            <Route path="/roll" element={
+              <ProtectedRoute>
+                <RollPage />
               </ProtectedRoute>
             } />
             {/* Banner Page - Full screen without navigation */}
