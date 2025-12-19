@@ -15,11 +15,9 @@ import {
   theme,
   PageWrapper,
   Container,
-  Section,
   Heading2,
   Text,
   IconButton,
-  Chip,
   RarityBadge,
   Spinner,
   ModalOverlay,
@@ -29,7 +27,6 @@ import {
   Alert,
   motionVariants,
   getRarityColor,
-  getRarityGlow,
   scrollbarStyles
 } from '../styles/DesignSystem';
 
@@ -574,18 +571,19 @@ const GachaPage = () => {
 };
 
 // ==================== STYLED COMPONENTS ====================
+// Apple-inspired design with subtle depth and refined aesthetics
 
 const StyledPageWrapper = styled(PageWrapper)`
   padding-bottom: ${theme.spacing['3xl']};
 `;
 
-// Hero
+// Hero - Minimal and clean
 const HeroSection = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: ${theme.spacing.xl} 0;
-  gap: ${theme.spacing.lg};
+  padding: ${theme.spacing['2xl']} 0;
+  gap: ${theme.spacing.xl};
   
   @media (max-width: ${theme.breakpoints.md}) {
     flex-direction: column;
@@ -596,49 +594,57 @@ const HeroSection = styled.div`
 const HeroContent = styled.div``;
 
 const LogoText = styled.h1`
-  font-size: ${theme.fontSizes.hero};
-  font-weight: ${theme.fontWeights.bold};
-  letter-spacing: -0.03em;
+  font-size: clamp(2.5rem, 5vw, 3.5rem);
+  font-weight: 700;
+  letter-spacing: -0.04em;
   margin: 0;
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    font-size: ${theme.fontSizes['4xl']};
-  }
+  line-height: 1.1;
 `;
 
 const LogoAccent = styled.span`
-  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
+  background: linear-gradient(135deg, #007AFF, #5856D6);
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
 `;
 
 const HeroSubtitle = styled.p`
-  font-size: ${theme.fontSizes.lg};
-  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.md};
+  color: ${theme.colors.textTertiary};
   margin: ${theme.spacing.sm} 0 0;
+  font-weight: 400;
+  letter-spacing: -0.01em;
 `;
 
 const HeaderControls = styled.div`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing.md};
+  gap: ${theme.spacing.sm};
 `;
 
 const StatsRow = styled.div`
   display: flex;
-  gap: ${theme.spacing.sm};
+  gap: ${theme.spacing.xs};
 `;
 
-const StatPill = styled(Chip)`
-  font-size: ${theme.fontSizes.sm};
+const StatPill = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 100px;
+  font-size: 14px;
+  font-weight: 500;
+  color: ${theme.colors.textSecondary};
+  backdrop-filter: blur(10px);
 `;
 
 const PointsPill = styled(StatPill)`
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  border-color: transparent;
+  background: linear-gradient(135deg, #007AFF 0%, #5856D6 100%);
   color: white;
-  font-weight: ${theme.fontWeights.semibold};
+  font-weight: 600;
+  box-shadow: 0 2px 8px rgba(0, 122, 255, 0.3);
 `;
 
 const CloseAlertBtn = styled.button`
@@ -654,82 +660,95 @@ const CloseAlertBtn = styled.button`
 // Main Layout
 const MainLayout = styled.div`
   display: grid;
-  grid-template-columns: 1fr 360px;
-  gap: ${theme.spacing.xl};
+  grid-template-columns: 1fr 380px;
+  gap: ${theme.spacing['2xl']};
   
   @media (max-width: ${theme.breakpoints.lg}) {
     grid-template-columns: 1fr;
   }
 `;
 
-// Gacha Container
-const GachaContainer = styled(Section)``;
+// Gacha Container - Clean card with subtle depth
+const GachaContainer = styled.section`
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(40px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: ${theme.spacing.xl};
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 20px 50px -12px rgba(0, 0, 0, 0.4);
+`;
 
 const SectionHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: ${theme.spacing.lg};
-  flex-wrap: wrap;
-  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.xl};
+  padding-bottom: ${theme.spacing.lg};
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 `;
 
 const SectionTitle = styled.h2`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.semibold};
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 600;
   margin: 0;
+  letter-spacing: -0.02em;
 `;
 
 const RarityHistory = styled.div`
   display: flex;
-  gap: ${theme.spacing.xs};
+  gap: 6px;
 `;
 
 const RarityDot = styled.div`
-  width: 32px;
-  height: 32px;
-  border-radius: ${theme.radius.full};
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
   background: ${props => getRarityColor(props.rarity)};
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 12px;
-  box-shadow: ${props => getRarityGlow(props.rarity)};
-  animation: fadeIn 0.3s ease-out backwards;
+  font-size: 11px;
+  box-shadow: 0 2px 8px ${props => getRarityColor(props.rarity)}50;
+  animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
   
-  @keyframes fadeIn {
-    from { opacity: 0; transform: scale(0.8); }
+  @keyframes popIn {
+    from { opacity: 0; transform: scale(0.5); }
     to { opacity: 1; transform: scale(1); }
   }
 `;
 
-// Results Area
+// Results Area - Centered with proper spacing
 const ResultsArea = styled.div`
-  min-height: 420px;
+  min-height: 380px;
   display: flex;
   align-items: center;
   justify-content: center;
   margin-bottom: ${theme.spacing.xl};
 `;
 
-// Character Card
+// Character Card - Clean with subtle rarity indication
 const CharacterCard = styled(motion.div)`
-  background: ${theme.colors.backgroundSecondary};
-  border-radius: ${theme.radius.xl};
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 20px;
   overflow: hidden;
   width: 100%;
-  max-width: 340px;
-  border: 2px solid ${props => getRarityColor(props.rarity)};
-  box-shadow: ${props => getRarityGlow(props.rarity)}, ${theme.shadows.lg};
+  max-width: 320px;
+  border: 1px solid ${props => getRarityColor(props.rarity)}60;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 25px 50px -12px rgba(0, 0, 0, 0.5),
+    0 0 40px ${props => getRarityColor(props.rarity)}20;
 `;
 
 const CardImageWrapper = styled.div`
   position: relative;
-  height: 300px;
+  height: 280px;
   cursor: pointer;
   overflow: hidden;
 `;
@@ -737,7 +756,7 @@ const CardImageWrapper = styled.div`
 const RarityGlow = styled.div`
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 100%, ${props => getRarityColor(props.rarity)}40 0%, transparent 70%);
+  background: radial-gradient(ellipse at 50% 100%, ${props => getRarityColor(props.rarity)}30 0%, transparent 60%);
   pointer-events: none;
   z-index: 1;
 `;
@@ -746,7 +765,7 @@ const CardImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform ${theme.transitions.slow};
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   
   ${CardImageWrapper}:hover & {
     transform: scale(1.05);
@@ -762,21 +781,21 @@ const CardVideo = styled.video`
 const CardOverlay = styled.div`
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.4);
+  background: linear-gradient(to top, rgba(0, 0, 0, 0.6) 0%, transparent 50%);
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity ${theme.transitions.fast};
+  transition: opacity 0.3s ease;
   z-index: 2;
   
   span {
-    background: ${theme.colors.glass};
-    backdrop-filter: blur(${theme.blur.sm});
-    padding: ${theme.spacing.sm} ${theme.spacing.md};
-    border-radius: ${theme.radius.full};
-    font-size: ${theme.fontSizes.sm};
-    font-weight: ${theme.fontWeights.medium};
+    background: rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(20px);
+    padding: 10px 20px;
+    border-radius: 100px;
+    font-size: 13px;
+    font-weight: 500;
   }
   
   ${CardImageWrapper}:hover & {
@@ -786,23 +805,26 @@ const CardOverlay = styled.div`
 
 const CollectedBadge = styled.div`
   position: absolute;
-  top: ${theme.spacing.md};
-  left: ${theme.spacing.md};
-  background: ${theme.colors.success};
+  top: 12px;
+  left: 12px;
+  background: rgba(52, 199, 89, 0.9);
+  backdrop-filter: blur(10px);
   color: white;
   padding: 6px 12px;
-  border-radius: ${theme.radius.full};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
   z-index: 3;
+  letter-spacing: 0.02em;
 `;
 
 const CardContent = styled.div`
-  padding: ${theme.spacing.lg};
+  padding: 20px;
   display: flex;
   justify-content: space-between;
   align-items: flex-start;
-  gap: ${theme.spacing.md};
+  gap: 12px;
+  background: rgba(0, 0, 0, 0.2);
 `;
 
 const CardMeta = styled.div`
@@ -811,20 +833,22 @@ const CardMeta = styled.div`
 `;
 
 const CharName = styled.h3`
-  font-size: ${theme.fontSizes.lg};
-  font-weight: ${theme.fontWeights.semibold};
+  font-size: 17px;
+  font-weight: 600;
   margin: 0 0 4px;
   color: ${theme.colors.text};
+  letter-spacing: -0.02em;
 `;
 
 const CharSeries = styled.p`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
+  font-size: 13px;
+  color: ${theme.colors.textTertiary};
   margin: 0;
 `;
 
 const CardActions = styled.div`
-  padding: 0 ${theme.spacing.lg} ${theme.spacing.lg};
+  padding: 0 20px 20px;
+  background: rgba(0, 0, 0, 0.2);
 `;
 
 const RollAgainBtn = styled(motion.button)`
@@ -832,18 +856,24 @@ const RollAgainBtn = styled(motion.button)`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.primary};
+  gap: 8px;
+  padding: 14px;
+  background: #007AFF;
   color: white;
   border: none;
-  border-radius: ${theme.radius.lg};
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.semibold};
+  border-radius: 12px;
+  font-size: 15px;
+  font-weight: 600;
   cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    background: #0056CC;
+    transform: translateY(-1px);
+  }
   
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
   }
 `;
@@ -949,58 +979,64 @@ const MiniRarityDot = styled.div`
   flex-shrink: 0;
 `;
 
-// Loading & Empty States
+// Loading & Empty States - Minimal and elegant
 const LoadingState = styled(motion.div)`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: ${theme.spacing.lg};
+  gap: 20px;
 `;
 
 const LoadingText = styled.p`
-  font-size: ${theme.fontSizes.lg};
-  color: ${theme.colors.textSecondary};
+  font-size: 17px;
+  color: ${theme.colors.textTertiary};
+  font-weight: 500;
 `;
 
 const EmptyState = styled(motion.div)`
   text-align: center;
-  padding: ${theme.spacing['2xl']};
-  background: ${theme.colors.glass};
-  border-radius: ${theme.radius.xl};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  max-width: 320px;
+  padding: 48px 40px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 20px;
+  border: 1px dashed rgba(255, 255, 255, 0.1);
+  max-width: 300px;
 `;
 
 const EmptyIcon = styled.div`
-  font-size: 56px;
-  margin-bottom: ${theme.spacing.md};
-  animation: float 3s ease-in-out infinite;
+  font-size: 48px;
+  margin-bottom: 16px;
+  opacity: 0.9;
+  animation: float 4s ease-in-out infinite;
   
   @keyframes float {
     0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
+    50% { transform: translateY(-6px); }
   }
 `;
 
 const EmptyTitle = styled.h3`
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.semibold};
-  margin: 0 0 ${theme.spacing.xs};
+  font-size: 20px;
+  font-weight: 600;
+  margin: 0 0 8px;
+  letter-spacing: -0.02em;
 `;
 
 const EmptyText = styled.p`
-  font-size: ${theme.fontSizes.base};
-  color: ${theme.colors.textSecondary};
+  font-size: 15px;
+  color: ${theme.colors.textTertiary};
   margin: 0;
+  line-height: 1.5;
 `;
 
-// Controls Section
-const ControlsSection = styled.div``;
+// Controls Section - Apple-style buttons
+const ControlsSection = styled.div`
+  margin-top: 8px;
+`;
 
 const ButtonRow = styled.div`
   display: flex;
-  gap: ${theme.spacing.md};
-  margin-bottom: ${theme.spacing.md};
+  gap: 12px;
+  margin-bottom: 16px;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     flex-direction: column;
@@ -1012,19 +1048,33 @@ const PrimaryRollButton = styled(motion.button)`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.lg};
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  gap: 10px;
+  padding: 18px 24px;
+  background: linear-gradient(180deg, #007AFF 0%, #0056CC 100%);
   color: white;
   border: none;
-  border-radius: ${theme.radius.xl};
-  font-size: ${theme.fontSizes.md};
-  font-weight: ${theme.fontWeights.semibold};
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
+  box-shadow: 
+    0 1px 0 rgba(255, 255, 255, 0.1) inset,
+    0 4px 12px rgba(0, 122, 255, 0.4);
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 
+      0 1px 0 rgba(255, 255, 255, 0.1) inset,
+      0 6px 20px rgba(0, 122, 255, 0.5);
+  }
+  
+  &:active:not(:disabled) {
+    transform: translateY(0);
+  }
   
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
     box-shadow: none;
   }
@@ -1035,30 +1085,34 @@ const SecondaryRollButton = styled(motion.button)`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.lg};
-  background: ${theme.colors.glass};
+  gap: 10px;
+  padding: 18px 24px;
+  background: rgba(255, 255, 255, 0.06);
   color: white;
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
-  font-size: ${theme.fontSizes.md};
-  font-weight: ${theme.fontWeights.semibold};
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  font-size: 16px;
+  font-weight: 600;
   cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
   
   &:hover:not(:disabled) {
-    background: ${theme.colors.surfaceHover};
+    background: rgba(255, 255, 255, 0.1);
+    border-color: rgba(255, 255, 255, 0.15);
   }
   
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.4;
     cursor: not-allowed;
   }
 `;
 
 const CostLabel = styled.span`
-  font-size: ${theme.fontSizes.sm};
-  opacity: 0.8;
+  font-size: 14px;
+  opacity: 0.7;
   margin-left: auto;
+  font-weight: 500;
 `;
 
 const ControlsFooter = styled.div`
@@ -1066,43 +1120,53 @@ const ControlsFooter = styled.div`
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: ${theme.spacing.sm};
+  gap: 12px;
+  padding-top: 4px;
 `;
 
 const PullHint = styled.p`
-  font-size: ${theme.fontSizes.sm};
+  font-size: 13px;
   color: ${theme.colors.textTertiary};
   margin: 0;
   
   strong {
-    color: ${theme.colors.text};
+    color: ${theme.colors.textSecondary};
+    font-weight: 600;
   }
 `;
 
 const FastModeToggle = styled.button`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing.xs};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  background: ${props => props.active ? 'rgba(88, 86, 214, 0.2)' : theme.colors.glass};
-  border: 1px solid ${props => props.active ? theme.colors.accent : theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.full};
-  color: ${props => props.active ? theme.colors.accent : theme.colors.textSecondary};
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
+  gap: 6px;
+  padding: 8px 14px;
+  background: ${props => props.active ? 'rgba(0, 122, 255, 0.15)' : 'rgba(255, 255, 255, 0.04)'};
+  border: 1px solid ${props => props.active ? 'rgba(0, 122, 255, 0.3)' : 'rgba(255, 255, 255, 0.08)'};
+  border-radius: 100px;
+  color: ${props => props.active ? '#007AFF' : theme.colors.textTertiary};
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all ${theme.transitions.fast};
+  transition: all 0.2s ease;
   
   &:hover {
-    background: rgba(88, 86, 214, 0.15);
+    background: ${props => props.active ? 'rgba(0, 122, 255, 0.2)' : 'rgba(255, 255, 255, 0.08)'};
   }
 `;
 
-// Banners Sidebar
-const BannersSidebar = styled(Section)`
+// Banners Sidebar - Clean and minimal
+const BannersSidebar = styled.section`
+  background: rgba(255, 255, 255, 0.03);
+  backdrop-filter: blur(40px);
+  border-radius: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  padding: ${theme.spacing.xl};
   height: fit-content;
   position: sticky;
-  top: 80px;
+  top: 100px;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.05) inset,
+    0 20px 50px -12px rgba(0, 0, 0, 0.4);
   
   @media (max-width: ${theme.breakpoints.lg}) {
     position: static;
@@ -1112,23 +1176,29 @@ const BannersSidebar = styled(Section)`
 const BannersList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: ${theme.spacing.md};
-  max-height: 600px;
+  gap: 16px;
+  max-height: 500px;
   overflow-y: auto;
   ${scrollbarStyles}
 `;
 
 const BannerCard = styled(motion.div)`
-  background: ${theme.colors.backgroundTertiary};
-  border-radius: ${theme.radius.lg};
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 16px;
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid ${props => props.featured ? theme.colors.warning : theme.colors.surfaceBorder};
+  border: 1px solid ${props => props.featured ? 'rgba(255, 159, 10, 0.4)' : 'rgba(255, 255, 255, 0.06)'};
+  transition: all 0.3s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.06);
+    border-color: ${props => props.featured ? 'rgba(255, 159, 10, 0.6)' : 'rgba(255, 255, 255, 0.12)'};
+  }
 `;
 
 const BannerImageWrapper = styled.div`
   position: relative;
-  height: 100px;
+  height: 110px;
   overflow: hidden;
 `;
 
@@ -1136,7 +1206,7 @@ const BannerImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform ${theme.transitions.slow};
+  transition: transform 0.5s cubic-bezier(0.25, 0.46, 0.45, 0.94);
   
   ${BannerCard}:hover & {
     transform: scale(1.05);
@@ -1145,34 +1215,38 @@ const BannerImage = styled.img`
 
 const FeaturedBadge = styled.div`
   position: absolute;
-  top: ${theme.spacing.sm};
-  right: ${theme.spacing.sm};
-  background: linear-gradient(135deg, ${theme.colors.warning}, #ff6b00);
+  top: 10px;
+  right: 10px;
+  background: linear-gradient(135deg, #FF9F0A 0%, #FF6B00 100%);
   color: white;
-  padding: 4px 10px;
-  border-radius: ${theme.radius.full};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
+  padding: 5px 12px;
+  border-radius: 100px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  box-shadow: 0 2px 8px rgba(255, 107, 0, 0.4);
 `;
 
 const BannerContent = styled.div`
-  padding: ${theme.spacing.md};
+  padding: 16px;
 `;
 
 const BannerMeta = styled.div`
-  margin-bottom: ${theme.spacing.sm};
+  margin-bottom: 12px;
 `;
 
 const BannerName = styled.h4`
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.semibold};
+  font-size: 15px;
+  font-weight: 600;
   margin: 0 0 4px;
+  letter-spacing: -0.01em;
 `;
 
 const BannerSeries = styled.p`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.warning};
+  font-size: 13px;
+  color: #FF9F0A;
   margin: 0;
+  font-weight: 500;
 `;
 
 const BannerFooter = styled.div`
@@ -1182,18 +1256,26 @@ const BannerFooter = styled.div`
 `;
 
 const BannerCost = styled.span`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
+  font-size: 13px;
+  color: ${theme.colors.textTertiary};
+  font-weight: 500;
 `;
 
 const BannerArrow = styled.span`
-  color: ${theme.colors.textTertiary};
+  color: rgba(255, 255, 255, 0.3);
   font-size: 12px;
+  transition: transform 0.2s ease;
+  
+  ${BannerCard}:hover & {
+    transform: translateX(3px);
+    color: rgba(255, 255, 255, 0.5);
+  }
 `;
 
 const NoBannersMessage = styled.div`
   text-align: center;
-  padding: ${theme.spacing.xl};
+  padding: 40px 20px;
+  color: ${theme.colors.textTertiary};
 `;
 
 // Help Modal
