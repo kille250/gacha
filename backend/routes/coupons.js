@@ -9,10 +9,12 @@ const { Coupon, CouponRedemption, User, Character } = require('../models');
 // SECURITY: Input validation helpers
 // ===========================================
 
-// Validate that a value is a positive integer
-const isValidId = (value) => {
-  const num = parseInt(value, 10);
-  return !isNaN(num) && num > 0 && String(num) === String(value);
+// Validate that a value is a valid UUID
+const isValidUUID = (value) => {
+  if (!value || typeof value !== 'string') return false;
+  // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(value);
 };
 
 // ADMIN: Get all coupons
@@ -104,8 +106,8 @@ router.put('/admin/:id', [auth, admin], async (req, res) => {
   try {
     const couponId = req.params.id;
     
-    // Validate coupon ID
-    if (!isValidId(couponId)) {
+    // Validate coupon ID (UUID)
+    if (!isValidUUID(couponId)) {
       return res.status(400).json({ error: 'Invalid coupon ID' });
     }
     
@@ -171,8 +173,8 @@ router.put('/admin/:id', [auth, admin], async (req, res) => {
 // ADMIN: Delete a coupon
 router.delete('/admin/:id', [auth, admin], async (req, res) => {
   try {
-    // Validate coupon ID
-    if (!isValidId(req.params.id)) {
+    // Validate coupon ID (UUID)
+    if (!isValidUUID(req.params.id)) {
       return res.status(400).json({ error: 'Invalid coupon ID' });
     }
     
