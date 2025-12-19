@@ -584,7 +584,7 @@ const AdminPage = () => {
               <StyledTable>
                 <thead>
                   <tr>
-                    <th>{t('admin.id')}</th>
+                    <th>#</th>
                     <th>{t('admin.username')}</th>
                     <th>{t('admin.points')}</th>
                     <th>{t('admin.isAdmin')}</th>
@@ -593,24 +593,44 @@ const AdminPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {users.map(u => (
-                    <tr key={u.id}>
-                      <td>{u.id}</td>
-                      <td>{u.username}</td>
-                      <td>{u.points}</td>
-                      <td>{u.isAdmin ? '✅' : '❌'}</td>
-                      <td>
-                        <AutofishToggle 
-                          $enabled={u.autofishEnabled}
-                          onClick={() => handleToggleAutofish(u.id, !u.autofishEnabled)}
-                          title={u.autofishEnabled ? t('admin.disableAutofish') : t('admin.enableAutofish')}
-                        >
-                          {u.autofishEnabled ? '🎣 ON' : '❌ OFF'}
-                        </AutofishToggle>
-                      </td>
-                      <td>{new Date(u.createdAt).toLocaleDateString()}</td>
-                    </tr>
-                  ))}
+                  {users.map((u, index) => {
+                    const rank = index + 1;
+                    const qualifiesByRank = rank <= 10;
+                    const canAutofish = u.autofishEnabled || qualifiesByRank;
+                    return (
+                      <tr key={u.id}>
+                        <td>
+                          <RankCell $qualifies={qualifiesByRank}>
+                            {qualifiesByRank ? '👑' : ''} #{rank}
+                          </RankCell>
+                        </td>
+                        <td>{u.username}</td>
+                        <td>{u.points?.toLocaleString()}</td>
+                        <td>{u.isAdmin ? '✅' : '❌'}</td>
+                        <td>
+                          <AutofishCell>
+                            <AutofishStatus $active={canAutofish}>
+                              {canAutofish ? '✅' : '❌'}
+                            </AutofishStatus>
+                            {qualifiesByRank && (
+                              <AutofishBadge $type="rank">Top 10</AutofishBadge>
+                            )}
+                            {u.autofishEnabled && !qualifiesByRank && (
+                              <AutofishBadge $type="manual">Manual</AutofishBadge>
+                            )}
+                            <AutofishToggle 
+                              $enabled={u.autofishEnabled}
+                              onClick={() => handleToggleAutofish(u.id, !u.autofishEnabled)}
+                              title={u.autofishEnabled ? t('admin.disableAutofish') : t('admin.enableAutofish')}
+                            >
+                              {u.autofishEnabled ? 'Disable' : 'Enable'}
+                            </AutofishToggle>
+                          </AutofishCell>
+                        </td>
+                        <td>{new Date(u.createdAt).toLocaleDateString()}</td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </StyledTable>
             </TableWrapper>
@@ -1039,8 +1059,37 @@ const StyledTable = styled.table`
   tr:hover td { background: ${theme.colors.backgroundTertiary}; }
 `;
 
+const RankCell = styled.span`
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${props => props.$qualifies ? '#ffd700' : 'inherit'};
+`;
+
+const AutofishCell = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const AutofishStatus = styled.span`
+  font-size: 16px;
+`;
+
+const AutofishBadge = styled.span`
+  padding: 2px 8px;
+  border-radius: ${theme.radius.full};
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.bold};
+  text-transform: uppercase;
+  background: ${props => props.$type === 'rank' 
+    ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.2))' 
+    : 'rgba(10, 132, 255, 0.2)'};
+  color: ${props => props.$type === 'rank' ? '#ffd700' : '#0a84ff'};
+  border: 1px solid ${props => props.$type === 'rank' ? 'rgba(255, 215, 0, 0.4)' : 'rgba(10, 132, 255, 0.4)'};
+`;
+
 const AutofishToggle = styled.button`
-  padding: 6px 12px;
+  padding: 4px 10px;
   border: none;
   border-radius: ${theme.radius.md};
   font-size: ${theme.fontSizes.xs};
@@ -1048,9 +1097,10 @@ const AutofishToggle = styled.button`
   cursor: pointer;
   transition: all 0.2s;
   background: ${props => props.$enabled 
-    ? 'linear-gradient(135deg, #30d158, #34c759)' 
-    : 'rgba(142, 142, 147, 0.3)'};
-  color: white;
+    ? 'rgba(255, 69, 58, 0.2)' 
+    : 'rgba(48, 209, 88, 0.2)'};
+  color: ${props => props.$enabled ? '#ff453a' : '#30d158'};
+  border: 1px solid ${props => props.$enabled ? 'rgba(255, 69, 58, 0.4)' : 'rgba(48, 209, 88, 0.4)'};
   
   &:hover {
     opacity: 0.85;

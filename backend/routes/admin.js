@@ -61,7 +61,8 @@ router.get('/dashboard', auth, adminAuth, async (req, res) => {
     // Fetch all data in parallel
     const [users, characters, banners, coupons] = await Promise.all([
       User.findAll({
-        attributes: ['id', 'username', 'points', 'isAdmin', 'createdAt']
+        attributes: ['id', 'username', 'points', 'isAdmin', 'autofishEnabled', 'autofishUnlockedByRank', 'createdAt'],
+        order: [['points', 'DESC']]
       }),
       Character.findAll(),
       Banner.findAll({
@@ -88,7 +89,8 @@ router.get('/dashboard', auth, adminAuth, async (req, res) => {
 router.get('/users', auth, adminAuth, async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: ['id', 'username', 'points', 'isAdmin', 'createdAt']
+      attributes: ['id', 'username', 'points', 'isAdmin', 'autofishEnabled', 'autofishUnlockedByRank', 'createdAt'],
+      order: [['points', 'DESC']]
     });
     res.json(users);
   } catch (err) {
