@@ -9,14 +9,11 @@ import {
   PageWrapper,
   Container,
   Section,
-  Heading2,
   Text,
   Spinner,
-  RarityBadge,
   motionVariants,
   getRarityColor,
-  getRarityGlow,
-  scrollbarStyles
+  getRarityGlow
 } from '../styles/DesignSystem';
 
 const CollectionPage = () => {
