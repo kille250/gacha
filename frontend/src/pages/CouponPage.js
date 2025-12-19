@@ -10,9 +10,7 @@ import {
   Container,
   Section,
   Heading2,
-  Text,
   Alert,
-  motionVariants,
   getRarityColor
 } from '../styles/DesignSystem';
 
