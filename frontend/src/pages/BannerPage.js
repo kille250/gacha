@@ -30,7 +30,6 @@ import {
   scrollbarStyles
 } from '../styles/DesignSystem';
 
-import { MultiPullMenu } from '../components/Gacha/MultiPullMenu';
 import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
@@ -77,8 +76,6 @@ const BannerPage = () => {
   const [lastRarities, setLastRarities] = useState([]);
   const [userCollection, setUserCollection] = useState([]);
   const [skipAnimations, setSkipAnimations] = useState(false);
-  const [multiPullCount, setMultiPullCount] = useState(10);
-  const [multiPullMenuOpen, setMultiPullMenuOpen] = useState(false);
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
@@ -89,6 +86,13 @@ const BannerPage = () => {
   const [showMultiSummonAnimation, setShowMultiSummonAnimation] = useState(false);
   const [pendingMultiResults, setPendingMultiResults] = useState([]);
 
+  // Multi-pull options with discounts
+  const MULTI_PULL_OPTIONS = [
+    { count: 5, discount: 0.05, label: '5×' },
+    { count: 10, discount: 0.10, label: '10×' },
+    { count: 20, discount: 0.15, label: '20×' }
+  ];
+  
   // Computed values
   const getSinglePullCost = useCallback(() => {
     if (!banner) return 100;
@@ -97,19 +101,15 @@ const BannerPage = () => {
 
   const getMultiPullCost = useCallback((count) => {
     if (!banner) return count * 100;
-    const base = count * getSinglePullCost();
-    let discount = 0;
-    if (count >= 10) discount = 0.1;
-    else if (count >= 5) discount = 0.05;
-    return Math.floor(base * (1 - discount));
+    const option = MULTI_PULL_OPTIONS.find(o => o.count === count);
+    const discount = option?.discount || 0;
+    return Math.floor(count * getSinglePullCost() * (1 - discount));
   }, [banner, getSinglePullCost]);
 
-  const maxPossiblePulls = useCallback(() => {
-    return Math.max(1, Math.min(20, Math.floor((user?.points || 0) / getSinglePullCost())));
-  }, [user?.points, getSinglePullCost]);
-
   const singlePullCost = getSinglePullCost();
-  const currentMultiPullCost = getMultiPullCost(multiPullCount);
+  
+  // Check if animation is currently showing
+  const isAnimating = showSummonAnimation || showMultiSummonAnimation;
 
   // Effects
   useEffect(() => {
@@ -127,13 +127,6 @@ const BannerPage = () => {
     fetchBanner();
   }, [bannerId]);
 
-  useEffect(() => {
-    const max = maxPossiblePulls();
-    const defaultCount = Math.min(10, max);
-    if (multiPullCount > max || multiPullCount === 0) {
-      setMultiPullCount(Math.max(1, defaultCount));
-    }
-  }, [user?.points, maxPossiblePulls, multiPullCount]);
   
   const fetchUserCollection = useCallback(async () => {
     try {
@@ -210,9 +203,10 @@ const BannerPage = () => {
     setIsRolling(false);
   }, [pendingCharacter]);
 
-  const handleMultiRoll = async () => {
-    if (user?.points < currentMultiPullCost) {
-      setError(`Not enough points for ${multiPullCount}× roll. Required: ${currentMultiPullCost} points`);
+  const handleMultiRoll = async (count) => {
+    const cost = getMultiPullCost(count);
+    if (user?.points < cost) {
+      setError(`Not enough points for ${count}× roll. Required: ${cost} points`);
       return;
     }
     
@@ -221,10 +215,9 @@ const BannerPage = () => {
       setShowCard(false);
       setShowMultiResults(false);
       setError(null);
-      setMultiPullMenuOpen(false);
-      setRollCount(prev => prev + multiPullCount);
+      setRollCount(prev => prev + count);
       
-      const result = await multiRollOnBanner(bannerId, multiPullCount);
+      const result = await multiRollOnBanner(bannerId, count);
       const characters = result.characters;
       
       if (skipAnimations) {
@@ -561,64 +554,75 @@ const BannerPage = () => {
             </AnimatePresence>
           </ResultsArea>
           
-          {/* Roll Controls */}
-          <ControlsSection>
-            <ButtonRow>
-              <PrimaryRollButton 
-                onClick={handleRoll} 
-                disabled={isRolling || user?.points < singlePullCost}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {isRolling ? "Summoning..." : (
-                  <>
-                    <span>💫</span>
-                    <span>Single Pull</span>
-                    <CostLabel>{singlePullCost} pts</CostLabel>
-                  </>
-                )}
-              </PrimaryRollButton>
-              <SecondaryRollButton 
-                onClick={() => setMultiPullMenuOpen(true)} 
-                disabled={isRolling || user?.points < singlePullCost}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
-              >
-                {isRolling ? "Summoning..." : (
-                  <>
-                    <span>🎯</span>
-                    <span>Multi Pull</span>
-                    <CostLabel>{multiPullCount}×</CostLabel>
-                  </>
-                )}
-              </SecondaryRollButton>
-            </ButtonRow>
-            
-            <ControlsFooter>
-              <PullHint>
-                Up to <strong>{Math.floor((user?.points || 0) / singlePullCost)}</strong> pulls available
-              </PullHint>
-              <FastModeToggle 
-                active={skipAnimations}
-                onClick={() => setSkipAnimations(!skipAnimations)}
-              >
-                <MdFastForward />
-                {skipAnimations ? 'Fast Mode' : 'Normal'}
-              </FastModeToggle>
-            </ControlsFooter>
-          </ControlsSection>
-          
-          <MultiPullMenu
-            isOpen={multiPullMenuOpen}
-            onClose={() => setMultiPullMenuOpen(false)}
-            multiPullCount={multiPullCount}
-            setMultiPullCount={setMultiPullCount}
-            maxPossiblePulls={maxPossiblePulls()}
-            currentMultiPullCost={currentMultiPullCost}
-            onConfirm={handleMultiRoll}
-            userPoints={user?.points || 0}
-            singlePullCost={singlePullCost}
-          />
+          {/* Roll Controls - Hidden during animation */}
+          {!isAnimating && (
+            <ControlsSection
+              as={motion.div}
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+            >
+              <ButtonRow>
+                <PrimaryRollButton 
+                  onClick={handleRoll} 
+                  disabled={isRolling || user?.points < singlePullCost}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {isRolling ? "Summoning..." : (
+                    <>
+                      <ButtonLabel>
+                        <span>💫</span>
+                        <span>Single</span>
+                      </ButtonLabel>
+                      <CostLabel>{singlePullCost} pts</CostLabel>
+                    </>
+                  )}
+                </PrimaryRollButton>
+                
+                {/* Quick multi-pull buttons */}
+                {MULTI_PULL_OPTIONS.map((option) => {
+                  const cost = getMultiPullCost(option.count);
+                  const canAfford = (user?.points || 0) >= cost;
+                  const baseCost = option.count * singlePullCost;
+                  const savings = baseCost - cost;
+                  
+                  return (
+                    <MultiRollButton
+                      key={option.count}
+                      onClick={() => handleMultiRoll(option.count)}
+                      disabled={isRolling || !canAfford}
+                      $canAfford={canAfford}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <ButtonLabel>
+                        <span>🎯</span>
+                        <span>{option.label}</span>
+                      </ButtonLabel>
+                      <CostInfo>
+                        <CostLabel>{cost} pts</CostLabel>
+                        {savings > 0 && <DiscountBadge>-{Math.round(option.discount * 100)}%</DiscountBadge>}
+                      </CostInfo>
+                    </MultiRollButton>
+                  );
+                })}
+              </ButtonRow>
+              
+              <ControlsFooter>
+                <PullHint>
+                  <span>🪙</span> <strong>{user?.points || 0}</strong> points available
+                </PullHint>
+                <FastModeToggle 
+                  active={skipAnimations}
+                  onClick={() => setSkipAnimations(!skipAnimations)}
+                >
+                  <MdFastForward />
+                  {skipAnimations ? 'Fast Mode' : 'Normal'}
+                </FastModeToggle>
+              </ControlsFooter>
+            </ControlsSection>
+          )}
         </GachaContainer>
       </Container>
       
@@ -1417,27 +1421,54 @@ const EmptyText = styled.p`
 const ControlsSection = styled.div``;
 
 const ButtonRow = styled.div`
-  display: flex;
-  gap: ${theme.spacing.md};
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
   margin-bottom: ${theme.spacing.md};
   
+  @media (max-width: ${theme.breakpoints.md}) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+  
   @media (max-width: ${theme.breakpoints.sm}) {
-    flex-direction: column;
+    grid-template-columns: 1fr;
   }
 `;
 
-const PrimaryRollButton = styled(motion.button)`
-  flex: 1;
+const ButtonLabel = styled.span`
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.lg};
+  gap: 8px;
+`;
+
+const CostInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-left: auto;
+`;
+
+const DiscountBadge = styled.span`
+  font-size: 11px;
+  font-weight: 700;
+  color: ${theme.colors.success};
+  background: rgba(48, 209, 88, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+`;
+
+const PrimaryRollButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 18px;
   background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
   color: white;
   border: none;
   border-radius: ${theme.radius.xl};
-  font-size: ${theme.fontSizes.md};
+  font-size: 15px;
   font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
   box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
@@ -1447,9 +1478,49 @@ const PrimaryRollButton = styled(motion.button)`
     cursor: not-allowed;
     box-shadow: none;
   }
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    padding: 14px 12px;
+    font-size: 14px;
+  }
 `;
 
-const SecondaryRollButton = styled(motion.button)`
+const MultiRollButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 16px 18px;
+  background: ${props => props.$canAfford 
+    ? 'linear-gradient(135deg, rgba(88, 86, 214, 0.2), rgba(175, 82, 222, 0.2))' 
+    : 'rgba(255, 255, 255, 0.04)'};
+  color: white;
+  border: 1px solid ${props => props.$canAfford 
+    ? 'rgba(88, 86, 214, 0.4)' 
+    : 'rgba(255, 255, 255, 0.08)'};
+  border-radius: ${theme.radius.xl};
+  font-size: 15px;
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(88, 86, 214, 0.3), rgba(175, 82, 222, 0.3));
+    border-color: rgba(88, 86, 214, 0.6);
+  }
+  
+  &:disabled {
+    opacity: 0.35;
+    cursor: not-allowed;
+  }
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    padding: 14px 12px;
+    font-size: 14px;
+  }
+`;
+
+const LegacySecondaryRollButton = styled(motion.button)`
   flex: 1;
   display: flex;
   align-items: center;
@@ -1475,9 +1546,8 @@ const SecondaryRollButton = styled(motion.button)`
 `;
 
 const CostLabel = styled.span`
-  font-size: ${theme.fontSizes.sm};
-  opacity: 0.8;
-  margin-left: auto;
+  font-size: 13px;
+  opacity: 0.7;
 `;
 
 const ControlsFooter = styled.div`

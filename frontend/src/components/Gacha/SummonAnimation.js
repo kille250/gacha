@@ -66,9 +66,6 @@ const RARITY_CONFIG = {
 };
 
 // ==================== ANIMATION PHASES ====================
-// IDLE -> CHARGING -> PEAK -> REVEAL -> WAITING_DISMISS
-// User can skip during CHARGING/PEAK to go straight to REVEAL
-// User must click during WAITING_DISMISS to call onComplete
 
 const PHASES = {
   IDLE: 'idle',
@@ -86,7 +83,12 @@ export const SummonAnimation = ({
   character,
   onComplete,
   skipEnabled = true,
-  getImagePath
+  getImagePath,
+  // For multi-pull mode
+  isMultiPull = false,
+  currentPull = 1,
+  totalPulls = 1,
+  onSkipAll
 }) => {
   const [phase, setPhase] = useState(PHASES.IDLE);
   const [particles, setParticles] = useState([]);
@@ -129,7 +131,6 @@ export const SummonAnimation = ({
     if (config.confettiCount > 0) {
       const colors = config.particleColors;
       
-      // Main burst
       confetti({
         particleCount: config.confettiCount,
         spread: 100,
@@ -141,7 +142,6 @@ export const SummonAnimation = ({
         scalar: 1.2
       });
 
-      // Side bursts for legendary
       if (rarity === 'legendary') {
         setTimeout(() => {
           confetti({
@@ -172,25 +172,21 @@ export const SummonAnimation = ({
       setShowSkipHint(false);
       setConfettiFired(false);
 
-      // Show skip hint after a short delay
       const skipTimer = setTimeout(() => {
         setShowSkipHint(true);
       }, 800);
       timersRef.current.push(skipTimer);
 
-      // Transition to peak
       const peakTimer = setTimeout(() => {
         setPhase(PHASES.PEAK);
       }, config.buildupTime * 0.6);
       timersRef.current.push(peakTimer);
 
-      // Transition to reveal
       const revealTimer = setTimeout(() => {
         setPhase(PHASES.REVEAL);
       }, config.buildupTime);
       timersRef.current.push(revealTimer);
 
-      // Transition to waiting for dismiss (after character is shown)
       const waitTimer = setTimeout(() => {
         setPhase(PHASES.WAITING_DISMISS);
         setShowSkipHint(false);
@@ -229,16 +225,13 @@ export const SummonAnimation = ({
     e.stopPropagation();
     
     if (phase === PHASES.WAITING_DISMISS) {
-      // User wants to dismiss - call onComplete
       if (onComplete) {
         onComplete();
       }
     } else if (skipEnabled && (phase === PHASES.CHARGING || phase === PHASES.PEAK)) {
-      // User wants to skip to reveal
       clearAllTimers();
       setPhase(PHASES.REVEAL);
       
-      // Quick transition to waiting dismiss
       const waitTimer = setTimeout(() => {
         setPhase(PHASES.WAITING_DISMISS);
         setShowSkipHint(false);
@@ -262,213 +255,235 @@ export const SummonAnimation = ({
   const isBuildup = phase === PHASES.CHARGING || phase === PHASES.PEAK;
 
   return (
-    <AnimationContainer
-      onClick={handleContainerClick}
-      $rarity={rarity}
-      $phase={phase}
-      $shakeIntensity={config.shakeIntensity}
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
-      transition={{ duration: 0.3 }}
-    >
-      {/* Background Vignette */}
-      <Vignette $rarity={rarity} $phase={phase} />
+    <AnimationOverlay>
+      <AnimationContainer
+        onClick={handleContainerClick}
+        $rarity={rarity}
+        $phase={phase}
+        $shakeIntensity={config.shakeIntensity}
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+        transition={{ duration: 0.3 }}
+      >
+        {/* Background Vignette */}
+        <Vignette $rarity={rarity} $phase={phase} />
 
-      {/* Particle Field - only during buildup */}
-      {isBuildup && (
-        <ParticleField>
-          {particles.map(particle => (
-            <Particle
-              key={particle.id}
-              $x={particle.x}
-              $y={particle.y}
-              $size={particle.size}
-              $color={particle.color}
-              $delay={particle.delay}
-              $duration={particle.duration}
-              $phase={phase}
-            />
-          ))}
-        </ParticleField>
-      )}
-
-      {/* Summoning Circle - only during buildup */}
-      <CircleContainer $phase={phase} $isVisible={isBuildup}>
-        <SummonCircle 
-          $rarity={rarity} 
-          $phase={phase}
-          $speed={config.circleSpeed}
-        >
-          <CircleRing $delay={0} $rarity={rarity} />
-          <CircleRing $delay={0.2} $rarity={rarity} $reverse />
-          <CircleRing $delay={0.4} $rarity={rarity} />
-          <InnerGlow $rarity={rarity} $phase={phase} />
-          <RuneCircle $rarity={rarity}>
-            {[...Array(12)].map((_, i) => (
-              <Rune key={i} $index={i} $rarity={rarity}>✦</Rune>
-            ))}
-          </RuneCircle>
-        </SummonCircle>
-      </CircleContainer>
-
-      {/* Energy Beams - during peak and reveal */}
-      <AnimatePresence>
-        {(phase === PHASES.PEAK || phase === PHASES.REVEAL) && (
-          <EnergyBeams $rarity={rarity}>
-            {[...Array(8)].map((_, i) => (
-              <EnergyBeam 
-                key={i} 
-                $index={i} 
-                $rarity={rarity}
-                initial={{ scaleY: 0, opacity: 0 }}
-                animate={{ scaleY: 1, opacity: [0, 1, 0.5] }}
-                exit={{ opacity: 0 }}
-                transition={{ 
-                  duration: 0.5, 
-                  delay: i * 0.05,
-                  ease: "easeOut" 
-                }}
+        {/* Particle Field - only during buildup */}
+        {isBuildup && (
+          <ParticleField>
+            {particles.map(particle => (
+              <Particle
+                key={particle.id}
+                $x={particle.x}
+                $y={particle.y}
+                $size={particle.size}
+                $color={particle.color}
+                $delay={particle.delay}
+                $duration={particle.duration}
+                $phase={phase}
               />
             ))}
-          </EnergyBeams>
+          </ParticleField>
         )}
-      </AnimatePresence>
 
-      {/* Flash Effect - only on reveal start */}
-      <AnimatePresence>
-        {phase === PHASES.REVEAL && (
-          <FlashOverlay
-            $rarity={rarity}
-            initial={{ opacity: 1 }}
-            animate={{ opacity: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ duration: 0.6 }}
-          />
-        )}
-      </AnimatePresence>
-
-      {/* Character Reveal */}
-      <AnimatePresence>
-        {isShowingCharacter && character && (
-          <CharacterReveal
-            key="character-reveal"
-            initial={{ scale: 0.3, opacity: 0, y: 100 }}
-            animate={{ 
-              scale: 1, 
-              opacity: 1, 
-              y: 0,
-              transition: {
-                type: "spring",
-                damping: 12,
-                stiffness: 150,
-                duration: 0.6
-              }
-            }}
-            exit={{ scale: 0.8, opacity: 0 }}
+        {/* Summoning Circle - only during buildup */}
+        <CircleContainer $phase={phase} $isVisible={isBuildup}>
+          <SummonCircle 
+            $rarity={rarity} 
+            $phase={phase}
+            $speed={config.circleSpeed}
           >
-            <CharacterCard $rarity={rarity}>
-              <CardGlow $rarity={rarity} />
-              <CardImageContainer>
-                {isVideo(character.image) ? (
-                  <CardVideo 
-                    src={getImagePath(character.image)} 
-                    autoPlay 
-                    loop 
-                    muted 
-                    playsInline 
-                  />
-                ) : (
-                  <CardImage 
-                    src={getImagePath(character.image)} 
-                    alt={character.name} 
-                  />
-                )}
-                <ImageOverlay $rarity={rarity} />
-              </CardImageContainer>
-              <CardInfo>
-                <RarityIcon $rarity={rarity}>
-                  {config.icon}
-                </RarityIcon>
-                <CharacterName>{character.name}</CharacterName>
-                <CharacterSeries>{character.series}</CharacterSeries>
-                <RarityLabel $rarity={rarity}>
-                  {rarity.toUpperCase()}
-                </RarityLabel>
-              </CardInfo>
-              <ShineEffect />
-            </CharacterCard>
-          </CharacterReveal>
-        )}
-      </AnimatePresence>
+            <CircleRing $delay={0} $rarity={rarity} />
+            <CircleRing $delay={0.2} $rarity={rarity} $reverse />
+            <CircleRing $delay={0.4} $rarity={rarity} />
+            <InnerGlow $rarity={rarity} $phase={phase} />
+            <RuneCircle $rarity={rarity}>
+              {[...Array(12)].map((_, i) => (
+                <Rune key={i} $index={i} $rarity={rarity}>✦</Rune>
+              ))}
+            </RuneCircle>
+          </SummonCircle>
+        </CircleContainer>
 
-      {/* Rarity Indicator - only during charging */}
-      <AnimatePresence>
-        {phase === PHASES.CHARGING && (
-          <RarityHint
-            $rarity={rarity}
-            initial={{ opacity: 0, scale: 0.8 }}
-            animate={{ 
-              opacity: [0.5, 1, 0.5], 
-              scale: [0.95, 1.05, 0.95] 
-            }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            transition={{ 
-              duration: 1.5, 
-              repeat: Infinity,
-              ease: "easeInOut"
-            }}
-          >
-            {config.icon}
-          </RarityHint>
-        )}
-      </AnimatePresence>
+        {/* Energy Beams - during peak and reveal */}
+        <AnimatePresence>
+          {(phase === PHASES.PEAK || phase === PHASES.REVEAL) && (
+            <EnergyBeams $rarity={rarity}>
+              {[...Array(8)].map((_, i) => (
+                <EnergyBeam 
+                  key={i} 
+                  $index={i} 
+                  $rarity={rarity}
+                  initial={{ scaleY: 0, opacity: 0 }}
+                  animate={{ scaleY: 1, opacity: [0, 1, 0.5] }}
+                  exit={{ opacity: 0 }}
+                  transition={{ 
+                    duration: 0.5, 
+                    delay: i * 0.05,
+                    ease: "easeOut" 
+                  }}
+                />
+              ))}
+            </EnergyBeams>
+          )}
+        </AnimatePresence>
 
-      {/* Skip Hint - during buildup */}
-      <AnimatePresence>
-        {showSkipHint && skipEnabled && isBuildup && (
-          <SkipHint
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 0.7, y: 0 }}
-            exit={{ opacity: 0, y: 10 }}
-          >
-            Tap to skip
-          </SkipHint>
-        )}
-      </AnimatePresence>
+        {/* Flash Effect */}
+        <AnimatePresence>
+          {phase === PHASES.REVEAL && (
+            <FlashOverlay
+              $rarity={rarity}
+              initial={{ opacity: 1 }}
+              animate={{ opacity: 0 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.6 }}
+            />
+          )}
+        </AnimatePresence>
 
-      {/* Tap to continue - after reveal */}
-      <AnimatePresence>
-        {phase === PHASES.WAITING_DISMISS && (
-          <TapToContinue
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: [0.5, 1, 0.5], y: 0 }}
-            exit={{ opacity: 0 }}
-            transition={{ 
-              opacity: { duration: 1.5, repeat: Infinity },
-              y: { duration: 0.3 }
-            }}
-          >
-            Tap to continue
-          </TapToContinue>
-        )}
-      </AnimatePresence>
+        {/* Character Reveal */}
+        <AnimatePresence>
+          {isShowingCharacter && character && (
+            <CharacterReveal
+              key="character-reveal"
+              initial={{ scale: 0.3, opacity: 0, y: 100 }}
+              animate={{ 
+                scale: 1, 
+                opacity: 1, 
+                y: 0,
+                transition: {
+                  type: "spring",
+                  damping: 12,
+                  stiffness: 150,
+                  duration: 0.6
+                }
+              }}
+              exit={{ scale: 0.8, opacity: 0 }}
+            >
+              <CharacterCard $rarity={rarity}>
+                <CardGlow $rarity={rarity} />
+                <CardImageContainer>
+                  {isVideo(character.image) ? (
+                    <CardVideo 
+                      src={getImagePath(character.image)} 
+                      autoPlay 
+                      loop 
+                      muted 
+                      playsInline 
+                    />
+                  ) : (
+                    <CardImage 
+                      src={getImagePath(character.image)} 
+                      alt={character.name} 
+                    />
+                  )}
+                  <ImageOverlay $rarity={rarity} />
+                </CardImageContainer>
+                <CardInfo>
+                  <RarityIcon $rarity={rarity}>
+                    {config.icon}
+                  </RarityIcon>
+                  <CharacterName>{character.name}</CharacterName>
+                  <CharacterSeries>{character.series}</CharacterSeries>
+                  <RarityLabel $rarity={rarity}>
+                    {rarity.toUpperCase()}
+                  </RarityLabel>
+                </CardInfo>
+                <ShineEffect />
+              </CharacterCard>
+            </CharacterReveal>
+          )}
+        </AnimatePresence>
 
-      {/* Summoning Text - only during charging */}
-      <AnimatePresence>
-        {phase === PHASES.CHARGING && (
-          <SummoningText
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0, y: -20 }}
-          >
-            {['S','U','M','M','O','N','I','N','G'].map((letter, i) => (
-              <span key={i} style={{ animationDelay: `${i * 0.1}s` }}>{letter}</span>
-            ))}
-          </SummoningText>
+        {/* Rarity Indicator - only during charging */}
+        <AnimatePresence>
+          {phase === PHASES.CHARGING && (
+            <RarityHint
+              $rarity={rarity}
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ 
+                opacity: [0.5, 1, 0.5], 
+                scale: [0.95, 1.05, 0.95] 
+              }}
+              exit={{ opacity: 0, scale: 0.5 }}
+              transition={{ 
+                duration: 1.5, 
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+            >
+              {config.icon}
+            </RarityHint>
+          )}
+        </AnimatePresence>
+
+        {/* Skip Hint - during buildup */}
+        <AnimatePresence>
+          {showSkipHint && skipEnabled && isBuildup && (
+            <SkipHint
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 0.7, y: 0 }}
+              exit={{ opacity: 0, y: 10 }}
+            >
+              Tap to skip
+            </SkipHint>
+          )}
+        </AnimatePresence>
+
+        {/* Summoning Text - only during charging */}
+        <AnimatePresence>
+          {phase === PHASES.CHARGING && (
+            <SummoningText
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0, y: -20 }}
+            >
+              {['S','U','M','M','O','N','I','N','G'].map((letter, i) => (
+                <span key={i} style={{ animationDelay: `${i * 0.1}s` }}>{letter}</span>
+              ))}
+            </SummoningText>
+          )}
+        </AnimatePresence>
+      </AnimationContainer>
+
+      {/* Bottom controls - outside main animation container for proper positioning */}
+      <BottomControls>
+        {/* Multi-pull progress */}
+        {isMultiPull && (
+          <ProgressSection>
+            <ProgressCounter>{currentPull} / {totalPulls}</ProgressCounter>
+            <ProgressBarContainer>
+              <ProgressBarFill style={{ width: `${(currentPull / totalPulls) * 100}%` }} />
+            </ProgressBarContainer>
+          </ProgressSection>
         )}
-      </AnimatePresence>
-    </AnimationContainer>
+        
+        {/* Tap to continue - after reveal */}
+        <AnimatePresence>
+          {phase === PHASES.WAITING_DISMISS && (
+            <TapToContinue
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+            >
+              {isMultiPull && currentPull < totalPulls ? 'Tap for next' : 'Tap to continue'}
+            </TapToContinue>
+          )}
+        </AnimatePresence>
+
+        {/* Skip all button for multi-pull */}
+        {isMultiPull && onSkipAll && (
+          <SkipAllButton 
+            onClick={(e) => { e.stopPropagation(); onSkipAll(); }}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            Skip All
+          </SkipAllButton>
+        )}
+      </BottomControls>
+    </AnimationOverlay>
   );
 };
 
@@ -533,17 +548,24 @@ const letterWave = keyframes`
 
 // ==================== STYLED COMPONENTS ====================
 
-const AnimationContainer = styled(motion.div)`
+// Wrapper that covers everything
+const AnimationOverlay = styled.div`
   position: fixed;
   inset: 0;
-  z-index: 9999;
+  z-index: 99999;
+  pointer-events: auto;
+`;
+
+const AnimationContainer = styled(motion.div)`
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
   background: radial-gradient(
     ellipse at center,
     ${props => `${getRarityColor(props.$rarity)}15`} 0%,
-    rgba(0, 0, 0, 0.95) 70%,
+    rgba(0, 0, 0, 0.98) 70%,
     #000000 100%
   );
   overflow: hidden;
@@ -552,6 +574,80 @@ const AnimationContainer = styled(motion.div)`
   ${props => props.$phase === 'peak' && props.$shakeIntensity > 0 && css`
     animation: ${shake(props.$shakeIntensity)} 0.1s infinite;
   `}
+`;
+
+const BottomControls = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: 40px;
+  gap: 16px;
+  z-index: 100;
+  pointer-events: none;
+  
+  > * {
+    pointer-events: auto;
+  }
+`;
+
+const ProgressSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+`;
+
+const ProgressCounter = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+`;
+
+const ProgressBarContainer = styled.div`
+  width: 160px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 2px;
+  overflow: hidden;
+`;
+
+const ProgressBarFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  transition: width 0.3s ease;
+`;
+
+const TapToContinue = styled(motion.div)`
+  font-size: 16px;
+  font-weight: 600;
+  color: white;
+  padding: 14px 32px;
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  border-radius: 100px;
+  box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
+  cursor: pointer;
+`;
+
+const SkipAllButton = styled(motion.button)`
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 100px;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.15);
+    color: white;
+  }
 `;
 
 const Vignette = styled.div`
@@ -881,28 +977,13 @@ const RarityHint = styled(motion.div)`
 
 const SkipHint = styled(motion.div)`
   position: absolute;
-  bottom: 10%;
+  bottom: 25%;
   left: 50%;
   transform: translateX(-50%);
   font-size: 14px;
   color: ${theme.colors.textSecondary};
   padding: 8px 20px;
   background: rgba(255, 255, 255, 0.1);
-  border-radius: 100px;
-  backdrop-filter: blur(10px);
-`;
-
-const TapToContinue = styled(motion.div)`
-  position: absolute;
-  bottom: 8%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 16px;
-  font-weight: 500;
-  color: white;
-  padding: 12px 28px;
-  background: rgba(255, 255, 255, 0.15);
-  border: 1px solid rgba(255, 255, 255, 0.3);
   border-radius: 100px;
   backdrop-filter: blur(10px);
 `;
@@ -936,7 +1017,6 @@ export const MultiSummonAnimation = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showResults, setShowResults] = useState(false);
 
-  // Reset when becoming inactive
   useEffect(() => {
     if (!isActive) {
       setCurrentIndex(0);
@@ -946,10 +1026,8 @@ export const MultiSummonAnimation = ({
 
   const handleSingleComplete = useCallback(() => {
     if (currentIndex < characters.length - 1) {
-      // Move to next character
       setCurrentIndex(prev => prev + 1);
     } else {
-      // All done, show results
       setShowResults(true);
     }
   }, [currentIndex, characters.length]);
@@ -968,7 +1046,6 @@ export const MultiSummonAnimation = ({
 
   if (!isActive || characters.length === 0) return null;
 
-  // Show results grid
   if (showResults) {
     return (
       <MultiResultsOverlay
@@ -1014,43 +1091,29 @@ export const MultiSummonAnimation = ({
     );
   }
 
-  // Show individual summon animation
   return (
-    <>
-      <SummonAnimation
-        isActive={true}
-        rarity={currentCharacter?.rarity || 'common'}
-        character={currentCharacter}
-        onComplete={handleSingleComplete}
-        skipEnabled={skipEnabled}
-        getImagePath={getImagePath}
-      />
-      
-      {/* Progress indicator */}
-      <ProgressIndicator>
-        <ProgressText>
-          {currentIndex + 1} / {characters.length}
-        </ProgressText>
-        <ProgressBar>
-          <ProgressFill 
-            style={{ width: `${((currentIndex + 1) / characters.length) * 100}%` }} 
-          />
-        </ProgressBar>
-        <SkipAllButton onClick={handleSkipAll}>
-          Skip All
-        </SkipAllButton>
-      </ProgressIndicator>
-    </>
+    <SummonAnimation
+      isActive={true}
+      rarity={currentCharacter?.rarity || 'common'}
+      character={currentCharacter}
+      onComplete={handleSingleComplete}
+      skipEnabled={skipEnabled}
+      getImagePath={getImagePath}
+      isMultiPull={true}
+      currentPull={currentIndex + 1}
+      totalPulls={characters.length}
+      onSkipAll={handleSkipAll}
+    />
   );
 };
 
-// Additional styled components for multi-pull
+// Multi-pull result styles
 
 const MultiResultsOverlay = styled(motion.div)`
   position: fixed;
   inset: 0;
-  z-index: 9999;
-  background: rgba(0, 0, 0, 0.95);
+  z-index: 99999;
+  background: rgba(0, 0, 0, 0.98);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1161,54 +1224,6 @@ const CloseResultsButton = styled(motion.button)`
   font-weight: 600;
   cursor: pointer;
   box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
-`;
-
-const ProgressIndicator = styled.div`
-  position: fixed;
-  bottom: 40px;
-  left: 50%;
-  transform: translateX(-50%);
-  z-index: 10000;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 12px;
-`;
-
-const ProgressText = styled.div`
-  font-size: 14px;
-  color: ${theme.colors.textSecondary};
-  font-weight: 500;
-`;
-
-const ProgressBar = styled.div`
-  width: 200px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 2px;
-  overflow: hidden;
-`;
-
-const ProgressFill = styled.div`
-  height: 100%;
-  background: linear-gradient(90deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  transition: width 0.3s ease;
-`;
-
-const SkipAllButton = styled.button`
-  padding: 8px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 100px;
-  color: ${theme.colors.textSecondary};
-  font-size: 12px;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-  }
 `;
 
 export default SummonAnimation;
