@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle, MdClose } from 'react-icons/md';
 import { FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
-import { theme, getRarityColor, getRarityGlow } from '../../styles/DesignSystem';
+import { getRarityColor } from '../../styles/DesignSystem';
 
 const rarityIcons = {
   common: <FaDice />,
@@ -25,41 +25,27 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
+          transition={{ duration: 0.2 }}
           onClick={onClose}
         >
           <ModalContent
-            initial={{ scale: 0.9, opacity: 0, y: 20 }}
-            animate={{ scale: 1, opacity: 1, y: 0 }}
-            exit={{ scale: 0.9, opacity: 0, y: 20 }}
-            transition={{ type: 'spring', damping: 25, stiffness: 300 }}
+            initial={{ scale: 0.95, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.95, opacity: 0 }}
+            transition={{ type: 'spring', damping: 30, stiffness: 400 }}
             onClick={handleModalClick}
             rarity={rarity}
           >
+            {/* Close Button */}
             <CloseButton onClick={onClose}>
               <MdClose />
             </CloseButton>
             
-            {/* Badges */}
-            <BadgeContainer>
-              {isOwned && (
-                <OwnedBadge>
-                  <MdCheckCircle /> Collected
-                </OwnedBadge>
-              )}
-              {isBannerCharacter && (
-                <BannerBadge>
-                  ★ Banner
-                </BannerBadge>
-              )}
-            </BadgeContainer>
-            
-            {/* Rarity Glow Effect */}
-            <RarityGlowEffect rarity={rarity} />
-            
-            {/* Image/Video Container */}
-            <ImageContainer>
+            {/* Image/Video - Natural aspect ratio */}
+            <MediaWrapper>
               {isVideo ? (
-                <MediaVideo 
+                <Media 
+                  as="video"
                   src={image} 
                   autoPlay 
                   loop
@@ -67,31 +53,55 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
                   muted
                   onError={(e) => {
                     if (!e.target.src.includes('placeholder.com')) {
-                      e.target.src = 'https://via.placeholder.com/300?text=No+Media';
+                      e.target.src = 'https://via.placeholder.com/400x600?text=No+Media';
                     }
                   }} 
                 />
               ) : (
-                <LargeImage 
+                <Media 
+                  as="img"
                   src={image} 
                   alt={name}
                   onError={(e) => {
                     if (!e.target.src.includes('placeholder.com')) {
-                      e.target.src = 'https://via.placeholder.com/300?text=No+Image';
+                      e.target.src = 'https://via.placeholder.com/400x600?text=No+Image';
                     }
                   }}
                 />
               )}
-            </ImageContainer>
+              
+              {/* Subtle rarity glow at bottom */}
+              <RarityGlow rarity={rarity} />
+            </MediaWrapper>
             
-            {/* Character Details */}
-            <DetailsSection>
-              <RarityBadge rarity={rarity}>
-                {rarityIcons[rarity]} {rarity}
-              </RarityBadge>
-              <CharacterName>{name}</CharacterName>
-              {series && <CharacterSeries>{series}</CharacterSeries>}
-            </DetailsSection>
+            {/* Info Bar */}
+            <InfoBar>
+              <InfoContent>
+                {/* Badges Row */}
+                <BadgesRow>
+                  {isOwned && (
+                    <Badge variant="owned">
+                      <MdCheckCircle /> Owned
+                    </Badge>
+                  )}
+                  {isBannerCharacter && (
+                    <Badge variant="banner">
+                      ★ Featured
+                    </Badge>
+                  )}
+                  <RarityPill rarity={rarity}>
+                    {rarityIcons[rarity]}
+                    <span>{rarity}</span>
+                  </RarityPill>
+                </BadgesRow>
+                
+                {/* Character Info */}
+                <CharacterInfo>
+                  <CharacterName>{name}</CharacterName>
+                  {series && <CharacterSeries>{series}</CharacterSeries>}
+                </CharacterInfo>
+              </InfoContent>
+            </InfoBar>
           </ModalContent>
         </ModalOverlay>
       )}
@@ -99,177 +109,179 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
   );
 };
 
-// Styled Components
+// ==================== STYLED COMPONENTS ====================
+
 const ModalOverlay = styled(motion.div)`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.85);
-  backdrop-filter: blur(${theme.blur.md});
+  background: rgba(0, 0, 0, 0.9);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: ${theme.zIndex.modal};
-  padding: ${theme.spacing.lg};
+  z-index: 9999;
+  padding: 24px;
 `;
 
 const ModalContent = styled(motion.div)`
-  background: ${theme.colors.backgroundSecondary};
-  border-radius: ${theme.radius['2xl']};
+  background: #1c1c1e;
+  border-radius: 20px;
   position: relative;
+  max-width: 420px;
   width: 100%;
-  max-width: 480px;
   max-height: 85vh;
   overflow: hidden;
-  box-shadow: ${props => getRarityGlow(props.rarity)}, ${theme.shadows['2xl']};
-  border: 2px solid ${props => getRarityColor(props.rarity)};
   display: flex;
   flex-direction: column;
+  
+  /* Subtle shadow instead of heavy border */
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.08),
+    0 25px 80px -12px rgba(0, 0, 0, 0.6),
+    0 0 60px ${props => getRarityColor(props.rarity)}15;
 `;
 
 const CloseButton = styled.button`
   position: absolute;
-  top: ${theme.spacing.md};
-  right: ${theme.spacing.md};
-  background: ${theme.colors.glass};
-  backdrop-filter: blur(${theme.blur.sm});
-  border: 1px solid ${theme.colors.surfaceBorder};
-  color: ${theme.colors.text};
-  border-radius: ${theme.radius.full};
-  width: 40px;
-  height: 40px;
+  top: 12px;
+  right: 12px;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+  border: none;
+  color: rgba(255, 255, 255, 0.9);
+  border-radius: 50%;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 20;
   font-size: 20px;
-  transition: all ${theme.transitions.fast};
+  transition: all 0.2s ease;
   
   &:hover {
-    background: ${theme.colors.surfaceHover};
-    transform: scale(1.1);
+    background: rgba(0, 0, 0, 0.7);
+    transform: scale(1.05);
   }
 `;
 
-const BadgeContainer = styled.div`
-  position: absolute;
-  top: ${theme.spacing.md};
-  left: ${theme.spacing.md};
-  display: flex;
-  gap: ${theme.spacing.xs};
-  z-index: 15;
-`;
-
-const OwnedBadge = styled.div`
-  background: linear-gradient(135deg, ${theme.colors.success}, #059669);
-  color: white;
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  border-radius: ${theme.radius.full};
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.xs};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
-  box-shadow: ${theme.shadows.md};
-  
-  svg {
-    font-size: 14px;
-  }
-`;
-
-const BannerBadge = styled.div`
-  background: linear-gradient(135deg, ${theme.colors.warning}, #ff6b00);
-  color: white;
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  border-radius: ${theme.radius.full};
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.xs};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
-  box-shadow: ${theme.shadows.md};
-`;
-
-const RarityGlowEffect = styled.div`
-  position: absolute;
-  inset: 0;
-  background: radial-gradient(circle at 50% 30%, ${props => getRarityColor(props.rarity)}25 0%, transparent 60%);
-  pointer-events: none;
-  z-index: 0;
-`;
-
-const ImageContainer = styled.div`
+const MediaWrapper = styled.div`
+  position: relative;
   width: 100%;
-  height: 400px;
-  max-height: 55vh;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #000;
+  min-height: 300px;
+  max-height: 60vh;
   overflow: hidden;
-  position: relative;
-  z-index: 1;
-  
-  @media (max-width: ${theme.breakpoints.sm}) {
-    height: 300px;
-    max-height: 45vh;
-  }
 `;
 
-const LargeImage = styled.img`
+const Media = styled.div`
   width: 100%;
-  height: 100%;
+  height: auto;
+  max-height: 60vh;
   object-fit: contain;
+  display: block;
 `;
 
-const MediaVideo = styled.video`
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-`;
-
-const DetailsSection = styled.div`
-  padding: ${theme.spacing.xl};
-  position: relative;
-  background: linear-gradient(to bottom, transparent, ${theme.colors.backgroundSecondary} 30%);
-  text-align: center;
-  z-index: 1;
-`;
-
-const RarityBadge = styled.div`
+const RarityGlow = styled.div`
   position: absolute;
-  top: -16px;
-  left: 50%;
-  transform: translateX(-50%);
-  background: ${props => getRarityColor(props.rarity)};
-  color: white;
-  padding: ${theme.spacing.sm} ${theme.spacing.lg};
-  border-radius: ${theme.radius.full};
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.bold};
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  box-shadow: 0 4px 16px ${props => getRarityColor(props.rarity)}60;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 120px;
+  background: linear-gradient(
+    to top,
+    ${props => getRarityColor(props.rarity)}30 0%,
+    transparent 100%
+  );
+  pointer-events: none;
+`;
+
+const InfoBar = styled.div`
+  background: #1c1c1e;
+  padding: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+`;
+
+const InfoContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+const BadgesRow = styled.div`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing.sm};
-  white-space: nowrap;
-  z-index: 10;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const Badge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  
+  ${props => props.variant === 'owned' && `
+    background: rgba(52, 199, 89, 0.15);
+    color: #34C759;
+    
+    svg {
+      font-size: 14px;
+    }
+  `}
+  
+  ${props => props.variant === 'banner' && `
+    background: rgba(255, 159, 10, 0.15);
+    color: #FF9F0A;
+  `}
+`;
+
+const RarityPill = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 100px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: capitalize;
+  letter-spacing: 0.02em;
+  background: ${props => getRarityColor(props.rarity)}20;
+  color: ${props => getRarityColor(props.rarity)};
+  margin-left: auto;
   
   svg {
-    font-size: 12px;
+    font-size: 11px;
   }
+`;
+
+const CharacterInfo = styled.div`
+  text-align: left;
 `;
 
 const CharacterName = styled.h2`
-  margin: ${theme.spacing.md} 0 ${theme.spacing.xs};
-  font-size: ${theme.fontSizes['2xl']};
-  font-weight: ${theme.fontWeights.bold};
-  color: ${theme.colors.text};
+  margin: 0;
+  font-size: 22px;
+  font-weight: 600;
+  color: #fff;
   letter-spacing: -0.02em;
+  line-height: 1.2;
 `;
 
 const CharacterSeries = styled.p`
-  margin: 0;
-  font-size: ${theme.fontSizes.base};
-  color: ${theme.colors.textSecondary};
-  font-style: italic;
+  margin: 4px 0 0;
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.5);
 `;
 
 export default ImagePreviewModal;
