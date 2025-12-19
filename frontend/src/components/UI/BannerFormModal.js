@@ -805,11 +805,15 @@ const ClearSearchBtn = styled.button`
   
 const CharacterGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 12px;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 10px;
   padding: 12px;
   overflow-y: auto;
   max-height: 350px;
+  
+  @media (min-width: 700px) {
+    grid-template-columns: repeat(3, 1fr);
+  }
 `;
   
 const NoResults = styled.div`
@@ -837,7 +841,8 @@ const CharacterOption = styled.div`
   transition: all 0.2s;
   display: flex;
   flex-direction: row;
-  align-items: stretch;
+  align-items: center;
+  min-height: 90px;
   
   &:hover {
     border-color: ${props => rarityColors[props.$rarity]};
@@ -847,87 +852,92 @@ const CharacterOption = styled.div`
 `;
   
 const CharOptionImage = styled.img`
-  width: 70px;
-  height: 70px;
+  width: 72px;
+  height: 72px;
   object-fit: cover;
   display: block;
   flex-shrink: 0;
   border-radius: 8px;
-  margin: 8px;
+  margin: 9px;
 `;
 
 const CharOptionVideo = styled.video`
-  width: 70px;
-  height: 70px;
+  width: 72px;
+  height: 72px;
   object-fit: cover;
   display: block;
   flex-shrink: 0;
   border-radius: 8px;
-  margin: 8px;
+  margin: 9px;
 `;
   
 const CharOptionInfo = styled.div`
   flex: 1;
-  padding: 10px 10px 10px 0;
+  padding: 12px 8px 12px 0;
   display: flex;
   flex-direction: column;
   justify-content: center;
   min-width: 0;
+  overflow: hidden;
 `;
   
 const CharOptionName = styled.div`
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 600;
   color: #fff;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 `;
   
 const CharOptionSeries = styled.div`
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.6);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-top: 3px;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-top: 2px;
   line-height: 1.3;
+  display: -webkit-box;
+  -webkit-line-clamp: 1;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+  word-break: break-word;
 `;
   
 const CharOptionBadges = styled.div`
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-top: 6px;
+  gap: 4px;
+  margin-top: 4px;
   flex-wrap: wrap;
 `;
 
 const CharOptionRarity = styled.div`
   display: inline-flex;
   align-items: center;
-  font-size: 11px;
+  font-size: 9px;
   color: ${props => rarityColors[props.$rarity]};
   text-transform: uppercase;
   font-weight: 700;
-  letter-spacing: 0.5px;
-  padding: 2px 8px;
-  background: ${props => `${rarityColors[props.$rarity]}20`};
-  border-radius: 4px;
+  letter-spacing: 0.3px;
+  padding: 2px 6px;
+  background: ${props => `${rarityColors[props.$rarity]}25`};
+  border-radius: 3px;
 `;
 
 const R18Badge = styled.span`
-  font-size: 10px;
+  font-size: 9px;
   color: #FF453A;
   background: rgba(255, 69, 58, 0.2);
-  padding: 2px 6px;
-  border-radius: 4px;
+  padding: 2px 5px;
+  border-radius: 3px;
   font-weight: 600;
 `;
   
 const CharOptionCheck = styled.div`
-  width: 28px;
-  height: 28px;
+  width: 26px;
+  height: 26px;
   background: ${props => props.$selected ? '#34C759' : 'rgba(255, 255, 255, 0.1)'};
   border-radius: 50%;
   display: flex;
@@ -938,7 +948,7 @@ const CharOptionCheck = styled.div`
   font-size: 14px;
   border: 2px solid ${props => props.$selected ? '#34C759' : 'rgba(255, 255, 255, 0.2)'};
   flex-shrink: 0;
-  margin: auto 12px auto 0;
+  margin-right: 10px;
   transition: all 0.2s;
 `;
   
