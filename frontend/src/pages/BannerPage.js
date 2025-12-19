@@ -31,6 +31,7 @@ import {
 } from '../styles/DesignSystem';
 
 import { MultiPullMenu } from '../components/Gacha/MultiPullMenu';
+import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 // ==================== CONSTANTS ====================
@@ -81,6 +82,13 @@ const BannerPage = () => {
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
+  
+  // Summoning animation state
+  const [showSummonAnimation, setShowSummonAnimation] = useState(false);
+  const [pendingCharacter, setPendingCharacter] = useState(null);
+  const [showMultiSummonAnimation, setShowMultiSummonAnimation] = useState(false);
+  const [multiSummonIndex, setMultiSummonIndex] = useState(0);
+  const [pendingMultiResults, setPendingMultiResults] = useState([]);
 
   // Computed values
   const getSinglePullCost = useCallback(() => {
@@ -158,12 +166,6 @@ const BannerPage = () => {
     }
   }, []);
 
-  useEffect(() => {
-    if (currentChar && !skipAnimations) {
-      showRarePullEffect(currentChar.rarity);
-    }
-  }, [currentChar, skipAnimations, showRarePullEffect]);
-
   // Handlers
   const handleRoll = async () => {
     try {
@@ -174,27 +176,45 @@ const BannerPage = () => {
       setMultiRollResults([]);
       setRollCount(prev => prev + 1);
       
-      const delay = skipAnimations ? 0 : 1200;
-      
-      setTimeout(async () => {
-        try {
-          const result = await rollOnBanner(bannerId);
-          setCurrentChar(result.character);
+      try {
+        const result = await rollOnBanner(bannerId);
+        const character = result.character;
+        setPendingCharacter(character);
+        
+        if (skipAnimations) {
+          // Skip animation - show card directly
+          setCurrentChar(character);
           setShowCard(true);
-          setLastRarities(prev => [result.character.rarity, ...prev.slice(0, 4)]);
-          await refreshUser();
-          await fetchUserCollection();
-        } catch (err) {
-          setError(err.response?.data?.error || 'Failed to roll on banner');
-        } finally {
+          setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
+          showRarePullEffect(character.rarity);
           setIsRolling(false);
+        } else {
+          // Show summoning animation
+          setShowSummonAnimation(true);
         }
-      }, delay);
+        
+        await refreshUser();
+        await fetchUserCollection();
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to roll on banner');
+        setIsRolling(false);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll on banner');
       setIsRolling(false);
     }
   };
+  
+  const handleSummonComplete = useCallback(() => {
+    if (pendingCharacter) {
+      setCurrentChar(pendingCharacter);
+      setShowCard(true);
+      setLastRarities(prev => [pendingCharacter.rarity, ...prev.slice(0, 4)]);
+    }
+    setShowSummonAnimation(false);
+    setPendingCharacter(null);
+    setIsRolling(false);
+  }, [pendingCharacter]);
 
   const handleMultiRoll = async () => {
     if (user?.points < currentMultiPullCost) {
@@ -210,38 +230,66 @@ const BannerPage = () => {
       setMultiPullMenuOpen(false);
       setRollCount(prev => prev + multiPullCount);
       
-      const delay = skipAnimations ? 0 : 1200;
-      
-      setTimeout(async () => {
-        try {
-          const result = await multiRollOnBanner(bannerId, multiPullCount);
-          setMultiRollResults(result.characters);
+      try {
+        const result = await multiRollOnBanner(bannerId, multiPullCount);
+        const characters = result.characters;
+        
+        if (skipAnimations) {
+          // Skip animation - show results directly
+          setMultiRollResults(characters);
           setShowMultiResults(true);
           
           const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-          const bestRarity = result.characters.reduce((best, char) => {
+          const bestRarity = characters.reduce((best, char) => {
             const idx = rarityOrder.indexOf(char.rarity);
             return idx > rarityOrder.indexOf(best) ? char.rarity : best;
           }, 'common');
           
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
           
-          if (result.characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity)) && !skipAnimations) {
+          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
             confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
           }
-          await refreshUser();
-          await fetchUserCollection();
-        } catch (err) {
-          setError(err.response?.data?.error || 'Failed to multi-roll');
-        } finally {
           setIsRolling(false);
+        } else {
+          // Show multi-summon animation
+          setPendingMultiResults(characters);
+          setMultiSummonIndex(0);
+          setShowMultiSummonAnimation(true);
         }
-      }, delay);
+        
+        await refreshUser();
+        await fetchUserCollection();
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to multi-roll');
+        setIsRolling(false);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to multi-roll');
       setIsRolling(false);
     }
   };
+  
+  const handleMultiSummonNext = useCallback(() => {
+    setMultiSummonIndex(prev => prev + 1);
+  }, []);
+  
+  const handleMultiSummonComplete = useCallback(() => {
+    setMultiRollResults(pendingMultiResults);
+    setShowMultiResults(true);
+    
+    const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const bestRarity = pendingMultiResults.reduce((best, char) => {
+      const idx = rarityOrder.indexOf(char.rarity);
+      return idx > rarityOrder.indexOf(best) ? char.rarity : best;
+    }, 'common');
+    
+    setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
+    setShowMultiSummonAnimation(false);
+    setPendingMultiResults([]);
+    setMultiSummonIndex(0);
+    setIsRolling(false);
+  }, [pendingMultiResults]);
 
   const getImagePath = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300?text=No+Image';
   const getBannerImage = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/1200x400?text=Banner';
@@ -502,7 +550,7 @@ const BannerPage = () => {
                   </MultiResultsGrid>
                 </MultiResultsContainer>
                 
-              ) : isRolling ? (
+              ) : isRolling && skipAnimations ? (
                 <LoadingState 
                   key="loading"
                   variants={motionVariants.fadeIn}
@@ -514,7 +562,7 @@ const BannerPage = () => {
                   <LoadingStateText>Summoning...</LoadingStateText>
                 </LoadingState>
                 
-              ) : (
+              ) : !isRolling ? (
                 <EmptyState 
                   key="empty"
                   variants={motionVariants.slideUp}
@@ -526,7 +574,7 @@ const BannerPage = () => {
                   <EmptyTitle>Roll on {banner.name}</EmptyTitle>
                   <EmptyText>{banner.series} Special Banner</EmptyText>
                 </EmptyState>
-              )}
+              ) : null}
             </AnimatePresence>
           </ResultsArea>
           
@@ -590,6 +638,37 @@ const BannerPage = () => {
           />
         </GachaContainer>
       </Container>
+      
+      {/* Summoning Animation for Single Pull */}
+      <AnimatePresence>
+        {showSummonAnimation && pendingCharacter && (
+          <SummonAnimation
+            isActive={showSummonAnimation}
+            rarity={pendingCharacter.rarity}
+            character={pendingCharacter}
+            onComplete={handleSummonComplete}
+            onSkip={handleSummonComplete}
+            skipEnabled={true}
+            getImagePath={getImagePath}
+          />
+        )}
+      </AnimatePresence>
+      
+      {/* Multi-Summon Animation */}
+      <AnimatePresence>
+        {showMultiSummonAnimation && pendingMultiResults.length > 0 && (
+          <MultiSummonAnimation
+            isActive={showMultiSummonAnimation}
+            characters={pendingMultiResults}
+            currentIndex={multiSummonIndex}
+            onRevealNext={handleMultiSummonNext}
+            onComplete={handleMultiSummonComplete}
+            onSkip={handleMultiSummonComplete}
+            skipEnabled={true}
+            getImagePath={getImagePath}
+          />
+        )}
+      </AnimatePresence>
       
       {/* Image Preview Modal */}
       <ImagePreviewModal

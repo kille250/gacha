@@ -25,6 +25,7 @@ import {
 } from '../styles/DesignSystem';
 
 import { MultiPullMenu } from '../components/Gacha/MultiPullMenu';
+import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 // ==================== CONSTANTS ====================
@@ -76,6 +77,13 @@ const RollPage = () => {
   const [multiPullCount, setMultiPullCount] = useState(10);
   const [multiPullMenuOpen, setMultiPullMenuOpen] = useState(false);
   
+  // Summoning animation state
+  const [showSummonAnimation, setShowSummonAnimation] = useState(false);
+  const [pendingCharacter, setPendingCharacter] = useState(null);
+  const [showMultiSummonAnimation, setShowMultiSummonAnimation] = useState(false);
+  const [multiSummonIndex, setMultiSummonIndex] = useState(0);
+  const [pendingMultiResults, setPendingMultiResults] = useState([]);
+  
   // Computed values
   const maxPossiblePulls = Math.min(20, Math.floor((user?.points || 0) / SINGLE_PULL_COST));
   
@@ -109,12 +117,6 @@ const RollPage = () => {
     }
   }, []);
   
-  useEffect(() => {
-    if (currentChar && !skipAnimations) {
-      showRarePullEffect(currentChar.rarity);
-    }
-  }, [currentChar, skipAnimations, showRarePullEffect]);
-  
   // Handlers
   const handleRoll = async () => {
     try {
@@ -125,26 +127,44 @@ const RollPage = () => {
       setMultiRollResults([]);
       setRollCount(prev => prev + 1);
       
-      const delay = skipAnimations ? 0 : 1200;
-      
-      setTimeout(async () => {
-        try {
-          const character = await rollCharacter();
+      // Fetch character immediately
+      try {
+        const character = await rollCharacter();
+        setPendingCharacter(character);
+        
+        if (skipAnimations) {
+          // Skip animation - show card directly
           setCurrentChar(character);
           setShowCard(true);
           setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
-          await refreshUser();
-        } catch (err) {
-          setError(err.response?.data?.error || 'Failed to roll character');
-        } finally {
+          showRarePullEffect(character.rarity);
           setIsRolling(false);
+        } else {
+          // Show summoning animation
+          setShowSummonAnimation(true);
         }
-      }, delay);
+        
+        await refreshUser();
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to roll character');
+        setIsRolling(false);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll character');
       setIsRolling(false);
     }
   };
+  
+  const handleSummonComplete = useCallback(() => {
+    if (pendingCharacter) {
+      setCurrentChar(pendingCharacter);
+      setShowCard(true);
+      setLastRarities(prev => [pendingCharacter.rarity, ...prev.slice(0, 4)]);
+    }
+    setShowSummonAnimation(false);
+    setPendingCharacter(null);
+    setIsRolling(false);
+  }, [pendingCharacter]);
   
   const handleMultiRoll = async () => {
     const cost = calculateMultiPullCost(multiPullCount);
@@ -161,11 +181,11 @@ const RollPage = () => {
       setMultiPullMenuOpen(false);
       setRollCount(prev => prev + multiPullCount);
       
-      const delay = skipAnimations ? 0 : 1200;
-      
-      setTimeout(async () => {
-        try {
-          const characters = await rollMultipleCharacters(multiPullCount);
+      try {
+        const characters = await rollMultipleCharacters(multiPullCount);
+        
+        if (skipAnimations) {
+          // Skip animation - show results directly
           setMultiRollResults(characters);
           setShowMultiResults(true);
           
@@ -177,21 +197,48 @@ const RollPage = () => {
           
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
           
-          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity)) && !skipAnimations) {
+          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
             confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
           }
-          await refreshUser();
-        } catch (err) {
-          setError(err.response?.data?.error || 'Failed to roll');
-        } finally {
           setIsRolling(false);
+        } else {
+          // Show multi-summon animation
+          setPendingMultiResults(characters);
+          setMultiSummonIndex(0);
+          setShowMultiSummonAnimation(true);
         }
-      }, delay);
+        
+        await refreshUser();
+      } catch (err) {
+        setError(err.response?.data?.error || 'Failed to roll');
+        setIsRolling(false);
+      }
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to roll');
       setIsRolling(false);
     }
   };
+  
+  const handleMultiSummonNext = useCallback(() => {
+    setMultiSummonIndex(prev => prev + 1);
+  }, []);
+  
+  const handleMultiSummonComplete = useCallback(() => {
+    setMultiRollResults(pendingMultiResults);
+    setShowMultiResults(true);
+    
+    const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const bestRarity = pendingMultiResults.reduce((best, char) => {
+      const idx = rarityOrder.indexOf(char.rarity);
+      return idx > rarityOrder.indexOf(best) ? char.rarity : best;
+    }, 'common');
+    
+    setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
+    setShowMultiSummonAnimation(false);
+    setPendingMultiResults([]);
+    setMultiSummonIndex(0);
+    setIsRolling(false);
+  }, [pendingMultiResults]);
   
   const getImagePath = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300?text=No+Image';
   
@@ -352,7 +399,7 @@ const RollPage = () => {
                   </MultiResultsGrid>
                 </MultiResultsContainer>
                 
-              ) : isRolling ? (
+              ) : isRolling && skipAnimations ? (
                 <LoadingState 
                   key="loading" 
                   variants={motionVariants.fadeIn}
@@ -364,7 +411,7 @@ const RollPage = () => {
                   <LoadingText>Summoning...</LoadingText>
                 </LoadingState>
                 
-              ) : (
+              ) : !isRolling ? (
                 <EmptyState 
                   key="empty"
                   variants={motionVariants.slideUp}
@@ -376,7 +423,7 @@ const RollPage = () => {
                   <EmptyTitle>Ready to Roll?</EmptyTitle>
                   <EmptyText>Try your luck and discover rare characters</EmptyText>
                 </EmptyState>
-              )}
+              ) : null}
             </AnimatePresence>
           </ResultsArea>
           
@@ -440,6 +487,37 @@ const RollPage = () => {
           />
         </GachaContainer>
       </Container>
+      
+      {/* Summoning Animation for Single Pull */}
+      <AnimatePresence>
+        {showSummonAnimation && pendingCharacter && (
+          <SummonAnimation
+            isActive={showSummonAnimation}
+            rarity={pendingCharacter.rarity}
+            character={pendingCharacter}
+            onComplete={handleSummonComplete}
+            onSkip={handleSummonComplete}
+            skipEnabled={true}
+            getImagePath={getImagePath}
+          />
+        )}
+      </AnimatePresence>
+      
+      {/* Multi-Summon Animation */}
+      <AnimatePresence>
+        {showMultiSummonAnimation && pendingMultiResults.length > 0 && (
+          <MultiSummonAnimation
+            isActive={showMultiSummonAnimation}
+            characters={pendingMultiResults}
+            currentIndex={multiSummonIndex}
+            onRevealNext={handleMultiSummonNext}
+            onComplete={handleMultiSummonComplete}
+            onSkip={handleMultiSummonComplete}
+            skipEnabled={true}
+            getImagePath={getImagePath}
+          />
+        )}
+      </AnimatePresence>
       
       {/* Image Preview Modal */}
       <ImagePreviewModal
@@ -1043,4 +1121,3 @@ const FastModeToggle = styled.button`
 `;
 
 export default RollPage;
-
