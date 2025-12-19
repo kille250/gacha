@@ -1,11 +1,20 @@
-// pages/CouponPage.js
 import React, { useState, useContext, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy } from 'react-icons/fa';
+import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
 import api, { getAssetUrl } from '../utils/api';
-import { MdHelp } from 'react-icons/md';
 import { AuthContext } from '../context/AuthContext';
+import {
+  theme,
+  PageWrapper,
+  Container,
+  Section,
+  Heading2,
+  Text,
+  Alert,
+  motionVariants,
+  getRarityColor
+} from '../styles/DesignSystem';
 
 const CouponPage = () => {
   const { user, refreshUser } = useContext(AuthContext);
@@ -16,7 +25,6 @@ const CouponPage = () => {
   const [rewardInfo, setRewardInfo] = useState(null);
   
   useEffect(() => {
-    // Clear messages when component mounts
     setError(null);
     setSuccess(null);
     setRewardInfo(null);
@@ -46,7 +54,6 @@ const CouponPage = () => {
       setRewardInfo(response.data);
       setCouponCode('');
       
-      // Refresh user data to update coins
       if (response.data.type === 'coins') {
         await refreshUser();
       }
@@ -59,119 +66,123 @@ const CouponPage = () => {
 
   const rarityIcons = {
     common: <FaDice />,
-    uncommon: <MdHelp />,
+    uncommon: <FaStar />,
     rare: <FaGem />,
-    epic: <MdHelp />,
+    epic: <FaStar />,
     legendary: <FaTrophy />
+  };
+
+  const getCharacterImage = (imagePath) => {
+    if (!imagePath) return 'https://via.placeholder.com/150?text=Character';
+    return getAssetUrl(imagePath);
   };
   
   return (
-    <MainContainer>
-      <Dashboard>
-        {/* Header bar with points and title */}
+    <StyledPageWrapper>
+      <Container>
+        {/* Header */}
         <Header>
-          <Logo>
-            <span>Coupon</span>
-            <GlowingText>Redemption</GlowingText>
-          </Logo>
-          <UserStats>
-            <PointsDisplay>
-              <CoinIcon>🪙</CoinIcon>
-              <PointsAmount>{user?.points || 0}</PointsAmount>
-            </PointsDisplay>
-          </UserStats>
+          <HeaderContent>
+            <PageTitle>
+              Coupon<TitleAccent>Redemption</TitleAccent>
+            </PageTitle>
+            <PageSubtitle>Redeem codes to earn rewards</PageSubtitle>
+          </HeaderContent>
+          <PointsDisplay>
+            <span>🪙</span>
+            <span>{user?.points || 0}</span>
+          </PointsDisplay>
         </Header>
       
-        {/* Error message */}
+        {/* Alerts */}
         <AnimatePresence>
           {error && (
-            <ErrorAlert
+            <StyledAlert
+              variant="error"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
               <FaTimes /> {error}
-              <ErrorCloseBtn onClick={() => setError(null)}>×</ErrorCloseBtn>
-            </ErrorAlert>
+              <CloseBtn onClick={() => setError(null)}>×</CloseBtn>
+            </StyledAlert>
           )}
         </AnimatePresence>
         
-        {/* Success message */}
         <AnimatePresence>
           {success && (
-            <SuccessAlert
+            <StyledAlert
+              variant="success"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
             >
               <FaCheck /> {success}
-              <ErrorCloseBtn onClick={() => setSuccess(null)}>×</ErrorCloseBtn>
-            </SuccessAlert>
+              <CloseBtn onClick={() => setSuccess(null)}>×</CloseBtn>
+            </StyledAlert>
           )}
         </AnimatePresence>
 
-        <ContentArea>
-          <CouponColumn>
-            <SectionHeading>
+        <ContentGrid>
+          {/* Coupon Input Section */}
+          <CouponSection>
+            <SectionHeader>
               <SectionIcon><FaTicketAlt /></SectionIcon>
-              <span>Redeem Coupon Code</span>
-            </SectionHeading>
+              <Heading2>Redeem Code</Heading2>
+            </SectionHeader>
             
-            <CouponCardContainer>
+            <CouponCard>
               <CouponForm onSubmit={redeemCoupon}>
-                <CouponInputWrapper>
-                  <CouponInput 
-                    type="text"
-                    placeholder="ENTER COUPON CODE"
-                    value={couponCode}
-                    onChange={handleInputChange}
-                    disabled={loading}
-                  />
-                </CouponInputWrapper>
+                <CouponInput 
+                  type="text"
+                  placeholder="ENTER COUPON CODE"
+                  value={couponCode}
+                  onChange={handleInputChange}
+                  disabled={loading}
+                />
                 
                 <RedeemButton 
                   type="submit" 
                   disabled={loading || !couponCode}
-                  whileHover={{ scale: 1.03 }}
-                  whileTap={{ scale: 0.97 }}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   {loading ? 'Redeeming...' : 'Redeem Coupon'}
                 </RedeemButton>
               </CouponForm>
               
-              {/* Instructions */}
-              <CouponInstructions>
+              <Instructions>
                 <InstructionTitle>How to use coupons:</InstructionTitle>
                 <InstructionList>
                   <InstructionItem>
-                    <BulletPoint>✦</BulletPoint>
-                    <span>Coupons can be redeemed for various rewards like coins or characters</span>
+                    <Bullet>✦</Bullet>
+                    <span>Coupons can be redeemed for coins or characters</span>
                   </InstructionItem>
                   <InstructionItem>
-                    <BulletPoint>✦</BulletPoint>
+                    <Bullet>✦</Bullet>
                     <span>Each coupon can only be redeemed once per account</span>
                   </InstructionItem>
                   <InstructionItem>
-                    <BulletPoint>✦</BulletPoint>
-                    <span>You can find coupons on our social media, in events, or from friends</span>
+                    <Bullet>✦</Bullet>
+                    <span>Find coupons on social media, in events, or from friends</span>
                   </InstructionItem>
                   <InstructionItem>
-                    <BulletPoint>✦</BulletPoint>
+                    <Bullet>✦</Bullet>
                     <span>Coupon codes are case-insensitive</span>
                   </InstructionItem>
                 </InstructionList>
-              </CouponInstructions>
-            </CouponCardContainer>
-          </CouponColumn>
+              </Instructions>
+            </CouponCard>
+          </CouponSection>
           
-          {/* Results / Reward Info Column */}
-          <RewardColumn>
-            <SectionHeading>
+          {/* Reward Display Section */}
+          <RewardSection>
+            <SectionHeader>
               <SectionIcon>🎁</SectionIcon>
-              <span>Reward Details</span>
-            </SectionHeading>
+              <Heading2>Reward Details</Heading2>
+            </SectionHeader>
             
-            <ResultsDisplay>
+            <RewardDisplay>
               <AnimatePresence mode="wait">
                 {rewardInfo ? (
                   <RewardCard
@@ -188,356 +199,253 @@ const CouponPage = () => {
                     <RewardContent>
                       {rewardInfo.type === 'coins' ? (
                         <CoinReward>
-                          <CoinRewardIcon>
+                          <CoinIcon>
                             <FaCoins />
-                          </CoinRewardIcon>
+                          </CoinIcon>
                           <RewardDetails>
                             <RewardAmount>{rewardInfo.reward.coins} Coins</RewardAmount>
-                            <RewardDescription>Added to your account</RewardDescription>
+                            <RewardDesc>Added to your account</RewardDesc>
                           </RewardDetails>
                         </CoinReward>
                       ) : rewardInfo.type === 'character' ? (
                         <CharacterReward>
-                          <CharacterImageWrapper>
-                            <CharacterImage 
-                              src={getCharacterImage(rewardInfo.reward.character.image)}
-                              alt={rewardInfo.reward.character.name}
-                              onError={(e) => {
-                                e.target.src = 'https://via.placeholder.com/150?text=Character';
-                              }}
-                            />
-                          </CharacterImageWrapper>
+                          <CharacterImage 
+                            src={getCharacterImage(rewardInfo.reward.character.image)}
+                            alt={rewardInfo.reward.character.name}
+                            onError={(e) => {
+                              e.target.src = 'https://via.placeholder.com/150?text=Character';
+                            }}
+                          />
                           <CharacterDetails>
-                            <RewardCharName>{rewardInfo.reward.character.name}</RewardCharName>
-                            <RewardCharSeries>{rewardInfo.reward.character.series}</RewardCharSeries>
+                            <CharacterName>{rewardInfo.reward.character.name}</CharacterName>
+                            <CharacterSeries>{rewardInfo.reward.character.series}</CharacterSeries>
                             <RarityBadge rarity={rewardInfo.reward.character.rarity}>
                               {rarityIcons[rewardInfo.reward.character.rarity]} {rewardInfo.reward.character.rarity}
                             </RarityBadge>
                           </CharacterDetails>
                         </CharacterReward>
                       ) : (
-                        <div>Unknown reward type: {rewardInfo.type}</div>
+                        <div>Unknown reward type</div>
                       )}
                     </RewardContent>
                   </RewardCard>
                 ) : (
-                  <EmptyRewardState
+                  <EmptyState
                     key="empty"
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <EmptyStateIcon>🎫</EmptyStateIcon>
-                    <h3>No Reward to Display</h3>
-                    <p>Redeem a coupon to see your reward here</p>
-                  </EmptyRewardState>
+                    <EmptyIcon>🎫</EmptyIcon>
+                    <EmptyTitle>No Reward Yet</EmptyTitle>
+                    <EmptyText>Redeem a coupon to see your reward here</EmptyText>
+                  </EmptyState>
                 )}
               </AnimatePresence>
-            </ResultsDisplay>
-          </RewardColumn>
-        </ContentArea>
-      </Dashboard>
-    </MainContainer>
+            </RewardDisplay>
+          </RewardSection>
+        </ContentGrid>
+      </Container>
+    </StyledPageWrapper>
   );
 };
 
-// Helper to get character image URL
-const getCharacterImage = (imagePath) => {
-  if (!imagePath) return 'https://via.placeholder.com/150?text=Character';
-  return getAssetUrl(imagePath);
-};
-
 // Styled Components
-const MainContainer = styled.div`
-  min-height: 100vh;
-  background: linear-gradient(135deg, #141e30 0%, #243b55 100%);
-  color: white;
-  display: flex;
-  justify-content: center;
-  &::after {
-    content: "";
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    background-image: url('/images/backgrounds/gacha-bg.jpg');
-    background-size: cover;
-    background-position: center;
-    opacity: 0.15;
-    z-index: -1;
-    pointer-events: none;
-  }
+const StyledPageWrapper = styled(PageWrapper)`
+  padding: ${theme.spacing.xl} 0;
 `;
 
-const Dashboard = styled.div`
-  width: 100%;
-  max-width: 1200px;
-  padding: 20px;
-  @media (max-width: 768px) {
-    padding: 15px 10px;
-  }
-`;
-
-const Header = styled.header`
+const Header = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px;
-  backdrop-filter: blur(10px);
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
-  margin-bottom: 20px;
-  @media (max-width: 768px) {
+  margin-bottom: ${theme.spacing.xl};
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+  
+  @media (max-width: ${theme.breakpoints.md}) {
     flex-direction: column;
-    gap: 15px;
+    text-align: center;
   }
 `;
 
-const Logo = styled.div`
-  font-size: 28px;
-  font-weight: 700;
-  letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.5);
-  @media (max-width: 768px) {
-    font-size: 24px;
+const HeaderContent = styled.div``;
+
+const PageTitle = styled.h1`
+  font-size: ${theme.fontSizes['3xl']};
+  font-weight: ${theme.fontWeights.bold};
+  margin: 0;
+  letter-spacing: -0.02em;
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    font-size: ${theme.fontSizes['2xl']};
   }
 `;
 
-const GlowingText = styled.span`
-  background: linear-gradient(90deg, #6e48aa, #9e5594);
+const TitleAccent = styled.span`
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
-  position: relative;
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: -5px;
-    left: 0;
-    right: 0;
-    height: 3px;
-    background: linear-gradient(90deg, #6e48aa, #9e5594);
-    border-radius: 3px;
-  }
+  background-clip: text;
+  margin-left: ${theme.spacing.sm};
 `;
 
-const UserStats = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  @media (max-width: 768px) {
-    width: 100%;
-    justify-content: center;
-  }
+const PageSubtitle = styled.p`
+  font-size: ${theme.fontSizes.base};
+  color: ${theme.colors.textSecondary};
+  margin: ${theme.spacing.xs} 0 0;
 `;
 
 const PointsDisplay = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 8px 16px;
-  border-radius: 20px;
-  font-weight: 600;
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  font-size: 16px;
-`;
-
-const CoinIcon = styled.span`
-  font-size: 18px;
-`;
-
-const PointsAmount = styled.span`
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
   color: white;
 `;
 
-const ContentArea = styled.div`
+const StyledAlert = styled(Alert)`
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const CloseBtn = styled.button`
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+  margin-left: auto;
+  padding: 0;
+  line-height: 1;
+`;
+
+const ContentGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
-  gap: 20px;
-  @media (max-width: 900px) {
+  gap: ${theme.spacing.xl};
+  
+  @media (max-width: ${theme.breakpoints.lg}) {
     grid-template-columns: 1fr;
   }
 `;
 
-const SectionHeading = styled.h2`
+const CouponSection = styled(Section)``;
+
+const RewardSection = styled(Section)``;
+
+const SectionHeader = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin: 0 0 20px 0;
-  font-size: 22px;
-  position: relative;
-  padding-bottom: 10px;
-  &::after {
-    content: "";
-    position: absolute;
-    bottom: 0;
-    left: 0;
-    width: 60px;
-    height: 3px;
-    background: linear-gradient(90deg, #6e48aa, #9e5594);
-    border-radius: 3px;
-  }
-  @media (max-width: 768px) {
-    font-size: 20px;
-  }
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.lg};
+  padding-bottom: ${theme.spacing.md};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
 `;
 
 const SectionIcon = styled.span`
-  font-size: 22px;
+  font-size: ${theme.fontSizes.xl};
+  color: ${theme.colors.accent};
 `;
 
-const CouponColumn = styled.div`
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(5px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 25px;
-  @media (max-width: 768px) {
-    padding: 20px 15px;
-  }
-`;
-
-const CouponCardContainer = styled.div`
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 16px;
-  padding: 25px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+const CouponCard = styled.div`
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
+  padding: ${theme.spacing.lg};
+  border: 1px solid ${theme.colors.surfaceBorder};
 `;
 
 const CouponForm = styled.form`
   display: flex;
   flex-direction: column;
-  gap: 20px;
-  margin-bottom: 30px;
-`;
-
-const CouponInputWrapper = styled.div`
-  position: relative;
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.xl};
 `;
 
 const CouponInput = styled.input`
   width: 100%;
-  background: rgba(0, 0, 0, 0.3);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  padding: 15px 20px;
-  border-radius: 10px;
-  font-size: 18px;
-  letter-spacing: 1px;
+  padding: ${theme.spacing.lg};
+  background: ${theme.colors.background};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  font-size: ${theme.fontSizes.lg};
   font-family: 'Courier New', monospace;
-  outline: none;
-  transition: all 0.2s;
+  letter-spacing: 2px;
+  color: ${theme.colors.text};
+  text-align: center;
+  transition: all ${theme.transitions.fast};
   
   &:focus {
-    border-color: #6e48aa;
-    box-shadow: 0 0 0 1px rgba(110, 72, 170, 0.5);
+    outline: none;
+    border-color: ${theme.colors.accent};
+    box-shadow: 0 0 0 3px rgba(88, 86, 214, 0.2);
   }
   
   &::placeholder {
-    color: rgba(255, 255, 255, 0.3);
+    color: ${theme.colors.textMuted};
+    letter-spacing: 1px;
+  }
+  
+  &:disabled {
+    opacity: 0.6;
   }
 `;
 
 const RedeemButton = styled(motion.button)`
-  background: linear-gradient(135deg, #6e48aa, #9e5594);
-  color: white;
+  padding: ${theme.spacing.md} ${theme.spacing.xl};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
   border: none;
-  padding: 15px 25px;
-  border-radius: 10px;
-  font-weight: 600;
-  font-size: 16px;
+  border-radius: ${theme.radius.lg};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: white;
   cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: 0 4px 15px rgba(110, 72, 170, 0.4);
+  box-shadow: 0 4px 16px rgba(88, 86, 214, 0.4);
+  transition: all ${theme.transitions.fast};
   
   &:disabled {
-    background: #555;
-    cursor: not-allowed;
+    background: ${theme.colors.backgroundTertiary};
     box-shadow: none;
-    opacity: 0.7;
+    cursor: not-allowed;
+    opacity: 0.6;
   }
 `;
 
-const ErrorAlert = styled(motion.div)`
-  background: rgba(211, 47, 47, 0.8);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 4px 12px rgba(211, 47, 47, 0.3);
+const Instructions = styled.div`
+  background: ${theme.colors.background};
+  border-radius: ${theme.radius.md};
+  padding: ${theme.spacing.lg};
+  border-left: 3px solid ${theme.colors.accent};
 `;
 
-const SuccessAlert = styled(motion.div)`
-  background: rgba(46, 125, 50, 0.8);
-  color: white;
-  padding: 12px 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  box-shadow: 0 4px 12px rgba(46, 125, 50, 0.3);
-`;
-
-const ErrorCloseBtn = styled.button`
-  background: none;
-  border: none;
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  margin-left: auto;
-`;
-
-const CouponInstructions = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
-  padding: 20px;
-  border-left: 3px solid #6e48aa;
-`;
-
-const InstructionTitle = styled.h3`
-  margin-top: 0;
-  margin-bottom: 15px;
-  color: #9e5594;
+const InstructionTitle = styled.h4`
+  margin: 0 0 ${theme.spacing.md};
+  color: ${theme.colors.accent};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
 `;
 
 const InstructionList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 10px;
+  gap: ${theme.spacing.sm};
 `;
 
 const InstructionItem = styled.div`
   display: flex;
-  gap: 10px;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
 `;
 
-const BulletPoint = styled.span`
-  color: #9e5594;
+const Bullet = styled.span`
+  color: ${theme.colors.accent};
 `;
 
-// Reward Column
-const RewardColumn = styled.div`
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(5px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
-  padding: 25px;
-  @media (max-width: 768px) {
-    padding: 20px 15px;
-  }
-`;
-
-const ResultsDisplay = styled.div`
+const RewardDisplay = styled.div`
   min-height: 300px;
   display: flex;
   align-items: center;
@@ -546,137 +454,131 @@ const ResultsDisplay = styled.div`
 
 const RewardCard = styled(motion.div)`
   width: 100%;
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 16px;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.xl};
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+  border: 1px solid ${theme.colors.surfaceBorder};
+  box-shadow: ${theme.shadows.lg};
 `;
 
 const RewardHeader = styled.div`
-  background: linear-gradient(135deg, #6e48aa, #9e5594);
-  color: white;
-  padding: 15px 20px;
-  font-size: 18px;
-  font-weight: 600;
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: ${theme.spacing.sm};
+  color: white;
 `;
 
 const RewardContent = styled.div`
-  padding: 25px;
+  padding: ${theme.spacing.xl};
 `;
 
 const CoinReward = styled.div`
   display: flex;
   align-items: center;
-  gap: 20px;
+  gap: ${theme.spacing.lg};
 `;
 
-const CoinRewardIcon = styled.div`
-  width: 60px;
-  height: 60px;
-  background: rgba(243, 156, 18, 0.2);
+const CoinIcon = styled.div`
+  width: 64px;
+  height: 64px;
+  background: rgba(255, 159, 10, 0.15);
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 30px;
-  color: #f39c12;
+  font-size: 28px;
+  color: ${theme.colors.warning};
 `;
 
 const RewardDetails = styled.div``;
 
 const RewardAmount = styled.h3`
-  font-size: 24px;
-  margin: 0 0 5px 0;
+  font-size: ${theme.fontSizes.xl};
+  font-weight: ${theme.fontWeights.bold};
+  margin: 0 0 ${theme.spacing.xs};
 `;
 
-const RewardDescription = styled.p`
+const RewardDesc = styled.p`
   margin: 0;
-  opacity: 0.7;
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
 `;
 
 const CharacterReward = styled.div`
   display: flex;
-  gap: 20px;
+  gap: ${theme.spacing.lg};
   align-items: center;
   
-  @media (max-width: 480px) {
+  @media (max-width: ${theme.breakpoints.sm}) {
     flex-direction: column;
-    align-items: flex-start;
+    text-align: center;
   }
-`;
-
-const CharacterImageWrapper = styled.div`
-  border-radius: 12px;
-  overflow: hidden;
-  border: 2px solid rgba(255, 255, 255, 0.1);
 `;
 
 const CharacterImage = styled.img`
   width: 120px;
   height: 120px;
   object-fit: cover;
-  display: block;
+  border-radius: ${theme.radius.lg};
+  border: 2px solid ${theme.colors.surfaceBorder};
 `;
 
 const CharacterDetails = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: ${theme.spacing.sm};
 `;
 
-const RewardCharName = styled.h3`
+const CharacterName = styled.h3`
   margin: 0;
-  font-size: 20px;
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
 `;
 
-const RewardCharSeries = styled.p`
+const CharacterSeries = styled.p`
   margin: 0;
-  opacity: 0.7;
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
 `;
-
-const rarityColors = {
-  common: '#a0a0a0',
-  uncommon: '#4caf50',
-  rare: '#2196f3',
-  epic: '#9c27b0',
-  legendary: '#ff9800'
-};
 
 const RarityBadge = styled.span`
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  background-color: ${props => rarityColors[props.rarity] || rarityColors.common};
+  gap: ${theme.spacing.xs};
+  background: ${props => getRarityColor(props.rarity)};
   color: white;
-  padding: 5px 10px;
-  border-radius: 15px;
-  font-size: 13px;
-  font-weight: 600;
-  width: fit-content;
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
   text-transform: capitalize;
+  width: fit-content;
 `;
 
-const EmptyRewardState = styled(motion.div)`
+const EmptyState = styled(motion.div)`
   text-align: center;
-  padding: 30px;
-  
-  h3 {
-    margin: 10px 0 5px 0;
-  }
-  
-  p {
-    margin: 0;
-    opacity: 0.7;
-  }
+  padding: ${theme.spacing.xl};
 `;
 
-const EmptyStateIcon = styled.div`
-  font-size: 40px;
-  margin-bottom: 10px;
+const EmptyIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const EmptyTitle = styled.h3`
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
+  margin: 0 0 ${theme.spacing.xs};
+`;
+
+const EmptyText = styled.p`
+  margin: 0;
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
 `;
 
 export default CouponPage;

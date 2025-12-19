@@ -1,14 +1,19 @@
 import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
-import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt } from 'react-icons/fa';
+import { motion, AnimatePresence } from 'framer-motion';
+import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
 import api, { createBanner, updateBanner, deleteBanner, getAssetUrl } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
+import {
+  theme,
+  PageWrapper,
+  Container,
+  getRarityColor
+} from '../styles/DesignSystem';
 
 const AdminPage = () => {
   const { user, refreshUser } = useContext(AuthContext);
@@ -31,7 +36,7 @@ const AdminPage = () => {
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [isMultiUploadOpen, setIsMultiUploadOpen] = useState(false);
 
-  // Gefilterte und paginierte Charaktere
+  // Filtered and paginated characters
   const filteredCharacters = characters.filter(character => {
     const query = searchQuery.toLowerCase();
     return (
@@ -45,19 +50,16 @@ const AdminPage = () => {
   const currentCharacters = filteredCharacters.slice(indexOfFirstItem, indexOfLastItem);
   const totalPages = Math.ceil(filteredCharacters.length / itemsPerPage);
 
-  // Suchfunktion Handler
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
   };
 
-  // Items pro Seite Handler
   const handleItemsPerPageChange = (e) => {
     setItemsPerPage(Number(e.target.value));
     setCurrentPage(1);
   };
 
-  // Pagination Handler
   const handlePageChange = (newPage) => {
     setCurrentPage(Math.max(1, Math.min(totalPages, newPage)));
   };
@@ -74,7 +76,7 @@ const AdminPage = () => {
   const [editImageFile, setEditImageFile] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(null);
 
-  // Neue Charakter-Felder
+  // New character fields
   const [newCharacter, setNewCharacter] = useState({
     name: '',
     series: '',
@@ -82,14 +84,13 @@ const AdminPage = () => {
     isR18: false
   });
 
-  // Coin-Management
+  // Coin management
   const [coinForm, setCoinForm] = useState({
     userId: '',
     amount: 100
   });
   const [coinMessage, setCoinMessage] = useState(null);
 
-  // Datei-Feld
   const [selectedFile, setSelectedFile] = useState(null);
 
   useEffect(() => {
@@ -151,7 +152,6 @@ const AdminPage = () => {
     const file = e.target.files[0];
     setSelectedFile(file);
     
-    // Zeige Vorschau des Bildes an
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -185,13 +185,9 @@ const AdminPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      // Zeige Erfolgsmeldung
       setSuccessMessage('Character added successfully!');
-      
-      // Aktualisiere Charakterliste
       fetchCharacters();
       
-      // Formular zurücksetzen
       setNewCharacter({
         name: '',
         series: '',
@@ -201,7 +197,6 @@ const AdminPage = () => {
       setSelectedFile(null);
       setUploadedImage(null);
       
-      // Setze Datei-Input zurück
       const fileInput = document.getElementById('character-image');
       if (fileInput) fileInput.value = '';
     } catch (err) {
@@ -241,7 +236,6 @@ const AdminPage = () => {
     const file = e.target.files[0];
     setEditImageFile(file);
     
-    // Bildvorschau aktualisieren
     if (file) {
       const reader = new FileReader();
       reader.onload = (e) => {
@@ -261,10 +255,8 @@ const AdminPage = () => {
     if (!editingCharacter) return;
     
     try {
-      // Aktualisiere die Charakterdetails
       await api.put(`/admin/characters/${editingCharacter.id}`, editForm);
       
-      // Wenn ein neues Bild ausgewählt wurde, lade es hoch
       if (editImageFile) {
         const formData = new FormData();
         formData.append('image', editImageFile);
@@ -275,11 +267,7 @@ const AdminPage = () => {
       }
       
       setSuccessMessage('Character updated successfully!');
-      
-      // Aktualisiere die Charakterliste
       fetchCharacters();
-      
-      // Schließe das Bearbeitungsformular
       handleCloseEdit();
     } catch (err) {
       console.error('Error updating character:', err);
@@ -297,10 +285,7 @@ const AdminPage = () => {
     
     try {
       await api.delete(`/admin/characters/${characterId}`);
-      
       setSuccessMessage('Character deleted successfully!');
-      
-      // Aktualisiere die Charakterliste
       fetchCharacters();
     } catch (err) {
       console.error('Error deleting character:', err);
@@ -323,11 +308,9 @@ const AdminPage = () => {
     
     try {
       const response = await api.post('/admin/add-coins', coinForm);
-      
       setCoinMessage(response.data.message);
       await fetchUsers();
       
-      // If we add coins to the current user, refresh user data
       if (coinForm.userId === user?.id) {
         await refreshUser();
       }
@@ -442,1168 +425,721 @@ const AdminPage = () => {
     }
   };
 
-  // Hilfsfunktion für Bildpfade
   const getImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
     return getAssetUrl(imagePath);
   };
 
-  // Check if a file is a video
   const isVideo = (file) => {
     if (!file) return false;
-    
-    // If it's a File object with type property
-    if (file.type && file.type.startsWith('video/')) {
-      return true;
-    }
-    
-    // If it's a string (path/URL)
+    if (file.type && file.type.startsWith('video/')) return true;
     if (typeof file === 'string') {
       const lowerCasePath = file.toLowerCase();
-      return lowerCasePath.endsWith('.mp4') || 
-             lowerCasePath.endsWith('.webm') || 
-             lowerCasePath.includes('video');
+      return lowerCasePath.endsWith('.mp4') || lowerCasePath.endsWith('.webm') || lowerCasePath.includes('video');
     }
-    
     return false;
   };
 
-  // Nur Admin-Zugriff erlauben
   if (!user?.isAdmin) {
     return <Navigate to="/gacha" />;
   }
 
   return (
-    <AdminContainer>
-      <AdminHeader>
-        <h1>Admin Dashboard</h1>
-      </AdminHeader>
-      
-      {error && (
-        <ErrorMessage
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-        >
-          {error}
-        </ErrorMessage>
-      )}
-      
-      {successMessage && (
-        <SuccessMessage
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          exit={{ opacity: 0 }}
-        >
-          {successMessage}
-        </SuccessMessage>
-      )}
-      
-      <AdminGrid>
-        <AdminSection>
-          <h2><FaCoins /> Add Coins to User</h2>
-          <form onSubmit={handleAddCoins}>
-            <CoinFormGrid>
+    <StyledPageWrapper>
+      <Container>
+        <AdminHeader>
+          <HeaderTitle>Admin Dashboard</HeaderTitle>
+          <HeaderSubtitle>Manage your gacha game</HeaderSubtitle>
+        </AdminHeader>
+        
+        <AnimatePresence>
+          {error && (
+            <AlertBox variant="error" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              {error}
+              <CloseBtn onClick={() => setError(null)}>×</CloseBtn>
+            </AlertBox>
+          )}
+          {successMessage && (
+            <AlertBox variant="success" initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
+              {successMessage}
+              <CloseBtn onClick={() => setSuccessMessage(null)}>×</CloseBtn>
+            </AlertBox>
+          )}
+        </AnimatePresence>
+        
+        <AdminGrid>
+          {/* Add Coins Section */}
+          <AdminSection>
+            <SectionTitle><FaCoins /> Add Coins</SectionTitle>
+            <form onSubmit={handleAddCoins}>
               <FormGroup>
-                <label>Select User</label>
-                <select
-                  name="userId"
-                  value={coinForm.userId}
-                  onChange={handleCoinFormChange}
-                  required
-                >
+                <Label>Select User</Label>
+                <Select name="userId" value={coinForm.userId} onChange={handleCoinFormChange} required>
                   <option value="">-- Select User --</option>
-                  {users.map(user => (
-                    <option key={user.id} value={user.id}>
-                      {user.username} (Current: {user.points} coins)
-                    </option>
+                  {users.map(u => (
+                    <option key={u.id} value={u.id}>{u.username} ({u.points} coins)</option>
                   ))}
-                </select>
+                </Select>
               </FormGroup>
-              
               <FormGroup>
-                <label>Amount to Add</label>
-                <input
-                  type="number"
-                  name="amount"
-                  min="1"
-                  max="10000"
-                  value={coinForm.amount}
-                  onChange={handleCoinFormChange}
-                  required
-                />
+                <Label>Amount</Label>
+                <Input type="number" name="amount" min="1" max="10000" value={coinForm.amount} onChange={handleCoinFormChange} required />
               </FormGroup>
-              
-              <Button type="submit" color="#27ae60">
-                <FaCoins /> <span>Add Coins</span>
-              </Button>
-            </CoinFormGrid>
-          </form>
+              <SubmitButton type="submit"><FaCoins /> Add Coins</SubmitButton>
+            </form>
+            {coinMessage && <SuccessText>{coinMessage}</SuccessText>}
+          </AdminSection>
           
-          {coinMessage && (
-            <SuccessMessage
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              {coinMessage}
-            </SuccessMessage>
+          {/* Add Character Section */}
+          <AdminSection>
+            <SectionTitle><FaImage /> Add Character</SectionTitle>
+            <MultiUploadBtn onClick={() => setIsMultiUploadOpen(true)}>
+              <FaCloudUploadAlt /> Multi-Upload
+            </MultiUploadBtn>
+            <form onSubmit={addCharacterWithImage}>
+              <FormGroup>
+                <Label>Name</Label>
+                <Input type="text" name="name" value={newCharacter.name} onChange={handleCharacterChange} required />
+              </FormGroup>
+              <FormGroup>
+                <Label>Series</Label>
+                <Input type="text" name="series" value={newCharacter.series} onChange={handleCharacterChange} required />
+              </FormGroup>
+              <FormGroup>
+                <Label>Rarity</Label>
+                <Select name="rarity" value={newCharacter.rarity} onChange={handleCharacterChange}>
+                  <option value="common">Common</option>
+                  <option value="uncommon">Uncommon</option>
+                  <option value="rare">Rare</option>
+                  <option value="epic">Epic</option>
+                  <option value="legendary">Legendary</option>
+                </Select>
+              </FormGroup>
+              <FormGroup>
+                <CheckboxLabel>
+                  <input type="checkbox" checked={newCharacter.isR18} onChange={(e) => setNewCharacter({...newCharacter, isR18: e.target.checked})} />
+                  <span>🔞 R18 Content</span>
+                </CheckboxLabel>
+              </FormGroup>
+              <FormGroup>
+                <Label>Image/Video</Label>
+                <Input type="file" id="character-image" accept="image/*,video/mp4,video/webm" onChange={handleFileChange} required />
+                {uploadedImage && !isVideo(selectedFile) && (
+                  <ImagePreview><img src={uploadedImage} alt="Preview" /></ImagePreview>
+                )}
+                {uploadedImage && isVideo(selectedFile) && (
+                  <ImagePreview><video controls src={uploadedImage} /></ImagePreview>
+                )}
+              </FormGroup>
+              <SubmitButton type="submit"><FaImage /> Add Character</SubmitButton>
+            </form>
+          </AdminSection>
+        </AdminGrid>
+        
+        {/* User Management */}
+        <AdminSection>
+          <SectionTitle><FaUsers /> User Management</SectionTitle>
+          {loading ? (
+            <LoadingText>Loading users...</LoadingText>
+          ) : (
+            <TableWrapper>
+              <StyledTable>
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Username</th>
+                    <th>Points</th>
+                    <th>Admin</th>
+                    <th>Created</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map(u => (
+                    <tr key={u.id}>
+                      <td>{u.id}</td>
+                      <td>{u.username}</td>
+                      <td>{u.points}</td>
+                      <td>{u.isAdmin ? '✅' : '❌'}</td>
+                      <td>{new Date(u.createdAt).toLocaleDateString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </StyledTable>
+            </TableWrapper>
           )}
         </AdminSection>
         
+        {/* Character Management */}
         <AdminSection>
-          <h2><FaImage /> Add New Character</h2>
-          <MultiUploadButton onClick={() => setIsMultiUploadOpen(true)}>
-            <FaCloudUploadAlt /> Multi-Upload Characters
-          </MultiUploadButton>
-          <CharacterForm onSubmit={addCharacterWithImage}>
-            <FormGroup>
-              <label>Character Name</label>
-              <input
-                type="text"
-                name="name"
-                value={newCharacter.name}
-                onChange={handleCharacterChange}
-                required
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <label>Series</label>
-              <input
-                type="text"
-                name="series"
-                value={newCharacter.series}
-                onChange={handleCharacterChange}
-                required
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <label>Rarity</label>
-              <select
-                name="rarity"
-                value={newCharacter.rarity}
-                onChange={handleCharacterChange}
-              >
-                <option value="common">Common</option>
-                <option value="uncommon">Uncommon</option>
-                <option value="rare">Rare</option>
-                <option value="epic">Epic</option>
-                <option value="legendary">Legendary</option>
-              </select>
-            </FormGroup>
-            
-            <FormGroup>
-              <CheckboxLabel>
-                <input
-                  type="checkbox"
-                  name="isR18"
-                  checked={newCharacter.isR18}
-                  onChange={(e) => setNewCharacter({...newCharacter, isR18: e.target.checked})}
-                />
-                <span>🔞 R18 Content (Adult Only)</span>
-              </CheckboxLabel>
-            </FormGroup>
-            
-            <FormGroup>
-              <label>Character Image/Video</label>
-              <FileInput
-                type="file"
-                id="character-image"
-                accept="image/*,video/mp4,video/webm"
-                onChange={handleFileChange}
-                required
-              />
-              
-              {uploadedImage && !isVideo(selectedFile) && (
-                <ImagePreview>
-                  <ImagePreviewLabel>Preview:</ImagePreviewLabel>
-                  <img src={uploadedImage} alt="Preview" />
-                </ImagePreview>
-              )}
-              
-              {uploadedImage && isVideo(selectedFile) && (
-                <ImagePreview>
-                  <ImagePreviewLabel>Video Preview:</ImagePreviewLabel>
-                  <MediaTag as="video" controls>
-                    <source src={uploadedImage} type={selectedFile.type} />
-                    Your browser does not support the video tag.
-                  </MediaTag>
-                </ImagePreview>
-              )}
-            </FormGroup>
-            
-            <Button type="submit" fullWidth color="#3498db">
-              <FaImage /> <span>Add Character</span>
-            </Button>
-          </CharacterForm>
-        </AdminSection>
-      </AdminGrid>
-      
-      <AdminSection>
-        <h2><FaUsers /> User Management</h2>
-        {loading ? (
-          <p>Loading users...</p>
-        ) : (
-          <UserTable>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>Username</th>
-                <th>Points</th>
-                <th>Admin</th>
-                <th>Created</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map(user => (
-                <tr key={user.id}>
-                  <td>{user.id}</td>
-                  <td>{user.username}</td>
-                  <td>{user.points}</td>
-                  <td>{user.isAdmin ? '✅' : '❌'}</td>
-                  <td>{new Date(user.createdAt).toLocaleDateString()}</td>
-                </tr>
-              ))}
-            </tbody>
-          </UserTable>
-        )}
-      </AdminSection>
-      
-      <AdminSection>
-        <ManagementHeader>
-          <h2><FaUsers /> Character Management</h2>
-          <SearchContainer>
-            <SearchInputWrapper>
-              <FaSearch />
-              <SearchInput
-                type="text"
-                placeholder="Search characters..."
-                value={searchQuery}
-                onChange={handleSearchChange}
-              />
-            </SearchInputWrapper>
-            <ItemsPerPageSelect
-              value={itemsPerPage}
-              onChange={handleItemsPerPageChange}
-            >
-              <option value="10">10 per page</option>
-              <option value="20">20 per page</option>
-              <option value="50">50 per page</option>
-              <option value="100">100 per page</option>
-            </ItemsPerPageSelect>
-          </SearchContainer>
-        </ManagementHeader>
-        
-        {currentCharacters.length === 0 ? (
-          <EmptyMessage>No characters found</EmptyMessage>
-        ) : (
-          <>
-            <CharacterGrid>
-              {currentCharacters.map(char => (
-                <CharacterCard key={char.id}>
-                  {isVideo(char.image) ? (
-                    <MediaTag as="video" autoPlay loop muted playsInline>
-                      <source src={getImageUrl(char.image)} 
-                              type={char.image.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
-                      Your browser does not support the video tag.
-                    </MediaTag>
-                  ) : (
-                    <img
-                      src={getImageUrl(char.image)}
-                      alt={char.name}
-                      onError={(e) => {
-                        if (!e.target.src.includes('placeholder.com')) {
-                          e.target.src = 'https://via.placeholder.com/150?text=No+Image';
-                        }
-                      }}
-                    />
-                  )}
-                  <CharacterInfo>
-                    <h3>{char.name} {char.isR18 && <R18Badge>🔞</R18Badge>}</h3>
-                    <p>{char.series}</p>
-                    <RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
-                    <CardActions>
-                      <ActionButton type="button" onClick={() => handleEditCharacter(char)}>
-                        <FaEdit /> Edit
-                      </ActionButton>
-                      <ActionButton type="button" danger onClick={() => handleDeleteCharacter(char.id)}>
-                        <FaTrash /> Delete
-                      </ActionButton>
-                    </CardActions>
-                  </CharacterInfo>
-                </CharacterCard>
-              ))}
-            </CharacterGrid>
-            
-            <PaginationContainer>
-              <PaginationButton
-                onClick={() => handlePageChange(currentPage - 1)}
-                disabled={currentPage === 1}
-              >
-                Previous
-              </PaginationButton>
-              <PageInfo>
-                Page {currentPage} of {totalPages}
-              </PageInfo>
-              <PaginationButton
-                onClick={() => handlePageChange(currentPage + 1)}
-                disabled={currentPage === totalPages}
-              >
-                Next
-              </PaginationButton>
-            </PaginationContainer>
-          </>
-        )}
-      </AdminSection>
-      
-      <AdminSection>
-        <h2><FaImage /> Banner Management</h2>
-        <ManagementHeader>
-          <Button
-            onClick={() => setIsAddingBanner(true)}
-            color="#3498db"
-            style={{ marginBottom: '20px' }}
-          >
-            <FaPlus /> <span>Add New Banner</span>
-          </Button>
-        </ManagementHeader>
-        
-        {banners.length === 0 ? (
-          <EmptyMessage>No banners found</EmptyMessage>
-        ) : (
-          <BannerGrid>
-            {banners.map(banner => (
-              <BannerCard key={banner.id}>
-                <BannerImage
-                  src={getBannerImageUrl(banner.image)}
-                  alt={banner.name}
-                  onError={(e) => {
-                    if (!e.target.src.includes('placeholder.com')) {
-                      e.target.src = 'https://via.placeholder.com/300x150?text=Banner';
-                    }
-                  }}
-                />
-                <BannerInfo>
-                  <h3>{banner.name}</h3>
-                  <SeriesTag>{banner.series}</SeriesTag>
-                  {banner.featured && <FeaturedTag>Featured</FeaturedTag>}
-                  <StatusTag active={banner.active}>
-                    {banner.active ? 'Active' : 'Inactive'}
-                  </StatusTag>
-                  <p>{banner.description}</p>
-                  {banner.endDate && (
-                    <DateInfo>
-                      Ends: {new Date(banner.endDate).toLocaleDateString()}
-                    </DateInfo>
-                  )}
-                  <BannerFeatures>
-                    <FeatureItem>
-                      <strong>Cost:</strong> {Math.floor(100 * banner.costMultiplier)} per pull
-                    </FeatureItem>
-                    <FeatureItem>
-                      <strong>Characters:</strong> {banner.Characters.length}
-                    </FeatureItem>
-                    {banner.videoUrl && (
-                      <FeatureItem>
-                        <FaVideo /> Has Video
-                      </FeatureItem>
-                    )}
-                  </BannerFeatures>
-                  <CardActions>
-                    <ActionButton onClick={() => handleEditBanner(banner)}>
-                      <FaEdit /> Edit
-                    </ActionButton>
-                    <ActionButton danger onClick={() => handleDeleteBanner(banner.id)}>
-                      <FaTrash /> Delete
-                    </ActionButton>
-                  </CardActions>
-                </BannerInfo>
-              </BannerCard>
-            ))}
-          </BannerGrid>
-        )}
-      </AdminSection>
-      
-      <AdminSection>
-        <h2><FaTicketAlt /> Coupon Management</h2>
-        <ManagementHeader>
-          <Button
-            onClick={() => setIsAddingCoupon(true)}
-            color="#3498db"
-            style={{ marginBottom: '20px' }}
-          >
-            <FaPlus /> <span>Create New Coupon</span>
-          </Button>
-        </ManagementHeader>
-        
-        {coupons.length === 0 ? (
-          <EmptyMessage>No coupons found</EmptyMessage>
-        ) : (
-          <CouponGrid>
-            {coupons.map(coupon => (
-              <CouponCard key={coupon.id}>
-                <CouponHeader>
-                  <h3>{coupon.code}</h3>
-                  <StatusDot active={coupon.isActive} />
-                </CouponHeader>
-                <CouponInfo>
-                  <p>{coupon.description || 'No description'}</p>
-                  <CouponTypeTag type={coupon.type}>
-                    {coupon.type === 'coins' ? (
-                      <><FaCoins /> {coupon.value} Coins</>
-                    ) : coupon.type === 'character' ? (
-                      <><FaUsers /> Character: {coupon.Character?.name || 'Unknown'}</>
+          <SectionHeader>
+            <SectionTitle><FaUsers /> Character Management</SectionTitle>
+            <SearchRow>
+              <SearchWrapper>
+                <FaSearch />
+                <SearchInput type="text" placeholder="Search..." value={searchQuery} onChange={handleSearchChange} />
+              </SearchWrapper>
+              <Select value={itemsPerPage} onChange={handleItemsPerPageChange}>
+                <option value="10">10 per page</option>
+                <option value="20">20 per page</option>
+                <option value="50">50 per page</option>
+              </Select>
+            </SearchRow>
+          </SectionHeader>
+          
+          {currentCharacters.length === 0 ? (
+            <EmptyMessage>No characters found</EmptyMessage>
+          ) : (
+            <>
+              <CharacterGrid>
+                {currentCharacters.map(char => (
+                  <CharacterCard key={char.id}>
+                    {isVideo(char.image) ? (
+                      <video autoPlay loop muted playsInline>
+                        <source src={getImageUrl(char.image)} type={char.image.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
+                      </video>
                     ) : (
-                      <>{coupon.type}</>
+                      <img src={getImageUrl(char.image)} alt={char.name} onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=No+Image'; }} />
                     )}
-                  </CouponTypeTag>
-                  <CouponDetails>
-                    <CouponDetail>
-                      <strong>Uses:</strong> {coupon.currentUses}/{coupon.maxUses === -1 ? '∞' : coupon.maxUses}
-                    </CouponDetail>
-                    <CouponDetail>
-                      <strong>Per User:</strong> {coupon.usesPerUser === -1 ? '∞' : coupon.usesPerUser}
-                    </CouponDetail>
-                    {(coupon.startDate || coupon.endDate) && (
-                      <CouponDetail>
-                        <FaCalendarAlt />
-                        {coupon.startDate ? new Date(coupon.startDate).toLocaleDateString() : 'Any'} - {coupon.endDate ? new Date(coupon.endDate).toLocaleDateString() : 'No Expiry'}
-                      </CouponDetail>
-                    )}
-                  </CouponDetails>
-                  <CardActions>
-                    <ActionButton onClick={() => handleEditCoupon(coupon)}>
-                      <FaEdit /> Edit
-                    </ActionButton>
-                    <ActionButton danger onClick={() => handleDeleteCoupon(coupon.id)}>
-                      <FaTrash /> Delete
-                    </ActionButton>
-                  </CardActions>
-                </CouponInfo>
-              </CouponCard>
-            ))}
-          </CouponGrid>
-        )}
-      </AdminSection>
+                    <CharacterInfo>
+                      <CharacterName>{char.name} {char.isR18 && <R18Badge>🔞</R18Badge>}</CharacterName>
+                      <CharacterSeries>{char.series}</CharacterSeries>
+                      <RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
+                      <CardActions>
+                        <ActionBtn onClick={() => handleEditCharacter(char)}><FaEdit /> Edit</ActionBtn>
+                        <ActionBtn danger onClick={() => handleDeleteCharacter(char.id)}><FaTrash /> Delete</ActionBtn>
+                      </CardActions>
+                    </CharacterInfo>
+                  </CharacterCard>
+                ))}
+              </CharacterGrid>
+              
+              <Pagination>
+                <PaginationBtn onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>Previous</PaginationBtn>
+                <PageInfo>Page {currentPage} of {totalPages}</PageInfo>
+                <PaginationBtn onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>Next</PaginationBtn>
+              </Pagination>
+            </>
+          )}
+        </AdminSection>
+        
+        {/* Banner Management */}
+        <AdminSection>
+          <SectionHeader>
+            <SectionTitle><FaImage /> Banner Management</SectionTitle>
+            <AddButton onClick={() => setIsAddingBanner(true)}><FaPlus /> Add Banner</AddButton>
+          </SectionHeader>
+          
+          {banners.length === 0 ? (
+            <EmptyMessage>No banners found</EmptyMessage>
+          ) : (
+            <BannerGrid>
+              {banners.map(banner => (
+                <BannerCard key={banner.id}>
+                  <BannerImage src={getBannerImageUrl(banner.image)} alt={banner.name} />
+                  <BannerInfo>
+                    <BannerName>{banner.name}</BannerName>
+                    <TagRow>
+                      <SeriesTag>{banner.series}</SeriesTag>
+                      {banner.featured && <FeaturedTag>Featured</FeaturedTag>}
+                      <StatusTag active={banner.active}>{banner.active ? 'Active' : 'Inactive'}</StatusTag>
+                    </TagRow>
+                    <BannerDesc>{banner.description}</BannerDesc>
+                    {banner.endDate && <DateInfo>Ends: {new Date(banner.endDate).toLocaleDateString()}</DateInfo>}
+                    <BannerStats>
+                      <StatItem><strong>Cost:</strong> {Math.floor(100 * banner.costMultiplier)}</StatItem>
+                      <StatItem><strong>Characters:</strong> {banner.Characters?.length || 0}</StatItem>
+                      {banner.videoUrl && <StatItem><FaVideo /> Video</StatItem>}
+                    </BannerStats>
+                    <CardActions>
+                      <ActionBtn onClick={() => handleEditBanner(banner)}><FaEdit /> Edit</ActionBtn>
+                      <ActionBtn danger onClick={() => handleDeleteBanner(banner.id)}><FaTrash /> Delete</ActionBtn>
+                    </CardActions>
+                  </BannerInfo>
+                </BannerCard>
+              ))}
+            </BannerGrid>
+          )}
+        </AdminSection>
+        
+        {/* Coupon Management */}
+        <AdminSection>
+          <SectionHeader>
+            <SectionTitle><FaTicketAlt /> Coupon Management</SectionTitle>
+            <AddButton onClick={() => setIsAddingCoupon(true)}><FaPlus /> Create Coupon</AddButton>
+          </SectionHeader>
+          
+          {coupons.length === 0 ? (
+            <EmptyMessage>No coupons found</EmptyMessage>
+          ) : (
+            <CouponGrid>
+              {coupons.map(coupon => (
+                <CouponCard key={coupon.id}>
+                  <CouponHeader>
+                    <CouponCode>{coupon.code}</CouponCode>
+                    <StatusDot active={coupon.isActive} />
+                  </CouponHeader>
+                  <CouponInfo>
+                    <CouponDesc>{coupon.description || 'No description'}</CouponDesc>
+                    <CouponTypeTag type={coupon.type}>
+                      {coupon.type === 'coins' ? <><FaCoins /> {coupon.value} Coins</> : <><FaUsers /> {coupon.Character?.name || 'Character'}</>}
+                    </CouponTypeTag>
+                    <CouponDetails>
+                      <CouponDetail><strong>Uses:</strong> {coupon.currentUses}/{coupon.maxUses === -1 ? '∞' : coupon.maxUses}</CouponDetail>
+                      <CouponDetail><strong>Per User:</strong> {coupon.usesPerUser === -1 ? '∞' : coupon.usesPerUser}</CouponDetail>
+                      {coupon.endDate && <CouponDetail><FaCalendarAlt /> {new Date(coupon.endDate).toLocaleDateString()}</CouponDetail>}
+                    </CouponDetails>
+                    <CardActions>
+                      <ActionBtn onClick={() => handleEditCoupon(coupon)}><FaEdit /> Edit</ActionBtn>
+                      <ActionBtn danger onClick={() => handleDeleteCoupon(coupon.id)}><FaTrash /> Delete</ActionBtn>
+                    </CardActions>
+                  </CouponInfo>
+                </CouponCard>
+              ))}
+            </CouponGrid>
+          )}
+        </AdminSection>
+      </Container>
       
-      <BannerFormModal
-        show={isAddingBanner}
-        onClose={() => setIsAddingBanner(false)}
-        onSubmit={handleAddBanner}
-        characters={characters}
-      />
-      
-      <BannerFormModal
-        show={isEditingBanner}
-        onClose={() => setIsEditingBanner(false)}
-        onSubmit={handleUpdateBanner}
-        banner={editingBanner}
-        characters={characters}
-      />
-      
-      <CouponFormModal
-        show={isAddingCoupon}
-        onClose={() => setIsAddingCoupon(false)}
-        onSubmit={handleAddCoupon}
-        characters={characters}
-      />
-      
-      <CouponFormModal
-        show={isEditingCoupon}
-        onClose={() => setIsEditingCoupon(false)}
-        onSubmit={handleUpdateCoupon}
-        coupon={editingCoupon}
-        characters={characters}
-      />
-      
-      <MultiUploadModal
-        show={isMultiUploadOpen}
-        onClose={() => setIsMultiUploadOpen(false)}
-        onSuccess={(result) => {
-          setSuccessMessage(result.message);
-          fetchCharacters();
-        }}
-      />
+      {/* Modals */}
+      <BannerFormModal show={isAddingBanner} onClose={() => setIsAddingBanner(false)} onSubmit={handleAddBanner} characters={characters} />
+      <BannerFormModal show={isEditingBanner} onClose={() => setIsEditingBanner(false)} onSubmit={handleUpdateBanner} banner={editingBanner} characters={characters} />
+      <CouponFormModal show={isAddingCoupon} onClose={() => setIsAddingCoupon(false)} onSubmit={handleAddCoupon} characters={characters} />
+      <CouponFormModal show={isEditingCoupon} onClose={() => setIsEditingCoupon(false)} onSubmit={handleUpdateCoupon} coupon={editingCoupon} characters={characters} />
+      <MultiUploadModal show={isMultiUploadOpen} onClose={() => setIsMultiUploadOpen(false)} onSuccess={(result) => { setSuccessMessage(result.message); fetchCharacters(); }} />
 
       {/* Edit Character Modal */}
-      <EditCharacterModal
-        show={isEditing}
-        onClose={handleCloseEdit}
-        character={editingCharacter}
-        editForm={editForm}
-        onEditFormChange={handleEditFormChange}
-        onR18Change={(e) => setEditForm({...editForm, isR18: e.target.checked})}
-        onImageChange={handleEditImageChange}
-        onSubmit={handleSaveCharacter}
-        imagePreview={editImagePreview}
-        isVideo={isVideo}
-        editImageFile={editImageFile}
-      />
-    </AdminContainer>
-  );
-};
-
-// Edit Character Modal
-const EditCharacterModal = ({ show, onClose, character, editForm, onEditFormChange, onR18Change, onImageChange, onSubmit, imagePreview, isVideo, editImageFile }) => {
-  if (!show || !character) return null;
-  
-  return (
-    <ModalOverlay>
-      <ModalContent>
-        <ModalHeader>
-          <h3>Edit Character: {character.name}</h3>
-          <CloseButton onClick={onClose}>&times;</CloseButton>
-        </ModalHeader>
-        <ModalBody>
-          <form onSubmit={onSubmit}>
-            <FormGroup>
-              <label>Character Name</label>
-              <input
-                type="text"
-                name="name"
-                value={editForm.name}
-                onChange={onEditFormChange}
-                required
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <label>Series</label>
-              <input
-                type="text"
-                name="series"
-                value={editForm.series}
-                onChange={onEditFormChange}
-                required
-              />
-            </FormGroup>
-            
-            <FormGroup>
-              <label>Rarity</label>
-              <select
-                name="rarity"
-                value={editForm.rarity}
-                onChange={onEditFormChange}
-              >
-                <option value="common">Common</option>
-                <option value="uncommon">Uncommon</option>
-                <option value="rare">Rare</option>
-                <option value="epic">Epic</option>
-                <option value="legendary">Legendary</option>
-              </select>
-            </FormGroup>
-            
-            <FormGroup>
-              <CheckboxLabel>
-                <input
-                  type="checkbox"
-                  name="isR18"
-                  checked={editForm.isR18}
-                  onChange={onR18Change}
-                />
-                <span>🔞 R18 Content (Adult Only)</span>
-              </CheckboxLabel>
-            </FormGroup>
-            
-            <FormGroup>
-              <label>Character Image/Video</label>
-              <FileInput
-                type="file"
-                accept="image/*,video/mp4,video/webm"
-                onChange={onImageChange}
-              />
-              
-              {imagePreview && !isVideo(editImageFile) && !isVideo(character.image) && (
-                <ImagePreview>
-                  <ImagePreviewLabel>Current/New Image:</ImagePreviewLabel>
-                  <img src={imagePreview} alt="Character preview" />
-                </ImagePreview>
-              )}
-              
-              {imagePreview && (isVideo(editImageFile) || isVideo(character.image)) && (
-                <ImagePreview>
-                  <ImagePreviewLabel>Current/New Video:</ImagePreviewLabel>
-                  <MediaTag as="video" controls playsInline>
-                    <source src={imagePreview} 
-                            type={editImageFile ? 
-                                  editImageFile.type : 
-                                  imagePreview.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
-                    Your browser does not support the video tag.
-                  </MediaTag>
-                </ImagePreview>
-              )}
-            </FormGroup>
-            
-            <ButtonGroup>
-              <Button type="submit" color="#27ae60">
-                <span>Save Changes</span>
-              </Button>
-              <Button type="button" onClick={onClose} color="#7f8c8d">
-                <span>Cancel</span>
-              </Button>
-            </ButtonGroup>
-          </form>
-        </ModalBody>
-      </ModalContent>
-    </ModalOverlay>
+      {isEditing && editingCharacter && (
+        <ModalOverlay onClick={handleCloseEdit}>
+          <ModalContent onClick={e => e.stopPropagation()}>
+            <ModalHeader>
+              <ModalTitle>Edit: {editingCharacter.name}</ModalTitle>
+              <CloseBtn onClick={handleCloseEdit}>×</CloseBtn>
+            </ModalHeader>
+            <ModalBody>
+              <form onSubmit={handleSaveCharacter}>
+                <FormGroup>
+                  <Label>Name</Label>
+                  <Input type="text" name="name" value={editForm.name} onChange={handleEditFormChange} required />
+                </FormGroup>
+                <FormGroup>
+                  <Label>Series</Label>
+                  <Input type="text" name="series" value={editForm.series} onChange={handleEditFormChange} required />
+                </FormGroup>
+                <FormGroup>
+                  <Label>Rarity</Label>
+                  <Select name="rarity" value={editForm.rarity} onChange={handleEditFormChange}>
+                    <option value="common">Common</option>
+                    <option value="uncommon">Uncommon</option>
+                    <option value="rare">Rare</option>
+                    <option value="epic">Epic</option>
+                    <option value="legendary">Legendary</option>
+                  </Select>
+                </FormGroup>
+                <FormGroup>
+                  <CheckboxLabel>
+                    <input type="checkbox" checked={editForm.isR18} onChange={(e) => setEditForm({...editForm, isR18: e.target.checked})} />
+                    <span>🔞 R18 Content</span>
+                  </CheckboxLabel>
+                </FormGroup>
+                <FormGroup>
+                  <Label>Image/Video</Label>
+                  <Input type="file" accept="image/*,video/mp4,video/webm" onChange={handleEditImageChange} />
+                  {editImagePreview && (
+                    <ImagePreview>
+                      {isVideo(editImageFile) || isVideo(editingCharacter.image) ? (
+                        <video controls src={editImagePreview} />
+                      ) : (
+                        <img src={editImagePreview} alt="Preview" />
+                      )}
+                    </ImagePreview>
+                  )}
+                </FormGroup>
+                <ButtonRow>
+                  <SubmitButton type="submit">Save Changes</SubmitButton>
+                  <CancelButton type="button" onClick={handleCloseEdit}>Cancel</CancelButton>
+                </ButtonRow>
+              </form>
+            </ModalBody>
+          </ModalContent>
+        </ModalOverlay>
+      )}
+    </StyledPageWrapper>
   );
 };
 
 // Styled Components
-const AdminContainer = styled.div`
-  min-height: 100vh;
-  background-color: #f5f7fa;
-  padding: 10px;
-  max-width: 100vw;
-  overflow-x: hidden;
-  
-  @media (min-width: 768px) {
-    padding: 20px;
-  }
+const StyledPageWrapper = styled(PageWrapper)`
+  padding: ${theme.spacing.lg} 0;
 `;
 
 const AdminHeader = styled.div`
-  background-color: #2c3e50;
-  color: white;
-  padding: 20px;
-  border-radius: 8px;
-  margin-bottom: 20px;
-  
-  h1 {
-    margin: 0;
-  }
+  margin-bottom: ${theme.spacing.xl};
+`;
+
+const HeaderTitle = styled.h1`
+  font-size: ${theme.fontSizes['3xl']};
+  font-weight: ${theme.fontWeights.bold};
+  margin: 0;
+  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+`;
+
+const HeaderSubtitle = styled.p`
+  color: ${theme.colors.textSecondary};
+  margin: ${theme.spacing.xs} 0 0;
+`;
+
+const AlertBox = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.radius.lg};
+  margin-bottom: ${theme.spacing.md};
+  background: ${props => props.variant === 'error' ? 'rgba(255, 59, 48, 0.15)' : 'rgba(52, 199, 89, 0.15)'};
+  border: 1px solid ${props => props.variant === 'error' ? 'rgba(255, 59, 48, 0.3)' : 'rgba(52, 199, 89, 0.3)'};
+  color: ${props => props.variant === 'error' ? theme.colors.error : theme.colors.success};
+`;
+
+const CloseBtn = styled.button`
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 20px;
+  cursor: pointer;
+  padding: 0;
 `;
 
 const AdminGrid = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-  margin-bottom: 20px;
-  
-  @media (min-width: 992px) {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-  }
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: ${theme.spacing.lg};
+  margin-bottom: ${theme.spacing.xl};
 `;
 
 const AdminSection = styled.section`
-  background-color: white;
-  border-radius: 8px;
-  padding: 15px;
-  margin-bottom: 20px;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-  width: 100%;
-  box-sizing: border-box;
-  
-  @media (min-width: 768px) {
-    padding: 20px;
-    margin-bottom: 30px;
-  }
-  
-  h2 {
-    margin-top: 0;
-    border-bottom: 1px solid #eee;
-    padding-bottom: 10px;
-    display: flex;
-    align-items: center;
-    gap: 8px;
-    font-size: 1.2rem;
-    word-wrap: break-word;
-  }
+  background: ${theme.colors.surface};
+  backdrop-filter: blur(${theme.blur.lg});
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.lg};
+  margin-bottom: ${theme.spacing.lg};
 `;
 
-const CharacterForm = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-`;
-
-const MultiUploadButton = styled.button`
-  background-color: #9b59b6;
-  color: white;
-  border: none;
-  padding: 12px;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
+const SectionTitle = styled.h2`
   display: flex;
   align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: opacity 0.2s;
-  width: 100%;
-  font-size: 0.9rem;
-  margin-bottom: 15px;
-  
-  svg {
-    flex-shrink: 0;
-  }
-  
-  &:hover {
-    opacity: 0.8;
-  }
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
+  margin: 0 0 ${theme.spacing.lg};
+  padding-bottom: ${theme.spacing.md};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+  color: ${theme.colors.text};
 `;
 
-const CoinFormGrid = styled.div`
+const SectionHeader = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 20px;
+  justify-content: space-between;
+  align-items: flex-start;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.lg};
 `;
 
 const FormGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-  width: 100%;
-  
-  label {
-    font-weight: bold;
-    color: #555;
-    font-size: 0.9rem;
-  }
-  
-  input, select {
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    width: 100%;
-    font-size: 0.9rem;
-    max-width: 100%;
-    box-sizing: border-box;
-  }
+  margin-bottom: ${theme.spacing.md};
 `;
 
-const FileInput = styled.input`
-  font-size: 0.9rem;
-  width: 100%;
-  
-  &::file-selector-button {
-    font-size: 0.8rem;
-    padding: 8px;
-  }
-`;
-
-const Button = styled.button`
-  grid-column: ${props => props.fullWidth ? "1 / -1" : "auto"};
-  background-color: ${props => props.color || "#3498db"};
-  color: white;
-  border: none;
-  padding: 12px;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  transition: opacity 0.2s;
-  text-align: center;
-  width: 100%;
-  font-size: 0.9rem;
-  
-  svg {
-    flex-shrink: 0;
-  }
-  
-  span {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
-  
-  &:hover {
-    opacity: 0.8;
-  }
-`;
-
-const UserTable = styled.table`
-  width: 100%;
-  border-collapse: collapse;
+const Label = styled.label`
   display: block;
-  overflow-x: auto;
-  white-space: nowrap;
-  
-  @media (min-width: 768px) {
-    display: table;
-    white-space: normal;
-  }
-  
-  th, td {
-    padding: 12px;
-    text-align: left;
-    border-bottom: 1px solid #eee;
-  }
-  
-  th {
-    background-color: #f8f9fa;
-    font-weight: bold;
-  }
-  
-  tr:hover {
-    background-color: #f8f9fa;
-  }
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.xs};
 `;
 
-const ErrorMessage = styled(motion.div)`
-  background-color: #f8d7da;
-  color: #721c24;
-  padding: 12px;
-  border-radius: 4px;
-  margin-bottom: 20px;
-`;
-
-const SuccessMessage = styled(motion.div)`
-  background-color: #d4edda;
-  color: #155724;
-  padding: 12px;
-  border-radius: 4px;
-  margin: 10px 0;
-`;
-
-const ImagePreview = styled.div`
-  margin-top: 10px;
+const Input = styled.input`
   width: 100%;
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.base};
+  transition: all ${theme.transitions.fast};
   
-  img {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: 4px;
-    border: 1px solid #ddd;
-    object-fit: contain;
+  &:focus {
+    outline: none;
+    border-color: ${theme.colors.primary};
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
   }
 `;
 
-const MediaTag = styled.img`
-  max-width: 100%;
-  max-height: 200px;
-  border-radius: 4px;
-  border: 1px solid #ddd;
-  object-fit: contain;
-`;
-
-const ImagePreviewLabel = styled.div`
-  font-size: 12px;
-  color: #666;
-  margin-bottom: 4px;
-`;
-
-const CharacterGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
+const Select = styled.select`
   width: 100%;
-  
-  @media (min-width: 480px) {
-    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-    gap: 15px;
-  }
-  
-  @media (min-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
-  }
-`;
-
-const CharacterCard = styled.div`
-  background-color: white;
-  border-radius: 8px;
-  overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  
-  img, video {
-    width: 100%;
-    height: 200px;
-    object-fit: cover;
-  }
-`;
-
-const CharacterInfo = styled.div`
-  padding: 12px;
-  position: relative;
-  
-  h3 {
-    margin: 0 0 4px 0;
-    font-size: 16px;
-    word-break: break-word;
-    padding-right: 10px;
-  }
-  
-  p {
-    margin: 0;
-    color: #666;
-    font-size: 12px;
-    word-break: break-word;
-    margin-bottom: 6px;
-  }
-`;
-
-const rarityColors = {
-  common: '#a0a0a0',
-  uncommon: '#4caf50',
-  rare: '#2196f3',
-  epic: '#9c27b0',
-  legendary: '#ff9800'
-};
-
-const RarityTag = styled.div`
-  position: absolute;
-  top: -12px;
-  right: 12px;
-  font-size: 10px;
-  padding: 2px 6px;
-  border-radius: 10px;
-  background-color: ${props => rarityColors[props.rarity] || rarityColors.common};
-  color: white;
-  text-transform: uppercase;
-  font-weight: bold;
-`;
-
-const R18Badge = styled.span`
-  font-size: 14px;
-  margin-left: 4px;
-  vertical-align: middle;
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.base};
+  cursor: pointer;
 `;
 
 const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: ${theme.spacing.sm};
   cursor: pointer;
-  font-size: 14px;
   
-  input[type="checkbox"] {
-    width: 18px;
-    height: 18px;
-    cursor: pointer;
-  }
-  
-  span {
-    color: #e74c3c;
-    font-weight: 500;
-  }
+  input { width: 18px; height: 18px; }
+  span { color: ${theme.colors.error}; font-weight: ${theme.fontWeights.medium}; }
 `;
 
-const CardActions = styled.div`
+const SubmitButton = styled.button`
   display: flex;
-  margin-top: 12px;
-  gap: 8px;
-`;
-
-const ActionButton = styled.button`
-  background-color: ${props => props.danger ? '#e74c3c' : '#3498db'};
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
+  border: none;
+  border-radius: ${theme.radius.lg};
   color: white;
-  border: none;
-  padding: 6px 8px;
-  border-radius: 4px;
-  font-size: 11px;
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover { opacity: 0.9; }
+`;
+
+const CancelButton = styled(SubmitButton)`
+  background: ${theme.colors.backgroundTertiary};
+  color: ${theme.colors.textSecondary};
+`;
+
+const MultiUploadBtn = styled.button`
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  border: none;
+  border-radius: ${theme.radius.lg};
+  color: white;
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  margin-bottom: ${theme.spacing.lg};
+  
+  &:hover { opacity: 0.9; }
+`;
+
+const AddButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: ${theme.colors.primary};
+  border: none;
+  border-radius: ${theme.radius.full};
+  color: white;
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  
+  &:hover { opacity: 0.9; }
+`;
+
+const SuccessText = styled.p`
+  color: ${theme.colors.success};
+  margin-top: ${theme.spacing.md};
+  font-size: ${theme.fontSizes.sm};
+`;
+
+const LoadingText = styled.p`
+  color: ${theme.colors.textSecondary};
+  text-align: center;
+  padding: ${theme.spacing.xl};
+`;
+
+const TableWrapper = styled.div`
+  overflow-x: auto;
+`;
+
+const StyledTable = styled.table`
+  width: 100%;
+  border-collapse: collapse;
+  
+  th, td {
+    padding: ${theme.spacing.md};
+    text-align: left;
+    border-bottom: 1px solid ${theme.colors.surfaceBorder};
+  }
+  
+  th {
+    background: ${theme.colors.backgroundTertiary};
+    font-weight: ${theme.fontWeights.semibold};
+    color: ${theme.colors.textSecondary};
+    font-size: ${theme.fontSizes.sm};
+  }
+  
+  tr:hover td { background: ${theme.colors.backgroundTertiary}; }
+`;
+
+const SearchRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.md};
+  flex-wrap: wrap;
+`;
+
+const SearchWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
   flex: 1;
-  justify-content: center;
+  min-width: 200px;
   
-  &:hover {
-    opacity: 0.8;
-  }
-`;
-
-const ModalOverlay = styled.div`
-  position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-`;
-
-const ModalContent = styled.div`
-  background-color: white;
-  border-radius: 8px;
-  width: 95%;
-  max-width: 600px;
-  max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
-  margin: 10px;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
-  
-  h3 {
-    margin: 0;
-  }
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  font-size: 24px;
-  cursor: pointer;
-  color: #777;
-  
-  &:hover {
-    color: #333;
-  }
-`;
-
-const ModalBody = styled.div`
-  padding: 20px;
-`;
-
-const ButtonGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 20px;
-  width: 100%;
-  
-  @media (min-width: 480px) {
-    flex-direction: row;
-    justify-content: flex-end;
-  }
-  
-  button {
-    width: 100%;
-    @media (min-width: 480px) {
-      width: auto;
-      min-width: 120px;
-    }
-  }
-`;
-
-const ManagementHeader = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-  margin-bottom: 20px;
-  
-  @media (min-width: 768px) {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-`;
-
-const SearchContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  width: 100%;
-  
-  @media (min-width: 768px) {
-    flex-direction: row;
-    align-items: center;
-  }
-`;
-
-const SearchInputWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  background: white;
-  border-radius: 8px;
-  padding: 8px 12px;
-  border: 1px solid #ddd;
-  flex-grow: 1;
+  svg { color: ${theme.colors.textMuted}; }
 `;
 
 const SearchInput = styled.input`
   border: none;
+  background: transparent;
+  color: ${theme.colors.text};
+  margin-left: ${theme.spacing.sm};
+  flex: 1;
   outline: none;
-  margin-left: 8px;
-  flex-grow: 1;
-  font-size: 14px;
-`;
-
-const ItemsPerPageSelect = styled.select`
-  padding: 8px;
-  border-radius: 8px;
-  border: 1px solid #ddd;
-  background: white;
-  font-size: 14px;
-  width: 100%;
-  
-  @media (min-width: 768px) {
-    width: auto;
-  }
-`;
-
-const PaginationContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: 10px;
-  margin-top: 30px;
-  flex-wrap: wrap;
-`;
-
-const PaginationButton = styled.button`
-  padding: 8px 15px;
-  background-color: #3498db;
-  color: white;
-  border: none;
-  border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 13px;
-  
-  &:hover:not(:disabled) {
-    background-color: #2980b9;
-    transform: translateY(-1px);
-  }
-  
-  &:disabled {
-    background-color: #bdc3c7;
-    cursor: not-allowed;
-    opacity: 0.7;
-  }
-`;
-
-const PageInfo = styled.span`
-  font-size: 14px;
-  color: #666;
-  min-width: 100px;
-  text-align: center;
 `;
 
 const EmptyMessage = styled.div`
   text-align: center;
-  padding: 40px;
-  color: #666;
-  font-size: 18px;
-  background: #f8f9fa;
-  border-radius: 12px;
+  padding: ${theme.spacing['2xl']};
+  color: ${theme.colors.textSecondary};
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
+`;
+
+const CharacterGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: ${theme.spacing.md};
+`;
+
+const CharacterCard = styled.div`
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
+  overflow: hidden;
+  border: 1px solid ${theme.colors.surfaceBorder};
+  
+  img, video {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+  }
+`;
+
+const CharacterInfo = styled.div`
+  padding: ${theme.spacing.md};
+`;
+
+const CharacterName = styled.h4`
+  margin: 0 0 ${theme.spacing.xs};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+`;
+
+const CharacterSeries = styled.p`
+  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+`;
+
+const R18Badge = styled.span`
+  font-size: 12px;
+`;
+
+const RarityTag = styled.span`
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  text-transform: uppercase;
+  background: ${props => getRarityColor(props.rarity)};
+  color: white;
+`;
+
+const CardActions = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.md};
+`;
+
+const ActionBtn = styled.button`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: ${theme.spacing.sm};
+  background: ${props => props.danger ? theme.colors.error : theme.colors.primary};
+  border: none;
+  border-radius: ${theme.radius.md};
+  color: white;
+  font-size: ${theme.fontSizes.xs};
+  cursor: pointer;
+  
+  &:hover { opacity: 0.9; }
+`;
+
+const Pagination = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  margin-top: ${theme.spacing.xl};
+`;
+
+const PaginationBtn = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: ${theme.colors.primary};
+  border: none;
+  border-radius: ${theme.radius.lg};
+  color: white;
+  font-weight: ${theme.fontWeights.medium};
+  cursor: pointer;
+  
+  &:disabled {
+    background: ${theme.colors.backgroundTertiary};
+    color: ${theme.colors.textMuted};
+    cursor: not-allowed;
+  }
+`;
+
+const PageInfo = styled.span`
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
 `;
 
 const BannerGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-  width: 100%;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
+  gap: ${theme.spacing.lg};
 `;
 
 const BannerCard = styled.div`
-  background-color: white;
-  border-radius: 8px;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #eee;
-  display: flex;
-  flex-direction: column;
+  border: 1px solid ${theme.colors.surfaceBorder};
 `;
 
 const BannerImage = styled.img`
@@ -1613,181 +1149,210 @@ const BannerImage = styled.img`
 `;
 
 const BannerInfo = styled.div`
-  padding: 15px;
-  flex: 1;
-  
-  h3 {
-    margin: 0 0 10px 0;
-    font-size: 18px;
-  }
-  
-  p {
-    font-size: 14px;
-    color: #666;
-    margin-top: 10px;
-    margin-bottom: 10px;
-    display: -webkit-box;
-    -webkit-line-clamp: 2;
-    -webkit-box-orient: vertical;
-    overflow: hidden;
-  }
+  padding: ${theme.spacing.md};
+`;
+
+const BannerName = styled.h4`
+  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+`;
+
+const TagRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.xs};
+  margin-bottom: ${theme.spacing.sm};
 `;
 
 const SeriesTag = styled.span`
-  display: inline-block;
-  background-color: #e9f7fe;
-  color: #3498db;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  margin-right: 5px;
-  margin-bottom: 5px;
+  padding: 2px 8px;
+  background: rgba(0, 113, 227, 0.15);
+  color: ${theme.colors.primary};
+  border-radius: ${theme.radius.sm};
+  font-size: ${theme.fontSizes.xs};
 `;
 
 const FeaturedTag = styled.span`
-  display: inline-block;
-  background-color: #fff8e1;
-  color: #ffa000;
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  margin-right: 5px;
-  margin-bottom: 5px;
-  font-weight: bold;
+  padding: 2px 8px;
+  background: rgba(255, 159, 10, 0.15);
+  color: ${theme.colors.warning};
+  border-radius: ${theme.radius.sm};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
 `;
 
 const StatusTag = styled.span`
-  display: inline-block;
-  background-color: ${props => props.active ? '#e8f5e9' : '#ffebee'};
-  color: ${props => props.active ? '#4caf50' : '#f44336'};
-  padding: 3px 8px;
-  border-radius: 4px;
-  font-size: 12px;
-  margin-bottom: 5px;
+  padding: 2px 8px;
+  background: ${props => props.active ? 'rgba(52, 199, 89, 0.15)' : 'rgba(255, 59, 48, 0.15)'};
+  color: ${props => props.active ? theme.colors.success : theme.colors.error};
+  border-radius: ${theme.radius.sm};
+  font-size: ${theme.fontSizes.xs};
 `;
 
-const DateInfo = styled.div`
-  font-size: 12px;
-  color: #666;
-  margin-top: 5px;
+const BannerDesc = styled.p`
+  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
 `;
 
-const BannerFeatures = styled.div`
-  margin: 10px 0;
+const DateInfo = styled.p`
+  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textMuted};
+`;
+
+const BannerStats = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 5px;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.sm};
 `;
 
-const FeatureItem = styled.div`
-  font-size: 13px;
-  color: #555;
+const StatItem = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
   
-  strong {
-    color: #333;
-    margin-right: 5px;
-  }
+  strong { color: ${theme.colors.text}; }
 `;
 
-// Coupon styled components
 const CouponGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: 20px;
-  
-  @media (max-width: 768px) {
-    grid-template-columns: 1fr;
-  }
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+  gap: ${theme.spacing.lg};
 `;
 
 const CouponCard = styled.div`
-  background-color: white;
-  border-radius: 10px;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
   overflow: hidden;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-  border: 1px solid #eee;
-  transition: transform 0.2s, box-shadow 0.2s;
-  
-  &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 5px 15px rgba(0, 0, 0, 0.1);
-  }
+  border: 1px solid ${theme.colors.surfaceBorder};
 `;
 
 const CouponHeader = styled.div`
-  background-color: #f9f9f9;
-  padding: 12px 15px;
-  border-bottom: 1px solid #eee;
   display: flex;
   justify-content: space-between;
   align-items: center;
-  
-  h3 {
-    margin: 0;
-    font-family: monospace;
-    font-size: 18px;
-    font-weight: bold;
-    letter-spacing: 1px;
-  }
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.background};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+const CouponCode = styled.h4`
+  margin: 0;
+  font-family: monospace;
+  font-size: ${theme.fontSizes.md};
+  letter-spacing: 1px;
 `;
 
 const StatusDot = styled.div`
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background-color: ${props => props.active ? '#4caf50' : '#f44336'};
+  background: ${props => props.active ? theme.colors.success : theme.colors.error};
 `;
 
 const CouponInfo = styled.div`
-  padding: 15px;
-  
-  p {
-    margin-top: 0;
-    margin-bottom: 15px;
-    font-size: 14px;
-    color: #555;
-  }
+  padding: ${theme.spacing.md};
+`;
+
+const CouponDesc = styled.p`
+  margin: 0 0 ${theme.spacing.md};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
 `;
 
 const CouponTypeTag = styled.div`
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 5px 10px;
-  border-radius: 15px;
-  font-size: 14px;
-  font-weight: bold;
-  margin-bottom: 10px;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: ${props => props.type === 'coins' ? theme.colors.warning : theme.colors.primary};
   color: white;
-  background-color: ${props => {
-    switch(props.type) {
-      case 'coins': return '#f39c12';
-      case 'character': return '#3498db';
-      default: return '#95a5a6';
-    }
-  }};
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  margin-bottom: ${theme.spacing.md};
 `;
 
 const CouponDetails = styled.div`
-  margin: 10px 0 15px 0;
   display: flex;
   flex-wrap: wrap;
-  gap: 8px;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.md};
 `;
 
-const CouponDetail = styled.div`
-  font-size: 13px;
-  color: #666;
-  border: 1px solid #eee;
-  padding: 4px 8px;
-  border-radius: 4px;
+const CouponDetail = styled.span`
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
+  padding: 2px 8px;
+  background: ${theme.colors.background};
+  border-radius: ${theme.radius.sm};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
   
-  strong {
-    color: #333;
+  strong { color: ${theme.colors.text}; }
+`;
+
+const ImagePreview = styled.div`
+  margin-top: ${theme.spacing.md};
+  
+  img, video {
+    max-width: 100%;
+    max-height: 200px;
+    border-radius: ${theme.radius.md};
+    border: 1px solid ${theme.colors.surfaceBorder};
   }
+`;
+
+const ModalOverlay = styled.div`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(${theme.blur.sm});
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: ${theme.zIndex.modal};
+  padding: ${theme.spacing.md};
+`;
+
+const ModalContent = styled.div`
+  background: ${theme.colors.backgroundSecondary};
+  border-radius: ${theme.radius.xl};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  width: 100%;
+  max-width: 500px;
+  max-height: 90vh;
+  overflow-y: auto;
+`;
+
+const ModalHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: ${theme.spacing.lg};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0;
+  font-size: ${theme.fontSizes.lg};
+`;
+
+const ModalBody = styled.div`
+  padding: ${theme.spacing.lg};
+`;
+
+const ButtonRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.md};
+  margin-top: ${theme.spacing.lg};
 `;
 
 export default AdminPage;
