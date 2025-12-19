@@ -4,24 +4,6 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './styles/DesignSystem';
 
-// Smart redirect based on auth status
-const HomeRedirect = () => {
-  const { user, loading } = useContext(AuthContext);
-  
-  if (loading) {
-    return <div style={{ 
-      display: 'flex', 
-      alignItems: 'center', 
-      justifyContent: 'center', 
-      height: '100vh',
-      background: theme.colors.background,
-      color: theme.colors.text
-    }}>Loading...</div>;
-  }
-  
-  return <Navigate to={user ? "/gacha" : "/login"} replace />;
-};
-
 // i18n
 import './i18n';
 
@@ -39,6 +21,24 @@ import FishingPage from './pages/FishingPage';
 // Components
 import Navigation from './components/Navigation/Navigation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+
+// Smart redirect based on auth status
+const HomeRedirect = () => {
+  const { user, loading } = useContext(AuthContext);
+  
+  if (loading) {
+    return <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      height: '100vh',
+      background: theme.colors.background,
+      color: theme.colors.text
+    }}>Loading...</div>;
+  }
+  
+  return <Navigate to={user ? "/gacha" : "/login"} replace />;
+};
 
 const GlobalStyle = createGlobalStyle`
   * {
