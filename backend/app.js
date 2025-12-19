@@ -104,62 +104,46 @@ schedule.scheduleJob('0 0 * * *', async function() {
 });
 
 // ===========================================
-// SECURITY: Rate limiting configuration
+// MIDDLEWARE (Order matters!)
 // ===========================================
 
-// Skip rate limiting for preflight requests
-const skipPreflight = (req) => req.method === 'OPTIONS';
+// 1. Security headers first
+app.use(helmet({
+  crossOriginResourcePolicy: { policy: "cross-origin" },
+  contentSecurityPolicy: false,
+}));
 
-// General API rate limit - more generous for normal browsing
-const generalLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 300, // 300 requests per 15 minutes (20 per minute average)
-  message: { error: 'Too many requests, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-  skip: skipPreflight,
-});
+// 2. CORS - MUST come before rate limiting to handle preflight
+app.use(cors(corsOptions));
+app.options('*', cors(corsOptions));
 
-// Strict rate limit for authentication endpoints (login/signup)
+// 3. Body parsing with size limits
+app.use(express.json({ limit: '50kb' }));
+app.use(express.urlencoded({ extended: true, limit: '50kb' }));
+
+// ===========================================
+// RATE LIMITING (Only for specific sensitive routes)
+// ===========================================
+
+// Strict rate limit for authentication endpoints (login/signup only)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 15, // 15 login/signup attempts per 15 minutes
+  max: 20, // 20 login/signup attempts per 15 minutes
   message: { error: 'Too many authentication attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: skipPreflight,
 });
 
-// Rate limit for sensitive actions (rolls, redemptions)
-const actionLimiter = rateLimit({
+// Rate limit for gacha rolls (prevent spam rolling)
+const rollLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 60, // 60 actions per minute
-  message: { error: 'Too many requests, please slow down.' },
+  max: 120, // 120 rolls per minute (very generous)
+  message: { error: 'Too many rolls, please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,
-  skip: skipPreflight,
 });
 
-// ===========================================
-// MIDDLEWARE
-// ===========================================
-
-// Security headers
-app.use(helmet({
-  crossOriginResourcePolicy: { policy: "cross-origin" }, // Allow images to be loaded cross-origin
-  contentSecurityPolicy: false, // Disable CSP for now (can configure properly later)
-}));
-
-// CORS
-app.use(cors(corsOptions));
-app.options('*', cors(corsOptions)); // Handle preflight requests
-
-// Body parsing with size limits
-app.use(express.json({ limit: '10kb' })); // Limit JSON body size
-app.use(express.urlencoded({ extended: true, limit: '10kb' }));
-
-// Apply general rate limiting to all requests
-app.use(generalLimiter);
+// NO global rate limiter - only apply to specific sensitive routes
 
 // Serve static files from public folder
 app.use(express.static('public'));
@@ -176,34 +160,30 @@ app.get('/api/health', (req, res) => {
 });
 
 // ===========================================
-// ROUTES with appropriate rate limiting
+// ROUTES
 // ===========================================
 
-// Auth routes with strict rate limiting on login/signup
+// Auth routes - rate limit only login/signup
 const authRoutes = require('./routes/auth');
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 app.use('/api/auth', authRoutes);
 
-// Character routes with action rate limiting for rolls
+// Character routes - rate limit only roll endpoints
 const characterRoutes = require('./routes/characters');
-app.use('/api/characters/roll', actionLimiter);
-app.use('/api/characters/roll-multi', actionLimiter);
+app.use('/api/characters/roll', rollLimiter);
+app.use('/api/characters/roll-multi', rollLimiter);
 app.use('/api/characters', characterRoutes);
 
-// Admin routes (already protected by auth)
+// Admin routes
 app.use('/api/admin', require('./routes/admin')); 
 
-// Banner routes with action rate limiting for rolls
+// Banner routes - rate limit only roll endpoints
 const bannerRoutes = require('./routes/banners');
-app.use('/api/banners/:id/roll', actionLimiter);
-app.use('/api/banners/:id/roll-multi', actionLimiter);
 app.use('/api/banners', bannerRoutes);
 
-// Coupon routes with action rate limiting
-const couponRoutes = require('./routes/coupons');
-app.use('/api/coupons/redeem', actionLimiter);
-app.use('/api/coupons', couponRoutes);
+// Coupon routes
+app.use('/api/coupons', require('./routes/coupons'));
 
 const PORT = process.env.PORT || 5000;
 

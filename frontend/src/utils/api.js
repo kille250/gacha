@@ -162,6 +162,17 @@ export const getCollection = async () => {
   }
 };
 
+// Combined collection data - single request for collection page
+export const getCollectionData = async () => {
+  try {
+    const response = await api.get('/characters/collection-data');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching collection data:', error);
+    throw error;
+  }
+};
+
 export const getCurrentUser = () => {
   const userString = localStorage.getItem('user');
   if (!userString) return null;

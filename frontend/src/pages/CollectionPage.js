@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { getCollection, getAllCharacters, getAssetUrl } from '../utils/api';
+import { getCollectionData, getAssetUrl } from '../utils/api';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import {
@@ -39,13 +39,11 @@ const CollectionPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const [collectionData, allCharsData] = await Promise.all([
-        getCollection(),
-        getAllCharacters()
-      ]);
-      setCollection(collectionData);
-      setAllCharacters(allCharsData);
-      const allSeries = [...new Set(allCharsData.map(char => char.series).filter(Boolean))].sort();
+      // Single API call instead of 2 separate calls
+      const data = await getCollectionData();
+      setCollection(data.collection || []);
+      setAllCharacters(data.allCharacters || []);
+      const allSeries = [...new Set((data.allCharacters || []).map(char => char.series).filter(Boolean))].sort();
       setUniqueSeries(allSeries);
       setLoading(false);
     } catch (err) {

@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings, MdMenu, MdClose } from 'react-icons/md';
 import { FaGift, FaTicketAlt } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
-import api from '../../utils/api';
+import api, { invalidateCache } from '../../utils/api';
 import { theme } from '../../styles/DesignSystem';
 
 const Navigation = () => {
@@ -36,6 +36,8 @@ const Navigation = () => {
     setIsTogglingR18(true);
     try {
       await api.post('/auth/toggle-r18');
+      // Clear all cached data since R18 filter affects everything
+      invalidateCache();
       await refreshUser();
     } catch (err) {
       console.error('Failed to toggle R18 preference:', err);

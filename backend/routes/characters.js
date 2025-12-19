@@ -263,6 +263,31 @@ router.get('/collection', auth, async (req, res) => {
   }
 });
 
+// Combined collection data endpoint - single request for collection page
+router.get('/collection-data', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    const allowR18 = await getUserAllowR18(req.user.id);
+    
+    // Get user's collection and all characters in parallel
+    let [collection, allCharacters] = await Promise.all([
+      user.getCharacters(),
+      Character.findAll()
+    ]);
+    
+    // Filter R18 content if not enabled
+    if (!allowR18) {
+      collection = collection.filter(char => !char.isR18);
+      allCharacters = allCharacters.filter(char => !char.isR18);
+    }
+    
+    res.json({ collection, allCharacters });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get all characters (filtered by R18 preference if authenticated)
 router.get('/', async (req, res) => {
   try {
