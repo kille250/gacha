@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
 import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, invalidateAdminCache } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
@@ -16,6 +17,7 @@ import {
 } from '../styles/DesignSystem';
 
 const AdminPage = () => {
+  const { t } = useTranslation();
   const { user, refreshUser } = useContext(AuthContext);
   const [users, setUsers] = useState([]);
   const [characters, setCharacters] = useState([]);
@@ -466,8 +468,8 @@ const AdminPage = () => {
     <StyledPageWrapper>
       <Container>
         <AdminHeader>
-          <HeaderTitle>Admin Dashboard</HeaderTitle>
-          <HeaderSubtitle>Manage your gacha game</HeaderSubtitle>
+          <HeaderTitle>{t('admin.title')}</HeaderTitle>
+          <HeaderSubtitle>{t('admin.subtitle')}</HeaderSubtitle>
         </AdminHeader>
         
         <AnimatePresence>
@@ -488,10 +490,10 @@ const AdminPage = () => {
         <AdminGrid>
           {/* Add Coins Section */}
           <AdminSection>
-            <SectionTitle><FaCoins /> Add Coins</SectionTitle>
+            <SectionTitle><FaCoins /> {t('admin.addCoins')}</SectionTitle>
             <form onSubmit={handleAddCoins}>
               <FormGroup>
-                <Label>Select User</Label>
+                <Label>{t('admin.selectUser')}</Label>
                 <Select name="userId" value={coinForm.userId} onChange={handleCoinFormChange} required>
                   <option value="">-- Select User --</option>
                   {users.map(u => (
@@ -500,31 +502,31 @@ const AdminPage = () => {
                 </Select>
               </FormGroup>
               <FormGroup>
-                <Label>Amount</Label>
+                <Label>{t('admin.amount')}</Label>
                 <Input type="number" name="amount" min="1" max="10000" value={coinForm.amount} onChange={handleCoinFormChange} required />
               </FormGroup>
-              <SubmitButton type="submit"><FaCoins /> Add Coins</SubmitButton>
+              <SubmitButton type="submit"><FaCoins /> {t('admin.addCoins')}</SubmitButton>
             </form>
             {coinMessage && <SuccessText>{coinMessage}</SuccessText>}
           </AdminSection>
           
           {/* Add Character Section */}
           <AdminSection>
-            <SectionTitle><FaImage /> Add Character</SectionTitle>
+            <SectionTitle><FaImage /> {t('admin.addCharacter')}</SectionTitle>
             <MultiUploadBtn onClick={() => setIsMultiUploadOpen(true)}>
-              <FaCloudUploadAlt /> Multi-Upload
+              <FaCloudUploadAlt /> {t('admin.multiUpload')}
             </MultiUploadBtn>
             <form onSubmit={addCharacterWithImage}>
               <FormGroup>
-                <Label>Name</Label>
+                <Label>{t('admin.name')}</Label>
                 <Input type="text" name="name" value={newCharacter.name} onChange={handleCharacterChange} required />
               </FormGroup>
               <FormGroup>
-                <Label>Series</Label>
+                <Label>{t('admin.series')}</Label>
                 <Input type="text" name="series" value={newCharacter.series} onChange={handleCharacterChange} required />
               </FormGroup>
               <FormGroup>
-                <Label>Rarity</Label>
+                <Label>{t('admin.rarity')}</Label>
                 <Select name="rarity" value={newCharacter.rarity} onChange={handleCharacterChange}>
                   <option value="common">Common</option>
                   <option value="uncommon">Uncommon</option>
@@ -536,11 +538,11 @@ const AdminPage = () => {
               <FormGroup>
                 <CheckboxLabel>
                   <input type="checkbox" checked={newCharacter.isR18} onChange={(e) => setNewCharacter({...newCharacter, isR18: e.target.checked})} />
-                  <span>🔞 R18 Content</span>
+                  <span>🔞 {t('admin.r18Content')}</span>
                 </CheckboxLabel>
               </FormGroup>
               <FormGroup>
-                <Label>Image/Video</Label>
+                <Label>{t('admin.imageVideo')}</Label>
                 <Input type="file" id="character-image" accept="image/*,video/mp4,video/webm" onChange={handleFileChange} required />
                 {uploadedImage && !isVideo(selectedFile) && (
                   <ImagePreview><img src={uploadedImage} alt="Preview" /></ImagePreview>
@@ -549,26 +551,26 @@ const AdminPage = () => {
                   <ImagePreview><video controls src={uploadedImage} /></ImagePreview>
                 )}
               </FormGroup>
-              <SubmitButton type="submit"><FaImage /> Add Character</SubmitButton>
+              <SubmitButton type="submit"><FaImage /> {t('admin.addCharacter')}</SubmitButton>
             </form>
           </AdminSection>
         </AdminGrid>
         
         {/* User Management */}
         <AdminSection>
-          <SectionTitle><FaUsers /> User Management</SectionTitle>
+          <SectionTitle><FaUsers /> {t('admin.userManagement')}</SectionTitle>
           {loading ? (
-            <LoadingText>Loading users...</LoadingText>
+            <LoadingText>{t('admin.loadingUsers')}</LoadingText>
           ) : (
             <TableWrapper>
               <StyledTable>
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Username</th>
-                    <th>Points</th>
-                    <th>Admin</th>
-                    <th>Created</th>
+                    <th>{t('admin.id')}</th>
+                    <th>{t('admin.username')}</th>
+                    <th>{t('admin.points')}</th>
+                    <th>{t('admin.isAdmin')}</th>
+                    <th>{t('admin.created')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -590,7 +592,7 @@ const AdminPage = () => {
         {/* Character Management */}
         <AdminSection>
           <SectionHeader>
-            <SectionTitle><FaUsers /> Character Management</SectionTitle>
+            <SectionTitle><FaUsers /> {t('admin.characterManagement')}</SectionTitle>
             <SearchRow>
               <SearchWrapper>
                 <FaSearch />
@@ -605,7 +607,7 @@ const AdminPage = () => {
           </SectionHeader>
           
           {currentCharacters.length === 0 ? (
-            <EmptyMessage>No characters found</EmptyMessage>
+            <EmptyMessage>{t('admin.noCharactersFound')}</EmptyMessage>
           ) : (
             <>
               <CharacterGrid>
@@ -623,8 +625,8 @@ const AdminPage = () => {
                       <CharacterSeries>{char.series}</CharacterSeries>
                       <RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
                       <CardActions>
-                        <ActionBtn onClick={() => handleEditCharacter(char)}><FaEdit /> Edit</ActionBtn>
-                        <ActionBtn danger onClick={() => handleDeleteCharacter(char.id)}><FaTrash /> Delete</ActionBtn>
+                        <ActionBtn onClick={() => handleEditCharacter(char)}><FaEdit /> {t('common.edit')}</ActionBtn>
+                        <ActionBtn danger onClick={() => handleDeleteCharacter(char.id)}><FaTrash /> {t('common.delete')}</ActionBtn>
                       </CardActions>
                     </CharacterInfo>
                   </CharacterCard>
@@ -632,9 +634,9 @@ const AdminPage = () => {
               </CharacterGrid>
               
               <Pagination>
-                <PaginationBtn onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>Previous</PaginationBtn>
-                <PageInfo>Page {currentPage} of {totalPages}</PageInfo>
-                <PaginationBtn onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>Next</PaginationBtn>
+                <PaginationBtn onClick={() => handlePageChange(currentPage - 1)} disabled={currentPage === 1}>{t('common.previous')}</PaginationBtn>
+                <PageInfo>{t('common.page')} {currentPage} {t('common.of')} {totalPages}</PageInfo>
+                <PaginationBtn onClick={() => handlePageChange(currentPage + 1)} disabled={currentPage === totalPages}>{t('common.next')}</PaginationBtn>
               </Pagination>
             </>
           )}
@@ -643,12 +645,12 @@ const AdminPage = () => {
         {/* Banner Management */}
         <AdminSection>
           <SectionHeader>
-            <SectionTitle><FaImage /> Banner Management</SectionTitle>
-            <AddButton onClick={() => setIsAddingBanner(true)}><FaPlus /> Add Banner</AddButton>
+            <SectionTitle><FaImage /> {t('admin.bannerManagement')}</SectionTitle>
+            <AddButton onClick={() => setIsAddingBanner(true)}><FaPlus /> {t('admin.addBanner')}</AddButton>
           </SectionHeader>
           
           {banners.length === 0 ? (
-            <EmptyMessage>No banners found</EmptyMessage>
+            <EmptyMessage>{t('admin.noBannersFound')}</EmptyMessage>
           ) : (
             <BannerGrid>
               {banners.map(banner => (
@@ -682,12 +684,12 @@ const AdminPage = () => {
         {/* Coupon Management */}
         <AdminSection>
           <SectionHeader>
-            <SectionTitle><FaTicketAlt /> Coupon Management</SectionTitle>
-            <AddButton onClick={() => setIsAddingCoupon(true)}><FaPlus /> Create Coupon</AddButton>
+            <SectionTitle><FaTicketAlt /> {t('admin.couponManagement')}</SectionTitle>
+            <AddButton onClick={() => setIsAddingCoupon(true)}><FaPlus /> {t('admin.createCoupon')}</AddButton>
           </SectionHeader>
           
           {coupons.length === 0 ? (
-            <EmptyMessage>No coupons found</EmptyMessage>
+            <EmptyMessage>{t('admin.noCouponsFound')}</EmptyMessage>
           ) : (
             <CouponGrid>
               {coupons.map(coupon => (

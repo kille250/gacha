@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { MdClose, MdFastForward, MdRefresh, MdArrowBack } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy, FaStar } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -58,6 +59,7 @@ const isVideo = (file) => {
 // ==================== MAIN COMPONENT ====================
 
 const RollPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, refreshUser, setUser } = useContext(AuthContext);
   
@@ -164,7 +166,7 @@ const RollPage = () => {
   const handleMultiRoll = async (count) => {
     const cost = calculateMultiPullCost(count);
     if (user?.points < cost) {
-      setError(`Not enough points for a ${count}× roll. Required: ${cost} points`);
+      setError(t('roll.notEnoughPoints', { count, cost }));
       return;
     }
     
@@ -247,12 +249,12 @@ const RollPage = () => {
         <NavBar>
           <BackButton onClick={() => navigate('/gacha')}>
             <MdArrowBack />
-            <span>Banners</span>
+            <span>{t('common.banners')}</span>
           </BackButton>
           <NavStats>
             <StatPill>
               <span>🎲</span>
-              <span>{rollCount} pulls</span>
+              <span>{rollCount} {t('common.pulls')}</span>
             </StatPill>
             <PointsPill>
               <span>🪙</span>
@@ -263,8 +265,8 @@ const RollPage = () => {
         
         {/* Hero Section */}
         <HeroSection>
-          <HeroTitle>Standard Gacha</HeroTitle>
-          <HeroSubtitle>Roll for characters from the entire pool</HeroSubtitle>
+          <HeroTitle>{t('roll.title')}</HeroTitle>
+          <HeroSubtitle>{t('roll.subtitle')}</HeroSubtitle>
         </HeroSection>
         
         {/* Error Alert */}
@@ -288,7 +290,7 @@ const RollPage = () => {
         {/* Rarity History */}
         {lastRarities.length > 0 && (
           <RarityTracker>
-            <RarityLabel>Recent:</RarityLabel>
+            <RarityLabel>{t('common.recent')}:</RarityLabel>
             <RarityHistoryContainer>
               {lastRarities.map((rarity, i) => (
                 <RarityDot key={i} rarity={rarity} style={{ animationDelay: `${i * 0.1}s` }}>
@@ -321,9 +323,9 @@ const RollPage = () => {
                       <CardImage src={getImagePath(currentChar?.image)} alt={currentChar?.name} />
                     )}
                     <CardOverlay>
-                      <span>🔍 View</span>
+                      <span>🔍 {t('common.view')}</span>
                     </CardOverlay>
-                    <CollectedBadge>✓ Collected</CollectedBadge>
+                    <CollectedBadge>✓ {t('common.collected')}</CollectedBadge>
                   </CardImageWrapper>
                   <CardContent>
                     <CardMeta>
@@ -341,7 +343,7 @@ const RollPage = () => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <MdRefresh /> Roll Again
+                      <MdRefresh /> {t('common.rollAgain')}
                     </RollAgainBtn>
                   </CardActions>
                 </CharacterCard>
@@ -355,7 +357,7 @@ const RollPage = () => {
                   exit="exit"
                 >
                   <MultiResultsHeader>
-                    <h2>{multiRollResults.length}× Pull Results</h2>
+                    <h2>{multiRollResults.length}× {t('common.pullResults')}</h2>
                     <IconButton onClick={() => setShowMultiResults(false)}>
                       <MdClose />
                     </IconButton>
@@ -396,7 +398,7 @@ const RollPage = () => {
                   exit="exit"
                 >
                   <Spinner size="56px" />
-                  <LoadingText>Summoning...</LoadingText>
+                  <LoadingText>{t('common.summoning')}</LoadingText>
                 </LoadingState>
                 
               ) : !isRolling ? (
@@ -408,8 +410,8 @@ const RollPage = () => {
                   exit="exit"
                 >
                   <EmptyIcon>✨</EmptyIcon>
-                  <EmptyTitle>Ready to Roll?</EmptyTitle>
-                  <EmptyText>Try your luck and discover rare characters</EmptyText>
+                  <EmptyTitle>{t('common.readyToRoll')}</EmptyTitle>
+                  <EmptyText>{t('common.tryYourLuck')}</EmptyText>
                 </EmptyState>
               ) : null}
             </AnimatePresence>
@@ -431,13 +433,13 @@ const RollPage = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {isRolling ? "Summoning..." : (
+                  {isRolling ? t('common.summoning') : (
                     <>
                       <ButtonLabel>
                         <span>💫</span>
-                        <span>Single</span>
+                        <span>{t('common.single')}</span>
                       </ButtonLabel>
-                      <CostLabel>100 pts</CostLabel>
+                      <CostLabel>100 {t('common.points')}</CostLabel>
                     </>
                   )}
                 </PrimaryRollButton>
@@ -472,14 +474,14 @@ const RollPage = () => {
               
               <ControlsFooter>
                 <PullHint>
-                  <span>🪙</span> <strong>{user?.points || 0}</strong> points available
+                  <span>🪙</span> <strong>{user?.points || 0}</strong> {t('common.pointsAvailable')}
                 </PullHint>
                 <FastModeToggle 
                   active={skipAnimations}
                   onClick={() => setSkipAnimations(!skipAnimations)}
                 >
                   <MdFastForward />
-                  {skipAnimations ? 'Fast Mode' : 'Normal'}
+                  {skipAnimations ? t('common.fastMode') : t('common.normal')}
                 </FastModeToggle>
               </ControlsFooter>
             </ControlsSection>

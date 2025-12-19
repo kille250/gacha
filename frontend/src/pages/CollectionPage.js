@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { getCollectionData, getAssetUrl } from '../utils/api';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
@@ -17,6 +18,7 @@ import {
 } from '../styles/DesignSystem';
 
 const CollectionPage = () => {
+  const { t } = useTranslation();
   const [collection, setCollection] = useState([]);
   const [allCharacters, setAllCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -147,8 +149,8 @@ const CollectionPage = () => {
         {/* Header Section */}
         <HeaderSection>
           <HeaderContent>
-            <PageTitle>Collection</PageTitle>
-            <PageSubtitle>Track your character collection progress</PageSubtitle>
+            <PageTitle>{t('collection.title')}</PageTitle>
+            <PageSubtitle>{t('collection.subtitle')}</PageSubtitle>
           </HeaderContent>
           
           {/* Progress Stats */}
@@ -156,17 +158,17 @@ const CollectionPage = () => {
             <StatsRow>
               <StatItem>
                 <StatValue>{ownedCount}</StatValue>
-                <StatLabel>Owned</StatLabel>
+                <StatLabel>{t('collection.owned')}</StatLabel>
               </StatItem>
               <StatDivider />
               <StatItem>
                 <StatValue>{totalCount}</StatValue>
-                <StatLabel>Total</StatLabel>
+                <StatLabel>{t('collection.total')}</StatLabel>
               </StatItem>
               <StatDivider />
               <StatItem>
                 <StatValue>{completionPercentage}%</StatValue>
-                <StatLabel>Complete</StatLabel>
+                <StatLabel>{t('collection.complete')}</StatLabel>
               </StatItem>
             </StatsRow>
             <ProgressBar>
@@ -181,7 +183,7 @@ const CollectionPage = () => {
             <SearchIcon><FaSearch /></SearchIcon>
             <SearchInput
               type="text"
-              placeholder="Search characters..."
+              placeholder={t('collection.searchPlaceholder')}
               value={searchQuery}
               onChange={handleSearchChange}
             />
@@ -198,7 +200,7 @@ const CollectionPage = () => {
               active={showFilters || hasActiveFilters}
             >
               <FaFilter />
-              <span>Filters</span>
+              <span>{t('common.filters')}</span>
               {hasActiveFilters && <FilterBadge />}
             </FilterToggle>
             
@@ -219,7 +221,7 @@ const CollectionPage = () => {
               exit={{ opacity: 0, height: 0 }}
             >
               <FilterGroup>
-                <FilterLabel>Ownership</FilterLabel>
+                <FilterLabel>{t('collection.ownership')}</FilterLabel>
                 <FilterOptions>
                   {['all', 'owned', 'not-owned'].map(option => (
                     <FilterChip 
@@ -227,20 +229,20 @@ const CollectionPage = () => {
                       active={ownershipFilter === option}
                       onClick={() => { setOwnershipFilter(option); setCurrentPage(1); }}
                     >
-                      {option === 'all' ? 'All' : option === 'owned' ? 'Owned' : 'Missing'}
+                      {option === 'all' ? t('common.all') : option === 'owned' ? t('common.owned') : t('common.missing')}
                     </FilterChip>
                   ))}
                 </FilterOptions>
               </FilterGroup>
               
               <FilterGroup>
-                <FilterLabel>Rarity</FilterLabel>
+                <FilterLabel>{t('collection.rarity')}</FilterLabel>
                 <FilterOptions>
                   <FilterChip 
                     active={rarityFilter === 'all'}
                     onClick={() => { setRarityFilter('all'); setCurrentPage(1); }}
                   >
-                    All
+                    {t('common.all')}
                   </FilterChip>
                   {['common', 'uncommon', 'rare', 'epic', 'legendary'].map(rarity => (
                     <FilterChip 
@@ -257,12 +259,12 @@ const CollectionPage = () => {
               
               {uniqueSeries.length > 0 && (
                 <FilterGroup>
-                  <FilterLabel>Series</FilterLabel>
+                  <FilterLabel>{t('collection.series')}</FilterLabel>
                   <SeriesSelect 
                     value={seriesFilter}
                     onChange={(e) => { setSeriesFilter(e.target.value); setCurrentPage(1); }}
                   >
-                    <option value="all">All Series</option>
+                    <option value="all">{t('collection.allSeries')}</option>
                     {uniqueSeries.map(series => (
                       <option key={series} value={series}>{series}</option>
                     ))}
@@ -272,7 +274,7 @@ const CollectionPage = () => {
               
               {hasActiveFilters && (
                 <ClearFiltersBtn onClick={clearFilters}>
-                  <FaTimes /> Clear Filters
+                  <FaTimes /> {t('common.clearFilters')}
                 </ClearFiltersBtn>
               )}
             </FiltersPanel>
@@ -285,23 +287,23 @@ const CollectionPage = () => {
         {loading ? (
           <LoadingContainer>
             <Spinner size="56px" />
-            <Text secondary>Loading collection...</Text>
+            <Text secondary>{t('collection.loadingCollection')}</Text>
           </LoadingContainer>
         ) : filteredCharacters.length === 0 ? (
           <EmptyState>
             <EmptyIcon>🔍</EmptyIcon>
-            <EmptyTitle>No characters found</EmptyTitle>
-            <EmptyText>Try adjusting your filters to see more characters</EmptyText>
+            <EmptyTitle>{t('collection.noCharactersFound')}</EmptyTitle>
+            <EmptyText>{t('collection.adjustFilters')}</EmptyText>
             {hasActiveFilters && (
               <ClearFiltersBtn onClick={clearFilters} style={{ marginTop: '16px' }}>
-                <FaTimes /> Clear Filters
+                <FaTimes /> {t('common.clearFilters')}
               </ClearFiltersBtn>
             )}
           </EmptyState>
         ) : (
           <>
             <ResultsInfo>
-              Showing {currentCharacters.length} of {filteredCharacters.length} characters
+              {t('common.showing')} {currentCharacters.length} {t('common.of')} {filteredCharacters.length} {t('common.characters')}
             </ResultsInfo>
             
             <CharacterGrid
@@ -348,7 +350,7 @@ const CollectionPage = () => {
                       )}
                       {!isOwned && (
                         <NotOwnedOverlay>
-                          <NotOwnedLabel>Not Owned</NotOwnedLabel>
+                          <NotOwnedLabel>{t('common.notOwned')}</NotOwnedLabel>
                         </NotOwnedOverlay>
                       )}
                       <RarityIndicator rarity={char.rarity} />
@@ -369,16 +371,16 @@ const CollectionPage = () => {
                   onClick={() => handlePageChange(currentPage - 1)}
                   disabled={currentPage === 1}
                 >
-                  Previous
+                  {t('common.previous')}
                 </PageButton>
                 <PageInfo>
-                  Page {currentPage} of {totalPages}
+                  {t('common.page')} {currentPage} {t('common.of')} {totalPages}
                 </PageInfo>
                 <PageButton
                   onClick={() => handlePageChange(currentPage + 1)}
                   disabled={currentPage === totalPages}
                 >
-                  Next
+                  {t('common.next')}
                 </PageButton>
               </Pagination>
             )}

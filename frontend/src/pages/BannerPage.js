@@ -2,6 +2,7 @@ import React, { useState, useEffect, useContext, useCallback, useRef } from 'rea
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { MdArrowBack, MdClose, MdFastForward, MdInfo, MdRefresh } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
@@ -57,6 +58,7 @@ const isVideo = (file) => {
 // ==================== MAIN COMPONENT ====================
 
 const BannerPage = () => {
+  const { t } = useTranslation();
   const videoRef = useRef(null);
   const { bannerId } = useParams();
   const navigate = useNavigate();
@@ -212,7 +214,7 @@ const BannerPage = () => {
   const handleMultiRoll = async (count) => {
     const cost = getMultiPullCost(count);
     if (user?.points < cost) {
-      setError(`Not enough points for ${count}× roll. Required: ${cost} points`);
+      setError(t('banner.notEnoughPoints', { count, cost }));
       return;
     }
     
@@ -306,7 +308,7 @@ const BannerPage = () => {
     return (
       <LoadingPage>
         <Spinner size="56px" />
-        <LoadingText>Loading banner...</LoadingText>
+        <LoadingText>{t('banner.loadingBanner')}</LoadingText>
       </LoadingPage>
     );
   }
@@ -315,9 +317,9 @@ const BannerPage = () => {
   if (!banner) {
     return (
       <ErrorPage>
-        <ErrorBox>Banner not found or has expired</ErrorBox>
+        <ErrorBox>{t('banner.bannerNotFound')}</ErrorBox>
         <BackButton onClick={() => navigate('/gacha')}>
-          <MdArrowBack /> Back to Gacha
+          <MdArrowBack /> {t('banner.backToGacha')}
         </BackButton>
       </ErrorPage>
     );
@@ -333,12 +335,12 @@ const BannerPage = () => {
         <NavBar>
           <BackButton onClick={() => navigate('/gacha')}>
             <MdArrowBack />
-            <span>Back</span>
+            <span>{t('banner.back')}</span>
           </BackButton>
           <NavStats>
             <StatPill>
               <span>🎲</span>
-              <span>{rollCount} pulls</span>
+              <span>{rollCount} {t('common.pulls')}</span>
             </StatPill>
             <PointsPill>
               <span>🪙</span>
@@ -357,11 +359,11 @@ const BannerPage = () => {
             <BannerSeries>{banner.series}</BannerSeries>
             {banner.description && <BannerDescription>{banner.description}</BannerDescription>}
             <BadgeRow>
-              <CostBadge>{singlePullCost} pts/pull</CostBadge>
+              <CostBadge>{singlePullCost} {t('banner.ptsPerPull')}</CostBadge>
               <DateBadge>
                 {banner.endDate 
-                  ? `Ends: ${new Date(banner.endDate).toLocaleDateString()}`
-                  : 'Limited-Time'}
+                  ? `${t('common.ends')}: ${new Date(banner.endDate).toLocaleDateString()}`
+                  : t('common.limitedTime')}
               </DateBadge>
             </BadgeRow>
           </HeroContent>
@@ -369,7 +371,7 @@ const BannerPage = () => {
           {/* Featured Characters Preview */}
           {banner.Characters?.length > 0 && (
             <FeaturedSection>
-              <FeaturedLabel>Featured Characters</FeaturedLabel>
+              <FeaturedLabel>{t('banner.featuredCharacters')}</FeaturedLabel>
               <CharacterAvatars>
                 {banner.Characters.slice(0, 6).map(char => (
                   <Avatar
@@ -413,7 +415,7 @@ const BannerPage = () => {
                 {isVideoPlaying ? <FaPause /> : <FaPlay />}
               </VideoOverlay>
             </VideoContainer>
-            <VideoCaption>Watch Promotional Video</VideoCaption>
+            <VideoCaption>{t('common.watchVideo')}</VideoCaption>
           </VideoSection>
         )}
         
@@ -438,7 +440,7 @@ const BannerPage = () => {
         {/* Rarity History */}
         {lastRarities.length > 0 && (
           <RarityTracker>
-            <RarityLabel>Recent:</RarityLabel>
+            <RarityLabel>{t('common.recent')}:</RarityLabel>
             <RarityHistory>
               {lastRarities.map((rarity, i) => (
                 <RarityDot key={i} rarity={rarity}>{rarityIcons[rarity]}</RarityDot>
@@ -468,10 +470,10 @@ const BannerPage = () => {
                       <CardImage src={getImagePath(currentChar?.image)} alt={currentChar?.name} />
                     )}
                     <CardOverlay>
-                      <span>🔍 View</span>
+                      <span>🔍 {t('common.view')}</span>
                     </CardOverlay>
-                    <CollectedBadge>✓ Collected</CollectedBadge>
-                    {currentChar?.isBannerCharacter && <BannerCharBadge>★ Banner</BannerCharBadge>}
+                    <CollectedBadge>✓ {t('common.collected')}</CollectedBadge>
+                    {currentChar?.isBannerCharacter && <BannerCharBadge>★ {t('banner.bannerChar')}</BannerCharBadge>}
                   </CardImageWrapper>
                   <CardContent>
                     <CardMeta>
@@ -489,7 +491,7 @@ const BannerPage = () => {
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      <MdRefresh /> Roll Again
+                      <MdRefresh /> {t('common.rollAgain')}
                     </RollAgainBtn>
                   </CardActions>
                 </CharacterCard>
@@ -546,7 +548,7 @@ const BannerPage = () => {
                   exit="exit"
                 >
                   <Spinner size="56px" />
-                  <LoadingStateText>Summoning...</LoadingStateText>
+                  <LoadingStateText>{t('common.summoning')}</LoadingStateText>
                 </LoadingState>
                 
               ) : !isRolling ? (
@@ -558,8 +560,8 @@ const BannerPage = () => {
                   exit="exit"
                 >
                   <EmptyIcon>✨</EmptyIcon>
-                  <EmptyTitle>Roll on {banner.name}</EmptyTitle>
-                  <EmptyText>{banner.series} Special Banner</EmptyText>
+                  <EmptyTitle>{t('banner.rollOn')} {banner.name}</EmptyTitle>
+                  <EmptyText>{banner.series} {t('banner.specialBanner')}</EmptyText>
                 </EmptyState>
               ) : null}
             </AnimatePresence>
@@ -580,13 +582,13 @@ const BannerPage = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {isRolling ? "Summoning..." : (
+                  {isRolling ? t('common.summoning') : (
                     <>
                       <ButtonLabel>
                         <span>💫</span>
-                        <span>Single</span>
+                        <span>{t('common.single')}</span>
                       </ButtonLabel>
-                      <CostLabel>{singlePullCost} pts</CostLabel>
+                      <CostLabel>{singlePullCost} {t('common.points')}</CostLabel>
                     </>
                   )}
                 </PrimaryRollButton>
@@ -622,14 +624,14 @@ const BannerPage = () => {
               
               <ControlsFooter>
                 <PullHint>
-                  <span>🪙</span> <strong>{user?.points || 0}</strong> points available
+                  <span>🪙</span> <strong>{user?.points || 0}</strong> {t('common.pointsAvailable')}
                 </PullHint>
                 <FastModeToggle 
                   active={skipAnimations}
                   onClick={() => setSkipAnimations(!skipAnimations)}
                 >
                   <MdFastForward />
-                  {skipAnimations ? 'Fast Mode' : 'Normal'}
+                  {skipAnimations ? t('common.fastMode') : t('common.normal')}
                 </FastModeToggle>
               </ControlsFooter>
             </ControlsSection>
@@ -702,16 +704,16 @@ const BannerPage = () => {
               </InfoPanelHeader>
               <InfoPanelContent>
                 <InfoBlock>
-                  <InfoBlockTitle>About This Banner</InfoBlockTitle>
-                  <Text secondary>{banner.description || `Special banner featuring characters from ${banner.series}.`}</Text>
+                  <InfoBlockTitle>{t('common.aboutBanner')}</InfoBlockTitle>
+                  <Text secondary>{banner.description || `${t('banner.specialBanner')} - ${banner.series}.`}</Text>
                   {banner.endDate && (
-                    <InfoNote>Available until: {new Date(banner.endDate).toLocaleDateString()}</InfoNote>
+                    <InfoNote>{t('common.availableUntil')}: {new Date(banner.endDate).toLocaleDateString()}</InfoNote>
                   )}
-                  <InfoNoteAccent>Pull cost: {singlePullCost} points</InfoNoteAccent>
+                  <InfoNoteAccent>{t('common.pullCost')}: {singlePullCost} {t('common.points')}</InfoNoteAccent>
                 </InfoBlock>
                 
                 <InfoBlock>
-                  <InfoBlockTitle>Featured Characters</InfoBlockTitle>
+                  <InfoBlockTitle>{t('banner.featuredCharacters')}</InfoBlockTitle>
                   <FeaturedList>
                     {banner.Characters?.map(char => (
                       <FeaturedItem 
@@ -731,7 +733,7 @@ const BannerPage = () => {
                           <FeaturedRarity rarity={char.rarity}>
                             {rarityIcons[char.rarity]} {char.rarity}
                           </FeaturedRarity>
-                          {isInCollection(char) && <OwnedLabel>✓ Owned</OwnedLabel>}
+                          {isInCollection(char) && <OwnedLabel>✓ {t('common.owned')}</OwnedLabel>}
                         </FeaturedInfo>
                         <FaChevronRight style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
                       </FeaturedItem>
@@ -745,7 +747,7 @@ const BannerPage = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  Roll Now
+                  {t('common.rollNow')}
                 </RollFromPanelBtn>
               </InfoPanelContent>
             </InfoPanel>

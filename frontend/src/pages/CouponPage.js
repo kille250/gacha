@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
 import api, { getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
@@ -15,6 +16,7 @@ import {
 } from '../styles/DesignSystem';
 
 const CouponPage = () => {
+  const { t } = useTranslation();
   const { user, setUser } = useContext(AuthContext);
   const [couponCode, setCouponCode] = useState('');
   const [loading, setLoading] = useState(false);
@@ -36,7 +38,7 @@ const CouponPage = () => {
     e.preventDefault();
     
     if (!couponCode) {
-      setError('Please enter a coupon code');
+      setError(t('coupon.pleaseEnterCode'));
       return;
     }
     
@@ -84,9 +86,9 @@ const CouponPage = () => {
         <Header>
           <HeaderContent>
             <PageTitle>
-              Coupon<TitleAccent>Redemption</TitleAccent>
+              {t('coupon.title')}<TitleAccent>{t('coupon.titleAccent')}</TitleAccent>
             </PageTitle>
-            <PageSubtitle>Redeem codes to earn rewards</PageSubtitle>
+            <PageSubtitle>{t('coupon.subtitle')}</PageSubtitle>
           </HeaderContent>
           <PointsDisplay>
             <span>🪙</span>
@@ -128,14 +130,14 @@ const CouponPage = () => {
           <CouponSection>
             <SectionHeader>
               <SectionIcon><FaTicketAlt /></SectionIcon>
-              <Heading2>Redeem Code</Heading2>
+              <Heading2>{t('coupon.redeemCode')}</Heading2>
             </SectionHeader>
             
             <CouponCard>
               <CouponForm onSubmit={redeemCoupon}>
                 <CouponInput 
                   type="text"
-                  placeholder="ENTER COUPON CODE"
+                  placeholder={t('coupon.enterCode')}
                   value={couponCode}
                   onChange={handleInputChange}
                   disabled={loading}
@@ -147,28 +149,28 @@ const CouponPage = () => {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {loading ? 'Redeeming...' : 'Redeem Coupon'}
+                  {loading ? t('coupon.redeeming') : t('coupon.redeemCoupon')}
                 </RedeemButton>
               </CouponForm>
               
               <Instructions>
-                <InstructionTitle>How to use coupons:</InstructionTitle>
+                <InstructionTitle>{t('coupon.howToUse')}</InstructionTitle>
                 <InstructionList>
                   <InstructionItem>
                     <Bullet>✦</Bullet>
-                    <span>Coupons can be redeemed for coins or characters</span>
+                    <span>{t('coupon.instruction1')}</span>
                   </InstructionItem>
                   <InstructionItem>
                     <Bullet>✦</Bullet>
-                    <span>Each coupon can only be redeemed once per account</span>
+                    <span>{t('coupon.instruction2')}</span>
                   </InstructionItem>
                   <InstructionItem>
                     <Bullet>✦</Bullet>
-                    <span>Find coupons on social media, in events, or from friends</span>
+                    <span>{t('coupon.instruction3')}</span>
                   </InstructionItem>
                   <InstructionItem>
                     <Bullet>✦</Bullet>
-                    <span>Coupon codes are case-insensitive</span>
+                    <span>{t('coupon.instruction4')}</span>
                   </InstructionItem>
                 </InstructionList>
               </Instructions>
@@ -179,7 +181,7 @@ const CouponPage = () => {
           <RewardSection>
             <SectionHeader>
               <SectionIcon>🎁</SectionIcon>
-              <Heading2>Reward Details</Heading2>
+              <Heading2>{t('coupon.rewardDetails')}</Heading2>
             </SectionHeader>
             
             <RewardDisplay>
@@ -193,7 +195,7 @@ const CouponPage = () => {
                     transition={{ type: 'spring', stiffness: 300, damping: 20 }}
                   >
                     <RewardHeader>
-                      <FaGift /> You've received a reward!
+                      <FaGift /> {t('coupon.receivedReward')}
                     </RewardHeader>
                     
                     <RewardContent>
@@ -203,8 +205,8 @@ const CouponPage = () => {
                             <FaCoins />
                           </CoinIcon>
                           <RewardDetails>
-                            <RewardAmount>{rewardInfo.reward.coins} Coins</RewardAmount>
-                            <RewardDesc>Added to your account</RewardDesc>
+                            <RewardAmount>{rewardInfo.reward.coins} {t('coupon.coins')}</RewardAmount>
+                            <RewardDesc>{t('coupon.addedToAccount')}</RewardDesc>
                           </RewardDetails>
                         </CoinReward>
                       ) : rewardInfo.type === 'character' ? (
@@ -225,7 +227,7 @@ const CouponPage = () => {
                           </CharacterDetails>
                         </CharacterReward>
                       ) : (
-                        <div>Unknown reward type</div>
+                        <div>{t('coupon.unknownReward')}</div>
                       )}
                     </RewardContent>
                   </RewardCard>
@@ -237,8 +239,8 @@ const CouponPage = () => {
                     exit={{ opacity: 0 }}
                   >
                     <EmptyIcon>🎫</EmptyIcon>
-                    <EmptyTitle>No Reward Yet</EmptyTitle>
-                    <EmptyText>Redeem a coupon to see your reward here</EmptyText>
+                    <EmptyTitle>{t('coupon.noRewardYet')}</EmptyTitle>
+                    <EmptyText>{t('coupon.redeemToSee')}</EmptyText>
                   </EmptyState>
                 )}
               </AnimatePresence>
