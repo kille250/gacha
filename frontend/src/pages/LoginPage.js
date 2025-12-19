@@ -1,17 +1,27 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaLock, FaDice, FaArrowRight } from 'react-icons/fa';
+import { MdLanguage } from 'react-icons/md';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import { theme, motionVariants } from '../styles/DesignSystem';
+import { languages } from '../i18n';
 
 const LoginPage = () => {
+  const { t, i18n } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const { login, error } = useContext(AuthContext);
   const navigate = useNavigate();
+  
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    setShowLangMenu(false);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -23,6 +33,38 @@ const LoginPage = () => {
 
   return (
     <PageContainer>
+      {/* Language Selector */}
+      <LanguageSelectorContainer>
+        <LanguageButton
+          onClick={() => setShowLangMenu(!showLangMenu)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <MdLanguage />
+          <span>{languages[i18n.language]?.flag || '🌐'}</span>
+        </LanguageButton>
+        <AnimatePresence>
+          {showLangMenu && (
+            <LanguageDropdown
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            >
+              {Object.entries(languages).map(([code, lang]) => (
+                <LanguageOption
+                  key={code}
+                  $active={i18n.language === code}
+                  onClick={() => changeLanguage(code)}
+                >
+                  <span>{lang.flag}</span>
+                  <span>{lang.nativeName}</span>
+                </LanguageOption>
+              ))}
+            </LanguageDropdown>
+          )}
+        </AnimatePresence>
+      </LanguageSelectorContainer>
+      
       <BackgroundEffects>
         <GradientOrb className="orb-1" />
         <GradientOrb className="orb-2" />
@@ -43,8 +85,8 @@ const LoginPage = () => {
           <LogoWrapper>
             <FaDice />
           </LogoWrapper>
-          <BrandTitle>Gacha Game</BrandTitle>
-          <BrandSubtitle>Roll your destiny</BrandSubtitle>
+          <BrandTitle>{t('auth.gachaGame')}</BrandTitle>
+          <BrandSubtitle>{t('auth.rollYourDestiny')}</BrandSubtitle>
         </BrandSection>
 
         <LoginCard
@@ -53,8 +95,8 @@ const LoginPage = () => {
           transition={{ delay: 0.3, duration: 0.5 }}
         >
           <CardHeader>
-            <WelcomeText>Welcome back</WelcomeText>
-            <SubText>Sign in to continue your adventure</SubText>
+            <WelcomeText>{t('auth.welcomeBack')}</WelcomeText>
+            <SubText>{t('auth.signInToContinue')}</SubText>
           </CardHeader>
 
           {error && (
@@ -68,14 +110,14 @@ const LoginPage = () => {
 
           <LoginForm onSubmit={handleSubmit}>
             <InputGroup>
-              <InputLabel>Username</InputLabel>
+              <InputLabel>{t('auth.username')}</InputLabel>
               <InputWrapper>
                 <InputIcon><FaUser /></InputIcon>
                 <StyledInput 
                   type="text" 
                   value={username} 
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Enter your username"
+                  placeholder={t('auth.enterUsername')}
                   required
                   autoComplete="username"
                 />
@@ -83,14 +125,14 @@ const LoginPage = () => {
             </InputGroup>
 
             <InputGroup>
-              <InputLabel>Password</InputLabel>
+              <InputLabel>{t('auth.password')}</InputLabel>
               <InputWrapper>
                 <InputIcon><FaLock /></InputIcon>
                 <StyledInput 
                   type="password" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Enter your password"
+                  placeholder={t('auth.enterPassword')}
                   required
                   autoComplete="current-password"
                 />
@@ -107,7 +149,7 @@ const LoginPage = () => {
                 <LoadingSpinner />
               ) : (
                 <>
-                  Sign In
+                  {t('auth.login')}
                   <FaArrowRight />
                 </>
               )}
@@ -116,13 +158,13 @@ const LoginPage = () => {
 
           <Divider>
             <DividerLine />
-            <DividerText>or</DividerText>
+            <DividerText>{t('common.or')}</DividerText>
             <DividerLine />
           </Divider>
 
           <RegisterPrompt>
-            New to Gacha Game?{' '}
-            <RegisterLink to="/register">Create an account</RegisterLink>
+            {t('auth.newToGacha')}{' '}
+            <RegisterLink to="/register">{t('auth.createAccount')}</RegisterLink>
           </RegisterPrompt>
         </LoginCard>
       </ContentWrapper>
@@ -437,6 +479,59 @@ const RegisterLink = styled(Link)`
   &:hover {
     color: ${theme.colors.primaryHover};
     text-decoration: underline;
+  }
+`;
+
+// Language Selector
+const LanguageSelectorContainer = styled.div`
+  position: absolute;
+  top: ${theme.spacing.lg};
+  right: ${theme.spacing.lg};
+  z-index: 100;
+`;
+
+const LanguageButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  color: ${theme.colors.text};
+  cursor: pointer;
+  font-size: 16px;
+  
+  svg {
+    font-size: 18px;
+  }
+`;
+
+const LanguageDropdown = styled(motion.div)`
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: ${theme.colors.backgroundSecondary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  box-shadow: ${theme.shadows.lg};
+  overflow: hidden;
+  min-width: 150px;
+`;
+
+const LanguageOption = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  cursor: pointer;
+  font-size: ${theme.fontSizes.sm};
+  color: ${props => props.$active ? theme.colors.primary : theme.colors.text};
+  background: ${props => props.$active ? 'rgba(0, 113, 227, 0.1)' : 'transparent'};
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${theme.colors.glass};
   }
 `;
 

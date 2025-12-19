@@ -2,20 +2,23 @@ import React, { useContext, useState, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings, MdMenu, MdClose } from 'react-icons/md';
+import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings, MdMenu, MdClose, MdLanguage } from 'react-icons/md';
 import { FaGift, FaTicketAlt, FaDice, FaFish } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import api, { invalidateCache } from '../../utils/api';
 import { theme } from '../../styles/DesignSystem';
+import { useTranslation } from 'react-i18next';
+import { languages } from '../../i18n';
 
 const Navigation = () => {
+  const { t, i18n } = useTranslation();
   const location = useLocation();
   const { user, logout, refreshUser } = useContext(AuthContext);
   const navigate = useNavigate();
   const [rewardStatus, setRewardStatus] = useState({
     available: false,       
     loading: true,         
-    timeRemaining: "Checking...",
+    timeRemaining: t('nav.checking'),
     nextRewardTime: null,
     checked: false          
   });
@@ -27,8 +30,17 @@ const Navigation = () => {
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
+  // Language dropdown state
+  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  
   // R18 toggle state
   const [isTogglingR18, setIsTogglingR18] = useState(false);
+  
+  // Change language handler
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    setShowLanguageDropdown(false);
+  };
   
   // Toggle R18 content preference
   const toggleR18 = async () => {
@@ -227,12 +239,12 @@ const Navigation = () => {
   
   // Navigation items
   const navItems = [
-    { path: '/gacha', label: 'Banners', icon: <MdDashboard />, adminOnly: false },
-    { path: '/roll', label: 'Roll', icon: <FaDice />, adminOnly: false },
-    { path: '/fishing', label: 'Fishing', icon: <FaFish />, adminOnly: false },
-    { path: '/collection', label: 'Collection', icon: <MdCollections />, adminOnly: false },
-    { path: '/coupons', label: 'Coupons', icon: <FaTicketAlt />, adminOnly: false },
-    { path: '/admin', label: 'Admin', icon: <MdSettings />, adminOnly: true },
+    { path: '/gacha', label: t('nav.banners'), icon: <MdDashboard />, adminOnly: false },
+    { path: '/roll', label: t('nav.roll'), icon: <FaDice />, adminOnly: false },
+    { path: '/fishing', label: t('nav.fishing'), icon: <FaFish />, adminOnly: false },
+    { path: '/collection', label: t('nav.collection'), icon: <MdCollections />, adminOnly: false },
+    { path: '/coupons', label: t('nav.coupons'), icon: <FaTicketAlt />, adminOnly: false },
+    { path: '/admin', label: t('nav.admin'), icon: <MdSettings />, adminOnly: true },
   ];
 
   return (
@@ -275,12 +287,12 @@ const Navigation = () => {
               ) : rewardStatus.available && rewardStatus.checked ? (
                 <>
                   <FaGift />
-                  <span>Claim</span>
+                  <span>{t('nav.claim')}</span>
                 </>
               ) : (
                 <>
                   <MdAccessTimeFilled />
-                  <TimeRemaining>{rewardStatus.timeRemaining || "Wait..."}</TimeRemaining>
+                  <TimeRemaining>{rewardStatus.timeRemaining || t('nav.wait')}</TimeRemaining>
                 </>
               )}
             </RewardButton>
@@ -297,10 +309,43 @@ const Navigation = () => {
             disabled={isTogglingR18}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            title={user?.allowR18 ? "R18 content enabled" : "R18 content disabled"}
+            title={user?.allowR18 ? t('nav.r18ContentEnabled') : t('nav.r18ContentDisabled')}
           >
             🔞
           </R18Toggle>
+          
+          {/* Language Selector */}
+          <LanguageSelector>
+            <LanguageButton
+              onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <MdLanguage />
+              <span>{languages[i18n.language]?.flag || '🌐'}</span>
+            </LanguageButton>
+            <AnimatePresence>
+              {showLanguageDropdown && (
+                <LanguageDropdown
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {Object.entries(languages).map(([code, lang]) => (
+                    <LanguageOption
+                      key={code}
+                      $active={i18n.language === code}
+                      onClick={() => changeLanguage(code)}
+                    >
+                      <span>{lang.flag}</span>
+                      <span>{lang.nativeName}</span>
+                    </LanguageOption>
+                  ))}
+                </LanguageDropdown>
+              )}
+            </AnimatePresence>
+          </LanguageSelector>
           
           <LogoutButton 
             onClick={handleLogout}
@@ -308,7 +353,7 @@ const Navigation = () => {
             whileTap={{ scale: 0.98 }}
           >
             <MdExitToApp />
-            <span>Logout</span>
+            <span>{t('nav.logout')}</span>
           </LogoutButton>
           
           {/* Mobile Hamburger */}
@@ -338,16 +383,16 @@ const Navigation = () => {
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
             >
-              <MobileMenuHeader>
-                <h3>Menu</h3>
-                <CloseButton 
-                  onClick={() => setMobileMenuOpen(false)}
-                  whileHover={{ scale: 1.1 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <MdClose />
-                </CloseButton>
-              </MobileMenuHeader>
+            <MobileMenuHeader>
+              <h3>{t('nav.menu')}</h3>
+              <CloseButton 
+                onClick={() => setMobileMenuOpen(false)}
+                whileHover={{ scale: 1.1 }}
+                whileTap={{ scale: 0.95 }}
+              >
+                <MdClose />
+              </CloseButton>
+            </MobileMenuHeader>
               
               <MobileNavItems>
                 {navItems.map(item => (
@@ -376,15 +421,31 @@ const Navigation = () => {
                   whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
                 >
                   <span>🔞</span>
-                  <span>{user?.allowR18 ? "R18 Enabled" : "R18 Disabled"}</span>
+                  <span>{user?.allowR18 ? t('nav.r18Enabled') : t('nav.r18Disabled')}</span>
                 </MobileR18Toggle>
+                
+                {/* Mobile Language Selector */}
+                <MobileLanguageSection>
+                  <span>🌐</span>
+                  <MobileLanguageOptions>
+                    {Object.entries(languages).map(([code, lang]) => (
+                      <MobileLanguageOption
+                        key={code}
+                        $active={i18n.language === code}
+                        onClick={() => changeLanguage(code)}
+                      >
+                        {lang.flag}
+                      </MobileLanguageOption>
+                    ))}
+                  </MobileLanguageOptions>
+                </MobileLanguageSection>
                 
                 <MobileLogout
                   onClick={handleLogout}
                   whileHover={{ backgroundColor: "rgba(255, 59, 48, 0.15)" }}
                 >
                   <MdExitToApp />
-                  <span>Logout</span>
+                  <span>{t('nav.logout')}</span>
                 </MobileLogout>
               </MobileNavItems>
             </MobileMenu>
@@ -415,7 +476,7 @@ const Navigation = () => {
             >
               <MdCelebration className="celebration-icon" />
               <PopupContent>
-                <PopupTitle>Hourly Reward!</PopupTitle>
+                <PopupTitle>{t('nav.hourlyReward')}</PopupTitle>
                 <PopupAmount>+{rewardPopup.amount} 🪙</PopupAmount>
               </PopupContent>
             </RewardPopup>
@@ -824,6 +885,95 @@ const PopupAmount = styled.div`
   font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.bold};
   color: ${theme.colors.warning};
+`;
+
+// Language Selector
+const LanguageSelector = styled.div`
+  position: relative;
+  display: none;
+  
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: block;
+  }
+`;
+
+const LanguageButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  color: ${theme.colors.text};
+  cursor: pointer;
+  font-size: 16px;
+  
+  svg {
+    font-size: 18px;
+  }
+`;
+
+const LanguageDropdown = styled(motion.div)`
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: ${theme.colors.backgroundSecondary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  box-shadow: ${theme.shadows.lg};
+  overflow: hidden;
+  z-index: ${theme.zIndex.dropdown};
+  min-width: 150px;
+`;
+
+const LanguageOption = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  cursor: pointer;
+  font-size: ${theme.fontSizes.sm};
+  color: ${props => props.$active ? theme.colors.primary : theme.colors.text};
+  background: ${props => props.$active ? 'rgba(0, 113, 227, 0.1)' : 'transparent'};
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${theme.colors.glass};
+  }
+`;
+
+// Mobile Language Section
+const MobileLanguageSection = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.radius.lg};
+  
+  > span:first-child {
+    font-size: 20px;
+  }
+`;
+
+const MobileLanguageOptions = styled.div`
+  display: flex;
+  gap: ${theme.spacing.xs};
+  flex-wrap: wrap;
+`;
+
+const MobileLanguageOption = styled.button`
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: ${props => props.$active ? 'rgba(0, 113, 227, 0.2)' : theme.colors.glass};
+  border: 1px solid ${props => props.$active ? theme.colors.primary : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  font-size: 18px;
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${theme.colors.surfaceHover};
+  }
 `;
 
 export default Navigation;

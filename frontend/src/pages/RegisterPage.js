@@ -1,19 +1,29 @@
 import React, { useState, useContext } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaLock, FaDice, FaArrowRight, FaGem } from 'react-icons/fa';
+import { MdLanguage } from 'react-icons/md';
+import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import { theme, motionVariants } from '../styles/DesignSystem';
+import { languages } from '../i18n';
 
 const RegisterPage = () => {
+  const { t, i18n } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [showLangMenu, setShowLangMenu] = useState(false);
   const { register, error } = useContext(AuthContext);
   const navigate = useNavigate();
+  
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    setShowLangMenu(false);
+  };
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -52,6 +62,38 @@ const RegisterPage = () => {
 
   return (
     <PageContainer>
+      {/* Language Selector */}
+      <LanguageSelectorContainer>
+        <LanguageButton
+          onClick={() => setShowLangMenu(!showLangMenu)}
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+        >
+          <MdLanguage />
+          <span>{languages[i18n.language]?.flag || '🌐'}</span>
+        </LanguageButton>
+        <AnimatePresence>
+          {showLangMenu && (
+            <LanguageDropdown
+              initial={{ opacity: 0, y: -10, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -10, scale: 0.95 }}
+            >
+              {Object.entries(languages).map(([code, lang]) => (
+                <LanguageOption
+                  key={code}
+                  $active={i18n.language === code}
+                  onClick={() => changeLanguage(code)}
+                >
+                  <span>{lang.flag}</span>
+                  <span>{lang.nativeName}</span>
+                </LanguageOption>
+              ))}
+            </LanguageDropdown>
+          )}
+        </AnimatePresence>
+      </LanguageSelectorContainer>
+      
       <BackgroundEffects>
         <GradientOrb className="orb-1" />
         <GradientOrb className="orb-2" />
@@ -72,8 +114,8 @@ const RegisterPage = () => {
           <LogoWrapper>
             <FaDice />
           </LogoWrapper>
-          <BrandTitle>Join the Game</BrandTitle>
-          <BrandSubtitle>Start collecting characters today</BrandSubtitle>
+          <BrandTitle>{t('auth.gachaGame')}</BrandTitle>
+          <BrandSubtitle>{t('auth.startYourJourney')}</BrandSubtitle>
         </BrandSection>
 
         <RegisterCard
@@ -82,8 +124,8 @@ const RegisterPage = () => {
           transition={{ delay: 0.3, duration: 0.5 }}
         >
           <CardHeader>
-            <WelcomeText>Create Account</WelcomeText>
-            <SubText>Enter your details to get started</SubText>
+            <WelcomeText>{t('auth.createYourAccount')}</WelcomeText>
+            <SubText>{t('auth.signInToContinue')}</SubText>
           </CardHeader>
 
           {displayError && (
@@ -97,14 +139,14 @@ const RegisterPage = () => {
 
           <RegisterForm onSubmit={handleSubmit}>
             <InputGroup>
-              <InputLabel>Username</InputLabel>
+              <InputLabel>{t('auth.username')}</InputLabel>
               <InputWrapper>
                 <InputIcon><FaUser /></InputIcon>
                 <StyledInput 
                   type="text" 
                   value={username} 
                   onChange={(e) => setUsername(e.target.value)}
-                  placeholder="Choose a username"
+                  placeholder={t('auth.enterUsername')}
                   required
                   autoComplete="username"
                 />
@@ -112,14 +154,14 @@ const RegisterPage = () => {
             </InputGroup>
 
             <InputGroup>
-              <InputLabel>Password</InputLabel>
+              <InputLabel>{t('auth.password')}</InputLabel>
               <InputWrapper>
                 <InputIcon><FaLock /></InputIcon>
                 <StyledInput 
                   type="password" 
                   value={password} 
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Create a password"
+                  placeholder={t('auth.enterPassword')}
                   required
                   autoComplete="new-password"
                 />
@@ -127,14 +169,14 @@ const RegisterPage = () => {
             </InputGroup>
 
             <InputGroup>
-              <InputLabel>Confirm Password</InputLabel>
+              <InputLabel>{t('auth.confirmPassword')}</InputLabel>
               <InputWrapper>
                 <InputIcon><FaLock /></InputIcon>
                 <StyledInput 
                   type="password" 
                   value={confirmPassword} 
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  placeholder="Confirm your password"
+                  placeholder={t('auth.confirmYourPassword')}
                   required
                   autoComplete="new-password"
                 />
@@ -151,7 +193,7 @@ const RegisterPage = () => {
                 <LoadingSpinner />
               ) : (
                 <>
-                  Create Account
+                  {t('auth.register')}
                   <FaArrowRight />
                 </>
               )}
@@ -165,13 +207,13 @@ const RegisterPage = () => {
 
           <Divider>
             <DividerLine />
-            <DividerText>or</DividerText>
+            <DividerText>{t('common.or')}</DividerText>
             <DividerLine />
           </Divider>
 
           <LoginPrompt>
-            Already have an account?{' '}
-            <LoginLink to="/login">Sign in</LoginLink>
+            {t('auth.alreadyHaveAccount')}{' '}
+            <LoginLink to="/login">{t('auth.signInHere')}</LoginLink>
           </LoginPrompt>
         </RegisterCard>
       </ContentWrapper>
@@ -508,6 +550,59 @@ const LoginLink = styled(Link)`
   &:hover {
     color: ${theme.colors.accentSecondary};
     text-decoration: underline;
+  }
+`;
+
+// Language Selector
+const LanguageSelectorContainer = styled.div`
+  position: absolute;
+  top: ${theme.spacing.lg};
+  right: ${theme.spacing.lg};
+  z-index: 100;
+`;
+
+const LanguageButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  color: ${theme.colors.text};
+  cursor: pointer;
+  font-size: 16px;
+  
+  svg {
+    font-size: 18px;
+  }
+`;
+
+const LanguageDropdown = styled(motion.div)`
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  background: ${theme.colors.backgroundSecondary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  box-shadow: ${theme.shadows.lg};
+  overflow: hidden;
+  min-width: 150px;
+`;
+
+const LanguageOption = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  cursor: pointer;
+  font-size: ${theme.fontSizes.sm};
+  color: ${props => props.$active ? theme.colors.accent : theme.colors.text};
+  background: ${props => props.$active ? 'rgba(88, 86, 214, 0.1)' : 'transparent'};
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${theme.colors.glass};
   }
 `;
 

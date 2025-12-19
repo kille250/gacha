@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight } from 'react-icons/md';
 import { FaFish } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation, Trans } from 'react-i18next';
 import api, { clearCache } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, Heading2, Text, IconButton, motionVariants } from '../styles/DesignSystem';
@@ -82,6 +83,7 @@ const isAtWaterEdge = (x, y, direction) => {
 };
 
 const FishingPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, setUser, refreshUser } = useContext(AuthContext);
   const gameLoopRef = useRef(null);
@@ -402,7 +404,7 @@ const FishingPage = () => {
         </BackButton>
         <HeaderTitle>
           <FaFish style={{ color: '#4fc3f7' }} />
-          <span>Fishing Cove</span>
+          <span>{t('fishing.title')}</span>
         </HeaderTitle>
         <HeaderRight>
           <PointsDisplay>
@@ -419,17 +421,17 @@ const FishingPage = () => {
       <StatsBar>
         <StatItem>
           <StatValue>{sessionStats.casts}</StatValue>
-          <StatLabel>Casts</StatLabel>
+          <StatLabel>{t('fishing.casts')}</StatLabel>
         </StatItem>
         <StatDivider />
         <StatItem>
           <StatValue>{sessionStats.catches}</StatValue>
-          <StatLabel>Catches</StatLabel>
+          <StatLabel>{t('fishing.catches')}</StatLabel>
         </StatItem>
         <StatDivider />
         <StatItem>
           <StatValue>+{sessionStats.totalEarned}</StatValue>
-          <StatLabel>Earned</StatLabel>
+          <StatLabel>{t('fishing.earned')}</StatLabel>
         </StatItem>
         {sessionStats.bestCatch && (
           <>
@@ -438,7 +440,7 @@ const FishingPage = () => {
               <StatValue style={{ color: RARITY_COLORS[sessionStats.bestCatch.fish.rarity] }}>
                 {sessionStats.bestCatch.fish.emoji}
               </StatValue>
-              <StatLabel>Best</StatLabel>
+              <StatLabel>{t('fishing.best')}</StatLabel>
             </StatItem>
           </>
         )}
@@ -524,7 +526,7 @@ const FishingPage = () => {
               animate={{ opacity: 1, y: 0, x: "-50%" }}
               exit={{ opacity: 0, y: 10, x: "-50%" }}
             >
-              Press <KeyHint>SPACE</KeyHint> or <KeyHint>E</KeyHint> to fish
+              <Trans i18nKey="fishing.pressFishPrompt" components={{ key: <KeyHint /> }} />
             </FishPrompt>
           )}
         </AnimatePresence>
@@ -537,7 +539,7 @@ const FishingPage = () => {
               animate={{ opacity: 1, x: "-50%" }}
               exit={{ opacity: 0, x: "-50%" }}
             >
-              <WaitingText>Waiting for a bite...</WaitingText>
+              <WaitingText>{t('fishing.waitingForBite')}</WaitingText>
             </StateIndicator>
           )}
           {gameState === GAME_STATES.FISH_APPEARED && (
@@ -546,7 +548,7 @@ const FishingPage = () => {
               animate={{ opacity: 1, scale: 1, x: "-50%" }}
               exit={{ opacity: 0, x: "-50%" }}
             >
-              <CatchText>🎣 CATCH IT! Press SPACE!</CatchText>
+              <CatchText>{t('fishing.catchIt')}</CatchText>
             </StateIndicator>
           )}
         </AnimatePresence>
@@ -563,7 +565,7 @@ const FishingPage = () => {
               <ResultEmoji>{lastResult.fish?.emoji}</ResultEmoji>
               <ResultInfo>
                 <ResultTitle $success={lastResult.success}>
-                  {lastResult.success ? 'Caught!' : 'It escaped!'}
+                  {lastResult.success ? t('fishing.caught') : t('fishing.escaped')}
                 </ResultTitle>
                 <ResultFishName $rarity={lastResult.fish?.rarity}>
                   {lastResult.fish?.name}
@@ -640,26 +642,26 @@ const FishingPage = () => {
               onClick={e => e.stopPropagation()}
             >
               <ModalHeader>
-                <Heading2>How to Fish</Heading2>
+                <Heading2>{t('fishing.howToFish')}</Heading2>
                 <IconButton onClick={() => setShowHelp(false)}>
                   <MdClose />
                 </IconButton>
               </ModalHeader>
               <ModalBody>
                 <HelpSection>
-                  <HelpTitle>🚶 Movement</HelpTitle>
-                  <Text secondary>Use WASD or Arrow Keys to move. On mobile, use the D-pad.</Text>
+                  <HelpTitle>🚶 {t('fishing.movement')}</HelpTitle>
+                  <Text secondary>{t('fishing.movementHelp')}</Text>
                 </HelpSection>
                 <HelpSection>
-                  <HelpTitle>🎣 Fishing</HelpTitle>
-                  <Text secondary>Walk to the water's edge (sand tiles). When facing the water, press SPACE or E to cast your line.</Text>
+                  <HelpTitle>🎣 {t('fishing.fishingTitle')}</HelpTitle>
+                  <Text secondary>{t('fishing.fishingHelp')}</Text>
                 </HelpSection>
                 <HelpSection>
-                  <HelpTitle>⚡ Catching</HelpTitle>
-                  <Text secondary>Wait for a fish to bite. When you see "!" appear, quickly press SPACE/E to catch it! Rarer fish require faster reactions.</Text>
+                  <HelpTitle>⚡ {t('fishing.catching')}</HelpTitle>
+                  <Text secondary>{t('fishing.catchingHelp')}</Text>
                 </HelpSection>
                 <HelpSection>
-                  <HelpTitle>🐟 Fish Rarities</HelpTitle>
+                  <HelpTitle>🐟 {t('fishing.fishRarities')}</HelpTitle>
                   <FishList>
                     {fishInfo?.fish?.reduce((acc, fish) => {
                       if (!acc.find(f => f.rarity === fish.rarity)) {

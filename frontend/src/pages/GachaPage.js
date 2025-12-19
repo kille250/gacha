@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdClose, MdHelpOutline, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import { FaStar, FaPlay } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 
 // API & Context
 import { getActiveBanners, getAssetUrl } from '../utils/api';
@@ -28,6 +29,7 @@ import {
 // ==================== MAIN COMPONENT ====================
 
 const GachaPage = () => {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, refreshUser } = useContext(AuthContext);
   
@@ -64,7 +66,7 @@ const GachaPage = () => {
     return (
       <LoadingContainer>
         <Spinner size="48px" />
-        <LoadingText>Loading banners...</LoadingText>
+        <LoadingText>{t('gacha.loadingBanners')}</LoadingText>
       </LoadingContainer>
     );
   }
@@ -76,9 +78,9 @@ const GachaPage = () => {
         <HeroSection>
           <HeroContent>
             <LogoText>
-              Gacha<LogoAccent>Master</LogoAccent>
+              {t('gacha.title')}
             </LogoText>
-            <HeroSubtitle>Discover rare characters. Build your collection.</HeroSubtitle>
+            <HeroSubtitle>{t('gacha.subtitle')}</HeroSubtitle>
           </HeroContent>
           <HeaderControls>
             <PointsPill>
@@ -107,13 +109,13 @@ const GachaPage = () => {
               <HeroBannerOverlay />
               <HeroBannerContent>
                 <HeroBadge>
-                  <FaStar /> Featured Event
+                  <FaStar /> {t('gacha.featuredEvent')}
                 </HeroBadge>
                 <HeroTitle>{featuredBanner.name}</HeroTitle>
                 <HeroMeta>
                   <HeroSeries>{featuredBanner.series}</HeroSeries>
                   <HeroDivider>•</HeroDivider>
-                  <HeroStats>{featuredBanner.Characters?.length || 0} Characters</HeroStats>
+                  <HeroStats>{featuredBanner.Characters?.length || 0} {t('gacha.characters')}</HeroStats>
                 </HeroMeta>
                 {featuredBanner.description && (
                   <HeroDescription>{featuredBanner.description}</HeroDescription>
@@ -124,9 +126,9 @@ const GachaPage = () => {
                   whileTap={{ scale: 0.98 }}
                 >
                   <FaPlay style={{ fontSize: '12px' }} />
-                  Roll Now
+                  {t('gacha.rollNow')}
                   <span style={{ opacity: 0.7, marginLeft: 'auto' }}>
-                    {Math.floor(100 * (featuredBanner.costMultiplier || 1.5))} pts
+                    {Math.floor(100 * (featuredBanner.costMultiplier || 1.5))} {t('common.points')}
                   </span>
                 </HeroCTA>
               </HeroBannerContent>
@@ -139,10 +141,10 @@ const GachaPage = () => {
         {otherBanners.length > 0 && (
           <BannerCarouselSection>
             <CarouselHeader>
-              <CarouselTitle>
-                <span>🎬</span>
-                All Banners
-              </CarouselTitle>
+            <CarouselTitle>
+              <span>🎬</span>
+              {t('gacha.allBanners')}
+            </CarouselTitle>
               <CarouselNav>
                 <NavButton onClick={() => {
                   const el = document.getElementById('banner-carousel');
@@ -184,14 +186,14 @@ const GachaPage = () => {
                       <NetflixCardTitle>{banner.name}</NetflixCardTitle>
                       <NetflixCardMeta>
                         <NetflixSeries>{banner.series}</NetflixSeries>
-                        <NetflixCharCount>{banner.Characters?.length || 0} chars</NetflixCharCount>
+                        <NetflixCharCount>{banner.Characters?.length || 0} {t('gacha.chars')}</NetflixCharCount>
                       </NetflixCardMeta>
                       <NetflixCardFooter>
                         <NetflixCost>
-                          🪙 {Math.floor(100 * (banner.costMultiplier || 1.5))} pts
+                          🪙 {Math.floor(100 * (banner.costMultiplier || 1.5))} {t('common.points')}
                         </NetflixCost>
                         {banner.rateBoost && (
-                          <NetflixBoost>+{Math.round((banner.rateBoost - 1) * 100)}% boost</NetflixBoost>
+                          <NetflixBoost>+{Math.round((banner.rateBoost - 1) * 100)}% {t('gacha.boost')}</NetflixBoost>
                         )}
                       </NetflixCardFooter>
                     </NetflixCardInfo>
@@ -207,8 +209,8 @@ const GachaPage = () => {
           <CTAContent>
             <CTAIcon>✨</CTAIcon>
             <CTAText>
-              <CTATitle>Standard Gacha</CTATitle>
-              <CTASubtitle>Roll for characters from the entire pool</CTASubtitle>
+              <CTATitle>{t('gacha.standardGacha')}</CTATitle>
+              <CTASubtitle>{t('gacha.standardGachaDesc')}</CTASubtitle>
             </CTAText>
           </CTAContent>
           <CTAButton
@@ -216,8 +218,8 @@ const GachaPage = () => {
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
-            Roll Now
-            <span style={{ opacity: 0.7 }}>100 pts</span>
+            {t('gacha.rollNow')}
+            <span style={{ opacity: 0.7 }}>100 {t('common.points')}</span>
           </CTAButton>
         </StandardGachaCTA>
         
@@ -225,14 +227,14 @@ const GachaPage = () => {
         {banners.length === 0 && !loading && (
           <EmptyState>
             <EmptyIcon>🎰</EmptyIcon>
-            <EmptyTitle>No Active Banners</EmptyTitle>
-            <EmptyText>Check back soon for new events and banners!</EmptyText>
+            <EmptyTitle>{t('gacha.noActiveBanners')}</EmptyTitle>
+            <EmptyText>{t('gacha.checkBackSoon')}</EmptyText>
             <EmptyButton
               onClick={() => navigate('/roll')}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              Try Standard Gacha
+              {t('gacha.tryStandardGacha')}
             </EmptyButton>
           </EmptyState>
         )}
@@ -253,32 +255,32 @@ const GachaPage = () => {
               onClick={e => e.stopPropagation()}
             >
               <ModalHeader>
-                <Heading2>How to Play</Heading2>
+                <Heading2>{t('gacha.howToPlay')}</Heading2>
                 <IconButton onClick={() => setShowHelpModal(false)}>
                   <MdClose />
                 </IconButton>
               </ModalHeader>
               <ModalBody>
                 <HelpSection>
-                  <HelpSectionTitle>🎰 Banners</HelpSectionTitle>
-                  <Text secondary>Featured banners have boosted rates for specific characters. Click on a banner to roll!</Text>
+                  <HelpSectionTitle>🎰 {t('nav.banners')}</HelpSectionTitle>
+                  <Text secondary>{t('gacha.bannersHelp')}</Text>
                 </HelpSection>
                 <HelpSection>
-                  <HelpSectionTitle>✨ Standard Gacha</HelpSectionTitle>
-                  <Text secondary>Roll from the entire character pool at 100 points per pull.</Text>
+                  <HelpSectionTitle>✨ {t('gacha.standardGacha')}</HelpSectionTitle>
+                  <Text secondary>{t('gacha.standardGachaHelp')}</Text>
                 </HelpSection>
                 <HelpSection>
                   <HelpSectionTitle>💰 Points</HelpSectionTitle>
-                  <Text secondary>Earn points through daily rewards and coupons. Use them to roll for characters!</Text>
+                  <Text secondary>{t('gacha.pointsHelp')}</Text>
                 </HelpSection>
                 <HelpSection>
-                  <HelpSectionTitle>⭐ Rarity</HelpSectionTitle>
+                  <HelpSectionTitle>⭐ {t('gacha.rarityHelp')}</HelpSectionTitle>
                   <RarityList>
-                    <RarityItem color={theme.colors.rarityCommon}>Common - 50%</RarityItem>
-                    <RarityItem color={theme.colors.rarityUncommon}>Uncommon - 30%</RarityItem>
-                    <RarityItem color={theme.colors.rarityRare}>Rare - 15%</RarityItem>
-                    <RarityItem color={theme.colors.rarityEpic}>Epic - 4%</RarityItem>
-                    <RarityItem color={theme.colors.rarityLegendary}>Legendary - 1%</RarityItem>
+                    <RarityItem color={theme.colors.rarityCommon}>{t('gacha.common')} - 50%</RarityItem>
+                    <RarityItem color={theme.colors.rarityUncommon}>{t('gacha.uncommon')} - 30%</RarityItem>
+                    <RarityItem color={theme.colors.rarityRare}>{t('gacha.rare')} - 15%</RarityItem>
+                    <RarityItem color={theme.colors.rarityEpic}>{t('gacha.epic')} - 4%</RarityItem>
+                    <RarityItem color={theme.colors.rarityLegendary}>{t('gacha.legendary')} - 1%</RarityItem>
                   </RarityList>
                 </HelpSection>
               </ModalBody>

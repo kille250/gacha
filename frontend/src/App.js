@@ -4,6 +4,9 @@ import { AuthProvider } from './context/AuthContext';
 import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './styles/DesignSystem';
 
+// i18n
+import './i18n';
+
 // Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
