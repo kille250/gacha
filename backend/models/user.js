@@ -36,6 +36,18 @@ User.init(
       type: DataTypes.DATE,
       allowNull: true
     },
+    allowR18: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    autofishEnabled: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
+    autofishUnlockedByRank: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
   },
   {
     sequelize,

@@ -146,7 +146,23 @@
     "catchingHelp": "Wait for a fish to bite. When you see \"!\" appear, quickly press SPACE/E to catch it! Rarer fish require faster reactions.",
     "fishRarities": "Fish Rarities",
     "failedCast": "Failed to cast line",
-    "failedCatch": "Failed to catch fish"
+    "failedCatch": "Failed to catch fish",
+    "rank": "Rank",
+    "yourRank": "Your Rank",
+    "leaderboard": "Leaderboard",
+    "autofish": "Autofish",
+    "autofishEnabled": "Autofishing Active",
+    "autofishDisabled": "Autofishing Off",
+    "autofishUnlocked": "🎉 Autofishing Unlocked!",
+    "autofishLocked": "🔒 Reach Top {{rank}} to Unlock",
+    "autofishProgress": "Currently #{{current}} of {{total}}",
+    "startAutofish": "Start Autofishing",
+    "stopAutofish": "Stop Autofishing",
+    "autofishing": "Autofishing...",
+    "autofishCatch": "Autofished",
+    "autofishMiss": "Missed",
+    "topPlayers": "Top Players",
+    "hasAutofish": "Has Autofish"
   },
   "collection": {
     "title": "Collection",
@@ -276,6 +292,9 @@
     "failedCreateCoupon": "Failed to create coupon",
     "failedUpdateCoupon": "Failed to update coupon",
     "failedDeleteCoupon": "Failed to delete coupon",
-    "itemsPerPage": "{{count}} per page"
+    "itemsPerPage": "{{count}} per page",
+    "autofish": "Autofish",
+    "enableAutofish": "Enable autofishing for this user",
+    "disableAutofish": "Disable autofishing for this user"
   }
 }

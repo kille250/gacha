@@ -344,6 +344,24 @@ const AdminPage = () => {
     }
   };
 
+  // Autofish Functions
+  const handleToggleAutofish = async (userId, enabled) => {
+    try {
+      const response = await api.post('/fishing/admin/toggle-autofish', { userId, enabled });
+      setSuccessMessage(response.data.message);
+      
+      // Update local state
+      setUsers(prevUsers => prevUsers.map(u => 
+        u.id === userId ? { ...u, autofishEnabled: enabled } : u
+      ));
+      
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error toggling autofish:', err);
+      setError(err.response?.data?.error || 'Failed to toggle autofishing');
+    }
+  };
+
   // Banner Functions
   const getBannerImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/300x150?text=Banner';
@@ -570,6 +588,7 @@ const AdminPage = () => {
                     <th>{t('admin.username')}</th>
                     <th>{t('admin.points')}</th>
                     <th>{t('admin.isAdmin')}</th>
+                    <th>{t('admin.autofish')}</th>
                     <th>{t('admin.created')}</th>
                   </tr>
                 </thead>
@@ -580,6 +599,15 @@ const AdminPage = () => {
                       <td>{u.username}</td>
                       <td>{u.points}</td>
                       <td>{u.isAdmin ? '✅' : '❌'}</td>
+                      <td>
+                        <AutofishToggle 
+                          $enabled={u.autofishEnabled}
+                          onClick={() => handleToggleAutofish(u.id, !u.autofishEnabled)}
+                          title={u.autofishEnabled ? t('admin.disableAutofish') : t('admin.enableAutofish')}
+                        >
+                          {u.autofishEnabled ? '🎣 ON' : '❌ OFF'}
+                        </AutofishToggle>
+                      </td>
                       <td>{new Date(u.createdAt).toLocaleDateString()}</td>
                     </tr>
                   ))}
@@ -1009,6 +1037,25 @@ const StyledTable = styled.table`
   }
   
   tr:hover td { background: ${theme.colors.backgroundTertiary}; }
+`;
+
+const AutofishToggle = styled.button`
+  padding: 6px 12px;
+  border: none;
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all 0.2s;
+  background: ${props => props.$enabled 
+    ? 'linear-gradient(135deg, #30d158, #34c759)' 
+    : 'rgba(142, 142, 147, 0.3)'};
+  color: white;
+  
+  &:hover {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
 `;
 
 const SearchRow = styled.div`

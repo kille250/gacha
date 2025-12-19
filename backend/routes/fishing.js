@@ -2,7 +2,12 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const auth = require('../middleware/auth');
+const adminAuth = require('../middleware/adminAuth');
 const { User } = require('../models');
+const { Op } = require('sequelize');
+
+// Rank required to unlock autofishing (top X users)
+const AUTOFISH_UNLOCK_RANK = 10;
 
 // Fish types with their properties
 const FISH_TYPES = [
@@ -228,6 +233,263 @@ router.get('/info', auth, (req, res) => {
     cooldown: CAST_COOLDOWN,
     fish: fishInfo
   });
+});
+
+// Helper function to get user's rank
+async function getUserRank(userId) {
+  const user = await User.findByPk(userId);
+  if (!user) return null;
+  
+  // Count users with more points
+  const higherRanked = await User.count({
+    where: {
+      points: { [Op.gt]: user.points }
+    }
+  });
+  
+  return higherRanked + 1; // Rank is 1-indexed
+}
+
+// GET /api/fishing/rank - Get user's ranking and autofish status
+router.get('/rank', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const rank = await getUserRank(req.user.id);
+    const totalUsers = await User.count();
+    
+    // Check if user qualifies for autofishing by rank
+    const qualifiesByRank = rank <= AUTOFISH_UNLOCK_RANK;
+    
+    // Update autofishUnlockedByRank if status changed
+    if (qualifiesByRank !== user.autofishUnlockedByRank) {
+      user.autofishUnlockedByRank = qualifiesByRank;
+      // Auto-enable autofishing when first unlocked by rank
+      if (qualifiesByRank && !user.autofishEnabled) {
+        user.autofishEnabled = true;
+      }
+      await user.save();
+    }
+    
+    // User can autofish if manually enabled by admin OR qualified by rank
+    const canAutofish = user.autofishEnabled || user.autofishUnlockedByRank;
+    
+    res.json({
+      rank,
+      totalUsers,
+      points: user.points,
+      autofishEnabled: user.autofishEnabled,
+      autofishUnlockedByRank: user.autofishUnlockedByRank,
+      canAutofish,
+      requiredRank: AUTOFISH_UNLOCK_RANK,
+      message: qualifiesByRank 
+        ? 'Autofishing unlocked! You are in the top ' + AUTOFISH_UNLOCK_RANK + '!'
+        : `Reach top ${AUTOFISH_UNLOCK_RANK} to unlock autofishing (currently #${rank})`
+    });
+  } catch (err) {
+    console.error('Rank fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/fishing/leaderboard - Get top players
+router.get('/leaderboard', auth, async (req, res) => {
+  try {
+    const topUsers = await User.findAll({
+      attributes: ['id', 'username', 'points'],
+      order: [['points', 'DESC']],
+      limit: 20
+    });
+    
+    res.json({
+      leaderboard: topUsers.map((u, i) => ({
+        rank: i + 1,
+        username: u.username,
+        points: u.points,
+        hasAutofish: i < AUTOFISH_UNLOCK_RANK
+      })),
+      requiredRank: AUTOFISH_UNLOCK_RANK
+    });
+  } catch (err) {
+    console.error('Leaderboard error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/fishing/autofish - Perform an autofish catch (for users with autofishing enabled)
+router.post('/autofish', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if user can autofish
+    if (!user.autofishEnabled && !user.autofishUnlockedByRank) {
+      return res.status(403).json({ 
+        error: 'Autofishing not unlocked',
+        message: 'Reach top ' + AUTOFISH_UNLOCK_RANK + ' to unlock autofishing'
+      });
+    }
+    
+    // Check cast cost
+    if (CAST_COST > 0 && user.points < CAST_COST) {
+      return res.status(400).json({ 
+        error: 'Not enough points',
+        required: CAST_COST,
+        current: user.points
+      });
+    }
+    
+    // Deduct cost if any
+    if (CAST_COST > 0) {
+      user.points -= CAST_COST;
+    }
+    
+    // Select a random fish
+    const fish = selectRandomFish();
+    
+    // Autofish has 70% base success rate, adjusted by fish difficulty
+    // Legendary = 40%, Epic = 55%, Rare = 65%, Uncommon = 75%, Common = 85%
+    const successRates = {
+      legendary: 0.40,
+      epic: 0.55,
+      rare: 0.65,
+      uncommon: 0.75,
+      common: 0.85
+    };
+    
+    const successChance = successRates[fish.rarity] || 0.70;
+    const success = Math.random() < successChance;
+    
+    if (success) {
+      const reward = calculateReward(fish);
+      user.points += reward;
+      await user.save();
+      
+      return res.json({
+        success: true,
+        fish: {
+          id: fish.id,
+          name: fish.name,
+          emoji: fish.emoji,
+          rarity: fish.rarity
+        },
+        reward,
+        newPoints: user.points,
+        message: `Autofished a ${fish.name}!`
+      });
+    } else {
+      await user.save();
+      
+      return res.json({
+        success: false,
+        fish: {
+          id: fish.id,
+          name: fish.name,
+          emoji: fish.emoji,
+          rarity: fish.rarity
+        },
+        reward: 0,
+        newPoints: user.points,
+        message: `The ${fish.name} got away during autofishing.`
+      });
+    }
+    
+  } catch (err) {
+    console.error('Autofish error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/fishing/toggle-autofish - Toggle autofishing on/off
+router.post('/toggle-autofish', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if user can autofish
+    if (!user.autofishEnabled && !user.autofishUnlockedByRank) {
+      return res.status(403).json({ 
+        error: 'Autofishing not unlocked',
+        message: 'Reach top ' + AUTOFISH_UNLOCK_RANK + ' to unlock autofishing'
+      });
+    }
+    
+    const { enabled } = req.body;
+    user.autofishEnabled = enabled !== undefined ? enabled : !user.autofishEnabled;
+    await user.save();
+    
+    res.json({
+      autofishEnabled: user.autofishEnabled,
+      message: user.autofishEnabled ? 'Autofishing enabled' : 'Autofishing disabled'
+    });
+  } catch (err) {
+    console.error('Toggle autofish error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ADMIN: POST /api/fishing/admin/toggle-autofish - Admin toggle user's autofishing
+router.post('/admin/toggle-autofish', auth, adminAuth, async (req, res) => {
+  try {
+    const { userId, enabled } = req.body;
+    
+    if (!userId) {
+      return res.status(400).json({ error: 'User ID required' });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    user.autofishEnabled = enabled !== undefined ? enabled : !user.autofishEnabled;
+    await user.save();
+    
+    console.log(`Admin (ID: ${req.user.id}) ${user.autofishEnabled ? 'enabled' : 'disabled'} autofishing for user ${user.username} (ID: ${userId})`);
+    
+    res.json({
+      userId: user.id,
+      username: user.username,
+      autofishEnabled: user.autofishEnabled,
+      message: `Autofishing ${user.autofishEnabled ? 'enabled' : 'disabled'} for ${user.username}`
+    });
+  } catch (err) {
+    console.error('Admin toggle autofish error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ADMIN: GET /api/fishing/admin/users - Get all users with autofish status
+router.get('/admin/users', auth, adminAuth, async (req, res) => {
+  try {
+    const users = await User.findAll({
+      attributes: ['id', 'username', 'points', 'autofishEnabled', 'autofishUnlockedByRank'],
+      order: [['points', 'DESC']]
+    });
+    
+    res.json({
+      users: users.map((u, i) => ({
+        id: u.id,
+        username: u.username,
+        points: u.points,
+        rank: i + 1,
+        autofishEnabled: u.autofishEnabled,
+        autofishUnlockedByRank: u.autofishUnlockedByRank,
+        canAutofish: u.autofishEnabled || u.autofishUnlockedByRank
+      })),
+      requiredRank: AUTOFISH_UNLOCK_RANK
+    });
+  } catch (err) {
+    console.error('Admin users fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 module.exports = router;

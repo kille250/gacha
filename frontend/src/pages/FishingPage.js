@@ -1,13 +1,16 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight } from 'react-icons/md';
-import { FaFish } from 'react-icons/fa';
+import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight, MdLeaderboard, MdAutorenew } from 'react-icons/md';
+import { FaFish, FaCrown, FaTrophy } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import api, { clearCache } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, Heading2, Text, IconButton, motionVariants } from '../styles/DesignSystem';
+
+// Autofishing interval in ms (3 seconds between catches)
+const AUTOFISH_INTERVAL = 3000;
 
 // Game states
 const GAME_STATES = {
@@ -118,7 +121,15 @@ const FishingPage = () => {
     bestCatch: null
   });
   
-  // Fetch fish info on mount
+  // Ranking and Autofishing state
+  const [rankData, setRankData] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
+  const [showLeaderboard, setShowLeaderboard] = useState(false);
+  const [isAutofishing, setIsAutofishing] = useState(false);
+  const [autofishLog, setAutofishLog] = useState([]);
+  const autofishIntervalRef = useRef(null);
+  
+  // Fetch fish info and rank data on mount
   useEffect(() => {
     const fetchFishInfo = async () => {
       try {
@@ -128,14 +139,102 @@ const FishingPage = () => {
         console.error('Failed to fetch fish info:', err);
       }
     };
+    
+    const fetchRankData = async () => {
+      try {
+        const response = await api.get('/fishing/rank');
+        setRankData(response.data);
+      } catch (err) {
+        console.error('Failed to fetch rank data:', err);
+      }
+    };
+    
     fetchFishInfo();
+    fetchRankData();
     
     return () => {
       if (waitTimeoutRef.current) clearTimeout(waitTimeoutRef.current);
       if (missTimeoutRef.current) clearTimeout(missTimeoutRef.current);
       if (gameLoopRef.current) cancelAnimationFrame(gameLoopRef.current);
+      if (autofishIntervalRef.current) clearInterval(autofishIntervalRef.current);
     };
   }, []);
+  
+  // Fetch leaderboard when modal opens
+  useEffect(() => {
+    if (showLeaderboard) {
+      const fetchLeaderboard = async () => {
+        try {
+          const response = await api.get('/fishing/leaderboard');
+          setLeaderboard(response.data.leaderboard);
+        } catch (err) {
+          console.error('Failed to fetch leaderboard:', err);
+        }
+      };
+      fetchLeaderboard();
+    }
+  }, [showLeaderboard]);
+  
+  // Autofishing loop
+  useEffect(() => {
+    if (isAutofishing && rankData?.canAutofish) {
+      autofishIntervalRef.current = setInterval(async () => {
+        try {
+          const response = await api.post('/fishing/autofish');
+          const result = response.data;
+          
+          // Update points
+          if (result.newPoints !== null && result.newPoints !== undefined) {
+            setUser(prev => ({ ...prev, points: result.newPoints }));
+            clearCache('/auth/me');
+          }
+          
+          // Update session stats
+          setSessionStats(prev => ({
+            ...prev,
+            casts: prev.casts + 1,
+            catches: result.success ? prev.catches + 1 : prev.catches,
+            totalEarned: prev.totalEarned + (result.reward || 0),
+            bestCatch: result.success && (!prev.bestCatch || result.reward > prev.bestCatch.reward)
+              ? { fish: result.fish, reward: result.reward }
+              : prev.bestCatch
+          }));
+          
+          // Add to autofish log (keep last 10 entries)
+          setAutofishLog(prev => [{
+            fish: result.fish,
+            success: result.success,
+            reward: result.reward,
+            timestamp: Date.now()
+          }, ...prev].slice(0, 10));
+          
+        } catch (err) {
+          console.error('Autofish error:', err);
+          if (err.response?.status === 403) {
+            setIsAutofishing(false);
+            showNotification(t('fishing.autofishLocked', { rank: rankData?.requiredRank || 10 }), 'error');
+          }
+        }
+      }, AUTOFISH_INTERVAL);
+    }
+    
+    return () => {
+      if (autofishIntervalRef.current) {
+        clearInterval(autofishIntervalRef.current);
+        autofishIntervalRef.current = null;
+      }
+    };
+  }, [isAutofishing, rankData, setUser, t]);
+  
+  // Toggle autofishing
+  const toggleAutofish = useCallback(() => {
+    if (!rankData?.canAutofish) {
+      showNotification(t('fishing.autofishLocked', { rank: rankData?.requiredRank || 10 }), 'error');
+      return;
+    }
+    setIsAutofishing(prev => !prev);
+    setAutofishLog([]);
+  }, [rankData, t]);
   
   // Check if player can fish
   useEffect(() => {
@@ -407,15 +506,59 @@ const FishingPage = () => {
           <span>{t('fishing.title')}</span>
         </HeaderTitle>
         <HeaderRight>
+          {/* Rank Display */}
+          {rankData && (
+            <RankBadge onClick={() => setShowLeaderboard(true)} $canAutofish={rankData.canAutofish}>
+              <FaCrown style={{ color: rankData.canAutofish ? '#ffd700' : '#8e8e93' }} />
+              <span>#{rankData.rank}</span>
+            </RankBadge>
+          )}
           <PointsDisplay>
             <span>🪙</span>
             <span>{user?.points || 0}</span>
           </PointsDisplay>
+          {/* Autofish Toggle */}
+          {rankData?.canAutofish && (
+            <AutofishButton 
+              onClick={toggleAutofish} 
+              $active={isAutofishing}
+              title={isAutofishing ? t('fishing.stopAutofish') : t('fishing.startAutofish')}
+            >
+              <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
+            </AutofishButton>
+          )}
+          <HelpButton onClick={() => setShowLeaderboard(true)}>
+            <MdLeaderboard />
+          </HelpButton>
           <HelpButton onClick={() => setShowHelp(true)}>
             <MdHelpOutline />
           </HelpButton>
         </HeaderRight>
       </Header>
+      
+      {/* Autofishing Status Bar */}
+      <AnimatePresence>
+        {isAutofishing && (
+          <AutofishBar
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <AutofishStatus>
+              <MdAutorenew className="spinning" />
+              <span>{t('fishing.autofishing')}</span>
+            </AutofishStatus>
+            <AutofishLog>
+              {autofishLog.slice(0, 5).map((entry, i) => (
+                <AutofishEntry key={entry.timestamp} $success={entry.success}>
+                  <span>{entry.fish?.emoji}</span>
+                  <span>{entry.success ? `+${entry.reward}` : '✗'}</span>
+                </AutofishEntry>
+              ))}
+            </AutofishLog>
+          </AutofishBar>
+        )}
+      </AnimatePresence>
       
       {/* Stats Bar */}
       <StatsBar>
@@ -685,6 +828,92 @@ const FishingPage = () => {
           </ModalOverlay>
         )}
       </AnimatePresence>
+      
+      {/* Leaderboard Modal */}
+      <AnimatePresence>
+        {showLeaderboard && (
+          <ModalOverlay
+            variants={motionVariants.overlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={() => setShowLeaderboard(false)}
+          >
+            <LeaderboardModalContent
+              variants={motionVariants.modal}
+              onClick={e => e.stopPropagation()}
+            >
+              <ModalHeader>
+                <Heading2>
+                  <FaTrophy style={{ color: '#ffd700', marginRight: '8px' }} />
+                  {t('fishing.leaderboard')}
+                </Heading2>
+                <IconButton onClick={() => setShowLeaderboard(false)}>
+                  <MdClose />
+                </IconButton>
+              </ModalHeader>
+              <ModalBody>
+                {/* User's Rank */}
+                {rankData && (
+                  <YourRankSection>
+                    <YourRankLabel>{t('fishing.yourRank')}</YourRankLabel>
+                    <YourRankValue $canAutofish={rankData.canAutofish}>
+                      <span>#{rankData.rank}</span>
+                      <span style={{ fontSize: '14px', opacity: 0.7 }}>
+                        / {rankData.totalUsers} {t('fishing.topPlayers').toLowerCase()}
+                      </span>
+                    </YourRankValue>
+                    <AutofishUnlockStatus $unlocked={rankData.canAutofish}>
+                      {rankData.canAutofish ? (
+                        <>
+                          <MdAutorenew style={{ color: '#30d158' }} />
+                          <span>{t('fishing.autofishUnlocked')}</span>
+                        </>
+                      ) : (
+                        <>
+                          <span>🔒</span>
+                          <span>{t('fishing.autofishLocked', { rank: rankData.requiredRank })}</span>
+                        </>
+                      )}
+                    </AutofishUnlockStatus>
+                  </YourRankSection>
+                )}
+                
+                {/* Leaderboard List */}
+                <LeaderboardList>
+                  {leaderboard.map((player, i) => (
+                    <LeaderboardItem 
+                      key={player.username} 
+                      $isYou={rankData?.rank === player.rank}
+                      $hasAutofish={player.hasAutofish}
+                    >
+                      <LeaderboardRank $rank={player.rank}>
+                        {player.rank <= 3 ? (
+                          <FaCrown style={{ 
+                            color: player.rank === 1 ? '#ffd700' : player.rank === 2 ? '#c0c0c0' : '#cd7f32'
+                          }} />
+                        ) : (
+                          `#${player.rank}`
+                        )}
+                      </LeaderboardRank>
+                      <LeaderboardName>{player.username}</LeaderboardName>
+                      <LeaderboardPoints>
+                        <span>🪙</span>
+                        <span>{player.points.toLocaleString()}</span>
+                      </LeaderboardPoints>
+                      {player.hasAutofish && (
+                        <AutofishBadge title={t('fishing.hasAutofish')}>
+                          <MdAutorenew />
+                        </AutofishBadge>
+                      )}
+                    </LeaderboardItem>
+                  ))}
+                </LeaderboardList>
+              </ModalBody>
+            </LeaderboardModalContent>
+          </ModalOverlay>
+        )}
+      </AnimatePresence>
     </PageContainer>
   );
 };
@@ -809,6 +1038,107 @@ const HelpButton = styled.button`
   &:hover {
     background: rgba(255, 255, 255, 0.3);
   }
+`;
+
+const RankBadge = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 6px 12px;
+  background: ${props => props.$canAutofish 
+    ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.2))' 
+    : 'rgba(255, 255, 255, 0.15)'};
+  border: 1px solid ${props => props.$canAutofish ? 'rgba(255, 215, 0, 0.5)' : 'rgba(255, 255, 255, 0.2)'};
+  border-radius: 100px;
+  color: white;
+  font-weight: 600;
+  font-size: 13px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${props => props.$canAutofish 
+      ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 193, 7, 0.3))' 
+      : 'rgba(255, 255, 255, 0.25)'};
+  }
+`;
+
+const spinAnimation = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
+
+const AutofishButton = styled.button`
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${props => props.$active 
+    ? 'linear-gradient(135deg, #30d158, #34c759)' 
+    : 'rgba(255, 255, 255, 0.2)'};
+  border: 2px solid ${props => props.$active ? '#30d158' : 'transparent'};
+  border-radius: 10px;
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: ${props => props.$active 
+      ? 'linear-gradient(135deg, #28c050, #2db54e)' 
+      : 'rgba(255, 255, 255, 0.3)'};
+  }
+  
+  svg.spinning {
+    animation: ${spinAnimation} 1s linear infinite;
+  }
+`;
+
+const AutofishBar = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: linear-gradient(90deg, rgba(48, 209, 88, 0.2), rgba(52, 199, 89, 0.15));
+  border-bottom: 1px solid rgba(48, 209, 88, 0.3);
+  overflow: hidden;
+`;
+
+const AutofishStatus = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #30d158;
+  font-weight: 600;
+  font-size: 14px;
+  
+  svg.spinning {
+    animation: ${spinAnimation} 1s linear infinite;
+  }
+`;
+
+const AutofishLog = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  overflow-x: auto;
+`;
+
+const AutofishEntry = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: ${props => props.$success 
+    ? 'rgba(48, 209, 88, 0.2)' 
+    : 'rgba(255, 69, 58, 0.2)'};
+  border-radius: 6px;
+  font-size: 12px;
+  color: ${props => props.$success ? '#30d158' : '#ff453a'};
+  font-weight: 600;
+  white-space: nowrap;
 `;
 
 const StatsBar = styled.div`
@@ -1359,6 +1689,119 @@ const FishDifficulty = styled.span`
   background: rgba(255, 255, 255, 0.1);
   border-radius: 4px;
   color: rgba(255, 255, 255, 0.6);
+`;
+
+// Leaderboard Modal Styles
+const LeaderboardModalContent = styled(ModalContent)`
+  max-width: 500px;
+  max-height: 80vh;
+  background: ${theme.colors.backgroundSecondary};
+`;
+
+const YourRankSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: ${theme.spacing.lg};
+  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));
+  border-radius: 16px;
+  margin-bottom: ${theme.spacing.lg};
+  border: 1px solid rgba(255, 215, 0, 0.2);
+`;
+
+const YourRankLabel = styled.div`
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: rgba(255, 255, 255, 0.6);
+`;
+
+const YourRankValue = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 8px;
+  font-size: 32px;
+  font-weight: 800;
+  color: ${props => props.$canAutofish ? '#ffd700' : 'white'};
+`;
+
+const AutofishUnlockStatus = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: ${props => props.$unlocked 
+    ? 'rgba(48, 209, 88, 0.15)' 
+    : 'rgba(142, 142, 147, 0.15)'};
+  border-radius: 100px;
+  font-size: 13px;
+  font-weight: 500;
+  color: ${props => props.$unlocked ? '#30d158' : 'rgba(255, 255, 255, 0.7)'};
+`;
+
+const LeaderboardList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  max-height: 400px;
+  overflow-y: auto;
+`;
+
+const LeaderboardItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: ${props => props.$isYou 
+    ? 'linear-gradient(135deg, rgba(10, 132, 255, 0.2), rgba(0, 122, 255, 0.15))' 
+    : 'rgba(255, 255, 255, 0.05)'};
+  border-radius: 12px;
+  border: ${props => props.$isYou ? '1px solid rgba(10, 132, 255, 0.4)' : '1px solid transparent'};
+  transition: all 0.2s;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
+`;
+
+const LeaderboardRank = styled.div`
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: ${props => props.$rank <= 3 ? '18px' : '14px'};
+  font-weight: 700;
+  color: ${props => props.$rank <= 3 ? 'inherit' : 'rgba(255, 255, 255, 0.6)'};
+`;
+
+const LeaderboardName = styled.div`
+  flex: 1;
+  font-size: 15px;
+  font-weight: 600;
+  color: white;
+`;
+
+const LeaderboardPoints = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 600;
+  color: #ffd700;
+`;
+
+const AutofishBadge = styled.div`
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(48, 209, 88, 0.2);
+  border-radius: 50%;
+  color: #30d158;
+  font-size: 14px;
 `;
 
 export default FishingPage;
