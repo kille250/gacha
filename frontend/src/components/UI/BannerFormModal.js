@@ -409,7 +409,10 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                         <CharOptionInfo>
                           <CharOptionName>{char.name}</CharOptionName>
                           <CharOptionSeries>{char.series}</CharOptionSeries>
-                          <CharOptionRarity $rarity={char.rarity}>{char.rarity}</CharOptionRarity>
+                          <CharOptionBadges>
+                            <CharOptionRarity $rarity={char.rarity}>{char.rarity}</CharOptionRarity>
+                            {char.isR18 && <R18Badge>🔞 R18</R18Badge>}
+                          </CharOptionBadges>
                         </CharOptionInfo>
                         <CharOptionCheck $selected={formData.selectedCharacters.includes(char.id)}>
                           {formData.selectedCharacters.includes(char.id) && '✓'}
@@ -453,7 +456,7 @@ const ModalContent = styled.div`
   background: #1c1c1e;
   border-radius: 20px;
   width: 100%;
-  max-width: 700px;
+  max-width: 800px;
   max-height: 90vh;
   overflow: hidden;
   display: flex;
@@ -731,10 +734,10 @@ const CancelButton = styled.button`
 `;
   
 const CharacterSelector = styled.div`
-  background: rgba(0, 0, 0, 0.2);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 12px;
-  max-height: 400px;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 14px;
+  max-height: 450px;
   overflow: hidden;
   display: flex;
   flex-direction: column;
@@ -750,8 +753,9 @@ const SelectorHeader = styled.div`
 `;
   
 const SelectedCount = styled.div`
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  font-weight: 500;
 `;
   
 const SearchWrapper = styled.div`
@@ -801,11 +805,11 @@ const ClearSearchBtn = styled.button`
   
 const CharacterGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 10px;
+  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+  gap: 12px;
   padding: 12px;
   overflow-y: auto;
-  max-height: 300px;
+  max-height: 350px;
 `;
   
 const NoResults = styled.div`
@@ -825,78 +829,117 @@ const rarityColors = {
   
 const CharacterOption = styled.div`
   border: 2px solid ${props => props.$selected ? rarityColors[props.$rarity] : 'rgba(255, 255, 255, 0.1)'};
-  border-radius: 10px;
+  border-radius: 12px;
   overflow: hidden;
   background: ${props => props.$selected ? `${rarityColors[props.$rarity]}15` : 'rgba(255, 255, 255, 0.03)'};
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
+  display: flex;
+  flex-direction: row;
+  align-items: stretch;
   
   &:hover {
     border-color: ${props => rarityColors[props.$rarity]};
     transform: translateY(-2px);
+    background: rgba(255, 255, 255, 0.06);
   }
 `;
   
 const CharOptionImage = styled.img`
-  width: 100%;
-  height: 90px;
+  width: 70px;
+  height: 70px;
   object-fit: cover;
   display: block;
+  flex-shrink: 0;
+  border-radius: 8px;
+  margin: 8px;
 `;
 
 const CharOptionVideo = styled.video`
-  width: 100%;
-  height: 90px;
+  width: 70px;
+  height: 70px;
   object-fit: cover;
   display: block;
+  flex-shrink: 0;
+  border-radius: 8px;
+  margin: 8px;
 `;
   
 const CharOptionInfo = styled.div`
-  padding: 8px;
+  flex: 1;
+  padding: 10px 10px 10px 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  min-width: 0;
 `;
   
 const CharOptionName = styled.div`
-  font-size: 12px;
+  font-size: 14px;
   font-weight: 600;
   color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  line-height: 1.3;
 `;
   
 const CharOptionSeries = styled.div`
-  font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  margin-top: 2px;
+  margin-top: 3px;
+  line-height: 1.3;
 `;
   
+const CharOptionBadges = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  flex-wrap: wrap;
+`;
+
 const CharOptionRarity = styled.div`
-  font-size: 10px;
+  display: inline-flex;
+  align-items: center;
+  font-size: 11px;
   color: ${props => rarityColors[props.$rarity]};
-  text-transform: capitalize;
-  margin-top: 3px;
-  font-weight: 500;
+  text-transform: uppercase;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  padding: 2px 8px;
+  background: ${props => `${rarityColors[props.$rarity]}20`};
+  border-radius: 4px;
+`;
+
+const R18Badge = styled.span`
+  font-size: 10px;
+  color: #FF453A;
+  background: rgba(255, 69, 58, 0.2);
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-weight: 600;
 `;
   
 const CharOptionCheck = styled.div`
-  position: absolute;
-  top: 6px;
-  right: 6px;
-  width: 22px;
-  height: 22px;
-  background: ${props => props.$selected ? '#34C759' : 'rgba(0, 0, 0, 0.5)'};
+  width: 28px;
+  height: 28px;
+  background: ${props => props.$selected ? '#34C759' : 'rgba(255, 255, 255, 0.1)'};
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
   color: #fff;
-  font-size: 12px;
+  font-size: 14px;
   border: 2px solid ${props => props.$selected ? '#34C759' : 'rgba(255, 255, 255, 0.2)'};
+  flex-shrink: 0;
+  margin: auto 12px auto 0;
+  transition: all 0.2s;
 `;
   
 const getImageUrl = (imagePath) => {
