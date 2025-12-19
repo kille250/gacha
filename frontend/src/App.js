@@ -1,8 +1,26 @@
-import React from 'react';
+import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { AuthProvider } from './context/AuthContext';
+import { AuthProvider, AuthContext } from './context/AuthContext';
 import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './styles/DesignSystem';
+
+// Smart redirect based on auth status
+const HomeRedirect = () => {
+  const { user, loading } = useContext(AuthContext);
+  
+  if (loading) {
+    return <div style={{ 
+      display: 'flex', 
+      alignItems: 'center', 
+      justifyContent: 'center', 
+      height: '100vh',
+      background: theme.colors.background,
+      color: theme.colors.text
+    }}>Loading...</div>;
+  }
+  
+  return <Navigate to={user ? "/gacha" : "/login"} replace />;
+};
 
 // i18n
 import './i18n';
@@ -192,7 +210,7 @@ function App() {
                 <FishingPage />
               </ProtectedRoute>
             } />
-            <Route path="/" element={<Navigate to="/login" replace />} />
+            <Route path="/" element={<HomeRedirect />} />
           </Routes>
         </AppContainer>
       </Router>
