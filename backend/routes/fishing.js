@@ -9,6 +9,26 @@ const { Op } = require('sequelize');
 // Rank required to unlock autofishing (top X users)
 const AUTOFISH_UNLOCK_RANK = 10;
 
+// Rate limiting for autofish (per user)
+const autofishCooldowns = new Map();
+const AUTOFISH_COOLDOWN = 2500; // 2.5 seconds minimum between autofishes
+
+// Clean up old cooldowns periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, lastTime] of autofishCooldowns.entries()) {
+    if (now - lastTime > 60000) { // Remove entries older than 1 minute
+      autofishCooldowns.delete(userId);
+    }
+  }
+}, 60000);
+
+// Validate that a value is a positive integer
+const isValidId = (value) => {
+  const num = parseInt(value, 10);
+  return !isNaN(num) && num > 0;
+};
+
 // Fish types with their properties
 const FISH_TYPES = [
   // Common fish (60% chance) - easy timing
@@ -69,7 +89,10 @@ const CAST_COOLDOWN = 5000;
 // Store active fishing sessions (fish appears, waiting for catch)
 const activeSessions = new Map();
 
-// Clean up old sessions periodically
+// Rate limiting for casting (per user)
+const castCooldowns = new Map();
+
+// Clean up old sessions and cooldowns periodically
 setInterval(() => {
   const now = Date.now();
   for (const [key, session] of activeSessions.entries()) {
@@ -78,11 +101,30 @@ setInterval(() => {
       activeSessions.delete(key);
     }
   }
+  // Clean up cast cooldowns older than 1 minute
+  for (const [userId, lastTime] of castCooldowns.entries()) {
+    if (now - lastTime > 60000) {
+      castCooldowns.delete(userId);
+    }
+  }
 }, 60000);
 
 // POST /api/fishing/cast - Start fishing (cast the line)
 router.post('/cast', auth, async (req, res) => {
   try {
+    // Rate limiting check (prevent spam casting)
+    const lastCast = castCooldowns.get(req.user.id);
+    const now = Date.now();
+    if (lastCast && (now - lastCast) < CAST_COOLDOWN) {
+      const remainingMs = CAST_COOLDOWN - (now - lastCast);
+      return res.status(429).json({ 
+        error: 'Casting too fast',
+        message: `Please wait ${Math.ceil(remainingMs / 1000)} seconds`,
+        retryAfter: remainingMs
+      });
+    }
+    castCooldowns.set(req.user.id, now);
+    
     const user = await User.findByPk(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
@@ -322,16 +364,40 @@ router.get('/leaderboard', auth, async (req, res) => {
 // POST /api/fishing/autofish - Perform an autofish catch (for users with autofishing enabled)
 router.post('/autofish', auth, async (req, res) => {
   try {
+    // Rate limiting check
+    const lastAutofish = autofishCooldowns.get(req.user.id);
+    const now = Date.now();
+    if (lastAutofish && (now - lastAutofish) < AUTOFISH_COOLDOWN) {
+      const remainingMs = AUTOFISH_COOLDOWN - (now - lastAutofish);
+      return res.status(429).json({ 
+        error: 'Too fast',
+        message: `Please wait ${Math.ceil(remainingMs / 1000)} seconds`,
+        retryAfter: remainingMs
+      });
+    }
+    autofishCooldowns.set(req.user.id, now);
+    
     const user = await User.findByPk(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Check if user can autofish
-    if (!user.autofishEnabled && !user.autofishUnlockedByRank) {
+    // Re-verify rank to ensure user still qualifies
+    const currentRank = await getUserRank(req.user.id);
+    const stillQualifiesByRank = currentRank <= AUTOFISH_UNLOCK_RANK;
+    
+    // Update rank status if it changed
+    if (stillQualifiesByRank !== user.autofishUnlockedByRank) {
+      user.autofishUnlockedByRank = stillQualifiesByRank;
+      await user.save();
+    }
+    
+    // Check if user can autofish (admin-enabled OR qualified by rank)
+    if (!user.autofishEnabled && !stillQualifiesByRank) {
       return res.status(403).json({ 
         error: 'Autofishing not unlocked',
-        message: 'Reach top ' + AUTOFISH_UNLOCK_RANK + ' to unlock autofishing'
+        message: 'Reach top ' + AUTOFISH_UNLOCK_RANK + ' to unlock autofishing',
+        currentRank
       });
     }
     
@@ -440,11 +506,12 @@ router.post('/admin/toggle-autofish', auth, adminAuth, async (req, res) => {
   try {
     const { userId, enabled } = req.body;
     
-    if (!userId) {
-      return res.status(400).json({ error: 'User ID required' });
+    // Validate userId
+    if (!userId || !isValidId(userId)) {
+      return res.status(400).json({ error: 'Valid User ID required' });
     }
     
-    const user = await User.findByPk(userId);
+    const user = await User.findByPk(parseInt(userId, 10));
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
