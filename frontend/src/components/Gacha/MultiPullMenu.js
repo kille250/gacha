@@ -1,9 +1,9 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdAdd, MdRemove } from 'react-icons/md';
+import { MdAdd, MdRemove, MdClose } from 'react-icons/md';
 import { FaDice } from 'react-icons/fa';
-import { theme } from './theme';
+import { theme } from '../../styles/DesignSystem';
 import { modalVariants, overlayVariants } from './animations';
 
 // ==================== MULTI PULL MENU COMPONENT ====================
@@ -54,7 +54,9 @@ export const MultiPullMenu = ({
           >
             <PanelHeader>
               <h2>🎯 Multi Pull</h2>
-              <CloseBtn onClick={onClose}>×</CloseBtn>
+              <CloseBtn onClick={onClose}>
+                <MdClose />
+              </CloseBtn>
             </PanelHeader>
             
             <PanelContent>
@@ -166,22 +168,23 @@ export const MultiPullMenu = ({
 const Backdrop = styled(motion.div)`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
+  background: ${theme.colors.overlay};
+  backdrop-filter: blur(${theme.blur.sm});
+  -webkit-backdrop-filter: blur(${theme.blur.sm});
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 100;
+  z-index: ${theme.zIndex.modal};
   padding: ${theme.spacing.md};
 `;
 
 const MenuPanel = styled(motion.div)`
-  background: linear-gradient(180deg, #1e293b 0%, #0f172a 100%);
+  background: ${theme.colors.backgroundSecondary};
   border-radius: ${theme.radius.xl};
   width: 100%;
   max-width: 420px;
-  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
-  border: 1px solid ${theme.border.light};
+  box-shadow: ${theme.shadows.xl};
+  border: 1px solid ${theme.colors.surfaceBorder};
   overflow: hidden;
 `;
 
@@ -190,29 +193,32 @@ const PanelHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   padding: ${theme.spacing.lg};
-  background: rgba(0, 0, 0, 0.3);
-  border-bottom: 1px solid ${theme.border.subtle};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
   
   h2 {
     margin: 0;
-    font-size: 20px;
-    font-weight: 700;
+    font-size: ${theme.fontSizes.lg};
+    font-weight: ${theme.fontWeights.semibold};
     color: white;
   }
 `;
 
 const CloseBtn = styled.button`
-  background: none;
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.15);
   border: none;
-  color: ${theme.text.secondary};
-  font-size: 28px;
+  border-radius: ${theme.radius.full};
+  color: white;
+  font-size: 20px;
   cursor: pointer;
-  line-height: 1;
-  padding: 0;
-  transition: color 0.2s;
+  transition: all ${theme.transitions.fast};
   
   &:hover {
-    color: white;
+    background: rgba(255, 255, 255, 0.25);
   }
 `;
 
@@ -224,20 +230,20 @@ const PanelContent = styled.div`
 `;
 
 const SelectionBox = styled.div`
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: ${theme.radius.lg};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
   padding: ${theme.spacing.lg};
   display: flex;
   align-items: center;
   justify-content: center;
   gap: ${theme.spacing.lg};
-  border: 1px solid ${theme.border.subtle};
 `;
 
 const PullCount = styled.div`
   font-size: 42px;
-  font-weight: 800;
-  background: ${theme.gradient.purple};
+  font-weight: ${theme.fontWeights.bold};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
@@ -249,18 +255,19 @@ const CostDisplay = styled.div`
   gap: 4px;
   
   span {
-    font-size: 18px;
-    font-weight: 600;
-    color: white;
+    font-size: ${theme.fontSizes.lg};
+    font-weight: ${theme.fontWeights.semibold};
+    color: ${theme.colors.text};
   }
 `;
 
 const DiscountTag = styled.span`
-  background: ${theme.gradient.gold};
+  display: inline-block;
+  background: linear-gradient(135deg, ${theme.colors.warning}, #ff6b00);
   padding: 4px 10px;
   border-radius: ${theme.radius.sm};
-  font-size: 12px !important;
-  font-weight: 700 !important;
+  font-size: ${theme.fontSizes.xs} !important;
+  font-weight: ${theme.fontWeights.bold} !important;
   color: white !important;
 `;
 
@@ -272,30 +279,31 @@ const QuickSelectGrid = styled.div`
 `;
 
 const QuickSelectBtn = styled.button`
-  padding: 10px 18px;
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
   border-radius: ${theme.radius.full};
-  border: 2px solid ${props => props.$active 
-    ? 'rgba(158, 85, 148, 0.5)' 
-    : theme.border.subtle};
+  border: 1px solid ${props => props.$active 
+    ? theme.colors.accent
+    : theme.colors.surfaceBorder};
   background: ${props => props.$active 
-    ? 'rgba(158, 85, 148, 0.2)' 
-    : theme.background.glass};
+    ? 'rgba(88, 86, 214, 0.15)' 
+    : theme.colors.glass};
   color: ${props => props.$disabled 
-    ? theme.text.muted 
-    : theme.text.primary};
+    ? theme.colors.textMuted 
+    : theme.colors.text};
   cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: ${theme.fontWeights.medium};
+  font-size: ${theme.fontSizes.sm};
   position: relative;
-  transition: all 0.2s;
+  transition: all ${theme.transitions.fast};
   opacity: ${props => props.$disabled ? 0.5 : 1};
   
   ${props => props.$active && `
-    box-shadow: 0 0 20px rgba(158, 85, 148, 0.3);
+    box-shadow: 0 0 20px rgba(88, 86, 214, 0.3);
   `}
   
   &:hover:not(:disabled) {
-    border-color: rgba(158, 85, 148, 0.5);
+    border-color: ${theme.colors.accent};
+    background: rgba(88, 86, 214, 0.1);
   }
 `;
 
@@ -303,53 +311,54 @@ const QuickDiscountBadge = styled.span`
   position: absolute;
   top: -8px;
   right: -8px;
-  background: ${theme.colors.secondary};
+  background: ${theme.colors.warning};
   color: white;
   font-size: 10px;
-  font-weight: 700;
+  font-weight: ${theme.fontWeights.bold};
   padding: 2px 6px;
   border-radius: ${theme.radius.sm};
 `;
 
 const SliderSection = styled.div`
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: ${theme.radius.lg};
-  padding: ${theme.spacing.md};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.lg};
 `;
 
 const CounterRow = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: ${theme.spacing.lg};
-  margin-bottom: ${theme.spacing.md};
+  gap: ${theme.spacing.xl};
+  margin-bottom: ${theme.spacing.lg};
 `;
 
 const CounterBtn = styled.button`
   width: 44px;
   height: 44px;
-  border-radius: 50%;
-  background: ${theme.background.glass};
-  border: 2px solid ${theme.border.medium};
-  color: white;
+  border-radius: ${theme.radius.full};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  color: ${theme.colors.text};
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
   cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
   opacity: ${props => props.disabled ? 0.4 : 1};
-  transition: all 0.2s;
+  transition: all ${theme.transitions.fast};
   
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.1);
-    transform: scale(1.1);
+    background: ${theme.colors.surfaceHover};
+    transform: scale(1.05);
   }
 `;
 
 const CounterDisplay = styled.div`
   font-size: 48px;
-  font-weight: 800;
-  color: white;
+  font-weight: ${theme.fontWeights.bold};
+  color: ${theme.colors.text};
   min-width: 80px;
   text-align: center;
 `;
@@ -358,9 +367,7 @@ const SliderInput = styled.input`
   width: 100%;
   height: 8px;
   -webkit-appearance: none;
-  background: linear-gradient(90deg, 
-    ${theme.colors.primary} 0%, 
-    ${theme.colors.secondary} 100%);
+  background: linear-gradient(90deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
   border-radius: ${theme.radius.full};
   outline: none;
   
@@ -371,8 +378,8 @@ const SliderInput = styled.input`
     border-radius: 50%;
     background: white;
     cursor: pointer;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-    transition: transform 0.2s;
+    box-shadow: ${theme.shadows.sm};
+    transition: transform ${theme.transitions.fast};
     
     &:hover {
       transform: scale(1.1);
@@ -386,7 +393,7 @@ const SliderInput = styled.input`
     background: white;
     cursor: pointer;
     border: none;
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+    box-shadow: ${theme.shadows.sm};
   }
 `;
 
@@ -398,12 +405,12 @@ const InfoGrid = styled.div`
 
 const InfoCard = styled.div`
   background: ${props => props.$accent 
-    ? 'rgba(158, 85, 148, 0.2)' 
-    : theme.background.glass};
+    ? 'rgba(88, 86, 214, 0.15)' 
+    : theme.colors.glass};
   border: 1px solid ${props => props.$accent 
-    ? 'rgba(158, 85, 148, 0.4)' 
-    : theme.border.subtle};
-  border-radius: ${theme.radius.md};
+    ? theme.colors.accent 
+    : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
   padding: ${theme.spacing.md};
   text-align: center;
   display: flex;
@@ -416,35 +423,35 @@ const InfoEmoji = styled.div`
 `;
 
 const InfoTitle = styled.div`
-  font-size: 11px;
-  color: ${theme.text.secondary};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
 
 const InfoAmount = styled.div`
-  font-size: 18px;
-  font-weight: 700;
-  color: white;
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${theme.colors.text};
 `;
 
 const ConfirmButton = styled(motion.button)`
-  background: ${theme.gradient.purple};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
   color: white;
   border: none;
   border-radius: ${theme.radius.full};
-  padding: 16px 24px;
-  font-size: 16px;
-  font-weight: 700;
+  padding: ${theme.spacing.lg};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   gap: ${theme.spacing.sm};
-  box-shadow: 0 4px 20px rgba(110, 72, 170, 0.4);
+  box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
   
   &:disabled {
-    background: #555;
+    background: ${theme.colors.backgroundTertiary};
     cursor: not-allowed;
     box-shadow: none;
   }
@@ -456,13 +463,13 @@ const ConfirmButton = styled(motion.button)`
 
 const ErrorMessage = styled.div`
   text-align: center;
-  color: #f87171;
-  font-size: 14px;
+  color: ${theme.colors.error};
+  font-size: ${theme.fontSizes.sm};
   
   strong {
-    color: #fca5a5;
+    color: ${theme.colors.error};
+    font-weight: ${theme.fontWeights.semibold};
   }
 `;
 
 export default MultiPullMenu;
-

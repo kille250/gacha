@@ -2,6 +2,8 @@ import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider } from './context/AuthContext';
 import styled, { createGlobalStyle } from 'styled-components';
+import { theme } from './styles/DesignSystem';
+
 // Pages
 import LoginPage from './pages/LoginPage';
 import RegisterPage from './pages/RegisterPage';
@@ -10,52 +12,115 @@ import CollectionPage from './pages/CollectionPage';
 import AdminPage from './pages/AdminPage';
 import BannerPage from './pages/BannerPage';
 import CouponPage from './pages/CouponPage';
+
 // Components
 import Navigation from './components/Navigation/Navigation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 
 const GlobalStyle = createGlobalStyle`
+  /* Import SF Pro-like font */
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+  
   * {
     box-sizing: border-box;
     margin: 0;
     padding: 0;
-    font-family: 'Poppins', sans-serif;
+  }
+  
+  html {
+    font-size: 16px;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+    text-rendering: optimizeLegibility;
   }
   
   body {
-    background: #f5f5f5;
-    overflow-x: hidden; /* Verhindert horizontales Scrollen */
-    width: 100%;
-    max-width: 100vw;
+    font-family: ${theme.fonts.primary};
+    background: ${theme.colors.background};
+    color: ${theme.colors.text};
+    line-height: ${theme.lineHeights.normal};
+    overflow-x: hidden;
+    min-height: 100vh;
   }
   
   #root {
-    width: 100%;
-    max-width: 100vw;
-    overflow-x: hidden;
+    min-height: 100vh;
+    display: flex;
+    flex-direction: column;
   }
-  /* Für mobile Endgeräte */
-  @media (max-width: 768px) {
-    html, body {
-      overflow-x: hidden;
+  
+  /* Selection styling */
+  ::selection {
+    background: ${theme.colors.primary};
+    color: white;
+  }
+  
+  /* Focus styling */
+  :focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
+  }
+  
+  /* Scrollbar styling */
+  ::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+  
+  ::-webkit-scrollbar-track {
+    background: ${theme.colors.backgroundSecondary};
+  }
+  
+  ::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.1);
+    border-radius: 4px;
+    
+    &:hover {
+      background: rgba(255, 255, 255, 0.2);
     }
   }
   
-  /* Add Poppins font */
-  @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap');
+  /* Link styling */
+  a {
+    color: ${theme.colors.primary};
+    text-decoration: none;
+    transition: color ${theme.transitions.fast};
+    
+    &:hover {
+      color: ${theme.colors.primaryHover};
+    }
+  }
+  
+  /* Button reset */
+  button {
+    font-family: inherit;
+    border: none;
+    background: none;
+    cursor: pointer;
+  }
+  
+  /* Input reset */
+  input, select, textarea {
+    font-family: inherit;
+    font-size: inherit;
+  }
+  
+  /* Image defaults */
+  img, video {
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+  
+  /* Smooth scroll */
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
 `;
 
 function App() {
-  // Add these console logs
-  console.log("LoginPage:", typeof LoginPage);
-  console.log("RegisterPage:", typeof RegisterPage);
-  console.log("GachaPage:", typeof GachaPage);
-  console.log("CollectionPage:", typeof CollectionPage);
-  console.log("AdminPage:", typeof AdminPage);
-  console.log("BannerPage:", typeof BannerPage);
-  console.log("CouponPage:", typeof CouponPage);
-  console.log("Navigation:", typeof Navigation);
-  console.log("ProtectedRoute:", typeof ProtectedRoute);
   return (
     <AuthProvider>
       <Router>
@@ -68,7 +133,9 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Navigation />
-                  <CouponPage />
+                  <PageContent>
+                    <CouponPage />
+                  </PageContent>
                 </MainLayout>
               </ProtectedRoute>
             } />
@@ -78,7 +145,9 @@ function App() {
                 <ProtectedRoute>
                   <MainLayout>
                     <Navigation />
-                    <AdminPage />
+                    <PageContent>
+                      <AdminPage />
+                    </PageContent>
                   </MainLayout>
                 </ProtectedRoute>
               } 
@@ -87,7 +156,9 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Navigation />
-                  <GachaPage />
+                  <PageContent>
+                    <GachaPage />
+                  </PageContent>
                 </MainLayout>
               </ProtectedRoute>
             } />
@@ -95,11 +166,13 @@ function App() {
               <ProtectedRoute>
                 <MainLayout>
                   <Navigation />
-                  <CollectionPage />
+                  <PageContent>
+                    <CollectionPage />
+                  </PageContent>
                 </MainLayout>
               </ProtectedRoute>
             } />
-            {/* Add Banner Page Route - Note: No Navigation component as it has its own */}
+            {/* Banner Page - Full screen without navigation */}
             <Route path="/banner/:bannerId" element={
               <ProtectedRoute>
                 <BannerPage />
@@ -115,16 +188,21 @@ function App() {
 
 const AppContainer = styled.div`
   min-height: 100vh;
-  max-width: 100vw; /* Verhindert horizontales Scrollen */
-  overflow-x: hidden; /* Verhindert horizontales Scrollen */
+  display: flex;
+  flex-direction: column;
 `;
 
 const MainLayout = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
-  max-width: 100%; /* Wichtig für korrekte Anzeige */
-  box-sizing: border-box; /* Wichitg für konsistentes Layout */
+  background: ${theme.colors.background};
+`;
+
+const PageContent = styled.main`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
 `;
 
 export default App;

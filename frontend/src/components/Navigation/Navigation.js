@@ -6,6 +6,7 @@ import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdA
 import { FaGift, FaTicketAlt } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import api from '../../utils/api';
+import { theme } from '../../styles/DesignSystem';
 
 const Navigation = () => {
   const location = useLocation();
@@ -48,7 +49,7 @@ const Navigation = () => {
     setMobileMenuOpen(false);
   }, [location]);
 
-  // Check if hourly reward is available - updated for 1 hour interval
+  // Check if hourly reward is available
   const checkRewardAvailability = useCallback(async () => {
     if (!user) {
       setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
@@ -62,12 +63,11 @@ const Navigation = () => {
         return;
       }
       
-      // First quickly update UI to show we're checking
       if (!rewardStatus.checked) {
         setRewardStatus(prev => ({ 
           ...prev, 
           timeRemaining: "Checking...",
-          available: false // Make sure we don't show as clickable while checking
+          available: false
         }));
       }
       
@@ -75,13 +75,9 @@ const Navigation = () => {
       
       const lastReward = response.data.lastDailyReward ? new Date(response.data.lastDailyReward) : null;
       const now = new Date();
+      const rewardInterval = 60 * 60 * 1000; // 1 hour
       
-      // Define the reward interval as 1 hour 
-      const rewardInterval = 60 * 60 * 1000; // 1 hour in milliseconds
-      
-      // Check if user has NEVER claimed a reward OR if 1 hour has passed
       if (!lastReward || now - lastReward > rewardInterval) {
-        console.log('Hourly reward is available');
         setRewardStatus({
           available: true,
           loading: false,
@@ -90,16 +86,13 @@ const Navigation = () => {
           checked: true
         });
       } else {
-        // User has claimed within last hour, show countdown
-        console.log('Hourly reward is NOT available, last claimed:', lastReward);
         const remainingTime = rewardInterval - (now - lastReward);
         const minutes = Math.floor(remainingTime / (60 * 1000));
         const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
-        
         const nextTime = new Date(lastReward.getTime() + rewardInterval);
         
         setRewardStatus({
-          available: false, // Explicitly set to false
+          available: false,
           loading: false,
           timeRemaining: `${minutes}m ${seconds}s`,
           nextRewardTime: nextTime,
@@ -111,16 +104,15 @@ const Navigation = () => {
       setRewardStatus(prev => ({
         ...prev,
         loading: false,
-        available: false, // Make sure it's not clickable on error
+        available: false,
         checked: true,
         timeRemaining: "Check failed"
       }));
     }
   }, [user, rewardStatus.checked]);
   
-  // Update timer periodically - more frequent updates for hourly rewards
+  // Update timer periodically
   useEffect(() => {
-    // Update the timer every second for more precise countdown
     const updateTimer = () => {
       if (!rewardStatus.nextRewardTime) return;
       
@@ -128,7 +120,6 @@ const Navigation = () => {
       const nextReward = new Date(rewardStatus.nextRewardTime);
       
       if (now >= nextReward) {
-        // Time's up - reward is now available
         setRewardStatus(prev => ({
           ...prev,
           available: true,
@@ -136,7 +127,6 @@ const Navigation = () => {
           nextRewardTime: null
         }));
       } else {
-        // Still counting down
         const remainingTime = nextReward - now;
         const minutes = Math.floor(remainingTime / (60 * 1000));
         const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
@@ -148,27 +138,19 @@ const Navigation = () => {
       }
     };
     
-    const timerInterval = setInterval(updateTimer, 1000); // Update every second
-    
+    const timerInterval = setInterval(updateTimer, 1000);
     return () => clearInterval(timerInterval);
   }, [rewardStatus.nextRewardTime]);
   
   // Initial check and periodic refresh
   useEffect(() => {
-    // We check availability immediately when user changes or component mounts
     checkRewardAvailability();
-    
-    // Full refresh more frequently for hourly rewards
-    const refreshInterval = setInterval(() => {
-      checkRewardAvailability();
-    }, 60 * 1000); // Check every minute
-    
+    const refreshInterval = setInterval(checkRewardAvailability, 60 * 1000);
     return () => clearInterval(refreshInterval);
   }, [checkRewardAvailability]);
   
   // Claim the hourly reward
   const claimHourlyReward = async () => {
-    // Prevent multiple clicks or claiming when not available
     if (rewardStatus.loading || !rewardStatus.available) return;
     
     setRewardStatus(prev => ({ ...prev, loading: true }));
@@ -179,15 +161,13 @@ const Navigation = () => {
       
       const response = await api.post('/auth/daily-reward');
       
-      // Show success popup
       setRewardPopup({
         show: true,
         amount: response.data.rewardAmount
       });
       
-      // Update reward status
       const now = new Date();
-      const rewardInterval = 60 * 60 * 1000; // 1 hour
+      const rewardInterval = 60 * 60 * 1000;
       const nextRewardTime = new Date(now.getTime() + rewardInterval);
       
       setRewardStatus({
@@ -198,10 +178,8 @@ const Navigation = () => {
         checked: true
       });
       
-      // Update user data with new points
       refreshUser();
       
-      // Hide popup after 3 seconds
       setTimeout(() => {
         setRewardPopup({ show: false, amount: 0 });
       }, 3000);
@@ -210,7 +188,6 @@ const Navigation = () => {
       console.error('Error claiming reward:', err);
       
       if (err.response?.data?.nextRewardTime) {
-        // Server returned time info
         setRewardStatus({
           available: false,
           loading: false,
@@ -219,16 +196,13 @@ const Navigation = () => {
           checked: true
         });
       } else {
-        // Generic error handling
         setRewardStatus(prev => ({
           ...prev,
           loading: false,
           available: false
         }));
         
-        setTimeout(() => {
-          checkRewardAvailability(); // Re-check availability after error
-        }, 3000);
+        setTimeout(checkRewardAvailability, 3000);
       }
     }
   };
@@ -238,7 +212,7 @@ const Navigation = () => {
     navigate('/login');
   };
   
-  // Navigation items for both desktop and mobile menus
+  // Navigation items
   const navItems = [
     { path: '/gacha', label: 'Gacha', icon: <MdDashboard />, adminOnly: false },
     { path: '/collection', label: 'Collection', icon: <MdCollections />, adminOnly: false },
@@ -249,30 +223,25 @@ const Navigation = () => {
   return (
     <>
       <NavContainer>
-        {/* Mobile Hamburger Button */}
-        <HamburgerButton 
-          onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          {mobileMenuOpen ? <MdClose /> : <MdMenu />}
-        </HamburgerButton>
+        {/* Logo */}
+        <LogoSection>
+          <Logo to="/gacha">
+            G<LogoAccent>M</LogoAccent>
+          </Logo>
+        </LogoSection>
 
         {/* Desktop Navigation */}
         <DesktopNav>
           {navItems.map(item => (
             (!item.adminOnly || (item.adminOnly && user?.isAdmin)) && (
-              <NavItem
+              <NavLink
                 key={item.path}
-                isActive={location.pathname === item.path}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
+                to={item.path}
+                $isActive={location.pathname === item.path}
               >
-                <StyledLink to={item.path}>
-                  {item.icon}
-                  <span>{item.label}</span>
-                </StyledLink>
-              </NavItem>
+                {item.icon}
+                <span>{item.label}</span>
+              </NavLink>
             )
           ))}
         </DesktopNav>
@@ -281,18 +250,17 @@ const Navigation = () => {
           {user && (
             <RewardButton
               available={rewardStatus.checked && rewardStatus.available}
-              whileHover={rewardStatus.available && rewardStatus.checked ? { scale: 1.1 } : {}}
-              whileTap={rewardStatus.available && rewardStatus.checked ? { scale: 0.95 } : {}}
               onClick={rewardStatus.available && rewardStatus.checked ? claimHourlyReward : undefined}
               disabled={!rewardStatus.available || rewardStatus.loading || !rewardStatus.checked}
-              data-state={rewardStatus.loading ? 'loading' : rewardStatus.available ? 'available' : 'unavailable'}
+              whileHover={rewardStatus.available && rewardStatus.checked ? { scale: 1.02 } : {}}
+              whileTap={rewardStatus.available && rewardStatus.checked ? { scale: 0.98 } : {}}
             >
               {rewardStatus.loading ? (
                 <LoadingSpinner />
               ) : rewardStatus.available && rewardStatus.checked ? (
                 <>
-                  <FaGift className="pulse-icon" />
-                  <span>Claim Hourly</span>
+                  <FaGift />
+                  <span>Claim</span>
                 </>
               ) : (
                 <>
@@ -303,7 +271,10 @@ const Navigation = () => {
             </RewardButton>
           )}
           
-          <Username>{user?.username || "User"}</Username>
+          <PointsDisplay>
+            <span>🪙</span>
+            <span>{user?.points || 0}</span>
+          </PointsDisplay>
           
           <R18Toggle
             active={user?.allowR18}
@@ -311,23 +282,32 @@ const Navigation = () => {
             disabled={isTogglingR18}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
-            title={user?.allowR18 ? "R18 content enabled - Click to disable" : "R18 content disabled - Click to enable"}
+            title={user?.allowR18 ? "R18 content enabled" : "R18 content disabled"}
           >
             🔞
           </R18Toggle>
           
           <LogoutButton 
             onClick={handleLogout}
-            whileHover={{ scale: 1.1 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
           >
             <MdExitToApp />
             <span>Logout</span>
           </LogoutButton>
+          
+          {/* Mobile Hamburger */}
+          <HamburgerButton 
+            onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+            whileHover={{ scale: 1.05 }}
+            whileTap={{ scale: 0.95 }}
+          >
+            {mobileMenuOpen ? <MdClose /> : <MdMenu />}
+          </HamburgerButton>
         </UserControls>
       </NavContainer>
       
-      {/* Mobile Menu (Drawer) */}
+      {/* Mobile Menu */}
       <AnimatePresence>
         {mobileMenuOpen && (
           <MobileMenuOverlay
@@ -337,10 +317,10 @@ const Navigation = () => {
             onClick={() => setMobileMenuOpen(false)}
           >
             <MobileMenu
-              initial={{ x: "-100%" }}
+              initial={{ x: "100%" }}
               animate={{ x: 0 }}
-              exit={{ x: "-100%" }}
-              transition={{ type: "spring", damping: 20 }}
+              exit={{ x: "100%" }}
+              transition={{ type: "spring", damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
             >
               <MobileMenuHeader>
@@ -359,66 +339,70 @@ const Navigation = () => {
                   (!item.adminOnly || (item.adminOnly && user?.isAdmin)) && (
                     <MobileNavItem
                       key={item.path}
-                      isActive={location.pathname === item.path}
-                      onClick={() => setMobileMenuOpen(false)}
-                      whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}
-                      whileTap={{ scale: 0.98 }}
+                      $isActive={location.pathname === item.path}
+                      onClick={() => {
+                        navigate(item.path);
+                        setMobileMenuOpen(false);
+                      }}
+                      whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
                     >
-                      <StyledLink to={item.path}>
-                        {item.icon}
-                        <span>{item.label}</span>
-                      </StyledLink>
+                      {item.icon}
+                      <span>{item.label}</span>
                     </MobileNavItem>
                   )
                 ))}
                 
-                {/* R18 Toggle in Mobile Menu */}
+                <Divider />
+                
                 <MobileR18Toggle
                   active={user?.allowR18}
                   onClick={toggleR18}
                   disabled={isTogglingR18}
-                  whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.1)" }}
-                  whileTap={{ scale: 0.98 }}
+                  whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
                 >
                   <span>🔞</span>
                   <span>{user?.allowR18 ? "R18 Enabled" : "R18 Disabled"}</span>
                 </MobileR18Toggle>
+                
+                <MobileLogout
+                  onClick={handleLogout}
+                  whileHover={{ backgroundColor: "rgba(255, 59, 48, 0.15)" }}
+                >
+                  <MdExitToApp />
+                  <span>Logout</span>
+                </MobileLogout>
               </MobileNavItems>
             </MobileMenu>
           </MobileMenuOverlay>
         )}
       </AnimatePresence>
       
-      {/* Admin Floating Button */}
+      {/* Admin Floating Button (Mobile) */}
       {user?.isAdmin && (
         <AdminFloatingButton
+          onClick={() => navigate('/admin')}
           whileHover={{ scale: 1.1 }}
           whileTap={{ scale: 0.9 }}
-          onClick={() => navigate('/admin')}
-          initial={{ opacity: 0, scale: 0.8 }}
-          animate={{ opacity: 1, scale: 1 }}
-          transition={{ duration: 0.3 }}
         >
           <MdAdminPanelSettings />
-          <span>Admin</span>
         </AdminFloatingButton>
       )}
       
-      {/* Success Popup */}
+      {/* Reward Popup */}
       <AnimatePresence>
         {rewardPopup.show && (
           <PopupContainer>
             <RewardPopup
-              initial={{ opacity: 0, y: -50 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -50 }}
+              initial={{ opacity: 0, y: -50, scale: 0.9 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: -50, scale: 0.9 }}
               transition={{ type: 'spring', damping: 20 }}
             >
               <MdCelebration className="celebration-icon" />
-              <div>
-                <p>Hourly Reward Claimed!</p>
-                <h3>+{rewardPopup.amount} coins</h3>
-              </div>
+              <PopupContent>
+                <PopupTitle>Hourly Reward!</PopupTitle>
+                <PopupAmount>+{rewardPopup.amount} 🪙</PopupAmount>
+              </PopupContent>
             </RewardPopup>
           </PopupContainer>
         )}
@@ -427,343 +411,358 @@ const Navigation = () => {
   );
 };
 
+// ==================== STYLED COMPONENTS ====================
+
 const NavContainer = styled.nav`
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  color: white;
-  padding: 12px 16px;
+  justify-content: space-between;
+  gap: ${theme.spacing.lg};
+  background: ${theme.colors.surface};
+  backdrop-filter: blur(${theme.blur.lg});
+  -webkit-backdrop-filter: blur(${theme.blur.lg});
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
   position: sticky;
   top: 0;
-  z-index: 100;
-  width: 100%;
-  box-sizing: border-box;
+  z-index: ${theme.zIndex.sticky};
 `;
 
-// Hamburger menu button (mobile only)
-const HamburgerButton = styled(motion.button)`
+const LogoSection = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
-  background: none;
-  border: none;
-  color: white;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 4px;
-  
-  @media (min-width: 769px) {
-    display: none;
-  }
 `;
 
-// Desktop navigation
-const DesktopNav = styled.ul`
+const Logo = styled(Link)`
+  font-size: ${theme.fontSizes.xl};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${theme.colors.text};
+  text-decoration: none;
+  letter-spacing: -0.02em;
+`;
+
+const LogoAccent = styled.span`
+  color: ${theme.colors.primary};
+`;
+
+const DesktopNav = styled.div`
   display: none;
-  list-style: none;
-  gap: 15px;
-  margin: 0;
-  padding: 0;
+  align-items: center;
+  gap: ${theme.spacing.xs};
   
-  @media (min-width: 769px) {
+  @media (min-width: ${theme.breakpoints.md}) {
     display: flex;
   }
 `;
 
-const NavItem = styled(motion.li)`
-  padding: 8px 15px;
-  border-radius: 20px;
-  background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.2)' : 'transparent'};
-`;
-
-const StyledLink = styled(Link)`
+const NavLink = styled(Link)`
   display: flex;
   align-items: center;
-  gap: 8px;
-  color: white;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.radius.lg};
+  color: ${props => props.$isActive ? theme.colors.text : theme.colors.textSecondary};
   text-decoration: none;
-  font-size: 14px;
-  font-weight: 500;
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  background: ${props => props.$isActive ? theme.colors.glass : 'transparent'};
+  transition: all ${theme.transitions.fast};
   
   svg {
     font-size: 18px;
   }
-`;
-
-// Mobile menu overlay
-const MobileMenuOverlay = styled(motion.div)`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(4px);
-  z-index: 1000;
-  display: flex;
-`;
-
-// Mobile menu drawer
-const MobileMenu = styled(motion.div)`
-  width: 75%;
-  max-width: 300px;
-  height: 100%;
-  background: #121212;
-  box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
-  display: flex;
-  flex-direction: column;
-  overflow-y: auto;
-`;
-
-const MobileMenuHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
   
-  h3 {
-    margin: 0;
-    font-size: 18px;
-    font-weight: 600;
-  }
-`;
-
-const CloseButton = styled(motion.button)`
-  background: none;
-  border: none;
-  color: white;
-  font-size: 22px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: 4px;
-`;
-
-const MobileNavItems = styled.ul`
-  list-style: none;
-  margin: 0;
-  padding: 0;
-`;
-
-const MobileNavItem = styled(motion.li)`
-  padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: ${props => props.isActive ? 'rgba(255, 255, 255, 0.1)' : 'transparent'};
-  
-  a, button {
-    width: 100%;
-    justify-content: flex-start;
-    font-size: 16px;
-    
-    svg {
-      font-size: 20px;
-    }
-  }
-`;
-
-const MobileR18Toggle = styled(motion.div)`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 16px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
-  background: ${props => props.active ? 'rgba(231, 76, 60, 0.2)' : 'transparent'};
-  cursor: pointer;
-  color: white;
-  font-size: 16px;
-  opacity: ${props => props.disabled ? 0.5 : 1};
-  
-  span:first-child {
-    font-size: 20px;
-  }
-  
-  span:last-child {
-    color: ${props => props.active ? '#e74c3c' : 'rgba(255, 255, 255, 0.7)'};
-    font-weight: ${props => props.active ? '600' : '400'};
+  &:hover {
+    color: ${theme.colors.text};
+    background: ${theme.colors.glass};
   }
 `;
 
 const UserControls = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  
-  @media (max-width: 480px) {
-    gap: 10px;
-  }
+  gap: ${theme.spacing.sm};
 `;
 
-const Username = styled.span`
-  font-weight: 500;
-  opacity: 0.8;
-  font-size: 14px;
-  max-width: 100px;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-  
-  @media (max-width: 350px) {
-    max-width: 60px;
-  }
-`;
-
-const R18Toggle = styled(motion.button)`
+const PointsDisplay = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
-  width: 36px;
-  height: 36px;
-  background: ${props => props.active 
-    ? 'linear-gradient(135deg, #e74c3c, #c0392b)' 
-    : 'rgba(255, 255, 255, 0.1)'};
-  border: 2px solid ${props => props.active ? '#e74c3c' : 'transparent'};
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 16px;
-  opacity: ${props => props.disabled ? 0.5 : 1};
-  transition: all 0.3s ease;
-  
-  &:hover {
-    background: ${props => props.active 
-      ? 'linear-gradient(135deg, #c0392b, #a93226)' 
-      : 'rgba(255, 255, 255, 0.2)'};
-  }
-  
-  @media (max-width: 480px) {
-    display: none;
-  }
-`;
-
-const LogoutButton = styled(motion.button)`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border: none;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
   color: white;
-  padding: 8px 15px;
-  border-radius: 20px;
-  cursor: pointer;
-  font-size: 14px;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.2);
-  }
-  
-  svg {
-    font-size: 16px;
-  }
-  
-  @media (max-width: 480px) {
-    padding: 8px;
-    
-    span {
-      display: none;
-    }
-    
-    svg {
-      margin: 0;
-    }
-  }
 `;
 
 const RewardButton = styled(motion.button)`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
   background: ${props => props.available 
-    ? 'linear-gradient(135deg, #ffb347, #ffcc33)' 
-    : 'rgba(255, 255, 255, 0.1)'};
-  border: none;
+    ? `linear-gradient(135deg, ${theme.colors.warning}, #ff6b00)`
+    : theme.colors.glass};
+  border: 1px solid ${props => props.available ? 'transparent' : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
   color: white;
-  padding: 8px 15px;
-  border-radius: 20px;
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
   cursor: ${props => props.available ? 'pointer' : 'default'};
-  font-size: 14px;
-  transition: all 0.3s ease;
+  transition: all ${theme.transitions.fast};
   
   svg {
-    font-size: 16px;
-    color: ${props => props.available ? 'white' : 'rgba(255, 255, 255, 0.7)'};
+    font-size: 14px;
   }
   
   &:disabled {
     opacity: ${props => props.available ? 0.7 : 1};
-    cursor: not-allowed;
+    cursor: ${props => props.available ? 'not-allowed' : 'default'};
   }
   
-  @media (max-width: 480px) {
-    padding: 8px;
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
     
-    span {
+    span:not(:first-child) {
       display: none;
     }
   }
 `;
 
 const TimeRemaining = styled.span`
-  font-size: 13px;
-  opacity: 0.8;
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
   white-space: nowrap;
-  
-  @media (max-width: 480px) {
-    display: block !important;
-    max-width: 60px;
-  }
 `;
 
 const LoadingSpinner = styled.div`
-  width: 16px;
-  height: 16px;
+  width: 14px;
+  height: 14px;
   border: 2px solid rgba(255, 255, 255, 0.3);
   border-radius: 50%;
   border-top-color: white;
-  animation: spin 1s ease-in-out infinite;
+  animation: spin 0.8s linear infinite;
   
   @keyframes spin {
     to { transform: rotate(360deg); }
   }
 `;
 
-const AdminFloatingButton = styled(motion.button)`
+const R18Toggle = styled(motion.button)`
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  padding: 10px 16px;
-  border-radius: 30px;
-  background: linear-gradient(135deg, #ff416c, #ff4b2b);
-  color: white;
-  font-size: 16px;
-  font-weight: 500;
-  border: none;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.3);
-  z-index: 1000;
+  background: ${props => props.active 
+    ? 'rgba(255, 59, 48, 0.2)' 
+    : theme.colors.glass};
+  border: 1px solid ${props => props.active 
+    ? theme.colors.error 
+    : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
   cursor: pointer;
-  -webkit-tap-highlight-color: transparent;
-  animation: breathe 3s infinite ease-in-out;
+  font-size: 16px;
+  opacity: ${props => props.disabled ? 0.5 : 1};
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${props => props.active 
+      ? 'rgba(255, 59, 48, 0.3)' 
+      : theme.colors.surfaceHover};
+  }
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    display: none;
+  }
+`;
+
+const LogoutButton = styled(motion.button)`
+  display: none;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  svg {
+    font-size: 16px;
+  }
+  
+  &:hover {
+    color: ${theme.colors.error};
+    border-color: ${theme.colors.error};
+    background: rgba(255, 59, 48, 0.1);
+  }
+  
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: flex;
+  }
+`;
+
+const HamburgerButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${theme.colors.text};
+  cursor: pointer;
+  font-size: 22px;
+  
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: none;
+  }
+`;
+
+// Mobile Menu
+const MobileMenuOverlay = styled(motion.div)`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(${theme.blur.sm});
+  z-index: ${theme.zIndex.modal};
+`;
+
+const MobileMenu = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  right: 0;
+  bottom: 0;
+  width: 80%;
+  max-width: 320px;
+  background: ${theme.colors.backgroundSecondary};
+  border-left: 1px solid ${theme.colors.surfaceBorder};
+  display: flex;
+  flex-direction: column;
+  box-shadow: ${theme.shadows.xl};
+`;
+
+const MobileMenuHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: ${theme.spacing.lg};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+  
+  h3 {
+    margin: 0;
+    font-size: ${theme.fontSizes.lg};
+    font-weight: ${theme.fontWeights.semibold};
+  }
+`;
+
+const CloseButton = styled(motion.button)`
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${theme.colors.text};
+  cursor: pointer;
+  font-size: 20px;
+`;
+
+const MobileNavItems = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: ${theme.spacing.md};
+`;
+
+const MobileNavItem = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.radius.lg};
+  cursor: pointer;
+  color: ${props => props.$isActive ? theme.colors.text : theme.colors.textSecondary};
+  background: ${props => props.$isActive ? theme.colors.glass : 'transparent'};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.medium};
+  transition: all ${theme.transitions.fast};
   
   svg {
     font-size: 20px;
   }
+`;
+
+const Divider = styled.div`
+  height: 1px;
+  background: ${theme.colors.surfaceBorder};
+  margin: ${theme.spacing.md} 0;
+`;
+
+const MobileR18Toggle = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.radius.lg};
+  cursor: pointer;
+  color: ${props => props.active ? theme.colors.error : theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.base};
+  opacity: ${props => props.disabled ? 0.5 : 1};
   
-  @media (min-width: 769px) {
-    display: none;
-  }
-  
-  @keyframes breathe {
-    0%, 100% { transform: scale(1); }
-    50% { transform: scale(1.05); }
+  span:first-child {
+    font-size: 20px;
   }
 `;
 
+const MobileLogout = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  border-radius: ${theme.radius.lg};
+  cursor: pointer;
+  color: ${theme.colors.error};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.medium};
+  
+  svg {
+    font-size: 20px;
+  }
+`;
+
+// Admin Floating Button
+const AdminFloatingButton = styled(motion.button)`
+  position: fixed;
+  bottom: ${theme.spacing.lg};
+  right: ${theme.spacing.lg};
+  width: 56px;
+  height: 56px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
+  border: none;
+  border-radius: ${theme.radius.full};
+  color: white;
+  font-size: 24px;
+  cursor: pointer;
+  box-shadow: ${theme.shadows.lg};
+  z-index: ${theme.zIndex.sticky};
+  
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: none;
+  }
+`;
+
+// Reward Popup
 const PopupContainer = styled.div`
   position: fixed;
   top: 100px;
@@ -771,73 +770,45 @@ const PopupContainer = styled.div`
   right: 0;
   display: flex;
   justify-content: center;
-  z-index: 1000;
+  z-index: ${theme.zIndex.toast};
   pointer-events: none;
-  
-  > * {
-    pointer-events: auto;
-  }
 `;
 
 const RewardPopup = styled(motion.div)`
-  background: linear-gradient(135deg, #4b6cb7 0%, #182848 100%);
-  color: white;
-  padding: 15px 25px;
-  border-radius: 12px;
-  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.3);
   display: flex;
   align-items: center;
-  gap: 15px;
-  max-width: 90%;
-  
-  > div {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-  }
-  
-  p {
-    margin: 0;
-    font-size: 14px;
-    opacity: 0.9;
-    white-space: nowrap;
-  }
-  
-  h3 {
-    margin: 5px 0 0;
-    font-size: 20px;
-    color: #ffcc33;
-    white-space: nowrap;
-  }
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md} ${theme.spacing.xl};
+  background: ${theme.colors.backgroundSecondary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  box-shadow: ${theme.shadows.lg};
+  pointer-events: auto;
   
   .celebration-icon {
     font-size: 28px;
-    color: #ffcc33;
+    color: ${theme.colors.warning};
     animation: bounce 1s infinite alternate;
-    flex-shrink: 0;
-  }
-  
-  @keyframes bounce {
-    from { transform: scale(1); }
-    to { transform: scale(1.2); }
-  }
-  
-  @media (max-width: 480px) {
-    padding: 12px 20px;
-    max-width: 85%;
     
-    h3 {
-      font-size: 18px;
-    }
-    
-    p {
-      font-size: 13px;
-    }
-    
-    .celebration-icon {
-      font-size: 24px;
+    @keyframes bounce {
+      from { transform: scale(1); }
+      to { transform: scale(1.2); }
     }
   }
+`;
+
+const PopupContent = styled.div``;
+
+const PopupTitle = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: 2px;
+`;
+
+const PopupAmount = styled.div`
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${theme.colors.warning};
 `;
 
 export default Navigation;

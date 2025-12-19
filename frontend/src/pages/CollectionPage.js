@@ -1,10 +1,24 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { getCollection, getAllCharacters, getAssetUrl } from '../utils/api';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
-import { FaSearch } from 'react-icons/fa';
-  
+import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
+import {
+  theme,
+  PageWrapper,
+  Container,
+  Section,
+  Heading2,
+  Text,
+  Spinner,
+  RarityBadge,
+  motionVariants,
+  getRarityColor,
+  getRarityGlow,
+  scrollbarStyles
+} from '../styles/DesignSystem';
+
 const CollectionPage = () => {
   const [collection, setCollection] = useState([]);
   const [allCharacters, setAllCharacters] = useState([]);
@@ -12,13 +26,14 @@ const CollectionPage = () => {
   const [error, setError] = useState(null);
   const [rarityFilter, setRarityFilter] = useState('all');
   const [seriesFilter, setSeriesFilter] = useState('all');
-  const [ownershipFilter, setOwnershipFilter] = useState('all'); // New filter: all, owned, not-owned
+  const [ownershipFilter, setOwnershipFilter] = useState('all');
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChar, setPreviewChar] = useState(null);
   const [uniqueSeries, setUniqueSeries] = useState([]);
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+  const [itemsPerPage, setItemsPerPage] = useState(24);
+  const [showFilters, setShowFilters] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -27,14 +42,12 @@ const CollectionPage = () => {
   const fetchData = async () => {
     try {
       setLoading(true);
-      // Fetch owned collection and all available characters
       const [collectionData, allCharsData] = await Promise.all([
         getCollection(),
         getAllCharacters()
       ]);
       setCollection(collectionData);
       setAllCharacters(allCharsData);
-      // Extract unique series from all characters
       const allSeries = [...new Set(allCharsData.map(char => char.series).filter(Boolean))].sort();
       setUniqueSeries(allSeries);
       setLoading(false);
@@ -67,17 +80,14 @@ const CollectionPage = () => {
     setPreviewOpen(false);
   };
 
-  // Check if media is a video
   const isVideo = (src) => {
     if (!src) return false;
-    
     if (typeof src === 'string') {
       const lowerCasePath = src.toLowerCase();
       return lowerCasePath.endsWith('.mp4') || 
              lowerCasePath.endsWith('.webm') || 
              lowerCasePath.includes('video');
     }
-    
     return false;
   };
 
@@ -86,32 +96,25 @@ const CollectionPage = () => {
     return getAssetUrl(imageSrc);
   };
 
-  // Create a map of owned character IDs for quick lookup
   const ownedCharIds = new Set(collection.map(char => char.id));
 
-  // Get all characters or filtered ones based on current filters
   const getFilteredCharacters = () => {
-    // First, decide which dataset to use
     let characters = [...allCharacters];
     
-    // Filter by ownership
     if (ownershipFilter === 'owned') {
       characters = characters.filter(char => ownedCharIds.has(char.id));
     } else if (ownershipFilter === 'not-owned') {
       characters = characters.filter(char => !ownedCharIds.has(char.id));
     }
     
-    // Apply rarity filter
     if (rarityFilter !== 'all') {
       characters = characters.filter(char => char.rarity === rarityFilter);
     }
     
-    // Apply series filter
     if (seriesFilter !== 'all') {
       characters = characters.filter(char => char.series === seriesFilter);
     }
     
-    // Apply search filter
     if (searchQuery.trim() !== '') {
       const query = searchQuery.toLowerCase();
       characters = characters.filter(char =>
@@ -133,222 +136,260 @@ const CollectionPage = () => {
   const totalCount = allCharacters.length;
   const completionPercentage = totalCount > 0 ? Math.round((ownedCount / totalCount) * 100) : 0;
 
+  const clearFilters = () => {
+    setRarityFilter('all');
+    setSeriesFilter('all');
+    setOwnershipFilter('all');
+    setSearchQuery('');
+    setCurrentPage(1);
+  };
+
+  const hasActiveFilters = rarityFilter !== 'all' || seriesFilter !== 'all' || ownershipFilter !== 'all' || searchQuery.trim() !== '';
+
   return (
-    <CollectionContainer>
-      <CollectionHeader>
-        <h1>Character Collection</h1>
-        <CollectionStats>
-          <StatItem>
-            <StatValue>{ownedCount}/{totalCount}</StatValue>
-            <StatLabel>Characters Collected</StatLabel>
-          </StatItem>
-          <StatItem>
-            <ProgressBar percentage={completionPercentage}>
-              <ProgressText>{completionPercentage}% Complete</ProgressText>
+    <StyledPageWrapper>
+      <Container>
+        {/* Header Section */}
+        <HeaderSection>
+          <HeaderContent>
+            <PageTitle>Collection</PageTitle>
+            <PageSubtitle>Track your character collection progress</PageSubtitle>
+          </HeaderContent>
+          
+          {/* Progress Stats */}
+          <StatsCard>
+            <StatsRow>
+              <StatItem>
+                <StatValue>{ownedCount}</StatValue>
+                <StatLabel>Owned</StatLabel>
+              </StatItem>
+              <StatDivider />
+              <StatItem>
+                <StatValue>{totalCount}</StatValue>
+                <StatLabel>Total</StatLabel>
+              </StatItem>
+              <StatDivider />
+              <StatItem>
+                <StatValue>{completionPercentage}%</StatValue>
+                <StatLabel>Complete</StatLabel>
+              </StatItem>
+            </StatsRow>
+            <ProgressBar>
+              <ProgressFill style={{ width: `${completionPercentage}%` }} />
             </ProgressBar>
-          </StatItem>
-        </CollectionStats>
+          </StatsCard>
+        </HeaderSection>
         
-        <FilterSection>
-          <FilterLabel>Show:</FilterLabel>
-          <OwnershipToggle>
-            <OwnershipButton
-              active={ownershipFilter === 'all'}
-              onClick={() => setOwnershipFilter('all')}>
-              All Characters
-            </OwnershipButton>
-            <OwnershipButton
-              active={ownershipFilter === 'owned'}
-              onClick={() => setOwnershipFilter('owned')}
-              color="rgba(46, 204, 113, 0.8)">
-              Owned Only
-            </OwnershipButton>
-            <OwnershipButton
-              active={ownershipFilter === 'not-owned'}
-              onClick={() => setOwnershipFilter('not-owned')}
-              color="rgba(231, 76, 60, 0.8)">
-              Missing Only
-            </OwnershipButton>
-          </OwnershipToggle>
-        </FilterSection>
-        
-        <FilterSection>
-          <FilterLabel>Rarity:</FilterLabel>
-          <FilterContainer>
-            <FilterButton
-              active={rarityFilter === 'all'}
-              onClick={() => setRarityFilter('all')}>
-              All
-            </FilterButton>
-            <FilterButton
-              active={rarityFilter === 'common'}
-              onClick={() => setRarityFilter('common')}
-              color={rarityColors.common}>
-              Common
-            </FilterButton>
-            <FilterButton
-              active={rarityFilter === 'uncommon'}
-              onClick={() => setRarityFilter('uncommon')}
-              color={rarityColors.uncommon}>
-              Uncommon
-            </FilterButton>
-            <FilterButton
-              active={rarityFilter === 'rare'}
-              onClick={() => setRarityFilter('rare')}
-              color={rarityColors.rare}>
-              Rare
-            </FilterButton>
-            <FilterButton
-              active={rarityFilter === 'epic'}
-              onClick={() => setRarityFilter('epic')}
-              color={rarityColors.epic}>
-              Epic
-            </FilterButton>
-            <FilterButton
-              active={rarityFilter === 'legendary'}
-              onClick={() => setRarityFilter('legendary')}
-              color={rarityColors.legendary}>
-              Legendary
-            </FilterButton>
-          </FilterContainer>
-        </FilterSection>
-        
-        <FilterSection>
-          <FilterLabel>Series:</FilterLabel>
-          <SeriesFilterContainer>
-            <SeriesFilterButton
-              active={seriesFilter === 'all'}
-              onClick={() => setSeriesFilter('all')}>
-              All Series
-            </SeriesFilterButton>
-            {uniqueSeries.map(series => (
-              <SeriesFilterButton
-                key={series}
-                active={seriesFilter === series}
-                onClick={() => setSeriesFilter(series)}>
-                {series}
-              </SeriesFilterButton>
-            ))}
-          </SeriesFilterContainer>
-        </FilterSection>
-        
-        <SearchFilterSection>
-          <SearchInputWrapper>
-            <FaSearch />
+        {/* Search & Filter Bar */}
+        <ControlsBar>
+          <SearchWrapper>
+            <SearchIcon><FaSearch /></SearchIcon>
             <SearchInput
               type="text"
               placeholder="Search characters..."
               value={searchQuery}
               onChange={handleSearchChange}
             />
-          </SearchInputWrapper>
-          <ItemsPerPageSelect
-            value={itemsPerPage}
-            onChange={handleItemsPerPageChange}
-          >
-            <option value="20">20 per page</option>
-            <option value="40">40 per page</option>
-            <option value="60">60 per page</option>
-            <option value="100">100 per page</option>
-          </ItemsPerPageSelect>
-        </SearchFilterSection>
-      </CollectionHeader>
-      
-      {error && <ErrorMessage>{error}</ErrorMessage>}
-      
-      {loading ? (
-        <LoadingContainer>
-          <Spinner />
-          <p>Loading collection...</p>
-        </LoadingContainer>
-      ) : filteredCharacters.length === 0 ? (
-        <EmptyCollection>
-          <h3>No characters match your filters</h3>
-          <p>Try adjusting your filters to see more characters</p>
-        </EmptyCollection>
-      ) : (
-        <>
-          <ResultCount>
-            Showing {currentCharacters.length} of {filteredCharacters.length} character{filteredCharacters.length !== 1 ? 's' : ''}
-          </ResultCount>
-          <CharacterGrid>
-            {currentCharacters.map((char) => {
-              const isOwned = ownedCharIds.has(char.id);
-              const imagePath = getImagePath(char.image);
-              const isVideoMedia = isVideo(char.image);
+            {searchQuery && (
+              <ClearSearch onClick={() => setSearchQuery('')}>
+                <FaTimes />
+              </ClearSearch>
+            )}
+          </SearchWrapper>
+          
+          <ControlsRight>
+            <FilterToggle 
+              onClick={() => setShowFilters(!showFilters)}
+              active={showFilters || hasActiveFilters}
+            >
+              <FaFilter />
+              <span>Filters</span>
+              {hasActiveFilters && <FilterBadge />}
+            </FilterToggle>
+            
+            <ItemsSelect value={itemsPerPage} onChange={handleItemsPerPageChange}>
+              <option value="24">24 / page</option>
+              <option value="48">48 / page</option>
+              <option value="96">96 / page</option>
+            </ItemsSelect>
+          </ControlsRight>
+        </ControlsBar>
+        
+        {/* Filters Panel */}
+        <AnimatePresence>
+          {showFilters && (
+            <FiltersPanel
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <FilterGroup>
+                <FilterLabel>Ownership</FilterLabel>
+                <FilterOptions>
+                  {['all', 'owned', 'not-owned'].map(option => (
+                    <FilterChip 
+                      key={option}
+                      active={ownershipFilter === option}
+                      onClick={() => { setOwnershipFilter(option); setCurrentPage(1); }}
+                    >
+                      {option === 'all' ? 'All' : option === 'owned' ? 'Owned' : 'Missing'}
+                    </FilterChip>
+                  ))}
+                </FilterOptions>
+              </FilterGroup>
               
-              return (
-                <CharacterItem
-                  key={char.id}
-                  rarity={char.rarity}
-                  isOwned={isOwned}
-                  whileHover={{ y: -5, scale: 1.03 }}
-                  transition={{ type: 'spring', stiffness: 300 }}
+              <FilterGroup>
+                <FilterLabel>Rarity</FilterLabel>
+                <FilterOptions>
+                  <FilterChip 
+                    active={rarityFilter === 'all'}
+                    onClick={() => { setRarityFilter('all'); setCurrentPage(1); }}
+                  >
+                    All
+                  </FilterChip>
+                  {['common', 'uncommon', 'rare', 'epic', 'legendary'].map(rarity => (
+                    <FilterChip 
+                      key={rarity}
+                      active={rarityFilter === rarity}
+                      onClick={() => { setRarityFilter(rarity); setCurrentPage(1); }}
+                      color={getRarityColor(rarity)}
+                    >
+                      {rarity}
+                    </FilterChip>
+                  ))}
+                </FilterOptions>
+              </FilterGroup>
+              
+              {uniqueSeries.length > 0 && (
+                <FilterGroup>
+                  <FilterLabel>Series</FilterLabel>
+                  <SeriesSelect 
+                    value={seriesFilter}
+                    onChange={(e) => { setSeriesFilter(e.target.value); setCurrentPage(1); }}
+                  >
+                    <option value="all">All Series</option>
+                    {uniqueSeries.map(series => (
+                      <option key={series} value={series}>{series}</option>
+                    ))}
+                  </SeriesSelect>
+                </FilterGroup>
+              )}
+              
+              {hasActiveFilters && (
+                <ClearFiltersBtn onClick={clearFilters}>
+                  <FaTimes /> Clear Filters
+                </ClearFiltersBtn>
+              )}
+            </FiltersPanel>
+          )}
+        </AnimatePresence>
+        
+        {/* Results */}
+        {error && <ErrorMessage>{error}</ErrorMessage>}
+        
+        {loading ? (
+          <LoadingContainer>
+            <Spinner size="56px" />
+            <Text secondary>Loading collection...</Text>
+          </LoadingContainer>
+        ) : filteredCharacters.length === 0 ? (
+          <EmptyState>
+            <EmptyIcon>🔍</EmptyIcon>
+            <EmptyTitle>No characters found</EmptyTitle>
+            <EmptyText>Try adjusting your filters to see more characters</EmptyText>
+            {hasActiveFilters && (
+              <ClearFiltersBtn onClick={clearFilters} style={{ marginTop: '16px' }}>
+                <FaTimes /> Clear Filters
+              </ClearFiltersBtn>
+            )}
+          </EmptyState>
+        ) : (
+          <>
+            <ResultsInfo>
+              Showing {currentCharacters.length} of {filteredCharacters.length} characters
+            </ResultsInfo>
+            
+            <CharacterGrid
+              variants={motionVariants.staggerContainer}
+              initial="hidden"
+              animate="visible"
+            >
+              {currentCharacters.map((char) => {
+                const isOwned = ownedCharIds.has(char.id);
+                const imagePath = getImagePath(char.image);
+                const isVideoMedia = isVideo(char.image);
+                
+                return (
+                  <CharacterCard
+                    key={char.id}
+                    variants={motionVariants.staggerItem}
+                    rarity={char.rarity}
+                    isOwned={isOwned}
+                    onClick={() => openPreview({...char, isOwned, isVideo: isVideoMedia})}
+                    whileHover={{ y: -6, scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <CardImageWrapper>
+                      {isVideoMedia ? (
+                        <CardVideo
+                          src={imagePath}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                          isOwned={isOwned}
+                        />
+                      ) : (
+                        <CardImage
+                          src={imagePath}
+                          alt={char.name}
+                          isOwned={isOwned}
+                          onError={(e) => {
+                            if (!e.target.src.includes('placeholder.com')) {
+                              e.target.src = 'https://via.placeholder.com/200?text=No+Image';
+                            }
+                          }}
+                        />
+                      )}
+                      {!isOwned && (
+                        <NotOwnedOverlay>
+                          <NotOwnedLabel>Not Owned</NotOwnedLabel>
+                        </NotOwnedOverlay>
+                      )}
+                      <RarityIndicator rarity={char.rarity} />
+                    </CardImageWrapper>
+                    <CardContent>
+                      <CharName isOwned={isOwned}>{char.name}</CharName>
+                      <CharSeries isOwned={isOwned}>{char.series}</CharSeries>
+                    </CardContent>
+                  </CharacterCard>
+                );
+              })}
+            </CharacterGrid>
+            
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <Pagination>
+                <PageButton
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
                 >
-                  {!isOwned && (
-                    <NotOwnedBadge>
-                      <NotOwnedIcon>⛔</NotOwnedIcon>
-                      <span>Not Owned</span>
-                    </NotOwnedBadge>
-                  )}
-                  
-                  {isVideoMedia ? (
-                    <CharVideo
-                      src={imagePath}
-                      autoPlay
-                      loop
-                      muted
-                      playsInline
-                      onClick={() => openPreview({...char, isOwned, isVideo: true})}
-                      isOwned={isOwned}
-                      onError={(e) => {
-                        if (!e.target.src.includes('placeholder.com')) {
-                          e.target.src = 'https://via.placeholder.com/200?text=No+Image';
-                        }
-                      }}
-                    />
-                  ) : (
-                    <CharImage
-                      src={imagePath}
-                      alt={char.name}
-                      onClick={() => openPreview({...char, isOwned})}
-                      isOwned={isOwned}
-                      onError={(e) => {
-                        if (!e.target.src.includes('placeholder.com')) {
-                          e.target.src = 'https://via.placeholder.com/200?text=No+Image';
-                        }
-                      }}
-                    />
-                  )}
-                  
-                  <CharDetails isOwned={isOwned}>
-                    <CharName isOwned={isOwned}>{char.name}</CharName>
-                    <CharSeries isOwned={isOwned}>{char.series}</CharSeries>
-                    <RarityTag rarity={char.rarity}>{char.rarity}</RarityTag>
-                  </CharDetails>
-                </CharacterItem>
-              );
-            })}
-          </CharacterGrid>
-          <PaginationContainer>
-            <PaginationButton
-              onClick={() => handlePageChange(currentPage - 1)}
-              disabled={currentPage === 1}
-            >
-              Previous
-            </PaginationButton>
-            <PageInfo>
-              Page {currentPage} of {totalPages}
-            </PageInfo>
-            <PaginationButton
-              onClick={() => handlePageChange(currentPage + 1)}
-              disabled={currentPage === totalPages}
-            >
-              Next
-            </PaginationButton>
-          </PaginationContainer>
-        </>
-      )}
+                  Previous
+                </PageButton>
+                <PageInfo>
+                  Page {currentPage} of {totalPages}
+                </PageInfo>
+                <PageButton
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </PageButton>
+              </Pagination>
+            )}
+          </>
+        )}
+      </Container>
       
       <ImagePreviewModal
         isOpen={previewOpen}
@@ -360,290 +401,294 @@ const CollectionPage = () => {
         isOwned={previewChar?.isOwned}
         isVideo={previewChar?.isVideo || isVideo(previewChar?.image)}
       />
-    </CollectionContainer>
+    </StyledPageWrapper>
   );
 };
 
-// Styled Components
-const CollectionContainer = styled.div`
-  min-height: 100vh;
-  background: linear-gradient(135deg, #2c3e50 0%, #34495e 100%);
-  padding: 20px;
+// ==================== STYLED COMPONENTS ====================
+
+const StyledPageWrapper = styled(PageWrapper)`
+  padding: ${theme.spacing.xl} 0 ${theme.spacing['3xl']};
 `;
 
-const CollectionHeader = styled.div`
-  text-align: center;
-  margin-bottom: 30px;
-  color: white;
-  
-  h1 {
-    font-size: 32px;
-    margin: 0 0 20px 0;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
-  }
+// Header
+const HeaderSection = styled.div`
+  margin-bottom: ${theme.spacing.xl};
 `;
 
-const CollectionStats = styled.div`
+const HeaderContent = styled.div`
+  margin-bottom: ${theme.spacing.lg};
+`;
+
+const PageTitle = styled.h1`
+  font-size: ${theme.fontSizes['4xl']};
+  font-weight: ${theme.fontWeights.bold};
+  letter-spacing: -0.02em;
+  margin: 0 0 ${theme.spacing.xs};
+`;
+
+const PageSubtitle = styled.p`
+  font-size: ${theme.fontSizes.lg};
+  color: ${theme.colors.textSecondary};
+  margin: 0;
+`;
+
+// Stats Card
+const StatsCard = styled(Section)`
+  padding: ${theme.spacing.lg};
+`;
+
+const StatsRow = styled.div`
   display: flex;
-  flex-direction: column;
+  justify-content: center;
   align-items: center;
-  margin-bottom: 20px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 10px;
-  padding: 15px;
-  max-width: 600px;
-  margin: 0 auto 25px auto;
+  gap: ${theme.spacing.xl};
+  margin-bottom: ${theme.spacing.lg};
 `;
 
 const StatItem = styled.div`
-  margin: 5px 0;
-  width: 100%;
+  text-align: center;
 `;
 
 const StatValue = styled.div`
-  font-size: 18px;
-  font-weight: bold;
-  margin-bottom: 5px;
+  font-size: ${theme.fontSizes['2xl']};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${theme.colors.text};
 `;
 
 const StatLabel = styled.div`
-  font-size: 14px;
-  opacity: 0.8;
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  margin-top: 2px;
+`;
+
+const StatDivider = styled.div`
+  width: 1px;
+  height: 40px;
+  background: ${theme.colors.surfaceBorder};
 `;
 
 const ProgressBar = styled.div`
-  width: 100%;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
+  height: 8px;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.full};
   overflow: hidden;
-  position: relative;
-  margin-top: 5px;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, ${theme.colors.success}, #4ade80);
+  border-radius: ${theme.radius.full};
+  transition: width 0.5s ease;
+`;
+
+// Controls Bar
+const ControlsBar = styled.div`
+  display: flex;
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.md};
+  flex-wrap: wrap;
   
-  &:before {
-    content: '';
-    position: absolute;
-    top: 0;
-    left: 0;
-    height: 100%;
-    width: ${props => props.percentage}%;
-    background: linear-gradient(90deg, #4CAF50, #8BC34A);
-    transition: width 0.5s ease;
+  @media (max-width: ${theme.breakpoints.md}) {
+    flex-direction: column;
   }
 `;
 
-const ProgressText = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
+const SearchWrapper = styled.div`
+  flex: 1;
   display: flex;
   align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: bold;
-  text-shadow: 0 0 2px rgba(0, 0, 0, 0.5);
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  padding: 0 ${theme.spacing.md};
+  min-width: 250px;
 `;
 
-const FilterSection = styled.div`
-  margin-bottom: 20px;
-  background: rgba(0, 0, 0, 0.1);
-  padding: 15px;
-  border-radius: 10px;
+const SearchIcon = styled.span`
+  color: ${theme.colors.textTertiary};
+  margin-right: ${theme.spacing.sm};
+`;
+
+const SearchInput = styled.input`
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: ${theme.spacing.md} 0;
+  font-size: ${theme.fontSizes.base};
+  color: ${theme.colors.text};
+  
+  &::placeholder {
+    color: ${theme.colors.textMuted};
+  }
+  
+  &:focus {
+    outline: none;
+  }
+`;
+
+const ClearSearch = styled.button`
+  color: ${theme.colors.textTertiary};
+  padding: ${theme.spacing.xs};
+  display: flex;
+  align-items: center;
+  
+  &:hover {
+    color: ${theme.colors.text};
+  }
+`;
+
+const ControlsRight = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+`;
+
+const FilterToggle = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  background: ${props => props.active ? 'rgba(88, 86, 214, 0.15)' : theme.colors.surface};
+  border: 1px solid ${props => props.active ? theme.colors.accent : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${props => props.active ? theme.colors.accent : theme.colors.text};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  position: relative;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${theme.colors.surfaceHover};
+  }
+`;
+
+const FilterBadge = styled.span`
+  position: absolute;
+  top: -4px;
+  right: -4px;
+  width: 10px;
+  height: 10px;
+  background: ${theme.colors.primary};
+  border-radius: 50%;
+`;
+
+const ItemsSelect = styled.select`
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.sm};
+  cursor: pointer;
+  
+  option {
+    background: ${theme.colors.backgroundSecondary};
+  }
+`;
+
+// Filters Panel
+const FiltersPanel = styled(motion.div)`
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.lg};
+  margin-bottom: ${theme.spacing.lg};
+  overflow: hidden;
+`;
+
+const FilterGroup = styled.div`
+  margin-bottom: ${theme.spacing.lg};
+  
+  &:last-of-type {
+    margin-bottom: 0;
+  }
 `;
 
 const FilterLabel = styled.div`
-  font-size: 14px;
-  margin-bottom: 10px;
-  font-weight: 500;
-  color: rgba(255, 255, 255, 0.9);
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.sm};
 `;
 
-const FilterContainer = styled.div`
+const FilterOptions = styled.div`
   display: flex;
-  justify-content: center;
-  gap: 10px;
   flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
 `;
 
-const SeriesFilterContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  max-width: 800px;
-  margin: 0 auto;
-`;
-
-const OwnershipToggle = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: 10px;
-  flex-wrap: wrap;
-  margin: 0 auto;
-  max-width: 600px;
-`;
-
-const OwnershipButton = styled.button`
-  background: ${props => props.active ?
-    (props.color || 'rgba(255, 255, 255, 0.3)') :
-    'rgba(255, 255, 255, 0.05)'};
-  color: white;
-  border: 2px solid ${props => props.active ? 'white' : 'rgba(255, 255, 255, 0.2)'};
-  border-radius: 20px;
-  padding: 10px 20px;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  opacity: ${props => props.active ? 1 : 0.7};
-  flex: 1;
-  max-width: 180px;
-  font-weight: ${props => props.active ? 'bold' : 'normal'};
+const FilterChip = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${props => props.active 
+    ? props.color ? `${props.color}20` : 'rgba(88, 86, 214, 0.15)'
+    : theme.colors.glass};
+  border: 1px solid ${props => props.active 
+    ? props.color || theme.colors.accent 
+    : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  color: ${props => props.active 
+    ? props.color || theme.colors.accent 
+    : theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  text-transform: capitalize;
+  transition: all ${theme.transitions.fast};
   
   &:hover {
-    background: ${props => props.color || 'rgba(255, 255, 255, 0.1)'};
-    opacity: 1;
+    background: ${props => props.color ? `${props.color}30` : 'rgba(88, 86, 214, 0.2)'};
+    border-color: ${props => props.color || theme.colors.accent};
   }
 `;
 
-const FilterButton = styled.button`
-  background: ${props => props.active ?
-    (props.color ? props.color : 'rgba(255, 255, 255, 0.2)') :
-    'rgba(255, 255, 255, 0.05)'};
-  color: white;
-  border: 2px solid ${props => props.active ? 'white' : 'rgba(255, 255, 255, 0.2)'};
-  border-radius: 20px;
-  padding: 8px 16px;
-  font-size: 14px;
+const SeriesSelect = styled.select`
+  width: 100%;
+  max-width: 300px;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.sm};
   cursor: pointer;
-  transition: all 0.2s;
-  opacity: ${props => props.active ? 1 : 0.7};
   
-  &:hover {
-    background: ${props => props.color ? props.color : 'rgba(255, 255, 255, 0.1)'};
-    opacity: 1;
+  option {
+    background: ${theme.colors.backgroundSecondary};
   }
 `;
 
-const SeriesFilterButton = styled(FilterButton)`
-  font-size: 12px;
-  padding: 6px 12px;
-  margin-bottom: 5px;
-`;
-
-const ResultCount = styled.div`
-  text-align: center;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 20px;
-  font-size: 14px;
-`;
-
-const CharacterGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
-  gap: 20px;
-  max-width: 1200px;
-  margin: 0 auto;
-`;
-
-const rarityColors = {
-  common: '#a0a0a0',
-  uncommon: '#4caf50',
-  rare: '#2196f3',
-  epic: '#9c27b0',
-  legendary: '#ff9800'
-};
-
-const CharacterItem = styled(motion.div)`
-  background: rgba(255, 255, 255, ${props => props.isOwned ? 0.9 : 0.5});
-  border-radius: 12px;
-  overflow: hidden;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.2);
-  border-bottom: 3px solid ${props => rarityColors[props.rarity] || rarityColors.common};
-  transition: transform 0.3s;
-  position: relative;
-`;
-
-const NotOwnedBadge = styled.div`
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  background: rgba(0, 0, 0, 0.7);
-  color: white;
-  padding: 6px 0;
-  font-size: 12px;
-  text-align: center;
-  z-index: 2;
-  display: flex;
+const ClearFiltersBtn = styled.button`
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
-  gap: 6px;
-`;
-
-const NotOwnedIcon = styled.span`
-  font-size: 14px;
-`;
-
-const CharImage = styled.img`
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  cursor: pointer;
-  transition: transform 0.2s ease, filter 0.3s ease;
-  filter: ${props => props.isOwned ? 'none' : 'grayscale(80%)'};
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: ${theme.radius.full};
+  color: ${theme.colors.error};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  transition: all ${theme.transitions.fast};
   
   &:hover {
-    transform: scale(1.05);
-    filter: ${props => props.isOwned ? 'none' : 'grayscale(40%)'};
+    background: rgba(255, 59, 48, 0.2);
   }
 `;
 
-const CharVideo = styled.video`
-  width: 100%;
-  height: 200px;
-  object-fit: cover;
-  cursor: pointer;
-  transition: transform 0.2s ease, filter 0.3s ease;
-  filter: ${props => props.isOwned ? 'none' : 'grayscale(80%)'};
-  
-  &:hover {
-    transform: scale(1.05);
-    filter: ${props => props.isOwned ? 'none' : 'grayscale(40%)'};
-  }
+// Results
+const ResultsInfo = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textTertiary};
+  margin-bottom: ${theme.spacing.lg};
 `;
 
-const CharDetails = styled.div`
-  padding: 15px;
-  position: relative;
-  opacity: ${props => props.isOwned ? 1 : 0.8};
-`;
-
-const CharName = styled.h3`
-  margin: 0 0 5px 0;
-  font-size: 18px;
-  color: ${props => props.isOwned ? '#333' : '#555'};
-`;
-
-const CharSeries = styled.p`
-  margin: 0;
-  font-size: 14px;
-  color: ${props => props.isOwned ? '#777' : '#999'};
-  font-style: italic;
-`;
-
-const RarityTag = styled.span`
-  position: absolute;
-  top: -12px;
-  right: 10px;
-  background: ${props => rarityColors[props.rarity] || rarityColors.common};
-  color: white;
-  font-size: 10px;
-  padding: 3px 8px;
-  border-radius: 10px;
-  text-transform: uppercase;
-  font-weight: bold;
+const ErrorMessage = styled.div`
+  background: rgba(255, 59, 48, 0.15);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: ${theme.colors.error};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  border-radius: ${theme.radius.lg};
+  margin-bottom: ${theme.spacing.lg};
+  text-align: center;
 `;
 
 const LoadingContainer = styled.div`
@@ -651,151 +696,166 @@ const LoadingContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  height: 300px;
-  
-  p {
-    margin-top: 20px;
-    color: white;
-    font-size: 18px;
-  }
+  padding: ${theme.spacing['3xl']};
+  gap: ${theme.spacing.lg};
 `;
 
-const Spinner = styled.div`
-  width: 50px;
-  height: 50px;
-  border: 5px solid rgba(255, 255, 255, 0.2);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 1s linear infinite;
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-`;
-
-const EmptyCollection = styled.div`
+const EmptyState = styled.div`
   text-align: center;
-  background: rgba(255, 255, 255, 0.1);
-  padding: 40px;
-  border-radius: 16px;
-  color: white;
-  max-width: 600px;
-  margin: 80px auto;
+  padding: ${theme.spacing['3xl']};
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+`;
+
+const EmptyIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const EmptyTitle = styled.h3`
+  font-size: ${theme.fontSizes.xl};
+  font-weight: ${theme.fontWeights.semibold};
+  margin: 0 0 ${theme.spacing.xs};
+`;
+
+const EmptyText = styled.p`
+  font-size: ${theme.fontSizes.base};
+  color: ${theme.colors.textSecondary};
+  margin: 0;
+`;
+
+// Character Grid
+const CharacterGrid = styled(motion.div)`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: ${theme.spacing.md};
   
-  h3 {
-    font-size: 24px;
-    margin: 0 0 10px 0;
-  }
-  
-  p {
-    margin: 0;
-    opacity: 0.8;
+  @media (min-width: ${theme.breakpoints.lg}) {
+    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
   }
 `;
 
-const ErrorMessage = styled.div`
-  background: rgba(220, 53, 69, 0.9);
-  color: white;
-  padding: 15px;
-  border-radius: 8px;
-  margin: 20px auto;
-  max-width: 600px;
-  text-align: center;
-`;
+const CharacterCard = styled(motion.div)`
+  background: ${theme.colors.surface};
+  border-radius: ${theme.radius.xl};
+  overflow: hidden;
+  cursor: pointer;
+  border: 1px solid ${props => props.isOwned 
+    ? theme.colors.surfaceBorder 
+    : 'rgba(255, 255, 255, 0.03)'};
+  transition: all ${theme.transitions.fast};
   
-const SearchFilterSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin: 20px 0;
-  background: rgba(0, 0, 0, 0.1);
-  border-radius: 10px;
-  padding: 15px;
-  
-  @media (min-width: 768px) {
-    flex-direction: row;
-    align-items: center;
-    justify-content: space-between;
+  &:hover {
+    border-color: ${props => getRarityColor(props.rarity)};
+    box-shadow: ${props => getRarityGlow(props.rarity)};
   }
 `;
+
+const CardImageWrapper = styled.div`
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+`;
+
+const CardImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: ${props => props.isOwned ? 'none' : 'grayscale(70%) brightness(0.6)'};
+  transition: all ${theme.transitions.slow};
   
-const SearchInputWrapper = styled.div`
+  ${CharacterCard}:hover & {
+    transform: scale(1.05);
+    filter: ${props => props.isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
+  }
+`;
+
+const CardVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  filter: ${props => props.isOwned ? 'none' : 'grayscale(70%) brightness(0.6)'};
+  transition: filter ${theme.transitions.slow};
+  
+  ${CharacterCard}:hover & {
+    filter: ${props => props.isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
+  }
+`;
+
+const NotOwnedOverlay = styled.div`
+  position: absolute;
+  inset: 0;
   display: flex;
   align-items: center;
-  background: rgba(255, 255, 255, 0.9);
-  border-radius: 25px;
-  padding: 8px 15px;
-  flex-grow: 1;
-  max-width: 500px;
-  margin: 0 auto;
-  width: 100%;
-  
-  svg {
-    color: #555;
-    margin-right: 8px;
-  }
-  
-  @media (min-width: 768px) {
-    margin: 0;
-  }
+  justify-content: center;
 `;
-  
-const SearchInput = styled.input`
-  background: transparent;
-  border: none;
-  outline: none;
-  color: #333;
-  font-size: 16px;
-  width: 100%;
-  padding: 5px 0;
-  
-  &::placeholder {
-    color: #999;
-  }
+
+const NotOwnedLabel = styled.div`
+  background: rgba(0, 0, 0, 0.7);
+  backdrop-filter: blur(4px);
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.medium};
+  color: white;
 `;
-  
-const ItemsPerPageSelect = styled.select`
-  padding: 10px 15px;
-  border-radius: 25px;
-  border: none;
-  background: rgba(255, 255, 255, 0.9);
-  color: #333;
-  font-size: 14px;
-  font-weight: 500;
-  cursor: pointer;
-  max-width: 200px;
-  margin: 0 auto;
-  width: 100%;
-  
-  @media (min-width: 768px) {
-    margin: 0;
-    width: auto;
-  }
+
+const RarityIndicator = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: ${props => getRarityColor(props.rarity)};
 `;
-  
-const PaginationContainer = styled.div`
+
+const CardContent = styled.div`
+  padding: ${theme.spacing.md};
+`;
+
+const CharName = styled.h3`
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${props => props.isOwned ? theme.colors.text : theme.colors.textSecondary};
+  margin: 0 0 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const CharSeries = styled.p`
+  font-size: ${theme.fontSizes.xs};
+  color: ${props => props.isOwned ? theme.colors.textSecondary : theme.colors.textMuted};
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+// Pagination
+const Pagination = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
-  gap: 15px;
-  margin: 30px 0;
+  gap: ${theme.spacing.md};
+  margin-top: ${theme.spacing.xl};
   flex-wrap: wrap;
 `;
-  
-const PaginationButton = styled.button`
-  padding: 10px 20px;
-  background: rgba(255, 255, 255, 0.1);
-  color: white;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 25px;
-  cursor: pointer;
-  transition: all 0.2s;
-  font-size: 14px;
-  font-weight: 500;
+
+const PageButton = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  transition: all ${theme.transitions.fast};
   
   &:hover:not(:disabled) {
-    background: rgba(255, 255, 255, 0.2);
-    transform: translateY(-2px);
+    background: ${theme.colors.surfaceHover};
+    transform: translateY(-1px);
   }
   
   &:disabled {
@@ -803,12 +863,12 @@ const PaginationButton = styled.button`
     cursor: not-allowed;
   }
 `;
-  
+
 const PageInfo = styled.span`
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
   min-width: 120px;
   text-align: center;
 `;
-  
+
 export default CollectionPage;

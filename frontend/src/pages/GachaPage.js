@@ -1,8 +1,8 @@
 import React, { useState, useContext, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdReplay, MdCheckCircle, MdFastForward, MdHelp } from 'react-icons/md';
-import { FaGem, FaDice, FaTrophy, FaArrowRight, FaStar } from 'react-icons/fa';
+import { MdClose, MdFastForward, MdHelpOutline, MdRefresh } from 'react-icons/md';
+import { FaGem, FaDice, FaTrophy, FaStar, FaChevronRight } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 
@@ -10,17 +10,32 @@ import confetti from 'canvas-confetti';
 import api, { rollCharacter, getActiveBanners, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 
-// Shared Components
-import { 
-  theme, 
-  rarityColors,
-  cardVariants,
-  cardVariantsFast,
-  containerVariants,
-  modalVariants,
-  overlayVariants,
-  gridItemVariants
-} from '../components/Gacha';
+// Design System
+import {
+  theme,
+  PageWrapper,
+  Container,
+  GlassCard,
+  Section,
+  Heading2,
+  Text,
+  PrimaryButton,
+  SecondaryButton,
+  IconButton,
+  Chip,
+  RarityBadge,
+  Spinner,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Alert,
+  Flex,
+  motionVariants,
+  getRarityColor,
+  getRarityGlow,
+  scrollbarStyles
+} from '../styles/DesignSystem';
 
 import { MultiPullMenu } from '../components/Gacha/MultiPullMenu';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
@@ -88,7 +103,6 @@ const GachaPage = () => {
   };
   
   const currentMultiPullCost = calculateMultiPullCost(multiPullCount);
-  const currentCardVariants = skipAnimations ? cardVariantsFast : cardVariants;
   
   // Effects
   useEffect(() => { refreshUser(); }, [refreshUser]);
@@ -115,7 +129,7 @@ const GachaPage = () => {
         particleCount: rarity === 'legendary' ? 200 : 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: [rarityColors[rarity], '#ffffff', '#ffd700']
+        colors: [getRarityColor(rarity), '#ffffff', '#ffd700']
       });
     }
   }, []);
@@ -215,55 +229,74 @@ const GachaPage = () => {
   };
   
   return (
-    <PageWrapper>
+    <StyledPageWrapper>
       <Container>
-        {/* Header */}
-        <Header>
-          <Logo>
-            <span>Gacha</span>
-            <LogoHighlight>Master</LogoHighlight>
-          </Logo>
-          <HeaderStats>
-            <StatChip><FaDice /> {rollCount} Rolls</StatChip>
-            <PointsChip>🪙 {user?.points || 0}</PointsChip>
-            <IconBtn onClick={() => setShowHelpModal(true)}><MdHelp /></IconBtn>
-          </HeaderStats>
-        </Header>
+        {/* Hero Section */}
+        <HeroSection>
+          <HeroContent>
+            <LogoText>
+              Gacha<LogoAccent>Master</LogoAccent>
+            </LogoText>
+            <HeroSubtitle>Discover rare characters. Build your collection.</HeroSubtitle>
+          </HeroContent>
+          <HeaderControls>
+            <StatsRow>
+              <StatPill>
+                <span>🎲</span>
+                <span>{rollCount} pulls</span>
+              </StatPill>
+              <PointsPill>
+                <span>🪙</span>
+                <span>{user?.points || 0}</span>
+              </PointsPill>
+            </StatsRow>
+            <IconButton 
+              onClick={() => setShowHelpModal(true)}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <MdHelpOutline />
+            </IconButton>
+          </HeaderControls>
+        </HeroSection>
         
         {/* Error Alert */}
         <AnimatePresence>
           {error && (
-            <ErrorAlert
+            <Alert
+              variant="error"
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
+              style={{ marginBottom: '24px' }}
             >
               <span>{error}</span>
-              <CloseBtn onClick={() => setError(null)}>×</CloseBtn>
-            </ErrorAlert>
+              <CloseAlertBtn onClick={() => setError(null)}>
+                <MdClose />
+              </CloseAlertBtn>
+            </Alert>
           )}
         </AnimatePresence>
         
         {/* Main Content */}
-        <MainGrid>
+        <MainLayout>
           {/* Gacha Section */}
-          <GachaSection>
+          <GachaContainer>
             <SectionHeader>
-              <SectionIcon>🎲</SectionIcon>
-              <SectionTitle>Standard Gacha</SectionTitle>
-            </SectionHeader>
-            
-            {/* Rarity History */}
-            {lastRarities.length > 0 && (
-              <RarityTracker>
-                <TrackerLabel>Recent:</TrackerLabel>
-                <RarityBubbles>
+              <SectionTitle>
+                <span>✨</span>
+                Standard Gacha
+              </SectionTitle>
+              {lastRarities.length > 0 && (
+                <RarityHistory>
                   {lastRarities.map((rarity, i) => (
-                    <RarityDot key={i} rarity={rarity}>{rarityIcons[rarity]}</RarityDot>
+                    <RarityDot key={i} rarity={rarity} style={{ animationDelay: `${i * 0.1}s` }}>
+                      {rarityIcons[rarity]}
+                    </RarityDot>
                   ))}
-                </RarityBubbles>
-              </RarityTracker>
-            )}
+                </RarityHistory>
+              )}
+            </SectionHeader>
             
             {/* Results Display */}
             <ResultsArea>
@@ -271,111 +304,160 @@ const GachaPage = () => {
                 {showCard && !showMultiResults ? (
                   <CharacterCard
                     key="char"
-                    variants={currentCardVariants}
+                    variants={motionVariants.card}
                     initial="hidden"
                     animate="visible"
                     exit="exit"
                     rarity={currentChar?.rarity}
                   >
-                    <CardMedia onClick={() => openPreview({...currentChar, isVideo: isVideo(currentChar.image)})}>
+                    <CardImageWrapper onClick={() => openPreview({...currentChar, isVideo: isVideo(currentChar.image)})}>
                       <RarityGlow rarity={currentChar?.rarity} />
-                      <CollectedTag>✓ Collected</CollectedTag>
                       {isVideo(currentChar?.image) ? (
                         <CardVideo src={getImagePath(currentChar?.image)} autoPlay loop muted playsInline />
                       ) : (
                         <CardImage src={getImagePath(currentChar?.image)} alt={currentChar?.name} />
                       )}
-                      <ZoomHint>🔍</ZoomHint>
-                    </CardMedia>
-                    <CardInfo>
-                      <CharName>{currentChar?.name}</CharName>
-                      <CharSeries>{currentChar?.series}</CharSeries>
+                      <CardOverlay>
+                        <span>🔍 View</span>
+                      </CardOverlay>
+                      <CollectedBadge>✓ Collected</CollectedBadge>
+                    </CardImageWrapper>
+                    <CardContent>
+                      <CardMeta>
+                        <CharName>{currentChar?.name}</CharName>
+                        <CharSeries>{currentChar?.series}</CharSeries>
+                      </CardMeta>
                       <RarityBadge rarity={currentChar?.rarity}>
                         {rarityIcons[currentChar?.rarity]} {currentChar?.rarity}
                       </RarityBadge>
-                    </CardInfo>
+                    </CardContent>
                     <CardActions>
-                      <ActionBtn disabled><MdCheckCircle /> Collected</ActionBtn>
-                      <ActionBtn primary onClick={handleRoll} disabled={isRolling || user?.points < SINGLE_PULL_COST}>
-                        <MdReplay /> Roll Again
-                      </ActionBtn>
+                      <RollAgainBtn 
+                        onClick={handleRoll} 
+                        disabled={isRolling || user?.points < SINGLE_PULL_COST}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <MdRefresh /> Roll Again
+                      </RollAgainBtn>
                     </CardActions>
                   </CharacterCard>
                   
                 ) : showMultiResults ? (
-                  <MultiResultsPanel
+                  <MultiResultsContainer
                     key="multi"
-                    variants={containerVariants}
+                    variants={motionVariants.scaleIn}
                     initial="hidden"
                     animate="visible"
                     exit="exit"
                   >
-                    <MultiHeader>
+                    <MultiResultsHeader>
                       <h2>{multiRollResults.length}× Pull Results</h2>
-                      <CloseMultiBtn onClick={() => setShowMultiResults(false)}>×</CloseMultiBtn>
-                    </MultiHeader>
-                    <MultiGrid>
+                      <IconButton onClick={() => setShowMultiResults(false)}>
+                        <MdClose />
+                      </IconButton>
+                    </MultiResultsHeader>
+                    <MultiResultsGrid>
                       {multiRollResults.map((char, i) => (
                         <MiniCard
                           key={i}
+                          variants={motionVariants.staggerItem}
                           custom={i}
-                          variants={gridItemVariants}
-                          initial="hidden"
-                          animate="visible"
-                          whileHover="hover"
+                          whileHover={{ y: -4, scale: 1.02 }}
                           rarity={char.rarity}
                           onClick={() => openPreview({...char, isVideo: isVideo(char.image)})}
                         >
-                          <MiniMedia>
+                          <MiniCardImage>
                             {isVideo(char.image) ? (
                               <video src={getImagePath(char.image)} autoPlay loop muted playsInline />
                             ) : (
                               <img src={getImagePath(char.image)} alt={char.name} />
                             )}
                             <MiniCollected>✓</MiniCollected>
-                          </MiniMedia>
-                          <MiniInfo>
+                          </MiniCardImage>
+                          <MiniCardInfo>
                             <MiniName>{char.name}</MiniName>
-                            <MiniRarity rarity={char.rarity}>{rarityIcons[char.rarity]}</MiniRarity>
-                          </MiniInfo>
+                            <MiniRarityDot rarity={char.rarity}>{rarityIcons[char.rarity]}</MiniRarityDot>
+                          </MiniCardInfo>
                         </MiniCard>
                       ))}
-                    </MultiGrid>
-                  </MultiResultsPanel>
+                    </MultiResultsGrid>
+                  </MultiResultsContainer>
                   
                 ) : isRolling ? (
-                  <LoadingState key="loading" variants={containerVariants} initial="hidden" animate="visible" exit="exit">
-                    <Spinner />
+                  <LoadingState 
+                    key="loading" 
+                    variants={motionVariants.fadeIn}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                  >
+                    <Spinner size="56px" />
                     <LoadingText>Summoning...</LoadingText>
                   </LoadingState>
                   
                 ) : (
-                  <EmptyState key="empty" variants={containerVariants} initial="hidden" animate="visible" exit="exit">
+                  <EmptyState 
+                    key="empty"
+                    variants={motionVariants.slideUp}
+                    initial="hidden"
+                    animate="visible"
+                    exit="exit"
+                  >
                     <EmptyIcon>✨</EmptyIcon>
-                    <h3>Roll to Discover Characters!</h3>
-                    <p>Try your luck and build your collection</p>
+                    <EmptyTitle>Ready to Roll?</EmptyTitle>
+                    <EmptyText>Try your luck and discover rare characters</EmptyText>
                   </EmptyState>
                 )}
               </AnimatePresence>
             </ResultsArea>
             
             {/* Roll Controls */}
-            <RollControls>
-              <RollButton onClick={handleRoll} disabled={isRolling || user?.points < SINGLE_PULL_COST} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                {isRolling ? "Summoning..." : <>💫 Single Pull <Cost>(100 pts)</Cost></>}
-              </RollButton>
-              <MultiRollButton onClick={() => setMultiPullMenuOpen(true)} disabled={isRolling || user?.points < SINGLE_PULL_COST} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-                {isRolling ? "Summoning..." : <>🎯 Multi Pull <Cost>({multiPullCount}×)</Cost></>}
-              </MultiRollButton>
-            </RollControls>
-            
-            <RollHint>
-              You can make up to <strong>{Math.floor((user?.points || 0) / SINGLE_PULL_COST)}</strong> pulls
-            </RollHint>
-            
-            <FastModeBtn onClick={() => setSkipAnimations(!skipAnimations)} active={skipAnimations}>
-              <MdFastForward /> {skipAnimations ? 'Fast Mode On' : 'Enable Fast Mode'}
-            </FastModeBtn>
+            <ControlsSection>
+              <ButtonRow>
+                <PrimaryRollButton 
+                  onClick={handleRoll} 
+                  disabled={isRolling || user?.points < SINGLE_PULL_COST}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {isRolling ? "Summoning..." : (
+                    <>
+                      <span>💫</span>
+                      <span>Single Pull</span>
+                      <CostLabel>100 pts</CostLabel>
+                    </>
+                  )}
+                </PrimaryRollButton>
+                <SecondaryRollButton 
+                  onClick={() => setMultiPullMenuOpen(true)} 
+                  disabled={isRolling || user?.points < SINGLE_PULL_COST}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {isRolling ? "Summoning..." : (
+                    <>
+                      <span>🎯</span>
+                      <span>Multi Pull</span>
+                      <CostLabel>{multiPullCount}×</CostLabel>
+                    </>
+                  )}
+                </SecondaryRollButton>
+              </ButtonRow>
+              
+              <ControlsFooter>
+                <PullHint>
+                  Up to <strong>{Math.floor((user?.points || 0) / SINGLE_PULL_COST)}</strong> pulls available
+                </PullHint>
+                <FastModeToggle 
+                  active={skipAnimations}
+                  onClick={() => setSkipAnimations(!skipAnimations)}
+                >
+                  <MdFastForward />
+                  {skipAnimations ? 'Fast Mode' : 'Normal'}
+                </FastModeToggle>
+              </ControlsFooter>
+            </ControlsSection>
             
             <MultiPullMenu
               isOpen={multiPullMenuOpen}
@@ -388,13 +470,15 @@ const GachaPage = () => {
               userPoints={user?.points || 0}
               singlePullCost={SINGLE_PULL_COST}
             />
-          </GachaSection>
+          </GachaContainer>
           
-          {/* Banners Section */}
-          <BannersSection>
+          {/* Banners Sidebar */}
+          <BannersSidebar>
             <SectionHeader>
-              <SectionIcon>🏆</SectionIcon>
-              <SectionTitle>Special Banners</SectionTitle>
+              <SectionTitle>
+                <span>🏆</span>
+                Special Banners
+              </SectionTitle>
             </SectionHeader>
             
             {banners.length > 0 ? (
@@ -404,25 +488,33 @@ const GachaPage = () => {
                     key={banner.id}
                     featured={banner.featured}
                     onClick={() => navigate(`/banner/${banner.id}`)}
-                    whileHover={{ y: -4 }}
+                    whileHover={{ y: -4, scale: 1.01 }}
+                    whileTap={{ scale: 0.99 }}
                   >
-                    <BannerImage src={getBannerImage(banner.image)} alt={banner.name} />
-                    <BannerInfo>
-                      <BannerName>{banner.name}</BannerName>
-                      <BannerSeries>{banner.series}</BannerSeries>
-                      {banner.endDate && <BannerDate>Ends: {new Date(banner.endDate).toLocaleDateString()}</BannerDate>}
-                      <BannerCost>{Math.floor(100 * (banner.costMultiplier || 1.5))} pts/pull</BannerCost>
-                      <ViewBannerBtn>Roll on Banner <FaArrowRight /></ViewBannerBtn>
-                    </BannerInfo>
-                    {banner.featured && <FeaturedTag>Featured</FeaturedTag>}
+                    <BannerImageWrapper>
+                      <BannerImage src={getBannerImage(banner.image)} alt={banner.name} />
+                      {banner.featured && <FeaturedBadge>Featured</FeaturedBadge>}
+                    </BannerImageWrapper>
+                    <BannerContent>
+                      <BannerMeta>
+                        <BannerName>{banner.name}</BannerName>
+                        <BannerSeries>{banner.series}</BannerSeries>
+                      </BannerMeta>
+                      <BannerFooter>
+                        <BannerCost>{Math.floor(100 * (banner.costMultiplier || 1.5))} pts</BannerCost>
+                        <BannerArrow><FaChevronRight /></BannerArrow>
+                      </BannerFooter>
+                    </BannerContent>
                   </BannerCard>
                 ))}
               </BannersList>
             ) : (
-              <NoBanners>No special banners available</NoBanners>
+              <NoBannersMessage>
+                <Text secondary>No special banners available</Text>
+              </NoBannersMessage>
             )}
-          </BannersSection>
-        </MainGrid>
+          </BannersSidebar>
+        </MainLayout>
       </Container>
       
       {/* Modals */}
@@ -439,240 +531,209 @@ const GachaPage = () => {
       
       <AnimatePresence>
         {showHelpModal && (
-          <ModalBackdrop variants={overlayVariants} initial="hidden" animate="visible" exit="exit" onClick={() => setShowHelpModal(false)}>
-            <HelpModal variants={modalVariants} onClick={e => e.stopPropagation()}>
-              <ModalHeader><h2>How to Play</h2><CloseBtn onClick={() => setShowHelpModal(false)}>×</CloseBtn></ModalHeader>
-              <ModalContent>
+          <ModalOverlay 
+            variants={motionVariants.overlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={() => setShowHelpModal(false)}
+          >
+            <HelpModalContent
+              variants={motionVariants.modal}
+              onClick={e => e.stopPropagation()}
+            >
+              <ModalHeader>
+                <Heading2>How to Play</Heading2>
+                <IconButton onClick={() => setShowHelpModal(false)}>
+                  <MdClose />
+                </IconButton>
+              </ModalHeader>
+              <ModalBody>
                 <HelpSection>
-                  <h3>Getting Started</h3>
-                  <ul>
+                  <HelpTitle>Getting Started</HelpTitle>
+                  <HelpList>
                     <li>Single Pull costs 100 points</li>
                     <li>Multi Pulls: 5% off for 5+, 10% off for 10+</li>
                     <li>Special banners have unique characters</li>
-                  </ul>
+                  </HelpList>
                 </HelpSection>
                 <HelpSection>
-                  <h3>Rarities</h3>
-                  <RarityList>
-                    {Object.entries(rarityColors).map(([r, c]) => (
-                      <RarityItem key={r}><RarityDot rarity={r}>{rarityIcons[r]}</RarityDot>{r}</RarityItem>
+                  <HelpTitle>Rarities</HelpTitle>
+                  <RarityGuide>
+                    {Object.entries(theme.colors.rarity).map(([rarity, color]) => (
+                      <RarityGuideItem key={rarity}>
+                        <RarityDot rarity={rarity}>{rarityIcons[rarity]}</RarityDot>
+                        <span>{rarity}</span>
+                      </RarityGuideItem>
                     ))}
-                  </RarityList>
+                  </RarityGuide>
                 </HelpSection>
-              </ModalContent>
-            </HelpModal>
-          </ModalBackdrop>
+              </ModalBody>
+            </HelpModalContent>
+          </ModalOverlay>
         )}
       </AnimatePresence>
-    </PageWrapper>
+    </StyledPageWrapper>
   );
 };
 
 // ==================== STYLED COMPONENTS ====================
 
-const PageWrapper = styled.div`
-  min-height: 100vh;
-  background: linear-gradient(135deg, #0f0c29 0%, #302b63 50%, #24243e 100%);
-  color: white;
-  
-  &::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background: radial-gradient(ellipse at 20% 0%, rgba(110, 72, 170, 0.15), transparent 50%),
-                radial-gradient(ellipse at 80% 100%, rgba(158, 85, 148, 0.1), transparent 50%);
-    pointer-events: none;
-  }
+const StyledPageWrapper = styled(PageWrapper)`
+  padding-bottom: ${theme.spacing['3xl']};
 `;
 
-const Container = styled.div`
-  max-width: 1400px;
-  margin: 0 auto;
-  padding: 20px;
-  position: relative;
-  z-index: 1;
-`;
-
-const Header = styled.header`
+// Hero
+const HeroSection = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 24px;
-  background: rgba(15, 23, 42, 0.8);
-  backdrop-filter: blur(12px);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 24px;
+  padding: ${theme.spacing.xl} 0;
+  gap: ${theme.spacing.lg};
   
-  @media (max-width: 768px) {
+  @media (max-width: ${theme.breakpoints.md}) {
     flex-direction: column;
-    gap: 16px;
+    text-align: center;
   }
 `;
 
-const Logo = styled.div`
-  font-size: 28px;
-  font-weight: 800;
-  display: flex;
-  gap: 8px;
+const HeroContent = styled.div``;
+
+const LogoText = styled.h1`
+  font-size: ${theme.fontSizes.hero};
+  font-weight: ${theme.fontWeights.bold};
+  letter-spacing: -0.03em;
+  margin: 0;
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    font-size: ${theme.fontSizes['4xl']};
+  }
 `;
 
-const LogoHighlight = styled.span`
-  background: linear-gradient(135deg, #667eea, #764ba2);
+const LogoAccent = styled.span`
+  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
+  background-clip: text;
 `;
 
-const HeaderStats = styled.div`
+const HeroSubtitle = styled.p`
+  font-size: ${theme.fontSizes.lg};
+  color: ${theme.colors.textSecondary};
+  margin: ${theme.spacing.sm} 0 0;
+`;
+
+const HeaderControls = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: ${theme.spacing.md};
 `;
 
-const StatChip = styled.div`
+const StatsRow = styled.div`
   display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 8px 16px;
-  border-radius: 99px;
-  font-size: 14px;
-  font-weight: 500;
+  gap: ${theme.spacing.sm};
 `;
 
-const PointsChip = styled(StatChip)`
-  background: linear-gradient(135deg, #6e48aa, #9e5594);
-  font-weight: 700;
+const StatPill = styled(Chip)`
+  font-size: ${theme.fontSizes.sm};
 `;
 
-const IconBtn = styled.button`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+const PointsPill = styled(StatPill)`
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  border-color: transparent;
   color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  transition: all 0.2s;
-  
-  &:hover { background: rgba(255, 255, 255, 0.1); }
+  font-weight: ${theme.fontWeights.semibold};
 `;
 
-const ErrorAlert = styled(motion.div)`
-  background: linear-gradient(135deg, #e53935, #c62828);
-  padding: 14px 20px;
-  border-radius: 12px;
-  margin-bottom: 20px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const CloseBtn = styled.button`
-  background: rgba(255, 255, 255, 0.2);
+const CloseAlertBtn = styled.button`
+  background: none;
   border: none;
-  color: white;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  color: inherit;
   cursor: pointer;
-  font-size: 16px;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
 `;
 
-const MainGrid = styled.div`
+// Main Layout
+const MainLayout = styled.div`
   display: grid;
-  grid-template-columns: 1fr 380px;
-  gap: 24px;
+  grid-template-columns: 1fr 360px;
+  gap: ${theme.spacing.xl};
   
-  @media (max-width: 1100px) {
+  @media (max-width: ${theme.breakpoints.lg}) {
     grid-template-columns: 1fr;
   }
 `;
 
-const GachaSection = styled.section`
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(12px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 28px;
-`;
+// Gacha Container
+const GachaContainer = styled(Section)``;
 
 const SectionHeader = styled.div`
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  gap: 12px;
-  margin-bottom: 24px;
-`;
-
-const SectionIcon = styled.span`
-  font-size: 28px;
+  margin-bottom: ${theme.spacing.lg};
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
 `;
 
 const SectionTitle = styled.h2`
-  margin: 0;
-  font-size: 22px;
-  font-weight: 700;
-`;
-
-const RarityTracker = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
-  background: rgba(0, 0, 0, 0.2);
-  padding: 12px 20px;
-  border-radius: 99px;
-  margin-bottom: 20px;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.xl};
+  font-weight: ${theme.fontWeights.semibold};
+  margin: 0;
 `;
 
-const TrackerLabel = styled.span`
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 14px;
-`;
-
-const RarityBubbles = styled.div`
+const RarityHistory = styled.div`
   display: flex;
-  gap: 8px;
+  gap: ${theme.spacing.xs};
 `;
 
-const RarityDot = styled(motion.div)`
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: ${p => rarityColors[p.rarity] || '#555'};
+const RarityDot = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: ${theme.radius.full};
+  background: ${props => getRarityColor(props.rarity)};
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 14px;
-  box-shadow: 0 2px 10px ${p => rarityColors[p.rarity]}60;
+  font-size: 12px;
+  box-shadow: ${props => getRarityGlow(props.rarity)};
+  animation: fadeIn 0.3s ease-out backwards;
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: scale(0.8); }
+    to { opacity: 1; transform: scale(1); }
+  }
 `;
 
+// Results Area
 const ResultsArea = styled.div`
-  min-height: 400px;
+  min-height: 420px;
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 28px;
+  margin-bottom: ${theme.spacing.xl};
 `;
 
 // Character Card
 const CharacterCard = styled(motion.div)`
-  background: white;
-  border-radius: 16px;
+  background: ${theme.colors.backgroundSecondary};
+  border-radius: ${theme.radius.xl};
   overflow: hidden;
   width: 100%;
   max-width: 340px;
-  border: 3px solid ${p => rarityColors[p.rarity] || '#ccc'};
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 0 30px ${p => rarityColors[p.rarity]}40;
+  border: 2px solid ${props => getRarityColor(props.rarity)};
+  box-shadow: ${props => getRarityGlow(props.rarity)}, ${theme.shadows.lg};
 `;
 
-const CardMedia = styled.div`
+const CardImageWrapper = styled.div`
   position: relative;
-  height: 280px;
+  height: 300px;
   cursor: pointer;
   overflow: hidden;
 `;
@@ -680,7 +741,7 @@ const CardMedia = styled.div`
 const RarityGlow = styled.div`
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 100%, ${p => rarityColors[p.rarity]}50 0%, transparent 70%);
+  background: radial-gradient(circle at 50% 100%, ${props => getRarityColor(props.rarity)}40 0%, transparent 70%);
   pointer-events: none;
   z-index: 1;
 `;
@@ -689,8 +750,11 @@ const CardImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s;
-  &:hover { transform: scale(1.05); }
+  transition: transform ${theme.transitions.slow};
+  
+  ${CardImageWrapper}:hover & {
+    transform: scale(1.05);
+  }
 `;
 
 const CardVideo = styled.video`
@@ -699,468 +763,490 @@ const CardVideo = styled.video`
   object-fit: cover;
 `;
 
-const CollectedTag = styled.div`
+const CardOverlay = styled.div`
   position: absolute;
-  top: 12px;
-  left: 12px;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 99px;
-  font-size: 12px;
-  font-weight: 700;
-  z-index: 5;
-`;
-
-const ZoomHint = styled.div`
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  background: rgba(0, 0, 0, 0.5);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 5;
   opacity: 0;
-  transition: opacity 0.2s;
-  ${CardMedia}:hover & { opacity: 1; }
+  transition: opacity ${theme.transitions.fast};
+  z-index: 2;
+  
+  span {
+    background: ${theme.colors.glass};
+    backdrop-filter: blur(${theme.blur.sm});
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+    border-radius: ${theme.radius.full};
+    font-size: ${theme.fontSizes.sm};
+    font-weight: ${theme.fontWeights.medium};
+  }
+  
+  ${CardImageWrapper}:hover & {
+    opacity: 1;
+  }
 `;
 
-const CardInfo = styled.div`
-  padding: 16px;
-  position: relative;
-  background: linear-gradient(to bottom, white, #fafafa);
+const CollectedBadge = styled.div`
+  position: absolute;
+  top: ${theme.spacing.md};
+  left: ${theme.spacing.md};
+  background: ${theme.colors.success};
+  color: white;
+  padding: 6px 12px;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  z-index: 3;
 `;
 
-const CharName = styled.h2`
+const CardContent = styled.div`
+  padding: ${theme.spacing.lg};
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: ${theme.spacing.md};
+`;
+
+const CardMeta = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const CharName = styled.h3`
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
   margin: 0 0 4px;
-  font-size: 20px;
-  color: #1a1a2e;
-  font-weight: 800;
+  color: ${theme.colors.text};
 `;
 
 const CharSeries = styled.p`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
   margin: 0;
-  color: #666;
-  font-size: 14px;
-  font-style: italic;
-`;
-
-const RarityBadge = styled.div`
-  position: absolute;
-  top: -12px;
-  right: 16px;
-  background: ${p => rarityColors[p.rarity]};
-  color: white;
-  padding: 6px 14px;
-  border-radius: 99px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  box-shadow: 0 3px 10px ${p => rarityColors[p.rarity]}60;
-  z-index: 10;
 `;
 
 const CardActions = styled.div`
-  display: flex;
-  border-top: 1px solid #eee;
+  padding: 0 ${theme.spacing.lg} ${theme.spacing.lg};
 `;
 
-const ActionBtn = styled(motion.button)`
-  flex: 1;
-  padding: 14px;
-  border: none;
-  font-size: 14px;
-  font-weight: ${p => p.primary ? '700' : '500'};
-  cursor: ${p => p.disabled ? 'not-allowed' : 'pointer'};
-  background: ${p => p.primary ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'white'};
-  color: ${p => p.primary ? 'white' : '#555'};
+const RollAgainBtn = styled(motion.button)`
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  &:first-child { border-right: 1px solid #eee; }
-  &:disabled { opacity: 0.5; }
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.primary};
+  color: white;
+  border: none;
+  border-radius: ${theme.radius.lg};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
 // Multi Results
-const MultiResultsPanel = styled(motion.div)`
-  background: white;
-  border-radius: 16px;
+const MultiResultsContainer = styled(motion.div)`
+  background: ${theme.colors.backgroundSecondary};
+  border-radius: ${theme.radius.xl};
+  overflow: hidden;
   width: 100%;
   max-width: 900px;
-  overflow: hidden;
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+  border: 1px solid ${theme.colors.surfaceBorder};
+  box-shadow: ${theme.shadows.lg};
 `;
 
-const MultiHeader = styled.div`
+const MultiResultsHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #4b6cb7, #182848);
-  padding: 16px 24px;
-  color: white;
-  h2 { margin: 0; font-size: 20px; }
+  padding: ${theme.spacing.lg};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  
+  h2 {
+    margin: 0;
+    font-size: ${theme.fontSizes.lg};
+    font-weight: ${theme.fontWeights.semibold};
+  }
 `;
 
-const CloseMultiBtn = styled.button`
-  background: rgba(255, 255, 255, 0.15);
-  border: none;
-  color: white;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 20px;
-  &:hover { background: rgba(255, 255, 255, 0.25); }
-`;
-
-const MultiGrid = styled.div`
+const MultiResultsGrid = styled(motion.div)`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 16px;
-  padding: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.lg};
   max-height: 60vh;
   overflow-y: auto;
+  ${scrollbarStyles}
 `;
 
 const MiniCard = styled(motion.div)`
-  background: white;
-  border-radius: 12px;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
   overflow: hidden;
-  border: 2px solid ${p => rarityColors[p.rarity] || '#ddd'};
+  border: 2px solid ${props => getRarityColor(props.rarity)};
   cursor: pointer;
 `;
 
-const MiniMedia = styled.div`
+const MiniCardImage = styled.div`
   position: relative;
   height: 120px;
   overflow: hidden;
-  img, video { width: 100%; height: 100%; object-fit: cover; }
+  
+  img, video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const MiniCollected = styled.div`
   position: absolute;
   top: 6px;
   left: 6px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: ${theme.colors.success};
   color: white;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: ${theme.radius.full};
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: ${theme.fontWeights.bold};
 `;
 
-const MiniInfo = styled.div`
-  padding: 10px;
-  position: relative;
+const MiniCardInfo = styled.div`
+  padding: ${theme.spacing.sm};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.xs};
 `;
 
-const MiniName = styled.h3`
-  margin: 0;
-  font-size: 13px;
-  color: #1a1a2e;
-  font-weight: 600;
+const MiniName = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.medium};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
 `;
 
-const MiniRarity = styled.div`
-  position: absolute;
-  top: -10px;
-  right: 8px;
-  background: ${p => rarityColors[p.rarity]};
-  color: white;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+const MiniRarityDot = styled.div`
+  width: 20px;
+  height: 20px;
+  border-radius: ${theme.radius.full};
+  background: ${props => getRarityColor(props.rarity)};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  color: white;
+  font-size: 9px;
+  flex-shrink: 0;
 `;
 
-// Loading & Empty
+// Loading & Empty States
 const LoadingState = styled(motion.div)`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
-`;
-
-const Spinner = styled.div`
-  width: 60px;
-  height: 60px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #9e5594;
-  border-left-color: #6e48aa;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  @keyframes spin { to { transform: rotate(360deg); } }
+  gap: ${theme.spacing.lg};
 `;
 
 const LoadingText = styled.p`
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: ${theme.fontSizes.lg};
+  color: ${theme.colors.textSecondary};
 `;
 
 const EmptyState = styled(motion.div)`
   text-align: center;
-  padding: 48px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  max-width: 350px;
-  
-  h3 { margin: 0 0 8px; font-size: 22px; }
-  p { margin: 0; color: rgba(255, 255, 255, 0.6); }
+  padding: ${theme.spacing['2xl']};
+  background: ${theme.colors.glass};
+  border-radius: ${theme.radius.xl};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  max-width: 320px;
 `;
 
 const EmptyIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: 56px;
+  margin-bottom: ${theme.spacing.md};
   animation: float 3s ease-in-out infinite;
-  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-`;
-
-// Roll Controls
-const RollControls = styled.div`
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  margin-bottom: 12px;
   
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: center;
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
   }
 `;
 
-const RollButton = styled(motion.button)`
-  background: linear-gradient(135deg, #6e48aa, #9e5594);
-  color: white;
-  border: none;
-  border-radius: 99px;
-  padding: 14px 28px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
+const EmptyTitle = styled.h3`
+  font-size: ${theme.fontSizes.xl};
+  font-weight: ${theme.fontWeights.semibold};
+  margin: 0 0 ${theme.spacing.xs};
+`;
+
+const EmptyText = styled.p`
+  font-size: ${theme.fontSizes.base};
+  color: ${theme.colors.textSecondary};
+  margin: 0;
+`;
+
+// Controls Section
+const ControlsSection = styled.div``;
+
+const ButtonRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.md};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex-direction: column;
+  }
+`;
+
+const PrimaryRollButton = styled(motion.button)`
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 20px rgba(110, 72, 170, 0.4);
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.lg};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  color: white;
+  border: none;
+  border-radius: ${theme.radius.xl};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
   
   &:disabled {
-    background: linear-gradient(135deg, #4a5568, #2d3748);
+    opacity: 0.5;
     cursor: not-allowed;
     box-shadow: none;
   }
 `;
 
-const MultiRollButton = styled(RollButton)`
-  background: linear-gradient(135deg, #4b6cb7, #182848);
-  box-shadow: 0 4px 20px rgba(75, 108, 183, 0.4);
-`;
-
-const Cost = styled.span`
-  font-size: 13px;
-  opacity: 0.8;
-`;
-
-const RollHint = styled.p`
-  text-align: center;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 14px;
-  margin: 0;
-  strong { color: white; }
-`;
-
-const FastModeBtn = styled.button`
+const SecondaryRollButton = styled(motion.button)`
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin: 16px auto 0;
-  padding: 8px 16px;
-  border-radius: 99px;
-  border: none;
-  background: ${p => p.active ? 'rgba(158, 85, 148, 0.2)' : 'rgba(255, 255, 255, 0.05)'};
-  color: ${p => p.active ? '#9e5594' : 'rgba(255, 255, 255, 0.5)'};
-  font-size: 13px;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.lg};
+  background: ${theme.colors.glass};
+  color: white;
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
-  transition: all 0.2s;
   
-  &:hover { background: rgba(158, 85, 148, 0.2); }
+  &:hover:not(:disabled) {
+    background: ${theme.colors.surfaceHover};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
-// Banners Section
-const BannersSection = styled.section`
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(12px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
-  padding: 24px;
-  max-height: 800px;
-  overflow: hidden;
+const CostLabel = styled.span`
+  font-size: ${theme.fontSizes.sm};
+  opacity: 0.8;
+  margin-left: auto;
+`;
+
+const ControlsFooter = styled.div`
   display: flex;
-  flex-direction: column;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
+const PullHint = styled.p`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textTertiary};
+  margin: 0;
+  
+  strong {
+    color: ${theme.colors.text};
+  }
+`;
+
+const FastModeToggle = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: ${props => props.active ? 'rgba(88, 86, 214, 0.2)' : theme.colors.glass};
+  border: 1px solid ${props => props.active ? theme.colors.accent : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  color: ${props => props.active ? theme.colors.accent : theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: rgba(88, 86, 214, 0.15);
+  }
+`;
+
+// Banners Sidebar
+const BannersSidebar = styled(Section)`
+  height: fit-content;
+  position: sticky;
+  top: 80px;
+  
+  @media (max-width: ${theme.breakpoints.lg}) {
+    position: static;
+  }
 `;
 
 const BannersList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 16px;
+  gap: ${theme.spacing.md};
+  max-height: 600px;
   overflow-y: auto;
-  padding-right: 8px;
-  
-  &::-webkit-scrollbar { width: 6px; }
-  &::-webkit-scrollbar-track { background: rgba(255, 255, 255, 0.05); border-radius: 3px; }
-  &::-webkit-scrollbar-thumb { background: rgba(158, 85, 148, 0.5); border-radius: 3px; }
+  ${scrollbarStyles}
 `;
 
 const BannerCard = styled(motion.div)`
-  background: rgba(0, 0, 0, 0.3);
-  border-radius: 12px;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
   overflow: hidden;
   cursor: pointer;
-  border: ${p => p.featured ? '2px solid #ffd700' : '1px solid rgba(255, 255, 255, 0.08)'};
+  border: 1px solid ${props => props.featured ? theme.colors.warning : theme.colors.surfaceBorder};
+`;
+
+const BannerImageWrapper = styled.div`
   position: relative;
+  height: 100px;
+  overflow: hidden;
 `;
 
 const BannerImage = styled.img`
   width: 100%;
-  height: 120px;
+  height: 100%;
   object-fit: cover;
-`;
-
-const BannerInfo = styled.div`
-  padding: 14px;
-`;
-
-const BannerName = styled.h3`
-  margin: 0 0 4px;
-  font-size: 16px;
-  font-weight: 700;
-`;
-
-const BannerSeries = styled.div`
-  color: #ffd700;
-  font-size: 13px;
-  font-weight: 500;
-  margin-bottom: 8px;
-`;
-
-const BannerDate = styled.div`
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.5);
-  margin-bottom: 4px;
-`;
-
-const BannerCost = styled.div`
-  font-size: 13px;
-  margin-bottom: 12px;
-`;
-
-const ViewBannerBtn = styled.button`
-  background: linear-gradient(135deg, rgba(110, 72, 170, 0.4), rgba(158, 85, 148, 0.4));
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  color: white;
-  padding: 8px 14px;
-  border-radius: 99px;
-  font-size: 13px;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  transition: all 0.2s;
+  transition: transform ${theme.transitions.slow};
   
-  &:hover { background: linear-gradient(135deg, rgba(110, 72, 170, 0.6), rgba(158, 85, 148, 0.6)); }
+  ${BannerCard}:hover & {
+    transform: scale(1.05);
+  }
 `;
 
-const FeaturedTag = styled.div`
+const FeaturedBadge = styled.div`
   position: absolute;
-  top: 10px;
-  right: 10px;
-  background: linear-gradient(135deg, #ffd700, #ff9500);
+  top: ${theme.spacing.sm};
+  right: ${theme.spacing.sm};
+  background: linear-gradient(135deg, ${theme.colors.warning}, #ff6b00);
   color: white;
   padding: 4px 10px;
-  border-radius: 99px;
-  font-size: 11px;
-  font-weight: 700;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
 `;
 
-const NoBanners = styled.div`
-  text-align: center;
-  color: rgba(255, 255, 255, 0.4);
-  padding: 40px;
+const BannerContent = styled.div`
+  padding: ${theme.spacing.md};
 `;
 
-// Modal
-const ModalBackdrop = styled(motion.div)`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.75);
-  backdrop-filter: blur(4px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 100;
-  padding: 20px;
+const BannerMeta = styled.div`
+  margin-bottom: ${theme.spacing.sm};
 `;
 
-const HelpModal = styled(motion.div)`
-  background: linear-gradient(180deg, #1e293b, #0f172a);
-  border-radius: 16px;
-  width: 100%;
-  max-width: 450px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  overflow: hidden;
+const BannerName = styled.h4`
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  margin: 0 0 4px;
 `;
 
-const ModalHeader = styled.div`
+const BannerSeries = styled.p`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.warning};
+  margin: 0;
+`;
+
+const BannerFooter = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 16px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  h2 { margin: 0; font-size: 20px; }
 `;
 
-const ModalContent = styled.div`
-  padding: 20px;
+const BannerCost = styled.span`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+`;
+
+const BannerArrow = styled.span`
+  color: ${theme.colors.textTertiary};
+  font-size: 12px;
+`;
+
+const NoBannersMessage = styled.div`
+  text-align: center;
+  padding: ${theme.spacing.xl};
+`;
+
+// Help Modal
+const HelpModalContent = styled(ModalContent)`
+  width: 100%;
+  max-width: 480px;
 `;
 
 const HelpSection = styled.div`
-  margin-bottom: 24px;
+  margin-bottom: ${theme.spacing.xl};
   
-  h3 { margin: 0 0 12px; font-size: 16px; color: #9e5594; }
-  ul { margin: 0; padding-left: 20px; li { margin-bottom: 8px; color: rgba(255, 255, 255, 0.8); } }
+  &:last-child {
+    margin-bottom: 0;
+  }
 `;
 
-const RarityList = styled.div`
+const HelpTitle = styled.h3`
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.accent};
+  margin: 0 0 ${theme.spacing.md};
+  padding-bottom: ${theme.spacing.sm};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+const HelpList = styled.ul`
+  margin: 0;
+  padding-left: ${theme.spacing.lg};
+  
+  li {
+    margin-bottom: ${theme.spacing.sm};
+    color: ${theme.colors.textSecondary};
+    line-height: 1.5;
+  }
+`;
+
+const RarityGuide = styled.div`
   display: flex;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: ${theme.spacing.md};
 `;
 
-const RarityItem = styled.div`
+const RarityGuideItem = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: ${theme.spacing.sm};
   text-transform: capitalize;
-  font-size: 14px;
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
 `;
 
 export default GachaPage;

@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useCallback, useRef } from 'rea
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdReplay, MdCheckCircle, MdFastForward, MdArrowBack, MdInfo } from 'react-icons/md';
+import { MdArrowBack, MdClose, MdFastForward, MdInfo, MdRefresh } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
 
@@ -10,16 +10,30 @@ import confetti from 'canvas-confetti';
 import api, { getBannerById, rollOnBanner, multiRollOnBanner, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 
-// Shared Components
-import { 
-  rarityColors,
-  cardVariants,
-  cardVariantsFast,
-  containerVariants,
-  gridItemVariants,
-  slideVariants,
-  overlayVariants
-} from '../components/Gacha';
+// Design System
+import {
+  theme,
+  PageWrapper,
+  Container,
+  GlassCard,
+  Section,
+  Heading2,
+  Text,
+  IconButton,
+  Chip,
+  RarityBadge,
+  Spinner,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  Alert,
+  Flex,
+  motionVariants,
+  getRarityColor,
+  getRarityGlow,
+  scrollbarStyles
+} from '../styles/DesignSystem';
 
 import { MultiPullMenu } from '../components/Gacha/MultiPullMenu';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
@@ -94,7 +108,6 @@ const BannerPage = () => {
 
   const singlePullCost = getSinglePullCost();
   const currentMultiPullCost = getMultiPullCost(multiPullCount);
-  const currentCardVariants = skipAnimations ? cardVariantsFast : cardVariants;
 
   // Effects
   useEffect(() => {
@@ -145,7 +158,7 @@ const BannerPage = () => {
         particleCount: rarity === 'legendary' ? 200 : 100,
         spread: 70,
         origin: { y: 0.6 },
-        colors: [rarityColors[rarity], '#ffffff', '#ffd700']
+        colors: [getRarityColor(rarity), '#ffffff', '#ffd700']
       });
     }
   }, []);
@@ -262,7 +275,7 @@ const BannerPage = () => {
   if (loading) {
     return (
       <LoadingPage>
-        <Spinner />
+        <Spinner size="56px" />
         <LoadingText>Loading banner...</LoadingText>
       </LoadingPage>
     );
@@ -281,235 +294,307 @@ const BannerPage = () => {
   }
 
   return (
-    <PageWrapper bgImage={getBannerImage(banner.image)}>
-      {/* Navigation */}
-      <NavBar>
-        <BackButton onClick={() => navigate('/gacha')}>
-          <MdArrowBack /> Back
-        </BackButton>
-        <NavStats>
-          <StatChip><FaDice /> {rollCount} Pulls</StatChip>
-          <PointsChip>🪙 {user?.points || 0}</PointsChip>
-          <IconBtn onClick={() => setShowInfoPanel(true)}><MdInfo /></IconBtn>
-        </NavStats>
-      </NavBar>
+    <StyledPageWrapper>
+      {/* Hero Background */}
+      <HeroBackground style={{ backgroundImage: `url(${getBannerImage(banner.image)})` }} />
       
-      {/* Banner Hero */}
-      <HeroSection>
-        <HeroContent>
-          <BannerTitle>{banner.name}</BannerTitle>
-          <BannerSeries>{banner.series}</BannerSeries>
-          {banner.description && <BannerDesc>{banner.description}</BannerDesc>}
-          <BadgeRow>
-            <CostBadge>{singlePullCost} pts/pull</CostBadge>
-            <DateBadge>
-              {banner.endDate 
-                ? `Ends: ${new Date(banner.endDate).toLocaleDateString()}`
-                : 'Limited-Time'}
-            </DateBadge>
-          </BadgeRow>
-        </HeroContent>
+      <Container>
+        {/* Navigation Bar */}
+        <NavBar>
+          <BackButton onClick={() => navigate('/gacha')}>
+            <MdArrowBack />
+            <span>Back</span>
+          </BackButton>
+          <NavStats>
+            <StatPill>
+              <span>🎲</span>
+              <span>{rollCount} pulls</span>
+            </StatPill>
+            <PointsPill>
+              <span>🪙</span>
+              <span>{user?.points || 0}</span>
+            </PointsPill>
+            <IconButton onClick={() => setShowInfoPanel(true)}>
+              <MdInfo />
+            </IconButton>
+          </NavStats>
+        </NavBar>
         
-        {/* Featured Characters */}
-        {banner.Characters?.length > 0 && (
-          <FeaturedSection>
-            <FeaturedLabel>✦ Featured Characters</FeaturedLabel>
-            <CharacterAvatars>
-              {banner.Characters.slice(0, 6).map(char => (
-                <Avatar
-                  key={char.id}
-                  rarity={char.rarity}
-                  owned={isInCollection(char)}
-                  onClick={() => openPreview({...char, isOwned: isInCollection(char)})}
-                  whileHover={{ scale: 1.1 }}
-                >
-                  {isVideo(char.image) ? (
-                    <video src={getImagePath(char.image)} autoPlay loop muted playsInline />
-                  ) : (
-                    <img src={getImagePath(char.image)} alt={char.name} />
-                  )}
-                  {isInCollection(char) && <OwnedMark>✓</OwnedMark>}
-                </Avatar>
+        {/* Banner Hero Section */}
+        <HeroSection>
+          <HeroContent>
+            <BannerTitle>{banner.name}</BannerTitle>
+            <BannerSeries>{banner.series}</BannerSeries>
+            {banner.description && <BannerDescription>{banner.description}</BannerDescription>}
+            <BadgeRow>
+              <CostBadge>{singlePullCost} pts/pull</CostBadge>
+              <DateBadge>
+                {banner.endDate 
+                  ? `Ends: ${new Date(banner.endDate).toLocaleDateString()}`
+                  : 'Limited-Time'}
+              </DateBadge>
+            </BadgeRow>
+          </HeroContent>
+          
+          {/* Featured Characters Preview */}
+          {banner.Characters?.length > 0 && (
+            <FeaturedSection>
+              <FeaturedLabel>Featured Characters</FeaturedLabel>
+              <CharacterAvatars>
+                {banner.Characters.slice(0, 6).map(char => (
+                  <Avatar
+                    key={char.id}
+                    rarity={char.rarity}
+                    owned={isInCollection(char)}
+                    onClick={() => openPreview({...char, isOwned: isInCollection(char)})}
+                    whileHover={{ scale: 1.1 }}
+                    whileTap={{ scale: 0.95 }}
+                  >
+                    {isVideo(char.image) ? (
+                      <video src={getImagePath(char.image)} autoPlay loop muted playsInline />
+                    ) : (
+                      <img src={getImagePath(char.image)} alt={char.name} />
+                    )}
+                    {isInCollection(char) && <OwnedMark>✓</OwnedMark>}
+                  </Avatar>
+                ))}
+                {banner.Characters.length > 6 && (
+                  <MoreAvatar onClick={() => setShowInfoPanel(true)}>
+                    +{banner.Characters.length - 6}
+                  </MoreAvatar>
+                )}
+              </CharacterAvatars>
+            </FeaturedSection>
+          )}
+        </HeroSection>
+        
+        {/* Promotional Video */}
+        {banner.videoUrl && (
+          <VideoSection>
+            <VideoContainer>
+              <BannerVideo
+                ref={videoRef}
+                src={getVideoPath(banner.videoUrl)}
+                poster={getBannerImage(banner.image)}
+                onEnded={() => setIsVideoPlaying(false)}
+                playsInline
+              />
+              <VideoOverlay onClick={toggleVideo}>
+                {isVideoPlaying ? <FaPause /> : <FaPlay />}
+              </VideoOverlay>
+            </VideoContainer>
+            <VideoCaption>Watch Promotional Video</VideoCaption>
+          </VideoSection>
+        )}
+        
+        {/* Error Alert */}
+        <AnimatePresence>
+          {error && (
+            <Alert
+              variant="error"
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0 }}
+              style={{ marginBottom: '24px', maxWidth: '600px', marginLeft: 'auto', marginRight: 'auto' }}
+            >
+              <span>{error}</span>
+              <CloseAlertBtn onClick={() => setError(null)}>
+                <MdClose />
+              </CloseAlertBtn>
+            </Alert>
+          )}
+        </AnimatePresence>
+        
+        {/* Rarity History */}
+        {lastRarities.length > 0 && (
+          <RarityTracker>
+            <RarityLabel>Recent:</RarityLabel>
+            <RarityHistory>
+              {lastRarities.map((rarity, i) => (
+                <RarityDot key={i} rarity={rarity}>{rarityIcons[rarity]}</RarityDot>
               ))}
-              {banner.Characters.length > 6 && (
-                <MoreAvatar onClick={() => setShowInfoPanel(true)}>
-                  +{banner.Characters.length - 6}
-                </MoreAvatar>
-              )}
-            </CharacterAvatars>
-          </FeaturedSection>
+            </RarityHistory>
+          </RarityTracker>
         )}
-      </HeroSection>
-      
-      {/* Promotional Video */}
-      {banner.videoUrl && (
-        <VideoSection>
-          <VideoContainer>
-            <BannerVideo
-              ref={videoRef}
-              src={getVideoPath(banner.videoUrl)}
-              poster={getBannerImage(banner.image)}
-              onEnded={() => setIsVideoPlaying(false)}
-              playsInline
-            />
-            <VideoOverlay onClick={toggleVideo}>
-              {isVideoPlaying ? <FaPause /> : <FaPlay />}
-            </VideoOverlay>
-          </VideoContainer>
-          <VideoCaption>Watch Promotional Video</VideoCaption>
-        </VideoSection>
-      )}
-      
-      {/* Error Alert */}
-      <AnimatePresence>
-        {error && (
-          <ErrorAlert initial={{ opacity: 0, y: -10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }}>
-            <span>{error}</span>
-            <CloseBtn onClick={() => setError(null)}>×</CloseBtn>
-          </ErrorAlert>
-        )}
-      </AnimatePresence>
-      
-      {/* Rarity History */}
-      {lastRarities.length > 0 && (
-        <RarityTracker>
-          <TrackerLabel>Recent:</TrackerLabel>
-          <RarityBubbles>
-            {lastRarities.map((rarity, i) => (
-              <RarityDot key={i} rarity={rarity}>{rarityIcons[rarity]}</RarityDot>
-            ))}
-          </RarityBubbles>
-        </RarityTracker>
-      )}
-      
-      {/* Gacha Section */}
-      <GachaSection>
-        <ResultsArea>
-          <AnimatePresence mode="wait">
-            {showCard && !showMultiResults ? (
-              <CharacterCard
-                key="char"
-                variants={currentCardVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-                rarity={currentChar?.rarity}
-              >
-                <CardMedia onClick={() => openPreview(currentChar)}>
-                  <RarityGlow rarity={currentChar?.rarity} />
-                  <CollectedTag>✓ Collected</CollectedTag>
-                  {currentChar?.isBannerCharacter && <BannerTag>★ Banner</BannerTag>}
-                  {isVideo(currentChar?.image) ? (
-                    <CardVideo src={getImagePath(currentChar?.image)} autoPlay loop muted playsInline />
-                  ) : (
-                    <CardImage src={getImagePath(currentChar?.image)} alt={currentChar?.name} />
-                  )}
-                  <ZoomHint>🔍</ZoomHint>
-                </CardMedia>
-                <CardInfo>
-                  <CharName>{currentChar?.name}</CharName>
-                  <CharSeries>{currentChar?.series}</CharSeries>
-                  <RarityBadge rarity={currentChar?.rarity}>
-                    {rarityIcons[currentChar?.rarity]} {currentChar?.rarity}
-                  </RarityBadge>
-                </CardInfo>
-                <CardActions>
-                  <ActionBtn disabled><MdCheckCircle /> Collected</ActionBtn>
-                  <ActionBtn primary onClick={handleRoll} disabled={isRolling || user?.points < singlePullCost}>
-                    <MdReplay /> Roll Again
-                  </ActionBtn>
-                </CardActions>
-              </CharacterCard>
-              
-            ) : showMultiResults ? (
-              <MultiResultsPanel
-                key="multi"
-                variants={containerVariants}
-                initial="hidden"
-                animate="visible"
-                exit="exit"
-              >
-                <MultiHeader>
-                  <h2>{multiRollResults.length}× Pull • {banner.name}</h2>
-                  <CloseMultiBtn onClick={() => setShowMultiResults(false)}>×</CloseMultiBtn>
-                </MultiHeader>
-                <MultiGrid>
-                  {multiRollResults.map((char, i) => (
-                    <MiniCard
-                      key={i}
-                      custom={i}
-                      variants={gridItemVariants}
-                      initial="hidden"
-                      animate="visible"
-                      whileHover="hover"
-                      rarity={char.rarity}
-                      isBanner={char.isBannerCharacter}
-                      onClick={() => openPreview({...char, isOwned: isInCollection(char)})}
+        
+        {/* Gacha Section */}
+        <GachaContainer>
+          <ResultsArea>
+            <AnimatePresence mode="wait">
+              {showCard && !showMultiResults ? (
+                <CharacterCard
+                  key="char"
+                  variants={motionVariants.card}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                  rarity={currentChar?.rarity}
+                >
+                  <CardImageWrapper onClick={() => openPreview(currentChar)}>
+                    <RarityGlowEffect rarity={currentChar?.rarity} />
+                    {isVideo(currentChar?.image) ? (
+                      <CardVideo src={getImagePath(currentChar?.image)} autoPlay loop muted playsInline />
+                    ) : (
+                      <CardImage src={getImagePath(currentChar?.image)} alt={currentChar?.name} />
+                    )}
+                    <CardOverlay>
+                      <span>🔍 View</span>
+                    </CardOverlay>
+                    <CollectedBadge>✓ Collected</CollectedBadge>
+                    {currentChar?.isBannerCharacter && <BannerCharBadge>★ Banner</BannerCharBadge>}
+                  </CardImageWrapper>
+                  <CardContent>
+                    <CardMeta>
+                      <CharName>{currentChar?.name}</CharName>
+                      <CharSeries>{currentChar?.series}</CharSeries>
+                    </CardMeta>
+                    <RarityBadge rarity={currentChar?.rarity}>
+                      {rarityIcons[currentChar?.rarity]} {currentChar?.rarity}
+                    </RarityBadge>
+                  </CardContent>
+                  <CardActions>
+                    <RollAgainBtn 
+                      onClick={handleRoll} 
+                      disabled={isRolling || user?.points < singlePullCost}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
                     >
-                      <MiniMedia>
-                        {isVideo(char.image) ? (
-                          <video src={getImagePath(char.image)} autoPlay loop muted playsInline />
-                        ) : (
-                          <img src={getImagePath(char.image)} alt={char.name} />
-                        )}
-                        <MiniCollected>✓</MiniCollected>
-                        {char.isBannerCharacter && <MiniBanner>★</MiniBanner>}
-                      </MiniMedia>
-                      <MiniInfo>
-                        <MiniName>{char.name}</MiniName>
-                        <MiniRarity rarity={char.rarity}>{rarityIcons[char.rarity]}</MiniRarity>
-                      </MiniInfo>
-                    </MiniCard>
-                  ))}
-                </MultiGrid>
-              </MultiResultsPanel>
-              
-            ) : isRolling ? (
-              <LoadingState key="loading" variants={containerVariants} initial="hidden" animate="visible" exit="exit">
-                <Spinner />
-                <LoadingText>Summoning...</LoadingText>
-              </LoadingState>
-              
-            ) : (
-              <EmptyState key="empty" variants={containerVariants} initial="hidden" animate="visible" exit="exit">
-                <EmptyIcon>✨</EmptyIcon>
-                <h3>Roll on {banner.name}</h3>
-                <p>{banner.series} Special Banner</p>
-              </EmptyState>
-            )}
-          </AnimatePresence>
-        </ResultsArea>
-        
-        {/* Roll Controls */}
-        <RollControls>
-          <RollButton onClick={handleRoll} disabled={isRolling || user?.points < singlePullCost} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            {isRolling ? "Summoning..." : <>💫 Single Pull <Cost>({singlePullCost} pts)</Cost></>}
-          </RollButton>
-          <MultiRollButton onClick={() => setMultiPullMenuOpen(true)} disabled={isRolling || user?.points < singlePullCost} whileHover={{ scale: 1.03 }} whileTap={{ scale: 0.97 }}>
-            {isRolling ? "Summoning..." : <>🎯 Multi Pull <Cost>({multiPullCount}×)</Cost></>}
-          </MultiRollButton>
-        </RollControls>
-        
-        <RollHint>
-          You can make up to <strong>{Math.floor((user?.points || 0) / singlePullCost)}</strong> pulls
-        </RollHint>
-        
-        <FastModeBtn onClick={() => setSkipAnimations(!skipAnimations)} active={skipAnimations}>
-          <MdFastForward /> {skipAnimations ? 'Fast Mode On' : 'Enable Fast Mode'}
-        </FastModeBtn>
-        
-        <MultiPullMenu
-          isOpen={multiPullMenuOpen}
-          onClose={() => setMultiPullMenuOpen(false)}
-          multiPullCount={multiPullCount}
-          setMultiPullCount={setMultiPullCount}
-          maxPossiblePulls={maxPossiblePulls()}
-          currentMultiPullCost={currentMultiPullCost}
-          onConfirm={handleMultiRoll}
-          userPoints={user?.points || 0}
-          singlePullCost={singlePullCost}
-        />
-      </GachaSection>
+                      <MdRefresh /> Roll Again
+                    </RollAgainBtn>
+                  </CardActions>
+                </CharacterCard>
+                
+              ) : showMultiResults ? (
+                <MultiResultsContainer
+                  key="multi"
+                  variants={motionVariants.scaleIn}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <MultiResultsHeader>
+                    <h2>{multiRollResults.length}× Pull • {banner.name}</h2>
+                    <IconButton onClick={() => setShowMultiResults(false)}>
+                      <MdClose />
+                    </IconButton>
+                  </MultiResultsHeader>
+                  <MultiResultsGrid>
+                    {multiRollResults.map((char, i) => (
+                      <MiniCard
+                        key={i}
+                        variants={motionVariants.staggerItem}
+                        custom={i}
+                        whileHover={{ y: -4, scale: 1.02 }}
+                        rarity={char.rarity}
+                        isBanner={char.isBannerCharacter}
+                        onClick={() => openPreview({...char, isOwned: isInCollection(char)})}
+                      >
+                        <MiniCardImage>
+                          {isVideo(char.image) ? (
+                            <video src={getImagePath(char.image)} autoPlay loop muted playsInline />
+                          ) : (
+                            <img src={getImagePath(char.image)} alt={char.name} />
+                          )}
+                          <MiniCollected>✓</MiniCollected>
+                          {char.isBannerCharacter && <MiniBannerMark>★</MiniBannerMark>}
+                        </MiniCardImage>
+                        <MiniCardInfo>
+                          <MiniName>{char.name}</MiniName>
+                          <MiniRarityDot rarity={char.rarity}>{rarityIcons[char.rarity]}</MiniRarityDot>
+                        </MiniCardInfo>
+                      </MiniCard>
+                    ))}
+                  </MultiResultsGrid>
+                </MultiResultsContainer>
+                
+              ) : isRolling ? (
+                <LoadingState 
+                  key="loading"
+                  variants={motionVariants.fadeIn}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <Spinner size="56px" />
+                  <LoadingStateText>Summoning...</LoadingStateText>
+                </LoadingState>
+                
+              ) : (
+                <EmptyState 
+                  key="empty"
+                  variants={motionVariants.slideUp}
+                  initial="hidden"
+                  animate="visible"
+                  exit="exit"
+                >
+                  <EmptyIcon>✨</EmptyIcon>
+                  <EmptyTitle>Roll on {banner.name}</EmptyTitle>
+                  <EmptyText>{banner.series} Special Banner</EmptyText>
+                </EmptyState>
+              )}
+            </AnimatePresence>
+          </ResultsArea>
+          
+          {/* Roll Controls */}
+          <ControlsSection>
+            <ButtonRow>
+              <PrimaryRollButton 
+                onClick={handleRoll} 
+                disabled={isRolling || user?.points < singlePullCost}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {isRolling ? "Summoning..." : (
+                  <>
+                    <span>💫</span>
+                    <span>Single Pull</span>
+                    <CostLabel>{singlePullCost} pts</CostLabel>
+                  </>
+                )}
+              </PrimaryRollButton>
+              <SecondaryRollButton 
+                onClick={() => setMultiPullMenuOpen(true)} 
+                disabled={isRolling || user?.points < singlePullCost}
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+              >
+                {isRolling ? "Summoning..." : (
+                  <>
+                    <span>🎯</span>
+                    <span>Multi Pull</span>
+                    <CostLabel>{multiPullCount}×</CostLabel>
+                  </>
+                )}
+              </SecondaryRollButton>
+            </ButtonRow>
+            
+            <ControlsFooter>
+              <PullHint>
+                Up to <strong>{Math.floor((user?.points || 0) / singlePullCost)}</strong> pulls available
+              </PullHint>
+              <FastModeToggle 
+                active={skipAnimations}
+                onClick={() => setSkipAnimations(!skipAnimations)}
+              >
+                <MdFastForward />
+                {skipAnimations ? 'Fast Mode' : 'Normal'}
+              </FastModeToggle>
+            </ControlsFooter>
+          </ControlsSection>
+          
+          <MultiPullMenu
+            isOpen={multiPullMenuOpen}
+            onClose={() => setMultiPullMenuOpen(false)}
+            multiPullCount={multiPullCount}
+            setMultiPullCount={setMultiPullCount}
+            maxPossiblePulls={maxPossiblePulls()}
+            currentMultiPullCost={currentMultiPullCost}
+            onConfirm={handleMultiRoll}
+            userPoints={user?.points || 0}
+            singlePullCost={singlePullCost}
+          />
+        </GachaContainer>
+      </Container>
       
       {/* Image Preview Modal */}
       <ImagePreviewModal
@@ -527,31 +612,45 @@ const BannerPage = () => {
       {/* Info Panel */}
       <AnimatePresence>
         {showInfoPanel && (
-          <InfoPanelBackdrop variants={overlayVariants} initial="hidden" animate="visible" exit="exit" onClick={() => setShowInfoPanel(false)}>
+          <ModalOverlay 
+            variants={motionVariants.overlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onClick={() => setShowInfoPanel(false)}
+          >
             <InfoPanel
-              variants={slideVariants}
-              initial="hidden"
-              animate="visible"
-              exit="exit"
+              initial={{ x: '100%' }}
+              animate={{ x: 0 }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={e => e.stopPropagation()}
             >
-              <InfoHeader>
-                <h2>{banner.name}</h2>
-                <CloseBtn onClick={() => setShowInfoPanel(false)}>×</CloseBtn>
-              </InfoHeader>
-              <InfoContent>
+              <InfoPanelHeader>
+                <Heading2>{banner.name}</Heading2>
+                <IconButton onClick={() => setShowInfoPanel(false)}>
+                  <MdClose />
+                </IconButton>
+              </InfoPanelHeader>
+              <InfoPanelContent>
                 <InfoBlock>
-                  <h3>About This Banner</h3>
-                  <p>{banner.description || `Special banner featuring characters from ${banner.series}.`}</p>
-                  {banner.endDate && <InfoNote>Available until: {new Date(banner.endDate).toLocaleDateString()}</InfoNote>}
-                  <InfoNote accent>Pull cost: {singlePullCost} points</InfoNote>
+                  <InfoBlockTitle>About This Banner</InfoBlockTitle>
+                  <Text secondary>{banner.description || `Special banner featuring characters from ${banner.series}.`}</Text>
+                  {banner.endDate && (
+                    <InfoNote>Available until: {new Date(banner.endDate).toLocaleDateString()}</InfoNote>
+                  )}
+                  <InfoNoteAccent>Pull cost: {singlePullCost} points</InfoNoteAccent>
                 </InfoBlock>
                 
                 <InfoBlock>
-                  <h3>Featured Characters</h3>
+                  <InfoBlockTitle>Featured Characters</InfoBlockTitle>
                   <FeaturedList>
                     {banner.Characters?.map(char => (
-                      <FeaturedItem key={char.id} onClick={() => openPreview({...char, isOwned: isInCollection(char)})}>
+                      <FeaturedItem 
+                        key={char.id} 
+                        onClick={() => openPreview({...char, isOwned: isInCollection(char)})}
+                        whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}
+                      >
                         <FeaturedThumb rarity={char.rarity}>
                           {isVideo(char.image) ? (
                             <video src={getImagePath(char.image)} autoPlay loop muted playsInline />
@@ -560,13 +659,13 @@ const BannerPage = () => {
                           )}
                         </FeaturedThumb>
                         <FeaturedInfo>
-                          <div>{char.name}</div>
+                          <FeaturedName>{char.name}</FeaturedName>
                           <FeaturedRarity rarity={char.rarity}>
                             {rarityIcons[char.rarity]} {char.rarity}
                           </FeaturedRarity>
                           {isInCollection(char) && <OwnedLabel>✓ Owned</OwnedLabel>}
                         </FeaturedInfo>
-                        <FaChevronRight style={{ color: 'rgba(255,255,255,0.4)' }} />
+                        <FaChevronRight style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
                       </FeaturedItem>
                     ))}
                   </FeaturedList>
@@ -575,56 +674,69 @@ const BannerPage = () => {
                 <RollFromPanelBtn
                   onClick={() => { setShowInfoPanel(false); setTimeout(handleRoll, 300); }}
                   disabled={isRolling || user?.points < singlePullCost}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
                 >
                   Roll Now
                 </RollFromPanelBtn>
-              </InfoContent>
+              </InfoPanelContent>
             </InfoPanel>
-          </InfoPanelBackdrop>
+          </ModalOverlay>
         )}
       </AnimatePresence>
-    </PageWrapper>
+    </StyledPageWrapper>
   );
 };
 
 // ==================== STYLED COMPONENTS ====================
 
-const PageWrapper = styled.div`
-  min-height: 100vh;
-  background: linear-gradient(to bottom, rgba(0, 0, 0, 0.6), rgba(15, 23, 42, 0.95));
-  color: white;
-  padding: 20px;
-  position: relative;
+const StyledPageWrapper = styled(PageWrapper)`
+  padding-bottom: ${theme.spacing['3xl']};
+`;
+
+// Hero Background
+const HeroBackground = styled.div`
+  position: fixed;
+  inset: 0;
+  background-size: cover;
+  background-position: center top;
+  opacity: 0.15;
+  z-index: 0;
   
-  &::before {
-    content: "";
-    position: fixed;
+  &::after {
+    content: '';
+    position: absolute;
     inset: 0;
-    background-image: url(${p => p.bgImage});
-    background-size: cover;
-    background-position: center top;
-    opacity: 0.25;
-    z-index: -1;
+    background: linear-gradient(to bottom, transparent 0%, ${theme.colors.background} 100%);
   }
 `;
 
+// Loading & Error Pages
 const LoadingPage = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(135deg, #0f0c29, #302b63, #24243e);
-  gap: 20px;
+  background: ${theme.colors.background};
+  gap: ${theme.spacing.lg};
+`;
+
+const LoadingText = styled.p`
+  font-size: ${theme.fontSizes.lg};
+  color: ${theme.colors.textSecondary};
 `;
 
 const ErrorPage = styled(LoadingPage)``;
 
 const ErrorBox = styled.div`
-  background: rgba(229, 57, 53, 0.9);
-  padding: 16px 28px;
-  border-radius: 12px;
-  font-weight: 500;
+  background: rgba(255, 59, 48, 0.15);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  color: ${theme.colors.error};
+  padding: ${theme.spacing.lg} ${theme.spacing.xl};
+  border-radius: ${theme.radius.lg};
+  font-weight: ${theme.fontWeights.medium};
+  margin-bottom: ${theme.spacing.lg};
 `;
 
 // Navigation
@@ -632,74 +744,55 @@ const NavBar = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  padding: ${theme.spacing.lg} 0;
+  position: relative;
+  z-index: 10;
+`;
+
+const BackButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  background: ${theme.colors.glass};
+  backdrop-filter: blur(${theme.blur.md});
+  border: 1px solid ${theme.colors.surfaceBorder};
+  color: ${theme.colors.text};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${theme.colors.surfaceHover};
+    transform: translateX(-2px);
+  }
 `;
 
 const NavStats = styled.div`
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: ${theme.spacing.sm};
 `;
 
-const BackButton = styled.button`
-  background: rgba(0, 0, 0, 0.5);
+const StatPill = styled(Chip)`
+  font-size: ${theme.fontSizes.sm};
+`;
+
+const PointsPill = styled(StatPill)`
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  border-color: transparent;
   color: white;
-  border: none;
-  border-radius: 99px;
-  padding: 10px 18px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  cursor: pointer;
-  font-size: 14px;
-  font-weight: 500;
-  transition: all 0.2s;
-  
-  &:hover { background: rgba(0, 0, 0, 0.7); transform: translateX(-2px); }
-`;
-
-const StatChip = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  background: rgba(255, 255, 255, 0.05);
-  padding: 8px 16px;
-  border-radius: 99px;
-  font-size: 14px;
-  font-weight: 500;
-`;
-
-const PointsChip = styled(StatChip)`
-  background: linear-gradient(135deg, #6e48aa, #9e5594);
-  font-weight: 700;
-`;
-
-const IconBtn = styled.button`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.05);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 18px;
-  transition: all 0.2s;
-  
-  &:hover { background: rgba(255, 255, 255, 0.1); }
+  font-weight: ${theme.fontWeights.semibold};
 `;
 
 // Hero Section
-const HeroSection = styled.div`
+const HeroSection = styled(Section)`
   text-align: center;
-  padding: 28px;
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(12px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  margin-bottom: 24px;
+  margin-bottom: ${theme.spacing.xl};
+  position: relative;
+  z-index: 1;
 `;
 
 const HeroContent = styled.div`
@@ -708,86 +801,97 @@ const HeroContent = styled.div`
 `;
 
 const BannerTitle = styled.h1`
-  font-size: 36px;
-  margin: 0 0 8px;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  font-size: ${theme.fontSizes.hero};
+  font-weight: ${theme.fontWeights.bold};
+  letter-spacing: -0.03em;
+  margin: 0 0 ${theme.spacing.sm};
   
-  @media (max-width: 480px) { font-size: 28px; }
+  @media (max-width: ${theme.breakpoints.md}) {
+    font-size: ${theme.fontSizes['3xl']};
+  }
 `;
 
 const BannerSeries = styled.h2`
-  font-size: 18px;
-  margin: 0 0 12px;
-  color: #ffd700;
-  font-weight: 500;
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.medium};
+  color: ${theme.colors.warning};
   text-transform: uppercase;
   letter-spacing: 1px;
+  margin: 0 0 ${theme.spacing.md};
 `;
 
-const BannerDesc = styled.p`
-  font-size: 15px;
-  margin: 0 0 16px;
-  color: rgba(255, 255, 255, 0.85);
-  line-height: 1.6;
+const BannerDescription = styled.p`
+  font-size: ${theme.fontSizes.base};
+  color: ${theme.colors.textSecondary};
+  line-height: ${theme.lineHeights.relaxed};
+  margin: 0 0 ${theme.spacing.lg};
 `;
 
 const BadgeRow = styled.div`
   display: flex;
   justify-content: center;
-  gap: 12px;
+  gap: ${theme.spacing.sm};
   flex-wrap: wrap;
 `;
 
 const CostBadge = styled.div`
-  background: rgba(255, 215, 0, 0.15);
-  border: 1px solid rgba(255, 215, 0, 0.4);
-  color: #ffd700;
-  padding: 8px 16px;
-  border-radius: 99px;
-  font-weight: 700;
+  background: rgba(255, 159, 10, 0.15);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  color: ${theme.colors.warning};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.radius.full};
+  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.sm};
 `;
 
 const DateBadge = styled.div`
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.15);
-  padding: 8px 16px;
-  border-radius: 99px;
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  color: ${theme.colors.textSecondary};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.sm};
 `;
 
 // Featured Characters
 const FeaturedSection = styled.div`
-  margin-top: 24px;
-  padding-top: 20px;
-  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin-top: ${theme.spacing.xl};
+  padding-top: ${theme.spacing.lg};
+  border-top: 1px solid ${theme.colors.surfaceBorder};
 `;
 
 const FeaturedLabel = styled.div`
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  margin-bottom: 16px;
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textTertiary};
   text-transform: uppercase;
   letter-spacing: 1px;
+  margin-bottom: ${theme.spacing.md};
 `;
 
 const CharacterAvatars = styled.div`
   display: flex;
   justify-content: center;
   flex-wrap: wrap;
-  gap: 12px;
+  gap: ${theme.spacing.sm};
 `;
 
 const Avatar = styled(motion.div)`
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
+  width: 56px;
+  height: 56px;
+  border-radius: ${theme.radius.full};
   overflow: hidden;
   cursor: pointer;
-  border: 3px solid ${p => rarityColors[p.rarity] || '#555'};
+  border: 2px solid ${props => getRarityColor(props.rarity)};
   position: relative;
+  box-shadow: ${props => getRarityGlow(props.rarity)};
   
-  img, video { width: 100%; height: 100%; object-fit: cover; }
+  img, video { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+  }
   
-  ${p => p.owned && `
+  ${props => props.owned && `
     &::after {
       content: "";
       position: absolute;
@@ -795,8 +899,6 @@ const Avatar = styled(motion.div)`
       background: rgba(0, 0, 0, 0.4);
     }
   `}
-  
-  &:hover { box-shadow: 0 0 15px ${p => rarityColors[p.rarity]}80; }
 `;
 
 const OwnedMark = styled.div`
@@ -808,41 +910,47 @@ const OwnedMark = styled.div`
   color: white;
   width: 24px;
   height: 24px;
-  border-radius: 50%;
+  border-radius: ${theme.radius.full};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-weight: 700;
+  font-weight: ${theme.fontWeights.bold};
+  font-size: 12px;
   z-index: 2;
 `;
 
-const MoreAvatar = styled(motion.div)`
-  width: 60px;
-  height: 60px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
+const MoreAvatar = styled.div`
+  width: 56px;
+  height: 56px;
+  border-radius: ${theme.radius.full};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
+  transition: all ${theme.transitions.fast};
   
-  &:hover { background: rgba(255, 255, 255, 0.15); }
+  &:hover {
+    background: ${theme.colors.surfaceHover};
+  }
 `;
 
 // Video Section
 const VideoSection = styled.div`
   max-width: 800px;
-  margin: 0 auto 28px;
+  margin: 0 auto ${theme.spacing.xl};
+  position: relative;
+  z-index: 1;
 `;
 
 const VideoContainer = styled.div`
   position: relative;
-  border-radius: 16px;
+  border-radius: ${theme.radius.xl};
   overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid ${theme.colors.surfaceBorder};
 `;
 
 const BannerVideo = styled.video`
@@ -853,92 +961,87 @@ const BannerVideo = styled.video`
 const VideoOverlay = styled.div`
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.3);
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: opacity 0.2s;
+  transition: all ${theme.transitions.fast};
   
-  svg { font-size: 48px; color: white; }
+  svg { 
+    font-size: 48px; 
+    color: white;
+    filter: drop-shadow(0 2px 8px rgba(0,0,0,0.3));
+  }
   
-  &:hover { background: rgba(0, 0, 0, 0.5); }
+  &:hover { 
+    background: rgba(0, 0, 0, 0.5); 
+  }
 `;
 
 const VideoCaption = styled.div`
-  font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textTertiary};
   text-align: center;
-  margin-top: 10px;
+  margin-top: ${theme.spacing.sm};
 `;
 
-// Error & Alerts
-const ErrorAlert = styled(motion.div)`
-  background: linear-gradient(135deg, #e53935, #c62828);
-  padding: 14px 20px;
-  border-radius: 12px;
-  margin: 0 auto 20px;
-  max-width: 600px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-`;
-
-const CloseBtn = styled.button`
-  background: rgba(255, 255, 255, 0.2);
+// Error Alert
+const CloseAlertBtn = styled.button`
+  background: none;
   border: none;
-  color: white;
-  width: 28px;
-  height: 28px;
-  border-radius: 50%;
+  color: inherit;
   cursor: pointer;
-  font-size: 16px;
+  display: flex;
+  align-items: center;
+  font-size: 18px;
 `;
 
 // Rarity Tracker
 const RarityTracker = styled.div`
   display: flex;
   align-items: center;
-  gap: 16px;
-  background: rgba(0, 0, 0, 0.3);
-  padding: 12px 20px;
-  border-radius: 99px;
-  margin-bottom: 20px;
-  max-width: fit-content;
+  gap: ${theme.spacing.md};
+  background: ${theme.colors.glass};
+  backdrop-filter: blur(${theme.blur.md});
+  border: 1px solid ${theme.colors.surfaceBorder};
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  border-radius: ${theme.radius.full};
+  margin-bottom: ${theme.spacing.lg};
+  width: fit-content;
+  position: relative;
+  z-index: 1;
 `;
 
-const TrackerLabel = styled.span`
-  color: rgba(255, 255, 255, 0.6);
-  font-size: 14px;
+const RarityLabel = styled.span`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textTertiary};
 `;
 
-const RarityBubbles = styled.div`
+const RarityHistory = styled.div`
   display: flex;
-  gap: 8px;
+  gap: ${theme.spacing.xs};
 `;
 
-const RarityDot = styled(motion.div)`
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: ${p => rarityColors[p.rarity] || '#555'};
+const RarityDot = styled.div`
+  width: 32px;
+  height: 32px;
+  border-radius: ${theme.radius.full};
+  background: ${props => getRarityColor(props.rarity)};
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
-  font-size: 14px;
-  box-shadow: 0 2px 10px ${p => rarityColors[p.rarity]}60;
+  font-size: 12px;
+  box-shadow: ${props => getRarityGlow(props.rarity)};
 `;
 
-// Gacha Section
-const GachaSection = styled.section`
+// Gacha Container
+const GachaContainer = styled(Section)`
   max-width: 1100px;
   margin: 0 auto;
-  padding: 28px;
-  background: rgba(15, 23, 42, 0.6);
-  backdrop-filter: blur(12px);
-  border-radius: 20px;
-  border: 1px solid rgba(255, 255, 255, 0.06);
+  position: relative;
+  z-index: 1;
 `;
 
 const ResultsArea = styled.div`
@@ -946,31 +1049,31 @@ const ResultsArea = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  margin-bottom: 28px;
+  margin-bottom: ${theme.spacing.xl};
 `;
 
 // Character Card
 const CharacterCard = styled(motion.div)`
-  background: white;
-  border-radius: 16px;
+  background: ${theme.colors.backgroundSecondary};
+  border-radius: ${theme.radius.xl};
   overflow: hidden;
   width: 100%;
   max-width: 340px;
-  border: 3px solid ${p => rarityColors[p.rarity] || '#ccc'};
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3), 0 0 30px ${p => rarityColors[p.rarity]}40;
+  border: 2px solid ${props => getRarityColor(props.rarity)};
+  box-shadow: ${props => getRarityGlow(props.rarity)}, ${theme.shadows.lg};
 `;
 
-const CardMedia = styled.div`
+const CardImageWrapper = styled.div`
   position: relative;
-  height: 300px;
+  height: 320px;
   cursor: pointer;
   overflow: hidden;
 `;
 
-const RarityGlow = styled.div`
+const RarityGlowEffect = styled.div`
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 100%, ${p => rarityColors[p.rarity]}50 0%, transparent 70%);
+  background: radial-gradient(circle at 50% 100%, ${props => getRarityColor(props.rarity)}40 0%, transparent 70%);
   pointer-events: none;
   z-index: 1;
 `;
@@ -979,8 +1082,11 @@ const CardImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform 0.3s;
-  &:hover { transform: scale(1.05); }
+  transition: transform ${theme.transitions.slow};
+  
+  ${CardImageWrapper}:hover & {
+    transform: scale(1.05);
+  }
 `;
 
 const CardVideo = styled.video`
@@ -989,348 +1095,376 @@ const CardVideo = styled.video`
   object-fit: cover;
 `;
 
-const CollectedTag = styled.div`
+const CardOverlay = styled.div`
   position: absolute;
-  top: 12px;
-  left: 12px;
-  background: linear-gradient(135deg, #10b981, #059669);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 99px;
-  font-size: 12px;
-  font-weight: 700;
-  z-index: 5;
-`;
-
-const BannerTag = styled.div`
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  background: linear-gradient(135deg, #ffd700, #ff9500);
-  color: white;
-  padding: 6px 12px;
-  border-radius: 99px;
-  font-size: 12px;
-  font-weight: 700;
-  z-index: 5;
-`;
-
-const ZoomHint = styled.div`
-  position: absolute;
-  bottom: 12px;
-  right: 12px;
-  background: rgba(0, 0, 0, 0.5);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.4);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 5;
   opacity: 0;
-  transition: opacity 0.2s;
-  ${CardMedia}:hover & { opacity: 1; }
+  transition: opacity ${theme.transitions.fast};
+  z-index: 2;
+  
+  span {
+    background: ${theme.colors.glass};
+    backdrop-filter: blur(${theme.blur.sm});
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+    border-radius: ${theme.radius.full};
+    font-size: ${theme.fontSizes.sm};
+    font-weight: ${theme.fontWeights.medium};
+  }
+  
+  ${CardImageWrapper}:hover & {
+    opacity: 1;
+  }
 `;
 
-const CardInfo = styled.div`
-  padding: 16px;
-  position: relative;
-  background: linear-gradient(to bottom, white, #fafafa);
+const CollectedBadge = styled.div`
+  position: absolute;
+  top: ${theme.spacing.md};
+  left: ${theme.spacing.md};
+  background: ${theme.colors.success};
+  color: white;
+  padding: 6px 12px;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  z-index: 3;
 `;
 
-const CharName = styled.h2`
+const BannerCharBadge = styled.div`
+  position: absolute;
+  top: ${theme.spacing.md};
+  right: ${theme.spacing.md};
+  background: linear-gradient(135deg, ${theme.colors.warning}, #ff6b00);
+  color: white;
+  padding: 6px 12px;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  z-index: 3;
+`;
+
+const CardContent = styled.div`
+  padding: ${theme.spacing.lg};
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: ${theme.spacing.md};
+`;
+
+const CardMeta = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const CharName = styled.h3`
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
   margin: 0 0 4px;
-  font-size: 20px;
-  color: #1a1a2e;
-  font-weight: 800;
+  color: ${theme.colors.text};
 `;
 
 const CharSeries = styled.p`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
   margin: 0;
-  color: #666;
-  font-size: 14px;
-  font-style: italic;
-`;
-
-const RarityBadge = styled.div`
-  position: absolute;
-  top: -12px;
-  right: 16px;
-  background: ${p => rarityColors[p.rarity]};
-  color: white;
-  padding: 6px 14px;
-  border-radius: 99px;
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  display: flex;
-  align-items: center;
-  gap: 5px;
-  box-shadow: 0 3px 10px ${p => rarityColors[p.rarity]}60;
-  z-index: 10;
 `;
 
 const CardActions = styled.div`
-  display: flex;
-  border-top: 1px solid #eee;
+  padding: 0 ${theme.spacing.lg} ${theme.spacing.lg};
 `;
 
-const ActionBtn = styled(motion.button)`
-  flex: 1;
-  padding: 14px;
-  border: none;
-  font-size: 14px;
-  font-weight: ${p => p.primary ? '700' : '500'};
-  cursor: ${p => p.disabled ? 'not-allowed' : 'pointer'};
-  background: ${p => p.primary ? 'linear-gradient(135deg, #667eea, #764ba2)' : 'white'};
-  color: ${p => p.primary ? 'white' : '#555'};
+const RollAgainBtn = styled(motion.button)`
+  width: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  &:first-child { border-right: 1px solid #eee; }
-  &:disabled { opacity: 0.5; }
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.primary};
+  color: white;
+  border: none;
+  border-radius: ${theme.radius.lg};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
 // Multi Results
-const MultiResultsPanel = styled(motion.div)`
-  background: white;
-  border-radius: 16px;
+const MultiResultsContainer = styled(motion.div)`
+  background: ${theme.colors.backgroundSecondary};
+  border-radius: ${theme.radius.xl};
+  overflow: hidden;
   width: 100%;
   max-width: 1000px;
-  overflow: hidden;
-  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.4);
+  border: 1px solid ${theme.colors.surfaceBorder};
+  box-shadow: ${theme.shadows.lg};
 `;
 
-const MultiHeader = styled.div`
+const MultiResultsHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  background: linear-gradient(135deg, #4b6cb7, #182848);
-  padding: 16px 24px;
-  color: white;
-  h2 { margin: 0; font-size: 18px; }
+  padding: ${theme.spacing.lg};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  
+  h2 {
+    margin: 0;
+    font-size: ${theme.fontSizes.lg};
+    font-weight: ${theme.fontWeights.semibold};
+  }
 `;
 
-const CloseMultiBtn = styled.button`
-  background: rgba(255, 255, 255, 0.15);
-  border: none;
-  color: white;
-  width: 36px;
-  height: 36px;
-  border-radius: 50%;
-  cursor: pointer;
-  font-size: 20px;
-  &:hover { background: rgba(255, 255, 255, 0.25); }
-`;
-
-const MultiGrid = styled.div`
+const MultiResultsGrid = styled(motion.div)`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: 16px;
-  padding: 20px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.lg};
   max-height: 60vh;
   overflow-y: auto;
+  ${scrollbarStyles}
 `;
 
 const MiniCard = styled(motion.div)`
-  background: ${p => p.isBanner ? 'linear-gradient(to bottom, rgba(255, 215, 0, 0.08), white)' : 'white'};
-  border-radius: 12px;
+  background: ${props => props.isBanner 
+    ? `linear-gradient(to bottom, rgba(255, 159, 10, 0.1), ${theme.colors.backgroundTertiary})`
+    : theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
   overflow: hidden;
-  border: 2px solid ${p => p.isBanner ? '#ffd700' : rarityColors[p.rarity] || '#ddd'};
+  border: 2px solid ${props => props.isBanner ? theme.colors.warning : getRarityColor(props.rarity)};
   cursor: pointer;
 `;
 
-const MiniMedia = styled.div`
+const MiniCardImage = styled.div`
   position: relative;
   height: 140px;
   overflow: hidden;
-  img, video { width: 100%; height: 100%; object-fit: cover; }
+  
+  img, video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const MiniCollected = styled.div`
   position: absolute;
   top: 6px;
   left: 6px;
-  background: linear-gradient(135deg, #10b981, #059669);
+  background: ${theme.colors.success};
   color: white;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: ${theme.radius.full};
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 11px;
-  font-weight: 700;
+  font-weight: ${theme.fontWeights.bold};
 `;
 
-const MiniBanner = styled.div`
+const MiniBannerMark = styled.div`
   position: absolute;
   top: 6px;
   right: 6px;
-  background: linear-gradient(135deg, #ffd700, #ff9500);
+  background: linear-gradient(135deg, ${theme.colors.warning}, #ff6b00);
   color: white;
   width: 20px;
   height: 20px;
-  border-radius: 50%;
+  border-radius: ${theme.radius.full};
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 10px;
 `;
 
-const MiniInfo = styled.div`
-  padding: 10px;
-  position: relative;
+const MiniCardInfo = styled.div`
+  padding: ${theme.spacing.sm};
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.xs};
 `;
 
-const MiniName = styled.h3`
-  margin: 0;
-  font-size: 13px;
-  color: #1a1a2e;
-  font-weight: 600;
+const MiniName = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.medium};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  flex: 1;
 `;
 
-const MiniRarity = styled.div`
-  position: absolute;
-  top: -10px;
-  right: 8px;
-  background: ${p => rarityColors[p.rarity]};
-  color: white;
-  width: 22px;
-  height: 22px;
-  border-radius: 50%;
+const MiniRarityDot = styled.div`
+  width: 20px;
+  height: 20px;
+  border-radius: ${theme.radius.full};
+  background: ${props => getRarityColor(props.rarity)};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 10px;
-  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  color: white;
+  font-size: 9px;
+  flex-shrink: 0;
 `;
 
-// Loading & Empty
+// Loading & Empty States
 const LoadingState = styled(motion.div)`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 20px;
+  gap: ${theme.spacing.lg};
 `;
 
-const Spinner = styled.div`
-  width: 60px;
-  height: 60px;
-  border: 4px solid rgba(255, 255, 255, 0.1);
-  border-top-color: #9e5594;
-  border-left-color: #6e48aa;
-  border-radius: 50%;
-  animation: spin 1s linear infinite;
-  @keyframes spin { to { transform: rotate(360deg); } }
-`;
-
-const LoadingText = styled.p`
-  font-size: 18px;
-  color: rgba(255, 255, 255, 0.7);
+const LoadingStateText = styled.p`
+  font-size: ${theme.fontSizes.lg};
+  color: ${theme.colors.textSecondary};
 `;
 
 const EmptyState = styled(motion.div)`
   text-align: center;
-  padding: 48px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 16px;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  max-width: 350px;
-  
-  h3 { margin: 0 0 8px; font-size: 22px; }
-  p { margin: 0; color: rgba(255, 255, 255, 0.6); }
+  padding: ${theme.spacing['2xl']};
+  background: ${theme.colors.glass};
+  border-radius: ${theme.radius.xl};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  max-width: 320px;
 `;
 
 const EmptyIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: 16px;
+  font-size: 56px;
+  margin-bottom: ${theme.spacing.md};
   animation: float 3s ease-in-out infinite;
-  @keyframes float { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
-`;
-
-// Roll Controls
-const RollControls = styled.div`
-  display: flex;
-  gap: 16px;
-  justify-content: center;
-  margin-bottom: 12px;
   
-  @media (max-width: 768px) {
-    flex-direction: column;
-    align-items: center;
+  @keyframes float {
+    0%, 100% { transform: translateY(0); }
+    50% { transform: translateY(-8px); }
   }
 `;
 
-const RollButton = styled(motion.button)`
-  background: linear-gradient(135deg, #6e48aa, #9e5594);
-  color: white;
-  border: none;
-  border-radius: 99px;
-  padding: 14px 28px;
-  font-size: 16px;
-  font-weight: 700;
-  cursor: pointer;
+const EmptyTitle = styled.h3`
+  font-size: ${theme.fontSizes.xl};
+  font-weight: ${theme.fontWeights.semibold};
+  margin: 0 0 ${theme.spacing.xs};
+`;
+
+const EmptyText = styled.p`
+  font-size: ${theme.fontSizes.base};
+  color: ${theme.colors.textSecondary};
+  margin: 0;
+`;
+
+// Controls
+const ControlsSection = styled.div``;
+
+const ButtonRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.md};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex-direction: column;
+  }
+`;
+
+const PrimaryRollButton = styled(motion.button)`
+  flex: 1;
   display: flex;
   align-items: center;
-  gap: 10px;
-  box-shadow: 0 4px 20px rgba(110, 72, 170, 0.4);
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.lg};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  color: white;
+  border: none;
+  border-radius: ${theme.radius.xl};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
   
   &:disabled {
-    background: linear-gradient(135deg, #4a5568, #2d3748);
+    opacity: 0.5;
     cursor: not-allowed;
     box-shadow: none;
   }
 `;
 
-const MultiRollButton = styled(RollButton)`
-  background: linear-gradient(135deg, #4b6cb7, #182848);
-  box-shadow: 0 4px 20px rgba(75, 108, 183, 0.4);
-`;
-
-const Cost = styled.span`
-  font-size: 13px;
-  opacity: 0.8;
-`;
-
-const RollHint = styled.p`
-  text-align: center;
-  color: rgba(255, 255, 255, 0.5);
-  font-size: 14px;
-  margin: 0;
-  strong { color: white; }
-`;
-
-const FastModeBtn = styled.button`
+const SecondaryRollButton = styled(motion.button)`
+  flex: 1;
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 6px;
-  margin: 16px auto 0;
-  padding: 8px 16px;
-  border-radius: 99px;
-  border: none;
-  background: ${p => p.active ? 'rgba(158, 85, 148, 0.2)' : 'rgba(255, 255, 255, 0.05)'};
-  color: ${p => p.active ? '#9e5594' : 'rgba(255, 255, 255, 0.5)'};
-  font-size: 13px;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.lg};
+  background: ${theme.colors.glass};
+  color: white;
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
-  transition: all 0.2s;
   
-  &:hover { background: rgba(158, 85, 148, 0.2); }
+  &:hover:not(:disabled) {
+    background: ${theme.colors.surfaceHover};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const CostLabel = styled.span`
+  font-size: ${theme.fontSizes.sm};
+  opacity: 0.8;
+  margin-left: auto;
+`;
+
+const ControlsFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
+const PullHint = styled.p`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textTertiary};
+  margin: 0;
+  
+  strong {
+    color: ${theme.colors.text};
+  }
+`;
+
+const FastModeToggle = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: ${props => props.active ? 'rgba(88, 86, 214, 0.2)' : theme.colors.glass};
+  border: 1px solid ${props => props.active ? theme.colors.accent : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  color: ${props => props.active ? theme.colors.accent : theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: rgba(88, 86, 214, 0.15);
+  }
 `;
 
 // Info Panel
-const InfoPanelBackdrop = styled(motion.div)`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.6);
-  z-index: 100;
-`;
-
 const InfoPanel = styled(motion.div)`
   position: fixed;
   top: 0;
@@ -1338,133 +1472,135 @@ const InfoPanel = styled(motion.div)`
   bottom: 0;
   width: 90%;
   max-width: 420px;
-  background: linear-gradient(180deg, #1e293b, #0f172a);
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  background: ${theme.colors.backgroundSecondary};
+  border-left: 1px solid ${theme.colors.surfaceBorder};
   display: flex;
   flex-direction: column;
+  box-shadow: ${theme.shadows.xl};
 `;
 
-const InfoHeader = styled.div`
+const InfoPanelHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 18px 20px;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-  
-  h2 { margin: 0; font-size: 20px; }
+  padding: ${theme.spacing.lg};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
 `;
 
-const InfoContent = styled.div`
+const InfoPanelContent = styled.div`
   flex: 1;
-  padding: 20px;
+  padding: ${theme.spacing.lg};
   overflow-y: auto;
+  ${scrollbarStyles}
 `;
 
 const InfoBlock = styled.div`
-  margin-bottom: 28px;
-  
-  h3 {
-    margin: 0 0 14px;
-    font-size: 16px;
-    color: #9e5594;
-    padding-bottom: 10px;
-    border-bottom: 2px solid rgba(158, 85, 148, 0.3);
-  }
-  
-  p {
-    margin: 0 0 14px;
-    color: rgba(255, 255, 255, 0.85);
-    line-height: 1.6;
-  }
+  margin-bottom: ${theme.spacing.xl};
+`;
+
+const InfoBlockTitle = styled.h3`
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.accent};
+  margin: 0 0 ${theme.spacing.md};
+  padding-bottom: ${theme.spacing.sm};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
 `;
 
 const InfoNote = styled.div`
-  padding: 12px;
-  background: ${p => p.accent ? 'rgba(255, 215, 0, 0.1)' : 'rgba(0, 0, 0, 0.2)'};
-  border-radius: 8px;
-  font-size: 14px;
-  margin-bottom: 10px;
-  ${p => p.accent && `border: 1px solid rgba(255, 215, 0, 0.2);`}
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.glass};
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.sm};
+  margin-top: ${theme.spacing.md};
+  color: ${theme.colors.textSecondary};
+`;
+
+const InfoNoteAccent = styled(InfoNote)`
+  background: rgba(255, 159, 10, 0.1);
+  border: 1px solid rgba(255, 159, 10, 0.2);
+  color: ${theme.colors.warning};
 `;
 
 const FeaturedList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: ${theme.spacing.sm};
 `;
 
 const FeaturedItem = styled(motion.div)`
   display: flex;
   align-items: center;
-  gap: 14px;
-  padding: 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 12px;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.glass};
+  border-radius: ${theme.radius.lg};
   cursor: pointer;
-  transition: background 0.2s;
-  
-  &:hover { background: rgba(255, 255, 255, 0.1); }
+  transition: background ${theme.transitions.fast};
 `;
 
 const FeaturedThumb = styled.div`
-  width: 56px;
-  height: 56px;
-  border-radius: 8px;
+  width: 48px;
+  height: 48px;
+  border-radius: ${theme.radius.md};
   overflow: hidden;
-  border: 2px solid ${p => rarityColors[p.rarity] || '#555'};
+  border: 2px solid ${props => getRarityColor(props.rarity)};
   flex-shrink: 0;
   
-  img, video { width: 100%; height: 100%; object-fit: cover; }
+  img, video { 
+    width: 100%; 
+    height: 100%; 
+    object-fit: cover; 
+  }
 `;
 
 const FeaturedInfo = styled.div`
   flex: 1;
   min-width: 0;
-  
-  > div:first-child {
-    font-weight: 600;
-    font-size: 15px;
-    margin-bottom: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-  }
+`;
+
+const FeaturedName = styled.div`
+  font-weight: ${theme.fontWeights.medium};
+  font-size: ${theme.fontSizes.sm};
+  margin-bottom: 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 `;
 
 const FeaturedRarity = styled.div`
   display: inline-flex;
   align-items: center;
-  gap: 5px;
-  padding: 3px 8px;
-  border-radius: 99px;
-  font-size: 11px;
+  gap: 4px;
+  padding: 2px 8px;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
   background: rgba(0, 0, 0, 0.3);
-  color: ${p => rarityColors[p.rarity] || '#999'};
+  color: ${props => getRarityColor(props.rarity)};
   text-transform: capitalize;
 `;
 
 const OwnedLabel = styled.div`
-  font-size: 12px;
-  color: #10b981;
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.success};
   margin-top: 4px;
 `;
 
 const RollFromPanelBtn = styled(motion.button)`
   width: 100%;
-  background: linear-gradient(135deg, #6e48aa, #9e5594);
+  padding: ${theme.spacing.lg};
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
   color: white;
   border: none;
-  padding: 16px;
-  border-radius: 12px;
-  font-size: 16px;
-  font-weight: 700;
+  border-radius: ${theme.radius.lg};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
-  margin-top: 20px;
+  margin-top: ${theme.spacing.lg};
   
   &:disabled {
-    background: #555;
+    opacity: 0.5;
     cursor: not-allowed;
-    opacity: 0.7;
   }
 `;
 
