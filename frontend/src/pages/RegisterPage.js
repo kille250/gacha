@@ -1,4 +1,4 @@
-import React, { useState, useContext } from 'react';
+import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -17,8 +17,15 @@ const RegisterPage = () => {
   const [localError, setLocalError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
-  const { register, error } = useContext(AuthContext);
+  const { register, error, user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
+  
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate('/gacha', { replace: true });
+    }
+  }, [user, loading, navigate]);
   
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
