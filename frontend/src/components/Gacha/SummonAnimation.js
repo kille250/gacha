@@ -1083,6 +1083,16 @@ export const MultiSummonAnimation = ({
 
   if (!isActive || characters.length === 0) return null;
 
+  // Helper to check if file is a video
+  const isVideo = (file) => {
+    if (!file) return false;
+    if (typeof file === 'string') {
+      const lower = file.toLowerCase();
+      return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.includes('video');
+    }
+    return false;
+  };
+
   // Show summary when user clicked Skip All
   if (showSkippedResults) {
     return (
@@ -1106,7 +1116,17 @@ export const MultiSummonAnimation = ({
                 transition={{ delay: index * 0.03 }}
               >
                 <ResultImage>
-                  <img src={getImagePath(char.image)} alt={char.name} />
+                  {isVideo(char.image) ? (
+                    <video 
+                      src={getImagePath(char.image)} 
+                      autoPlay 
+                      loop 
+                      muted 
+                      playsInline 
+                    />
+                  ) : (
+                    <img src={getImagePath(char.image)} alt={char.name} />
+                  )}
                 </ResultImage>
                 <ResultInfo>
                   <ResultName>{char.name}</ResultName>
