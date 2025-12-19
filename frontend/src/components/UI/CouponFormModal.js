@@ -64,45 +64,44 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
   if (!show) return null;
   
   return (
-    <ModalOverlay>
-      <ModalContent>
+    <ModalOverlay onClick={onClose}>
+      <ModalContent onClick={e => e.stopPropagation()}>
         <ModalHeader>
-          <h3><FaTicketAlt /> {coupon ? 'Edit Coupon' : 'Create New Coupon'}</h3>
+          <ModalTitle>
+            <FaTicketAlt />
+            {coupon ? 'Edit Coupon' : 'Create New Coupon'}
+          </ModalTitle>
           <CloseButton onClick={onClose}><FaTimes /></CloseButton>
         </ModalHeader>
         
         <ModalBody>
           <form onSubmit={handleSubmit}>
-            <FormRow>
-              <FormGroup fullWidth>
-                <Label>Coupon Code</Label>
-                <Input 
-                  type="text" 
-                  name="code" 
-                  value={formData.code}
-                  onChange={handleChange}
-                  placeholder="SUMMER2023"
-                  required
-                  pattern="^[a-zA-Z0-9\-]+$"
-                  title="Use only letters, numbers, and hyphens"
-                  maxLength="20"
-                />
-                <HelperText>No spaces, only letters, numbers, and hyphens</HelperText>
-              </FormGroup>
-            </FormRow>
+            <FormGroup>
+              <Label>Coupon Code</Label>
+              <Input 
+                type="text" 
+                name="code" 
+                value={formData.code}
+                onChange={handleChange}
+                placeholder="SUMMER2023"
+                required
+                pattern="^[a-zA-Z0-9\-]+$"
+                title="Use only letters, numbers, and hyphens"
+                maxLength="20"
+              />
+              <FormHint>No spaces, only letters, numbers, and hyphens</FormHint>
+            </FormGroup>
             
-            <FormRow>
-              <FormGroup fullWidth>
-                <Label>Description</Label>
-                <Input 
-                  type="text" 
-                  name="description" 
-                  value={formData.description}
-                  onChange={handleChange}
-                  placeholder="Summer 2023 promotional coupon"
-                />
-              </FormGroup>
-            </FormRow>
+            <FormGroup>
+              <Label>Description</Label>
+              <Input 
+                type="text" 
+                name="description" 
+                value={formData.description}
+                onChange={handleChange}
+                placeholder="Summer 2023 promotional coupon"
+              />
+            </FormGroup>
             
             <FormRow>
               <FormGroup>
@@ -161,7 +160,7 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                   min="-1"
                   title="Use -1 for unlimited"
                 />
-                <HelperText>-1 for unlimited</HelperText>
+                <FormHint>-1 for unlimited</FormHint>
               </FormGroup>
               
               <FormGroup>
@@ -186,7 +185,7 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                   value={formData.startDate}
                   onChange={handleChange}
                 />
-                <HelperText>Leave empty for immediate start</HelperText>
+                <FormHint>Leave empty for immediate start</FormHint>
               </FormGroup>
               
               <FormGroup>
@@ -197,31 +196,33 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                   value={formData.endDate}
                   onChange={handleChange}
                 />
-                <HelperText>Leave empty for no expiration</HelperText>
+                <FormHint>Leave empty for no expiration</FormHint>
               </FormGroup>
             </FormRow>
             
-            <FormRow>
-              <FormGroup>
-                <CheckboxLabel>
-                  <Checkbox 
-                    type="checkbox" 
-                    name="isActive" 
-                    checked={formData.isActive}
-                    onChange={handleChange}
-                  />
-                  <span>Active</span>
+            <FormGroup>
+              <CheckboxWrapper>
+                <Checkbox 
+                  type="checkbox" 
+                  name="isActive" 
+                  id="isActive"
+                  checked={formData.isActive}
+                  onChange={handleChange}
+                />
+                <CheckboxLabel htmlFor="isActive">
+                  <CheckboxIndicator $checked={formData.isActive}>
+                    {formData.isActive && '✓'}
+                  </CheckboxIndicator>
+                  Active
                 </CheckboxLabel>
-              </FormGroup>
-            </FormRow>
+              </CheckboxWrapper>
+            </FormGroup>
             
             <ButtonGroup>
+              <CancelButton type="button" onClick={onClose}>Cancel</CancelButton>
               <SubmitButton type="submit">
                 {coupon ? 'Update Coupon' : 'Create Coupon'}
               </SubmitButton>
-              <CancelButton type="button" onClick={onClose}>
-                Cancel
-              </CancelButton>
             </ButtonGroup>
           </form>
         </ModalBody>
@@ -230,184 +231,262 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
   );
 };
 
+// ==================== STYLED COMPONENTS ====================
+
 const ModalOverlay = styled.div`
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: 9999;
+  padding: 20px;
 `;
 
 const ModalContent = styled.div`
-  background-color: white;
-  border-radius: 8px;
-  width: 95%;
-  max-width: 700px;
+  background: #1c1c1e;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 600px;
   max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 25px 80px rgba(0, 0, 0, 0.5);
 `;
 
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: 12px;
   
-  h3 {
-    margin: 0;
-    display: flex;
-    align-items: center;
-    gap: 10px;
+  svg {
+    color: #FF9F0A;
   }
 `;
 
 const CloseButton = styled.button`
-  background: none;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
-  font-size: 18px;
+  color: rgba(255, 255, 255, 0.6);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   cursor: pointer;
-  color: #777;
   display: flex;
   align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
   
   &:hover {
-    color: #333;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
   }
 `;
 
 const ModalBody = styled.div`
-  padding: 20px;
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
 `;
 
 const FormRow = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
   margin-bottom: 20px;
   
-  @media (min-width: 768px) {
-    flex-direction: row;
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
   }
 `;
 
 const FormGroup = styled.div`
-  flex: ${props => props.fullWidth ? '1 1 100%' : '1 1 0'};
-  min-width: 0;
+  margin-bottom: 20px;
+  
+  ${FormRow} & {
+    margin-bottom: 0;
+  }
 `;
 
 const Label = styled.label`
-  display: block;
-  margin-bottom: 5px;
-  font-weight: bold;
-  font-size: 14px;
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 6px;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+  
+  svg {
+    color: rgba(255, 255, 255, 0.5);
+    font-size: 14px;
+  }
 `;
 
 const Input = styled.input`
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-size: 15px;
+  color: #fff;
+  transition: all 0.2s;
   
   &:focus {
-    border-color: #3498db;
     outline: none;
+    border-color: #007AFF;
+    background: rgba(255, 255, 255, 0.08);
+  }
+  
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+  
+  &::-webkit-calendar-picker-indicator {
+    filter: invert(1);
+    opacity: 0.5;
+    cursor: pointer;
   }
 `;
 
-const HelperText = styled.small`
-  color: #777;
+const FormHint = styled.small`
+  color: rgba(255, 255, 255, 0.4);
   font-size: 12px;
+  margin-top: 6px;
+  display: block;
 `;
 
 const Select = styled.select`
   width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 14px;
-  background-color: white;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-size: 15px;
+  color: #fff;
+  cursor: pointer;
+  transition: all 0.2s;
+  appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3e%3cpolyline points='6 9 12 15 18 9'%3e%3c/polyline%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right 12px center;
+  background-size: 16px;
+  padding-right: 40px;
   
   &:focus {
-    border-color: #3498db;
     outline: none;
+    border-color: #007AFF;
+    background-color: rgba(255, 255, 255, 0.08);
   }
+  
+  option {
+    background: #2c2c2e;
+    color: #fff;
+    padding: 12px;
+  }
+`;
+
+const CheckboxWrapper = styled.div`
+  display: flex;
+  align-items: center;
+`;
+
+const Checkbox = styled.input`
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
 `;
 
 const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   cursor: pointer;
-  font-size: 14px;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  background-color: ${props => props.checked ? '#e8f5e9' : 'white'};
+  font-size: 15px;
+  color: rgba(255, 255, 255, 0.9);
+  padding: 12px 16px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.08);
+  }
 `;
 
-const Checkbox = styled.input`
-  width: 18px;
-  height: 18px;
+const CheckboxIndicator = styled.span`
+  width: 22px;
+  height: 22px;
+  border-radius: 6px;
+  background: ${props => props.$checked ? '#34C759' : 'rgba(255, 255, 255, 0.1)'};
+  border: 2px solid ${props => props.$checked ? '#34C759' : 'rgba(255, 255, 255, 0.2)'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  font-weight: bold;
+  transition: all 0.2s;
 `;
 
 const ButtonGroup = styled.div`
   display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-top: 20px;
-  
-  @media (min-width: 768px) {
-    flex-direction: row;
-    justify-content: flex-end;
-  }
+  justify-content: flex-end;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 `;
 
 const SubmitButton = styled.button`
-  background-color: #27ae60;
+  background: #34C759;
   color: white;
   border: none;
-  border-radius: 4px;
-  padding: 12px 20px;
-  font-weight: bold;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
   cursor: pointer;
-  width: 100%;
-  
-  @media (min-width: 768px) {
-    width: auto;
-  }
+  transition: all 0.2s;
   
   &:hover {
-    background-color: #219653;
+    background: #2DB54A;
   }
 `;
 
 const CancelButton = styled.button`
-  background-color: #e0e0e0;
-  color: #333;
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
   border: none;
-  border-radius: 4px;
-  padding: 12px 20px;
-  font-weight: bold;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 15px;
   cursor: pointer;
-  width: 100%;
-  
-  @media (min-width: 768px) {
-    width: auto;
-  }
+  transition: all 0.2s;
   
   &:hover {
-    background-color: #d0d0d0;
+    background: rgba(255, 255, 255, 0.15);
   }
 `;
 

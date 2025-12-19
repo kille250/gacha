@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaImage, FaVideo, FaCalendar, FaSearch } from 'react-icons/fa';
+import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes } from 'react-icons/fa';
 import { getAssetUrl } from '../../utils/api';
   
 const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
@@ -209,74 +209,77 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   if (!show) return null;
   
   return (
-    <ModalOverlay>
-      <ModalContent>
+    <ModalOverlay onClick={onClose}>
+      <ModalContent onClick={e => e.stopPropagation()}>
         <ModalHeader>
-          <h3>{banner ? 'Edit Banner' : 'Create New Banner'}</h3>
-          <CloseButton onClick={onClose}>&times;</CloseButton>
+          <ModalTitle>{banner ? 'Edit Banner' : 'Create New Banner'}</ModalTitle>
+          <CloseButton onClick={onClose}><FaTimes /></CloseButton>
         </ModalHeader>
         <ModalBody>
           <form onSubmit={handleSubmit}>
             <FormGroup>
-              <label>Banner Name*</label>
-              <input
+              <Label>Banner Name*</Label>
+              <Input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
+                placeholder="Enter banner name"
                 required
               />
             </FormGroup>
             <FormGroup>
-              <label>Series*</label>
-              <input
+              <Label>Series*</Label>
+              <Input
                 type="text"
                 name="series"
                 value={formData.series}
                 onChange={handleChange}
+                placeholder="Enter series name"
                 required
               />
             </FormGroup>
             <FormGroup>
-              <label>Description</label>
-              <textarea
+              <Label>Description</Label>
+              <TextArea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}
+                placeholder="Optional description..."
               />
             </FormGroup>
             <FormRow>
               <FormGroup>
-                <label>Start Date*</label>
-                <DateInput>
+                <Label>Start Date*</Label>
+                <DateInputWrapper>
                   <FaCalendar />
-                  <input
+                  <Input
                     type="date"
                     name="startDate"
                     value={formData.startDate}
                     onChange={handleChange}
                     required
                   />
-                </DateInput>
+                </DateInputWrapper>
               </FormGroup>
               <FormGroup>
-                <label>End Date (optional)</label>
-                <DateInput>
+                <Label>End Date (optional)</Label>
+                <DateInputWrapper>
                   <FaCalendar />
-                  <input
+                  <Input
                     type="date"
                     name="endDate"
                     value={formData.endDate}
                     onChange={handleChange}
                   />
-                </DateInput>
+                </DateInputWrapper>
               </FormGroup>
             </FormRow>
             <FormRow>
               <FormGroup>
-                <label>Cost Multiplier</label>
-                <input
+                <Label>Cost Multiplier</Label>
+                <Input
                   type="number"
                   name="costMultiplier"
                   value={formData.costMultiplier}
@@ -290,8 +293,8 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                 </FormHint>
               </FormGroup>
               <FormGroup>
-                <label>Rate Multiplier</label>
-                <input
+                <Label>Rate Multiplier</Label>
+                <Input
                   type="number"
                   name="rateMultiplier"
                   value={formData.rateMultiplier}
@@ -307,89 +310,89 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
             </FormRow>
             <CheckboxGroup>
               <CheckboxControl>
-                <input
+                <Checkbox
                   type="checkbox"
                   id="featured"
                   name="featured"
                   checked={formData.featured}
                   onChange={handleChange}
                 />
-                <label htmlFor="featured">Featured Banner (shown first)</label>
+                <CheckboxLabel htmlFor="featured">Featured Banner</CheckboxLabel>
               </CheckboxControl>
               <CheckboxControl>
-                <input
+                <Checkbox
                   type="checkbox"
                   id="active"
                   name="active"
                   checked={formData.active}
                   onChange={handleChange}
                 />
-                <label htmlFor="active">Active</label>
+                <CheckboxLabel htmlFor="active">Active</CheckboxLabel>
               </CheckboxControl>
               <CheckboxControl $r18>
-                <input
+                <Checkbox
                   type="checkbox"
                   id="isR18"
                   name="isR18"
                   checked={formData.isR18}
                   onChange={handleChange}
                 />
-                <label htmlFor="isR18">🔞 R18 Content (Adult Only)</label>
+                <CheckboxLabel htmlFor="isR18" $r18>🔞 R18 Content</CheckboxLabel>
               </CheckboxControl>
             </CheckboxGroup>
             <FormGroup>
-              <label>Banner Image</label>
-              <FileInput>
+              <Label>Banner Image</Label>
+              <FileInputWrapper>
                 <FaImage />
-                <input
+                <FileInput
                   type="file"
                   accept="image/*"
                   onChange={handleImageChange}
-                  required={!banner} // Required only for new banner
+                  required={!banner}
                 />
-              </FileInput>
+                <FileInputText>Choose image file...</FileInputText>
+              </FileInputWrapper>
               {imagePreview && (
-                <ImagePreview>
+                <MediaPreview>
                   <img src={imagePreview} alt="Banner preview" />
-                </ImagePreview>
+                </MediaPreview>
               )}
             </FormGroup>
             <FormGroup>
-              <label>Promotional Video (optional)</label>
-              <FileInput>
+              <Label>Promotional Video (optional)</Label>
+              <FileInputWrapper>
                 <FaVideo />
-                <input
+                <FileInput
                   type="file"
                   accept="video/*"
                   onChange={handleVideoChange}
                 />
-              </FileInput>
+                <FileInputText>Choose video file...</FileInputText>
+              </FileInputWrapper>
               {videoPreview && (
-                <VideoPreview>
+                <MediaPreview>
                   <video src={videoPreview} controls />
-                </VideoPreview>
+                </MediaPreview>
               )}
             </FormGroup>
             <FormGroup>
-              <label>Banner Characters</label>
-              <FormHint>Select characters that are featured in this banner</FormHint>
+              <Label>Banner Characters</Label>
+              <FormHint style={{ marginBottom: '12px' }}>Select characters that are featured in this banner</FormHint>
               <CharacterSelector>
                 <SelectorHeader>
                   <SelectedCount>
                     {formData.selectedCharacters.length} characters selected
                   </SelectedCount>
                   <SearchWrapper>
-                    <SearchIcon>
-                      <FaSearch />
-                    </SearchIcon>
+                    <SearchIcon><FaSearch /></SearchIcon>
                     <SearchInput
                       type="text"
-                      placeholder="Search by character name or series..."
+                      placeholder="Search by name or series..."
                       value={characterSearch}
                       onChange={(e) => setCharacterSearch(e.target.value)}
                     />
                     {characterSearch && (
-                      <ClearButton onClick={() => setCharacterSearch('')}>×</ClearButton>
+                      <ClearSearchBtn onClick={() => setCharacterSearch('')}>×</ClearSearchBtn>
                     )}
                   </SearchWrapper>
                 </SelectorHeader>
@@ -398,17 +401,17 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                     filteredCharacters.map(char => (
                       <CharacterOption
                         key={char.id}
-                        selected={formData.selectedCharacters.includes(char.id)}
-                        rarity={char.rarity}
+                        $selected={formData.selectedCharacters.includes(char.id)}
+                        $rarity={char.rarity}
                         onClick={() => handleCharacterToggle(char.id)}
                       >
                         {renderCharacterMedia(char)}
                         <CharOptionInfo>
                           <CharOptionName>{char.name}</CharOptionName>
                           <CharOptionSeries>{char.series}</CharOptionSeries>
-                          <CharOptionRarity>{char.rarity}</CharOptionRarity>
+                          <CharOptionRarity $rarity={char.rarity}>{char.rarity}</CharOptionRarity>
                         </CharOptionInfo>
-                        <CharOptionCheck>
+                        <CharOptionCheck $selected={formData.selectedCharacters.includes(char.id)}>
                           {formData.selectedCharacters.includes(char.id) && '✓'}
                         </CharOptionCheck>
                       </CharacterOption>
@@ -420,12 +423,10 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
               </CharacterSelector>
             </FormGroup>
             <ButtonGroup>
+              <CancelButton type="button" onClick={onClose}>Cancel</CancelButton>
               <SubmitButton type="submit">
                 {banner ? 'Update Banner' : 'Create Banner'}
               </SubmitButton>
-              <CancelButton type="button" onClick={onClose}>
-                Cancel
-              </CancelButton>
             </ButtonGroup>
           </form>
         </ModalBody>
@@ -434,352 +435,419 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   );
 };
   
-// Styled components
+// ==================== STYLED COMPONENTS ====================
+
 const ModalOverlay = styled.div`
   position: fixed;
-  top: 0;
-  left: 0;
-  right: 0;
-  bottom: 0;
-  background-color: rgba(0, 0, 0, 0.5);
+  inset: 0;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
-  overflow-y: auto;
+  z-index: 9999;
   padding: 20px;
 `;
   
 const ModalContent = styled.div`
-  background-color: white;
-  border-radius: 8px;
-  width: 95%;
-  max-width: 800px;
+  background: #1c1c1e;
+  border-radius: 20px;
+  width: 100%;
+  max-width: 700px;
   max-height: 90vh;
-  overflow-y: auto;
-  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 
+    0 0 0 1px rgba(255, 255, 255, 0.1),
+    0 25px 80px rgba(0, 0, 0, 0.5);
 `;
   
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
-  padding: 15px 20px;
-  border-bottom: 1px solid #eee;
-  
-  h3 {
-    margin: 0;
-    color: #333;
-  }
+  padding: 20px 24px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+`;
+
+const ModalTitle = styled.h3`
+  margin: 0;
+  color: #fff;
+  font-size: 20px;
+  font-weight: 600;
+  letter-spacing: -0.02em;
 `;
   
 const CloseButton = styled.button`
-  background: none;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
-  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
   cursor: pointer;
-  color: #777;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: all 0.2s;
   
   &:hover {
-    color: #333;
+    background: rgba(255, 255, 255, 0.15);
+    color: #fff;
   }
 `;
   
 const ModalBody = styled.div`
-  padding: 20px;
+  padding: 24px;
+  overflow-y: auto;
+  flex: 1;
 `;
   
 const FormGroup = styled.div`
   margin-bottom: 20px;
+`;
+
+const Label = styled.label`
+  display: block;
+  margin-bottom: 8px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 14px;
+`;
+
+const Input = styled.input`
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-size: 15px;
+  color: #fff;
+  transition: all 0.2s;
   
-  label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: 600;
-    color: #333;
+  &:focus {
+    outline: none;
+    border-color: #007AFF;
+    background: rgba(255, 255, 255, 0.08);
   }
   
-  input[type="text"],
-  input[type="number"],
-  input[type="date"],
-  textarea,
-  select {
-    width: 100%;
-    padding: 10px;
-    border: 1px solid #ddd;
-    border-radius: 4px;
-    font-size: 14px;
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
+`;
+
+const TextArea = styled.textarea`
+  width: 100%;
+  padding: 12px 14px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  font-size: 15px;
+  color: #fff;
+  resize: vertical;
+  min-height: 80px;
+  font-family: inherit;
+  transition: all 0.2s;
+  
+  &:focus {
+    outline: none;
+    border-color: #007AFF;
+    background: rgba(255, 255, 255, 0.08);
   }
   
-  textarea {
-    resize: vertical;
-    min-height: 80px;
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.3);
   }
 `;
   
 const FormRow = styled.div`
-  display: flex;
-  gap: 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
   margin-bottom: 20px;
   
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 10px;
+  @media (max-width: 600px) {
+    grid-template-columns: 1fr;
   }
   
   ${FormGroup} {
-    flex: 1;
     margin-bottom: 0;
   }
 `;
   
-const DateInput = styled.div`
+const DateInputWrapper = styled.div`
   display: flex;
   align-items: center;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 0 14px;
   
   svg {
-    color: #666;
+    color: rgba(255, 255, 255, 0.4);
     margin-right: 10px;
+    flex-shrink: 0;
   }
   
   input {
     border: none;
+    background: transparent;
+    padding: 12px 0;
     flex: 1;
-    padding: 10px 0;
     
     &:focus {
       outline: none;
     }
+    
+    &::-webkit-calendar-picker-indicator {
+      filter: invert(1);
+      opacity: 0.5;
+      cursor: pointer;
+    }
   }
 `;
-  
-const FileInput = styled.div`
+
+const FileInputWrapper = styled.div`
   display: flex;
   align-items: center;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  padding: 0 10px;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px 14px;
+  cursor: pointer;
+  position: relative;
+  transition: all 0.2s;
+  
+  &:hover {
+    border-color: rgba(255, 255, 255, 0.2);
+  }
   
   svg {
-    color: #666;
+    color: rgba(255, 255, 255, 0.4);
     margin-right: 10px;
     font-size: 18px;
   }
-  
-  input {
-    flex: 1;
-    padding: 10px 0;
-  }
+`;
+
+const FileInput = styled.input`
+  position: absolute;
+  inset: 0;
+  opacity: 0;
+  cursor: pointer;
+`;
+
+const FileInputText = styled.span`
+  color: rgba(255, 255, 255, 0.5);
+  font-size: 14px;
 `;
   
 const CheckboxGroup = styled.div`
   display: flex;
-  gap: 20px;
-  margin-bottom: 20px;
-  
-  @media (max-width: 768px) {
-    flex-direction: column;
-    gap: 10px;
-  }
+  flex-wrap: wrap;
+  gap: 16px;
+  margin-bottom: 24px;
 `;
   
 const CheckboxControl = styled.div`
   display: flex;
   align-items: center;
-  
-  input {
-    margin-right: 8px;
-  }
-  
-  label {
-    margin: 0;
-    display: inline;
-    ${props => props.$r18 && `
-      color: #e74c3c;
-      font-weight: 500;
-    `}
-  }
+  gap: 8px;
+`;
+
+const Checkbox = styled.input`
+  width: 18px;
+  height: 18px;
+  accent-color: #007AFF;
+  cursor: pointer;
+`;
+
+const CheckboxLabel = styled.label`
+  color: ${props => props.$r18 ? '#FF453A' : 'rgba(255, 255, 255, 0.8)'};
+  font-size: 14px;
+  cursor: pointer;
+  font-weight: ${props => props.$r18 ? '500' : '400'};
 `;
   
 const FormHint = styled.p`
   font-size: 12px;
-  color: #666;
-  margin-top: 5px;
+  color: rgba(255, 255, 255, 0.4);
+  margin-top: 6px;
   margin-bottom: 0;
 `;
   
-const ImagePreview = styled.div`
-  margin-top: 10px;
-  width: 100%;
+const MediaPreview = styled.div`
+  margin-top: 12px;
+  border-radius: 12px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, 0.3);
   
-  img {
+  img, video {
     max-width: 100%;
-    max-height: 250px;
-    border-radius: 4px;
-    border: 1px solid #eee;
-  }
-`;
-  
-const VideoPreview = styled.div`
-  margin-top: 10px;
-  width: 100%;
-  
-  video {
-    max-width: 100%;
-    max-height: 250px;
-    border-radius: 4px;
-    border: 1px solid #eee;
+    max-height: 200px;
+    display: block;
   }
 `;
   
 const ButtonGroup = styled.div`
   display: flex;
   justify-content: flex-end;
-  gap: 10px;
-  margin-top: 20px;
+  gap: 12px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
 `;
   
-const BaseButton = styled.button`
-  padding: 10px 20px;
-  border-radius: 4px;
-  font-weight: bold;
-  cursor: pointer;
-  border: none;
-  font-size: 14px;
-  transition: background-color 0.2s;
-`;
-  
-const SubmitButton = styled(BaseButton)`
-  background-color: #3498db;
+const SubmitButton = styled.button`
+  background: #007AFF;
   color: white;
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 600;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
   
   &:hover {
-    background-color: #2980b9;
+    background: #0056CC;
   }
 `;
   
-const CancelButton = styled(BaseButton)`
-  background-color: #f1f1f1;
-  color: #333;
+const CancelButton = styled.button`
+  background: rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.8);
+  border: none;
+  padding: 12px 24px;
+  border-radius: 10px;
+  font-weight: 500;
+  font-size: 15px;
+  cursor: pointer;
+  transition: all 0.2s;
   
   &:hover {
-    background-color: #ddd;
+    background: rgba(255, 255, 255, 0.15);
   }
 `;
   
 const CharacterSelector = styled.div`
-  margin-top: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
   max-height: 400px;
-  overflow-y: auto;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
 `;
   
 const SelectorHeader = styled.div`
-  padding: 10px;
-  background-color: #f8f9fa;
-  border-bottom: 1px solid #ddd;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
 `;
   
 const SelectedCount = styled.div`
   font-size: 13px;
-  color: #666;
+  color: rgba(255, 255, 255, 0.5);
 `;
   
 const SearchWrapper = styled.div`
   display: flex;
   align-items: center;
-  position: relative;
-  background-color: white;
-  border-radius: 4px;
-  border: 1px solid #ddd;
+  background: rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
   overflow: hidden;
 `;
   
 const SearchIcon = styled.div`
-  padding: 0 10px;
-  color: #666;
+  padding: 0 12px;
+  color: rgba(255, 255, 255, 0.4);
   display: flex;
   align-items: center;
 `;
   
 const SearchInput = styled.input`
   flex: 1;
+  background: transparent;
   border: none;
-  padding: 8px 0;
+  padding: 10px 0;
   font-size: 14px;
+  color: #fff;
   
   &:focus {
     outline: none;
   }
+  
+  &::placeholder {
+    color: rgba(255, 255, 255, 0.3);
+  }
 `;
   
-const ClearButton = styled.button`
+const ClearSearchBtn = styled.button`
   background: none;
   border: none;
-  color: #999;
-  font-size: 18px;
+  color: rgba(255, 255, 255, 0.4);
+  font-size: 20px;
   cursor: pointer;
-  padding: 0 10px;
+  padding: 0 12px;
   
   &:hover {
-    color: #666;
+    color: rgba(255, 255, 255, 0.7);
   }
 `;
   
 const CharacterGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 10px;
-  padding: 10px;
+  padding: 12px;
+  overflow-y: auto;
+  max-height: 300px;
 `;
   
 const NoResults = styled.div`
-  padding: 20px;
+  padding: 30px;
   text-align: center;
-  color: #666;
+  color: rgba(255, 255, 255, 0.4);
   grid-column: 1 / -1;
 `;
   
 const rarityColors = {
-  common: '#a0a0a0',
-  uncommon: '#4caf50',
-  rare: '#2196f3',
-  epic: '#9c27b0',
-  legendary: '#ff9800'
+  common: '#8E8E93',
+  uncommon: '#34C759',
+  rare: '#007AFF',
+  epic: '#AF52DE',
+  legendary: '#FF9F0A'
 };
   
 const CharacterOption = styled.div`
-  border: 2px solid ${props => props.selected ? rarityColors[props.rarity] : '#ddd'};
-  border-radius: 8px;
+  border: 2px solid ${props => props.$selected ? rarityColors[props.$rarity] : 'rgba(255, 255, 255, 0.1)'};
+  border-radius: 10px;
   overflow: hidden;
-  background-color: ${props => props.selected ? `${rarityColors[props.rarity]}22` : 'white'};
+  background: ${props => props.$selected ? `${rarityColors[props.$rarity]}15` : 'rgba(255, 255, 255, 0.03)'};
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
   
   &:hover {
-    transform: translateY(-3px);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-color: ${props => rarityColors[props.$rarity]};
+    transform: translateY(-2px);
   }
 `;
   
 const CharOptionImage = styled.img`
   width: 100%;
-  height: 100px;
+  height: 90px;
   object-fit: cover;
   display: block;
 `;
 
 const CharOptionVideo = styled.video`
   width: 100%;
-  height: 100px;
+  height: 90px;
   object-fit: cover;
   display: block;
 `;
@@ -790,7 +858,8 @@ const CharOptionInfo = styled.div`
   
 const CharOptionName = styled.div`
   font-size: 12px;
-  font-weight: bold;
+  font-weight: 600;
+  color: #fff;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -798,7 +867,7 @@ const CharOptionName = styled.div`
   
 const CharOptionSeries = styled.div`
   font-size: 11px;
-  color: #555;
+  color: rgba(255, 255, 255, 0.5);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -806,26 +875,28 @@ const CharOptionSeries = styled.div`
 `;
   
 const CharOptionRarity = styled.div`
-  font-size: 11px;
-  color: #777;
+  font-size: 10px;
+  color: ${props => rarityColors[props.$rarity]};
   text-transform: capitalize;
-  margin-top: 2px;
+  margin-top: 3px;
+  font-weight: 500;
 `;
   
 const CharOptionCheck = styled.div`
   position: absolute;
-  top: 5px;
-  right: 5px;
-  width: 20px;
-  height: 20px;
-  background: rgba(255, 255, 255, 0.8);
+  top: 6px;
+  right: 6px;
+  width: 22px;
+  height: 22px;
+  background: ${props => props.$selected ? '#34C759' : 'rgba(0, 0, 0, 0.5)'};
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   font-weight: bold;
-  color: #4caf50;
-  font-size: 14px;
+  color: #fff;
+  font-size: 12px;
+  border: 2px solid ${props => props.$selected ? '#34C759' : 'rgba(255, 255, 255, 0.2)'};
 `;
   
 const getImageUrl = (imagePath) => {
