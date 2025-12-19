@@ -307,7 +307,8 @@ const GachaPage = () => {
               </HeroBanner>
             )}
             
-            {/* Horizontal Carousel */}
+            {/* Horizontal Carousel - only show if there are non-featured banners */}
+            {banners.filter(b => !b.featured).length > 0 && (
             <BannerCarouselSection>
               <CarouselHeader>
                 <CarouselTitle>
@@ -331,7 +332,10 @@ const GachaPage = () => {
               </CarouselHeader>
               
               <BannerCarousel id="banner-carousel">
-                {banners.map((banner, index) => (
+                {/* Filter out featured banner if it's shown in the hero above */}
+                {banners
+                  .filter(b => !b.featured || !banners.some(x => x.featured))
+                  .map((banner, index) => (
                   <NetflixBannerCard
                     key={banner.id}
                     featured={banner.featured}
@@ -380,6 +384,7 @@ const GachaPage = () => {
                 ))}
               </BannerCarousel>
             </BannerCarouselSection>
+            )}
           </BannersSection>
         )}
         
