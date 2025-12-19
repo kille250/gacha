@@ -270,7 +270,7 @@ router.post('/redeem', auth, async (req, res) => {
     coupon.currentUses += 1;
     await coupon.save();
 
-    return     res.json({
+    return res.json({
       message: 'Coupon redeemed successfully',
       type: coupon.type,
       reward: rewardDetails,

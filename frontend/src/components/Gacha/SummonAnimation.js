@@ -1041,6 +1041,7 @@ export const MultiSummonAnimation = ({
   getImagePath
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [showSkippedResults, setShowSkippedResults] = useState(false);
   
   // Calculate the highest rarity among all characters for the ambient effects
   const highestRarity = getHighestRarity(characters);
@@ -1048,6 +1049,7 @@ export const MultiSummonAnimation = ({
   useEffect(() => {
     if (!isActive) {
       setCurrentIndex(0);
+      setShowSkippedResults(false);
     }
   }, [isActive]);
 
@@ -1056,7 +1058,7 @@ export const MultiSummonAnimation = ({
       // Move to next character
       setCurrentIndex(prev => prev + 1);
     } else {
-      // All done - go straight to page's results display
+      // All done - user saw each character, no need for summary
       if (onComplete) {
         onComplete();
       }
@@ -1064,7 +1066,12 @@ export const MultiSummonAnimation = ({
   }, [currentIndex, characters.length, onComplete]);
 
   const handleSkipAll = useCallback(() => {
-    // Skip all remaining animations - go to page's results display
+    // User skipped - show summary of what they would have seen
+    setShowSkippedResults(true);
+  }, []);
+
+  const handleCloseSkippedResults = useCallback(() => {
+    setShowSkippedResults(false);
     if (onComplete) {
       onComplete();
     }
@@ -1073,6 +1080,52 @@ export const MultiSummonAnimation = ({
   const currentCharacter = characters[currentIndex];
 
   if (!isActive || characters.length === 0) return null;
+
+  // Show summary when user clicked Skip All
+  if (showSkippedResults) {
+    return (
+      <MultiResultsOverlay
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        exit={{ opacity: 0 }}
+      >
+        <ResultsContainer>
+          <ResultsHeader>
+            <ResultsTitle>Summoning Complete!</ResultsTitle>
+            <ResultsSubtitle>{characters.length} characters obtained</ResultsSubtitle>
+          </ResultsHeader>
+          <ResultsGrid>
+            {characters.map((char, index) => (
+              <ResultCard
+                key={index}
+                $rarity={char.rarity}
+                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                transition={{ delay: index * 0.03 }}
+              >
+                <ResultImage>
+                  <img src={getImagePath(char.image)} alt={char.name} />
+                </ResultImage>
+                <ResultInfo>
+                  <ResultName>{char.name}</ResultName>
+                  <ResultRarity $rarity={char.rarity}>
+                    {char.rarity}
+                  </ResultRarity>
+                </ResultInfo>
+              </ResultCard>
+            ))}
+          </ResultsGrid>
+          <CloseResultsButton
+            onClick={handleCloseSkippedResults}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            Continue
+          </CloseResultsButton>
+        </ResultsContainer>
+      </MultiResultsOverlay>
+    );
+  }
 
   return (
     <SummonAnimation
