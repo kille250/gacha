@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
-import api, { createBanner, updateBanner, deleteBanner, getAssetUrl } from '../utils/api';
+import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, invalidateAdminCache } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
@@ -93,14 +93,34 @@ const AdminPage = () => {
 
   const [selectedFile, setSelectedFile] = useState(null);
 
+  // Fetch all admin data in a single request
+  const fetchAllData = async () => {
+    try {
+      setLoading(true);
+      const data = await getAdminDashboard();
+      setUsers(data.users || []);
+      setCharacters(data.characters || []);
+      setBanners(data.banners || []);
+      setCoupons(data.coupons || []);
+    } catch (err) {
+      console.error('Dashboard fetch error:', err);
+      setError(err.response?.data?.error || 'Failed to load dashboard data');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
     if (user?.isAdmin) {
-      fetchUsers();
-      fetchCharacters();
-      fetchBanners();
-      fetchCoupons();
+      fetchAllData();
     }
   }, [user]);
+
+  // Individual refresh functions (for after mutations)
+  const refreshData = async () => {
+    invalidateAdminCache();
+    await fetchAllData();
+  };
 
   const fetchUsers = async () => {
     try {
@@ -108,8 +128,6 @@ const AdminPage = () => {
       setUsers(response.data);
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to load users');
-    } finally {
-      setLoading(false);
     }
   };
 

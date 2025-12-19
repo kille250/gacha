@@ -49,67 +49,79 @@ const Navigation = () => {
     setMobileMenuOpen(false);
   }, [location]);
 
-  // Check if hourly reward is available
-  const checkRewardAvailability = useCallback(async () => {
+  // Check if hourly reward is available - optimized to use user data from context
+  const checkRewardAvailability = useCallback(async (forceRefresh = false) => {
     if (!user) {
       setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
       return;
     }
     
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
-        return;
-      }
-      
-      if (!rewardStatus.checked) {
-        setRewardStatus(prev => ({ 
-          ...prev, 
-          timeRemaining: "Checking...",
-          available: false
+    const token = localStorage.getItem('token');
+    if (!token) {
+      setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
+      return;
+    }
+    
+    // Use user's lastDailyReward from context if available (no API call needed)
+    const lastRewardData = user.lastDailyReward;
+    
+    // Only fetch from API if we don't have the data or forcing refresh
+    if (!lastRewardData && forceRefresh) {
+      try {
+        if (!rewardStatus.checked) {
+          setRewardStatus(prev => ({ 
+            ...prev, 
+            timeRemaining: "Checking...",
+            available: false
+          }));
+        }
+        
+        const response = await api.get('/auth/me');
+        processRewardData(response.data.lastDailyReward);
+      } catch (err) {
+        console.error('Error checking reward:', err);
+        setRewardStatus(prev => ({
+          ...prev,
+          loading: false,
+          available: false,
+          checked: true,
+          timeRemaining: "Check failed"
         }));
       }
-      
-      const response = await api.get('/auth/me');
-      
-      const lastReward = response.data.lastDailyReward ? new Date(response.data.lastDailyReward) : null;
-      const now = new Date();
-      const rewardInterval = 60 * 60 * 1000; // 1 hour
-      
-      if (!lastReward || now - lastReward > rewardInterval) {
-        setRewardStatus({
-          available: true,
-          loading: false,
-          timeRemaining: null,
-          nextRewardTime: null,
-          checked: true
-        });
-      } else {
-        const remainingTime = rewardInterval - (now - lastReward);
-        const minutes = Math.floor(remainingTime / (60 * 1000));
-        const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
-        const nextTime = new Date(lastReward.getTime() + rewardInterval);
-        
-        setRewardStatus({
-          available: false,
-          loading: false,
-          timeRemaining: `${minutes}m ${seconds}s`,
-          nextRewardTime: nextTime,
-          checked: true
-        });
-      }
-    } catch (err) {
-      console.error('Error checking reward:', err);
-      setRewardStatus(prev => ({
-        ...prev,
-        loading: false,
-        available: false,
-        checked: true,
-        timeRemaining: "Check failed"
-      }));
+    } else {
+      processRewardData(lastRewardData);
     }
-  }, [user, rewardStatus.checked]);
+  }, [user]);
+  
+  // Process reward data (extracted to avoid duplication)
+  const processRewardData = useCallback((lastRewardData) => {
+    const lastReward = lastRewardData ? new Date(lastRewardData) : null;
+    const now = new Date();
+    const rewardInterval = 60 * 60 * 1000; // 1 hour
+    
+    if (!lastReward || now - lastReward > rewardInterval) {
+      setRewardStatus({
+        available: true,
+        loading: false,
+        timeRemaining: null,
+        nextRewardTime: null,
+        checked: true
+      });
+    } else {
+      const remainingTime = rewardInterval - (now - lastReward);
+      const minutes = Math.floor(remainingTime / (60 * 1000));
+      const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
+      const nextTime = new Date(lastReward.getTime() + rewardInterval);
+      
+      setRewardStatus({
+        available: false,
+        loading: false,
+        timeRemaining: `${minutes}m ${seconds}s`,
+        nextRewardTime: nextTime,
+        checked: true
+      });
+    }
+  }, []);
   
   // Update timer periodically
   useEffect(() => {
@@ -142,12 +154,11 @@ const Navigation = () => {
     return () => clearInterval(timerInterval);
   }, [rewardStatus.nextRewardTime]);
   
-  // Initial check and periodic refresh
+  // Initial check - no more polling needed since we use context data
+  // The timer useEffect above handles countdown updates locally
   useEffect(() => {
     checkRewardAvailability();
-    const refreshInterval = setInterval(checkRewardAvailability, 60 * 1000);
-    return () => clearInterval(refreshInterval);
-  }, [checkRewardAvailability]);
+  }, [user?.lastDailyReward, checkRewardAvailability]);
   
   // Claim the hourly reward
   const claimHourlyReward = async () => {

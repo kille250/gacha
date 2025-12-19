@@ -42,6 +42,38 @@ const upload = multer({
   }
 });
 
+// Combined dashboard endpoint - reduces multiple API calls to one
+router.get('/dashboard', auth, adminAuth, async (req, res) => {
+  try {
+    const Banner = require('../models/banner');
+    const { Coupon, CouponRedemption } = require('../models');
+    
+    // Fetch all data in parallel
+    const [users, characters, banners, coupons] = await Promise.all([
+      User.findAll({
+        attributes: ['id', 'username', 'points', 'isAdmin', 'createdAt']
+      }),
+      Character.findAll(),
+      Banner.findAll({
+        include: [{ model: Character }],
+        order: [['featured', 'DESC'], ['createdAt', 'DESC']]
+      }),
+      Coupon.findAll({
+        include: [
+          { model: Character, attributes: ['id', 'name', 'rarity', 'image'], required: false },
+          { model: CouponRedemption, attributes: ['id', 'userId', 'redeemedAt'], required: false }
+        ],
+        order: [['createdAt', 'DESC']]
+      })
+    ]);
+    
+    res.json({ users, characters, banners, coupons });
+  } catch (err) {
+    console.error('Dashboard fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Alle Benutzer abrufen (nur Admin)
 router.get('/users', auth, adminAuth, async (req, res) => {
   try {

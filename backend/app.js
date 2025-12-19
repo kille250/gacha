@@ -107,31 +107,37 @@ schedule.scheduleJob('0 0 * * *', async function() {
 // SECURITY: Rate limiting configuration
 // ===========================================
 
-// General API rate limit
+// Skip rate limiting for preflight requests
+const skipPreflight = (req) => req.method === 'OPTIONS';
+
+// General API rate limit - more generous for normal browsing
 const generalLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 100, // Limit each IP to 100 requests per windowMs
+  max: 300, // 300 requests per 15 minutes (20 per minute average)
   message: { error: 'Too many requests, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipPreflight,
 });
 
-// Strict rate limit for authentication endpoints
+// Strict rate limit for authentication endpoints (login/signup)
 const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // Limit each IP to 10 login/signup attempts per windowMs
+  max: 15, // 15 login/signup attempts per 15 minutes
   message: { error: 'Too many authentication attempts, please try again later.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipPreflight,
 });
 
 // Rate limit for sensitive actions (rolls, redemptions)
 const actionLimiter = rateLimit({
   windowMs: 1 * 60 * 1000, // 1 minute
-  max: 30, // Limit each IP to 30 actions per minute
+  max: 60, // 60 actions per minute
   message: { error: 'Too many requests, please slow down.' },
   standardHeaders: true,
   legacyHeaders: false,
+  skip: skipPreflight,
 });
 
 // ===========================================

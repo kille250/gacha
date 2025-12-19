@@ -26,18 +26,121 @@ export const getAssetUrl = (path) => {
   return `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 
+// ===========================================
+// REQUEST CACHING & DEDUPLICATION
+// ===========================================
+
+// Simple in-memory cache with TTL
+const cache = new Map();
+const pendingRequests = new Map();
+
+const CACHE_TTL = {
+  '/auth/me': 30 * 1000,        // 30 seconds for user data
+  '/characters': 60 * 1000,      // 1 minute for characters
+  '/banners': 60 * 1000,         // 1 minute for banners
+  '/admin/dashboard': 30 * 1000, // 30 seconds for admin dashboard
+  '/admin/users': 30 * 1000,     // 30 seconds for users
+  '/coupons/admin': 30 * 1000,   // 30 seconds for coupons
+  default: 15 * 1000             // 15 seconds default
+};
+
+const getCacheTTL = (url) => {
+  for (const [key, ttl] of Object.entries(CACHE_TTL)) {
+    if (url.includes(key)) return ttl;
+  }
+  return CACHE_TTL.default;
+};
+
+const getCacheKey = (config) => {
+  return `${config.method || 'get'}:${config.url}`;
+};
+
+// Clear cache for a specific pattern
+export const clearCache = (pattern) => {
+  if (!pattern) {
+    cache.clear();
+    return;
+  }
+  for (const key of cache.keys()) {
+    if (key.includes(pattern)) {
+      cache.delete(key);
+    }
+  }
+};
+
+// Clear all caches (useful after mutations)
+export const invalidateCache = () => {
+  cache.clear();
+};
+
 const api = axios.create({
   baseURL: API_URL,
+  timeout: 30000, // 30 second timeout
 });
 
-// Request interceptor to add auth token to every request
+// Request interceptor to add auth token and handle caching
 api.interceptors.request.use(config => {
   const token = localStorage.getItem('token');
   if (token) {
     config.headers['x-auth-token'] = token;
   }
+  
+  // Only cache GET requests
+  if (config.method === 'get' || !config.method) {
+    const cacheKey = getCacheKey(config);
+    const cached = cache.get(cacheKey);
+    
+    if (cached && Date.now() < cached.expiry) {
+      // Return cached response by using adapter
+      config.adapter = () => Promise.resolve({
+        data: cached.data,
+        status: 200,
+        statusText: 'OK',
+        headers: {},
+        config: config,
+        cached: true
+      });
+      return config;
+    }
+    
+    // Deduplicate concurrent requests
+    if (pendingRequests.has(cacheKey)) {
+      config.adapter = () => pendingRequests.get(cacheKey);
+      return config;
+    }
+  }
+  
   return config;
 });
+
+// Response interceptor to cache successful responses
+api.interceptors.response.use(
+  (response) => {
+    // Cache successful GET responses
+    if ((response.config.method === 'get' || !response.config.method) && !response.cached) {
+      const cacheKey = getCacheKey(response.config);
+      const ttl = getCacheTTL(response.config.url);
+      
+      cache.set(cacheKey, {
+        data: response.data,
+        expiry: Date.now() + ttl
+      });
+      
+      // Remove from pending
+      pendingRequests.delete(cacheKey);
+    }
+    
+    return response;
+  },
+  (error) => {
+    // Remove from pending on error
+    if (error.config) {
+      const cacheKey = getCacheKey(error.config);
+      pendingRequests.delete(cacheKey);
+    }
+    return Promise.reject(error);
+  }
+);
 
 export const rollCharacter = async () => {
   try {
@@ -145,11 +248,30 @@ export const updateBanner = async (bannerId, formData) => {
 
 export const deleteBanner = async (bannerId) => {
   try {
+    clearCache('/banners');
     const response = await api.delete(`/banners/${bannerId}`);
     return response.data;
   } catch (error) {
     throw error;
   }
+};
+
+// Combined admin dashboard - single request instead of 4
+export const getAdminDashboard = async () => {
+  try {
+    const response = await api.get('/admin/dashboard');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Invalidate admin cache after mutations
+export const invalidateAdminCache = () => {
+  clearCache('/admin');
+  clearCache('/characters');
+  clearCache('/banners');
+  clearCache('/coupons');
 };
 
 export default api;
