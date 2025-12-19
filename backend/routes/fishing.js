@@ -11,6 +11,7 @@ const AUTOFISH_UNLOCK_RANK = 10;
 
 // Rate limiting for autofish (per user)
 const autofishCooldowns = new Map();
+const autofishInProgress = new Set(); // Prevent race conditions
 const AUTOFISH_COOLDOWN = 2500; // 2.5 seconds minimum between autofishes
 
 // Clean up old cooldowns periodically
@@ -364,8 +365,19 @@ router.get('/leaderboard', auth, async (req, res) => {
 // POST /api/fishing/autofish - Perform an autofish catch (for users with autofishing enabled)
 router.post('/autofish', auth, async (req, res) => {
   try {
+    const userId = req.user.id;
+    
+    // Prevent race condition - only one autofish request at a time per user
+    if (autofishInProgress.has(userId)) {
+      return res.status(429).json({ 
+        error: 'Request in progress',
+        message: 'Another autofish request is being processed',
+        retryAfter: 500
+      });
+    }
+    
     // Rate limiting check
-    const lastAutofish = autofishCooldowns.get(req.user.id);
+    const lastAutofish = autofishCooldowns.get(userId);
     const now = Date.now();
     if (lastAutofish && (now - lastAutofish) < AUTOFISH_COOLDOWN) {
       const remainingMs = AUTOFISH_COOLDOWN - (now - lastAutofish);
@@ -375,10 +387,14 @@ router.post('/autofish', auth, async (req, res) => {
         retryAfter: remainingMs
       });
     }
-    autofishCooldowns.set(req.user.id, now);
+    
+    // Lock this user's autofish
+    autofishInProgress.add(userId);
+    autofishCooldowns.set(userId, now);
     
     const user = await User.findByPk(req.user.id);
     if (!user) {
+      autofishInProgress.delete(userId);
       return res.status(404).json({ error: 'User not found' });
     }
     
@@ -394,6 +410,7 @@ router.post('/autofish', auth, async (req, res) => {
     
     // Check if user can autofish (admin-enabled OR qualified by rank)
     if (!user.autofishEnabled && !stillQualifiesByRank) {
+      autofishInProgress.delete(userId);
       return res.status(403).json({ 
         error: 'Autofishing not unlocked',
         message: 'Reach top ' + AUTOFISH_UNLOCK_RANK + ' to unlock autofishing',
@@ -403,6 +420,7 @@ router.post('/autofish', auth, async (req, res) => {
     
     // Check cast cost
     if (CAST_COST > 0 && user.points < CAST_COST) {
+      autofishInProgress.delete(userId);
       return res.status(400).json({ 
         error: 'Not enough points',
         required: CAST_COST,
@@ -436,6 +454,9 @@ router.post('/autofish', auth, async (req, res) => {
       user.points += reward;
       await user.save();
       
+      // Release lock
+      autofishInProgress.delete(userId);
+      
       return res.json({
         success: true,
         fish: {
@@ -450,6 +471,9 @@ router.post('/autofish', auth, async (req, res) => {
       });
     } else {
       await user.save();
+      
+      // Release lock
+      autofishInProgress.delete(userId);
       
       return res.json({
         success: false,
@@ -466,6 +490,8 @@ router.post('/autofish', auth, async (req, res) => {
     }
     
   } catch (err) {
+    // Release lock on error
+    autofishInProgress.delete(req.user.id);
     console.error('Autofish error:', err);
     res.status(500).json({ error: 'Server error' });
   }
