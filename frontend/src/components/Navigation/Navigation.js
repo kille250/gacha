@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings, MdMenu, MdClose } from 'react-icons/md';
-import { FaGift, FaTicketAlt, FaDice } from 'react-icons/fa';
+import { FaGift, FaTicketAlt, FaDice, FaFish } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import api, { invalidateCache } from '../../utils/api';
 import { theme } from '../../styles/DesignSystem';
@@ -229,6 +229,7 @@ const Navigation = () => {
   const navItems = [
     { path: '/gacha', label: 'Banners', icon: <MdDashboard />, adminOnly: false },
     { path: '/roll', label: 'Roll', icon: <FaDice />, adminOnly: false },
+    { path: '/fishing', label: 'Fishing', icon: <FaFish />, adminOnly: false },
     { path: '/collection', label: 'Collection', icon: <MdCollections />, adminOnly: false },
     { path: '/coupons', label: 'Coupons', icon: <FaTicketAlt />, adminOnly: false },
     { path: '/admin', label: 'Admin', icon: <MdSettings />, adminOnly: true },

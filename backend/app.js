@@ -185,6 +185,9 @@ app.use('/api/banners', bannerRoutes);
 // Coupon routes
 app.use('/api/coupons', require('./routes/coupons'));
 
+// Fishing minigame routes
+app.use('/api/fishing', require('./routes/fishing'));
+
 const PORT = process.env.PORT || 5000;
 
 // Run migrations and start server

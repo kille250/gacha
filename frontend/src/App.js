@@ -13,6 +13,7 @@ import AdminPage from './pages/AdminPage';
 import BannerPage from './pages/BannerPage';
 import CouponPage from './pages/CouponPage';
 import RollPage from './pages/RollPage';
+import FishingPage from './pages/FishingPage';
 
 // Components
 import Navigation from './components/Navigation/Navigation';
@@ -180,6 +181,12 @@ function App() {
             <Route path="/banner/:bannerId" element={
               <ProtectedRoute>
                 <BannerPage />
+              </ProtectedRoute>
+            } />
+            {/* Fishing Minigame - Full screen immersive experience */}
+            <Route path="/fishing" element={
+              <ProtectedRoute>
+                <FishingPage />
               </ProtectedRoute>
             } />
             <Route path="/" element={<Navigate to="/login" replace />} />
