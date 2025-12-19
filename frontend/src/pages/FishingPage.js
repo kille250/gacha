@@ -1100,45 +1100,54 @@ const AutofishBar = styled(motion.div)`
   align-items: center;
   justify-content: space-between;
   gap: ${theme.spacing.md};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: linear-gradient(90deg, rgba(48, 209, 88, 0.2), rgba(52, 199, 89, 0.15));
-  border-bottom: 1px solid rgba(48, 209, 88, 0.3);
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  background: linear-gradient(90deg, rgba(48, 209, 88, 0.25), rgba(52, 199, 89, 0.15));
+  border-bottom: 2px solid rgba(48, 209, 88, 0.4);
   overflow: hidden;
 `;
 
 const AutofishStatus = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   color: #30d158;
-  font-weight: 600;
-  font-size: 14px;
+  font-weight: 700;
+  font-size: 16px;
   
   svg.spinning {
     animation: ${spinAnimation} 1s linear infinite;
+    font-size: 20px;
   }
 `;
 
 const AutofishLog = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   overflow-x: auto;
+  padding: 4px 0;
 `;
 
 const AutofishEntry = styled.div`
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 4px 8px;
+  gap: 6px;
+  padding: 8px 14px;
   background: ${props => props.$success 
-    ? 'rgba(48, 209, 88, 0.2)' 
-    : 'rgba(255, 69, 58, 0.2)'};
-  border-radius: 6px;
-  font-size: 12px;
+    ? 'rgba(48, 209, 88, 0.25)' 
+    : 'rgba(255, 69, 58, 0.25)'};
+  border: 1px solid ${props => props.$success 
+    ? 'rgba(48, 209, 88, 0.4)' 
+    : 'rgba(255, 69, 58, 0.4)'};
+  border-radius: 10px;
+  font-size: 15px;
   color: ${props => props.$success ? '#30d158' : '#ff453a'};
-  font-weight: 600;
+  font-weight: 700;
   white-space: nowrap;
+  
+  span:first-child {
+    font-size: 18px;
+  }
 `;
 
 const StatsBar = styled.div`
