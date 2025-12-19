@@ -65,6 +65,9 @@ const Navigation = () => {
 
   // Check if hourly reward is available - optimized to use user data from context
   const checkRewardAvailability = useCallback(async (forceRefresh = false) => {
+    // Don't override state if we just claimed
+    if (justClaimed) return;
+    
     if (!user) {
       setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
       return;
@@ -105,10 +108,13 @@ const Navigation = () => {
     } else {
       processRewardData(lastRewardData);
     }
-  }, [user]);
+  }, [user, justClaimed]);
   
   // Process reward data (extracted to avoid duplication)
   const processRewardData = useCallback((lastRewardData) => {
+    // Don't override state if we just claimed
+    if (justClaimed) return;
+    
     const lastReward = lastRewardData ? new Date(lastRewardData) : null;
     const now = new Date();
     const rewardInterval = 60 * 60 * 1000; // 1 hour
@@ -135,7 +141,7 @@ const Navigation = () => {
         checked: true
       });
     }
-  }, []);
+  }, [justClaimed]);
   
   // Update timer periodically
   useEffect(() => {
@@ -174,15 +180,23 @@ const Navigation = () => {
     checkRewardAvailability();
   }, [user?.lastDailyReward, checkRewardAvailability]);
   
+  // Track if we just claimed to prevent race conditions
+  const [justClaimed, setJustClaimed] = useState(false);
+  
   // Claim the hourly reward
   const claimHourlyReward = async () => {
-    if (rewardStatus.loading || !rewardStatus.available) return;
+    if (rewardStatus.loading || !rewardStatus.available || justClaimed) return;
     
-    setRewardStatus(prev => ({ ...prev, loading: true }));
+    // Immediately disable the button to prevent double-clicks
+    setJustClaimed(true);
+    setRewardStatus(prev => ({ ...prev, loading: true, available: false }));
     
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) {
+        setJustClaimed(false);
+        return;
+      }
       
       const response = await api.post('/auth/daily-reward');
       
@@ -203,7 +217,13 @@ const Navigation = () => {
         checked: true
       });
       
-      refreshUser();
+      // Wait for user refresh to complete before allowing state changes
+      await refreshUser();
+      
+      // Reset the justClaimed flag after a delay to allow state to stabilize
+      setTimeout(() => {
+        setJustClaimed(false);
+      }, 2000);
       
       setTimeout(() => {
         setRewardPopup({ show: false, amount: 0 });
