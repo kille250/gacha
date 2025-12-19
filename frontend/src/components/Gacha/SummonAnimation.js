@@ -88,7 +88,9 @@ export const SummonAnimation = ({
   isMultiPull = false,
   currentPull = 1,
   totalPulls = 1,
-  onSkipAll
+  onSkipAll,
+  // Ambient rarity for background effects (highest rarity in multi-pull)
+  ambientRarity = null
 }) => {
   const [phase, setPhase] = useState(PHASES.IDLE);
   const [particles, setParticles] = useState([]);
@@ -97,7 +99,10 @@ export const SummonAnimation = ({
   const timersRef = useRef([]);
   const hasStartedRef = useRef(false);
   
+  // Use ambientRarity for background effects if provided, otherwise use character rarity
+  const effectRarity = ambientRarity || rarity;
   const config = RARITY_CONFIG[rarity] || RARITY_CONFIG.common;
+  const ambientConfig = RARITY_CONFIG[effectRarity] || RARITY_CONFIG.common;
 
   // Clear all timers
   const clearAllTimers = useCallback(() => {
@@ -105,34 +110,34 @@ export const SummonAnimation = ({
     timersRef.current = [];
   }, []);
 
-  // Generate particles
+  // Generate particles using ambient config (highest rarity effects)
   const generateParticles = useCallback(() => {
     const newParticles = [];
-    for (let i = 0; i < config.particleCount; i++) {
+    for (let i = 0; i < ambientConfig.particleCount; i++) {
       newParticles.push({
         id: i,
         x: Math.random() * 100,
         y: Math.random() * 100,
         size: Math.random() * 8 + 4,
-        color: config.particleColors[Math.floor(Math.random() * config.particleColors.length)],
+        color: ambientConfig.particleColors[Math.floor(Math.random() * ambientConfig.particleColors.length)],
         delay: Math.random() * 2,
         duration: Math.random() * 3 + 2,
         angle: Math.random() * 360
       });
     }
     setParticles(newParticles);
-  }, [config.particleCount, config.particleColors]);
+  }, [ambientConfig.particleCount, ambientConfig.particleColors]);
 
-  // Fire confetti for high rarity
+  // Fire confetti for high rarity - uses ambient config for multi-pulls
   const fireConfetti = useCallback(() => {
     if (confettiFired) return;
     setConfettiFired(true);
     
-    if (config.confettiCount > 0) {
-      const colors = config.particleColors;
+    if (ambientConfig.confettiCount > 0) {
+      const colors = ambientConfig.particleColors;
       
       confetti({
-        particleCount: config.confettiCount,
+        particleCount: ambientConfig.confettiCount,
         spread: 100,
         origin: { y: 0.5, x: 0.5 },
         colors: [...colors, '#ffffff', '#ffd700'],
@@ -142,7 +147,7 @@ export const SummonAnimation = ({
         scalar: 1.2
       });
 
-      if (rarity === 'legendary') {
+      if (effectRarity === 'legendary') {
         setTimeout(() => {
           confetti({
             particleCount: 50,
@@ -161,9 +166,9 @@ export const SummonAnimation = ({
         }, 200);
       }
     }
-  }, [config.confettiCount, config.particleColors, rarity, confettiFired]);
+  }, [ambientConfig.confettiCount, ambientConfig.particleColors, effectRarity, confettiFired]);
 
-  // Start animation sequence
+  // Start animation sequence - uses ambient config for timing (dramatic buildup for high rarity)
   useEffect(() => {
     if (isActive && !hasStartedRef.current) {
       hasStartedRef.current = true;
@@ -179,18 +184,18 @@ export const SummonAnimation = ({
 
       const peakTimer = setTimeout(() => {
         setPhase(PHASES.PEAK);
-      }, config.buildupTime * 0.6);
+      }, ambientConfig.buildupTime * 0.6);
       timersRef.current.push(peakTimer);
 
       const revealTimer = setTimeout(() => {
         setPhase(PHASES.REVEAL);
-      }, config.buildupTime);
+      }, ambientConfig.buildupTime);
       timersRef.current.push(revealTimer);
 
       const waitTimer = setTimeout(() => {
         setPhase(PHASES.WAITING_DISMISS);
         setShowSkipHint(false);
-      }, config.buildupTime + 800);
+      }, ambientConfig.buildupTime + 800);
       timersRef.current.push(waitTimer);
     }
     
@@ -199,7 +204,7 @@ export const SummonAnimation = ({
         clearAllTimers();
       }
     };
-  }, [isActive, config.buildupTime, generateParticles, clearAllTimers]);
+  }, [isActive, ambientConfig.buildupTime, generateParticles, clearAllTimers]);
 
   // Fire confetti when entering reveal phase
   useEffect(() => {
@@ -258,16 +263,16 @@ export const SummonAnimation = ({
     <AnimationOverlay>
       <AnimationContainer
         onClick={handleContainerClick}
-        $rarity={rarity}
+        $rarity={effectRarity}
         $phase={phase}
-        $shakeIntensity={config.shakeIntensity}
+        $shakeIntensity={ambientConfig.shakeIntensity}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         transition={{ duration: 0.3 }}
       >
-        {/* Background Vignette */}
-        <Vignette $rarity={rarity} $phase={phase} />
+        {/* Background Vignette - uses effectRarity for ambient color */}
+        <Vignette $rarity={effectRarity} $phase={phase} />
 
         {/* Particle Field - only during buildup */}
         {isBuildup && (
@@ -287,20 +292,20 @@ export const SummonAnimation = ({
           </ParticleField>
         )}
 
-        {/* Summoning Circle - only during buildup */}
+        {/* Summoning Circle - uses effectRarity for dramatic buildup */}
         <CircleContainer $phase={phase} $isVisible={isBuildup}>
           <SummonCircle 
-            $rarity={rarity} 
+            $rarity={effectRarity} 
             $phase={phase}
-            $speed={config.circleSpeed}
+            $speed={ambientConfig.circleSpeed}
           >
-            <CircleRing $delay={0} $rarity={rarity} />
-            <CircleRing $delay={0.2} $rarity={rarity} $reverse />
-            <CircleRing $delay={0.4} $rarity={rarity} />
-            <InnerGlow $rarity={rarity} $phase={phase} />
-            <RuneCircle $rarity={rarity}>
+            <CircleRing $delay={0} $rarity={effectRarity} />
+            <CircleRing $delay={0.2} $rarity={effectRarity} $reverse />
+            <CircleRing $delay={0.4} $rarity={effectRarity} />
+            <InnerGlow $rarity={effectRarity} $phase={phase} />
+            <RuneCircle $rarity={effectRarity}>
               {[...Array(12)].map((_, i) => (
-                <Rune key={i} $index={i} $rarity={rarity}>✦</Rune>
+                <Rune key={i} $index={i} $rarity={effectRarity}>✦</Rune>
               ))}
             </RuneCircle>
           </SummonCircle>
@@ -309,12 +314,12 @@ export const SummonAnimation = ({
         {/* Energy Beams - during peak and reveal */}
         <AnimatePresence>
           {(phase === PHASES.PEAK || phase === PHASES.REVEAL) && (
-            <EnergyBeams $rarity={rarity}>
+            <EnergyBeams $rarity={effectRarity}>
               {[...Array(8)].map((_, i) => (
                 <EnergyBeam 
                   key={i} 
                   $index={i} 
-                  $rarity={rarity}
+                  $rarity={effectRarity}
                   initial={{ scaleY: 0, opacity: 0 }}
                   animate={{ scaleY: 1, opacity: [0, 1, 0.5] }}
                   exit={{ opacity: 0 }}
@@ -329,11 +334,11 @@ export const SummonAnimation = ({
           )}
         </AnimatePresence>
 
-        {/* Flash Effect */}
+        {/* Flash Effect - uses effectRarity for ambient flash */}
         <AnimatePresence>
           {phase === PHASES.REVEAL && (
             <FlashOverlay
-              $rarity={rarity}
+              $rarity={effectRarity}
               initial={{ opacity: 1 }}
               animate={{ opacity: 0 }}
               exit={{ opacity: 0 }}
@@ -342,7 +347,7 @@ export const SummonAnimation = ({
           )}
         </AnimatePresence>
 
-        {/* Character Reveal */}
+        {/* Character Reveal - uses actual character rarity for the card */}
         <AnimatePresence>
           {isShowingCharacter && character && (
             <CharacterReveal
@@ -396,11 +401,11 @@ export const SummonAnimation = ({
           )}
         </AnimatePresence>
 
-        {/* Rarity Indicator - only during charging */}
+        {/* Rarity Indicator - uses effectRarity to hint at best pull */}
         <AnimatePresence>
           {phase === PHASES.CHARGING && (
             <RarityHint
-              $rarity={rarity}
+              $rarity={effectRarity}
               initial={{ opacity: 0, scale: 0.8 }}
               animate={{ 
                 opacity: [0.5, 1, 0.5], 
@@ -413,7 +418,7 @@ export const SummonAnimation = ({
                 ease: "easeInOut"
               }}
             >
-              {config.icon}
+              {ambientConfig.icon}
             </RarityHint>
           )}
         </AnimatePresence>
@@ -1008,6 +1013,24 @@ const SummoningText = styled(motion.div)`
   }
 `;
 
+// ==================== RARITY HELPERS ====================
+
+const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+
+const getHighestRarity = (characters) => {
+  if (!characters || characters.length === 0) return 'common';
+  
+  let highestIndex = 0;
+  characters.forEach(char => {
+    const index = RARITY_ORDER.indexOf(char.rarity);
+    if (index > highestIndex) {
+      highestIndex = index;
+    }
+  });
+  
+  return RARITY_ORDER[highestIndex];
+};
+
 // ==================== MULTI-PULL ANIMATION ====================
 
 export const MultiSummonAnimation = ({
@@ -1019,6 +1042,9 @@ export const MultiSummonAnimation = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showResults, setShowResults] = useState(false);
+  
+  // Calculate the highest rarity among all characters for the ambient effects
+  const highestRarity = getHighestRarity(characters);
 
   useEffect(() => {
     if (!isActive) {
@@ -1106,6 +1132,7 @@ export const MultiSummonAnimation = ({
       currentPull={currentIndex + 1}
       totalPulls={characters.length}
       onSkipAll={handleSkipAll}
+      ambientRarity={highestRarity}
     />
   );
 };
