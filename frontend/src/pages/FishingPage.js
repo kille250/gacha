@@ -273,7 +273,7 @@ const FishingPage = () => {
       
     } catch (err) {
       console.error('Cast error:', err);
-      showNotification(err.response?.data?.error || 'Failed to cast line', 'error');
+      showNotification(err.response?.data?.error || t('fishing.failedCast'), 'error');
       setGameState(GAME_STATES.WALKING);
     }
   }, [gameState, canFish]);
@@ -328,7 +328,7 @@ const FishingPage = () => {
       
     } catch (err) {
       console.error('Catch error:', err);
-      showNotification(err.response?.data?.error || 'Failed to catch fish', 'error');
+      showNotification(err.response?.data?.error || t('fishing.failedCatch'), 'error');
       setGameState(GAME_STATES.WALKING);
       setSessionId(null);
     }

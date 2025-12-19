@@ -106,7 +106,7 @@ const AdminPage = () => {
       setCoupons(data.coupons || []);
     } catch (err) {
       console.error('Dashboard fetch error:', err);
-      setError(err.response?.data?.error || 'Failed to load dashboard data');
+      setError(err.response?.data?.error || t('admin.failedLoadDashboard'));
     } finally {
       setLoading(false);
     }
@@ -129,7 +129,7 @@ const AdminPage = () => {
       const response = await api.get('/admin/users');
       setUsers(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load users');
+      setError(err.response?.data?.error || t('admin.failedLoadUsers'));
     }
   };
 
@@ -138,7 +138,7 @@ const AdminPage = () => {
       const response = await api.get('/characters');
       setCharacters(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load characters');
+      setError(err.response?.data?.error || t('admin.failedLoadCharacters'));
     }
   };
 
@@ -147,7 +147,7 @@ const AdminPage = () => {
       const response = await api.get('/banners?showAll=true');
       setBanners(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load banners');
+      setError(err.response?.data?.error || t('admin.failedLoadBanners'));
     }
   };
 
@@ -156,7 +156,7 @@ const AdminPage = () => {
       const response = await api.get('/coupons/admin');
       setCoupons(response.data);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load coupons');
+      setError(err.response?.data?.error || t('admin.failedLoadCoupons'));
     }
   };
 
@@ -189,7 +189,7 @@ const AdminPage = () => {
     setSuccessMessage(null);
     
     if (!selectedFile) {
-      setError('Please select an image or video file');
+      setError(t('admin.selectImage'));
       return;
     }
     
@@ -205,7 +205,7 @@ const AdminPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
-      setSuccessMessage('Character added successfully!');
+      setSuccessMessage(t('admin.characterAdded'));
       fetchCharacters();
       
       setNewCharacter({
@@ -221,7 +221,7 @@ const AdminPage = () => {
       if (fileInput) fileInput.value = '';
     } catch (err) {
       console.error('Error adding character:', err);
-      setError(err.response?.data?.error || 'Failed to add character');
+      setError(err.response?.data?.error || t('admin.failedAddCharacter'));
     }
   };
 
@@ -286,17 +286,17 @@ const AdminPage = () => {
         });
       }
       
-      setSuccessMessage('Character updated successfully!');
+      setSuccessMessage(t('admin.characterUpdated'));
       fetchCharacters();
       handleCloseEdit();
     } catch (err) {
       console.error('Error updating character:', err);
-      setError(err.response?.data?.error || 'Failed to update character');
+      setError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
     }
   };
 
   const handleDeleteCharacter = async (characterId) => {
-    if (!window.confirm('Are you sure you want to delete this character?')) {
+    if (!window.confirm(t('admin.confirmDeleteCharacter'))) {
       return;
     }
     
@@ -305,11 +305,11 @@ const AdminPage = () => {
     
     try {
       await api.delete(`/admin/characters/${characterId}`);
-      setSuccessMessage('Character deleted successfully!');
+      setSuccessMessage(t('admin.characterDeleted'));
       fetchCharacters();
     } catch (err) {
       console.error('Error deleting character:', err);
-      setError(err.response?.data?.error || 'Failed to delete character');
+      setError(err.response?.data?.error || t('admin.failedDeleteCharacter'));
     }
   };
 
@@ -361,10 +361,10 @@ const AdminPage = () => {
       setError(null);
       await createBanner(formData);
       await fetchBanners();
-      setSuccessMessage('Banner added successfully!');
+      setSuccessMessage(t('admin.bannerAdded'));
       setIsAddingBanner(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add banner');
+      setError(err.response?.data?.error || t('admin.failedAddBanner'));
     }
   };
 
@@ -374,15 +374,15 @@ const AdminPage = () => {
       setError(null);
       await updateBanner(editingBanner.id, formData);
       await fetchBanners();
-      setSuccessMessage('Banner updated successfully!');
+      setSuccessMessage(t('admin.bannerUpdated'));
       setIsEditingBanner(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update banner');
+      setError(err.response?.data?.error || t('admin.failedUpdateBanner'));
     }
   };
 
   const handleDeleteBanner = async (bannerId) => {
-    if (!window.confirm('Are you sure you want to delete this banner?')) {
+    if (!window.confirm(t('admin.confirmDeleteBanner'))) {
       return;
     }
     
@@ -391,9 +391,9 @@ const AdminPage = () => {
       setError(null);
       await deleteBanner(bannerId);
       await fetchBanners();
-      setSuccessMessage('Banner deleted successfully!');
+      setSuccessMessage(t('admin.bannerDeleted'));
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to delete banner');
+      setError(err.response?.data?.error || t('admin.failedDeleteBanner'));
     }
   };
 
@@ -409,10 +409,10 @@ const AdminPage = () => {
       setError(null);
       await api.post('/coupons/admin', formData);
       await fetchCoupons();
-      setSuccessMessage('Coupon created successfully!');
+      setSuccessMessage(t('admin.couponCreated'));
       setIsAddingCoupon(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to create coupon');
+      setError(err.response?.data?.error || t('admin.failedCreateCoupon'));
     }
   };
 
@@ -422,15 +422,15 @@ const AdminPage = () => {
       setError(null);
       await api.put(`/coupons/admin/${editingCoupon.id}`, formData);
       await fetchCoupons();
-      setSuccessMessage('Coupon updated successfully!');
+      setSuccessMessage(t('admin.couponUpdated'));
       setIsEditingCoupon(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to update coupon');
+      setError(err.response?.data?.error || t('admin.failedUpdateCoupon'));
     }
   };
 
   const handleDeleteCoupon = async (couponId) => {
-    if (!window.confirm('Are you sure you want to delete this coupon?')) {
+    if (!window.confirm(t('admin.confirmDeleteCoupon'))) {
       return;
     }
     
@@ -439,9 +439,9 @@ const AdminPage = () => {
       setError(null);
       await api.delete(`/coupons/admin/${couponId}`);
       await fetchCoupons();
-      setSuccessMessage('Coupon deleted successfully!');
+      setSuccessMessage(t('admin.couponDeleted'));
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to delete coupon');
+      setError(err.response?.data?.error || t('admin.failedDeleteCoupon'));
     }
   };
 
@@ -495,7 +495,7 @@ const AdminPage = () => {
               <FormGroup>
                 <Label>{t('admin.selectUser')}</Label>
                 <Select name="userId" value={coinForm.userId} onChange={handleCoinFormChange} required>
-                  <option value="">-- Select User --</option>
+                  <option value="">{t('admin.selectUserPlaceholder')}</option>
                   {users.map(u => (
                     <option key={u.id} value={u.id}>{u.username} ({u.points} coins)</option>
                   ))}
@@ -599,9 +599,9 @@ const AdminPage = () => {
                 <SearchInput type="text" placeholder="Search..." value={searchQuery} onChange={handleSearchChange} />
               </SearchWrapper>
               <Select value={itemsPerPage} onChange={handleItemsPerPageChange}>
-                <option value="10">10 per page</option>
-                <option value="20">20 per page</option>
-                <option value="50">50 per page</option>
+                <option value="10">{t('admin.itemsPerPage', { count: 10 })}</option>
+                <option value="20">{t('admin.itemsPerPage', { count: 20 })}</option>
+                <option value="50">{t('admin.itemsPerPage', { count: 50 })}</option>
               </Select>
             </SearchRow>
           </SectionHeader>

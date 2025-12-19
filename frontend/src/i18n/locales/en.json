@@ -88,8 +88,11 @@
     "createAccount": "Create Account",
     "alreadyHaveAccount": "Already have an account?",
     "signIn": "Sign in",
+    "signInHere": "Sign in here",
     "joinTheGame": "Join the Game",
     "startCollecting": "Start collecting characters today",
+    "startYourJourney": "Start your journey",
+    "createYourAccount": "Create Your Account",
     "enterDetails": "Enter your details to get started",
     "passwordsMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 4 characters",
@@ -114,6 +117,7 @@
     "howToPlay": "How to Play",
     "bannersHelp": "Featured banners have boosted rates for specific characters. Click on a banner to roll!",
     "standardGachaHelp": "Roll from the entire character pool at 100 points per pull.",
+    "pointsTitle": "Points",
     "pointsHelp": "Earn points through daily rewards and coupons. Use them to roll for characters!",
     "rarityHelp": "Rarity",
     "common": "Common",
@@ -140,7 +144,9 @@
     "fishingHelp": "Walk to the water's edge (sand tiles). When facing the water, press SPACE or E to cast your line.",
     "catching": "Catching",
     "catchingHelp": "Wait for a fish to bite. When you see \"!\" appear, quickly press SPACE/E to catch it! Rarer fish require faster reactions.",
-    "fishRarities": "Fish Rarities"
+    "fishRarities": "Fish Rarities",
+    "failedCast": "Failed to cast line",
+    "failedCatch": "Failed to catch fish"
   },
   "collection": {
     "title": "Collection",
@@ -177,7 +183,8 @@
     "noRewardYet": "No Reward Yet",
     "redeemToSee": "Redeem a coupon to see your reward here",
     "unknownReward": "Unknown reward type",
-    "pleaseEnterCode": "Please enter a coupon code"
+    "pleaseEnterCode": "Please enter a coupon code",
+    "failedRedeem": "Failed to redeem coupon"
   },
   "roll": {
     "title": "Standard Gacha",
@@ -185,7 +192,9 @@
     "backToBanners": "Banners",
     "notEnoughPoints": "Not enough points for a {{count}}× roll. Required: {{cost}} points",
     "singlePull": "Single",
-    "summoning": "Summoning..."
+    "summoning": "Summoning...",
+    "failedRoll": "Failed to roll character",
+    "failedMultiRoll": "Failed to perform multi-roll"
   },
   "banner": {
     "loadingBanner": "Loading banner...",
@@ -204,6 +213,7 @@
     "subtitle": "Manage your gacha game",
     "addCoins": "Add Coins",
     "selectUser": "Select User",
+    "selectUserPlaceholder": "-- Select User --",
     "amount": "Amount",
     "addCharacter": "Add Character",
     "multiUpload": "Multi-Upload",
@@ -244,9 +254,28 @@
     "couponUpdated": "Coupon updated successfully!",
     "couponDeleted": "Coupon deleted successfully!",
     "confirmDelete": "Are you sure you want to delete this?",
+    "confirmDeleteCharacter": "Are you sure you want to delete this character?",
+    "confirmDeleteBanner": "Are you sure you want to delete this banner?",
+    "confirmDeleteCoupon": "Are you sure you want to delete this coupon?",
     "saveChanges": "Save Changes",
     "editCharacter": "Edit",
     "noDescription": "No description",
-    "character": "Character"
+    "character": "Character",
+    "selectImage": "Please select an image or video file",
+    "failedLoadDashboard": "Failed to load dashboard data",
+    "failedLoadUsers": "Failed to load users",
+    "failedLoadCharacters": "Failed to load characters",
+    "failedLoadBanners": "Failed to load banners",
+    "failedLoadCoupons": "Failed to load coupons",
+    "failedAddCharacter": "Failed to add character",
+    "failedUpdateCharacter": "Failed to update character",
+    "failedDeleteCharacter": "Failed to delete character",
+    "failedAddBanner": "Failed to add banner",
+    "failedUpdateBanner": "Failed to update banner",
+    "failedDeleteBanner": "Failed to delete banner",
+    "failedCreateCoupon": "Failed to create coupon",
+    "failedUpdateCoupon": "Failed to update coupon",
+    "failedDeleteCoupon": "Failed to delete coupon",
+    "itemsPerPage": "{{count}} per page"
   }
 }

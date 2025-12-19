@@ -121,7 +121,7 @@ const BannerPage = () => {
         const data = await getBannerById(bannerId);
         setBanner(data);
       } catch (err) {
-        setError(err.response?.data?.error || 'Failed to load banner');
+        setError(err.response?.data?.error || t('admin.failedLoadBanners'));
       } finally {
         setLoading(false);
       }
@@ -193,7 +193,7 @@ const BannerPage = () => {
       
       await fetchUserCollection();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to roll on banner');
+      setError(err.response?.data?.error || t('roll.failedRoll'));
       setIsRolling(false);
     }
   };
@@ -258,7 +258,7 @@ const BannerPage = () => {
       
       await fetchUserCollection();
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to multi-roll');
+      setError(err.response?.data?.error || t('roll.failedMultiRoll'));
       setIsRolling(false);
     }
   };

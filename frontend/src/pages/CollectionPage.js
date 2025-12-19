@@ -49,7 +49,7 @@ const CollectionPage = () => {
       setUniqueSeries(allSeries);
       setLoading(false);
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load data');
+      setError(err.response?.data?.error || t('admin.failedLoadDashboard'));
       setLoading(false);
     }
   };
@@ -205,9 +205,9 @@ const CollectionPage = () => {
             </FilterToggle>
             
             <ItemsSelect value={itemsPerPage} onChange={handleItemsPerPageChange}>
-              <option value="24">24 / page</option>
-              <option value="48">48 / page</option>
-              <option value="96">96 / page</option>
+              <option value="24">{t('admin.itemsPerPage', { count: 24 })}</option>
+              <option value="48">{t('admin.itemsPerPage', { count: 48 })}</option>
+              <option value="96">{t('admin.itemsPerPage', { count: 96 })}</option>
             </ItemsSelect>
           </ControlsRight>
         </ControlsBar>

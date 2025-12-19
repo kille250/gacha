@@ -88,8 +88,11 @@
     "createAccount": "Crear cuenta",
     "alreadyHaveAccount": "¿Ya tienes una cuenta?",
     "signIn": "Iniciar sesión",
+    "signInHere": "Inicia sesión aquí",
     "joinTheGame": "Únete al juego",
     "startCollecting": "Empieza a coleccionar personajes hoy",
+    "startYourJourney": "Comienza tu aventura",
+    "createYourAccount": "Crea tu cuenta",
     "enterDetails": "Ingresa tus datos para comenzar",
     "passwordsMismatch": "Las contraseñas no coinciden",
     "passwordTooShort": "La contraseña debe tener al menos 4 caracteres",
@@ -114,6 +117,7 @@
     "howToPlay": "Cómo jugar",
     "bannersHelp": "Los banners destacados tienen tasas aumentadas para personajes específicos. ¡Haz clic en un banner para tirar!",
     "standardGachaHelp": "Tira del pool completo de personajes a 100 puntos por tirada.",
+    "pointsTitle": "Puntos",
     "pointsHelp": "Gana puntos a través de recompensas diarias y cupones. ¡Úsalos para tirar personajes!",
     "rarityHelp": "Rareza",
     "common": "Común",
@@ -140,7 +144,9 @@
     "fishingHelp": "Camina hasta la orilla del agua (baldosas de arena). Cuando mires al agua, presiona ESPACIO o E para lanzar tu línea.",
     "catching": "Captura",
     "catchingHelp": "Espera a que pique un pez. Cuando veas \"!\" aparecer, ¡presiona rápidamente ESPACIO/E para atraparlo! Los peces más raros requieren reacciones más rápidas.",
-    "fishRarities": "Rarezas de peces"
+    "fishRarities": "Rarezas de peces",
+    "failedCast": "Error al lanzar línea",
+    "failedCatch": "Error al atrapar pez"
   },
   "collection": {
     "title": "Colección",
@@ -177,7 +183,8 @@
     "noRewardYet": "Aún no hay recompensa",
     "redeemToSee": "Canjea un cupón para ver tu recompensa aquí",
     "unknownReward": "Tipo de recompensa desconocido",
-    "pleaseEnterCode": "Por favor ingresa un código de cupón"
+    "pleaseEnterCode": "Por favor ingresa un código de cupón",
+    "failedRedeem": "Error al canjear cupón"
   },
   "roll": {
     "title": "Gacha estándar",
@@ -185,7 +192,9 @@
     "backToBanners": "Banners",
     "notEnoughPoints": "No hay suficientes puntos para {{count}}× tirada. Requerido: {{cost}} puntos",
     "singlePull": "Simple",
-    "summoning": "Invocando..."
+    "summoning": "Invocando...",
+    "failedRoll": "Error al tirar personaje",
+    "failedMultiRoll": "Error al realizar tirada múltiple"
   },
   "banner": {
     "loadingBanner": "Cargando banner...",
@@ -204,6 +213,7 @@
     "subtitle": "Administra tu juego gacha",
     "addCoins": "Añadir monedas",
     "selectUser": "Seleccionar usuario",
+    "selectUserPlaceholder": "-- Seleccionar usuario --",
     "amount": "Cantidad",
     "addCharacter": "Añadir personaje",
     "multiUpload": "Subida múltiple",
@@ -244,9 +254,28 @@
     "couponUpdated": "¡Cupón actualizado exitosamente!",
     "couponDeleted": "¡Cupón eliminado exitosamente!",
     "confirmDelete": "¿Estás seguro de que quieres eliminar esto?",
+    "confirmDeleteCharacter": "¿Estás seguro de que quieres eliminar este personaje?",
+    "confirmDeleteBanner": "¿Estás seguro de que quieres eliminar este banner?",
+    "confirmDeleteCoupon": "¿Estás seguro de que quieres eliminar este cupón?",
     "saveChanges": "Guardar cambios",
     "editCharacter": "Editar",
     "noDescription": "Sin descripción",
-    "character": "Personaje"
+    "character": "Personaje",
+    "selectImage": "Por favor selecciona una imagen o video",
+    "failedLoadDashboard": "Error al cargar datos del panel",
+    "failedLoadUsers": "Error al cargar usuarios",
+    "failedLoadCharacters": "Error al cargar personajes",
+    "failedLoadBanners": "Error al cargar banners",
+    "failedLoadCoupons": "Error al cargar cupones",
+    "failedAddCharacter": "Error al añadir personaje",
+    "failedUpdateCharacter": "Error al actualizar personaje",
+    "failedDeleteCharacter": "Error al eliminar personaje",
+    "failedAddBanner": "Error al añadir banner",
+    "failedUpdateBanner": "Error al actualizar banner",
+    "failedDeleteBanner": "Error al eliminar banner",
+    "failedCreateCoupon": "Error al crear cupón",
+    "failedUpdateCoupon": "Error al actualizar cupón",
+    "failedDeleteCoupon": "Error al eliminar cupón",
+    "itemsPerPage": "{{count}} por página"
   }
 }

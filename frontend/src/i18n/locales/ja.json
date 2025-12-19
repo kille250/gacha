@@ -88,8 +88,11 @@
     "createAccount": "アカウント作成",
     "alreadyHaveAccount": "すでにアカウントをお持ちですか？",
     "signIn": "ログイン",
+    "signInHere": "こちらからログイン",
     "joinTheGame": "ゲームに参加",
     "startCollecting": "今日からキャラクター収集を始めよう",
+    "startYourJourney": "冒険を始めよう",
+    "createYourAccount": "アカウントを作成",
     "enterDetails": "始めるには詳細を入力してください",
     "passwordsMismatch": "パスワードが一致しません",
     "passwordTooShort": "パスワードは4文字以上必要です",
@@ -114,6 +117,7 @@
     "howToPlay": "遊び方",
     "bannersHelp": "注目バナーは特定キャラの排出率がアップ。バナーをクリックしてガチャを回そう！",
     "standardGachaHelp": "全キャラクタープールから1回100ポイントで引けます。",
+    "pointsTitle": "ポイント",
     "pointsHelp": "デイリー報酬やクーポンでポイントを獲得。キャラクターを引くのに使おう！",
     "rarityHelp": "レアリティ",
     "common": "コモン",
@@ -140,7 +144,9 @@
     "fishingHelp": "水辺（砂のタイル）まで歩く。水に向かっているときにスペースまたはEを押して釣り糸を投げる。",
     "catching": "キャッチ",
     "catchingHelp": "魚がかかるのを待つ。「！」が表示されたら、すぐにスペース/Eを押して捕まえよう！レアな魚ほど速い反応が必要。",
-    "fishRarities": "魚のレアリティ"
+    "fishRarities": "魚のレアリティ",
+    "failedCast": "釣り糸を投げることに失敗しました",
+    "failedCatch": "魚を捕まえることに失敗しました"
   },
   "collection": {
     "title": "コレクション",
@@ -177,7 +183,8 @@
     "noRewardYet": "まだ報酬がありません",
     "redeemToSee": "クーポンを交換して報酬をここで確認",
     "unknownReward": "不明な報酬タイプ",
-    "pleaseEnterCode": "クーポンコードを入力してください"
+    "pleaseEnterCode": "クーポンコードを入力してください",
+    "failedRedeem": "クーポンの交換に失敗しました"
   },
   "roll": {
     "title": "通常ガチャ",
@@ -185,7 +192,9 @@
     "backToBanners": "バナー",
     "notEnoughPoints": "{{count}}連ガチャに必要なポイントが足りません。必要: {{cost}}ポイント",
     "singlePull": "単発",
-    "summoning": "召喚中..."
+    "summoning": "召喚中...",
+    "failedRoll": "キャラクターの抽選に失敗しました",
+    "failedMultiRoll": "連続ガチャに失敗しました"
   },
   "banner": {
     "loadingBanner": "バナー読み込み中...",
@@ -204,6 +213,7 @@
     "subtitle": "ガチャゲームを管理",
     "addCoins": "コイン追加",
     "selectUser": "ユーザーを選択",
+    "selectUserPlaceholder": "-- ユーザーを選択 --",
     "amount": "金額",
     "addCharacter": "キャラクター追加",
     "multiUpload": "一括アップロード",
@@ -244,9 +254,28 @@
     "couponUpdated": "クーポンが正常に更新されました！",
     "couponDeleted": "クーポンが正常に削除されました！",
     "confirmDelete": "本当に削除しますか？",
+    "confirmDeleteCharacter": "このキャラクターを削除してもよろしいですか？",
+    "confirmDeleteBanner": "このバナーを削除してもよろしいですか？",
+    "confirmDeleteCoupon": "このクーポンを削除してもよろしいですか？",
     "saveChanges": "変更を保存",
     "editCharacter": "編集",
     "noDescription": "説明なし",
-    "character": "キャラクター"
+    "character": "キャラクター",
+    "selectImage": "画像または動画を選択してください",
+    "failedLoadDashboard": "ダッシュボードの読み込みに失敗しました",
+    "failedLoadUsers": "ユーザーの読み込みに失敗しました",
+    "failedLoadCharacters": "キャラクターの読み込みに失敗しました",
+    "failedLoadBanners": "バナーの読み込みに失敗しました",
+    "failedLoadCoupons": "クーポンの読み込みに失敗しました",
+    "failedAddCharacter": "キャラクターの追加に失敗しました",
+    "failedUpdateCharacter": "キャラクターの更新に失敗しました",
+    "failedDeleteCharacter": "キャラクターの削除に失敗しました",
+    "failedAddBanner": "バナーの追加に失敗しました",
+    "failedUpdateBanner": "バナーの更新に失敗しました",
+    "failedDeleteBanner": "バナーの削除に失敗しました",
+    "failedCreateCoupon": "クーポンの作成に失敗しました",
+    "failedUpdateCoupon": "クーポンの更新に失敗しました",
+    "failedDeleteCoupon": "クーポンの削除に失敗しました",
+    "itemsPerPage": "{{count}}件/ページ"
   }
 }

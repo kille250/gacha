@@ -88,8 +88,11 @@
     "createAccount": "Konto erstellen",
     "alreadyHaveAccount": "Bereits ein Konto?",
     "signIn": "Anmelden",
+    "signInHere": "Hier anmelden",
     "joinTheGame": "Tritt dem Spiel bei",
     "startCollecting": "Beginne heute Charaktere zu sammeln",
+    "startYourJourney": "Starte dein Abenteuer",
+    "createYourAccount": "Erstelle dein Konto",
     "enterDetails": "Gib deine Daten ein, um zu starten",
     "passwordsMismatch": "Passwörter stimmen nicht überein",
     "passwordTooShort": "Passwort muss mindestens 4 Zeichen haben",
@@ -114,6 +117,7 @@
     "howToPlay": "Spielanleitung",
     "bannersHelp": "Hervorgehobene Banner haben erhöhte Raten für bestimmte Charaktere. Klicke auf ein Banner zum Ziehen!",
     "standardGachaHelp": "Ziehe aus dem gesamten Charakter-Pool für 100 Punkte pro Zug.",
+    "pointsTitle": "Punkte",
     "pointsHelp": "Verdiene Punkte durch tägliche Belohnungen und Gutscheine. Nutze sie zum Ziehen von Charakteren!",
     "rarityHelp": "Seltenheit",
     "common": "Gewöhnlich",
@@ -140,7 +144,9 @@
     "fishingHelp": "Gehe zum Wasserrand (Sandkacheln). Wenn du zum Wasser schaust, drücke LEERTASTE oder E zum Auswerfen.",
     "catching": "Fangen",
     "catchingHelp": "Warte auf einen Biss. Wenn \"!\" erscheint, drücke schnell LEERTASTE/E zum Fangen! Seltenere Fische erfordern schnellere Reaktionen.",
-    "fishRarities": "Fisch-Seltenheiten"
+    "fishRarities": "Fisch-Seltenheiten",
+    "failedCast": "Angel konnte nicht ausgeworfen werden",
+    "failedCatch": "Fisch konnte nicht gefangen werden"
   },
   "collection": {
     "title": "Sammlung",
@@ -177,7 +183,8 @@
     "noRewardYet": "Noch keine Belohnung",
     "redeemToSee": "Löse einen Gutschein ein, um deine Belohnung hier zu sehen",
     "unknownReward": "Unbekannter Belohnungstyp",
-    "pleaseEnterCode": "Bitte gib einen Gutscheincode ein"
+    "pleaseEnterCode": "Bitte gib einen Gutscheincode ein",
+    "failedRedeem": "Gutschein konnte nicht eingelöst werden"
   },
   "roll": {
     "title": "Standard Gacha",
@@ -185,7 +192,9 @@
     "backToBanners": "Banner",
     "notEnoughPoints": "Nicht genug Punkte für {{count}}× Zug. Benötigt: {{cost}} Punkte",
     "singlePull": "Einzel",
-    "summoning": "Beschwöre..."
+    "summoning": "Beschwöre...",
+    "failedRoll": "Charakter konnte nicht gezogen werden",
+    "failedMultiRoll": "Mehrfach-Zug fehlgeschlagen"
   },
   "banner": {
     "loadingBanner": "Lade Banner...",
@@ -204,6 +213,7 @@
     "subtitle": "Verwalte dein Gacha-Spiel",
     "addCoins": "Münzen hinzufügen",
     "selectUser": "Benutzer auswählen",
+    "selectUserPlaceholder": "-- Benutzer auswählen --",
     "amount": "Betrag",
     "addCharacter": "Charakter hinzufügen",
     "multiUpload": "Mehrfach-Upload",
@@ -244,9 +254,28 @@
     "couponUpdated": "Gutschein erfolgreich aktualisiert!",
     "couponDeleted": "Gutschein erfolgreich gelöscht!",
     "confirmDelete": "Bist du sicher, dass du das löschen möchtest?",
+    "confirmDeleteCharacter": "Bist du sicher, dass du diesen Charakter löschen möchtest?",
+    "confirmDeleteBanner": "Bist du sicher, dass du dieses Banner löschen möchtest?",
+    "confirmDeleteCoupon": "Bist du sicher, dass du diesen Gutschein löschen möchtest?",
     "saveChanges": "Änderungen speichern",
     "editCharacter": "Bearbeiten",
     "noDescription": "Keine Beschreibung",
-    "character": "Charakter"
+    "character": "Charakter",
+    "selectImage": "Bitte wähle ein Bild oder Video",
+    "failedLoadDashboard": "Dashboard-Daten konnten nicht geladen werden",
+    "failedLoadUsers": "Benutzer konnten nicht geladen werden",
+    "failedLoadCharacters": "Charaktere konnten nicht geladen werden",
+    "failedLoadBanners": "Banner konnten nicht geladen werden",
+    "failedLoadCoupons": "Gutscheine konnten nicht geladen werden",
+    "failedAddCharacter": "Charakter konnte nicht hinzugefügt werden",
+    "failedUpdateCharacter": "Charakter konnte nicht aktualisiert werden",
+    "failedDeleteCharacter": "Charakter konnte nicht gelöscht werden",
+    "failedAddBanner": "Banner konnte nicht hinzugefügt werden",
+    "failedUpdateBanner": "Banner konnte nicht aktualisiert werden",
+    "failedDeleteBanner": "Banner konnte nicht gelöscht werden",
+    "failedCreateCoupon": "Gutschein konnte nicht erstellt werden",
+    "failedUpdateCoupon": "Gutschein konnte nicht aktualisiert werden",
+    "failedDeleteCoupon": "Gutschein konnte nicht gelöscht werden",
+    "itemsPerPage": "{{count}} pro Seite"
   }
 }

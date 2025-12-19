@@ -30,17 +30,17 @@ const RegisterPage = () => {
     setLocalError('');
     
     if (password !== confirmPassword) {
-      setLocalError('Passwords do not match');
+      setLocalError(t('auth.passwordsMismatch'));
       return;
     }
     
     if (password.length < 4) {
-      setLocalError('Password must be at least 4 characters');
+      setLocalError(t('auth.passwordTooShort'));
       return;
     }
     
     if (!register) {
-      setLocalError('Registration is not available');
+      setLocalError(t('auth.registrationUnavailable'));
       return;
     }
     
@@ -202,7 +202,7 @@ const RegisterPage = () => {
 
           <BonusInfo>
             <FaGem />
-            <span>New players receive <strong>100 free gems</strong> to start!</span>
+            <span dangerouslySetInnerHTML={{ __html: t('auth.bonusInfo', { gems: 100 }) }} />
           </BonusInfo>
 
           <Divider>

@@ -270,7 +270,7 @@ const GachaPage = () => {
                   <Text secondary>{t('gacha.standardGachaHelp')}</Text>
                 </HelpSection>
                 <HelpSection>
-                  <HelpSectionTitle>💰 Points</HelpSectionTitle>
+                  <HelpSectionTitle>💰 {t('gacha.pointsTitle')}</HelpSectionTitle>
                   <Text secondary>{t('gacha.pointsHelp')}</Text>
                 </HelpSection>
                 <HelpSection>

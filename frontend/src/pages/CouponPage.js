@@ -60,7 +60,7 @@ const CouponPage = () => {
         setUser({ ...user, points: updatedPoints });
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to redeem coupon');
+      setError(err.response?.data?.error || t('coupon.failedRedeem'));
     } finally {
       setLoading(false);
     }

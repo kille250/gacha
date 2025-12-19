@@ -145,7 +145,7 @@ const RollPage = () => {
         setShowSummonAnimation(true);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to roll character');
+      setError(err.response?.data?.error || t('roll.failedRoll'));
       setIsRolling(false);
     }
   };
@@ -208,7 +208,7 @@ const RollPage = () => {
         setShowMultiSummonAnimation(true);
       }
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to roll');
+      setError(err.response?.data?.error || t('roll.failedMultiRoll'));
       setIsRolling(false);
     }
   };
