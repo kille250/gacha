@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
-import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, invalidateAdminCache } from '../utils/api';
+import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, invalidateAdminCache, clearCache } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
@@ -426,6 +426,7 @@ const AdminPage = () => {
       setSuccessMessage(null);
       setError(null);
       await api.post('/coupons/admin', formData);
+      clearCache('/coupons');
       await fetchCoupons();
       setSuccessMessage(t('admin.couponCreated'));
       setIsAddingCoupon(false);
@@ -439,6 +440,7 @@ const AdminPage = () => {
       setSuccessMessage(null);
       setError(null);
       await api.put(`/coupons/admin/${editingCoupon.id}`, formData);
+      clearCache('/coupons');
       await fetchCoupons();
       setSuccessMessage(t('admin.couponUpdated'));
       setIsEditingCoupon(false);
@@ -456,6 +458,7 @@ const AdminPage = () => {
       setSuccessMessage(null);
       setError(null);
       await api.delete(`/coupons/admin/${couponId}`);
+      clearCache('/coupons');
       await fetchCoupons();
       setSuccessMessage(t('admin.couponDeleted'));
     } catch (err) {
