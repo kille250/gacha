@@ -544,10 +544,10 @@ const FishingPage = () => {
             animate={{ opacity: 1, height: 'auto' }}
             exit={{ opacity: 0, height: 0 }}
           >
-            <AutofishStatus>
+            <AutofishStatusText>
               <MdAutorenew className="spinning" />
               <span>{t('fishing.autofishing')}</span>
-            </AutofishStatus>
+            </AutofishStatusText>
             <AutofishLog>
               {autofishLog.slice(0, 5).map((entry, i) => (
                 <AutofishEntry key={entry.timestamp} $success={entry.success}>
@@ -1101,18 +1101,20 @@ const AutofishBar = styled(motion.div)`
   justify-content: space-between;
   gap: ${theme.spacing.md};
   padding: ${theme.spacing.md} ${theme.spacing.lg};
-  background: linear-gradient(90deg, rgba(48, 209, 88, 0.25), rgba(52, 199, 89, 0.15));
-  border-bottom: 2px solid rgba(48, 209, 88, 0.4);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(10px);
+  border-bottom: 2px solid rgba(48, 209, 88, 0.5);
   overflow: hidden;
 `;
 
-const AutofishStatus = styled.div`
+const AutofishStatusText = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
   color: #30d158;
   font-weight: 700;
   font-size: 16px;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   
   svg.spinning {
     animation: ${spinAnimation} 1s linear infinite;
@@ -1134,16 +1136,14 @@ const AutofishEntry = styled.div`
   gap: 6px;
   padding: 8px 14px;
   background: ${props => props.$success 
-    ? 'rgba(48, 209, 88, 0.25)' 
-    : 'rgba(255, 69, 58, 0.25)'};
-  border: 1px solid ${props => props.$success 
-    ? 'rgba(48, 209, 88, 0.4)' 
-    : 'rgba(255, 69, 58, 0.4)'};
+    ? 'rgba(48, 209, 88, 0.9)' 
+    : 'rgba(255, 69, 58, 0.9)'};
   border-radius: 10px;
   font-size: 15px;
-  color: ${props => props.$success ? '#30d158' : '#ff453a'};
+  color: white;
   font-weight: 700;
   white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   
   span:first-child {
     font-size: 18px;
