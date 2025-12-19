@@ -245,6 +245,8 @@
     "couponDeleted": "Coupon deleted successfully!",
     "confirmDelete": "Are you sure you want to delete this?",
     "saveChanges": "Save Changes",
-    "editCharacter": "Edit"
+    "editCharacter": "Edit",
+    "noDescription": "No description",
+    "character": "Character"
   }
 }

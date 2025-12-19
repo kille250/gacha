@@ -528,11 +528,11 @@ const AdminPage = () => {
               <FormGroup>
                 <Label>{t('admin.rarity')}</Label>
                 <Select name="rarity" value={newCharacter.rarity} onChange={handleCharacterChange}>
-                  <option value="common">Common</option>
-                  <option value="uncommon">Uncommon</option>
-                  <option value="rare">Rare</option>
-                  <option value="epic">Epic</option>
-                  <option value="legendary">Legendary</option>
+                  <option value="common">{t('gacha.common')}</option>
+                  <option value="uncommon">{t('gacha.uncommon')}</option>
+                  <option value="rare">{t('gacha.rare')}</option>
+                  <option value="epic">{t('gacha.epic')}</option>
+                  <option value="legendary">{t('gacha.legendary')}</option>
                 </Select>
               </FormGroup>
               <FormGroup>
@@ -660,19 +660,19 @@ const AdminPage = () => {
                     <BannerName>{banner.name}</BannerName>
                     <TagRow>
                       <SeriesTag>{banner.series}</SeriesTag>
-                      {banner.featured && <FeaturedTag>Featured</FeaturedTag>}
-                      <StatusTag active={banner.active}>{banner.active ? 'Active' : 'Inactive'}</StatusTag>
+                      {banner.featured && <FeaturedTag>{t('admin.featured')}</FeaturedTag>}
+                      <StatusTag active={banner.active}>{banner.active ? t('admin.active') : t('admin.inactive')}</StatusTag>
                     </TagRow>
                     <BannerDesc>{banner.description}</BannerDesc>
-                    {banner.endDate && <DateInfo>Ends: {new Date(banner.endDate).toLocaleDateString()}</DateInfo>}
+                    {banner.endDate && <DateInfo>{t('common.ends')}: {new Date(banner.endDate).toLocaleDateString()}</DateInfo>}
                     <BannerStats>
-                      <StatItem><strong>Cost:</strong> {Math.floor(100 * banner.costMultiplier)}</StatItem>
-                      <StatItem><strong>Characters:</strong> {banner.Characters?.length || 0}</StatItem>
-                      {banner.videoUrl && <StatItem><FaVideo /> Video</StatItem>}
+                      <StatItem><strong>{t('admin.cost')}:</strong> {Math.floor(100 * banner.costMultiplier)}</StatItem>
+                      <StatItem><strong>{t('gacha.characters')}:</strong> {banner.Characters?.length || 0}</StatItem>
+                      {banner.videoUrl && <StatItem><FaVideo /> {t('admin.video')}</StatItem>}
                     </BannerStats>
                     <CardActions>
-                      <ActionBtn onClick={() => handleEditBanner(banner)}><FaEdit /> Edit</ActionBtn>
-                      <ActionBtn danger onClick={() => handleDeleteBanner(banner.id)}><FaTrash /> Delete</ActionBtn>
+                      <ActionBtn onClick={() => handleEditBanner(banner)}><FaEdit /> {t('common.edit')}</ActionBtn>
+                      <ActionBtn danger onClick={() => handleDeleteBanner(banner.id)}><FaTrash /> {t('common.delete')}</ActionBtn>
                     </CardActions>
                   </BannerInfo>
                 </BannerCard>
@@ -699,18 +699,18 @@ const AdminPage = () => {
                     <StatusDot active={coupon.isActive} />
                   </CouponHeader>
                   <CouponInfo>
-                    <CouponDesc>{coupon.description || 'No description'}</CouponDesc>
+                    <CouponDesc>{coupon.description || t('admin.noDescription')}</CouponDesc>
                     <CouponTypeTag type={coupon.type}>
-                      {coupon.type === 'coins' ? <><FaCoins /> {coupon.value} Coins</> : <><FaUsers /> {coupon.Character?.name || 'Character'}</>}
+                      {coupon.type === 'coins' ? <><FaCoins /> {coupon.value} {t('coupon.coins')}</> : <><FaUsers /> {coupon.Character?.name || t('admin.character')}</>}
                     </CouponTypeTag>
                     <CouponDetails>
-                      <CouponDetail><strong>Uses:</strong> {coupon.currentUses}/{coupon.maxUses === -1 ? '∞' : coupon.maxUses}</CouponDetail>
-                      <CouponDetail><strong>Per User:</strong> {coupon.usesPerUser === -1 ? '∞' : coupon.usesPerUser}</CouponDetail>
+                      <CouponDetail><strong>{t('admin.uses')}:</strong> {coupon.currentUses}/{coupon.maxUses === -1 ? '∞' : coupon.maxUses}</CouponDetail>
+                      <CouponDetail><strong>{t('admin.perUser')}:</strong> {coupon.usesPerUser === -1 ? '∞' : coupon.usesPerUser}</CouponDetail>
                       {coupon.endDate && <CouponDetail><FaCalendarAlt /> {new Date(coupon.endDate).toLocaleDateString()}</CouponDetail>}
                     </CouponDetails>
                     <CardActions>
-                      <ActionBtn onClick={() => handleEditCoupon(coupon)}><FaEdit /> Edit</ActionBtn>
-                      <ActionBtn danger onClick={() => handleDeleteCoupon(coupon.id)}><FaTrash /> Delete</ActionBtn>
+                      <ActionBtn onClick={() => handleEditCoupon(coupon)}><FaEdit /> {t('common.edit')}</ActionBtn>
+                      <ActionBtn danger onClick={() => handleDeleteCoupon(coupon.id)}><FaTrash /> {t('common.delete')}</ActionBtn>
                     </CardActions>
                   </CouponInfo>
                 </CouponCard>
@@ -732,37 +732,37 @@ const AdminPage = () => {
         <ModalOverlay onClick={handleCloseEdit}>
           <ModalContent onClick={e => e.stopPropagation()}>
             <ModalHeader>
-              <ModalTitle>Edit: {editingCharacter.name}</ModalTitle>
+              <ModalTitle>{t('common.edit')}: {editingCharacter.name}</ModalTitle>
               <CloseBtn onClick={handleCloseEdit}>×</CloseBtn>
             </ModalHeader>
             <ModalBody>
               <form onSubmit={handleSaveCharacter}>
                 <FormGroup>
-                  <Label>Name</Label>
+                  <Label>{t('admin.name')}</Label>
                   <Input type="text" name="name" value={editForm.name} onChange={handleEditFormChange} required />
                 </FormGroup>
                 <FormGroup>
-                  <Label>Series</Label>
+                  <Label>{t('admin.series')}</Label>
                   <Input type="text" name="series" value={editForm.series} onChange={handleEditFormChange} required />
                 </FormGroup>
                 <FormGroup>
-                  <Label>Rarity</Label>
+                  <Label>{t('admin.rarity')}</Label>
                   <Select name="rarity" value={editForm.rarity} onChange={handleEditFormChange}>
-                    <option value="common">Common</option>
-                    <option value="uncommon">Uncommon</option>
-                    <option value="rare">Rare</option>
-                    <option value="epic">Epic</option>
-                    <option value="legendary">Legendary</option>
+                    <option value="common">{t('gacha.common')}</option>
+                    <option value="uncommon">{t('gacha.uncommon')}</option>
+                    <option value="rare">{t('gacha.rare')}</option>
+                    <option value="epic">{t('gacha.epic')}</option>
+                    <option value="legendary">{t('gacha.legendary')}</option>
                   </Select>
                 </FormGroup>
                 <FormGroup>
                   <CheckboxLabel>
                     <input type="checkbox" checked={editForm.isR18} onChange={(e) => setEditForm({...editForm, isR18: e.target.checked})} />
-                    <span>🔞 R18 Content</span>
+                    <span>🔞 {t('admin.r18Content')}</span>
                   </CheckboxLabel>
                 </FormGroup>
                 <FormGroup>
-                  <Label>Image/Video</Label>
+                  <Label>{t('admin.imageVideo')}</Label>
                   <Input type="file" accept="image/*,video/mp4,video/webm" onChange={handleEditImageChange} />
                   {editImagePreview && (
                     <ImagePreview>
@@ -775,8 +775,8 @@ const AdminPage = () => {
                   )}
                 </FormGroup>
                 <ButtonRow>
-                  <SubmitButton type="submit">Save Changes</SubmitButton>
-                  <CancelButton type="button" onClick={handleCloseEdit}>Cancel</CancelButton>
+                  <SubmitButton type="submit">{t('admin.saveChanges')}</SubmitButton>
+                  <CancelButton type="button" onClick={handleCloseEdit}>{t('common.cancel')}</CancelButton>
                 </ButtonRow>
               </form>
             </ModalBody>

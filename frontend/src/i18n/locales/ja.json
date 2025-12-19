@@ -245,6 +245,8 @@
     "couponDeleted": "クーポンが正常に削除されました！",
     "confirmDelete": "本当に削除しますか？",
     "saveChanges": "変更を保存",
-    "editCharacter": "編集"
+    "editCharacter": "編集",
+    "noDescription": "説明なし",
+    "character": "キャラクター"
   }
 }

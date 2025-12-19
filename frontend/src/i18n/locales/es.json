@@ -245,6 +245,8 @@
     "couponDeleted": "¡Cupón eliminado exitosamente!",
     "confirmDelete": "¿Estás seguro de que quieres eliminar esto?",
     "saveChanges": "Guardar cambios",
-    "editCharacter": "Editar"
+    "editCharacter": "Editar",
+    "noDescription": "Sin descripción",
+    "character": "Personaje"
   }
 }

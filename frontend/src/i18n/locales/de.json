@@ -245,6 +245,8 @@
     "couponDeleted": "Gutschein erfolgreich gelöscht!",
     "confirmDelete": "Bist du sicher, dass du das löschen möchtest?",
     "saveChanges": "Änderungen speichern",
-    "editCharacter": "Bearbeiten"
+    "editCharacter": "Bearbeiten",
+    "noDescription": "Keine Beschreibung",
+    "character": "Charakter"
   }
 }
