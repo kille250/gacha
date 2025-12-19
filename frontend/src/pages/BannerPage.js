@@ -194,12 +194,14 @@ const BannerPage = () => {
   
   const handleSummonComplete = useCallback(() => {
     if (pendingCharacter) {
-      setCurrentChar(pendingCharacter);
-      setShowCard(true);
+      // Don't show the card again - animation already revealed it
+      // Just update the rarity history
       setLastRarities(prev => [pendingCharacter.rarity, ...prev.slice(0, 4)]);
     }
     setShowSummonAnimation(false);
     setPendingCharacter(null);
+    setCurrentChar(null);
+    setShowCard(false);
     setIsRolling(false);
   }, [pendingCharacter]);
 
@@ -252,9 +254,8 @@ const BannerPage = () => {
   };
   
   const handleMultiSummonComplete = useCallback(() => {
-    setMultiRollResults(pendingMultiResults);
-    setShowMultiResults(true);
-    
+    // Don't show results grid - animation already revealed each character
+    // Just update the rarity history with the best pull
     const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
     const bestRarity = pendingMultiResults.reduce((best, char) => {
       const idx = rarityOrder.indexOf(char.rarity);
@@ -264,6 +265,8 @@ const BannerPage = () => {
     setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
     setShowMultiSummonAnimation(false);
     setPendingMultiResults([]);
+    setMultiRollResults([]);
+    setShowMultiResults(false);
     setIsRolling(false);
   }, [pendingMultiResults]);
 
