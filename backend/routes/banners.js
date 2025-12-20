@@ -173,6 +173,62 @@ router.get('/:id', async (req, res) => {
 });
 
 // Admin routes below require authentication and admin privileges
+
+// Bulk toggle featured status for multiple banners (admin only)
+router.post('/bulk-toggle-featured', [auth, admin], async (req, res) => {
+  try {
+    const { bannerIds, featured } = req.body;
+    
+    // Validate bannerIds
+    if (!bannerIds || !Array.isArray(bannerIds) || bannerIds.length === 0) {
+      return res.status(400).json({ error: 'bannerIds array is required' });
+    }
+    
+    // Validate all IDs
+    if (!validateIdArray(bannerIds)) {
+      return res.status(400).json({ error: 'Invalid banner IDs. All IDs must be positive integers.' });
+    }
+    
+    const parsedIds = bannerIds.map(id => parseInt(id, 10));
+    
+    // Find all banners
+    const banners = await Banner.findAll({
+      where: { id: parsedIds }
+    });
+    
+    if (banners.length === 0) {
+      return res.status(404).json({ error: 'No banners found with the provided IDs' });
+    }
+    
+    // Update featured status
+    // If 'featured' is provided, set to that value; otherwise toggle each banner
+    const updatedBanners = [];
+    for (const banner of banners) {
+      if (featured !== undefined) {
+        banner.featured = featured === true || featured === 'true';
+      } else {
+        banner.featured = !banner.featured;
+      }
+      await banner.save();
+      updatedBanners.push({
+        id: banner.id,
+        name: banner.name,
+        featured: banner.featured
+      });
+    }
+    
+    console.log(`Admin bulk-toggled featured status for ${updatedBanners.length} banners`);
+    
+    res.json({
+      message: `Updated ${updatedBanners.length} banners`,
+      banners: updatedBanners
+    });
+  } catch (err) {
+    console.error('Error bulk toggling featured status:', err);
+    res.status(500).json({ error: 'Server error: ' + err.message });
+  }
+});
+
 // Create a new banner (admin only)
 router.post('/', [auth, admin], upload.fields([
   { name: 'image', maxCount: 1 },

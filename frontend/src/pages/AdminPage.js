@@ -39,6 +39,7 @@ const AdminPage = () => {
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [isMultiUploadOpen, setIsMultiUploadOpen] = useState(false);
   const [isAnimeImportOpen, setIsAnimeImportOpen] = useState(false);
+  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
 
   // Filtered and paginated characters
   const filteredCharacters = characters.filter(character => {
@@ -435,6 +436,34 @@ const AdminPage = () => {
     }
   };
 
+  // Banner navigation and toggle handlers
+  const handlePrevBanner = () => {
+    setCurrentBannerIndex(prev => (prev > 0 ? prev - 1 : banners.length - 1));
+  };
+
+  const handleNextBanner = () => {
+    setCurrentBannerIndex(prev => (prev < banners.length - 1 ? prev + 1 : 0));
+  };
+
+  const handleToggleCurrentFeatured = async () => {
+    if (banners.length === 0) return;
+    const currentBanner = banners[currentBannerIndex];
+    if (!currentBanner) return;
+    
+    try {
+      setSuccessMessage(null);
+      setError(null);
+      await api.post('/banners/bulk-toggle-featured', {
+        bannerIds: [currentBanner.id],
+        featured: !currentBanner.featured
+      });
+      await fetchBanners();
+      setSuccessMessage(`${currentBanner.name} ${!currentBanner.featured ? 'marked as featured' : 'unmarked as featured'}`);
+    } catch (err) {
+      setError(err.response?.data?.error || t('admin.failedUpdateBanner'));
+    }
+  };
+
   // Coupon Functions
   const handleEditCoupon = (coupon) => {
     setEditingCoupon(coupon);
@@ -740,18 +769,41 @@ const AdminPage = () => {
             <AddButton onClick={() => setIsAddingBanner(true)}><FaPlus /> {t('admin.addBanner')}</AddButton>
           </SectionHeader>
           
+          {/* Featured Toggle Navigator */}
+          {banners.length > 0 && (
+            <FeaturedToggleNav>
+              <NavArrowBtn onClick={handlePrevBanner}>◀</NavArrowBtn>
+              <FeaturedToggleCard>
+                <FeaturedBannerPreview>
+                  <img src={getBannerImageUrl(banners[currentBannerIndex]?.image)} alt="" />
+                </FeaturedBannerPreview>
+                <FeaturedToggleInfo>
+                  <FeaturedBannerName>{banners[currentBannerIndex]?.name}</FeaturedBannerName>
+                  <FeaturedCounter>{currentBannerIndex + 1} / {banners.length}</FeaturedCounter>
+                </FeaturedToggleInfo>
+                <FeaturedToggleBtn 
+                  $isFeatured={banners[currentBannerIndex]?.featured}
+                  onClick={handleToggleCurrentFeatured}
+                >
+                  {banners[currentBannerIndex]?.featured ? '⭐ Featured' : '☆ Set Featured'}
+                </FeaturedToggleBtn>
+              </FeaturedToggleCard>
+              <NavArrowBtn onClick={handleNextBanner}>▶</NavArrowBtn>
+            </FeaturedToggleNav>
+          )}
+          
           {banners.length === 0 ? (
             <EmptyMessage>{t('admin.noBannersFound')}</EmptyMessage>
           ) : (
             <BannerGrid>
-              {banners.map(banner => (
-                <BannerCard key={banner.id}>
+              {banners.map((banner, index) => (
+                <BannerCard key={banner.id} $selected={index === currentBannerIndex}>
                   <BannerImage src={getBannerImageUrl(banner.image)} alt={banner.name} />
                   <BannerInfo>
                     <BannerName>{banner.name}</BannerName>
                     <TagRow>
                       <SeriesTag>{banner.series}</SeriesTag>
-                      {banner.featured && <FeaturedTag>{t('admin.featured')}</FeaturedTag>}
+                      {banner.featured && <FeaturedTag>⭐ {t('admin.featured')}</FeaturedTag>}
                       <StatusTag active={banner.active}>{banner.active ? t('admin.active') : t('admin.inactive')}</StatusTag>
                     </TagRow>
                     <BannerDesc>{banner.description}</BannerDesc>
@@ -1345,6 +1397,107 @@ const PageInfo = styled.span`
   font-size: ${theme.fontSizes.sm};
 `;
 
+const FeaturedToggleNav = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.xl};
+  padding: ${theme.spacing.lg};
+  background: linear-gradient(135deg, rgba(255, 159, 10, 0.1), rgba(255, 204, 0, 0.05));
+  border-radius: ${theme.radius.xl};
+  border: 1px solid rgba(255, 159, 10, 0.2);
+`;
+
+const NavArrowBtn = styled.button`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: none;
+  background: ${theme.colors.primary};
+  color: white;
+  font-size: 20px;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  
+  &:hover {
+    transform: scale(1.1);
+    background: ${theme.colors.accent};
+  }
+  
+  &:active {
+    transform: scale(0.95);
+  }
+`;
+
+const FeaturedToggleCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.lg};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.surface};
+  border-radius: ${theme.radius.lg};
+  min-width: 400px;
+`;
+
+const FeaturedBannerPreview = styled.div`
+  width: 80px;
+  height: 50px;
+  border-radius: ${theme.radius.md};
+  overflow: hidden;
+  flex-shrink: 0;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const FeaturedToggleInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const FeaturedBannerName = styled.div`
+  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.base};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const FeaturedCounter = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+`;
+
+const FeaturedToggleBtn = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  border-radius: ${theme.radius.full};
+  border: none;
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all 0.2s;
+  white-space: nowrap;
+  
+  background: ${props => props.$isFeatured 
+    ? 'linear-gradient(135deg, #ffd700, #ffb300)' 
+    : theme.colors.backgroundTertiary};
+  color: ${props => props.$isFeatured ? '#1a1a1a' : theme.colors.text};
+  box-shadow: ${props => props.$isFeatured 
+    ? '0 4px 12px rgba(255, 215, 0, 0.4)' 
+    : 'none'};
+  
+  &:hover {
+    transform: scale(1.05);
+    ${props => !props.$isFeatured && `background: ${theme.colors.primary}; color: white;`}
+  }
+`;
+
 const BannerGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
@@ -1355,7 +1508,11 @@ const BannerCard = styled.div`
   background: ${theme.colors.backgroundTertiary};
   border-radius: ${theme.radius.lg};
   overflow: hidden;
-  border: 1px solid ${theme.colors.surfaceBorder};
+  border: 2px solid ${props => props.$selected ? theme.colors.primary : theme.colors.surfaceBorder};
+  transition: all 0.2s;
+  ${props => props.$selected && `
+    box-shadow: 0 0 20px rgba(0, 113, 227, 0.3);
+  `}
 `;
 
 const BannerImage = styled.img`
