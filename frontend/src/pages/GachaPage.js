@@ -362,13 +362,6 @@ const LogoText = styled.h1`
   letter-spacing: -0.03em;
 `;
 
-const LogoAccent = styled.span`
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-`;
-
 const HeroSubtitle = styled.p`
   font-size: 15px;
   color: ${theme.colors.textTertiary};
