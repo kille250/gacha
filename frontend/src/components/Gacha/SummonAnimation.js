@@ -11,58 +11,53 @@ import { isVideo } from '../../utils/mediaUtils';
 const RARITY_CONFIG = {
   common: {
     color: '#8e8e93',
-    particleColors: ['#8e8e93', '#a8a8ad', '#c7c7cc'],
+    accentColor: '#a8a8ad',
     glowIntensity: 0.3,
-    shakeIntensity: 0,
-    circleSpeed: 8,
-    particleCount: 15,
+    buildupTime: 800,
+    confettiCount: 0,
     icon: <FaDice />,
-    buildupTime: 1500,
-    confettiCount: 0
+    orbCount: 3,
+    ringCount: 1
   },
   uncommon: {
     color: '#30d158',
-    particleColors: ['#30d158', '#5fe07a', '#8aea9d'],
+    accentColor: '#5fe07a',
     glowIntensity: 0.5,
-    shakeIntensity: 0.5,
-    circleSpeed: 6,
-    particleCount: 25,
+    buildupTime: 1000,
+    confettiCount: 30,
     icon: <FaStar />,
-    buildupTime: 1800,
-    confettiCount: 30
+    orbCount: 4,
+    ringCount: 1
   },
   rare: {
     color: '#0a84ff',
-    particleColors: ['#0a84ff', '#409cff', '#70b4ff'],
+    accentColor: '#409cff',
     glowIntensity: 0.7,
-    shakeIntensity: 1,
-    circleSpeed: 4,
-    particleCount: 40,
+    buildupTime: 1400,
+    confettiCount: 80,
     icon: <FaGem />,
-    buildupTime: 2200,
-    confettiCount: 80
+    orbCount: 5,
+    ringCount: 2
   },
   epic: {
     color: '#bf5af2',
-    particleColors: ['#bf5af2', '#d183f5', '#e3acf8', '#ff6bff'],
+    accentColor: '#d183f5',
     glowIntensity: 0.85,
-    shakeIntensity: 2,
-    circleSpeed: 3,
-    particleCount: 60,
+    buildupTime: 1800,
+    confettiCount: 120,
     icon: <FaStar />,
-    buildupTime: 2600,
-    confettiCount: 120
+    orbCount: 6,
+    ringCount: 2
   },
   legendary: {
     color: '#ff9f0a',
-    particleColors: ['#ff9f0a', '#ffc040', '#ffe070', '#ffffff'],
+    accentColor: '#ffc040',
     glowIntensity: 1,
-    shakeIntensity: 3,
-    circleSpeed: 2,
-    particleCount: 100,
+    buildupTime: 2200,
+    confettiCount: 200,
     icon: <FaTrophy />,
-    buildupTime: 3000,
-    confettiCount: 200
+    orbCount: 8,
+    ringCount: 3
   }
 };
 
@@ -70,10 +65,10 @@ const RARITY_CONFIG = {
 
 const PHASES = {
   IDLE: 'idle',
-  CHARGING: 'charging',
-  PEAK: 'peak', 
+  BUILDUP: 'buildup',
+  FLASH: 'flash',
   REVEAL: 'reveal',
-  WAITING_DISMISS: 'waiting_dismiss'
+  COMPLETE: 'complete'
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -85,281 +80,237 @@ export const SummonAnimation = ({
   onComplete,
   skipEnabled = true,
   getImagePath,
-  // For multi-pull mode
   isMultiPull = false,
   currentPull = 1,
   totalPulls = 1,
   onSkipAll,
-  // Ambient rarity for background effects (highest rarity in multi-pull)
   ambientRarity = null
 }) => {
   const [phase, setPhase] = useState(PHASES.IDLE);
-  const [particles, setParticles] = useState([]);
   const [showSkipHint, setShowSkipHint] = useState(false);
-  const [confettiFired, setConfettiFired] = useState(false);
   const timersRef = useRef([]);
   const hasStartedRef = useRef(false);
   
-  // Use ambientRarity for background effects if provided, otherwise use character rarity
   const effectRarity = ambientRarity || rarity;
   const config = RARITY_CONFIG[rarity] || RARITY_CONFIG.common;
   const ambientConfig = RARITY_CONFIG[effectRarity] || RARITY_CONFIG.common;
 
-  // Clear all timers
   const clearAllTimers = useCallback(() => {
     timersRef.current.forEach(timer => clearTimeout(timer));
     timersRef.current = [];
   }, []);
 
-  // Generate particles using ambient config (highest rarity effects)
-  const generateParticles = useCallback(() => {
-    const newParticles = [];
-    for (let i = 0; i < ambientConfig.particleCount; i++) {
-      newParticles.push({
-        id: i,
-        x: Math.random() * 100,
-        y: Math.random() * 100,
-        size: Math.random() * 8 + 4,
-        color: ambientConfig.particleColors[Math.floor(Math.random() * ambientConfig.particleColors.length)],
-        delay: Math.random() * 2,
-        duration: Math.random() * 3 + 2,
-        angle: Math.random() * 360
-      });
-    }
-    setParticles(newParticles);
-  }, [ambientConfig.particleCount, ambientConfig.particleColors]);
-
-  // Fire confetti for high rarity - uses ambient config for multi-pulls
+  // Fire confetti celebration
   const fireConfetti = useCallback(() => {
-    if (confettiFired) return;
-    setConfettiFired(true);
+    if (ambientConfig.confettiCount === 0) return;
     
-    if (ambientConfig.confettiCount > 0) {
-      const colors = ambientConfig.particleColors;
-      
-      confetti({
-        particleCount: ambientConfig.confettiCount,
-        spread: 100,
-        origin: { y: 0.5, x: 0.5 },
-        colors: [...colors, '#ffffff', '#ffd700'],
-        startVelocity: 45,
-        gravity: 0.8,
-        shapes: ['star', 'circle'],
-        scalar: 1.2
-      });
+    const colors = [ambientConfig.color, ambientConfig.accentColor, '#ffffff'];
+    
+    // Main burst
+    confetti({
+      particleCount: ambientConfig.confettiCount,
+      spread: 80,
+      origin: { y: 0.45, x: 0.5 },
+      colors,
+      startVelocity: 35,
+      gravity: 0.9,
+      shapes: ['circle', 'square'],
+      scalar: 1.1,
+      ticks: 100
+    });
 
-      if (effectRarity === 'legendary') {
-        setTimeout(() => {
-          confetti({
-            particleCount: 50,
-            angle: 60,
-            spread: 55,
-            origin: { x: 0 },
-            colors: colors
-          });
-          confetti({
-            particleCount: 50,
-            angle: 120,
-            spread: 55,
-            origin: { x: 1 },
-            colors: colors
-          });
-        }, 200);
-      }
+    // Side bursts for legendary/epic
+    if (effectRarity === 'legendary' || effectRarity === 'epic') {
+      setTimeout(() => {
+        confetti({
+          particleCount: 40,
+          angle: 60,
+          spread: 45,
+          origin: { x: 0, y: 0.5 },
+          colors
+        });
+        confetti({
+          particleCount: 40,
+          angle: 120,
+          spread: 45,
+          origin: { x: 1, y: 0.5 },
+          colors
+        });
+      }, 150);
     }
-  }, [ambientConfig.confettiCount, ambientConfig.particleColors, effectRarity, confettiFired]);
+  }, [ambientConfig, effectRarity]);
 
-  // Start animation sequence - uses ambient config for timing (dramatic buildup for high rarity)
+  // Start animation sequence
   useEffect(() => {
     if (isActive && !hasStartedRef.current) {
       hasStartedRef.current = true;
-      generateParticles();
-      setPhase(PHASES.CHARGING);
+      setPhase(PHASES.BUILDUP);
       setShowSkipHint(false);
-      setConfettiFired(false);
 
-      const skipTimer = setTimeout(() => {
-        setShowSkipHint(true);
-      }, 800);
+      // Show skip hint after brief delay
+      const skipTimer = setTimeout(() => setShowSkipHint(true), 600);
       timersRef.current.push(skipTimer);
 
-      const peakTimer = setTimeout(() => {
-        setPhase(PHASES.PEAK);
-      }, ambientConfig.buildupTime * 0.6);
-      timersRef.current.push(peakTimer);
+      // Flash phase - the climax
+      const flashTimer = setTimeout(() => {
+        setPhase(PHASES.FLASH);
+        fireConfetti();
+      }, ambientConfig.buildupTime);
+      timersRef.current.push(flashTimer);
 
+      // Reveal phase
       const revealTimer = setTimeout(() => {
         setPhase(PHASES.REVEAL);
-      }, ambientConfig.buildupTime);
+      }, ambientConfig.buildupTime + 300);
       timersRef.current.push(revealTimer);
 
-      const waitTimer = setTimeout(() => {
-        setPhase(PHASES.WAITING_DISMISS);
+      // Complete - ready for dismiss
+      const completeTimer = setTimeout(() => {
+        setPhase(PHASES.COMPLETE);
         setShowSkipHint(false);
-      }, ambientConfig.buildupTime + 800);
-      timersRef.current.push(waitTimer);
+      }, ambientConfig.buildupTime + 900);
+      timersRef.current.push(completeTimer);
     }
     
     return () => {
-      if (!isActive) {
-        clearAllTimers();
-      }
+      if (!isActive) clearAllTimers();
     };
-  }, [isActive, ambientConfig.buildupTime, generateParticles, clearAllTimers]);
-
-  // Fire confetti when entering reveal phase
-  useEffect(() => {
-    if (phase === PHASES.REVEAL && !confettiFired) {
-      fireConfetti();
-    }
-  }, [phase, confettiFired, fireConfetti]);
+  }, [isActive, ambientConfig.buildupTime, fireConfetti, clearAllTimers]);
 
   // Reset when inactive
   useEffect(() => {
     if (!isActive) {
       clearAllTimers();
       setPhase(PHASES.IDLE);
-      setParticles([]);
       setShowSkipHint(false);
-      setConfettiFired(false);
       hasStartedRef.current = false;
     }
   }, [isActive, clearAllTimers]);
 
-  // Handle container click
-  const handleContainerClick = useCallback((e) => {
+  // Handle skip/continue
+  const handleInteraction = useCallback((e) => {
     e.stopPropagation();
     
-    if (phase === PHASES.WAITING_DISMISS) {
-      if (onComplete) {
-        onComplete();
-      }
-    } else if (skipEnabled && (phase === PHASES.CHARGING || phase === PHASES.PEAK)) {
+    if (phase === PHASES.COMPLETE) {
+      onComplete?.();
+    } else if (skipEnabled && phase === PHASES.BUILDUP) {
       clearAllTimers();
-      setPhase(PHASES.REVEAL);
+      setPhase(PHASES.FLASH);
+      fireConfetti();
       
-      const waitTimer = setTimeout(() => {
-        setPhase(PHASES.WAITING_DISMISS);
+      setTimeout(() => setPhase(PHASES.REVEAL), 200);
+      const completeTimer = setTimeout(() => {
+        setPhase(PHASES.COMPLETE);
         setShowSkipHint(false);
-      }, 600);
-      timersRef.current.push(waitTimer);
+      }, 700);
+      timersRef.current.push(completeTimer);
     }
-  }, [phase, skipEnabled, onComplete, clearAllTimers]);
+  }, [phase, skipEnabled, onComplete, clearAllTimers, fireConfetti]);
 
   if (!isActive) return null;
 
-  const isShowingCharacter = phase === PHASES.REVEAL || phase === PHASES.WAITING_DISMISS;
-  const isBuildup = phase === PHASES.CHARGING || phase === PHASES.PEAK;
+  const isBuildup = phase === PHASES.BUILDUP;
+  const isRevealed = phase === PHASES.REVEAL || phase === PHASES.COMPLETE;
 
   return (
-    <AnimationOverlay>
-      <AnimationContainer
-        onClick={handleContainerClick}
-        $rarity={effectRarity}
-        $phase={phase}
-        $shakeIntensity={ambientConfig.shakeIntensity}
+    <Overlay onClick={handleInteraction}>
+      <Container
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        transition={{ duration: 0.3 }}
+        transition={{ duration: 0.2 }}
       >
-        {/* Background Vignette - uses effectRarity for ambient color */}
-        <Vignette $rarity={effectRarity} $phase={phase} />
+        {/* Ambient Background Glow */}
+        <AmbientGlow $rarity={effectRarity} $phase={phase} />
+        
+        {/* Vignette overlay */}
+        <Vignette />
 
-        {/* Particle Field - only during buildup */}
-        {isBuildup && (
-          <ParticleField>
-            {particles.map(particle => (
-              <Particle
-                key={particle.id}
-                $x={particle.x}
-                $y={particle.y}
-                $size={particle.size}
-                $color={particle.color}
-                $delay={particle.delay}
-                $duration={particle.duration}
-                $phase={phase}
-              />
-            ))}
-          </ParticleField>
-        )}
-
-        {/* Summoning Circle - uses effectRarity for dramatic buildup */}
-        <CircleContainer $phase={phase} $isVisible={isBuildup}>
-          <SummonCircle 
-            $rarity={effectRarity} 
-            $phase={phase}
-            $speed={ambientConfig.circleSpeed}
-          >
-            <CircleRing $delay={0} $rarity={effectRarity} />
-            <CircleRing $delay={0.2} $rarity={effectRarity} $reverse />
-            <CircleRing $delay={0.4} $rarity={effectRarity} />
-            <InnerGlow $rarity={effectRarity} $phase={phase} />
-            <RuneCircle $rarity={effectRarity}>
-              {[...Array(12)].map((_, i) => (
-                <Rune key={i} $index={i} $rarity={effectRarity}>✦</Rune>
-              ))}
-            </RuneCircle>
-          </SummonCircle>
-        </CircleContainer>
-
-        {/* Energy Beams - during peak and reveal */}
+        {/* Buildup Animation */}
         <AnimatePresence>
-          {(phase === PHASES.PEAK || phase === PHASES.REVEAL) && (
-            <EnergyBeams $rarity={effectRarity}>
-              {[...Array(8)].map((_, i) => (
-                <EnergyBeam 
+          {isBuildup && (
+            <BuildupContainer
+              initial={{ opacity: 0, scale: 0.8 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 1.2 }}
+              transition={{ duration: 0.3 }}
+            >
+              {/* Central Orb */}
+              <CentralOrb $rarity={effectRarity}>
+                <OrbCore $rarity={effectRarity} />
+                <OrbPulse $rarity={effectRarity} />
+                <OrbPulse $rarity={effectRarity} $delay={0.5} />
+              </CentralOrb>
+
+              {/* Rotating Rings */}
+              {[...Array(ambientConfig.ringCount)].map((_, i) => (
+                <Ring 
                   key={i} 
-                  $index={i} 
-                  $rarity={effectRarity}
-                  initial={{ scaleY: 0, opacity: 0 }}
-                  animate={{ scaleY: 1, opacity: [0, 1, 0.5] }}
-                  exit={{ opacity: 0 }}
-                  transition={{ 
-                    duration: 0.5, 
-                    delay: i * 0.05,
-                    ease: "easeOut" 
-                  }}
+                  $rarity={effectRarity} 
+                  $index={i}
+                  $total={ambientConfig.ringCount}
                 />
               ))}
-            </EnergyBeams>
+
+              {/* Floating Orbs */}
+              <OrbField>
+                {[...Array(ambientConfig.orbCount)].map((_, i) => (
+                  <FloatingOrb
+                    key={i}
+                    $rarity={effectRarity}
+                    $index={i}
+                    $total={ambientConfig.orbCount}
+                  />
+                ))}
+              </OrbField>
+
+              {/* Rarity Icon */}
+              <RarityIconContainer
+                initial={{ scale: 0, rotate: -180 }}
+                animate={{ scale: 1, rotate: 0 }}
+                transition={{ type: "spring", damping: 12, delay: 0.2 }}
+                $rarity={effectRarity}
+              >
+                {ambientConfig.icon}
+              </RarityIconContainer>
+            </BuildupContainer>
           )}
         </AnimatePresence>
 
-        {/* Flash Effect - uses effectRarity for ambient flash */}
+        {/* Flash Effect */}
         <AnimatePresence>
-          {phase === PHASES.REVEAL && (
+          {phase === PHASES.FLASH && (
             <FlashOverlay
-              $rarity={effectRarity}
               initial={{ opacity: 1 }}
               animate={{ opacity: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.6 }}
+              transition={{ duration: 0.4, ease: "easeOut" }}
+              $rarity={effectRarity}
             />
           )}
         </AnimatePresence>
 
-        {/* Character Reveal - uses actual character rarity for the card */}
+        {/* Character Reveal */}
         <AnimatePresence>
-          {isShowingCharacter && character && (
-            <CharacterReveal
-              key="character-reveal"
-              initial={{ scale: 0.3, opacity: 0, y: 100 }}
+          {isRevealed && character && (
+            <CardContainer
+              initial={{ scale: 0.5, opacity: 0, y: 60, rotateX: 20 }}
               animate={{ 
                 scale: 1, 
                 opacity: 1, 
                 y: 0,
+                rotateX: 0,
                 transition: {
                   type: "spring",
-                  damping: 12,
-                  stiffness: 150,
-                  duration: 0.6
+                  damping: 20,
+                  stiffness: 200,
+                  mass: 0.8
                 }
               }}
-              exit={{ scale: 0.8, opacity: 0 }}
+              exit={{ scale: 0.9, opacity: 0, y: -30 }}
             >
               <CharacterCard $rarity={rarity}>
-                <CardGlow $rarity={rarity} />
+                <CardShine />
                 <CardImageContainer>
                   {isVideo(character.image) ? (
                     <CardVideo 
@@ -370,117 +321,81 @@ export const SummonAnimation = ({
                       playsInline 
                     />
                   ) : (
-                    <CardImage 
-                      src={getImagePath(character.image)} 
-                      alt={character.name} 
-                    />
+                    <CardImage src={getImagePath(character.image)} alt={character.name} />
                   )}
-                  <ImageOverlay $rarity={rarity} />
+                  <ImageGradient $rarity={rarity} />
                 </CardImageContainer>
+                
                 <CardInfo>
-                  <RarityIcon $rarity={rarity}>
+                  <RarityBadge $rarity={rarity}>
                     {config.icon}
-                  </RarityIcon>
+                    <span>{rarity.toUpperCase()}</span>
+                  </RarityBadge>
                   <CharacterName>{character.name}</CharacterName>
                   <CharacterSeries>{character.series}</CharacterSeries>
-                  <RarityLabel $rarity={rarity}>
-                    {rarity.toUpperCase()}
-                  </RarityLabel>
                 </CardInfo>
-                <ShineEffect />
+                
+                <CardGlowBorder $rarity={rarity} />
               </CharacterCard>
-            </CharacterReveal>
+            </CardContainer>
           )}
         </AnimatePresence>
 
-        {/* Rarity Indicator - uses effectRarity to hint at best pull */}
-        <AnimatePresence>
-          {phase === PHASES.CHARGING && (
-            <RarityHint
-              $rarity={effectRarity}
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ 
-                opacity: [0.5, 1, 0.5], 
-                scale: [0.95, 1.05, 0.95] 
-              }}
-              exit={{ opacity: 0, scale: 0.5 }}
-              transition={{ 
-                duration: 1.5, 
-                repeat: Infinity,
-                ease: "easeInOut"
-              }}
-            >
-              {ambientConfig.icon}
-            </RarityHint>
-          )}
-        </AnimatePresence>
-
-        {/* Skip Hint - during buildup */}
+        {/* Skip Hint */}
         <AnimatePresence>
           {showSkipHint && skipEnabled && isBuildup && (
             <SkipHint
               initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 0.7, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 0.6, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              transition={{ duration: 0.3 }}
             >
               Tap to skip
             </SkipHint>
           )}
         </AnimatePresence>
 
-        {/* Summoning Text - only during charging */}
-        <AnimatePresence>
-          {phase === PHASES.CHARGING && (
-            <SummoningText
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0, y: -20 }}
-            >
-              {['S','U','M','M','O','N','I','N','G'].map((letter, i) => (
-                <span key={i} style={{ animationDelay: `${i * 0.1}s` }}>{letter}</span>
-              ))}
-            </SummoningText>
+        {/* Bottom Controls */}
+        <BottomArea>
+          {/* Multi-pull Progress */}
+          {isMultiPull && (
+            <ProgressBar>
+              <ProgressText>{currentPull} / {totalPulls}</ProgressText>
+              <ProgressTrack>
+                <ProgressFill style={{ width: `${(currentPull / totalPulls) * 100}%` }} />
+              </ProgressTrack>
+            </ProgressBar>
           )}
-        </AnimatePresence>
-      </AnimationContainer>
+          
+          {/* Continue Button */}
+          <AnimatePresence>
+            {phase === PHASES.COMPLETE && (
+              <ContinueButton
+                initial={{ opacity: 0, y: 20, scale: 0.9 }}
+                animate={{ opacity: 1, y: 0, scale: 1 }}
+                exit={{ opacity: 0 }}
+                transition={{ type: "spring", damping: 20 }}
+                whileHover={{ scale: 1.03 }}
+                whileTap={{ scale: 0.97 }}
+              >
+                {isMultiPull && currentPull < totalPulls ? 'Next →' : 'Continue'}
+              </ContinueButton>
+            )}
+          </AnimatePresence>
 
-      {/* Bottom controls - outside main animation container for proper positioning */}
-      <BottomControls>
-        {/* Multi-pull progress */}
-        {isMultiPull && (
-          <ProgressSection>
-            <ProgressCounter>{currentPull} / {totalPulls}</ProgressCounter>
-            <ProgressBarContainer>
-              <ProgressBarFill style={{ width: `${(currentPull / totalPulls) * 100}%` }} />
-            </ProgressBarContainer>
-          </ProgressSection>
-        )}
-        
-        {/* Tap to continue - after reveal */}
-        <AnimatePresence>
-          {phase === PHASES.WAITING_DISMISS && (
-            <TapToContinue
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
+          {/* Skip All for Multi-pull */}
+          {isMultiPull && onSkipAll && phase !== PHASES.COMPLETE && (
+            <SkipAllBtn 
+              onClick={(e) => { e.stopPropagation(); onSkipAll(); }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
             >
-              {isMultiPull && currentPull < totalPulls ? 'Tap for next' : 'Tap to continue'}
-            </TapToContinue>
+              Skip All
+            </SkipAllBtn>
           )}
-        </AnimatePresence>
-
-        {/* Skip all button for multi-pull */}
-        {isMultiPull && onSkipAll && (
-          <SkipAllButton 
-            onClick={(e) => { e.stopPropagation(); onSkipAll(); }}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-          >
-            Skip All
-          </SkipAllButton>
-        )}
-      </BottomControls>
-    </AnimationOverlay>
+        </BottomArea>
+      </Container>
+    </Overlay>
   );
 };
 
@@ -498,153 +413,67 @@ const rotateReverse = keyframes`
 
 const pulse = keyframes`
   0%, 100% { transform: scale(1); opacity: 0.8; }
-  50% { transform: scale(1.1); opacity: 1; }
+  50% { transform: scale(1.15); opacity: 1; }
 `;
 
-const spiralIn = keyframes`
-  0% { 
-    transform: rotate(0deg) translateY(-150px) scale(0.5);
-    opacity: 0;
+const pulseGlow = keyframes`
+  0%, 100% { 
+    transform: scale(1); 
+    opacity: 0.6;
   }
-  50% {
-    opacity: 1;
-  }
-  100% { 
-    transform: rotate(720deg) translateY(0) scale(1);
+  50% { 
+    transform: scale(1.8); 
     opacity: 0;
   }
 `;
 
-const glow = keyframes`
-  0%, 100% { filter: brightness(1) drop-shadow(0 0 20px currentColor); }
-  50% { filter: brightness(1.3) drop-shadow(0 0 40px currentColor); }
-`;
-
-const shake = (intensity) => keyframes`
-  0%, 100% { transform: translateX(0) translateY(0); }
-  10% { transform: translateX(${-intensity * 2}px) translateY(${intensity}px); }
-  20% { transform: translateX(${intensity * 2}px) translateY(${-intensity}px); }
-  30% { transform: translateX(${-intensity}px) translateY(${intensity * 2}px); }
-  40% { transform: translateX(${intensity}px) translateY(${-intensity * 2}px); }
-  50% { transform: translateX(${-intensity * 2}px) translateY(${intensity}px); }
-  60% { transform: translateX(${intensity * 2}px) translateY(${-intensity}px); }
-  70% { transform: translateX(${-intensity}px) translateY(${intensity * 2}px); }
-  80% { transform: translateX(${intensity}px) translateY(${-intensity * 2}px); }
-  90% { transform: translateX(${-intensity * 2}px) translateY(${intensity}px); }
+const float = keyframes`
+  0%, 100% { transform: translateY(0) scale(1); }
+  50% { transform: translateY(-8px) scale(1.05); }
 `;
 
 const shimmer = keyframes`
-  0% { left: -150%; }
-  100% { left: 150%; }
+  0% { transform: translateX(-100%) rotate(25deg); }
+  100% { transform: translateX(200%) rotate(25deg); }
 `;
 
-const letterWave = keyframes`
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-10px); }
+const orbitPath = keyframes`
+  0% { transform: rotate(0deg) translateX(120px) rotate(0deg); }
+  100% { transform: rotate(360deg) translateX(120px) rotate(-360deg); }
 `;
 
 // ==================== STYLED COMPONENTS ====================
 
-// Wrapper that covers everything
-const AnimationOverlay = styled.div`
+const Overlay = styled.div`
   position: fixed;
   inset: 0;
   z-index: 99999;
-  pointer-events: auto;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
 `;
 
-const AnimationContainer = styled(motion.div)`
+const Container = styled(motion.div)`
   position: absolute;
   inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: radial-gradient(
-    ellipse at center,
-    ${props => `${getRarityColor(props.$rarity)}15`} 0%,
-    rgba(0, 0, 0, 0.98) 70%,
-    #000000 100%
+  background: linear-gradient(180deg, 
+    rgba(10, 10, 15, 0.98) 0%, 
+    rgba(5, 5, 10, 1) 100%
   );
   overflow: hidden;
-  cursor: pointer;
-  
-  ${props => props.$phase === 'peak' && props.$shakeIntensity > 0 && css`
-    animation: ${shake(props.$shakeIntensity)} 0.1s infinite;
-  `}
 `;
 
-const BottomControls = styled.div`
+const AmbientGlow = styled.div`
   position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding-bottom: 40px;
-  gap: 16px;
-  z-index: 100;
-  pointer-events: none;
-  
-  > * {
-    pointer-events: auto;
-  }
-`;
-
-const ProgressSection = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 8px;
-`;
-
-const ProgressCounter = styled.div`
-  font-size: 14px;
-  font-weight: 600;
-  color: white;
-  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
-`;
-
-const ProgressBarContainer = styled.div`
-  width: 160px;
-  height: 4px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 2px;
-  overflow: hidden;
-`;
-
-const ProgressBarFill = styled.div`
-  height: 100%;
-  background: linear-gradient(90deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  transition: width 0.3s ease;
-`;
-
-const TapToContinue = styled(motion.div)`
-  font-size: 16px;
-  font-weight: 600;
-  color: white;
-  padding: 14px 32px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  border-radius: 100px;
-  box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
-  cursor: pointer;
-`;
-
-const SkipAllButton = styled(motion.button)`
-  padding: 10px 24px;
-  background: rgba(255, 255, 255, 0.1);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 100px;
-  color: rgba(255, 255, 255, 0.7);
-  font-size: 13px;
-  font-weight: 500;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.15);
-    color: white;
-  }
+  inset: 0;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 40%,
+    ${props => `${getRarityColor(props.$rarity)}${props.$phase === 'buildup' ? '25' : '15'}`} 0%,
+    transparent 70%
+  );
+  transition: all 0.5s ease;
 `;
 
 const Vignette = styled.div`
@@ -652,217 +481,197 @@ const Vignette = styled.div`
   inset: 0;
   background: radial-gradient(
     ellipse at center,
-    transparent 30%,
-    rgba(0, 0, 0, 0.8) 100%
+    transparent 40%,
+    rgba(0, 0, 0, 0.7) 100%
   );
   pointer-events: none;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: ${props => getRarityColor(props.$rarity)};
-    opacity: ${props => props.$phase === 'peak' ? 0.15 : 0.05};
-    transition: opacity 0.5s ease;
-  }
 `;
 
-const ParticleField = styled.div`
+// Buildup Elements
+const BuildupContainer = styled(motion.div)`
   position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-`;
-
-const Particle = styled.div`
-  position: absolute;
-  left: ${props => props.$x}%;
-  top: ${props => props.$y}%;
-  width: ${props => props.$size}px;
-  height: ${props => props.$size}px;
-  background: ${props => props.$color};
-  border-radius: 50%;
-  opacity: 0;
-  box-shadow: 0 0 ${props => props.$size * 2}px ${props => props.$color};
-  animation: ${spiralIn} ${props => props.$duration}s ease-in-out infinite;
-  animation-delay: ${props => props.$delay}s;
-`;
-
-const CircleContainer = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%) ${props => props.$isVisible ? 'scale(1)' : 'scale(0)'};
-  width: 400px;
-  height: 400px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  opacity: ${props => props.$isVisible ? 1 : 0};
-  transition: all 0.5s cubic-bezier(0.4, 0, 0.2, 1);
-  pointer-events: none;
-  
-  @media (max-width: 768px) {
-    width: 300px;
-    height: 300px;
-  }
-`;
-
-const SummonCircle = styled.div`
-  position: relative;
   width: 100%;
   height: 100%;
   display: flex;
   align-items: center;
   justify-content: center;
-  animation: ${props => props.$phase === 'peak' ? pulse : 'none'} 0.5s ease-in-out infinite;
 `;
 
-const CircleRing = styled.div`
-  position: absolute;
-  width: ${props => 70 - props.$delay * 40}%;
-  height: ${props => 70 - props.$delay * 40}%;
-  border: 2px solid ${props => getRarityColor(props.$rarity)};
-  border-radius: 50%;
-  opacity: 0.6;
-  animation: ${props => props.$reverse ? rotateReverse : rotate} 
-    ${props => 8 - props.$delay * 4}s linear infinite;
-  box-shadow: 
-    0 0 20px ${props => getRarityColor(props.$rarity)}40,
-    inset 0 0 20px ${props => getRarityColor(props.$rarity)}20;
-    
-  &::before, &::after {
-    content: '';
-    position: absolute;
-    width: 10px;
-    height: 10px;
-    background: ${props => getRarityColor(props.$rarity)};
-    border-radius: 50%;
-  }
-  
-  &::before {
-    top: -5px;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-  
-  &::after {
-    bottom: -5px;
-    left: 50%;
-    transform: translateX(-50%);
-  }
-`;
-
-const InnerGlow = styled.div`
-  position: absolute;
-  width: 40%;
-  height: 40%;
-  background: radial-gradient(
-    circle,
-    ${props => getRarityColor(props.$rarity)}60 0%,
-    ${props => getRarityColor(props.$rarity)}20 50%,
-    transparent 70%
-  );
-  border-radius: 50%;
-  animation: ${pulse} 2s ease-in-out infinite;
-  filter: blur(10px);
-`;
-
-const RuneCircle = styled.div`
-  position: absolute;
-  width: 85%;
-  height: 85%;
-  animation: ${rotateReverse} 20s linear infinite;
-`;
-
-const Rune = styled.span`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  font-size: 18px;
-  color: ${props => getRarityColor(props.$rarity)};
-  transform-origin: 0 0;
-  transform: rotate(${props => props.$index * 30}deg) translateY(-140px);
-  text-shadow: 0 0 10px ${props => getRarityColor(props.$rarity)};
-  animation: ${glow} 2s ease-in-out infinite;
-  animation-delay: ${props => props.$index * 0.1}s;
-`;
-
-const EnergyBeams = styled.div`
-  position: absolute;
-  inset: 0;
+const CentralOrb = styled.div`
+  position: relative;
+  width: 80px;
+  height: 80px;
   display: flex;
   align-items: center;
   justify-content: center;
+  
+  @media (max-width: 768px) {
+    width: 60px;
+    height: 60px;
+  }
+`;
+
+const OrbCore = styled.div`
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: radial-gradient(
+    circle at 30% 30%,
+    ${props => RARITY_CONFIG[props.$rarity]?.accentColor || '#fff'},
+    ${props => getRarityColor(props.$rarity)}
+  );
+  box-shadow: 
+    0 0 40px ${props => getRarityColor(props.$rarity)}80,
+    0 0 80px ${props => getRarityColor(props.$rarity)}40,
+    inset 0 0 20px rgba(255, 255, 255, 0.3);
+  animation: ${pulse} 1.2s ease-in-out infinite;
+`;
+
+const OrbPulse = styled.div`
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  border: 2px solid ${props => getRarityColor(props.$rarity)};
+  animation: ${pulseGlow} 1.5s ease-out infinite;
+  animation-delay: ${props => props.$delay || 0}s;
+`;
+
+const Ring = styled.div`
+  position: absolute;
+  width: ${props => 180 + props.$index * 60}px;
+  height: ${props => 180 + props.$index * 60}px;
+  border: 1.5px solid ${props => getRarityColor(props.$rarity)}40;
+  border-radius: 50%;
+  animation: ${props => props.$index % 2 === 0 ? rotate : rotateReverse} ${props => 6 + props.$index * 2}s linear infinite;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    width: 8px;
+    height: 8px;
+    background: ${props => getRarityColor(props.$rarity)};
+    border-radius: 50%;
+    top: -4px;
+    left: 50%;
+    transform: translateX(-50%);
+    box-shadow: 0 0 10px ${props => getRarityColor(props.$rarity)};
+  }
+  
+  @media (max-width: 768px) {
+    width: ${props => 140 + props.$index * 45}px;
+    height: ${props => 140 + props.$index * 45}px;
+  }
+`;
+
+const OrbField = styled.div`
+  position: absolute;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 `;
 
-const EnergyBeam = styled(motion.div)`
+const FloatingOrb = styled.div`
   position: absolute;
-  width: 4px;
-  height: 100vh;
-  background: linear-gradient(
-    to top,
-    transparent,
-    ${props => getRarityColor(props.$rarity)}80,
-    ${props => getRarityColor(props.$rarity)},
-    ${props => getRarityColor(props.$rarity)}80,
-    transparent
-  );
-  transform-origin: center;
-  transform: rotate(${props => props.$index * 45}deg);
-  filter: blur(2px);
+  top: 50%;
+  left: 50%;
+  width: 6px;
+  height: 6px;
+  background: ${props => getRarityColor(props.$rarity)};
+  border-radius: 50%;
+  box-shadow: 0 0 12px ${props => getRarityColor(props.$rarity)};
+  animation: ${orbitPath} ${props => 3 + (props.$index * 0.5)}s linear infinite;
+  animation-delay: ${props => (props.$index / props.$total) * -3}s;
+  transform-origin: center center;
+  
+  @media (max-width: 768px) {
+    width: 5px;
+    height: 5px;
+  }
 `;
 
+const RarityIconContainer = styled(motion.div)`
+  position: absolute;
+  font-size: 28px;
+  color: ${props => getRarityColor(props.$rarity)};
+  filter: drop-shadow(0 0 15px ${props => getRarityColor(props.$rarity)});
+  
+  @media (max-width: 768px) {
+    font-size: 22px;
+  }
+`;
+
+// Flash
 const FlashOverlay = styled(motion.div)`
   position: absolute;
   inset: 0;
   background: ${props => getRarityColor(props.$rarity)};
-  mix-blend-mode: screen;
   pointer-events: none;
 `;
 
-const CharacterReveal = styled(motion.div)`
+// Character Card
+const CardContainer = styled(motion.div)`
   position: relative;
+  perspective: 1000px;
   z-index: 10;
 `;
 
 const CharacterCard = styled.div`
   position: relative;
-  width: 320px;
-  border-radius: 24px;
+  width: 300px;
+  border-radius: 20px;
   overflow: hidden;
-  background: ${theme.colors.backgroundSecondary};
-  border: 3px solid ${props => getRarityColor(props.$rarity)};
+  background: linear-gradient(165deg, 
+    ${theme.colors.backgroundSecondary} 0%, 
+    rgba(20, 20, 28, 1) 100%
+  );
   box-shadow: 
-    0 0 60px ${props => getRarityColor(props.$rarity)}50,
-    0 25px 50px -12px rgba(0, 0, 0, 0.8);
+    0 25px 60px -12px rgba(0, 0, 0, 0.7),
+    0 0 1px 0 rgba(255, 255, 255, 0.1) inset;
   
   @media (max-width: 768px) {
-    width: 280px;
+    width: 260px;
   }
 `;
 
-const CardGlow = styled.div`
+const CardShine = styled.div`
   position: absolute;
-  inset: -50%;
-  background: radial-gradient(
-    circle at 50% 30%,
-    ${props => getRarityColor(props.$rarity)}30 0%,
-    transparent 50%
+  top: 0;
+  left: 0;
+  width: 60%;
+  height: 100%;
+  background: linear-gradient(
+    105deg,
+    transparent 0%,
+    rgba(255, 255, 255, 0.03) 45%,
+    rgba(255, 255, 255, 0.08) 50%,
+    rgba(255, 255, 255, 0.03) 55%,
+    transparent 100%
   );
+  animation: ${shimmer} 4s ease-in-out infinite;
+  animation-delay: 1s;
   pointer-events: none;
-  animation: ${pulse} 3s ease-in-out infinite;
+  z-index: 5;
+`;
+
+const CardGlowBorder = styled.div`
+  position: absolute;
+  inset: 0;
+  border-radius: 20px;
+  border: 2px solid ${props => getRarityColor(props.$rarity)};
+  box-shadow: 
+    0 0 30px ${props => getRarityColor(props.$rarity)}50,
+    inset 0 0 30px ${props => getRarityColor(props.$rarity)}15;
+  pointer-events: none;
 `;
 
 const CardImageContainer = styled.div`
   position: relative;
   width: 100%;
-  height: 350px;
+  height: 320px;
   overflow: hidden;
   
   @media (max-width: 768px) {
-    height: 300px;
+    height: 280px;
   }
 `;
 
@@ -878,101 +687,139 @@ const CardVideo = styled.video`
   object-fit: cover;
 `;
 
-const ImageOverlay = styled.div`
+const ImageGradient = styled.div`
   position: absolute;
   inset: 0;
   background: linear-gradient(
     to bottom,
     transparent 50%,
-    ${props => getRarityColor(props.$rarity)}20 100%
+    ${props => getRarityColor(props.$rarity)}20 80%,
+    rgba(10, 10, 15, 0.95) 100%
   );
   pointer-events: none;
 `;
 
 const CardInfo = styled.div`
-  padding: 24px;
+  padding: 20px 24px 28px;
   text-align: center;
   position: relative;
-  background: linear-gradient(
-    to bottom,
-    rgba(0, 0, 0, 0.4),
-    rgba(0, 0, 0, 0.8)
-  );
 `;
 
-const RarityIcon = styled.div`
-  position: absolute;
-  top: -24px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 48px;
-  height: 48px;
-  background: ${props => getRarityColor(props.$rarity)};
-  border-radius: 50%;
-  display: flex;
+const RarityBadge = styled.div`
+  display: inline-flex;
   align-items: center;
-  justify-content: center;
+  gap: 6px;
+  padding: 6px 14px;
+  background: ${props => getRarityColor(props.$rarity)};
   color: white;
-  font-size: 20px;
-  box-shadow: 
-    0 0 30px ${props => getRarityColor(props.$rarity)}80,
-    0 4px 15px rgba(0, 0, 0, 0.3);
-  border: 3px solid ${theme.colors.backgroundSecondary};
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 1.5px;
+  border-radius: 100px;
+  margin-bottom: 14px;
+  box-shadow: 0 4px 12px ${props => getRarityColor(props.$rarity)}50;
+  
+  svg {
+    font-size: 12px;
+  }
 `;
 
 const CharacterName = styled.h2`
-  margin: 12px 0 4px;
-  font-size: 24px;
+  margin: 0 0 6px;
+  font-size: 22px;
   font-weight: 700;
   color: white;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  letter-spacing: -0.02em;
+  
+  @media (max-width: 768px) {
+    font-size: 20px;
+  }
 `;
 
 const CharacterSeries = styled.p`
-  margin: 0 0 12px;
-  font-size: 14px;
+  margin: 0;
+  font-size: 13px;
   color: ${theme.colors.textSecondary};
+  letter-spacing: 0.02em;
 `;
 
-const RarityLabel = styled.div`
-  display: inline-block;
-  padding: 6px 20px;
-  background: ${props => getRarityColor(props.$rarity)};
-  color: white;
-  font-size: 12px;
-  font-weight: 700;
-  letter-spacing: 2px;
-  border-radius: 100px;
-  box-shadow: 0 4px 15px ${props => getRarityColor(props.$rarity)}50;
-`;
-
-const ShineEffect = styled.div`
+// Bottom Controls
+const BottomArea = styled.div`
   position: absolute;
-  top: 0;
-  left: -150%;
-  width: 100%;
-  height: 100%;
-  background: linear-gradient(
-    120deg,
-    transparent 0%,
-    rgba(255, 255, 255, 0.1) 45%,
-    rgba(255, 255, 255, 0.3) 50%,
-    rgba(255, 255, 255, 0.1) 55%,
-    transparent 100%
-  );
-  animation: ${shimmer} 3s ease-in-out infinite;
-  animation-delay: 1s;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-bottom: max(32px, env(safe-area-inset-bottom, 32px));
+  gap: 16px;
+  z-index: 20;
   pointer-events: none;
+  
+  > * {
+    pointer-events: auto;
+  }
 `;
 
-const RarityHint = styled(motion.div)`
-  position: absolute;
-  top: 15%;
-  left: 50%;
-  transform: translateX(-50%);
-  font-size: 48px;
-  color: ${props => getRarityColor(props.$rarity)};
-  filter: drop-shadow(0 0 20px ${props => getRarityColor(props.$rarity)});
+const ProgressBar = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+`;
+
+const ProgressText = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+  text-shadow: 0 2px 8px rgba(0, 0, 0, 0.5);
+`;
+
+const ProgressTrack = styled.div`
+  width: 140px;
+  height: 4px;
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 2px;
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  border-radius: 2px;
+  transition: width 0.3s ease;
+`;
+
+const ContinueButton = styled(motion.button)`
+  padding: 16px 40px;
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  color: white;
+  border: none;
+  border-radius: 100px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  box-shadow: 0 8px 24px rgba(88, 86, 214, 0.4);
+  letter-spacing: 0.02em;
+`;
+
+const SkipAllBtn = styled(motion.button)`
+  padding: 10px 24px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 100px;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 13px;
+  font-weight: 500;
+  cursor: pointer;
+  backdrop-filter: blur(10px);
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    color: rgba(255, 255, 255, 0.9);
+  }
 `;
 
 const SkipHint = styled(motion.div)`
@@ -980,32 +827,16 @@ const SkipHint = styled(motion.div)`
   bottom: 25%;
   left: 50%;
   transform: translateX(-50%);
-  font-size: 14px;
-  color: ${theme.colors.textSecondary};
+  font-size: 13px;
+  color: rgba(255, 255, 255, 0.5);
   padding: 8px 20px;
-  background: rgba(255, 255, 255, 0.1);
+  background: rgba(0, 0, 0, 0.4);
   border-radius: 100px;
   backdrop-filter: blur(10px);
+  letter-spacing: 0.02em;
 `;
 
-const SummoningText = styled(motion.div)`
-  position: absolute;
-  top: 20%;
-  left: 50%;
-  transform: translateX(-50%);
-  display: flex;
-  gap: 4px;
-  font-size: 24px;
-  font-weight: 700;
-  letter-spacing: 8px;
-  color: ${theme.colors.textSecondary};
-  
-  span {
-    animation: ${letterWave} 1s ease-in-out infinite;
-  }
-`;
-
-// ==================== RARITY HELPERS ====================
+// ==================== MULTI-PULL COMPONENT ====================
 
 const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 
@@ -1015,15 +846,11 @@ const getHighestRarity = (characters) => {
   let highestIndex = 0;
   characters.forEach(char => {
     const index = RARITY_ORDER.indexOf(char.rarity);
-    if (index > highestIndex) {
-      highestIndex = index;
-    }
+    if (index > highestIndex) highestIndex = index;
   });
   
   return RARITY_ORDER[highestIndex];
 };
-
-// ==================== MULTI-PULL ANIMATION ====================
 
 export const MultiSummonAnimation = ({
   isActive,
@@ -1035,7 +862,6 @@ export const MultiSummonAnimation = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSkippedResults, setShowSkippedResults] = useState(false);
   
-  // Calculate the highest rarity among all characters for the ambient effects
   const highestRarity = getHighestRarity(characters);
 
   useEffect(() => {
@@ -1047,47 +873,38 @@ export const MultiSummonAnimation = ({
 
   const handleSingleComplete = useCallback(() => {
     if (currentIndex < characters.length - 1) {
-      // Move to next character
       setCurrentIndex(prev => prev + 1);
     } else {
-      // All done - user saw each character, no need for summary
-      if (onComplete) {
-        onComplete();
-      }
+      onComplete?.();
     }
   }, [currentIndex, characters.length, onComplete]);
 
   const handleSkipAll = useCallback(() => {
-    // User skipped - show summary of what they would have seen
     setShowSkippedResults(true);
   }, []);
 
   const handleCloseSkippedResults = useCallback(() => {
-    // Don't reset showSkippedResults here - it will be reset by the useEffect 
-    // when isActive becomes false. Setting it here causes a race condition where
-    // the animation briefly reappears before isActive is set to false.
-    if (onComplete) {
-      onComplete();
-    }
+    onComplete?.();
   }, [onComplete]);
 
   const currentCharacter = characters[currentIndex];
 
   if (!isActive || characters.length === 0) return null;
 
-  // Show summary when user clicked Skip All
   if (showSkippedResults) {
     return (
-      <MultiResultsOverlay
+      <ResultsOverlay
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
+        onClick={handleCloseSkippedResults}
       >
-        <ResultsContainer>
+        <ResultsContent onClick={e => e.stopPropagation()}>
           <ResultsHeader>
-            <ResultsTitle>Summoning Complete!</ResultsTitle>
+            <ResultsTitle>Summoning Complete</ResultsTitle>
             <ResultsSubtitle>{characters.length} characters obtained</ResultsSubtitle>
           </ResultsHeader>
+          
           <ResultsGrid>
             {characters.map((char, index) => (
               <ResultCard
@@ -1095,39 +912,32 @@ export const MultiSummonAnimation = ({
                 $rarity={char.rarity}
                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ delay: index * 0.03 }}
+                transition={{ delay: index * 0.02, type: "spring", damping: 15 }}
               >
-                <ResultImage>
+                <ResultImageWrapper>
                   {isVideo(char.image) ? (
-                    <video 
-                      src={getImagePath(char.image)} 
-                      autoPlay 
-                      loop 
-                      muted 
-                      playsInline 
-                    />
+                    <video src={getImagePath(char.image)} autoPlay loop muted playsInline />
                   ) : (
                     <img src={getImagePath(char.image)} alt={char.name} />
                   )}
-                </ResultImage>
+                </ResultImageWrapper>
                 <ResultInfo>
                   <ResultName>{char.name}</ResultName>
-                  <ResultRarity $rarity={char.rarity}>
-                    {char.rarity}
-                  </ResultRarity>
+                  <ResultRarity $rarity={char.rarity}>{char.rarity}</ResultRarity>
                 </ResultInfo>
               </ResultCard>
             ))}
           </ResultsGrid>
-          <CloseResultsButton
+          
+          <CloseButton
             onClick={handleCloseSkippedResults}
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
           >
             Continue
-          </CloseResultsButton>
-        </ResultsContainer>
-      </MultiResultsOverlay>
+          </CloseButton>
+        </ResultsContent>
+      </ResultsOverlay>
     );
   }
 
@@ -1148,13 +958,12 @@ export const MultiSummonAnimation = ({
   );
 };
 
-// Multi-pull result styles
-
-const MultiResultsOverlay = styled(motion.div)`
+// Multi-pull Results Styles
+const ResultsOverlay = styled(motion.div)`
   position: fixed;
   inset: 0;
   z-index: 99999;
-  background: rgba(0, 0, 0, 0.98);
+  background: rgba(5, 5, 10, 0.98);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1162,63 +971,69 @@ const MultiResultsOverlay = styled(motion.div)`
   overflow-y: auto;
 `;
 
-const ResultsContainer = styled.div`
-  max-width: 1000px;
+const ResultsContent = styled.div`
+  max-width: 900px;
   width: 100%;
 `;
 
 const ResultsHeader = styled.div`
   text-align: center;
-  margin-bottom: 32px;
+  margin-bottom: 28px;
 `;
 
 const ResultsTitle = styled.h2`
-  font-size: 32px;
+  font-size: 28px;
   font-weight: 700;
   color: white;
-  margin: 0 0 8px;
+  margin: 0 0 6px;
+  letter-spacing: -0.02em;
 `;
 
 const ResultsSubtitle = styled.p`
-  font-size: 16px;
+  font-size: 15px;
   color: ${theme.colors.textSecondary};
   margin: 0;
 `;
 
 const ResultsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
-  gap: 16px;
-  margin-bottom: 32px;
-  max-height: 60vh;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+  gap: 14px;
+  margin-bottom: 28px;
+  max-height: 55vh;
   overflow-y: auto;
-  padding: 8px;
+  padding: 4px;
   
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 6px;
   }
   
   &::-webkit-scrollbar-track {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 4px;
+    border-radius: 3px;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: rgba(255, 255, 255, 0.2);
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    border-radius: 3px;
+  }
+  
+  @media (max-width: 768px) {
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+    gap: 10px;
   }
 `;
 
 const ResultCard = styled(motion.div)`
   background: ${theme.colors.backgroundSecondary};
-  border-radius: 16px;
+  border-radius: 14px;
   overflow: hidden;
   border: 2px solid ${props => getRarityColor(props.$rarity)};
-  box-shadow: 0 0 20px ${props => getRarityColor(props.$rarity)}30;
+  box-shadow: 0 0 16px ${props => getRarityColor(props.$rarity)}25;
 `;
 
-const ResultImage = styled.div`
-  height: 140px;
+const ResultImageWrapper = styled.div`
+  height: 120px;
   overflow: hidden;
   
   img, video {
@@ -1226,15 +1041,19 @@ const ResultImage = styled.div`
     height: 100%;
     object-fit: cover;
   }
+  
+  @media (max-width: 768px) {
+    height: 100px;
+  }
 `;
 
 const ResultInfo = styled.div`
-  padding: 12px;
+  padding: 10px;
   text-align: center;
 `;
 
 const ResultName = styled.div`
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
   color: white;
   white-space: nowrap;
@@ -1248,13 +1067,13 @@ const ResultRarity = styled.div`
   font-weight: 700;
   text-transform: uppercase;
   color: ${props => getRarityColor(props.$rarity)};
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 `;
 
-const CloseResultsButton = styled(motion.button)`
+const CloseButton = styled(motion.button)`
   display: block;
   width: 100%;
-  max-width: 300px;
+  max-width: 280px;
   margin: 0 auto;
   padding: 16px 32px;
   background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
@@ -1264,7 +1083,7 @@ const CloseResultsButton = styled(motion.button)`
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
+  box-shadow: 0 8px 24px rgba(88, 86, 214, 0.4);
 `;
 
 export default SummonAnimation;
