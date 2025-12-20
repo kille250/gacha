@@ -527,11 +527,10 @@ const AdminPage = () => {
     try {
       setSuccessMessage(null);
       setError(null);
-      await api.post('/banners/bulk-toggle-featured', {
-        bannerIds: [banner.id],
+      await api.patch(`/banners/${banner.id}/featured`, {
         featured: newFeaturedStatus
       });
-      setSuccessMessage(`${banner.name} ${newFeaturedStatus ? 'marked as featured' : 'unmarked as featured'}`);
+      setSuccessMessage(`${banner.name} ${newFeaturedStatus ? t('admin.markedAsFeatured') : t('admin.unmarkedAsFeatured')}`);
     } catch (err) {
       // Revert on error
       setBanners(prev => prev.map(b => 

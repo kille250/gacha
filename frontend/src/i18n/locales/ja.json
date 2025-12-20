@@ -277,7 +277,16 @@
     "failedCreateCoupon": "クーポンの作成に失敗しました",
     "failedUpdateCoupon": "クーポンの更新に失敗しました",
     "failedDeleteCoupon": "クーポンの削除に失敗しました",
-    "itemsPerPage": "{{count}}件/ページ"
+    "itemsPerPage": "{{count}}件/ページ",
+    "dragToReorder": "ドラッグして並べ替え",
+    "bannerOrderUpdated": "バナーの順序が更新されました！",
+    "failedUpdateBannerOrder": "バナーの順序の更新に失敗しました",
+    "enableAutofish": "このユーザーの自動釣りを有効にする",
+    "disableAutofish": "このユーザーの自動釣りを無効にする",
+    "enableR18": "このユーザーのR18を有効にする",
+    "disableR18": "このユーザーのR18を無効にする",
+    "markedAsFeatured": "ピックアップに設定しました",
+    "unmarkedAsFeatured": "ピックアップから外しました"
   },
   "animeImport": {
     "title": "アニメキャラクターをインポート",

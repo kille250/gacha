@@ -296,7 +296,14 @@
     "itemsPerPage": "{{count}} per page",
     "autofish": "Autofish",
     "enableAutofish": "Enable autofishing for this user",
-    "disableAutofish": "Disable autofishing for this user"
+    "disableAutofish": "Disable autofishing for this user",
+    "dragToReorder": "Drag to reorder",
+    "bannerOrderUpdated": "Banner order updated!",
+    "failedUpdateBannerOrder": "Failed to update banner order",
+    "enableR18": "Enable R18 for this user",
+    "disableR18": "Disable R18 for this user",
+    "markedAsFeatured": "marked as featured",
+    "unmarkedAsFeatured": "unmarked as featured"
   },
   "animeImport": {
     "title": "Import Anime Characters",

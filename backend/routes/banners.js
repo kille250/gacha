@@ -261,6 +261,37 @@ router.post('/bulk-toggle-featured', [auth, admin], async (req, res) => {
   }
 });
 
+// Toggle featured status for a single banner (admin only)
+router.patch('/:id/featured', [auth, admin], async (req, res) => {
+  try {
+    // Validate banner ID
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid banner ID' });
+    }
+
+    const banner = await Banner.findByPk(req.params.id);
+    if (!banner) {
+      return res.status(404).json({ error: 'Banner not found' });
+    }
+
+    // Toggle or set featured status
+    const { featured } = req.body;
+    banner.featured = featured !== undefined ? (featured === true || featured === 'true') : !banner.featured;
+    await banner.save();
+
+    console.log(`Admin toggled featured status for banner ${banner.name}: ${banner.featured}`);
+
+    res.json({
+      id: banner.id,
+      name: banner.name,
+      featured: banner.featured
+    });
+  } catch (err) {
+    console.error('Error toggling featured status:', err);
+    res.status(500).json({ error: 'Server error: ' + err.message });
+  }
+});
+
 // Create a new banner (admin only)
 router.post('/', [auth, admin], upload.fields([
   { name: 'image', maxCount: 1 },

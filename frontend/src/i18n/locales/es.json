@@ -277,7 +277,16 @@
     "failedCreateCoupon": "Error al crear cupón",
     "failedUpdateCoupon": "Error al actualizar cupón",
     "failedDeleteCoupon": "Error al eliminar cupón",
-    "itemsPerPage": "{{count}} por página"
+    "itemsPerPage": "{{count}} por página",
+    "dragToReorder": "Arrastra para reordenar",
+    "bannerOrderUpdated": "¡Orden de banners actualizado!",
+    "failedUpdateBannerOrder": "Error al actualizar el orden de banners",
+    "enableAutofish": "Activar autopesca para este usuario",
+    "disableAutofish": "Desactivar autopesca para este usuario",
+    "enableR18": "Activar R18 para este usuario",
+    "disableR18": "Desactivar R18 para este usuario",
+    "markedAsFeatured": "marcado como destacado",
+    "unmarkedAsFeatured": "desmarcado como destacado"
   },
   "animeImport": {
     "title": "Importar personajes de anime",

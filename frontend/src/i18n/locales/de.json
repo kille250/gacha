@@ -277,7 +277,14 @@
     "failedCreateCoupon": "Gutschein konnte nicht erstellt werden",
     "failedUpdateCoupon": "Gutschein konnte nicht aktualisiert werden",
     "failedDeleteCoupon": "Gutschein konnte nicht gelöscht werden",
-    "itemsPerPage": "{{count}} pro Seite"
+    "itemsPerPage": "{{count}} pro Seite",
+    "dragToReorder": "Ziehen zum Neuordnen",
+    "bannerOrderUpdated": "Banner-Reihenfolge aktualisiert!",
+    "failedUpdateBannerOrder": "Banner-Reihenfolge konnte nicht aktualisiert werden",
+    "enableR18": "R18 für diesen Benutzer aktivieren",
+    "disableR18": "R18 für diesen Benutzer deaktivieren",
+    "markedAsFeatured": "als Hervorgehoben markiert",
+    "unmarkedAsFeatured": "Hervorhebung entfernt"
   },
   "animeImport": {
     "title": "Anime-Charaktere importieren",
