@@ -207,7 +207,14 @@
     "specialBanner": "Banner especial",
     "rollOn": "Tirar en",
     "notEnoughPoints": "No hay suficientes puntos para {{count}}× tirada. Requerido: {{cost}} puntos",
-    "bannerChar": "Banner"
+    "bannerChar": "Banner",
+    "dropRates": "Tasas de obtención",
+    "bannerRates": "Pool del banner",
+    "standardRates": "Pool estándar",
+    "premiumRates": "Ticket premium",
+    "guaranteedRare": "¡Raro o mejor garantizado!",
+    "pitySystem": "Pity de 10 tiradas",
+    "pityDescription": "¡Cada 10 tiradas garantiza al menos un personaje Raro o superior!"
   },
   "admin": {
     "title": "Panel de administración",

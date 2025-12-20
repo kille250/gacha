@@ -207,7 +207,14 @@
     "specialBanner": "Spezielles Banner",
     "rollOn": "Ziehen auf",
     "notEnoughPoints": "Nicht genug Punkte für {{count}}× Zug. Benötigt: {{cost}} Punkte",
-    "bannerChar": "Banner"
+    "bannerChar": "Banner",
+    "dropRates": "Drop-Raten",
+    "bannerRates": "Banner-Pool",
+    "standardRates": "Standard-Pool",
+    "premiumRates": "Premium-Ticket",
+    "guaranteedRare": "Garantiert Selten oder besser!",
+    "pitySystem": "10-Zug Pity",
+    "pityDescription": "Jeder 10-Zug garantiert mindestens einen Seltenen oder höheren Charakter!"
   },
   "admin": {
     "title": "Admin Dashboard",

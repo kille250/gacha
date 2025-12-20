@@ -250,7 +250,14 @@
     "specialBanner": "Special Banner",
     "rollOn": "Roll on",
     "notEnoughPoints": "Not enough points for {{count}}× roll. Required: {{cost}} points",
-    "bannerChar": "Banner"
+    "bannerChar": "Banner",
+    "dropRates": "Drop Rates",
+    "bannerRates": "Banner Pool",
+    "standardRates": "Standard Pool",
+    "premiumRates": "Premium Ticket",
+    "guaranteedRare": "Guaranteed Rare or better!",
+    "pitySystem": "10-Pull Pity",
+    "pityDescription": "Every 10-pull guarantees at least one Rare or higher character!"
   },
   "admin": {
     "title": "Admin Dashboard",

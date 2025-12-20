@@ -838,6 +838,67 @@ const BannerPage = () => {
                   <InfoNoteAccent>{t('common.pullCost')}: {singlePullCost} {t('common.points')}</InfoNoteAccent>
                 </InfoBlock>
                 
+                {/* Drop Rates Section */}
+                {pricing?.dropRates && (
+                  <InfoBlock>
+                    <InfoBlockTitle>{t('banner.dropRates') || 'Drop Rates'}</InfoBlockTitle>
+                    <DropRatesContainer>
+                      <DropRateSection>
+                        <DropRateSectionTitle>
+                          ⭐ {t('banner.bannerRates') || 'Banner Pool'} ({pricing.dropRates.bannerPullChance}%)
+                        </DropRateSectionTitle>
+                        <DropRateGrid>
+                          {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
+                            <DropRateItem key={rarity} rarity={rarity}>
+                              <RarityIcon rarity={rarity}>{rarityIcons[rarity]}</RarityIcon>
+                              <DropRateLabel>{rarity}</DropRateLabel>
+                              <DropRateValue rarity={rarity}>{pricing.dropRates.banner[rarity]}%</DropRateValue>
+                            </DropRateItem>
+                          ))}
+                        </DropRateGrid>
+                      </DropRateSection>
+                      
+                      <DropRateSection>
+                        <DropRateSectionTitle>
+                          📦 {t('banner.standardRates') || 'Standard Pool'} ({100 - pricing.dropRates.bannerPullChance}%)
+                        </DropRateSectionTitle>
+                        <DropRateGrid>
+                          {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
+                            <DropRateItem key={rarity} rarity={rarity}>
+                              <RarityIcon rarity={rarity}>{rarityIcons[rarity]}</RarityIcon>
+                              <DropRateLabel>{rarity}</DropRateLabel>
+                              <DropRateValue rarity={rarity}>{pricing.dropRates.standard[rarity]}%</DropRateValue>
+                            </DropRateItem>
+                          ))}
+                        </DropRateGrid>
+                      </DropRateSection>
+                      
+                      <DropRateSection $premium>
+                        <DropRateSectionTitle>
+                          🌟 {t('banner.premiumRates') || 'Premium Ticket'}
+                        </DropRateSectionTitle>
+                        <DropRateGrid>
+                          {['legendary', 'epic', 'rare'].map(rarity => (
+                            <DropRateItem key={rarity} rarity={rarity}>
+                              <RarityIcon rarity={rarity}>{rarityIcons[rarity]}</RarityIcon>
+                              <DropRateLabel>{rarity}</DropRateLabel>
+                              <DropRateValue rarity={rarity}>{pricing.dropRates.premium[rarity]}%</DropRateValue>
+                            </DropRateItem>
+                          ))}
+                        </DropRateGrid>
+                        <PremiumNote>✨ {t('banner.guaranteedRare') || 'Guaranteed Rare or better!'}</PremiumNote>
+                      </DropRateSection>
+                      
+                      <PityInfoBox>
+                        <PityInfoTitle>🎯 {t('banner.pitySystem') || '10-Pull Pity'}</PityInfoTitle>
+                        <PityInfoText>
+                          {t('banner.pityDescription') || 'Every 10-pull guarantees at least one Rare or higher character!'}
+                        </PityInfoText>
+                      </PityInfoBox>
+                    </DropRatesContainer>
+                  </InfoBlock>
+                )}
+                
                 <InfoBlock>
                   <InfoBlockTitle>{t('banner.featuredCharacters')}</InfoBlockTitle>
                   <FeaturedList>
@@ -1757,6 +1818,102 @@ const InfoNoteAccent = styled(InfoNote)`
   background: rgba(255, 159, 10, 0.1);
   border: 1px solid rgba(255, 159, 10, 0.2);
   color: ${theme.colors.warning};
+`;
+
+// Drop Rates Styled Components
+const DropRatesContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+`;
+
+const DropRateSection = styled.div`
+  background: ${props => props.$premium 
+    ? 'linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.05))'
+    : theme.colors.glass};
+  border: 1px solid ${props => props.$premium 
+    ? 'rgba(255, 193, 7, 0.3)' 
+    : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  padding: ${theme.spacing.md};
+`;
+
+const DropRateSectionTitle = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  margin-bottom: ${theme.spacing.sm};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+`;
+
+const DropRateGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.xs};
+`;
+
+const DropRateItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: ${theme.radius.md};
+  border: 1px solid ${props => getRarityColor(props.rarity)}40;
+`;
+
+const RarityIcon = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  color: ${props => getRarityColor(props.rarity)};
+  font-size: 10px;
+`;
+
+const DropRateLabel = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  text-transform: capitalize;
+  color: ${theme.colors.textSecondary};
+`;
+
+const DropRateValue = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${props => getRarityColor(props.rarity)};
+  margin-left: auto;
+`;
+
+const PremiumNote = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.warning};
+  margin-top: ${theme.spacing.sm};
+  text-align: center;
+  font-weight: ${theme.fontWeights.medium};
+`;
+
+const PityInfoBox = styled.div`
+  background: linear-gradient(135deg, rgba(88, 86, 214, 0.15), rgba(175, 82, 222, 0.1));
+  border: 1px solid rgba(88, 86, 214, 0.3);
+  border-radius: ${theme.radius.lg};
+  padding: ${theme.spacing.md};
+  text-align: center;
+`;
+
+const PityInfoTitle = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.accent};
+  margin-bottom: ${theme.spacing.xs};
+`;
+
+const PityInfoText = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  line-height: ${theme.lineHeights.relaxed};
 `;
 
 const FeaturedList = styled.div`

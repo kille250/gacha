@@ -207,7 +207,14 @@
     "specialBanner": "スペシャルバナー",
     "rollOn": "ガチャを回す",
     "notEnoughPoints": "{{count}}連ガチャに必要なポイントが足りません。必要: {{cost}}ポイント",
-    "bannerChar": "バナー"
+    "bannerChar": "バナー",
+    "dropRates": "排出率",
+    "bannerRates": "バナープール",
+    "standardRates": "通常プール",
+    "premiumRates": "プレミアムチケット",
+    "guaranteedRare": "レア以上確定！",
+    "pitySystem": "10連天井",
+    "pityDescription": "10連ガチャでレア以上のキャラクターが1体確定！"
   },
   "admin": {
     "title": "管理ダッシュボード",

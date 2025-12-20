@@ -11,7 +11,18 @@ const Character = require('../models/character');
 const User = require('../models/user');
 const sequelize = require('../config/db');
 const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
-const { PRICING_CONFIG, getDiscountForCount } = require('../config/pricing');
+const { 
+  PRICING_CONFIG, 
+  DROP_RATES,
+  getDiscountForCount,
+  calculateBannerRates,
+  getStandardRates,
+  getPremiumRates,
+  getPityRates,
+  getBannerPullChance,
+  roundRatesForDisplay,
+  rollRarity
+} = require('../config/pricing');
 
 // ===========================================
 // SECURITY: Race condition protection
@@ -105,7 +116,7 @@ router.get('/pricing', (req, res) => {
   res.json(PRICING_CONFIG);
 });
 
-// Get pricing for a specific banner (includes costMultiplier)
+// Get pricing for a specific banner (includes costMultiplier and drop rates)
 router.get('/:id/pricing', async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
@@ -113,7 +124,7 @@ router.get('/:id/pricing', async (req, res) => {
     }
     
     const banner = await Banner.findByPk(req.params.id, {
-      attributes: ['id', 'name', 'costMultiplier']
+      attributes: ['id', 'name', 'costMultiplier', 'rateMultiplier']
     });
     
     if (!banner) {
@@ -122,9 +133,13 @@ router.get('/:id/pricing', async (req, res) => {
     
     const singlePullCost = Math.floor(PRICING_CONFIG.baseCost * (banner.costMultiplier || 1));
     
+    // Calculate banner-specific rates using centralized config
+    const bannerDropRates = roundRatesForDisplay(calculateBannerRates(banner.rateMultiplier, false));
+    
     res.json({
       ...PRICING_CONFIG,
       costMultiplier: banner.costMultiplier || 1,
+      rateMultiplier: banner.rateMultiplier || 1,
       singlePullCost,
       // Pre-calculated costs for quick select options
       pullOptions: PRICING_CONFIG.quickSelectOptions.map(count => {
@@ -139,7 +154,18 @@ router.get('/:id/pricing', async (req, res) => {
           finalCost,
           savings: baseCost - finalCost
         };
-      })
+      }),
+      // Drop rate information from centralized config
+      dropRates: {
+        banner: bannerDropRates,
+        standard: getStandardRates(false),
+        premium: getPremiumRates(false),
+        bannerPullChance: Math.round(getBannerPullChance() * 100),
+        pityInfo: {
+          tenPullGuarantee: 'rare',
+          pityRates: getPityRates()
+        }
+      }
     });
   } catch (err) {
     console.error('Error fetching banner pricing:', err);
@@ -699,58 +725,17 @@ router.post('/:id/roll', auth, async (req, res) => {
 		legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
 	  };
 	  
-	  // Define standard drop rates - challenging rates
-	  const standardDropRates = {
-		common: 70,     // 70% chance
-		uncommon: 20,   // 20% chance
-		rare: 7,        // 7% chance
-		epic: 2.5,      // 2.5% chance
-		legendary: 0.5  // 0.5% chance
-	  };
-	  
-	  // Define base banner drop rates (slightly better than standard)
-	  const baseDropRates = {
-		common: 60,     // 60% chance
-		uncommon: 22,   // 22% chance
-		rare: 12,       // 12% chance
-		epic: 5,        // 5% chance
-		legendary: 1    // 1% chance
-	  };
-	  
-	  // Premium ticket rates (guaranteed rare or better!)
-	  const premiumDropRates = {
-		common: 0,      // 0% chance - no common with premium
-		uncommon: 0,    // 0% chance - no uncommon with premium
-		rare: 70,       // 70% chance
-		epic: 25,       // 25% chance
-		legendary: 5    // 5% chance
-	  };
-	  
-	  // Apply the rate multiplier to adjust rates for banner
-	  const bannerDropRates = {};
-	  // Cap the multiplier effect to prevent extreme values
-	  const effectiveMultiplier = Math.min(banner.rateMultiplier, 5.0);
-	  const rateAdjustment = (effectiveMultiplier - 1) * 0.1; // Reduced scaling effect
-	  
-	  // Adjust rates based on multiplier (with lower caps)
-	  bannerDropRates.legendary = Math.min(baseDropRates.legendary * (1 + rateAdjustment * 2), 3); // Cap at 3%
-	  bannerDropRates.epic = Math.min(baseDropRates.epic * (1 + rateAdjustment * 1.5), 10); // Cap at 10%
-	  bannerDropRates.rare = Math.min(baseDropRates.rare * (1 + rateAdjustment), 18); // Cap at 18%
-	  bannerDropRates.uncommon = Math.min(baseDropRates.uncommon * (1 + rateAdjustment * 0.5), 25); // Cap at 25%
-	  
-	  // Calculate remaining percentage for common to ensure total is 100%
-	  const totalHigherRarities = bannerDropRates.legendary + bannerDropRates.epic + 
-								  bannerDropRates.rare + bannerDropRates.uncommon;
-	  bannerDropRates.common = Math.max(100 - totalHigherRarities, 40); // Ensure at least 40% common
+	  // Get rates from centralized config
+	  const standardDropRates = getStandardRates(false);
+	  const premiumDropRates = getPremiumRates(false);
+	  const bannerDropRates = calculateBannerRates(banner.rateMultiplier, false);
 	  
 	  console.log(`Banner ${banner.name} rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
 	  
 	  // Determine if we pull from banner or standard pool
-	  // Banner has a significantly higher chance
-	  const pullFromBanner = Math.random() < 0.70; // 70% chance to pull from banner
+	  const pullFromBanner = Math.random() < getBannerPullChance();
 	  
 	  // Choose the appropriate drop rates
-	  // Premium tickets get guaranteed rare+ rates
 	  let dropRates;
 	  if (isPremium) {
 	    dropRates = premiumDropRates;
@@ -758,20 +743,8 @@ router.post('/:id/roll', auth, async (req, res) => {
 	    dropRates = pullFromBanner ? bannerDropRates : standardDropRates;
 	  }
 	  
-	  // Determine the rarity based on probability
-	  const rarityRoll = Math.random() * 100;
-	  let selectedRarity;
-	  let cumulativeRate = 0;
-	  for (const [rarity, rate] of Object.entries(dropRates)) {
-		cumulativeRate += rate;
-		if (rarityRoll < cumulativeRate) {
-		  selectedRarity = rarity;
-		  break;
-		}
-	  }
-	  
-	  // Fallback for edge cases
-	  if (!selectedRarity) selectedRarity = 'common';
+	  // Roll for rarity using centralized helper
+	  let selectedRarity = rollRarity(dropRates);
 	  
 	  // Decide whether to pull from banner or standard pool
 	  let characterPool;
@@ -997,59 +970,16 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
 	  };
 	  
-	  // Define standard drop rates - challenging multi-pull rates
-	  const standardDropRates = {
-		common: 65,     // 65% chance
-		uncommon: 22,   // 22% chance
-		rare: 9,        // 9% chance
-		epic: 3.5,      // 3.5% chance
-		legendary: 0.5  // 0.5% chance
-	  };
-	  
-	  // Define base banner drop rates (slightly better than standard)
-	  const baseDropRates = {
-		common: 55,     // 55% chance
-		uncommon: 24,   // 24% chance
-		rare: 14,       // 14% chance
-		epic: 6,        // 6% chance
-		legendary: 1    // 1% chance
-	  };
-	  
-	  // Premium ticket rates (guaranteed rare or better!)
-	  const premiumDropRates = {
-		common: 0,      // 0% chance
-		uncommon: 0,    // 0% chance
-		rare: 65,       // 65% chance
-		epic: 28,       // 28% chance
-		legendary: 7    // 7% chance
-	  };
-	  
-	  // Apply the rate multiplier to adjust rates for banner
-	  const bannerDropRates = {};
-	  // Cap the multiplier effect to prevent extreme values
-	  const effectiveMultiplier = Math.min(banner.rateMultiplier, 5.0);
-	  const rateAdjustment = (effectiveMultiplier - 1) * 0.1; // Reduced scaling effect
-	  
-	  // Adjust rates based on multiplier (with lower caps)
-	  bannerDropRates.legendary = Math.min(baseDropRates.legendary * (1 + rateAdjustment * 2), 3); // Cap at 3%
-	  bannerDropRates.epic = Math.min(baseDropRates.epic * (1 + rateAdjustment * 1.5), 12); // Cap at 12%
-	  bannerDropRates.rare = Math.min(baseDropRates.rare * (1 + rateAdjustment), 20); // Cap at 20%
-	  bannerDropRates.uncommon = Math.min(baseDropRates.uncommon * (1 + rateAdjustment * 0.5), 28); // Cap at 28%
-	  
-	  // Calculate remaining percentage for common to ensure total is 100%
-	  const totalHigherRarities = bannerDropRates.legendary + bannerDropRates.epic + 
-								  bannerDropRates.rare + bannerDropRates.uncommon;
-	  bannerDropRates.common = Math.max(100 - totalHigherRarities, 35); // Ensure at least 35% common
+	  // Get rates from centralized config (multi-pull rates)
+	  const standardDropRates = getStandardRates(true);
+	  const premiumDropRates = getPremiumRates(true);
+	  const bannerDropRates = calculateBannerRates(banner.rateMultiplier, true);
+	  const pityRates = getPityRates();
 	  
 	  console.log(`Banner ${banner.name} multi-roll rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
 	  
 	  // Guaranteed pity mechanics
 	  const guaranteedRare = count >= 10; // Guarantee at least one rare+ for 10-pulls
-	  
-	  // Define pity rates (these are not affected by rateMultiplier) - more balanced
-	  const pityRates = {
-		rare: 85, epic: 14, legendary: 1
-	  };
 	  
 	  let results = [];
 	  let hasRarePlus = false; // Track if we've already rolled a rare or better
@@ -1065,11 +995,10 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		
 		// Determine if this pull is from the banner pool
 		// Banner rate increases for the last few pulls
-		const bannerChance = (i >= count - 3) ? 0.85 : 0.7; // 70% normally, 85% for last 3
-		const pullFromBanner = Math.random() < bannerChance;
+		const isLast3 = i >= count - 3;
+		const pullFromBanner = Math.random() < getBannerPullChance(isLast3);
 		
 		// Select appropriate rates
-		// Premium tickets get guaranteed rare+ rates
 		let currentRates;
 		if (isPremiumRoll) {
 		  currentRates = premiumDropRates;
@@ -1079,20 +1008,8 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		  currentRates = pullFromBanner ? bannerDropRates : standardDropRates;
 		}
 		
-		// Determine rarity
-		const rarityRoll = Math.random() * 100;
-		let selectedRarity;
-		let cumulativeRate = 0;
-		for (const [rarity, rate] of Object.entries(currentRates)) {
-		  cumulativeRate += rate;
-		  if (rarityRoll < cumulativeRate) {
-			selectedRarity = rarity;
-			break;
-		  }
-		}
-		
-		// Fallback
-		if (!selectedRarity) selectedRarity = 'common';
+		// Roll for rarity using centralized helper
+		let selectedRarity = rollRarity(currentRates);
 		
 		// Track if we've rolled a rare or better
 		if (['rare', 'epic', 'legendary'].includes(selectedRarity)) {
