@@ -58,6 +58,9 @@ const AdminPage = () => {
   // Coin form
   const [coinForm, setCoinForm] = useState({ userId: '', amount: 100 });
   const [coinMessage, setCoinMessage] = useState(null);
+  
+  // API stats (from backend)
+  const [apiStats, setApiStats] = useState({ totalFishCaught: 0 });
 
   // Computed stats for dashboard
   const stats = {
@@ -66,7 +69,7 @@ const AdminPage = () => {
     activeBanners: banners.filter(b => b.active).length,
     activeCoupons: coupons.filter(c => c.isActive).length,
     totalCoins: users.reduce((sum, u) => sum + (u.points || 0), 0),
-    totalFish: users.reduce((sum, u) => sum + (u.fishCaught || 0), 0),
+    totalFish: apiStats.totalFishCaught || 0,
   };
 
   // Fetch all data
@@ -78,6 +81,7 @@ const AdminPage = () => {
       setCharacters(data.characters || []);
       setBanners(data.banners || []);
       setCoupons(data.coupons || []);
+      setApiStats(data.stats || { totalFishCaught: 0 });
     } catch (err) {
       console.error('Dashboard fetch error:', err);
       setError(err.response?.data?.error || t('admin.failedLoadDashboard'));

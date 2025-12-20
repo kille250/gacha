@@ -6,7 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
-const { User, Character, Banner, Coupon, CouponRedemption } = require('../models');
+const { User, Character, Banner, Coupon, CouponRedemption, FishInventory } = require('../models');
 const { getUrlPath, getFilePath, UPLOAD_BASE } = require('../config/upload');
 const { characterUpload: upload } = require('../config/multer');
 const { isValidId } = require('../utils/validation');
@@ -141,7 +141,7 @@ router.get('/health', auth, adminAuth, async (req, res) => {
 router.get('/dashboard', auth, adminAuth, async (req, res) => {
   try {
     // Fetch all data in parallel
-    const [users, characters, banners, coupons] = await Promise.all([
+    const [users, characters, banners, coupons, fishStats] = await Promise.all([
       User.findAll({
         attributes: ['id', 'username', 'points', 'isAdmin', 'allowR18', 'showR18', 'autofishEnabled', 'autofishUnlockedByRank', 'createdAt'],
         order: [['points', 'DESC']]
@@ -157,10 +157,20 @@ router.get('/dashboard', auth, adminAuth, async (req, res) => {
           { model: CouponRedemption, attributes: ['id', 'userId', 'redeemedAt'], required: false }
         ],
         order: [['createdAt', 'DESC']]
-      })
+      }),
+      // Get total fish caught (sum of all quantities in FishInventory)
+      FishInventory.sum('quantity').catch(() => 0)
     ]);
     
-    res.json({ users, characters, banners, coupons });
+    res.json({ 
+      users, 
+      characters, 
+      banners, 
+      coupons,
+      stats: {
+        totalFishCaught: fishStats || 0
+      }
+    });
   } catch (err) {
     console.error('Dashboard fetch error:', err);
     res.status(500).json({ error: 'Server error' });
