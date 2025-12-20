@@ -35,6 +35,13 @@ initUploadDirs();
 const app = express();
 
 // ===========================================
+// TRUST PROXY (Required for Render.com and other reverse proxies)
+// ===========================================
+if (isProduction) {
+  app.set('trust proxy', 1);
+}
+
+// ===========================================
 // SECURITY: Allowed origins whitelist
 // ===========================================
 const ALLOWED_ORIGINS = [
@@ -279,6 +286,17 @@ async function runMigrations() {
   await addColumnIfNotExists('Users', 'premiumTickets', 'INTEGER', '0');
   await addColumnIfNotExists('Users', 'email', 'VARCHAR(255)', 'NULL');
   await addColumnIfNotExists('Users', 'googleId', 'VARCHAR(255)', 'NULL');
+  
+  // Make password column nullable for Google SSO users
+  try {
+    await sequelize.query(`ALTER TABLE "Users" ALTER COLUMN "password" DROP NOT NULL;`);
+    console.log('[Migration] Made password column nullable');
+  } catch (err) {
+    // Column might already be nullable or error - that's okay
+    if (!err.message.includes('does not exist')) {
+      console.log('[Migration] Password column already nullable or skipped');
+    }
+  }
   
   // Character/Banner columns
   await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');
