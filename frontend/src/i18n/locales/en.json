@@ -297,5 +297,29 @@
     "autofish": "Autofish",
     "enableAutofish": "Enable autofishing for this user",
     "disableAutofish": "Disable autofishing for this user"
+  },
+  "animeImport": {
+    "title": "Import Anime Characters",
+    "searchAnime": "Search Anime Series",
+    "searchPlaceholder": "Search for an anime (e.g., Naruto, One Piece)...",
+    "searching": "Searching...",
+    "selectAnime": "Select an Anime ({{count}} results)",
+    "charactersFrom": "Characters from {{anime}}",
+    "backToResults": "Back to search results",
+    "selectAll": "Select All",
+    "deselectAll": "Deselect All",
+    "loadingCharacters": "Loading characters...",
+    "noCharactersFound": "No characters found for this anime.",
+    "importSettings": "Import Settings ({{count}} selected)",
+    "seriesName": "Series Name",
+    "enterSeriesName": "Enter series name",
+    "defaultRarity": "Default Rarity",
+    "importing": "Importing...",
+    "importCount": "Import {{count}} Character(s)",
+    "failedSearch": "Failed to search anime",
+    "importFailed": "Import failed",
+    "episodes": "eps",
+    "main": "Main",
+    "supporting": "Supporting"
   }
 }

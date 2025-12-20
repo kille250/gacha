@@ -278,5 +278,29 @@
     "failedUpdateCoupon": "Error al actualizar cupón",
     "failedDeleteCoupon": "Error al eliminar cupón",
     "itemsPerPage": "{{count}} por página"
+  },
+  "animeImport": {
+    "title": "Importar personajes de anime",
+    "searchAnime": "Buscar serie de anime",
+    "searchPlaceholder": "Buscar un anime (ej., Naruto, One Piece)...",
+    "searching": "Buscando...",
+    "selectAnime": "Seleccionar un anime ({{count}} resultados)",
+    "charactersFrom": "Personajes de {{anime}}",
+    "backToResults": "Volver a los resultados",
+    "selectAll": "Seleccionar todo",
+    "deselectAll": "Deseleccionar todo",
+    "loadingCharacters": "Cargando personajes...",
+    "noCharactersFound": "No se encontraron personajes para este anime.",
+    "importSettings": "Configuración de importación ({{count}} seleccionados)",
+    "seriesName": "Nombre de la serie",
+    "enterSeriesName": "Ingresa el nombre de la serie",
+    "defaultRarity": "Rareza predeterminada",
+    "importing": "Importando...",
+    "importCount": "Importar {{count}} personaje(s)",
+    "failedSearch": "Error al buscar anime",
+    "importFailed": "Error al importar",
+    "episodes": "eps",
+    "main": "Principal",
+    "supporting": "Secundario"
   }
 }

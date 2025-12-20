@@ -278,5 +278,29 @@
     "failedUpdateCoupon": "Gutschein konnte nicht aktualisiert werden",
     "failedDeleteCoupon": "Gutschein konnte nicht gelöscht werden",
     "itemsPerPage": "{{count}} pro Seite"
+  },
+  "animeImport": {
+    "title": "Anime-Charaktere importieren",
+    "searchAnime": "Anime-Serie suchen",
+    "searchPlaceholder": "Nach einem Anime suchen (z.B. Naruto, One Piece)...",
+    "searching": "Suche...",
+    "selectAnime": "Anime auswählen ({{count}} Ergebnisse)",
+    "charactersFrom": "Charaktere aus {{anime}}",
+    "backToResults": "Zurück zu den Suchergebnissen",
+    "selectAll": "Alle auswählen",
+    "deselectAll": "Alle abwählen",
+    "loadingCharacters": "Lade Charaktere...",
+    "noCharactersFound": "Keine Charaktere für diesen Anime gefunden.",
+    "importSettings": "Import-Einstellungen ({{count}} ausgewählt)",
+    "seriesName": "Serienname",
+    "enterSeriesName": "Serienname eingeben",
+    "defaultRarity": "Standard-Seltenheit",
+    "importing": "Importiere...",
+    "importCount": "{{count}} Charakter(e) importieren",
+    "failedSearch": "Anime-Suche fehlgeschlagen",
+    "importFailed": "Import fehlgeschlagen",
+    "episodes": "Folgen",
+    "main": "Haupt",
+    "supporting": "Neben"
   }
 }

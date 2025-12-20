@@ -278,5 +278,29 @@
     "failedUpdateCoupon": "クーポンの更新に失敗しました",
     "failedDeleteCoupon": "クーポンの削除に失敗しました",
     "itemsPerPage": "{{count}}件/ページ"
+  },
+  "animeImport": {
+    "title": "アニメキャラクターをインポート",
+    "searchAnime": "アニメを検索",
+    "searchPlaceholder": "アニメを検索（例：ナルト、ワンピース）...",
+    "searching": "検索中...",
+    "selectAnime": "アニメを選択（{{count}}件の結果）",
+    "charactersFrom": "{{anime}}のキャラクター",
+    "backToResults": "検索結果に戻る",
+    "selectAll": "すべて選択",
+    "deselectAll": "すべて解除",
+    "loadingCharacters": "キャラクター読み込み中...",
+    "noCharactersFound": "このアニメのキャラクターが見つかりません。",
+    "importSettings": "インポート設定（{{count}}件選択中）",
+    "seriesName": "シリーズ名",
+    "enterSeriesName": "シリーズ名を入力",
+    "defaultRarity": "デフォルトレアリティ",
+    "importing": "インポート中...",
+    "importCount": "{{count}}キャラクターをインポート",
+    "failedSearch": "アニメの検索に失敗しました",
+    "importFailed": "インポートに失敗しました",
+    "episodes": "話",
+    "main": "メイン",
+    "supporting": "サブ"
   }
 }

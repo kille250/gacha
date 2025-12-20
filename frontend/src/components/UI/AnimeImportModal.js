@@ -2,9 +2,11 @@ import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaTimes, FaCheck, FaExclamationTriangle, FaDownload, FaStar, FaUsers, FaSpinner } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import api from '../../utils/api';
 
 const AnimeImportModal = ({ show, onClose, onSuccess }) => {
+  const { t } = useTranslation();
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -42,7 +44,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
       const response = await api.get(`/anime-import/search-anime?q=${encodeURIComponent(searchQuery)}`);
       setSearchResults(response.data.results || []);
     } catch (err) {
-      setSearchError(err.response?.data?.error || 'Failed to search anime');
+      setSearchError(err.response?.data?.error || t('animeImport.failedSearch'));
     } finally {
       setSearching(false);
     }
@@ -123,7 +125,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
       setAnimeCharacters([]);
       setSelectedAnime(null);
     } catch (err) {
-      setImportResult({ error: err.response?.data?.error || 'Import failed' });
+      setImportResult({ error: err.response?.data?.error || t('animeImport.importFailed') });
     } finally {
       setImporting(false);
     }
@@ -154,25 +156,25 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     <ModalOverlay onClick={handleClose}>
       <ModalContent onClick={e => e.stopPropagation()}>
         <ModalHeader>
-          <h2><FaDownload /> Import Anime Characters</h2>
+          <h2><FaDownload /> {t('animeImport.title')}</h2>
           <CloseButton onClick={handleClose}><FaTimes /></CloseButton>
         </ModalHeader>
 
         <ModalBody>
           {/* Search Section */}
           <SearchSection>
-            <SectionTitle>Search Anime Series</SectionTitle>
+            <SectionTitle>{t('animeImport.searchAnime')}</SectionTitle>
             <SearchRow>
               <SearchInput
                 type="text"
-                placeholder="Search for an anime (e.g., Naruto, One Piece)..."
+                placeholder={t('animeImport.searchPlaceholder')}
                 value={searchQuery}
                 onChange={e => setSearchQuery(e.target.value)}
                 onKeyDown={handleKeyDown}
               />
               <SearchButton onClick={handleSearch} disabled={searching || searchQuery.length < 2}>
                 {searching ? <FaSpinner className="spin" /> : <FaSearch />}
-                {searching ? 'Searching...' : 'Search'}
+                {searching ? t('animeImport.searching') : t('common.search')}
               </SearchButton>
             </SearchRow>
             {searchError && <ErrorText>{searchError}</ErrorText>}
@@ -181,7 +183,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
           {/* Search Results */}
           {searchResults.length > 0 && !selectedAnime && (
             <ResultsSection>
-              <SectionTitle>Select an Anime ({searchResults.length} results)</SectionTitle>
+              <SectionTitle>{t('animeImport.selectAnime', { count: searchResults.length })}</SectionTitle>
               <AnimeGrid>
                 {searchResults.map(anime => (
                   <AnimeCard 
@@ -214,26 +216,26 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
               <CharactersHeader>
                 <div>
                   <SectionTitle>
-                    <FaUsers /> Characters from {selectedAnime.title_english || selectedAnime.title}
+                    <FaUsers /> {t('animeImport.charactersFrom', { anime: selectedAnime.title_english || selectedAnime.title })}
                   </SectionTitle>
                   <BackButton onClick={() => {
                     setSelectedAnime(null);
                     setAnimeCharacters([]);
                     setSelectedCharacters([]);
                   }}>
-                    ← Back to search results
+                    ← {t('animeImport.backToResults')}
                   </BackButton>
                 </div>
                 <SelectionButtons>
-                  <SmallButton onClick={selectAllCharacters}>Select All</SmallButton>
-                  <SmallButton onClick={deselectAllCharacters}>Deselect All</SmallButton>
+                  <SmallButton onClick={selectAllCharacters}>{t('animeImport.selectAll')}</SmallButton>
+                  <SmallButton onClick={deselectAllCharacters}>{t('animeImport.deselectAll')}</SmallButton>
                 </SelectionButtons>
               </CharactersHeader>
 
               {loadingCharacters ? (
-                <LoadingText><FaSpinner className="spin" /> Loading characters...</LoadingText>
+                <LoadingText><FaSpinner className="spin" /> {t('animeImport.loadingCharacters')}</LoadingText>
               ) : animeCharacters.length === 0 ? (
-                <EmptyText>No characters found for this anime.</EmptyText>
+                <EmptyText>{t('animeImport.noCharactersFound')}</EmptyText>
               ) : (
                 <CharactersGrid>
                   <AnimatePresence>
@@ -257,7 +259,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                           <CharacterInfo>
                             <CharacterName>{char.name}</CharacterName>
                             <CharacterRole $main={char.role === 'Main'}>
-                              {char.role}
+                              {char.role === 'Main' ? t('animeImport.main') : t('animeImport.supporting')}
                             </CharacterRole>
                             {isSelected && (
                               <RaritySelect 
@@ -265,11 +267,11 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                                 value={isSelected.rarity || defaultRarity}
                                 onChange={e => setCharacterRarity(char.mal_id, e.target.value)}
                               >
-                                <option value="common">Common</option>
-                                <option value="uncommon">Uncommon</option>
-                                <option value="rare">Rare</option>
-                                <option value="epic">Epic</option>
-                                <option value="legendary">Legendary</option>
+                                <option value="common">{t('gacha.common')}</option>
+                                <option value="uncommon">{t('gacha.uncommon')}</option>
+                                <option value="rare">{t('gacha.rare')}</option>
+                                <option value="epic">{t('gacha.epic')}</option>
+                                <option value="legendary">{t('gacha.legendary')}</option>
                               </RaritySelect>
                             )}
                           </CharacterInfo>
@@ -285,25 +287,25 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
           {/* Import Settings */}
           {selectedCharacters.length > 0 && (
             <ImportSettingsSection>
-              <SectionTitle>Import Settings ({selectedCharacters.length} selected)</SectionTitle>
+              <SectionTitle>{t('animeImport.importSettings', { count: selectedCharacters.length })}</SectionTitle>
               <SettingsGrid>
                 <SettingsField>
-                  <label>Series Name</label>
+                  <label>{t('animeImport.seriesName')}</label>
                   <input
                     type="text"
                     value={seriesName}
                     onChange={e => setSeriesName(e.target.value)}
-                    placeholder="Enter series name"
+                    placeholder={t('animeImport.enterSeriesName')}
                   />
                 </SettingsField>
                 <SettingsField>
-                  <label>Default Rarity</label>
+                  <label>{t('animeImport.defaultRarity')}</label>
                   <select value={defaultRarity} onChange={e => setDefaultRarity(e.target.value)}>
-                    <option value="common">Common</option>
-                    <option value="uncommon">Uncommon</option>
-                    <option value="rare">Rare</option>
-                    <option value="epic">Epic</option>
-                    <option value="legendary">Legendary</option>
+                    <option value="common">{t('gacha.common')}</option>
+                    <option value="uncommon">{t('gacha.uncommon')}</option>
+                    <option value="rare">{t('gacha.rare')}</option>
+                    <option value="epic">{t('gacha.epic')}</option>
+                    <option value="legendary">{t('gacha.legendary')}</option>
                   </select>
                 </SettingsField>
               </SettingsGrid>
@@ -316,7 +318,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
               {importResult.error ? (
                 <>
                   <FaExclamationTriangle />
-                  <span>Error: {importResult.error}</span>
+                  <span>{t('common.error')}: {importResult.error}</span>
                 </>
               ) : (
                 <>
@@ -337,16 +339,16 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
 
         <ModalFooter>
           <CancelButton onClick={handleClose} disabled={importing}>
-            Cancel
+            {t('common.cancel')}
           </CancelButton>
           <ImportButton 
             onClick={handleImport} 
             disabled={importing || selectedCharacters.length === 0 || !seriesName.trim()}
           >
             {importing ? (
-              <><FaSpinner className="spin" /> Importing...</>
+              <><FaSpinner className="spin" /> {t('animeImport.importing')}</>
             ) : (
-              <><FaDownload /> Import {selectedCharacters.length} Character{selectedCharacters.length !== 1 ? 's' : ''}</>
+              <><FaDownload /> {t('animeImport.importCount', { count: selectedCharacters.length })}</>
             )}
           </ImportButton>
         </ModalFooter>
