@@ -127,44 +127,90 @@ router.get('/character/:mal_id', auth, adminAuth, async (req, res) => {
   }
 });
 
-// Download image and save locally
+// Download image/video and save locally - with proper headers for Danbooru
 const downloadImage = (url, filename) => {
   return new Promise((resolve, reject) => {
     const filepath = path.join(UPLOAD_DIRS.characters, filename);
     const file = fs.createWriteStream(filepath);
     
-    const request = https.get(url, (response) => {
-      // Handle redirects
-      if (response.statusCode === 301 || response.statusCode === 302) {
-        https.get(response.headers.location, (redirectResponse) => {
-          redirectResponse.pipe(file);
-          file.on('finish', () => {
-            file.close();
-            resolve(filepath);
-          });
-        }).on('error', (err) => {
-          fs.unlink(filepath, () => {});
-          reject(err);
-        });
-        return;
-      }
-      
-      response.pipe(file);
-      file.on('finish', () => {
-        file.close();
-        resolve(filepath);
-      });
-    });
+    // Parse URL to determine protocol and set proper options
+    const parsedUrl = new URL(url);
+    const protocol = parsedUrl.protocol === 'https:' ? https : require('http');
     
-    request.on('error', (err) => {
-      fs.unlink(filepath, () => {});
-      reject(err);
-    });
+    const options = {
+      hostname: parsedUrl.hostname,
+      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
+      path: parsedUrl.pathname + parsedUrl.search,
+      method: 'GET',
+      headers: {
+        'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
+        'Accept': '*/*',
+        'Referer': parsedUrl.origin
+      }
+    };
+    
+    const makeRequest = (reqOptions, currentUrl) => {
+      const req = protocol.request(reqOptions, (response) => {
+        // Handle redirects (301, 302, 303, 307, 308)
+        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+          const redirectUrl = new URL(response.headers.location, currentUrl);
+          const redirectProtocol = redirectUrl.protocol === 'https:' ? https : require('http');
+          
+          const redirectOptions = {
+            hostname: redirectUrl.hostname,
+            port: redirectUrl.port || (redirectUrl.protocol === 'https:' ? 443 : 80),
+            path: redirectUrl.pathname + redirectUrl.search,
+            method: 'GET',
+            headers: {
+              'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
+              'Accept': '*/*',
+              'Referer': redirectUrl.origin
+            }
+          };
+          
+          // Recursively follow redirect
+          makeRequest.call({ protocol: redirectProtocol }, redirectOptions, redirectUrl.href);
+          return;
+        }
+        
+        // Check for successful response
+        if (response.statusCode !== 200) {
+          fs.unlink(filepath, () => {});
+          reject(new Error(`Download failed with status ${response.statusCode}`));
+          return;
+        }
+        
+        response.pipe(file);
+        file.on('finish', () => {
+          file.close(() => {
+            // Verify the file was actually downloaded
+            fs.stat(filepath, (err, stats) => {
+              if (err || stats.size < 1000) {
+                fs.unlink(filepath, () => {});
+                reject(new Error('Downloaded file is too small or corrupted'));
+              } else {
+                console.log(`Downloaded ${filename}: ${stats.size} bytes`);
+                resolve(filepath);
+              }
+            });
+          });
+        });
+      });
+      
+      req.on('error', (err) => {
+        fs.unlink(filepath, () => {});
+        reject(err);
+      });
+      
+      req.end();
+    };
     
     file.on('error', (err) => {
       fs.unlink(filepath, () => {});
       reject(err);
     });
+    
+    makeRequest(options, url);
   });
 };
 
