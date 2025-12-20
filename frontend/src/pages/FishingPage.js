@@ -342,7 +342,7 @@ const FishingPage = () => {
       setTradingLoading(false);
       
       // Clear result after animation
-      setTimeout(() => setTradeResult(null), 2000);
+      setTimeout(() => setTradeResult(null), 1500);
     } catch (err) {
       showNotification(err.response?.data?.message || t('fishing.tradeFailed'), 'error');
       setTradingLoading(false);
@@ -2821,30 +2821,30 @@ const TicketBonus = styled.div`
 `;
 
 const TradeSuccessOverlay = styled(motion.div)`
-  position: absolute;
-  top: 50%;
+  position: fixed;
+  top: 80px;
   left: 50%;
-  transform: translate(-50%, -50%);
-  background: linear-gradient(180deg, rgba(76, 175, 80, 0.95) 0%, rgba(56, 142, 60, 0.95) 100%);
-  border-radius: 20px;
-  padding: 24px 48px;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, rgba(76, 175, 80, 0.98) 0%, rgba(56, 142, 60, 0.98) 100%);
+  border-radius: 16px;
+  padding: 14px 28px;
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 8px;
-  z-index: 10;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.3);
+  gap: 10px;
+  z-index: 2000;
+  box-shadow: 0 8px 32px rgba(0,0,0,0.3);
+  pointer-events: none;
 `;
 
 const TradeSuccessIcon = styled.div`
-  font-size: 48px;
+  font-size: 28px;
 `;
 
 const TradeSuccessText = styled.div`
-  font-size: 32px;
-  font-weight: 900;
+  font-size: 20px;
+  font-weight: 700;
   color: #fff;
-  text-shadow: 2px 2px 0 rgba(0,0,0,0.2);
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
 `;
 
 const TradeOptionsTitle = styled.div`
