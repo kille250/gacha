@@ -75,7 +75,12 @@
     "r18Enabled": "R18 有効",
     "r18Disabled": "R18 無効",
     "r18ContentEnabled": "R18コンテンツが有効です",
-    "r18ContentDisabled": "R18コンテンツが無効です"
+    "r18ContentDisabled": "R18コンテンツが無効です",
+    "play": "プレイ",
+    "activities": "アクティビティ",
+    "profile": "プロフィール",
+    "settings": "設定",
+    "language": "言語"
   },
   "auth": {
     "login": "ログイン",

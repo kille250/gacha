@@ -1,8 +1,21 @@
-import React, { useContext, useState, useEffect, useCallback } from 'react';
+import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdDashboard, MdCollections, MdExitToApp, MdSettings, MdCelebration, MdAccessTimeFilled, MdAdminPanelSettings, MdMenu, MdClose, MdLanguage } from 'react-icons/md';
+import { 
+  MdDashboard, 
+  MdCollections, 
+  MdExitToApp, 
+  MdCelebration, 
+  MdAccessTimeFilled, 
+  MdAdminPanelSettings, 
+  MdMenu, 
+  MdClose, 
+  MdLanguage,
+  MdPerson,
+  MdKeyboardArrowDown,
+  MdSettings
+} from 'react-icons/md';
 import { FaGift, FaTicketAlt, FaDice, FaFish } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import api, { invalidateCache } from '../../utils/api';
@@ -15,6 +28,8 @@ const Navigation = () => {
   const location = useLocation();
   const { user, logout, refreshUser } = useContext(AuthContext);
   const navigate = useNavigate();
+  const profileDropdownRef = useRef(null);
+  
   const [rewardStatus, setRewardStatus] = useState({
     available: false,       
     loading: true,         
@@ -30,8 +45,11 @@ const Navigation = () => {
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   
-  // Language dropdown state
-  const [showLanguageDropdown, setShowLanguageDropdown] = useState(false);
+  // Profile dropdown state
+  const [showProfileDropdown, setShowProfileDropdown] = useState(false);
+  
+  // Language dropdown in profile
+  const [showLanguageSubmenu, setShowLanguageSubmenu] = useState(false);
   
   // R18 toggle state
   const [isTogglingR18, setIsTogglingR18] = useState(false);
@@ -39,10 +57,23 @@ const Navigation = () => {
   // Track if we just claimed to prevent race conditions
   const [justClaimed, setJustClaimed] = useState(false);
   
+  // Close profile dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (profileDropdownRef.current && !profileDropdownRef.current.contains(event.target)) {
+        setShowProfileDropdown(false);
+        setShowLanguageSubmenu(false);
+      }
+    };
+    
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
+  
   // Change language handler
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
-    setShowLanguageDropdown(false);
+    setShowLanguageSubmenu(false);
   };
   
   // Toggle R18 content preference
@@ -51,7 +82,6 @@ const Navigation = () => {
     setIsTogglingR18(true);
     try {
       await api.post('/auth/toggle-r18');
-      // Clear all cached data since R18 filter affects everything
       invalidateCache();
       await refreshUser();
     } catch (err) {
@@ -64,11 +94,11 @@ const Navigation = () => {
   // Close mobile menu when location changes
   useEffect(() => {
     setMobileMenuOpen(false);
+    setShowProfileDropdown(false);
   }, [location]);
 
-  // Check if hourly reward is available - optimized to use user data from context
+  // Check if hourly reward is available
   const checkRewardAvailability = useCallback(async (forceRefresh = false) => {
-    // Don't override state if we just claimed
     if (justClaimed) return;
     
     if (!user) {
@@ -82,10 +112,8 @@ const Navigation = () => {
       return;
     }
     
-    // Use user's lastDailyReward from context if available (no API call needed)
     const lastRewardData = user.lastDailyReward;
     
-    // Only fetch from API if we don't have the data or forcing refresh
     if (!lastRewardData && forceRefresh) {
       try {
         if (!rewardStatus.checked) {
@@ -113,14 +141,12 @@ const Navigation = () => {
     }
   }, [user, justClaimed]);
   
-  // Process reward data (extracted to avoid duplication)
   const processRewardData = useCallback((lastRewardData) => {
-    // Don't override state if we just claimed
     if (justClaimed) return;
     
     const lastReward = lastRewardData ? new Date(lastRewardData) : null;
     const now = new Date();
-    const rewardInterval = 60 * 60 * 1000; // 1 hour
+    const rewardInterval = 60 * 60 * 1000;
     
     if (!lastReward || now - lastReward > rewardInterval) {
       setRewardStatus({
@@ -177,8 +203,6 @@ const Navigation = () => {
     return () => clearInterval(timerInterval);
   }, [rewardStatus.nextRewardTime]);
   
-  // Initial check - no more polling needed since we use context data
-  // The timer useEffect above handles countdown updates locally
   useEffect(() => {
     checkRewardAvailability();
   }, [user?.lastDailyReward, checkRewardAvailability]);
@@ -187,7 +211,6 @@ const Navigation = () => {
   const claimHourlyReward = async () => {
     if (rewardStatus.loading || !rewardStatus.available || justClaimed) return;
     
-    // Immediately disable the button to prevent double-clicks
     setJustClaimed(true);
     setRewardStatus(prev => ({ ...prev, loading: true, available: false }));
     
@@ -217,10 +240,8 @@ const Navigation = () => {
         checked: true
       });
       
-      // Wait for user refresh to complete before allowing state changes
       await refreshUser();
       
-      // Reset the justClaimed flag after a delay to allow state to stabilize
       setTimeout(() => {
         setJustClaimed(false);
       }, 2000);
@@ -257,15 +278,35 @@ const Navigation = () => {
     navigate('/login');
   };
   
-  // Navigation items
-  const navItems = [
-    { path: '/gacha', label: t('nav.banners'), icon: <MdDashboard />, adminOnly: false },
-    { path: '/roll', label: t('nav.roll'), icon: <FaDice />, adminOnly: false },
-    { path: '/fishing', label: t('nav.fishing'), icon: <FaFish />, adminOnly: false },
-    { path: '/collection', label: t('nav.collection'), icon: <MdCollections />, adminOnly: false },
-    { path: '/coupons', label: t('nav.coupons'), icon: <FaTicketAlt />, adminOnly: false },
-    { path: '/admin', label: t('nav.admin'), icon: <MdSettings />, adminOnly: true },
+  // Navigation items - grouped logically
+  const navGroups = [
+    {
+      id: 'play',
+      label: t('nav.play') || 'Play',
+      items: [
+        { path: '/gacha', label: t('nav.banners'), icon: <MdDashboard /> },
+        { path: '/roll', label: t('nav.roll'), icon: <FaDice /> },
+      ]
+    },
+    {
+      id: 'activities',
+      label: t('nav.activities') || 'Activities',
+      items: [
+        { path: '/fishing', label: t('nav.fishing'), icon: <FaFish /> },
+      ]
+    },
+    {
+      id: 'profile',
+      label: t('nav.profile') || 'Profile',
+      items: [
+        { path: '/collection', label: t('nav.collection'), icon: <MdCollections /> },
+        { path: '/coupons', label: t('nav.coupons'), icon: <FaTicketAlt /> },
+      ]
+    }
   ];
+
+  // Flat nav items for quick reference
+  const allNavItems = navGroups.flatMap(g => g.items);
 
   return (
     <>
@@ -273,27 +314,49 @@ const Navigation = () => {
         {/* Logo */}
         <LogoSection>
           <Logo to="/gacha">
-            G<LogoAccent>M</LogoAccent>
+            <LogoIcon>🎰</LogoIcon>
+            <LogoTextWrapper>
+              <LogoText>Gacha<LogoAccent>Master</LogoAccent></LogoText>
+            </LogoTextWrapper>
           </Logo>
         </LogoSection>
 
-        {/* Desktop Navigation */}
+        {/* Desktop Navigation - Grouped */}
         <DesktopNav>
-          {navItems.map(item => (
-            (!item.adminOnly || (item.adminOnly && user?.isAdmin)) && (
-              <NavLink
-                key={item.path}
-                to={item.path}
-                $isActive={location.pathname === item.path}
-              >
-                {item.icon}
-                <span>{item.label}</span>
-              </NavLink>
-            )
+          {navGroups.map((group, groupIndex) => (
+            <NavGroup key={group.id}>
+              {group.items.map(item => (
+                <NavLink
+                  key={item.path}
+                  to={item.path}
+                  $isActive={location.pathname === item.path}
+                >
+                  <NavIcon>{item.icon}</NavIcon>
+                  <span>{item.label}</span>
+                </NavLink>
+              ))}
+              {groupIndex < navGroups.length - 1 && <NavDivider />}
+            </NavGroup>
           ))}
+          
+          {/* Admin Link - Separate */}
+          {user?.isAdmin && (
+            <>
+              <NavDivider />
+              <NavLink
+                to="/admin"
+                $isActive={location.pathname === '/admin'}
+                $isAdmin
+              >
+                <NavIcon><MdAdminPanelSettings /></NavIcon>
+                <span>{t('nav.admin')}</span>
+              </NavLink>
+            </>
+          )}
         </DesktopNav>
         
         <UserControls>
+          {/* Hourly Reward Button */}
           {user && (
             <RewardButton
               available={rewardStatus.checked && rewardStatus.available}
@@ -301,13 +364,14 @@ const Navigation = () => {
               disabled={!rewardStatus.available || rewardStatus.loading || !rewardStatus.checked}
               whileHover={rewardStatus.available && rewardStatus.checked ? { scale: 1.02 } : {}}
               whileTap={rewardStatus.available && rewardStatus.checked ? { scale: 0.98 } : {}}
+              title={rewardStatus.available ? t('nav.claim') : rewardStatus.timeRemaining}
             >
               {rewardStatus.loading ? (
                 <LoadingSpinner />
               ) : rewardStatus.available && rewardStatus.checked ? (
                 <>
                   <FaGift />
-                  <span>{t('nav.claim')}</span>
+                  <RewardText>{t('nav.claim')}</RewardText>
                 </>
               ) : (
                 <>
@@ -318,65 +382,98 @@ const Navigation = () => {
             </RewardButton>
           )}
           
-          <PointsDisplay>
-            <span>🪙</span>
-            <span>{user?.points || 0}</span>
-          </PointsDisplay>
-          
-          {user?.allowR18 && (
-            <R18Toggle
-              active={user?.showR18}
-              onClick={toggleR18}
-              disabled={isTogglingR18}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              title={user?.showR18 ? t('nav.r18ContentEnabled') : t('nav.r18ContentDisabled')}
+          {/* Profile Dropdown */}
+          <ProfileDropdownContainer ref={profileDropdownRef}>
+            <ProfileButton
+              onClick={() => setShowProfileDropdown(!showProfileDropdown)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              $isOpen={showProfileDropdown}
             >
-              🔞
-            </R18Toggle>
-          )}
-          
-          {/* Language Selector */}
-          <LanguageSelector>
-            <LanguageButton
-              onClick={() => setShowLanguageDropdown(!showLanguageDropdown)}
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-            >
-              <MdLanguage />
-              <span>{languages[i18n.language]?.flag || '🌐'}</span>
-            </LanguageButton>
+              <PointsBadge>
+                <span>🪙</span>
+                <span>{user?.points || 0}</span>
+              </PointsBadge>
+              <ProfileAvatar>
+                <MdPerson />
+              </ProfileAvatar>
+              <ProfileArrow $isOpen={showProfileDropdown}>
+                <MdKeyboardArrowDown />
+              </ProfileArrow>
+            </ProfileButton>
+            
             <AnimatePresence>
-              {showLanguageDropdown && (
-                <LanguageDropdown
+              {showProfileDropdown && (
+                <ProfileDropdown
                   initial={{ opacity: 0, y: -10, scale: 0.95 }}
                   animate={{ opacity: 1, y: 0, scale: 1 }}
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
                 >
-                  {Object.entries(languages).map(([code, lang]) => (
-                    <LanguageOption
-                      key={code}
-                      $active={i18n.language === code}
-                      onClick={() => changeLanguage(code)}
+                  <ProfileHeader>
+                    <ProfileName>{user?.username || 'User'}</ProfileName>
+                    <ProfilePoints>
+                      <span>🪙</span>
+                      <span>{user?.points || 0} {t('common.points')}</span>
+                    </ProfilePoints>
+                  </ProfileHeader>
+                  
+                  <ProfileDivider />
+                  
+                  {/* R18 Toggle */}
+                  {user?.allowR18 && (
+                    <ProfileMenuItem
+                      onClick={toggleR18}
+                      disabled={isTogglingR18}
                     >
-                      <span>{lang.flag}</span>
-                      <span>{lang.nativeName}</span>
-                    </LanguageOption>
-                  ))}
-                </LanguageDropdown>
+                      <ProfileMenuIcon $active={user?.showR18}>🔞</ProfileMenuIcon>
+                      <span>{user?.showR18 ? t('nav.r18Enabled') : t('nav.r18Disabled')}</span>
+                      <ToggleSwitch $active={user?.showR18} />
+                    </ProfileMenuItem>
+                  )}
+                  
+                  {/* Language Selector */}
+                  <ProfileMenuItem
+                    onClick={() => setShowLanguageSubmenu(!showLanguageSubmenu)}
+                  >
+                    <ProfileMenuIcon><MdLanguage /></ProfileMenuIcon>
+                    <span>{languages[i18n.language]?.nativeName || 'Language'}</span>
+                    <LanguageFlag>{languages[i18n.language]?.flag || '🌐'}</LanguageFlag>
+                  </ProfileMenuItem>
+                  
+                  <AnimatePresence>
+                    {showLanguageSubmenu && (
+                      <LanguageSubmenu
+                        initial={{ height: 0, opacity: 0 }}
+                        animate={{ height: 'auto', opacity: 1 }}
+                        exit={{ height: 0, opacity: 0 }}
+                        transition={{ duration: 0.2 }}
+                      >
+                        {Object.entries(languages).map(([code, lang]) => (
+                          <LanguageOption
+                            key={code}
+                            $active={i18n.language === code}
+                            onClick={() => changeLanguage(code)}
+                          >
+                            <span>{lang.flag}</span>
+                            <span>{lang.nativeName}</span>
+                            {i18n.language === code && <CheckMark>✓</CheckMark>}
+                          </LanguageOption>
+                        ))}
+                      </LanguageSubmenu>
+                    )}
+                  </AnimatePresence>
+                  
+                  <ProfileDivider />
+                  
+                  <ProfileMenuItem onClick={handleLogout} $danger>
+                    <ProfileMenuIcon><MdExitToApp /></ProfileMenuIcon>
+                    <span>{t('nav.logout')}</span>
+                  </ProfileMenuItem>
+                </ProfileDropdown>
               )}
             </AnimatePresence>
-          </LanguageSelector>
-          
-          <LogoutButton 
-            onClick={handleLogout}
-            whileHover={{ scale: 1.02 }}
-            whileTap={{ scale: 0.98 }}
-          >
-            <MdExitToApp />
-            <span>{t('nav.logout')}</span>
-          </LogoutButton>
+          </ProfileDropdownContainer>
           
           {/* Mobile Hamburger */}
           <HamburgerButton 
@@ -405,52 +502,114 @@ const Navigation = () => {
               transition={{ type: "spring", damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
             >
-            <MobileMenuHeader>
-              <h3>{t('nav.menu')}</h3>
-              <CloseButton 
-                onClick={() => setMobileMenuOpen(false)}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.95 }}
-              >
-                <MdClose />
-              </CloseButton>
-            </MobileMenuHeader>
+              {/* Mobile Profile Header */}
+              <MobileProfileHeader>
+                <MobileProfileAvatar>
+                  <MdPerson />
+                </MobileProfileAvatar>
+                <MobileProfileInfo>
+                  <MobileProfileName>{user?.username || 'User'}</MobileProfileName>
+                  <MobileProfilePoints>
+                    <span>🪙</span>
+                    <span>{user?.points || 0}</span>
+                  </MobileProfilePoints>
+                </MobileProfileInfo>
+                <CloseButton 
+                  onClick={() => setMobileMenuOpen(false)}
+                  whileHover={{ scale: 1.1 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <MdClose />
+                </CloseButton>
+              </MobileProfileHeader>
+              
+              {/* Hourly Reward - Mobile */}
+              {user && (
+                <MobileRewardButton
+                  available={rewardStatus.checked && rewardStatus.available}
+                  onClick={rewardStatus.available && rewardStatus.checked ? claimHourlyReward : undefined}
+                  disabled={!rewardStatus.available || rewardStatus.loading || !rewardStatus.checked}
+                >
+                  {rewardStatus.loading ? (
+                    <LoadingSpinner />
+                  ) : rewardStatus.available && rewardStatus.checked ? (
+                    <>
+                      <FaGift />
+                      <span>{t('nav.claim')} {t('nav.hourlyReward')}</span>
+                    </>
+                  ) : (
+                    <>
+                      <MdAccessTimeFilled />
+                      <span>{t('nav.hourlyReward')}: {rewardStatus.timeRemaining || t('nav.wait')}</span>
+                    </>
+                  )}
+                </MobileRewardButton>
+              )}
               
               <MobileNavItems>
-                {navItems.map(item => (
-                  (!item.adminOnly || (item.adminOnly && user?.isAdmin)) && (
+                {/* Grouped Navigation */}
+                {navGroups.map((group, groupIndex) => (
+                  <MobileNavGroup key={group.id}>
+                    <MobileNavGroupLabel>{group.label}</MobileNavGroupLabel>
+                    {group.items.map(item => (
+                      <MobileNavItem
+                        key={item.path}
+                        $isActive={location.pathname === item.path}
+                        onClick={() => {
+                          navigate(item.path);
+                          setMobileMenuOpen(false);
+                        }}
+                        whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+                      >
+                        {item.icon}
+                        <span>{item.label}</span>
+                      </MobileNavItem>
+                    ))}
+                    {groupIndex < navGroups.length - 1 && <MobileDivider />}
+                  </MobileNavGroup>
+                ))}
+                
+                {/* Admin Link */}
+                {user?.isAdmin && (
+                  <>
+                    <MobileDivider />
                     <MobileNavItem
-                      key={item.path}
-                      $isActive={location.pathname === item.path}
+                      $isActive={location.pathname === '/admin'}
+                      $isAdmin
                       onClick={() => {
-                        navigate(item.path);
+                        navigate('/admin');
                         setMobileMenuOpen(false);
                       }}
                       whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
                     >
-                      {item.icon}
-                      <span>{item.label}</span>
+                      <MdAdminPanelSettings />
+                      <span>{t('nav.admin')}</span>
                     </MobileNavItem>
-                  )
-                ))}
+                  </>
+                )}
                 
-                <Divider />
+                <MobileDivider />
+                
+                {/* Settings Section */}
+                <MobileNavGroupLabel>{t('nav.settings') || 'Settings'}</MobileNavGroupLabel>
                 
                 {user?.allowR18 && (
-                  <MobileR18Toggle
-                    active={user?.showR18}
+                  <MobileSettingsItem
                     onClick={toggleR18}
                     disabled={isTogglingR18}
-                    whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
                   >
                     <span>🔞</span>
                     <span>{user?.showR18 ? t('nav.r18Enabled') : t('nav.r18Disabled')}</span>
-                  </MobileR18Toggle>
+                    <ToggleSwitch $active={user?.showR18} />
+                  </MobileSettingsItem>
                 )}
                 
                 {/* Mobile Language Selector */}
                 <MobileLanguageSection>
-                  <span>🌐</span>
+                  <MobileLanguageLabel>
+                    <MdLanguage />
+                    <span>{t('nav.language') || 'Language'}</span>
+                  </MobileLanguageLabel>
                   <MobileLanguageOptions>
                     {Object.entries(languages).map(([code, lang]) => (
                       <MobileLanguageOption
@@ -464,6 +623,8 @@ const Navigation = () => {
                   </MobileLanguageOptions>
                 </MobileLanguageSection>
                 
+                <MobileDivider />
+                
                 <MobileLogout
                   onClick={handleLogout}
                   whileHover={{ backgroundColor: "rgba(255, 59, 48, 0.15)" }}
@@ -476,17 +637,6 @@ const Navigation = () => {
           </MobileMenuOverlay>
         )}
       </AnimatePresence>
-      
-      {/* Admin Floating Button (Mobile) */}
-      {user?.isAdmin && (
-        <AdminFloatingButton
-          onClick={() => navigate('/admin')}
-          whileHover={{ scale: 1.1 }}
-          whileTap={{ scale: 0.9 }}
-        >
-          <MdAdminPanelSettings />
-        </AdminFloatingButton>
-      )}
       
       {/* Reward Popup */}
       <AnimatePresence>
@@ -534,10 +684,34 @@ const LogoSection = styled.div`
 `;
 
 const Logo = styled(Link)`
-  font-size: ${theme.fontSizes.xl};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  text-decoration: none;
+  
+  &:hover {
+    opacity: 0.9;
+  }
+`;
+
+const LogoIcon = styled.span`
+  font-size: 24px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 20px;
+  }
+`;
+
+const LogoTextWrapper = styled.div`
+  @media (max-width: ${theme.breakpoints.sm}) {
+    display: none;
+  }
+`;
+
+const LogoText = styled.span`
+  font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.bold};
   color: ${theme.colors.text};
-  text-decoration: none;
   letter-spacing: -0.02em;
 `;
 
@@ -549,10 +723,25 @@ const DesktopNav = styled.div`
   display: none;
   align-items: center;
   gap: ${theme.spacing.xs};
+  flex: 1;
+  justify-content: center;
   
   @media (min-width: ${theme.breakpoints.md}) {
     display: flex;
   }
+`;
+
+const NavGroup = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+`;
+
+const NavDivider = styled.div`
+  width: 1px;
+  height: 24px;
+  background: ${theme.colors.surfaceBorder};
+  margin: 0 ${theme.spacing.sm};
 `;
 
 const NavLink = styled(Link)`
@@ -567,10 +756,25 @@ const NavLink = styled(Link)`
   font-weight: ${theme.fontWeights.medium};
   background: ${props => props.$isActive ? theme.colors.glass : 'transparent'};
   transition: all ${theme.transitions.fast};
+  position: relative;
   
-  svg {
-    font-size: 18px;
-  }
+  ${props => props.$isActive && `
+    &::after {
+      content: '';
+      position: absolute;
+      bottom: -2px;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 20px;
+      height: 2px;
+      background: ${theme.colors.primary};
+      border-radius: 1px;
+    }
+  `}
+  
+  ${props => props.$isAdmin && `
+    color: ${props.$isActive ? theme.colors.accent : theme.colors.accentSecondary};
+  `}
   
   &:hover {
     color: ${theme.colors.text};
@@ -578,22 +782,17 @@ const NavLink = styled(Link)`
   }
 `;
 
+const NavIcon = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+`;
+
 const UserControls = styled.div`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
-`;
-
-const PointsDisplay = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.xs};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  border-radius: ${theme.radius.full};
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.semibold};
-  color: white;
 `;
 
 const RewardButton = styled(motion.button)`
@@ -621,12 +820,14 @@ const RewardButton = styled(motion.button)`
     cursor: ${props => props.available ? 'not-allowed' : 'default'};
   }
   
-  @media (max-width: ${theme.breakpoints.sm}) {
-    padding: ${theme.spacing.xs} ${theme.spacing.sm};
-    
-    span:not(:first-child) {
-      display: none;
-    }
+  @media (max-width: ${theme.breakpoints.md}) {
+    display: none;
+  }
+`;
+
+const RewardText = styled.span`
+  @media (max-width: ${theme.breakpoints.lg}) {
+    display: none;
   }
 `;
 
@@ -649,62 +850,185 @@ const LoadingSpinner = styled.div`
   }
 `;
 
-const R18Toggle = styled(motion.button)`
-  width: 36px;
-  height: 36px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${props => props.active 
-    ? 'rgba(255, 59, 48, 0.2)' 
-    : theme.colors.glass};
-  border: 1px solid ${props => props.active 
-    ? theme.colors.error 
-    : theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.full};
-  cursor: pointer;
-  font-size: 16px;
-  opacity: ${props => props.disabled ? 0.5 : 1};
-  transition: all ${theme.transitions.fast};
+// Profile Dropdown
+const ProfileDropdownContainer = styled.div`
+  position: relative;
+  display: none;
   
-  &:hover {
-    background: ${props => props.active 
-      ? 'rgba(255, 59, 48, 0.3)' 
-      : theme.colors.surfaceHover};
-  }
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    display: none;
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: block;
   }
 `;
 
-const LogoutButton = styled(motion.button)`
-  display: none;
+const ProfileButton = styled(motion.button)`
+  display: flex;
   align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  background: ${theme.colors.glass};
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: ${props => props.$isOpen ? theme.colors.surfaceHover : theme.colors.glass};
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.full};
-  color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
   
-  svg {
-    font-size: 16px;
+  &:hover {
+    background: ${theme.colors.surfaceHover};
   }
+`;
+
+const PointsBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  color: white;
+`;
+
+const ProfileAvatar = styled.div`
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: ${theme.colors.backgroundTertiary};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${theme.colors.textSecondary};
+  font-size: 16px;
+`;
+
+const ProfileArrow = styled.div`
+  display: flex;
+  align-items: center;
+  color: ${theme.colors.textSecondary};
+  font-size: 18px;
+  transition: transform ${theme.transitions.fast};
+  transform: ${props => props.$isOpen ? 'rotate(180deg)' : 'rotate(0deg)'};
+`;
+
+const ProfileDropdown = styled(motion.div)`
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  width: 260px;
+  background: ${theme.colors.backgroundSecondary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  box-shadow: ${theme.shadows.lg};
+  overflow: hidden;
+  z-index: ${theme.zIndex.dropdown};
+`;
+
+const ProfileHeader = styled.div`
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.glass};
+`;
+
+const ProfileName = styled.div`
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  margin-bottom: 4px;
+`;
+
+const ProfilePoints = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+`;
+
+const ProfileDivider = styled.div`
+  height: 1px;
+  background: ${theme.colors.surfaceBorder};
+`;
+
+const ProfileMenuItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  cursor: pointer;
+  font-size: ${theme.fontSizes.sm};
+  color: ${props => props.$danger ? theme.colors.error : theme.colors.text};
+  transition: all ${theme.transitions.fast};
+  opacity: ${props => props.disabled ? 0.5 : 1};
   
   &:hover {
-    color: ${theme.colors.error};
-    border-color: ${theme.colors.error};
-    background: rgba(255, 59, 48, 0.1);
+    background: ${props => props.$danger 
+      ? 'rgba(255, 59, 48, 0.1)' 
+      : theme.colors.glass};
   }
+`;
+
+const ProfileMenuIcon = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  font-size: 16px;
+  color: ${props => props.$active ? theme.colors.error : theme.colors.textSecondary};
+`;
+
+const ToggleSwitch = styled.div`
+  margin-left: auto;
+  width: 36px;
+  height: 20px;
+  border-radius: 10px;
+  background: ${props => props.$active 
+    ? theme.colors.primary 
+    : theme.colors.backgroundTertiary};
+  position: relative;
+  transition: all ${theme.transitions.fast};
   
-  @media (min-width: ${theme.breakpoints.md}) {
-    display: flex;
+  &::after {
+    content: '';
+    position: absolute;
+    top: 2px;
+    left: ${props => props.$active ? '18px' : '2px'};
+    width: 16px;
+    height: 16px;
+    border-radius: 50%;
+    background: white;
+    transition: all ${theme.transitions.fast};
   }
+`;
+
+const LanguageFlag = styled.span`
+  margin-left: auto;
+  font-size: 16px;
+`;
+
+const LanguageSubmenu = styled(motion.div)`
+  overflow: hidden;
+  background: ${theme.colors.backgroundTertiary};
+`;
+
+const LanguageOption = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  padding-left: 48px;
+  cursor: pointer;
+  font-size: ${theme.fontSizes.sm};
+  color: ${props => props.$active ? theme.colors.primary : theme.colors.text};
+  background: ${props => props.$active ? 'rgba(0, 113, 227, 0.1)' : 'transparent'};
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${theme.colors.glass};
+  }
+`;
+
+const CheckMark = styled.span`
+  margin-left: auto;
+  color: ${theme.colors.primary};
+  font-weight: ${theme.fontWeights.bold};
 `;
 
 const HamburgerButton = styled(motion.button)`
@@ -739,8 +1063,8 @@ const MobileMenu = styled(motion.div)`
   top: 0;
   right: 0;
   bottom: 0;
-  width: 80%;
-  max-width: 320px;
+  width: 85%;
+  max-width: 340px;
   background: ${theme.colors.backgroundSecondary};
   border-left: 1px solid ${theme.colors.surfaceBorder};
   display: flex;
@@ -748,17 +1072,55 @@ const MobileMenu = styled(motion.div)`
   box-shadow: ${theme.shadows.xl};
 `;
 
-const MobileMenuHeader = styled.div`
+const MobileProfileHeader = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  gap: ${theme.spacing.md};
   padding: ${theme.spacing.lg};
+  background: linear-gradient(135deg, 
+    rgba(88, 86, 214, 0.15), 
+    rgba(175, 82, 222, 0.1)
+  );
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+const MobileProfileAvatar = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: ${theme.colors.glass};
+  border: 2px solid ${theme.colors.surfaceBorder};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: ${theme.colors.text};
+  font-size: 24px;
+`;
+
+const MobileProfileInfo = styled.div`
+  flex: 1;
+`;
+
+const MobileProfileName = styled.div`
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  margin-bottom: 4px;
+`;
+
+const MobileProfilePoints = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: ${theme.fontSizes.sm};
   
-  h3 {
-    margin: 0;
-    font-size: ${theme.fontSizes.lg};
-    font-weight: ${theme.fontWeights.semibold};
+  span:first-child {
+    font-size: 14px;
+  }
+  
+  span:last-child {
+    color: ${theme.colors.textSecondary};
+    font-weight: ${theme.fontWeights.medium};
   }
 `;
 
@@ -776,10 +1138,52 @@ const CloseButton = styled(motion.button)`
   font-size: 20px;
 `;
 
+const MobileRewardButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  margin: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  background: ${props => props.available 
+    ? `linear-gradient(135deg, ${theme.colors.warning}, #ff6b00)`
+    : theme.colors.glass};
+  border: 1px solid ${props => props.available ? 'transparent' : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${props => props.available ? 'white' : theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  cursor: ${props => props.available ? 'pointer' : 'default'};
+  transition: all ${theme.transitions.fast};
+  
+  svg {
+    font-size: 18px;
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+`;
+
 const MobileNavItems = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: ${theme.spacing.md};
+`;
+
+const MobileNavGroup = styled.div`
+  margin-bottom: ${theme.spacing.sm};
+`;
+
+const MobileNavGroupLabel = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.textTertiary};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.xs};
 `;
 
 const MobileNavItem = styled(motion.div)`
@@ -795,30 +1199,76 @@ const MobileNavItem = styled(motion.div)`
   font-weight: ${theme.fontWeights.medium};
   transition: all ${theme.transitions.fast};
   
+  ${props => props.$isAdmin && `
+    color: ${props.$isActive ? theme.colors.accent : theme.colors.accentSecondary};
+  `}
+  
   svg {
     font-size: 20px;
   }
 `;
 
-const Divider = styled.div`
+const MobileDivider = styled.div`
   height: 1px;
   background: ${theme.colors.surfaceBorder};
   margin: ${theme.spacing.md} 0;
 `;
 
-const MobileR18Toggle = styled(motion.div)`
+const MobileSettingsItem = styled.div`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.md};
   padding: ${theme.spacing.md};
   border-radius: ${theme.radius.lg};
   cursor: pointer;
-  color: ${props => props.active ? theme.colors.error : theme.colors.textSecondary};
+  color: ${theme.colors.text};
   font-size: ${theme.fontSizes.base};
+  transition: all ${theme.transitions.fast};
   opacity: ${props => props.disabled ? 0.5 : 1};
   
   span:first-child {
     font-size: 20px;
+  }
+  
+  &:hover {
+    background: ${theme.colors.glass};
+  }
+`;
+
+const MobileLanguageSection = styled.div`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+`;
+
+const MobileLanguageLabel = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  margin-bottom: ${theme.spacing.sm};
+  
+  svg {
+    font-size: 18px;
+  }
+`;
+
+const MobileLanguageOptions = styled.div`
+  display: flex;
+  gap: ${theme.spacing.xs};
+  flex-wrap: wrap;
+`;
+
+const MobileLanguageOption = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${props => props.$active ? 'rgba(0, 113, 227, 0.2)' : theme.colors.glass};
+  border: 1px solid ${props => props.$active ? theme.colors.primary : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  font-size: 20px;
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${theme.colors.surfaceHover};
   }
 `;
 
@@ -835,30 +1285,6 @@ const MobileLogout = styled(motion.div)`
   
   svg {
     font-size: 20px;
-  }
-`;
-
-// Admin Floating Button
-const AdminFloatingButton = styled(motion.button)`
-  position: fixed;
-  bottom: ${theme.spacing.lg};
-  right: ${theme.spacing.lg};
-  width: 56px;
-  height: 56px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
-  border: none;
-  border-radius: ${theme.radius.full};
-  color: white;
-  font-size: 24px;
-  cursor: pointer;
-  box-shadow: ${theme.shadows.lg};
-  z-index: ${theme.zIndex.sticky};
-  
-  @media (min-width: ${theme.breakpoints.md}) {
-    display: none;
   }
 `;
 
@@ -909,95 +1335,6 @@ const PopupAmount = styled.div`
   font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.bold};
   color: ${theme.colors.warning};
-`;
-
-// Language Selector
-const LanguageSelector = styled.div`
-  position: relative;
-  display: none;
-  
-  @media (min-width: ${theme.breakpoints.md}) {
-    display: block;
-  }
-`;
-
-const LanguageButton = styled(motion.button)`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  padding: ${theme.spacing.xs} ${theme.spacing.sm};
-  background: ${theme.colors.glass};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.full};
-  color: ${theme.colors.text};
-  cursor: pointer;
-  font-size: 16px;
-  
-  svg {
-    font-size: 18px;
-  }
-`;
-
-const LanguageDropdown = styled(motion.div)`
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: ${theme.colors.backgroundSecondary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  box-shadow: ${theme.shadows.lg};
-  overflow: hidden;
-  z-index: ${theme.zIndex.dropdown};
-  min-width: 150px;
-`;
-
-const LanguageOption = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  cursor: pointer;
-  font-size: ${theme.fontSizes.sm};
-  color: ${props => props.$active ? theme.colors.primary : theme.colors.text};
-  background: ${props => props.$active ? 'rgba(0, 113, 227, 0.1)' : 'transparent'};
-  transition: all ${theme.transitions.fast};
-  
-  &:hover {
-    background: ${theme.colors.glass};
-  }
-`;
-
-// Mobile Language Section
-const MobileLanguageSection = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.md};
-  border-radius: ${theme.radius.lg};
-  
-  > span:first-child {
-    font-size: 20px;
-  }
-`;
-
-const MobileLanguageOptions = styled.div`
-  display: flex;
-  gap: ${theme.spacing.xs};
-  flex-wrap: wrap;
-`;
-
-const MobileLanguageOption = styled.button`
-  padding: ${theme.spacing.xs} ${theme.spacing.sm};
-  background: ${props => props.$active ? 'rgba(0, 113, 227, 0.2)' : theme.colors.glass};
-  border: 1px solid ${props => props.$active ? theme.colors.primary : theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  font-size: 18px;
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  
-  &:hover {
-    background: ${theme.colors.surfaceHover};
-  }
 `;
 
 export default Navigation;

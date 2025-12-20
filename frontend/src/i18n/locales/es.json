@@ -75,7 +75,12 @@
     "r18Enabled": "R18 Activado",
     "r18Disabled": "R18 Desactivado",
     "r18ContentEnabled": "Contenido R18 activado",
-    "r18ContentDisabled": "Contenido R18 desactivado"
+    "r18ContentDisabled": "Contenido R18 desactivado",
+    "play": "Jugar",
+    "activities": "Actividades",
+    "profile": "Perfil",
+    "settings": "Ajustes",
+    "language": "Idioma"
   },
   "auth": {
     "login": "Iniciar sesión",

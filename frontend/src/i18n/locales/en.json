@@ -75,7 +75,12 @@
     "r18Enabled": "R18 Enabled",
     "r18Disabled": "R18 Disabled",
     "r18ContentEnabled": "R18 content enabled",
-    "r18ContentDisabled": "R18 content disabled"
+    "r18ContentDisabled": "R18 content disabled",
+    "play": "Play",
+    "activities": "Activities",
+    "profile": "Profile",
+    "settings": "Settings",
+    "language": "Language"
   },
   "auth": {
     "login": "Sign In",
