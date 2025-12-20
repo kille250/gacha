@@ -1218,6 +1218,8 @@ const PageContainer = styled.div`
   min-height: 100vh;
   min-height: 100dvh;
   min-height: -webkit-fill-available;
+  height: 100vh;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
   background: ${props => getTimeGradient(props.$timeOfDay)};
@@ -1233,9 +1235,19 @@ const PageContainer = styled.div`
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   
+  /* Ensure no black shows through from body */
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background: inherit;
+    z-index: -1;
+  }
+  
   @supports (-webkit-touch-callout: none) {
     /* iOS specific fixes */
     min-height: -webkit-fill-available;
+    height: -webkit-fill-available;
   }
 `;
 
