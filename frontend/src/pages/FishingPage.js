@@ -31,45 +31,72 @@ const DIRECTIONS = {
   RIGHT: 'right'
 };
 
-// Rarity colors
+// Rarity colors - Stardew-inspired warm palette
 const RARITY_COLORS = {
-  common: '#8e8e93',
-  uncommon: '#30d158',
-  rare: '#0a84ff',
-  epic: '#bf5af2',
-  legendary: '#ff9f0a'
+  common: '#a0a0a0',
+  uncommon: '#5fcf65',
+  rare: '#5b9ee1',
+  epic: '#c77dff',
+  legendary: '#ffc53d'
+};
+
+// Time of day for lighting
+const TIME_PERIODS = {
+  DAWN: 'dawn',
+  DAY: 'day',
+  DUSK: 'dusk',
+  NIGHT: 'night'
 };
 
 // Map configuration
-const TILE_SIZE = 48;
-const MAP_WIDTH = 20;
-const MAP_HEIGHT = 12;
+const TILE_SIZE = 40;
+const MAP_WIDTH = 24;
+const MAP_HEIGHT = 14;
 
-// Map tiles: 0 = grass, 1 = water, 2 = sand/shore, 3 = flowers, 4 = path
+// Map tiles: 0=grass, 1=water, 2=sand, 3=flowers, 4=path, 5=tree, 6=rock, 7=bush, 8=dock, 9=tall grass, 10=lily pad water
 const MAP_DATA = [
-  [0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 0, 3, 0, 0, 0, 0, 3, 0, 0, 0],
-  [0, 3, 0, 0, 4, 4, 4, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 0, 3, 0],
-  [0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  [3, 0, 0, 0, 4, 0, 0, 3, 0, 0, 0, 0, 3, 0, 0, 0, 3, 0, 0, 3],
-  [0, 0, 0, 0, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
-  [0, 0, 3, 0, 0, 0, 0, 0, 4, 0, 0, 3, 0, 0, 0, 3, 0, 0, 0, 0],
-  [0, 0, 0, 0, 0, 0, 0, 0, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 3, 0],
-  [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
-  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [5, 0, 0, 3, 0, 5, 0, 0, 3, 0, 0, 5, 0, 3, 0, 0, 0, 5, 0, 0, 3, 0, 0, 5],
+  [0, 7, 0, 0, 0, 0, 9, 0, 0, 0, 7, 0, 0, 0, 9, 0, 0, 0, 0, 7, 0, 0, 9, 0],
+  [0, 0, 6, 0, 4, 4, 4, 0, 0, 3, 0, 0, 6, 0, 0, 4, 4, 4, 0, 0, 0, 6, 0, 0],
+  [3, 0, 0, 0, 4, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 3, 0, 0, 0, 3],
+  [5, 0, 9, 0, 4, 0, 0, 0, 7, 0, 3, 0, 9, 0, 0, 4, 0, 0, 7, 0, 0, 9, 0, 5],
+  [0, 0, 0, 0, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 4, 0, 0, 0, 0, 0, 0, 0, 0],
+  [0, 7, 0, 3, 0, 0, 0, 0, 0, 0, 4, 0, 0, 0, 0, 0, 0, 3, 0, 7, 0, 3, 0, 0],
+  [6, 0, 0, 0, 9, 0, 0, 3, 0, 0, 4, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 6],
+  [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 8, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
+  [1, 1, 1, 1,10, 1, 1, 1, 1, 1, 8, 1, 1, 1,10, 1, 1, 1, 1, 1,10, 1, 1, 1],
+  [1, 1,10, 1, 1, 1, 1,10, 1, 1, 8, 1, 1, 1, 1, 1, 1,10, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 1],
+  [1, 1, 1,10, 1, 1, 1, 1, 1,10, 1, 1, 1, 1,10, 1, 1, 1, 1, 1, 1,10, 1, 1],
+  [1, 1, 1, 1, 1,10, 1, 1, 1, 1, 1, 1,10, 1, 1, 1, 1,10, 1, 1, 1, 1, 1, 1],
 ];
 
 // Check if a tile is walkable
 const isWalkable = (x, y) => {
   if (x < 0 || x >= MAP_WIDTH || y < 0 || y >= MAP_HEIGHT) return false;
   const tile = MAP_DATA[y]?.[x];
-  return tile !== 1; // Can't walk on water
+  // Can't walk on water (1, 10), trees (5), or rocks (6)
+  return ![1, 5, 6, 10].includes(tile);
 };
 
-// Check if player is at water's edge (adjacent to water)
+// Check if player is at water's edge (adjacent to water or on dock)
 const isAtWaterEdge = (x, y, direction) => {
+  const currentTile = MAP_DATA[y]?.[x];
+  // If on dock, can fish in any direction towards water
+  if (currentTile === 8) {
+    let checkX = x;
+    let checkY = y;
+    switch (direction) {
+      case DIRECTIONS.DOWN: checkY += 1; break;
+      case DIRECTIONS.UP: checkY -= 1; break;
+      case DIRECTIONS.LEFT: checkX -= 1; break;
+      case DIRECTIONS.RIGHT: checkX += 1; break;
+      default: break;
+    }
+    const targetTile = MAP_DATA[checkY]?.[checkX];
+    return [1, 10].includes(targetTile); // water or lily pad
+  }
+  
   let checkX = x;
   let checkY = y;
   
@@ -82,7 +109,8 @@ const isAtWaterEdge = (x, y, direction) => {
   }
   
   if (checkX < 0 || checkX >= MAP_WIDTH || checkY < 0 || checkY >= MAP_HEIGHT) return false;
-  return MAP_DATA[checkY]?.[checkX] === 1;
+  const targetTile = MAP_DATA[checkY]?.[checkX];
+  return [1, 10].includes(targetTile); // water or lily pad water
 };
 
 const FishingPage = () => {
@@ -92,8 +120,8 @@ const FishingPage = () => {
   const gameLoopRef = useRef(null);
   const keysPressed = useRef(new Set());
   
-  // Player state
-  const [playerPos, setPlayerPos] = useState({ x: 10, y: 5 });
+  // Player state - start on the dock facing water
+  const [playerPos, setPlayerPos] = useState({ x: 10, y: 8 });
   const [playerDir, setPlayerDir] = useState(DIRECTIONS.DOWN);
   const [isMoving, setIsMoving] = useState(false);
   const [animFrame, setAnimFrame] = useState(0);
@@ -128,6 +156,17 @@ const FishingPage = () => {
   const [isAutofishing, setIsAutofishing] = useState(false);
   const [autofishLog, setAutofishLog] = useState([]);
   const autofishIntervalRef = useRef(null);
+  
+  // Stardew-style ambient effects
+  const [timeOfDay, setTimeOfDay] = useState(TIME_PERIODS.DAY);
+  const [ambientParticles, setAmbientParticles] = useState([]);
+  const [jumpingFish, setJumpingFish] = useState([]);
+  const [birds, setBirds] = useState([]);
+  const [clouds, setClouds] = useState([
+    { id: 1, x: 10, speed: 0.3 },
+    { id: 2, x: 40, speed: 0.2 },
+    { id: 3, x: 70, speed: 0.4 },
+  ]);
   
   // Fetch fish info and rank data on mount
   useEffect(() => {
@@ -240,6 +279,104 @@ const FishingPage = () => {
     
     return () => clearTimeout(timer);
   }, [autofishLog]);
+  
+  // Day/Night cycle - changes every 2 minutes
+  useEffect(() => {
+    const cycleTime = 120000; // 2 minutes per period
+    const periods = [TIME_PERIODS.DAWN, TIME_PERIODS.DAY, TIME_PERIODS.DAY, TIME_PERIODS.DUSK, TIME_PERIODS.NIGHT, TIME_PERIODS.NIGHT];
+    let periodIndex = 1; // Start at day
+    
+    const interval = setInterval(() => {
+      periodIndex = (periodIndex + 1) % periods.length;
+      setTimeOfDay(periods[periodIndex]);
+    }, cycleTime);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  // Ambient particles (fireflies at night, butterflies during day)
+  useEffect(() => {
+    const createParticle = () => {
+      const isNight = timeOfDay === TIME_PERIODS.NIGHT || timeOfDay === TIME_PERIODS.DUSK;
+      return {
+        id: Date.now() + Math.random(),
+        x: Math.random() * 100,
+        y: Math.random() * 60,
+        type: isNight ? 'firefly' : 'butterfly',
+        duration: 4 + Math.random() * 4
+      };
+    };
+    
+    // Spawn particles periodically
+    const interval = setInterval(() => {
+      if (ambientParticles.length < 8) {
+        setAmbientParticles(prev => [...prev, createParticle()]);
+      }
+    }, 2000);
+    
+    // Clean up old particles
+    const cleanup = setInterval(() => {
+      setAmbientParticles(prev => prev.slice(-6));
+    }, 5000);
+    
+    return () => {
+      clearInterval(interval);
+      clearInterval(cleanup);
+    };
+  }, [timeOfDay, ambientParticles.length]);
+  
+  // Fish jumping out of water randomly
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() > 0.6 && jumpingFish.length < 3) {
+        const waterStartY = 9; // Row where water starts
+        setJumpingFish(prev => [...prev, {
+          id: Date.now(),
+          x: 4 + Math.random() * (MAP_WIDTH - 8),
+          y: waterStartY + Math.random() * 3,
+        }]);
+        
+        // Remove after animation
+        setTimeout(() => {
+          setJumpingFish(prev => prev.slice(1));
+        }, 1500);
+      }
+    }, 3000);
+    
+    return () => clearInterval(interval);
+  }, [jumpingFish.length]);
+  
+  // Birds flying across
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (Math.random() > 0.7 && birds.length < 2) {
+        setBirds(prev => [...prev, {
+          id: Date.now(),
+          startX: -10,
+          y: 5 + Math.random() * 20,
+          speed: 2 + Math.random() * 2
+        }]);
+        
+        setTimeout(() => {
+          setBirds(prev => prev.slice(1));
+        }, 8000);
+      }
+    }, 5000);
+    
+    return () => clearInterval(interval);
+  }, [birds.length]);
+  
+  // Cloud movement
+  useEffect(() => {
+    const interval = setInterval(() => {
+      setClouds(prev => prev.map(cloud => ({
+        ...cloud,
+        x: cloud.x > 110 ? -20 : cloud.x + cloud.speed
+      })));
+    }, 100);
+    
+    return () => clearInterval(interval);
+  }, []);
   
   // Toggle autofishing
   const toggleAutofish = useCallback(() => {
@@ -497,13 +634,20 @@ const FishingPage = () => {
   
   // Render tile
   const renderTile = (tileType, x, y) => {
+    const style = { left: x * TILE_SIZE, top: y * TILE_SIZE };
     switch (tileType) {
-      case 0: return <GrassTile key={`${x}-${y}`} style={{ left: x * TILE_SIZE, top: y * TILE_SIZE }} />;
-      case 1: return <WaterTile key={`${x}-${y}`} style={{ left: x * TILE_SIZE, top: y * TILE_SIZE }} $animOffset={(x + y) % 3} />;
-      case 2: return <SandTile key={`${x}-${y}`} style={{ left: x * TILE_SIZE, top: y * TILE_SIZE }} />;
-      case 3: return <FlowerTile key={`${x}-${y}`} style={{ left: x * TILE_SIZE, top: y * TILE_SIZE }} />;
-      case 4: return <PathTile key={`${x}-${y}`} style={{ left: x * TILE_SIZE, top: y * TILE_SIZE }} />;
-      default: return <GrassTile key={`${x}-${y}`} style={{ left: x * TILE_SIZE, top: y * TILE_SIZE }} />;
+      case 0: return <GrassTile key={`${x}-${y}`} style={style} $variant={(x + y) % 3} />;
+      case 1: return <WaterTile key={`${x}-${y}`} style={style} $animOffset={(x + y) % 4} $timeOfDay={timeOfDay} />;
+      case 2: return <SandTile key={`${x}-${y}`} style={style} $variant={(x * y) % 2} />;
+      case 3: return <FlowerTile key={`${x}-${y}`} style={style} $flowerType={(x + y) % 4} />;
+      case 4: return <PathTile key={`${x}-${y}`} style={style} $variant={(x + y) % 2} />;
+      case 5: return <TreeTile key={`${x}-${y}`} style={style} $treeType={(x * y) % 3} />;
+      case 6: return <RockTile key={`${x}-${y}`} style={style} $variant={(x + y) % 2} />;
+      case 7: return <BushTile key={`${x}-${y}`} style={style} $variant={x % 2} />;
+      case 8: return <DockTile key={`${x}-${y}`} style={style} />;
+      case 9: return <TallGrassTile key={`${x}-${y}`} style={style} />;
+      case 10: return <LilyPadTile key={`${x}-${y}`} style={style} $animOffset={(x + y) % 3} $timeOfDay={timeOfDay} />;
+      default: return <GrassTile key={`${x}-${y}`} style={style} $variant={0} />;
     }
   };
   
@@ -613,9 +757,36 @@ const FishingPage = () => {
         )}
       </StatsBar>
       
+      {/* Ambient Sky Layer */}
+      <SkyLayer $timeOfDay={timeOfDay}>
+        {/* Clouds */}
+        {clouds.map(cloud => (
+          <Cloud key={cloud.id} style={{ left: `${cloud.x}%`, top: `${5 + cloud.id * 8}%` }} $timeOfDay={timeOfDay} />
+        ))}
+        
+        {/* Sun/Moon */}
+        <CelestialBody $timeOfDay={timeOfDay} />
+        
+        {/* Birds */}
+        {birds.map(bird => (
+          <Bird key={bird.id} $startX={bird.startX} $y={bird.y} $speed={bird.speed} />
+        ))}
+        
+        {/* Ambient Particles */}
+        {ambientParticles.map(particle => (
+          <AmbientParticle 
+            key={particle.id} 
+            $x={particle.x} 
+            $y={particle.y} 
+            $type={particle.type}
+            $duration={particle.duration}
+          />
+        ))}
+      </SkyLayer>
+      
       {/* Game World */}
-      <GameWorld>
-        <GameViewport>
+      <GameWorld $timeOfDay={timeOfDay}>
+        <GameViewport $timeOfDay={timeOfDay}>
           <TileMap style={{ width: MAP_WIDTH * TILE_SIZE, height: MAP_HEIGHT * TILE_SIZE }}>
             {/* Render tiles */}
             {MAP_DATA.map((row, y) =>
@@ -663,8 +834,18 @@ const FishingPage = () => {
               $isFishing={isFishing}
             >
               <PlayerSprite $direction={playerDir} $animFrame={animFrame} $isMoving={isMoving} $isFishing={isFishing} />
+              <PlayerBody $isFishing={isFishing} />
+              <PlayerLegs />
               {isFishing && <FishingRodSprite $direction={playerDir} $state={gameState} />}
             </Player>
+            
+            {/* Jumping fish in water */}
+            {jumpingFish.map(fish => (
+              <JumpingFishSprite 
+                key={fish.id}
+                style={{ left: fish.x * TILE_SIZE, top: fish.y * TILE_SIZE }}
+              />
+            ))}
             
             {/* Fish splash effect */}
             <AnimatePresence>
@@ -945,8 +1126,15 @@ const FishingPage = () => {
 // ==================== ANIMATIONS ====================
 
 const waterShimmer = keyframes`
-  0%, 100% { background-position: 0% 0%; }
-  50% { background-position: 100% 100%; }
+  0%, 100% { background-position: 0% 0%; opacity: 0.9; }
+  50% { background-position: 100% 100%; opacity: 1; }
+`;
+
+const waterWave = keyframes`
+  0%, 100% { transform: translateX(0) scaleY(1); }
+  25% { transform: translateX(2px) scaleY(0.98); }
+  50% { transform: translateX(0) scaleY(1.02); }
+  75% { transform: translateX(-2px) scaleY(0.99); }
 `;
 
 const bobberFloat = keyframes`
@@ -972,11 +1160,103 @@ const pulse = keyframes`
 `;
 
 const flowerSway = keyframes`
-  0%, 100% { transform: rotate(-2deg); }
-  50% { transform: rotate(2deg); }
+  0%, 100% { transform: rotate(-3deg) translateY(0); }
+  50% { transform: rotate(3deg) translateY(-1px); }
+`;
+
+const treeSway = keyframes`
+  0%, 100% { transform: rotate(-1deg) translateX(0); }
+  50% { transform: rotate(1deg) translateX(1px); }
+`;
+
+const tallGrassSway = keyframes`
+  0%, 100% { transform: skewX(-2deg); }
+  50% { transform: skewX(2deg); }
+`;
+
+const fireflyGlow = keyframes`
+  0%, 100% { opacity: 0.3; box-shadow: 0 0 4px 2px rgba(255, 255, 150, 0.3); }
+  50% { opacity: 1; box-shadow: 0 0 12px 6px rgba(255, 255, 150, 0.8); }
+`;
+
+const butterflyFloat = keyframes`
+  0%, 100% { transform: translateY(0) rotate(-5deg); }
+  25% { transform: translateY(-8px) rotate(5deg); }
+  50% { transform: translateY(-4px) rotate(-3deg); }
+  75% { transform: translateY(-10px) rotate(3deg); }
+`;
+
+const fishJump = keyframes`
+  0% { transform: translateY(0) rotate(0deg) scale(1); opacity: 1; }
+  30% { transform: translateY(-30px) rotate(-20deg) scale(1.1); opacity: 1; }
+  50% { transform: translateY(-40px) rotate(0deg) scale(1); opacity: 1; }
+  70% { transform: translateY(-30px) rotate(20deg) scale(1.1); opacity: 1; }
+  100% { transform: translateY(0) rotate(0deg) scale(1); opacity: 0; }
+`;
+
+const birdFly = keyframes`
+  0% { transform: translateX(0) translateY(0); }
+  25% { transform: translateX(25vw) translateY(-10px); }
+  50% { transform: translateX(50vw) translateY(5px); }
+  75% { transform: translateX(75vw) translateY(-5px); }
+  100% { transform: translateX(120vw) translateY(0); }
+`;
+
+const cloudDrift = keyframes`
+  0%, 100% { opacity: 0.7; }
+  50% { opacity: 0.9; }
+`;
+
+const sunPulse = keyframes`
+  0%, 100% { box-shadow: 0 0 40px 15px rgba(255, 200, 100, 0.4); }
+  50% { box-shadow: 0 0 60px 25px rgba(255, 200, 100, 0.6); }
+`;
+
+const moonGlow = keyframes`
+  0%, 100% { box-shadow: 0 0 30px 10px rgba(200, 220, 255, 0.3); }
+  50% { box-shadow: 0 0 50px 20px rgba(200, 220, 255, 0.5); }
+`;
+
+const sparkle = keyframes`
+  0%, 100% { opacity: 0; transform: scale(0); }
+  50% { opacity: 1; transform: scale(1); }
 `;
 
 // ==================== STYLED COMPONENTS ====================
+
+// Time of day color palettes (Stardew-inspired)
+const getTimeColors = (timeOfDay) => {
+  switch (timeOfDay) {
+    case TIME_PERIODS.DAWN:
+      return {
+        skyTop: '#ffb347',
+        skyBottom: '#87ceeb',
+        ambient: 'rgba(255, 180, 100, 0.15)',
+        water: '#5a9fd4'
+      };
+    case TIME_PERIODS.DUSK:
+      return {
+        skyTop: '#ff6b6b',
+        skyBottom: '#4a69bd',
+        ambient: 'rgba(255, 100, 100, 0.2)',
+        water: '#3d5a80'
+      };
+    case TIME_PERIODS.NIGHT:
+      return {
+        skyTop: '#1a1a2e',
+        skyBottom: '#16213e',
+        ambient: 'rgba(30, 40, 80, 0.4)',
+        water: '#1e3a5f'
+      };
+    default: // DAY
+      return {
+        skyTop: '#87CEEB',
+        skyBottom: '#98D8C8',
+        ambient: 'rgba(255, 255, 255, 0)',
+        water: '#4a90c2'
+      };
+  }
+};
 
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -986,6 +1266,145 @@ const PageContainer = styled.div`
   font-family: ${theme.fonts.primary};
   user-select: none;
   overflow: hidden;
+  position: relative;
+`;
+
+const SkyLayer = styled.div`
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background: ${props => {
+    const colors = getTimeColors(props.$timeOfDay);
+    return `linear-gradient(180deg, ${colors.skyTop} 0%, ${colors.skyBottom} 100%)`;
+  }};
+  transition: background 3s ease;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: ${props => getTimeColors(props.$timeOfDay).ambient};
+    transition: background 3s ease;
+  }
+`;
+
+const Cloud = styled.div`
+  position: absolute;
+  width: 80px;
+  height: 30px;
+  background: ${props => props.$timeOfDay === TIME_PERIODS.NIGHT 
+    ? 'rgba(100, 120, 150, 0.4)' 
+    : 'rgba(255, 255, 255, 0.9)'};
+  border-radius: 20px;
+  animation: ${cloudDrift} 4s ease-in-out infinite;
+  transition: background 3s ease;
+  
+  &::before, &::after {
+    content: '';
+    position: absolute;
+    background: inherit;
+    border-radius: 50%;
+  }
+  
+  &::before {
+    width: 35px;
+    height: 35px;
+    top: -15px;
+    left: 15px;
+  }
+  
+  &::after {
+    width: 45px;
+    height: 40px;
+    top: -20px;
+    left: 35px;
+  }
+`;
+
+const CelestialBody = styled.div`
+  position: absolute;
+  top: 8%;
+  right: 15%;
+  width: ${props => props.$timeOfDay === TIME_PERIODS.NIGHT ? '40px' : '50px'};
+  height: ${props => props.$timeOfDay === TIME_PERIODS.NIGHT ? '40px' : '50px'};
+  border-radius: 50%;
+  background: ${props => {
+    switch (props.$timeOfDay) {
+      case TIME_PERIODS.NIGHT: return 'linear-gradient(135deg, #f5f5f5, #e0e0e0)';
+      case TIME_PERIODS.DUSK: return 'linear-gradient(135deg, #ff8c42, #ff6b35)';
+      case TIME_PERIODS.DAWN: return 'linear-gradient(135deg, #ffcc80, #ffab40)';
+      default: return 'linear-gradient(135deg, #fff9c4, #ffee58)';
+    }
+  }};
+  animation: ${props => props.$timeOfDay === TIME_PERIODS.NIGHT ? moonGlow : sunPulse} 4s ease-in-out infinite;
+  transition: all 3s ease;
+  
+  ${props => props.$timeOfDay === TIME_PERIODS.NIGHT && css`
+    &::before {
+      content: '';
+      position: absolute;
+      top: 5px;
+      left: 8px;
+      width: 8px;
+      height: 8px;
+      background: rgba(0, 0, 0, 0.1);
+      border-radius: 50%;
+    }
+    &::after {
+      content: '';
+      position: absolute;
+      top: 18px;
+      right: 10px;
+      width: 5px;
+      height: 5px;
+      background: rgba(0, 0, 0, 0.08);
+      border-radius: 50%;
+    }
+  `}
+`;
+
+const Bird = styled.div`
+  position: absolute;
+  top: ${props => props.$y}%;
+  font-size: 14px;
+  animation: ${birdFly} ${props => 8 / props.$speed}s linear forwards;
+  
+  &::before {
+    content: '🐦';
+  }
+`;
+
+const AmbientParticle = styled.div`
+  position: absolute;
+  left: ${props => props.$x}%;
+  top: ${props => props.$y}%;
+  width: ${props => props.$type === 'firefly' ? '6px' : '10px'};
+  height: ${props => props.$type === 'firefly' ? '6px' : '10px'};
+  border-radius: 50%;
+  
+  ${props => props.$type === 'firefly' ? css`
+    background: rgba(255, 255, 150, 0.9);
+    animation: ${fireflyGlow} ${props.$duration}s ease-in-out infinite;
+  ` : css`
+    &::before {
+      content: '🦋';
+      font-size: 12px;
+    }
+    animation: ${butterflyFloat} ${props.$duration}s ease-in-out infinite;
+  `}
+`;
+
+const JumpingFishSprite = styled.div`
+  position: absolute;
+  font-size: 20px;
+  z-index: 35;
+  animation: ${fishJump} 1.5s ease-out forwards;
+  pointer-events: none;
+  
+  &::before {
+    content: '🐟';
+  }
 `;
 
 const Header = styled.header`
@@ -993,9 +1412,21 @@ const Header = styled.header`
   align-items: center;
   justify-content: space-between;
   padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: rgba(0, 0, 0, 0.2);
-  backdrop-filter: blur(10px);
+  background: linear-gradient(180deg, rgba(101, 67, 33, 0.9) 0%, rgba(80, 50, 25, 0.85) 100%);
+  border-bottom: 3px solid rgba(60, 40, 20, 0.8);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
   z-index: 100;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: -6px;
+    left: 0;
+    right: 0;
+    height: 3px;
+    background: rgba(139, 90, 43, 0.5);
+  }
 `;
 
 const BackButton = styled.button`
@@ -1004,16 +1435,25 @@ const BackButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  border-radius: 10px;
-  color: white;
+  background: linear-gradient(180deg, #8b6914 0%, #6d5410 100%);
+  border: 2px solid #5d4410;
+  border-radius: 8px;
+  color: #fff8e1;
   font-size: 20px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.2),
+    0 2px 4px rgba(0,0,0,0.3);
   
   &:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: linear-gradient(180deg, #a67c20 0%, #8b6914 100%);
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(1px);
+    box-shadow: inset 0 1px 3px rgba(0,0,0,0.3);
   }
 `;
 
@@ -1022,10 +1462,13 @@ const HeaderTitle = styled.h1`
   align-items: center;
   gap: 8px;
   font-size: 18px;
-  font-weight: 600;
-  color: white;
+  font-weight: 700;
+  color: #fff8e1;
   margin: 0;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  text-shadow: 
+    1px 1px 0 rgba(0,0,0,0.5),
+    2px 2px 4px rgba(0,0,0,0.3);
+  letter-spacing: 0.5px;
 `;
 
 const HeaderRight = styled.div`
@@ -1039,11 +1482,16 @@ const PointsDisplay = styled.div`
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  border-radius: 100px;
-  font-weight: 600;
+  background: linear-gradient(180deg, #ffc107 0%, #ff9800 100%);
+  border: 2px solid #e65100;
+  border-radius: 20px;
+  font-weight: 700;
   font-size: 13px;
-  color: white;
+  color: #4e342e;
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.4),
+    0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 1px 0 rgba(255,255,255,0.3);
 `;
 
 const HelpButton = styled.button`
@@ -1052,15 +1500,20 @@ const HelpButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(255, 255, 255, 0.2);
-  border: none;
-  border-radius: 10px;
-  color: white;
+  background: linear-gradient(180deg, #8b6914 0%, #6d5410 100%);
+  border: 2px solid #5d4410;
+  border-radius: 8px;
+  color: #fff8e1;
   font-size: 20px;
   cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.2),
+    0 2px 4px rgba(0,0,0,0.3);
   
   &:hover {
-    background: rgba(255, 255, 255, 0.3);
+    background: linear-gradient(180deg, #a67c20 0%, #8b6914 100%);
+    transform: translateY(-1px);
   }
 `;
 
@@ -1070,20 +1523,24 @@ const RankBadge = styled.button`
   gap: 4px;
   padding: 6px 12px;
   background: ${props => props.$canAutofish 
-    ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 193, 7, 0.2))' 
-    : 'rgba(255, 255, 255, 0.15)'};
-  border: 1px solid ${props => props.$canAutofish ? 'rgba(255, 215, 0, 0.5)' : 'rgba(255, 255, 255, 0.2)'};
-  border-radius: 100px;
-  color: white;
-  font-weight: 600;
+    ? 'linear-gradient(180deg, #ffd700 0%, #ffa000 100%)' 
+    : 'linear-gradient(180deg, #8b6914 0%, #6d5410 100%)'};
+  border: 2px solid ${props => props.$canAutofish ? '#e65100' : '#5d4410'};
+  border-radius: 20px;
+  color: ${props => props.$canAutofish ? '#4e342e' : '#fff8e1'};
+  font-weight: 700;
   font-size: 13px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.3),
+    0 2px 4px rgba(0,0,0,0.3);
   
   &:hover {
-    background: ${props => props.$canAutofish 
-      ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.4), rgba(255, 193, 7, 0.3))' 
-      : 'rgba(255, 255, 255, 0.25)'};
+    transform: translateY(-1px);
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.3),
+      0 4px 8px rgba(0,0,0,0.3);
   }
 `;
 
@@ -1099,19 +1556,20 @@ const AutofishButton = styled.button`
   align-items: center;
   justify-content: center;
   background: ${props => props.$active 
-    ? 'linear-gradient(135deg, #30d158, #34c759)' 
-    : 'rgba(255, 255, 255, 0.2)'};
-  border: 2px solid ${props => props.$active ? '#30d158' : 'transparent'};
-  border-radius: 10px;
-  color: white;
+    ? 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)' 
+    : 'linear-gradient(180deg, #8b6914 0%, #6d5410 100%)'};
+  border: 2px solid ${props => props.$active ? '#2e7d32' : '#5d4410'};
+  border-radius: 8px;
+  color: ${props => props.$active ? '#e8f5e9' : '#fff8e1'};
   font-size: 20px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.2),
+    0 2px 4px rgba(0,0,0,0.3);
   
   &:hover {
-    background: ${props => props.$active 
-      ? 'linear-gradient(135deg, #28c050, #2db54e)' 
-      : 'rgba(255, 255, 255, 0.3)'};
+    transform: translateY(-1px);
   }
   
   svg.spinning {
@@ -1119,7 +1577,7 @@ const AutofishButton = styled.button`
   }
 `;
 
-// Apple-like notification bubbles in bottom right
+// Stardew-style notification bubbles in bottom right
 const AutofishBubblesContainer = styled.div`
   position: fixed;
   bottom: 140px;
@@ -1144,47 +1602,53 @@ const AutofishBubble = styled(motion.div)`
   gap: 12px;
   padding: 12px 16px;
   min-width: 180px;
-  max-width: 240px;
+  max-width: 260px;
   background: ${props => {
-    if (!props.$success) return 'rgba(142, 142, 147, 0.95)';
+    if (!props.$success) return 'linear-gradient(180deg, #78909c 0%, #546e7a 100%)';
     switch (props.$rarity) {
-      case 'legendary': return 'linear-gradient(135deg, rgba(255, 159, 10, 0.95), rgba(255, 149, 0, 0.9))';
-      case 'epic': return 'linear-gradient(135deg, rgba(191, 90, 242, 0.95), rgba(175, 82, 222, 0.9))';
-      case 'rare': return 'linear-gradient(135deg, rgba(10, 132, 255, 0.95), rgba(0, 122, 255, 0.9))';
-      case 'uncommon': return 'linear-gradient(135deg, rgba(48, 209, 88, 0.95), rgba(52, 199, 89, 0.9))';
-      default: return 'rgba(99, 99, 102, 0.95)';
+      case 'legendary': return 'linear-gradient(180deg, #ffc107 0%, #ff9800 100%)';
+      case 'epic': return 'linear-gradient(180deg, #ce93d8 0%, #ab47bc 100%)';
+      case 'rare': return 'linear-gradient(180deg, #64b5f6 0%, #1e88e5 100%)';
+      case 'uncommon': return 'linear-gradient(180deg, #81c784 0%, #43a047 100%)';
+      default: return 'linear-gradient(180deg, #a1887f 0%, #795548 100%)';
     }
   }};
-  border-radius: 16px;
+  border-radius: 12px;
+  border: 3px solid ${props => {
+    if (!props.$success) return '#37474f';
+    switch (props.$rarity) {
+      case 'legendary': return '#e65100';
+      case 'epic': return '#7b1fa2';
+      case 'rare': return '#1565c0';
+      case 'uncommon': return '#2e7d32';
+      default: return '#5d4037';
+    }
+  }};
   box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.15),
-    0 1px 3px rgba(0, 0, 0, 0.1),
-    inset 0 1px 0 rgba(255, 255, 255, 0.15);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255, 255, 255, 0.18);
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
   pointer-events: auto;
 `;
 
 const BubbleEmoji = styled.div`
-  font-size: 28px;
+  font-size: 32px;
   line-height: 1;
-  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.3));
 `;
 
 const BubbleContent = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 2px;
+  gap: 3px;
   flex: 1;
   min-width: 0;
 `;
 
 const BubbleFishName = styled.div`
   font-size: 14px;
-  font-weight: 600;
+  font-weight: 700;
   color: white;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -1193,8 +1657,8 @@ const BubbleFishName = styled.div`
 const BubbleReward = styled.div`
   font-size: 13px;
   font-weight: 700;
-  color: ${props => props.$success ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.7)'};
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
+  color: ${props => props.$success ? '#fff9c4' : 'rgba(255, 255, 255, 0.7)'};
+  text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const StatsBar = styled.div`
@@ -1203,7 +1667,8 @@ const StatsBar = styled.div`
   justify-content: center;
   gap: ${theme.spacing.md};
   padding: ${theme.spacing.xs} ${theme.spacing.md};
-  background: rgba(0, 0, 0, 0.15);
+  background: linear-gradient(180deg, rgba(80, 50, 25, 0.85) 0%, rgba(60, 35, 15, 0.8) 100%);
+  border-bottom: 2px solid rgba(40, 25, 10, 0.6);
   z-index: 100;
 `;
 
@@ -1212,26 +1677,34 @@ const StatItem = styled.div`
   flex-direction: column;
   align-items: center;
   gap: 1px;
+  padding: 4px 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 8px;
+  border: 1px solid rgba(139, 90, 43, 0.4);
 `;
 
 const StatValue = styled.span`
   font-size: 16px;
   font-weight: 700;
-  color: white;
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  color: #fff8e1;
+  text-shadow: 
+    1px 1px 0 rgba(0,0,0,0.5),
+    0 0 8px rgba(255,200,100,0.3);
 `;
 
 const StatLabel = styled.span`
-  font-size: 10px;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: 9px;
+  color: rgba(255, 248, 225, 0.7);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-weight: 500;
 `;
 
 const StatDivider = styled.div`
-  width: 1px;
-  height: 24px;
-  background: rgba(255, 255, 255, 0.3);
+  width: 2px;
+  height: 28px;
+  background: linear-gradient(180deg, transparent, rgba(139, 90, 43, 0.6), transparent);
+  border-radius: 1px;
 `;
 
 const GameWorld = styled.div`
@@ -1242,22 +1715,51 @@ const GameWorld = styled.div`
   justify-content: center;
   position: relative;
   padding: ${theme.spacing.md};
+  z-index: 1;
+  
+  /* Time of day overlay */
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: ${props => getTimeColors(props.$timeOfDay).ambient};
+    transition: background 3s ease;
+    z-index: 100;
+  }
 `;
 
 const GameViewport = styled.div`
   position: relative;
-  border-radius: 16px;
+  border-radius: 12px;
   overflow: hidden;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3), inset 0 0 0 4px rgba(139, 90, 43, 0.8);
+  box-shadow: 
+    0 4px 20px rgba(0, 0, 0, 0.3),
+    0 8px 40px rgba(0, 0, 0, 0.2),
+    inset 0 0 0 3px rgba(101, 67, 33, 0.9),
+    inset 0 0 0 6px rgba(139, 90, 43, 0.6);
   background: #4a7c59;
+  
+  /* Pixel art aesthetic border */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border: 2px solid rgba(0, 0, 0, 0.2);
+    border-radius: 12px;
+    pointer-events: none;
+    z-index: 60;
+  }
 `;
 
 const TileMap = styled.div`
   position: relative;
   image-rendering: pixelated;
+  image-rendering: -moz-crisp-edges;
+  image-rendering: crisp-edges;
 `;
 
-// Tile styles
+// Tile styles - Stardew Valley inspired
 const BaseTile = styled.div`
   position: absolute;
   width: ${TILE_SIZE}px;
@@ -1265,7 +1767,140 @@ const BaseTile = styled.div`
 `;
 
 const GrassTile = styled(BaseTile)`
-  background: linear-gradient(135deg, #7cb342 0%, #689f38 50%, #558b2f 100%);
+  background: ${props => {
+    const variants = [
+      'linear-gradient(135deg, #6b8e23 0%, #556b2f 50%, #4a5f2b 100%)',
+      'linear-gradient(135deg, #7cb342 0%, #689f38 50%, #5c8a30 100%)',
+      'linear-gradient(135deg, #8bc34a 0%, #7cb342 50%, #6b9b3a 100%)'
+    ];
+    return variants[props.$variant || 0];
+  }};
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: ${props => props.$variant === 1 
+      ? 'radial-gradient(circle at 25% 75%, rgba(100, 140, 50, 0.4) 0%, transparent 30%)'
+      : 'none'};
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(circle at 20% 20%, rgba(255,255,255,0.08) 0%, transparent 40%),
+      radial-gradient(circle at 80% 70%, rgba(0,0,0,0.05) 0%, transparent 30%);
+  }
+`;
+
+const WaterTile = styled(BaseTile)`
+  background: ${props => {
+    const colors = getTimeColors(props.$timeOfDay);
+    return `linear-gradient(180deg, ${colors.water} 0%, ${colors.water}dd 100%)`;
+  }};
+  animation: ${waterWave} ${props => 2.5 + props.$animOffset * 0.3}s ease-in-out infinite;
+  transition: background 3s ease;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(90deg, 
+      transparent 0%, 
+      rgba(255,255,255,0.1) 30%,
+      rgba(255,255,255,0.2) 50%,
+      rgba(255,255,255,0.1) 70%,
+      transparent 100%
+    );
+    animation: ${waterShimmer} ${props => 4 + props.$animOffset}s ease-in-out infinite;
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(255,255,255,0.6);
+    border-radius: 50%;
+    top: ${props => 20 + (props.$animOffset * 25)}%;
+    left: ${props => 30 + (props.$animOffset * 20)}%;
+    animation: ${sparkle} ${props => 2 + props.$animOffset}s ease-in-out infinite;
+  }
+`;
+
+const LilyPadTile = styled(BaseTile)`
+  background: ${props => {
+    const colors = getTimeColors(props.$timeOfDay);
+    return `linear-gradient(180deg, ${colors.water} 0%, ${colors.water}dd 100%)`;
+  }};
+  animation: ${waterWave} ${props => 2.5 + props.$animOffset * 0.3}s ease-in-out infinite;
+  transition: background 3s ease;
+  
+  &::before {
+    content: '🍃';
+    position: absolute;
+    font-size: 18px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) rotate(${props => props.$animOffset * 30}deg);
+    filter: hue-rotate(-20deg) saturate(1.3);
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    width: 3px;
+    height: 3px;
+    background: rgba(255,255,255,0.5);
+    border-radius: 50%;
+    top: 20%;
+    left: 70%;
+    animation: ${sparkle} 3s ease-in-out infinite;
+  }
+`;
+
+const SandTile = styled(BaseTile)`
+  background: ${props => props.$variant 
+    ? 'linear-gradient(135deg, #e8d4a8 0%, #d4b896 50%, #c9a882 100%)'
+    : 'linear-gradient(135deg, #f0e4c8 0%, #e2d0a8 50%, #d4bc8a 100%)'};
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: ${props => props.$variant
+      ? 'radial-gradient(ellipse 8px 4px at 30% 60%, rgba(180,150,100,0.5) 0%, transparent 100%)'
+      : 'radial-gradient(ellipse 6px 3px at 70% 40%, rgba(160,130,80,0.4) 0%, transparent 100%)'};
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: 
+      radial-gradient(circle at 60% 30%, rgba(255,255,255,0.15) 0%, transparent 30%),
+      radial-gradient(circle at 20% 80%, rgba(0,0,0,0.05) 0%, transparent 20%);
+  }
+`;
+
+const FlowerTile = styled(BaseTile)`
+  background: linear-gradient(135deg, #7cb342 0%, #689f38 50%, #5c8a30 100%);
+  
+  &::before {
+    content: '${props => {
+      const flowers = ['🌸', '🌼', '🌺', '💐'];
+      return flowers[props.$flowerType || 0];
+    }}';
+    position: absolute;
+    font-size: 14px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    animation: ${flowerSway} ${props => 2 + props.$flowerType * 0.5}s ease-in-out infinite;
+    filter: drop-shadow(1px 1px 1px rgba(0,0,0,0.2));
+  }
   
   &::after {
     content: '';
@@ -1275,67 +1910,195 @@ const GrassTile = styled(BaseTile)`
   }
 `;
 
-const WaterTile = styled(BaseTile)`
-  background: linear-gradient(135deg, #1976d2 0%, #1565c0 50%, #0d47a1 100%);
-  animation: ${waterShimmer} ${props => 3 + props.$animOffset * 0.5}s ease-in-out infinite;
-  
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: 
-      radial-gradient(ellipse 30% 20% at 20% 30%, rgba(255,255,255,0.3) 0%, transparent 100%),
-      radial-gradient(ellipse 20% 15% at 70% 60%, rgba(255,255,255,0.2) 0%, transparent 100%);
-  }
-`;
-
-const SandTile = styled(BaseTile)`
-  background: linear-gradient(135deg, #fdd835 0%, #f9a825 50%, #f57f17 100%);
-  
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle at 60% 40%, rgba(255,255,255,0.2) 0%, transparent 40%);
-  }
-`;
-
-const FlowerTile = styled(BaseTile)`
-  background: linear-gradient(135deg, #7cb342 0%, #689f38 50%, #558b2f 100%);
+const PathTile = styled(BaseTile)`
+  background: ${props => props.$variant
+    ? 'linear-gradient(135deg, #8b7355 0%, #7a6548 50%, #695839 100%)'
+    : 'linear-gradient(135deg, #9c8465 0%, #8b7355 50%, #7a6548 100%)'};
   
   &::before {
-    content: '🌸';
+    content: '';
     position: absolute;
-    font-size: 16px;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    animation: ${flowerSway} 2s ease-in-out infinite;
+    top: 4px;
+    left: 4px;
+    right: 4px;
+    bottom: 4px;
+    background: rgba(0,0,0,0.08);
+    border-radius: 3px;
   }
-`;
-
-const PathTile = styled(BaseTile)`
-  background: linear-gradient(135deg, #a1887f 0%, #8d6e63 50%, #795548 100%);
   
   &::after {
     content: '';
     position: absolute;
-    inset: 4px;
-    background: rgba(0,0,0,0.1);
-    border-radius: 2px;
+    width: 4px;
+    height: 4px;
+    background: rgba(100, 80, 60, 0.4);
+    border-radius: 50%;
+    top: ${props => props.$variant ? '30%' : '60%'};
+    left: ${props => props.$variant ? '60%' : '25%'};
   }
 `;
 
-// Player
+const TreeTile = styled(BaseTile)`
+  background: linear-gradient(135deg, #6b8e23 0%, #556b2f 50%, #4a5f2b 100%);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 8px;
+    height: 16px;
+    background: linear-gradient(90deg, #5d4037, #4e342e, #5d4037);
+    border-radius: 2px;
+  }
+  
+  &::after {
+    content: '${props => {
+      const trees = ['🌲', '🌳', '🌴'];
+      return trees[props.$treeType || 0];
+    }}';
+    position: absolute;
+    font-size: 28px;
+    bottom: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    animation: ${treeSway} 4s ease-in-out infinite;
+    filter: drop-shadow(2px 4px 3px rgba(0,0,0,0.3));
+  }
+`;
+
+const RockTile = styled(BaseTile)`
+  background: linear-gradient(135deg, #6b8e23 0%, #556b2f 50%, #4a5f2b 100%);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: 4px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: ${props => props.$variant ? '28px' : '24px'};
+    height: ${props => props.$variant ? '20px' : '18px'};
+    background: linear-gradient(135deg, #9e9e9e 0%, #757575 50%, #616161 100%);
+    border-radius: 40% 50% 45% 55%;
+    box-shadow: 
+      inset -3px -3px 6px rgba(0,0,0,0.3),
+      inset 2px 2px 4px rgba(255,255,255,0.2),
+      2px 2px 4px rgba(0,0,0,0.3);
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    bottom: 14px;
+    left: ${props => props.$variant ? '55%' : '45%'};
+    width: 6px;
+    height: 4px;
+    background: rgba(255,255,255,0.3);
+    border-radius: 50%;
+  }
+`;
+
+const BushTile = styled(BaseTile)`
+  background: linear-gradient(135deg, #7cb342 0%, #689f38 50%, #5c8a30 100%);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    bottom: 2px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 30px;
+    height: 22px;
+    background: linear-gradient(135deg, #4a7c59 0%, #3d6b4a 50%, #2e5739 100%);
+    border-radius: 50% 50% 45% 45%;
+    box-shadow: 
+      inset 2px 2px 6px rgba(80,140,80,0.5),
+      inset -2px -2px 6px rgba(0,0,0,0.2),
+      2px 2px 4px rgba(0,0,0,0.2);
+  }
+  
+  &::after {
+    content: '${props => props.$variant ? '🫐' : ''}';
+    position: absolute;
+    font-size: 8px;
+    bottom: 10px;
+    left: 55%;
+  }
+`;
+
+const DockTile = styled(BaseTile)`
+  background: linear-gradient(135deg, #e8d4a8 0%, #d4b896 50%, #c9a882 100%);
+  
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: 
+      linear-gradient(90deg, 
+        #8b6914 0%, #8b6914 8%,
+        #a67c20 8%, #a67c20 25%,
+        #8b6914 25%, #8b6914 33%,
+        #a67c20 33%, #a67c20 50%,
+        #8b6914 50%, #8b6914 58%,
+        #a67c20 58%, #a67c20 75%,
+        #8b6914 75%, #8b6914 83%,
+        #a67c20 83%, #a67c20 100%
+      );
+    box-shadow: 
+      inset 0 2px 4px rgba(255,255,255,0.2),
+      inset 0 -2px 4px rgba(0,0,0,0.2);
+  }
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 4px;
+    background: linear-gradient(90deg, #6d5410, #7d6015, #6d5410);
+  }
+`;
+
+const TallGrassTile = styled(BaseTile)`
+  background: linear-gradient(135deg, #7cb342 0%, #689f38 50%, #5c8a30 100%);
+  overflow: hidden;
+  
+  &::before {
+    content: '🌾';
+    position: absolute;
+    font-size: 18px;
+    bottom: 0;
+    left: 45%;
+    transform: translateX(-50%);
+    animation: ${tallGrassSway} 2s ease-in-out infinite;
+  }
+  
+  &::after {
+    content: '🌾';
+    position: absolute;
+    font-size: 14px;
+    bottom: 0;
+    left: 70%;
+    animation: ${tallGrassSway} 2.3s ease-in-out infinite reverse;
+  }
+`;
+
+// Player - Stardew-style character
 const Player = styled.div`
   position: absolute;
   width: ${TILE_SIZE}px;
   height: ${TILE_SIZE}px;
   z-index: 50;
-  transition: left 0.15s ease-out, top 0.15s ease-out;
+  transition: left 0.12s ease-out, top 0.12s ease-out;
+  filter: drop-shadow(2px 3px 2px rgba(0,0,0,0.3));
   
   ${props => props.$isMoving && css`
-    animation: ${walkBounce} 0.3s ease-in-out infinite;
+    animation: ${walkBounce} 0.25s ease-in-out infinite;
   `}
 `;
 
@@ -1344,33 +2107,124 @@ const PlayerSprite = styled.div`
   height: 100%;
   position: relative;
   
-  /* Simple pixel art character using CSS */
+  /* Stardew-style pixel art character */
+  /* Hair */
   &::before {
     content: '';
     position: absolute;
-    /* Head */
-    width: 20px;
-    height: 20px;
-    background: #ffcc80;
-    border-radius: 50%;
-    top: 4px;
+    width: 18px;
+    height: 10px;
+    background: linear-gradient(180deg, #5d4037 0%, #4e342e 100%);
+    border-radius: 8px 8px 0 0;
+    top: 2px;
     left: 50%;
     transform: translateX(-50%);
-    box-shadow: inset -3px -3px 0 rgba(0,0,0,0.1);
+    box-shadow: 
+      inset 1px 1px 0 rgba(255,255,255,0.15),
+      inset -1px -1px 0 rgba(0,0,0,0.2);
   }
   
+  /* Face */
   &::after {
     content: '';
     position: absolute;
-    /* Body */
-    width: 24px;
-    height: 20px;
-    background: ${props => props.$isFishing ? '#2196f3' : '#4caf50'};
-    border-radius: 4px 4px 0 0;
-    top: 22px;
+    width: 16px;
+    height: 14px;
+    background: linear-gradient(180deg, #ffcc80 0%, #ffb74d 100%);
+    border-radius: 3px 3px 6px 6px;
+    top: 8px;
     left: 50%;
     transform: translateX(-50%);
-    box-shadow: inset -4px -4px 0 rgba(0,0,0,0.15);
+    box-shadow: 
+      inset 1px 1px 0 rgba(255,255,255,0.3),
+      inset -1px -1px 0 rgba(0,0,0,0.1),
+      /* Eyes */
+      inset 4px 4px 0 0 #4e342e,
+      inset -4px 4px 0 0 #4e342e,
+      /* Cheeks */
+      inset 6px -2px 0 0 rgba(255,138,128,0.4),
+      inset -6px -2px 0 0 rgba(255,138,128,0.4);
+  }
+`;
+
+const PlayerBody = styled.div`
+  position: absolute;
+  width: 18px;
+  height: 14px;
+  background: ${props => props.$isFishing 
+    ? 'linear-gradient(180deg, #42a5f5 0%, #1e88e5 100%)' 
+    : 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)'};
+  border-radius: 3px 3px 2px 2px;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  box-shadow: 
+    inset 1px 1px 0 rgba(255,255,255,0.25),
+    inset -1px -1px 0 rgba(0,0,0,0.15);
+  
+  /* Arms */
+  &::before {
+    content: '';
+    position: absolute;
+    width: 24px;
+    height: 6px;
+    background: ${props => props.$isFishing 
+      ? 'linear-gradient(180deg, #42a5f5 0%, #1e88e5 100%)' 
+      : 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)'};
+    border-radius: 3px;
+    top: 2px;
+    left: -3px;
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.2),
+      inset 0 -1px 0 rgba(0,0,0,0.1);
+  }
+  
+  /* Hands */
+  &::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 6px;
+    background: #ffcc80;
+    border-radius: 50%;
+    top: 2px;
+    left: -5px;
+    box-shadow: 
+      22px 0 0 #ffcc80;
+  }
+`;
+
+const PlayerLegs = styled.div`
+  position: absolute;
+  width: 14px;
+  height: 8px;
+  top: 32px;
+  left: 50%;
+  transform: translateX(-50%);
+  
+  /* Pants */
+  &::before {
+    content: '';
+    position: absolute;
+    width: 14px;
+    height: 5px;
+    background: linear-gradient(180deg, #5d4037 0%, #4e342e 100%);
+    border-radius: 0 0 2px 2px;
+    top: 0;
+    left: 0;
+  }
+  
+  /* Shoes */
+  &::after {
+    content: '';
+    position: absolute;
+    width: 6px;
+    height: 4px;
+    background: #3e2723;
+    border-radius: 2px;
+    top: 4px;
+    left: 0;
+    box-shadow: 8px 0 0 #3e2723;
   }
 `;
 
@@ -1511,49 +2365,70 @@ const FishPrompt = styled(motion.div)`
   position: fixed;
   bottom: 100px;
   left: 50%;
-  padding: 10px 20px;
-  background: rgba(0, 0, 0, 0.7);
-  border-radius: 20px;
-  color: white;
+  padding: 12px 24px;
+  background: linear-gradient(180deg, rgba(101, 67, 33, 0.95) 0%, rgba(80, 50, 25, 0.95) 100%);
+  border: 3px solid rgba(139, 90, 43, 0.8);
+  border-radius: 12px;
+  color: #fff8e1;
   font-size: 14px;
-  font-weight: 500;
+  font-weight: 600;
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   z-index: 150;
+  box-shadow: 
+    0 4px 12px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.1);
 `;
 
 const KeyHint = styled.span`
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.2);
-  border-radius: 4px;
-  font-weight: 600;
+  padding: 4px 10px;
+  background: linear-gradient(180deg, #8b6914 0%, #6d5410 100%);
+  border: 2px solid #5d4410;
+  border-radius: 6px;
+  font-weight: 700;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2);
 `;
 
 const StateIndicator = styled(motion.div)`
   position: fixed;
-  top: 120px;
+  top: 140px;
   left: 50%;
   z-index: 150;
 `;
 
 const WaitingText = styled.div`
-  padding: 10px 20px;
-  background: rgba(0, 0, 0, 0.6);
-  border-radius: 20px;
-  color: white;
+  padding: 12px 24px;
+  background: linear-gradient(180deg, rgba(101, 67, 33, 0.95) 0%, rgba(80, 50, 25, 0.95) 100%);
+  border: 3px solid rgba(139, 90, 43, 0.8);
+  border-radius: 12px;
+  color: #fff8e1;
   font-size: 14px;
+  font-weight: 600;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  
+  /* Animated dots */
+  &::after {
+    content: '...';
+    animation: ${pulse} 1s ease-in-out infinite;
+  }
 `;
 
 const CatchText = styled.div`
-  padding: 12px 24px;
-  background: linear-gradient(135deg, #ff5252, #ff1744);
-  border-radius: 20px;
+  padding: 14px 28px;
+  background: linear-gradient(180deg, #ff5252 0%, #d32f2f 100%);
+  border: 3px solid #b71c1c;
+  border-radius: 12px;
   color: white;
-  font-size: 18px;
-  font-weight: 700;
-  animation: ${pulse} 0.3s ease-in-out infinite;
-  box-shadow: 0 4px 20px rgba(255, 82, 82, 0.5);
+  font-size: 20px;
+  font-weight: 800;
+  animation: ${pulse} 0.25s ease-in-out infinite;
+  box-shadow: 
+    0 0 30px rgba(255, 82, 82, 0.6),
+    0 4px 12px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.3);
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  letter-spacing: 1px;
 `;
 
 const ResultPopup = styled(motion.div)`
@@ -1562,52 +2437,68 @@ const ResultPopup = styled(motion.div)`
   left: 50%;
   display: flex;
   align-items: center;
-  gap: 16px;
-  padding: 20px 30px;
+  gap: 20px;
+  padding: 24px 32px;
   background: ${props => props.$success 
-    ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.95), rgba(56, 142, 60, 0.95))' 
-    : 'linear-gradient(135deg, rgba(244, 67, 54, 0.95), rgba(198, 40, 40, 0.95))'};
-  border-radius: 20px;
-  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.4);
+    ? 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)' 
+    : 'linear-gradient(180deg, #ef5350 0%, #d32f2f 100%)'};
+  border: 4px solid ${props => props.$success ? '#2e7d32' : '#b71c1c'};
+  border-radius: 16px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.5),
+    inset 0 2px 0 rgba(255,255,255,0.2);
   z-index: 200;
 `;
 
 const ResultEmoji = styled.div`
-  font-size: 48px;
+  font-size: 56px;
+  filter: drop-shadow(3px 3px 4px rgba(0,0,0,0.3));
 `;
 
 const ResultInfo = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
 `;
 
 const ResultTitle = styled.div`
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 22px;
+  font-weight: 800;
   color: white;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  letter-spacing: 0.5px;
 `;
 
 const ResultFishName = styled.div`
-  font-size: 16px;
-  font-weight: 600;
-  color: ${props => RARITY_COLORS[props.$rarity] || 'white'};
+  font-size: 17px;
+  font-weight: 700;
+  color: ${props => props.$rarity === 'legendary' ? '#ffd700' : 
+                    props.$rarity === 'epic' ? '#e1bee7' :
+                    props.$rarity === 'rare' ? '#bbdefb' :
+                    props.$rarity === 'uncommon' ? '#c8e6c9' : '#f5f5f5'};
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
 `;
 
 const ResultReward = styled.div`
-  font-size: 18px;
-  font-weight: 700;
-  color: #ffd700;
+  font-size: 20px;
+  font-weight: 800;
+  color: #fff9c4;
+  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  
+  &::before {
+    content: '+ ';
+  }
 `;
 
-// Mobile Controls
+// Mobile Controls - Stardew style
 const MobileControls = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
   padding: ${theme.spacing.md} ${theme.spacing.xl};
   padding-bottom: calc(${theme.spacing.lg} + env(safe-area-inset-bottom, 0px));
-  background: rgba(0, 0, 0, 0.2);
+  background: linear-gradient(180deg, rgba(80, 50, 25, 0.9) 0%, rgba(60, 35, 15, 0.95) 100%);
+  border-top: 3px solid rgba(139, 90, 43, 0.6);
   
   @media (min-width: 768px) {
     display: none;
@@ -1616,45 +2507,65 @@ const MobileControls = styled.div`
 
 const DPad = styled.div`
   position: relative;
-  width: 120px;
-  height: 120px;
+  width: 130px;
+  height: 130px;
+  
+  /* Center decoration */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 45px;
+    left: 45px;
+    width: 40px;
+    height: 40px;
+    background: linear-gradient(135deg, #5d4037 0%, #4e342e 100%);
+    border-radius: 8px;
+    border: 2px solid #3e2723;
+  }
 `;
 
 const DPadButton = styled.button`
   position: absolute;
-  width: 40px;
-  height: 40px;
-  background: rgba(255, 255, 255, 0.3);
-  border: 2px solid rgba(255, 255, 255, 0.4);
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(180deg, #8b6914 0%, #6d5410 100%);
+  border: 2px solid #5d4410;
   border-radius: 10px;
-  color: white;
+  color: #fff8e1;
   font-size: 24px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.2),
+    0 3px 6px rgba(0,0,0,0.4);
+  transition: all 0.1s;
   
   ${props => {
     switch (props.$position) {
-      case 'up': return css`top: 0; left: 40px;`;
-      case 'down': return css`bottom: 0; left: 40px;`;
-      case 'left': return css`top: 40px; left: 0;`;
-      case 'right': return css`top: 40px; right: 0;`;
+      case 'up': return css`top: 0; left: 43px;`;
+      case 'down': return css`bottom: 0; left: 43px;`;
+      case 'left': return css`top: 43px; left: 0;`;
+      case 'right': return css`top: 43px; right: 0;`;
       default: return '';
     }
   }}
   
   &:active {
-    background: rgba(255, 255, 255, 0.5);
+    background: linear-gradient(180deg, #a67c20 0%, #8b6914 100%);
+    transform: scale(0.95);
+    box-shadow: 
+      inset 0 2px 4px rgba(0,0,0,0.3),
+      0 1px 2px rgba(0,0,0,0.3);
   }
 `;
 
 const ActionButton = styled(motion.button)`
-  width: 80px;
-  height: 80px;
+  width: 85px;
+  height: 85px;
   border-radius: 50%;
-  border: 3px solid rgba(255, 255, 255, 0.5);
-  font-size: 32px;
+  font-size: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1662,14 +2573,27 @@ const ActionButton = styled(motion.button)`
   transition: all 0.2s;
   
   background: ${props => {
-    if (props.$state === GAME_STATES.FISH_APPEARED) return 'linear-gradient(135deg, #ff5252, #ff1744)';
-    if (props.$canFish) return 'linear-gradient(135deg, #4fc3f7, #0288d1)';
-    return 'rgba(255, 255, 255, 0.2)';
+    if (props.$state === GAME_STATES.FISH_APPEARED) return 'linear-gradient(180deg, #ff5252 0%, #d32f2f 100%)';
+    if (props.$canFish) return 'linear-gradient(180deg, #42a5f5 0%, #1e88e5 100%)';
+    return 'linear-gradient(180deg, #8b6914 0%, #6d5410 100%)';
   }};
+  
+  border: 3px solid ${props => {
+    if (props.$state === GAME_STATES.FISH_APPEARED) return '#b71c1c';
+    if (props.$canFish) return '#1565c0';
+    return '#5d4410';
+  }};
+  
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.3),
+    0 4px 8px rgba(0,0,0,0.4);
   
   ${props => props.$state === GAME_STATES.FISH_APPEARED && css`
     animation: ${pulse} 0.3s ease-in-out infinite;
-    box-shadow: 0 0 30px rgba(255, 82, 82, 0.6);
+    box-shadow: 
+      inset 0 2px 0 rgba(255,255,255,0.3),
+      0 0 20px rgba(255, 82, 82, 0.6),
+      0 4px 8px rgba(0,0,0,0.4);
   `}
   
   &:disabled {
@@ -1679,25 +2603,40 @@ const ActionButton = styled(motion.button)`
 
 const Notification = styled(motion.div)`
   position: fixed;
-  top: 100px;
+  top: 120px;
   left: 50%;
   transform: translateX(-50%);
-  padding: 12px 24px;
+  padding: 14px 28px;
   border-radius: 12px;
-  font-weight: 500;
+  font-weight: 700;
   z-index: 1000;
-  background: ${props => props.$type === 'error' ? '#ff5252' : '#4caf50'};
+  background: ${props => props.$type === 'error' 
+    ? 'linear-gradient(180deg, #ef5350 0%, #d32f2f 100%)' 
+    : 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)'};
+  border: 3px solid ${props => props.$type === 'error' ? '#b71c1c' : '#2e7d32'};
   color: white;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.3);
+  box-shadow: 
+    0 4px 16px rgba(0,0,0,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.2);
 `;
 
-// Help Modal
+// Help Modal - Stardew style
 const HelpModalContent = styled(ModalContent)`
-  max-width: 500px;
-  background: ${theme.colors.backgroundSecondary};
+  max-width: 520px;
+  background: linear-gradient(180deg, #5d4037 0%, #4e342e 100%);
+  border: 4px solid #8b6914;
+  box-shadow: 
+    0 8px 32px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.1);
 `;
 
 const HelpSection = styled.div`
   margin-bottom: ${theme.spacing.lg};
+  padding: 16px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  border: 2px solid rgba(139, 90, 43, 0.4);
   
   &:last-child {
     margin-bottom: 0;
@@ -1705,10 +2644,11 @@ const HelpSection = styled.div`
 `;
 
 const HelpTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
+  font-size: 17px;
+  font-weight: 700;
   margin: 0 0 ${theme.spacing.sm};
-  color: white;
+  color: #fff8e1;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.5);
 `;
 
 const FishList = styled.div`
@@ -1722,86 +2662,120 @@ const FishItem = styled.div`
   align-items: center;
   gap: 12px;
   padding: 10px 14px;
-  background: rgba(255, 255, 255, 0.05);
+  background: linear-gradient(180deg, rgba(255,255,255,0.08) 0%, rgba(255,255,255,0.04) 100%);
   border-radius: 10px;
-  border-left: 3px solid ${props => RARITY_COLORS[props.$rarity] || '#666'};
+  border: 2px solid ${props => RARITY_COLORS[props.$rarity] || '#666'}40;
+  border-left: 4px solid ${props => RARITY_COLORS[props.$rarity] || '#666'};
+  transition: all 0.2s;
+  
+  &:hover {
+    background: rgba(255,255,255,0.12);
+    transform: translateX(4px);
+  }
 `;
 
 const FishRarity = styled.span`
-  font-weight: 600;
-  color: ${props => RARITY_COLORS[props.$rarity] || 'white'};
-  min-width: 80px;
+  font-weight: 700;
+  color: ${props => RARITY_COLORS[props.$rarity] || '#fff8e1'};
+  min-width: 85px;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
 `;
 
 const FishReward = styled.span`
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.7);
+  font-weight: 600;
+  color: #ffc107;
   flex: 1;
 `;
 
 const FishDifficulty = styled.span`
-  font-size: 12px;
-  padding: 3px 8px;
-  background: rgba(255, 255, 255, 0.1);
-  border-radius: 4px;
-  color: rgba(255, 255, 255, 0.6);
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 10px;
+  background: linear-gradient(180deg, rgba(139,90,43,0.6) 0%, rgba(100,65,30,0.6) 100%);
+  border: 1px solid rgba(139,90,43,0.6);
+  border-radius: 6px;
+  color: #fff8e1;
 `;
 
-// Leaderboard Modal Styles
+// Leaderboard Modal Styles - Stardew style
 const LeaderboardModalContent = styled(ModalContent)`
-  max-width: 500px;
+  max-width: 520px;
   max-height: 80vh;
-  background: ${theme.colors.backgroundSecondary};
+  background: linear-gradient(180deg, #5d4037 0%, #4e342e 100%);
+  border: 4px solid #8b6914;
+  box-shadow: 
+    0 8px 32px rgba(0,0,0,0.5),
+    inset 0 1px 0 rgba(255,255,255,0.1);
 `;
 
 const YourRankSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 8px;
+  gap: 10px;
   padding: ${theme.spacing.lg};
-  background: linear-gradient(135deg, rgba(255, 215, 0, 0.1), rgba(255, 193, 7, 0.05));
-  border-radius: 16px;
+  background: linear-gradient(180deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 193, 7, 0.08) 100%);
+  border-radius: 14px;
   margin-bottom: ${theme.spacing.lg};
-  border: 1px solid rgba(255, 215, 0, 0.2);
+  border: 3px solid rgba(255, 193, 7, 0.4);
+  box-shadow: inset 0 2px 8px rgba(0,0,0,0.2);
 `;
 
 const YourRankLabel = styled.div`
   font-size: 12px;
   text-transform: uppercase;
-  letter-spacing: 1px;
-  color: rgba(255, 255, 255, 0.6);
+  letter-spacing: 1.5px;
+  color: rgba(255, 248, 225, 0.7);
+  font-weight: 600;
 `;
 
 const YourRankValue = styled.div`
   display: flex;
   align-items: baseline;
   gap: 8px;
-  font-size: 32px;
+  font-size: 36px;
   font-weight: 800;
-  color: ${props => props.$canAutofish ? '#ffd700' : 'white'};
+  color: ${props => props.$canAutofish ? '#ffd700' : '#fff8e1'};
+  text-shadow: 2px 2px 4px rgba(0,0,0,0.4);
 `;
 
 const AutofishUnlockStatus = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 16px;
+  padding: 10px 18px;
   background: ${props => props.$unlocked 
-    ? 'rgba(48, 209, 88, 0.15)' 
-    : 'rgba(142, 142, 147, 0.15)'};
-  border-radius: 100px;
+    ? 'linear-gradient(180deg, rgba(102, 187, 106, 0.3) 0%, rgba(67, 160, 71, 0.2) 100%)' 
+    : 'rgba(0, 0, 0, 0.3)'};
+  border: 2px solid ${props => props.$unlocked ? 'rgba(102, 187, 106, 0.5)' : 'rgba(139, 90, 43, 0.4)'};
+  border-radius: 20px;
   font-size: 13px;
-  font-weight: 500;
-  color: ${props => props.$unlocked ? '#30d158' : 'rgba(255, 255, 255, 0.7)'};
+  font-weight: 600;
+  color: ${props => props.$unlocked ? '#a5d6a7' : 'rgba(255, 248, 225, 0.7)'};
 `;
 
 const LeaderboardList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: 6px;
   max-height: 400px;
   overflow-y: auto;
+  padding: 4px;
+  
+  &::-webkit-scrollbar {
+    width: 8px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2);
+    border-radius: 4px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(139, 90, 43, 0.6);
+    border-radius: 4px;
+  }
 `;
 
 const LeaderboardItem = styled.div`
@@ -1810,33 +2784,37 @@ const LeaderboardItem = styled.div`
   gap: 12px;
   padding: 12px 16px;
   background: ${props => props.$isYou 
-    ? 'linear-gradient(135deg, rgba(10, 132, 255, 0.2), rgba(0, 122, 255, 0.15))' 
-    : 'rgba(255, 255, 255, 0.05)'};
-  border-radius: 12px;
-  border: ${props => props.$isYou ? '1px solid rgba(10, 132, 255, 0.4)' : '1px solid transparent'};
+    ? 'linear-gradient(180deg, rgba(66, 165, 245, 0.25) 0%, rgba(30, 136, 229, 0.2) 100%)' 
+    : 'rgba(0, 0, 0, 0.2)'};
+  border-radius: 10px;
+  border: 2px solid ${props => props.$isYou ? 'rgba(66, 165, 245, 0.5)' : 'rgba(139, 90, 43, 0.3)'};
   transition: all 0.2s;
   
   &:hover {
     background: rgba(255, 255, 255, 0.08);
+    transform: translateX(4px);
   }
 `;
 
 const LeaderboardRank = styled.div`
-  width: 32px;
-  height: 32px;
+  width: 36px;
+  height: 36px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: ${props => props.$rank <= 3 ? '18px' : '14px'};
-  font-weight: 700;
-  color: ${props => props.$rank <= 3 ? 'inherit' : 'rgba(255, 255, 255, 0.6)'};
+  font-size: ${props => props.$rank <= 3 ? '20px' : '14px'};
+  font-weight: 800;
+  color: ${props => props.$rank <= 3 ? 'inherit' : 'rgba(255, 248, 225, 0.6)'};
+  background: ${props => props.$rank <= 3 ? 'none' : 'rgba(0,0,0,0.2)'};
+  border-radius: ${props => props.$rank <= 3 ? '0' : '8px'};
 `;
 
 const LeaderboardName = styled.div`
   flex: 1;
   font-size: 15px;
-  font-weight: 600;
-  color: white;
+  font-weight: 700;
+  color: #fff8e1;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
 `;
 
 const LeaderboardPoints = styled.div`
@@ -1844,19 +2822,21 @@ const LeaderboardPoints = styled.div`
   align-items: center;
   gap: 4px;
   font-size: 14px;
-  font-weight: 600;
-  color: #ffd700;
+  font-weight: 700;
+  color: #ffc107;
+  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
 `;
 
 const AutofishBadge = styled.div`
-  width: 24px;
-  height: 24px;
+  width: 26px;
+  height: 26px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(48, 209, 88, 0.2);
+  background: linear-gradient(180deg, rgba(102, 187, 106, 0.4) 0%, rgba(67, 160, 71, 0.3) 100%);
+  border: 2px solid rgba(102, 187, 106, 0.5);
   border-radius: 50%;
-  color: #30d158;
+  color: #a5d6a7;
   font-size: 14px;
 `;
 
