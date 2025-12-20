@@ -665,11 +665,10 @@ const FishingPage = () => {
       {/* Header - Rustic wooden style */}
       <Header>
         <HeaderWoodGrain />
-        <HeaderTopRow>
-          <BackButton onClick={() => navigate('/gacha')}>
-            <MdArrowBack />
-          </BackButton>
-          <HeaderRight>
+        <BackButton onClick={() => navigate('/gacha')}>
+          <MdArrowBack />
+        </BackButton>
+        <HeaderRight>
           {/* Multiplayer indicator */}
           <MultiplayerBadge $connected={isMultiplayerConnected}>
             <MdPeople />
@@ -700,11 +699,23 @@ const FishingPage = () => {
             <MdHelpOutline />
           </WoodButton>
         </HeaderRight>
-        </HeaderTopRow>
-        <HeaderTitle>
-          <FaFish style={{ color: '#64b5f6' }} />
-          <span>{t('fishing.title')}</span>
-        </HeaderTitle>
+        
+        {/* Hanging Sign */}
+        <HangingSignContainer>
+          <ChainLeft>
+            <ChainLink /><ChainLink /><ChainLink />
+          </ChainLeft>
+          <HangingSign>
+            <SignWoodGrain />
+            <SignContent>
+              <FaFish style={{ color: '#64b5f6', fontSize: '18px' }} />
+              <span>{t('fishing.title')}</span>
+            </SignContent>
+          </HangingSign>
+          <ChainRight>
+            <ChainLink /><ChainLink /><ChainLink />
+          </ChainRight>
+        </HangingSignContainer>
       </Header>
       
       {/* Autofish bubbles */}
@@ -1332,8 +1343,8 @@ const StarsOverlay = styled.div`
 
 const Header = styled.header`
   display: flex;
-  flex-direction: column;
-  gap: 8px;
+  align-items: center;
+  justify-content: space-between;
   padding: 10px 16px;
   background: linear-gradient(180deg, #8b6914 0%, #6d4c10 50%, #5a3d0a 100%);
   border-bottom: 4px solid #3e2a06;
@@ -1342,26 +1353,17 @@ const Header = styled.header`
     inset 0 1px 0 rgba(255, 220, 150, 0.3);
   z-index: 100;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   flex-shrink: 0;
   
   @media (max-width: 600px) {
     padding: 8px 10px;
-    gap: 6px;
     border-bottom-width: 3px;
   }
   
   @media (max-width: 400px) {
     padding: 6px 8px;
-    gap: 4px;
   }
-`;
-
-const HeaderTopRow = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  width: 100%;
 `;
 
 const HeaderWoodGrain = styled.div`
@@ -1375,6 +1377,113 @@ const HeaderWoodGrain = styled.div`
     rgba(0, 0, 0, 0.02) 8px
   );
   pointer-events: none;
+`;
+
+// Hanging Sign Animation
+const sway = keyframes`
+  0%, 100% { transform: rotate(-1.5deg); }
+  50% { transform: rotate(1.5deg); }
+`;
+
+const HangingSignContainer = styled.div`
+  position: absolute;
+  left: 50%;
+  top: 100%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  z-index: 99;
+  animation: ${sway} 4s ease-in-out infinite;
+  transform-origin: top center;
+  pointer-events: none;
+  
+  @media (max-width: 500px) {
+    display: none;
+  }
+`;
+
+const ChainLeft = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -2px;
+  margin-right: -2px;
+`;
+
+const ChainRight = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: -2px;
+  margin-left: -2px;
+`;
+
+const ChainLink = styled.div`
+  width: 6px;
+  height: 10px;
+  border: 2px solid #a07830;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #6d4c10 0%, #8b6914 50%, #6d4c10 100%);
+  margin-bottom: -3px;
+  box-shadow: 
+    inset 0 1px 0 rgba(255,220,150,0.3),
+    0 1px 2px rgba(0,0,0,0.3);
+    
+  &:nth-child(even) {
+    width: 8px;
+  }
+`;
+
+const HangingSign = styled.div`
+  position: relative;
+  background: linear-gradient(180deg, #a07830 0%, #8b6914 30%, #7a5820 70%, #6d4c10 100%);
+  border: 3px solid #5a3d0a;
+  border-radius: 8px;
+  padding: 8px 20px;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 220, 150, 0.25),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+  pointer-events: auto;
+  
+  @media (max-width: 700px) {
+    padding: 6px 14px;
+  }
+`;
+
+const SignWoodGrain = styled.div`
+  position: absolute;
+  inset: 0;
+  border-radius: 5px;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    rgba(0, 0, 0, 0.04) 3px,
+    transparent 6px,
+    rgba(0, 0, 0, 0.02) 12px
+  );
+  pointer-events: none;
+`;
+
+const SignContent = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 16px;
+  font-weight: 700;
+  color: #fff8e1;
+  text-shadow: 
+    1px 1px 0 #5a3d0a,
+    -1px -1px 0 rgba(90, 61, 10, 0.5);
+  white-space: nowrap;
+  position: relative;
+  z-index: 1;
+  
+  @media (max-width: 700px) {
+    font-size: 14px;
+    gap: 6px;
+  }
 `;
 
 const BackButton = styled.button`
@@ -1425,32 +1534,6 @@ const BackButton = styled.button`
       0 1px 0 #4a3008;
   }
 `;
-
-const HeaderTitle = styled.h1`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: 700;
-  color: #fff8e1;
-  margin: 0;
-  text-shadow: 
-    2px 2px 0 #5a3d0a,
-    -1px -1px 0 #5a3d0a;
-  letter-spacing: 0.5px;
-  
-  @media (max-width: 600px) {
-    font-size: 17px;
-    gap: 6px;
-  }
-  
-  @media (max-width: 400px) {
-    font-size: 15px;
-    gap: 4px;
-  }
-`;
-
 
 const HeaderRight = styled.div`
   display: flex;
