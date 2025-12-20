@@ -79,11 +79,6 @@ function selectRandomFish() {
   return FISH_TYPES[0]; // Fallback to first fish
 }
 
-// Calculate reward within fish's range
-function calculateReward(fish) {
-  return Math.floor(Math.random() * (fish.maxReward - fish.minReward + 1)) + fish.minReward;
-}
-
 // Cost to cast (set to 0 for free fishing, or a value for paid fishing)
 const CAST_COST = 0;
 
@@ -210,17 +205,10 @@ router.post('/catch', auth, async (req, res) => {
     const success = reactionTime !== undefined && reactionTime <= fish.timingWindow;
     
     if (success) {
-      // Calculate reward
-      const reward = calculateReward(fish);
-      
-      // Update user points
+      // Get user for response
       const user = await User.findByPk(req.user.id);
-      if (user) {
-        user.points += reward;
-        await user.save();
-      }
       
-      // Add fish to inventory
+      // Add fish to inventory (no automatic coin reward - use trading post to sell)
       const [inventoryItem, created] = await FishInventory.findOrCreate({
         where: { userId: req.user.id, fishId: fish.id },
         defaults: {
@@ -246,7 +234,6 @@ router.post('/catch', auth, async (req, res) => {
           emoji: fish.emoji,
           rarity: fish.rarity
         },
-        reward,
         reactionTime,
         timingWindow: fish.timingWindow,
         newPoints: user ? user.points : null,
@@ -472,11 +459,7 @@ router.post('/autofish', auth, async (req, res) => {
     const success = Math.random() < successChance;
     
     if (success) {
-      const reward = calculateReward(fish);
-      user.points += reward;
-      await user.save();
-      
-      // Add fish to inventory
+      // Add fish to inventory (no automatic coin reward - use trading post to sell)
       const [inventoryItem, created] = await FishInventory.findOrCreate({
         where: { userId: req.user.id, fishId: fish.id },
         defaults: {
@@ -505,14 +488,11 @@ router.post('/autofish', auth, async (req, res) => {
           emoji: fish.emoji,
           rarity: fish.rarity
         },
-        reward,
         newPoints: user.points,
         inventoryCount: inventoryItem.quantity,
         message: `Autofished a ${fish.name}!`
       });
     } else {
-      await user.save();
-      
       // Release lock
       autofishInProgress.delete(userId);
       
@@ -524,7 +504,6 @@ router.post('/autofish', auth, async (req, res) => {
           emoji: fish.emoji,
           rarity: fish.rarity
         },
-        reward: 0,
         newPoints: user.points,
         message: `The ${fish.name} got away during autofishing.`
       });

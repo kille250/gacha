@@ -83,7 +83,6 @@ const FishingPage = () => {
   const [sessionStats, setSessionStats] = useState({
     casts: 0,
     catches: 0,
-    totalEarned: 0,
     bestCatch: null
   });
   
@@ -356,9 +355,8 @@ const FishingPage = () => {
           ...prev,
           casts: prev.casts + 1,
           catches: result.success ? prev.catches + 1 : prev.catches,
-          totalEarned: prev.totalEarned + (result.reward || 0),
-          bestCatch: result.success && (!prev.bestCatch || result.reward > prev.bestCatch.reward)
-            ? { fish: result.fish, reward: result.reward }
+          bestCatch: result.success && !prev.bestCatch
+            ? { fish: result.fish }
             : prev.bestCatch
         }));
         
@@ -368,7 +366,6 @@ const FishingPage = () => {
           const newEntry = {
             fish: result.fish,
             success: result.success,
-            reward: result.reward,
             timestamp: now
           };
           // Keep only entries less than 4 seconds old, limit to 6
@@ -513,15 +510,10 @@ const FishingPage = () => {
         setSessionStats(prev => ({
           ...prev,
           catches: prev.catches + 1,
-          totalEarned: prev.totalEarned + result.reward,
-          bestCatch: !prev.bestCatch || result.reward > prev.bestCatch.reward
-            ? { fish: result.fish, reward: result.reward }
+          bestCatch: !prev.bestCatch
+            ? { fish: result.fish }
             : prev.bestCatch
         }));
-        if (result.newPoints !== undefined) {
-          setUser(prev => ({ ...prev, points: result.newPoints }));
-          clearCache('/auth/me');
-        }
       } else {
         setGameState(GAME_STATES.FAILURE);
       }
@@ -657,7 +649,7 @@ const FishingPage = () => {
               <BubbleContent>
                 <BubbleFishName $rarity={entry.fish?.rarity}>{entry.fish?.name}</BubbleFishName>
                 <BubbleReward $success={entry.success}>
-                  {entry.success ? `+${entry.reward}` : t('fishing.escaped')}
+                  {entry.success ? '+1 🐟' : t('fishing.escaped')}
                 </BubbleReward>
               </BubbleContent>
             </AutofishBubble>
@@ -675,11 +667,6 @@ const FishingPage = () => {
         <StatItem>
           <StatValue>{sessionStats.catches}</StatValue>
           <StatLabel>{t('fishing.catches')}</StatLabel>
-        </StatItem>
-        <StatDivider />
-        <StatItem>
-          <StatValue>+{sessionStats.totalEarned}</StatValue>
-          <StatLabel>{t('fishing.earned')}</StatLabel>
         </StatItem>
         {sessionStats.bestCatch && (
           <>
@@ -770,7 +757,7 @@ const FishingPage = () => {
                   {lastResult.fish?.name}
                 </ResultFishName>
                 {lastResult.success && (
-                  <ResultReward>+{lastResult.reward}</ResultReward>
+                  <ResultReward>+1 🐟</ResultReward>
                 )}
               </ResultInfo>
             </ResultPopup>
@@ -880,7 +867,7 @@ const FishingPage = () => {
                           <FishRarity $rarity={fish.rarity}>
                             {fish.rarity.charAt(0).toUpperCase() + fish.rarity.slice(1)}
                           </FishRarity>
-                          <FishReward>{fish.minReward}-{fish.maxReward}</FishReward>
+                          <FishDifficulty>{fish.difficulty}</FishDifficulty>
                         </FishItem>
                       ))}
                     </FishList>
@@ -2413,11 +2400,14 @@ const FishRarity = styled.span`
   text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
 `;
 
-const FishReward = styled.span`
-  font-size: 14px;
+const FishDifficulty = styled.span`
+  font-size: 12px;
   font-weight: 700;
-  color: #f57c00;
+  color: #795548;
   margin-left: auto;
+  padding: 4px 8px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 8px;
 `;
 
 const YourRankSection = styled.div`
