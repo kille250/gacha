@@ -53,8 +53,14 @@ const RegisterPage = () => {
       return;
     }
     
-    if (password.length < 4) {
+    if (password.length < 8) {
       setLocalError(t('auth.passwordTooShort'));
+      return;
+    }
+    
+    // Password must contain at least one letter and one number
+    if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
+      setLocalError(t('auth.passwordRequirements'));
       return;
     }
     

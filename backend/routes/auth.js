@@ -123,15 +123,14 @@ router.post('/signup', async (req, res) => {
       } 
     };
     
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' },
-      (err, token) => {
-        if (err) throw err;
-        res.json({ token });
-      }
-    );
+    const token = await new Promise((resolve, reject) => {
+      jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' }, (err, token) => {
+        if (err) reject(err);
+        else resolve(token);
+      });
+    });
+    
+    res.json({ token });
   } catch (err) {
     console.error('Registration error:', err);
     res.status(400).json({ error: 'Registration failed: ' + (err.message || '') });
@@ -160,15 +159,14 @@ router.post('/login', async (req, res) => {
       } 
     };
     
-    jwt.sign(
-      payload,
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' },
-      (err, token) => {
-        if (err) throw err;
-        res.json({ token });
-      }
-    );
+    const token = await new Promise((resolve, reject) => {
+      jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' }, (err, token) => {
+        if (err) reject(err);
+        else resolve(token);
+      });
+    });
+    
+    res.json({ token });
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -195,17 +193,22 @@ router.post('/google', async (req, res) => {
     });
     
     const payload = ticket.getPayload();
-    const { sub: googleId, email, name } = payload;
+    const { sub: googleId, email, email_verified, name } = payload;
     
+    // Security: Require verified email from Google
     if (!email) {
       return res.status(400).json({ error: 'Email is required from Google account' });
+    }
+    
+    if (!email_verified) {
+      return res.status(400).json({ error: 'Please verify your Google email address first' });
     }
     
     // Check if user exists by googleId or email
     let user = await User.findOne({ 
       where: sequelize.or(
         { googleId },
-        { email }
+        { email: email.toLowerCase() }
       )
     });
     
@@ -217,12 +220,29 @@ router.post('/google', async (req, res) => {
       }
     } else {
       // Create new user - generate unique username from email or name
-      let baseUsername = (name || email.split('@')[0]).replace(/[^a-zA-Z0-9_]/g, '');
+      let baseUsername = (name || email.split('@')[0]).replace(/[^a-zA-Z0-9_-]/g, '');
+      
+      // Ensure base username meets minimum length requirement
+      if (baseUsername.length < 3) {
+        baseUsername = 'user' + baseUsername;
+      }
+      
+      // Truncate to max length (leaving room for counter suffix)
+      if (baseUsername.length > 25) {
+        baseUsername = baseUsername.substring(0, 25);
+      }
+      
       let username = baseUsername;
       let counter = 1;
+      const maxAttempts = 100;
       
-      // Ensure username is unique
+      // Ensure username is unique (with safety limit)
       while (await User.findOne({ where: { username } })) {
+        if (counter >= maxAttempts) {
+          // Fallback: use random suffix
+          username = `${baseUsername}${Date.now().toString(36)}`;
+          break;
+        }
         username = `${baseUsername}${counter}`;
         counter++;
       }
@@ -233,7 +253,7 @@ router.post('/google', async (req, res) => {
       
       user = await User.create({
         username,
-        email,
+        email: email.toLowerCase(),
         googleId,
         password: null, // No password for Google SSO users
         points: 1000,
@@ -249,15 +269,14 @@ router.post('/google', async (req, res) => {
       } 
     };
     
-    jwt.sign(
-      jwtPayload,
-      process.env.JWT_SECRET,
-      { expiresIn: '24h' },
-      (err, token) => {
-        if (err) throw err;
-        res.json({ token });
-      }
-    );
+    const token = await new Promise((resolve, reject) => {
+      jwt.sign(jwtPayload, process.env.JWT_SECRET, { expiresIn: '24h' }, (err, token) => {
+        if (err) reject(err);
+        else resolve(token);
+      });
+    });
+    
+    res.json({ token });
   } catch (err) {
     console.error('Google SSO error:', err);
     if (err.message?.includes('Token used too late') || err.message?.includes('Invalid token')) {
@@ -270,25 +289,30 @@ router.post('/google', async (req, res) => {
 // GET /api/auth/me - Get current user
 router.get('/me', auth, async (req, res) => {
   try {
-    const [rows] = await sequelize.query(
-      `SELECT "id", "username", "email", "googleId", "points", "isAdmin", "lastDailyReward", "allowR18", "showR18", "usernameChanged" 
-       FROM "Users" WHERE "id" = :userId`,
-      { replacements: { userId: req.user.id } }
-    );
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['id', 'username', 'email', 'googleId', 'points', 'isAdmin', 'lastDailyReward', 'allowR18', 'showR18', 'usernameChanged']
+    });
     
-    if (!rows || rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    const user = rows[0];
-    user.allowR18 = user.allowR18 === true;
-    user.showR18 = user.showR18 === true;
-    user.usernameChanged = user.usernameChanged === true;
-    user.hasGoogle = !!user.googleId;
-    // Don't expose googleId to frontend
-    delete user.googleId;
+    // Build response object (avoid mutating Sequelize instance)
+    const response = {
+      id: user.id,
+      username: user.username,
+      email: user.email,
+      points: user.points,
+      isAdmin: user.isAdmin,
+      lastDailyReward: user.lastDailyReward,
+      allowR18: user.allowR18 === true,
+      showR18: user.showR18 === true,
+      usernameChanged: user.usernameChanged === true,
+      hasGoogle: !!user.googleId
+      // Note: googleId intentionally not exposed to frontend
+    };
     
-    res.json(user);
+    res.json(response);
   } catch (err) {
     console.error('Get user error:', err);
     res.status(500).json({ error: 'Server error' });
@@ -385,18 +409,16 @@ router.put('/profile/username', auth, async (req, res) => {
 // POST /api/auth/toggle-r18 - Toggle R18 content preference
 router.post('/toggle-r18', auth, async (req, res) => {
   try {
-    const [rows] = await sequelize.query(
-      `SELECT "allowR18", "showR18" FROM "Users" WHERE "id" = :userId`,
-      { replacements: { userId: req.user.id } }
-    );
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['id', 'allowR18', 'showR18']
+    });
     
-    if (!rows || rows.length === 0) {
+    if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
     
     // Check if admin has allowed R18 for this user
-    const hasPermission = rows[0].allowR18 === true;
-    if (!hasPermission) {
+    if (user.allowR18 !== true) {
       return res.status(403).json({ 
         error: 'R18 access not enabled for your account',
         message: 'Contact an administrator to enable R18 content access'
@@ -404,13 +426,9 @@ router.post('/toggle-r18', auth, async (req, res) => {
     }
     
     // Toggle the user's showR18 preference
-    const currentValue = rows[0].showR18 === true;
-    const newValue = !currentValue;
-    
-    await sequelize.query(
-      `UPDATE "Users" SET "showR18" = :newValue WHERE "id" = :userId`,
-      { replacements: { newValue, userId: req.user.id } }
-    );
+    const newValue = user.showR18 !== true;
+    user.showR18 = newValue;
+    await user.save();
     
     res.json({ 
       message: newValue ? 'R18 content enabled' : 'R18 content disabled',
