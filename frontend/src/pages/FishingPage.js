@@ -712,7 +712,12 @@ const FishingPage = () => {
               animate={{ opacity: 1, y: 0, x: "-50%" }}
               exit={{ opacity: 0, y: 10, x: "-50%" }}
             >
-              <Trans i18nKey="fishing.pressFishPrompt" components={{ key: <KeyHint /> }} />
+              <DesktopOnly>
+                <Trans i18nKey="fishing.pressFishPrompt" components={{ key: <KeyHint /> }} />
+              </DesktopOnly>
+              <MobileOnly>
+                <FaFish style={{ marginRight: '8px' }} /> {t('fishing.tapToFish')}
+              </MobileOnly>
             </FishPrompt>
           )}
         </AnimatePresence>
@@ -1214,14 +1219,18 @@ const getTimeGradient = (timeOfDay) => {
 
 const PageContainer = styled.div`
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
   background: ${props => getTimeGradient(props.$timeOfDay)};
   font-family: 'Nunito', 'Comic Sans MS', cursive, sans-serif;
   user-select: none;
   overflow: hidden;
+  overflow-x: hidden;
   transition: background 5s ease;
   position: relative;
+  touch-action: pan-y;
+  -webkit-overflow-scrolling: touch;
 `;
 
 const StarsOverlay = styled.div`
@@ -1256,6 +1265,16 @@ const Header = styled.header`
   z-index: 100;
   position: relative;
   overflow: hidden;
+  flex-shrink: 0;
+  
+  @media (max-width: 600px) {
+    padding: 8px 10px;
+    border-bottom-width: 3px;
+  }
+  
+  @media (max-width: 400px) {
+    padding: 6px 8px;
+  }
 `;
 
 const HeaderWoodGrain = styled.div`
@@ -1288,6 +1307,21 @@ const BackButton = styled.button`
     inset 0 2px 0 rgba(255,255,255,0.2),
     0 3px 0 #4a3008,
     0 5px 8px rgba(0,0,0,0.3);
+  flex-shrink: 0;
+  
+  @media (max-width: 600px) {
+    width: 36px;
+    height: 36px;
+    font-size: 18px;
+    border-width: 2px;
+    border-radius: 8px;
+  }
+  
+  @media (max-width: 400px) {
+    width: 32px;
+    height: 32px;
+    font-size: 16px;
+  }
   
   &:hover {
     transform: translateY(-2px);
@@ -1317,6 +1351,19 @@ const HeaderTitle = styled.h1`
     2px 2px 0 #5a3d0a,
     -1px -1px 0 #5a3d0a;
   letter-spacing: 1px;
+  
+  @media (max-width: 600px) {
+    font-size: 16px;
+    gap: 6px;
+    
+    span {
+      display: none;
+    }
+  }
+  
+  @media (max-width: 400px) {
+    font-size: 14px;
+  }
 `;
 
 
@@ -1324,6 +1371,15 @@ const HeaderRight = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
+  flex-shrink: 0;
+  
+  @media (max-width: 600px) {
+    gap: 6px;
+  }
+  
+  @media (max-width: 400px) {
+    gap: 4px;
+  }
 `;
 
 const PointsDisplay = styled.div`
@@ -1341,6 +1397,19 @@ const PointsDisplay = styled.div`
     inset 0 2px 0 rgba(255,255,255,0.5),
     0 3px 0 #bf360c,
     0 5px 8px rgba(0,0,0,0.2);
+  flex-shrink: 0;
+  
+  @media (max-width: 600px) {
+    padding: 6px 10px;
+    font-size: 12px;
+    gap: 4px;
+    border-width: 2px;
+  }
+  
+  @media (max-width: 400px) {
+    padding: 4px 8px;
+    font-size: 11px;
+  }
 `;
 
 const CoinDot = styled.div`
@@ -1350,6 +1419,13 @@ const CoinDot = styled.div`
   border-radius: 50%;
   border: 2px solid #e65100;
   box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
+  flex-shrink: 0;
+  
+  @media (max-width: 600px) {
+    width: ${props => props.$small ? '8px' : '10px'};
+    height: ${props => props.$small ? '8px' : '10px'};
+    border-width: 1px;
+  }
 `;
 
 const WoodButton = styled.button`
@@ -1368,6 +1444,21 @@ const WoodButton = styled.button`
   box-shadow: 
     inset 0 2px 0 rgba(255,255,255,0.2),
     0 3px 0 #4a3008;
+  flex-shrink: 0;
+  
+  @media (max-width: 600px) {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+    border-width: 2px;
+    border-radius: 8px;
+  }
+  
+  @media (max-width: 400px) {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
   
   &:hover {
     background: linear-gradient(180deg, #b88a40 0%, #8a6828 100%);
@@ -1396,9 +1487,28 @@ const MultiplayerBadge = styled.div`
   box-shadow: ${props => props.$connected
     ? 'inset 0 2px 0 rgba(255,255,255,0.3), 0 3px 0 #1b5e20'
     : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #37474f'};
+  flex-shrink: 0;
   
   svg {
     font-size: 16px;
+  }
+  
+  @media (max-width: 600px) {
+    padding: 6px 8px;
+    font-size: 11px;
+    gap: 4px;
+    border-width: 2px;
+    
+    svg {
+      font-size: 14px;
+    }
+  }
+  
+  @media (max-width: 400px) {
+    span {
+      display: none;
+    }
+    padding: 6px;
   }
 `;
 
@@ -1420,6 +1530,19 @@ const RankBadge = styled.button`
   box-shadow: ${props => props.$canAutofish
     ? 'inset 0 2px 0 rgba(255,255,255,0.5), 0 3px 0 #bf360c, 0 0 12px rgba(255, 193, 7, 0.4)'
     : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #4a3008'};
+  flex-shrink: 0;
+  
+  @media (max-width: 600px) {
+    padding: 6px 10px;
+    font-size: 12px;
+    gap: 4px;
+    border-width: 2px;
+  }
+  
+  @media (max-width: 400px) {
+    padding: 5px 8px;
+    font-size: 11px;
+  }
   
   &:hover { transform: translateY(-2px); }
 `;
@@ -1442,6 +1565,21 @@ const AutofishButton = styled.button`
   box-shadow: ${props => props.$active
     ? '0 0 15px rgba(102, 187, 106, 0.5), inset 0 2px 0 rgba(255,255,255,0.3)'
     : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #4a3008'};
+  flex-shrink: 0;
+  
+  @media (max-width: 600px) {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+    border-width: 2px;
+    border-radius: 8px;
+  }
+  
+  @media (max-width: 400px) {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
   
   svg.spinning { animation: ${spin} 1s linear infinite; }
 `;
@@ -1456,7 +1594,15 @@ const AutofishBubblesContainer = styled.div`
   z-index: 500;
   pointer-events: none;
   
-  @media (max-width: 768px) { bottom: 220px; right: 12px; }
+  @media (max-width: 768px) { 
+    bottom: 200px; 
+    right: 10px; 
+  }
+  
+  @media (max-width: 400px) {
+    bottom: 180px;
+    right: 8px;
+  }
 `;
 
 const AutofishBubble = styled(motion.div)`
@@ -1490,17 +1636,33 @@ const AutofishBubble = styled(motion.div)`
     0 4px 12px rgba(0, 0, 0, 0.3),
     ${props => props.$success && props.$rarity === 'legendary' ? '0 0 20px rgba(255, 193, 7, 0.4)' : 'none'};
   pointer-events: auto;
+  
+  @media (max-width: 500px) {
+    min-width: 140px;
+    padding: 8px 12px;
+    gap: 8px;
+    border-radius: 12px;
+    border-width: 2px;
+  }
 `;
 
 const BubbleEmoji = styled.div`
   font-size: 36px;
   filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.3));
+  
+  @media (max-width: 500px) {
+    font-size: 28px;
+  }
 `;
 
 const BubbleContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: 4px;
+  
+  @media (max-width: 500px) {
+    gap: 2px;
+  }
 `;
 
 const BubbleFishName = styled.div`
@@ -1508,6 +1670,10 @@ const BubbleFishName = styled.div`
   font-weight: 800;
   color: white;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
+  
+  @media (max-width: 500px) {
+    font-size: 12px;
+  }
 `;
 
 const BubbleReward = styled.div`
@@ -1529,6 +1695,18 @@ const StatsBar = styled.div`
   border-bottom: 3px solid rgba(62, 42, 6, 0.8);
   box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.2);
   z-index: 100;
+  flex-shrink: 0;
+  flex-wrap: wrap;
+  
+  @media (max-width: 600px) {
+    gap: 4px;
+    padding: 6px 10px;
+  }
+  
+  @media (max-width: 400px) {
+    padding: 4px 8px;
+    gap: 3px;
+  }
 `;
 
 const StatItem = styled.div`
@@ -1545,6 +1723,17 @@ const StatItem = styled.div`
     background: rgba(255, 193, 7, 0.15);
     border-color: rgba(255, 193, 7, 0.3);
   `}
+  
+  @media (max-width: 600px) {
+    padding: 4px 10px;
+    border-radius: 10px;
+    gap: 1px;
+  }
+  
+  @media (max-width: 400px) {
+    padding: 3px 8px;
+    border-radius: 8px;
+  }
 `;
 
 const StatValue = styled.span`
@@ -1552,6 +1741,14 @@ const StatValue = styled.span`
   font-weight: 800;
   color: #fff8e1;
   text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+  
+  @media (max-width: 600px) {
+    font-size: 14px;
+  }
+  
+  @media (max-width: 400px) {
+    font-size: 12px;
+  }
 `;
 
 const StatLabel = styled.span`
@@ -1560,6 +1757,15 @@ const StatLabel = styled.span`
   text-transform: uppercase;
   letter-spacing: 0.5px;
   font-weight: 600;
+  
+  @media (max-width: 600px) {
+    font-size: 8px;
+    letter-spacing: 0.3px;
+  }
+  
+  @media (max-width: 400px) {
+    font-size: 7px;
+  }
 `;
 
 const StatDivider = styled.div`
@@ -1577,6 +1783,17 @@ const GameContainer = styled.div`
   padding: 16px;
   min-height: 0;
   overflow: hidden;
+  
+  @media (max-width: 768px) {
+    padding: 8px;
+    align-items: flex-start;
+    padding-top: 12px;
+  }
+  
+  @media (max-width: 480px) {
+    padding: 4px;
+    padding-top: 8px;
+  }
 `;
 
 const CanvasFrame = styled.div`
@@ -1588,6 +1805,18 @@ const CanvasFrame = styled.div`
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 2px 0 rgba(255, 220, 150, 0.2),
     inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+  max-width: 100%;
+  overflow: hidden;
+  
+  @media (max-width: 1000px) {
+    padding: 6px;
+    border-radius: 6px;
+  }
+  
+  @media (max-width: 600px) {
+    padding: 4px;
+    border-radius: 4px;
+  }
 `;
 
 const CanvasWrapper = styled.div`
@@ -1596,9 +1825,19 @@ const CanvasWrapper = styled.div`
   overflow: hidden;
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
   
-  /* Fixed size based on map dimensions */
+  /* Fixed size based on map dimensions - will scale via transform */
   width: ${MAP_WIDTH * TILE_SIZE}px;
   height: ${MAP_HEIGHT * TILE_SIZE}px;
+  
+  /* Scale down on mobile to fit screen */
+  @media (max-width: 1000px) {
+    transform-origin: center center;
+    transform: scale(calc(min(1, (100vw - 48px) / ${MAP_WIDTH * TILE_SIZE})));
+  }
+  
+  @media (max-width: 600px) {
+    transform: scale(calc(min(1, (100vw - 32px) / ${MAP_WIDTH * TILE_SIZE})));
+  }
   
   canvas {
     display: block;
@@ -1646,11 +1885,20 @@ const FishPrompt = styled(motion.div)`
     0 6px 20px rgba(0,0,0,0.3),
     inset 0 2px 0 rgba(255,255,255,0.5);
   z-index: 150;
+  white-space: nowrap;
   
   @media (max-width: 768px) {
-    bottom: 190px;
-    font-size: 14px;
-    padding: 12px 20px;
+    bottom: 180px;
+    font-size: 13px;
+    padding: 10px 16px;
+    gap: 8px;
+    border-width: 3px;
+  }
+  
+  @media (max-width: 400px) {
+    bottom: 160px;
+    font-size: 12px;
+    padding: 8px 12px;
   }
 `;
 
@@ -1662,6 +1910,25 @@ const KeyHint = styled.span`
   font-weight: 800;
   color: #fff8e1;
   box-shadow: 0 2px 0 #4a3008;
+`;
+
+const DesktopOnly = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+const MobileOnly = styled.span`
+  display: none;
+  align-items: center;
+  
+  @media (max-width: 768px) {
+    display: flex;
+  }
 `;
 
 const StateIndicator = styled(motion.div)`
@@ -1742,6 +2009,21 @@ const ResultPopup = styled(motion.div)`
     ${props => props.$success && props.$rarity ? `0 0 30px ${RARITY_GLOW[props.$rarity]}` : 'none'};
   z-index: 200;
   overflow: hidden;
+  max-width: calc(100vw - 40px);
+  
+  @media (max-width: 600px) {
+    flex-direction: column;
+    gap: 12px;
+    padding: 20px 24px;
+    border-width: 4px;
+    border-radius: 20px;
+    text-align: center;
+  }
+  
+  @media (max-width: 400px) {
+    padding: 16px 20px;
+    gap: 10px;
+  }
 `;
 
 const ResultGlow = styled.div`
@@ -1757,6 +2039,14 @@ const ResultEmoji = styled.div`
   filter: drop-shadow(3px 3px 5px rgba(0,0,0,0.3));
   animation: ${float} 2s ease-in-out infinite;
   z-index: 1;
+  
+  @media (max-width: 600px) {
+    font-size: 52px;
+  }
+  
+  @media (max-width: 400px) {
+    font-size: 44px;
+  }
 `;
 
 const ResultInfo = styled.div`
@@ -1764,6 +2054,11 @@ const ResultInfo = styled.div`
   flex-direction: column;
   gap: 8px;
   z-index: 1;
+  
+  @media (max-width: 600px) {
+    gap: 6px;
+    align-items: center;
+  }
 `;
 
 const ResultTitle = styled.div`
@@ -1792,25 +2087,40 @@ const ResultReward = styled.div`
 
 // Mobile Controls
 const MobileControls = styled.div`
-  display: flex;
+  display: none;
   align-items: center;
   justify-content: space-between;
-  padding: 16px 24px;
-  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  padding: 12px 20px;
+  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, 
     rgba(139, 105, 20, 0.95) 0%, 
     rgba(109, 76, 16, 0.98) 50%, 
     rgba(90, 61, 10, 0.95) 100%);
   border-top: 4px solid rgba(255, 220, 150, 0.2);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
+  flex-shrink: 0;
+  touch-action: manipulation;
   
-  @media (min-width: 768px) { display: none; }
+  @media (max-width: 768px) { 
+    display: flex; 
+  }
+  
+  @media (max-width: 400px) {
+    padding: 10px 12px;
+    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+  }
 `;
 
 const DPad = styled.div`
   position: relative;
   width: 140px;
   height: 140px;
+  touch-action: manipulation;
+  
+  @media (max-width: 400px) {
+    width: 120px;
+    height: 120px;
+  }
 `;
 
 const DPadCenter = styled.div`
@@ -1823,6 +2133,12 @@ const DPadCenter = styled.div`
   background: linear-gradient(135deg, #5d4037 0%, #4e342e 100%);
   border-radius: 12px;
   box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  
+  @media (max-width: 400px) {
+    width: 36px;
+    height: 36px;
+    border-radius: 10px;
+  }
 `;
 
 const DPadButton = styled.button`
@@ -1842,6 +2158,9 @@ const DPadButton = styled.button`
     inset 0 2px 0 rgba(255,255,255,0.2),
     0 3px 0 #4a3008,
     0 5px 8px rgba(0,0,0,0.3);
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
   
   ${props => {
     switch (props.$position) {
@@ -1852,6 +2171,14 @@ const DPadButton = styled.button`
       default: return '';
     }
   }}
+  
+  @media (max-width: 400px) {
+    width: 42px;
+    height: 42px;
+    font-size: 24px;
+    border-radius: 10px;
+    border-width: 2px;
+  }
   
   &:active {
     background: linear-gradient(180deg, #b88a40 0%, #8a6828 100%);
@@ -1877,6 +2204,10 @@ const ActionButton = styled(motion.button)`
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  color: #fff8e1;
   background: ${props => {
     if (props.$state === 'fish_appeared') return 'linear-gradient(180deg, #ff5252 0%, #d32f2f 100%)';
     if (props.$canFish) return 'linear-gradient(180deg, #42a5f5 0%, #1e88e5 100%)';
@@ -1895,6 +2226,13 @@ const ActionButton = styled(motion.button)`
       return '#4a3008';
     }},
     0 6px 12px rgba(0,0,0,0.4);
+  
+  @media (max-width: 400px) {
+    width: 76px;
+    height: 76px;
+    font-size: 32px;
+    border-width: 3px;
+  }
   
   ${props => props.$state === 'fish_appeared' && css`
     animation: ${pulse} 0.25s ease-in-out infinite;
@@ -1931,6 +2269,7 @@ const Notification = styled(motion.div)`
 const CozyModal = styled(ModalContent)`
   max-width: 540px;
   max-height: 85vh;
+  width: calc(100vw - 32px);
   background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 100%);
   border: 5px solid #8b6914;
   border-radius: 20px;
@@ -1939,6 +2278,12 @@ const CozyModal = styled(ModalContent)`
     inset 0 2px 0 rgba(255,255,255,0.5);
   position: relative;
   overflow: hidden;
+  
+  @media (max-width: 600px) {
+    max-height: 80vh;
+    border-width: 4px;
+    border-radius: 16px;
+  }
   
   &::before {
     content: '';
@@ -1962,6 +2307,10 @@ const ModalTitle = styled.h2`
   color: #5d4037;
   margin: 0;
   text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
+  
+  @media (max-width: 500px) {
+    font-size: 18px;
+  }
 `;
 
 const CloseButton = styled(IconButton)`
@@ -1984,6 +2333,12 @@ const HelpSection = styled.div`
   border: 2px solid rgba(139, 105, 20, 0.2);
   
   &:last-child { margin-bottom: 0; }
+  
+  @media (max-width: 500px) {
+    gap: 12px;
+    padding: 12px;
+    margin-bottom: 16px;
+  }
 `;
 
 const HelpNumber = styled.div`
@@ -2010,6 +2365,11 @@ const HelpTitle = styled.h3`
   font-weight: 800;
   margin: 0 0 8px;
   color: #5d4037;
+  
+  @media (max-width: 500px) {
+    font-size: 15px;
+    margin-bottom: 6px;
+  }
 `;
 
 const HelpText = styled.p`
@@ -2017,6 +2377,11 @@ const HelpText = styled.p`
   color: #795548;
   margin: 0;
   line-height: 1.5;
+  
+  @media (max-width: 500px) {
+    font-size: 13px;
+    line-height: 1.4;
+  }
 `;
 
 const FishList = styled.div`
@@ -2201,6 +2566,20 @@ const TradingPostButton = styled(motion.button)`
     0 3px 0 #1b5e20,
     0 4px 8px rgba(0,0,0,0.3);
   transition: all 0.15s;
+  flex-shrink: 0;
+  
+  @media (max-width: 600px) {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+    border-radius: 8px;
+  }
+  
+  @media (max-width: 400px) {
+    width: 30px;
+    height: 30px;
+    font-size: 16px;
+  }
   
   &:hover {
     background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
@@ -2224,12 +2603,18 @@ const TradingPostModal = styled(motion.div)`
     0 0 0 3px #d4a020,
     inset 0 2px 0 rgba(255,255,255,0.5),
     0 20px 60px rgba(0, 0, 0, 0.4);
-  width: 95%;
+  width: calc(100% - 24px);
   max-width: 500px;
   max-height: 85vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
+  
+  @media (max-width: 600px) {
+    border-width: 4px;
+    border-radius: 16px;
+    max-height: 80vh;
+  }
 `;
 
 const TradingLoadingState = styled.div`
@@ -2281,6 +2666,10 @@ const InventoryGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(5, 1fr);
   gap: 8px;
+  
+  @media (max-width: 400px) {
+    gap: 4px;
+  }
 `;
 
 const InventoryItem = styled.div`
@@ -2292,16 +2681,30 @@ const InventoryItem = styled.div`
   background: rgba(255,255,255,0.6);
   border-radius: 12px;
   border: 2px solid ${props => RARITY_COLORS[props.$rarity] || '#ccc'}40;
+  
+  @media (max-width: 400px) {
+    padding: 6px 4px;
+    gap: 2px;
+    border-radius: 8px;
+  }
 `;
 
 const InventoryEmoji = styled.div`
   font-size: 24px;
+  
+  @media (max-width: 400px) {
+    font-size: 18px;
+  }
 `;
 
 const InventoryCount = styled.div`
   font-size: 18px;
   font-weight: 900;
   color: ${props => RARITY_COLORS[props.$rarity] || '#5d4037'};
+  
+  @media (max-width: 400px) {
+    font-size: 14px;
+  }
 `;
 
 const InventoryLabel = styled.div`
@@ -2309,6 +2712,10 @@ const InventoryLabel = styled.div`
   font-weight: 600;
   color: #795548;
   text-transform: capitalize;
+  
+  @media (max-width: 400px) {
+    font-size: 8px;
+  }
 `;
 
 const TicketsSummary = styled.div`
@@ -2323,6 +2730,10 @@ const TicketsGrid = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 12px;
+  
+  @media (max-width: 400px) {
+    gap: 8px;
+  }
 `;
 
 const TicketItem = styled.div`
@@ -2336,22 +2747,39 @@ const TicketItem = styled.div`
     : 'rgba(255,255,255,0.6)'};
   border-radius: 12px;
   border: 2px solid ${props => props.$premium ? '#ffc107' : '#9c27b0'}40;
+  
+  @media (max-width: 400px) {
+    padding: 10px 8px;
+    gap: 2px;
+  }
 `;
 
 const TicketEmoji = styled.div`
   font-size: 28px;
+  
+  @media (max-width: 400px) {
+    font-size: 22px;
+  }
 `;
 
 const TicketCount = styled.div`
   font-size: 24px;
   font-weight: 900;
   color: ${props => props.$premium ? '#f57c00' : '#7b1fa2'};
+  
+  @media (max-width: 400px) {
+    font-size: 18px;
+  }
 `;
 
 const TicketLabel = styled.div`
   font-size: 11px;
   font-weight: 700;
   color: #5d4037;
+  
+  @media (max-width: 400px) {
+    font-size: 9px;
+  }
 `;
 
 const TicketBonus = styled.div`
@@ -2443,6 +2871,12 @@ const TradeOptionCard = styled.div`
   opacity: ${props => props.$canTrade ? 1 : 0.6};
   transition: all 0.2s;
   
+  @media (max-width: 500px) {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 12px;
+  }
+  
   ${props => props.$canTrade && `
     &:hover {
       border-color: ${RARITY_COLORS[props.$rarity] || '#8b6914'};
@@ -2454,11 +2888,21 @@ const TradeOptionCard = styled.div`
 const TradeOptionEmoji = styled.div`
   font-size: 32px;
   flex-shrink: 0;
+  
+  @media (max-width: 500px) {
+    font-size: 28px;
+    order: 0;
+  }
 `;
 
 const TradeOptionInfo = styled.div`
   flex: 1;
   min-width: 0;
+  
+  @media (max-width: 500px) {
+    flex-basis: calc(100% - 56px);
+    order: 1;
+  }
 `;
 
 const TradeOptionName = styled.div`
@@ -2493,6 +2937,11 @@ const TradeOptionReward = styled.div`
   background: linear-gradient(180deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.15) 100%);
   border-radius: 10px;
   flex-shrink: 0;
+  
+  @media (max-width: 500px) {
+    order: 2;
+    padding: 6px 10px;
+  }
 `;
 
 const RewardAmount = styled.div`
@@ -2522,6 +2971,13 @@ const TradeButton = styled(motion.button)`
     ? '0 3px 0 #1b5e20, 0 4px 8px rgba(0,0,0,0.2)'
     : '0 2px 0 #616161'};
   flex-shrink: 0;
+  touch-action: manipulation;
+  
+  @media (max-width: 500px) {
+    order: 3;
+    flex: 1;
+    padding: 10px 12px;
+  }
   
   ${props => props.$canTrade && `
     &:hover {
