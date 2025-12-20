@@ -50,6 +50,10 @@ const Banner = sequelize.define('Banner', {
   isR18: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  displayOrder: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0
   }
 });
 

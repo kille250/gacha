@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch, FaDownload } from 'react-icons/fa';
+import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch, FaDownload, FaGripVertical } from 'react-icons/fa';
 import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, invalidateAdminCache, clearCache } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
@@ -10,12 +10,61 @@ import MultiUploadModal from '../components/UI/MultiUploadModal';
 import AnimeImportModal from '../components/UI/AnimeImportModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
+import { CSS } from '@dnd-kit/utilities';
 import {
   theme,
   PageWrapper,
   Container,
   getRarityColor
 } from '../styles/DesignSystem';
+
+// Sortable Banner Item Component
+const SortableBannerItem = ({ banner, index, getBannerImageUrl, onToggleFeatured, onEdit, onDelete, t }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: banner.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 1000 : 1,
+  };
+
+  return (
+    <BannerListItem ref={setNodeRef} style={style} $isDragging={isDragging}>
+      <DragHandle {...attributes} {...listeners}>
+        <FaGripVertical />
+      </DragHandle>
+      <BannerOrderNum>{index + 1}</BannerOrderNum>
+      <BannerThumb src={getBannerImageUrl(banner.image)} alt={banner.name} />
+      <BannerItemInfo>
+        <BannerItemName>{banner.name}</BannerItemName>
+        <BannerItemMeta>{banner.series} • {banner.Characters?.length || 0} chars</BannerItemMeta>
+      </BannerItemInfo>
+      <BannerItemTags>
+        <FeaturedToggleBtn 
+          $isFeatured={banner.featured}
+          onClick={() => onToggleFeatured(banner)}
+        >
+          {banner.featured ? '⭐ Featured' : '☆ Feature'}
+        </FeaturedToggleBtn>
+        <StatusTag active={banner.active}>{banner.active ? 'Active' : 'Inactive'}</StatusTag>
+      </BannerItemTags>
+      <BannerItemActions>
+        <ActionBtn onClick={() => onEdit(banner)}><FaEdit /></ActionBtn>
+        <ActionBtn danger onClick={() => onDelete(banner.id)}><FaTrash /></ActionBtn>
+      </BannerItemActions>
+    </BannerListItem>
+  );
+};
 
 const AdminPage = () => {
   const { t } = useTranslation();
@@ -39,7 +88,6 @@ const AdminPage = () => {
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [isMultiUploadOpen, setIsMultiUploadOpen] = useState(false);
   const [isAnimeImportOpen, setIsAnimeImportOpen] = useState(false);
-  const [currentBannerIndex, setCurrentBannerIndex] = useState(0);
 
   // Filtered and paginated characters
   const filteredCharacters = characters.filter(character => {
@@ -436,30 +484,59 @@ const AdminPage = () => {
     }
   };
 
-  // Banner navigation and toggle handlers
-  const handlePrevBanner = () => {
-    setCurrentBannerIndex(prev => (prev > 0 ? prev - 1 : banners.length - 1));
+  // Banner drag-and-drop handlers
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = async (event) => {
+    const { active, over } = event;
+    
+    if (active.id !== over?.id) {
+      const oldIndex = banners.findIndex(b => b.id === active.id);
+      const newIndex = banners.findIndex(b => b.id === over.id);
+      
+      const newBanners = arrayMove(banners, oldIndex, newIndex);
+      setBanners(newBanners);
+      
+      // Save new order to backend
+      try {
+        await api.post('/banners/update-order', {
+          bannerOrder: newBanners.map(b => b.id)
+        });
+        setSuccessMessage(t('admin.bannerOrderUpdated'));
+      } catch (err) {
+        // Revert on error
+        setBanners(banners);
+        setError(err.response?.data?.error || t('admin.failedUpdateBannerOrder'));
+      }
+    }
   };
 
-  const handleNextBanner = () => {
-    setCurrentBannerIndex(prev => (prev < banners.length - 1 ? prev + 1 : 0));
-  };
-
-  const handleToggleCurrentFeatured = async () => {
-    if (banners.length === 0) return;
-    const currentBanner = banners[currentBannerIndex];
-    if (!currentBanner) return;
+  const handleToggleFeatured = async (banner) => {
+    const newFeaturedStatus = !banner.featured;
+    
+    // Update local state immediately for responsive UI
+    setBanners(prev => prev.map(b => 
+      b.id === banner.id ? { ...b, featured: newFeaturedStatus } : b
+    ));
     
     try {
       setSuccessMessage(null);
       setError(null);
       await api.post('/banners/bulk-toggle-featured', {
-        bannerIds: [currentBanner.id],
-        featured: !currentBanner.featured
+        bannerIds: [banner.id],
+        featured: newFeaturedStatus
       });
-      await fetchBanners();
-      setSuccessMessage(`${currentBanner.name} ${!currentBanner.featured ? 'marked as featured' : 'unmarked as featured'}`);
+      setSuccessMessage(`${banner.name} ${newFeaturedStatus ? 'marked as featured' : 'unmarked as featured'}`);
     } catch (err) {
+      // Revert on error
+      setBanners(prev => prev.map(b => 
+        b.id === banner.id ? { ...b, featured: !newFeaturedStatus } : b
+      ));
       setError(err.response?.data?.error || t('admin.failedUpdateBanner'));
     }
   };
@@ -769,58 +846,29 @@ const AdminPage = () => {
             <AddButton onClick={() => setIsAddingBanner(true)}><FaPlus /> {t('admin.addBanner')}</AddButton>
           </SectionHeader>
           
-          {/* Featured Toggle Navigator */}
-          {banners.length > 0 && (
-            <FeaturedToggleNav>
-              <NavArrowBtn onClick={handlePrevBanner}>◀</NavArrowBtn>
-              <FeaturedToggleCard>
-                <FeaturedBannerPreview>
-                  <img src={getBannerImageUrl(banners[currentBannerIndex]?.image)} alt="" />
-                </FeaturedBannerPreview>
-                <FeaturedToggleInfo>
-                  <FeaturedBannerName>{banners[currentBannerIndex]?.name}</FeaturedBannerName>
-                  <FeaturedCounter>{currentBannerIndex + 1} / {banners.length}</FeaturedCounter>
-                </FeaturedToggleInfo>
-                <FeaturedToggleBtn 
-                  $isFeatured={banners[currentBannerIndex]?.featured}
-                  onClick={handleToggleCurrentFeatured}
-                >
-                  {banners[currentBannerIndex]?.featured ? '⭐ Featured' : '☆ Set Featured'}
-                </FeaturedToggleBtn>
-              </FeaturedToggleCard>
-              <NavArrowBtn onClick={handleNextBanner}>▶</NavArrowBtn>
-            </FeaturedToggleNav>
-          )}
+          <DragHint>💡 {t('admin.dragToReorder')}</DragHint>
           
           {banners.length === 0 ? (
             <EmptyMessage>{t('admin.noBannersFound')}</EmptyMessage>
           ) : (
-            <BannerGrid>
-              {banners.map((banner, index) => (
-                <BannerCard key={banner.id} $selected={index === currentBannerIndex}>
-                  <BannerImage src={getBannerImageUrl(banner.image)} alt={banner.name} />
-                  <BannerInfo>
-                    <BannerName>{banner.name}</BannerName>
-                    <TagRow>
-                      <SeriesTag>{banner.series}</SeriesTag>
-                      {banner.featured && <FeaturedTag>⭐ {t('admin.featured')}</FeaturedTag>}
-                      <StatusTag active={banner.active}>{banner.active ? t('admin.active') : t('admin.inactive')}</StatusTag>
-                    </TagRow>
-                    <BannerDesc>{banner.description}</BannerDesc>
-                    {banner.endDate && <DateInfo>{t('common.ends')}: {new Date(banner.endDate).toLocaleDateString()}</DateInfo>}
-                    <BannerStats>
-                      <StatItem><strong>{t('admin.cost')}:</strong> {Math.floor(100 * banner.costMultiplier)}</StatItem>
-                      <StatItem><strong>{t('gacha.characters')}:</strong> {banner.Characters?.length || 0}</StatItem>
-                      {banner.videoUrl && <StatItem><FaVideo /> {t('admin.video')}</StatItem>}
-                    </BannerStats>
-                    <CardActions>
-                      <ActionBtn onClick={() => handleEditBanner(banner)}><FaEdit /> {t('common.edit')}</ActionBtn>
-                      <ActionBtn danger onClick={() => handleDeleteBanner(banner.id)}><FaTrash /> {t('common.delete')}</ActionBtn>
-                    </CardActions>
-                  </BannerInfo>
-                </BannerCard>
-              ))}
-            </BannerGrid>
+            <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+              <SortableContext items={banners.map(b => b.id)} strategy={verticalListSortingStrategy}>
+                <BannerList>
+                  {banners.map((banner, index) => (
+                    <SortableBannerItem
+                      key={banner.id}
+                      banner={banner}
+                      index={index}
+                      getBannerImageUrl={getBannerImageUrl}
+                      onToggleFeatured={handleToggleFeatured}
+                      onEdit={handleEditBanner}
+                      onDelete={handleDeleteBanner}
+                      t={t}
+                    />
+                  ))}
+                </BannerList>
+              </SortableContext>
+            </DndContext>
           )}
         </AdminSection>
         
@@ -1397,72 +1445,82 @@ const PageInfo = styled.span`
   font-size: ${theme.fontSizes.sm};
 `;
 
-const FeaturedToggleNav = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.md};
-  margin-bottom: ${theme.spacing.xl};
-  padding: ${theme.spacing.lg};
-  background: linear-gradient(135deg, rgba(255, 159, 10, 0.1), rgba(255, 204, 0, 0.05));
-  border-radius: ${theme.radius.xl};
-  border: 1px solid rgba(255, 159, 10, 0.2);
+const DragHint = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: rgba(255, 159, 10, 0.1);
+  border-radius: ${theme.radius.md};
+  border-left: 3px solid ${theme.colors.warning};
 `;
 
-const NavArrowBtn = styled.button`
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  border: none;
-  background: ${theme.colors.primary};
-  color: white;
-  font-size: 20px;
-  cursor: pointer;
-  transition: all 0.2s;
+const BannerList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+const BannerListItem = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  background: ${props => props.$isDragging ? theme.colors.surface : theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
+  border: 1px solid ${props => props.$isDragging ? theme.colors.primary : theme.colors.surfaceBorder};
+  transition: all 0.2s;
   
   &:hover {
-    transform: scale(1.1);
-    background: ${theme.colors.accent};
-  }
-  
-  &:active {
-    transform: scale(0.95);
+    background: ${theme.colors.surface};
   }
 `;
 
-const FeaturedToggleCard = styled.div`
+const DragHandle = styled.div`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing.lg};
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.surface};
-  border-radius: ${theme.radius.lg};
-  min-width: 400px;
-`;
-
-const FeaturedBannerPreview = styled.div`
-  width: 80px;
-  height: 50px;
-  border-radius: ${theme.radius.md};
-  overflow: hidden;
-  flex-shrink: 0;
+  justify-content: center;
+  padding: ${theme.spacing.sm};
+  color: ${theme.colors.textMuted};
+  cursor: grab;
   
-  img {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
+  &:active {
+    cursor: grabbing;
+  }
+  
+  &:hover {
+    color: ${theme.colors.text};
   }
 `;
 
-const FeaturedToggleInfo = styled.div`
+const BannerOrderNum = styled.div`
+  width: 28px;
+  height: 28px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${theme.colors.primary};
+  color: white;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  flex-shrink: 0;
+`;
+
+const BannerThumb = styled.img`
+  width: 80px;
+  height: 50px;
+  object-fit: cover;
+  border-radius: ${theme.radius.md};
+  flex-shrink: 0;
+`;
+
+const BannerItemInfo = styled.div`
   flex: 1;
   min-width: 0;
 `;
 
-const FeaturedBannerName = styled.div`
+const BannerItemName = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   font-size: ${theme.fontSizes.base};
   white-space: nowrap;
@@ -1470,13 +1528,26 @@ const FeaturedBannerName = styled.div`
   text-overflow: ellipsis;
 `;
 
-const FeaturedCounter = styled.div`
+const BannerItemMeta = styled.div`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
 `;
 
+const BannerItemTags = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  flex-shrink: 0;
+`;
+
+const BannerItemActions = styled.div`
+  display: flex;
+  gap: ${theme.spacing.xs};
+  flex-shrink: 0;
+`;
+
 const FeaturedToggleBtn = styled.button`
-  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
   border-radius: ${theme.radius.full};
   border: none;
   font-weight: ${theme.fontWeights.semibold};

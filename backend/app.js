@@ -258,6 +258,7 @@ async function startServer() {
       await addColumnIfNotExists('Users', 'autofishUnlockedByRank', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Banners', 'isR18', 'BOOLEAN', 'false');
+      await addColumnIfNotExists('Banners', 'displayOrder', 'INTEGER', '0');
     }
     
     app.listen(PORT, () => console.log(`Server running on port ${PORT}`));

@@ -37,6 +37,7 @@ const GachaPage = () => {
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
+  const [featuredIndex, setFeaturedIndex] = useState(0);
   
   // Effects
   useEffect(() => { refreshUser(); }, [refreshUser]);
@@ -58,9 +59,26 @@ const GachaPage = () => {
   
   const getBannerImage = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300x150?text=Banner';
   
-  // Get featured banner for hero
-  const featuredBanner = banners.find(b => b.featured);
+  // Get featured banners for hero carousel
+  const featuredBanners = banners.filter(b => b.featured);
   const otherBanners = banners.filter(b => !b.featured);
+  
+  // Ensure index stays in bounds
+  const safeFeaturedIndex = featuredBanners.length > 0 
+    ? Math.min(featuredIndex, featuredBanners.length - 1) 
+    : 0;
+  const currentFeaturedBanner = featuredBanners[safeFeaturedIndex];
+  
+  // Featured banner navigation
+  const handlePrevFeatured = (e) => {
+    e.stopPropagation();
+    setFeaturedIndex(prev => (prev > 0 ? prev - 1 : featuredBanners.length - 1));
+  };
+  
+  const handleNextFeatured = (e) => {
+    e.stopPropagation();
+    setFeaturedIndex(prev => (prev < featuredBanners.length - 1 ? prev + 1 : 0));
+  };
   
   if (loading) {
     return (
@@ -98,41 +116,64 @@ const GachaPage = () => {
         </HeroSection>
         
         {/* Featured Banner Hero */}
-        {featuredBanner && (
+        {currentFeaturedBanner && (
           <BannersSection>
             <HeroBanner
+              key={currentFeaturedBanner.id}
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.6 }}
+              transition={{ duration: 0.4 }}
+              onClick={() => navigate(`/banner/${currentFeaturedBanner.id}`)}
             >
-              <HeroBannerImage src={getBannerImage(featuredBanner.image)} alt={featuredBanner.name} />
+              <HeroBannerImage src={getBannerImage(currentFeaturedBanner.image)} alt={currentFeaturedBanner.name} />
               <HeroBannerOverlay />
               <HeroBannerContent>
                 <HeroBadge>
                   <FaStar /> {t('gacha.featuredEvent')}
                 </HeroBadge>
-                <HeroTitle>{featuredBanner.name}</HeroTitle>
+                <HeroTitle>{currentFeaturedBanner.name}</HeroTitle>
                 <HeroMeta>
-                  <HeroSeries>{featuredBanner.series}</HeroSeries>
+                  <HeroSeries>{currentFeaturedBanner.series}</HeroSeries>
                   <HeroDivider>•</HeroDivider>
-                  <HeroStats>{featuredBanner.Characters?.length || 0} {t('gacha.characters')}</HeroStats>
+                  <HeroStats>{currentFeaturedBanner.Characters?.length || 0} {t('gacha.characters')}</HeroStats>
                 </HeroMeta>
-                {featuredBanner.description && (
-                  <HeroDescription>{featuredBanner.description}</HeroDescription>
+                {currentFeaturedBanner.description && (
+                  <HeroDescription>{currentFeaturedBanner.description}</HeroDescription>
                 )}
                 <HeroCTA
-                  onClick={() => navigate(`/banner/${featuredBanner.id}`)}
+                  onClick={(e) => { e.stopPropagation(); navigate(`/banner/${currentFeaturedBanner.id}`); }}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
                   <FaPlay style={{ fontSize: '12px' }} />
                   {t('gacha.rollNow')}
                   <span style={{ opacity: 0.7, marginLeft: 'auto' }}>
-                    {Math.floor(100 * (featuredBanner.costMultiplier || 1.5))} {t('common.points')}
+                    {Math.floor(100 * (currentFeaturedBanner.costMultiplier || 1.5))} {t('common.points')}
                   </span>
                 </HeroCTA>
               </HeroBannerContent>
               <HeroGradient />
+              
+              {/* Navigation Arrows for multiple featured banners */}
+              {featuredBanners.length > 1 && (
+                <>
+                  <FeaturedNavArrow $left onClick={handlePrevFeatured}>
+                    <MdChevronLeft />
+                  </FeaturedNavArrow>
+                  <FeaturedNavArrow onClick={handleNextFeatured}>
+                    <MdChevronRight />
+                  </FeaturedNavArrow>
+                  <FeaturedIndicators>
+                    {featuredBanners.map((_, idx) => (
+                      <FeaturedDot 
+                        key={idx} 
+                        $active={idx === safeFeaturedIndex}
+                        onClick={(e) => { e.stopPropagation(); setFeaturedIndex(idx); }}
+                      />
+                    ))}
+                  </FeaturedIndicators>
+                </>
+              )}
             </HeroBanner>
           </BannersSection>
         )}
@@ -502,6 +543,61 @@ const HeroGradient = styled.div`
   height: 120px;
   background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
   pointer-events: none;
+`;
+
+const FeaturedNavArrow = styled.button`
+  position: absolute;
+  top: 50%;
+  transform: translateY(-50%);
+  ${props => props.$left ? 'left: 16px;' : 'right: 16px;'}
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 10;
+  font-size: 28px;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: translateY(-50%) scale(1.1);
+  }
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    width: 40px;
+    height: 40px;
+    font-size: 24px;
+  }
+`;
+
+const FeaturedIndicators = styled.div`
+  position: absolute;
+  bottom: 20px;
+  right: 20px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+`;
+
+const FeaturedDot = styled.button`
+  width: ${props => props.$active ? '24px' : '10px'};
+  height: 10px;
+  border-radius: 5px;
+  background: ${props => props.$active ? 'white' : 'rgba(255, 255, 255, 0.4)'};
+  border: none;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: ${props => props.$active ? 'white' : 'rgba(255, 255, 255, 0.6)'};
+  }
 `;
 
 // Carousel Section

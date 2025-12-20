@@ -92,13 +92,20 @@ const upload = multer({
 // Get all active banners (filters R18 banners and characters based on user preference)
 router.get('/', async (req, res) => {
   try {
-    const query = req.query.showAll === 'true' ? {} : { where: { active: true } };
+    const showAll = req.query.showAll === 'true';
+    const query = showAll ? {} : { where: { active: true } };
     
     const banners = await Banner.findAll({
       ...query,
       include: [{ model: Character }],
-      order: [['featured', 'DESC'], ['createdAt', 'DESC']]
+      order: [['featured', 'DESC'], ['displayOrder', 'ASC'], ['createdAt', 'DESC']]
     });
+    
+    // For admin view (showAll=true), skip R18 filtering
+    if (showAll) {
+      res.json(banners.map(b => b.get({ plain: true })));
+      return;
+    }
     
     // Check R18 preference
     let allowR18 = false;
@@ -173,6 +180,31 @@ router.get('/:id', async (req, res) => {
 });
 
 // Admin routes below require authentication and admin privileges
+
+// Update banner display order (admin only)
+router.post('/update-order', [auth, admin], async (req, res) => {
+  try {
+    const { bannerOrder } = req.body;
+    
+    if (!bannerOrder || !Array.isArray(bannerOrder)) {
+      return res.status(400).json({ error: 'bannerOrder array is required' });
+    }
+    
+    // Update each banner's displayOrder
+    const updates = bannerOrder.map((bannerId, index) => 
+      Banner.update({ displayOrder: index }, { where: { id: bannerId } })
+    );
+    
+    await Promise.all(updates);
+    
+    console.log(`Admin updated banner display order: ${bannerOrder.length} banners`);
+    
+    res.json({ message: 'Banner order updated successfully' });
+  } catch (err) {
+    console.error('Error updating banner order:', err);
+    res.status(500).json({ error: 'Server error: ' + err.message });
+  }
+});
 
 // Bulk toggle featured status for multiple banners (admin only)
 router.post('/bulk-toggle-featured', [auth, admin], async (req, res) => {
