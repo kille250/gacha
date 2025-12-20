@@ -17,7 +17,9 @@ import {
   theme,
   PageWrapper,
   Container,
+  Section,
   IconButton,
+  Chip,
   RarityBadge,
   Spinner,
   Alert,
@@ -598,17 +600,8 @@ const NavStats = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
-const StatPill = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: ${theme.colors.glass};
-  backdrop-filter: blur(${theme.blur.md});
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.full};
+const StatPill = styled(Chip)`
   font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
 `;
 
 const PointsPill = styled(StatPill)`
@@ -619,9 +612,9 @@ const PointsPill = styled(StatPill)`
 `;
 
 // Hero Section
-const HeroSection = styled.div`
+const HeroSection = styled(Section)`
   text-align: center;
-  padding: ${theme.spacing['2xl']} 0;
+  margin-bottom: ${theme.spacing.xl};
   position: relative;
   z-index: 1;
 `;
