@@ -213,9 +213,28 @@ router.post('/google', async (req, res) => {
     });
     
     if (user) {
+      let needsSave = false;
+      const normalizedEmail = email.toLowerCase();
+      
       // Update googleId if user signed up with email but now uses Google
       if (!user.googleId) {
         user.googleId = googleId;
+        needsSave = true;
+      }
+      
+      // Always keep googleEmail in sync with the actual Google account email
+      if (user.googleEmail !== normalizedEmail) {
+        user.googleEmail = normalizedEmail;
+        needsSave = true;
+      }
+      
+      // Only set user.email from Google if it's currently empty (first-time setup)
+      if (!user.email) {
+        user.email = normalizedEmail;
+        needsSave = true;
+      }
+      
+      if (needsSave) {
         await user.save();
       }
     } else {
@@ -255,6 +274,7 @@ router.post('/google', async (req, res) => {
         username,
         email: email.toLowerCase(),
         googleId,
+        googleEmail: email.toLowerCase(), // Track the Google account email
         password: null, // No password for Google SSO users
         points: 1000,
         isAdmin: isFirstUser
@@ -290,7 +310,7 @@ router.post('/google', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'username', 'email', 'googleId', 'points', 'isAdmin', 'lastDailyReward', 'allowR18', 'showR18', 'usernameChanged']
+      attributes: ['id', 'username', 'email', 'googleId', 'googleEmail', 'points', 'isAdmin', 'lastDailyReward', 'allowR18', 'showR18', 'usernameChanged']
     });
     
     if (!user) {
@@ -298,6 +318,7 @@ router.get('/me', auth, async (req, res) => {
     }
     
     // Build response object (avoid mutating Sequelize instance)
+    const hasGoogle = !!user.googleId;
     const response = {
       id: user.id,
       username: user.username,
@@ -308,8 +329,9 @@ router.get('/me', auth, async (req, res) => {
       allowR18: user.allowR18 === true,
       showR18: user.showR18 === true,
       usernameChanged: user.usernameChanged === true,
-      hasGoogle: !!user.googleId
-      // Note: googleId intentionally not exposed to frontend
+      hasGoogle,
+      // The actual Google account email (updated on each Google login)
+      linkedGoogleEmail: user.googleEmail || null
     };
     
     res.json(response);

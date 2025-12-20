@@ -361,6 +361,7 @@
     "googleLinked": "Cuenta de Google",
     "linked": "Vinculada",
     "notLinked": "No vinculada",
+    "linkedGoogleEmail": "Correo de Google vinculado",
     "addEmail": "Agregar correo",
     "updateEmail": "Actualizar correo",
     "emailDescription": "Agrega tu correo electrónico para habilitar el inicio de sesión con Google y la recuperación de cuenta.",

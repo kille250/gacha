@@ -117,6 +117,14 @@ const SettingsPage = () => {
                 )}
               </InfoValue>
             </InfoRow>
+            {user?.linkedGoogleEmail && (
+              <InfoRow>
+                <InfoLabel><FaGoogle /> {t('settings.linkedGoogleEmail')}</InfoLabel>
+                <InfoValue>
+                  <GoogleEmailBadge>{user.linkedGoogleEmail}</GoogleEmailBadge>
+                </InfoValue>
+              </InfoRow>
+            )}
           </InfoCard>
         </Section>
         
@@ -336,6 +344,19 @@ const LinkedBadge = styled.span`
 
 const NotLinkedBadge = styled.span`
   color: ${theme.colors.textMuted};
+`;
+
+const GoogleEmailBadge = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 10px;
+  background: rgba(66, 133, 244, 0.15);
+  border: 1px solid rgba(66, 133, 244, 0.3);
+  border-radius: ${theme.radius.full};
+  color: #4285f4;
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.medium};
 `;
 
 const Form = styled.form`

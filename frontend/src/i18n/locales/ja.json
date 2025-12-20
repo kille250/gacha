@@ -361,6 +361,7 @@
     "googleLinked": "Googleアカウント",
     "linked": "連携済み",
     "notLinked": "未連携",
+    "linkedGoogleEmail": "連携中のGoogleメール",
     "addEmail": "メールアドレスを追加",
     "updateEmail": "メールアドレスを更新",
     "emailDescription": "メールアドレスを追加してGoogleログイン連携とアカウント復旧を有効にします。",

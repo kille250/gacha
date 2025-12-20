@@ -27,6 +27,11 @@ User.init(
       allowNull: true,
       unique: true,
     },
+    googleEmail: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      // Not unique - just for display, the googleId is the unique identifier
+    },
     password: {
       type: DataTypes.STRING,
       allowNull: true, // Allow null for Google SSO users

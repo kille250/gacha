@@ -371,6 +371,7 @@
     "googleLinked": "Google Account",
     "linked": "Linked",
     "notLinked": "Not linked",
+    "linkedGoogleEmail": "Linked Google Email",
     "addEmail": "Add Email",
     "updateEmail": "Update Email",
     "emailDescription": "Add your email to enable Google Sign-In linking and account recovery.",

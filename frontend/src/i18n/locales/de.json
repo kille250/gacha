@@ -359,6 +359,7 @@
     "googleLinked": "Google-Konto",
     "linked": "Verknüpft",
     "notLinked": "Nicht verknüpft",
+    "linkedGoogleEmail": "Verknüpfte Google-E-Mail",
     "addEmail": "E-Mail hinzufügen",
     "updateEmail": "E-Mail aktualisieren",
     "emailDescription": "Füge deine E-Mail hinzu, um Google-Anmeldung und Kontowiederherstellung zu ermöglichen.",
