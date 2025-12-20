@@ -4,7 +4,6 @@ const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const auth = require('../middleware/auth');
 const { User } = require('../models');
-const sequelize = require('../config/db');
 const { validateUsername, validatePassword, validateEmail } = require('../utils/validation');
 
 // Initialize Google OAuth client
@@ -204,17 +203,18 @@ router.post('/google', async (req, res) => {
       return res.status(400).json({ error: 'Please verify your Google email address first' });
     }
     
-    // Check if user exists by googleId or email
-    let user = await User.findOne({ 
-      where: sequelize.or(
-        { googleId },
-        { email: email.toLowerCase() }
-      )
-    });
+    // Check if user exists - prioritize googleId over email
+    // (googleId is immutable and takes precedence for returning users)
+    const normalizedEmail = email.toLowerCase();
+    let user = await User.findOne({ where: { googleId } });
+    
+    // If not found by googleId, check by email (for first-time Google linking)
+    if (!user) {
+      user = await User.findOne({ where: { email: normalizedEmail } });
+    }
     
     if (user) {
       let needsSave = false;
-      const normalizedEmail = email.toLowerCase();
       
       // Update googleId if user signed up with email but now uses Google
       if (!user.googleId) {
@@ -303,6 +303,98 @@ router.post('/google', async (req, res) => {
       return res.status(401).json({ error: 'Invalid or expired Google token' });
     }
     res.status(500).json({ error: 'Google authentication failed' });
+  }
+});
+
+// POST /api/auth/google/relink - Link or relink Google account (authenticated users only)
+router.post('/google/relink', auth, async (req, res) => {
+  const { credential } = req.body;
+  
+  if (!credential) {
+    return res.status(400).json({ error: 'Google credential is required' });
+  }
+  
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(500).json({ error: 'Google SSO is not configured' });
+  }
+  
+  try {
+    // Verify the Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, email_verified } = payload;
+    
+    // Security: Require verified email from Google
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required from Google account' });
+    }
+    
+    if (!email_verified) {
+      return res.status(400).json({ error: 'Please verify your Google email address first' });
+    }
+    
+    const normalizedEmail = email.toLowerCase();
+    
+    // Check if this Google account is already linked to another user
+    const existingGoogleUser = await User.findOne({ where: { googleId } });
+    if (existingGoogleUser && existingGoogleUser.id !== req.user.id) {
+      return res.status(400).json({ 
+        error: 'This Google account is already linked to another user' 
+      });
+    }
+    
+    // Get the current user
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Update Google link
+    user.googleId = googleId;
+    user.googleEmail = normalizedEmail;
+    await user.save();
+    
+    res.json({ 
+      message: 'Google account linked successfully',
+      linkedGoogleEmail: normalizedEmail
+    });
+  } catch (err) {
+    console.error('Google relink error:', err);
+    if (err.message?.includes('Token used too late') || err.message?.includes('Invalid token')) {
+      return res.status(401).json({ error: 'Invalid or expired Google token' });
+    }
+    res.status(500).json({ error: 'Failed to link Google account' });
+  }
+});
+
+// POST /api/auth/google/unlink - Unlink Google account (authenticated users only)
+router.post('/google/unlink', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Don't allow unlinking if user has no password (Google-only account)
+    if (!user.password) {
+      return res.status(400).json({ 
+        error: 'Cannot unlink Google account. Please set a password first to enable email login.' 
+      });
+    }
+    
+    // Clear Google link
+    user.googleId = null;
+    user.googleEmail = null;
+    await user.save();
+    
+    res.json({ message: 'Google account unlinked successfully' });
+  } catch (err) {
+    console.error('Google unlink error:', err);
+    res.status(500).json({ error: 'Failed to unlink Google account' });
   }
 });
 

@@ -164,6 +164,40 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleRelink = async (credential) => {
+    try {
+      setError(null);
+      const response = await api.post('/auth/google/relink', { credential });
+      
+      // Refresh user data to get updated Google info
+      await refreshUser();
+      
+      return { success: true, message: response.data.message };
+    } catch (err) {
+      console.error("Google relink error:", err);
+      const errorMessage = err.response?.data?.error || 'Failed to link Google account';
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  };
+
+  const googleUnlink = async () => {
+    try {
+      setError(null);
+      const response = await api.post('/auth/google/unlink');
+      
+      // Refresh user data to get updated state
+      await refreshUser();
+      
+      return { success: true, message: response.data.message };
+    } catch (err) {
+      console.error("Google unlink error:", err);
+      const errorMessage = err.response?.data?.error || 'Failed to unlink Google account';
+      setError(errorMessage);
+      return { success: false, error: errorMessage };
+    }
+  };
+
   const logout = () => {
     // Clear all cached API data first (before removing token)
     invalidateCache();
@@ -180,6 +214,8 @@ export const AuthProvider = ({ children }) => {
       login, 
       register,
       googleLogin,
+      googleRelink,
+      googleUnlink,
       logout,
       setUser: setCurrentUser,
       refreshUser

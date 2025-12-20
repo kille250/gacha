@@ -2,25 +2,32 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
-import { FaUser, FaEnvelope, FaCheck, FaArrowLeft, FaGoogle, FaLock } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaCheck, FaArrowLeft, FaGoogle, FaLock, FaUnlink, FaLink } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
+import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { theme } from '../styles/DesignSystem';
 import api from '../utils/api';
 
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
 const SettingsPage = () => {
   const { t } = useTranslation();
-  const { user, refreshUser } = useContext(AuthContext);
+  const { user, refreshUser, googleRelink, googleUnlink } = useContext(AuthContext);
   const navigate = useNavigate();
   
   const [email, setEmail] = useState('');
   const [newUsername, setNewUsername] = useState('');
   const [emailLoading, setEmailLoading] = useState(false);
   const [usernameLoading, setUsernameLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
   const [emailSuccess, setEmailSuccess] = useState('');
   const [usernameSuccess, setUsernameSuccess] = useState('');
+  const [googleSuccess, setGoogleSuccess] = useState('');
   const [emailError, setEmailError] = useState('');
   const [usernameError, setUsernameError] = useState('');
+  const [googleError, setGoogleError] = useState('');
+  const [showRelinkConfirm, setShowRelinkConfirm] = useState(false);
   
   useEffect(() => {
     if (user?.email) {
@@ -84,6 +91,49 @@ const SettingsPage = () => {
       setUsernameLoading(false);
     }
   };
+
+  const handleGoogleRelink = async (credentialResponse) => {
+    setGoogleError('');
+    setGoogleSuccess('');
+    setGoogleLoading(true);
+    
+    try {
+      const result = await googleRelink(credentialResponse.credential);
+      if (result.success) {
+        setGoogleSuccess(result.message || t('settings.googleLinkedSuccess'));
+        setShowRelinkConfirm(false);
+      } else {
+        setGoogleError(result.error);
+      }
+    } catch (err) {
+      setGoogleError(t('settings.googleLinkFailed'));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleUnlink = async () => {
+    setGoogleError('');
+    setGoogleSuccess('');
+    setGoogleLoading(true);
+    
+    try {
+      const result = await googleUnlink();
+      if (result.success) {
+        setGoogleSuccess(result.message || t('settings.googleUnlinkedSuccess'));
+      } else {
+        setGoogleError(result.error);
+      }
+    } catch (err) {
+      setGoogleError(t('settings.googleUnlinkFailed'));
+    } finally {
+      setGoogleLoading(false);
+    }
+  };
+
+  const handleGoogleError = () => {
+    setGoogleError(t('settings.googleAuthFailed'));
+  };
   
   return (
     <PageContainer>
@@ -127,6 +177,91 @@ const SettingsPage = () => {
             )}
           </InfoCard>
         </Section>
+
+        {/* Google Account Section */}
+        {GOOGLE_CLIENT_ID && (
+          <Section>
+            <SectionTitle>
+              <FaGoogle /> {t('settings.googleAccount')}
+            </SectionTitle>
+            <SectionDescription>
+              {user?.hasGoogle 
+                ? t('settings.googleAccountLinkedDesc')
+                : t('settings.googleAccountNotLinkedDesc')
+              }
+            </SectionDescription>
+
+            {googleError && <ErrorMessage>{googleError}</ErrorMessage>}
+            {googleSuccess && <SuccessMessage><FaCheck /> {googleSuccess}</SuccessMessage>}
+
+            {user?.hasGoogle ? (
+              <>
+                {!showRelinkConfirm ? (
+                  <GoogleButtonGroup>
+                    <GoogleActionButton
+                      onClick={() => setShowRelinkConfirm(true)}
+                      disabled={googleLoading}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <FaLink /> {t('settings.changeGoogleAccount')}
+                    </GoogleActionButton>
+                    <GoogleUnlinkButton
+                      onClick={handleGoogleUnlink}
+                      disabled={googleLoading}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      {googleLoading ? <LoadingSpinner /> : (
+                        <><FaUnlink /> {t('settings.unlinkGoogle')}</>
+                      )}
+                    </GoogleUnlinkButton>
+                  </GoogleButtonGroup>
+                ) : (
+                  <RelinkConfirmBox>
+                    <p>{t('settings.selectNewGoogleAccount')}</p>
+                    <GoogleButtonWrapper>
+                      {googleLoading ? (
+                        <GoogleLoadingButton disabled>
+                          <LoadingSpinner />
+                        </GoogleLoadingButton>
+                      ) : (
+                        <GoogleLogin
+                          onSuccess={handleGoogleRelink}
+                          onError={handleGoogleError}
+                          theme="filled_black"
+                          size="large"
+                          text="signin_with"
+                          shape="rectangular"
+                        />
+                      )}
+                    </GoogleButtonWrapper>
+                    <CancelButton onClick={() => setShowRelinkConfirm(false)}>
+                      {t('common.cancel')}
+                    </CancelButton>
+                  </RelinkConfirmBox>
+                )}
+              </>
+            ) : (
+              <GoogleButtonWrapper>
+                {googleLoading ? (
+                  <GoogleLoadingButton disabled>
+                    <LoadingSpinner />
+                  </GoogleLoadingButton>
+                ) : (
+                  <GoogleLogin
+                    onSuccess={handleGoogleRelink}
+                    onError={handleGoogleError}
+                    theme="filled_black"
+                    size="large"
+                    text="signin_with"
+                    shape="rectangular"
+                  />
+                )}
+              </GoogleButtonWrapper>
+            )}
+          </Section>
+        )}
         
         {/* Email Section */}
         <Section>
@@ -480,6 +615,122 @@ const DisabledSection = styled.div`
   
   svg {
     font-size: 20px;
+  }
+`;
+
+const GoogleButtonGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+`;
+
+const GoogleActionButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: linear-gradient(135deg, #4285f4, #34a853);
+  border: none;
+  border-radius: ${theme.radius.lg};
+  font-family: ${theme.fonts.primary};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: white;
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+`;
+
+const GoogleUnlinkButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: transparent;
+  border: 1px solid ${theme.colors.error};
+  border-radius: ${theme.radius.lg};
+  font-family: ${theme.fonts.primary};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  color: ${theme.colors.error};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover:not(:disabled) {
+    background: rgba(255, 59, 48, 0.1);
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+`;
+
+const RelinkConfirmBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.lg};
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
+  
+  p {
+    font-size: ${theme.fontSizes.sm};
+    color: ${theme.colors.textSecondary};
+    margin: 0;
+    text-align: center;
+  }
+`;
+
+const GoogleButtonWrapper = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  
+  > div {
+    width: 100% !important;
+  }
+  
+  iframe {
+    width: 100% !important;
+  }
+`;
+
+const GoogleLoadingButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${theme.colors.text};
+  cursor: not-allowed;
+  opacity: 0.7;
+`;
+
+const CancelButton = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: transparent;
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  font-family: ${theme.fonts.primary};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: ${theme.colors.glass};
   }
 `;
 

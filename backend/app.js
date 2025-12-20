@@ -205,7 +205,7 @@ app.get('/api/health', (req, res) => {
 const authRoutes = require('./routes/auth');
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
-app.use('/api/auth/google', authLimiter);
+app.use('/api/auth/google', authLimiter); // Applies to /google, /google/relink, /google/unlink
 app.use('/api/auth', authRoutes);
 
 // Character routes - rate limit only roll endpoints
