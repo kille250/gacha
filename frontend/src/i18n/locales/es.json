@@ -388,7 +388,9 @@
     "googleUnlinkedSuccess": "Cuenta de Google desvinculada exitosamente",
     "googleLinkFailed": "Error al vincular la cuenta de Google",
     "googleUnlinkFailed": "Error al desvincular la cuenta de Google",
-    "googleAuthFailed": "Autenticación de Google fallida"
+    "googleAuthFailed": "Autenticación de Google fallida",
+    "unlinkConfirmMessage": "¿Estás seguro de que deseas desvincular tu cuenta de Google? Necesitarás usar tu contraseña para iniciar sesión.",
+    "confirmUnlink": "Sí, desvincular"
   },
   "animeImport": {
     "title": "Importar personajes de anime",

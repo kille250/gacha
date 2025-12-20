@@ -28,6 +28,7 @@ const SettingsPage = () => {
   const [usernameError, setUsernameError] = useState('');
   const [googleError, setGoogleError] = useState('');
   const [showRelinkConfirm, setShowRelinkConfirm] = useState(false);
+  const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
   
   useEffect(() => {
     if (user?.email) {
@@ -121,6 +122,7 @@ const SettingsPage = () => {
       const result = await googleUnlink();
       if (result.success) {
         setGoogleSuccess(result.message || t('settings.googleUnlinkedSuccess'));
+        setShowUnlinkConfirm(false);
       } else {
         setGoogleError(result.error);
       }
@@ -196,7 +198,7 @@ const SettingsPage = () => {
 
             {user?.hasGoogle ? (
               <>
-                {!showRelinkConfirm ? (
+                {!showRelinkConfirm && !showUnlinkConfirm ? (
                   <GoogleButtonGroup>
                     <GoogleActionButton
                       onClick={() => setShowRelinkConfirm(true)}
@@ -207,16 +209,33 @@ const SettingsPage = () => {
                       <FaLink /> {t('settings.changeGoogleAccount')}
                     </GoogleActionButton>
                     <GoogleUnlinkButton
-                      onClick={handleGoogleUnlink}
+                      onClick={() => setShowUnlinkConfirm(true)}
                       disabled={googleLoading}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
-                      {googleLoading ? <LoadingSpinner /> : (
-                        <><FaUnlink /> {t('settings.unlinkGoogle')}</>
-                      )}
+                      <FaUnlink /> {t('settings.unlinkGoogle')}
                     </GoogleUnlinkButton>
                   </GoogleButtonGroup>
+                ) : showUnlinkConfirm ? (
+                  <RelinkConfirmBox>
+                    <p>⚠️ {t('settings.unlinkConfirmMessage')}</p>
+                    <GoogleButtonGroup>
+                      <GoogleUnlinkButton
+                        onClick={handleGoogleUnlink}
+                        disabled={googleLoading}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        {googleLoading ? <LoadingSpinner /> : (
+                          <><FaUnlink /> {t('settings.confirmUnlink')}</>
+                        )}
+                      </GoogleUnlinkButton>
+                      <CancelButton onClick={() => setShowUnlinkConfirm(false)}>
+                        {t('common.cancel')}
+                      </CancelButton>
+                    </GoogleButtonGroup>
+                  </RelinkConfirmBox>
                 ) : (
                   <RelinkConfirmBox>
                     <p>{t('settings.selectNewGoogleAccount')}</p>

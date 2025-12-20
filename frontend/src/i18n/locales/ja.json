@@ -388,7 +388,9 @@
     "googleUnlinkedSuccess": "Googleアカウントの連携が解除されました",
     "googleLinkFailed": "Googleアカウントの連携に失敗しました",
     "googleUnlinkFailed": "Googleアカウントの連携解除に失敗しました",
-    "googleAuthFailed": "Google認証に失敗しました"
+    "googleAuthFailed": "Google認証に失敗しました",
+    "unlinkConfirmMessage": "Googleアカウントの連携を解除してもよろしいですか？ログインにはパスワードが必要になります。",
+    "confirmUnlink": "はい、解除する"
   },
   "animeImport": {
     "title": "アニメキャラクターをインポート",

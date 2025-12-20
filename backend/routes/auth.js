@@ -272,9 +272,9 @@ router.post('/google', async (req, res) => {
       
       user = await User.create({
         username,
-        email: email.toLowerCase(),
+        email: normalizedEmail,
         googleId,
-        googleEmail: email.toLowerCase(), // Track the Google account email
+        googleEmail: normalizedEmail,
         password: null, // No password for Google SSO users
         points: 1000,
         isAdmin: isFirstUser
@@ -377,6 +377,11 @@ router.post('/google/unlink', auth, async (req, res) => {
     const user = await User.findByPk(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if user has Google linked
+    if (!user.googleId) {
+      return res.status(400).json({ error: 'No Google account is linked' });
     }
     
     // Don't allow unlinking if user has no password (Google-only account)

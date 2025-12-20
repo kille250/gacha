@@ -386,7 +386,9 @@
     "googleUnlinkedSuccess": "Google-Konto erfolgreich getrennt",
     "googleLinkFailed": "Google-Konto konnte nicht verknüpft werden",
     "googleUnlinkFailed": "Google-Konto konnte nicht getrennt werden",
-    "googleAuthFailed": "Google-Authentifizierung fehlgeschlagen"
+    "googleAuthFailed": "Google-Authentifizierung fehlgeschlagen",
+    "unlinkConfirmMessage": "Möchtest du die Verknüpfung mit deinem Google-Konto wirklich aufheben? Du musst dann dein Passwort zum Anmelden verwenden.",
+    "confirmUnlink": "Ja, trennen"
   },
   "animeImport": {
     "title": "Anime-Charaktere importieren",

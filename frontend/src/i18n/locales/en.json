@@ -398,7 +398,9 @@
     "googleUnlinkedSuccess": "Google account unlinked successfully",
     "googleLinkFailed": "Failed to link Google account",
     "googleUnlinkFailed": "Failed to unlink Google account",
-    "googleAuthFailed": "Google authentication failed"
+    "googleAuthFailed": "Google authentication failed",
+    "unlinkConfirmMessage": "Are you sure you want to unlink your Google account? You will need to use your password to log in.",
+    "confirmUnlink": "Yes, Unlink"
   },
   "animeImport": {
     "title": "Import Anime Characters",
