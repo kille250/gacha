@@ -46,6 +46,21 @@ const RARITY_COLORS = {
   legendary: '#ffc107'
 };
 
+// Rarity ranking for comparing fish (higher = better)
+const RARITY_RANK = {
+  common: 1,
+  uncommon: 2,
+  rare: 3,
+  epic: 4,
+  legendary: 5
+};
+
+// Helper to check if new fish is better than current best
+const isBetterFish = (newFish, currentBest) => {
+  if (!currentBest) return true;
+  return (RARITY_RANK[newFish.rarity] || 0) > (RARITY_RANK[currentBest.fish?.rarity] || 0);
+};
+
 const RARITY_GLOW = {
   common: 'rgba(168, 181, 160, 0.3)',
   uncommon: 'rgba(124, 179, 66, 0.4)',
@@ -355,7 +370,7 @@ const FishingPage = () => {
           ...prev,
           casts: prev.casts + 1,
           catches: result.success ? prev.catches + 1 : prev.catches,
-          bestCatch: result.success && !prev.bestCatch
+          bestCatch: result.success && isBetterFish(result.fish, prev.bestCatch)
             ? { fish: result.fish }
             : prev.bestCatch
         }));
@@ -510,7 +525,7 @@ const FishingPage = () => {
         setSessionStats(prev => ({
           ...prev,
           catches: prev.catches + 1,
-          bestCatch: !prev.bestCatch
+          bestCatch: isBetterFish(result.fish, prev.bestCatch)
             ? { fish: result.fish }
             : prev.bestCatch
         }));
