@@ -716,8 +716,9 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		return res.status(400).json({ error: 'This banner has already ended' });
 	  }
 	  
-	  // Calculate base cost with banner multiplier
-	  const baseCost = Math.floor(count * 100 * banner.costMultiplier);
+	  // Calculate cost per pull (consistent with single roll endpoint)
+	  const singlePullCost = Math.floor(100 * banner.costMultiplier);
+	  const baseCost = count * singlePullCost;
 	  
 	  // Apply bulk discount
 	  let discount = 0;
