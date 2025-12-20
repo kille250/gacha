@@ -2,7 +2,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUser, FaLock, FaDice, FaArrowRight, FaGem } from 'react-icons/fa';
+import { FaUser, FaLock, FaDice, FaArrowRight, FaGem, FaEnvelope } from 'react-icons/fa';
 import { MdLanguage } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
@@ -15,6 +15,7 @@ const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const RegisterPage = () => {
   const { t, i18n } = useTranslation();
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState('');
@@ -40,6 +41,13 @@ const RegisterPage = () => {
     e.preventDefault();
     setLocalError('');
     
+    // Basic email validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!email || !emailRegex.test(email.trim())) {
+      setLocalError(t('auth.invalidEmail'));
+      return;
+    }
+    
     if (password !== confirmPassword) {
       setLocalError(t('auth.passwordsMismatch'));
       return;
@@ -58,7 +66,7 @@ const RegisterPage = () => {
     setIsLoading(true);
     
     try {
-      const success = await register(username, password);
+      const success = await register(username, email.trim().toLowerCase(), password);
       if (success) {
         navigate('/gacha');
       }
@@ -171,6 +179,21 @@ const RegisterPage = () => {
                   placeholder={t('auth.enterUsername')}
                   required
                   autoComplete="username"
+                />
+              </InputWrapper>
+            </InputGroup>
+
+            <InputGroup>
+              <InputLabel>{t('auth.email')}</InputLabel>
+              <InputWrapper>
+                <InputIcon><FaEnvelope /></InputIcon>
+                <StyledInput 
+                  type="email" 
+                  value={email} 
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder={t('auth.enterEmail')}
+                  required
+                  autoComplete="email"
                 />
               </InputWrapper>
             </InputGroup>

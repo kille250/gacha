@@ -106,6 +106,31 @@ const validatePassword = (password) => {
 };
 
 /**
+ * Validate email for registration
+ * @param {string} email - Email to validate
+ * @returns {{ valid: boolean, error?: string, value?: string }}
+ */
+const validateEmail = (email) => {
+  if (!email || typeof email !== 'string') {
+    return { valid: false, error: 'Email is required' };
+  }
+  
+  const trimmed = email.trim().toLowerCase();
+  
+  // Basic email format validation
+  const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (!emailRegex.test(trimmed)) {
+    return { valid: false, error: 'Please enter a valid email address' };
+  }
+  
+  if (trimmed.length > 254) {
+    return { valid: false, error: 'Email is too long' };
+  }
+  
+  return { valid: true, value: trimmed };
+};
+
+/**
  * Validate UUID format (v1-v5)
  * @param {string} value - Value to validate
  * @returns {boolean} - True if valid UUID
@@ -122,6 +147,7 @@ module.exports = {
   parseCharacterIds,
   validateUsername,
   validatePassword,
+  validateEmail,
   isValidUUID,
   RESERVED_USERNAMES
 };

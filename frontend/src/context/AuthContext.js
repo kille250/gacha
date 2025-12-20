@@ -102,7 +102,7 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  const register = async (username, password) => {
+  const register = async (username, email, password) => {
     try {
       // Clear any existing cached data before registration
       invalidateCache();
@@ -111,6 +111,7 @@ export const AuthProvider = ({ children }) => {
       
       const response = await api.post('/auth/signup', {
         username,
+        email,
         password
       });
       

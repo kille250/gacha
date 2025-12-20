@@ -5,7 +5,7 @@ const { OAuth2Client } = require('google-auth-library');
 const auth = require('../middleware/auth');
 const { User } = require('../models');
 const sequelize = require('../config/db');
-const { validateUsername, validatePassword } = require('../utils/validation');
+const { validateUsername, validatePassword, validateEmail } = require('../utils/validation');
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -69,12 +69,18 @@ router.post('/daily-reward', auth, async (req, res) => {
 
 // POST /api/auth/signup - Register new user
 router.post('/signup', async (req, res) => {
-  const { username, password } = req.body;
+  const { username, email, password } = req.body;
   
   // Validate username
   const usernameValidation = validateUsername(username);
   if (!usernameValidation.valid) {
     return res.status(400).json({ error: usernameValidation.error });
+  }
+  
+  // Validate email
+  const emailValidation = validateEmail(email);
+  if (!emailValidation.valid) {
+    return res.status(400).json({ error: emailValidation.error });
   }
   
   // Validate password
@@ -84,10 +90,16 @@ router.post('/signup', async (req, res) => {
   }
   
   try {
-    // Check if user already exists
+    // Check if username already exists
     const existingUser = await User.findOne({ where: { username: usernameValidation.value } });
     if (existingUser) {
       return res.status(400).json({ error: 'Username already exists' });
+    }
+    
+    // Check if email already exists
+    const existingEmail = await User.findOne({ where: { email: emailValidation.value } });
+    if (existingEmail) {
+      return res.status(400).json({ error: 'Email already registered' });
     }
     
     // Check if this is the first user
@@ -97,6 +109,7 @@ router.post('/signup', async (req, res) => {
     // Create user
     const user = await User.create({
       username: usernameValidation.value,
+      email: emailValidation.value,
       password,
       points: 1000,
       isAdmin: isFirstUser // First user becomes admin
