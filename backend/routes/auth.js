@@ -209,7 +209,7 @@ router.post('/signup', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const [rows] = await sequelize.query(
-      `SELECT "id", "username", "points", "isAdmin", "lastDailyReward", "allowR18" 
+      `SELECT "id", "username", "points", "isAdmin", "lastDailyReward", "allowR18", "showR18" 
        FROM "Users" WHERE "id" = :userId`,
       { replacements: { userId: req.user.id } }
     );
@@ -220,6 +220,7 @@ router.get('/me', auth, async (req, res) => {
     
     const user = rows[0];
     user.allowR18 = user.allowR18 === true;
+    user.showR18 = user.showR18 === true;
     
     res.json(user);
   } catch (err) {
