@@ -527,9 +527,9 @@ const FishingPage = () => {
         <AnimatePresence>
           {canFish && gameState === GAME_STATES.WALKING && (
             <FishPrompt
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 10 }}
+              initial={{ opacity: 0, y: 10, x: "-50%" }}
+              animate={{ opacity: 1, y: 0, x: "-50%" }}
+              exit={{ opacity: 0, y: 10, x: "-50%" }}
             >
               <Trans i18nKey="fishing.pressFishPrompt" components={{ key: <KeyHint /> }} />
             </FishPrompt>
@@ -540,18 +540,18 @@ const FishingPage = () => {
         <AnimatePresence>
           {gameState === GAME_STATES.WAITING && (
             <StateIndicator
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, x: "-50%" }}
+              animate={{ opacity: 1, x: "-50%" }}
+              exit={{ opacity: 0, x: "-50%" }}
             >
               <WaitingText>{t('fishing.waitingForBite')}...</WaitingText>
             </StateIndicator>
           )}
           {gameState === GAME_STATES.FISH_APPEARED && (
             <StateIndicator
-              initial={{ opacity: 0, scale: 0.5 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0 }}
+              initial={{ opacity: 0, scale: 0.5, x: "-50%" }}
+              animate={{ opacity: 1, scale: 1, x: "-50%" }}
+              exit={{ opacity: 0, x: "-50%" }}
             >
               <CatchText>{t('fishing.catchIt')}</CatchText>
             </StateIndicator>
@@ -562,9 +562,9 @@ const FishingPage = () => {
         <AnimatePresence>
           {(gameState === GAME_STATES.SUCCESS || gameState === GAME_STATES.FAILURE) && lastResult && (
             <ResultPopup
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.9 }}
+              initial={{ opacity: 0, scale: 0.9, x: "-50%", y: "-50%" }}
+              animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%" }}
+              exit={{ opacity: 0, scale: 0.9, x: "-50%", y: "-50%" }}
               $success={lastResult.success}
             >
               <ResultEmoji>{lastResult.fish?.emoji}</ResultEmoji>
@@ -622,9 +622,9 @@ const FishingPage = () => {
       <AnimatePresence>
         {notification && (
           <Notification
-            initial={{ opacity: 0, y: -20 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -20 }}
+            initial={{ opacity: 0, y: -20, x: "-50%" }}
+            animate={{ opacity: 1, y: 0, x: "-50%" }}
+            exit={{ opacity: 0, y: -20, x: "-50%" }}
             $type={notification.type}
           >
             {notification.message}
@@ -1055,7 +1055,6 @@ const FishPrompt = styled(motion.div)`
   position: fixed;
   bottom: 100px;
   left: 50%;
-  transform: translateX(-50%);
   padding: 12px 24px;
   background: linear-gradient(180deg, rgba(101, 67, 33, 0.95) 0%, rgba(80, 50, 25, 0.95) 100%);
   border: 3px solid rgba(139, 90, 43, 0.8);
@@ -1086,7 +1085,6 @@ const StateIndicator = styled(motion.div)`
   position: fixed;
   top: 150px;
   left: 50%;
-  transform: translateX(-50%);
   z-index: 150;
 `;
 
@@ -1117,7 +1115,6 @@ const ResultPopup = styled(motion.div)`
   position: fixed;
   top: 50%;
   left: 50%;
-  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
   gap: 20px;
@@ -1257,7 +1254,6 @@ const Notification = styled(motion.div)`
   position: fixed;
   top: 120px;
   left: 50%;
-  transform: translateX(-50%);
   padding: 14px 28px;
   border-radius: 12px;
   font-weight: 700;

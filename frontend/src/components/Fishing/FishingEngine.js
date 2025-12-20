@@ -133,6 +133,7 @@ export const useFishingEngine = ({
   const waterTimeRef = useRef(0);
   const bobberRef = useRef(null);
   const fishingLineRef = useRef(null);
+  const updateGameRef = useRef(null);
   
   // Visual player position (for smooth interpolation)
   const visualPosRef = useRef({ x: playerPos.x, y: playerPos.y });
@@ -169,10 +170,10 @@ export const useFishingEngine = ({
       createLightingLayer(mainContainer);
       createFishingElements(mainContainer);
       
-      // Game loop
+      // Game loop - use ref to avoid stale closure
       app.ticker.add((ticker) => {
         const dt = ticker.deltaTime / 60;
-        updateGame(dt);
+        updateGameRef.current?.(dt);
       });
     };
     
@@ -634,6 +635,11 @@ export const useFishingEngine = ({
       });
     }
   }, [playerPos, timeOfDay]);
+  
+  // Keep updateGame ref current to avoid stale closures in ticker
+  useEffect(() => {
+    updateGameRef.current = updateGame;
+  }, [updateGame]);
   
   // Update player sprite when direction or fishing state changes
   useEffect(() => {
