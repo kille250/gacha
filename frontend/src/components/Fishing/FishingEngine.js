@@ -1049,9 +1049,9 @@ export const useFishingEngine = ({
           // Flower on some lily pads
           if ((water.tileX + water.tileY) % 3 === 0) {
             const flowerY = 14 + lilyWave;
-            g.circle(22, flowerY, 4);
-            g.circle(18, flowerY + 2, 4);
-            g.circle(24, flowerY + 2, 4);
+            water.circle(22, flowerY, 4);
+            water.circle(18, flowerY + 2, 4);
+            water.circle(24, flowerY + 2, 4);
             water.fill(0xffb7c5);
             water.circle(21, flowerY + 1, 2);
             water.fill(0xfff59d);
