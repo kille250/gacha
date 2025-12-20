@@ -379,8 +379,15 @@
     "findVideo": "Find Video",
     "changeVideo": "Change Video",
     "findVideoFor": "Find video for {{name}}",
-    "searchingVideos": "Searching for videos...",
-    "noVideosFound": "No videos found for this character",
-    "selectThis": "Select"
+    "searchingVideos": "Searching...",
+    "noVideosFound": "No results found for this tag",
+    "selectThis": "Select",
+    "searchTagPlaceholder": "Search for character or series...",
+    "selectTag": "Select a tag:",
+    "changeTag": "Change",
+    "sortScore": "Most Popular",
+    "sortFavorites": "Most Favorited",
+    "sortNewest": "Newest",
+    "typeToSearch": "Type to search for tags..."
   }
 }

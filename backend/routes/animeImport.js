@@ -419,16 +419,23 @@ router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
   }
 });
 
-// Get suggested tags from Danbooru
+// Get suggested tags from Danbooru - with character tag priority
 router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
   try {
-    const { q } = req.query;
+    const { q, category } = req.query;
     
     if (!q || q.trim().length < 2) {
       return res.status(400).json({ error: 'Query must be at least 2 characters' });
     }
     
-    const searchUrl = `${DANBOORU_API}/tags.json?search[name_matches]=${encodeURIComponent(q)}*&search[order]=count&limit=10`;
+    // Convert to Danbooru format
+    const searchTerm = q.toLowerCase().replace(/\s+/g, '_');
+    
+    // Build search URL - optionally filter by category (4 = character)
+    let searchUrl = `${DANBOORU_API}/tags.json?search[name_matches]=*${encodeURIComponent(searchTerm)}*&search[order]=count&limit=20`;
+    if (category) {
+      searchUrl += `&search[category]=${category}`;
+    }
     
     const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
@@ -437,16 +444,86 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
     
     const tags = await response.json();
     
-    const results = tags.map(tag => ({
-      name: tag.name,
-      count: tag.post_count,
-      type: tag.category // 0=general, 1=artist, 3=copyright, 4=character
-    }));
+    // Map and sort: character tags (4) first, then by post count
+    const results = tags
+      .map(tag => ({
+        name: tag.name,
+        displayName: tag.name.replace(/_/g, ' '),
+        count: tag.post_count,
+        category: tag.category // 0=general, 1=artist, 3=copyright/series, 4=character
+      }))
+      .sort((a, b) => {
+        // Characters first
+        if (a.category === 4 && b.category !== 4) return -1;
+        if (a.category !== 4 && b.category === 4) return 1;
+        // Then copyright/series
+        if (a.category === 3 && b.category !== 3) return -1;
+        if (a.category !== 3 && b.category === 3) return 1;
+        // Then by count
+        return b.count - a.count;
+      });
     
     res.json({ tags: results });
   } catch (err) {
     console.error('Danbooru tag search error:', err);
     res.status(500).json({ error: err.message || 'Failed to search tags' });
+  }
+});
+
+// Search Danbooru with exact tag and sorting options
+router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
+  try {
+    const { tag, page = 1, sort = 'score' } = req.query;
+    
+    if (!tag || tag.trim().length < 1) {
+      return res.status(400).json({ error: 'Tag is required' });
+    }
+    
+    const limit = 30;
+    // Sort options: score, favcount, id (newest)
+    const orderTag = sort === 'newest' ? 'order:id_desc' : sort === 'favorites' ? 'order:favcount' : 'order:score';
+    
+    // Search with exact tag + safe rating + sorting
+    const searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+rating:general+${orderTag}&limit=${limit}&page=${page}`;
+    
+    const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
+    if (!response.ok) {
+      throw new Error(`Danbooru API error: ${response.status}`);
+    }
+    
+    const posts = await response.json();
+    
+    const results = posts
+      .filter(post => post.file_url || post.large_file_url)
+      .map(post => {
+        const ext = (post.file_ext || '').toLowerCase();
+        const isAnimated = ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip';
+        return {
+          id: post.id,
+          preview: post.preview_file_url || post.large_file_url,
+          sample: post.large_file_url || post.file_url,
+          file: post.file_url || post.large_file_url,
+          fileExt: post.file_ext,
+          tags: post.tag_string,
+          source: post.source,
+          width: post.image_width,
+          height: post.image_height,
+          score: post.score,
+          favorites: post.fav_count,
+          characterTags: post.tag_string_character,
+          isAnimated
+        };
+      });
+    
+    res.json({
+      results,
+      tag,
+      page: parseInt(page),
+      hasMore: posts.length === limit
+    });
+  } catch (err) {
+    console.error('Danbooru tag search error:', err);
+    res.status(500).json({ error: err.message || 'Failed to search Danbooru' });
   }
 });
 

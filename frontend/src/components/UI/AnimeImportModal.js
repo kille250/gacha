@@ -33,6 +33,10 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const [altMediaCharacter, setAltMediaCharacter] = useState(null); // Character being searched
   const [altMediaResults, setAltMediaResults] = useState([]);
   const [altMediaLoading, setAltMediaLoading] = useState(false);
+  const [altMediaTags, setAltMediaTags] = useState([]); // Tag suggestions
+  const [altMediaSelectedTag, setAltMediaSelectedTag] = useState(null); // Selected tag
+  const [altMediaSort, setAltMediaSort] = useState('score'); // score, favorites, newest
+  const [altMediaSearchQuery, setAltMediaSearchQuery] = useState('');
   
   // Selected characters for import
   const [selectedCharacters, setSelectedCharacters] = useState([]);
@@ -160,42 +164,77 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     );
   }, []);
 
-  // Search Danbooru for alternative media for a specific character
-  const searchAltMedia = useCallback(async (character) => {
+  // Open alt media picker for a character
+  const openAltMediaPicker = useCallback((character) => {
+    // Prepare initial search query from character name
+    let searchName = character.name;
+    if (searchName.includes(',')) {
+      // "Monkey D., Luffy" -> "Luffy"
+      const parts = searchName.split(',').map(p => p.trim());
+      searchName = parts.reverse()[0]; // Get first name
+    }
+    searchName = searchName.split(' ')[0]; // Just first word
+    
     setAltMediaCharacter(character);
+    setAltMediaSearchQuery(searchName);
+    setAltMediaTags([]);
+    setAltMediaSelectedTag(null);
+    setAltMediaResults([]);
+    
+    // Auto-search for tags
+    searchAltMediaTags(searchName);
+  }, []);
+
+  // Search for matching Danbooru tags
+  const searchAltMediaTags = useCallback(async (query) => {
+    if (!query || query.length < 2) {
+      setAltMediaTags([]);
+      return;
+    }
+    
+    setAltMediaLoading(true);
+    try {
+      // Search for character tags (category 4)
+      const response = await api.get(`/anime-import/sakuga-tags?q=${encodeURIComponent(query)}`);
+      setAltMediaTags(response.data.tags || []);
+    } catch (err) {
+      console.error('Tag search failed:', err);
+    } finally {
+      setAltMediaLoading(false);
+    }
+  }, []);
+
+  // Select a tag and load images
+  const selectAltMediaTag = useCallback(async (tag) => {
+    setAltMediaSelectedTag(tag);
     setAltMediaLoading(true);
     setAltMediaResults([]);
     
     try {
-      // Format: "character_name_(series_name)" for better Danbooru results
-      // e.g., "Nami" + "One Piece" -> "nami_(one_piece)"
-      const charName = character.name.split(',')[0].trim(); // Handle "Last, First" format
-      const animeTitle = selectedAnime?.title || seriesName || '';
-      
-      // Try with series context first
-      let searchQuery = charName;
-      if (animeTitle) {
-        // Create Danbooru-style tag: character_(series)
-        const formattedSeries = animeTitle.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
-        searchQuery = `${charName}_(${formattedSeries})`;
-      }
-      
-      const response = await api.get(`/anime-import/search-sakuga?q=${encodeURIComponent(searchQuery)}`);
-      let results = response.data.results || [];
-      
-      // If no results with series context, try just the character name
-      if (results.length === 0 && animeTitle) {
-        const fallbackResponse = await api.get(`/anime-import/search-sakuga?q=${encodeURIComponent(charName)}`);
-        results = fallbackResponse.data.results || [];
-      }
-      
-      setAltMediaResults(results);
+      const response = await api.get(`/anime-import/search-danbooru-tag?tag=${encodeURIComponent(tag.name)}&sort=${altMediaSort}`);
+      setAltMediaResults(response.data.results || []);
     } catch (err) {
-      console.error('Alt media search failed:', err);
+      console.error('Image search failed:', err);
     } finally {
       setAltMediaLoading(false);
     }
-  }, [selectedAnime, seriesName]);
+  }, [altMediaSort]);
+
+  // Change sort and reload
+  const changeAltMediaSort = useCallback(async (newSort) => {
+    setAltMediaSort(newSort);
+    if (altMediaSelectedTag) {
+      setAltMediaLoading(true);
+      try {
+        const response = await api.get(`/anime-import/search-danbooru-tag?tag=${encodeURIComponent(altMediaSelectedTag.name)}&sort=${newSort}`);
+        setAltMediaResults(response.data.results || []);
+      } catch (err) {
+        console.error('Image search failed:', err);
+      } finally {
+        setAltMediaLoading(false);
+      }
+    }
+  }, [altMediaSelectedTag]);
 
   // Select alternative media for a character
   const selectAltMedia = useCallback((media) => {
@@ -226,6 +265,9 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const closeAltMediaPicker = useCallback(() => {
     setAltMediaCharacter(null);
     setAltMediaResults([]);
+    setAltMediaTags([]);
+    setAltMediaSelectedTag(null);
+    setAltMediaSearchQuery('');
   }, []);
 
   // Select an anime and fetch its characters
@@ -558,7 +600,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                                 <FindVideoButton
                                   onClick={e => {
                                     e.stopPropagation();
-                                    searchAltMedia(char);
+                                    openAltMediaPicker(char);
                                   }}
                                   $hasAlt={hasAltMedia}
                                 >
@@ -745,11 +787,71 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                   </AltMediaHeader>
                   
                   <AltMediaBody>
+                    {/* Tag Search */}
+                    <AltMediaSearchRow>
+                      <AltMediaSearchInput
+                        type="text"
+                        placeholder={t('animeImport.searchTagPlaceholder')}
+                        value={altMediaSearchQuery}
+                        onChange={e => {
+                          setAltMediaSearchQuery(e.target.value);
+                          searchAltMediaTags(e.target.value);
+                        }}
+                      />
+                      {altMediaSelectedTag && (
+                        <AltMediaSortSelect
+                          value={altMediaSort}
+                          onChange={e => changeAltMediaSort(e.target.value)}
+                        >
+                          <option value="score">{t('animeImport.sortScore')}</option>
+                          <option value="favorites">{t('animeImport.sortFavorites')}</option>
+                          <option value="newest">{t('animeImport.sortNewest')}</option>
+                        </AltMediaSortSelect>
+                      )}
+                    </AltMediaSearchRow>
+
+                    {/* Tag Suggestions */}
+                    {!altMediaSelectedTag && altMediaTags.length > 0 && (
+                      <AltMediaTagList>
+                        <AltMediaTagLabel>{t('animeImport.selectTag')}</AltMediaTagLabel>
+                        {altMediaTags.map(tag => (
+                          <AltMediaTagChip
+                            key={tag.name}
+                            onClick={() => selectAltMediaTag(tag)}
+                            $category={tag.category}
+                          >
+                            <span>{tag.displayName}</span>
+                            <AltMediaTagMeta>
+                              <span>{tag.category === 4 ? '👤' : tag.category === 3 ? '📺' : '🏷️'}</span>
+                              <span>{tag.count.toLocaleString()}</span>
+                            </AltMediaTagMeta>
+                          </AltMediaTagChip>
+                        ))}
+                      </AltMediaTagList>
+                    )}
+
+                    {/* Selected Tag Info */}
+                    {altMediaSelectedTag && (
+                      <SelectedTagBar>
+                        <SelectedTagName>
+                          {altMediaSelectedTag.category === 4 ? '👤' : altMediaSelectedTag.category === 3 ? '📺' : '🏷️'}
+                          {altMediaSelectedTag.displayName}
+                        </SelectedTagName>
+                        <SmallButton onClick={() => {
+                          setAltMediaSelectedTag(null);
+                          setAltMediaResults([]);
+                        }}>
+                          {t('animeImport.changeTag')}
+                        </SmallButton>
+                      </SelectedTagBar>
+                    )}
+
+                    {/* Results */}
                     {altMediaLoading ? (
                       <LoadingText><FaSpinner className="spin" /> {t('animeImport.searchingVideos')}</LoadingText>
-                    ) : altMediaResults.length === 0 ? (
+                    ) : altMediaSelectedTag && altMediaResults.length === 0 ? (
                       <EmptyText>{t('animeImport.noVideosFound')}</EmptyText>
-                    ) : (
+                    ) : altMediaResults.length > 0 ? (
                       <AltMediaGrid>
                         {altMediaResults.map(media => (
                           <AltMediaCard
@@ -763,13 +865,18 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                             <AltMediaFormat $isAnimated={media.isAnimated}>
                               {media.isAnimated ? <><FaPlay /> {media.fileExt?.toUpperCase()}</> : media.fileExt?.toUpperCase()}
                             </AltMediaFormat>
+                            <AltMediaScore>
+                              <FaStar /> {media.score}
+                            </AltMediaScore>
                             <AltMediaSelectOverlay>
                               <FaCheck /> {t('animeImport.selectThis')}
                             </AltMediaSelectOverlay>
                           </AltMediaCard>
                         ))}
                       </AltMediaGrid>
-                    )}
+                    ) : !altMediaSelectedTag && altMediaTags.length === 0 && !altMediaLoading ? (
+                      <EmptyText>{t('animeImport.typeToSearch')}</EmptyText>
+                    ) : null}
                   </AltMediaBody>
                   
                   <AltMediaFooter>
@@ -1708,6 +1815,137 @@ const AltMediaFooter = styled.div`
   align-items: center;
   padding: 12px 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const AltMediaSearchRow = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+`;
+
+const AltMediaSearchInput = styled.input`
+  flex: 1;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 0.9rem;
+  
+  &:focus {
+    outline: none;
+    border-color: #9b59b6;
+  }
+  
+  &::placeholder {
+    color: #666;
+  }
+`;
+
+const AltMediaSortSelect = styled.select`
+  background: rgba(155, 89, 182, 0.2);
+  border: 1px solid rgba(155, 89, 182, 0.4);
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: #9b59b6;
+  }
+  
+  option {
+    background: #1a1a2e;
+    color: #fff;
+  }
+`;
+
+const AltMediaTagList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-bottom: 15px;
+`;
+
+const AltMediaTagLabel = styled.span`
+  color: #888;
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: 4px;
+`;
+
+const AltMediaTagChip = styled.button`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: ${props => 
+    props.$category === 4 ? 'rgba(46, 204, 113, 0.15)' : 
+    props.$category === 3 ? 'rgba(52, 152, 219, 0.15)' : 
+    'rgba(255, 255, 255, 0.08)'};
+  border: 1px solid ${props => 
+    props.$category === 4 ? 'rgba(46, 204, 113, 0.3)' : 
+    props.$category === 3 ? 'rgba(52, 152, 219, 0.3)' : 
+    'rgba(255, 255, 255, 0.15)'};
+  border-radius: 8px;
+  padding: 10px 14px;
+  color: #fff;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  text-align: left;
+  
+  &:hover {
+    background: ${props => 
+      props.$category === 4 ? 'rgba(46, 204, 113, 0.25)' : 
+      props.$category === 3 ? 'rgba(52, 152, 219, 0.25)' : 
+      'rgba(255, 255, 255, 0.12)'};
+    transform: translateX(4px);
+  }
+`;
+
+const AltMediaTagMeta = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  color: #888;
+  font-size: 0.8rem;
+`;
+
+const SelectedTagBar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  background: rgba(155, 89, 182, 0.15);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 15px;
+`;
+
+const SelectedTagName = styled.span`
+  color: #fff;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const AltMediaScore = styled.div`
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #ffc107;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
 `;
 
 export default AnimeImportModal;

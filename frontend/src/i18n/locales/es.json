@@ -369,8 +369,15 @@
     "findVideo": "Buscar Video",
     "changeVideo": "Cambiar Video",
     "findVideoFor": "Buscar video para {{name}}",
-    "searchingVideos": "Buscando videos...",
-    "noVideosFound": "No se encontraron videos para este personaje",
-    "selectThis": "Seleccionar"
+    "searchingVideos": "Buscando...",
+    "noVideosFound": "No se encontraron resultados para este tag",
+    "selectThis": "Seleccionar",
+    "searchTagPlaceholder": "Buscar personaje o serie...",
+    "selectTag": "Seleccionar un tag:",
+    "changeTag": "Cambiar",
+    "sortScore": "Más Popular",
+    "sortFavorites": "Más Favoritos",
+    "sortNewest": "Más Recientes",
+    "typeToSearch": "Escribe para buscar tags..."
   }
 }

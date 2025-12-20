@@ -367,8 +367,15 @@
     "findVideo": "Video finden",
     "changeVideo": "Video ändern",
     "findVideoFor": "Video für {{name}} finden",
-    "searchingVideos": "Suche nach Videos...",
-    "noVideosFound": "Keine Videos für diesen Charakter gefunden",
-    "selectThis": "Auswählen"
+    "searchingVideos": "Suche...",
+    "noVideosFound": "Keine Ergebnisse für diesen Tag gefunden",
+    "selectThis": "Auswählen",
+    "searchTagPlaceholder": "Nach Charakter oder Serie suchen...",
+    "selectTag": "Tag auswählen:",
+    "changeTag": "Ändern",
+    "sortScore": "Beliebteste",
+    "sortFavorites": "Meiste Favoriten",
+    "sortNewest": "Neueste",
+    "typeToSearch": "Tippe um nach Tags zu suchen..."
   }
 }
