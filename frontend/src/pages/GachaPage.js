@@ -314,16 +314,6 @@ const GachaPage = () => {
                   <HelpSectionTitle>💰 {t('gacha.pointsTitle')}</HelpSectionTitle>
                   <Text secondary>{t('gacha.pointsHelp')}</Text>
                 </HelpSection>
-                <HelpSection>
-                  <HelpSectionTitle>⭐ {t('gacha.rarityHelp')}</HelpSectionTitle>
-                  <RarityList>
-                    <RarityItem color={theme.colors.rarityCommon}>{t('gacha.common')} - 50%</RarityItem>
-                    <RarityItem color={theme.colors.rarityUncommon}>{t('gacha.uncommon')} - 30%</RarityItem>
-                    <RarityItem color={theme.colors.rarityRare}>{t('gacha.rare')} - 15%</RarityItem>
-                    <RarityItem color={theme.colors.rarityEpic}>{t('gacha.epic')} - 4%</RarityItem>
-                    <RarityItem color={theme.colors.rarityLegendary}>{t('gacha.legendary')} - 1%</RarityItem>
-                  </RarityList>
-                </HelpSection>
               </ModalBody>
             </HelpModalContent>
           </ModalOverlay>
@@ -888,21 +878,6 @@ const HelpSectionTitle = styled.h3`
   font-size: 16px;
   font-weight: 600;
   margin: 0 0 ${theme.spacing.sm};
-`;
-
-const RarityList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 8px;
-`;
-
-const RarityItem = styled.div`
-  font-size: 14px;
-  color: ${props => props.color};
-  padding: 8px 12px;
-  background: rgba(255, 255, 255, 0.05);
-  border-radius: 8px;
-  border-left: 3px solid ${props => props.color};
 `;
 
 export default GachaPage;
