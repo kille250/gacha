@@ -41,11 +41,16 @@ function generatePlayerColor() {
 async function verifyToken(token) {
   try {
     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-    const user = await User.findByPk(decoded.userId, {
+    // Token structure is { user: { id: ... } }
+    const userId = decoded.user?.id || decoded.userId;
+    if (!userId) return null;
+    
+    const user = await User.findByPk(userId, {
       attributes: ['id', 'username']
     });
     return user;
   } catch (err) {
+    console.error('[Fishing MP] Token verification error:', err.message);
     return null;
   }
 }
