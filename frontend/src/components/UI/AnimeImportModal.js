@@ -499,7 +499,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                   <SectionTitle>
                     <FaVideo /> {t('animeImport.videoResults', { count: videoResults.length })}
                   </SectionTitle>
-                  <SourceNote>{t('animeImport.sakugabooru')}</SourceNote>
+                  <SourceNote>{t('animeImport.danbooru')}</SourceNote>
                 </div>
                 <SelectionButtons>
                   <SmallButton onClick={selectAllVideos}>{t('animeImport.selectAll')}</SmallButton>

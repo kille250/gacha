@@ -278,24 +278,23 @@ router.get('/search-characters', auth, adminAuth, async (req, res) => {
 });
 
 // ==========================================
-// SAKUGABOORU VIDEO SEARCH (Animation Clips)
+// DANBOORU VIDEO/GIF SEARCH (Animated Content)
 // ==========================================
-const SAKUGABOORU_API = 'https://www.sakugabooru.com';
+const DANBOORU_API = 'https://danbooru.donmai.us';
 
-// Headers required for Sakugabooru API (they block requests without User-Agent)
-const SAKUGA_HEADERS = {
+// Headers for Danbooru API
+const DANBOORU_HEADERS = {
   'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
-  'Accept': 'application/json',
-  'Referer': 'https://www.sakugabooru.com/'
+  'Accept': 'application/json'
 };
 
-// Helper to convert search query to Sakugabooru tag format
-const toSakugaTag = (query) => {
-  // Sakugabooru uses underscores for spaces, lowercase
+// Helper to convert search query to Danbooru tag format
+const toDanbooruTag = (query) => {
+  // Danbooru uses underscores for spaces, lowercase
   return query.trim().toLowerCase().replace(/\s+/g, '_');
 };
 
-// Search Sakugabooru for animation clips
+// Search Danbooru for animated content (GIFs, videos)
 router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
   try {
     const { q, page = 1 } = req.query;
@@ -304,34 +303,37 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'Search query must be at least 2 characters' });
     }
     
-    const tag = toSakugaTag(q);
+    const tag = toDanbooruTag(q);
     const limit = 20;
-    const searchUrl = `${SAKUGABOORU_API}/post.json?tags=${encodeURIComponent(tag)}&limit=${limit}&page=${page}`;
+    // Search for animated content with safe rating
+    const searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+animated+rating:general&limit=${limit}&page=${page}`;
     
-    const response = await fetch(searchUrl, { headers: SAKUGA_HEADERS });
+    const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
-      throw new Error(`Sakugabooru API error: ${response.status}`);
+      throw new Error(`Danbooru API error: ${response.status}`);
     }
     
     const posts = await response.json();
     
-    // Filter and map to simpler format, only include video files
+    // Filter and map to simpler format, only include video/gif files
     const results = posts
       .filter(post => {
         const ext = (post.file_ext || '').toLowerCase();
-        return ext === 'webm' || ext === 'mp4' || ext === 'gif';
+        return ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip'; // zip = ugoira
       })
+      .filter(post => post.file_url) // Must have file URL
       .map(post => ({
         id: post.id,
-        preview: post.preview_url?.startsWith('http') ? post.preview_url : `${SAKUGABOORU_API}${post.preview_url}`,
-        sample: post.sample_url?.startsWith('http') ? post.sample_url : `${SAKUGABOORU_API}${post.sample_url}`,
-        file: post.file_url?.startsWith('http') ? post.file_url : `${SAKUGABOORU_API}${post.file_url}`,
+        preview: post.preview_file_url || post.large_file_url,
+        sample: post.large_file_url || post.file_url,
+        file: post.file_url,
         fileExt: post.file_ext,
-        tags: post.tags,
+        tags: post.tag_string,
         source: post.source,
-        width: post.width,
-        height: post.height,
-        score: post.score
+        width: post.image_width,
+        height: post.image_height,
+        score: post.score,
+        characterTags: post.tag_string_character
       }));
     
     res.json({
@@ -341,12 +343,12 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
       hasMore: posts.length === limit
     });
   } catch (err) {
-    console.error('Sakugabooru search error:', err);
-    res.status(500).json({ error: err.message || 'Failed to search Sakugabooru' });
+    console.error('Danbooru search error:', err);
+    res.status(500).json({ error: err.message || 'Failed to search Danbooru' });
   }
 });
 
-// Search Sakugabooru by anime series name
+// Search Danbooru by anime series name
 router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
   try {
     const { q, page = 1 } = req.query;
@@ -355,35 +357,37 @@ router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'Search query must be at least 2 characters' });
     }
     
-    // Try to find anime-related tags
-    const tag = toSakugaTag(q);
+    const tag = toDanbooruTag(q);
     const limit = 30;
-    const searchUrl = `${SAKUGABOORU_API}/post.json?tags=${encodeURIComponent(tag)}&limit=${limit}&page=${page}`;
+    // Search with animated tag and safe rating
+    const searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+animated+rating:general&limit=${limit}&page=${page}`;
     
-    const response = await fetch(searchUrl, { headers: SAKUGA_HEADERS });
+    const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
-      throw new Error(`Sakugabooru API error: ${response.status}`);
+      throw new Error(`Danbooru API error: ${response.status}`);
     }
     
     const posts = await response.json();
     
-    // Filter to video files only and map
+    // Filter to video/gif files only and map
     const results = posts
       .filter(post => {
         const ext = (post.file_ext || '').toLowerCase();
-        return ext === 'webm' || ext === 'mp4' || ext === 'gif';
+        return ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip';
       })
+      .filter(post => post.file_url)
       .map(post => ({
         id: post.id,
-        preview: post.preview_url?.startsWith('http') ? post.preview_url : `${SAKUGABOORU_API}${post.preview_url}`,
-        sample: post.sample_url?.startsWith('http') ? post.sample_url : `${SAKUGABOORU_API}${post.sample_url}`,
-        file: post.file_url?.startsWith('http') ? post.file_url : `${SAKUGABOORU_API}${post.file_url}`,
+        preview: post.preview_file_url || post.large_file_url,
+        sample: post.large_file_url || post.file_url,
+        file: post.file_url,
         fileExt: post.file_ext,
-        tags: post.tags,
+        tags: post.tag_string,
         source: post.source,
-        width: post.width,
-        height: post.height,
-        score: post.score
+        width: post.image_width,
+        height: post.image_height,
+        score: post.score,
+        characterTags: post.tag_string_character
       }));
     
     res.json({
@@ -393,12 +397,12 @@ router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
       hasMore: posts.length === limit
     });
   } catch (err) {
-    console.error('Sakugabooru anime search error:', err);
-    res.status(500).json({ error: err.message || 'Failed to search Sakugabooru' });
+    console.error('Danbooru anime search error:', err);
+    res.status(500).json({ error: err.message || 'Failed to search Danbooru' });
   }
 });
 
-// Get suggested tags from Sakugabooru
+// Get suggested tags from Danbooru
 router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
   try {
     const { q } = req.query;
@@ -407,24 +411,24 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'Query must be at least 2 characters' });
     }
     
-    const searchUrl = `${SAKUGABOORU_API}/tag.json?name=${encodeURIComponent(q)}*&order=count&limit=10`;
+    const searchUrl = `${DANBOORU_API}/tags.json?search[name_matches]=${encodeURIComponent(q)}*&search[order]=count&limit=10`;
     
-    const response = await fetch(searchUrl, { headers: SAKUGA_HEADERS });
+    const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
-      throw new Error(`Sakugabooru tag API error: ${response.status}`);
+      throw new Error(`Danbooru tag API error: ${response.status}`);
     }
     
     const tags = await response.json();
     
     const results = tags.map(tag => ({
       name: tag.name,
-      count: tag.count,
-      type: tag.type // 0=general, 1=artist, 3=copyright, 4=character
+      count: tag.post_count,
+      type: tag.category // 0=general, 1=artist, 3=copyright, 4=character
     }));
     
     res.json({ tags: results });
   } catch (err) {
-    console.error('Sakugabooru tag search error:', err);
+    console.error('Danbooru tag search error:', err);
     res.status(500).json({ error: err.message || 'Failed to search tags' });
   }
 });
