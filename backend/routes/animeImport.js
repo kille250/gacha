@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
 const https = require('https');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
@@ -135,7 +136,7 @@ const downloadImage = (url, filename) => {
     
     // Parse URL to determine protocol and set proper options
     const parsedUrl = new URL(url);
-    const protocol = parsedUrl.protocol === 'https:' ? https : require('http');
+    const protocol = parsedUrl.protocol === 'https:' ? https : http;
     
     const options = {
       hostname: parsedUrl.hostname,
@@ -154,7 +155,7 @@ const downloadImage = (url, filename) => {
         // Handle redirects (301, 302, 303, 307, 308)
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
           const redirectUrl = new URL(response.headers.location, currentUrl);
-          const redirectProtocol = redirectUrl.protocol === 'https:' ? https : require('http');
+          const redirectProtocol = redirectUrl.protocol === 'https:' ? https : http;
           
           const redirectOptions = {
             hostname: redirectUrl.hostname,

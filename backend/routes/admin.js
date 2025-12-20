@@ -1,47 +1,14 @@
 // routes/admin.js - Admin routes for character and user management
 const express = require('express');
 const router = express.Router();
-const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { User, Character, Banner, Coupon, CouponRedemption } = require('../models');
-const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
+const { getUrlPath, getFilePath } = require('../config/upload');
+const { characterUpload: upload } = require('../config/multer');
 const { isValidId } = require('../utils/validation');
-
-// Configure multer for file storage
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    cb(null, UPLOAD_DIRS.characters);
-  },
-  filename: function(req, file, cb) {
-    // Generate secure filename with timestamp
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const extension = path.extname(file.originalname);
-    cb(null, file.fieldname + '-' + uniqueSuffix + extension);
-  }
-});
-
-// Check if file is an image or video
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/') || 
-      file.mimetype === 'video/mp4' || 
-      file.mimetype === 'video/webm') {
-    cb(null, true);
-  } else {
-    cb(new Error('Only images or videos (MP4, WebM) are allowed'), false);
-  }
-};
-
-// Initialize multer with options
-const upload = multer({
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 100 * 1024 * 1024 // 100 MB max size
-  }
-});
 
 // Combined dashboard endpoint - reduces multiple API calls to one
 router.get('/dashboard', auth, adminAuth, async (req, res) => {

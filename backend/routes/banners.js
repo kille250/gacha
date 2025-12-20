@@ -1,13 +1,13 @@
 const express = require('express');
 const router = express.Router();
-const auth = require('../middleware/auth');
-const adminAuth = require('../middleware/adminAuth');
-const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
+const auth = require('../middleware/auth');
+const adminAuth = require('../middleware/adminAuth');
 const { Banner, Character, User } = require('../models');
-const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
+const { getUrlPath, getFilePath } = require('../config/upload');
+const { bannerUpload: upload } = require('../config/multer');
 const { 
   PRICING_CONFIG, 
   getDiscountForCount,
@@ -29,42 +29,6 @@ const {
   isRarePlus,
   RARITY_ORDER 
 } = require('../utils/rollHelpers');
-
-// Configure storage for banner images and videos
-const storage = multer.diskStorage({
-  destination: function(req, file, cb) {
-    const uploadDir = file.mimetype.startsWith('video/') 
-      ? UPLOAD_DIRS.videos 
-      : UPLOAD_DIRS.banners;
-    
-    console.log(`Storing file in: ${uploadDir}`);
-    cb(null, uploadDir);
-  },
-  filename: function(req, file, cb) {
-    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    const ext = path.extname(file.originalname);
-    const filename = file.fieldname + '-' + uniqueSuffix + ext;
-    console.log(`Generated filename: ${filename}`);
-    cb(null, filename);
-  }
-});
-
-// File filter to allow only images and videos
-const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith('image/') || file.mimetype.startsWith('video/')) {
-    cb(null, true);
-  } else {
-    cb(new Error('Only images and videos are allowed'), false);
-  }
-};
-
-const upload = multer({ 
-  storage: storage,
-  fileFilter: fileFilter,
-  limits: {
-    fileSize: 50 * 1024 * 1024 // 50MB limit
-  }
-});
 
 // ===========================================
 // PRICING ENDPOINT - Single source of truth for frontend
