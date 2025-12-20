@@ -437,6 +437,29 @@ const FishingPage = () => {
     };
   }, [isAutofishing, rankData, setUser, t]);
   
+  // Keep-alive heartbeat for autofishing (prevents inactive timeout disconnect)
+  useEffect(() => {
+    if (!isAutofishing || !socketRef.current || !isMultiplayerConnected) {
+      return;
+    }
+    
+    // Send heartbeat every 30 seconds to keep connection alive during autofishing
+    const heartbeatInterval = setInterval(() => {
+      if (socketRef.current?.connected) {
+        socketRef.current.emit('heartbeat');
+      }
+    }, 30000);
+    
+    // Send immediate heartbeat when autofishing starts
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('heartbeat');
+    }
+    
+    return () => {
+      clearInterval(heartbeatInterval);
+    };
+  }, [isAutofishing, isMultiplayerConnected]);
+  
   // Refs for keyboard handler to avoid stale closures
   const gameStateRef = useRef(gameState);
   const canFishRef = useRef(canFish);

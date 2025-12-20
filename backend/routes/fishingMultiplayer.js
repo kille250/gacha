@@ -245,6 +245,14 @@ function initMultiplayer(io) {
       socket.to(areaId).emit('player_emote', { id: userId, emote: data.emote });
     });
     
+    // Handle heartbeat/keep-alive (for autofishing users who don't move)
+    socket.on('heartbeat', () => {
+      const player = area.players.get(userId);
+      if (player) {
+        player.lastUpdate = Date.now();
+      }
+    });
+    
     // Handle disconnect
     socket.on('disconnect', () => {
       console.log(`[Fishing MP] Player "${username}" disconnected`);
