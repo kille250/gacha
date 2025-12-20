@@ -198,21 +198,13 @@ const FishingPage = () => {
       ));
     });
     
-    // Player emote
+    // Player emote - set with timestamp, engine will auto-clear
     socket.on('player_emote', (data) => {
       setOtherPlayers(prev => prev.map(p => 
         p.id === data.id 
-          ? { ...p, emote: data.emote }
+          ? { ...p, emote: data.emote, emoteTime: Date.now() }
           : p
       ));
-      // Clear emote after 2 seconds
-      setTimeout(() => {
-        setOtherPlayers(prev => prev.map(p => 
-          p.id === data.id 
-            ? { ...p, emote: null }
-            : p
-        ));
-      }, 2000);
     });
     
     return () => {

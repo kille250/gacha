@@ -64,6 +64,129 @@ const isWaterAdjacent = (x, y, dir) => {
   return [1, 10].includes(targetTile);
 };
 
+// Helper to lighten a color (moved outside hook for performance)
+const lightenColor = (color, amount) => {
+  const r = Math.min(255, ((color >> 16) & 0xFF) + 255 * amount);
+  const g = Math.min(255, ((color >> 8) & 0xFF) + 255 * amount);
+  const b = Math.min(255, (color & 0xFF) + 255 * amount);
+  return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b);
+};
+
+// Unified player drawing function (for local and other players)
+const drawPlayerSprite = (g, dir, isFishing, animFrame, options = {}) => {
+  g.clear();
+  
+  const { color, isOtherPlayer = false } = options;
+  const bobOffset = Math.sin(animFrame * 3) * (isFishing ? 0.5 : 1.5);
+  const breathe = Math.sin(animFrame * 2) * 0.5;
+  
+  // Shadow
+  g.ellipse(20, 39, 10, 4);
+  g.fill({ color: 0x000000, alpha: 0.25 });
+  
+  // Legs
+  g.rect(12, 32 + bobOffset, 7, 8);
+  g.rect(21, 32 + bobOffset, 7, 8);
+  g.fill(0x5d4037);
+  
+  // Boots
+  g.rect(11, 37 + bobOffset, 9, 4);
+  g.rect(20, 37 + bobOffset, 9, 4);
+  g.fill(0x3e2723);
+  if (!isOtherPlayer) {
+    // Boot highlights for local player
+    g.rect(12, 37 + bobOffset, 3, 1);
+    g.rect(21, 37 + bobOffset, 3, 1);
+    g.fill(0x5d4037);
+  }
+  
+  // Body - use custom color or fishing-based color
+  const bodyColor = color || (isFishing ? 0x1565c0 : 0x558b2f);
+  const bodyHighlight = color ? lightenColor(color, 0.15) : (isFishing ? 0x1976d2 : 0x689f38);
+  g.roundRect(10, 18 + bobOffset, 20, 16 + breathe, 3);
+  g.fill(bodyColor);
+  // Sweater pattern
+  g.rect(12, 22 + bobOffset, 16, 2);
+  g.rect(12, 26 + bobOffset, 16, 2);
+  g.fill(bodyHighlight);
+  
+  // Arms
+  g.roundRect(5, 20 + bobOffset, 7, 12, 3);
+  g.roundRect(28, 20 + bobOffset, 7, 12, 3);
+  g.fill(bodyColor);
+  
+  // Hands
+  g.circle(8, 31 + bobOffset, 4);
+  g.circle(32, 31 + bobOffset, 4);
+  g.fill(0xffccaa);
+  
+  // Head
+  g.roundRect(11, 4 + bobOffset, 18, 16, 4);
+  g.fill(0xffccaa);
+  
+  // Hair
+  g.roundRect(9, 0 + bobOffset, 22, 12, 6);
+  g.fill(0x5d4037);
+  g.roundRect(12, 2 + bobOffset, 6, 4, 2);
+  g.roundRect(22, 3 + bobOffset, 4, 3, 2);
+  g.fill(0x795548);
+  
+  // Face
+  if (dir !== 'up') {
+    const eyeOffset = dir === 'left' ? -3 : dir === 'right' ? 3 : 0;
+    
+    // Eyes
+    g.rect(14 + eyeOffset, 10 + bobOffset, 4, 4);
+    g.rect(22 + eyeOffset, 10 + bobOffset, 4, 4);
+    g.fill(0xffffff);
+    
+    // Pupils
+    const pupilOffset = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
+    g.rect(15 + eyeOffset + pupilOffset, 11 + bobOffset, 2, 2);
+    g.rect(23 + eyeOffset + pupilOffset, 11 + bobOffset, 2, 2);
+    g.fill(0x3e2723);
+    
+    // Blush
+    g.ellipse(12, 16 + bobOffset, 3, 2);
+    g.ellipse(28, 16 + bobOffset, 3, 2);
+    g.fill({ color: 0xffab91, alpha: 0.6 });
+    
+    // Happy mouth (local player only, when not fishing)
+    if (!isOtherPlayer && !isFishing) {
+      g.moveTo(18, 17 + bobOffset);
+      g.lineTo(20, 18 + bobOffset);
+      g.lineTo(22, 17 + bobOffset);
+      g.stroke({ width: 1, color: 0x795548 });
+    }
+  }
+  
+  // Hat
+  g.ellipse(20, 5 + bobOffset, 14, 4);
+  g.fill(0x8d6e63);
+  g.roundRect(12, 0 + bobOffset, 16, 6, 2);
+  g.fill(0xa1887f);
+  // Hat band - use color for other players, default for local
+  g.rect(12, 4 + bobOffset, 16, 2);
+  g.fill(color || 0xffab91);
+  
+  // Fishing rod if fishing
+  if (isFishing) {
+    g.moveTo(32, 26 + bobOffset);
+    const rodEnd = { x: 45, y: 0 };
+    if (dir === 'down') { rodEnd.x = 35; rodEnd.y = 55; }
+    else if (dir === 'up') { rodEnd.x = 35; rodEnd.y = -15; }
+    else if (dir === 'left') { rodEnd.x = -15; rodEnd.y = 20; }
+    else { rodEnd.x = 55; rodEnd.y = 20; }
+    g.lineTo(rodEnd.x, rodEnd.y + bobOffset);
+    g.stroke({ width: 3, color: 0x8d6e63 });
+    g.stroke({ width: 2, color: 0xa1887f });
+    
+    // Rod handle
+    g.roundRect(30, 24 + bobOffset, 6, 10, 2);
+    g.fill(0x6d4c41);
+  }
+};
+
 // Particle class for ambient effects
 class Particle {
   constructor(type, bounds, startPos = null) {
@@ -786,114 +909,6 @@ export const useFishingEngine = ({
     otherPlayersContainerRef.current = otherPlayersContainer;
   };
   
-  // Draw another player (for multiplayer)
-  const drawOtherPlayer = (g, dir, isFishing, animFrame, color) => {
-    g.clear();
-    
-    const bobOffset = Math.sin(animFrame * 3) * (isFishing ? 0.5 : 1.5);
-    const breathe = Math.sin(animFrame * 2) * 0.5;
-    
-    // Shadow
-    g.ellipse(20, 39, 10, 4);
-    g.fill({ color: 0x000000, alpha: 0.25 });
-    
-    // Legs
-    g.rect(12, 32 + bobOffset, 7, 8);
-    g.rect(21, 32 + bobOffset, 7, 8);
-    g.fill(0x5d4037);
-    
-    // Boots
-    g.rect(11, 37 + bobOffset, 9, 4);
-    g.rect(20, 37 + bobOffset, 9, 4);
-    g.fill(0x3e2723);
-    
-    // Body - use player's unique color
-    g.roundRect(10, 18 + bobOffset, 20, 16 + breathe, 3);
-    g.fill(color);
-    
-    // Lighter stripe on body
-    const lighterColor = lightenColor(color, 0.15);
-    g.rect(12, 22 + bobOffset, 16, 2);
-    g.rect(12, 26 + bobOffset, 16, 2);
-    g.fill(lighterColor);
-    
-    // Arms
-    g.roundRect(5, 20 + bobOffset, 7, 12, 3);
-    g.roundRect(28, 20 + bobOffset, 7, 12, 3);
-    g.fill(color);
-    
-    // Hands
-    g.circle(8, 31 + bobOffset, 4);
-    g.circle(32, 31 + bobOffset, 4);
-    g.fill(0xffccaa);
-    
-    // Head
-    g.roundRect(11, 4 + bobOffset, 18, 16, 4);
-    g.fill(0xffccaa);
-    
-    // Hair
-    g.roundRect(9, 0 + bobOffset, 22, 12, 6);
-    g.fill(0x5d4037);
-    g.roundRect(12, 2 + bobOffset, 6, 4, 2);
-    g.roundRect(22, 3 + bobOffset, 4, 3, 2);
-    g.fill(0x795548);
-    
-    // Face
-    if (dir !== 'up') {
-      const eyeOffset = dir === 'left' ? -3 : dir === 'right' ? 3 : 0;
-      
-      // Eyes
-      g.rect(14 + eyeOffset, 10 + bobOffset, 4, 4);
-      g.rect(22 + eyeOffset, 10 + bobOffset, 4, 4);
-      g.fill(0xffffff);
-      
-      // Pupils
-      const pupilOffset = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
-      g.rect(15 + eyeOffset + pupilOffset, 11 + bobOffset, 2, 2);
-      g.rect(23 + eyeOffset + pupilOffset, 11 + bobOffset, 2, 2);
-      g.fill(0x3e2723);
-      
-      // Blush
-      g.ellipse(12, 16 + bobOffset, 3, 2);
-      g.ellipse(28, 16 + bobOffset, 3, 2);
-      g.fill({ color: 0xffab91, alpha: 0.6 });
-    }
-    
-    // Hat with player's color accent
-    g.ellipse(20, 5 + bobOffset, 14, 4);
-    g.fill(0x8d6e63);
-    g.roundRect(12, 0 + bobOffset, 16, 6, 2);
-    g.fill(0xa1887f);
-    // Hat band in player's color
-    g.rect(12, 4 + bobOffset, 16, 2);
-    g.fill(color);
-    
-    // Fishing rod if fishing
-    if (isFishing) {
-      g.moveTo(32, 26 + bobOffset);
-      const rodEnd = { x: 45, y: 0 };
-      if (dir === 'down') { rodEnd.x = 35; rodEnd.y = 55; }
-      else if (dir === 'up') { rodEnd.x = 35; rodEnd.y = -15; }
-      else if (dir === 'left') { rodEnd.x = -15; rodEnd.y = 20; }
-      else { rodEnd.x = 55; rodEnd.y = 20; }
-      g.lineTo(rodEnd.x, rodEnd.y + bobOffset);
-      g.stroke({ width: 3, color: 0x8d6e63 });
-      g.stroke({ width: 2, color: 0xa1887f });
-      
-      // Rod handle
-      g.roundRect(30, 24 + bobOffset, 6, 10, 2);
-      g.fill(0x6d4c41);
-    }
-  };
-  
-  // Helper to lighten a color
-  const lightenColor = (color, amount) => {
-    const r = Math.min(255, ((color >> 16) & 0xFF) + 255 * amount);
-    const g = Math.min(255, ((color >> 8) & 0xFF) + 255 * amount);
-    const b = Math.min(255, (color & 0xFF) + 255 * amount);
-    return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b);
-  };
-  
   // Create player sprite
   const createPlayer = (container) => {
     const playerContainer = new PIXI.Container();
@@ -901,126 +916,12 @@ export const useFishingEngine = ({
     playerContainer.zIndex = 100;
     
     const player = new PIXI.Graphics();
-    drawPlayer(player, 'down', false, 0);
+    drawPlayerSprite(player, 'down', false, 0);
     playerContainer.addChild(player);
     
     playerRef.current = playerContainer;
     container.addChild(playerContainer);
     container.sortableChildren = true;
-  };
-  
-  const drawPlayer = (g, dir, isFishing, animFrame) => {
-    g.clear();
-    
-    const bobOffset = Math.sin(animFrame * 3) * (isFishing ? 0.5 : 1.5);
-    const breathe = Math.sin(animFrame * 2) * 0.5;
-    
-    // Shadow
-    g.ellipse(20, 39, 10, 4);
-    g.fill({ color: 0x000000, alpha: 0.25 });
-    
-    // Legs (pixel art style)
-    g.rect(12, 32 + bobOffset, 7, 8);
-    g.rect(21, 32 + bobOffset, 7, 8);
-    g.fill(0x5d4037);
-    
-    // Boots
-    g.rect(11, 37 + bobOffset, 9, 4);
-    g.rect(20, 37 + bobOffset, 9, 4);
-    g.fill(0x3e2723);
-    // Boot highlights
-    g.rect(12, 37 + bobOffset, 3, 1);
-    g.rect(21, 37 + bobOffset, 3, 1);
-    g.fill(0x5d4037);
-    
-    // Body - cozy sweater/jacket
-    const bodyColor = isFishing ? 0x1565c0 : 0x558b2f;
-    const bodyHighlight = isFishing ? 0x1976d2 : 0x689f38;
-    g.roundRect(10, 18 + bobOffset, 20, 16 + breathe, 3);
-    g.fill(bodyColor);
-    // Sweater pattern
-    g.rect(12, 22 + bobOffset, 16, 2);
-    g.rect(12, 26 + bobOffset, 16, 2);
-    g.fill(bodyHighlight);
-    
-    // Arms
-    g.roundRect(5, 20 + bobOffset, 7, 12, 3);
-    g.roundRect(28, 20 + bobOffset, 7, 12, 3);
-    g.fill(bodyColor);
-    
-    // Hands
-    g.circle(8, 31 + bobOffset, 4);
-    g.circle(32, 31 + bobOffset, 4);
-    g.fill(0xffccaa);
-    
-    // Head
-    g.roundRect(11, 4 + bobOffset, 18, 16, 4);
-    g.fill(0xffccaa);
-    
-    // Hair (fluffy pixel style)
-    g.roundRect(9, 0 + bobOffset, 22, 12, 6);
-    g.fill(0x5d4037);
-    // Hair highlights
-    g.roundRect(12, 2 + bobOffset, 6, 4, 2);
-    g.roundRect(22, 3 + bobOffset, 4, 3, 2);
-    g.fill(0x795548);
-    
-    // Face details based on direction
-    if (dir === 'up') {
-      // Back of head - just hair
-    } else {
-      const eyeOffset = dir === 'left' ? -3 : dir === 'right' ? 3 : 0;
-      
-      // Eyes (pixel style)
-      g.rect(14 + eyeOffset, 10 + bobOffset, 4, 4);
-      g.rect(22 + eyeOffset, 10 + bobOffset, 4, 4);
-      g.fill(0xffffff);
-      
-      // Pupils
-      const pupilOffset = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
-      g.rect(15 + eyeOffset + pupilOffset, 11 + bobOffset, 2, 2);
-      g.rect(23 + eyeOffset + pupilOffset, 11 + bobOffset, 2, 2);
-      g.fill(0x3e2723);
-      
-      // Blush
-      g.ellipse(12, 16 + bobOffset, 3, 2);
-      g.ellipse(28, 16 + bobOffset, 3, 2);
-      g.fill({ color: 0xffab91, alpha: 0.6 });
-      
-      // Happy mouth
-      if (!isFishing) {
-        g.moveTo(18, 17 + bobOffset);
-        g.lineTo(20, 18 + bobOffset);
-        g.lineTo(22, 17 + bobOffset);
-        g.stroke({ width: 1, color: 0x795548 });
-      }
-    }
-    
-    // Hat (cute farmer/fishing hat)
-    g.ellipse(20, 5 + bobOffset, 14, 4);
-    g.fill(0x8d6e63);
-    g.roundRect(12, 0 + bobOffset, 16, 6, 2);
-    g.fill(0xa1887f);
-    // Hat band
-    g.rect(12, 4 + bobOffset, 16, 2);
-    g.fill(0xffab91);
-    
-    // Fishing rod if fishing
-    if (isFishing) {
-      g.moveTo(32, 26 + bobOffset);
-      const rodEnd = { x: 45, y: 0 };
-      if (dir === 'down') { rodEnd.x = 35; rodEnd.y = 55; }
-      else if (dir === 'up') { rodEnd.x = 35; rodEnd.y = -15; }
-      else if (dir === 'left') { rodEnd.x = -15; rodEnd.y = 20; }
-      else { rodEnd.x = 55; rodEnd.y = 20; }
-      g.lineTo(rodEnd.x, rodEnd.y + bobOffset);
-      g.stroke({ width: 3, color: 0x8d6e63 });
-      g.stroke({ width: 2, color: 0xa1887f });
-      
-      // Rod handle
-      g.roundRect(30, 24 + bobOffset, 6, 10, 2);
-      g.fill(0x6d4c41);
-    }
   };
   
   // Create particle system
@@ -1155,8 +1056,7 @@ export const useFishingEngine = ({
           stateIndicator,
           emoteBubble,
           visualPos: { x: playerData.x * TILE_SIZE, y: playerData.y * TILE_SIZE },
-          color: playerData.color || 0x4ecdc4,
-          emoteTimer: 0
+          color: playerData.color || 0x4ecdc4
         };
         otherPlayersRef.current.set(playerData.id, playerInfo);
       }
@@ -1173,12 +1073,12 @@ export const useFishingEngine = ({
       
       // Update player graphics
       const isFishing = playerData.state && playerData.state !== 'walking';
-      drawOtherPlayer(
+      drawPlayerSprite(
         playerInfo.graphics,
         playerData.direction || 'down',
         isFishing,
         animFrameRef.current,
-        playerInfo.color
+        { color: playerInfo.color, isOtherPlayer: true }
       );
       
       // Update state indicator (exclamation for fish_appeared, etc.)
@@ -1220,17 +1120,9 @@ export const useFishingEngine = ({
         stateGfx.visible = false;
       }
       
-      // Handle emote display
-      if (playerData.emote && playerInfo.emoteTimer === 0) {
-        playerInfo.emoteTimer = 2; // 2 seconds
-        // Would need text rendering for emotes - simplified here
-      }
-      if (playerInfo.emoteTimer > 0) {
-        playerInfo.emoteTimer -= dt;
-        if (playerInfo.emoteTimer <= 0) {
-          playerInfo.emoteBubble.visible = false;
-        }
-      }
+      // Handle emote display based on timestamp
+      const emoteAge = playerData.emoteTime ? (Date.now() - playerData.emoteTime) / 1000 : 999;
+      playerInfo.emoteBubble.visible = playerData.emote && emoteAge < 2;
     });
     
     // Sort children by zIndex for proper rendering
@@ -1424,7 +1316,7 @@ export const useFishingEngine = ({
       const playerGfx = playerRef.current.children[0];
       if (playerGfx) {
         const isFishing = gameState !== 'walking';
-        drawPlayer(playerGfx, playerDir, isFishing, animFrameRef.current);
+        drawPlayerSprite(playerGfx, playerDir, isFishing, animFrameRef.current);
       }
     }
     

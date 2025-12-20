@@ -12,6 +12,10 @@ const FISHING_AREA_ID = 'main_pond'; // Single fishing area for now
 const MAX_PLAYERS_PER_AREA = 50;
 const INACTIVE_TIMEOUT = 60000; // 1 minute before removing inactive player
 
+// Constants for validation (defined once, not on every event)
+const VALID_STATES = ['walking', 'casting', 'waiting', 'fish_appeared', 'catching', 'success', 'failure'];
+const VALID_EMOTES = ['👋', '🎉', '😊', '🐟', '🎣', '👍', '💪', '🌟'];
+
 // Store connected players by area
 const areas = new Map();
 
@@ -178,10 +182,7 @@ function initMultiplayer(io) {
     // Handle state changes (fishing state)
     socket.on('state_change', (data) => {
       const player = area.players.get(userId);
-      if (!player) return;
-      
-      const validStates = ['walking', 'casting', 'waiting', 'fish_appeared', 'catching', 'success', 'failure'];
-      if (!validStates.includes(data.state)) return;
+      if (!player || !VALID_STATES.includes(data.state)) return;
       
       player.state = data.state;
       player.lastUpdate = Date.now();
@@ -225,13 +226,8 @@ function initMultiplayer(io) {
     
     // Handle reactions/emotes
     socket.on('emote', (data) => {
-      const validEmotes = ['👋', '🎉', '😊', '🐟', '🎣', '👍', '💪', '🌟'];
-      if (!validEmotes.includes(data.emote)) return;
-      
-      socket.to(areaId).emit('player_emote', {
-        id: userId,
-        emote: data.emote
-      });
+      if (!data.emote || !VALID_EMOTES.includes(data.emote)) return;
+      socket.to(areaId).emit('player_emote', { id: userId, emote: data.emote });
     });
     
     // Handle disconnect
