@@ -1022,9 +1022,9 @@ export const useFishingEngine = ({
         const nameTag = new PIXI.Text({
           text: playerData.username || 'Player',
           style: {
-            fontSize: 11,
-            fontFamily: 'Nunito, Arial, sans-serif',
-            fontWeight: 'bold',
+            fontSize: 12,
+            fontFamily: '-apple-system, BlinkMacSystemFont, "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
+            fontWeight: '600',
             fill: 0xffffff,
             stroke: { color: 0x3e2723, width: 3 },
             align: 'center'

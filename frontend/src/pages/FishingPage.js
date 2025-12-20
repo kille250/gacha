@@ -1222,17 +1222,26 @@ const getTimeGradient = (timeOfDay) => {
 const PageContainer = styled.div`
   min-height: 100vh;
   min-height: 100dvh;
+  min-height: -webkit-fill-available;
   display: flex;
   flex-direction: column;
   background: ${props => getTimeGradient(props.$timeOfDay)};
-  font-family: 'Nunito', 'Comic Sans MS', cursive, sans-serif;
+  font-family: -apple-system, BlinkMacSystemFont, 'SF Pro Text', 'Nunito', 'Helvetica Neue', sans-serif;
   user-select: none;
-  overflow: hidden;
   overflow-x: hidden;
+  overflow-y: auto;
   transition: background 5s ease;
   position: relative;
-  touch-action: pan-y;
+  touch-action: manipulation;
   -webkit-overflow-scrolling: touch;
+  -webkit-text-size-adjust: 100%;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  
+  @supports (-webkit-touch-callout: none) {
+    /* iOS specific fixes */
+    min-height: -webkit-fill-available;
+  }
 `;
 
 const StarsOverlay = styled.div`
@@ -1346,17 +1355,19 @@ const HeaderTitle = styled.h1`
   align-items: center;
   gap: 10px;
   font-size: 20px;
-  font-weight: 800;
+  font-weight: 700;
   color: #fff8e1;
   margin: 0;
   text-shadow: 
     2px 2px 0 #5a3d0a,
     -1px -1px 0 #5a3d0a;
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
   
   @media (max-width: 600px) {
-    font-size: 16px;
+    font-size: 17px;
     gap: 6px;
+    font-weight: 600;
+    letter-spacing: 0;
     
     span {
       display: none;
@@ -1364,7 +1375,7 @@ const HeaderTitle = styled.h1`
   }
   
   @media (max-width: 400px) {
-    font-size: 14px;
+    font-size: 16px;
   }
 `;
 
@@ -1392,7 +1403,7 @@ const PointsDisplay = styled.div`
   background: linear-gradient(180deg, #ffd54f 0%, #ffb300 100%);
   border: 3px solid #e65100;
   border-radius: 20px;
-  font-weight: 800;
+  font-weight: 700;
   font-size: 14px;
   color: #5d4037;
   box-shadow: 
@@ -1402,15 +1413,16 @@ const PointsDisplay = styled.div`
   flex-shrink: 0;
   
   @media (max-width: 600px) {
-    padding: 6px 10px;
-    font-size: 12px;
-    gap: 4px;
+    padding: 6px 12px;
+    font-size: 14px;
+    gap: 5px;
     border-width: 2px;
+    font-weight: 600;
   }
   
   @media (max-width: 400px) {
-    padding: 4px 8px;
-    font-size: 11px;
+    padding: 5px 10px;
+    font-size: 13px;
   }
 `;
 
@@ -1668,19 +1680,20 @@ const BubbleContent = styled.div`
 `;
 
 const BubbleFishName = styled.div`
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 700;
   color: white;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
   
   @media (max-width: 500px) {
-    font-size: 12px;
+    font-size: 14px;
+    font-weight: 600;
   }
 `;
 
 const BubbleReward = styled.div`
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 14px;
+  font-weight: 600;
   color: ${props => props.$success ? '#fff9c4' : 'rgba(255, 255, 255, 0.7)'};
 `;
 
@@ -1740,33 +1753,33 @@ const StatItem = styled.div`
 
 const StatValue = styled.span`
   font-size: 18px;
-  font-weight: 800;
+  font-weight: 700;
   color: #fff8e1;
   text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
   
   @media (max-width: 600px) {
-    font-size: 14px;
+    font-size: 16px;
   }
   
   @media (max-width: 400px) {
-    font-size: 12px;
+    font-size: 14px;
   }
 `;
 
 const StatLabel = styled.span`
-  font-size: 10px;
-  color: rgba(255, 248, 225, 0.7);
+  font-size: 11px;
+  color: rgba(255, 248, 225, 0.8);
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: 0.3px;
   font-weight: 600;
   
   @media (max-width: 600px) {
-    font-size: 8px;
-    letter-spacing: 0.3px;
+    font-size: 10px;
+    letter-spacing: 0.2px;
   }
   
   @media (max-width: 400px) {
-    font-size: 7px;
+    font-size: 9px;
   }
 `;
 
@@ -1784,17 +1797,16 @@ const GameContainer = styled.div`
   position: relative;
   padding: 16px;
   min-height: 0;
-  overflow: hidden;
+  overflow: visible;
   
   @media (max-width: 768px) {
     padding: 8px;
-    align-items: flex-start;
-    padding-top: 12px;
+    align-items: center;
+    justify-content: center;
   }
   
   @media (max-width: 480px) {
-    padding: 4px;
-    padding-top: 8px;
+    padding: 6px;
   }
 `;
 
@@ -1807,8 +1819,9 @@ const CanvasFrame = styled.div`
     0 8px 32px rgba(0, 0, 0, 0.4),
     inset 0 2px 0 rgba(255, 220, 150, 0.2),
     inset 0 -2px 0 rgba(0, 0, 0, 0.3);
-  max-width: 100%;
-  overflow: hidden;
+  max-width: calc(100vw - 16px);
+  max-height: calc(100% - 8px);
+  overflow: visible;
   
   @media (max-width: 1000px) {
     padding: 6px;
@@ -1818,6 +1831,7 @@ const CanvasFrame = styled.div`
   @media (max-width: 600px) {
     padding: 4px;
     border-radius: 4px;
+    max-width: calc(100vw - 12px);
   }
 `;
 
@@ -1827,18 +1841,23 @@ const CanvasWrapper = styled.div`
   overflow: hidden;
   box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
   
-  /* Fixed size based on map dimensions - will scale via transform */
+  /* Base size - aspect ratio preserved */
   width: ${MAP_WIDTH * TILE_SIZE}px;
   height: ${MAP_HEIGHT * TILE_SIZE}px;
+  max-width: 100%;
+  max-height: 100%;
   
-  /* Scale down on mobile to fit screen */
+  /* Mobile scaling - use width-based scaling with proper containment */
   @media (max-width: 1000px) {
-    transform-origin: center center;
-    transform: scale(calc(min(1, (100vw - 48px) / ${MAP_WIDTH * TILE_SIZE})));
+    width: calc(100vw - 40px);
+    height: calc((100vw - 40px) * ${MAP_HEIGHT / MAP_WIDTH});
+    max-width: ${MAP_WIDTH * TILE_SIZE}px;
+    max-height: ${MAP_HEIGHT * TILE_SIZE}px;
   }
   
   @media (max-width: 600px) {
-    transform: scale(calc(min(1, (100vw - 32px) / ${MAP_WIDTH * TILE_SIZE})));
+    width: calc(100vw - 24px);
+    height: calc((100vw - 24px) * ${MAP_HEIGHT / MAP_WIDTH});
   }
   
   canvas {
@@ -1878,8 +1897,8 @@ const FishPrompt = styled(motion.div)`
   border: 4px solid #8b6914;
   border-radius: 16px;
   color: #5d4037;
-  font-size: 15px;
-  font-weight: 700;
+  font-size: 16px;
+  font-weight: 600;
   display: flex;
   align-items: center;
   gap: 10px;
@@ -1891,16 +1910,16 @@ const FishPrompt = styled(motion.div)`
   
   @media (max-width: 768px) {
     bottom: 180px;
-    font-size: 13px;
-    padding: 10px 16px;
+    font-size: 15px;
+    padding: 12px 18px;
     gap: 8px;
     border-width: 3px;
   }
   
   @media (max-width: 400px) {
-    bottom: 160px;
-    font-size: 12px;
-    padding: 8px 12px;
+    bottom: 165px;
+    font-size: 14px;
+    padding: 10px 14px;
   }
 `;
 
@@ -1960,15 +1979,15 @@ const WaitingDots = styled.span`
 
 const WaitingText = styled.div`
   color: #5d4037;
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 17px;
+  font-weight: 600;
 `;
 
 const CatchAlert = styled.div`
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 28px;
+  padding: 18px 32px;
   background: linear-gradient(180deg, #ff5252 0%, #d32f2f 100%);
   border: 4px solid #b71c1c;
   border-radius: 20px;
@@ -1979,18 +1998,18 @@ const CatchAlert = styled.div`
 `;
 
 const AlertIcon = styled.span`
-  font-size: 28px;
-  font-weight: 900;
+  font-size: 32px;
+  font-weight: 800;
   color: white;
   animation: ${pulse} 0.15s ease-in-out infinite;
 `;
 
 const CatchText = styled.div`
   color: white;
-  font-size: 22px;
-  font-weight: 800;
+  font-size: 24px;
+  font-weight: 700;
   text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
-  letter-spacing: 1px;
+  letter-spacing: 0.5px;
 `;
 
 const ResultPopup = styled(motion.div)`
@@ -2065,14 +2084,14 @@ const ResultInfo = styled.div`
 
 const ResultTitle = styled.div`
   font-size: 24px;
-  font-weight: 800;
-  color: ${props => props.$success ? '#558b2f' : '#5d4037'};
+  font-weight: 700;
+  color: ${props => props.$success ? '#2e7d32' : '#5d4037'};
   text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
 `;
 
 const ResultFishName = styled.div`
-  font-size: 20px;
-  font-weight: 700;
+  font-size: 21px;
+  font-weight: 600;
   color: ${props => RARITY_COLORS[props.$rarity] || '#5d4037'};
   text-shadow: 1px 1px 0 rgba(255,255,255,0.3);
 `;
@@ -2081,9 +2100,9 @@ const ResultReward = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 24px;
-  font-weight: 800;
-  color: #f57c00;
+  font-size: 26px;
+  font-weight: 700;
+  color: #e65100;
   text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
 `;
 
@@ -2091,25 +2110,27 @@ const ResultReward = styled.div`
 const MobileControls = styled.div`
   display: none;
   align-items: center;
-  justify-content: space-between;
-  padding: 12px 20px;
-  padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+  justify-content: space-around;
+  padding: 16px 24px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, 
-    rgba(139, 105, 20, 0.95) 0%, 
-    rgba(109, 76, 16, 0.98) 50%, 
-    rgba(90, 61, 10, 0.95) 100%);
-  border-top: 4px solid rgba(255, 220, 150, 0.2);
+    rgba(139, 105, 20, 0.98) 0%, 
+    rgba(109, 76, 16, 0.99) 50%, 
+    rgba(90, 61, 10, 0.98) 100%);
+  border-top: 4px solid rgba(255, 220, 150, 0.25);
   box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
   flex-shrink: 0;
   touch-action: manipulation;
+  min-height: 160px;
   
   @media (max-width: 768px) { 
     display: flex; 
   }
   
   @media (max-width: 400px) {
-    padding: 10px 12px;
-    padding-bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    padding: 12px 16px;
+    padding-bottom: calc(16px + env(safe-area-inset-bottom, 0px));
+    min-height: 140px;
   }
 `;
 
@@ -2305,13 +2326,14 @@ const ModalTitle = styled.h2`
   display: flex;
   align-items: center;
   font-size: 22px;
-  font-weight: 800;
+  font-weight: 700;
   color: #5d4037;
   margin: 0;
   text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
   
   @media (max-width: 500px) {
-    font-size: 18px;
+    font-size: 19px;
+    font-weight: 600;
   }
 `;
 
@@ -2364,25 +2386,26 @@ const HelpContent = styled.div`
 
 const HelpTitle = styled.h3`
   font-size: 17px;
-  font-weight: 800;
+  font-weight: 700;
   margin: 0 0 8px;
   color: #5d4037;
   
   @media (max-width: 500px) {
-    font-size: 15px;
+    font-size: 16px;
+    font-weight: 600;
     margin-bottom: 6px;
   }
 `;
 
 const HelpText = styled.p`
-  font-size: 14px;
-  color: #795548;
+  font-size: 15px;
+  color: #5d4037;
   margin: 0;
-  line-height: 1.5;
+  line-height: 1.55;
   
   @media (max-width: 500px) {
-    font-size: 13px;
-    line-height: 1.4;
+    font-size: 14px;
+    line-height: 1.5;
   }
 `;
 
@@ -2533,7 +2556,7 @@ const LeaderboardRank = styled.div`
 const LeaderboardName = styled.div`
   flex: 1;
   font-size: 16px;
-  font-weight: 700;
+  font-weight: 600;
   color: #5d4037;
 `;
 
@@ -2541,9 +2564,9 @@ const LeaderboardPoints = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  font-size: 15px;
-  font-weight: 800;
-  color: #f57c00;
+  font-size: 16px;
+  font-weight: 700;
+  color: #e65100;
 `;
 
 const AutofishBadge = styled.div`
@@ -2713,13 +2736,13 @@ const InventoryCount = styled.div`
 `;
 
 const InventoryLabel = styled.div`
-  font-size: 10px;
+  font-size: 11px;
   font-weight: 600;
-  color: #795548;
+  color: #5d4037;
   text-transform: capitalize;
   
   @media (max-width: 400px) {
-    font-size: 8px;
+    font-size: 10px;
   }
 `;
 
@@ -2778,21 +2801,21 @@ const TicketCount = styled.div`
 `;
 
 const TicketLabel = styled.div`
-  font-size: 11px;
-  font-weight: 700;
+  font-size: 12px;
+  font-weight: 600;
   color: #5d4037;
   
   @media (max-width: 400px) {
-    font-size: 9px;
+    font-size: 11px;
   }
 `;
 
 const TicketBonus = styled.div`
-  font-size: 9px;
+  font-size: 11px;
   font-weight: 600;
-  color: #43a047;
+  color: #2e7d32;
   background: rgba(76, 175, 80, 0.15);
-  padding: 2px 8px;
+  padding: 3px 8px;
   border-radius: 10px;
   margin-top: 2px;
 `;
@@ -2911,25 +2934,25 @@ const TradeOptionInfo = styled.div`
 `;
 
 const TradeOptionName = styled.div`
-  font-size: 14px;
-  font-weight: 800;
+  font-size: 15px;
+  font-weight: 700;
   color: #5d4037;
   margin-bottom: 2px;
 `;
 
 const TradeOptionDesc = styled.div`
-  font-size: 11px;
-  color: #795548;
+  font-size: 13px;
+  color: #5d4037;
   margin-bottom: 4px;
 `;
 
 const TradeOptionRequirement = styled.div`
-  font-size: 12px;
+  font-size: 13px;
   font-weight: 600;
-  color: ${props => props.$canTrade ? '#43a047' : '#d32f2f'};
+  color: ${props => props.$canTrade ? '#2e7d32' : '#c62828'};
   
   span {
-    color: #795548;
+    color: #5d4037;
     font-weight: 400;
   }
 `;
