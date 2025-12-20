@@ -52,7 +52,6 @@ const isWalkable = (x, y) => {
 };
 
 const isWaterAdjacent = (x, y, dir) => {
-  const currentTile = MAP_DATA[y]?.[x];
   let checkX = x, checkY = y;
   
   if (dir === 'down') checkY += 1;
@@ -62,7 +61,8 @@ const isWaterAdjacent = (x, y, dir) => {
   
   if (checkX < 0 || checkX >= MAP_WIDTH || checkY < 0 || checkY >= MAP_HEIGHT) return false;
   const targetTile = MAP_DATA[checkY]?.[checkX];
-  return currentTile === 8 || [1, 10].includes(targetTile);
+  // Can only fish if facing water (1) or lily pad (10)
+  return [1, 10].includes(targetTile);
 };
 
 // Particle class for ambient effects
