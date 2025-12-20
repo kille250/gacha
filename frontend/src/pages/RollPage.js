@@ -353,7 +353,7 @@ const RollPage = () => {
                   <CardActions>
                     <RollAgainBtn 
                       onClick={handleRoll} 
-                      disabled={isRolling || user?.points < SINGLE_PULL_COST}
+                      disabled={isRolling || user?.points < singlePullCost}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -443,7 +443,7 @@ const RollPage = () => {
               <ButtonRow>
                 <PrimaryRollButton 
                   onClick={handleRoll} 
-                  disabled={isRolling || user?.points < SINGLE_PULL_COST}
+                  disabled={isRolling || user?.points < singlePullCost}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >

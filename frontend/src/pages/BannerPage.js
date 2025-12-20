@@ -100,11 +100,6 @@ const BannerPage = () => {
     return option?.finalCost || count * singlePullCost;
   }, [pullOptions, singlePullCost]);
   
-  const getDiscount = useCallback((count) => {
-    const option = pullOptions.find(o => o.count === count);
-    return option?.discountPercent || 0;
-  }, [pullOptions]);
-  
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
 
@@ -1527,31 +1522,6 @@ const MultiRollButton = styled(motion.button)`
   @media (max-width: ${theme.breakpoints.md}) {
     padding: 14px 12px;
     font-size: 14px;
-  }
-`;
-
-const LegacySecondaryRollButton = styled(motion.button)`
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.lg};
-  background: ${theme.colors.glass};
-  color: white;
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
-  font-size: ${theme.fontSizes.md};
-  font-weight: ${theme.fontWeights.semibold};
-  cursor: pointer;
-  
-  &:hover:not(:disabled) {
-    background: ${theme.colors.surfaceHover};
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
   }
 `;
 
