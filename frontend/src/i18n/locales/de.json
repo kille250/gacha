@@ -110,7 +110,9 @@
     "passwordsMismatch": "Passwörter stimmen nicht überein",
     "passwordTooShort": "Passwort muss mindestens 4 Zeichen haben",
     "registrationUnavailable": "Registrierung ist nicht verfügbar",
-    "bonusInfo": "Neue Spieler erhalten <strong>{{gems}} kostenlose Edelsteine</strong> zum Start!"
+    "bonusInfo": "Neue Spieler erhalten <strong>{{gems}} kostenlose Edelsteine</strong> zum Start!",
+    "googleLoginFailed": "Google-Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
+    "continueWithGoogle": "Mit Google fortfahren"
   },
   "gacha": {
     "title": "GachaMaster",

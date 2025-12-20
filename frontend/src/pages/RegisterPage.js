@@ -5,9 +5,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaLock, FaDice, FaArrowRight, FaGem } from 'react-icons/fa';
 import { MdLanguage } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
+import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { theme, motionVariants } from '../styles/DesignSystem';
 import { languages } from '../i18n';
+
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 const RegisterPage = () => {
   const { t, i18n } = useTranslation();
@@ -16,8 +19,9 @@ const RegisterPage = () => {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [localError, setLocalError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
-  const { register, error, user, loading } = useContext(AuthContext);
+  const { register, googleLogin, error, user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
   
   // Redirect if already logged in
@@ -63,6 +67,17 @@ const RegisterPage = () => {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setIsGoogleLoading(true);
+    const success = await googleLogin(credentialResponse.credential);
+    setIsGoogleLoading(false);
+    if (success) navigate('/gacha');
+  };
+
+  const handleGoogleError = () => {
+    console.error('Google signup failed');
   };
 
   const displayError = localError || error;
@@ -212,14 +227,41 @@ const RegisterPage = () => {
             <span dangerouslySetInnerHTML={{ __html: t('auth.bonusInfo', { gems: 100 }) }} />
           </BonusInfo>
 
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <Divider>
+                <DividerLine />
+                <DividerText>{t('common.or')}</DividerText>
+                <DividerLine />
+              </Divider>
+
+              <GoogleButtonWrapper>
+                {isGoogleLoading ? (
+                  <GoogleLoadingButton disabled>
+                    <LoadingSpinner />
+                  </GoogleLoadingButton>
+                ) : (
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    theme="filled_black"
+                    size="large"
+                    width="100%"
+                    text="signup_with"
+                    shape="rectangular"
+                  />
+                )}
+              </GoogleButtonWrapper>
+            </>
+          )}
+
           <Divider>
             <DividerLine />
-            <DividerText>{t('common.or')}</DividerText>
+            <DividerText>{t('auth.alreadyHaveAccount')}</DividerText>
             <DividerLine />
           </Divider>
 
           <LoginPrompt>
-            {t('auth.alreadyHaveAccount')}{' '}
             <LoginLink to="/login">{t('auth.signInHere')}</LoginLink>
           </LoginPrompt>
         </RegisterCard>
@@ -558,6 +600,34 @@ const LoginLink = styled(Link)`
     color: ${theme.colors.accentSecondary};
     text-decoration: underline;
   }
+`;
+
+const GoogleButtonWrapper = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  
+  > div {
+    width: 100% !important;
+  }
+  
+  iframe {
+    width: 100% !important;
+  }
+`;
+
+const GoogleLoadingButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${theme.colors.text};
+  cursor: not-allowed;
+  opacity: 0.7;
 `;
 
 // Language Selector

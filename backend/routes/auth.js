@@ -1,10 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const jwt = require('jsonwebtoken');
+const { OAuth2Client } = require('google-auth-library');
 const auth = require('../middleware/auth');
 const { User } = require('../models');
 const sequelize = require('../config/db');
 const { validateUsername, validatePassword } = require('../utils/validation');
+
+// Initialize Google OAuth client
+const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // POST /api/auth/daily-reward - Claim hourly reward
 // Note: Route name is legacy ("daily") but actual interval is 1 hour for better engagement
@@ -155,6 +159,98 @@ router.post('/login', async (req, res) => {
   } catch (err) {
     console.error('Login error:', err);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/auth/google - Google SSO login/register
+router.post('/google', async (req, res) => {
+  const { credential } = req.body;
+  
+  if (!credential) {
+    return res.status(400).json({ error: 'Google credential is required' });
+  }
+  
+  if (!process.env.GOOGLE_CLIENT_ID) {
+    return res.status(500).json({ error: 'Google SSO is not configured' });
+  }
+  
+  try {
+    // Verify the Google token
+    const ticket = await googleClient.verifyIdToken({
+      idToken: credential,
+      audience: process.env.GOOGLE_CLIENT_ID,
+    });
+    
+    const payload = ticket.getPayload();
+    const { sub: googleId, email, name } = payload;
+    
+    if (!email) {
+      return res.status(400).json({ error: 'Email is required from Google account' });
+    }
+    
+    // Check if user exists by googleId or email
+    let user = await User.findOne({ 
+      where: sequelize.or(
+        { googleId },
+        { email }
+      )
+    });
+    
+    if (user) {
+      // Update googleId if user signed up with email but now uses Google
+      if (!user.googleId) {
+        user.googleId = googleId;
+        await user.save();
+      }
+    } else {
+      // Create new user - generate unique username from email or name
+      let baseUsername = (name || email.split('@')[0]).replace(/[^a-zA-Z0-9_]/g, '');
+      let username = baseUsername;
+      let counter = 1;
+      
+      // Ensure username is unique
+      while (await User.findOne({ where: { username } })) {
+        username = `${baseUsername}${counter}`;
+        counter++;
+      }
+      
+      // Check if this is the first user
+      const userCount = await User.count();
+      const isFirstUser = userCount === 0;
+      
+      user = await User.create({
+        username,
+        email,
+        googleId,
+        password: null, // No password for Google SSO users
+        points: 1000,
+        isAdmin: isFirstUser
+      });
+    }
+    
+    // Create JWT token
+    const jwtPayload = { 
+      user: { 
+        id: user.id,
+        isAdmin: user.isAdmin
+      } 
+    };
+    
+    jwt.sign(
+      jwtPayload,
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' },
+      (err, token) => {
+        if (err) throw err;
+        res.json({ token });
+      }
+    );
+  } catch (err) {
+    console.error('Google SSO error:', err);
+    if (err.message?.includes('Token used too late') || err.message?.includes('Invalid token')) {
+      return res.status(401).json({ error: 'Invalid or expired Google token' });
+    }
+    res.status(500).json({ error: 'Google authentication failed' });
   }
 });
 

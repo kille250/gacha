@@ -194,10 +194,11 @@ app.get('/api/health', (req, res) => {
 // ROUTES
 // ===========================================
 
-// Auth routes - rate limit only login/signup
+// Auth routes - rate limit only login/signup/google
 const authRoutes = require('./routes/auth');
 app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
+app.use('/api/auth/google', authLimiter);
 app.use('/api/auth', authRoutes);
 
 // Character routes - rate limit only roll endpoints
@@ -276,6 +277,8 @@ async function runMigrations() {
   await addColumnIfNotExists('Users', 'autofishUnlockedByRank', 'BOOLEAN', 'false');
   await addColumnIfNotExists('Users', 'rollTickets', 'INTEGER', '0');
   await addColumnIfNotExists('Users', 'premiumTickets', 'INTEGER', '0');
+  await addColumnIfNotExists('Users', 'email', 'VARCHAR(255)', 'NULL');
+  await addColumnIfNotExists('Users', 'googleId', 'VARCHAR(255)', 'NULL');
   
   // Character/Banner columns
   await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');

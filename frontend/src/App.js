@@ -1,8 +1,12 @@
 import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './styles/DesignSystem';
+
+// Google OAuth Client ID from environment variable
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 // i18n
 import './i18n';
@@ -141,7 +145,8 @@ const GlobalStyle = createGlobalStyle`
 `;
 
 function App() {
-  return (
+  // Wrap with GoogleOAuthProvider only if client ID is configured
+  const content = (
     <AuthProvider>
       <Router>
         <GlobalStyle />
@@ -216,6 +221,17 @@ function App() {
       </Router>
     </AuthProvider>
   );
+
+  // Wrap with GoogleOAuthProvider if client ID is available
+  if (GOOGLE_CLIENT_ID) {
+    return (
+      <GoogleOAuthProvider clientId={GOOGLE_CLIENT_ID}>
+        {content}
+      </GoogleOAuthProvider>
+    );
+  }
+
+  return content;
 }
 
 const AppContainer = styled.div`

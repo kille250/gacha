@@ -110,7 +110,9 @@
     "passwordsMismatch": "パスワードが一致しません",
     "passwordTooShort": "パスワードは4文字以上必要です",
     "registrationUnavailable": "登録は現在利用できません",
-    "bonusInfo": "新規プレイヤーは<strong>{{gems}}個の無料ジェム</strong>を獲得！"
+    "bonusInfo": "新規プレイヤーは<strong>{{gems}}個の無料ジェム</strong>を獲得！",
+    "googleLoginFailed": "Googleログインに失敗しました。もう一度お試しください。",
+    "continueWithGoogle": "Googleで続ける"
   },
   "gacha": {
     "title": "ガチャマスター",

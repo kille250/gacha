@@ -5,6 +5,7 @@ const bcrypt = require('bcryptjs');
 
 class User extends Model {
   validPassword(password) {
+    if (!this.password) return false; // Google SSO users have no password
     return bcrypt.compareSync(password, this.password);
   }
 }
@@ -16,12 +17,24 @@ User.init(
       allowNull: false,
       unique: true,
     },
+    email: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
+    googleId: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      unique: true,
+    },
     password: {
       type: DataTypes.STRING,
-      allowNull: false,
+      allowNull: true, // Allow null for Google SSO users
       set(value) {
-        const hash = bcrypt.hashSync(value, 10);
-        this.setDataValue('password', hash);
+        if (value) {
+          const hash = bcrypt.hashSync(value, 10);
+          this.setDataValue('password', hash);
+        }
       },
     },
     points: {

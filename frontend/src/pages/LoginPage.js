@@ -5,17 +5,21 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaLock, FaDice, FaArrowRight } from 'react-icons/fa';
 import { MdLanguage } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
+import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { theme, motionVariants } from '../styles/DesignSystem';
 import { languages } from '../i18n';
+
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 const LoginPage = () => {
   const { t, i18n } = useTranslation();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
-  const { login, error, user, loading } = useContext(AuthContext);
+  const { login, googleLogin, error, user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
   
   // Redirect if already logged in
@@ -36,6 +40,17 @@ const LoginPage = () => {
     const success = await login(username, password);
     setIsLoading(false);
     if (success) navigate('/gacha');
+  };
+
+  const handleGoogleSuccess = async (credentialResponse) => {
+    setIsGoogleLoading(true);
+    const success = await googleLogin(credentialResponse.credential);
+    setIsGoogleLoading(false);
+    if (success) navigate('/gacha');
+  };
+
+  const handleGoogleError = () => {
+    console.error('Google login failed');
   };
 
   return (
@@ -163,14 +178,41 @@ const LoginPage = () => {
             </SubmitButton>
           </LoginForm>
 
+          {GOOGLE_CLIENT_ID && (
+            <>
+              <Divider>
+                <DividerLine />
+                <DividerText>{t('common.or')}</DividerText>
+                <DividerLine />
+              </Divider>
+
+              <GoogleButtonWrapper>
+                {isGoogleLoading ? (
+                  <GoogleLoadingButton disabled>
+                    <LoadingSpinner />
+                  </GoogleLoadingButton>
+                ) : (
+                  <GoogleLogin
+                    onSuccess={handleGoogleSuccess}
+                    onError={handleGoogleError}
+                    theme="filled_black"
+                    size="large"
+                    width="100%"
+                    text="signin_with"
+                    shape="rectangular"
+                  />
+                )}
+              </GoogleButtonWrapper>
+            </>
+          )}
+
           <Divider>
             <DividerLine />
-            <DividerText>{t('common.or')}</DividerText>
+            <DividerText>{t('auth.newToGacha')}</DividerText>
             <DividerLine />
           </Divider>
 
           <RegisterPrompt>
-            {t('auth.newToGacha')}{' '}
             <RegisterLink to="/register">{t('auth.createAccount')}</RegisterLink>
           </RegisterPrompt>
         </LoginCard>
@@ -487,6 +529,34 @@ const RegisterLink = styled(Link)`
     color: ${theme.colors.primaryHover};
     text-decoration: underline;
   }
+`;
+
+const GoogleButtonWrapper = styled.div`
+  width: 100%;
+  display: flex;
+  justify-content: center;
+  
+  > div {
+    width: 100% !important;
+  }
+  
+  iframe {
+    width: 100% !important;
+  }
+`;
+
+const GoogleLoadingButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${theme.colors.text};
+  cursor: not-allowed;
+  opacity: 0.7;
 `;
 
 // Language Selector

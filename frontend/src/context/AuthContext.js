@@ -134,6 +134,35 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
+  const googleLogin = async (credential) => {
+    try {
+      // Clear any existing cached data before login
+      invalidateCache();
+      setCurrentUser(null);
+      localStorage.removeItem('user');
+      
+      const response = await api.post('/auth/google', { credential });
+      
+      localStorage.setItem('token', response.data.token);
+      
+      // Clear cache after token is set
+      invalidateCache();
+      
+      // Get user data from backend (fresh, uncached)
+      const userResponse = await api.get('/auth/me');
+      
+      const userData = userResponse.data;
+      setCurrentUser(userData);
+      localStorage.setItem('user', JSON.stringify(userData));
+      
+      return true;
+    } catch (err) {
+      console.error("Google login error:", err);
+      setError(err.response?.data?.error || 'Google login failed');
+      return false;
+    }
+  };
+
   const logout = () => {
     // Clear all cached API data first (before removing token)
     invalidateCache();
@@ -149,6 +178,7 @@ export const AuthProvider = ({ children }) => {
       error, 
       login, 
       register,
+      googleLogin,
       logout,
       setUser: setCurrentUser,
       refreshUser

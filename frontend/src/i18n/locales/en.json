@@ -110,7 +110,9 @@
     "passwordsMismatch": "Passwords do not match",
     "passwordTooShort": "Password must be at least 4 characters",
     "registrationUnavailable": "Registration is not available",
-    "bonusInfo": "New players receive <strong>{{gems}} free gems</strong> to start!"
+    "bonusInfo": "New players receive <strong>{{gems}} free gems</strong> to start!",
+    "googleLoginFailed": "Google sign-in failed. Please try again.",
+    "continueWithGoogle": "Continue with Google"
   },
   "gacha": {
     "title": "GachaMaster",
