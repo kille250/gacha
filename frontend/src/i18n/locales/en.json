@@ -189,7 +189,11 @@
     "ticketsCategory": "Gacha Tickets",
     "pointsCategory": "Points",
     "specialCategory": "Special",
-    "premiumBonus": "Guaranteed Rare+!"
+    "premiumBonus": "Guaranteed Rare+!",
+    "availableNow": "Available Now",
+    "needMoreFish": "Need More Fish",
+    "give": "Give",
+    "get": "Get"
   },
   "collection": {
     "title": "Collection",

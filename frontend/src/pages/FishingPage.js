@@ -955,7 +955,7 @@ const FishingPage = () => {
         )}
       </AnimatePresence>
       
-      {/* Trading Post Modal */}
+      {/* Trading Post Modal - Redesigned */}
       <AnimatePresence>
         {showTradingPost && (
           <ModalOverlay
@@ -969,14 +969,30 @@ const FishingPage = () => {
               variants={motionVariants.modal}
               onClick={e => e.stopPropagation()}
             >
-              <ModalHeader>
-                <ModalTitle>
-                  <MdStorefront style={{ color: '#8b6914', marginRight: '8px' }} />
-                  {t('fishing.tradingPost')}
-                </ModalTitle>
-                <CloseButton onClick={() => setShowTradingPost(false)}><MdClose /></CloseButton>
-              </ModalHeader>
-              <ModalBody>
+              <ShopHeader>
+                <ShopTitleRow>
+                  <ShopIcon>🏪</ShopIcon>
+                  <ShopTitle>{t('fishing.tradingPost')}</ShopTitle>
+                  <CloseButton onClick={() => setShowTradingPost(false)}><MdClose /></CloseButton>
+                </ShopTitleRow>
+                
+                {/* Compact Wallet Display */}
+                {tradingOptions && (
+                  <WalletStrip>
+                    <WalletItem>
+                      <span>🎟️</span>
+                      <WalletValue>{tradingOptions.tickets?.rollTickets || 0}</WalletValue>
+                    </WalletItem>
+                    <WalletDivider />
+                    <WalletItem $highlight>
+                      <span>🌟</span>
+                      <WalletValue $highlight>{tradingOptions.tickets?.premiumTickets || 0}</WalletValue>
+                    </WalletItem>
+                  </WalletStrip>
+                )}
+              </ShopHeader>
+              
+              <ShopBody>
                 {tradingLoading && !tradingOptions ? (
                   <TradingLoadingState>
                     <FaFish className="loading-fish" />
@@ -984,48 +1000,6 @@ const FishingPage = () => {
                   </TradingLoadingState>
                 ) : tradingOptions ? (
                   <>
-                    {/* Inventory Summary */}
-                    <InventorySummary>
-                      <InventoryTitle>
-                        <FaFish /> {t('fishing.yourFish')}
-                      </InventoryTitle>
-                      <InventoryGrid>
-                        {['common', 'uncommon', 'rare', 'epic', 'legendary'].map(rarity => (
-                          <InventoryItem key={rarity} $rarity={rarity}>
-                            <InventoryEmoji>
-                              {rarity === 'common' ? '🐟' : rarity === 'uncommon' ? '🐠' : rarity === 'rare' ? '🐡' : rarity === 'epic' ? '🦈' : '🐋'}
-                            </InventoryEmoji>
-                            <InventoryCount $rarity={rarity}>
-                              {tradingOptions.totals[rarity] || 0}
-                            </InventoryCount>
-                            <InventoryLabel>{t(`fishing.${rarity}`)}</InventoryLabel>
-                          </InventoryItem>
-                        ))}
-                      </InventoryGrid>
-                    </InventorySummary>
-                    
-                    {/* Tickets Summary */}
-                    {tradingOptions.tickets && (
-                      <TicketsSummary>
-                        <InventoryTitle>
-                          🎟️ {t('fishing.yourTickets')}
-                        </InventoryTitle>
-                        <TicketsGrid>
-                          <TicketItem>
-                            <TicketEmoji>🎟️</TicketEmoji>
-                            <TicketCount>{tradingOptions.tickets.rollTickets || 0}</TicketCount>
-                            <TicketLabel>{t('fishing.rollTickets')}</TicketLabel>
-                          </TicketItem>
-                          <TicketItem $premium>
-                            <TicketEmoji>🌟</TicketEmoji>
-                            <TicketCount $premium>{tradingOptions.tickets.premiumTickets || 0}</TicketCount>
-                            <TicketLabel>{t('fishing.premiumTickets')}</TicketLabel>
-                            <TicketBonus>{t('fishing.premiumBonus')}</TicketBonus>
-                          </TicketItem>
-                        </TicketsGrid>
-                      </TicketsSummary>
-                    )}
-                    
                     {/* Trade Success Animation */}
                     <AnimatePresence>
                       {tradeResult && (
@@ -1044,122 +1018,143 @@ const FishingPage = () => {
                       )}
                     </AnimatePresence>
                     
-                    {/* Trade Options - Tickets */}
-                    <TradeOptionsTitle>
-                      🎟️ {t('fishing.ticketsCategory')}
-                    </TradeOptionsTitle>
-                    <TradeOptionsList>
-                      {tradingOptions.options.filter(o => o.category === 'tickets').map(option => (
-                        <TradeOptionCard 
-                          key={option.id} 
-                          $canTrade={option.canTrade}
-                          $rarity={option.requiredRarity}
-                          $isTicket
-                        >
-                          <TradeOptionEmoji>{option.emoji}</TradeOptionEmoji>
-                          <TradeOptionInfo>
-                            <TradeOptionName>{option.name}</TradeOptionName>
-                            <TradeOptionDesc>{option.description}</TradeOptionDesc>
-                            <TradeOptionRequirement $canTrade={option.canTrade}>
-                              {`${option.requiredQuantity}× ${t(`fishing.${option.requiredRarity}`)}`}
-                              <span> ({option.currentQuantity} {t('fishing.available')})</span>
-                            </TradeOptionRequirement>
-                          </TradeOptionInfo>
-                          <TradeOptionReward $isTicket>
-                            <RewardAmount>+{option.rewardAmount}</RewardAmount>
-                            <RewardLabel>{option.rewardType === 'premiumTickets' ? '🌟' : '🎟️'}</RewardLabel>
-                          </TradeOptionReward>
-                          <TradeButton 
-                            onClick={() => handleTrade(option.id)}
-                            disabled={!option.canTrade || tradingLoading}
-                            $canTrade={option.canTrade}
-                            whileHover={option.canTrade ? { scale: 1.05 } : {}}
-                            whileTap={option.canTrade ? { scale: 0.95 } : {}}
-                          >
-                            {tradingLoading ? '...' : t('fishing.trade')}
-                          </TradeButton>
-                        </TradeOptionCard>
+                    {/* Fish Inventory - Compact Horizontal Bar */}
+                    <FishBar>
+                      {['common', 'uncommon', 'rare', 'epic', 'legendary'].map(rarity => (
+                        <FishChip key={rarity} $rarity={rarity} $hasAny={(tradingOptions.totals[rarity] || 0) > 0}>
+                          <FishChipEmoji>
+                            {rarity === 'common' ? '🐟' : rarity === 'uncommon' ? '🐠' : rarity === 'rare' ? '🐡' : rarity === 'epic' ? '🦈' : '🐋'}
+                          </FishChipEmoji>
+                          <FishChipCount $rarity={rarity}>{tradingOptions.totals[rarity] || 0}</FishChipCount>
+                        </FishChip>
                       ))}
-                    </TradeOptionsList>
+                    </FishBar>
                     
-                    {/* Trade Options - Points */}
-                    <TradeOptionsTitle>
-                      🪙 {t('fishing.pointsCategory')}
-                    </TradeOptionsTitle>
-                    <TradeOptionsList>
-                      {tradingOptions.options.filter(o => o.category === 'points').map(option => (
-                        <TradeOptionCard 
-                          key={option.id} 
-                          $canTrade={option.canTrade}
-                          $rarity={option.requiredRarity}
-                        >
-                          <TradeOptionEmoji>{option.emoji}</TradeOptionEmoji>
-                          <TradeOptionInfo>
-                            <TradeOptionName>{option.name}</TradeOptionName>
-                            <TradeOptionDesc>{option.description}</TradeOptionDesc>
-                            <TradeOptionRequirement $canTrade={option.canTrade}>
-                              {`${option.requiredQuantity}× ${t(`fishing.${option.requiredRarity}`)}`}
-                              <span> ({option.currentQuantity} {t('fishing.available')})</span>
-                            </TradeOptionRequirement>
-                          </TradeOptionInfo>
-                          <TradeOptionReward>
-                            <RewardAmount>+{option.rewardAmount}</RewardAmount>
-                            <RewardLabel>{t('common.points')}</RewardLabel>
-                          </TradeOptionReward>
-                          <TradeButton 
-                            onClick={() => handleTrade(option.id)}
-                            disabled={!option.canTrade || tradingLoading}
-                            $canTrade={option.canTrade}
-                            whileHover={option.canTrade ? { scale: 1.05 } : {}}
-                            whileTap={option.canTrade ? { scale: 0.95 } : {}}
-                          >
-                            {tradingLoading ? '...' : t('fishing.trade')}
-                          </TradeButton>
-                        </TradeOptionCard>
-                      ))}
-                    </TradeOptionsList>
-                    
-                    {/* Trade Options - Special */}
-                    <TradeOptionsTitle>
-                      🏆 {t('fishing.specialCategory')}
-                    </TradeOptionsTitle>
-                    <TradeOptionsList>
-                      {tradingOptions.options.filter(o => o.category === 'special').map(option => (
-                        <TradeOptionCard 
-                          key={option.id} 
-                          $canTrade={option.canTrade}
-                          $rarity={option.requiredRarity}
-                          $isSpecial
-                        >
-                          <TradeOptionEmoji>{option.emoji}</TradeOptionEmoji>
-                          <TradeOptionInfo>
-                            <TradeOptionName>{option.name}</TradeOptionName>
-                            <TradeOptionDesc>{option.description}</TradeOptionDesc>
-                            <TradeOptionRequirement $canTrade={option.canTrade}>
-                              1 of each rarity
-                              <span> ({option.currentQuantity} sets {t('fishing.available')})</span>
-                            </TradeOptionRequirement>
-                          </TradeOptionInfo>
-                          <TradeOptionReward $isSpecial>
-                            <RewardAmount>
-                              {option.rewardType === 'mixed' 
-                                ? `${option.rewardAmount.rollTickets}🎟️ + ${option.rewardAmount.premiumTickets}🌟`
-                                : `+${option.rewardAmount}`}
-                            </RewardAmount>
-                            <RewardLabel>{option.rewardType === 'points' ? t('common.points') : 'Tickets'}</RewardLabel>
-                          </TradeOptionReward>
-                          <TradeButton 
-                            onClick={() => handleTrade(option.id)}
-                            disabled={!option.canTrade || tradingLoading}
-                            $canTrade={option.canTrade}
-                            whileHover={option.canTrade ? { scale: 1.05 } : {}}
-                            whileTap={option.canTrade ? { scale: 0.95 } : {}}
-                          >
-                            {tradingLoading ? '...' : t('fishing.trade')}
-                          </TradeButton>
-                        </TradeOptionCard>
-                      ))}
-                    </TradeOptionsList>
+                    {/* Available Trades Section */}
+                    {(() => {
+                      const availableTrades = tradingOptions.options.filter(o => o.canTrade);
+                      const unavailableTrades = tradingOptions.options.filter(o => !o.canTrade);
+                      
+                      return (
+                        <>
+                          {/* Available Now - Priority Section */}
+                          {availableTrades.length > 0 && (
+                            <TradeSection>
+                              <TradeSectionHeader $available>
+                                <TradeSectionBadge $available>✓</TradeSectionBadge>
+                                <TradeSectionTitle>{t('fishing.availableNow') || 'Available Now'}</TradeSectionTitle>
+                                <TradeSectionCount>{availableTrades.length}</TradeSectionCount>
+                              </TradeSectionHeader>
+                              <TradeGrid>
+                                {availableTrades.map(option => (
+                                  <QuickTradeCard 
+                                    key={option.id}
+                                    $rarity={option.requiredRarity}
+                                    whileHover={{ scale: 1.02, y: -2 }}
+                                    whileTap={{ scale: 0.98 }}
+                                  >
+                                    <TradeCardTop>
+                                      <TradeGiveSection>
+                                        <TradeLabel>{t('fishing.give') || 'Give'}</TradeLabel>
+                                        <TradeGiveContent>
+                                          <TradeGiveEmoji>
+                                            {option.requiredRarity === 'common' ? '🐟' : 
+                                             option.requiredRarity === 'uncommon' ? '🐠' : 
+                                             option.requiredRarity === 'rare' ? '🐡' : 
+                                             option.requiredRarity === 'epic' ? '🦈' : 
+                                             option.requiredRarity === 'special' ? '🎣' : '🐋'}
+                                          </TradeGiveEmoji>
+                                          <TradeGiveAmount>×{option.requiredQuantity}</TradeGiveAmount>
+                                        </TradeGiveContent>
+                                      </TradeGiveSection>
+                                      <TradeArrow>→</TradeArrow>
+                                      <TradeGetSection>
+                                        <TradeLabel>{t('fishing.get') || 'Get'}</TradeLabel>
+                                        <TradeGetContent $type={option.rewardType}>
+                                          <TradeGetEmoji>
+                                            {option.rewardType === 'premiumTickets' ? '🌟' : 
+                                             option.rewardType === 'rollTickets' ? '🎟️' : 
+                                             option.rewardType === 'mixed' ? '🎁' : '🪙'}
+                                          </TradeGetEmoji>
+                                          <TradeGetAmount>
+                                            {option.rewardType === 'mixed' 
+                                              ? `${option.rewardAmount.rollTickets}+${option.rewardAmount.premiumTickets}`
+                                              : `+${option.rewardAmount}`}
+                                          </TradeGetAmount>
+                                        </TradeGetContent>
+                                      </TradeGetSection>
+                                    </TradeCardTop>
+                                    <QuickTradeButton
+                                      onClick={() => handleTrade(option.id)}
+                                      disabled={tradingLoading}
+                                      whileHover={{ scale: 1.05 }}
+                                      whileTap={{ scale: 0.95 }}
+                                    >
+                                      {tradingLoading ? '...' : t('fishing.trade')}
+                                    </QuickTradeButton>
+                                  </QuickTradeCard>
+                                ))}
+                              </TradeGrid>
+                            </TradeSection>
+                          )}
+                          
+                          {/* Locked Trades - Progress Section */}
+                          {unavailableTrades.length > 0 && (
+                            <TradeSection $locked>
+                              <TradeSectionHeader>
+                                <TradeSectionBadge>🔒</TradeSectionBadge>
+                                <TradeSectionTitle>{t('fishing.needMoreFish') || 'Need More Fish'}</TradeSectionTitle>
+                                <TradeSectionCount>{unavailableTrades.length}</TradeSectionCount>
+                              </TradeSectionHeader>
+                              <LockedTradesList>
+                                {unavailableTrades.map(option => {
+                                  const progress = Math.min((option.currentQuantity / option.requiredQuantity) * 100, 100);
+                                  return (
+                                    <LockedTradeRow key={option.id}>
+                                      <LockedTradeInfo>
+                                        <LockedTradeEmoji>
+                                          {option.requiredRarity === 'common' ? '🐟' : 
+                                           option.requiredRarity === 'uncommon' ? '🐠' : 
+                                           option.requiredRarity === 'rare' ? '🐡' : 
+                                           option.requiredRarity === 'epic' ? '🦈' : 
+                                           option.requiredRarity === 'special' ? '🎣' : '🐋'}
+                                        </LockedTradeEmoji>
+                                        <LockedTradeText>
+                                          <LockedTradeName>{option.currentQuantity}/{option.requiredQuantity} {t(`fishing.${option.requiredRarity}`)}</LockedTradeName>
+                                          <ProgressBarContainer>
+                                            <ProgressBarFill $progress={progress} $rarity={option.requiredRarity} />
+                                          </ProgressBarContainer>
+                                        </LockedTradeText>
+                                      </LockedTradeInfo>
+                                      <LockedTradeReward>
+                                        <span>
+                                          {option.rewardType === 'premiumTickets' ? '🌟' : 
+                                           option.rewardType === 'rollTickets' ? '🎟️' : 
+                                           option.rewardType === 'mixed' ? '🎁' : '🪙'}
+                                        </span>
+                                        <span>
+                                          {option.rewardType === 'mixed' 
+                                            ? `${option.rewardAmount.rollTickets}+${option.rewardAmount.premiumTickets}`
+                                            : `+${option.rewardAmount}`}
+                                        </span>
+                                      </LockedTradeReward>
+                                    </LockedTradeRow>
+                                  );
+                                })}
+                              </LockedTradesList>
+                            </TradeSection>
+                          )}
+                          
+                          {/* Empty State */}
+                          {availableTrades.length === 0 && unavailableTrades.length === 0 && (
+                            <EmptyTradeState>
+                              <span>🎣</span>
+                              <p>{t('fishing.catchFishToTrade')}</p>
+                            </EmptyTradeState>
+                          )}
+                        </>
+                      );
+                    })()}
                   </>
                 ) : (
                   <TradingLoadingState>
@@ -1167,7 +1162,7 @@ const FishingPage = () => {
                     <span style={{ fontSize: '14px', opacity: 0.7 }}>{t('fishing.catchFishToTrade')}</span>
                   </TradingLoadingState>
                 )}
-              </ModalBody>
+              </ShopBody>
             </TradingPostModal>
           </ModalOverlay>
         )}
@@ -2574,7 +2569,7 @@ const AutofishBadge = styled.div`
 `;
 
 // =============================================
-// TRADING POST STYLED COMPONENTS
+// TRADING POST STYLED COMPONENTS - REDESIGNED
 // =============================================
 
 const TradingPostButton = styled(motion.button)`
@@ -2624,24 +2619,108 @@ const TradingPostButton = styled(motion.button)`
 `;
 
 const TradingPostModal = styled(motion.div)`
-  background: linear-gradient(180deg, #fff8e1 0%, #ffecb3 100%);
-  border-radius: 24px;
-  border: 6px solid #8b6914;
+  background: linear-gradient(165deg, #1a2634 0%, #0d1821 100%);
+  border-radius: 20px;
+  border: 3px solid #2a4a6a;
   box-shadow: 
-    0 0 0 3px #d4a020,
-    inset 0 2px 0 rgba(255,255,255,0.5),
-    0 20px 60px rgba(0, 0, 0, 0.4);
+    0 0 40px rgba(0, 150, 255, 0.15),
+    0 20px 60px rgba(0, 0, 0, 0.5),
+    inset 0 1px 0 rgba(255,255,255,0.1);
   width: calc(100% - 24px);
-  max-width: 500px;
+  max-width: 420px;
   max-height: 85vh;
   overflow: hidden;
   display: flex;
   flex-direction: column;
   
   @media (max-width: 600px) {
-    border-width: 4px;
+    border-width: 2px;
     border-radius: 16px;
     max-height: 80vh;
+    max-width: 100%;
+  }
+`;
+
+const ShopHeader = styled.div`
+  background: linear-gradient(180deg, rgba(42, 74, 106, 0.8) 0%, rgba(26, 38, 52, 0.9) 100%);
+  padding: 16px 20px 14px;
+  border-bottom: 2px solid rgba(100, 180, 255, 0.2);
+`;
+
+const ShopTitleRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 12px;
+`;
+
+const ShopIcon = styled.div`
+  font-size: 28px;
+  filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
+`;
+
+const ShopTitle = styled.h2`
+  flex: 1;
+  font-size: 20px;
+  font-weight: 800;
+  color: #e8f4ff;
+  margin: 0;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  letter-spacing: 0.5px;
+`;
+
+const WalletStrip = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: rgba(0,0,0,0.3);
+  border-radius: 12px;
+  padding: 8px 16px;
+  border: 1px solid rgba(100, 180, 255, 0.15);
+`;
+
+const WalletItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 16px;
+  
+  span:first-child {
+    font-size: 18px;
+  }
+`;
+
+const WalletDivider = styled.div`
+  width: 1px;
+  height: 24px;
+  background: rgba(100, 180, 255, 0.3);
+`;
+
+const WalletValue = styled.span`
+  font-size: 18px;
+  font-weight: 800;
+  color: ${props => props.$highlight ? '#ffd54f' : '#e8f4ff'};
+  text-shadow: ${props => props.$highlight ? '0 0 10px rgba(255, 213, 79, 0.5)' : 'none'};
+`;
+
+const ShopBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(0,0,0,0.2);
+    border-radius: 3px;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: rgba(100, 180, 255, 0.3);
+    border-radius: 3px;
   }
 `;
 
@@ -2652,7 +2731,7 @@ const TradingLoadingState = styled.div`
   justify-content: center;
   gap: 16px;
   padding: 48px 24px;
-  color: #795548;
+  color: #8ba4bc;
   font-size: 18px;
   font-weight: 600;
   
@@ -2668,156 +2747,353 @@ const TradingLoadingState = styled.div`
   }
 `;
 
-const InventorySummary = styled.div`
-  background: rgba(139, 105, 20, 0.1);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 20px;
-  border: 2px solid rgba(139, 105, 20, 0.2);
-`;
-
-const InventoryTitle = styled.div`
+const FishBar = styled.div`
   display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 800;
-  color: #5d4037;
-  margin-bottom: 12px;
-  
-  svg {
-    color: #64b5f6;
-  }
-`;
-
-const InventoryGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(5, 1fr);
-  gap: 8px;
+  gap: 6px;
+  padding: 12px;
+  background: rgba(0,0,0,0.25);
+  border-radius: 14px;
+  margin-bottom: 16px;
+  border: 1px solid rgba(100, 180, 255, 0.1);
   
   @media (max-width: 400px) {
     gap: 4px;
+    padding: 10px 8px;
   }
 `;
 
-const InventoryItem = styled.div`
+const FishChip = styled.div`
+  flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 10px 6px;
-  background: rgba(255,255,255,0.6);
-  border-radius: 12px;
-  border: 2px solid ${props => RARITY_COLORS[props.$rarity] || '#ccc'}40;
+  padding: 8px 4px;
+  background: ${props => props.$hasAny 
+    ? `${RARITY_COLORS[props.$rarity]}15`
+    : 'rgba(255,255,255,0.03)'};
+  border-radius: 10px;
+  border: 2px solid ${props => props.$hasAny 
+    ? `${RARITY_COLORS[props.$rarity]}40`
+    : 'rgba(255,255,255,0.05)'};
+  opacity: ${props => props.$hasAny ? 1 : 0.5};
+  transition: all 0.2s;
   
   @media (max-width: 400px) {
-    padding: 6px 4px;
+    padding: 6px 2px;
     gap: 2px;
     border-radius: 8px;
   }
 `;
 
-const InventoryEmoji = styled.div`
-  font-size: 24px;
+const FishChipEmoji = styled.div`
+  font-size: 20px;
   
   @media (max-width: 400px) {
-    font-size: 18px;
+    font-size: 16px;
   }
 `;
 
-const InventoryCount = styled.div`
-  font-size: 18px;
-  font-weight: 900;
-  color: ${props => RARITY_COLORS[props.$rarity] || '#5d4037'};
+const FishChipCount = styled.div`
+  font-size: 14px;
+  font-weight: 800;
+  color: ${props => RARITY_COLORS[props.$rarity] || '#e8f4ff'};
+  
+  @media (max-width: 400px) {
+    font-size: 12px;
+  }
+`;
+
+const TradeSection = styled.div`
+  margin-bottom: 16px;
+  opacity: ${props => props.$locked ? 0.85 : 1};
+`;
+
+const TradeSectionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 10px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid ${props => props.$available 
+    ? 'rgba(76, 175, 80, 0.3)' 
+    : 'rgba(100, 180, 255, 0.15)'};
+`;
+
+const TradeSectionBadge = styled.div`
+  width: 24px;
+  height: 24px;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  background: ${props => props.$available 
+    ? 'linear-gradient(180deg, #4caf50 0%, #388e3c 100%)'
+    : 'rgba(100, 180, 255, 0.15)'};
+  color: ${props => props.$available ? '#fff' : '#8ba4bc'};
+`;
+
+const TradeSectionTitle = styled.div`
+  flex: 1;
+  font-size: 14px;
+  font-weight: 700;
+  color: #b8d4f0;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const TradeSectionCount = styled.div`
+  font-size: 12px;
+  font-weight: 700;
+  color: #5a7a9a;
+  background: rgba(0,0,0,0.3);
+  padding: 2px 8px;
+  border-radius: 10px;
+`;
+
+const TradeGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  gap: 10px;
+  
+  @media (max-width: 400px) {
+    grid-template-columns: repeat(2, 1fr);
+    gap: 8px;
+  }
+`;
+
+const QuickTradeCard = styled(motion.div)`
+  background: linear-gradient(180deg, rgba(42, 74, 106, 0.6) 0%, rgba(26, 50, 74, 0.8) 100%);
+  border-radius: 14px;
+  border: 2px solid ${props => `${RARITY_COLORS[props.$rarity]}50` || 'rgba(100, 180, 255, 0.3)'};
+  padding: 14px 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    border-color: ${props => RARITY_COLORS[props.$rarity] || '#64b5f6'};
+    box-shadow: 0 0 20px ${props => `${RARITY_COLORS[props.$rarity]}30` || 'rgba(100, 180, 255, 0.2)'};
+  }
+  
+  @media (max-width: 400px) {
+    padding: 10px;
+    gap: 10px;
+    border-radius: 12px;
+  }
+`;
+
+const TradeCardTop = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+`;
+
+const TradeGiveSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+`;
+
+const TradeLabel = styled.div`
+  font-size: 10px;
+  font-weight: 600;
+  color: #5a7a9a;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const TradeGiveContent = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 2px;
+`;
+
+const TradeGiveEmoji = styled.div`
+  font-size: 24px;
+  
+  @media (max-width: 400px) {
+    font-size: 20px;
+  }
+`;
+
+const TradeGiveAmount = styled.div`
+  font-size: 16px;
+  font-weight: 800;
+  color: #ff8a80;
   
   @media (max-width: 400px) {
     font-size: 14px;
   }
 `;
 
-const InventoryLabel = styled.div`
-  font-size: 11px;
-  font-weight: 600;
-  color: #5d4037;
-  text-transform: capitalize;
-  
-  @media (max-width: 400px) {
-    font-size: 10px;
-  }
+const TradeArrow = styled.div`
+  font-size: 18px;
+  color: #5a7a9a;
+  margin: 0 4px;
 `;
 
-const TicketsSummary = styled.div`
-  background: linear-gradient(180deg, rgba(156, 39, 176, 0.1) 0%, rgba(103, 58, 183, 0.1) 100%);
-  border-radius: 16px;
-  padding: 16px;
-  margin-bottom: 20px;
-  border: 2px solid rgba(156, 39, 176, 0.3);
-`;
-
-const TicketsGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 12px;
-  
-  @media (max-width: 400px) {
-    gap: 8px;
-  }
-`;
-
-const TicketItem = styled.div`
+const TradeGetSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: 4px;
-  padding: 14px 10px;
-  background: ${props => props.$premium 
-    ? 'linear-gradient(180deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.15) 100%)'
-    : 'rgba(255,255,255,0.6)'};
-  border-radius: 12px;
-  border: 2px solid ${props => props.$premium ? '#ffc107' : '#9c27b0'}40;
-  
-  @media (max-width: 400px) {
-    padding: 10px 8px;
-    gap: 2px;
-  }
 `;
 
-const TicketEmoji = styled.div`
-  font-size: 28px;
-  
-  @media (max-width: 400px) {
-    font-size: 22px;
-  }
+const TradeGetContent = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 2px;
 `;
 
-const TicketCount = styled.div`
+const TradeGetEmoji = styled.div`
   font-size: 24px;
-  font-weight: 900;
-  color: ${props => props.$premium ? '#f57c00' : '#7b1fa2'};
   
   @media (max-width: 400px) {
-    font-size: 18px;
+    font-size: 20px;
   }
 `;
 
-const TicketLabel = styled.div`
-  font-size: 12px;
-  font-weight: 600;
-  color: #5d4037;
+const TradeGetAmount = styled.div`
+  font-size: 16px;
+  font-weight: 800;
+  color: #69f0ae;
   
   @media (max-width: 400px) {
-    font-size: 11px;
+    font-size: 14px;
   }
 `;
 
-const TicketBonus = styled.div`
-  font-size: 11px;
-  font-weight: 600;
-  color: #2e7d32;
-  background: rgba(76, 175, 80, 0.15);
-  padding: 3px 8px;
+const QuickTradeButton = styled(motion.button)`
+  width: 100%;
+  padding: 10px;
   border-radius: 10px;
-  margin-top: 2px;
+  border: none;
+  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
+  color: #fff;
+  font-size: 13px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 
+    0 3px 0 #2e7d32,
+    0 4px 12px rgba(0,0,0,0.3);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  transition: all 0.15s;
+  
+  &:hover {
+    background: linear-gradient(180deg, #66bb6a 0%, #43a047 100%);
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(1px);
+    box-shadow: 
+      0 1px 0 #2e7d32,
+      0 2px 6px rgba(0,0,0,0.3);
+  }
+  
+  &:disabled {
+    background: linear-gradient(180deg, #78909c 0%, #546e7a 100%);
+    cursor: not-allowed;
+    box-shadow: 0 2px 0 #455a64;
+  }
+`;
+
+const LockedTradesList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const LockedTradeRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 10px 12px;
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  border: 1px solid rgba(100, 180, 255, 0.1);
+`;
+
+const LockedTradeInfo = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+`;
+
+const LockedTradeEmoji = styled.div`
+  font-size: 22px;
+  opacity: 0.7;
+`;
+
+const LockedTradeText = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const LockedTradeName = styled.div`
+  font-size: 13px;
+  font-weight: 600;
+  color: #8ba4bc;
+  margin-bottom: 4px;
+`;
+
+const ProgressBarContainer = styled.div`
+  height: 6px;
+  background: rgba(0,0,0,0.3);
+  border-radius: 3px;
+  overflow: hidden;
+`;
+
+const ProgressBarFill = styled.div`
+  height: 100%;
+  width: ${props => props.$progress}%;
+  background: ${props => RARITY_COLORS[props.$rarity] || '#64b5f6'};
+  border-radius: 3px;
+  transition: width 0.3s ease;
+`;
+
+const LockedTradeReward = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 14px;
+  font-weight: 700;
+  color: #5a7a9a;
+  
+  span:first-child {
+    font-size: 16px;
+  }
+`;
+
+const EmptyTradeState = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 40px 20px;
+  color: #5a7a9a;
+  text-align: center;
+  
+  span {
+    font-size: 48px;
+    opacity: 0.5;
+  }
+  
+  p {
+    font-size: 14px;
+    font-weight: 600;
+    margin: 0;
+  }
 `;
 
 const TradeSuccessOverlay = styled(motion.div)`
@@ -2848,177 +3124,6 @@ const TradeSuccessText = styled.div`
   font-weight: 700;
   color: #fff;
   text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
-`;
-
-const TradeOptionsTitle = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 16px;
-  font-weight: 800;
-  color: #5d4037;
-  margin-bottom: 12px;
-  
-  svg {
-    color: #8b6914;
-  }
-`;
-
-const TradeOptionsList = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  max-height: 300px;
-  overflow-y: auto;
-  padding-right: 8px;
-  
-  &::-webkit-scrollbar {
-    width: 8px;
-  }
-  
-  &::-webkit-scrollbar-track {
-    background: rgba(139, 105, 20, 0.1);
-    border-radius: 4px;
-  }
-  
-  &::-webkit-scrollbar-thumb {
-    background: linear-gradient(180deg, #a07830, #7a5820);
-    border-radius: 4px;
-  }
-`;
-
-const TradeOptionCard = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-  background: ${props => props.$canTrade 
-    ? 'rgba(255,255,255,0.7)' 
-    : 'rgba(0,0,0,0.05)'};
-  border-radius: 14px;
-  border: 3px solid ${props => props.$canTrade 
-    ? (RARITY_COLORS[props.$rarity] || '#8b6914') + '60'
-    : 'rgba(0,0,0,0.1)'};
-  opacity: ${props => props.$canTrade ? 1 : 0.6};
-  transition: all 0.2s;
-  
-  @media (max-width: 500px) {
-    flex-wrap: wrap;
-    gap: 8px;
-    padding: 12px;
-  }
-  
-  ${props => props.$canTrade && `
-    &:hover {
-      border-color: ${RARITY_COLORS[props.$rarity] || '#8b6914'};
-      background: rgba(255,255,255,0.9);
-    }
-  `}
-`;
-
-const TradeOptionEmoji = styled.div`
-  font-size: 32px;
-  flex-shrink: 0;
-  
-  @media (max-width: 500px) {
-    font-size: 28px;
-    order: 0;
-  }
-`;
-
-const TradeOptionInfo = styled.div`
-  flex: 1;
-  min-width: 0;
-  
-  @media (max-width: 500px) {
-    flex-basis: calc(100% - 56px);
-    order: 1;
-  }
-`;
-
-const TradeOptionName = styled.div`
-  font-size: 15px;
-  font-weight: 700;
-  color: #5d4037;
-  margin-bottom: 2px;
-`;
-
-const TradeOptionDesc = styled.div`
-  font-size: 13px;
-  color: #5d4037;
-  margin-bottom: 4px;
-`;
-
-const TradeOptionRequirement = styled.div`
-  font-size: 13px;
-  font-weight: 600;
-  color: ${props => props.$canTrade ? '#2e7d32' : '#c62828'};
-  
-  span {
-    color: #5d4037;
-    font-weight: 400;
-  }
-`;
-
-const TradeOptionReward = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: 8px 12px;
-  background: linear-gradient(180deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.15) 100%);
-  border-radius: 10px;
-  flex-shrink: 0;
-  
-  @media (max-width: 500px) {
-    order: 2;
-    padding: 6px 10px;
-  }
-`;
-
-const RewardAmount = styled.div`
-  font-size: 18px;
-  font-weight: 900;
-  color: #f57c00;
-`;
-
-const RewardLabel = styled.div`
-  font-size: 10px;
-  font-weight: 600;
-  color: #795548;
-`;
-
-const TradeButton = styled(motion.button)`
-  padding: 10px 16px;
-  border-radius: 10px;
-  border: none;
-  background: ${props => props.$canTrade 
-    ? 'linear-gradient(180deg, #43a047 0%, #2e7d32 100%)'
-    : 'linear-gradient(180deg, #9e9e9e 0%, #757575 100%)'};
-  color: #fff;
-  font-size: 13px;
-  font-weight: 800;
-  cursor: ${props => props.$canTrade ? 'pointer' : 'not-allowed'};
-  box-shadow: ${props => props.$canTrade 
-    ? '0 3px 0 #1b5e20, 0 4px 8px rgba(0,0,0,0.2)'
-    : '0 2px 0 #616161'};
-  flex-shrink: 0;
-  touch-action: manipulation;
-  
-  @media (max-width: 500px) {
-    order: 3;
-    flex: 1;
-    padding: 10px 12px;
-  }
-  
-  ${props => props.$canTrade && `
-    &:hover {
-      background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
-    }
-  `}
-  
-  &:disabled {
-    cursor: not-allowed;
-  }
 `;
 
 export default FishingPage;
