@@ -323,16 +323,18 @@ const Navigation = () => {
             <span>{user?.points || 0}</span>
           </PointsDisplay>
           
-          <R18Toggle
-            active={user?.allowR18}
-            onClick={toggleR18}
-            disabled={isTogglingR18}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            title={user?.allowR18 ? t('nav.r18ContentEnabled') : t('nav.r18ContentDisabled')}
-          >
-            🔞
-          </R18Toggle>
+          {user?.allowR18 && (
+            <R18Toggle
+              active={user?.showR18}
+              onClick={toggleR18}
+              disabled={isTogglingR18}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              title={user?.showR18 ? t('nav.r18ContentEnabled') : t('nav.r18ContentDisabled')}
+            >
+              🔞
+            </R18Toggle>
+          )}
           
           {/* Language Selector */}
           <LanguageSelector>
@@ -434,15 +436,17 @@ const Navigation = () => {
                 
                 <Divider />
                 
-                <MobileR18Toggle
-                  active={user?.allowR18}
-                  onClick={toggleR18}
-                  disabled={isTogglingR18}
-                  whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
-                >
-                  <span>🔞</span>
-                  <span>{user?.allowR18 ? t('nav.r18Enabled') : t('nav.r18Disabled')}</span>
-                </MobileR18Toggle>
+                {user?.allowR18 && (
+                  <MobileR18Toggle
+                    active={user?.showR18}
+                    onClick={toggleR18}
+                    disabled={isTogglingR18}
+                    whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+                  >
+                    <span>🔞</span>
+                    <span>{user?.showR18 ? t('nav.r18Enabled') : t('nav.r18Disabled')}</span>
+                  </MobileR18Toggle>
+                )}
                 
                 {/* Mobile Language Selector */}
                 <MobileLanguageSection>

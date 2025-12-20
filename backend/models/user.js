@@ -40,6 +40,10 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false
     },
+    showR18: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
     autofishEnabled: {
       type: DataTypes.BOOLEAN,
       defaultValue: false

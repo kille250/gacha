@@ -250,6 +250,7 @@ async function startServer() {
       }
       
       await addColumnIfNotExists('Users', 'allowR18', 'BOOLEAN', 'false');
+      await addColumnIfNotExists('Users', 'showR18', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Users', 'autofishEnabled', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Users', 'autofishUnlockedByRank', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');

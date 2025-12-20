@@ -43,13 +43,14 @@ const parseCharacterIds = (characterIdsStr) => {
   }
 };
 
-// Get user's R18 preference via raw SQL
+// Get user's R18 preference via raw SQL (requires both admin permission AND user preference)
 async function getUserAllowR18(userId) {
   const [rows] = await sequelize.query(
-    `SELECT "allowR18" FROM "Users" WHERE "id" = :userId`,
+    `SELECT "allowR18", "showR18" FROM "Users" WHERE "id" = :userId`,
     { replacements: { userId } }
   );
-  return rows[0]?.allowR18 === true;
+  // User can see R18 content only if admin has allowed AND user has enabled it
+  return rows[0]?.allowR18 === true && rows[0]?.showR18 === true;
 }
 
 // Configure storage for banner images and videos

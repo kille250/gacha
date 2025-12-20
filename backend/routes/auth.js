@@ -228,11 +228,11 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
-// Toggle R18 content preference
+// Toggle R18 content preference (user can only toggle if admin has allowed)
 router.post('/toggle-r18', auth, async (req, res) => {
   try {
     const [rows] = await sequelize.query(
-      `SELECT "allowR18" FROM "Users" WHERE "id" = :userId`,
+      `SELECT "allowR18", "showR18" FROM "Users" WHERE "id" = :userId`,
       { replacements: { userId: req.user.id } }
     );
     
@@ -240,17 +240,27 @@ router.post('/toggle-r18', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    const currentValue = rows[0].allowR18 === true;
+    // Check if admin has allowed R18 for this user
+    const hasPermission = rows[0].allowR18 === true;
+    if (!hasPermission) {
+      return res.status(403).json({ 
+        error: 'R18 access not enabled for your account',
+        message: 'Contact an administrator to enable R18 content access'
+      });
+    }
+    
+    // Toggle the user's showR18 preference
+    const currentValue = rows[0].showR18 === true;
     const newValue = !currentValue;
     
     await sequelize.query(
-      `UPDATE "Users" SET "allowR18" = :newValue WHERE "id" = :userId`,
+      `UPDATE "Users" SET "showR18" = :newValue WHERE "id" = :userId`,
       { replacements: { newValue, userId: req.user.id } }
     );
     
     res.json({ 
       message: newValue ? 'R18 content enabled' : 'R18 content disabled',
-      allowR18: newValue
+      showR18: newValue
     });
   } catch (err) {
     console.error('Toggle R18 error:', err);
