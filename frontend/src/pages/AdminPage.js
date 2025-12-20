@@ -2,8 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch, FaDownload, FaGripVertical } from 'react-icons/fa';
-import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, invalidateAdminCache, clearCache } from '../utils/api';
+import { FaPlus, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch, FaDownload, FaGripVertical } from 'react-icons/fa';
+import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, clearCache } from '../utils/api';
+import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
@@ -168,12 +169,6 @@ const AdminPage = () => {
       fetchAllData();
     }
   }, [user]);
-
-  // Individual refresh functions (for after mutations)
-  const refreshData = async () => {
-    invalidateAdminCache();
-    await fetchAllData();
-  };
 
   const fetchUsers = async () => {
     try {
@@ -433,7 +428,7 @@ const AdminPage = () => {
 
   // Banner Functions
   const getBannerImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://via.placeholder.com/300x150?text=Banner';
+    if (!imagePath) return PLACEHOLDER_BANNER;
     return getAssetUrl(imagePath);
   };
 
@@ -602,18 +597,8 @@ const AdminPage = () => {
   };
 
   const getImageUrl = (imagePath) => {
-    if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
+    if (!imagePath) return PLACEHOLDER_IMAGE;
     return getAssetUrl(imagePath);
-  };
-
-  const isVideo = (file) => {
-    if (!file) return false;
-    if (file.type && file.type.startsWith('video/')) return true;
-    if (typeof file === 'string') {
-      const lowerCasePath = file.toLowerCase();
-      return lowerCasePath.endsWith('.mp4') || lowerCasePath.endsWith('.webm') || lowerCasePath.includes('video');
-    }
-    return false;
   };
 
   if (!user?.isAdmin) {
@@ -821,10 +806,10 @@ const AdminPage = () => {
                   <CharacterCard key={char.id}>
                     {isVideo(char.image) ? (
                       <video autoPlay loop muted playsInline>
-                        <source src={getImageUrl(char.image)} type={char.image.endsWith('.webm') ? 'video/webm' : 'video/mp4'} />
+                        <source src={getImageUrl(char.image)} type={getVideoMimeType(char.image)} />
                       </video>
                     ) : (
-                      <img src={getImageUrl(char.image)} alt={char.name} onError={(e) => { e.target.src = 'https://via.placeholder.com/150?text=No+Image'; }} />
+                      <img src={getImageUrl(char.image)} alt={char.name} onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }} />
                     )}
                     <CharacterInfo>
                       <CharacterName>{char.name} {char.isR18 && <R18Badge>🔞</R18Badge>}</CharacterName>
@@ -1638,99 +1623,12 @@ const FeaturedToggleBtn = styled.button`
   }
 `;
 
-const BannerGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-  gap: ${theme.spacing.lg};
-`;
-
-const BannerCard = styled.div`
-  background: ${theme.colors.backgroundTertiary};
-  border-radius: ${theme.radius.lg};
-  overflow: hidden;
-  border: 2px solid ${props => props.$selected ? theme.colors.primary : theme.colors.surfaceBorder};
-  transition: all 0.2s;
-  ${props => props.$selected && `
-    box-shadow: 0 0 20px rgba(0, 113, 227, 0.3);
-  `}
-`;
-
-const BannerImage = styled.img`
-  width: 100%;
-  height: 150px;
-  object-fit: cover;
-`;
-
-const BannerInfo = styled.div`
-  padding: ${theme.spacing.md};
-`;
-
-const BannerName = styled.h4`
-  margin: 0 0 ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.semibold};
-`;
-
-const TagRow = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: ${theme.spacing.xs};
-  margin-bottom: ${theme.spacing.sm};
-`;
-
-const SeriesTag = styled.span`
-  padding: 2px 8px;
-  background: rgba(0, 113, 227, 0.15);
-  color: ${theme.colors.primary};
-  border-radius: ${theme.radius.sm};
-  font-size: ${theme.fontSizes.xs};
-`;
-
-const FeaturedTag = styled.span`
-  padding: 2px 8px;
-  background: rgba(255, 159, 10, 0.15);
-  color: ${theme.colors.warning};
-  border-radius: ${theme.radius.sm};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
-`;
-
 const StatusTag = styled.span`
   padding: 2px 8px;
   background: ${props => props.active ? 'rgba(52, 199, 89, 0.15)' : 'rgba(255, 59, 48, 0.15)'};
   color: ${props => props.active ? theme.colors.success : theme.colors.error};
   border-radius: ${theme.radius.sm};
   font-size: ${theme.fontSizes.xs};
-`;
-
-const BannerDesc = styled.p`
-  margin: 0 0 ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const DateInfo = styled.p`
-  margin: 0 0 ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.xs};
-  color: ${theme.colors.textMuted};
-`;
-
-const BannerStats = styled.div`
-  display: flex;
-  flex-wrap: wrap;
-  gap: ${theme.spacing.sm};
-  margin-bottom: ${theme.spacing.sm};
-`;
-
-const StatItem = styled.span`
-  font-size: ${theme.fontSizes.xs};
-  color: ${theme.colors.textSecondary};
-  
-  strong { color: ${theme.colors.text}; }
 `;
 
 const CouponGrid = styled.div`

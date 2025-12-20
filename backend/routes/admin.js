@@ -8,16 +8,7 @@ const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { User, Character } = require('../models');
 const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
-
-// ===========================================
-// SECURITY: Input validation helpers
-// ===========================================
-
-// Validate that a value is a positive integer
-const isValidId = (value) => {
-  const num = parseInt(value, 10);
-  return !isNaN(num) && num > 0 && String(num) === String(value);
-};
+const { isValidId } = require('../utils/validation');
 
 // Konfiguration für Multer (Dateispeicherung)
 const storage = multer.diskStorage({

@@ -23,53 +23,14 @@ const {
   roundRatesForDisplay,
   rollRarity
 } = require('../config/pricing');
+const { isValidId, validateIdArray, parseCharacterIds } = require('../utils/validation');
+const { getUserAllowR18 } = require('../utils/userPreferences');
 
 // ===========================================
 // SECURITY: Race condition protection
 // ===========================================
 // Prevent concurrent roll requests per user (could cause double-spending)
 const rollInProgress = new Set();
-
-// ===========================================
-// SECURITY: Input validation helpers
-// ===========================================
-
-// Validate that a value is a positive integer
-const isValidId = (value) => {
-  const num = parseInt(value, 10);
-  return !isNaN(num) && num > 0 && String(num) === String(value);
-};
-
-// Validate an array of IDs
-const validateIdArray = (arr) => {
-  if (!Array.isArray(arr)) return false;
-  return arr.every(id => isValidId(id));
-};
-
-// Safely parse characterIds from request body
-const parseCharacterIds = (characterIdsStr) => {
-  if (!characterIdsStr) return [];
-  try {
-    const parsed = JSON.parse(characterIdsStr);
-    if (!Array.isArray(parsed)) return null;
-    // Ensure all values are positive integers
-    const validated = parsed.map(id => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
-    if (validated.length !== parsed.length) return null;
-    return validated;
-  } catch (e) {
-    return null;
-  }
-};
-
-// Get user's R18 preference via raw SQL (requires both admin permission AND user preference)
-async function getUserAllowR18(userId) {
-  const [rows] = await sequelize.query(
-    `SELECT "allowR18", "showR18" FROM "Users" WHERE "id" = :userId`,
-    { replacements: { userId } }
-  );
-  // User can see R18 content only if admin has allowed AND user has enabled it
-  return rows[0]?.allowR18 === true && rows[0]?.showR18 === true;
-}
 
 // Configure storage for banner images and videos
 const storage = multer.diskStorage({
@@ -598,493 +559,484 @@ router.delete('/:id', [auth, admin], async (req, res) => {
 
 // Roll on a specific banner
 router.post('/:id/roll', auth, async (req, res) => {
-	const userId = req.user.id;
-	
-	// Prevent race condition - only one roll at a time per user
-	if (rollInProgress.has(userId)) {
-	  return res.status(429).json({ 
-	    error: 'Roll in progress',
-	    message: 'Another roll request is being processed'
-	  });
-	}
-	rollInProgress.add(userId);
-	
-	try {
-	  // Validate banner ID
-	  if (!isValidId(req.params.id)) {
-		rollInProgress.delete(userId);
-		return res.status(400).json({ error: 'Invalid banner ID' });
-	  }
-	  
-	  const banner = await Banner.findByPk(req.params.id, {
-		include: [{ model: Character }]
-	  });
-	  if (!banner) {
-	    rollInProgress.delete(userId);
-	    return res.status(404).json({ error: 'Banner not found' });
-	  }
-	  if (!banner.active) {
-	    rollInProgress.delete(userId);
-	    return res.status(400).json({ error: 'This banner is no longer active' });
-	  }
-	  
-	  // Check if banner is within date range
-	  const now = new Date();
-	  if (banner.startDate && new Date(banner.startDate) > now) {
-		rollInProgress.delete(userId);
-		return res.status(400).json({ error: 'This banner has not started yet' });
-	  }
-	  if (banner.endDate && new Date(banner.endDate) < now) {
-		rollInProgress.delete(userId);
-		return res.status(400).json({ error: 'This banner has already ended' });
-	  }
-	  
-	  // Get the user
-	  const user = await User.findByPk(userId);
-	  
-	  // Check payment method: ticket or points
-	  const { useTicket, ticketType } = req.body;
-	  let cost = Math.floor(100 * banner.costMultiplier);
-	  let usedTicket = null;
-	  let isPremium = false;
-	  
-	  if (useTicket) {
-	    // Use ticket instead of points
-	    if (ticketType === 'premium') {
-	      // User explicitly wants premium ticket
-	      if ((user.premiumTickets || 0) >= 1) {
-	        user.premiumTickets -= 1;
-	        usedTicket = 'premium';
-	        isPremium = true;
-	        cost = 0;
-	      } else {
-	        rollInProgress.delete(userId);
-	        return res.status(400).json({
-	          error: 'No premium tickets available',
-	          rollTickets: user.rollTickets || 0,
-	          premiumTickets: user.premiumTickets || 0
-	        });
-	      }
-	    } else if ((user.rollTickets || 0) >= 1) {
-	      // Use roll ticket
-	      user.rollTickets -= 1;
-	      usedTicket = 'roll';
-	      cost = 0;
-	    } else {
-	      rollInProgress.delete(userId);
-	      return res.status(400).json({
-	        error: 'No roll tickets available',
-	        rollTickets: user.rollTickets || 0,
-	        premiumTickets: user.premiumTickets || 0
-	      });
-	    }
-	  } else {
-	    // Use points
-	    if (user.points < cost) {
-	      rollInProgress.delete(userId);
-	      return res.status(400).json({
-	        error: `Not enough points. Banner pulls cost ${cost} points.`,
-	        rollTickets: user.rollTickets || 0,
-	        premiumTickets: user.premiumTickets || 0
-	      });
-	    }
-	    user.points -= cost;
-	  }
-	  
-	  await user.save();
-	  
-	  // Get user's R18 preference
-	  const allowR18 = await getUserAllowR18(req.user.id);
-	  
-	  // Get all banner characters (filtered by R18)
-	  const bannerCharacters = allowR18 
-	    ? banner.Characters 
-	    : banner.Characters.filter(char => !char.isR18);
-	  
-	  // Get all characters for fallback (filtered by R18)
-	  const allChars = await Character.findAll();
-	  const allCharacters = allowR18 
-	    ? allChars 
-	    : allChars.filter(char => !char.isR18);
-	  
-	  // Group all characters by rarity
-	  const allCharactersByRarity = {
-		common: allCharacters.filter(char => char.rarity === 'common'),
-		uncommon: allCharacters.filter(char => char.rarity === 'uncommon'),
-		rare: allCharacters.filter(char => char.rarity === 'rare'),
-		epic: allCharacters.filter(char => char.rarity === 'epic'),
-		legendary: allCharacters.filter(char => char.rarity === 'legendary')
-	  };
-	  
-	  // Group banner characters by rarity
-	  const bannerCharactersByRarity = {
-		common: bannerCharacters.filter(char => char.rarity === 'common'),
-		uncommon: bannerCharacters.filter(char => char.rarity === 'uncommon'),
-		rare: bannerCharacters.filter(char => char.rarity === 'rare'),
-		epic: bannerCharacters.filter(char => char.rarity === 'epic'),
-		legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
-	  };
-	  
-	  // Get rates from centralized config
-	  const standardDropRates = getStandardRates(false);
-	  const premiumDropRates = getPremiumRates(false);
-	  const bannerDropRates = calculateBannerRates(banner.rateMultiplier, false);
-	  
-	  console.log(`Banner ${banner.name} rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
-	  
-	  // Determine if we pull from banner or standard pool
-	  const pullFromBanner = Math.random() < getBannerPullChance();
-	  
-	  // Choose the appropriate drop rates
-	  let dropRates;
-	  if (isPremium) {
-	    dropRates = premiumDropRates;
-	  } else {
-	    dropRates = pullFromBanner ? bannerDropRates : standardDropRates;
-	  }
-	  
-	  // Roll for rarity using centralized helper
-	  let selectedRarity = rollRarity(dropRates);
-	  
-	  // Decide whether to pull from banner or standard pool
-	  let characterPool;
-	  let characterPoolSource;
-	  if (pullFromBanner && bannerCharactersByRarity[selectedRarity]?.length > 0) {
-		characterPool = bannerCharactersByRarity[selectedRarity];
-		characterPoolSource = 'banner';
-	  } else {
-		characterPool = allCharactersByRarity[selectedRarity];
-		characterPoolSource = 'standard';
-		// If no characters in standard pool for this rarity, find next available rarity
-		if (!characterPool || characterPool.length === 0) {
-		  const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
-		  const rarityIndex = rarityOrder.indexOf(selectedRarity);
-		  for (let i = rarityIndex + 1; i < rarityOrder.length; i++) {
-			const fallbackRarity = rarityOrder[i];
-			if (allCharactersByRarity[fallbackRarity]?.length > 0) {
-			  characterPool = allCharactersByRarity[fallbackRarity];
-			  selectedRarity = fallbackRarity;
-			  break;
-			}
-		  }
-		}
-	  }
-	  
-	  // Last resort fallback
-	  if (!characterPool || characterPool.length === 0) {
-		characterPool = allCharacters;
-	  }
-	  
-	  // Select a random character
-	  const randomChar = characterPool[Math.floor(Math.random() * characterPool.length)];
-	  
-	  // Auto-claim the character
-	  await user.addCharacter(randomChar);
-	  
-	  // Log the pull for analysis
-	  console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${randomChar.name} (${selectedRarity}) from ${characterPoolSource} pool. Cost: ${cost} points`);
-	  
-	  // Release lock before responding
-	  rollInProgress.delete(userId);
-	  
-	  res.json({
-		character: randomChar,
-		isBannerCharacter: bannerCharacters.some(c => c.id === randomChar.id),
-		bannerName: banner.name,
-		cost,
-		updatedPoints: user.points,
-		usedTicket,
-		isPremiumRoll: isPremium,
-		tickets: {
-		  rollTickets: user.rollTickets || 0,
-		  premiumTickets: user.premiumTickets || 0
-		}
-	  });
-	} catch (err) {
-	  // Always release lock on error
-	  rollInProgress.delete(userId);
-	  console.error(err);
-	  res.status(500).json({ error: 'Server error' });
-	}
-  });
+  const userId = req.user.id;
   
+  // Prevent race condition - only one roll at a time per user
+  if (rollInProgress.has(userId)) {
+    return res.status(429).json({ 
+      error: 'Roll in progress',
+      message: 'Another roll request is being processed'
+    });
+  }
+  rollInProgress.add(userId);
+  
+  try {
+    // Validate banner ID
+    if (!isValidId(req.params.id)) {
+      rollInProgress.delete(userId);
+      return res.status(400).json({ error: 'Invalid banner ID' });
+    }
+    
+    const banner = await Banner.findByPk(req.params.id, {
+      include: [{ model: Character }]
+    });
+    if (!banner) {
+      rollInProgress.delete(userId);
+      return res.status(404).json({ error: 'Banner not found' });
+    }
+    if (!banner.active) {
+      rollInProgress.delete(userId);
+      return res.status(400).json({ error: 'This banner is no longer active' });
+    }
+    
+    // Check if banner is within date range
+    const now = new Date();
+    if (banner.startDate && new Date(banner.startDate) > now) {
+      rollInProgress.delete(userId);
+      return res.status(400).json({ error: 'This banner has not started yet' });
+    }
+    if (banner.endDate && new Date(banner.endDate) < now) {
+      rollInProgress.delete(userId);
+      return res.status(400).json({ error: 'This banner has already ended' });
+    }
+    
+    // Get the user
+    const user = await User.findByPk(userId);
+    
+    // Check payment method: ticket or points
+    const { useTicket, ticketType } = req.body;
+    let cost = Math.floor(100 * banner.costMultiplier);
+    let usedTicket = null;
+    let isPremium = false;
+    
+    if (useTicket) {
+      // Use ticket instead of points
+      if (ticketType === 'premium') {
+        // User explicitly wants premium ticket
+        if ((user.premiumTickets || 0) >= 1) {
+          user.premiumTickets -= 1;
+          usedTicket = 'premium';
+          isPremium = true;
+          cost = 0;
+        } else {
+          rollInProgress.delete(userId);
+          return res.status(400).json({
+            error: 'No premium tickets available',
+            rollTickets: user.rollTickets || 0,
+            premiumTickets: user.premiumTickets || 0
+          });
+        }
+      } else if ((user.rollTickets || 0) >= 1) {
+        // Use roll ticket
+        user.rollTickets -= 1;
+        usedTicket = 'roll';
+        cost = 0;
+      } else {
+        rollInProgress.delete(userId);
+        return res.status(400).json({
+          error: 'No roll tickets available',
+          rollTickets: user.rollTickets || 0,
+          premiumTickets: user.premiumTickets || 0
+        });
+      }
+    } else {
+      // Use points
+      if (user.points < cost) {
+        rollInProgress.delete(userId);
+        return res.status(400).json({
+          error: `Not enough points. Banner pulls cost ${cost} points.`,
+          rollTickets: user.rollTickets || 0,
+          premiumTickets: user.premiumTickets || 0
+        });
+      }
+      user.points -= cost;
+    }
+    
+    await user.save();
+    
+    // Get user's R18 preference
+    const allowR18 = await getUserAllowR18(req.user.id);
+    
+    // Get all banner characters (filtered by R18)
+    const bannerCharacters = allowR18 
+      ? banner.Characters 
+      : banner.Characters.filter(char => !char.isR18);
+    
+    // Get all characters for fallback (filtered by R18)
+    const allChars = await Character.findAll();
+    const allCharacters = allowR18 
+      ? allChars 
+      : allChars.filter(char => !char.isR18);
+    
+    // Group all characters by rarity
+    const allCharactersByRarity = {
+      common: allCharacters.filter(char => char.rarity === 'common'),
+      uncommon: allCharacters.filter(char => char.rarity === 'uncommon'),
+      rare: allCharacters.filter(char => char.rarity === 'rare'),
+      epic: allCharacters.filter(char => char.rarity === 'epic'),
+      legendary: allCharacters.filter(char => char.rarity === 'legendary')
+    };
+    
+    // Group banner characters by rarity
+    const bannerCharactersByRarity = {
+      common: bannerCharacters.filter(char => char.rarity === 'common'),
+      uncommon: bannerCharacters.filter(char => char.rarity === 'uncommon'),
+      rare: bannerCharacters.filter(char => char.rarity === 'rare'),
+      epic: bannerCharacters.filter(char => char.rarity === 'epic'),
+      legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
+    };
+    
+    // Get rates from centralized config
+    const standardDropRates = getStandardRates(false);
+    const premiumDropRates = getPremiumRates(false);
+    const bannerDropRates = calculateBannerRates(banner.rateMultiplier, false);
+    
+    console.log(`Banner ${banner.name} rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
+    
+    // Determine if we pull from banner or standard pool
+    const pullFromBanner = Math.random() < getBannerPullChance();
+    
+    // Choose the appropriate drop rates
+    let dropRates;
+    if (isPremium) {
+      dropRates = premiumDropRates;
+    } else {
+      dropRates = pullFromBanner ? bannerDropRates : standardDropRates;
+    }
+    
+    // Roll for rarity using centralized helper
+    let selectedRarity = rollRarity(dropRates);
+    
+    // Decide whether to pull from banner or standard pool
+    let characterPool;
+    let characterPoolSource;
+    if (pullFromBanner && bannerCharactersByRarity[selectedRarity]?.length > 0) {
+      characterPool = bannerCharactersByRarity[selectedRarity];
+      characterPoolSource = 'banner';
+    } else {
+      characterPool = allCharactersByRarity[selectedRarity];
+      characterPoolSource = 'standard';
+      // If no characters in standard pool for this rarity, find next available rarity
+      if (!characterPool || characterPool.length === 0) {
+        const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+        const rarityIndex = rarityOrder.indexOf(selectedRarity);
+        for (let i = rarityIndex + 1; i < rarityOrder.length; i++) {
+          const fallbackRarity = rarityOrder[i];
+          if (allCharactersByRarity[fallbackRarity]?.length > 0) {
+            characterPool = allCharactersByRarity[fallbackRarity];
+            selectedRarity = fallbackRarity;
+            break;
+          }
+        }
+      }
+    }
+    
+    // Last resort fallback
+    if (!characterPool || characterPool.length === 0) {
+      characterPool = allCharacters;
+    }
+    
+    // Select a random character
+    const randomChar = characterPool[Math.floor(Math.random() * characterPool.length)];
+    
+    // Auto-claim the character
+    await user.addCharacter(randomChar);
+    
+    // Log the pull for analysis
+    console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${randomChar.name} (${selectedRarity}) from ${characterPoolSource} pool. Cost: ${cost} points`);
+    
+    // Release lock before responding
+    rollInProgress.delete(userId);
+    
+    res.json({
+      character: randomChar,
+      isBannerCharacter: bannerCharacters.some(c => c.id === randomChar.id),
+      bannerName: banner.name,
+      cost,
+      updatedPoints: user.points,
+      usedTicket,
+      isPremiumRoll: isPremium,
+      tickets: {
+        rollTickets: user.rollTickets || 0,
+        premiumTickets: user.premiumTickets || 0
+      }
+    });
+  } catch (err) {
+    // Always release lock on error
+    rollInProgress.delete(userId);
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Multi-roll on a banner (similar to standard multi-roll but with banner rates)
 router.post('/:id/roll-multi', auth, async (req, res) => {
-	const userId = req.user.id;
-	
-	// Prevent race condition - only one roll at a time per user
-	if (rollInProgress.has(userId)) {
-	  return res.status(429).json({ 
-	    error: 'Roll in progress',
-	    message: 'Another roll request is being processed'
-	  });
-	}
-	rollInProgress.add(userId);
-	
-	try {
-	  // Validate banner ID
-	  if (!isValidId(req.params.id)) {
-		rollInProgress.delete(userId);
-		return res.status(400).json({ error: 'Invalid banner ID' });
-	  }
-	  
-	  const count = Math.min(req.body.count || 10, PRICING_CONFIG.maxPulls);
-	  const banner = await Banner.findByPk(req.params.id, {
-		include: [{ model: Character }]
-	  });
-	  if (!banner) {
-	    rollInProgress.delete(userId);
-	    return res.status(404).json({ error: 'Banner not found' });
-	  }
-	  if (!banner.active) {
-	    rollInProgress.delete(userId);
-	    return res.status(400).json({ error: 'This banner is no longer active' });
-	  }
-	  
-	  // Check if banner is within date range
-	  const now = new Date();
-	  if (banner.startDate && new Date(banner.startDate) > now) {
-		rollInProgress.delete(userId);
-		return res.status(400).json({ error: 'This banner has not started yet' });
-	  }
-	  if (banner.endDate && new Date(banner.endDate) < now) {
-		rollInProgress.delete(userId);
-		return res.status(400).json({ error: 'This banner has already ended' });
-	  }
-	  
-	  // Get the user
-	  const user = await User.findByPk(userId);
-	  
-  // Check payment method: tickets or points
-  const { useTickets, ticketType } = req.body;
-  let finalCost = 0;
-  let discount = 0;
-  let usedTickets = { roll: 0, premium: 0 };
-  let premiumCount = 0;
-	  
-	  if (useTickets) {
-	    // Use tickets for multi-roll
-	    const rollTickets = user.rollTickets || 0;
-	    const premiumTickets = user.premiumTickets || 0;
-	    
-	    if (ticketType === 'premium') {
-	      // Use premium tickets first
-	      if (premiumTickets >= count) {
-	        user.premiumTickets -= count;
-	        usedTickets.premium = count;
-	        premiumCount = count;
-	      } else {
-	        rollInProgress.delete(userId);
-	        return res.status(400).json({
-	          error: `Not enough premium tickets. Need ${count}, have ${premiumTickets}.`,
-	          rollTickets,
-	          premiumTickets
-	        });
-	      }
-	    } else if (ticketType === 'roll') {
-	      // Use roll tickets
-	      if (rollTickets >= count) {
-	        user.rollTickets -= count;
-	        usedTickets.roll = count;
-	      } else {
-	        rollInProgress.delete(userId);
-	        return res.status(400).json({
-	          error: `Not enough roll tickets. Need ${count}, have ${rollTickets}.`,
-	          rollTickets,
-	          premiumTickets
-	        });
-	      }
-	    } else {
-	      // Mixed: use premium first, then roll
-	      let remaining = count;
-	      if (premiumTickets > 0) {
-	        const usePremium = Math.min(premiumTickets, remaining);
-	        user.premiumTickets -= usePremium;
-	        usedTickets.premium = usePremium;
-	        premiumCount = usePremium;
-	        remaining -= usePremium;
-	      }
-	      if (remaining > 0 && rollTickets >= remaining) {
-	        user.rollTickets -= remaining;
-	        usedTickets.roll = remaining;
-	        remaining = 0;
-	      }
-	      if (remaining > 0) {
-	        rollInProgress.delete(userId);
-	        return res.status(400).json({
-	          error: `Not enough tickets. Need ${count} total.`,
-	          rollTickets,
-	          premiumTickets
-	        });
-	      }
-	    }
-  } else {
-    // Use points
-    const singlePullCost = Math.floor(100 * banner.costMultiplier);
-    const baseCost = count * singlePullCost;
-    discount = getDiscountForCount(count);
-    finalCost = Math.floor(baseCost * (1 - discount));
-	    
-	    if (user.points < finalCost) {
-	      rollInProgress.delete(userId);
-	      return res.status(400).json({
-	        error: `Not enough points. This multi-pull costs ${finalCost} points.`,
-	        rollTickets: user.rollTickets || 0,
-	        premiumTickets: user.premiumTickets || 0
-	      });
-	    }
-	    user.points -= finalCost;
-	  }
-	  
-	  await user.save();
-	  
-	  // Get user's R18 preference
-	  const allowR18 = await getUserAllowR18(req.user.id);
-	  
-	  // Get banner characters (filtered by R18)
-	  const bannerCharacters = allowR18 
-	    ? banner.Characters 
-	    : banner.Characters.filter(char => !char.isR18);
-	  
-	  // Get all characters for fallback (filtered by R18)
-	  const allChars = await Character.findAll();
-	  const allCharacters = allowR18 
-	    ? allChars 
-	    : allChars.filter(char => !char.isR18);
-	  
-	  // Group all characters by rarity
-	  const allCharactersByRarity = {
-		common: allCharacters.filter(char => char.rarity === 'common'),
-		uncommon: allCharacters.filter(char => char.rarity === 'uncommon'),
-		rare: allCharacters.filter(char => char.rarity === 'rare'),
-		epic: allCharacters.filter(char => char.rarity === 'epic'),
-		legendary: allCharacters.filter(char => char.rarity === 'legendary')
-	  };
-	  
-	  // Group banner characters by rarity
-	  const bannerCharactersByRarity = {
-		common: bannerCharacters.filter(char => char.rarity === 'common'),
-		uncommon: bannerCharacters.filter(char => char.rarity === 'uncommon'),
-		rare: bannerCharacters.filter(char => char.rarity === 'rare'),
-		epic: bannerCharacters.filter(char => char.rarity === 'epic'),
-		legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
-	  };
-	  
-	  // Get rates from centralized config (multi-pull rates)
-	  const standardDropRates = getStandardRates(true);
-	  const premiumDropRates = getPremiumRates(true);
-	  const bannerDropRates = calculateBannerRates(banner.rateMultiplier, true);
-	  const pityRates = getPityRates();
-	  
-	  console.log(`Banner ${banner.name} multi-roll rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
-	  
-	  // Guaranteed pity mechanics
-	  const guaranteedRare = count >= 10; // Guarantee at least one rare+ for 10-pulls
-	  
-	  let results = [];
-	  let hasRarePlus = false; // Track if we've already rolled a rare or better
-	  
-	  // Roll characters
-	  for (let i = 0; i < count; i++) {
-		// For the last roll in a 10-pull, enforce pity if needed
-		const isLastRoll = (i === count - 1);
-		const needsPity = guaranteedRare && isLastRoll && !hasRarePlus;
-		
-		// Check if this roll uses a premium ticket
-		const isPremiumRoll = i < premiumCount;
-		
-		// Determine if this pull is from the banner pool
-		// Banner rate increases for the last few pulls
-		const isLast3 = i >= count - 3;
-		const pullFromBanner = Math.random() < getBannerPullChance(isLast3);
-		
-		// Select appropriate rates
-		let currentRates;
-		if (isPremiumRoll) {
-		  currentRates = premiumDropRates;
-		} else if (needsPity) {
-		  currentRates = pityRates;
-		} else {
-		  currentRates = pullFromBanner ? bannerDropRates : standardDropRates;
-		}
-		
-		// Roll for rarity using centralized helper
-		let selectedRarity = rollRarity(currentRates);
-		
-		// Track if we've rolled a rare or better
-		if (['rare', 'epic', 'legendary'].includes(selectedRarity)) {
-		  hasRarePlus = true;
-		}
-		
-		// Decide character pool
-		let characterPool;
-		let isBannerChar = false;
-		if (pullFromBanner && bannerCharactersByRarity[selectedRarity]?.length > 0) {
-		  characterPool = bannerCharactersByRarity[selectedRarity];
-		  isBannerChar = true;
-		} else {
-		  characterPool = allCharactersByRarity[selectedRarity];
-		  // If no characters available at this rarity, fallback
-		  if (!characterPool || characterPool.length === 0) {
-			const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
-			const rarityIndex = rarityOrder.indexOf(selectedRarity);
-			for (let j = rarityIndex + 1; j < rarityOrder.length; j++) {
-			  const fallbackRarity = rarityOrder[j];
-			  if (allCharactersByRarity[fallbackRarity]?.length > 0) {
-				characterPool = allCharactersByRarity[fallbackRarity];
-				selectedRarity = fallbackRarity;
-				break;
-			  }
-			}
-		  }
-		}
-		
-		// Final fallback
-		if (!characterPool || characterPool.length === 0) {
-		  characterPool = allCharacters;
-		}
-		
-		// Get random character
-		const randomChar = characterPool[Math.floor(Math.random() * characterPool.length)];
-		
-		// Auto-claim the character
-		await user.addCharacter(randomChar);
-		
-		// Check if it's actually a banner character (might have fallen back)
-		const actuallyBannerChar = bannerCharacters.some(c => c.id === randomChar.id);
-		
-		// Add to results with banner flag
-		results.push({
-		  ...randomChar.get({ plain: true }),
-		  isBannerCharacter: actuallyBannerChar
-		});
-	  }
-	  
-	  // Log the multi-roll
-	  console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
-	  
-	  // Release lock before responding
-	  rollInProgress.delete(userId);
-	  
-	  res.json({
-		characters: results,
-		bannerName: banner.name,
-		cost: finalCost,
-		updatedPoints: user.points,
-		usedTickets,
-		premiumRolls: premiumCount,
-		tickets: {
-		  rollTickets: user.rollTickets || 0,
-		  premiumTickets: user.premiumTickets || 0
-		}
-	  });
-	} catch (err) {
-	  // Always release lock on error
-	  rollInProgress.delete(userId);
-	  console.error(err);
-	  res.status(500).json({ error: 'Server error' });
-	}
-  });
+  const userId = req.user.id;
+  
+  // Prevent race condition - only one roll at a time per user
+  if (rollInProgress.has(userId)) {
+    return res.status(429).json({ 
+      error: 'Roll in progress',
+      message: 'Another roll request is being processed'
+    });
+  }
+  rollInProgress.add(userId);
+  
+  try {
+    // Validate banner ID
+    if (!isValidId(req.params.id)) {
+      rollInProgress.delete(userId);
+      return res.status(400).json({ error: 'Invalid banner ID' });
+    }
+    
+    const count = Math.min(req.body.count || 10, PRICING_CONFIG.maxPulls);
+    const banner = await Banner.findByPk(req.params.id, {
+      include: [{ model: Character }]
+    });
+    if (!banner) {
+      rollInProgress.delete(userId);
+      return res.status(404).json({ error: 'Banner not found' });
+    }
+    if (!banner.active) {
+      rollInProgress.delete(userId);
+      return res.status(400).json({ error: 'This banner is no longer active' });
+    }
+    
+    // Check if banner is within date range
+    const now = new Date();
+    if (banner.startDate && new Date(banner.startDate) > now) {
+      rollInProgress.delete(userId);
+      return res.status(400).json({ error: 'This banner has not started yet' });
+    }
+    if (banner.endDate && new Date(banner.endDate) < now) {
+      rollInProgress.delete(userId);
+      return res.status(400).json({ error: 'This banner has already ended' });
+    }
+    
+    // Get the user
+    const user = await User.findByPk(userId);
+    
+    // Check payment method: tickets or points
+    const { useTickets, ticketType } = req.body;
+    let finalCost = 0;
+    let discount = 0;
+    let usedTickets = { roll: 0, premium: 0 };
+    let premiumCount = 0;
+    
+    if (useTickets) {
+      // Use tickets for multi-roll
+      const rollTickets = user.rollTickets || 0;
+      const premiumTickets = user.premiumTickets || 0;
+      
+      if (ticketType === 'premium') {
+        // Use premium tickets first
+        if (premiumTickets >= count) {
+          user.premiumTickets -= count;
+          usedTickets.premium = count;
+          premiumCount = count;
+        } else {
+          rollInProgress.delete(userId);
+          return res.status(400).json({
+            error: `Not enough premium tickets. Need ${count}, have ${premiumTickets}.`,
+            rollTickets,
+            premiumTickets
+          });
+        }
+      } else if (ticketType === 'roll') {
+        // Use roll tickets
+        if (rollTickets >= count) {
+          user.rollTickets -= count;
+          usedTickets.roll = count;
+        } else {
+          rollInProgress.delete(userId);
+          return res.status(400).json({
+            error: `Not enough roll tickets. Need ${count}, have ${rollTickets}.`,
+            rollTickets,
+            premiumTickets
+          });
+        }
+      } else {
+        // Mixed: use premium first, then roll
+        let remaining = count;
+        if (premiumTickets > 0) {
+          const usePremium = Math.min(premiumTickets, remaining);
+          user.premiumTickets -= usePremium;
+          usedTickets.premium = usePremium;
+          premiumCount = usePremium;
+          remaining -= usePremium;
+        }
+        if (remaining > 0 && rollTickets >= remaining) {
+          user.rollTickets -= remaining;
+          usedTickets.roll = remaining;
+          remaining = 0;
+        }
+        if (remaining > 0) {
+          rollInProgress.delete(userId);
+          return res.status(400).json({
+            error: `Not enough tickets. Need ${count} total.`,
+            rollTickets,
+            premiumTickets
+          });
+        }
+      }
+    } else {
+      // Use points
+      const singlePullCost = Math.floor(100 * banner.costMultiplier);
+      const baseCost = count * singlePullCost;
+      discount = getDiscountForCount(count);
+      finalCost = Math.floor(baseCost * (1 - discount));
+      
+      if (user.points < finalCost) {
+        rollInProgress.delete(userId);
+        return res.status(400).json({
+          error: `Not enough points. This multi-pull costs ${finalCost} points.`,
+          rollTickets: user.rollTickets || 0,
+          premiumTickets: user.premiumTickets || 0
+        });
+      }
+      user.points -= finalCost;
+    }
+    
+    await user.save();
+    
+    // Get user's R18 preference
+    const allowR18 = await getUserAllowR18(req.user.id);
+    
+    // Get banner characters (filtered by R18)
+    const bannerCharacters = allowR18 
+      ? banner.Characters 
+      : banner.Characters.filter(char => !char.isR18);
+    
+    // Get all characters for fallback (filtered by R18)
+    const allChars = await Character.findAll();
+    const allCharacters = allowR18 
+      ? allChars 
+      : allChars.filter(char => !char.isR18);
+    
+    // Group all characters by rarity
+    const allCharactersByRarity = {
+      common: allCharacters.filter(char => char.rarity === 'common'),
+      uncommon: allCharacters.filter(char => char.rarity === 'uncommon'),
+      rare: allCharacters.filter(char => char.rarity === 'rare'),
+      epic: allCharacters.filter(char => char.rarity === 'epic'),
+      legendary: allCharacters.filter(char => char.rarity === 'legendary')
+    };
+    
+    // Group banner characters by rarity
+    const bannerCharactersByRarity = {
+      common: bannerCharacters.filter(char => char.rarity === 'common'),
+      uncommon: bannerCharacters.filter(char => char.rarity === 'uncommon'),
+      rare: bannerCharacters.filter(char => char.rarity === 'rare'),
+      epic: bannerCharacters.filter(char => char.rarity === 'epic'),
+      legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
+    };
+    
+    // Get rates from centralized config (multi-pull rates)
+    const standardDropRates = getStandardRates(true);
+    const premiumDropRates = getPremiumRates(true);
+    const bannerDropRates = calculateBannerRates(banner.rateMultiplier, true);
+    const pityRates = getPityRates();
+    
+    console.log(`Banner ${banner.name} multi-roll rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
+    
+    // Guaranteed pity mechanics
+    const guaranteedRare = count >= 10;
+    
+    let results = [];
+    let hasRarePlus = false;
+    
+    // Roll characters
+    for (let i = 0; i < count; i++) {
+      const isLastRoll = (i === count - 1);
+      const needsPity = guaranteedRare && isLastRoll && !hasRarePlus;
+      
+      // Check if this roll uses a premium ticket
+      const isPremiumRoll = i < premiumCount;
+      
+      // Banner rate increases for the last few pulls
+      const isLast3 = i >= count - 3;
+      const pullFromBanner = Math.random() < getBannerPullChance(isLast3);
+      
+      // Select appropriate rates
+      let currentRates;
+      if (isPremiumRoll) {
+        currentRates = premiumDropRates;
+      } else if (needsPity) {
+        currentRates = pityRates;
+      } else {
+        currentRates = pullFromBanner ? bannerDropRates : standardDropRates;
+      }
+      
+      // Roll for rarity using centralized helper
+      let selectedRarity = rollRarity(currentRates);
+      
+      if (['rare', 'epic', 'legendary'].includes(selectedRarity)) {
+        hasRarePlus = true;
+      }
+      
+      // Decide character pool
+      let characterPool;
+      if (pullFromBanner && bannerCharactersByRarity[selectedRarity]?.length > 0) {
+        characterPool = bannerCharactersByRarity[selectedRarity];
+      } else {
+        characterPool = allCharactersByRarity[selectedRarity];
+        // If no characters available at this rarity, fallback
+        if (!characterPool || characterPool.length === 0) {
+          const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+          const rarityIndex = rarityOrder.indexOf(selectedRarity);
+          for (let j = rarityIndex + 1; j < rarityOrder.length; j++) {
+            const fallbackRarity = rarityOrder[j];
+            if (allCharactersByRarity[fallbackRarity]?.length > 0) {
+              characterPool = allCharactersByRarity[fallbackRarity];
+              selectedRarity = fallbackRarity;
+              break;
+            }
+          }
+        }
+      }
+      
+      // Final fallback
+      if (!characterPool || characterPool.length === 0) {
+        characterPool = allCharacters;
+      }
+      
+      // Get random character
+      const randomChar = characterPool[Math.floor(Math.random() * characterPool.length)];
+      
+      // Auto-claim the character
+      await user.addCharacter(randomChar);
+      
+      // Check if it's actually a banner character
+      const actuallyBannerChar = bannerCharacters.some(c => c.id === randomChar.id);
+      
+      results.push({
+        ...randomChar.get({ plain: true }),
+        isBannerCharacter: actuallyBannerChar
+      });
+    }
+    
+    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
+    
+    rollInProgress.delete(userId);
+    
+    res.json({
+      characters: results,
+      bannerName: banner.name,
+      cost: finalCost,
+      updatedPoints: user.points,
+      usedTickets,
+      premiumRolls: premiumCount,
+      tickets: {
+        rollTickets: user.rollTickets || 0,
+        premiumTickets: user.premiumTickets || 0
+      }
+    });
+  } catch (err) {
+    rollInProgress.delete(userId);
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 // GET /api/banners/user/tickets - Get user's ticket counts
 router.get('/user/tickets', auth, async (req, res) => {

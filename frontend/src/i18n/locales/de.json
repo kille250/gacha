@@ -370,6 +370,8 @@
     "sortScore": "Beliebteste",
     "sortFavorites": "Meiste Favoriten",
     "sortNewest": "Neueste",
-    "typeToSearch": "Tippe um nach Tags zu suchen..."
+    "typeToSearch": "Tippe um nach Tags zu suchen...",
+    "searchingVideos": "Suche...",
+    "noVideosFound": "Keine Ergebnisse für diesen Tag gefunden"
   }
 }

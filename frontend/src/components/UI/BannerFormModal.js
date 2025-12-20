@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes } from 'react-icons/fa';
 import { getAssetUrl } from '../../utils/api';
+import { isVideo, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
   
 const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [formData, setFormData] = useState({
@@ -23,20 +24,6 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [videoPreview, setVideoPreview] = useState(null);
   const [characterSearch, setCharacterSearch] = useState('');
   
-  // Check if a file is a video
-  const isVideo = (src) => {
-    if (!src) return false;
-    
-    if (typeof src === 'string') {
-      const lowerCasePath = src.toLowerCase();
-      return lowerCasePath.endsWith('.mp4') || 
-             lowerCasePath.endsWith('.webm') || 
-             lowerCasePath.includes('video');
-    }
-    
-    return src.type && src.type.startsWith('video/');
-  };
-
   // Filter characters based on search term (match name OR series)
   const filteredCharacters = characters.filter(char =>
     char.name.toLowerCase().includes(characterSearch.toLowerCase()) ||
@@ -953,7 +940,7 @@ const CharOptionCheck = styled.div`
 `;
   
 const getImageUrl = (imagePath) => {
-  if (!imagePath) return 'https://via.placeholder.com/150?text=No+Image';
+  if (!imagePath) return PLACEHOLDER_IMAGE;
   return getAssetUrl(imagePath);
 };
   

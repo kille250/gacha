@@ -372,6 +372,8 @@
     "sortScore": "Más Popular",
     "sortFavorites": "Más Favoritos",
     "sortNewest": "Más Recientes",
-    "typeToSearch": "Escribe para buscar tags..."
+    "typeToSearch": "Escribe para buscar tags...",
+    "searchingVideos": "Buscando...",
+    "noVideosFound": "No se encontraron resultados para este tag"
   }
 }

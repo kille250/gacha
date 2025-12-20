@@ -2,49 +2,61 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { User, Character } = require('../models');
-const sequelize = require('../config/db');
-const { PRICING_CONFIG, getDiscountForCount } = require('../config/pricing');
+const { 
+  PRICING_CONFIG, 
+  getDiscountForCount,
+  getStandardRates,
+  getPityRates,
+  rollRarity
+} = require('../config/pricing');
+const { getUserAllowR18 } = require('../utils/userPreferences');
 
-// Get user's R18 preference via raw SQL (requires both admin permission AND user preference)
-async function getUserAllowR18(userId) {
-  const [rows] = await sequelize.query(
-    `SELECT "allowR18", "showR18" FROM "Users" WHERE "id" = :userId`,
-    { replacements: { userId } }
-  );
-  // User can see R18 content only if admin has allowed AND user has enabled it
-  return rows[0]?.allowR18 === true && rows[0]?.showR18 === true;
-}
+// ===========================================
+// SECURITY: Race condition protection
+// ===========================================
+// Prevent concurrent roll requests per user (could cause double-spending)
+const rollInProgress = new Set();
 
 // Multi-roll endpoint (10 characters at once)
 router.post('/roll-multi', auth, async (req, res) => {
+  const userId = req.user.id;
+  
+  // Prevent race condition - only one roll at a time per user
+  if (rollInProgress.has(userId)) {
+    return res.status(429).json({ 
+      error: 'Roll in progress',
+      message: 'Another roll request is being processed'
+    });
+  }
+  rollInProgress.add(userId);
+  
   try {
     const count = Math.min(req.body.count || 10, PRICING_CONFIG.maxPulls);
     const basePoints = count * PRICING_CONFIG.baseCost;
-    // Apply discount from pricing config
     const discount = getDiscountForCount(count);
-    
-    // Calculate final cost with discount
     const finalCost = Math.floor(basePoints * (1 - discount));
     
-    const user = await User.findByPk(req.user.id);
-    if (user.points < finalCost)
+    const user = await User.findByPk(userId);
+    if (user.points < finalCost) {
+      rollInProgress.delete(userId);
       return res.status(400).json({ error: `Not enough points. Required: ${finalCost}` });
+    }
     
-    // Deduct points with discount applied
     user.points -= finalCost;
     await user.save();
     
-    // Logic for pity system
-    const guaranteedRare = count >= 10; // Guarantee at least one rare+ for 10-pulls
+    // Pity system: guarantee at least one rare+ for 10-pulls
+    const guaranteedRare = count >= 10;
     
-    // Get user's R18 preference via raw SQL
-    const allowR18 = await getUserAllowR18(req.user.id);
+    // Get user's R18 preference
+    const allowR18 = await getUserAllowR18(userId);
     
     // Get all characters, filtered by R18 preference
     const allCharacters = await Character.findAll();
     const characters = allowR18 
       ? allCharacters 
       : allCharacters.filter(char => !char.isR18);
+    
     const charactersByRarity = {
       common: characters.filter(char => char.rarity === 'common'),
       uncommon: characters.filter(char => char.rarity === 'uncommon'),
@@ -53,61 +65,27 @@ router.post('/roll-multi', auth, async (req, res) => {
       legendary: characters.filter(char => char.rarity === 'legendary')
     };
     
-    // Define drop rates (in percent) - challenging rates
-    const standardDropRates = {
-      common: 70,     // 70% chance
-      uncommon: 20,   // 20% chance
-      rare: 7,        // 7% chance
-      epic: 2.5,      // 2.5% chance
-      legendary: 0.5  // 0.5% chance
-    };
+    // Use centralized rates from pricing config
+    const dropRates = getStandardRates(count >= 10);
+    const pityRates = getPityRates();
     
-    // Slightly better drop rates for multi-pulls
-    const multiPullRates = {
-      common: 65,     // 65% chance
-      uncommon: 22,   // 22% chance
-      rare: 9,        // 9% chance
-      epic: 3.5,      // 3.5% chance
-      legendary: 0.5  // 0.5% chance
-    };
-    
-    const dropRates = count >= 10 ? multiPullRates : standardDropRates;
     let results = [];
-    let hasRarePlus = false; // Track if we've already rolled a rare or better
+    let hasRarePlus = false;
     
-    // Roll individual characters
     for (let i = 0; i < count; i++) {
-      // For the last roll in a 10-pull, enforce pity if no rare+ has been obtained yet
       const isLastRoll = (i === count - 1);
       const needsPity = guaranteedRare && isLastRoll && !hasRarePlus;
       
-      // If pity is needed, use modified rates that exclude common & uncommon (more balanced)
-      const currentRates = needsPity ? { rare: 85, epic: 14, legendary: 1 } : dropRates;
+      // Use centralized rollRarity helper
+      const currentRates = needsPity ? pityRates : dropRates;
+      let selectedRarity = rollRarity(currentRates);
       
-      // Determine rarity based on probability
-      const rarityRoll = Math.random() * 100;
-      let selectedRarity;
-      let cumulativeRate = 0;
-      
-      for (const [rarity, rate] of Object.entries(currentRates)) {
-        cumulativeRate += rate;
-        if (rarityRoll <= cumulativeRate) {
-          selectedRarity = rarity;
-          break;
-        }
-      }
-      
-      // Fallback for edge cases
-      if (!selectedRarity) selectedRarity = 'common';
-      
-      // Track if we've rolled a rare or better
       if (['rare', 'epic', 'legendary'].includes(selectedRarity)) {
         hasRarePlus = true;
       }
       
-      // Check if characters of the selected rarity exist
+      // Fallback if no characters of selected rarity exist
       if (!charactersByRarity[selectedRarity] || charactersByRarity[selectedRarity].length === 0) {
-        // Fallback: Choose next lower rarity with available characters
         const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
         const rarityIndex = rarityOrder.indexOf(selectedRarity);
         
@@ -119,36 +97,32 @@ router.post('/roll-multi', auth, async (req, res) => {
           }
         }
         
-        // If still no characters found, pick a random one from all
+        // Final fallback: pick random from all
         if (!charactersByRarity[selectedRarity] || charactersByRarity[selectedRarity].length === 0) {
           const randomChar = characters[Math.floor(Math.random() * characters.length)];
           results.push(randomChar);
-          // Auto-claim the character
           await user.addCharacter(randomChar);
           continue;
         }
       }
       
-      // Select a random character from the chosen rarity
       const rareCharacters = charactersByRarity[selectedRarity];
       const randomChar = rareCharacters[Math.floor(Math.random() * rareCharacters.length)];
       
-      // Auto-claim the character
       await user.addCharacter(randomChar);
-      
-      // Add to results
       results.push(randomChar);
     }
     
-    // Log the multi-roll for analysis
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
     
-    // Return characters with updated points balance
+    rollInProgress.delete(userId);
+    
     res.json({
       characters: results,
       updatedPoints: user.points
     });
   } catch (err) {
+    rollInProgress.delete(userId);
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
@@ -178,24 +152,38 @@ router.get('/pricing', (req, res) => {
   });
 });
 
-// Roll a character
+// Roll a single character
 router.post('/roll', auth, async (req, res) => {
+  const userId = req.user.id;
+  
+  // Prevent race condition - only one roll at a time per user
+  if (rollInProgress.has(userId)) {
+    return res.status(429).json({ 
+      error: 'Roll in progress',
+      message: 'Another roll request is being processed'
+    });
+  }
+  rollInProgress.add(userId);
+  
   try {
-    const user = await User.findByPk(req.user.id);
-    if (user.points < PRICING_CONFIG.baseCost) return res.status(400).json({ error: 'Not enough points' });
+    const user = await User.findByPk(userId);
+    if (user.points < PRICING_CONFIG.baseCost) {
+      rollInProgress.delete(userId);
+      return res.status(400).json({ error: 'Not enough points' });
+    }
     
-    // Punkte abziehen
     user.points -= PRICING_CONFIG.baseCost;
     await user.save();
     
-    // Get user's R18 preference via raw SQL
-    const allowR18 = await getUserAllowR18(req.user.id);
+    // Get user's R18 preference
+    const allowR18 = await getUserAllowR18(userId);
     
-    // Alle Charaktere nach Seltenheit gruppieren (filtered by R18 preference)
+    // Get all characters, filtered by R18 preference
     const allCharacters = await Character.findAll();
     const characters = allowR18 
       ? allCharacters 
       : allCharacters.filter(char => !char.isR18);
+    
     const charactersByRarity = {
       common: characters.filter(char => char.rarity === 'common'),
       uncommon: characters.filter(char => char.rarity === 'uncommon'),
@@ -204,34 +192,14 @@ router.post('/roll', auth, async (req, res) => {
       legendary: characters.filter(char => char.rarity === 'legendary')
     };
     
-    // Dropchancen definieren (in Prozent)
-    const dropRates = {
-      common: 60, // 60% Chance
-      uncommon: 25, // 25% Chance
-      rare: 10, // 10% Chance
-      epic: 4, // 4% Chance
-      legendary: 1 // 1% Chance
-    };
+    // Use centralized rates from pricing config
+    const dropRates = getStandardRates(false);
     
-    // Bestimme die Rarität basierend auf Wahrscheinlichkeit
-    const rarityRoll = Math.random() * 100; // Zufallszahl zwischen 0 und 100
-    let selectedRarity;
-    let cumulativeRate = 0;
+    // Use centralized rollRarity helper
+    let selectedRarity = rollRarity(dropRates);
     
-    for (const [rarity, rate] of Object.entries(dropRates)) {
-      cumulativeRate += rate;
-      if (rarityRoll <= cumulativeRate) {
-        selectedRarity = rarity;
-        break;
-      }
-    }
-    
-    // Fallback für den unwahrscheinlichen Fall, dass nichts ausgewählt wurde
-    if (!selectedRarity) selectedRarity = 'common';
-    
-    // Prüfe, ob Charaktere der ausgewählten Rarität existieren
+    // Fallback if no characters of selected rarity exist
     if (!charactersByRarity[selectedRarity] || charactersByRarity[selectedRarity].length === 0) {
-      // Fallback: Wähle die nächstniedrigere Rarität mit verfügbaren Charakteren
       const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
       const rarityIndex = rarityOrder.indexOf(selectedRarity);
       
@@ -243,13 +211,12 @@ router.post('/roll', auth, async (req, res) => {
         }
       }
       
-      // Wenn immer noch keine Charaktere gefunden wurden, wähle einen zufälligen aus allen
+      // Final fallback: pick random from all
       if (!charactersByRarity[selectedRarity] || charactersByRarity[selectedRarity].length === 0) {
         const randomChar = characters[Math.floor(Math.random() * characters.length)];
-        // Auto-claim the character
         await user.addCharacter(randomChar);
-        // Protokolliere den Roll
-        console.log(`User ${user.username} (ID: ${user.id}) rolled ${randomChar.name} (Fallback random)`);
+        console.log(`User ${user.username} (ID: ${user.id}) rolled ${randomChar.name} (fallback random)`);
+        rollInProgress.delete(userId);
         return res.json({
           ...randomChar.toJSON(),
           updatedPoints: user.points
@@ -257,22 +224,21 @@ router.post('/roll', auth, async (req, res) => {
       }
     }
     
-    // Zufälligen Charakter aus der gewählten Rarität auswählen
     const rareCharacters = charactersByRarity[selectedRarity];
     const randomChar = rareCharacters[Math.floor(Math.random() * rareCharacters.length)];
     
-    // Auto-claim the character
     await user.addCharacter(randomChar);
     
-    // Protokolliere den Roll für Analyse-Zwecke
     console.log(`User ${user.username} (ID: ${user.id}) rolled ${randomChar.name} (${selectedRarity})`);
     
-    // Return character with updated points balance
+    rollInProgress.delete(userId);
+    
     res.json({
       ...randomChar.toJSON(),
       updatedPoints: user.points
     });
   } catch (err) {
+    rollInProgress.delete(userId);
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }

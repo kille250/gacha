@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { User, FishInventory } = require('../models');
 const { Op } = require('sequelize');
+const { isValidId } = require('../utils/validation');
 
 // Rank required to unlock autofishing (top X users)
 const AUTOFISH_UNLOCK_RANK = 10;
@@ -26,12 +27,6 @@ setInterval(() => {
     }
   }
 }, 60000);
-
-// Validate that a value is a positive integer
-const isValidId = (value) => {
-  const num = parseInt(value, 10);
-  return !isNaN(num) && num > 0;
-};
 
 // Fish types with their properties
 const FISH_TYPES = [

@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaStar, FaGem, FaTrophy, FaDice } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
 import { theme, getRarityColor } from '../../styles/DesignSystem';
+import { isVideo } from '../../utils/mediaUtils';
 
 // ==================== RARITY CONFIGURATION ====================
 
@@ -246,15 +247,6 @@ export const SummonAnimation = ({
   }, [phase, skipEnabled, onComplete, clearAllTimers]);
 
   if (!isActive) return null;
-
-  const isVideo = (file) => {
-    if (!file) return false;
-    if (typeof file === 'string') {
-      const lower = file.toLowerCase();
-      return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.includes('video');
-    }
-    return false;
-  };
 
   const isShowingCharacter = phase === PHASES.REVEAL || phase === PHASES.WAITING_DISMISS;
   const isBuildup = phase === PHASES.CHARGING || phase === PHASES.PEAK;
@@ -1082,16 +1074,6 @@ export const MultiSummonAnimation = ({
   const currentCharacter = characters[currentIndex];
 
   if (!isActive || characters.length === 0) return null;
-
-  // Helper to check if file is a video
-  const isVideo = (file) => {
-    if (!file) return false;
-    if (typeof file === 'string') {
-      const lower = file.toLowerCase();
-      return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.includes('video');
-    }
-    return false;
-  };
 
   // Show summary when user clicked Skip All
   if (showSkippedResults) {

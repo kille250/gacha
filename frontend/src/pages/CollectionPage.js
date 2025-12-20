@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { getCollectionData, getAssetUrl } from '../utils/api';
+import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import {
@@ -77,19 +78,8 @@ const CollectionPage = () => {
     setPreviewOpen(false);
   };
 
-  const isVideo = (src) => {
-    if (!src) return false;
-    if (typeof src === 'string') {
-      const lowerCasePath = src.toLowerCase();
-      return lowerCasePath.endsWith('.mp4') || 
-             lowerCasePath.endsWith('.webm') || 
-             lowerCasePath.includes('video');
-    }
-    return false;
-  };
-
   const getImagePath = (imageSrc) => {
-    if (!imageSrc) return 'https://via.placeholder.com/200?text=No+Image';
+    if (!imageSrc) return PLACEHOLDER_IMAGE;
     return getAssetUrl(imageSrc);
   };
 

@@ -9,6 +9,7 @@ import confetti from 'canvas-confetti';
 
 // API & Context
 import api, { rollCharacter, getStandardPricing, getAssetUrl } from '../utils/api';
+import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 
 // Design System
@@ -46,15 +47,6 @@ const rarityIcons = {
 const rollMultipleCharacters = async (count = 10) => {
   const response = await api.post('/characters/roll-multi', { count });
   return response.data;
-};
-
-const isVideo = (file) => {
-  if (!file) return false;
-  if (typeof file === 'string') {
-    const lower = file.toLowerCase();
-    return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.includes('video');
-  }
-  return false;
 };
 
 // ==================== MAIN COMPONENT ====================

@@ -9,6 +9,7 @@ import confetti from 'canvas-confetti';
 
 // API & Context
 import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api';
+import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 
 // Design System
@@ -42,17 +43,6 @@ const rarityIcons = {
   rare: <FaGem />,
   epic: <FaStar />,
   legendary: <FaTrophy />
-};
-
-// ==================== HELPERS ====================
-
-const isVideo = (file) => {
-  if (!file) return false;
-  if (typeof file === 'string') {
-    const lower = file.toLowerCase();
-    return lower.endsWith('.mp4') || lower.endsWith('.webm') || lower.includes('video');
-  }
-  return file?.type?.startsWith('video/');
 };
 
 // ==================== MAIN COMPONENT ====================
