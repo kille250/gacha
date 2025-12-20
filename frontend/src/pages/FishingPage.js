@@ -184,38 +184,49 @@ const FishingPage = () => {
       });
     });
     
+    // Parse current user ID once for reuse
+    let currentUserId = null;
+    try {
+      currentUserId = JSON.parse(atob(token.split('.')[1]))?.user?.id;
+    } catch (e) {
+      console.error('[Multiplayer] Failed to parse token:', e);
+    }
+    
     // Initialize with existing players
     socket.on('init', (data) => {
       console.log('[Multiplayer] Initialized with', data.players.length, 'players');
       // Filter out current user (defensive check)
-      const currentUserId = JSON.parse(atob(token.split('.')[1]))?.user?.id;
       const filteredPlayers = data.players.filter(p => p.id !== currentUserId);
       setOtherPlayers(filteredPlayers);
-      setPlayerCount(filteredPlayers.length + 1);
     });
     
     // New player joined
     socket.on('player_joined', (player) => {
       // Filter out current user (defensive check for duplicate sessions)
-      const currentUserId = JSON.parse(atob(token.split('.')[1]))?.user?.id;
       if (player.id === currentUserId) {
         console.log('[Multiplayer] Ignoring self-join event');
         return;
       }
       console.log('[Multiplayer] Player joined:', player.username);
       setOtherPlayers(prev => {
-        // Avoid duplicates
-        if (prev.find(p => p.id === player.id)) return prev;
+        // Avoid duplicates - don't add if already exists
+        if (prev.find(p => p.id === player.id)) {
+          console.log('[Multiplayer] Player already in list, skipping');
+          return prev;
+        }
         return [...prev, player];
       });
-      setPlayerCount(prev => prev + 1);
     });
     
     // Player left
     socket.on('player_left', (data) => {
+      // Ignore player_left for current user (can happen during duplicate session handling)
+      if (data.id === currentUserId) {
+        console.log('[Multiplayer] Ignoring self-leave event');
+        return;
+      }
       console.log('[Multiplayer] Player left:', data.id);
       setOtherPlayers(prev => prev.filter(p => p.id !== data.id));
-      setPlayerCount(prev => Math.max(1, prev - 1));
     });
     
     // Player moved
@@ -250,6 +261,11 @@ const FishingPage = () => {
       socketRef.current = null;
     };
   }, []);
+  
+  // Sync playerCount with otherPlayers.length (single source of truth)
+  useEffect(() => {
+    setPlayerCount(otherPlayers.length + 1); // +1 for self
+  }, [otherPlayers.length]);
   
   // Send position updates to server
   useEffect(() => {

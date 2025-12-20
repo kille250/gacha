@@ -251,13 +251,18 @@ function initMultiplayer(io) {
       
       const area = areas.get(areaId);
       if (area) {
-        area.players.delete(userId);
-        area.lastBroadcast.delete(userId);
-        
-        // Notify others
-        socket.to(areaId).emit('player_left', {
-          id: userId
-        });
+        // Only broadcast player_left if this socket is still the active one for this user
+        // This prevents duplicate broadcasts when a user opens a new tab (duplicate session)
+        const currentPlayer = area.players.get(userId);
+        if (currentPlayer && currentPlayer.socketId === socket.id) {
+          area.players.delete(userId);
+          area.lastBroadcast.delete(userId);
+          
+          // Notify others
+          socket.to(areaId).emit('player_left', {
+            id: userId
+          });
+        }
         
         // Clean up empty areas
         if (area.players.size === 0) {
