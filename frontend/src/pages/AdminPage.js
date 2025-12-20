@@ -10,7 +10,7 @@ import MultiUploadModal from '../components/UI/MultiUploadModal';
 import AnimeImportModal from '../components/UI/AnimeImportModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
-import { DndContext, closestCenter, KeyboardSensor, PointerSensor, useSensor, useSensors } from '@dnd-kit/core';
+import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { arrayMove, SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
 import {
@@ -486,7 +486,17 @@ const AdminPage = () => {
 
   // Banner drag-and-drop handlers
   const sensors = useSensors(
-    useSensor(PointerSensor),
+    useSensor(PointerSensor, {
+      activationConstraint: {
+        distance: 8, // 8px movement required before drag starts
+      },
+    }),
+    useSensor(TouchSensor, {
+      activationConstraint: {
+        delay: 200, // 200ms touch hold before drag starts
+        tolerance: 5, // 5px movement allowed during delay
+      },
+    }),
     useSensor(KeyboardSensor, {
       coordinateGetter: sortableKeyboardCoordinates,
     })
@@ -1411,8 +1421,15 @@ const ActionBtn = styled.button`
   color: white;
   font-size: ${theme.fontSizes.xs};
   cursor: pointer;
+  min-height: 36px; /* Touch-friendly height */
+  min-width: 36px; /* Touch-friendly width */
   
   &:hover { opacity: 0.9; }
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    flex: 0 0 auto;
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+  }
 `;
 
 const Pagination = styled.div`
@@ -1473,15 +1490,24 @@ const BannerListItem = styled.div`
   &:hover {
     background: ${theme.colors.surface};
   }
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    flex-wrap: wrap;
+    gap: ${theme.spacing.sm};
+    padding: ${theme.spacing.sm};
+  }
 `;
 
 const DragHandle = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  padding: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
   color: ${theme.colors.textMuted};
   cursor: grab;
+  touch-action: none; /* Prevents scroll interference on touch */
+  min-width: 44px; /* Minimum touch target size */
+  min-height: 44px;
   
   &:active {
     cursor: grabbing;
@@ -1489,6 +1515,14 @@ const DragHandle = styled.div`
   
   &:hover {
     color: ${theme.colors.text};
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: ${theme.radius.md};
+  }
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    padding: ${theme.spacing.sm};
+    min-width: 40px;
+    min-height: 40px;
   }
 `;
 
@@ -1512,11 +1546,20 @@ const BannerThumb = styled.img`
   object-fit: cover;
   border-radius: ${theme.radius.md};
   flex-shrink: 0;
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    width: 60px;
+    height: 40px;
+  }
 `;
 
 const BannerItemInfo = styled.div`
   flex: 1;
   min-width: 0;
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    flex-basis: calc(100% - 160px); /* Leave room for drag handle, order num, and thumbnail */
+  }
 `;
 
 const BannerItemName = styled.div`
@@ -1525,11 +1568,19 @@ const BannerItemName = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    font-size: ${theme.fontSizes.sm};
+  }
 `;
 
 const BannerItemMeta = styled.div`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    font-size: ${theme.fontSizes.xs};
+  }
 `;
 
 const BannerItemTags = styled.div`
@@ -1537,22 +1588,36 @@ const BannerItemTags = styled.div`
   align-items: center;
   gap: ${theme.spacing.sm};
   flex-shrink: 0;
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    flex-basis: 100%;
+    order: 3;
+    margin-left: 40px; /* Align with content after drag handle */
+    flex-wrap: wrap;
+  }
 `;
 
 const BannerItemActions = styled.div`
   display: flex;
   gap: ${theme.spacing.xs};
   flex-shrink: 0;
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    order: 4;
+    margin-left: auto;
+  }
 `;
 
 const FeaturedToggleBtn = styled.button`
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
   border-radius: ${theme.radius.full};
   border: none;
   font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
   transition: all 0.2s;
   white-space: nowrap;
+  min-height: 36px; /* Touch-friendly height */
+  font-size: ${theme.fontSizes.sm};
   
   background: ${props => props.$isFeatured 
     ? 'linear-gradient(135deg, #ffd700, #ffb300)' 
@@ -1565,6 +1630,11 @@ const FeaturedToggleBtn = styled.button`
   &:hover {
     transform: scale(1.05);
     ${props => !props.$isFeatured && `background: ${theme.colors.primary}; color: white;`}
+  }
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    font-size: ${theme.fontSizes.xs};
   }
 `;
 
