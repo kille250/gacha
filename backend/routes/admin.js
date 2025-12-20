@@ -67,7 +67,7 @@ router.get('/dashboard', auth, adminAuth, async (req, res) => {
       Character.findAll(),
       Banner.findAll({
         include: [{ model: Character }],
-        order: [['featured', 'DESC'], ['createdAt', 'DESC']]
+        order: [['featured', 'DESC'], ['displayOrder', 'ASC'], ['createdAt', 'DESC']]
       }),
       Coupon.findAll({
         include: [
