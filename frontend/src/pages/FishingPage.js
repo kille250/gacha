@@ -1393,7 +1393,7 @@ const HangingSignContainer = styled.div`
   display: flex;
   align-items: flex-start;
   justify-content: center;
-  z-index: 99;
+  z-index: 101;
   animation: ${sway} 4s ease-in-out infinite;
   transform-origin: top center;
   pointer-events: none;
@@ -1858,6 +1858,7 @@ const StatsBar = styled.div`
   justify-content: center;
   gap: 8px;
   padding: 8px 16px;
+  padding-top: 50px;
   background: linear-gradient(180deg, 
     rgba(139, 105, 20, 0.9) 0%, 
     rgba(109, 76, 16, 0.95) 50%, 
@@ -1871,6 +1872,11 @@ const StatsBar = styled.div`
   @media (max-width: 600px) {
     gap: 4px;
     padding: 6px 10px;
+    padding-top: 45px;
+  }
+  
+  @media (max-width: 500px) {
+    padding-top: 8px;
   }
   
   @media (max-width: 400px) {
