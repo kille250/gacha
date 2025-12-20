@@ -1153,10 +1153,17 @@ export const useFishingEngine = ({
       }
     }
     
-    // Update particles
+    // Update particles - reuse a single Graphics object to avoid memory leaks
     const particleLayer = containerObjRef.current.getChildByLabel('particles');
     if (particleLayer) {
-      particleLayer.removeChildren();
+      // Get or create the shared particle graphics
+      let particleGfx = particleLayer.getChildByLabel('particleGfx');
+      if (!particleGfx) {
+        particleGfx = new PIXI.Graphics();
+        particleGfx.label = 'particleGfx';
+        particleLayer.addChild(particleGfx);
+      }
+      particleGfx.clear();
       
       // Filter out dead particles
       particlesRef.current = particlesRef.current.filter(particle => {
@@ -1170,70 +1177,67 @@ export const useFishingEngine = ({
         if (particle.type === 'butterfly' && (isNight || isDusk)) return;
         if (particle.type === 'star' && !isNight) return;
         
-        const g = new PIXI.Graphics();
         const alpha = particle.getAlpha();
         
         if (particle.type === 'firefly') {
           // Glowing firefly
-          g.circle(particle.x, particle.y, particle.size * 2);
-          g.fill({ color: 0xffff66, alpha: alpha * 0.2 });
-          g.circle(particle.x, particle.y, particle.size);
-          g.fill({ color: 0xffffaa, alpha });
-          g.circle(particle.x, particle.y, particle.size * 0.5);
-          g.fill({ color: 0xffffff, alpha });
+          particleGfx.circle(particle.x, particle.y, particle.size * 2);
+          particleGfx.fill({ color: 0xffff66, alpha: alpha * 0.2 });
+          particleGfx.circle(particle.x, particle.y, particle.size);
+          particleGfx.fill({ color: 0xffffaa, alpha });
+          particleGfx.circle(particle.x, particle.y, particle.size * 0.5);
+          particleGfx.fill({ color: 0xffffff, alpha });
         } else if (particle.type === 'butterfly') {
           const wingFlap = Math.sin(particle.phase * 10) * 0.6 + 0.4;
           const wingColors = [0xffab91, 0x81d4fa, 0xce93d8, 0xa5d6a7];
           const wingColor = wingColors[Math.floor(particle.phase) % wingColors.length];
           
           // Wings
-          g.ellipse(particle.x - 5 * wingFlap, particle.y, 5, 4);
-          g.ellipse(particle.x + 5 * wingFlap, particle.y, 5, 4);
-          g.fill({ color: wingColor, alpha });
+          particleGfx.ellipse(particle.x - 5 * wingFlap, particle.y, 5, 4);
+          particleGfx.ellipse(particle.x + 5 * wingFlap, particle.y, 5, 4);
+          particleGfx.fill({ color: wingColor, alpha });
           // Wing patterns
-          g.circle(particle.x - 4 * wingFlap, particle.y, 2);
-          g.circle(particle.x + 4 * wingFlap, particle.y, 2);
-          g.fill({ color: 0xffffff, alpha: alpha * 0.5 });
+          particleGfx.circle(particle.x - 4 * wingFlap, particle.y, 2);
+          particleGfx.circle(particle.x + 4 * wingFlap, particle.y, 2);
+          particleGfx.fill({ color: 0xffffff, alpha: alpha * 0.5 });
           // Body
-          g.ellipse(particle.x, particle.y, 2, 5);
-          g.fill({ color: 0x5d4037, alpha });
+          particleGfx.ellipse(particle.x, particle.y, 2, 5);
+          particleGfx.fill({ color: 0x5d4037, alpha });
         } else if (particle.type === 'leaf') {
           const rotation = particle.phase * 2;
           const leafWidth = 5 * Math.cos(rotation);
-          g.ellipse(particle.x, particle.y, Math.abs(leafWidth) + 1, 3);
-          g.fill({ color: 0x8bc34a, alpha });
+          particleGfx.ellipse(particle.x, particle.y, Math.abs(leafWidth) + 1, 3);
+          particleGfx.fill({ color: 0x8bc34a, alpha });
           // Leaf vein
-          g.moveTo(particle.x - 3, particle.y);
-          g.lineTo(particle.x + 3, particle.y);
-          g.stroke({ width: 1, color: 0x689f38, alpha: alpha * 0.5 });
+          particleGfx.moveTo(particle.x - 3, particle.y);
+          particleGfx.lineTo(particle.x + 3, particle.y);
+          particleGfx.stroke({ width: 1, color: 0x689f38, alpha: alpha * 0.5 });
         } else if (particle.type === 'smoke') {
-          g.circle(particle.x, particle.y, particle.size);
-          g.fill({ color: 0x9e9e9e, alpha });
+          particleGfx.circle(particle.x, particle.y, particle.size);
+          particleGfx.fill({ color: 0x9e9e9e, alpha });
         } else if (particle.type === 'ember') {
-          g.circle(particle.x, particle.y, particle.size);
-          g.fill({ color: 0xff8c00, alpha });
-          g.circle(particle.x, particle.y, particle.size * 0.6);
-          g.fill({ color: 0xffcc00, alpha });
+          particleGfx.circle(particle.x, particle.y, particle.size);
+          particleGfx.fill({ color: 0xff8c00, alpha });
+          particleGfx.circle(particle.x, particle.y, particle.size * 0.6);
+          particleGfx.fill({ color: 0xffcc00, alpha });
         } else if (particle.type === 'star') {
           // Twinkling star
           const twinkle = 0.5 + Math.sin(particle.phase + particle.x * 0.1) * 0.5;
-          g.circle(particle.x, particle.y, particle.size * twinkle);
-          g.fill({ color: 0xffffff, alpha: alpha * twinkle });
+          particleGfx.circle(particle.x, particle.y, particle.size * twinkle);
+          particleGfx.fill({ color: 0xffffff, alpha: alpha * twinkle });
           // Star rays
           if (particle.size > 2 && twinkle > 0.7) {
             const rayLen = particle.size * 2;
-            g.moveTo(particle.x - rayLen, particle.y);
-            g.lineTo(particle.x + rayLen, particle.y);
-            g.moveTo(particle.x, particle.y - rayLen);
-            g.lineTo(particle.x, particle.y + rayLen);
-            g.stroke({ width: 1, color: 0xffffff, alpha: alpha * 0.3 });
+            particleGfx.moveTo(particle.x - rayLen, particle.y);
+            particleGfx.lineTo(particle.x + rayLen, particle.y);
+            particleGfx.moveTo(particle.x, particle.y - rayLen);
+            particleGfx.lineTo(particle.x, particle.y + rayLen);
+            particleGfx.stroke({ width: 1, color: 0xffffff, alpha: alpha * 0.3 });
           }
         } else if (particle.type === 'fish_splash') {
-          g.circle(particle.x, particle.y, particle.size);
-          g.fill({ color: 0xb3e5fc, alpha: alpha * 0.8 });
+          particleGfx.circle(particle.x, particle.y, particle.size);
+          particleGfx.fill({ color: 0xb3e5fc, alpha: alpha * 0.8 });
         }
-        
-        particleLayer.addChild(g);
       });
     }
     
