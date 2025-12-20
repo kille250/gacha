@@ -427,7 +427,7 @@ const FishingPage = () => {
           <MdArrowBack />
         </BackButton>
         <HeaderTitle>
-          <FishIcon>🎣</FishIcon>
+          <FaFish style={{ color: '#64b5f6' }} />
           <span>{t('fishing.title')}</span>
         </HeaderTitle>
         <HeaderRight>
@@ -438,7 +438,7 @@ const FishingPage = () => {
             </RankBadge>
           )}
           <PointsDisplay>
-            <CoinIcon>🪙</CoinIcon>
+            <CoinDot />
             <span>{user?.points?.toLocaleString() || 0}</span>
           </PointsDisplay>
           {rankData?.canAutofish && (
@@ -472,7 +472,7 @@ const FishingPage = () => {
               <BubbleContent>
                 <BubbleFishName $rarity={entry.fish?.rarity}>{entry.fish?.name}</BubbleFishName>
                 <BubbleReward $success={entry.success}>
-                  {entry.success ? `+${entry.reward} 🪙` : t('fishing.escaped')}
+                  {entry.success ? `+${entry.reward}` : t('fishing.escaped')}
                 </BubbleReward>
               </BubbleContent>
             </AutofishBubble>
@@ -480,22 +480,19 @@ const FishingPage = () => {
         </AnimatePresence>
       </AutofishBubblesContainer>
       
-      {/* Stats Bar - Cozy parchment style */}
+      {/* Stats Bar */}
       <StatsBar>
         <StatItem>
-          <StatIcon>🎣</StatIcon>
           <StatValue>{sessionStats.casts}</StatValue>
           <StatLabel>{t('fishing.casts')}</StatLabel>
         </StatItem>
         <StatDivider />
         <StatItem>
-          <StatIcon>🐟</StatIcon>
           <StatValue>{sessionStats.catches}</StatValue>
           <StatLabel>{t('fishing.catches')}</StatLabel>
         </StatItem>
         <StatDivider />
         <StatItem>
-          <StatIcon>🪙</StatIcon>
           <StatValue>+{sessionStats.totalEarned}</StatValue>
           <StatLabel>{t('fishing.earned')}</StatLabel>
         </StatItem>
@@ -530,7 +527,6 @@ const FishingPage = () => {
               animate={{ opacity: 1, y: 0, x: "-50%" }}
               exit={{ opacity: 0, y: 10, x: "-50%" }}
             >
-              <PromptIcon>🎣</PromptIcon>
               <Trans i18nKey="fishing.pressFishPrompt" components={{ key: <KeyHint /> }} />
             </FishPrompt>
           )}
@@ -545,8 +541,8 @@ const FishingPage = () => {
               exit={{ opacity: 0, x: "-50%" }}
             >
               <WaitingBubble>
-                <BubbleFloat>💭</BubbleFloat>
-                <WaitingText>{t('fishing.waitingForBite')}...</WaitingText>
+                <WaitingDots>...</WaitingDots>
+                <WaitingText>{t('fishing.waitingForBite')}</WaitingText>
               </WaitingBubble>
             </StateIndicator>
           )}
@@ -557,7 +553,7 @@ const FishingPage = () => {
               exit={{ opacity: 0, x: "-50%" }}
             >
               <CatchAlert>
-                <AlertIcon>❗</AlertIcon>
+                <AlertIcon>!</AlertIcon>
                 <CatchText>{t('fishing.catchIt')}</CatchText>
               </CatchAlert>
             </StateIndicator>
@@ -578,16 +574,13 @@ const FishingPage = () => {
               <ResultEmoji>{lastResult.fish?.emoji}</ResultEmoji>
               <ResultInfo>
                 <ResultTitle $success={lastResult.success}>
-                  {lastResult.success ? '✨ ' + t('fishing.caught') + ' ✨' : t('fishing.escaped')}
+                  {lastResult.success ? t('fishing.caught') : t('fishing.escaped')}
                 </ResultTitle>
                 <ResultFishName $rarity={lastResult.fish?.rarity}>
                   {lastResult.fish?.name}
                 </ResultFishName>
                 {lastResult.success && (
-                  <ResultReward>
-                    <span>+{lastResult.reward}</span>
-                    <CoinIcon>🪙</CoinIcon>
-                  </ResultReward>
+                  <ResultReward>+{lastResult.reward}</ResultReward>
                 )}
               </ResultInfo>
             </ResultPopup>
@@ -620,12 +613,12 @@ const FishingPage = () => {
           $canFish={canFish}
           whileTap={{ scale: 0.9 }}
         >
-          {gameState === GAME_STATES.WALKING && (canFish ? '🎣' : '🚶')}
-          {gameState === GAME_STATES.CASTING && '⏳'}
-          {gameState === GAME_STATES.WAITING && '🎣'}
-          {gameState === GAME_STATES.FISH_APPEARED && '❗'}
+          {gameState === GAME_STATES.WALKING && (canFish ? <FaFish /> : '•')}
+          {gameState === GAME_STATES.CASTING && '...'}
+          {gameState === GAME_STATES.WAITING && <FaFish />}
+          {gameState === GAME_STATES.FISH_APPEARED && '!'}
           {(gameState === GAME_STATES.SUCCESS || gameState === GAME_STATES.FAILURE) && (
-            lastResult?.success ? '✨' : '💨'
+            lastResult?.success ? '✓' : '✗'
           )}
         </ActionButton>
       </MobileControls>
@@ -639,7 +632,6 @@ const FishingPage = () => {
             exit={{ opacity: 0, y: -20, x: "-50%" }}
             $type={notification.type}
           >
-            <NotificationIcon>{notification.type === 'error' ? '⚠️' : '✨'}</NotificationIcon>
             {notification.message}
           </Notification>
         )}
@@ -659,38 +651,33 @@ const FishingPage = () => {
               variants={motionVariants.modal}
               onClick={e => e.stopPropagation()}
             >
-              <ModalDecor $position="tl">🌿</ModalDecor>
-              <ModalDecor $position="tr">🌿</ModalDecor>
-              <ModalDecor $position="bl">🍃</ModalDecor>
-              <ModalDecor $position="br">🍃</ModalDecor>
               <ModalHeader>
-                <ModalTitle>📖 {t('fishing.howToFish')}</ModalTitle>
+                <ModalTitle>{t('fishing.howToFish')}</ModalTitle>
                 <CloseButton onClick={() => setShowHelp(false)}><MdClose /></CloseButton>
               </ModalHeader>
               <ModalBody>
                 <HelpSection>
-                  <HelpIcon>🚶</HelpIcon>
+                  <HelpNumber>1</HelpNumber>
                   <HelpContent>
                     <HelpTitle>{t('fishing.movement')}</HelpTitle>
                     <HelpText>{t('fishing.movementHelp')}</HelpText>
                   </HelpContent>
                 </HelpSection>
                 <HelpSection>
-                  <HelpIcon>🎣</HelpIcon>
+                  <HelpNumber>2</HelpNumber>
                   <HelpContent>
                     <HelpTitle>{t('fishing.fishingTitle')}</HelpTitle>
                     <HelpText>{t('fishing.fishingHelp')}</HelpText>
                   </HelpContent>
                 </HelpSection>
                 <HelpSection>
-                  <HelpIcon>⚡</HelpIcon>
+                  <HelpNumber>3</HelpNumber>
                   <HelpContent>
                     <HelpTitle>{t('fishing.catching')}</HelpTitle>
                     <HelpText>{t('fishing.catchingHelp')}</HelpText>
                   </HelpContent>
                 </HelpSection>
                 <HelpSection>
-                  <HelpIcon>🐟</HelpIcon>
                   <HelpContent>
                     <HelpTitle>{t('fishing.fishRarities')}</HelpTitle>
                     <FishList>
@@ -703,7 +690,7 @@ const FishingPage = () => {
                           <FishRarity $rarity={fish.rarity}>
                             {fish.rarity.charAt(0).toUpperCase() + fish.rarity.slice(1)}
                           </FishRarity>
-                          <FishReward>{fish.minReward}-{fish.maxReward} 🪙</FishReward>
+                          <FishReward>{fish.minReward}-{fish.maxReward}</FishReward>
                         </FishItem>
                       ))}
                     </FishList>
@@ -729,11 +716,9 @@ const FishingPage = () => {
               variants={motionVariants.modal}
               onClick={e => e.stopPropagation()}
             >
-              <ModalDecor $position="tl">🏆</ModalDecor>
-              <ModalDecor $position="tr">🏆</ModalDecor>
               <ModalHeader>
                 <ModalTitle>
-                  <FaTrophy style={{ color: '#ffd54f', marginRight: '8px' }} />
+                  <FaTrophy style={{ color: '#c9a227', marginRight: '8px' }} />
                   {t('fishing.leaderboard')}
                 </ModalTitle>
                 <CloseButton onClick={() => setShowLeaderboard(false)}><MdClose /></CloseButton>
@@ -742,15 +727,14 @@ const FishingPage = () => {
                 {rankData && (
                   <YourRankSection>
                     <RankBanner $canAutofish={rankData.canAutofish}>
-                      <RankCrown>👑</RankCrown>
                       <YourRankValue>#{rankData.rank}</YourRankValue>
                       <RankSubtext>/ {rankData.totalUsers} {t('fishing.topPlayers').toLowerCase()}</RankSubtext>
                     </RankBanner>
                     <AutofishUnlockStatus $unlocked={rankData.canAutofish}>
                       {rankData.canAutofish ? (
-                        <><span>✨</span><span>{t('fishing.autofishUnlocked')}</span></>
+                        <><MdAutorenew style={{ color: '#558b2f' }} /><span>{t('fishing.autofishUnlocked')}</span></>
                       ) : (
-                        <><span>🔒</span><span>{t('fishing.autofishLocked', { rank: rankData.requiredRank })}</span></>
+                        <><span style={{ opacity: 0.6 }}>●</span><span>{t('fishing.autofishLocked', { rank: rankData.requiredRank })}</span></>
                       )}
                     </AutofishUnlockStatus>
                   </YourRankSection>
@@ -760,15 +744,15 @@ const FishingPage = () => {
                   {leaderboard.map((player) => (
                     <LeaderboardItem key={player.username} $isYou={rankData?.rank === player.rank} $rank={player.rank}>
                       <LeaderboardRank $rank={player.rank}>
-                        {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : `#${player.rank}`}
+                        {player.rank <= 3 ? <FaCrown style={{ color: player.rank === 1 ? '#c9a227' : player.rank === 2 ? '#a8a8a8' : '#b87333' }} /> : `#${player.rank}`}
                       </LeaderboardRank>
                       <LeaderboardName>{player.username}</LeaderboardName>
                       <LeaderboardPoints>
-                        <CoinIcon>🪙</CoinIcon>
+                        <CoinDot $small />
                         <span>{player.points.toLocaleString()}</span>
                       </LeaderboardPoints>
                       {player.hasAutofish && (
-                        <AutofishBadge>🤖</AutofishBadge>
+                        <AutofishBadge><MdAutorenew /></AutofishBadge>
                       )}
                     </LeaderboardItem>
                   ))}
@@ -932,10 +916,6 @@ const HeaderTitle = styled.h1`
   letter-spacing: 1px;
 `;
 
-const FishIcon = styled.span`
-  font-size: 28px;
-  animation: ${float} 3s ease-in-out infinite;
-`;
 
 const HeaderRight = styled.div`
   display: flex;
@@ -960,9 +940,13 @@ const PointsDisplay = styled.div`
     0 5px 8px rgba(0,0,0,0.2);
 `;
 
-const CoinIcon = styled.span`
-  font-size: 16px;
-  animation: ${float} 2s ease-in-out infinite;
+const CoinDot = styled.div`
+  width: ${props => props.$small ? '10px' : '14px'};
+  height: ${props => props.$small ? '10px' : '14px'};
+  background: linear-gradient(135deg, #ffd54f 0%, #ffb300 100%);
+  border-radius: 50%;
+  border: 2px solid #e65100;
+  box-shadow: inset 0 1px 0 rgba(255,255,255,0.5);
 `;
 
 const WoodButton = styled.button`
@@ -1138,10 +1122,6 @@ const StatItem = styled.div`
   `}
 `;
 
-const StatIcon = styled.span`
-  font-size: 16px;
-`;
-
 const StatValue = styled.span`
   font-size: 18px;
   font-weight: 800;
@@ -1249,10 +1229,6 @@ const FishPrompt = styled(motion.div)`
   }
 `;
 
-const PromptIcon = styled.span`
-  font-size: 24px;
-`;
-
 const KeyHint = styled.span`
   padding: 6px 12px;
   background: linear-gradient(180deg, #8b6914 0%, #6d4c10 100%);
@@ -1281,9 +1257,11 @@ const WaitingBubble = styled.div`
   box-shadow: 0 6px 20px rgba(0,0,0,0.3);
 `;
 
-const BubbleFloat = styled.span`
-  font-size: 28px;
-  animation: ${float} 2s ease-in-out infinite;
+const WaitingDots = styled.span`
+  font-size: 24px;
+  font-weight: 800;
+  color: #8b6914;
+  letter-spacing: 2px;
 `;
 
 const WaitingText = styled.div`
@@ -1307,7 +1285,9 @@ const CatchAlert = styled.div`
 `;
 
 const AlertIcon = styled.span`
-  font-size: 32px;
+  font-size: 28px;
+  font-weight: 900;
+  color: white;
   animation: ${pulse} 0.15s ease-in-out infinite;
 `;
 
@@ -1522,10 +1502,6 @@ const Notification = styled(motion.div)`
   text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
 `;
 
-const NotificationIcon = styled.span`
-  font-size: 20px;
-`;
-
 // Modal Styles - Cozy parchment look
 const CozyModal = styled(ModalContent)`
   max-width: 540px;
@@ -1551,23 +1527,6 @@ const CozyModal = styled(ModalContent)`
     );
     pointer-events: none;
   }
-`;
-
-const ModalDecor = styled.div`
-  position: absolute;
-  font-size: 24px;
-  opacity: 0.6;
-  pointer-events: none;
-  
-  ${props => {
-    switch (props.$position) {
-      case 'tl': return 'top: 8px; left: 12px;';
-      case 'tr': return 'top: 8px; right: 12px; transform: scaleX(-1);';
-      case 'bl': return 'bottom: 8px; left: 12px;';
-      case 'br': return 'bottom: 8px; right: 12px; transform: scaleX(-1);';
-      default: return '';
-    }
-  }}
 `;
 
 const ModalTitle = styled.h2`
@@ -1602,9 +1561,19 @@ const HelpSection = styled.div`
   &:last-child { margin-bottom: 0; }
 `;
 
-const HelpIcon = styled.div`
-  font-size: 32px;
+const HelpNumber = styled.div`
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #8b6914 0%, #6d4c10 100%);
+  border-radius: 50%;
+  color: #fff8e1;
+  font-weight: 800;
+  font-size: 16px;
   flex-shrink: 0;
+  box-shadow: 0 2px 0 #4a3008;
 `;
 
 const HelpContent = styled.div`
@@ -1682,11 +1651,6 @@ const RankBanner = styled.div`
   box-shadow: 
     inset 0 2px 0 rgba(255,255,255,0.3),
     0 4px 12px rgba(0,0,0,0.3);
-`;
-
-const RankCrown = styled.span`
-  font-size: 36px;
-  animation: ${float} 3s ease-in-out infinite;
 `;
 
 const YourRankValue = styled.div`
