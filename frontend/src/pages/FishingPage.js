@@ -1329,9 +1329,9 @@ const StarsOverlay = styled.div`
 `;
 
 const Header = styled.header`
-  display: grid;
-  grid-template-columns: auto 1fr auto;
+  display: flex;
   align-items: center;
+  justify-content: space-between;
   padding: 10px 16px;
   background: linear-gradient(180deg, #8b6914 0%, #6d4c10 50%, #5a3d0a 100%);
   border-bottom: 4px solid #3e2a06;
@@ -1340,7 +1340,7 @@ const Header = styled.header`
     inset 0 1px 0 rgba(255, 220, 150, 0.3);
   z-index: 100;
   position: relative;
-  overflow: hidden;
+  overflow: visible;
   flex-shrink: 0;
   
   @media (max-width: 600px) {
@@ -1416,9 +1416,12 @@ const BackButton = styled.button`
 `;
 
 const HeaderTitle = styled.h1`
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
   display: flex;
   align-items: center;
-  justify-content: center;
   gap: 10px;
   font-size: 20px;
   font-weight: 700;
@@ -1428,6 +1431,8 @@ const HeaderTitle = styled.h1`
     2px 2px 0 #5a3d0a,
     -1px -1px 0 #5a3d0a;
   letter-spacing: 0.5px;
+  pointer-events: none;
+  z-index: 1;
   
   @media (max-width: 600px) {
     font-size: 17px;
