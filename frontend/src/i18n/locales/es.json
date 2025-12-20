@@ -184,7 +184,8 @@
     "availableNow": "Disponible ahora",
     "needMoreFish": "Necesitas más peces",
     "give": "Dar",
-    "get": "Obtener"
+    "get": "Obtener",
+    "duplicateSession": "Desconectado: Abriste la pesca en otra pestaña"
   },
   "collection": {
     "title": "Colección",

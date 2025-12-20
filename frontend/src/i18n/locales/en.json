@@ -193,7 +193,8 @@
     "availableNow": "Available Now",
     "needMoreFish": "Need More Fish",
     "give": "Give",
-    "get": "Get"
+    "get": "Get",
+    "duplicateSession": "Disconnected: You opened fishing in another tab"
   },
   "collection": {
     "title": "Collection",

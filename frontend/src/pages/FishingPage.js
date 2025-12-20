@@ -175,15 +175,33 @@ const FishingPage = () => {
       setIsMultiplayerConnected(false);
     });
     
+    // Handle duplicate session (same user connected in another tab)
+    socket.on('duplicate_session', (data) => {
+      console.log('[Multiplayer] Duplicate session detected:', data.message);
+      setNotification({
+        type: 'warning',
+        message: t('fishing.duplicateSession') || 'Disconnected: You opened fishing in another tab'
+      });
+    });
+    
     // Initialize with existing players
     socket.on('init', (data) => {
       console.log('[Multiplayer] Initialized with', data.players.length, 'players');
-      setOtherPlayers(data.players);
-      setPlayerCount(data.players.length + 1);
+      // Filter out current user (defensive check)
+      const currentUserId = JSON.parse(atob(token.split('.')[1]))?.user?.id;
+      const filteredPlayers = data.players.filter(p => p.id !== currentUserId);
+      setOtherPlayers(filteredPlayers);
+      setPlayerCount(filteredPlayers.length + 1);
     });
     
     // New player joined
     socket.on('player_joined', (player) => {
+      // Filter out current user (defensive check for duplicate sessions)
+      const currentUserId = JSON.parse(atob(token.split('.')[1]))?.user?.id;
+      if (player.id === currentUserId) {
+        console.log('[Multiplayer] Ignoring self-join event');
+        return;
+      }
       console.log('[Multiplayer] Player joined:', player.username);
       setOtherPlayers(prev => {
         // Avoid duplicates

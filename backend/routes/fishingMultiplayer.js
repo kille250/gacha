@@ -92,7 +92,22 @@ function initMultiplayer(io) {
     
     const area = getArea(areaId);
     
-    // Check if area is full
+    // Check if user is already connected (duplicate tab/browser)
+    // If so, disconnect the old connection first
+    const existingPlayer = area.players.get(userId);
+    if (existingPlayer && existingPlayer.socketId !== socket.id) {
+      console.log(`[Fishing MP] Player "${username}" already connected, disconnecting old session`);
+      const oldSocket = fishingNamespace.sockets.get(existingPlayer.socketId);
+      if (oldSocket) {
+        oldSocket.emit('duplicate_session', { message: 'You connected from another tab/browser' });
+        oldSocket.disconnect(true);
+      }
+      // Remove from area (will be re-added below)
+      area.players.delete(userId);
+      area.lastBroadcast.delete(userId);
+    }
+    
+    // Check if area is full (after removing duplicate)
     if (area.players.size >= MAX_PLAYERS_PER_AREA) {
       socket.emit('error', { message: 'Area is full, try again later' });
       socket.disconnect();

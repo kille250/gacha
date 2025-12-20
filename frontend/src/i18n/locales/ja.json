@@ -184,7 +184,8 @@
     "availableNow": "交換可能",
     "needMoreFish": "もっと魚が必要",
     "give": "あげる",
-    "get": "もらう"
+    "get": "もらう",
+    "duplicateSession": "切断されました：他のタブで釣りを開きました"
   },
   "collection": {
     "title": "コレクション",

@@ -184,7 +184,8 @@
     "availableNow": "Jetzt verfügbar",
     "needMoreFish": "Mehr Fische benötigt",
     "give": "Geben",
-    "get": "Erhalten"
+    "get": "Erhalten",
+    "duplicateSession": "Getrennt: Du hast Angeln in einem anderen Tab geöffnet"
   },
   "collection": {
     "title": "Sammlung",
