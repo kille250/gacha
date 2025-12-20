@@ -699,23 +699,6 @@ const FishingPage = () => {
             <MdHelpOutline />
           </WoodButton>
         </HeaderRight>
-        
-        {/* Hanging Sign */}
-        <HangingSignContainer>
-          <ChainLeft>
-            <ChainLink /><ChainLink /><ChainLink />
-          </ChainLeft>
-          <HangingSign>
-            <SignWoodGrain />
-            <SignContent>
-              <FaFish style={{ color: '#64b5f6', fontSize: '18px' }} />
-              <span>{t('fishing.title')}</span>
-            </SignContent>
-          </HangingSign>
-          <ChainRight>
-            <ChainLink /><ChainLink /><ChainLink />
-          </ChainRight>
-        </HangingSignContainer>
       </Header>
       
       {/* Autofish bubbles */}
@@ -769,6 +752,15 @@ const FishingPage = () => {
       
       {/* Game Canvas */}
       <GameContainer>
+        {/* Location Sign - above game frame */}
+        <LocationSign>
+          <SignWoodGrain />
+          <SignContent>
+            <FaFish style={{ color: '#64b5f6', fontSize: '16px' }} />
+            <span>{t('fishing.title')}</span>
+          </SignContent>
+        </LocationSign>
+        
         <CanvasFrame>
           <CanvasWrapper ref={canvasContainerRef} />
           <CanvasCorner $position="tl" />
@@ -1403,6 +1395,31 @@ const HangingSignContainer = styled.div`
   }
 `;
 
+const LocationSign = styled.div`
+  position: absolute;
+  top: 8px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(180deg, #a07830 0%, #8b6914 30%, #7a5820 70%, #6d4c10 100%);
+  border: 3px solid #5a3d0a;
+  border-radius: 8px;
+  padding: 6px 16px;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 220, 150, 0.25),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.2);
+  z-index: 50;
+  
+  @media (max-width: 600px) {
+    padding: 4px 12px;
+    top: 6px;
+  }
+  
+  @media (max-width: 400px) {
+    display: none;
+  }
+`;
+
 const ChainLeft = styled.div`
   display: flex;
   flex-direction: column;
@@ -1856,14 +1873,13 @@ const StatsBar = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
-  padding: 8px 16px;
-  padding-top: 50px;
+  gap: 6px;
+  padding: 4px 12px;
   background: linear-gradient(180deg, 
     rgba(139, 105, 20, 0.9) 0%, 
     rgba(109, 76, 16, 0.95) 50%, 
     rgba(90, 61, 10, 0.9) 100%);
-  border-bottom: 3px solid rgba(62, 42, 6, 0.8);
+  border-bottom: 2px solid rgba(62, 42, 6, 0.8);
   box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.2);
   z-index: 100;
   flex-shrink: 0;
@@ -1871,16 +1887,11 @@ const StatsBar = styled.div`
   
   @media (max-width: 600px) {
     gap: 4px;
-    padding: 6px 10px;
-    padding-top: 45px;
-  }
-  
-  @media (max-width: 500px) {
-    padding-top: 8px;
+    padding: 3px 8px;
   }
   
   @media (max-width: 400px) {
-    padding: 4px 8px;
+    padding: 2px 6px;
     gap: 3px;
   }
 `;
