@@ -38,11 +38,19 @@ const TIME_PERIODS = {
 };
 
 const RARITY_COLORS = {
-  common: '#a0a0a0',
-  uncommon: '#5fcf65',
-  rare: '#5b9ee1',
-  epic: '#c77dff',
-  legendary: '#ffc53d'
+  common: '#a8b5a0',
+  uncommon: '#7cb342',
+  rare: '#42a5f5',
+  epic: '#ab47bc',
+  legendary: '#ffc107'
+};
+
+const RARITY_GLOW = {
+  common: 'rgba(168, 181, 160, 0.3)',
+  uncommon: 'rgba(124, 179, 66, 0.4)',
+  rare: 'rgba(66, 165, 245, 0.5)',
+  epic: 'rgba(171, 71, 188, 0.5)',
+  legendary: 'rgba(255, 193, 7, 0.6)'
 };
 
 const FishingPage = () => {
@@ -53,7 +61,7 @@ const FishingPage = () => {
   const movePlayerRef = useRef(null);
   
   // Player state
-  const [playerPos, setPlayerPos] = useState({ x: 10, y: 8 });
+  const [playerPos, setPlayerPos] = useState({ x: 10, y: 6 });
   const [playerDir, setPlayerDir] = useState(DIRECTIONS.DOWN);
   
   // Game state
@@ -129,15 +137,15 @@ const FishingPage = () => {
     };
   }, []);
   
-  // Day/night cycle
+  // Day/night cycle - slower transitions for coziness
   useEffect(() => {
-    const periods = [TIME_PERIODS.DAWN, TIME_PERIODS.DAY, TIME_PERIODS.DAY, TIME_PERIODS.DUSK, TIME_PERIODS.NIGHT, TIME_PERIODS.NIGHT];
+    const periods = [TIME_PERIODS.DAWN, TIME_PERIODS.DAY, TIME_PERIODS.DAY, TIME_PERIODS.DAY, TIME_PERIODS.DUSK, TIME_PERIODS.NIGHT, TIME_PERIODS.NIGHT];
     let idx = 1;
     
     const interval = setInterval(() => {
       idx = (idx + 1) % periods.length;
       setTimeOfDay(periods[idx]);
-    }, 120000);
+    }, 90000); // 90 seconds per period for cozier feel
     
     return () => clearInterval(interval);
   }, []);
@@ -217,7 +225,7 @@ const FishingPage = () => {
     canFishRef.current = canFish;
   }, [gameState, canFish]);
   
-  // Keyboard controls - use refs to avoid stale closures
+  // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (showHelp || showLeaderboard) return;
@@ -409,37 +417,41 @@ const FishingPage = () => {
   
   return (
     <PageContainer $timeOfDay={timeOfDay}>
-      {/* Header */}
+      {/* Ambient stars overlay for night */}
+      {timeOfDay === TIME_PERIODS.NIGHT && <StarsOverlay />}
+      
+      {/* Header - Rustic wooden style */}
       <Header>
+        <HeaderWoodGrain />
         <BackButton onClick={() => navigate('/gacha')}>
           <MdArrowBack />
         </BackButton>
         <HeaderTitle>
-          <FaFish style={{ color: '#4fc3f7' }} />
+          <FishIcon>🎣</FishIcon>
           <span>{t('fishing.title')}</span>
         </HeaderTitle>
         <HeaderRight>
           {rankData && (
             <RankBadge onClick={() => setShowLeaderboard(true)} $canAutofish={rankData.canAutofish}>
-              <FaCrown style={{ color: rankData.canAutofish ? '#ffd700' : '#8e8e93' }} />
+              <FaCrown style={{ color: rankData.canAutofish ? '#ffd54f' : '#a1887f' }} />
               <span>#{rankData.rank}</span>
             </RankBadge>
           )}
           <PointsDisplay>
-            <span>🪙</span>
-            <span>{user?.points || 0}</span>
+            <CoinIcon>🪙</CoinIcon>
+            <span>{user?.points?.toLocaleString() || 0}</span>
           </PointsDisplay>
           {rankData?.canAutofish && (
             <AutofishButton onClick={toggleAutofish} $active={isAutofishing}>
               <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
             </AutofishButton>
           )}
-          <HelpButton onClick={() => setShowLeaderboard(true)}>
+          <WoodButton onClick={() => setShowLeaderboard(true)}>
             <MdLeaderboard />
-          </HelpButton>
-          <HelpButton onClick={() => setShowHelp(true)}>
+          </WoodButton>
+          <WoodButton onClick={() => setShowHelp(true)}>
             <MdHelpOutline />
-          </HelpButton>
+          </WoodButton>
         </HeaderRight>
       </Header>
       
@@ -468,26 +480,29 @@ const FishingPage = () => {
         </AnimatePresence>
       </AutofishBubblesContainer>
       
-      {/* Stats Bar */}
+      {/* Stats Bar - Cozy parchment style */}
       <StatsBar>
         <StatItem>
+          <StatIcon>🎣</StatIcon>
           <StatValue>{sessionStats.casts}</StatValue>
           <StatLabel>{t('fishing.casts')}</StatLabel>
         </StatItem>
         <StatDivider />
         <StatItem>
+          <StatIcon>🐟</StatIcon>
           <StatValue>{sessionStats.catches}</StatValue>
           <StatLabel>{t('fishing.catches')}</StatLabel>
         </StatItem>
         <StatDivider />
         <StatItem>
+          <StatIcon>🪙</StatIcon>
           <StatValue>+{sessionStats.totalEarned}</StatValue>
           <StatLabel>{t('fishing.earned')}</StatLabel>
         </StatItem>
         {sessionStats.bestCatch && (
           <>
             <StatDivider />
-            <StatItem>
+            <StatItem $highlight>
               <StatValue style={{ color: RARITY_COLORS[sessionStats.bestCatch.fish.rarity] }}>
                 {sessionStats.bestCatch.fish.emoji}
               </StatValue>
@@ -499,7 +514,13 @@ const FishingPage = () => {
       
       {/* Game Canvas */}
       <GameContainer>
-        <CanvasWrapper ref={canvasContainerRef} />
+        <CanvasFrame>
+          <CanvasWrapper ref={canvasContainerRef} />
+          <CanvasCorner $position="tl" />
+          <CanvasCorner $position="tr" />
+          <CanvasCorner $position="bl" />
+          <CanvasCorner $position="br" />
+        </CanvasFrame>
         
         {/* Fish prompt */}
         <AnimatePresence>
@@ -509,6 +530,7 @@ const FishingPage = () => {
               animate={{ opacity: 1, y: 0, x: "-50%" }}
               exit={{ opacity: 0, y: 10, x: "-50%" }}
             >
+              <PromptIcon>🎣</PromptIcon>
               <Trans i18nKey="fishing.pressFishPrompt" components={{ key: <KeyHint /> }} />
             </FishPrompt>
           )}
@@ -522,7 +544,10 @@ const FishingPage = () => {
               animate={{ opacity: 1, x: "-50%" }}
               exit={{ opacity: 0, x: "-50%" }}
             >
-              <WaitingText>{t('fishing.waitingForBite')}...</WaitingText>
+              <WaitingBubble>
+                <BubbleFloat>💭</BubbleFloat>
+                <WaitingText>{t('fishing.waitingForBite')}...</WaitingText>
+              </WaitingBubble>
             </StateIndicator>
           )}
           {gameState === GAME_STATES.FISH_APPEARED && (
@@ -531,7 +556,10 @@ const FishingPage = () => {
               animate={{ opacity: 1, scale: 1, x: "-50%" }}
               exit={{ opacity: 0, x: "-50%" }}
             >
-              <CatchText>{t('fishing.catchIt')}</CatchText>
+              <CatchAlert>
+                <AlertIcon>❗</AlertIcon>
+                <CatchText>{t('fishing.catchIt')}</CatchText>
+              </CatchAlert>
             </StateIndicator>
           )}
         </AnimatePresence>
@@ -544,17 +572,22 @@ const FishingPage = () => {
               animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%" }}
               exit={{ opacity: 0, scale: 0.9, x: "-50%", y: "-50%" }}
               $success={lastResult.success}
+              $rarity={lastResult.fish?.rarity}
             >
+              <ResultGlow $rarity={lastResult.fish?.rarity} />
               <ResultEmoji>{lastResult.fish?.emoji}</ResultEmoji>
               <ResultInfo>
                 <ResultTitle $success={lastResult.success}>
-                  {lastResult.success ? t('fishing.caught') : t('fishing.escaped')}
+                  {lastResult.success ? '✨ ' + t('fishing.caught') + ' ✨' : t('fishing.escaped')}
                 </ResultTitle>
                 <ResultFishName $rarity={lastResult.fish?.rarity}>
                   {lastResult.fish?.name}
                 </ResultFishName>
                 {lastResult.success && (
-                  <ResultReward>+{lastResult.reward} 🪙</ResultReward>
+                  <ResultReward>
+                    <span>+{lastResult.reward}</span>
+                    <CoinIcon>🪙</CoinIcon>
+                  </ResultReward>
                 )}
               </ResultInfo>
             </ResultPopup>
@@ -562,9 +595,10 @@ const FishingPage = () => {
         </AnimatePresence>
       </GameContainer>
       
-      {/* Mobile Controls */}
+      {/* Mobile Controls - Rustic button style */}
       <MobileControls>
         <DPad>
+          <DPadCenter />
           <DPadButton onClick={() => handleMobileMove(0, -1, DIRECTIONS.UP)} $position="up">
             <MdKeyboardArrowUp />
           </DPadButton>
@@ -587,11 +621,11 @@ const FishingPage = () => {
           whileTap={{ scale: 0.9 }}
         >
           {gameState === GAME_STATES.WALKING && (canFish ? '🎣' : '🚶')}
-          {gameState === GAME_STATES.CASTING && '...'}
+          {gameState === GAME_STATES.CASTING && '⏳'}
           {gameState === GAME_STATES.WAITING && '🎣'}
           {gameState === GAME_STATES.FISH_APPEARED && '❗'}
           {(gameState === GAME_STATES.SUCCESS || gameState === GAME_STATES.FAILURE) && (
-            lastResult?.success ? '✓' : '✗'
+            lastResult?.success ? '✨' : '💨'
           )}
         </ActionButton>
       </MobileControls>
@@ -605,12 +639,13 @@ const FishingPage = () => {
             exit={{ opacity: 0, y: -20, x: "-50%" }}
             $type={notification.type}
           >
+            <NotificationIcon>{notification.type === 'error' ? '⚠️' : '✨'}</NotificationIcon>
             {notification.message}
           </Notification>
         )}
       </AnimatePresence>
       
-      {/* Help Modal */}
+      {/* Help Modal - Cozy parchment style */}
       <AnimatePresence>
         {showHelp && (
           <ModalOverlay
@@ -620,46 +655,62 @@ const FishingPage = () => {
             exit="exit"
             onClick={() => setShowHelp(false)}
           >
-            <HelpModal
+            <CozyModal
               variants={motionVariants.modal}
               onClick={e => e.stopPropagation()}
             >
+              <ModalDecor $position="tl">🌿</ModalDecor>
+              <ModalDecor $position="tr">🌿</ModalDecor>
+              <ModalDecor $position="bl">🍃</ModalDecor>
+              <ModalDecor $position="br">🍃</ModalDecor>
               <ModalHeader>
-                <Heading2>{t('fishing.howToFish')}</Heading2>
-                <IconButton onClick={() => setShowHelp(false)}><MdClose /></IconButton>
+                <ModalTitle>📖 {t('fishing.howToFish')}</ModalTitle>
+                <CloseButton onClick={() => setShowHelp(false)}><MdClose /></CloseButton>
               </ModalHeader>
               <ModalBody>
                 <HelpSection>
-                  <HelpTitle>🚶 {t('fishing.movement')}</HelpTitle>
-                  <Text secondary>{t('fishing.movementHelp')}</Text>
+                  <HelpIcon>🚶</HelpIcon>
+                  <HelpContent>
+                    <HelpTitle>{t('fishing.movement')}</HelpTitle>
+                    <HelpText>{t('fishing.movementHelp')}</HelpText>
+                  </HelpContent>
                 </HelpSection>
                 <HelpSection>
-                  <HelpTitle>🎣 {t('fishing.fishingTitle')}</HelpTitle>
-                  <Text secondary>{t('fishing.fishingHelp')}</Text>
+                  <HelpIcon>🎣</HelpIcon>
+                  <HelpContent>
+                    <HelpTitle>{t('fishing.fishingTitle')}</HelpTitle>
+                    <HelpText>{t('fishing.fishingHelp')}</HelpText>
+                  </HelpContent>
                 </HelpSection>
                 <HelpSection>
-                  <HelpTitle>⚡ {t('fishing.catching')}</HelpTitle>
-                  <Text secondary>{t('fishing.catchingHelp')}</Text>
+                  <HelpIcon>⚡</HelpIcon>
+                  <HelpContent>
+                    <HelpTitle>{t('fishing.catching')}</HelpTitle>
+                    <HelpText>{t('fishing.catchingHelp')}</HelpText>
+                  </HelpContent>
                 </HelpSection>
                 <HelpSection>
-                  <HelpTitle>🐟 {t('fishing.fishRarities')}</HelpTitle>
-                  <FishList>
-                    {fishInfo?.fish?.reduce((acc, fish) => {
-                      if (!acc.find(f => f.rarity === fish.rarity)) acc.push(fish);
-                      return acc;
-                    }, []).map(fish => (
-                      <FishItem key={fish.rarity} $rarity={fish.rarity}>
-                        <span>{fish.emoji}</span>
-                        <FishRarity $rarity={fish.rarity}>
-                          {fish.rarity.charAt(0).toUpperCase() + fish.rarity.slice(1)}
-                        </FishRarity>
-                        <FishReward>{fish.minReward}-{fish.maxReward} 🪙</FishReward>
-                      </FishItem>
-                    ))}
-                  </FishList>
+                  <HelpIcon>🐟</HelpIcon>
+                  <HelpContent>
+                    <HelpTitle>{t('fishing.fishRarities')}</HelpTitle>
+                    <FishList>
+                      {fishInfo?.fish?.reduce((acc, fish) => {
+                        if (!acc.find(f => f.rarity === fish.rarity)) acc.push(fish);
+                        return acc;
+                      }, []).map(fish => (
+                        <FishItem key={fish.rarity} $rarity={fish.rarity}>
+                          <FishEmoji>{fish.emoji}</FishEmoji>
+                          <FishRarity $rarity={fish.rarity}>
+                            {fish.rarity.charAt(0).toUpperCase() + fish.rarity.slice(1)}
+                          </FishRarity>
+                          <FishReward>{fish.minReward}-{fish.maxReward} 🪙</FishReward>
+                        </FishItem>
+                      ))}
+                    </FishList>
+                  </HelpContent>
                 </HelpSection>
               </ModalBody>
-            </HelpModal>
+            </CozyModal>
           </ModalOverlay>
         )}
       </AnimatePresence>
@@ -674,30 +725,30 @@ const FishingPage = () => {
             exit="exit"
             onClick={() => setShowLeaderboard(false)}
           >
-            <LeaderboardModal
+            <CozyModal
               variants={motionVariants.modal}
               onClick={e => e.stopPropagation()}
             >
+              <ModalDecor $position="tl">🏆</ModalDecor>
+              <ModalDecor $position="tr">🏆</ModalDecor>
               <ModalHeader>
-                <Heading2>
-                  <FaTrophy style={{ color: '#ffd700', marginRight: '8px' }} />
+                <ModalTitle>
+                  <FaTrophy style={{ color: '#ffd54f', marginRight: '8px' }} />
                   {t('fishing.leaderboard')}
-                </Heading2>
-                <IconButton onClick={() => setShowLeaderboard(false)}><MdClose /></IconButton>
+                </ModalTitle>
+                <CloseButton onClick={() => setShowLeaderboard(false)}><MdClose /></CloseButton>
               </ModalHeader>
               <ModalBody>
                 {rankData && (
                   <YourRankSection>
-                    <YourRankLabel>{t('fishing.yourRank')}</YourRankLabel>
-                    <YourRankValue $canAutofish={rankData.canAutofish}>
-                      <span>#{rankData.rank}</span>
-                      <span style={{ fontSize: '14px', opacity: 0.7 }}>
-                        / {rankData.totalUsers} {t('fishing.topPlayers').toLowerCase()}
-                      </span>
-                    </YourRankValue>
+                    <RankBanner $canAutofish={rankData.canAutofish}>
+                      <RankCrown>👑</RankCrown>
+                      <YourRankValue>#{rankData.rank}</YourRankValue>
+                      <RankSubtext>/ {rankData.totalUsers} {t('fishing.topPlayers').toLowerCase()}</RankSubtext>
+                    </RankBanner>
                     <AutofishUnlockStatus $unlocked={rankData.canAutofish}>
                       {rankData.canAutofish ? (
-                        <><MdAutorenew style={{ color: '#30d158' }} /><span>{t('fishing.autofishUnlocked')}</span></>
+                        <><span>✨</span><span>{t('fishing.autofishUnlocked')}</span></>
                       ) : (
                         <><span>🔒</span><span>{t('fishing.autofishLocked', { rank: rankData.requiredRank })}</span></>
                       )}
@@ -707,25 +758,23 @@ const FishingPage = () => {
                 
                 <LeaderboardList>
                   {leaderboard.map((player) => (
-                    <LeaderboardItem key={player.username} $isYou={rankData?.rank === player.rank}>
+                    <LeaderboardItem key={player.username} $isYou={rankData?.rank === player.rank} $rank={player.rank}>
                       <LeaderboardRank $rank={player.rank}>
-                        {player.rank <= 3 ? (
-                          <FaCrown style={{ color: player.rank === 1 ? '#ffd700' : player.rank === 2 ? '#c0c0c0' : '#cd7f32' }} />
-                        ) : `#${player.rank}`}
+                        {player.rank === 1 ? '🥇' : player.rank === 2 ? '🥈' : player.rank === 3 ? '🥉' : `#${player.rank}`}
                       </LeaderboardRank>
                       <LeaderboardName>{player.username}</LeaderboardName>
                       <LeaderboardPoints>
-                        <span>🪙</span>
+                        <CoinIcon>🪙</CoinIcon>
                         <span>{player.points.toLocaleString()}</span>
                       </LeaderboardPoints>
                       {player.hasAutofish && (
-                        <AutofishBadge><MdAutorenew /></AutofishBadge>
+                        <AutofishBadge>🤖</AutofishBadge>
                       )}
                     </LeaderboardItem>
                   ))}
                 </LeaderboardList>
               </ModalBody>
-            </LeaderboardModal>
+            </CozyModal>
           </ModalOverlay>
         )}
       </AnimatePresence>
@@ -736,8 +785,13 @@ const FishingPage = () => {
 // ==================== ANIMATIONS ====================
 
 const pulse = keyframes`
-  0%, 100% { opacity: 1; transform: scale(1); }
-  50% { opacity: 0.7; transform: scale(1.05); }
+  0%, 100% { transform: scale(1); }
+  50% { transform: scale(1.08); }
+`;
+
+const float = keyframes`
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-5px); }
 `;
 
 const spin = keyframes`
@@ -745,14 +799,29 @@ const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
+const shimmer = keyframes`
+  0% { background-position: -200% center; }
+  100% { background-position: 200% center; }
+`;
+
+const twinkle = keyframes`
+  0%, 100% { opacity: 0.3; }
+  50% { opacity: 1; }
+`;
+
+const glow = keyframes`
+  0%, 100% { opacity: 0.5; }
+  50% { opacity: 1; }
+`;
+
 // ==================== STYLED COMPONENTS ====================
 
 const getTimeGradient = (timeOfDay) => {
   switch (timeOfDay) {
-    case 'dawn': return 'linear-gradient(180deg, #ffb347 0%, #87ceeb 100%)';
-    case 'dusk': return 'linear-gradient(180deg, #ff6b6b 0%, #4a69bd 100%)';
-    case 'night': return 'linear-gradient(180deg, #1a1a2e 0%, #16213e 100%)';
-    default: return 'linear-gradient(180deg, #87CEEB 0%, #98D8C8 100%)';
+    case 'dawn': return 'linear-gradient(180deg, #ffcc80 0%, #81d4fa 50%, #4db6ac 100%)';
+    case 'dusk': return 'linear-gradient(180deg, #ff7043 0%, #7e57c2 50%, #3949ab 100%)';
+    case 'night': return 'linear-gradient(180deg, #1a237e 0%, #0d1b3e 50%, #0a1628 100%)';
+    default: return 'linear-gradient(180deg, #81d4fa 0%, #aed581 50%, #98d8c8 100%)';
   }
 };
 
@@ -761,164 +830,245 @@ const PageContainer = styled.div`
   display: flex;
   flex-direction: column;
   background: ${props => getTimeGradient(props.$timeOfDay)};
-  font-family: ${theme.fonts.primary};
+  font-family: 'Nunito', 'Comic Sans MS', cursive, sans-serif;
   user-select: none;
   overflow: hidden;
-  transition: background 3s ease;
+  transition: background 5s ease;
+  position: relative;
+`;
+
+const StarsOverlay = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background-image: 
+    radial-gradient(1px 1px at 20px 30px, white, transparent),
+    radial-gradient(1px 1px at 40px 70px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 50px 160px, rgba(255,255,255,0.6), transparent),
+    radial-gradient(1px 1px at 90px 40px, white, transparent),
+    radial-gradient(1px 1px at 130px 80px, rgba(255,255,255,0.7), transparent),
+    radial-gradient(2px 2px at 160px 120px, white, transparent),
+    radial-gradient(1px 1px at 200px 50px, rgba(255,255,255,0.5), transparent),
+    radial-gradient(1px 1px at 250px 90px, white, transparent),
+    radial-gradient(1px 1px at 300px 140px, rgba(255,255,255,0.8), transparent),
+    radial-gradient(1px 1px at 350px 60px, white, transparent);
+  background-size: 400px 200px;
+  animation: ${twinkle} 3s ease-in-out infinite;
 `;
 
 const Header = styled.header`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: linear-gradient(180deg, rgba(101, 67, 33, 0.95) 0%, rgba(80, 50, 25, 0.9) 100%);
-  border-bottom: 3px solid rgba(60, 40, 20, 0.8);
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+  padding: 10px 16px;
+  background: linear-gradient(180deg, #8b6914 0%, #6d4c10 50%, #5a3d0a 100%);
+  border-bottom: 4px solid #3e2a06;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.4),
+    inset 0 1px 0 rgba(255, 220, 150, 0.3);
   z-index: 100;
+  position: relative;
+  overflow: hidden;
+`;
+
+const HeaderWoodGrain = styled.div`
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    90deg,
+    transparent 0px,
+    rgba(0, 0, 0, 0.03) 2px,
+    transparent 4px,
+    rgba(0, 0, 0, 0.02) 8px
+  );
+  pointer-events: none;
 `;
 
 const BackButton = styled.button`
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #8b6914 0%, #6d5410 100%);
-  border: 2px solid #5d4410;
-  border-radius: 8px;
+  background: linear-gradient(180deg, #a07830 0%, #7a5820 100%);
+  border: 3px solid #5a4010;
+  border-radius: 10px;
   color: #fff8e1;
-  font-size: 20px;
+  font-size: 22px;
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 2px 4px rgba(0,0,0,0.3);
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.2),
+    0 3px 0 #4a3008,
+    0 5px 8px rgba(0,0,0,0.3);
   
   &:hover {
-    background: linear-gradient(180deg, #a67c20 0%, #8b6914 100%);
-    transform: translateY(-1px);
+    transform: translateY(-2px);
+    box-shadow: 
+      inset 0 2px 0 rgba(255,255,255,0.2),
+      0 5px 0 #4a3008,
+      0 8px 12px rgba(0,0,0,0.3);
+  }
+  
+  &:active {
+    transform: translateY(2px);
+    box-shadow: 
+      inset 0 2px 0 rgba(0,0,0,0.1),
+      0 1px 0 #4a3008;
   }
 `;
 
 const HeaderTitle = styled.h1`
   display: flex;
   align-items: center;
-  gap: 8px;
-  font-size: 18px;
-  font-weight: 700;
+  gap: 10px;
+  font-size: 20px;
+  font-weight: 800;
   color: #fff8e1;
   margin: 0;
-  text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+  text-shadow: 
+    2px 2px 0 #5a3d0a,
+    -1px -1px 0 #5a3d0a;
+  letter-spacing: 1px;
+`;
+
+const FishIcon = styled.span`
+  font-size: 28px;
+  animation: ${float} 3s ease-in-out infinite;
 `;
 
 const HeaderRight = styled.div`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing.sm};
+  gap: 10px;
 `;
 
 const PointsDisplay = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 6px 14px;
-  background: linear-gradient(180deg, #ffc107 0%, #ff9800 100%);
-  border: 2px solid #e65100;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, #ffd54f 0%, #ffb300 100%);
+  border: 3px solid #e65100;
   border-radius: 20px;
-  font-weight: 700;
-  font-size: 13px;
-  color: #4e342e;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.4), 0 2px 4px rgba(0,0,0,0.3);
+  font-weight: 800;
+  font-size: 14px;
+  color: #5d4037;
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.5),
+    0 3px 0 #bf360c,
+    0 5px 8px rgba(0,0,0,0.2);
 `;
 
-const HelpButton = styled.button`
-  width: 36px;
-  height: 36px;
+const CoinIcon = styled.span`
+  font-size: 16px;
+  animation: ${float} 2s ease-in-out infinite;
+`;
+
+const WoodButton = styled.button`
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, #8b6914 0%, #6d5410 100%);
-  border: 2px solid #5d4410;
-  border-radius: 8px;
+  background: linear-gradient(180deg, #a07830 0%, #7a5820 100%);
+  border: 3px solid #5a4010;
+  border-radius: 10px;
   color: #fff8e1;
-  font-size: 20px;
+  font-size: 22px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.2),
+    0 3px 0 #4a3008;
   
   &:hover {
-    background: linear-gradient(180deg, #a67c20 0%, #8b6914 100%);
+    background: linear-gradient(180deg, #b88a40 0%, #8a6828 100%);
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(2px);
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
   }
 `;
 
 const RankBadge = styled.button`
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 6px 12px;
+  gap: 6px;
+  padding: 8px 14px;
   background: ${props => props.$canAutofish 
-    ? 'linear-gradient(180deg, #ffd700 0%, #ffa000 100%)' 
-    : 'linear-gradient(180deg, #8b6914 0%, #6d5410 100%)'};
-  border: 2px solid ${props => props.$canAutofish ? '#e65100' : '#5d4410'};
+    ? 'linear-gradient(180deg, #ffd54f 0%, #ffc107 100%)' 
+    : 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'};
+  border: 3px solid ${props => props.$canAutofish ? '#e65100' : '#5a4010'};
   border-radius: 20px;
-  color: ${props => props.$canAutofish ? '#4e342e' : '#fff8e1'};
-  font-weight: 700;
-  font-size: 13px;
+  color: ${props => props.$canAutofish ? '#5d4037' : '#fff8e1'};
+  font-weight: 800;
+  font-size: 14px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: ${props => props.$canAutofish
+    ? 'inset 0 2px 0 rgba(255,255,255,0.5), 0 3px 0 #bf360c, 0 0 12px rgba(255, 193, 7, 0.4)'
+    : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #4a3008'};
   
-  &:hover { transform: translateY(-1px); }
+  &:hover { transform: translateY(-2px); }
 `;
 
 const AutofishButton = styled.button`
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
   background: ${props => props.$active 
     ? 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)' 
-    : 'linear-gradient(180deg, #8b6914 0%, #6d5410 100%)'};
-  border: 2px solid ${props => props.$active ? '#2e7d32' : '#5d4410'};
-  border-radius: 8px;
+    : 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'};
+  border: 3px solid ${props => props.$active ? '#2e7d32' : '#5a4010'};
+  border-radius: 10px;
   color: ${props => props.$active ? '#e8f5e9' : '#fff8e1'};
-  font-size: 20px;
+  font-size: 22px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: ${props => props.$active
+    ? '0 0 15px rgba(102, 187, 106, 0.5), inset 0 2px 0 rgba(255,255,255,0.3)'
+    : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #4a3008'};
   
   svg.spinning { animation: ${spin} 1s linear infinite; }
 `;
 
 const AutofishBubblesContainer = styled.div`
   position: fixed;
-  bottom: 140px;
+  bottom: 160px;
   right: 16px;
   display: flex;
   flex-direction: column-reverse;
-  gap: 8px;
+  gap: 10px;
   z-index: 500;
   pointer-events: none;
   
-  @media (max-width: 768px) { bottom: 200px; right: 12px; }
+  @media (max-width: 768px) { bottom: 220px; right: 12px; }
 `;
 
 const AutofishBubble = styled(motion.div)`
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 12px 18px;
   min-width: 180px;
   background: ${props => {
     if (!props.$success) return 'linear-gradient(180deg, #78909c 0%, #546e7a 100%)';
     switch (props.$rarity) {
-      case 'legendary': return 'linear-gradient(180deg, #ffc107 0%, #ff9800 100%)';
+      case 'legendary': return 'linear-gradient(180deg, #ffd54f 0%, #ffb300 100%)';
       case 'epic': return 'linear-gradient(180deg, #ce93d8 0%, #ab47bc 100%)';
       case 'rare': return 'linear-gradient(180deg, #64b5f6 0%, #1e88e5 100%)';
-      case 'uncommon': return 'linear-gradient(180deg, #81c784 0%, #43a047 100%)';
+      case 'uncommon': return 'linear-gradient(180deg, #81c784 0%, #4caf50 100%)';
       default: return 'linear-gradient(180deg, #a1887f 0%, #795548 100%)';
     }
   }};
-  border-radius: 12px;
+  border-radius: 16px;
   border: 3px solid ${props => {
-    if (!props.$success) return '#37474f';
+    if (!props.$success) return '#455a64';
     switch (props.$rarity) {
       case 'legendary': return '#e65100';
       case 'epic': return '#7b1fa2';
@@ -927,24 +1077,26 @@ const AutofishBubble = styled(motion.div)`
       default: return '#5d4037';
     }
   }};
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.3),
+    ${props => props.$success && props.$rarity === 'legendary' ? '0 0 20px rgba(255, 193, 7, 0.4)' : 'none'};
   pointer-events: auto;
 `;
 
 const BubbleEmoji = styled.div`
-  font-size: 32px;
+  font-size: 36px;
   filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.3));
 `;
 
 const BubbleContent = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 3px;
+  gap: 4px;
 `;
 
 const BubbleFishName = styled.div`
   font-size: 14px;
-  font-weight: 700;
+  font-weight: 800;
   color: white;
   text-shadow: 1px 1px 2px rgba(0, 0, 0, 0.4);
 `;
@@ -959,10 +1111,14 @@ const StatsBar = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  background: linear-gradient(180deg, rgba(80, 50, 25, 0.9) 0%, rgba(60, 35, 15, 0.85) 100%);
-  border-bottom: 2px solid rgba(40, 25, 10, 0.6);
+  gap: 8px;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, 
+    rgba(139, 105, 20, 0.9) 0%, 
+    rgba(109, 76, 16, 0.95) 50%, 
+    rgba(90, 61, 10, 0.9) 100%);
+  border-bottom: 3px solid rgba(62, 42, 6, 0.8);
+  box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.2);
   z-index: 100;
 `;
 
@@ -970,30 +1126,41 @@ const StatItem = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 1px;
-  padding: 4px 12px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 8px;
+  gap: 2px;
+  padding: 6px 14px;
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 12px;
+  border: 2px solid rgba(255, 220, 150, 0.15);
+  
+  ${props => props.$highlight && css`
+    background: rgba(255, 193, 7, 0.15);
+    border-color: rgba(255, 193, 7, 0.3);
+  `}
+`;
+
+const StatIcon = styled.span`
+  font-size: 16px;
 `;
 
 const StatValue = styled.span`
-  font-size: 16px;
-  font-weight: 700;
+  font-size: 18px;
+  font-weight: 800;
   color: #fff8e1;
   text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
 `;
 
 const StatLabel = styled.span`
-  font-size: 9px;
+  font-size: 10px;
   color: rgba(255, 248, 225, 0.7);
   text-transform: uppercase;
   letter-spacing: 0.5px;
+  font-weight: 600;
 `;
 
 const StatDivider = styled.div`
   width: 2px;
-  height: 28px;
-  background: linear-gradient(180deg, transparent, rgba(139, 90, 43, 0.6), transparent);
+  height: 32px;
+  background: linear-gradient(180deg, transparent, rgba(255, 220, 150, 0.3), transparent);
 `;
 
 const GameContainer = styled.div`
@@ -1002,20 +1169,27 @@ const GameContainer = styled.div`
   align-items: center;
   justify-content: center;
   position: relative;
-  padding: ${theme.spacing.md};
+  padding: 16px;
   min-height: 0;
   overflow: hidden;
 `;
 
+const CanvasFrame = styled.div`
+  position: relative;
+  border-radius: 8px;
+  background: linear-gradient(180deg, #5a3d0a 0%, #3e2a06 100%);
+  padding: 8px;
+  box-shadow: 
+    0 8px 32px rgba(0, 0, 0, 0.4),
+    inset 0 2px 0 rgba(255, 220, 150, 0.2),
+    inset 0 -2px 0 rgba(0, 0, 0, 0.3);
+`;
+
 const CanvasWrapper = styled.div`
   position: relative;
-  border-radius: 12px;
+  border-radius: 4px;
   overflow: hidden;
-  box-shadow: 
-    0 4px 20px rgba(0, 0, 0, 0.3),
-    0 8px 40px rgba(0, 0, 0, 0.2),
-    inset 0 0 0 3px rgba(101, 67, 33, 0.9);
-  flex-shrink: 0;
+  box-shadow: inset 0 0 20px rgba(0, 0, 0, 0.3);
   
   /* Fixed size based on map dimensions */
   width: ${MAP_WIDTH * TILE_SIZE}px;
@@ -1024,69 +1198,125 @@ const CanvasWrapper = styled.div`
   canvas {
     display: block;
     image-rendering: pixelated;
+    image-rendering: crisp-edges;
     width: 100% !important;
     height: 100% !important;
   }
 `;
 
+const CanvasCorner = styled.div`
+  position: absolute;
+  width: 16px;
+  height: 16px;
+  background: #8b6914;
+  border-radius: 50%;
+  box-shadow: inset 0 2px 0 rgba(255,255,255,0.3), inset 0 -2px 0 rgba(0,0,0,0.3);
+  
+  ${props => {
+    switch (props.$position) {
+      case 'tl': return 'top: -4px; left: -4px;';
+      case 'tr': return 'top: -4px; right: -4px;';
+      case 'bl': return 'bottom: -4px; left: -4px;';
+      case 'br': return 'bottom: -4px; right: -4px;';
+      default: return '';
+    }
+  }}
+`;
+
 const FishPrompt = styled(motion.div)`
   position: fixed;
-  bottom: 100px;
+  bottom: 110px;
   left: 50%;
-  padding: 12px 24px;
-  background: linear-gradient(180deg, rgba(101, 67, 33, 0.95) 0%, rgba(80, 50, 25, 0.95) 100%);
-  border: 3px solid rgba(139, 90, 43, 0.8);
-  border-radius: 12px;
-  color: #fff8e1;
-  font-size: 14px;
-  font-weight: 600;
+  padding: 14px 24px;
+  background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 100%);
+  border: 4px solid #8b6914;
+  border-radius: 16px;
+  color: #5d4037;
+  font-size: 15px;
+  font-weight: 700;
   display: flex;
   align-items: center;
-  gap: 8px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  gap: 10px;
+  box-shadow: 
+    0 6px 20px rgba(0,0,0,0.3),
+    inset 0 2px 0 rgba(255,255,255,0.5);
   z-index: 150;
   
   @media (max-width: 768px) {
-    bottom: 180px;
+    bottom: 190px;
+    font-size: 14px;
+    padding: 12px 20px;
   }
 `;
 
+const PromptIcon = styled.span`
+  font-size: 24px;
+`;
+
 const KeyHint = styled.span`
-  padding: 4px 10px;
-  background: linear-gradient(180deg, #8b6914 0%, #6d5410 100%);
-  border: 2px solid #5d4410;
-  border-radius: 6px;
-  font-weight: 700;
+  padding: 6px 12px;
+  background: linear-gradient(180deg, #8b6914 0%, #6d4c10 100%);
+  border: 2px solid #5a3d0a;
+  border-radius: 8px;
+  font-weight: 800;
+  color: #fff8e1;
+  box-shadow: 0 2px 0 #4a3008;
 `;
 
 const StateIndicator = styled(motion.div)`
   position: fixed;
-  top: 150px;
+  top: 140px;
   left: 50%;
   z-index: 150;
 `;
 
+const WaitingBubble = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 14px 24px;
+  background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 100%);
+  border: 4px solid #8b6914;
+  border-radius: 20px;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.3);
+`;
+
+const BubbleFloat = styled.span`
+  font-size: 28px;
+  animation: ${float} 2s ease-in-out infinite;
+`;
+
 const WaitingText = styled.div`
-  padding: 12px 24px;
-  background: linear-gradient(180deg, rgba(101, 67, 33, 0.95) 0%, rgba(80, 50, 25, 0.95) 100%);
-  border: 3px solid rgba(139, 90, 43, 0.8);
-  border-radius: 12px;
-  color: #fff8e1;
-  font-size: 14px;
-  font-weight: 600;
+  color: #5d4037;
+  font-size: 16px;
+  font-weight: 700;
+`;
+
+const CatchAlert = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 16px 28px;
+  background: linear-gradient(180deg, #ff5252 0%, #d32f2f 100%);
+  border: 4px solid #b71c1c;
+  border-radius: 20px;
+  animation: ${pulse} 0.2s ease-in-out infinite;
+  box-shadow: 
+    0 0 40px rgba(255, 82, 82, 0.6),
+    0 8px 24px rgba(0,0,0,0.4);
+`;
+
+const AlertIcon = styled.span`
+  font-size: 32px;
+  animation: ${pulse} 0.15s ease-in-out infinite;
 `;
 
 const CatchText = styled.div`
-  padding: 14px 28px;
-  background: linear-gradient(180deg, #ff5252 0%, #d32f2f 100%);
-  border: 3px solid #b71c1c;
-  border-radius: 12px;
   color: white;
-  font-size: 20px;
+  font-size: 22px;
   font-weight: 800;
-  animation: ${pulse} 0.25s ease-in-out infinite;
-  box-shadow: 0 0 30px rgba(255, 82, 82, 0.6);
   text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  letter-spacing: 1px;
 `;
 
 const ResultPopup = styled(motion.div)`
@@ -1095,50 +1325,64 @@ const ResultPopup = styled(motion.div)`
   left: 50%;
   display: flex;
   align-items: center;
-  gap: 20px;
-  padding: 24px 32px;
+  gap: 24px;
+  padding: 28px 36px;
   background: ${props => props.$success 
-    ? 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)' 
-    : 'linear-gradient(180deg, #ef5350 0%, #d32f2f 100%)'};
-  border: 4px solid ${props => props.$success ? '#2e7d32' : '#b71c1c'};
-  border-radius: 16px;
-  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
+    ? 'linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 100%)' 
+    : 'linear-gradient(180deg, #bcaaa4 0%, #a1887f 100%)'};
+  border: 5px solid ${props => props.$success ? '#8b6914' : '#6d4c41'};
+  border-radius: 24px;
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    ${props => props.$success && props.$rarity ? `0 0 30px ${RARITY_GLOW[props.$rarity]}` : 'none'};
   z-index: 200;
+  overflow: hidden;
+`;
+
+const ResultGlow = styled.div`
+  position: absolute;
+  inset: 0;
+  background: radial-gradient(circle at center, ${props => RARITY_GLOW[props.$rarity] || 'transparent'} 0%, transparent 70%);
+  animation: ${glow} 1.5s ease-in-out infinite;
+  pointer-events: none;
 `;
 
 const ResultEmoji = styled.div`
-  font-size: 56px;
-  filter: drop-shadow(3px 3px 4px rgba(0,0,0,0.3));
+  font-size: 64px;
+  filter: drop-shadow(3px 3px 5px rgba(0,0,0,0.3));
+  animation: ${float} 2s ease-in-out infinite;
+  z-index: 1;
 `;
 
 const ResultInfo = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 8px;
+  z-index: 1;
 `;
 
 const ResultTitle = styled.div`
-  font-size: 22px;
+  font-size: 24px;
   font-weight: 800;
-  color: white;
-  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  color: ${props => props.$success ? '#558b2f' : '#5d4037'};
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
 `;
 
 const ResultFishName = styled.div`
-  font-size: 17px;
+  font-size: 20px;
   font-weight: 700;
-  color: ${props => props.$rarity === 'legendary' ? '#ffd700' : 
-                    props.$rarity === 'epic' ? '#e1bee7' :
-                    props.$rarity === 'rare' ? '#bbdefb' :
-                    props.$rarity === 'uncommon' ? '#c8e6c9' : '#f5f5f5'};
-  text-shadow: 1px 1px 2px rgba(0,0,0,0.4);
+  color: ${props => RARITY_COLORS[props.$rarity] || '#5d4037'};
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.3);
 `;
 
 const ResultReward = styled.div`
-  font-size: 20px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 24px;
   font-weight: 800;
-  color: #fff9c4;
-  text-shadow: 2px 2px 0 rgba(0,0,0,0.3);
+  color: #f57c00;
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
 `;
 
 // Mobile Controls
@@ -1146,67 +1390,84 @@ const MobileControls = styled.div`
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding: ${theme.spacing.md} ${theme.spacing.xl};
-  padding-bottom: calc(${theme.spacing.lg} + env(safe-area-inset-bottom, 0px));
-  background: linear-gradient(180deg, rgba(80, 50, 25, 0.95) 0%, rgba(60, 35, 15, 0.95) 100%);
-  border-top: 3px solid rgba(139, 90, 43, 0.6);
+  padding: 16px 24px;
+  padding-bottom: calc(20px + env(safe-area-inset-bottom, 0px));
+  background: linear-gradient(180deg, 
+    rgba(139, 105, 20, 0.95) 0%, 
+    rgba(109, 76, 16, 0.98) 50%, 
+    rgba(90, 61, 10, 0.95) 100%);
+  border-top: 4px solid rgba(255, 220, 150, 0.2);
+  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.3);
   
   @media (min-width: 768px) { display: none; }
 `;
 
 const DPad = styled.div`
   position: relative;
-  width: 130px;
-  height: 130px;
-  
-  &::before {
-    content: '';
-    position: absolute;
-    top: 45px;
-    left: 45px;
-    width: 40px;
-    height: 40px;
-    background: linear-gradient(135deg, #5d4037 0%, #4e342e 100%);
-    border-radius: 8px;
-  }
+  width: 140px;
+  height: 140px;
+`;
+
+const DPadCenter = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 44px;
+  height: 44px;
+  background: linear-gradient(135deg, #5d4037 0%, #4e342e 100%);
+  border-radius: 12px;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
 `;
 
 const DPadButton = styled.button`
   position: absolute;
-  width: 44px;
-  height: 44px;
-  background: linear-gradient(180deg, #8b6914 0%, #6d5410 100%);
-  border: 2px solid #5d4410;
-  border-radius: 10px;
+  width: 48px;
+  height: 48px;
+  background: linear-gradient(180deg, #a07830 0%, #7a5820 100%);
+  border: 3px solid #5a4010;
+  border-radius: 12px;
   color: #fff8e1;
-  font-size: 24px;
+  font-size: 28px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: inset 0 1px 0 rgba(255,255,255,0.2), 0 3px 6px rgba(0,0,0,0.4);
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.2),
+    0 3px 0 #4a3008,
+    0 5px 8px rgba(0,0,0,0.3);
   
   ${props => {
     switch (props.$position) {
-      case 'up': return 'top: 0; left: 43px;';
-      case 'down': return 'bottom: 0; left: 43px;';
-      case 'left': return 'top: 43px; left: 0;';
-      case 'right': return 'top: 43px; right: 0;';
+      case 'up': return 'top: 0; left: 50%; transform: translateX(-50%);';
+      case 'down': return 'bottom: 0; left: 50%; transform: translateX(-50%);';
+      case 'left': return 'top: 50%; left: 0; transform: translateY(-50%);';
+      case 'right': return 'top: 50%; right: 0; transform: translateY(-50%);';
       default: return '';
     }
   }}
   
   &:active {
-    background: linear-gradient(180deg, #a67c20 0%, #8b6914 100%);
-    transform: scale(0.95);
+    background: linear-gradient(180deg, #b88a40 0%, #8a6828 100%);
+    transform: ${props => {
+      switch (props.$position) {
+        case 'up': return 'translateX(-50%) translateY(2px)';
+        case 'down': return 'translateX(-50%) translateY(-2px)';
+        case 'left': return 'translateY(-50%) translateX(2px)';
+        case 'right': return 'translateY(-50%) translateX(-2px)';
+        default: return '';
+      }
+    }};
+    box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
   }
 `;
 
 const ActionButton = styled(motion.button)`
-  width: 85px;
-  height: 85px;
+  width: 90px;
+  height: 90px;
   border-radius: 50%;
-  font-size: 36px;
+  font-size: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -1214,16 +1475,29 @@ const ActionButton = styled(motion.button)`
   background: ${props => {
     if (props.$state === 'fish_appeared') return 'linear-gradient(180deg, #ff5252 0%, #d32f2f 100%)';
     if (props.$canFish) return 'linear-gradient(180deg, #42a5f5 0%, #1e88e5 100%)';
-    return 'linear-gradient(180deg, #8b6914 0%, #6d5410 100%)';
+    return 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)';
   }};
-  border: 3px solid ${props => {
+  border: 4px solid ${props => {
     if (props.$state === 'fish_appeared') return '#b71c1c';
     if (props.$canFish) return '#1565c0';
-    return '#5d4410';
+    return '#5a4010';
   }};
-  box-shadow: inset 0 2px 0 rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.4);
+  box-shadow: 
+    inset 0 3px 0 rgba(255,255,255,0.3),
+    0 4px 0 ${props => {
+      if (props.$state === 'fish_appeared') return '#7f0000';
+      if (props.$canFish) return '#0d47a1';
+      return '#4a3008';
+    }},
+    0 6px 12px rgba(0,0,0,0.4);
   
-  ${props => props.$state === 'fish_appeared' && css`animation: ${pulse} 0.3s ease-in-out infinite;`}
+  ${props => props.$state === 'fish_appeared' && css`
+    animation: ${pulse} 0.25s ease-in-out infinite;
+    box-shadow: 
+      inset 0 3px 0 rgba(255,255,255,0.3),
+      0 4px 0 #7f0000,
+      0 0 30px rgba(255, 82, 82, 0.6);
+  `}
   
   &:disabled { opacity: 0.5; }
 `;
@@ -1232,183 +1506,289 @@ const Notification = styled(motion.div)`
   position: fixed;
   top: 120px;
   left: 50%;
-  padding: 14px 28px;
-  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 16px 28px;
+  border-radius: 16px;
   font-weight: 700;
   z-index: 1000;
   background: ${props => props.$type === 'error' 
-    ? 'linear-gradient(180deg, #ef5350 0%, #d32f2f 100%)' 
+    ? 'linear-gradient(180deg, #ff5252 0%, #d32f2f 100%)' 
     : 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)'};
   border: 3px solid ${props => props.$type === 'error' ? '#b71c1c' : '#2e7d32'};
   color: white;
+  box-shadow: 0 6px 20px rgba(0,0,0,0.4);
+  text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
 `;
 
-// Modal Styles
-const HelpModal = styled(ModalContent)`
-  max-width: 520px;
-  background: linear-gradient(180deg, #5d4037 0%, #4e342e 100%);
-  border: 4px solid #8b6914;
+const NotificationIcon = styled.span`
+  font-size: 20px;
+`;
+
+// Modal Styles - Cozy parchment look
+const CozyModal = styled(ModalContent)`
+  max-width: 540px;
+  max-height: 85vh;
+  background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 100%);
+  border: 5px solid #8b6914;
+  border-radius: 20px;
+  box-shadow: 
+    0 12px 40px rgba(0, 0, 0, 0.5),
+    inset 0 2px 0 rgba(255,255,255,0.5);
+  position: relative;
+  overflow: hidden;
+  
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      0deg,
+      transparent 0px,
+      rgba(139, 105, 20, 0.03) 2px,
+      transparent 4px
+    );
+    pointer-events: none;
+  }
+`;
+
+const ModalDecor = styled.div`
+  position: absolute;
+  font-size: 24px;
+  opacity: 0.6;
+  pointer-events: none;
+  
+  ${props => {
+    switch (props.$position) {
+      case 'tl': return 'top: 8px; left: 12px;';
+      case 'tr': return 'top: 8px; right: 12px; transform: scaleX(-1);';
+      case 'bl': return 'bottom: 8px; left: 12px;';
+      case 'br': return 'bottom: 8px; right: 12px; transform: scaleX(-1);';
+      default: return '';
+    }
+  }}
+`;
+
+const ModalTitle = styled.h2`
+  display: flex;
+  align-items: center;
+  font-size: 22px;
+  font-weight: 800;
+  color: #5d4037;
+  margin: 0;
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
+`;
+
+const CloseButton = styled(IconButton)`
+  background: linear-gradient(180deg, #a07830 0%, #7a5820 100%);
+  border: 3px solid #5a4010;
+  color: #fff8e1;
+  
+  &:hover {
+    background: linear-gradient(180deg, #b88a40 0%, #8a6828 100%);
+  }
 `;
 
 const HelpSection = styled.div`
-  margin-bottom: ${theme.spacing.lg};
+  display: flex;
+  gap: 16px;
+  margin-bottom: 20px;
   padding: 16px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
+  background: rgba(139, 105, 20, 0.1);
+  border-radius: 16px;
+  border: 2px solid rgba(139, 105, 20, 0.2);
   
   &:last-child { margin-bottom: 0; }
 `;
 
+const HelpIcon = styled.div`
+  font-size: 32px;
+  flex-shrink: 0;
+`;
+
+const HelpContent = styled.div`
+  flex: 1;
+`;
+
 const HelpTitle = styled.h3`
   font-size: 17px;
-  font-weight: 700;
-  margin: 0 0 ${theme.spacing.sm};
-  color: #fff8e1;
+  font-weight: 800;
+  margin: 0 0 8px;
+  color: #5d4037;
+`;
+
+const HelpText = styled.p`
+  font-size: 14px;
+  color: #795548;
+  margin: 0;
+  line-height: 1.5;
 `;
 
 const FishList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 10px;
+  margin-top: 12px;
 `;
 
 const FishItem = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 10px 14px;
-  background: rgba(255,255,255,0.08);
-  border-radius: 10px;
-  border-left: 4px solid ${props => RARITY_COLORS[props.$rarity] || '#666'};
+  gap: 14px;
+  padding: 12px 16px;
+  background: rgba(255,255,255,0.5);
+  border-radius: 12px;
+  border-left: 5px solid ${props => RARITY_COLORS[props.$rarity] || '#666'};
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+`;
+
+const FishEmoji = styled.span`
+  font-size: 28px;
 `;
 
 const FishRarity = styled.span`
-  font-weight: 700;
-  color: ${props => RARITY_COLORS[props.$rarity] || '#fff8e1'};
-  min-width: 85px;
+  font-weight: 800;
+  color: ${props => RARITY_COLORS[props.$rarity] || '#5d4037'};
+  min-width: 90px;
+  text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
 `;
 
 const FishReward = styled.span`
-  font-size: 13px;
-  font-weight: 600;
-  color: #ffc107;
-`;
-
-const LeaderboardModal = styled(ModalContent)`
-  max-width: 520px;
-  max-height: 80vh;
-  background: linear-gradient(180deg, #5d4037 0%, #4e342e 100%);
-  border: 4px solid #8b6914;
+  font-size: 14px;
+  font-weight: 700;
+  color: #f57c00;
+  margin-left: auto;
 `;
 
 const YourRankSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 10px;
-  padding: ${theme.spacing.lg};
-  background: linear-gradient(180deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 193, 7, 0.08) 100%);
-  border-radius: 14px;
-  margin-bottom: ${theme.spacing.lg};
-  border: 3px solid rgba(255, 193, 7, 0.4);
+  gap: 14px;
+  margin-bottom: 24px;
 `;
 
-const YourRankLabel = styled.div`
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  color: rgba(255, 248, 225, 0.7);
+const RankBanner = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 20px 32px;
+  background: ${props => props.$canAutofish 
+    ? 'linear-gradient(180deg, #ffd54f 0%, #ffb300 100%)' 
+    : 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'};
+  border-radius: 20px;
+  border: 4px solid ${props => props.$canAutofish ? '#e65100' : '#5a4010'};
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.3),
+    0 4px 12px rgba(0,0,0,0.3);
+`;
+
+const RankCrown = styled.span`
+  font-size: 36px;
+  animation: ${float} 3s ease-in-out infinite;
 `;
 
 const YourRankValue = styled.div`
-  display: flex;
-  align-items: baseline;
-  gap: 8px;
-  font-size: 36px;
-  font-weight: 800;
-  color: ${props => props.$canAutofish ? '#ffd700' : '#fff8e1'};
+  font-size: 40px;
+  font-weight: 900;
+  color: #5d4037;
+  text-shadow: 2px 2px 0 rgba(255,255,255,0.5);
+`;
+
+const RankSubtext = styled.div`
+  font-size: 14px;
+  color: rgba(93, 64, 55, 0.7);
+  font-weight: 600;
 `;
 
 const AutofishUnlockStatus = styled.div`
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 10px 18px;
+  gap: 10px;
+  padding: 12px 20px;
   background: ${props => props.$unlocked 
-    ? 'linear-gradient(180deg, rgba(102, 187, 106, 0.3) 0%, rgba(67, 160, 71, 0.2) 100%)' 
-    : 'rgba(0, 0, 0, 0.3)'};
+    ? 'linear-gradient(180deg, rgba(102, 187, 106, 0.3) 0%, rgba(76, 175, 80, 0.2) 100%)' 
+    : 'rgba(0, 0, 0, 0.1)'};
   border-radius: 20px;
-  font-size: 13px;
-  font-weight: 600;
-  color: ${props => props.$unlocked ? '#a5d6a7' : 'rgba(255, 248, 225, 0.7)'};
+  border: 2px solid ${props => props.$unlocked ? '#43a047' : 'rgba(0,0,0,0.1)'};
+  font-size: 14px;
+  font-weight: 700;
+  color: ${props => props.$unlocked ? '#2e7d32' : '#795548'};
 `;
 
 const LeaderboardList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  max-height: 400px;
+  gap: 8px;
+  max-height: 350px;
   overflow-y: auto;
+  padding-right: 8px;
   
   &::-webkit-scrollbar {
-    width: 8px;
+    width: 10px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: rgba(139, 105, 20, 0.1);
+    border-radius: 5px;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: rgba(139, 90, 43, 0.6);
-    border-radius: 4px;
+    background: linear-gradient(180deg, #a07830, #7a5820);
+    border-radius: 5px;
+    border: 2px solid rgba(139, 105, 20, 0.2);
   }
 `;
 
 const LeaderboardItem = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 16px;
-  background: ${props => props.$isYou 
-    ? 'linear-gradient(180deg, rgba(66, 165, 245, 0.25) 0%, rgba(30, 136, 229, 0.2) 100%)' 
-    : 'rgba(0, 0, 0, 0.2)'};
-  border-radius: 10px;
-  border: 2px solid ${props => props.$isYou ? 'rgba(66, 165, 245, 0.5)' : 'transparent'};
+  gap: 14px;
+  padding: 14px 18px;
+  background: ${props => {
+    if (props.$isYou) return 'linear-gradient(180deg, rgba(66, 165, 245, 0.2) 0%, rgba(30, 136, 229, 0.15) 100%)';
+    if (props.$rank <= 3) return 'linear-gradient(180deg, rgba(255, 213, 79, 0.15) 0%, rgba(255, 179, 0, 0.1) 100%)';
+    return 'rgba(255, 255, 255, 0.4)';
+  }};
+  border-radius: 14px;
+  border: 3px solid ${props => {
+    if (props.$isYou) return 'rgba(66, 165, 245, 0.4)';
+    if (props.$rank <= 3) return 'rgba(255, 179, 0, 0.3)';
+    return 'rgba(139, 105, 20, 0.15)';
+  }};
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 `;
 
 const LeaderboardRank = styled.div`
-  width: 36px;
-  height: 36px;
+  width: 40px;
+  height: 40px;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: ${props => props.$rank <= 3 ? '20px' : '14px'};
-  font-weight: 800;
-  color: rgba(255, 248, 225, 0.6);
+  font-size: ${props => props.$rank <= 3 ? '28px' : '16px'};
+  font-weight: 900;
+  color: ${props => props.$rank <= 3 ? 'inherit' : '#795548'};
 `;
 
 const LeaderboardName = styled.div`
   flex: 1;
-  font-size: 15px;
+  font-size: 16px;
   font-weight: 700;
-  color: #fff8e1;
+  color: #5d4037;
 `;
 
 const LeaderboardPoints = styled.div`
   display: flex;
   align-items: center;
-  gap: 4px;
-  font-size: 14px;
-  font-weight: 700;
-  color: #ffc107;
+  gap: 6px;
+  font-size: 15px;
+  font-weight: 800;
+  color: #f57c00;
 `;
 
 const AutofishBadge = styled.div`
-  width: 26px;
-  height: 26px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: rgba(102, 187, 106, 0.4);
-  border-radius: 50%;
-  color: #a5d6a7;
-  font-size: 14px;
+  font-size: 20px;
 `;
 
 export default FishingPage;
