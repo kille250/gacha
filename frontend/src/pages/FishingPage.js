@@ -159,60 +159,61 @@ const FishingPage = () => {
     }
   }, [showLeaderboard]);
   
-  // Autofishing loop
+  // Autofishing loop with integrated cleanup
   useEffect(() => {
-    if (isAutofishing && rankData?.canAutofish) {
-      autofishIntervalRef.current = setInterval(async () => {
-        try {
-          const res = await api.post('/fishing/autofish');
-          const result = res.data;
-          
-          if (result.newPoints !== undefined) {
-            setUser(prev => ({ ...prev, points: result.newPoints }));
-            clearCache('/auth/me');
-          }
-          
-          setSessionStats(prev => ({
-            ...prev,
-            casts: prev.casts + 1,
-            catches: result.success ? prev.catches + 1 : prev.catches,
-            totalEarned: prev.totalEarned + (result.reward || 0),
-            bestCatch: result.success && (!prev.bestCatch || result.reward > prev.bestCatch.reward)
-              ? { fish: result.fish, reward: result.reward }
-              : prev.bestCatch
-          }));
-          
-          setAutofishLog(prev => [{
+    if (!isAutofishing || !rankData?.canAutofish) {
+      return;
+    }
+    
+    // Single interval for autofishing
+    autofishIntervalRef.current = setInterval(async () => {
+      try {
+        const res = await api.post('/fishing/autofish');
+        const result = res.data;
+        
+        if (result.newPoints !== undefined) {
+          setUser(prev => ({ ...prev, points: result.newPoints }));
+          clearCache('/auth/me');
+        }
+        
+        setSessionStats(prev => ({
+          ...prev,
+          casts: prev.casts + 1,
+          catches: result.success ? prev.catches + 1 : prev.catches,
+          totalEarned: prev.totalEarned + (result.reward || 0),
+          bestCatch: result.success && (!prev.bestCatch || result.reward > prev.bestCatch.reward)
+            ? { fish: result.fish, reward: result.reward }
+            : prev.bestCatch
+        }));
+        
+        const now = Date.now();
+        setAutofishLog(prev => {
+          // Add new entry and clean old ones in single update
+          const newEntry = {
             fish: result.fish,
             success: result.success,
             reward: result.reward,
-            timestamp: Date.now()
-          }, ...prev].slice(0, 10));
-          
-        } catch (err) {
-          if (err.response?.status === 403) {
-            setIsAutofishing(false);
-            showNotification(t('fishing.autofishLocked', { rank: rankData?.requiredRank || 10 }), 'error');
-          }
+            timestamp: now
+          };
+          // Keep only entries less than 4 seconds old, limit to 6
+          return [newEntry, ...prev.filter(e => now - e.timestamp < 4000)].slice(0, 6);
+        });
+        
+      } catch (err) {
+        if (err.response?.status === 403) {
+          setIsAutofishing(false);
+          showNotification(t('fishing.autofishLocked', { rank: rankData?.requiredRank || 10 }), 'error');
         }
-      }, AUTOFISH_INTERVAL);
-    }
+      }
+    }, AUTOFISH_INTERVAL);
     
     return () => {
       if (autofishIntervalRef.current) {
         clearInterval(autofishIntervalRef.current);
+        autofishIntervalRef.current = null;
       }
     };
   }, [isAutofishing, rankData, setUser, t]);
-  
-  // Auto-cleanup old autofish bubbles
-  useEffect(() => {
-    if (autofishLog.length === 0) return;
-    const timer = setTimeout(() => {
-      setAutofishLog(prev => prev.filter(e => Date.now() - e.timestamp < 4000));
-    }, 500);
-    return () => clearTimeout(timer);
-  }, [autofishLog]);
   
   // Refs for keyboard handler to avoid stale closures
   const gameStateRef = useRef(gameState);
@@ -457,8 +458,8 @@ const FishingPage = () => {
       
       {/* Autofish bubbles */}
       <AutofishBubblesContainer>
-        <AnimatePresence mode="popLayout">
-          {autofishLog.slice(0, 6).map((entry) => (
+        <AnimatePresence>
+          {autofishLog.map((entry) => (
             <AutofishBubble
               key={entry.timestamp}
               $success={entry.success}
@@ -466,7 +467,7 @@ const FishingPage = () => {
               initial={{ opacity: 0, x: 80, scale: 0.8 }}
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: 80, scale: 0.8 }}
-              layout
+              transition={{ duration: 0.2 }}
             >
               <BubbleEmoji>{entry.fish?.emoji}</BubbleEmoji>
               <BubbleContent>
