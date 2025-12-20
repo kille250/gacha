@@ -282,6 +282,13 @@ router.get('/search-characters', auth, adminAuth, async (req, res) => {
 // ==========================================
 const SAKUGABOORU_API = 'https://www.sakugabooru.com';
 
+// Headers required for Sakugabooru API (they block requests without User-Agent)
+const SAKUGA_HEADERS = {
+  'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
+  'Accept': 'application/json',
+  'Referer': 'https://www.sakugabooru.com/'
+};
+
 // Helper to convert search query to Sakugabooru tag format
 const toSakugaTag = (query) => {
   // Sakugabooru uses underscores for spaces, lowercase
@@ -301,7 +308,7 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
     const limit = 20;
     const searchUrl = `${SAKUGABOORU_API}/post.json?tags=${encodeURIComponent(tag)}&limit=${limit}&page=${page}`;
     
-    const response = await fetch(searchUrl);
+    const response = await fetch(searchUrl, { headers: SAKUGA_HEADERS });
     if (!response.ok) {
       throw new Error(`Sakugabooru API error: ${response.status}`);
     }
@@ -353,7 +360,7 @@ router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
     const limit = 30;
     const searchUrl = `${SAKUGABOORU_API}/post.json?tags=${encodeURIComponent(tag)}&limit=${limit}&page=${page}`;
     
-    const response = await fetch(searchUrl);
+    const response = await fetch(searchUrl, { headers: SAKUGA_HEADERS });
     if (!response.ok) {
       throw new Error(`Sakugabooru API error: ${response.status}`);
     }
@@ -402,7 +409,7 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
     
     const searchUrl = `${SAKUGABOORU_API}/tag.json?name=${encodeURIComponent(q)}*&order=count&limit=10`;
     
-    const response = await fetch(searchUrl);
+    const response = await fetch(searchUrl, { headers: SAKUGA_HEADERS });
     if (!response.ok) {
       throw new Error(`Sakugabooru tag API error: ${response.status}`);
     }
