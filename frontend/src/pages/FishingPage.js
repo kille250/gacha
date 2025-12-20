@@ -50,18 +50,15 @@ const FishingPage = () => {
   const navigate = useNavigate();
   const { user, setUser } = useContext(AuthContext);
   const canvasContainerRef = useRef(null);
-  const keysPressed = useRef(new Set());
   const movePlayerRef = useRef(null);
   
   // Player state
   const [playerPos, setPlayerPos] = useState({ x: 10, y: 8 });
   const [playerDir, setPlayerDir] = useState(DIRECTIONS.DOWN);
-  const [isMoving, setIsMoving] = useState(false);
   
   // Game state
   const [gameState, setGameState] = useState(GAME_STATES.WALKING);
   const [sessionId, setSessionId] = useState(null);
-  const [currentFish, setCurrentFish] = useState(null);
   const [lastResult, setLastResult] = useState(null);
   const [fishInfo, setFishInfo] = useState(null);
   const [showHelp, setShowHelp] = useState(false);
@@ -215,15 +212,15 @@ const FishingPage = () => {
   const startFishingRef = useRef(null);
   const handleCatchRef = useRef(null);
   
-  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
-  useEffect(() => { canFishRef.current = canFish; }, [canFish]);
+  useEffect(() => {
+    gameStateRef.current = gameState;
+    canFishRef.current = canFish;
+  }, [gameState, canFish]);
   
   // Keyboard controls - use refs to avoid stale closures
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (showHelp || showLeaderboard) return;
-      
-      keysPressed.current.add(e.code);
       
       // Fishing action
       if (e.code === 'Space' || e.code === 'KeyE') {
@@ -248,25 +245,21 @@ const FishingPage = () => {
           case 'KeyW':
             e.preventDefault();
             move(0, -1, DIRECTIONS.UP);
-            setIsMoving(true);
             break;
           case 'ArrowDown':
           case 'KeyS':
             e.preventDefault();
             move(0, 1, DIRECTIONS.DOWN);
-            setIsMoving(true);
             break;
           case 'ArrowLeft':
           case 'KeyA':
             e.preventDefault();
             move(-1, 0, DIRECTIONS.LEFT);
-            setIsMoving(true);
             break;
           case 'ArrowRight':
           case 'KeyD':
             e.preventDefault();
             move(1, 0, DIRECTIONS.RIGHT);
-            setIsMoving(true);
             break;
           default:
             break;
@@ -274,19 +267,9 @@ const FishingPage = () => {
       }
     };
     
-    const handleKeyUp = (e) => {
-      keysPressed.current.delete(e.code);
-      const moveKeys = ['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight', 'KeyW', 'KeyA', 'KeyS', 'KeyD'];
-      if (!moveKeys.some(k => keysPressed.current.has(k))) {
-        setIsMoving(false);
-      }
-    };
-    
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
     };
   }, [showHelp, showLeaderboard]);
   
@@ -338,7 +321,6 @@ const FishingPage = () => {
       const res = await api.post('/fishing/catch', { sessionId, reactionTime });
       const result = res.data;
       
-      setCurrentFish(result.fish);
       setLastResult(result);
       
       if (result.success) {
@@ -362,7 +344,6 @@ const FishingPage = () => {
       setTimeout(() => {
         setGameState(GAME_STATES.WALKING);
         setSessionId(null);
-        setCurrentFish(null);
       }, 2000);
       
     } catch (err) {
@@ -376,14 +357,12 @@ const FishingPage = () => {
   const handleMiss = useCallback(async (sid) => {
     try {
       const res = await api.post('/fishing/catch', { sessionId: sid });
-      setCurrentFish(res.data.fish);
       setLastResult(res.data);
       setGameState(GAME_STATES.FAILURE);
       
       setTimeout(() => {
         setGameState(GAME_STATES.WALKING);
         setSessionId(null);
-        setCurrentFish(null);
       }, 2000);
     } catch (err) {
       setGameState(GAME_STATES.WALKING);
@@ -392,8 +371,10 @@ const FishingPage = () => {
   }, []);
   
   // Keep function refs updated for keyboard handler
-  useEffect(() => { startFishingRef.current = startFishing; }, [startFishing]);
-  useEffect(() => { handleCatchRef.current = handleCatch; }, [handleCatch]);
+  useEffect(() => {
+    startFishingRef.current = startFishing;
+    handleCatchRef.current = handleCatch;
+  }, [startFishing, handleCatch]);
   
   // Show notification
   const showNotification = (message, type = 'info') => {
@@ -415,7 +396,6 @@ const FishingPage = () => {
   const handleMobileMove = (dx, dy, dir) => {
     if (gameState === GAME_STATES.WALKING) {
       movePlayer(dx, dy, dir);
-      setTimeout(() => setIsMoving(false), 100);
     }
   };
   
@@ -426,8 +406,6 @@ const FishingPage = () => {
       handleCatch();
     }
   };
-  
-  const isFishing = gameState !== GAME_STATES.WALKING;
   
   return (
     <PageContainer $timeOfDay={timeOfDay}>

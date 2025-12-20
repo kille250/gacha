@@ -4,16 +4,9 @@ import * as PIXI from 'pixi.js';
 // Cozy Stardew-inspired color palette
 const PALETTE = {
   grass: [0x5a8f3d, 0x4a7a32, 0x6b9e4a, 0x3d6b28],
-  water: [0x3d7ea6, 0x4a90b8, 0x5aa0c8, 0x2d6e96],
   sand: [0xe8d4a8, 0xdec498, 0xf0e0b8, 0xd4bc8a],
   path: [0x8b7355, 0x7a6548, 0x9c8465, 0x695839],
-  wood: [0x8b6914, 0x6d5410, 0xa67c20, 0x5d4410],
-  sky: {
-    day: { top: 0x87ceeb, bottom: 0x98d8c8 },
-    dawn: { top: 0xffb347, bottom: 0x87ceeb },
-    dusk: { top: 0xff6b6b, bottom: 0x4a69bd },
-    night: { top: 0x1a1a2e, bottom: 0x16213e }
-  }
+  wood: [0x8b6914, 0x6d5410, 0xa67c20, 0x5d4410]
 };
 
 // Tile types
@@ -77,7 +70,6 @@ class Particle {
     this.x = Math.random() * this.bounds.width;
     this.y = Math.random() * this.bounds.height * 0.6;
     this.vx = (Math.random() - 0.5) * 0.5;
-    this.vy = (Math.random() - 0.5) * 0.3;
     this.life = 1;
     this.maxLife = 3 + Math.random() * 4;
     this.size = 2 + Math.random() * 3;
@@ -627,12 +619,8 @@ export const useFishingEngine = ({
       }
       
       // Vignette effect
-      const gradient = lighting;
-      gradient.rect(0, 0, w, h);
-      gradient.fill({ 
-        color: 0x000000, 
-        alpha: 0.15 
-      });
+      lighting.rect(0, 0, w, h);
+      lighting.fill({ color: 0x000000, alpha: 0.15 });
     }
   }, [playerPos, timeOfDay]);
   
@@ -723,8 +711,8 @@ export const useFishingEngine = ({
     });
   }, [gameState, setPlayerDir, setPlayerPos]);
   
-  return { movePlayer, isWalkable, isWaterAdjacent };
+  return { movePlayer };
 };
 
-export { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT, isWalkable, isWaterAdjacent };
+export { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT };
 
