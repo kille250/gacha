@@ -25,8 +25,9 @@ if (process.env.JWT_SECRET.length < 32) {
   process.exit(1);
 }
 
-// Import all models from index.js (includes associations)
-const { User, Character, Banner, Coupon, CouponRedemption } = require('./models');
+// Import models - triggers association setup in models/index.js
+// Only User is used directly here; other models are registered for associations
+const { User } = require('./models');
 
 // Create upload directories on startup
 initUploadDirs();

@@ -20,39 +20,34 @@ const AUTOFISH_COOLDOWN = FISHING_CONFIG.autofishCooldown;
 const CAST_COOLDOWN = FISHING_CONFIG.castCooldown;
 const CAST_COST = FISHING_CONFIG.castCost;
 
-// Rate limiting for autofish (per user)
+// Rate limiting maps (per user)
 const autofishCooldowns = new Map();
-const autofishInProgress = new Set(); // Prevent race conditions
+const castCooldowns = new Map();
 
-// Race condition protection for trading (per user)
+// Race condition protection sets (per user)
+const autofishInProgress = new Set();
 const tradeInProgress = new Set();
-
-// Clean up old cooldowns periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [userId, lastTime] of autofishCooldowns.entries()) {
-    if (now - lastTime > 60000) { // Remove entries older than 1 minute
-      autofishCooldowns.delete(userId);
-    }
-  }
-}, 60000);
 
 // Store active fishing sessions (fish appears, waiting for catch)
 const activeSessions = new Map();
 
-// Rate limiting for casting (per user)
-const castCooldowns = new Map();
-
-// Clean up old sessions and cooldowns periodically
+// Cleanup interval - removes stale data from all maps/sessions
 setInterval(() => {
   const now = Date.now();
+  
+  // Clean up expired fishing sessions (30s timeout)
   for (const [key, session] of activeSessions.entries()) {
-    // Remove sessions older than 30 seconds
     if (now - session.createdAt > 30000) {
       activeSessions.delete(key);
     }
   }
-  // Clean up cast cooldowns older than 1 minute
+  
+  // Clean up old cooldowns (1 minute expiry)
+  for (const [userId, lastTime] of autofishCooldowns.entries()) {
+    if (now - lastTime > 60000) {
+      autofishCooldowns.delete(userId);
+    }
+  }
   for (const [userId, lastTime] of castCooldowns.entries()) {
     if (now - lastTime > 60000) {
       castCooldowns.delete(userId);

@@ -258,7 +258,6 @@ function calculateFishTotals(inventory) {
 module.exports = {
   FISHING_CONFIG,
   FISH_TYPES,
-  TOTAL_WEIGHT,
   TRADE_OPTIONS,
   selectRandomFish,
   calculateFishTotals
