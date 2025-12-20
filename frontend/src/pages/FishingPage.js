@@ -1329,9 +1329,9 @@ const StarsOverlay = styled.div`
 `;
 
 const Header = styled.header`
-  display: flex;
+  display: grid;
+  grid-template-columns: auto 1fr auto;
   align-items: center;
-  justify-content: space-between;
   padding: 10px 16px;
   background: linear-gradient(180deg, #8b6914 0%, #6d4c10 50%, #5a3d0a 100%);
   border-bottom: 4px solid #3e2a06;
@@ -1418,6 +1418,7 @@ const BackButton = styled.button`
 const HeaderTitle = styled.h1`
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   font-size: 20px;
   font-weight: 700;
@@ -1866,8 +1867,6 @@ const GameContainer = styled.div`
   
   @media (max-width: 768px) {
     padding: 8px;
-    align-items: center;
-    justify-content: center;
   }
   
   @media (max-width: 480px) {
