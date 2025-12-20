@@ -2619,13 +2619,13 @@ const TradingPostButton = styled(motion.button)`
 `;
 
 const TradingPostModal = styled(motion.div)`
-  background: linear-gradient(165deg, #1a2634 0%, #0d1821 100%);
+  background: linear-gradient(180deg, #fff8e1 0%, #ffecb3 100%);
   border-radius: 20px;
-  border: 3px solid #2a4a6a;
+  border: 5px solid #8b6914;
   box-shadow: 
-    0 0 40px rgba(0, 150, 255, 0.15),
-    0 20px 60px rgba(0, 0, 0, 0.5),
-    inset 0 1px 0 rgba(255,255,255,0.1);
+    0 0 0 2px #d4a020,
+    inset 0 2px 0 rgba(255,255,255,0.5),
+    0 20px 60px rgba(0, 0, 0, 0.4);
   width: calc(100% - 24px);
   max-width: 420px;
   max-height: 85vh;
@@ -2634,7 +2634,7 @@ const TradingPostModal = styled(motion.div)`
   flex-direction: column;
   
   @media (max-width: 600px) {
-    border-width: 2px;
+    border-width: 4px;
     border-radius: 16px;
     max-height: 80vh;
     max-width: 100%;
@@ -2642,30 +2642,30 @@ const TradingPostModal = styled(motion.div)`
 `;
 
 const ShopHeader = styled.div`
-  background: linear-gradient(180deg, rgba(42, 74, 106, 0.8) 0%, rgba(26, 38, 52, 0.9) 100%);
-  padding: 16px 20px 14px;
-  border-bottom: 2px solid rgba(100, 180, 255, 0.2);
+  background: linear-gradient(180deg, #8b6914 0%, #6d4c10 100%);
+  padding: 14px 18px 12px;
+  border-bottom: 4px solid #3e2a06;
 `;
 
 const ShopTitleRow = styled.div`
   display: flex;
   align-items: center;
   gap: 10px;
-  margin-bottom: 12px;
+  margin-bottom: 10px;
 `;
 
 const ShopIcon = styled.div`
-  font-size: 28px;
+  font-size: 26px;
   filter: drop-shadow(0 2px 4px rgba(0,0,0,0.3));
 `;
 
 const ShopTitle = styled.h2`
   flex: 1;
-  font-size: 20px;
+  font-size: 18px;
   font-weight: 800;
-  color: #e8f4ff;
+  color: #fff8e1;
   margin: 0;
-  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  text-shadow: 0 2px 4px rgba(0,0,0,0.4);
   letter-spacing: 0.5px;
 `;
 
@@ -2674,53 +2674,54 @@ const WalletStrip = styled.div`
   align-items: center;
   justify-content: center;
   gap: 0;
-  background: rgba(0,0,0,0.3);
-  border-radius: 12px;
-  padding: 8px 16px;
-  border: 1px solid rgba(100, 180, 255, 0.15);
+  background: rgba(0,0,0,0.2);
+  border-radius: 10px;
+  padding: 6px 14px;
+  border: 2px solid rgba(255,248,225,0.2);
 `;
 
 const WalletItem = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 0 16px;
+  padding: 0 14px;
   
   span:first-child {
-    font-size: 18px;
+    font-size: 16px;
   }
 `;
 
 const WalletDivider = styled.div`
   width: 1px;
-  height: 24px;
-  background: rgba(100, 180, 255, 0.3);
+  height: 20px;
+  background: rgba(255,248,225,0.3);
 `;
 
 const WalletValue = styled.span`
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 800;
-  color: ${props => props.$highlight ? '#ffd54f' : '#e8f4ff'};
-  text-shadow: ${props => props.$highlight ? '0 0 10px rgba(255, 213, 79, 0.5)' : 'none'};
+  color: ${props => props.$highlight ? '#ffd54f' : '#fff8e1'};
+  text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 `;
 
 const ShopBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: 16px;
+  padding: 14px;
+  background: linear-gradient(180deg, rgba(139, 105, 20, 0.05) 0%, rgba(139, 105, 20, 0.1) 100%);
   
   &::-webkit-scrollbar {
-    width: 6px;
+    width: 8px;
   }
   
   &::-webkit-scrollbar-track {
-    background: rgba(0,0,0,0.2);
-    border-radius: 3px;
+    background: rgba(139, 105, 20, 0.1);
+    border-radius: 4px;
   }
   
   &::-webkit-scrollbar-thumb {
-    background: rgba(100, 180, 255, 0.3);
-    border-radius: 3px;
+    background: linear-gradient(180deg, #a07830, #7a5820);
+    border-radius: 4px;
   }
 `;
 
@@ -2731,7 +2732,7 @@ const TradingLoadingState = styled.div`
   justify-content: center;
   gap: 16px;
   padding: 48px 24px;
-  color: #8ba4bc;
+  color: #795548;
   font-size: 18px;
   font-weight: 600;
   
@@ -2750,15 +2751,15 @@ const TradingLoadingState = styled.div`
 const FishBar = styled.div`
   display: flex;
   gap: 6px;
-  padding: 12px;
-  background: rgba(0,0,0,0.25);
-  border-radius: 14px;
-  margin-bottom: 16px;
-  border: 1px solid rgba(100, 180, 255, 0.1);
+  padding: 10px;
+  background: rgba(139, 105, 20, 0.1);
+  border-radius: 12px;
+  margin-bottom: 14px;
+  border: 2px solid rgba(139, 105, 20, 0.2);
   
   @media (max-width: 400px) {
     gap: 4px;
-    padding: 10px 8px;
+    padding: 8px 6px;
   }
 `;
 
@@ -2770,13 +2771,13 @@ const FishChip = styled.div`
   gap: 4px;
   padding: 8px 4px;
   background: ${props => props.$hasAny 
-    ? `${RARITY_COLORS[props.$rarity]}15`
-    : 'rgba(255,255,255,0.03)'};
+    ? 'rgba(255,255,255,0.7)'
+    : 'rgba(255,255,255,0.3)'};
   border-radius: 10px;
   border: 2px solid ${props => props.$hasAny 
-    ? `${RARITY_COLORS[props.$rarity]}40`
-    : 'rgba(255,255,255,0.05)'};
-  opacity: ${props => props.$hasAny ? 1 : 0.5};
+    ? `${RARITY_COLORS[props.$rarity]}60`
+    : 'rgba(139, 105, 20, 0.15)'};
+  opacity: ${props => props.$hasAny ? 1 : 0.6};
   transition: all 0.2s;
   
   @media (max-width: 400px) {
@@ -2797,7 +2798,7 @@ const FishChipEmoji = styled.div`
 const FishChipCount = styled.div`
   font-size: 14px;
   font-weight: 800;
-  color: ${props => RARITY_COLORS[props.$rarity] || '#e8f4ff'};
+  color: ${props => RARITY_COLORS[props.$rarity] || '#5d4037'};
   
   @media (max-width: 400px) {
     font-size: 12px;
@@ -2805,8 +2806,8 @@ const FishChipCount = styled.div`
 `;
 
 const TradeSection = styled.div`
-  margin-bottom: 16px;
-  opacity: ${props => props.$locked ? 0.85 : 1};
+  margin-bottom: 14px;
+  opacity: ${props => props.$locked ? 0.9 : 1};
 `;
 
 const TradeSectionHeader = styled.div`
@@ -2815,9 +2816,9 @@ const TradeSectionHeader = styled.div`
   gap: 8px;
   margin-bottom: 10px;
   padding-bottom: 8px;
-  border-bottom: 1px solid ${props => props.$available 
-    ? 'rgba(76, 175, 80, 0.3)' 
-    : 'rgba(100, 180, 255, 0.15)'};
+  border-bottom: 2px solid ${props => props.$available 
+    ? 'rgba(76, 175, 80, 0.4)' 
+    : 'rgba(139, 105, 20, 0.2)'};
 `;
 
 const TradeSectionBadge = styled.div`
@@ -2831,15 +2832,16 @@ const TradeSectionBadge = styled.div`
   font-weight: 700;
   background: ${props => props.$available 
     ? 'linear-gradient(180deg, #4caf50 0%, #388e3c 100%)'
-    : 'rgba(100, 180, 255, 0.15)'};
-  color: ${props => props.$available ? '#fff' : '#8ba4bc'};
+    : 'rgba(139, 105, 20, 0.2)'};
+  color: ${props => props.$available ? '#fff' : '#795548'};
+  box-shadow: ${props => props.$available ? '0 2px 0 #2e7d32' : 'none'};
 `;
 
 const TradeSectionTitle = styled.div`
   flex: 1;
   font-size: 14px;
   font-weight: 700;
-  color: #b8d4f0;
+  color: #5d4037;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
@@ -2847,15 +2849,15 @@ const TradeSectionTitle = styled.div`
 const TradeSectionCount = styled.div`
   font-size: 12px;
   font-weight: 700;
-  color: #5a7a9a;
-  background: rgba(0,0,0,0.3);
+  color: #8b6914;
+  background: rgba(139, 105, 20, 0.15);
   padding: 2px 8px;
   border-radius: 10px;
 `;
 
 const TradeGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(155px, 1fr));
   gap: 10px;
   
   @media (max-width: 400px) {
@@ -2865,24 +2867,27 @@ const TradeGrid = styled.div`
 `;
 
 const QuickTradeCard = styled(motion.div)`
-  background: linear-gradient(180deg, rgba(42, 74, 106, 0.6) 0%, rgba(26, 50, 74, 0.8) 100%);
+  background: rgba(255,255,255,0.8);
   border-radius: 14px;
-  border: 2px solid ${props => `${RARITY_COLORS[props.$rarity]}50` || 'rgba(100, 180, 255, 0.3)'};
-  padding: 14px 12px;
+  border: 3px solid ${props => `${RARITY_COLORS[props.$rarity]}50` || 'rgba(139, 105, 20, 0.3)'};
+  padding: 12px 10px;
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 10px;
   cursor: pointer;
   transition: all 0.2s;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   
   &:hover {
-    border-color: ${props => RARITY_COLORS[props.$rarity] || '#64b5f6'};
-    box-shadow: 0 0 20px ${props => `${RARITY_COLORS[props.$rarity]}30` || 'rgba(100, 180, 255, 0.2)'};
+    border-color: ${props => RARITY_COLORS[props.$rarity] || '#8b6914'};
+    background: rgba(255,255,255,0.95);
+    box-shadow: 0 4px 16px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
   }
   
   @media (max-width: 400px) {
-    padding: 10px;
-    gap: 10px;
+    padding: 10px 8px;
+    gap: 8px;
     border-radius: 12px;
   }
 `;
@@ -2891,20 +2896,20 @@ const TradeCardTop = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 8px;
+  gap: 6px;
 `;
 
 const TradeGiveSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 `;
 
 const TradeLabel = styled.div`
-  font-size: 10px;
-  font-weight: 600;
-  color: #5a7a9a;
+  font-size: 9px;
+  font-weight: 700;
+  color: #8b6914;
   text-transform: uppercase;
   letter-spacing: 0.5px;
 `;
@@ -2916,34 +2921,34 @@ const TradeGiveContent = styled.div`
 `;
 
 const TradeGiveEmoji = styled.div`
-  font-size: 24px;
+  font-size: 22px;
   
   @media (max-width: 400px) {
-    font-size: 20px;
+    font-size: 18px;
   }
 `;
 
 const TradeGiveAmount = styled.div`
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
-  color: #ff8a80;
+  color: #c62828;
   
   @media (max-width: 400px) {
-    font-size: 14px;
+    font-size: 13px;
   }
 `;
 
 const TradeArrow = styled.div`
-  font-size: 18px;
-  color: #5a7a9a;
-  margin: 0 4px;
+  font-size: 16px;
+  color: #8b6914;
+  margin: 0 2px;
 `;
 
 const TradeGetSection = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 4px;
+  gap: 2px;
 `;
 
 const TradeGetContent = styled.div`
@@ -2953,73 +2958,73 @@ const TradeGetContent = styled.div`
 `;
 
 const TradeGetEmoji = styled.div`
-  font-size: 24px;
+  font-size: 22px;
   
   @media (max-width: 400px) {
-    font-size: 20px;
+    font-size: 18px;
   }
 `;
 
 const TradeGetAmount = styled.div`
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
-  color: #69f0ae;
+  color: #2e7d32;
   
   @media (max-width: 400px) {
-    font-size: 14px;
+    font-size: 13px;
   }
 `;
 
 const QuickTradeButton = styled(motion.button)`
   width: 100%;
-  padding: 10px;
+  padding: 9px;
   border-radius: 10px;
   border: none;
-  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
+  background: linear-gradient(180deg, #43a047 0%, #2e7d32 100%);
   color: #fff;
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 800;
   cursor: pointer;
   box-shadow: 
-    0 3px 0 #2e7d32,
-    0 4px 12px rgba(0,0,0,0.3);
+    0 3px 0 #1b5e20,
+    0 4px 10px rgba(0,0,0,0.2);
   text-transform: uppercase;
   letter-spacing: 0.5px;
   transition: all 0.15s;
   
   &:hover {
-    background: linear-gradient(180deg, #66bb6a 0%, #43a047 100%);
+    background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
     transform: translateY(-1px);
   }
   
   &:active {
     transform: translateY(1px);
     box-shadow: 
-      0 1px 0 #2e7d32,
-      0 2px 6px rgba(0,0,0,0.3);
+      0 1px 0 #1b5e20,
+      0 2px 5px rgba(0,0,0,0.2);
   }
   
   &:disabled {
-    background: linear-gradient(180deg, #78909c 0%, #546e7a 100%);
+    background: linear-gradient(180deg, #9e9e9e 0%, #757575 100%);
     cursor: not-allowed;
-    box-shadow: 0 2px 0 #455a64;
+    box-shadow: 0 2px 0 #616161;
   }
 `;
 
 const LockedTradesList = styled.div`
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 6px;
 `;
 
 const LockedTradeRow = styled.div`
   display: flex;
   align-items: center;
-  gap: 12px;
+  gap: 10px;
   padding: 10px 12px;
-  background: rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.5);
   border-radius: 10px;
-  border: 1px solid rgba(100, 180, 255, 0.1);
+  border: 2px solid rgba(139, 105, 20, 0.15);
 `;
 
 const LockedTradeInfo = styled.div`
@@ -3030,8 +3035,8 @@ const LockedTradeInfo = styled.div`
 `;
 
 const LockedTradeEmoji = styled.div`
-  font-size: 22px;
-  opacity: 0.7;
+  font-size: 20px;
+  opacity: 0.6;
 `;
 
 const LockedTradeText = styled.div`
@@ -3040,15 +3045,15 @@ const LockedTradeText = styled.div`
 `;
 
 const LockedTradeName = styled.div`
-  font-size: 13px;
+  font-size: 12px;
   font-weight: 600;
-  color: #8ba4bc;
+  color: #795548;
   margin-bottom: 4px;
 `;
 
 const ProgressBarContainer = styled.div`
   height: 6px;
-  background: rgba(0,0,0,0.3);
+  background: rgba(139, 105, 20, 0.15);
   border-radius: 3px;
   overflow: hidden;
 `;
@@ -3056,7 +3061,7 @@ const ProgressBarContainer = styled.div`
 const ProgressBarFill = styled.div`
   height: 100%;
   width: ${props => props.$progress}%;
-  background: ${props => RARITY_COLORS[props.$rarity] || '#64b5f6'};
+  background: ${props => RARITY_COLORS[props.$rarity] || '#8b6914'};
   border-radius: 3px;
   transition: width 0.3s ease;
 `;
@@ -3065,12 +3070,12 @@ const LockedTradeReward = styled.div`
   display: flex;
   align-items: center;
   gap: 4px;
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 700;
-  color: #5a7a9a;
+  color: #795548;
   
   span:first-child {
-    font-size: 16px;
+    font-size: 15px;
   }
 `;
 
@@ -3081,7 +3086,7 @@ const EmptyTradeState = styled.div`
   justify-content: center;
   gap: 12px;
   padding: 40px 20px;
-  color: #5a7a9a;
+  color: #795548;
   text-align: center;
   
   span {
