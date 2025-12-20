@@ -356,6 +356,15 @@
     "importFailed": "Error al importar",
     "episodes": "eps",
     "main": "Principal",
-    "supporting": "Secundario"
+    "supporting": "Secundario",
+    "imagesMode": "Imágenes (MAL)",
+    "videosMode": "Videos (Sakuga)",
+    "searchVideos": "Buscar clips de animación",
+    "searchVideoPlaceholder": "Buscar anime o personaje (ej., Gojo, Demon Slayer)...",
+    "videoResults": "Clips de animación ({{count}} encontrados)",
+    "sakugabooru": "Powered by Sakugabooru",
+    "failedVideoSearch": "Error al buscar videos",
+    "characterName": "Nombre del personaje...",
+    "loadMore": "Cargar más"
   }
 }

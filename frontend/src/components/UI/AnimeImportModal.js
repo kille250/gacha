@@ -1,22 +1,33 @@
 import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaTimes, FaCheck, FaExclamationTriangle, FaDownload, FaStar, FaUsers, FaSpinner } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaCheck, FaExclamationTriangle, FaDownload, FaStar, FaUsers, FaSpinner, FaImage, FaVideo, FaPlay } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import api from '../../utils/api';
 
 const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const { t } = useTranslation();
+  
+  // Media source toggle: 'images' (MAL) or 'videos' (Sakugabooru)
+  const [mediaSource, setMediaSource] = useState('images');
+  
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
   const [searching, setSearching] = useState(false);
   const [searchError, setSearchError] = useState(null);
   
-  // Selected anime state
+  // Selected anime state (for images mode)
   const [selectedAnime, setSelectedAnime] = useState(null);
   const [animeCharacters, setAnimeCharacters] = useState([]);
   const [loadingCharacters, setLoadingCharacters] = useState(false);
+  
+  // Video search state (for videos mode - Sakugabooru)
+  const [videoResults, setVideoResults] = useState([]);
+  const [selectedVideos, setSelectedVideos] = useState([]);
+  const [videoPage, setVideoPage] = useState(1);
+  const [hasMoreVideos, setHasMoreVideos] = useState(false);
+  const [suggestedTags, setSuggestedTags] = useState([]);
   
   // Selected characters for import
   const [selectedCharacters, setSelectedCharacters] = useState([]);
@@ -29,7 +40,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
-  // Search for anime
+  // Search for anime (images mode - MAL)
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim() || searchQuery.length < 2) return;
     
@@ -48,7 +59,101 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     } finally {
       setSearching(false);
     }
-  }, [searchQuery]);
+  }, [searchQuery, t]);
+
+  // Search for videos (videos mode - Sakugabooru)
+  const handleVideoSearch = useCallback(async (page = 1) => {
+    if (!searchQuery.trim() || searchQuery.length < 2) return;
+    
+    setSearching(true);
+    setSearchError(null);
+    if (page === 1) {
+      setVideoResults([]);
+      setSelectedVideos([]);
+    }
+    
+    try {
+      const response = await api.get(`/anime-import/search-sakuga?q=${encodeURIComponent(searchQuery)}&page=${page}`);
+      const newResults = response.data.results || [];
+      
+      if (page === 1) {
+        setVideoResults(newResults);
+      } else {
+        setVideoResults(prev => [...prev, ...newResults]);
+      }
+      
+      setVideoPage(page);
+      setHasMoreVideos(response.data.hasMore);
+    } catch (err) {
+      setSearchError(err.response?.data?.error || t('animeImport.failedVideoSearch'));
+    } finally {
+      setSearching(false);
+    }
+  }, [searchQuery, t]);
+
+  // Fetch tag suggestions from Sakugabooru
+  const fetchTagSuggestions = useCallback(async (query) => {
+    if (!query || query.length < 2) {
+      setSuggestedTags([]);
+      return;
+    }
+    
+    try {
+      const response = await api.get(`/anime-import/sakuga-tags?q=${encodeURIComponent(query)}`);
+      setSuggestedTags(response.data.tags || []);
+    } catch (err) {
+      console.error('Failed to fetch tag suggestions:', err);
+    }
+  }, []);
+
+  // Handle unified search based on mode
+  const handleUnifiedSearch = useCallback(() => {
+    if (mediaSource === 'images') {
+      handleSearch();
+    } else {
+      handleVideoSearch(1);
+    }
+  }, [mediaSource, handleSearch, handleVideoSearch]);
+
+  // Load more videos
+  const loadMoreVideos = useCallback(() => {
+    handleVideoSearch(videoPage + 1);
+  }, [handleVideoSearch, videoPage]);
+
+  // Toggle video selection
+  const toggleVideo = useCallback((video) => {
+    setSelectedVideos(prev => {
+      const exists = prev.find(v => v.id === video.id);
+      if (exists) {
+        return prev.filter(v => v.id !== video.id);
+      }
+      return [...prev, video];
+    });
+  }, []);
+
+  // Select all videos
+  const selectAllVideos = useCallback(() => {
+    setSelectedVideos([...videoResults]);
+  }, [videoResults]);
+
+  // Deselect all videos
+  const deselectAllVideos = useCallback(() => {
+    setSelectedVideos([]);
+  }, []);
+
+  // Set rarity for individual video
+  const setVideoRarity = useCallback((id, rarity) => {
+    setSelectedVideos(prev => 
+      prev.map(v => v.id === id ? { ...v, rarity } : v)
+    );
+  }, []);
+
+  // Set name for individual video
+  const setVideoName = useCallback((id, name) => {
+    setSelectedVideos(prev => 
+      prev.map(v => v.id === id ? { ...v, customName: name } : v)
+    );
+  }, []);
 
   // Select an anime and fetch its characters
   const handleSelectAnime = useCallback(async (anime) => {
@@ -96,20 +201,37 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     );
   }, []);
 
-  // Import selected characters
+  // Import selected characters or videos
   const handleImport = async () => {
-    if (selectedCharacters.length === 0 || !seriesName.trim()) return;
+    const hasCharacters = selectedCharacters.length > 0;
+    const hasVideos = selectedVideos.length > 0;
+    
+    if ((!hasCharacters && !hasVideos) || !seriesName.trim()) return;
     
     setImporting(true);
     setImportResult(null);
     
     try {
-      const response = await api.post('/anime-import/import', {
-        characters: selectedCharacters.map(c => ({
+      // Prepare items based on mode
+      let charactersToImport = [];
+      
+      if (mediaSource === 'images' && hasCharacters) {
+        charactersToImport = selectedCharacters.map(c => ({
           name: c.name,
           image: c.image,
           rarity: c.rarity || defaultRarity
-        })),
+        }));
+      } else if (mediaSource === 'videos' && hasVideos) {
+        charactersToImport = selectedVideos.map(v => ({
+          // Use custom name or generate from tags
+          name: v.customName || extractNameFromTags(v.tags) || `Video ${v.id}`,
+          image: v.file, // The video URL goes into the image field
+          rarity: v.rarity || defaultRarity
+        }));
+      }
+      
+      const response = await api.post('/anime-import/import', {
+        characters: charactersToImport,
         series: seriesName.trim(),
         rarity: defaultRarity
       });
@@ -122,13 +244,31 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
       
       // Clear selections on success
       setSelectedCharacters([]);
+      setSelectedVideos([]);
       setAnimeCharacters([]);
+      setVideoResults([]);
       setSelectedAnime(null);
     } catch (err) {
       setImportResult({ error: err.response?.data?.error || t('animeImport.importFailed') });
     } finally {
       setImporting(false);
     }
+  };
+
+  // Helper to extract a meaningful name from Sakugabooru tags
+  const extractNameFromTags = (tagsString) => {
+    if (!tagsString) return null;
+    const tags = tagsString.split(' ');
+    // Look for character tags (type 4) or just use first meaningful tag
+    // Common patterns: character names are usually multi-word with underscores
+    const characterTag = tags.find(t => t.includes('_') && !t.startsWith('animated') && !t.startsWith('effects'));
+    if (characterTag) {
+      // Convert underscore_name to Title Case Name
+      return characterTag.split('_').map(word => 
+        word.charAt(0).toUpperCase() + word.slice(1)
+      ).join(' ');
+    }
+    return null;
   };
 
   // Handle close
@@ -138,16 +278,38 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     setSelectedAnime(null);
     setAnimeCharacters([]);
     setSelectedCharacters([]);
+    setVideoResults([]);
+    setSelectedVideos([]);
+    setSuggestedTags([]);
     setSeriesName('');
     setImportResult(null);
     onClose();
   };
 
+  // Handle mode switch
+  const handleModeSwitch = (mode) => {
+    setMediaSource(mode);
+    // Clear results when switching modes
+    setSearchResults([]);
+    setVideoResults([]);
+    setSelectedCharacters([]);
+    setSelectedVideos([]);
+    setSelectedAnime(null);
+    setAnimeCharacters([]);
+    setSearchError(null);
+    setImportResult(null);
+  };
+
   // Handle search on Enter key
   const handleKeyDown = (e) => {
     if (e.key === 'Enter') {
-      handleSearch();
+      handleUnifiedSearch();
     }
+  };
+
+  // Get item count for import button
+  const getImportCount = () => {
+    return mediaSource === 'images' ? selectedCharacters.length : selectedVideos.length;
   };
 
   if (!show) return null;
@@ -161,27 +323,72 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
         </ModalHeader>
 
         <ModalBody>
+          {/* Media Source Toggle */}
+          <SourceToggle>
+            <SourceButton 
+              $active={mediaSource === 'images'} 
+              onClick={() => handleModeSwitch('images')}
+            >
+              <FaImage /> {t('animeImport.imagesMode')}
+            </SourceButton>
+            <SourceButton 
+              $active={mediaSource === 'videos'} 
+              onClick={() => handleModeSwitch('videos')}
+            >
+              <FaVideo /> {t('animeImport.videosMode')}
+            </SourceButton>
+          </SourceToggle>
+
           {/* Search Section */}
           <SearchSection>
-            <SectionTitle>{t('animeImport.searchAnime')}</SectionTitle>
+            <SectionTitle>
+              {mediaSource === 'images' 
+                ? t('animeImport.searchAnime') 
+                : t('animeImport.searchVideos')}
+            </SectionTitle>
             <SearchRow>
               <SearchInput
                 type="text"
-                placeholder={t('animeImport.searchPlaceholder')}
+                placeholder={mediaSource === 'images' 
+                  ? t('animeImport.searchPlaceholder')
+                  : t('animeImport.searchVideoPlaceholder')}
                 value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
+                onChange={e => {
+                  setSearchQuery(e.target.value);
+                  if (mediaSource === 'videos') {
+                    fetchTagSuggestions(e.target.value);
+                  }
+                }}
                 onKeyDown={handleKeyDown}
               />
-              <SearchButton onClick={handleSearch} disabled={searching || searchQuery.length < 2}>
+              <SearchButton onClick={handleUnifiedSearch} disabled={searching || searchQuery.length < 2}>
                 {searching ? <FaSpinner className="spin" /> : <FaSearch />}
                 {searching ? t('animeImport.searching') : t('common.search')}
               </SearchButton>
             </SearchRow>
+            
+            {/* Tag suggestions for video mode */}
+            {mediaSource === 'videos' && suggestedTags.length > 0 && (
+              <TagSuggestions>
+                {suggestedTags.slice(0, 6).map(tag => (
+                  <TagChip 
+                    key={tag.name}
+                    onClick={() => {
+                      setSearchQuery(tag.name.replace(/_/g, ' '));
+                      setSuggestedTags([]);
+                    }}
+                  >
+                    {tag.name.replace(/_/g, ' ')} ({tag.count})
+                  </TagChip>
+                ))}
+              </TagSuggestions>
+            )}
+            
             {searchError && <ErrorText>{searchError}</ErrorText>}
           </SearchSection>
 
-          {/* Search Results */}
-          {searchResults.length > 0 && !selectedAnime && (
+          {/* Search Results - Images Mode */}
+          {mediaSource === 'images' && searchResults.length > 0 && !selectedAnime && (
             <ResultsSection>
               <SectionTitle>{t('animeImport.selectAnime', { count: searchResults.length })}</SectionTitle>
               <AnimeGrid>
@@ -210,8 +417,8 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
             </ResultsSection>
           )}
 
-          {/* Selected Anime Characters */}
-          {selectedAnime && (
+          {/* Selected Anime Characters - Images Mode */}
+          {mediaSource === 'images' && selectedAnime && (
             <CharactersSection>
               <CharactersHeader>
                 <div>
@@ -284,10 +491,95 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
             </CharactersSection>
           )}
 
+          {/* Video Results - Videos Mode (Sakugabooru) */}
+          {mediaSource === 'videos' && videoResults.length > 0 && (
+            <VideoResultsSection>
+              <CharactersHeader>
+                <div>
+                  <SectionTitle>
+                    <FaVideo /> {t('animeImport.videoResults', { count: videoResults.length })}
+                  </SectionTitle>
+                  <SourceNote>{t('animeImport.sakugabooru')}</SourceNote>
+                </div>
+                <SelectionButtons>
+                  <SmallButton onClick={selectAllVideos}>{t('animeImport.selectAll')}</SmallButton>
+                  <SmallButton onClick={deselectAllVideos}>{t('animeImport.deselectAll')}</SmallButton>
+                </SelectionButtons>
+              </CharactersHeader>
+
+              <VideoGrid>
+                <AnimatePresence>
+                  {videoResults.map(video => {
+                    const isSelected = selectedVideos.find(v => v.id === video.id);
+                    return (
+                      <VideoCard
+                        key={video.id}
+                        $selected={isSelected}
+                        onClick={() => toggleVideo(video)}
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        whileHover={{ scale: 1.03 }}
+                      >
+                        <VideoPreview>
+                          <img src={video.preview} alt={`Video ${video.id}`} />
+                          <VideoPlayIcon>
+                            <FaPlay />
+                          </VideoPlayIcon>
+                          <VideoFormat>{video.fileExt?.toUpperCase()}</VideoFormat>
+                        </VideoPreview>
+                        {isSelected && (
+                          <SelectedOverlay>
+                            <FaCheck />
+                          </SelectedOverlay>
+                        )}
+                        <VideoInfo>
+                          {isSelected && (
+                            <>
+                              <VideoNameInput
+                                type="text"
+                                placeholder={t('animeImport.characterName')}
+                                value={isSelected.customName || ''}
+                                onClick={e => e.stopPropagation()}
+                                onChange={e => setVideoName(video.id, e.target.value)}
+                              />
+                              <RaritySelect 
+                                onClick={e => e.stopPropagation()}
+                                value={isSelected.rarity || defaultRarity}
+                                onChange={e => setVideoRarity(video.id, e.target.value)}
+                              >
+                                <option value="common">{t('gacha.common')}</option>
+                                <option value="uncommon">{t('gacha.uncommon')}</option>
+                                <option value="rare">{t('gacha.rare')}</option>
+                                <option value="epic">{t('gacha.epic')}</option>
+                                <option value="legendary">{t('gacha.legendary')}</option>
+                              </RaritySelect>
+                            </>
+                          )}
+                          {!isSelected && (
+                            <VideoScore>
+                              {video.score > 0 && <><FaStar /> {video.score}</>}
+                            </VideoScore>
+                          )}
+                        </VideoInfo>
+                      </VideoCard>
+                    );
+                  })}
+                </AnimatePresence>
+              </VideoGrid>
+
+              {hasMoreVideos && (
+                <LoadMoreButton onClick={loadMoreVideos} disabled={searching}>
+                  {searching ? <FaSpinner className="spin" /> : null}
+                  {t('animeImport.loadMore')}
+                </LoadMoreButton>
+              )}
+            </VideoResultsSection>
+          )}
+
           {/* Import Settings */}
-          {selectedCharacters.length > 0 && (
+          {(selectedCharacters.length > 0 || selectedVideos.length > 0) && (
             <ImportSettingsSection>
-              <SectionTitle>{t('animeImport.importSettings', { count: selectedCharacters.length })}</SectionTitle>
+              <SectionTitle>{t('animeImport.importSettings', { count: getImportCount() })}</SectionTitle>
               <SettingsGrid>
                 <SettingsField>
                   <label>{t('animeImport.seriesName')}</label>
@@ -343,12 +635,12 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
           </CancelButton>
           <ImportButton 
             onClick={handleImport} 
-            disabled={importing || selectedCharacters.length === 0 || !seriesName.trim()}
+            disabled={importing || getImportCount() === 0 || !seriesName.trim()}
           >
             {importing ? (
               <><FaSpinner className="spin" /> {t('animeImport.importing')}</>
             ) : (
-              <><FaDownload /> {t('animeImport.importCount', { count: selectedCharacters.length })}</>
+              <><FaDownload /> {t('animeImport.importCount', { count: getImportCount() })}</>
             )}
           </ImportButton>
         </ModalFooter>
@@ -886,6 +1178,209 @@ const ImportButton = styled.button`
     opacity: 0.5;
     cursor: not-allowed;
     transform: none;
+  }
+`;
+
+// Media Source Toggle
+const SourceToggle = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-bottom: 20px;
+  padding: 6px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  width: fit-content;
+`;
+
+const SourceButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 20px;
+  border: none;
+  border-radius: 8px;
+  font-weight: 600;
+  font-size: 0.9rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  background: ${props => props.$active 
+    ? 'linear-gradient(135deg, #ff6b9d 0%, #c44569 100%)' 
+    : 'transparent'};
+  color: ${props => props.$active ? '#fff' : '#888'};
+  
+  &:hover {
+    color: #fff;
+    background: ${props => props.$active 
+      ? 'linear-gradient(135deg, #ff6b9d 0%, #c44569 100%)' 
+      : 'rgba(255, 255, 255, 0.1)'};
+  }
+  
+  svg {
+    font-size: 1rem;
+  }
+`;
+
+// Tag Suggestions
+const TagSuggestions = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-top: 12px;
+`;
+
+const TagChip = styled.button`
+  background: rgba(255, 107, 157, 0.15);
+  border: 1px solid rgba(255, 107, 157, 0.3);
+  color: #ff6b9d;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.8rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: rgba(255, 107, 157, 0.25);
+    border-color: #ff6b9d;
+  }
+`;
+
+// Video Results
+const VideoResultsSection = styled.div`
+  margin-bottom: 25px;
+`;
+
+const SourceNote = styled.span`
+  display: inline-block;
+  color: #888;
+  font-size: 0.75rem;
+  margin-top: 4px;
+`;
+
+const VideoGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  gap: 15px;
+`;
+
+const VideoCard = styled(motion.div)`
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid ${props => props.$selected ? '#ff6b9d' : 'rgba(255, 255, 255, 0.1)'};
+  border-radius: 12px;
+  overflow: hidden;
+  cursor: pointer;
+  position: relative;
+  transition: border-color 0.2s;
+  
+  &:hover {
+    border-color: ${props => props.$selected ? '#ff6b9d' : 'rgba(255, 107, 157, 0.5)'};
+  }
+`;
+
+const VideoPreview = styled.div`
+  position: relative;
+  width: 100%;
+  height: 120px;
+  background: #000;
+  
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+const VideoPlayIcon = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 40px;
+  height: 40px;
+  background: rgba(0, 0, 0, 0.6);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  font-size: 14px;
+  pointer-events: none;
+`;
+
+const VideoFormat = styled.span`
+  position: absolute;
+  bottom: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.65rem;
+  font-weight: 600;
+`;
+
+const VideoInfo = styled.div`
+  padding: 10px;
+  min-height: 40px;
+`;
+
+const VideoNameInput = styled.input`
+  width: 100%;
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 6px;
+  padding: 6px 8px;
+  color: #fff;
+  font-size: 0.8rem;
+  margin-bottom: 6px;
+  
+  &:focus {
+    outline: none;
+    border-color: #ff6b9d;
+  }
+  
+  &::placeholder {
+    color: #666;
+  }
+`;
+
+const VideoScore = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  color: #888;
+  font-size: 0.75rem;
+  
+  svg {
+    color: #ffc107;
+    font-size: 10px;
+  }
+`;
+
+const LoadMoreButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  margin-top: 20px;
+  padding: 12px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  color: #ccc;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s;
+  
+  &:hover:not(:disabled) {
+    background: rgba(255, 255, 255, 0.12);
+    color: #fff;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 

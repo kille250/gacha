@@ -356,6 +356,15 @@
     "importFailed": "インポートに失敗しました",
     "episodes": "話",
     "main": "メイン",
-    "supporting": "サブ"
+    "supporting": "サブ",
+    "imagesMode": "画像 (MAL)",
+    "videosMode": "動画 (Sakuga)",
+    "searchVideos": "アニメーションクリップを検索",
+    "searchVideoPlaceholder": "アニメやキャラクターを検索（例：五条、鬼滅の刃）...",
+    "videoResults": "アニメーションクリップ（{{count}}件見つかりました）",
+    "sakugabooru": "Powered by Sakugabooru",
+    "failedVideoSearch": "動画の検索に失敗しました",
+    "characterName": "キャラクター名...",
+    "loadMore": "もっと読み込む"
   }
 }

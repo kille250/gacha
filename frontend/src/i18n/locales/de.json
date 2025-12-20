@@ -354,6 +354,15 @@
     "importFailed": "Import fehlgeschlagen",
     "episodes": "Folgen",
     "main": "Haupt",
-    "supporting": "Neben"
+    "supporting": "Neben",
+    "imagesMode": "Bilder (MAL)",
+    "videosMode": "Videos (Sakuga)",
+    "searchVideos": "Animations-Clips suchen",
+    "searchVideoPlaceholder": "Nach Anime oder Charakter suchen (z.B. Gojo, Demon Slayer)...",
+    "videoResults": "Animations-Clips ({{count}} gefunden)",
+    "sakugabooru": "Powered by Sakugabooru",
+    "failedVideoSearch": "Video-Suche fehlgeschlagen",
+    "characterName": "Charaktername...",
+    "loadMore": "Mehr laden"
   }
 }
