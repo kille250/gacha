@@ -25,10 +25,38 @@ const {
   acquireRollLock,
   releaseRollLock,
   groupCharactersByRarity, 
+  selectCharacterWithFallback,
   filterR18Characters,
-  isRarePlus,
-  RARITY_ORDER 
+  isRarePlus
 } = require('../utils/rollHelpers');
+
+// ===========================================
+// HELPER FUNCTIONS
+// ===========================================
+
+/**
+ * Validate banner is available for rolling
+ * @param {Object} banner - Banner instance
+ * @returns {{ valid: boolean, error?: string }} - Validation result
+ */
+const validateBannerForRoll = (banner) => {
+  if (!banner) {
+    return { valid: false, error: 'Banner not found', status: 404 };
+  }
+  if (!banner.active) {
+    return { valid: false, error: 'This banner is no longer active', status: 400 };
+  }
+  
+  const now = new Date();
+  if (banner.startDate && new Date(banner.startDate) > now) {
+    return { valid: false, error: 'This banner has not started yet', status: 400 };
+  }
+  if (banner.endDate && new Date(banner.endDate) < now) {
+    return { valid: false, error: 'This banner has already ended', status: 400 };
+  }
+  
+  return { valid: true };
+};
 
 // ===========================================
 // PRICING ENDPOINT - Single source of truth for frontend
@@ -305,10 +333,6 @@ router.post('/', [auth, adminAuth], upload.fields([
   { name: 'video', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    console.log('Processing banner creation request');
-    console.log('Request body:', req.body);
-    console.log('Files received:', req.files ? Object.keys(req.files) : 'No files');
-
     const { 
       name, description, series, startDate, endDate, 
       featured, costMultiplier, rateMultiplier, active, isR18 
@@ -326,15 +350,10 @@ router.post('/', [auth, adminAuth], upload.fields([
     
     if (req.files) {
       if (req.files.image) {
-        console.log('Image file details:', req.files.image[0]);
         imagePath = getUrlPath('banners', req.files.image[0].filename);
-        console.log('Image path set to:', imagePath);
       }
-      
       if (req.files.video) {
-        console.log('Video file details:', req.files.video[0]);
         videoPath = getUrlPath('videos', req.files.video[0].filename);
-        console.log('Video path set to:', videoPath);
       }
     }
     
@@ -354,8 +373,6 @@ router.post('/', [auth, adminAuth], upload.fields([
       isR18: isR18 === 'true' || isR18 === true
     });
 
-    console.log('Banner created with ID:', banner.id);
-    
     // Add characters to banner if provided
     if (characterIds.length > 0) {
       const characters = await Character.findAll({
@@ -364,7 +381,6 @@ router.post('/', [auth, adminAuth], upload.fields([
       
       if (characters.length > 0) {
         await banner.addCharacters(characters);
-        console.log(`Added ${characters.length} characters to banner`);
       }
     }
     
@@ -390,9 +406,6 @@ router.put('/:id', [auth, adminAuth], upload.fields([
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid banner ID' });
     }
-    
-    console.log(`Processing banner update for ID: ${req.params.id}`);
-    console.log('Files received:', req.files ? Object.keys(req.files) : 'No files');
 
     const banner = await Banner.findByPk(req.params.id);
     if (!banner) return res.status(404).json({ error: 'Banner not found' });
@@ -420,38 +433,31 @@ router.put('/:id', [auth, adminAuth], upload.fields([
     // Handle file uploads
     if (req.files) {
       if (req.files.image) {
-        console.log('New image file:', req.files.image[0].filename);
         // Delete old image if exists
         if (banner.image && banner.image.startsWith('/uploads/')) {
           const oldFilename = path.basename(banner.image);
           const oldPath = getFilePath('banners', oldFilename);
           if (fs.existsSync(oldPath)) {
             fs.unlinkSync(oldPath);
-            console.log('Deleted old image file:', oldPath);
           }
         }
         banner.image = getUrlPath('banners', req.files.image[0].filename);
-        console.log('Updated banner image path:', banner.image);
       }
       
       if (req.files.video) {
-        console.log('New video file:', req.files.video[0].filename);
         // Delete old video if exists
         if (banner.videoUrl && banner.videoUrl.startsWith('/uploads/')) {
           const oldFilename = path.basename(banner.videoUrl);
           const oldPath = getFilePath('videos', oldFilename);
           if (fs.existsSync(oldPath)) {
             fs.unlinkSync(oldPath);
-            console.log('Deleted old video file:', oldPath);
           }
         }
         banner.videoUrl = getUrlPath('videos', req.files.video[0].filename);
-        console.log('Updated banner video path:', banner.videoUrl);
       }
     }
     
     await banner.save();
-    console.log('Banner saved successfully');
     
     // Update character associations if provided
     if (req.body.characterIds) {
@@ -465,7 +471,6 @@ router.put('/:id', [auth, adminAuth], upload.fields([
       });
       
       await banner.setCharacters(characters);
-      console.log(`Updated banner characters: ${characters.length} characters`);
     }
     
     // Return updated banner with characters
@@ -540,24 +545,12 @@ router.post('/:id/roll', auth, async (req, res) => {
     const banner = await Banner.findByPk(req.params.id, {
       include: [{ model: Character }]
     });
-    if (!banner) {
-      releaseRollLock(userId);
-      return res.status(404).json({ error: 'Banner not found' });
-    }
-    if (!banner.active) {
-      releaseRollLock(userId);
-      return res.status(400).json({ error: 'This banner is no longer active' });
-    }
     
-    // Check if banner is within date range
-    const now = new Date();
-    if (banner.startDate && new Date(banner.startDate) > now) {
+    // Validate banner availability
+    const bannerValidation = validateBannerForRoll(banner);
+    if (!bannerValidation.valid) {
       releaseRollLock(userId);
-      return res.status(400).json({ error: 'This banner has not started yet' });
-    }
-    if (banner.endDate && new Date(banner.endDate) < now) {
-      releaseRollLock(userId);
-      return res.status(400).json({ error: 'This banner has already ended' });
+      return res.status(bannerValidation.status).json({ error: bannerValidation.error });
     }
     
     // Get the user
@@ -645,42 +638,21 @@ router.post('/:id/roll', auth, async (req, res) => {
     // Roll for rarity using centralized helper
     let selectedRarity = rollRarity(dropRates);
     
-    // Decide whether to pull from banner or standard pool
-    let characterPool;
-    let characterPoolSource;
-    if (pullFromBanner && bannerCharactersByRarity[selectedRarity]?.length > 0) {
-      characterPool = bannerCharactersByRarity[selectedRarity];
-      characterPoolSource = 'banner';
-    } else {
-      characterPool = allCharactersByRarity[selectedRarity];
-      characterPoolSource = 'standard';
-      // If no characters in standard pool for this rarity, find next available rarity
-      if (!characterPool || characterPool.length === 0) {
-        const startIndex = RARITY_ORDER.indexOf(selectedRarity);
-        for (let i = startIndex + 1; i < RARITY_ORDER.length; i++) {
-          const fallbackRarity = RARITY_ORDER[i];
-          if (allCharactersByRarity[fallbackRarity]?.length > 0) {
-            characterPool = allCharactersByRarity[fallbackRarity];
-            selectedRarity = fallbackRarity;
-            break;
-          }
-        }
-      }
-    }
-    
-    // Last resort fallback
-    if (!characterPool || characterPool.length === 0) {
-      characterPool = allCharacters;
-    }
-    
-    // Select a random character
-    const randomChar = characterPool[Math.floor(Math.random() * characterPool.length)];
+    // Select character using centralized helper with banner pool priority when applicable
+    const primaryPool = pullFromBanner ? bannerCharactersByRarity : null;
+    const { character: randomChar, actualRarity } = selectCharacterWithFallback(
+      primaryPool,
+      allCharactersByRarity,
+      selectedRarity,
+      allCharacters
+    );
     
     // Auto-claim the character
     await user.addCharacter(randomChar);
     
     // Log the pull for analysis
-    console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${randomChar.name} (${selectedRarity}) from ${characterPoolSource} pool. Cost: ${cost} points`);
+    const isBannerPull = bannerCharacters.some(c => c.id === randomChar.id);
+    console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${randomChar.name} (${actualRarity}) from ${isBannerPull ? 'banner' : 'standard'} pool. Cost: ${cost} points`);
     
     // Release lock before responding
     releaseRollLock(userId);
@@ -728,24 +700,12 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
     const banner = await Banner.findByPk(req.params.id, {
       include: [{ model: Character }]
     });
-    if (!banner) {
-      releaseRollLock(userId);
-      return res.status(404).json({ error: 'Banner not found' });
-    }
-    if (!banner.active) {
-      releaseRollLock(userId);
-      return res.status(400).json({ error: 'This banner is no longer active' });
-    }
     
-    // Check if banner is within date range
-    const now = new Date();
-    if (banner.startDate && new Date(banner.startDate) > now) {
+    // Validate banner availability
+    const bannerValidation = validateBannerForRoll(banner);
+    if (!bannerValidation.valid) {
       releaseRollLock(userId);
-      return res.status(400).json({ error: 'This banner has not started yet' });
-    }
-    if (banner.endDate && new Date(banner.endDate) < now) {
-      releaseRollLock(userId);
-      return res.status(400).json({ error: 'This banner has already ended' });
+      return res.status(bannerValidation.status).json({ error: bannerValidation.error });
     }
     
     // Get the user
@@ -887,33 +847,14 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
         hasRarePlus = true;
       }
       
-      // Decide character pool
-      let characterPool;
-      if (pullFromBanner && bannerCharactersByRarity[selectedRarity]?.length > 0) {
-        characterPool = bannerCharactersByRarity[selectedRarity];
-      } else {
-        characterPool = allCharactersByRarity[selectedRarity];
-        // If no characters available at this rarity, fallback
-        if (!characterPool || characterPool.length === 0) {
-          const startIndex = RARITY_ORDER.indexOf(selectedRarity);
-          for (let j = startIndex + 1; j < RARITY_ORDER.length; j++) {
-            const fallbackRarity = RARITY_ORDER[j];
-            if (allCharactersByRarity[fallbackRarity]?.length > 0) {
-              characterPool = allCharactersByRarity[fallbackRarity];
-              selectedRarity = fallbackRarity;
-              break;
-            }
-          }
-        }
-      }
-      
-      // Final fallback
-      if (!characterPool || characterPool.length === 0) {
-        characterPool = allCharacters;
-      }
-      
-      // Get random character
-      const randomChar = characterPool[Math.floor(Math.random() * characterPool.length)];
+      // Select character using centralized helper with banner pool priority when applicable
+      const primaryPool = pullFromBanner ? bannerCharactersByRarity : null;
+      const { character: randomChar } = selectCharacterWithFallback(
+        primaryPool,
+        allCharactersByRarity,
+        selectedRarity,
+        allCharacters
+      );
       
       // Auto-claim the character
       await user.addCharacter(randomChar);

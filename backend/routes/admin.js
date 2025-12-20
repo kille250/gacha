@@ -361,14 +361,11 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
 
     console.log(`Admin (ID: ${req.user.id}) bulk uploaded ${createdCharacters.length} characters (${errors.length} errors)`);
 
-    const responseData = {
+    return res.status(201).json({
       message: `Successfully created ${createdCharacters.length} characters`,
       characters: createdCharacters,
       errors: errors.length > 0 ? errors : undefined
-    };
-    
-    console.log('Sending response:', JSON.stringify(responseData).substring(0, 200));
-    return res.status(201).json(responseData);
+    });
   } catch (err) {
     console.error('Multi-upload error:', err);
     // Clean up any uploaded files on error

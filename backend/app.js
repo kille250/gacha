@@ -64,30 +64,31 @@ if (isProduction) {
   ALLOWED_ORIGINS.push(/\.solidbooru\.online$/);
 }
 
+// Shared CORS origin validation (used by Express and Socket.IO)
+const validateCorsOrigin = (origin, callback) => {
+  // Allow requests with no origin (same-origin requests, mobile apps)
+  if (!origin) {
+    return callback(null, true);
+  }
+  
+  const isAllowed = ALLOWED_ORIGINS.some(allowed => {
+    if (allowed instanceof RegExp) {
+      return allowed.test(origin);
+    }
+    return allowed === origin;
+  });
+  
+  if (isAllowed) {
+    return callback(null, true);
+  }
+  
+  console.warn(`CORS blocked origin: ${origin}`);
+  callback(new Error('Not allowed by CORS'));
+};
+
 // CORS configuration - strict origin validation
 const corsOptions = {
-  origin: function (origin, callback) {
-    // Allow requests with no origin (same-origin requests, mobile apps)
-    // In production, you may want to be stricter here
-    if (!origin) {
-      return callback(null, true);
-    }
-    
-    // Check against whitelist
-    const isAllowed = ALLOWED_ORIGINS.some(allowed => {
-      if (allowed instanceof RegExp) {
-        return allowed.test(origin);
-      }
-      return allowed === origin;
-    });
-    
-    if (isAllowed) {
-      return callback(null, true);
-    }
-    
-    console.warn(`CORS blocked origin: ${origin}`);
-    callback(new Error('Not allowed by CORS'));
-  },
+  origin: validateCorsOrigin,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization']
@@ -228,24 +229,10 @@ const PORT = process.env.PORT || 5000;
 // Create HTTP server for Express + Socket.IO
 const server = http.createServer(app);
 
-// Initialize Socket.IO with CORS
+// Initialize Socket.IO with CORS (reuses shared validation)
 const io = new Server(server, {
   cors: {
-    origin: function (origin, callback) {
-      if (!origin) {
-        return callback(null, true);
-      }
-      const isAllowed = ALLOWED_ORIGINS.some(allowed => {
-        if (allowed instanceof RegExp) {
-          return allowed.test(origin);
-        }
-        return allowed === origin;
-      });
-      if (isAllowed) {
-        return callback(null, true);
-      }
-      callback(new Error('Not allowed by CORS'));
-    },
+    origin: validateCorsOrigin,
     methods: ['GET', 'POST'],
     credentials: true
   },
@@ -256,64 +243,75 @@ const io = new Server(server, {
 initMultiplayer(io);
 console.log('[Socket.IO] Fishing multiplayer initialized');
 
+// ===========================================
+// DATABASE MIGRATIONS (PostgreSQL only)
+// ===========================================
+
+// Helper to add missing columns during startup
+async function addColumnIfNotExists(table, column, type, defaultValue) {
+  try {
+    const [cols] = await sequelize.query(
+      `SELECT column_name FROM information_schema.columns 
+       WHERE table_name = '${table}' AND column_name = '${column}';`
+    );
+    if (cols.length === 0) {
+      await sequelize.query(
+        `ALTER TABLE "${table}" ADD COLUMN "${column}" ${type} DEFAULT ${defaultValue};`
+      );
+      console.log(`[Migration] Added ${table}.${column}`);
+    }
+  } catch (err) {
+    console.error(`[Migration] Error with ${table}.${column}:`, err.message);
+  }
+}
+
+// Run pending PostgreSQL migrations
+async function runMigrations() {
+  if (!process.env.DATABASE_URL) return;
+  
+  // User table columns
+  await addColumnIfNotExists('Users', 'allowR18', 'BOOLEAN', 'false');
+  await addColumnIfNotExists('Users', 'showR18', 'BOOLEAN', 'false');
+  await addColumnIfNotExists('Users', 'autofishEnabled', 'BOOLEAN', 'false');
+  await addColumnIfNotExists('Users', 'autofishUnlockedByRank', 'BOOLEAN', 'false');
+  await addColumnIfNotExists('Users', 'rollTickets', 'INTEGER', '0');
+  await addColumnIfNotExists('Users', 'premiumTickets', 'INTEGER', '0');
+  
+  // Character/Banner columns
+  await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');
+  await addColumnIfNotExists('Banners', 'isR18', 'BOOLEAN', 'false');
+  await addColumnIfNotExists('Banners', 'displayOrder', 'INTEGER', '0');
+  
+  // Create FishInventories table if not exists
+  try {
+    await sequelize.query(`
+      CREATE TABLE IF NOT EXISTS "FishInventories" (
+        "id" SERIAL PRIMARY KEY,
+        "userId" INTEGER NOT NULL REFERENCES "Users"("id") ON DELETE CASCADE,
+        "fishId" VARCHAR(255) NOT NULL,
+        "fishName" VARCHAR(255) NOT NULL,
+        "fishEmoji" VARCHAR(255) NOT NULL,
+        "rarity" VARCHAR(255) NOT NULL,
+        "quantity" INTEGER DEFAULT 1,
+        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE("userId", "fishId")
+      );
+    `);
+    console.log('[Migration] FishInventories table ready');
+  } catch (err) {
+    console.error('[Migration] FishInventories table error:', err.message);
+  }
+}
+
 // Run migrations and start server
 async function startServer() {
   try {
     await sequelize.sync();
     console.log('Database synced');
     
-    // Add columns that might be missing (PostgreSQL only)
-    if (process.env.DATABASE_URL) {
-      async function addColumnIfNotExists(table, column, type, defaultValue) {
-        try {
-          const [cols] = await sequelize.query(
-            `SELECT column_name FROM information_schema.columns 
-             WHERE table_name = '${table}' AND column_name = '${column}';`
-          );
-          if (cols.length === 0) {
-            await sequelize.query(
-              `ALTER TABLE "${table}" ADD COLUMN "${column}" ${type} DEFAULT ${defaultValue};`
-            );
-            console.log(`[Migration] Added ${table}.${column}`);
-          }
-        } catch (err) {
-          console.error(`[Migration] Error with ${table}.${column}:`, err.message);
-        }
-      }
-      
-      await addColumnIfNotExists('Users', 'allowR18', 'BOOLEAN', 'false');
-      await addColumnIfNotExists('Users', 'showR18', 'BOOLEAN', 'false');
-      await addColumnIfNotExists('Users', 'autofishEnabled', 'BOOLEAN', 'false');
-      await addColumnIfNotExists('Users', 'autofishUnlockedByRank', 'BOOLEAN', 'false');
-      await addColumnIfNotExists('Users', 'rollTickets', 'INTEGER', '0');
-      await addColumnIfNotExists('Users', 'premiumTickets', 'INTEGER', '0');
-      await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');
-      await addColumnIfNotExists('Banners', 'isR18', 'BOOLEAN', 'false');
-      await addColumnIfNotExists('Banners', 'displayOrder', 'INTEGER', '0');
-      
-      // Create FishInventories table if not exists
-      try {
-        await sequelize.query(`
-          CREATE TABLE IF NOT EXISTS "FishInventories" (
-            "id" SERIAL PRIMARY KEY,
-            "userId" INTEGER NOT NULL REFERENCES "Users"("id") ON DELETE CASCADE,
-            "fishId" VARCHAR(255) NOT NULL,
-            "fishName" VARCHAR(255) NOT NULL,
-            "fishEmoji" VARCHAR(255) NOT NULL,
-            "rarity" VARCHAR(255) NOT NULL,
-            "quantity" INTEGER DEFAULT 1,
-            "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-            UNIQUE("userId", "fishId")
-          );
-        `);
-        console.log('[Migration] FishInventories table ready');
-      } catch (err) {
-        console.error('[Migration] FishInventories table error:', err.message);
-      }
-    }
+    await runMigrations();
     
-    // Use server.listen instead of app.listen for Socket.IO
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);
       console.log(`[Socket.IO] WebSocket server ready`);
