@@ -882,11 +882,12 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	  // Get the user
 	  const user = await User.findByPk(userId);
 	  
-	  // Check payment method: tickets or points
-	  const { useTickets, ticketType } = req.body;
-	  let finalCost = 0;
-	  let usedTickets = { roll: 0, premium: 0 };
-	  let premiumCount = 0;
+  // Check payment method: tickets or points
+  const { useTickets, ticketType } = req.body;
+  let finalCost = 0;
+  let discount = 0;
+  let usedTickets = { roll: 0, premium: 0 };
+  let premiumCount = 0;
 	  
 	  if (useTickets) {
 	    // Use tickets for multi-roll
@@ -944,12 +945,12 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	        });
 	      }
 	    }
-	  } else {
-	    // Use points
-	    const singlePullCost = Math.floor(100 * banner.costMultiplier);
-	    const baseCost = count * singlePullCost;
-	    const discount = getDiscountForCount(count);
-	    finalCost = Math.floor(baseCost * (1 - discount));
+  } else {
+    // Use points
+    const singlePullCost = Math.floor(100 * banner.costMultiplier);
+    const baseCost = count * singlePullCost;
+    discount = getDiscountForCount(count);
+    finalCost = Math.floor(baseCost * (1 - discount));
 	    
 	    if (user.points < finalCost) {
 	      rollInProgress.delete(userId);
