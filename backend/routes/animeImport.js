@@ -294,10 +294,10 @@ const toDanbooruTag = (query) => {
   return query.trim().toLowerCase().replace(/\s+/g, '_');
 };
 
-// Search Danbooru for animated content (GIFs, videos)
+// Search Danbooru for animated content (GIFs, videos) - with fallback to images
 router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
   try {
-    const { q, page = 1 } = req.query;
+    const { q, page = 1, animated = 'true' } = req.query;
     
     if (!q || q.trim().length < 2) {
       return res.status(400).json({ error: 'Search query must be at least 2 characters' });
@@ -305,36 +305,53 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
     
     const tag = toDanbooruTag(q);
     const limit = 20;
-    // Search for animated content with safe rating
-    const searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+animated+rating:general&limit=${limit}&page=${page}`;
     
-    const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
+    // First try: search for animated content
+    let searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+animated+rating:general&limit=${limit}&page=${page}`;
+    
+    let response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
       throw new Error(`Danbooru API error: ${response.status}`);
     }
     
-    const posts = await response.json();
+    let posts = await response.json();
     
-    // Filter and map to simpler format, only include video/gif files
+    // If no animated results, fallback to regular images (GIF priority)
+    if (posts.length === 0 && animated !== 'false') {
+      searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+rating:general&limit=${limit}&page=${page}`;
+      response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
+      if (response.ok) {
+        posts = await response.json();
+      }
+    }
+    
+    // Filter and map - prefer animated but include high-quality images as fallback
     const results = posts
-      .filter(post => {
+      .filter(post => post.file_url || post.large_file_url) // Must have file URL
+      .map(post => {
         const ext = (post.file_ext || '').toLowerCase();
-        return ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip'; // zip = ugoira
+        const isAnimated = ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip';
+        return {
+          id: post.id,
+          preview: post.preview_file_url || post.large_file_url,
+          sample: post.large_file_url || post.file_url,
+          file: post.file_url || post.large_file_url,
+          fileExt: post.file_ext,
+          tags: post.tag_string,
+          source: post.source,
+          width: post.image_width,
+          height: post.image_height,
+          score: post.score,
+          characterTags: post.tag_string_character,
+          isAnimated
+        };
       })
-      .filter(post => post.file_url) // Must have file URL
-      .map(post => ({
-        id: post.id,
-        preview: post.preview_file_url || post.large_file_url,
-        sample: post.large_file_url || post.file_url,
-        file: post.file_url,
-        fileExt: post.file_ext,
-        tags: post.tag_string,
-        source: post.source,
-        width: post.image_width,
-        height: post.image_height,
-        score: post.score,
-        characterTags: post.tag_string_character
-      }));
+      // Sort: animated content first, then by score
+      .sort((a, b) => {
+        if (a.isAnimated && !b.isAnimated) return -1;
+        if (!a.isAnimated && b.isAnimated) return 1;
+        return (b.score || 0) - (a.score || 0);
+      });
     
     res.json({
       results,

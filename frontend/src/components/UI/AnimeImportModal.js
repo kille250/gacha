@@ -167,15 +167,35 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     setAltMediaResults([]);
     
     try {
-      // Use character name for search
-      const response = await api.get(`/anime-import/search-sakuga?q=${encodeURIComponent(character.name)}`);
-      setAltMediaResults(response.data.results || []);
+      // Format: "character_name_(series_name)" for better Danbooru results
+      // e.g., "Nami" + "One Piece" -> "nami_(one_piece)"
+      const charName = character.name.split(',')[0].trim(); // Handle "Last, First" format
+      const animeTitle = selectedAnime?.title || seriesName || '';
+      
+      // Try with series context first
+      let searchQuery = charName;
+      if (animeTitle) {
+        // Create Danbooru-style tag: character_(series)
+        const formattedSeries = animeTitle.toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/_+/g, '_').replace(/^_|_$/g, '');
+        searchQuery = `${charName}_(${formattedSeries})`;
+      }
+      
+      const response = await api.get(`/anime-import/search-sakuga?q=${encodeURIComponent(searchQuery)}`);
+      let results = response.data.results || [];
+      
+      // If no results with series context, try just the character name
+      if (results.length === 0 && animeTitle) {
+        const fallbackResponse = await api.get(`/anime-import/search-sakuga?q=${encodeURIComponent(charName)}`);
+        results = fallbackResponse.data.results || [];
+      }
+      
+      setAltMediaResults(results);
     } catch (err) {
       console.error('Alt media search failed:', err);
     } finally {
       setAltMediaLoading(false);
     }
-  }, []);
+  }, [selectedAnime, seriesName]);
 
   // Select alternative media for a character
   const selectAltMedia = useCallback((media) => {
@@ -737,9 +757,12 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                             onClick={() => selectAltMedia(media)}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
+                            $isAnimated={media.isAnimated}
                           >
                             <img src={media.preview} alt={`Option ${media.id}`} />
-                            <AltMediaFormat>{media.fileExt?.toUpperCase()}</AltMediaFormat>
+                            <AltMediaFormat $isAnimated={media.isAnimated}>
+                              {media.isAnimated ? <><FaPlay /> {media.fileExt?.toUpperCase()}</> : media.fileExt?.toUpperCase()}
+                            </AltMediaFormat>
                             <AltMediaSelectOverlay>
                               <FaCheck /> {t('animeImport.selectThis')}
                             </AltMediaSelectOverlay>
@@ -1625,7 +1648,7 @@ const AltMediaCard = styled(motion.div)`
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
-  border: 2px solid transparent;
+  border: 2px solid ${props => props.$isAnimated ? 'rgba(155, 89, 182, 0.5)' : 'transparent'};
   transition: border-color 0.2s;
   
   &:hover {
@@ -1644,12 +1667,17 @@ const AltMediaFormat = styled.span`
   position: absolute;
   top: 6px;
   right: 6px;
-  background: rgba(0, 0, 0, 0.7);
+  background: ${props => props.$isAnimated 
+    ? 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)' 
+    : 'rgba(0, 0, 0, 0.7)'};
   color: #fff;
   padding: 2px 6px;
   border-radius: 4px;
   font-size: 0.6rem;
   font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
 `;
 
 const AltMediaSelectOverlay = styled.div`
