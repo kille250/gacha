@@ -213,6 +213,36 @@ export const getBannerById = async (bannerId) => {
   }
 };
 
+// Get pricing configuration for standard pulls
+export const getStandardPricing = async () => {
+  try {
+    const response = await api.get('/characters/pricing');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get pricing configuration for a specific banner
+export const getBannerPricing = async (bannerId) => {
+  try {
+    const response = await api.get(`/banners/${bannerId}/pricing`);
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
+// Get general pricing configuration (base config without banner multiplier)
+export const getBasePricing = async () => {
+  try {
+    const response = await api.get('/banners/pricing');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Roll on a specific banner
 export const rollOnBanner = async (bannerId) => {
   try {

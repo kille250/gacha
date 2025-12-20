@@ -8,7 +8,7 @@ import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from
 import confetti from 'canvas-confetti';
 
 // API & Context
-import api, { getBannerById, rollOnBanner, multiRollOnBanner, getAssetUrl } from '../utils/api';
+import api, { getBannerById, getBannerPricing, rollOnBanner, multiRollOnBanner, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 
 // Design System
@@ -88,45 +88,45 @@ const BannerPage = () => {
   const [showMultiSummonAnimation, setShowMultiSummonAnimation] = useState(false);
   const [pendingMultiResults, setPendingMultiResults] = useState([]);
 
-  // Multi-pull options with discounts
-  const MULTI_PULL_OPTIONS = [
-    { count: 5, discount: 0.05, label: '5×' },
-    { count: 10, discount: 0.10, label: '10×' },
-    { count: 20, discount: 0.15, label: '20×' }
-  ];
+  // Pricing from server (single source of truth)
+  const [pricing, setPricing] = useState(null);
   
-  // Computed values
-  const getSinglePullCost = useCallback(() => {
-    if (!banner) return 100;
-    return Math.floor(100 * (banner.costMultiplier || 1.5));
-  }, [banner]);
-
+  // Computed values from pricing
+  const singlePullCost = pricing?.singlePullCost || 100;
+  const pullOptions = pricing?.pullOptions || [];
+  
   const getMultiPullCost = useCallback((count) => {
-    if (!banner) return count * 100;
-    const option = MULTI_PULL_OPTIONS.find(o => o.count === count);
-    const discount = option?.discount || 0;
-    return Math.floor(count * getSinglePullCost() * (1 - discount));
-  }, [banner, getSinglePullCost]);
-
-  const singlePullCost = getSinglePullCost();
+    const option = pullOptions.find(o => o.count === count);
+    return option?.finalCost || count * singlePullCost;
+  }, [pullOptions, singlePullCost]);
+  
+  const getDiscount = useCallback((count) => {
+    const option = pullOptions.find(o => o.count === count);
+    return option?.discountPercent || 0;
+  }, [pullOptions]);
   
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
 
   // Effects
   useEffect(() => {
-    const fetchBanner = async () => {
+    const fetchBannerAndPricing = async () => {
       try {
         setLoading(true);
-        const data = await getBannerById(bannerId);
-        setBanner(data);
+        // Fetch banner data and pricing in parallel
+        const [bannerData, pricingData] = await Promise.all([
+          getBannerById(bannerId),
+          getBannerPricing(bannerId)
+        ]);
+        setBanner(bannerData);
+        setPricing(pricingData);
       } catch (err) {
         setError(err.response?.data?.error || t('admin.failedLoadBanners'));
       } finally {
         setLoading(false);
       }
     };
-    fetchBanner();
+    fetchBannerAndPricing();
   }, [bannerId]);
 
   
@@ -593,12 +593,9 @@ const BannerPage = () => {
                   )}
                 </PrimaryRollButton>
                 
-                {/* Quick multi-pull buttons */}
-                {MULTI_PULL_OPTIONS.map((option) => {
-                  const cost = getMultiPullCost(option.count);
-                  const canAfford = (user?.points || 0) >= cost;
-                  const baseCost = option.count * singlePullCost;
-                  const savings = baseCost - cost;
+                {/* Quick multi-pull buttons - from server pricing */}
+                {pullOptions.filter(opt => opt.count > 1).map((option) => {
+                  const canAfford = (user?.points || 0) >= option.finalCost;
                   
                   return (
                     <MultiRollButton
@@ -611,11 +608,11 @@ const BannerPage = () => {
                     >
                       <ButtonLabel>
                         <span>🎯</span>
-                        <span>{option.label}</span>
+                        <span>{option.count}×</span>
                       </ButtonLabel>
                       <CostInfo>
-                        <CostLabel>{cost} pts</CostLabel>
-                        {savings > 0 && <DiscountBadge>-{Math.round(option.discount * 100)}%</DiscountBadge>}
+                        <CostLabel>{option.finalCost} pts</CostLabel>
+                        {option.discountPercent > 0 && <DiscountBadge>-{option.discountPercent}%</DiscountBadge>}
                       </CostInfo>
                     </MultiRollButton>
                   );

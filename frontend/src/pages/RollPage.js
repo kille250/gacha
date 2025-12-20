@@ -8,7 +8,7 @@ import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 
 // API & Context
-import api, { rollCharacter, getAssetUrl } from '../utils/api';
+import api, { rollCharacter, getStandardPricing, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 
 // Design System
@@ -30,7 +30,8 @@ import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 // ==================== CONSTANTS ====================
 
-const SINGLE_PULL_COST = 100;
+// Default pricing (will be overridden by server data)
+const DEFAULT_SINGLE_PULL_COST = 100;
 
 const rarityIcons = {
   common: <FaDice />,
@@ -82,21 +83,34 @@ const RollPage = () => {
   const [showMultiSummonAnimation, setShowMultiSummonAnimation] = useState(false);
   const [pendingMultiResults, setPendingMultiResults] = useState([]);
   
-  // Multi-pull options with discounts
-  const MULTI_PULL_OPTIONS = [
-    { count: 5, discount: 0.05, label: '5×' },
-    { count: 10, discount: 0.10, label: '10×' },
-    { count: 20, discount: 0.15, label: '20×' }
-  ];
+  // Pricing from server (single source of truth)
+  const [pricing, setPricing] = useState(null);
   
-  const calculateMultiPullCost = (count) => {
-    const option = MULTI_PULL_OPTIONS.find(o => o.count === count);
-    const discount = option?.discount || 0;
-    return Math.floor(count * SINGLE_PULL_COST * (1 - discount));
-  };
+  // Computed values from pricing
+  const singlePullCost = pricing?.singlePullCost || DEFAULT_SINGLE_PULL_COST;
+  const pullOptions = pricing?.pullOptions || [];
+  
+  const calculateMultiPullCost = useCallback((count) => {
+    const option = pullOptions.find(o => o.count === count);
+    return option?.finalCost || count * singlePullCost;
+  }, [pullOptions, singlePullCost]);
   
   // Effects
   useEffect(() => { refreshUser(); }, [refreshUser]);
+  
+  // Fetch pricing from server
+  useEffect(() => {
+    const fetchPricing = async () => {
+      try {
+        const data = await getStandardPricing();
+        setPricing(data);
+      } catch (err) {
+        console.error('Failed to fetch pricing:', err);
+        // Will use defaults
+      }
+    };
+    fetchPricing();
+  }, []);
   
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
@@ -444,11 +458,9 @@ const RollPage = () => {
                   )}
                 </PrimaryRollButton>
                 
-                {/* Quick multi-pull buttons */}
-                {MULTI_PULL_OPTIONS.map((option) => {
-                  const cost = calculateMultiPullCost(option.count);
-                  const canAfford = (user?.points || 0) >= cost;
-                  const savings = Math.floor(option.count * SINGLE_PULL_COST * option.discount);
+                {/* Quick multi-pull buttons - from server pricing */}
+                {pullOptions.filter(opt => opt.count > 1).map((option) => {
+                  const canAfford = (user?.points || 0) >= option.finalCost;
                   
                   return (
                     <MultiRollButton
@@ -461,11 +473,11 @@ const RollPage = () => {
                     >
                       <ButtonLabel>
                         <span>🎯</span>
-                        <span>{option.label}</span>
+                        <span>{option.count}×</span>
                       </ButtonLabel>
                       <CostInfo>
-                        <CostLabel>{cost} pts</CostLabel>
-                        {savings > 0 && <DiscountBadge>-{Math.round(option.discount * 100)}%</DiscountBadge>}
+                        <CostLabel>{option.finalCost} pts</CostLabel>
+                        {option.discountPercent > 0 && <DiscountBadge>-{option.discountPercent}%</DiscountBadge>}
                       </CostInfo>
                     </MultiRollButton>
                   );

@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const { User, Character } = require('../models');
 const sequelize = require('../config/db');
+const { PRICING_CONFIG, getDiscountForCount } = require('../config/pricing');
 
 // Get user's R18 preference via raw SQL (requires both admin permission AND user preference)
 async function getUserAllowR18(userId) {
@@ -17,12 +18,10 @@ async function getUserAllowR18(userId) {
 // Multi-roll endpoint (10 characters at once)
 router.post('/roll-multi', auth, async (req, res) => {
   try {
-    const count = Math.min(req.body.count || 10, 20); // Limit to max 20 characters per request
-    const basePoints = count * 100;
-    // Apply discount based on count (matching frontend logic)
-    let discount = 0;
-    if (count >= 10) discount = 0.1; // 10% discount for 10+ pulls
-    else if (count >= 5) discount = 0.05; // 5% discount for 5-9 pulls
+    const count = Math.min(req.body.count || 10, PRICING_CONFIG.maxPulls);
+    const basePoints = count * PRICING_CONFIG.baseCost;
+    // Apply discount from pricing config
+    const discount = getDiscountForCount(count);
     
     // Calculate final cost with discount
     const finalCost = Math.floor(basePoints * (1 - discount));
@@ -155,14 +154,38 @@ router.post('/roll-multi', auth, async (req, res) => {
   }
 });
 
+// Get pricing configuration for standard pulls
+router.get('/pricing', (req, res) => {
+  const singlePullCost = PRICING_CONFIG.baseCost;
+  
+  res.json({
+    ...PRICING_CONFIG,
+    singlePullCost,
+    // Pre-calculated costs for quick select options
+    pullOptions: PRICING_CONFIG.quickSelectOptions.map(count => {
+      const discount = getDiscountForCount(count);
+      const baseCost = count * singlePullCost;
+      const finalCost = Math.floor(baseCost * (1 - discount));
+      return {
+        count,
+        discount,
+        discountPercent: Math.round(discount * 100),
+        baseCost,
+        finalCost,
+        savings: baseCost - finalCost
+      };
+    })
+  });
+});
+
 // Roll a character
 router.post('/roll', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
-    if (user.points < 100) return res.status(400).json({ error: 'Not enough points' });
+    if (user.points < PRICING_CONFIG.baseCost) return res.status(400).json({ error: 'Not enough points' });
     
     // Punkte abziehen
-    user.points -= 100;
+    user.points -= PRICING_CONFIG.baseCost;
     await user.save();
     
     // Get user's R18 preference via raw SQL

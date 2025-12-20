@@ -11,6 +11,7 @@ const Character = require('../models/character');
 const User = require('../models/user');
 const sequelize = require('../config/db');
 const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
+const { PRICING_CONFIG, getDiscountForCount } = require('../config/pricing');
 
 // ===========================================
 // SECURITY: Input validation helpers
@@ -86,6 +87,57 @@ const upload = multer({
   fileFilter: fileFilter,
   limits: {
     fileSize: 50 * 1024 * 1024 // 50MB limit
+  }
+});
+
+// ===========================================
+// PRICING ENDPOINT - Single source of truth for frontend
+// ===========================================
+
+router.get('/pricing', (req, res) => {
+  // Return pricing config for frontend to use
+  res.json(PRICING_CONFIG);
+});
+
+// Get pricing for a specific banner (includes costMultiplier)
+router.get('/:id/pricing', async (req, res) => {
+  try {
+    if (!isValidId(req.params.id)) {
+      return res.status(400).json({ error: 'Invalid banner ID' });
+    }
+    
+    const banner = await Banner.findByPk(req.params.id, {
+      attributes: ['id', 'name', 'costMultiplier']
+    });
+    
+    if (!banner) {
+      return res.status(404).json({ error: 'Banner not found' });
+    }
+    
+    const singlePullCost = Math.floor(PRICING_CONFIG.baseCost * (banner.costMultiplier || 1));
+    
+    res.json({
+      ...PRICING_CONFIG,
+      costMultiplier: banner.costMultiplier || 1,
+      singlePullCost,
+      // Pre-calculated costs for quick select options
+      pullOptions: PRICING_CONFIG.quickSelectOptions.map(count => {
+        const discount = getDiscountForCount(count);
+        const baseCost = count * singlePullCost;
+        const finalCost = Math.floor(baseCost * (1 - discount));
+        return {
+          count,
+          discount,
+          discountPercent: Math.round(discount * 100),
+          baseCost,
+          finalCost,
+          savings: baseCost - finalCost
+        };
+      })
+    });
+  } catch (err) {
+    console.error('Error fetching banner pricing:', err);
+    res.status(500).json({ error: 'Server error' });
   }
 });
 
@@ -700,7 +752,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		return res.status(400).json({ error: 'Invalid banner ID' });
 	  }
 	  
-	  const count = Math.min(req.body.count || 10, 20); // Limit to max 20 characters
+	  const count = Math.min(req.body.count || 10, PRICING_CONFIG.maxPulls);
 	  const banner = await Banner.findByPk(req.params.id, {
 		include: [{ model: Character }]
 	  });
@@ -720,10 +772,8 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	  const singlePullCost = Math.floor(100 * banner.costMultiplier);
 	  const baseCost = count * singlePullCost;
 	  
-	  // Apply bulk discount
-	  let discount = 0;
-	  if (count >= 10) discount = 0.1; // 10% discount for 10+ pulls
-	  else if (count >= 5) discount = 0.05; // 5% discount for 5-9 pulls
+	  // Apply bulk discount from pricing config
+	  const discount = getDiscountForCount(count);
 	  
 	  // Calculate final cost
 	  const finalCost = Math.floor(baseCost * (1 - discount));

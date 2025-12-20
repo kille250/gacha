@@ -17,21 +17,23 @@ export const MultiPullMenu = ({
   currentMultiPullCost,
   onConfirm,
   userPoints,
-  singlePullCost = 100
+  singlePullCost,
+  // Pricing data from server - REQUIRED, no defaults to ensure single source of truth
+  discountTiers,
+  quickSelectOptions
 }) => {
   const getRecommendedPulls = () => {
-    const recommendations = [1];
-    if (maxPossiblePulls >= 5) recommendations.push(5);
-    if (maxPossiblePulls >= 10) recommendations.push(10);
-    if (maxPossiblePulls > 10 && !recommendations.includes(maxPossiblePulls)) {
-      recommendations.push(maxPossiblePulls);
-    }
-    return recommendations;
+    if (!quickSelectOptions?.length) return [1];
+    // Filter quick select options based on what user can afford
+    return quickSelectOptions.filter(count => count <= maxPossiblePulls || count === 1);
   };
 
   const getDiscount = (count) => {
-    if (count >= 10) return 10;
-    if (count >= 5) return 5;
+    if (!discountTiers?.length) return 0;
+    // Use discount tiers from pricing config
+    for (const tier of discountTiers) {
+      if (count >= tier.minCount) return Math.round(tier.discount * 100);
+    }
     return 0;
   };
 
