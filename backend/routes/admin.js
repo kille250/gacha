@@ -3,12 +3,139 @@ const express = require('express');
 const router = express.Router();
 const path = require('path');
 const fs = require('fs');
+const os = require('os');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { User, Character, Banner, Coupon, CouponRedemption } = require('../models');
-const { getUrlPath, getFilePath } = require('../config/upload');
+const { getUrlPath, getFilePath, UPLOAD_BASE } = require('../config/upload');
 const { characterUpload: upload } = require('../config/multer');
 const { isValidId } = require('../utils/validation');
+const sequelize = require('../config/db');
+
+// Track server start time
+const serverStartTime = Date.now();
+
+// System health check endpoint
+router.get('/health', auth, adminAuth, async (req, res) => {
+  try {
+    const healthData = {
+      timestamp: new Date().toISOString(),
+      server: {
+        status: 'online',
+        uptime: Math.floor((Date.now() - serverStartTime) / 1000),
+        nodeVersion: process.version,
+        platform: os.platform(),
+        arch: os.arch()
+      },
+      database: {
+        status: 'unknown',
+        responseTime: null
+      },
+      storage: {
+        status: 'unknown',
+        path: UPLOAD_BASE,
+        writable: false,
+        directories: {}
+      },
+      memory: {
+        total: os.totalmem(),
+        free: os.freemem(),
+        used: os.totalmem() - os.freemem(),
+        usagePercent: Math.round(((os.totalmem() - os.freemem()) / os.totalmem()) * 100)
+      },
+      stats: {
+        totalUsers: 0,
+        activeToday: 0,
+        totalCharacters: 0,
+        totalBanners: 0,
+        totalCoupons: 0
+      }
+    };
+
+    // Check database connectivity
+    const dbStart = Date.now();
+    try {
+      await sequelize.authenticate();
+      healthData.database.status = 'connected';
+      healthData.database.responseTime = Date.now() - dbStart;
+      healthData.database.dialect = sequelize.getDialect();
+    } catch (dbErr) {
+      healthData.database.status = 'disconnected';
+      healthData.database.error = dbErr.message;
+    }
+
+    // Check storage directories
+    const storageDirs = ['characters', 'banners', 'videos'];
+    for (const dir of storageDirs) {
+      const dirPath = path.join(UPLOAD_BASE, dir);
+      try {
+        if (fs.existsSync(dirPath)) {
+          const files = fs.readdirSync(dirPath);
+          healthData.storage.directories[dir] = {
+            exists: true,
+            fileCount: files.length
+          };
+        } else {
+          healthData.storage.directories[dir] = { exists: false, fileCount: 0 };
+        }
+      } catch (err) {
+        healthData.storage.directories[dir] = { exists: false, error: err.message };
+      }
+    }
+
+    // Check if storage is writable
+    const testFile = path.join(UPLOAD_BASE, '.health-check-test');
+    try {
+      fs.writeFileSync(testFile, 'test');
+      fs.unlinkSync(testFile);
+      healthData.storage.writable = true;
+      healthData.storage.status = 'available';
+    } catch (err) {
+      healthData.storage.writable = false;
+      healthData.storage.status = 'read-only';
+    }
+
+    // Get database stats
+    if (healthData.database.status === 'connected') {
+      try {
+        const [userCount, charCount, bannerCount, couponCount] = await Promise.all([
+          User.count(),
+          Character.count(),
+          Banner.count({ where: { active: true } }),
+          Coupon.count({ where: { isActive: true } })
+        ]);
+
+        healthData.stats.totalUsers = userCount;
+        healthData.stats.totalCharacters = charCount;
+        healthData.stats.totalBanners = bannerCount;
+        healthData.stats.totalCoupons = couponCount;
+
+        // Count users active in last 24 hours (based on lastDailyReward)
+        const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+        const activeCount = await User.count({
+          where: {
+            updatedAt: { [require('sequelize').Op.gte]: oneDayAgo }
+          }
+        });
+        healthData.stats.activeToday = activeCount;
+      } catch (err) {
+        console.error('Error fetching stats:', err);
+      }
+    }
+
+    res.json(healthData);
+  } catch (err) {
+    console.error('Health check error:', err);
+    res.status(500).json({
+      timestamp: new Date().toISOString(),
+      server: { status: 'error', error: err.message },
+      database: { status: 'unknown' },
+      storage: { status: 'unknown' },
+      memory: {},
+      stats: {}
+    });
+  }
+});
 
 // Combined dashboard endpoint - reduces multiple API calls to one
 router.get('/dashboard', auth, adminAuth, async (req, res) => {

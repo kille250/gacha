@@ -313,6 +313,16 @@ export const getAdminDashboard = async () => {
   }
 };
 
+// Get system health status (admin only)
+export const getSystemHealth = async () => {
+  try {
+    const response = await api.get('/admin/health');
+    return response.data;
+  } catch (error) {
+    throw error;
+  }
+};
+
 // Invalidate admin cache after mutations
 export const invalidateAdminCache = () => {
   clearCache('/admin');
