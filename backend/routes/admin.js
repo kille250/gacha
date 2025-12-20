@@ -61,7 +61,7 @@ router.get('/dashboard', auth, adminAuth, async (req, res) => {
     // Fetch all data in parallel
     const [users, characters, banners, coupons] = await Promise.all([
       User.findAll({
-        attributes: ['id', 'username', 'points', 'isAdmin', 'autofishEnabled', 'autofishUnlockedByRank', 'createdAt'],
+        attributes: ['id', 'username', 'points', 'isAdmin', 'allowR18', 'autofishEnabled', 'autofishUnlockedByRank', 'createdAt'],
         order: [['points', 'DESC']]
       }),
       Character.findAll(),
@@ -89,12 +89,44 @@ router.get('/dashboard', auth, adminAuth, async (req, res) => {
 router.get('/users', auth, adminAuth, async (req, res) => {
   try {
     const users = await User.findAll({
-      attributes: ['id', 'username', 'points', 'isAdmin', 'autofishEnabled', 'autofishUnlockedByRank', 'createdAt'],
+      attributes: ['id', 'username', 'points', 'isAdmin', 'allowR18', 'autofishEnabled', 'autofishUnlockedByRank', 'createdAt'],
       order: [['points', 'DESC']]
     });
     res.json(users);
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ADMIN: Toggle R18 access for a user
+router.post('/toggle-r18', auth, adminAuth, async (req, res) => {
+  try {
+    const { userId, enabled } = req.body;
+    
+    // Validate userId
+    if (!userId || !isValidId(userId)) {
+      return res.status(400).json({ error: 'Valid User ID required' });
+    }
+    
+    const user = await User.findByPk(parseInt(userId, 10));
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    user.allowR18 = enabled !== undefined ? enabled : !user.allowR18;
+    await user.save();
+    
+    console.log(`Admin (ID: ${req.user.id}) ${user.allowR18 ? 'enabled' : 'disabled'} R18 access for user ${user.username} (ID: ${userId})`);
+    
+    res.json({
+      userId: user.id,
+      username: user.username,
+      allowR18: user.allowR18,
+      message: `R18 access ${user.allowR18 ? 'enabled' : 'disabled'} for ${user.username}`
+    });
+  } catch (err) {
+    console.error('Admin toggle R18 error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

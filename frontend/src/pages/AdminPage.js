@@ -362,6 +362,24 @@ const AdminPage = () => {
     }
   };
 
+  // R18 Toggle Functions
+  const handleToggleR18 = async (userId, enabled) => {
+    try {
+      const response = await api.post('/admin/toggle-r18', { userId, enabled });
+      setSuccessMessage(response.data.message);
+      
+      // Update local state
+      setUsers(prevUsers => prevUsers.map(u => 
+        u.id === userId ? { ...u, allowR18: enabled } : u
+      ));
+      
+      setTimeout(() => setSuccessMessage(null), 3000);
+    } catch (err) {
+      console.error('Error toggling R18:', err);
+      setError(err.response?.data?.error || 'Failed to toggle R18 access');
+    }
+  };
+
   // Banner Functions
   const getBannerImageUrl = (imagePath) => {
     if (!imagePath) return 'https://via.placeholder.com/300x150?text=Banner';
@@ -591,6 +609,7 @@ const AdminPage = () => {
                     <th>{t('admin.username')}</th>
                     <th>{t('admin.points')}</th>
                     <th>{t('admin.isAdmin')}</th>
+                    <th>🔞 R18</th>
                     <th>{t('admin.autofish')}</th>
                     <th>{t('admin.created')}</th>
                   </tr>
@@ -610,6 +629,20 @@ const AdminPage = () => {
                         <td>{u.username}</td>
                         <td>{u.points?.toLocaleString()}</td>
                         <td>{u.isAdmin ? '✅' : '❌'}</td>
+                        <td>
+                          <R18Cell>
+                            <R18Status $active={u.allowR18}>
+                              {u.allowR18 ? '✅' : '❌'}
+                            </R18Status>
+                            <R18Toggle 
+                              $enabled={u.allowR18}
+                              onClick={() => handleToggleR18(u.id, !u.allowR18)}
+                              title={u.allowR18 ? t('admin.disableR18') : t('admin.enableR18')}
+                            >
+                              {u.allowR18 ? 'Disable' : 'Enable'}
+                            </R18Toggle>
+                          </R18Cell>
+                        </td>
                         <td>
                           <AutofishCell>
                             <AutofishStatus $active={canAutofish}>
@@ -1104,6 +1137,37 @@ const AutofishToggle = styled.button`
     : 'rgba(48, 209, 88, 0.2)'};
   color: ${props => props.$enabled ? '#ff453a' : '#30d158'};
   border: 1px solid ${props => props.$enabled ? 'rgba(255, 69, 58, 0.4)' : 'rgba(48, 209, 88, 0.4)'};
+  
+  &:hover {
+    opacity: 0.85;
+    transform: scale(1.02);
+  }
+`;
+
+const R18Cell = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const R18Status = styled.span`
+  font-size: 16px;
+`;
+
+const R18Toggle = styled.button`
+  padding: 4px 10px;
+  border: none;
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all 0.2s;
+  background: ${props => props.$enabled 
+    ? 'rgba(255, 69, 58, 0.2)' 
+    : 'rgba(255, 45, 85, 0.2)'};
+  color: ${props => props.$enabled ? '#ff453a' : '#ff2d55'};
+  border: 1px solid ${props => props.$enabled ? 'rgba(255, 69, 58, 0.4)' : 'rgba(255, 45, 85, 0.4)'};
   
   &:hover {
     opacity: 0.85;
