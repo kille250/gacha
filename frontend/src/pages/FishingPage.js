@@ -179,7 +179,7 @@ const FishingPage = () => {
     socket.on('duplicate_session', (data) => {
       console.log('[Multiplayer] Duplicate session detected:', data.message);
       setNotification({
-        type: 'warning',
+        type: 'error',
         message: t('fishing.duplicateSession') || 'Disconnected: You opened fishing in another tab'
       });
     });
