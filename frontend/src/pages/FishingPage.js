@@ -226,6 +226,21 @@ const FishingPage = () => {
     };
   }, [isAutofishing, rankData, setUser, t]);
   
+  // Auto-remove old bubbles after 4 seconds
+  useEffect(() => {
+    if (autofishLog.length === 0) return;
+    
+    const timer = setTimeout(() => {
+      setAutofishLog(prev => {
+        if (prev.length === 0) return prev;
+        const now = Date.now();
+        return prev.filter(entry => now - entry.timestamp < 4000);
+      });
+    }, 500);
+    
+    return () => clearTimeout(timer);
+  }, [autofishLog]);
+  
   // Toggle autofishing
   const toggleAutofish = useCallback(() => {
     if (!rankData?.canAutofish) {
@@ -536,29 +551,38 @@ const FishingPage = () => {
         </HeaderRight>
       </Header>
       
-      {/* Autofishing Status Bar */}
-      <AnimatePresence>
-        {isAutofishing && (
-          <AutofishBar
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-          >
-            <AutofishStatusText>
-              <MdAutorenew className="spinning" />
-              <span>{t('fishing.autofishing')}</span>
-            </AutofishStatusText>
-            <AutofishLog>
-              {autofishLog.slice(0, 5).map((entry, i) => (
-                <AutofishEntry key={entry.timestamp} $success={entry.success}>
-                  <span>{entry.fish?.emoji}</span>
-                  <span>{entry.success ? `+${entry.reward}` : '✗'}</span>
-                </AutofishEntry>
-              ))}
-            </AutofishLog>
-          </AutofishBar>
-        )}
-      </AnimatePresence>
+      {/* Autofish Bubbles - Bottom Right Notifications */}
+      <AutofishBubblesContainer>
+        <AnimatePresence mode="popLayout">
+          {autofishLog.slice(0, 6).map((entry, i) => (
+            <AutofishBubble
+              key={entry.timestamp}
+              $success={entry.success}
+              $rarity={entry.fish?.rarity}
+              initial={{ opacity: 0, x: 80, scale: 0.8 }}
+              animate={{ opacity: 1, x: 0, scale: 1 }}
+              exit={{ opacity: 0, x: 80, scale: 0.8, transition: { duration: 0.2 } }}
+              transition={{ 
+                type: "spring", 
+                stiffness: 400, 
+                damping: 30,
+                mass: 0.8
+              }}
+              layout
+            >
+              <BubbleEmoji>{entry.fish?.emoji}</BubbleEmoji>
+              <BubbleContent>
+                <BubbleFishName $rarity={entry.fish?.rarity}>
+                  {entry.fish?.name}
+                </BubbleFishName>
+                <BubbleReward $success={entry.success}>
+                  {entry.success ? `+${entry.reward} 🪙` : t('fishing.escaped')}
+                </BubbleReward>
+              </BubbleContent>
+            </AutofishBubble>
+          ))}
+        </AnimatePresence>
+      </AutofishBubblesContainer>
       
       {/* Stats Bar */}
       <StatsBar>
@@ -1095,59 +1119,82 @@ const AutofishButton = styled.button`
   }
 `;
 
-const AutofishBar = styled(motion.div)`
+// Apple-like notification bubbles in bottom right
+const AutofishBubblesContainer = styled.div`
+  position: fixed;
+  bottom: 140px;
+  right: 16px;
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(10px);
-  border-bottom: 2px solid rgba(48, 209, 88, 0.5);
+  flex-direction: column-reverse;
+  gap: 8px;
+  z-index: 500;
+  pointer-events: none;
+  max-height: 400px;
   overflow: hidden;
-`;
-
-const AutofishStatusText = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  color: #30d158;
-  font-weight: 700;
-  font-size: 16px;
-  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.5);
   
-  svg.spinning {
-    animation: ${spinAnimation} 1s linear infinite;
-    font-size: 20px;
+  @media (max-width: 768px) {
+    bottom: 200px;
+    right: 12px;
   }
 `;
 
-const AutofishLog = styled.div`
+const AutofishBubble = styled(motion.div)`
   display: flex;
   align-items: center;
-  gap: 10px;
-  overflow-x: auto;
-  padding: 4px 0;
+  gap: 12px;
+  padding: 12px 16px;
+  min-width: 180px;
+  max-width: 240px;
+  background: ${props => {
+    if (!props.$success) return 'rgba(142, 142, 147, 0.95)';
+    switch (props.$rarity) {
+      case 'legendary': return 'linear-gradient(135deg, rgba(255, 159, 10, 0.95), rgba(255, 149, 0, 0.9))';
+      case 'epic': return 'linear-gradient(135deg, rgba(191, 90, 242, 0.95), rgba(175, 82, 222, 0.9))';
+      case 'rare': return 'linear-gradient(135deg, rgba(10, 132, 255, 0.95), rgba(0, 122, 255, 0.9))';
+      case 'uncommon': return 'linear-gradient(135deg, rgba(48, 209, 88, 0.95), rgba(52, 199, 89, 0.9))';
+      default: return 'rgba(99, 99, 102, 0.95)';
+    }
+  }};
+  border-radius: 16px;
+  box-shadow: 
+    0 4px 12px rgba(0, 0, 0, 0.15),
+    0 1px 3px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.15);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  pointer-events: auto;
 `;
 
-const AutofishEntry = styled.div`
+const BubbleEmoji = styled.div`
+  font-size: 28px;
+  line-height: 1;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+`;
+
+const BubbleContent = styled.div`
   display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: ${props => props.$success 
-    ? 'rgba(48, 209, 88, 0.9)' 
-    : 'rgba(255, 69, 58, 0.9)'};
-  border-radius: 10px;
-  font-size: 15px;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+`;
+
+const BubbleFishName = styled.div`
+  font-size: 14px;
+  font-weight: 600;
   color: white;
-  font-weight: 700;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
   white-space: nowrap;
-  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
-  
-  span:first-child {
-    font-size: 18px;
-  }
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const BubbleReward = styled.div`
+  font-size: 13px;
+  font-weight: 700;
+  color: ${props => props.$success ? 'rgba(255, 255, 255, 0.95)' : 'rgba(255, 255, 255, 0.7)'};
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.15);
 `;
 
 const StatsBar = styled.div`
