@@ -77,6 +77,29 @@ function selectRandomFish() {
 // Cost to cast (set to 0 for free fishing, or a value for paid fishing)
 const CAST_COST = 0;
 
+/**
+ * Calculate fish totals by rarity from inventory
+ * @param {Array} inventory - Array of FishInventory items
+ * @returns {Object} - Totals object with rarity keys
+ */
+function calculateFishTotals(inventory) {
+  const totals = {
+    common: 0,
+    uncommon: 0,
+    rare: 0,
+    epic: 0,
+    legendary: 0
+  };
+  
+  inventory.forEach(item => {
+    if (totals[item.rarity] !== undefined) {
+      totals[item.rarity] += item.quantity;
+    }
+  });
+  
+  return totals;
+}
+
 // Cooldown between casts in milliseconds (5 seconds)
 const CAST_COOLDOWN = 5000;
 
@@ -757,20 +780,7 @@ router.get('/inventory', auth, async (req, res) => {
       ]
     });
     
-    // Calculate totals by rarity
-    const totals = {
-      common: 0,
-      uncommon: 0,
-      rare: 0,
-      epic: 0,
-      legendary: 0
-    };
-    
-    inventory.forEach(item => {
-      if (totals[item.rarity] !== undefined) {
-        totals[item.rarity] += item.quantity;
-      }
-    });
+    const totals = calculateFishTotals(inventory);
     
     res.json({
       inventory: inventory.map(item => ({
@@ -801,20 +811,7 @@ router.get('/trading-post', auth, async (req, res) => {
       where: { userId: req.user.id }
     });
     
-    // Calculate totals by rarity
-    const totals = {
-      common: 0,
-      uncommon: 0,
-      rare: 0,
-      epic: 0,
-      legendary: 0
-    };
-    
-    inventory.forEach(item => {
-      if (totals[item.rarity] !== undefined) {
-        totals[item.rarity] += item.quantity;
-      }
-    });
+    const totals = calculateFishTotals(inventory);
     
     // Check availability for each trade option
     const options = TRADE_OPTIONS.map(option => {
@@ -895,20 +892,7 @@ router.post('/trade', auth, async (req, res) => {
       where: { userId: req.user.id }
     });
     
-    // Calculate totals by rarity
-    const totals = {
-      common: 0,
-      uncommon: 0,
-      rare: 0,
-      epic: 0,
-      legendary: 0
-    };
-    
-    inventory.forEach(item => {
-      if (totals[item.rarity] !== undefined) {
-        totals[item.rarity] += item.quantity;
-      }
-    });
+    const totals = calculateFishTotals(inventory);
     
     // Check if user can make the trade
     if (tradeOption.requiredRarity === 'collection') {
@@ -1012,19 +996,7 @@ router.post('/trade', auth, async (req, res) => {
       where: { userId: req.user.id }
     });
     
-    const newTotals = {
-      common: 0,
-      uncommon: 0,
-      rare: 0,
-      epic: 0,
-      legendary: 0
-    };
-    
-    updatedInventory.forEach(item => {
-      if (newTotals[item.rarity] !== undefined) {
-        newTotals[item.rarity] += item.quantity;
-      }
-    });
+    const newTotals = calculateFishTotals(updatedInventory);
     
     // Build message based on reward type
     let message = 'Trade successful!';
@@ -1065,4 +1037,3 @@ router.post('/trade', auth, async (req, res) => {
 });
 
 module.exports = router;
-

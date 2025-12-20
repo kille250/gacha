@@ -92,26 +92,25 @@ const corsOptions = {
   allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization']
 };
 
+// ===========================================
+// SCHEDULED JOBS
+// ===========================================
+
+// Daily bonus: Automatically gives 500 points to ALL users at midnight (UTC)
+// This is separate from the manual hourly reward in /api/auth/daily-reward
 schedule.scheduleJob('0 0 * * *', async function() {
-  console.log('Running daily rewards job');
+  console.log('[Scheduled Job] Running daily bonus distribution');
   try {
-    // Get all users
     const users = await User.findAll();
+    const bonusAmount = 500;
     
-    // Fixed reward amount - or you could randomize per user
-    const rewardAmount = 500;
-    
-    // Update each user
     for (const user of users) {
-      await user.increment('points', { by: rewardAmount });
-      user.lastDailyReward = new Date();
-      await user.save();
-      console.log(`Daily reward of ${rewardAmount} given to ${user.username}`);
+      await user.increment('points', { by: bonusAmount });
     }
     
-    console.log('All daily rewards distributed successfully');
+    console.log(`[Scheduled Job] Daily bonus of ${bonusAmount} points given to ${users.length} users`);
   } catch (err) {
-    console.error('Error distributing daily rewards:', err);
+    console.error('[Scheduled Job] Error distributing daily bonus:', err);
   }
 });
 

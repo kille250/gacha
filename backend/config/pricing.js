@@ -133,7 +133,6 @@ const rollRarity = (rates) => {
 
 module.exports = {
   PRICING_CONFIG,
-  DROP_RATES,
   getDiscountForCount,
   calculateBannerRates,
   getStandardRates,

@@ -4,18 +4,7 @@ const { Op } = require('sequelize');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { Coupon, CouponRedemption, User, Character } = require('../models');
-
-// ===========================================
-// SECURITY: Input validation helpers
-// ===========================================
-
-// Validate that a value is a valid UUID
-const isValidUUID = (value) => {
-  if (!value || typeof value !== 'string') return false;
-  // UUID v4 format: xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx
-  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
-  return uuidRegex.test(value);
-};
+const { isValidUUID } = require('../utils/validation');
 
 // ADMIN: Get all coupons
 router.get('/admin', [auth, adminAuth], async (req, res) => {

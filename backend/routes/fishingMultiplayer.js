@@ -300,17 +300,7 @@ function initMultiplayer(io) {
   return fishingNamespace;
 }
 
-// Get current player count
-function getPlayerCount() {
-  let total = 0;
-  areas.forEach(area => {
-    total += area.players.size;
-  });
-  return total;
-}
-
 module.exports = {
-  initMultiplayer,
-  getPlayerCount
+  initMultiplayer
 };
 

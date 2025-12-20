@@ -4,61 +4,10 @@ const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
 const { User } = require('../models');
 const sequelize = require('../config/db');
-
-// ===========================================
-// SECURITY: Input validation helpers
-// ===========================================
-const validateUsername = (username) => {
-  if (!username || typeof username !== 'string') {
-    return { valid: false, error: 'Username is required' };
-  }
-  
-  const trimmed = username.trim();
-  
-  if (trimmed.length < 3) {
-    return { valid: false, error: 'Username must be at least 3 characters' };
-  }
-  
-  if (trimmed.length > 30) {
-    return { valid: false, error: 'Username must be at most 30 characters' };
-  }
-  
-  // Only allow alphanumeric characters, underscores, and hyphens
-  if (!/^[a-zA-Z0-9_-]+$/.test(trimmed)) {
-    return { valid: false, error: 'Username can only contain letters, numbers, underscores, and hyphens' };
-  }
-  
-  // Block reserved usernames
-  const reserved = ['admin', 'administrator', 'root', 'system', 'moderator', 'mod', 'support', 'help'];
-  if (reserved.includes(trimmed.toLowerCase())) {
-    return { valid: false, error: 'This username is reserved' };
-  }
-  
-  return { valid: true, value: trimmed };
-};
-
-const validatePassword = (password) => {
-  if (!password || typeof password !== 'string') {
-    return { valid: false, error: 'Password is required' };
-  }
-  
-  if (password.length < 8) {
-    return { valid: false, error: 'Password must be at least 8 characters' };
-  }
-  
-  if (password.length > 128) {
-    return { valid: false, error: 'Password must be at most 128 characters' };
-  }
-  
-  // Require at least one number and one letter
-  if (!/[a-zA-Z]/.test(password) || !/[0-9]/.test(password)) {
-    return { valid: false, error: 'Password must contain at least one letter and one number' };
-  }
-  
-  return { valid: true };
-};
+const { validateUsername, validatePassword } = require('../utils/validation');
 
 // POST /api/auth/daily-reward - Claim hourly reward
+// Note: Route name is legacy ("daily") but actual interval is 1 hour for better engagement
 router.post('/daily-reward', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);

@@ -51,4 +51,3 @@ export const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/150?text=No+Image'
  * Default placeholder for banner images
  */
 export const PLACEHOLDER_BANNER = 'https://via.placeholder.com/300x150?text=Banner';
-
