@@ -286,6 +286,7 @@ async function runMigrations() {
   await addColumnIfNotExists('Users', 'premiumTickets', 'INTEGER', '0');
   await addColumnIfNotExists('Users', 'email', 'VARCHAR(255)', 'NULL');
   await addColumnIfNotExists('Users', 'googleId', 'VARCHAR(255)', 'NULL');
+  await addColumnIfNotExists('Users', 'usernameChanged', 'BOOLEAN', 'false');
   
   // Make password column nullable for Google SSO users
   try {

@@ -271,7 +271,7 @@ router.post('/google', async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const [rows] = await sequelize.query(
-      `SELECT "id", "username", "points", "isAdmin", "lastDailyReward", "allowR18", "showR18" 
+      `SELECT "id", "username", "email", "googleId", "points", "isAdmin", "lastDailyReward", "allowR18", "showR18", "usernameChanged" 
        FROM "Users" WHERE "id" = :userId`,
       { replacements: { userId: req.user.id } }
     );
@@ -283,10 +283,101 @@ router.get('/me', auth, async (req, res) => {
     const user = rows[0];
     user.allowR18 = user.allowR18 === true;
     user.showR18 = user.showR18 === true;
+    user.usernameChanged = user.usernameChanged === true;
+    user.hasGoogle = !!user.googleId;
+    // Don't expose googleId to frontend
+    delete user.googleId;
     
     res.json(user);
   } catch (err) {
     console.error('Get user error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT /api/auth/profile/email - Add or update email
+router.put('/profile/email', auth, async (req, res) => {
+  const { email } = req.body;
+  
+  // Validate email
+  const emailValidation = validateEmail(email);
+  if (!emailValidation.valid) {
+    return res.status(400).json({ error: emailValidation.error });
+  }
+  
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if email is already used by another user
+    const existingEmail = await User.findOne({ 
+      where: { email: emailValidation.value } 
+    });
+    if (existingEmail && existingEmail.id !== user.id) {
+      return res.status(400).json({ error: 'Email already registered to another account' });
+    }
+    
+    // Update email
+    user.email = emailValidation.value;
+    await user.save();
+    
+    res.json({ 
+      message: 'Email updated successfully',
+      email: user.email
+    });
+  } catch (err) {
+    console.error('Update email error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT /api/auth/profile/username - Change username (one time only)
+router.put('/profile/username', auth, async (req, res) => {
+  const { username } = req.body;
+  
+  // Validate username
+  const usernameValidation = validateUsername(username);
+  if (!usernameValidation.valid) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check if user has already changed their username
+    if (user.usernameChanged) {
+      return res.status(400).json({ error: 'You have already used your one-time username change' });
+    }
+    
+    // Check if new username is same as current
+    if (user.username === usernameValidation.value) {
+      return res.status(400).json({ error: 'New username must be different from current username' });
+    }
+    
+    // Check if username is already taken
+    const existingUser = await User.findOne({ 
+      where: { username: usernameValidation.value } 
+    });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already taken' });
+    }
+    
+    // Update username and mark as changed
+    user.username = usernameValidation.value;
+    user.usernameChanged = true;
+    await user.save();
+    
+    res.json({ 
+      message: 'Username changed successfully',
+      username: user.username
+    });
+  } catch (err) {
+    console.error('Update username error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

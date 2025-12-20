@@ -74,6 +74,11 @@ User.init(
       type: DataTypes.INTEGER,
       defaultValue: 0
     },
+    // Track if user has used their one-time username change
+    usernameChanged: {
+      type: DataTypes.BOOLEAN,
+      defaultValue: false
+    },
   },
   {
     sequelize,

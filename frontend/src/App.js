@@ -18,6 +18,7 @@ import BannerPage from './pages/BannerPage';
 import CouponPage from './pages/CouponPage';
 import RollPage from './pages/RollPage';
 import FishingPage from './pages/FishingPage';
+import SettingsPage from './pages/SettingsPage';
 
 // Components
 import Navigation from './components/Navigation/Navigation';
@@ -213,6 +214,17 @@ function App() {
             <Route path="/fishing" element={
               <ProtectedRoute>
                 <FishingPage />
+              </ProtectedRoute>
+            } />
+            {/* Settings Page */}
+            <Route path="/settings" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Navigation />
+                  <PageContent>
+                    <SettingsPage />
+                  </PageContent>
+                </MainLayout>
               </ProtectedRoute>
             } />
             <Route path="/" element={<HomeRedirect />} />

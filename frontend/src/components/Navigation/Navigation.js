@@ -466,6 +466,11 @@ const Navigation = () => {
                   
                   <ProfileDivider />
                   
+                  <ProfileMenuItem onClick={() => { navigate('/settings'); setShowProfileDropdown(false); }}>
+                    <ProfileMenuIcon><MdSettings /></ProfileMenuIcon>
+                    <span>{t('nav.settings')}</span>
+                  </ProfileMenuItem>
+                  
                   <ProfileMenuItem onClick={handleLogout} $danger>
                     <ProfileMenuIcon><MdExitToApp /></ProfileMenuIcon>
                     <span>{t('nav.logout')}</span>
@@ -622,6 +627,18 @@ const Navigation = () => {
                     ))}
                   </MobileLanguageOptions>
                 </MobileLanguageSection>
+                
+                <MobileNavItem
+                  $isActive={location.pathname === '/settings'}
+                  onClick={() => {
+                    navigate('/settings');
+                    setMobileMenuOpen(false);
+                  }}
+                  whileHover={{ backgroundColor: "rgba(255, 255, 255, 0.08)" }}
+                >
+                  <MdSettings />
+                  <span>{t('nav.settings')}</span>
+                </MobileNavItem>
                 
                 <MobileDivider />
                 
