@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight, MdLeaderboard, MdAutorenew } from 'react-icons/md';
+import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight, MdLeaderboard, MdAutorenew, MdPeople } from 'react-icons/md';
 import { FaFish, FaCrown, FaTrophy } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
-import api, { clearCache } from '../utils/api';
+import { io } from 'socket.io-client';
+import api, { clearCache, WS_URL } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, Heading2, Text, IconButton, motionVariants } from '../styles/DesignSystem';
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
@@ -97,7 +98,14 @@ const FishingPage = () => {
   // Time of day
   const [timeOfDay, setTimeOfDay] = useState(TIME_PERIODS.DAY);
   
-  // Initialize the game engine
+  // Multiplayer state
+  const [otherPlayers, setOtherPlayers] = useState([]);
+  const [isMultiplayerConnected, setIsMultiplayerConnected] = useState(false);
+  const [playerCount, setPlayerCount] = useState(1);
+  const socketRef = useRef(null);
+  const lastPositionRef = useRef({ x: 10, y: 6, direction: 'down' });
+  
+  // Initialize the game engine with multiplayer support
   const { movePlayer } = useFishingEngine({
     containerRef: canvasContainerRef,
     playerPos,
@@ -106,13 +114,139 @@ const FishingPage = () => {
     setPlayerDir,
     gameState,
     timeOfDay,
-    onCanFishChange: setCanFish
+    onCanFishChange: setCanFish,
+    otherPlayers // Pass other players for rendering
   });
   
   // Keep ref updated to avoid stale closures in keyboard handler
   useEffect(() => {
     movePlayerRef.current = movePlayer;
   }, [movePlayer]);
+  
+  // Multiplayer WebSocket connection
+  useEffect(() => {
+    const token = localStorage.getItem('token');
+    if (!token) return;
+    
+    // Connect to fishing namespace using base URL
+    const socket = io(`${WS_URL}/fishing`, {
+      auth: { token },
+      transports: ['websocket', 'polling'],
+      reconnection: true,
+      reconnectionAttempts: 5,
+      reconnectionDelay: 1000
+    });
+    
+    socketRef.current = socket;
+    
+    socket.on('connect', () => {
+      console.log('[Multiplayer] Connected to fishing server');
+      setIsMultiplayerConnected(true);
+    });
+    
+    socket.on('disconnect', () => {
+      console.log('[Multiplayer] Disconnected from fishing server');
+      setIsMultiplayerConnected(false);
+      setOtherPlayers([]);
+    });
+    
+    socket.on('connect_error', (err) => {
+      console.log('[Multiplayer] Connection error:', err.message);
+      setIsMultiplayerConnected(false);
+    });
+    
+    // Initialize with existing players
+    socket.on('init', (data) => {
+      console.log('[Multiplayer] Initialized with', data.players.length, 'players');
+      setOtherPlayers(data.players);
+      setPlayerCount(data.players.length + 1);
+    });
+    
+    // New player joined
+    socket.on('player_joined', (player) => {
+      console.log('[Multiplayer] Player joined:', player.username);
+      setOtherPlayers(prev => {
+        // Avoid duplicates
+        if (prev.find(p => p.id === player.id)) return prev;
+        return [...prev, player];
+      });
+      setPlayerCount(prev => prev + 1);
+    });
+    
+    // Player left
+    socket.on('player_left', (data) => {
+      console.log('[Multiplayer] Player left:', data.id);
+      setOtherPlayers(prev => prev.filter(p => p.id !== data.id));
+      setPlayerCount(prev => Math.max(1, prev - 1));
+    });
+    
+    // Player moved
+    socket.on('player_moved', (data) => {
+      setOtherPlayers(prev => prev.map(p => 
+        p.id === data.id 
+          ? { ...p, x: data.x, y: data.y, direction: data.direction }
+          : p
+      ));
+    });
+    
+    // Player state changed (fishing state)
+    socket.on('player_state', (data) => {
+      setOtherPlayers(prev => prev.map(p => 
+        p.id === data.id 
+          ? { ...p, state: data.state, lastFish: data.fish, success: data.success }
+          : p
+      ));
+    });
+    
+    // Player emote
+    socket.on('player_emote', (data) => {
+      setOtherPlayers(prev => prev.map(p => 
+        p.id === data.id 
+          ? { ...p, emote: data.emote }
+          : p
+      ));
+      // Clear emote after 2 seconds
+      setTimeout(() => {
+        setOtherPlayers(prev => prev.map(p => 
+          p.id === data.id 
+            ? { ...p, emote: null }
+            : p
+        ));
+      }, 2000);
+    });
+    
+    return () => {
+      socket.disconnect();
+      socketRef.current = null;
+    };
+  }, []);
+  
+  // Send position updates to server
+  useEffect(() => {
+    if (!socketRef.current || !isMultiplayerConnected) return;
+    
+    // Only send if position changed
+    const pos = lastPositionRef.current;
+    if (pos.x !== playerPos.x || pos.y !== playerPos.y || pos.direction !== playerDir) {
+      socketRef.current.emit('move', {
+        x: playerPos.x,
+        y: playerPos.y,
+        direction: playerDir
+      });
+      lastPositionRef.current = { x: playerPos.x, y: playerPos.y, direction: playerDir };
+    }
+  }, [playerPos, playerDir, isMultiplayerConnected]);
+  
+  // Send game state changes to server
+  useEffect(() => {
+    if (!socketRef.current || !isMultiplayerConnected) return;
+    
+    socketRef.current.emit('state_change', {
+      state: gameState,
+      fish: lastResult?.fish,
+      success: lastResult?.success
+    });
+  }, [gameState, isMultiplayerConnected, lastResult]);
   
   // Fetch fish info and rank on mount
   useEffect(() => {
@@ -432,6 +566,11 @@ const FishingPage = () => {
           <span>{t('fishing.title')}</span>
         </HeaderTitle>
         <HeaderRight>
+          {/* Multiplayer indicator */}
+          <MultiplayerBadge $connected={isMultiplayerConnected}>
+            <MdPeople />
+            <span>{playerCount}</span>
+          </MultiplayerBadge>
           {rankData && (
             <RankBadge onClick={() => setShowLeaderboard(true)} $canAutofish={rankData.canAutofish}>
               <FaCrown style={{ color: rankData.canAutofish ? '#ffd54f' : '#a1887f' }} />
@@ -975,6 +1114,28 @@ const WoodButton = styled.button`
   &:active {
     transform: translateY(2px);
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+`;
+
+const MultiplayerBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 12px;
+  background: ${props => props.$connected 
+    ? 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)' 
+    : 'linear-gradient(180deg, #78909c 0%, #546e7a 100%)'};
+  border: 3px solid ${props => props.$connected ? '#2e7d32' : '#455a64'};
+  border-radius: 20px;
+  color: white;
+  font-weight: 800;
+  font-size: 13px;
+  box-shadow: ${props => props.$connected
+    ? 'inset 0 2px 0 rgba(255,255,255,0.3), 0 3px 0 #1b5e20'
+    : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #37474f'};
+  
+  svg {
+    font-size: 16px;
   }
 `;
 

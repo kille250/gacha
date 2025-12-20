@@ -17,6 +17,9 @@ const API_BASE = getApiBase();
 
 export const API_URL = `${API_BASE}/api`;
 
+// Export base URL for WebSocket connections
+export const WS_URL = API_BASE;
+
 // Helper to get full URL for uploaded assets (images, videos)
 export const getAssetUrl = (path) => {
   if (!path) return '';

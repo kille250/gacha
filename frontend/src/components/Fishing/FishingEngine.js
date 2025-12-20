@@ -165,7 +165,8 @@ export const useFishingEngine = ({
   setPlayerDir,
   gameState,
   timeOfDay,
-  onCanFishChange
+  onCanFishChange,
+  otherPlayers = [] // New: Array of other players from multiplayer
 }) => {
   const appRef = useRef(null);
   const containerObjRef = useRef(null);
@@ -180,6 +181,10 @@ export const useFishingEngine = ({
   
   // Visual player position (for smooth interpolation)
   const visualPosRef = useRef({ x: playerPos.x, y: playerPos.y });
+  
+  // Multiplayer: store other player graphics
+  const otherPlayersRef = useRef(new Map()); // Map of playerId -> { container, visualPos, lastData }
+  const otherPlayersContainerRef = useRef(null);
   
   // Initialize PIXI Application
   useEffect(() => {
@@ -210,6 +215,7 @@ export const useFishingEngine = ({
       createWaterLayer(mainContainer);
       createDecorationLayer(mainContainer);
       createCampfireLayer(mainContainer);
+      createOtherPlayersLayer(mainContainer); // Multiplayer layer
       createPlayer(mainContainer);
       createParticleLayer(mainContainer);
       createLightingLayer(mainContainer);
@@ -770,6 +776,124 @@ export const useFishingEngine = ({
     container.sortableChildren = true;
   };
   
+  // Create layer for other multiplayer players
+  const createOtherPlayersLayer = (container) => {
+    const otherPlayersContainer = new PIXI.Container();
+    otherPlayersContainer.label = 'otherPlayers';
+    otherPlayersContainer.zIndex = 95; // Between decorations and local player
+    otherPlayersContainer.sortableChildren = true;
+    container.addChild(otherPlayersContainer);
+    otherPlayersContainerRef.current = otherPlayersContainer;
+  };
+  
+  // Draw another player (for multiplayer)
+  const drawOtherPlayer = (g, dir, isFishing, animFrame, color) => {
+    g.clear();
+    
+    const bobOffset = Math.sin(animFrame * 3) * (isFishing ? 0.5 : 1.5);
+    const breathe = Math.sin(animFrame * 2) * 0.5;
+    
+    // Shadow
+    g.ellipse(20, 39, 10, 4);
+    g.fill({ color: 0x000000, alpha: 0.25 });
+    
+    // Legs
+    g.rect(12, 32 + bobOffset, 7, 8);
+    g.rect(21, 32 + bobOffset, 7, 8);
+    g.fill(0x5d4037);
+    
+    // Boots
+    g.rect(11, 37 + bobOffset, 9, 4);
+    g.rect(20, 37 + bobOffset, 9, 4);
+    g.fill(0x3e2723);
+    
+    // Body - use player's unique color
+    g.roundRect(10, 18 + bobOffset, 20, 16 + breathe, 3);
+    g.fill(color);
+    
+    // Lighter stripe on body
+    const lighterColor = lightenColor(color, 0.15);
+    g.rect(12, 22 + bobOffset, 16, 2);
+    g.rect(12, 26 + bobOffset, 16, 2);
+    g.fill(lighterColor);
+    
+    // Arms
+    g.roundRect(5, 20 + bobOffset, 7, 12, 3);
+    g.roundRect(28, 20 + bobOffset, 7, 12, 3);
+    g.fill(color);
+    
+    // Hands
+    g.circle(8, 31 + bobOffset, 4);
+    g.circle(32, 31 + bobOffset, 4);
+    g.fill(0xffccaa);
+    
+    // Head
+    g.roundRect(11, 4 + bobOffset, 18, 16, 4);
+    g.fill(0xffccaa);
+    
+    // Hair
+    g.roundRect(9, 0 + bobOffset, 22, 12, 6);
+    g.fill(0x5d4037);
+    g.roundRect(12, 2 + bobOffset, 6, 4, 2);
+    g.roundRect(22, 3 + bobOffset, 4, 3, 2);
+    g.fill(0x795548);
+    
+    // Face
+    if (dir !== 'up') {
+      const eyeOffset = dir === 'left' ? -3 : dir === 'right' ? 3 : 0;
+      
+      // Eyes
+      g.rect(14 + eyeOffset, 10 + bobOffset, 4, 4);
+      g.rect(22 + eyeOffset, 10 + bobOffset, 4, 4);
+      g.fill(0xffffff);
+      
+      // Pupils
+      const pupilOffset = dir === 'left' ? -1 : dir === 'right' ? 1 : 0;
+      g.rect(15 + eyeOffset + pupilOffset, 11 + bobOffset, 2, 2);
+      g.rect(23 + eyeOffset + pupilOffset, 11 + bobOffset, 2, 2);
+      g.fill(0x3e2723);
+      
+      // Blush
+      g.ellipse(12, 16 + bobOffset, 3, 2);
+      g.ellipse(28, 16 + bobOffset, 3, 2);
+      g.fill({ color: 0xffab91, alpha: 0.6 });
+    }
+    
+    // Hat with player's color accent
+    g.ellipse(20, 5 + bobOffset, 14, 4);
+    g.fill(0x8d6e63);
+    g.roundRect(12, 0 + bobOffset, 16, 6, 2);
+    g.fill(0xa1887f);
+    // Hat band in player's color
+    g.rect(12, 4 + bobOffset, 16, 2);
+    g.fill(color);
+    
+    // Fishing rod if fishing
+    if (isFishing) {
+      g.moveTo(32, 26 + bobOffset);
+      const rodEnd = { x: 45, y: 0 };
+      if (dir === 'down') { rodEnd.x = 35; rodEnd.y = 55; }
+      else if (dir === 'up') { rodEnd.x = 35; rodEnd.y = -15; }
+      else if (dir === 'left') { rodEnd.x = -15; rodEnd.y = 20; }
+      else { rodEnd.x = 55; rodEnd.y = 20; }
+      g.lineTo(rodEnd.x, rodEnd.y + bobOffset);
+      g.stroke({ width: 3, color: 0x8d6e63 });
+      g.stroke({ width: 2, color: 0xa1887f });
+      
+      // Rod handle
+      g.roundRect(30, 24 + bobOffset, 6, 10, 2);
+      g.fill(0x6d4c41);
+    }
+  };
+  
+  // Helper to lighten a color
+  const lightenColor = (color, amount) => {
+    const r = Math.min(255, ((color >> 16) & 0xFF) + 255 * amount);
+    const g = Math.min(255, ((color >> 8) & 0xFF) + 255 * amount);
+    const b = Math.min(255, (color & 0xFF) + 255 * amount);
+    return (Math.round(r) << 16) | (Math.round(g) << 8) | Math.round(b);
+  };
+  
   // Create player sprite
   const createPlayer = (container) => {
     const playerContainer = new PIXI.Container();
@@ -962,6 +1086,157 @@ export const useFishingEngine = ({
     container.addChild(fishingContainer);
   };
   
+  // Update other players (multiplayer)
+  const updateOtherPlayers = useCallback((dt) => {
+    if (!otherPlayersContainerRef.current) return;
+    
+    const container = otherPlayersContainerRef.current;
+    const existingPlayerIds = new Set(otherPlayersRef.current.keys());
+    const currentPlayerIds = new Set(otherPlayers.map(p => p.id));
+    
+    // Remove players who left
+    existingPlayerIds.forEach(id => {
+      if (!currentPlayerIds.has(id)) {
+        const playerData = otherPlayersRef.current.get(id);
+        if (playerData?.container) {
+          container.removeChild(playerData.container);
+        }
+        otherPlayersRef.current.delete(id);
+      }
+    });
+    
+    // Update or create other players
+    otherPlayers.forEach(playerData => {
+      let playerInfo = otherPlayersRef.current.get(playerData.id);
+      
+      if (!playerInfo) {
+        // Create new player container
+        const playerContainer = new PIXI.Container();
+        playerContainer.zIndex = playerData.y * 10; // Y-sorting
+        
+        const playerGfx = new PIXI.Graphics();
+        playerContainer.addChild(playerGfx);
+        
+        // Create name tag
+        const nameTag = new PIXI.Text({
+          text: playerData.username || 'Player',
+          style: {
+            fontSize: 11,
+            fontFamily: 'Nunito, Arial, sans-serif',
+            fontWeight: 'bold',
+            fill: 0xffffff,
+            stroke: { color: 0x3e2723, width: 3 },
+            align: 'center'
+          }
+        });
+        nameTag.anchor.set(0.5, 1);
+        nameTag.x = 20;
+        nameTag.y = -5;
+        playerContainer.addChild(nameTag);
+        
+        // Create state indicator (for fishing states)
+        const stateIndicator = new PIXI.Graphics();
+        stateIndicator.label = 'state';
+        stateIndicator.visible = false;
+        playerContainer.addChild(stateIndicator);
+        
+        // Create emote bubble
+        const emoteBubble = new PIXI.Container();
+        emoteBubble.label = 'emote';
+        emoteBubble.visible = false;
+        playerContainer.addChild(emoteBubble);
+        
+        container.addChild(playerContainer);
+        
+        playerInfo = {
+          container: playerContainer,
+          graphics: playerGfx,
+          nameTag,
+          stateIndicator,
+          emoteBubble,
+          visualPos: { x: playerData.x * TILE_SIZE, y: playerData.y * TILE_SIZE },
+          color: playerData.color || 0x4ecdc4,
+          emoteTimer: 0
+        };
+        otherPlayersRef.current.set(playerData.id, playerInfo);
+      }
+      
+      // Update visual position (smooth interpolation)
+      const targetX = playerData.x * TILE_SIZE;
+      const targetY = playerData.y * TILE_SIZE;
+      playerInfo.visualPos.x += (targetX - playerInfo.visualPos.x) * 0.15;
+      playerInfo.visualPos.y += (targetY - playerInfo.visualPos.y) * 0.15;
+      
+      playerInfo.container.x = playerInfo.visualPos.x;
+      playerInfo.container.y = playerInfo.visualPos.y;
+      playerInfo.container.zIndex = playerData.y * 10;
+      
+      // Update player graphics
+      const isFishing = playerData.state && playerData.state !== 'walking';
+      drawOtherPlayer(
+        playerInfo.graphics,
+        playerData.direction || 'down',
+        isFishing,
+        animFrameRef.current,
+        playerInfo.color
+      );
+      
+      // Update state indicator (exclamation for fish_appeared, etc.)
+      const stateGfx = playerInfo.stateIndicator;
+      stateGfx.clear();
+      
+      if (playerData.state === 'fish_appeared') {
+        stateGfx.visible = true;
+        const urgentBob = Math.sin(animFrameRef.current * 15) * 2;
+        // Exclamation mark
+        stateGfx.roundRect(16, -35 + urgentBob, 8, 18, 3);
+        stateGfx.fill(0xff3333);
+        stateGfx.circle(20, -12 + urgentBob, 3);
+        stateGfx.fill(0xff3333);
+      } else if (playerData.state === 'success' && playerData.lastFish) {
+        stateGfx.visible = true;
+        // Show caught fish emoji above head (using circle with color based on rarity)
+        const rarityColors = {
+          common: 0xa8b5a0,
+          uncommon: 0x7cb342,
+          rare: 0x42a5f5,
+          epic: 0xab47bc,
+          legendary: 0xffc107
+        };
+        stateGfx.circle(20, -25, 12);
+        stateGfx.fill(rarityColors[playerData.lastFish.rarity] || 0x888888);
+        stateGfx.circle(20, -25, 8);
+        stateGfx.fill(0xffffff);
+      } else if (playerData.state === 'waiting') {
+        stateGfx.visible = true;
+        // Dots above head
+        const dotPhase = Math.floor(animFrameRef.current * 3) % 4;
+        for (let i = 0; i < 3; i++) {
+          const alpha = (i <= dotPhase) ? 0.8 : 0.3;
+          stateGfx.circle(14 + i * 6, -20, 2);
+          stateGfx.fill({ color: 0xffffff, alpha });
+        }
+      } else {
+        stateGfx.visible = false;
+      }
+      
+      // Handle emote display
+      if (playerData.emote && playerInfo.emoteTimer === 0) {
+        playerInfo.emoteTimer = 2; // 2 seconds
+        // Would need text rendering for emotes - simplified here
+      }
+      if (playerInfo.emoteTimer > 0) {
+        playerInfo.emoteTimer -= dt;
+        if (playerInfo.emoteTimer <= 0) {
+          playerInfo.emoteBubble.visible = false;
+        }
+      }
+    });
+    
+    // Sort children by zIndex for proper rendering
+    container.sortChildren();
+  }, [otherPlayers]);
+  
   // Update game state each frame
   const updateGame = useCallback((dt) => {
     if (!containerObjRef.current) return;
@@ -1153,6 +1428,9 @@ export const useFishingEngine = ({
       }
     }
     
+    // Update other players (multiplayer)
+    updateOtherPlayers(dt);
+    
     // Update particles - reuse a single Graphics object to avoid memory leaks
     const particleLayer = containerObjRef.current.getChildByLabel('particles');
     if (particleLayer) {
@@ -1323,7 +1601,7 @@ export const useFishingEngine = ({
       lighting.rect(0, h * 0.9, w, h * 0.1);
       lighting.fill({ color: 0x000000, alpha: vignetteAlpha });
     }
-  }, [playerPos, playerDir, gameState, timeOfDay]);
+  }, [playerPos, playerDir, gameState, timeOfDay, updateOtherPlayers]);
   
   // Keep updateGame ref current
   useEffect(() => {

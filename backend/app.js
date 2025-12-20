@@ -1,5 +1,6 @@
 require('dotenv').config();
 const express = require('express');
+const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
@@ -7,6 +8,8 @@ const path = require('path');
 const sequelize = require('./config/db');
 const { initUploadDirs, UPLOAD_BASE, isProduction } = require('./config/upload');
 const schedule = require('node-schedule');
+const { Server } = require('socket.io');
+const { initMultiplayer } = require('./routes/fishingMultiplayer');
 
 // ===========================================
 // SECURITY: Validate required environment variables at startup
@@ -227,6 +230,37 @@ app.use('/api/fishing', require('./routes/fishing'));
 
 const PORT = process.env.PORT || 5000;
 
+// Create HTTP server for Express + Socket.IO
+const server = http.createServer(app);
+
+// Initialize Socket.IO with CORS
+const io = new Server(server, {
+  cors: {
+    origin: function (origin, callback) {
+      if (!origin) {
+        return callback(null, true);
+      }
+      const isAllowed = ALLOWED_ORIGINS.some(allowed => {
+        if (allowed instanceof RegExp) {
+          return allowed.test(origin);
+        }
+        return allowed === origin;
+      });
+      if (isAllowed) {
+        return callback(null, true);
+      }
+      callback(new Error('Not allowed by CORS'));
+    },
+    methods: ['GET', 'POST'],
+    credentials: true
+  },
+  transports: ['websocket', 'polling']
+});
+
+// Initialize fishing multiplayer
+initMultiplayer(io);
+console.log('[Socket.IO] Fishing multiplayer initialized');
+
 // Run migrations and start server
 async function startServer() {
   try {
@@ -261,7 +295,11 @@ async function startServer() {
       await addColumnIfNotExists('Banners', 'displayOrder', 'INTEGER', '0');
     }
     
-    app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+    // Use server.listen instead of app.listen for Socket.IO
+    server.listen(PORT, () => {
+      console.log(`Server running on port ${PORT}`);
+      console.log(`[Socket.IO] WebSocket server ready`);
+    });
   } catch (err) {
     console.error('Failed to start server:', err);
     process.exit(1);
