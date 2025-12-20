@@ -2,11 +2,12 @@ import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch } from 'react-icons/fa';
+import { FaPlus, FaVideo, FaTicketAlt, FaCalendarAlt, FaCloudUploadAlt, FaCoins, FaUsers, FaImage, FaEdit, FaTrash, FaSearch, FaDownload } from 'react-icons/fa';
 import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, invalidateAdminCache, clearCache } from '../utils/api';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
+import AnimeImportModal from '../components/UI/AnimeImportModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import {
@@ -37,6 +38,7 @@ const AdminPage = () => {
   const [isEditingCoupon, setIsEditingCoupon] = useState(false);
   const [editingCoupon, setEditingCoupon] = useState(null);
   const [isMultiUploadOpen, setIsMultiUploadOpen] = useState(false);
+  const [isAnimeImportOpen, setIsAnimeImportOpen] = useState(false);
 
   // Filtered and paginated characters
   const filteredCharacters = characters.filter(character => {
@@ -552,9 +554,14 @@ const AdminPage = () => {
           {/* Add Character Section */}
           <AdminSection>
             <SectionTitle><FaImage /> {t('admin.addCharacter')}</SectionTitle>
-            <MultiUploadBtn onClick={() => setIsMultiUploadOpen(true)}>
-              <FaCloudUploadAlt /> {t('admin.multiUpload')}
-            </MultiUploadBtn>
+            <UploadButtonsRow>
+              <MultiUploadBtn onClick={() => setIsMultiUploadOpen(true)}>
+                <FaCloudUploadAlt /> {t('admin.multiUpload')}
+              </MultiUploadBtn>
+              <AnimeImportBtn onClick={() => setIsAnimeImportOpen(true)}>
+                <FaDownload /> {t('admin.animeImport')}
+              </AnimeImportBtn>
+            </UploadButtonsRow>
             <form onSubmit={addCharacterWithImage}>
               <FormGroup>
                 <Label>{t('admin.name')}</Label>
@@ -810,6 +817,7 @@ const AdminPage = () => {
       <CouponFormModal show={isAddingCoupon} onClose={() => setIsAddingCoupon(false)} onSubmit={handleAddCoupon} characters={characters} />
       <CouponFormModal show={isEditingCoupon} onClose={() => setIsEditingCoupon(false)} onSubmit={handleUpdateCoupon} coupon={editingCoupon} characters={characters} />
       <MultiUploadModal show={isMultiUploadOpen} onClose={() => setIsMultiUploadOpen(false)} onSuccess={(result) => { setSuccessMessage(result.message); fetchCharacters(); }} />
+      <AnimeImportModal show={isAnimeImportOpen} onClose={() => setIsAnimeImportOpen(false)} onSuccess={(result) => { setSuccessMessage(result.message); fetchCharacters(); }} />
 
       {/* Edit Character Modal */}
       {isEditing && editingCharacter && (
@@ -1026,12 +1034,18 @@ const CancelButton = styled(SubmitButton)`
   color: ${theme.colors.textSecondary};
 `;
 
+const UploadButtonsRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.lg};
+`;
+
 const MultiUploadBtn = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
   gap: ${theme.spacing.sm};
-  width: 100%;
+  flex: 1;
   padding: ${theme.spacing.md};
   background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
   border: none;
@@ -1039,7 +1053,25 @@ const MultiUploadBtn = styled.button`
   color: white;
   font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
-  margin-bottom: ${theme.spacing.lg};
+  font-size: ${theme.fontSizes.sm};
+  
+  &:hover { opacity: 0.9; }
+`;
+
+const AnimeImportBtn = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  flex: 1;
+  padding: ${theme.spacing.md};
+  background: linear-gradient(135deg, #ff6b9d, #c44569);
+  border: none;
+  border-radius: ${theme.radius.lg};
+  color: white;
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  font-size: ${theme.fontSizes.sm};
   
   &:hover { opacity: 0.9; }
 `;

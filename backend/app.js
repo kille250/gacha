@@ -210,6 +210,9 @@ app.use('/api/characters', characterRoutes);
 // Admin routes
 app.use('/api/admin', require('./routes/admin')); 
 
+// Anime import routes (admin only)
+app.use('/api/anime-import', require('./routes/animeImport'));
+
 // Banner routes - rate limit only roll endpoints
 const bannerRoutes = require('./routes/banners');
 app.use('/api/banners', bannerRoutes);
