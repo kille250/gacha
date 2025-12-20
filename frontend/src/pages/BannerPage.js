@@ -611,143 +611,151 @@ const BannerPage = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
             >
-              {/* Ticket Indicator */}
-              {(tickets.rollTickets > 0 || tickets.premiumTickets > 0) && (
-                <TicketBar>
-                  {tickets.rollTickets > 0 && (
-                    <TicketIndicator>
-                      <span>🎟️</span>
-                      <strong>{tickets.rollTickets}</strong>
-                      <span>Roll Tickets</span>
-                    </TicketIndicator>
-                  )}
-                  {tickets.premiumTickets > 0 && (
-                    <TicketIndicator $premium>
-                      <span>🌟</span>
-                      <strong>{tickets.premiumTickets}</strong>
-                      <span>Premium (Rare+!)</span>
-                    </TicketIndicator>
-                  )}
-                </TicketBar>
-              )}
-              
-              {/* Points Roll Buttons */}
-              <ButtonRow>
-                <PrimaryRollButton 
+              {/* Main Pull Actions */}
+              <PullActionsContainer>
+                {/* Primary Single Pull - Most Prominent */}
+                <PrimaryPullCard
                   onClick={() => handleRoll(false)} 
                   disabled={isRolling || user?.points < singlePullCost}
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {isRolling ? t('common.summoning') : (
-                    <>
-                      <ButtonLabel>
-                        <span>💫</span>
-                        <span>{t('common.single')}</span>
-                      </ButtonLabel>
-                      <CostLabel>{singlePullCost} {t('common.points')}</CostLabel>
-                    </>
-                  )}
-                </PrimaryRollButton>
-                
-                {/* Quick multi-pull buttons - from server pricing */}
-                {pullOptions.filter(opt => opt.count > 1).map((option) => {
-                  const canAfford = (user?.points || 0) >= option.finalCost;
-                  
-                  return (
-                    <MultiRollButton
-                      key={option.count}
-                      onClick={() => handleMultiRoll(option.count, false)}
-                      disabled={isRolling || !canAfford}
-                      $canAfford={canAfford}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <ButtonLabel>
-                        <span>🎯</span>
-                        <span>{option.count}×</span>
-                      </ButtonLabel>
-                      <CostInfo>
-                        <CostLabel>{option.finalCost} pts</CostLabel>
-                        {option.discountPercent > 0 && <DiscountBadge>-{option.discountPercent}%</DiscountBadge>}
-                      </CostInfo>
-                    </MultiRollButton>
-                  );
-                })}
-              </ButtonRow>
+                  <PullCardIcon>💫</PullCardIcon>
+                  <PullCardContent>
+                    <PullCardTitle>{isRolling ? t('common.summoning') : t('common.single')}</PullCardTitle>
+                    <PullCardCost>
+                      <CostAmount>{singlePullCost}</CostAmount>
+                      <CostUnit>{t('common.points')}</CostUnit>
+                    </PullCardCost>
+                  </PullCardContent>
+                  <PullCardArrow>→</PullCardArrow>
+                </PrimaryPullCard>
+
+                {/* Multi-Pull Options Grid */}
+                <MultiPullGrid>
+                  {pullOptions.filter(opt => opt.count > 1).map((option) => {
+                    const canAfford = (user?.points || 0) >= option.finalCost;
+                    
+                    return (
+                      <MultiPullCard
+                        key={option.count}
+                        onClick={() => handleMultiRoll(option.count, false)}
+                        disabled={isRolling || !canAfford}
+                        $canAfford={canAfford}
+                        $isRecommended={option.count === 10}
+                        whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
+                        whileTap={{ scale: canAfford ? 0.97 : 1 }}
+                      >
+                        {option.count === 10 && <RecommendedTag>{t('common.best') || 'BEST'}</RecommendedTag>}
+                        <MultiPullCount>{option.count}×</MultiPullCount>
+                        <MultiPullCost>
+                          <span>{option.finalCost}</span>
+                          <small>pts</small>
+                        </MultiPullCost>
+                        {option.discountPercent > 0 && (
+                          <MultiPullDiscount>-{option.discountPercent}%</MultiPullDiscount>
+                        )}
+                      </MultiPullCard>
+                    );
+                  })}
+                </MultiPullGrid>
+              </PullActionsContainer>
               
-              {/* Ticket Roll Buttons */}
+              {/* Ticket Section - Only show if user has tickets */}
               {(tickets.rollTickets > 0 || tickets.premiumTickets > 0) && (
-                <TicketButtonRow>
-                  {tickets.rollTickets > 0 && (
-                    <TicketRollButton
-                      onClick={() => handleRoll(true, 'roll')}
-                      disabled={isRolling}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <ButtonLabel>
-                        <span>🎟️</span>
-                        <span>Use Ticket</span>
-                      </ButtonLabel>
-                      <TicketCostLabel>1 Roll Ticket</TicketCostLabel>
-                    </TicketRollButton>
-                  )}
-                  {tickets.premiumTickets > 0 && (
-                    <PremiumTicketButton
-                      onClick={() => handleRoll(true, 'premium')}
-                      disabled={isRolling}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <ButtonLabel>
-                        <span>🌟</span>
-                        <span>Premium Roll</span>
-                      </ButtonLabel>
-                      <TicketCostLabel>Guaranteed Rare+!</TicketCostLabel>
-                    </PremiumTicketButton>
-                  )}
-                  {tickets.rollTickets >= 10 && (
-                    <TicketRollButton
-                      onClick={() => handleMultiRoll(10, true, 'roll')}
-                      disabled={isRolling}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <ButtonLabel>
-                        <span>🎟️</span>
-                        <span>10× Tickets</span>
-                      </ButtonLabel>
-                      <TicketCostLabel>10 Roll Tickets</TicketCostLabel>
-                    </TicketRollButton>
-                  )}
-                  {tickets.premiumTickets >= 10 && (
-                    <PremiumTicketButton
-                      onClick={() => handleMultiRoll(10, true, 'premium')}
-                      disabled={isRolling}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <ButtonLabel>
-                        <span>🌟</span>
-                        <span>10× Premium</span>
-                      </ButtonLabel>
-                      <TicketCostLabel>All Rare+!</TicketCostLabel>
-                    </PremiumTicketButton>
-                  )}
-                </TicketButtonRow>
+                <TicketSection>
+                  <TicketSectionHeader>
+                    <TicketSectionTitle>🎟️ {t('common.tickets') || 'Your Tickets'}</TicketSectionTitle>
+                    <TicketCounts>
+                      {tickets.rollTickets > 0 && (
+                        <TicketCount>
+                          <span>🎟️</span>
+                          <strong>{tickets.rollTickets}</strong>
+                        </TicketCount>
+                      )}
+                      {tickets.premiumTickets > 0 && (
+                        <TicketCount $premium>
+                          <span>🌟</span>
+                          <strong>{tickets.premiumTickets}</strong>
+                        </TicketCount>
+                      )}
+                    </TicketCounts>
+                  </TicketSectionHeader>
+                  
+                  <TicketButtonsGrid>
+                    {tickets.rollTickets > 0 && (
+                      <TicketPullButton
+                        onClick={() => handleRoll(true, 'roll')}
+                        disabled={isRolling}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <TicketButtonIcon>🎟️</TicketButtonIcon>
+                        <TicketButtonText>
+                          <span>{t('common.use') || 'Use'} 1×</span>
+                          <small>{t('common.rollTicket') || 'Roll Ticket'}</small>
+                        </TicketButtonText>
+                      </TicketPullButton>
+                    )}
+                    {tickets.premiumTickets > 0 && (
+                      <PremiumPullButton
+                        onClick={() => handleRoll(true, 'premium')}
+                        disabled={isRolling}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <TicketButtonIcon>🌟</TicketButtonIcon>
+                        <TicketButtonText>
+                          <span>{t('common.premium') || 'Premium'}</span>
+                          <small>{t('common.guaranteedRare') || 'Rare+ Guaranteed!'}</small>
+                        </TicketButtonText>
+                      </PremiumPullButton>
+                    )}
+                    {tickets.rollTickets >= 10 && (
+                      <TicketPullButton
+                        onClick={() => handleMultiRoll(10, true, 'roll')}
+                        disabled={isRolling}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <TicketButtonIcon>🎟️</TicketButtonIcon>
+                        <TicketButtonText>
+                          <span>{t('common.use') || 'Use'} 10×</span>
+                          <small>{t('common.rollTickets') || 'Roll Tickets'}</small>
+                        </TicketButtonText>
+                      </TicketPullButton>
+                    )}
+                    {tickets.premiumTickets >= 10 && (
+                      <PremiumPullButton
+                        onClick={() => handleMultiRoll(10, true, 'premium')}
+                        disabled={isRolling}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <TicketButtonIcon>🌟</TicketButtonIcon>
+                        <TicketButtonText>
+                          <span>10× {t('common.premium') || 'Premium'}</span>
+                          <small>{t('common.allRarePlus') || 'All Rare+!'}</small>
+                        </TicketButtonText>
+                      </PremiumPullButton>
+                    )}
+                  </TicketButtonsGrid>
+                </TicketSection>
               )}
               
+              {/* Footer with points and fast mode */}
               <ControlsFooter>
-                <PullHint>
-                  <span>🪙</span> <strong>{user?.points || 0}</strong> {t('common.pointsAvailable')}
-                </PullHint>
+                <PointsDisplay>
+                  <PointsIcon>🪙</PointsIcon>
+                  <PointsValue>{user?.points || 0}</PointsValue>
+                  <PointsLabel>{t('common.pointsAvailable')}</PointsLabel>
+                </PointsDisplay>
                 <FastModeToggle 
-                  active={skipAnimations}
+                  $active={skipAnimations}
                   onClick={() => setSkipAnimations(!skipAnimations)}
                 >
                   <MdFastForward />
-                  {skipAnimations ? t('common.fastMode') : t('common.normal')}
+                  <span>{skipAnimations ? t('common.fastMode') : t('common.normal')}</span>
                 </FastModeToggle>
               </ControlsFooter>
             </ControlsSection>
@@ -1607,61 +1615,41 @@ const EmptyText = styled.p`
   margin: 0;
 `;
 
-// Controls
-const ControlsSection = styled.div``;
-
-const ButtonRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: ${theme.spacing.md};
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
+// Controls Section - Redesigned for better UX
+const ControlsSection = styled.div`
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   
   @media (max-width: ${theme.breakpoints.sm}) {
-    grid-template-columns: 1fr;
+    padding: 16px;
+    border-radius: 20px;
   }
 `;
 
-const ButtonLabel = styled.span`
+const PullActionsContainer = styled.div`
   display: flex;
-  align-items: center;
-  gap: 8px;
+  flex-direction: column;
+  gap: 16px;
 `;
 
-const CostInfo = styled.div`
+// Primary Pull Card - The main CTA
+const PrimaryPullCard = styled(motion.button)`
   display: flex;
   align-items: center;
-  gap: 6px;
-  margin-left: auto;
-`;
-
-const DiscountBadge = styled.span`
-  font-size: 11px;
-  font-weight: 700;
-  color: ${theme.colors.success};
-  background: rgba(48, 209, 88, 0.15);
-  padding: 2px 6px;
-  border-radius: 4px;
-`;
-
-const PrimaryRollButton = styled(motion.button)`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 16px 18px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  color: white;
+  gap: 16px;
+  width: 100%;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, ${theme.colors.accent} 0%, ${theme.colors.accentSecondary} 100%);
   border: none;
-  border-radius: ${theme.radius.xl};
-  font-size: 15px;
-  font-weight: ${theme.fontWeights.semibold};
+  border-radius: 16px;
   cursor: pointer;
-  box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
+  box-shadow: 
+    0 8px 32px rgba(88, 86, 214, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
+  transition: all 0.2s ease;
   
   &:disabled {
     opacity: 0.5;
@@ -1669,86 +1657,361 @@ const PrimaryRollButton = styled(motion.button)`
     box-shadow: none;
   }
   
-  @media (max-width: ${theme.breakpoints.md}) {
-    padding: 14px 12px;
-    font-size: 14px;
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 16px 20px;
+    gap: 12px;
   }
 `;
 
-const MultiRollButton = styled(motion.button)`
+const PullCardIcon = styled.span`
+  font-size: 32px;
+  flex-shrink: 0;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 28px;
+  }
+`;
+
+const PullCardContent = styled.div`
+  flex: 1;
+  text-align: left;
+`;
+
+const PullCardTitle = styled.div`
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 2px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 16px;
+  }
+`;
+
+const PullCardCost = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 4px;
+`;
+
+const CostAmount = styled.span`
+  font-size: 24px;
+  font-weight: 800;
+  color: white;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 20px;
+  }
+`;
+
+const CostUnit = styled.span`
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const PullCardArrow = styled.span`
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+`;
+
+// Multi Pull Grid
+const MultiPullGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+`;
+
+const MultiPullCard = styled(motion.button)`
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 16px 12px;
+  min-height: 90px;
+  background: ${props => props.$canAfford 
+    ? props.$isRecommended 
+      ? 'linear-gradient(135deg, rgba(255, 159, 10, 0.2), rgba(255, 120, 0, 0.15))'
+      : 'rgba(255, 255, 255, 0.06)'
+    : 'rgba(255, 255, 255, 0.02)'};
+  border: 1px solid ${props => props.$canAfford 
+    ? props.$isRecommended 
+      ? 'rgba(255, 159, 10, 0.5)'
+      : 'rgba(255, 255, 255, 0.12)'
+    : 'rgba(255, 255, 255, 0.05)'};
+  border-radius: 14px;
+  cursor: ${props => props.$canAfford ? 'pointer' : 'not-allowed'};
+  transition: all 0.2s ease;
+  overflow: hidden;
+  
+  &:disabled {
+    opacity: ${props => props.$canAfford ? 1 : 0.4};
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 12px 8px;
+    min-height: 80px;
+  }
+`;
+
+const RecommendedTag = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg, #ff9f0a, #ff6b00);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 0;
+  text-align: center;
+`;
+
+const MultiPullCount = styled.div`
+  font-size: 22px;
+  font-weight: 800;
+  color: white;
+  margin-top: 4px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 18px;
+  }
+`;
+
+const MultiPullCost = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-top: 4px;
+  
+  span {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    
+    @media (max-width: ${theme.breakpoints.sm}) {
+      font-size: 13px;
+    }
+  }
+  
+  small {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+`;
+
+const MultiPullDiscount = styled.div`
+  font-size: 11px;
+  font-weight: 700;
+  color: ${theme.colors.success};
+  background: rgba(48, 209, 88, 0.15);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-top: 6px;
+`;
+
+// Ticket Section
+const TicketSection = styled.div`
+  margin-top: 20px;
+  padding-top: 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.08);
+`;
+
+const TicketSectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const TicketSectionTitle = styled.div`
+  font-size: 14px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const TicketCounts = styled.div`
+  display: flex;
+  gap: 12px;
+`;
+
+const TicketCount = styled.div`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 16px 18px;
-  background: ${props => props.$canAfford 
-    ? 'linear-gradient(135deg, rgba(88, 86, 214, 0.2), rgba(175, 82, 222, 0.2))' 
-    : 'rgba(255, 255, 255, 0.04)'};
-  color: white;
-  border: 1px solid ${props => props.$canAfford 
-    ? 'rgba(88, 86, 214, 0.4)' 
-    : 'rgba(255, 255, 255, 0.08)'};
-  border-radius: ${theme.radius.xl};
-  font-size: 15px;
-  font-weight: ${theme.fontWeights.semibold};
+  gap: 4px;
+  font-size: 13px;
+  color: ${props => props.$premium ? '#ffc107' : '#e1bee7'};
+  
+  strong {
+    font-size: 16px;
+    font-weight: 800;
+  }
+`;
+
+const TicketButtonsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+  gap: 10px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: 1fr 1fr;
+    gap: 8px;
+  }
+`;
+
+const TicketPullButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.25), rgba(103, 58, 183, 0.2));
+  border: 1px solid rgba(156, 39, 176, 0.4);
+  border-radius: 12px;
   cursor: pointer;
   transition: all 0.2s ease;
   
   &:hover:not(:disabled) {
-    background: linear-gradient(135deg, rgba(88, 86, 214, 0.3), rgba(175, 82, 222, 0.3));
-    border-color: rgba(88, 86, 214, 0.6);
+    background: linear-gradient(135deg, rgba(156, 39, 176, 0.35), rgba(103, 58, 183, 0.3));
+    border-color: rgba(186, 104, 200, 0.6);
   }
   
   &:disabled {
-    opacity: 0.35;
+    opacity: 0.5;
     cursor: not-allowed;
   }
   
-  @media (max-width: ${theme.breakpoints.md}) {
-    padding: 14px 12px;
-    font-size: 14px;
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 10px 12px;
   }
 `;
 
-const CostLabel = styled.span`
-  font-size: 13px;
-  opacity: 0.7;
+const PremiumPullButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 16px;
+  background: linear-gradient(135deg, rgba(255, 193, 7, 0.25), rgba(255, 152, 0, 0.2));
+  border: 1px solid rgba(255, 193, 7, 0.5);
+  border-radius: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 0 20px rgba(255, 193, 7, 0.15);
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(135deg, rgba(255, 193, 7, 0.35), rgba(255, 152, 0, 0.3));
+    border-color: rgba(255, 215, 0, 0.7);
+    box-shadow: 0 0 30px rgba(255, 193, 7, 0.25);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 10px 12px;
+  }
 `;
 
+const TicketButtonIcon = styled.span`
+  font-size: 20px;
+  flex-shrink: 0;
+`;
+
+const TicketButtonText = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  
+  span {
+    font-size: 14px;
+    font-weight: 600;
+    color: white;
+  }
+  
+  small {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.6);
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    span {
+      font-size: 12px;
+    }
+    small {
+      font-size: 10px;
+    }
+  }
+`;
+
+// Footer
 const ControlsFooter = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
-  gap: ${theme.spacing.sm};
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 `;
 
-const PullHint = styled.p`
-  font-size: ${theme.fontSizes.sm};
+const PointsDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const PointsIcon = styled.span`
+  font-size: 20px;
+`;
+
+const PointsValue = styled.span`
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+`;
+
+const PointsLabel = styled.span`
+  font-size: 13px;
   color: ${theme.colors.textTertiary};
-  margin: 0;
   
-  strong {
-    color: ${theme.colors.text};
+  @media (max-width: ${theme.breakpoints.sm}) {
+    display: none;
   }
 `;
 
 const FastModeToggle = styled.button`
   display: flex;
   align-items: center;
-  gap: ${theme.spacing.xs};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  background: ${props => props.active ? 'rgba(88, 86, 214, 0.2)' : theme.colors.glass};
-  border: 1px solid ${props => props.active ? theme.colors.accent : theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.full};
-  color: ${props => props.active ? theme.colors.accent : theme.colors.textSecondary};
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
+  gap: 6px;
+  padding: 8px 14px;
+  background: ${props => props.$active ? 'rgba(88, 86, 214, 0.25)' : 'rgba(255, 255, 255, 0.06)'};
+  border: 1px solid ${props => props.$active ? 'rgba(88, 86, 214, 0.5)' : 'rgba(255, 255, 255, 0.1)'};
+  border-radius: 100px;
+  color: ${props => props.$active ? theme.colors.accent : 'rgba(255, 255, 255, 0.6)'};
+  font-size: 13px;
+  font-weight: 500;
   cursor: pointer;
-  transition: all ${theme.transitions.fast};
+  transition: all 0.2s ease;
   
   &:hover {
-    background: rgba(88, 86, 214, 0.15);
+    background: rgba(88, 86, 214, 0.2);
+    border-color: rgba(88, 86, 214, 0.4);
+  }
+  
+  svg {
+    font-size: 16px;
   }
 `;
 
@@ -1986,105 +2249,6 @@ const RollFromPanelBtn = styled(motion.button)`
     opacity: 0.5;
     cursor: not-allowed;
   }
-`;
-
-// =============================================
-// TICKET STYLED COMPONENTS
-// =============================================
-
-const TicketBar = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: ${theme.spacing.lg};
-  margin-bottom: ${theme.spacing.md};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: linear-gradient(135deg, rgba(156, 39, 176, 0.1), rgba(103, 58, 183, 0.1));
-  border-radius: ${theme.radius.lg};
-  border: 1px solid rgba(156, 39, 176, 0.2);
-`;
-
-const TicketIndicator = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 12px;
-  background: ${props => props.$premium 
-    ? 'linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.15))'
-    : 'rgba(255, 255, 255, 0.1)'};
-  border-radius: ${theme.radius.md};
-  font-size: ${theme.fontSizes.sm};
-  color: ${props => props.$premium ? '#ffc107' : '#e1bee7'};
-  
-  strong {
-    font-size: ${theme.fontSizes.lg};
-    font-weight: 800;
-    color: ${props => props.$premium ? '#ffb300' : '#ba68c8'};
-  }
-`;
-
-const TicketButtonRow = styled.div`
-  display: flex;
-  gap: ${theme.spacing.sm};
-  margin-top: ${theme.spacing.sm};
-  flex-wrap: wrap;
-  justify-content: center;
-`;
-
-const TicketRollButton = styled(motion.button)`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: linear-gradient(135deg, #7b1fa2, #512da8);
-  color: white;
-  border: 2px solid #9c27b0;
-  border-radius: ${theme.radius.lg};
-  cursor: pointer;
-  min-width: 110px;
-  transition: all 0.2s;
-  
-  &:hover {
-    background: linear-gradient(135deg, #8e24aa, #5e35b1);
-    border-color: #ba68c8;
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const PremiumTicketButton = styled(motion.button)`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: linear-gradient(135deg, #ff8f00, #f57c00);
-  color: white;
-  border: 2px solid #ffc107;
-  border-radius: ${theme.radius.lg};
-  cursor: pointer;
-  min-width: 110px;
-  transition: all 0.2s;
-  box-shadow: 0 0 15px rgba(255, 193, 7, 0.3);
-  
-  &:hover {
-    background: linear-gradient(135deg, #ffa000, #fb8c00);
-    border-color: #ffd54f;
-    box-shadow: 0 0 25px rgba(255, 193, 7, 0.5);
-  }
-  
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-`;
-
-const TicketCostLabel = styled.span`
-  font-size: 10px;
-  font-weight: 600;
-  opacity: 0.9;
-  margin-top: 2px;
 `;
 
 export default BannerPage;

@@ -431,61 +431,69 @@ const RollPage = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
             >
-              {/* Main roll buttons */}
-              <ButtonRow>
-                <PrimaryRollButton 
+              {/* Main Pull Actions */}
+              <PullActionsContainer>
+                {/* Primary Single Pull - Most Prominent */}
+                <PrimaryPullCard
                   onClick={handleRoll} 
                   disabled={isRolling || user?.points < singlePullCost}
-                  whileHover={{ scale: 1.02 }}
+                  whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {isRolling ? t('common.summoning') : (
-                    <>
-                      <ButtonLabel>
-                        <span>💫</span>
-                        <span>{t('common.single')}</span>
-                      </ButtonLabel>
-                      <CostLabel>100 {t('common.points')}</CostLabel>
-                    </>
-                  )}
-                </PrimaryRollButton>
-                
-                {/* Quick multi-pull buttons - from server pricing */}
-                {pullOptions.filter(opt => opt.count > 1).map((option) => {
-                  const canAfford = (user?.points || 0) >= option.finalCost;
-                  
-                  return (
-                    <MultiRollButton
-                      key={option.count}
-                      onClick={() => handleMultiRoll(option.count)}
-                      disabled={isRolling || !canAfford}
-                      $canAfford={canAfford}
-                      whileHover={{ scale: 1.02 }}
-                      whileTap={{ scale: 0.98 }}
-                    >
-                      <ButtonLabel>
-                        <span>🎯</span>
-                        <span>{option.count}×</span>
-                      </ButtonLabel>
-                      <CostInfo>
-                        <CostLabel>{option.finalCost} pts</CostLabel>
-                        {option.discountPercent > 0 && <DiscountBadge>-{option.discountPercent}%</DiscountBadge>}
-                      </CostInfo>
-                    </MultiRollButton>
-                  );
-                })}
-              </ButtonRow>
+                  <PullCardIcon>💫</PullCardIcon>
+                  <PullCardContent>
+                    <PullCardTitle>{isRolling ? t('common.summoning') : t('common.single')}</PullCardTitle>
+                    <PullCardCost>
+                      <CostAmount>{singlePullCost}</CostAmount>
+                      <CostUnit>{t('common.points')}</CostUnit>
+                    </PullCardCost>
+                  </PullCardContent>
+                  <PullCardArrow>→</PullCardArrow>
+                </PrimaryPullCard>
+
+                {/* Multi-Pull Options Grid */}
+                <MultiPullGrid>
+                  {pullOptions.filter(opt => opt.count > 1).map((option) => {
+                    const canAfford = (user?.points || 0) >= option.finalCost;
+                    
+                    return (
+                      <MultiPullCard
+                        key={option.count}
+                        onClick={() => handleMultiRoll(option.count)}
+                        disabled={isRolling || !canAfford}
+                        $canAfford={canAfford}
+                        $isRecommended={option.count === 10}
+                        whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
+                        whileTap={{ scale: canAfford ? 0.97 : 1 }}
+                      >
+                        {option.count === 10 && <RecommendedTag>{t('common.best') || 'BEST'}</RecommendedTag>}
+                        <MultiPullCount>{option.count}×</MultiPullCount>
+                        <MultiPullCost>
+                          <span>{option.finalCost}</span>
+                          <small>pts</small>
+                        </MultiPullCost>
+                        {option.discountPercent > 0 && (
+                          <MultiPullDiscount>-{option.discountPercent}%</MultiPullDiscount>
+                        )}
+                      </MultiPullCard>
+                    );
+                  })}
+                </MultiPullGrid>
+              </PullActionsContainer>
               
+              {/* Footer with points and fast mode */}
               <ControlsFooter>
-                <PullHint>
-                  <span>🪙</span> <strong>{user?.points || 0}</strong> {t('common.pointsAvailable')}
-                </PullHint>
+                <PointsDisplay>
+                  <PointsIcon>🪙</PointsIcon>
+                  <PointsValue>{user?.points || 0}</PointsValue>
+                  <PointsLabel>{t('common.pointsAvailable')}</PointsLabel>
+                </PointsDisplay>
                 <FastModeToggle 
-                  active={skipAnimations}
+                  $active={skipAnimations}
                   onClick={() => setSkipAnimations(!skipAnimations)}
                 >
                   <MdFastForward />
-                  {skipAnimations ? t('common.fastMode') : t('common.normal')}
+                  <span>{skipAnimations ? t('common.fastMode') : t('common.normal')}</span>
                 </FastModeToggle>
               </ControlsFooter>
             </ControlsSection>
@@ -1006,137 +1014,243 @@ const EmptyText = styled.p`
   line-height: 1.5;
 `;
 
-// Controls Section
+// Controls Section - Redesigned for better UX
 const ControlsSection = styled.div`
-  margin-top: 8px;
-`;
-
-const ButtonRow = styled.div`
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  margin-bottom: 16px;
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    grid-template-columns: repeat(2, 1fr);
-    gap: 8px;
-  }
+  background: rgba(0, 0, 0, 0.2);
+  backdrop-filter: blur(20px);
+  border-radius: 24px;
+  padding: 24px;
+  border: 1px solid rgba(255, 255, 255, 0.06);
   
   @media (max-width: ${theme.breakpoints.sm}) {
-    grid-template-columns: 1fr;
+    padding: 16px;
+    border-radius: 20px;
   }
 `;
 
-const PrimaryRollButton = styled(motion.button)`
+const PullActionsContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+`;
+
+// Primary Pull Card - The main CTA
+const PrimaryPullCard = styled(motion.button)`
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 16px 18px;
-  background: linear-gradient(135deg, #007AFF 0%, #0056CC 100%);
-  color: white;
+  gap: 16px;
+  width: 100%;
+  padding: 20px 24px;
+  background: linear-gradient(135deg, ${theme.colors.accent} 0%, ${theme.colors.accentSecondary} 100%);
   border: none;
-  border-radius: 14px;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: 16px;
   cursor: pointer;
-  box-shadow: 0 4px 12px rgba(0, 122, 255, 0.3);
+  box-shadow: 
+    0 8px 32px rgba(88, 86, 214, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
   transition: all 0.2s ease;
   
-  &:hover:not(:disabled) {
-    box-shadow: 0 6px 20px rgba(0, 122, 255, 0.4);
-  }
-  
   &:disabled {
-    opacity: 0.4;
+    opacity: 0.5;
     cursor: not-allowed;
     box-shadow: none;
   }
   
-  @media (max-width: ${theme.breakpoints.md}) {
-    padding: 14px 12px;
-    font-size: 14px;
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 16px 20px;
+    gap: 12px;
   }
 `;
 
-const ButtonLabel = styled.span`
+const PullCardIcon = styled.span`
+  font-size: 32px;
+  flex-shrink: 0;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 28px;
+  }
+`;
+
+const PullCardContent = styled.div`
+  flex: 1;
+  text-align: left;
+`;
+
+const PullCardTitle = styled.div`
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+  margin-bottom: 2px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 16px;
+  }
+`;
+
+const PullCardCost = styled.div`
   display: flex;
-  align-items: center;
-  gap: 8px;
+  align-items: baseline;
+  gap: 4px;
 `;
 
-const CostInfo = styled.div`
+const CostAmount = styled.span`
+  font-size: 24px;
+  font-weight: 800;
+  color: white;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 20px;
+  }
+`;
+
+const CostUnit = styled.span`
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const PullCardArrow = styled.span`
+  font-size: 24px;
+  color: rgba(255, 255, 255, 0.6);
+  flex-shrink: 0;
+`;
+
+// Multi Pull Grid
+const MultiPullGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: 8px;
+  }
+`;
+
+const MultiPullCard = styled(motion.button)`
+  position: relative;
   display: flex;
+  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  margin-left: auto;
+  justify-content: center;
+  padding: 16px 12px;
+  min-height: 90px;
+  background: ${props => props.$canAfford 
+    ? props.$isRecommended 
+      ? 'linear-gradient(135deg, rgba(255, 159, 10, 0.2), rgba(255, 120, 0, 0.15))'
+      : 'rgba(255, 255, 255, 0.06)'
+    : 'rgba(255, 255, 255, 0.02)'};
+  border: 1px solid ${props => props.$canAfford 
+    ? props.$isRecommended 
+      ? 'rgba(255, 159, 10, 0.5)'
+      : 'rgba(255, 255, 255, 0.12)'
+    : 'rgba(255, 255, 255, 0.05)'};
+  border-radius: 14px;
+  cursor: ${props => props.$canAfford ? 'pointer' : 'not-allowed'};
+  transition: all 0.2s ease;
+  overflow: hidden;
+  
+  &:disabled {
+    opacity: ${props => props.$canAfford ? 1 : 0.4};
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 12px 8px;
+    min-height: 80px;
+  }
 `;
 
-const CostLabel = styled.span`
-  font-size: 13px;
-  opacity: 0.7;
+const RecommendedTag = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(90deg, #ff9f0a, #ff6b00);
+  color: white;
+  font-size: 9px;
+  font-weight: 800;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  padding: 3px 0;
+  text-align: center;
 `;
 
-const DiscountBadge = styled.span`
+const MultiPullCount = styled.div`
+  font-size: 22px;
+  font-weight: 800;
+  color: white;
+  margin-top: 4px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 18px;
+  }
+`;
+
+const MultiPullCost = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 2px;
+  margin-top: 4px;
+  
+  span {
+    font-size: 15px;
+    font-weight: 600;
+    color: rgba(255, 255, 255, 0.8);
+    
+    @media (max-width: ${theme.breakpoints.sm}) {
+      font-size: 13px;
+    }
+  }
+  
+  small {
+    font-size: 11px;
+    color: rgba(255, 255, 255, 0.5);
+  }
+`;
+
+const MultiPullDiscount = styled.div`
   font-size: 11px;
   font-weight: 700;
   color: ${theme.colors.success};
   background: rgba(48, 209, 88, 0.15);
   padding: 2px 6px;
   border-radius: 4px;
+  margin-top: 6px;
 `;
 
-const MultiRollButton = styled(motion.button)`
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 16px 18px;
-  background: ${props => props.$canAfford 
-    ? 'linear-gradient(135deg, rgba(88, 86, 214, 0.2), rgba(175, 82, 222, 0.2))' 
-    : 'rgba(255, 255, 255, 0.04)'};
-  color: white;
-  border: 1px solid ${props => props.$canAfford 
-    ? 'rgba(88, 86, 214, 0.4)' 
-    : 'rgba(255, 255, 255, 0.08)'};
-  border-radius: 14px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover:not(:disabled) {
-    background: linear-gradient(135deg, rgba(88, 86, 214, 0.3), rgba(175, 82, 222, 0.3));
-    border-color: rgba(88, 86, 214, 0.6);
-  }
-  
-  &:disabled {
-    opacity: 0.35;
-    cursor: not-allowed;
-  }
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    padding: 14px 12px;
-    font-size: 14px;
-  }
-`;
-
+// Footer
 const ControlsFooter = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   flex-wrap: wrap;
   gap: 12px;
+  margin-top: 20px;
+  padding-top: 16px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
 `;
 
-const PullHint = styled.p`
-  font-size: 14px;
+const PointsDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const PointsIcon = styled.span`
+  font-size: 20px;
+`;
+
+const PointsValue = styled.span`
+  font-size: 18px;
+  font-weight: 700;
+  color: white;
+`;
+
+const PointsLabel = styled.span`
+  font-size: 13px;
   color: ${theme.colors.textTertiary};
-  margin: 0;
   
-  strong {
-    color: ${theme.colors.text};
+  @media (max-width: ${theme.breakpoints.sm}) {
+    display: none;
   }
 `;
 
@@ -1145,18 +1259,22 @@ const FastModeToggle = styled.button`
   align-items: center;
   gap: 6px;
   padding: 8px 14px;
-  background: ${props => props.active ? 'rgba(88, 86, 214, 0.2)' : 'rgba(255, 255, 255, 0.06)'};
-  border: 1px solid ${props => props.active ? 'rgba(88, 86, 214, 0.4)' : 'rgba(255, 255, 255, 0.1)'};
+  background: ${props => props.$active ? 'rgba(88, 86, 214, 0.25)' : 'rgba(255, 255, 255, 0.06)'};
+  border: 1px solid ${props => props.$active ? 'rgba(88, 86, 214, 0.5)' : 'rgba(255, 255, 255, 0.1)'};
   border-radius: 100px;
-  color: ${props => props.active ? theme.colors.accent : theme.colors.textTertiary};
+  color: ${props => props.$active ? theme.colors.accent : 'rgba(255, 255, 255, 0.6)'};
   font-size: 13px;
   font-weight: 500;
   cursor: pointer;
   transition: all 0.2s ease;
   
   &:hover {
-    background: rgba(88, 86, 214, 0.15);
-    border-color: rgba(88, 86, 214, 0.3);
+    background: rgba(88, 86, 214, 0.2);
+    border-color: rgba(88, 86, 214, 0.4);
+  }
+  
+  svg {
+    font-size: 16px;
   }
 `;
 
