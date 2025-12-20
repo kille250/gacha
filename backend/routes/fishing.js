@@ -14,6 +14,9 @@ const autofishCooldowns = new Map();
 const autofishInProgress = new Set(); // Prevent race conditions
 const AUTOFISH_COOLDOWN = 2500; // 2.5 seconds minimum between autofishes
 
+// Race condition protection for trading (per user)
+const tradeInProgress = new Set();
+
 // Clean up old cooldowns periodically
 setInterval(() => {
   const now = Date.now();
@@ -879,10 +882,22 @@ router.get('/trading-post', auth, async (req, res) => {
 
 // POST /api/fishing/trade - Execute a trade
 router.post('/trade', auth, async (req, res) => {
+  const userId = req.user.id;
+  
   try {
+    // Prevent race condition - only one trade request at a time per user
+    if (tradeInProgress.has(userId)) {
+      return res.status(429).json({ 
+        error: 'Trade in progress',
+        message: 'Another trade request is being processed'
+      });
+    }
+    tradeInProgress.add(userId);
+    
     const { tradeId, quantity = 1 } = req.body;
     
     if (!tradeId) {
+      tradeInProgress.delete(userId);
       return res.status(400).json({ error: 'Trade ID required' });
     }
     
@@ -891,11 +906,13 @@ router.post('/trade', auth, async (req, res) => {
     
     const tradeOption = TRADE_OPTIONS.find(t => t.id === tradeId);
     if (!tradeOption) {
+      tradeInProgress.delete(userId);
       return res.status(400).json({ error: 'Invalid trade option' });
     }
     
-    const user = await User.findByPk(req.user.id);
+    const user = await User.findByPk(userId);
     if (!user) {
+      tradeInProgress.delete(userId);
       return res.status(404).json({ error: 'User not found' });
     }
     
@@ -924,6 +941,7 @@ router.post('/trade', auth, async (req, res) => {
       // Need at least 1 of each rarity per trade
       const minAvailable = Math.min(...Object.values(totals));
       if (minAvailable < tradeQuantity) {
+        tradeInProgress.delete(userId);
         return res.status(400).json({ 
           error: 'Not enough fish',
           message: `Need at least ${tradeQuantity} of each rarity`
@@ -954,6 +972,7 @@ router.post('/trade', auth, async (req, res) => {
       // Regular rarity trade
       const requiredTotal = tradeOption.requiredQuantity * tradeQuantity;
       if (totals[tradeOption.requiredRarity] < requiredTotal) {
+        tradeInProgress.delete(userId);
         return res.status(400).json({ 
           error: 'Not enough fish',
           message: `Need ${requiredTotal} ${tradeOption.requiredRarity} fish (have ${totals[tradeOption.requiredRarity]})`
@@ -1045,6 +1064,9 @@ router.post('/trade', auth, async (req, res) => {
       message = `+${reward.premiumTickets} Premium Ticket${reward.premiumTickets > 1 ? 's' : ''}!`;
     }
     
+    // Release lock before responding
+    tradeInProgress.delete(userId);
+    
     res.json({
       success: true,
       tradeName: tradeOption.name,
@@ -1061,6 +1083,8 @@ router.post('/trade', auth, async (req, res) => {
     });
     
   } catch (err) {
+    // Always release lock on error
+    tradeInProgress.delete(userId);
     console.error('Trade error:', err);
     res.status(500).json({ error: 'Server error' });
   }

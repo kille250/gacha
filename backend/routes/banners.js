@@ -14,6 +14,12 @@ const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
 const { PRICING_CONFIG, getDiscountForCount } = require('../config/pricing');
 
 // ===========================================
+// SECURITY: Race condition protection
+// ===========================================
+// Prevent concurrent roll requests per user (could cause double-spending)
+const rollInProgress = new Set();
+
+// ===========================================
 // SECURITY: Input validation helpers
 // ===========================================
 
@@ -566,29 +572,49 @@ router.delete('/:id', [auth, admin], async (req, res) => {
 
 // Roll on a specific banner
 router.post('/:id/roll', auth, async (req, res) => {
+	const userId = req.user.id;
+	
+	// Prevent race condition - only one roll at a time per user
+	if (rollInProgress.has(userId)) {
+	  return res.status(429).json({ 
+	    error: 'Roll in progress',
+	    message: 'Another roll request is being processed'
+	  });
+	}
+	rollInProgress.add(userId);
+	
 	try {
 	  // Validate banner ID
 	  if (!isValidId(req.params.id)) {
+		rollInProgress.delete(userId);
 		return res.status(400).json({ error: 'Invalid banner ID' });
 	  }
 	  
 	  const banner = await Banner.findByPk(req.params.id, {
 		include: [{ model: Character }]
 	  });
-	  if (!banner) return res.status(404).json({ error: 'Banner not found' });
-	  if (!banner.active) return res.status(400).json({ error: 'This banner is no longer active' });
+	  if (!banner) {
+	    rollInProgress.delete(userId);
+	    return res.status(404).json({ error: 'Banner not found' });
+	  }
+	  if (!banner.active) {
+	    rollInProgress.delete(userId);
+	    return res.status(400).json({ error: 'This banner is no longer active' });
+	  }
 	  
 	  // Check if banner is within date range
 	  const now = new Date();
 	  if (banner.startDate && new Date(banner.startDate) > now) {
+		rollInProgress.delete(userId);
 		return res.status(400).json({ error: 'This banner has not started yet' });
 	  }
 	  if (banner.endDate && new Date(banner.endDate) < now) {
+		rollInProgress.delete(userId);
 		return res.status(400).json({ error: 'This banner has already ended' });
 	  }
 	  
 	  // Get the user
-	  const user = await User.findByPk(req.user.id);
+	  const user = await User.findByPk(userId);
 	  
 	  // Check payment method: ticket or points
 	  const { useTicket, ticketType } = req.body;
@@ -598,18 +624,30 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  
 	  if (useTicket) {
 	    // Use ticket instead of points
-	    if (ticketType === 'premium' && (user.premiumTickets || 0) >= 1) {
-	      user.premiumTickets -= 1;
-	      usedTicket = 'premium';
-	      isPremium = true;
-	      cost = 0;
+	    if (ticketType === 'premium') {
+	      // User explicitly wants premium ticket
+	      if ((user.premiumTickets || 0) >= 1) {
+	        user.premiumTickets -= 1;
+	        usedTicket = 'premium';
+	        isPremium = true;
+	        cost = 0;
+	      } else {
+	        rollInProgress.delete(userId);
+	        return res.status(400).json({
+	          error: 'No premium tickets available',
+	          rollTickets: user.rollTickets || 0,
+	          premiumTickets: user.premiumTickets || 0
+	        });
+	      }
 	    } else if ((user.rollTickets || 0) >= 1) {
+	      // Use roll ticket
 	      user.rollTickets -= 1;
 	      usedTicket = 'roll';
 	      cost = 0;
 	    } else {
+	      rollInProgress.delete(userId);
 	      return res.status(400).json({
-	        error: 'No tickets available',
+	        error: 'No roll tickets available',
 	        rollTickets: user.rollTickets || 0,
 	        premiumTickets: user.premiumTickets || 0
 	      });
@@ -617,6 +655,7 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  } else {
 	    // Use points
 	    if (user.points < cost) {
+	      rollInProgress.delete(userId);
 	      return res.status(400).json({
 	        error: `Not enough points. Banner pulls cost ${cost} points.`,
 	        rollTickets: user.rollTickets || 0,
@@ -725,7 +764,7 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  let cumulativeRate = 0;
 	  for (const [rarity, rate] of Object.entries(dropRates)) {
 		cumulativeRate += rate;
-		if (rarityRoll <= cumulativeRate) {
+		if (rarityRoll < cumulativeRate) {
 		  selectedRarity = rarity;
 		  break;
 		}
@@ -772,6 +811,9 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  // Log the pull for analysis
 	  console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${randomChar.name} (${selectedRarity}) from ${characterPoolSource} pool. Cost: ${cost} points`);
 	  
+	  // Release lock before responding
+	  rollInProgress.delete(userId);
+	  
 	  res.json({
 		character: randomChar,
 		isBannerCharacter: bannerCharacters.some(c => c.id === randomChar.id),
@@ -786,6 +828,8 @@ router.post('/:id/roll', auth, async (req, res) => {
 		}
 	  });
 	} catch (err) {
+	  // Always release lock on error
+	  rollInProgress.delete(userId);
 	  console.error(err);
 	  res.status(500).json({ error: 'Server error' });
 	}
@@ -793,9 +837,21 @@ router.post('/:id/roll', auth, async (req, res) => {
   
 // Multi-roll on a banner (similar to standard multi-roll but with banner rates)
 router.post('/:id/roll-multi', auth, async (req, res) => {
+	const userId = req.user.id;
+	
+	// Prevent race condition - only one roll at a time per user
+	if (rollInProgress.has(userId)) {
+	  return res.status(429).json({ 
+	    error: 'Roll in progress',
+	    message: 'Another roll request is being processed'
+	  });
+	}
+	rollInProgress.add(userId);
+	
 	try {
 	  // Validate banner ID
 	  if (!isValidId(req.params.id)) {
+		rollInProgress.delete(userId);
 		return res.status(400).json({ error: 'Invalid banner ID' });
 	  }
 	  
@@ -803,20 +859,28 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	  const banner = await Banner.findByPk(req.params.id, {
 		include: [{ model: Character }]
 	  });
-	  if (!banner) return res.status(404).json({ error: 'Banner not found' });
-	  if (!banner.active) return res.status(400).json({ error: 'This banner is no longer active' });
+	  if (!banner) {
+	    rollInProgress.delete(userId);
+	    return res.status(404).json({ error: 'Banner not found' });
+	  }
+	  if (!banner.active) {
+	    rollInProgress.delete(userId);
+	    return res.status(400).json({ error: 'This banner is no longer active' });
+	  }
 	  
 	  // Check if banner is within date range
 	  const now = new Date();
 	  if (banner.startDate && new Date(banner.startDate) > now) {
+		rollInProgress.delete(userId);
 		return res.status(400).json({ error: 'This banner has not started yet' });
 	  }
 	  if (banner.endDate && new Date(banner.endDate) < now) {
+		rollInProgress.delete(userId);
 		return res.status(400).json({ error: 'This banner has already ended' });
 	  }
 	  
 	  // Get the user
-	  const user = await User.findByPk(req.user.id);
+	  const user = await User.findByPk(userId);
 	  
 	  // Check payment method: tickets or points
 	  const { useTickets, ticketType } = req.body;
@@ -836,6 +900,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	        usedTickets.premium = count;
 	        premiumCount = count;
 	      } else {
+	        rollInProgress.delete(userId);
 	        return res.status(400).json({
 	          error: `Not enough premium tickets. Need ${count}, have ${premiumTickets}.`,
 	          rollTickets,
@@ -848,6 +913,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	        user.rollTickets -= count;
 	        usedTickets.roll = count;
 	      } else {
+	        rollInProgress.delete(userId);
 	        return res.status(400).json({
 	          error: `Not enough roll tickets. Need ${count}, have ${rollTickets}.`,
 	          rollTickets,
@@ -870,6 +936,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	        remaining = 0;
 	      }
 	      if (remaining > 0) {
+	        rollInProgress.delete(userId);
 	        return res.status(400).json({
 	          error: `Not enough tickets. Need ${count} total.`,
 	          rollTickets,
@@ -885,6 +952,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	    finalCost = Math.floor(baseCost * (1 - discount));
 	    
 	    if (user.points < finalCost) {
+	      rollInProgress.delete(userId);
 	      return res.status(400).json({
 	        error: `Not enough points. This multi-pull costs ${finalCost} points.`,
 	        rollTickets: user.rollTickets || 0,
@@ -1016,7 +1084,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		let cumulativeRate = 0;
 		for (const [rarity, rate] of Object.entries(currentRates)) {
 		  cumulativeRate += rate;
-		  if (rarityRoll <= cumulativeRate) {
+		  if (rarityRoll < cumulativeRate) {
 			selectedRarity = rarity;
 			break;
 		  }
@@ -1077,6 +1145,9 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 	  // Log the multi-roll
 	  console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
 	  
+	  // Release lock before responding
+	  rollInProgress.delete(userId);
+	  
 	  res.json({
 		characters: results,
 		bannerName: banner.name,
@@ -1090,6 +1161,8 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		}
 	  });
 	} catch (err) {
+	  // Always release lock on error
+	  rollInProgress.delete(userId);
 	  console.error(err);
 	  res.status(500).json({ error: 'Server error' });
 	}
