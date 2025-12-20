@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight, MdLeaderboard, MdAutorenew } from 'react-icons/md';
 import { FaFish, FaCrown, FaTrophy } from 'react-icons/fa';
@@ -1245,7 +1245,7 @@ const ActionButton = styled(motion.button)`
   }};
   box-shadow: inset 0 2px 0 rgba(255,255,255,0.3), 0 4px 8px rgba(0,0,0,0.4);
   
-  ${props => props.$state === 'fish_appeared' && `animation: ${pulse} 0.3s ease-in-out infinite;`}
+  ${props => props.$state === 'fish_appeared' && css`animation: ${pulse} 0.3s ease-in-out infinite;`}
   
   &:disabled { opacity: 0.5; }
 `;
