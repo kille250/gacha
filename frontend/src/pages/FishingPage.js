@@ -51,6 +51,7 @@ const FishingPage = () => {
   const { user, setUser } = useContext(AuthContext);
   const canvasContainerRef = useRef(null);
   const keysPressed = useRef(new Set());
+  const movePlayerRef = useRef(null);
   
   // Player state
   const [playerPos, setPlayerPos] = useState({ x: 10, y: 8 });
@@ -102,6 +103,11 @@ const FishingPage = () => {
     timeOfDay,
     onCanFishChange: setCanFish
   });
+  
+  // Keep ref updated to avoid stale closures in keyboard handler
+  useEffect(() => {
+    movePlayerRef.current = movePlayer;
+  }, [movePlayer]);
   
   // Fetch fish info and rank on mount
   useEffect(() => {
@@ -203,49 +209,63 @@ const FishingPage = () => {
     return () => clearTimeout(timer);
   }, [autofishLog]);
   
-  // Keyboard controls
+  // Refs for keyboard handler to avoid stale closures
+  const gameStateRef = useRef(gameState);
+  const canFishRef = useRef(canFish);
+  const startFishingRef = useRef(null);
+  const handleCatchRef = useRef(null);
+  
+  useEffect(() => { gameStateRef.current = gameState; }, [gameState]);
+  useEffect(() => { canFishRef.current = canFish; }, [canFish]);
+  
+  // Keyboard controls - use refs to avoid stale closures
   useEffect(() => {
     const handleKeyDown = (e) => {
       if (showHelp || showLeaderboard) return;
       
       keysPressed.current.add(e.code);
       
-      if ((e.code === 'Space' || e.code === 'KeyE') && gameState === GAME_STATES.WALKING && canFish) {
+      // Fishing action
+      if (e.code === 'Space' || e.code === 'KeyE') {
         e.preventDefault();
-        startFishing();
-        return;
+        if (gameStateRef.current === GAME_STATES.WALKING && canFishRef.current) {
+          startFishingRef.current?.();
+          return;
+        }
+        if (gameStateRef.current === GAME_STATES.FISH_APPEARED) {
+          handleCatchRef.current?.();
+          return;
+        }
       }
       
-      if ((e.code === 'Space' || e.code === 'KeyE') && gameState === GAME_STATES.FISH_APPEARED) {
-        e.preventDefault();
-        handleCatch();
-        return;
-      }
-      
-      if (gameState === GAME_STATES.WALKING) {
+      // Movement
+      if (gameStateRef.current === GAME_STATES.WALKING) {
+        const move = movePlayerRef.current;
+        if (!move) return;
+        
         switch (e.code) {
           case 'ArrowUp':
           case 'KeyW':
             e.preventDefault();
-            movePlayer(0, -1, DIRECTIONS.UP);
+            move(0, -1, DIRECTIONS.UP);
             setIsMoving(true);
             break;
           case 'ArrowDown':
           case 'KeyS':
             e.preventDefault();
-            movePlayer(0, 1, DIRECTIONS.DOWN);
+            move(0, 1, DIRECTIONS.DOWN);
             setIsMoving(true);
             break;
           case 'ArrowLeft':
           case 'KeyA':
             e.preventDefault();
-            movePlayer(-1, 0, DIRECTIONS.LEFT);
+            move(-1, 0, DIRECTIONS.LEFT);
             setIsMoving(true);
             break;
           case 'ArrowRight':
           case 'KeyD':
             e.preventDefault();
-            movePlayer(1, 0, DIRECTIONS.RIGHT);
+            move(1, 0, DIRECTIONS.RIGHT);
             setIsMoving(true);
             break;
           default:
@@ -268,11 +288,11 @@ const FishingPage = () => {
       window.removeEventListener('keydown', handleKeyDown);
       window.removeEventListener('keyup', handleKeyUp);
     };
-  }, [gameState, canFish, movePlayer, showHelp, showLeaderboard]);
+  }, [showHelp, showLeaderboard]);
   
   // Start fishing
   const startFishing = useCallback(async () => {
-    if (gameState !== GAME_STATES.WALKING || !canFish) return;
+    if (gameStateRef.current !== GAME_STATES.WALKING || !canFishRef.current) return;
     
     setLastResult(null);
     setGameState(GAME_STATES.CASTING);
@@ -301,11 +321,11 @@ const FishingPage = () => {
       showNotification(err.response?.data?.error || t('fishing.failedCast'), 'error');
       setGameState(GAME_STATES.WALKING);
     }
-  }, [gameState, canFish, t]);
+  }, [t]);
   
   // Handle catching fish
   const handleCatch = useCallback(async () => {
-    if (gameState !== GAME_STATES.FISH_APPEARED || !sessionId) return;
+    if (gameStateRef.current !== GAME_STATES.FISH_APPEARED || !sessionId) return;
     
     if (missTimeoutRef.current) {
       clearTimeout(missTimeoutRef.current);
@@ -350,7 +370,7 @@ const FishingPage = () => {
       setGameState(GAME_STATES.WALKING);
       setSessionId(null);
     }
-  }, [gameState, sessionId, setUser, t]);
+  }, [sessionId, setUser, t]);
   
   // Handle missing fish
   const handleMiss = useCallback(async (sid) => {
@@ -370,6 +390,10 @@ const FishingPage = () => {
       setSessionId(null);
     }
   }, []);
+  
+  // Keep function refs updated for keyboard handler
+  useEffect(() => { startFishingRef.current = startFishing; }, [startFishing]);
+  useEffect(() => { handleCatchRef.current = handleCatch; }, [handleCatch]);
   
   // Show notification
   const showNotification = (message, type = 'info') => {
@@ -1001,25 +1025,35 @@ const GameContainer = styled.div`
   justify-content: center;
   position: relative;
   padding: ${theme.spacing.md};
+  min-height: 0;
+  overflow: hidden;
 `;
 
 const CanvasWrapper = styled.div`
+  position: relative;
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 
     0 4px 20px rgba(0, 0, 0, 0.3),
     0 8px 40px rgba(0, 0, 0, 0.2),
     inset 0 0 0 3px rgba(101, 67, 33, 0.9);
+  flex-shrink: 0;
+  
+  /* Fixed size based on map dimensions */
+  width: ${MAP_WIDTH * TILE_SIZE}px;
+  height: ${MAP_HEIGHT * TILE_SIZE}px;
   
   canvas {
     display: block;
     image-rendering: pixelated;
+    width: 100% !important;
+    height: 100% !important;
   }
 `;
 
 const FishPrompt = styled(motion.div)`
-  position: absolute;
-  bottom: 20px;
+  position: fixed;
+  bottom: 100px;
   left: 50%;
   transform: translateX(-50%);
   padding: 12px 24px;
@@ -1033,6 +1067,11 @@ const FishPrompt = styled(motion.div)`
   align-items: center;
   gap: 8px;
   box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+  z-index: 150;
+  
+  @media (max-width: 768px) {
+    bottom: 180px;
+  }
 `;
 
 const KeyHint = styled.span`
@@ -1044,10 +1083,11 @@ const KeyHint = styled.span`
 `;
 
 const StateIndicator = styled(motion.div)`
-  position: absolute;
-  top: 20px;
+  position: fixed;
+  top: 150px;
   left: 50%;
   transform: translateX(-50%);
+  z-index: 150;
 `;
 
 const WaitingText = styled.div`
@@ -1074,7 +1114,7 @@ const CatchText = styled.div`
 `;
 
 const ResultPopup = styled(motion.div)`
-  position: absolute;
+  position: fixed;
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);

@@ -701,20 +701,23 @@ export const useFishingEngine = ({
     onCanFishChange?.(canFish);
   }, [playerPos, playerDir, onCanFishChange]);
   
-  // Movement function
+  // Movement function - use functional update to avoid stale closure
   const movePlayer = useCallback((dx, dy, newDir) => {
     if (gameState !== 'walking') return;
     
     setPlayerDir(newDir);
-    const newX = playerPos.x + dx;
-    const newY = playerPos.y + dy;
-    
-    if (isWalkable(newX, newY)) {
-      setPlayerPos({ x: newX, y: newY });
-    }
-  }, [playerPos, gameState, setPlayerDir, setPlayerPos]);
+    setPlayerPos(prev => {
+      const newX = prev.x + dx;
+      const newY = prev.y + dy;
+      
+      if (isWalkable(newX, newY)) {
+        return { x: newX, y: newY };
+      }
+      return prev;
+    });
+  }, [gameState, setPlayerDir, setPlayerPos]);
   
-  return { movePlayer };
+  return { movePlayer, isWalkable, isWaterAdjacent };
 };
 
 export { TILE_SIZE, MAP_WIDTH, MAP_HEIGHT, isWalkable, isWaterAdjacent };
