@@ -2822,14 +2822,17 @@ const TicketBonus = styled.div`
 
 const TradeSuccessOverlay = styled(motion.div)`
   position: fixed;
-  top: 80px;
-  left: 50%;
-  transform: translateX(-50%);
+  top: 100px;
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   background: linear-gradient(180deg, rgba(76, 175, 80, 0.98) 0%, rgba(56, 142, 60, 0.98) 100%);
   border-radius: 16px;
   padding: 14px 28px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 10px;
   z-index: 2000;
   box-shadow: 0 8px 32px rgba(0,0,0,0.3);
