@@ -1,19 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const admin = require('../middleware/adminAuth');
+const adminAuth = require('../middleware/adminAuth');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const jwt = require('jsonwebtoken');
-const Banner = require('../models/banner');
-const Character = require('../models/character');
-const User = require('../models/user');
-const sequelize = require('../config/db');
+const { Banner, Character, User } = require('../models');
 const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
 const { 
   PRICING_CONFIG, 
-  DROP_RATES,
   getDiscountForCount,
   calculateBannerRates,
   getStandardRates,
@@ -25,12 +21,14 @@ const {
 } = require('../config/pricing');
 const { isValidId, validateIdArray, parseCharacterIds } = require('../utils/validation');
 const { getUserAllowR18 } = require('../utils/userPreferences');
-
-// ===========================================
-// SECURITY: Race condition protection
-// ===========================================
-// Prevent concurrent roll requests per user (could cause double-spending)
-const rollInProgress = new Set();
+const { 
+  acquireRollLock,
+  releaseRollLock,
+  groupCharactersByRarity, 
+  filterR18Characters,
+  isRarePlus,
+  RARITY_ORDER 
+} = require('../utils/rollHelpers');
 
 // Configure storage for banner images and videos
 const storage = multer.diskStorage({
@@ -227,7 +225,7 @@ router.get('/:id', async (req, res) => {
 // Admin routes below require authentication and admin privileges
 
 // Update banner display order (admin only)
-router.post('/update-order', [auth, admin], async (req, res) => {
+router.post('/update-order', [auth, adminAuth], async (req, res) => {
   try {
     const { bannerOrder } = req.body;
     
@@ -252,7 +250,7 @@ router.post('/update-order', [auth, admin], async (req, res) => {
 });
 
 // Bulk toggle featured status for multiple banners (admin only)
-router.post('/bulk-toggle-featured', [auth, admin], async (req, res) => {
+router.post('/bulk-toggle-featured', [auth, adminAuth], async (req, res) => {
   try {
     const { bannerIds, featured } = req.body;
     
@@ -307,7 +305,7 @@ router.post('/bulk-toggle-featured', [auth, admin], async (req, res) => {
 });
 
 // Toggle featured status for a single banner (admin only)
-router.patch('/:id/featured', [auth, admin], async (req, res) => {
+router.patch('/:id/featured', [auth, adminAuth], async (req, res) => {
   try {
     // Validate banner ID
     if (!isValidId(req.params.id)) {
@@ -338,7 +336,7 @@ router.patch('/:id/featured', [auth, admin], async (req, res) => {
 });
 
 // Create a new banner (admin only)
-router.post('/', [auth, admin], upload.fields([
+router.post('/', [auth, adminAuth], upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'video', maxCount: 1 }
 ]), async (req, res) => {
@@ -419,7 +417,7 @@ router.post('/', [auth, admin], upload.fields([
 });
 
 // Update a banner (admin only)
-router.put('/:id', [auth, admin], upload.fields([
+router.put('/:id', [auth, adminAuth], upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'video', maxCount: 1 }
 ]), async (req, res) => {
@@ -519,7 +517,7 @@ router.put('/:id', [auth, admin], upload.fields([
 });
 
 // Delete a banner (admin only)
-router.delete('/:id', [auth, admin], async (req, res) => {
+router.delete('/:id', [auth, adminAuth], async (req, res) => {
   try {
     // Validate banner ID
     if (!isValidId(req.params.id)) {
@@ -561,19 +559,17 @@ router.delete('/:id', [auth, admin], async (req, res) => {
 router.post('/:id/roll', auth, async (req, res) => {
   const userId = req.user.id;
   
-  // Prevent race condition - only one roll at a time per user
-  if (rollInProgress.has(userId)) {
+  if (!acquireRollLock(userId)) {
     return res.status(429).json({ 
       error: 'Roll in progress',
       message: 'Another roll request is being processed'
     });
   }
-  rollInProgress.add(userId);
   
   try {
     // Validate banner ID
     if (!isValidId(req.params.id)) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(400).json({ error: 'Invalid banner ID' });
     }
     
@@ -581,22 +577,22 @@ router.post('/:id/roll', auth, async (req, res) => {
       include: [{ model: Character }]
     });
     if (!banner) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(404).json({ error: 'Banner not found' });
     }
     if (!banner.active) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(400).json({ error: 'This banner is no longer active' });
     }
     
     // Check if banner is within date range
     const now = new Date();
     if (banner.startDate && new Date(banner.startDate) > now) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(400).json({ error: 'This banner has not started yet' });
     }
     if (banner.endDate && new Date(banner.endDate) < now) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(400).json({ error: 'This banner has already ended' });
     }
     
@@ -619,7 +615,7 @@ router.post('/:id/roll', auth, async (req, res) => {
           isPremium = true;
           cost = 0;
         } else {
-          rollInProgress.delete(userId);
+          releaseRollLock(userId);
           return res.status(400).json({
             error: 'No premium tickets available',
             rollTickets: user.rollTickets || 0,
@@ -632,7 +628,7 @@ router.post('/:id/roll', auth, async (req, res) => {
         usedTicket = 'roll';
         cost = 0;
       } else {
-        rollInProgress.delete(userId);
+        releaseRollLock(userId);
         return res.status(400).json({
           error: 'No roll tickets available',
           rollTickets: user.rollTickets || 0,
@@ -642,7 +638,7 @@ router.post('/:id/roll', auth, async (req, res) => {
     } else {
       // Use points
       if (user.points < cost) {
-        rollInProgress.delete(userId);
+        releaseRollLock(userId);
         return res.status(400).json({
           error: `Not enough points. Banner pulls cost ${cost} points.`,
           rollTickets: user.rollTickets || 0,
@@ -654,37 +650,15 @@ router.post('/:id/roll', auth, async (req, res) => {
     
     await user.save();
     
-    // Get user's R18 preference
+    // Get user's R18 preference and filter characters
     const allowR18 = await getUserAllowR18(req.user.id);
-    
-    // Get all banner characters (filtered by R18)
-    const bannerCharacters = allowR18 
-      ? banner.Characters 
-      : banner.Characters.filter(char => !char.isR18);
-    
-    // Get all characters for fallback (filtered by R18)
+    const bannerCharacters = filterR18Characters(banner.Characters, allowR18);
     const allChars = await Character.findAll();
-    const allCharacters = allowR18 
-      ? allChars 
-      : allChars.filter(char => !char.isR18);
+    const allCharacters = filterR18Characters(allChars, allowR18);
     
-    // Group all characters by rarity
-    const allCharactersByRarity = {
-      common: allCharacters.filter(char => char.rarity === 'common'),
-      uncommon: allCharacters.filter(char => char.rarity === 'uncommon'),
-      rare: allCharacters.filter(char => char.rarity === 'rare'),
-      epic: allCharacters.filter(char => char.rarity === 'epic'),
-      legendary: allCharacters.filter(char => char.rarity === 'legendary')
-    };
-    
-    // Group banner characters by rarity
-    const bannerCharactersByRarity = {
-      common: bannerCharacters.filter(char => char.rarity === 'common'),
-      uncommon: bannerCharacters.filter(char => char.rarity === 'uncommon'),
-      rare: bannerCharacters.filter(char => char.rarity === 'rare'),
-      epic: bannerCharacters.filter(char => char.rarity === 'epic'),
-      legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
-    };
+    // Group characters by rarity using helper
+    const allCharactersByRarity = groupCharactersByRarity(allCharacters);
+    const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters);
     
     // Get rates from centralized config
     const standardDropRates = getStandardRates(false);
@@ -718,10 +692,9 @@ router.post('/:id/roll', auth, async (req, res) => {
       characterPoolSource = 'standard';
       // If no characters in standard pool for this rarity, find next available rarity
       if (!characterPool || characterPool.length === 0) {
-        const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
-        const rarityIndex = rarityOrder.indexOf(selectedRarity);
-        for (let i = rarityIndex + 1; i < rarityOrder.length; i++) {
-          const fallbackRarity = rarityOrder[i];
+        const startIndex = RARITY_ORDER.indexOf(selectedRarity);
+        for (let i = startIndex + 1; i < RARITY_ORDER.length; i++) {
+          const fallbackRarity = RARITY_ORDER[i];
           if (allCharactersByRarity[fallbackRarity]?.length > 0) {
             characterPool = allCharactersByRarity[fallbackRarity];
             selectedRarity = fallbackRarity;
@@ -746,7 +719,7 @@ router.post('/:id/roll', auth, async (req, res) => {
     console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${randomChar.name} (${selectedRarity}) from ${characterPoolSource} pool. Cost: ${cost} points`);
     
     // Release lock before responding
-    rollInProgress.delete(userId);
+    releaseRollLock(userId);
     
     res.json({
       character: randomChar,
@@ -763,7 +736,7 @@ router.post('/:id/roll', auth, async (req, res) => {
     });
   } catch (err) {
     // Always release lock on error
-    rollInProgress.delete(userId);
+    releaseRollLock(userId);
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
@@ -773,19 +746,17 @@ router.post('/:id/roll', auth, async (req, res) => {
 router.post('/:id/roll-multi', auth, async (req, res) => {
   const userId = req.user.id;
   
-  // Prevent race condition - only one roll at a time per user
-  if (rollInProgress.has(userId)) {
+  if (!acquireRollLock(userId)) {
     return res.status(429).json({ 
       error: 'Roll in progress',
       message: 'Another roll request is being processed'
     });
   }
-  rollInProgress.add(userId);
   
   try {
     // Validate banner ID
     if (!isValidId(req.params.id)) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(400).json({ error: 'Invalid banner ID' });
     }
     
@@ -794,22 +765,22 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       include: [{ model: Character }]
     });
     if (!banner) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(404).json({ error: 'Banner not found' });
     }
     if (!banner.active) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(400).json({ error: 'This banner is no longer active' });
     }
     
     // Check if banner is within date range
     const now = new Date();
     if (banner.startDate && new Date(banner.startDate) > now) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(400).json({ error: 'This banner has not started yet' });
     }
     if (banner.endDate && new Date(banner.endDate) < now) {
-      rollInProgress.delete(userId);
+      releaseRollLock(userId);
       return res.status(400).json({ error: 'This banner has already ended' });
     }
     
@@ -835,7 +806,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
           usedTickets.premium = count;
           premiumCount = count;
         } else {
-          rollInProgress.delete(userId);
+          releaseRollLock(userId);
           return res.status(400).json({
             error: `Not enough premium tickets. Need ${count}, have ${premiumTickets}.`,
             rollTickets,
@@ -848,7 +819,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
           user.rollTickets -= count;
           usedTickets.roll = count;
         } else {
-          rollInProgress.delete(userId);
+          releaseRollLock(userId);
           return res.status(400).json({
             error: `Not enough roll tickets. Need ${count}, have ${rollTickets}.`,
             rollTickets,
@@ -871,7 +842,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
           remaining = 0;
         }
         if (remaining > 0) {
-          rollInProgress.delete(userId);
+          releaseRollLock(userId);
           return res.status(400).json({
             error: `Not enough tickets. Need ${count} total.`,
             rollTickets,
@@ -887,7 +858,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       finalCost = Math.floor(baseCost * (1 - discount));
       
       if (user.points < finalCost) {
-        rollInProgress.delete(userId);
+        releaseRollLock(userId);
         return res.status(400).json({
           error: `Not enough points. This multi-pull costs ${finalCost} points.`,
           rollTickets: user.rollTickets || 0,
@@ -899,37 +870,15 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
     
     await user.save();
     
-    // Get user's R18 preference
+    // Get user's R18 preference and filter characters
     const allowR18 = await getUserAllowR18(req.user.id);
-    
-    // Get banner characters (filtered by R18)
-    const bannerCharacters = allowR18 
-      ? banner.Characters 
-      : banner.Characters.filter(char => !char.isR18);
-    
-    // Get all characters for fallback (filtered by R18)
+    const bannerCharacters = filterR18Characters(banner.Characters, allowR18);
     const allChars = await Character.findAll();
-    const allCharacters = allowR18 
-      ? allChars 
-      : allChars.filter(char => !char.isR18);
+    const allCharacters = filterR18Characters(allChars, allowR18);
     
-    // Group all characters by rarity
-    const allCharactersByRarity = {
-      common: allCharacters.filter(char => char.rarity === 'common'),
-      uncommon: allCharacters.filter(char => char.rarity === 'uncommon'),
-      rare: allCharacters.filter(char => char.rarity === 'rare'),
-      epic: allCharacters.filter(char => char.rarity === 'epic'),
-      legendary: allCharacters.filter(char => char.rarity === 'legendary')
-    };
-    
-    // Group banner characters by rarity
-    const bannerCharactersByRarity = {
-      common: bannerCharacters.filter(char => char.rarity === 'common'),
-      uncommon: bannerCharacters.filter(char => char.rarity === 'uncommon'),
-      rare: bannerCharacters.filter(char => char.rarity === 'rare'),
-      epic: bannerCharacters.filter(char => char.rarity === 'epic'),
-      legendary: bannerCharacters.filter(char => char.rarity === 'legendary')
-    };
+    // Group characters by rarity using helper
+    const allCharactersByRarity = groupCharactersByRarity(allCharacters);
+    const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters);
     
     // Get rates from centralized config (multi-pull rates)
     const standardDropRates = getStandardRates(true);
@@ -970,7 +919,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       // Roll for rarity using centralized helper
       let selectedRarity = rollRarity(currentRates);
       
-      if (['rare', 'epic', 'legendary'].includes(selectedRarity)) {
+      if (isRarePlus(selectedRarity)) {
         hasRarePlus = true;
       }
       
@@ -982,10 +931,9 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
         characterPool = allCharactersByRarity[selectedRarity];
         // If no characters available at this rarity, fallback
         if (!characterPool || characterPool.length === 0) {
-          const rarityOrder = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
-          const rarityIndex = rarityOrder.indexOf(selectedRarity);
-          for (let j = rarityIndex + 1; j < rarityOrder.length; j++) {
-            const fallbackRarity = rarityOrder[j];
+          const startIndex = RARITY_ORDER.indexOf(selectedRarity);
+          for (let j = startIndex + 1; j < RARITY_ORDER.length; j++) {
+            const fallbackRarity = RARITY_ORDER[j];
             if (allCharactersByRarity[fallbackRarity]?.length > 0) {
               characterPool = allCharactersByRarity[fallbackRarity];
               selectedRarity = fallbackRarity;
@@ -1017,7 +965,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
     
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
     
-    rollInProgress.delete(userId);
+    releaseRollLock(userId);
     
     res.json({
       characters: results,
@@ -1032,7 +980,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       }
     });
   } catch (err) {
-    rollInProgress.delete(userId);
+    releaseRollLock(userId);
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }

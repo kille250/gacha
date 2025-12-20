@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const { Op } = require('sequelize');
 const auth = require('../middleware/auth');
-const admin = require('../middleware/adminAuth');
+const adminAuth = require('../middleware/adminAuth');
 const { Coupon, CouponRedemption, User, Character } = require('../models');
 
 // ===========================================
@@ -18,7 +18,7 @@ const isValidUUID = (value) => {
 };
 
 // ADMIN: Get all coupons
-router.get('/admin', [auth, admin], async (req, res) => {
+router.get('/admin', [auth, adminAuth], async (req, res) => {
   try {
     const coupons = await Coupon.findAll({
       include: [
@@ -44,7 +44,7 @@ router.get('/admin', [auth, admin], async (req, res) => {
 });
 
 // ADMIN: Create a new coupon
-router.post('/admin', [auth, admin], async (req, res) => {
+router.post('/admin', [auth, adminAuth], async (req, res) => {
   try {
     const {
       code,
@@ -102,7 +102,7 @@ router.post('/admin', [auth, admin], async (req, res) => {
 });
 
 // ADMIN: Update a coupon
-router.put('/admin/:id', [auth, admin], async (req, res) => {
+router.put('/admin/:id', [auth, adminAuth], async (req, res) => {
   try {
     const couponId = req.params.id;
     
@@ -171,7 +171,7 @@ router.put('/admin/:id', [auth, admin], async (req, res) => {
 });
 
 // ADMIN: Delete a coupon
-router.delete('/admin/:id', [auth, admin], async (req, res) => {
+router.delete('/admin/:id', [auth, adminAuth], async (req, res) => {
   try {
     // Validate coupon ID (UUID)
     if (!isValidUUID(req.params.id)) {

@@ -1,4 +1,4 @@
-// routes/admin.js (updated with video support)
+// routes/admin.js - Admin routes for character and user management
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
@@ -6,24 +6,24 @@ const path = require('path');
 const fs = require('fs');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
-const { User, Character } = require('../models');
+const { User, Character, Banner, Coupon, CouponRedemption } = require('../models');
 const { UPLOAD_DIRS, getUrlPath, getFilePath } = require('../config/upload');
 const { isValidId } = require('../utils/validation');
 
-// Konfiguration für Multer (Dateispeicherung)
+// Configure multer for file storage
 const storage = multer.diskStorage({
   destination: function(req, file, cb) {
     cb(null, UPLOAD_DIRS.characters);
   },
   filename: function(req, file, cb) {
-    // Sichere Dateinamen mit Zeitstempel
+    // Generate secure filename with timestamp
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     const extension = path.extname(file.originalname);
     cb(null, file.fieldname + '-' + uniqueSuffix + extension);
   }
 });
 
-// Überprüfe, ob die Datei ein Bild oder Video ist
+// Check if file is an image or video
 const fileFilter = (req, file, cb) => {
   if (file.mimetype.startsWith('image/') || 
       file.mimetype === 'video/mp4' || 
@@ -34,21 +34,18 @@ const fileFilter = (req, file, cb) => {
   }
 };
 
-// Bereite Multer mit den Optionen vor
+// Initialize multer with options
 const upload = multer({
   storage: storage,
   fileFilter: fileFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100 MB Maximalgröße
+    fileSize: 100 * 1024 * 1024 // 100 MB max size
   }
 });
 
 // Combined dashboard endpoint - reduces multiple API calls to one
 router.get('/dashboard', auth, adminAuth, async (req, res) => {
   try {
-    const Banner = require('../models/banner');
-    const { Coupon, CouponRedemption } = require('../models');
-    
     // Fetch all data in parallel
     const [users, characters, banners, coupons] = await Promise.all([
       User.findAll({
@@ -122,7 +119,7 @@ router.post('/toggle-r18', auth, adminAuth, async (req, res) => {
   }
 });
 
-// Neuen Charakter hinzufügen (nur Admin)
+// Add new character (admin only)
 router.post('/characters', auth, adminAuth, async (req, res) => {
   try {
     const { name, image, series, rarity, isR18 } = req.body;
@@ -150,11 +147,11 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
     }
     const { name, series, rarity, isR18 } = req.body;
     if (!name || !series || !rarity) {
-      // Lösche die hochgeladene Datei, wenn die anderen Daten fehlen
+      // Delete uploaded file if other data is missing
       fs.unlinkSync(req.file.path);
       return res.status(400).json({ error: 'All fields are required' });
     }
-    // Speichere den relativen Pfad zur Bild- oder Videodatei
+    // Save the relative path to the image or video file
     const imagePath = getUrlPath('characters', req.file.filename);
     const character = await Character.create({
       name,
@@ -169,7 +166,7 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
     });
   } catch (err) {
     console.error('Character upload error:', err);
-    // Versuche, die Datei zu löschen, wenn ein Fehler auftritt
+    // Try to delete the file if an error occurs
     if (req.file) {
       try {
         fs.unlinkSync(req.file.path);
@@ -181,7 +178,7 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
   }
 });
 
-// In routes/admin.js - Coins hinzufügen
+// Add coins to user account (admin only)
 router.post('/add-coins', auth, adminAuth, async (req, res) => {
   try {
     const { userId, amount } = req.body;
@@ -214,7 +211,7 @@ router.post('/add-coins', auth, adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Coins zum Benutzerkonto hinzufügen
+    // Add coins to user account
     const oldBalance = user.points;
     await user.increment('points', { by: parsedAmount });
     await user.reload();
@@ -247,13 +244,13 @@ router.put('/characters/:id', auth, adminAuth, async (req, res) => {
     
     const { name, series, rarity, isR18 } = req.body;
 
-    // Suche den Charakter
+    // Find the character
     const character = await Character.findByPk(characterId);
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
     }
 
-    // Aktualisiere die Charakterdaten
+    // Update character data
     if (name) character.name = name;
     if (series) character.series = series;
     if (rarity) character.rarity = rarity;
@@ -261,7 +258,7 @@ router.put('/characters/:id', auth, adminAuth, async (req, res) => {
 
     await character.save();
 
-    // Log die Änderung
+    // Log the change
     console.log(`Admin (ID: ${req.user.id}) edited character ${character.id} (${character.name})`);
 
     res.json({
@@ -274,7 +271,7 @@ router.put('/characters/:id', auth, adminAuth, async (req, res) => {
   }
 });
 
-// In routes/admin.js - Route zum Aktualisieren des Bildes eines Charakters
+// Update character image/video (admin only)
 router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), async (req, res) => {
   try {
     const characterId = req.params.id;
@@ -284,25 +281,25 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
       return res.status(400).json({ error: 'Invalid character ID' });
     }
     
-    // Suche den Charakter
+    // Find the character
     const character = await Character.findByPk(characterId);
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
     }
-    // Überprüfe, ob ein Bild hochgeladen wurde
+    // Check if an image was uploaded
     if (!req.file) {
       return res.status(400).json({ error: 'No image or video uploaded' });
     }
 
-    // Speichere das alte Bild, um es später zu löschen, wenn es ein hochgeladenes Bild war
+    // Save old image path to delete later if it was an uploaded file
     const oldImage = character.image;
     
-    // Aktualisiere den Bildpfad
+    // Update image path
     const newImagePath = getUrlPath('characters', req.file.filename);
     character.image = newImagePath;
     await character.save();
 
-    // Wenn das alte Bild ein hochgeladenes Bild war, lösche es
+    // If the old image was an uploaded file, delete it
     if (oldImage && oldImage.startsWith('/uploads/')) {
       const oldFilename = path.basename(oldImage);
       const oldFilePath = getFilePath('characters', oldFilename);
@@ -312,7 +309,7 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
       }
     }
 
-    // Log die Änderung
+    // Log the change
     console.log(`Admin (ID: ${req.user.id}) updated media for character ${character.id} (${character.name})`);
 
     res.json({
@@ -417,7 +414,7 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
   }
 });
 
-// In routes/admin.js - Route zum Löschen eines Charakters
+// Delete character (admin only)
 router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
   try {
     const characterId = req.params.id;
@@ -427,15 +424,15 @@ router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'Invalid character ID' });
     }
     
-    // Suche den Charakter
+    // Find the character
     const character = await Character.findByPk(characterId);
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
     }
-    // Speichere Charakterdaten für die Antwort
+    // Save character data for response
     const deletedChar = { ...character.get() };
     
-    // Wenn das Bild ein hochgeladenes Bild war, lösche es
+    // If the image was an uploaded file, delete it
     const image = character.image;
     if (image && image.startsWith('/uploads/')) {
       const filename = path.basename(image);
@@ -446,10 +443,10 @@ router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
       }
     }
     
-    // Lösche den Charakter
+    // Delete the character
     await character.destroy();
 
-    // Log die Löschung
+    // Log the deletion
     console.log(`Admin (ID: ${req.user.id}) deleted character ${deletedChar.id} (${deletedChar.name})`);
 
     res.json({

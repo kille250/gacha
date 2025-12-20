@@ -5,61 +5,6 @@ const auth = require('../middleware/auth');
 const { User } = require('../models');
 const sequelize = require('../config/db');
 
-router.post('/daily-reward', auth, async (req, res) => {
-	try {
-	  const user = await User.findByPk(req.user.id);
-	  
-	  if (!user) {
-		return res.status(404).json({ error: 'User not found' });
-	  }
-	  
-	  const now = new Date();
-	  const lastReward = user.lastDailyReward ? new Date(user.lastDailyReward) : null;
-	  
-	  // Check if 1 hour has passed since last reward (changed from 24 hours)
-	  const rewardInterval = 60 * 60 * 1000; // 1 hour in milliseconds
-	  
-	  if (lastReward && now - lastReward < rewardInterval) {
-		// Calculate remaining time in minutes:seconds
-		const remainingTime = rewardInterval - (now - lastReward);
-		const minutes = Math.floor(remainingTime / (60 * 1000));
-		const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
-		
-		return res.status(400).json({ 
-		  error: 'You already collected your hourly reward', 
-		  nextRewardTime: {
-			hours: 0, // Keep for compatibility
-			minutes,
-			seconds,
-			timestamp: new Date(lastReward.getTime() + rewardInterval)
-		  }
-		});
-	  }
-	  
-	  // Hourly reward amount
-	  const rewardAmount = Math.floor(Math.random() * 800) + 200; // Random between 200-1000
-	  
-	  // Update user
-	  await user.increment('points', { by: rewardAmount });
-	  user.lastDailyReward = now;
-	  await user.save();
-	  
-	  res.json({ 
-		message: 'Hourly reward collected!',
-		rewardAmount,
-		user: {
-		  id: user.id,
-		  username: user.username,
-		  points: user.points,
-		  lastDailyReward: user.lastDailyReward
-		} 
-	  });
-	} catch (err) {
-	  console.error('Hourly reward error:', err);
-	  res.status(500).json({ error: 'Server error' });
-	}
-  });
-
 // ===========================================
 // SECURITY: Input validation helpers
 // ===========================================
@@ -113,99 +58,158 @@ const validatePassword = (password) => {
   return { valid: true };
 };
 
+// POST /api/auth/daily-reward - Claim hourly reward
+router.post('/daily-reward', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const now = new Date();
+    const lastReward = user.lastDailyReward ? new Date(user.lastDailyReward) : null;
+    
+    // Check if 1 hour has passed since last reward
+    const rewardInterval = 60 * 60 * 1000; // 1 hour in milliseconds
+    
+    if (lastReward && now - lastReward < rewardInterval) {
+      // Calculate remaining time in minutes:seconds
+      const remainingTime = rewardInterval - (now - lastReward);
+      const minutes = Math.floor(remainingTime / (60 * 1000));
+      const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
+      
+      return res.status(400).json({ 
+        error: 'You already collected your hourly reward', 
+        nextRewardTime: {
+          hours: 0,
+          minutes,
+          seconds,
+          timestamp: new Date(lastReward.getTime() + rewardInterval)
+        }
+      });
+    }
+    
+    // Hourly reward amount
+    const rewardAmount = Math.floor(Math.random() * 800) + 200; // Random between 200-1000
+    
+    // Update user
+    await user.increment('points', { by: rewardAmount });
+    user.lastDailyReward = now;
+    await user.save();
+    
+    res.json({ 
+      message: 'Hourly reward collected!',
+      rewardAmount,
+      user: {
+        id: user.id,
+        username: user.username,
+        points: user.points,
+        lastDailyReward: user.lastDailyReward
+      } 
+    });
+  } catch (err) {
+    console.error('Hourly reward error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/auth/signup - Register new user
 router.post('/signup', async (req, res) => {
-	const { username, password } = req.body;
-	
-	// Validate username
-	const usernameValidation = validateUsername(username);
-	if (!usernameValidation.valid) {
-	  return res.status(400).json({ error: usernameValidation.error });
-	}
-	
-	// Validate password
-	const passwordValidation = validatePassword(password);
-	if (!passwordValidation.valid) {
-	  return res.status(400).json({ error: passwordValidation.error });
-	}
-	
-	try {
-	  // Überprüfe, ob der Benutzer bereits existiert
-	  const existingUser = await User.findOne({ where: { username: usernameValidation.value } });
-	  if (existingUser) {
-		return res.status(400).json({ error: 'Username already exists' });
-	  }
-	  
-	  // Prüfe, ob dies der erste Benutzer ist
-	  const userCount = await User.count();
-	  const isFirstUser = userCount === 0;
-	  
-	  // Benutzer erstellen
-	  const user = await User.create({
-		username: usernameValidation.value,
-		password,
-		points: 1000,
-		isAdmin: isFirstUser // Erster Benutzer wird Admin
-	  });
-	  
-	  // Token erstellen
-	  const payload = { 
-		user: { 
-		  id: user.id,
-		  isAdmin: user.isAdmin // Admin-Status im Token speichern
-		} 
-	  };
-	  
-	  jwt.sign(
-		payload,
-		process.env.JWT_SECRET,
-		{ expiresIn: '24h' },
-		(err, token) => {
-		  if (err) throw err;
-		  res.json({ token });
-		}
-	  );
-	} catch (err) {
-	  console.error('Registration error:', err);
-	  res.status(400).json({ error: 'Registration failed: ' + (err.message || '') });
-	}
-  });
+  const { username, password } = req.body;
+  
+  // Validate username
+  const usernameValidation = validateUsername(username);
+  if (!usernameValidation.valid) {
+    return res.status(400).json({ error: usernameValidation.error });
+  }
+  
+  // Validate password
+  const passwordValidation = validatePassword(password);
+  if (!passwordValidation.valid) {
+    return res.status(400).json({ error: passwordValidation.error });
+  }
+  
+  try {
+    // Check if user already exists
+    const existingUser = await User.findOne({ where: { username: usernameValidation.value } });
+    if (existingUser) {
+      return res.status(400).json({ error: 'Username already exists' });
+    }
+    
+    // Check if this is the first user
+    const userCount = await User.count();
+    const isFirstUser = userCount === 0;
+    
+    // Create user
+    const user = await User.create({
+      username: usernameValidation.value,
+      password,
+      points: 1000,
+      isAdmin: isFirstUser // First user becomes admin
+    });
+    
+    // Create token
+    const payload = { 
+      user: { 
+        id: user.id,
+        isAdmin: user.isAdmin
+      } 
+    };
+    
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' },
+      (err, token) => {
+        if (err) throw err;
+        res.json({ token });
+      }
+    );
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(400).json({ error: 'Registration failed: ' + (err.message || '') });
+  }
+});
 
-  router.post('/login', async (req, res) => {
-	const { username, password } = req.body;
-	
-	// Basic validation (don't reveal which field is wrong)
-	if (!username || !password) {
-	  return res.status(401).json({ error: 'Invalid credentials' });
-	}
-	
-	try {
-	  const user = await User.findOne({ where: { username: username.trim() } });
-	  if (!user || !user.validPassword(password)) {
-		return res.status(401).json({ error: 'Invalid credentials' });
-	  }
-	  
-	  const payload = { 
-		user: { 
-		  id: user.id,
-		  isAdmin: user.isAdmin // Admin-Status im Token speichern
-		} 
-	  };
-	  
-	  jwt.sign(
-		payload,
-		process.env.JWT_SECRET,
-		{ expiresIn: '24h' },
-		(err, token) => {
-		  if (err) throw err;
-		  res.json({ token });
-		}
-	  );
-	} catch (err) {
-	  console.error('Login error:', err);
-	  res.status(500).json({ error: 'Server error' });
-	}
-  });
+// POST /api/auth/login - Login user
+router.post('/login', async (req, res) => {
+  const { username, password } = req.body;
+  
+  // Basic validation (don't reveal which field is wrong)
+  if (!username || !password) {
+    return res.status(401).json({ error: 'Invalid credentials' });
+  }
+  
+  try {
+    const user = await User.findOne({ where: { username: username.trim() } });
+    if (!user || !user.validPassword(password)) {
+      return res.status(401).json({ error: 'Invalid credentials' });
+    }
+    
+    const payload = { 
+      user: { 
+        id: user.id,
+        isAdmin: user.isAdmin
+      } 
+    };
+    
+    jwt.sign(
+      payload,
+      process.env.JWT_SECRET,
+      { expiresIn: '24h' },
+      (err, token) => {
+        if (err) throw err;
+        res.json({ token });
+      }
+    );
+  } catch (err) {
+    console.error('Login error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
+// GET /api/auth/me - Get current user
 router.get('/me', auth, async (req, res) => {
   try {
     const [rows] = await sequelize.query(
@@ -229,7 +233,7 @@ router.get('/me', auth, async (req, res) => {
   }
 });
 
-// Toggle R18 content preference (user can only toggle if admin has allowed)
+// POST /api/auth/toggle-r18 - Toggle R18 content preference
 router.post('/toggle-r18', auth, async (req, res) => {
   try {
     const [rows] = await sequelize.query(

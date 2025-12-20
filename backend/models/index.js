@@ -1,33 +1,43 @@
 // models/index.js
 const User = require('./user');
 const Character = require('./character');
+const Banner = require('./banner');
 const Coupon = require('./coupon');
-const CouponRedemption = require("./couponRedemption");
+const CouponRedemption = require('./couponRedemption');
 const FishInventory = require('./fishInventory');
 
-// Set up associations
+// ===========================================
+// ASSOCIATIONS
+// ===========================================
+
+// User <-> Character (collection)
 User.belongsToMany(Character, { through: 'UserCharacters' });
 Character.belongsToMany(User, { through: 'UserCharacters' });
 
-// Add association between User and CouponRedemption
+// Banner <-> Character
+Banner.belongsToMany(Character, { through: 'BannerCharacters' });
+Character.belongsToMany(Banner, { through: 'BannerCharacters' });
+
+// User <-> CouponRedemption
 User.hasMany(CouponRedemption, { foreignKey: 'userId' });
 CouponRedemption.belongsTo(User, { foreignKey: 'userId' });
 
-// Add association between Coupon and CouponRedemption
+// Coupon <-> CouponRedemption
 Coupon.hasMany(CouponRedemption, { foreignKey: 'couponId' });
 CouponRedemption.belongsTo(Coupon, { foreignKey: 'couponId' });
 
-// Add association between Character and Coupon (for character coupons)
+// Character <-> Coupon (for character coupons)
 Character.hasMany(Coupon, { foreignKey: 'characterId' });
 Coupon.belongsTo(Character, { foreignKey: 'characterId' });
 
-// Add association between User and FishInventory
+// User <-> FishInventory
 User.hasMany(FishInventory, { foreignKey: 'userId' });
 FishInventory.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = {
   User,
   Character,
+  Banner,
   Coupon,
   CouponRedemption,
   FishInventory

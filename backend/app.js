@@ -26,15 +26,10 @@ if (process.env.JWT_SECRET.length < 32) {
 }
 
 // Import all models from index.js (includes associations)
-const { User, Character, Coupon, CouponRedemption } = require('./models');
-const Banner = require('./models/banner');
+const { User, Character, Banner, Coupon, CouponRedemption } = require('./models');
 
 // Create upload directories on startup
 initUploadDirs();
-
-// Set up Banner associations (not in models/index.js)
-Banner.belongsToMany(Character, { through: 'BannerCharacters' });
-Character.belongsToMany(Banner, { through: 'BannerCharacters' });
 
 const app = express();
 

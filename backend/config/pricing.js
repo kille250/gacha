@@ -68,14 +68,6 @@ const getDiscountForCount = (count) => {
   return 0;
 };
 
-// Helper to calculate cost for a given count and cost multiplier
-const calculateCost = (count, costMultiplier = 1) => {
-  const singlePullCost = Math.floor(PRICING_CONFIG.baseCost * costMultiplier);
-  const baseCost = count * singlePullCost;
-  const discount = getDiscountForCount(count);
-  return Math.floor(baseCost * (1 - discount));
-};
-
 // Calculate banner-specific rates with multiplier applied
 const calculateBannerRates = (rateMultiplier, isMulti = false) => {
   const type = isMulti ? 'multi' : 'single';
@@ -143,7 +135,6 @@ module.exports = {
   PRICING_CONFIG,
   DROP_RATES,
   getDiscountForCount,
-  calculateCost,
   calculateBannerRates,
   getStandardRates,
   getPremiumRates,
