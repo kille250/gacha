@@ -330,11 +330,17 @@ const FishingPage = () => {
     return () => clearInterval(interval);
   }, []);
   
-  // Leaderboard fetch
+  // Leaderboard fetch - also refresh rank data to keep it in sync
   useEffect(() => {
     if (showLeaderboard) {
-      api.get('/fishing/leaderboard')
-        .then(res => setLeaderboard(res.data.leaderboard))
+      Promise.all([
+        api.get('/fishing/leaderboard'),
+        api.get('/fishing/rank')
+      ])
+        .then(([leaderboardRes, rankRes]) => {
+          setLeaderboard(leaderboardRes.data.leaderboard);
+          setRankData(rankRes.data);
+        })
         .catch(err => console.error('Failed to fetch leaderboard:', err));
     }
   }, [showLeaderboard]);
@@ -437,28 +443,23 @@ const FishingPage = () => {
     };
   }, [isAutofishing, rankData, setUser, t]);
   
-  // Keep-alive heartbeat for autofishing (prevents inactive timeout disconnect)
+  // Keep-alive heartbeat (prevents inactive timeout disconnect for idle users)
   useEffect(() => {
-    if (!isAutofishing || !socketRef.current || !isMultiplayerConnected) {
+    if (!socketRef.current || !isMultiplayerConnected) {
       return;
     }
     
-    // Send heartbeat every 30 seconds to keep connection alive during autofishing
+    // Send heartbeat every 30 seconds to keep connection alive
     const heartbeatInterval = setInterval(() => {
       if (socketRef.current?.connected) {
         socketRef.current.emit('heartbeat');
       }
     }, 30000);
     
-    // Send immediate heartbeat when autofishing starts
-    if (socketRef.current?.connected) {
-      socketRef.current.emit('heartbeat');
-    }
-    
     return () => {
       clearInterval(heartbeatInterval);
     };
-  }, [isAutofishing, isMultiplayerConnected]);
+  }, [isMultiplayerConnected]);
   
   // Refs for keyboard handler to avoid stale closures
   const gameStateRef = useRef(gameState);
