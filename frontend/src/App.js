@@ -5,9 +5,6 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './styles/DesignSystem';
 
-// Google OAuth Client ID from environment variable
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
-
 // i18n
 import './i18n';
 
@@ -25,6 +22,9 @@ import FishingPage from './pages/FishingPage';
 // Components
 import Navigation from './components/Navigation/Navigation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+
+// Google OAuth Client ID from environment variable
+const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 // Smart redirect based on auth status
 const HomeRedirect = () => {
