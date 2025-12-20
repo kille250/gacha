@@ -365,6 +365,12 @@
     "danbooru": "Powered by Danbooru",
     "failedVideoSearch": "Error al buscar videos",
     "characterName": "Nombre del personaje...",
-    "loadMore": "Cargar más"
+    "loadMore": "Cargar más",
+    "findVideo": "Buscar Video",
+    "changeVideo": "Cambiar Video",
+    "findVideoFor": "Buscar video para {{name}}",
+    "searchingVideos": "Buscando videos...",
+    "noVideosFound": "No se encontraron videos para este personaje",
+    "selectThis": "Seleccionar"
   }
 }

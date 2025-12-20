@@ -22,12 +22,17 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const [animeCharacters, setAnimeCharacters] = useState([]);
   const [loadingCharacters, setLoadingCharacters] = useState(false);
   
-  // Video search state (for videos mode - Sakugabooru)
+  // Video search state (for videos mode - Danbooru)
   const [videoResults, setVideoResults] = useState([]);
   const [selectedVideos, setSelectedVideos] = useState([]);
   const [videoPage, setVideoPage] = useState(1);
   const [hasMoreVideos, setHasMoreVideos] = useState(false);
   const [suggestedTags, setSuggestedTags] = useState([]);
+  
+  // Alternative media search (for hybrid MAL + Danbooru)
+  const [altMediaCharacter, setAltMediaCharacter] = useState(null); // Character being searched
+  const [altMediaResults, setAltMediaResults] = useState([]);
+  const [altMediaLoading, setAltMediaLoading] = useState(false);
   
   // Selected characters for import
   const [selectedCharacters, setSelectedCharacters] = useState([]);
@@ -153,6 +158,54 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     setSelectedVideos(prev => 
       prev.map(v => v.id === id ? { ...v, customName: name } : v)
     );
+  }, []);
+
+  // Search Danbooru for alternative media for a specific character
+  const searchAltMedia = useCallback(async (character) => {
+    setAltMediaCharacter(character);
+    setAltMediaLoading(true);
+    setAltMediaResults([]);
+    
+    try {
+      // Use character name for search
+      const response = await api.get(`/anime-import/search-sakuga?q=${encodeURIComponent(character.name)}`);
+      setAltMediaResults(response.data.results || []);
+    } catch (err) {
+      console.error('Alt media search failed:', err);
+    } finally {
+      setAltMediaLoading(false);
+    }
+  }, []);
+
+  // Select alternative media for a character
+  const selectAltMedia = useCallback((media) => {
+    if (!altMediaCharacter) return;
+    
+    // Update the selected character with the new media
+    setSelectedCharacters(prev => 
+      prev.map(c => c.mal_id === altMediaCharacter.mal_id 
+        ? { ...c, image: media.file, altMedia: media, isVideo: true }
+        : c
+      )
+    );
+    
+    // Also update in animeCharacters for display
+    setAnimeCharacters(prev =>
+      prev.map(c => c.mal_id === altMediaCharacter.mal_id
+        ? { ...c, image: media.file, altMedia: media, isVideo: true }
+        : c
+      )
+    );
+    
+    // Close the alt media picker
+    setAltMediaCharacter(null);
+    setAltMediaResults([]);
+  }, [altMediaCharacter]);
+
+  // Close alt media picker
+  const closeAltMediaPicker = useCallback(() => {
+    setAltMediaCharacter(null);
+    setAltMediaResults([]);
   }, []);
 
   // Select an anime and fetch its characters
@@ -283,6 +336,8 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     setSuggestedTags([]);
     setSeriesName('');
     setImportResult(null);
+    setAltMediaCharacter(null);
+    setAltMediaResults([]);
     onClose();
   };
 
@@ -448,6 +503,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                   <AnimatePresence>
                     {animeCharacters.map(char => {
                       const isSelected = selectedCharacters.find(c => c.mal_id === char.mal_id);
+                      const hasAltMedia = isSelected?.altMedia || char.altMedia;
                       return (
                         <CharacterCard
                           key={char.mal_id}
@@ -457,7 +513,16 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                           animate={{ opacity: 1, scale: 1 }}
                           whileHover={{ scale: 1.03 }}
                         >
-                          <CharacterImage src={char.image} alt={char.name} />
+                          <CharacterImageWrapper>
+                            {hasAltMedia ? (
+                              <>
+                                <CharacterImage src={hasAltMedia.preview || hasAltMedia.file} alt={char.name} />
+                                <VideoIndicator><FaVideo /></VideoIndicator>
+                              </>
+                            ) : (
+                              <CharacterImage src={char.image} alt={char.name} />
+                            )}
+                          </CharacterImageWrapper>
                           {isSelected && (
                             <SelectedOverlay>
                               <FaCheck />
@@ -469,17 +534,28 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                               {char.role === 'Main' ? t('animeImport.main') : t('animeImport.supporting')}
                             </CharacterRole>
                             {isSelected && (
-                              <RaritySelect 
-                                onClick={e => e.stopPropagation()}
-                                value={isSelected.rarity || defaultRarity}
-                                onChange={e => setCharacterRarity(char.mal_id, e.target.value)}
-                              >
-                                <option value="common">{t('gacha.common')}</option>
-                                <option value="uncommon">{t('gacha.uncommon')}</option>
-                                <option value="rare">{t('gacha.rare')}</option>
-                                <option value="epic">{t('gacha.epic')}</option>
-                                <option value="legendary">{t('gacha.legendary')}</option>
-                              </RaritySelect>
+                              <>
+                                <FindVideoButton
+                                  onClick={e => {
+                                    e.stopPropagation();
+                                    searchAltMedia(char);
+                                  }}
+                                  $hasAlt={hasAltMedia}
+                                >
+                                  <FaVideo /> {hasAltMedia ? t('animeImport.changeVideo') : t('animeImport.findVideo')}
+                                </FindVideoButton>
+                                <RaritySelect 
+                                  onClick={e => e.stopPropagation()}
+                                  value={isSelected.rarity || defaultRarity}
+                                  onChange={e => setCharacterRarity(char.mal_id, e.target.value)}
+                                >
+                                  <option value="common">{t('gacha.common')}</option>
+                                  <option value="uncommon">{t('gacha.uncommon')}</option>
+                                  <option value="rare">{t('gacha.rare')}</option>
+                                  <option value="epic">{t('gacha.epic')}</option>
+                                  <option value="legendary">{t('gacha.legendary')}</option>
+                                </RaritySelect>
+                              </>
                             )}
                           </CharacterInfo>
                         </CharacterCard>
@@ -627,6 +703,60 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
               )}
             </ResultSection>
           )}
+
+          {/* Alt Media Picker Modal */}
+          <AnimatePresence>
+            {altMediaCharacter && (
+              <AltMediaOverlay
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={closeAltMediaPicker}
+              >
+                <AltMediaModal
+                  initial={{ scale: 0.9, opacity: 0 }}
+                  animate={{ scale: 1, opacity: 1 }}
+                  exit={{ scale: 0.9, opacity: 0 }}
+                  onClick={e => e.stopPropagation()}
+                >
+                  <AltMediaHeader>
+                    <h3><FaVideo /> {t('animeImport.findVideoFor', { name: altMediaCharacter.name })}</h3>
+                    <CloseButton onClick={closeAltMediaPicker}><FaTimes /></CloseButton>
+                  </AltMediaHeader>
+                  
+                  <AltMediaBody>
+                    {altMediaLoading ? (
+                      <LoadingText><FaSpinner className="spin" /> {t('animeImport.searchingVideos')}</LoadingText>
+                    ) : altMediaResults.length === 0 ? (
+                      <EmptyText>{t('animeImport.noVideosFound')}</EmptyText>
+                    ) : (
+                      <AltMediaGrid>
+                        {altMediaResults.map(media => (
+                          <AltMediaCard
+                            key={media.id}
+                            onClick={() => selectAltMedia(media)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            <img src={media.preview} alt={`Option ${media.id}`} />
+                            <AltMediaFormat>{media.fileExt?.toUpperCase()}</AltMediaFormat>
+                            <AltMediaSelectOverlay>
+                              <FaCheck /> {t('animeImport.selectThis')}
+                            </AltMediaSelectOverlay>
+                          </AltMediaCard>
+                        ))}
+                      </AltMediaGrid>
+                    )}
+                  </AltMediaBody>
+                  
+                  <AltMediaFooter>
+                    <SourceNote>{t('animeImport.danbooru')}</SourceNote>
+                    <SmallButton onClick={closeAltMediaPicker}>{t('common.cancel')}</SmallButton>
+                  </AltMediaFooter>
+                </AltMediaModal>
+              </AltMediaOverlay>
+            )}
+          </AnimatePresence>
         </ModalBody>
 
         <ModalFooter>
@@ -962,10 +1092,55 @@ const CharacterCard = styled(motion.div)`
   }
 `;
 
+const CharacterImageWrapper = styled.div`
+  position: relative;
+  width: 100%;
+  height: 180px;
+`;
+
 const CharacterImage = styled.img`
   width: 100%;
   height: 180px;
   object-fit: cover;
+`;
+
+const VideoIndicator = styled.div`
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  background: linear-gradient(135deg, #ff6b9d 0%, #c44569 100%);
+  color: #fff;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+`;
+
+const FindVideoButton = styled.button`
+  width: 100%;
+  margin-top: 6px;
+  padding: 6px 8px;
+  background: ${props => props.$hasAlt 
+    ? 'linear-gradient(135deg, #2ecc71 0%, #27ae60 100%)' 
+    : 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)'};
+  border: none;
+  border-radius: 6px;
+  color: #fff;
+  font-size: 0.7rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  transition: all 0.2s;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(155, 89, 182, 0.3);
+  }
 `;
 
 const SelectedOverlay = styled.div`
@@ -1382,6 +1557,129 @@ const LoadMoreButton = styled.button`
     opacity: 0.5;
     cursor: not-allowed;
   }
+`;
+
+// Alt Media Picker Modal
+const AltMediaOverlay = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  padding: 20px;
+`;
+
+const AltMediaModal = styled(motion.div)`
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px;
+  width: 100%;
+  max-width: 700px;
+  max-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+`;
+
+const AltMediaHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 16px 20px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  
+  h3 {
+    margin: 0;
+    color: #fff;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-size: 1.1rem;
+    
+    svg {
+      color: #9b59b6;
+    }
+  }
+`;
+
+const AltMediaBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: 20px;
+  min-height: 200px;
+`;
+
+const AltMediaGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+`;
+
+const AltMediaCard = styled(motion.div)`
+  position: relative;
+  border-radius: 10px;
+  overflow: hidden;
+  cursor: pointer;
+  border: 2px solid transparent;
+  transition: border-color 0.2s;
+  
+  &:hover {
+    border-color: #9b59b6;
+  }
+  
+  img {
+    width: 100%;
+    height: 100px;
+    object-fit: cover;
+    display: block;
+  }
+`;
+
+const AltMediaFormat = styled.span`
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+`;
+
+const AltMediaSelectOverlay = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: linear-gradient(transparent, rgba(155, 89, 182, 0.9));
+  color: #fff;
+  padding: 20px 8px 8px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  opacity: 0;
+  transition: opacity 0.2s;
+  
+  ${AltMediaCard}:hover & {
+    opacity: 1;
+  }
+`;
+
+const AltMediaFooter = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 12px 20px;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
 export default AnimeImportModal;
