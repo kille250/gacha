@@ -590,16 +590,42 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  // Get the user
 	  const user = await User.findByPk(req.user.id);
 	  
-	  // Calculate cost
-	  const cost = Math.floor(100 * banner.costMultiplier);
-	  if (user.points < cost) {
-		return res.status(400).json({
-		  error: `Not enough points. Banner pulls cost ${cost} points.`
-		});
+	  // Check payment method: ticket or points
+	  const { useTicket, ticketType } = req.body;
+	  let cost = Math.floor(100 * banner.costMultiplier);
+	  let usedTicket = null;
+	  let isPremium = false;
+	  
+	  if (useTicket) {
+	    // Use ticket instead of points
+	    if (ticketType === 'premium' && (user.premiumTickets || 0) >= 1) {
+	      user.premiumTickets -= 1;
+	      usedTicket = 'premium';
+	      isPremium = true;
+	      cost = 0;
+	    } else if ((user.rollTickets || 0) >= 1) {
+	      user.rollTickets -= 1;
+	      usedTicket = 'roll';
+	      cost = 0;
+	    } else {
+	      return res.status(400).json({
+	        error: 'No tickets available',
+	        rollTickets: user.rollTickets || 0,
+	        premiumTickets: user.premiumTickets || 0
+	      });
+	    }
+	  } else {
+	    // Use points
+	    if (user.points < cost) {
+	      return res.status(400).json({
+	        error: `Not enough points. Banner pulls cost ${cost} points.`,
+	        rollTickets: user.rollTickets || 0,
+	        premiumTickets: user.premiumTickets || 0
+	      });
+	    }
+	    user.points -= cost;
 	  }
 	  
-	  // Deduct points
-	  user.points -= cost;
 	  await user.save();
 	  
 	  // Get user's R18 preference
@@ -652,6 +678,15 @@ router.post('/:id/roll', auth, async (req, res) => {
 		legendary: 1    // 1% chance
 	  };
 	  
+	  // Premium ticket rates (guaranteed rare or better!)
+	  const premiumDropRates = {
+		common: 0,      // 0% chance - no common with premium
+		uncommon: 0,    // 0% chance - no uncommon with premium
+		rare: 70,       // 70% chance
+		epic: 25,       // 25% chance
+		legendary: 5    // 5% chance
+	  };
+	  
 	  // Apply the rate multiplier to adjust rates for banner
 	  const bannerDropRates = {};
 	  // Cap the multiplier effect to prevent extreme values
@@ -676,7 +711,13 @@ router.post('/:id/roll', auth, async (req, res) => {
 	  const pullFromBanner = Math.random() < 0.70; // 70% chance to pull from banner
 	  
 	  // Choose the appropriate drop rates
-	  const dropRates = pullFromBanner ? bannerDropRates : standardDropRates;
+	  // Premium tickets get guaranteed rare+ rates
+	  let dropRates;
+	  if (isPremium) {
+	    dropRates = premiumDropRates;
+	  } else {
+	    dropRates = pullFromBanner ? bannerDropRates : standardDropRates;
+	  }
 	  
 	  // Determine the rarity based on probability
 	  const rarityRoll = Math.random() * 100;
@@ -736,7 +777,13 @@ router.post('/:id/roll', auth, async (req, res) => {
 		isBannerCharacter: bannerCharacters.some(c => c.id === randomChar.id),
 		bannerName: banner.name,
 		cost,
-		updatedPoints: user.points
+		updatedPoints: user.points,
+		usedTicket,
+		isPremiumRoll: isPremium,
+		tickets: {
+		  rollTickets: user.rollTickets || 0,
+		  premiumTickets: user.premiumTickets || 0
+		}
 	  });
 	} catch (err) {
 	  console.error(err);
@@ -768,26 +815,85 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		return res.status(400).json({ error: 'This banner has already ended' });
 	  }
 	  
-	  // Calculate cost per pull (consistent with single roll endpoint)
-	  const singlePullCost = Math.floor(100 * banner.costMultiplier);
-	  const baseCost = count * singlePullCost;
-	  
-	  // Apply bulk discount from pricing config
-	  const discount = getDiscountForCount(count);
-	  
-	  // Calculate final cost
-	  const finalCost = Math.floor(baseCost * (1 - discount));
-	  
 	  // Get the user
 	  const user = await User.findByPk(req.user.id);
-	  if (user.points < finalCost) {
-		return res.status(400).json({
-		  error: `Not enough points. This multi-pull costs ${finalCost} points.`
-		});
+	  
+	  // Check payment method: tickets or points
+	  const { useTickets, ticketType } = req.body;
+	  let finalCost = 0;
+	  let usedTickets = { roll: 0, premium: 0 };
+	  let premiumCount = 0;
+	  
+	  if (useTickets) {
+	    // Use tickets for multi-roll
+	    const rollTickets = user.rollTickets || 0;
+	    const premiumTickets = user.premiumTickets || 0;
+	    
+	    if (ticketType === 'premium') {
+	      // Use premium tickets first
+	      if (premiumTickets >= count) {
+	        user.premiumTickets -= count;
+	        usedTickets.premium = count;
+	        premiumCount = count;
+	      } else {
+	        return res.status(400).json({
+	          error: `Not enough premium tickets. Need ${count}, have ${premiumTickets}.`,
+	          rollTickets,
+	          premiumTickets
+	        });
+	      }
+	    } else if (ticketType === 'roll') {
+	      // Use roll tickets
+	      if (rollTickets >= count) {
+	        user.rollTickets -= count;
+	        usedTickets.roll = count;
+	      } else {
+	        return res.status(400).json({
+	          error: `Not enough roll tickets. Need ${count}, have ${rollTickets}.`,
+	          rollTickets,
+	          premiumTickets
+	        });
+	      }
+	    } else {
+	      // Mixed: use premium first, then roll
+	      let remaining = count;
+	      if (premiumTickets > 0) {
+	        const usePremium = Math.min(premiumTickets, remaining);
+	        user.premiumTickets -= usePremium;
+	        usedTickets.premium = usePremium;
+	        premiumCount = usePremium;
+	        remaining -= usePremium;
+	      }
+	      if (remaining > 0 && rollTickets >= remaining) {
+	        user.rollTickets -= remaining;
+	        usedTickets.roll = remaining;
+	        remaining = 0;
+	      }
+	      if (remaining > 0) {
+	        return res.status(400).json({
+	          error: `Not enough tickets. Need ${count} total.`,
+	          rollTickets,
+	          premiumTickets
+	        });
+	      }
+	    }
+	  } else {
+	    // Use points
+	    const singlePullCost = Math.floor(100 * banner.costMultiplier);
+	    const baseCost = count * singlePullCost;
+	    const discount = getDiscountForCount(count);
+	    finalCost = Math.floor(baseCost * (1 - discount));
+	    
+	    if (user.points < finalCost) {
+	      return res.status(400).json({
+	        error: `Not enough points. This multi-pull costs ${finalCost} points.`,
+	        rollTickets: user.rollTickets || 0,
+	        premiumTickets: user.premiumTickets || 0
+	      });
+	    }
+	    user.points -= finalCost;
 	  }
 	  
-	  // Deduct points
-	  user.points -= finalCost;
 	  await user.save();
 	  
 	  // Get user's R18 preference
@@ -840,6 +946,15 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		legendary: 1    // 1% chance
 	  };
 	  
+	  // Premium ticket rates (guaranteed rare or better!)
+	  const premiumDropRates = {
+		common: 0,      // 0% chance
+		uncommon: 0,    // 0% chance
+		rare: 65,       // 65% chance
+		epic: 28,       // 28% chance
+		legendary: 7    // 7% chance
+	  };
+	  
 	  // Apply the rate multiplier to adjust rates for banner
 	  const bannerDropRates = {};
 	  // Cap the multiplier effect to prevent extreme values
@@ -876,14 +991,24 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		const isLastRoll = (i === count - 1);
 		const needsPity = guaranteedRare && isLastRoll && !hasRarePlus;
 		
+		// Check if this roll uses a premium ticket
+		const isPremiumRoll = i < premiumCount;
+		
 		// Determine if this pull is from the banner pool
 		// Banner rate increases for the last few pulls
 		const bannerChance = (i >= count - 3) ? 0.85 : 0.7; // 70% normally, 85% for last 3
 		const pullFromBanner = Math.random() < bannerChance;
 		
 		// Select appropriate rates
-		const currentRates = needsPity ? pityRates :
-		  (pullFromBanner ? bannerDropRates : standardDropRates);
+		// Premium tickets get guaranteed rare+ rates
+		let currentRates;
+		if (isPremiumRoll) {
+		  currentRates = premiumDropRates;
+		} else if (needsPity) {
+		  currentRates = pityRates;
+		} else {
+		  currentRates = pullFromBanner ? bannerDropRates : standardDropRates;
+		}
 		
 		// Determine rarity
 		const rarityRoll = Math.random() * 100;
@@ -956,12 +1081,37 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
 		characters: results,
 		bannerName: banner.name,
 		cost: finalCost,
-		updatedPoints: user.points
+		updatedPoints: user.points,
+		usedTickets,
+		premiumRolls: premiumCount,
+		tickets: {
+		  rollTickets: user.rollTickets || 0,
+		  premiumTickets: user.premiumTickets || 0
+		}
 	  });
 	} catch (err) {
 	  console.error(err);
 	  res.status(500).json({ error: 'Server error' });
 	}
   });
+
+// GET /api/banners/user/tickets - Get user's ticket counts
+router.get('/user/tickets', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    res.json({
+      rollTickets: user.rollTickets || 0,
+      premiumTickets: user.premiumTickets || 0,
+      points: user.points
+    });
+  } catch (err) {
+    console.error('Error fetching tickets:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
 
 module.exports = router;

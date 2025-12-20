@@ -3,6 +3,7 @@ const User = require('./user');
 const Character = require('./character');
 const Coupon = require('./coupon');
 const CouponRedemption = require("./couponRedemption");
+const FishInventory = require('./fishInventory');
 
 // Set up associations
 User.belongsToMany(Character, { through: 'UserCharacters' });
@@ -20,9 +21,14 @@ CouponRedemption.belongsTo(Coupon, { foreignKey: 'couponId' });
 Character.hasMany(Coupon, { foreignKey: 'characterId' });
 Coupon.belongsTo(Character, { foreignKey: 'characterId' });
 
+// Add association between User and FishInventory
+User.hasMany(FishInventory, { foreignKey: 'userId' });
+FishInventory.belongsTo(User, { foreignKey: 'userId' });
+
 module.exports = {
   User,
   Character,
   Coupon,
-  CouponRedemption
+  CouponRedemption,
+  FishInventory
 };

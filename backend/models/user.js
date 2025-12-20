@@ -52,6 +52,15 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false
     },
+    // Gacha tickets from fishing
+    rollTickets: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0
+    },
+    premiumTickets: {
+      type: DataTypes.INTEGER,
+      defaultValue: 0
+    },
   },
   {
     sequelize,

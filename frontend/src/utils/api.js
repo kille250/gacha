@@ -321,4 +321,43 @@ export const invalidateAdminCache = () => {
   clearCache('/coupons');
 };
 
+// =============================================
+// FISHING TRADING POST API
+// =============================================
+
+// Get user's fish inventory
+export const getFishInventory = async () => {
+  try {
+    const response = await api.get('/fishing/inventory');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching fish inventory:', error);
+    throw error;
+  }
+};
+
+// Get trading post options
+export const getTradingPostOptions = async () => {
+  try {
+    const response = await api.get('/fishing/trading-post');
+    return response.data;
+  } catch (error) {
+    console.error('Error fetching trading post:', error);
+    throw error;
+  }
+};
+
+// Execute a trade
+export const executeTrade = async (tradeId, quantity = 1) => {
+  try {
+    clearCache('/fishing/inventory');
+    clearCache('/fishing/trading-post');
+    const response = await api.post('/fishing/trade', { tradeId, quantity });
+    return response.data;
+  } catch (error) {
+    console.error('Error executing trade:', error);
+    throw error;
+  }
+};
+
 export default api;

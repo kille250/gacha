@@ -3,7 +3,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
-const { User } = require('../models');
+const { User, FishInventory } = require('../models');
 const { Op } = require('sequelize');
 
 // Rank required to unlock autofishing (top X users)
@@ -217,6 +217,24 @@ router.post('/catch', auth, async (req, res) => {
         await user.save();
       }
       
+      // Add fish to inventory
+      const [inventoryItem, created] = await FishInventory.findOrCreate({
+        where: { userId: req.user.id, fishId: fish.id },
+        defaults: {
+          userId: req.user.id,
+          fishId: fish.id,
+          fishName: fish.name,
+          fishEmoji: fish.emoji,
+          rarity: fish.rarity,
+          quantity: 1
+        }
+      });
+      
+      if (!created) {
+        inventoryItem.quantity += 1;
+        await inventoryItem.save();
+      }
+      
       return res.json({
         success: true,
         fish: {
@@ -229,6 +247,7 @@ router.post('/catch', auth, async (req, res) => {
         reactionTime,
         timingWindow: fish.timingWindow,
         newPoints: user ? user.points : null,
+        inventoryCount: inventoryItem.quantity,
         message: `You caught a ${fish.name}!`
       });
     } else {
@@ -454,6 +473,24 @@ router.post('/autofish', auth, async (req, res) => {
       user.points += reward;
       await user.save();
       
+      // Add fish to inventory
+      const [inventoryItem, created] = await FishInventory.findOrCreate({
+        where: { userId: req.user.id, fishId: fish.id },
+        defaults: {
+          userId: req.user.id,
+          fishId: fish.id,
+          fishName: fish.name,
+          fishEmoji: fish.emoji,
+          rarity: fish.rarity,
+          quantity: 1
+        }
+      });
+      
+      if (!created) {
+        inventoryItem.quantity += 1;
+        await inventoryItem.save();
+      }
+      
       // Release lock
       autofishInProgress.delete(userId);
       
@@ -467,6 +504,7 @@ router.post('/autofish', auth, async (req, res) => {
         },
         reward,
         newPoints: user.points,
+        inventoryCount: inventoryItem.quantity,
         message: `Autofished a ${fish.name}!`
       });
     } else {
@@ -581,6 +619,449 @@ router.get('/admin/users', auth, adminAuth, async (req, res) => {
     });
   } catch (err) {
     console.error('Admin users fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// =============================================
+// TRADING POST ROUTES
+// =============================================
+
+// Trading post configuration
+const TRADE_OPTIONS = [
+  // === POINTS TRADES ===
+  {
+    id: 'common_to_points',
+    name: 'Sell Common Fish',
+    description: 'Trade common fish for points',
+    requiredRarity: 'common',
+    requiredQuantity: 5,
+    rewardType: 'points',
+    rewardAmount: 50,
+    emoji: '🐟',
+    category: 'points'
+  },
+  {
+    id: 'uncommon_to_points',
+    name: 'Sell Uncommon Fish',
+    description: 'Trade uncommon fish for points',
+    requiredRarity: 'uncommon',
+    requiredQuantity: 3,
+    rewardType: 'points',
+    rewardAmount: 100,
+    emoji: '🐠',
+    category: 'points'
+  },
+  {
+    id: 'rare_to_points',
+    name: 'Sell Rare Fish',
+    description: 'Trade rare fish for points',
+    requiredRarity: 'rare',
+    requiredQuantity: 2,
+    rewardType: 'points',
+    rewardAmount: 200,
+    emoji: '🐡',
+    category: 'points'
+  },
+  {
+    id: 'epic_to_points',
+    name: 'Sell Epic Fish',
+    description: 'Trade epic fish for a large point bonus',
+    requiredRarity: 'epic',
+    requiredQuantity: 1,
+    rewardType: 'points',
+    rewardAmount: 350,
+    emoji: '🦈',
+    category: 'points'
+  },
+  {
+    id: 'legendary_to_points',
+    name: 'Sell Legendary Fish',
+    description: 'Trade a legendary fish for a massive point bonus',
+    requiredRarity: 'legendary',
+    requiredQuantity: 1,
+    rewardType: 'points',
+    rewardAmount: 1000,
+    emoji: '🐋',
+    category: 'points'
+  },
+  
+  // === TICKET TRADES ===
+  {
+    id: 'common_to_ticket',
+    name: 'Roll Ticket',
+    description: 'Trade common fish for a single roll ticket',
+    requiredRarity: 'common',
+    requiredQuantity: 10,
+    rewardType: 'rollTickets',
+    rewardAmount: 1,
+    emoji: '🎟️',
+    category: 'tickets'
+  },
+  {
+    id: 'uncommon_to_tickets',
+    name: 'Roll Ticket Pack',
+    description: 'Trade uncommon fish for roll tickets',
+    requiredRarity: 'uncommon',
+    requiredQuantity: 5,
+    rewardType: 'rollTickets',
+    rewardAmount: 2,
+    emoji: '🎟️',
+    category: 'tickets'
+  },
+  {
+    id: 'rare_to_premium',
+    name: 'Premium Ticket',
+    description: 'Trade rare fish for a premium ticket (better rates!)',
+    requiredRarity: 'rare',
+    requiredQuantity: 3,
+    rewardType: 'premiumTickets',
+    rewardAmount: 1,
+    emoji: '🌟',
+    category: 'tickets'
+  },
+  {
+    id: 'epic_to_premium',
+    name: 'Premium Ticket Pack',
+    description: 'Trade epic fish for premium tickets',
+    requiredRarity: 'epic',
+    requiredQuantity: 2,
+    rewardType: 'premiumTickets',
+    rewardAmount: 2,
+    emoji: '🌟',
+    category: 'tickets'
+  },
+  {
+    id: 'legendary_to_premium',
+    name: 'Golden Ticket Pack',
+    description: 'Trade a legendary fish for premium tickets',
+    requiredRarity: 'legendary',
+    requiredQuantity: 1,
+    rewardType: 'premiumTickets',
+    rewardAmount: 5,
+    emoji: '✨',
+    category: 'tickets'
+  },
+  
+  // === SPECIAL TRADES ===
+  {
+    id: 'collection_bonus',
+    name: 'Complete Collection',
+    description: 'Trade one of each rarity for a mega bonus',
+    requiredRarity: 'collection',
+    requiredQuantity: 1, // 1 of each rarity
+    rewardType: 'points',
+    rewardAmount: 2500,
+    emoji: '🏆',
+    category: 'special'
+  },
+  {
+    id: 'collection_tickets',
+    name: 'Fisher\'s Treasure',
+    description: 'Trade one of each rarity for tickets + premium tickets',
+    requiredRarity: 'collection',
+    requiredQuantity: 1,
+    rewardType: 'mixed',
+    rewardAmount: { rollTickets: 5, premiumTickets: 3 },
+    emoji: '💎',
+    category: 'special'
+  }
+];
+
+// GET /api/fishing/inventory - Get user's fish inventory
+router.get('/inventory', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    const inventory = await FishInventory.findAll({
+      where: { userId: req.user.id },
+      order: [
+        ['rarity', 'ASC'],
+        ['fishName', 'ASC']
+      ]
+    });
+    
+    // Calculate totals by rarity
+    const totals = {
+      common: 0,
+      uncommon: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 0
+    };
+    
+    inventory.forEach(item => {
+      if (totals[item.rarity] !== undefined) {
+        totals[item.rarity] += item.quantity;
+      }
+    });
+    
+    res.json({
+      inventory: inventory.map(item => ({
+        fishId: item.fishId,
+        fishName: item.fishName,
+        fishEmoji: item.fishEmoji,
+        rarity: item.rarity,
+        quantity: item.quantity
+      })),
+      totals,
+      totalFish: Object.values(totals).reduce((a, b) => a + b, 0),
+      tickets: {
+        rollTickets: user?.rollTickets || 0,
+        premiumTickets: user?.premiumTickets || 0
+      }
+    });
+  } catch (err) {
+    console.error('Inventory fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// GET /api/fishing/trading-post - Get trading post options with availability
+router.get('/trading-post', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    const inventory = await FishInventory.findAll({
+      where: { userId: req.user.id }
+    });
+    
+    // Calculate totals by rarity
+    const totals = {
+      common: 0,
+      uncommon: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 0
+    };
+    
+    inventory.forEach(item => {
+      if (totals[item.rarity] !== undefined) {
+        totals[item.rarity] += item.quantity;
+      }
+    });
+    
+    // Check availability for each trade option
+    const options = TRADE_OPTIONS.map(option => {
+      let canTrade = false;
+      let currentQuantity = 0;
+      
+      if (option.requiredRarity === 'collection') {
+        // Need at least 1 of each rarity
+        canTrade = Object.values(totals).every(qty => qty >= 1);
+        currentQuantity = Math.min(...Object.values(totals));
+      } else {
+        currentQuantity = totals[option.requiredRarity] || 0;
+        canTrade = currentQuantity >= option.requiredQuantity;
+      }
+      
+      return {
+        ...option,
+        canTrade,
+        currentQuantity,
+        timesAvailable: option.requiredRarity === 'collection' 
+          ? currentQuantity 
+          : Math.floor(currentQuantity / option.requiredQuantity)
+      };
+    });
+    
+    res.json({
+      options,
+      totals,
+      tickets: {
+        rollTickets: user?.rollTickets || 0,
+        premiumTickets: user?.premiumTickets || 0
+      }
+    });
+  } catch (err) {
+    console.error('Trading post fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/fishing/trade - Execute a trade
+router.post('/trade', auth, async (req, res) => {
+  try {
+    const { tradeId, quantity = 1 } = req.body;
+    
+    if (!tradeId) {
+      return res.status(400).json({ error: 'Trade ID required' });
+    }
+    
+    // Validate quantity
+    const tradeQuantity = Math.max(1, Math.min(100, parseInt(quantity, 10) || 1));
+    
+    const tradeOption = TRADE_OPTIONS.find(t => t.id === tradeId);
+    if (!tradeOption) {
+      return res.status(400).json({ error: 'Invalid trade option' });
+    }
+    
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get user's inventory
+    const inventory = await FishInventory.findAll({
+      where: { userId: req.user.id }
+    });
+    
+    // Calculate totals by rarity
+    const totals = {
+      common: 0,
+      uncommon: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 0
+    };
+    
+    inventory.forEach(item => {
+      if (totals[item.rarity] !== undefined) {
+        totals[item.rarity] += item.quantity;
+      }
+    });
+    
+    // Check if user can make the trade
+    if (tradeOption.requiredRarity === 'collection') {
+      // Need at least 1 of each rarity per trade
+      const minAvailable = Math.min(...Object.values(totals));
+      if (minAvailable < tradeQuantity) {
+        return res.status(400).json({ 
+          error: 'Not enough fish',
+          message: `Need at least ${tradeQuantity} of each rarity`
+        });
+      }
+      
+      // Deduct 1 of each rarity per trade
+      const rarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+      for (const rarity of rarities) {
+        const itemsOfRarity = inventory.filter(i => i.rarity === rarity);
+        let remaining = tradeQuantity;
+        
+        for (const item of itemsOfRarity) {
+          if (remaining <= 0) break;
+          
+          const toDeduct = Math.min(item.quantity, remaining);
+          item.quantity -= toDeduct;
+          remaining -= toDeduct;
+          
+          if (item.quantity <= 0) {
+            await item.destroy();
+          } else {
+            await item.save();
+          }
+        }
+      }
+    } else {
+      // Regular rarity trade
+      const requiredTotal = tradeOption.requiredQuantity * tradeQuantity;
+      if (totals[tradeOption.requiredRarity] < requiredTotal) {
+        return res.status(400).json({ 
+          error: 'Not enough fish',
+          message: `Need ${requiredTotal} ${tradeOption.requiredRarity} fish (have ${totals[tradeOption.requiredRarity]})`
+        });
+      }
+      
+      // Deduct fish from inventory
+      const itemsOfRarity = inventory.filter(i => i.rarity === tradeOption.requiredRarity);
+      let remaining = requiredTotal;
+      
+      for (const item of itemsOfRarity) {
+        if (remaining <= 0) break;
+        
+        const toDeduct = Math.min(item.quantity, remaining);
+        item.quantity -= toDeduct;
+        remaining -= toDeduct;
+        
+        if (item.quantity <= 0) {
+          await item.destroy();
+        } else {
+          await item.save();
+        }
+      }
+    }
+    
+    // Give reward based on type
+    let reward = {};
+    if (tradeOption.rewardType === 'points') {
+      const pointsReward = tradeOption.rewardAmount * tradeQuantity;
+      user.points += pointsReward;
+      reward = { points: pointsReward };
+    } else if (tradeOption.rewardType === 'rollTickets') {
+      const ticketReward = tradeOption.rewardAmount * tradeQuantity;
+      user.rollTickets = (user.rollTickets || 0) + ticketReward;
+      reward = { rollTickets: ticketReward };
+    } else if (tradeOption.rewardType === 'premiumTickets') {
+      const premiumReward = tradeOption.rewardAmount * tradeQuantity;
+      user.premiumTickets = (user.premiumTickets || 0) + premiumReward;
+      reward = { premiumTickets: premiumReward };
+    } else if (tradeOption.rewardType === 'mixed') {
+      // Handle mixed rewards (e.g., both rollTickets and premiumTickets)
+      const amounts = tradeOption.rewardAmount;
+      if (amounts.rollTickets) {
+        const ticketReward = amounts.rollTickets * tradeQuantity;
+        user.rollTickets = (user.rollTickets || 0) + ticketReward;
+        reward.rollTickets = ticketReward;
+      }
+      if (amounts.premiumTickets) {
+        const premiumReward = amounts.premiumTickets * tradeQuantity;
+        user.premiumTickets = (user.premiumTickets || 0) + premiumReward;
+        reward.premiumTickets = premiumReward;
+      }
+      if (amounts.points) {
+        const pointsReward = amounts.points * tradeQuantity;
+        user.points += pointsReward;
+        reward.points = pointsReward;
+      }
+    }
+    await user.save();
+    
+    // Get updated inventory
+    const updatedInventory = await FishInventory.findAll({
+      where: { userId: req.user.id }
+    });
+    
+    const newTotals = {
+      common: 0,
+      uncommon: 0,
+      rare: 0,
+      epic: 0,
+      legendary: 0
+    };
+    
+    updatedInventory.forEach(item => {
+      if (newTotals[item.rarity] !== undefined) {
+        newTotals[item.rarity] += item.quantity;
+      }
+    });
+    
+    // Build message based on reward type
+    let message = 'Trade successful!';
+    if (reward.points) {
+      message = `+${reward.points} points!`;
+    } else if (reward.rollTickets && reward.premiumTickets) {
+      message = `+${reward.rollTickets} Roll Tickets, +${reward.premiumTickets} Premium Tickets!`;
+    } else if (reward.rollTickets) {
+      message = `+${reward.rollTickets} Roll Ticket${reward.rollTickets > 1 ? 's' : ''}!`;
+    } else if (reward.premiumTickets) {
+      message = `+${reward.premiumTickets} Premium Ticket${reward.premiumTickets > 1 ? 's' : ''}!`;
+    }
+    
+    res.json({
+      success: true,
+      tradeName: tradeOption.name,
+      quantity: tradeQuantity,
+      rewardType: tradeOption.rewardType,
+      reward,
+      newPoints: user.points,
+      newTickets: {
+        rollTickets: user.rollTickets || 0,
+        premiumTickets: user.premiumTickets || 0
+      },
+      newTotals,
+      message
+    });
+    
+  } catch (err) {
+    console.error('Trade error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

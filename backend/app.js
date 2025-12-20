@@ -290,9 +290,32 @@ async function startServer() {
       await addColumnIfNotExists('Users', 'showR18', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Users', 'autofishEnabled', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Users', 'autofishUnlockedByRank', 'BOOLEAN', 'false');
+      await addColumnIfNotExists('Users', 'rollTickets', 'INTEGER', '0');
+      await addColumnIfNotExists('Users', 'premiumTickets', 'INTEGER', '0');
       await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Banners', 'isR18', 'BOOLEAN', 'false');
       await addColumnIfNotExists('Banners', 'displayOrder', 'INTEGER', '0');
+      
+      // Create FishInventories table if not exists
+      try {
+        await sequelize.query(`
+          CREATE TABLE IF NOT EXISTS "FishInventories" (
+            "id" SERIAL PRIMARY KEY,
+            "userId" INTEGER NOT NULL REFERENCES "Users"("id") ON DELETE CASCADE,
+            "fishId" VARCHAR(255) NOT NULL,
+            "fishName" VARCHAR(255) NOT NULL,
+            "fishEmoji" VARCHAR(255) NOT NULL,
+            "rarity" VARCHAR(255) NOT NULL,
+            "quantity" INTEGER DEFAULT 1,
+            "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE("userId", "fishId")
+          );
+        `);
+        console.log('[Migration] FishInventories table ready');
+      } catch (err) {
+        console.error('[Migration] FishInventories table error:', err.message);
+      }
     }
     
     // Use server.listen instead of app.listen for Socket.IO

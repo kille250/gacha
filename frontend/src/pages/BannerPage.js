@@ -8,7 +8,7 @@ import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from
 import confetti from 'canvas-confetti';
 
 // API & Context
-import api, { getBannerById, getBannerPricing, rollOnBanner, multiRollOnBanner, getAssetUrl } from '../utils/api';
+import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 
 // Design System
@@ -91,6 +91,10 @@ const BannerPage = () => {
   // Pricing from server (single source of truth)
   const [pricing, setPricing] = useState(null);
   
+  // Ticket state
+  const [tickets, setTickets] = useState({ rollTickets: 0, premiumTickets: 0 });
+  const [paymentMode, setPaymentMode] = useState('points'); // 'points', 'ticket', 'premium'
+  
   // Computed values from pricing
   const singlePullCost = pricing?.singlePullCost || 100;
   const pullOptions = pricing?.pullOptions || [];
@@ -108,13 +112,15 @@ const BannerPage = () => {
     const fetchBannerAndPricing = async () => {
       try {
         setLoading(true);
-        // Fetch banner data and pricing in parallel
-        const [bannerData, pricingData] = await Promise.all([
+        // Fetch banner data, pricing, and tickets in parallel
+        const [bannerData, pricingData, ticketsData] = await Promise.all([
           getBannerById(bannerId),
-          getBannerPricing(bannerId)
+          getBannerPricing(bannerId),
+          api.get('/banners/user/tickets').then(res => res.data).catch(() => ({ rollTickets: 0, premiumTickets: 0 }))
         ]);
         setBanner(bannerData);
         setPricing(pricingData);
+        setTickets(ticketsData);
       } catch (err) {
         setError(err.response?.data?.error || t('admin.failedLoadBanners'));
       } finally {
@@ -156,7 +162,22 @@ const BannerPage = () => {
   }, []);
 
   // Handlers
-  const handleRoll = async () => {
+  const handleRoll = async (useTicket = false, ticketType = 'roll') => {
+    // Check if can afford
+    if (useTicket) {
+      if (ticketType === 'premium' && tickets.premiumTickets < 1) {
+        setError('No premium tickets available');
+        return;
+      }
+      if (ticketType === 'roll' && tickets.rollTickets < 1) {
+        setError('No roll tickets available');
+        return;
+      }
+    } else if (user?.points < singlePullCost) {
+      setError(t('banner.notEnoughPoints', { count: 1, cost: singlePullCost }));
+      return;
+    }
+    
     try {
       setIsRolling(true);
       setShowCard(false);
@@ -165,12 +186,20 @@ const BannerPage = () => {
       setMultiRollResults([]);
       setRollCount(prev => prev + 1);
       
-      const result = await rollOnBanner(bannerId);
-      const { character, updatedPoints } = result;
+      // Call API with ticket params if using tickets
+      const payload = useTicket ? { useTicket: true, ticketType } : {};
+      const response = await api.post(`/banners/${bannerId}/roll`, payload);
+      const result = response.data;
+      const { character, updatedPoints, tickets: newTickets } = result;
       
       // Update points immediately from response
       if (updatedPoints !== undefined && user) {
         setUser({ ...user, points: updatedPoints });
+      }
+      
+      // Update tickets if returned
+      if (newTickets) {
+        setTickets(newTickets);
       }
       
       if (skipAnimations) {
@@ -206,11 +235,23 @@ const BannerPage = () => {
     setIsRolling(false);
   }, [pendingCharacter]);
 
-  const handleMultiRoll = async (count) => {
-    const cost = getMultiPullCost(count);
-    if (user?.points < cost) {
-      setError(t('banner.notEnoughPoints', { count, cost }));
-      return;
+  const handleMultiRoll = async (count, useTickets = false, ticketType = 'roll') => {
+    // Check if can afford
+    if (useTickets) {
+      if (ticketType === 'premium' && tickets.premiumTickets < count) {
+        setError(`Not enough premium tickets. Need ${count}, have ${tickets.premiumTickets}`);
+        return;
+      }
+      if (ticketType === 'roll' && tickets.rollTickets < count) {
+        setError(`Not enough roll tickets. Need ${count}, have ${tickets.rollTickets}`);
+        return;
+      }
+    } else {
+      const cost = getMultiPullCost(count);
+      if (user?.points < cost) {
+        setError(t('banner.notEnoughPoints', { count, cost }));
+        return;
+      }
     }
     
     try {
@@ -220,12 +261,22 @@ const BannerPage = () => {
       setError(null);
       setRollCount(prev => prev + count);
       
-      const result = await multiRollOnBanner(bannerId, count);
-      const { characters, updatedPoints } = result;
+      // Call API with ticket params if using tickets
+      const payload = useTickets 
+        ? { count, useTickets: true, ticketType } 
+        : { count };
+      const response = await api.post(`/banners/${bannerId}/roll-multi`, payload);
+      const result = response.data;
+      const { characters, updatedPoints, tickets: newTickets } = result;
       
       // Update points immediately from response
       if (updatedPoints !== undefined && user) {
         setUser({ ...user, points: updatedPoints });
+      }
+      
+      // Update tickets if returned
+      if (newTickets) {
+        setTickets(newTickets);
       }
       
       if (skipAnimations) {
@@ -570,9 +621,30 @@ const BannerPage = () => {
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0, y: 20 }}
             >
+              {/* Ticket Indicator */}
+              {(tickets.rollTickets > 0 || tickets.premiumTickets > 0) && (
+                <TicketBar>
+                  {tickets.rollTickets > 0 && (
+                    <TicketIndicator>
+                      <span>🎟️</span>
+                      <strong>{tickets.rollTickets}</strong>
+                      <span>Roll Tickets</span>
+                    </TicketIndicator>
+                  )}
+                  {tickets.premiumTickets > 0 && (
+                    <TicketIndicator $premium>
+                      <span>🌟</span>
+                      <strong>{tickets.premiumTickets}</strong>
+                      <span>Premium (Rare+!)</span>
+                    </TicketIndicator>
+                  )}
+                </TicketBar>
+              )}
+              
+              {/* Points Roll Buttons */}
               <ButtonRow>
                 <PrimaryRollButton 
-                  onClick={handleRoll} 
+                  onClick={() => handleRoll(false)} 
                   disabled={isRolling || user?.points < singlePullCost}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
@@ -595,7 +667,7 @@ const BannerPage = () => {
                   return (
                     <MultiRollButton
                       key={option.count}
-                      onClick={() => handleMultiRoll(option.count)}
+                      onClick={() => handleMultiRoll(option.count, false)}
                       disabled={isRolling || !canAfford}
                       $canAfford={canAfford}
                       whileHover={{ scale: 1.02 }}
@@ -613,6 +685,68 @@ const BannerPage = () => {
                   );
                 })}
               </ButtonRow>
+              
+              {/* Ticket Roll Buttons */}
+              {(tickets.rollTickets > 0 || tickets.premiumTickets > 0) && (
+                <TicketButtonRow>
+                  {tickets.rollTickets > 0 && (
+                    <TicketRollButton
+                      onClick={() => handleRoll(true, 'roll')}
+                      disabled={isRolling}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <ButtonLabel>
+                        <span>🎟️</span>
+                        <span>Use Ticket</span>
+                      </ButtonLabel>
+                      <TicketCostLabel>1 Roll Ticket</TicketCostLabel>
+                    </TicketRollButton>
+                  )}
+                  {tickets.premiumTickets > 0 && (
+                    <PremiumTicketButton
+                      onClick={() => handleRoll(true, 'premium')}
+                      disabled={isRolling}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <ButtonLabel>
+                        <span>🌟</span>
+                        <span>Premium Roll</span>
+                      </ButtonLabel>
+                      <TicketCostLabel>Guaranteed Rare+!</TicketCostLabel>
+                    </PremiumTicketButton>
+                  )}
+                  {tickets.rollTickets >= 10 && (
+                    <TicketRollButton
+                      onClick={() => handleMultiRoll(10, true, 'roll')}
+                      disabled={isRolling}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <ButtonLabel>
+                        <span>🎟️</span>
+                        <span>10× Tickets</span>
+                      </ButtonLabel>
+                      <TicketCostLabel>10 Roll Tickets</TicketCostLabel>
+                    </TicketRollButton>
+                  )}
+                  {tickets.premiumTickets >= 10 && (
+                    <PremiumTicketButton
+                      onClick={() => handleMultiRoll(10, true, 'premium')}
+                      disabled={isRolling}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                    >
+                      <ButtonLabel>
+                        <span>🌟</span>
+                        <span>10× Premium</span>
+                      </ButtonLabel>
+                      <TicketCostLabel>All Rare+!</TicketCostLabel>
+                    </PremiumTicketButton>
+                  )}
+                </TicketButtonRow>
+              )}
               
               <ControlsFooter>
                 <PullHint>
@@ -1705,6 +1839,105 @@ const RollFromPanelBtn = styled(motion.button)`
     opacity: 0.5;
     cursor: not-allowed;
   }
+`;
+
+// =============================================
+// TICKET STYLED COMPONENTS
+// =============================================
+
+const TicketBar = styled.div`
+  display: flex;
+  justify-content: center;
+  gap: ${theme.spacing.lg};
+  margin-bottom: ${theme.spacing.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.1), rgba(103, 58, 183, 0.1));
+  border-radius: ${theme.radius.lg};
+  border: 1px solid rgba(156, 39, 176, 0.2);
+`;
+
+const TicketIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: ${props => props.$premium 
+    ? 'linear-gradient(135deg, rgba(255, 193, 7, 0.2), rgba(255, 152, 0, 0.15))'
+    : 'rgba(255, 255, 255, 0.1)'};
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.sm};
+  color: ${props => props.$premium ? '#ffc107' : '#e1bee7'};
+  
+  strong {
+    font-size: ${theme.fontSizes.lg};
+    font-weight: 800;
+    color: ${props => props.$premium ? '#ffb300' : '#ba68c8'};
+  }
+`;
+
+const TicketButtonRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.sm};
+  flex-wrap: wrap;
+  justify-content: center;
+`;
+
+const TicketRollButton = styled(motion.button)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: linear-gradient(135deg, #7b1fa2, #512da8);
+  color: white;
+  border: 2px solid #9c27b0;
+  border-radius: ${theme.radius.lg};
+  cursor: pointer;
+  min-width: 110px;
+  transition: all 0.2s;
+  
+  &:hover {
+    background: linear-gradient(135deg, #8e24aa, #5e35b1);
+    border-color: #ba68c8;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const PremiumTicketButton = styled(motion.button)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: linear-gradient(135deg, #ff8f00, #f57c00);
+  color: white;
+  border: 2px solid #ffc107;
+  border-radius: ${theme.radius.lg};
+  cursor: pointer;
+  min-width: 110px;
+  transition: all 0.2s;
+  box-shadow: 0 0 15px rgba(255, 193, 7, 0.3);
+  
+  &:hover {
+    background: linear-gradient(135deg, #ffa000, #fb8c00);
+    border-color: #ffd54f;
+    box-shadow: 0 0 25px rgba(255, 193, 7, 0.5);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const TicketCostLabel = styled.span`
+  font-size: 10px;
+  font-weight: 600;
+  opacity: 0.9;
+  margin-top: 2px;
 `;
 
 export default BannerPage;
