@@ -257,78 +257,32 @@ initMultiplayer(io);
 console.log('[Socket.IO] Fishing multiplayer initialized');
 
 // ===========================================
-// DATABASE MIGRATIONS (PostgreSQL only)
+// DATABASE MIGRATIONS (using sequelize-cli)
 // ===========================================
 
-// Helper to add missing columns during startup
-async function addColumnIfNotExists(table, column, type, defaultValue) {
-  try {
-    const [cols] = await sequelize.query(
-      `SELECT column_name FROM information_schema.columns 
-       WHERE table_name = '${table}' AND column_name = '${column}';`
-    );
-    if (cols.length === 0) {
-      await sequelize.query(
-        `ALTER TABLE "${table}" ADD COLUMN "${column}" ${type} DEFAULT ${defaultValue};`
-      );
-      console.log(`[Migration] Added ${table}.${column}`);
-    }
-  } catch (err) {
-    console.error(`[Migration] Error with ${table}.${column}:`, err.message);
-  }
-}
+const { exec } = require('child_process');
+const { promisify } = require('util');
+const execAsync = promisify(exec);
 
-// Run pending PostgreSQL migrations
+// Run sequelize-cli migrations
 async function runMigrations() {
-  if (!process.env.DATABASE_URL) return;
-  
-  // User table columns
-  await addColumnIfNotExists('Users', 'allowR18', 'BOOLEAN', 'false');
-  await addColumnIfNotExists('Users', 'showR18', 'BOOLEAN', 'false');
-  await addColumnIfNotExists('Users', 'autofishEnabled', 'BOOLEAN', 'false');
-  await addColumnIfNotExists('Users', 'autofishUnlockedByRank', 'BOOLEAN', 'false');
-  await addColumnIfNotExists('Users', 'rollTickets', 'INTEGER', '0');
-  await addColumnIfNotExists('Users', 'premiumTickets', 'INTEGER', '0');
-  await addColumnIfNotExists('Users', 'email', 'VARCHAR(255)', 'NULL');
-  await addColumnIfNotExists('Users', 'googleId', 'VARCHAR(255)', 'NULL');
-  await addColumnIfNotExists('Users', 'googleEmail', 'VARCHAR(255)', 'NULL');
-  await addColumnIfNotExists('Users', 'usernameChanged', 'BOOLEAN', 'false');
-  
-  // Make password column nullable for Google SSO users
-  try {
-    await sequelize.query(`ALTER TABLE "Users" ALTER COLUMN "password" DROP NOT NULL;`);
-    console.log('[Migration] Made password column nullable');
-  } catch (err) {
-    // Column might already be nullable or error - that's okay
-    if (!err.message.includes('does not exist')) {
-      console.log('[Migration] Password column already nullable or skipped');
-    }
+  // Only run migrations for PostgreSQL (production)
+  if (!process.env.DATABASE_URL) {
+    console.log('[Migration] Skipping migrations (SQLite dev mode)');
+    return;
   }
   
-  // Character/Banner columns
-  await addColumnIfNotExists('Characters', 'isR18', 'BOOLEAN', 'false');
-  await addColumnIfNotExists('Banners', 'isR18', 'BOOLEAN', 'false');
-  await addColumnIfNotExists('Banners', 'displayOrder', 'INTEGER', '0');
-  
-  // Create FishInventories table if not exists
   try {
-    await sequelize.query(`
-      CREATE TABLE IF NOT EXISTS "FishInventories" (
-        "id" SERIAL PRIMARY KEY,
-        "userId" INTEGER NOT NULL REFERENCES "Users"("id") ON DELETE CASCADE,
-        "fishId" VARCHAR(255) NOT NULL,
-        "fishName" VARCHAR(255) NOT NULL,
-        "fishEmoji" VARCHAR(255) NOT NULL,
-        "rarity" VARCHAR(255) NOT NULL,
-        "quantity" INTEGER DEFAULT 1,
-        "createdAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        "updatedAt" TIMESTAMP WITH TIME ZONE DEFAULT CURRENT_TIMESTAMP,
-        UNIQUE("userId", "fishId")
-      );
-    `);
-    console.log('[Migration] FishInventories table ready');
+    console.log('[Migration] Running sequelize-cli migrations...');
+    const { stdout, stderr } = await execAsync('npx sequelize-cli db:migrate', {
+      env: { ...process.env, NODE_ENV: 'production' }
+    });
+    if (stdout) console.log(stdout);
+    if (stderr && !stderr.includes('Executing')) console.error(stderr);
+    console.log('[Migration] Migrations completed');
   } catch (err) {
-    console.error('[Migration] FishInventories table error:', err.message);
+    // Don't fail startup if migrations have issues (they might already be applied)
+    console.error('[Migration] Migration error (may be safe to ignore if already applied):', err.message);
   }
 }
 
