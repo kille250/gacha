@@ -318,7 +318,6 @@ export const Container = styled.div`
   margin: 0 auto;
   padding: 0 ${theme.spacing.md};
   position: relative;
-  z-index: 1;
   
   @media (min-width: ${theme.breakpoints.lg}) {
     padding: 0 ${theme.spacing.xl};
