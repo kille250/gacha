@@ -20,7 +20,7 @@ const {
   rollRarity
 } = require('../config/pricing');
 const { isValidId, validateIdArray, parseCharacterIds } = require('../utils/validation');
-const { getUserAllowR18 } = require('../utils/userPreferences');
+const { getUserAllowR18, getR18PreferenceFromRequest } = require('../utils/userPreferences');
 const { 
   acquireRollLock,
   releaseRollLock,
@@ -143,14 +143,7 @@ router.get('/', async (req, res) => {
     }
     
     // Check R18 preference
-    let allowR18 = false;
-    const token = req.header('x-auth-token');
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        allowR18 = await getUserAllowR18(decoded.user.id);
-      } catch (e) { /* Invalid token - use default */ }
-    }
+    const allowR18 = await getR18PreferenceFromRequest(req);
     
     // Filter R18 banners and characters if user hasn't enabled R18
     const filteredBanners = banners
@@ -187,14 +180,7 @@ router.get('/:id', async (req, res) => {
     }
     
     // Check R18 preference
-    let allowR18 = false;
-    const token = req.header('x-auth-token');
-    if (token) {
-      try {
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        allowR18 = await getUserAllowR18(decoded.user.id);
-      } catch (e) { /* Invalid token - use default */ }
-    }
+    const allowR18 = await getR18PreferenceFromRequest(req);
     
     // Block access to R18 banner if user hasn't enabled R18
     if (banner.isR18 && !allowR18) {

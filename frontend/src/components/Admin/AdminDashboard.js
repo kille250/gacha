@@ -6,6 +6,42 @@ import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getSystemHealth } from '../../utils/api';
 
+// Utility functions (defined outside component to avoid recreation on each render)
+
+/**
+ * Format seconds to human-readable uptime string
+ * @param {number} seconds - Total seconds
+ * @returns {string} - Formatted string like "2d 5h" or "45m 30s"
+ */
+const formatUptime = (seconds) => {
+  if (!seconds || seconds < 0) return '0s';
+  const totalSeconds = Math.floor(seconds);
+  const days = Math.floor(totalSeconds / 86400);
+  const hours = Math.floor((totalSeconds % 86400) / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const secs = totalSeconds % 60;
+  
+  const parts = [];
+  if (days > 0) parts.push(`${days}d`);
+  if (hours > 0) parts.push(`${hours}h`);
+  if (minutes > 0) parts.push(`${minutes}m`);
+  // Only show seconds if no larger units or if explicitly present
+  if (secs > 0 && parts.length < 2) parts.push(`${secs}s`);
+  return parts.join(' ') || '0s';
+};
+
+/**
+ * Format bytes to human-readable size string
+ * @param {number} bytes - Number of bytes
+ * @returns {string} - Formatted string like "1.5 GB"
+ */
+const formatBytes = (bytes) => {
+  if (!bytes) return '0 B';
+  const sizes = ['B', 'KB', 'MB', 'GB'];
+  const i = Math.floor(Math.log(bytes) / Math.log(1024));
+  return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
+};
+
 const AdminDashboard = ({ stats, onQuickAction }) => {
   const { t } = useTranslation();
   const [healthData, setHealthData] = useState(null);
@@ -33,30 +69,6 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
     const interval = setInterval(fetchHealth, 60000);
     return () => clearInterval(interval);
   }, []);
-
-  const formatUptime = (seconds) => {
-    if (!seconds || seconds < 0) return '0s';
-    const totalSeconds = Math.floor(seconds);
-    const days = Math.floor(totalSeconds / 86400);
-    const hours = Math.floor((totalSeconds % 86400) / 3600);
-    const minutes = Math.floor((totalSeconds % 3600) / 60);
-    const secs = totalSeconds % 60;
-    
-    const parts = [];
-    if (days > 0) parts.push(`${days}d`);
-    if (hours > 0) parts.push(`${hours}h`);
-    if (minutes > 0) parts.push(`${minutes}m`);
-    // Only show seconds if no larger units or if explicitly present
-    if (secs > 0 && parts.length < 2) parts.push(`${secs}s`);
-    return parts.join(' ') || '0s';
-  };
-
-  const formatBytes = (bytes) => {
-    if (!bytes) return '0 B';
-    const sizes = ['B', 'KB', 'MB', 'GB'];
-    const i = Math.floor(Math.log(bytes) / Math.log(1024));
-    return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
-  };
 
   const statCards = [
     { 

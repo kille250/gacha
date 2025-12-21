@@ -4,6 +4,7 @@
  * Centralized helpers for accessing user preference settings
  */
 
+const jwt = require('jsonwebtoken');
 const sequelize = require('../config/db');
 
 /**
@@ -20,6 +21,25 @@ async function getUserAllowR18(userId) {
   return rows[0]?.allowR18 === true && rows[0]?.showR18 === true;
 }
 
+/**
+ * Extract R18 preference from request token
+ * Useful for routes that may or may not have authentication
+ * @param {Object} req - Express request object
+ * @returns {Promise<boolean>} - True if user can view R18 content
+ */
+async function getR18PreferenceFromRequest(req) {
+  const token = req.header('x-auth-token');
+  if (!token) return false;
+  
+  try {
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    return await getUserAllowR18(decoded.user.id);
+  } catch {
+    return false;
+  }
+}
+
 module.exports = {
-  getUserAllowR18
+  getUserAllowR18,
+  getR18PreferenceFromRequest
 };

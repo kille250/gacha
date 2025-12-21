@@ -37,8 +37,9 @@ router.get('/search-anime', auth, adminAuth, async (req, res) => {
   try {
     const { q, page = 1 } = req.query;
     
-    if (!q || q.trim().length < 2) {
-      return res.status(400).json({ error: 'Search query must be at least 2 characters' });
+    const validation = validateSearchQuery(q);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
     }
     
     const searchUrl = `${JIKAN_API}/anime?q=${encodeURIComponent(q)}&page=${page}&limit=10&sfw=true`;
@@ -208,8 +209,9 @@ router.get('/search-characters', auth, adminAuth, async (req, res) => {
   try {
     const { q, page = 1 } = req.query;
     
-    if (!q || q.trim().length < 2) {
-      return res.status(400).json({ error: 'Search query must be at least 2 characters' });
+    const validation = validateSearchQuery(q);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
     }
     
     const searchUrl = `${JIKAN_API}/characters?q=${encodeURIComponent(q)}&page=${page}&limit=15`;
@@ -249,6 +251,60 @@ const DANBOORU_HEADERS = {
   'Accept': 'application/json'
 };
 
+// Animated file extensions
+const ANIMATED_EXTENSIONS = ['webm', 'mp4', 'gif', 'zip'];
+
+/**
+ * Check if a file extension indicates animated content
+ * @param {string} ext - File extension (without dot)
+ * @returns {boolean} - True if animated
+ */
+const isAnimatedExtension = (ext) => {
+  return ANIMATED_EXTENSIONS.includes((ext || '').toLowerCase());
+};
+
+/**
+ * Validate search query length
+ * @param {string} query - Search query
+ * @param {number} minLength - Minimum required length (default: 2)
+ * @returns {{ valid: boolean, error?: string }} - Validation result
+ */
+const validateSearchQuery = (query, minLength = 2) => {
+  if (!query || query.trim().length < minLength) {
+    return { valid: false, error: `Search query must be at least ${minLength} characters` };
+  }
+  return { valid: true };
+};
+
+/**
+ * Map Danbooru post to simplified result format
+ * @param {Object} post - Raw Danbooru post object
+ * @param {boolean} includeAnimatedFlag - Whether to include isAnimated flag
+ * @returns {Object} - Simplified post object
+ */
+const mapDanbooruPost = (post, includeAnimatedFlag = true) => {
+  const result = {
+    id: post.id,
+    preview: post.preview_file_url || post.large_file_url,
+    sample: post.large_file_url || post.file_url,
+    file: post.file_url || post.large_file_url,
+    fileExt: post.file_ext,
+    tags: post.tag_string,
+    source: post.source,
+    width: post.image_width,
+    height: post.image_height,
+    score: post.score,
+    characterTags: post.tag_string_character
+  };
+  
+  if (includeAnimatedFlag) {
+    result.isAnimated = isAnimatedExtension(post.file_ext) || 
+                        (post.tag_string && post.tag_string.includes('animated'));
+  }
+  
+  return result;
+};
+
 // Helper to add auth params to Danbooru URL
 const addDanbooruAuth = (url) => {
   if (DANBOORU_LOGIN && DANBOORU_API_KEY) {
@@ -269,8 +325,9 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
   try {
     const { q, page = 1, animated = 'true' } = req.query;
     
-    if (!q || q.trim().length < 2) {
-      return res.status(400).json({ error: 'Search query must be at least 2 characters' });
+    const validation = validateSearchQuery(q);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
     }
     
     const tag = toDanbooruTag(q);
@@ -299,25 +356,8 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
     
     // Filter and map - prefer animated but include high-quality images as fallback
     const results = posts
-      .filter(post => post.file_url || post.large_file_url) // Must have file URL
-      .map(post => {
-        const ext = (post.file_ext || '').toLowerCase();
-        const isAnimated = ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip';
-        return {
-          id: post.id,
-          preview: post.preview_file_url || post.large_file_url,
-          sample: post.large_file_url || post.file_url,
-          file: post.file_url || post.large_file_url,
-          fileExt: post.file_ext,
-          tags: post.tag_string,
-          source: post.source,
-          width: post.image_width,
-          height: post.image_height,
-          score: post.score,
-          characterTags: post.tag_string_character,
-          isAnimated
-        };
-      })
+      .filter(post => post.file_url || post.large_file_url)
+      .map(post => mapDanbooruPost(post, true))
       // Sort: animated content first, then by score
       .sort((a, b) => {
         if (a.isAnimated && !b.isAnimated) return -1;
@@ -342,8 +382,9 @@ router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
   try {
     const { q, page = 1 } = req.query;
     
-    if (!q || q.trim().length < 2) {
-      return res.status(400).json({ error: 'Search query must be at least 2 characters' });
+    const validation = validateSearchQuery(q);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
     }
     
     const tag = toDanbooruTag(q);
@@ -361,24 +402,8 @@ router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
     
     // Filter to video/gif files only and map
     const results = posts
-      .filter(post => {
-        const ext = (post.file_ext || '').toLowerCase();
-        return ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip';
-      })
-      .filter(post => post.file_url)
-      .map(post => ({
-        id: post.id,
-        preview: post.preview_file_url || post.large_file_url,
-        sample: post.large_file_url || post.file_url,
-        file: post.file_url,
-        fileExt: post.file_ext,
-        tags: post.tag_string,
-        source: post.source,
-        width: post.image_width,
-        height: post.image_height,
-        score: post.score,
-        characterTags: post.tag_string_character
-      }));
+      .filter(post => isAnimatedExtension(post.file_ext) && post.file_url)
+      .map(post => mapDanbooruPost(post, false));
     
     res.json({
       results,
@@ -397,12 +422,13 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
   try {
     const { q, category } = req.query;
     
-    if (!q || q.trim().length < 2) {
-      return res.status(400).json({ error: 'Query must be at least 2 characters' });
+    const validation = validateSearchQuery(q);
+    if (!validation.valid) {
+      return res.status(400).json({ error: validation.error });
     }
     
     // Convert to Danbooru format
-    const searchTerm = q.toLowerCase().replace(/\s+/g, '_');
+    const searchTerm = toDanbooruTag(q);
     
     // Build search URL - optionally filter by category (4 = character)
     let searchUrl = `${DANBOORU_API}/tags.json?search[name_matches]=*${encodeURIComponent(searchTerm)}*&search[order]=count&limit=20`;
@@ -501,26 +527,10 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
     
     let results = posts
       .filter(post => post.file_url || post.large_file_url)
-      .map(post => {
-        const ext = (post.file_ext || '').toLowerCase();
-        const isAnimated = ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip' || 
-                          (post.tag_string && post.tag_string.includes('animated'));
-        return {
-          id: post.id,
-          preview: post.preview_file_url || post.large_file_url,
-          sample: post.large_file_url || post.file_url,
-          file: post.file_url || post.large_file_url,
-          fileExt: post.file_ext,
-          tags: post.tag_string,
-          source: post.source,
-          width: post.image_width,
-          height: post.image_height,
-          score: post.score,
-          favorites: post.fav_count,
-          characterTags: post.tag_string_character,
-          isAnimated
-        };
-      });
+      .map(post => ({
+        ...mapDanbooruPost(post, true),
+        favorites: post.fav_count
+      }));
     
     // Client-side filter for static (since -animated tag can cause API issues)
     if (typeFilter === 'static') {

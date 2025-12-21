@@ -9,7 +9,7 @@ const {
   getPityRates,
   rollRarity
 } = require('../config/pricing');
-const { getUserAllowR18 } = require('../utils/userPreferences');
+const { getUserAllowR18, getR18PreferenceFromRequest } = require('../utils/userPreferences');
 const { 
   acquireRollLock,
   releaseRollLock,
@@ -220,23 +220,8 @@ router.get('/collection-data', auth, async (req, res) => {
 router.get('/', async (req, res) => {
   try {
     const characters = await Character.findAll();
-    
-    // If user is authenticated, filter based on their R18 preference
-    const token = req.header('x-auth-token');
-    if (token) {
-      try {
-        const jwt = require('jsonwebtoken');
-        const decoded = jwt.verify(token, process.env.JWT_SECRET);
-        const allowR18 = await getUserAllowR18(decoded.user.id);
-        return res.json(filterR18Characters(characters, allowR18));
-      } catch (e) {
-        // Invalid token - filter out R18 by default
-        return res.json(filterR18Characters(characters, false));
-      }
-    }
-    
-    // No auth - filter out R18 by default
-    res.json(filterR18Characters(characters, false));
+    const allowR18 = await getR18PreferenceFromRequest(req);
+    res.json(filterR18Characters(characters, allowR18));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
