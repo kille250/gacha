@@ -636,7 +636,10 @@
     "ticketProgress": "Nächstes Ticket Fortschritt",
     "dailyCapReached": "Tageslimit erreicht!",
     "pointsCapped": "Punkte für heute begrenzt",
-    "ticketsCapped": "Tickets für heute begrenzt"
+    "ticketsCapped": "Tickets für heute begrenzt",
+    "catchUpBonus": "Aufhol-Bonus: +{{bonus}}%",
+    "catchUpBonusApplied": "+{{bonus}}% Aufhol-Bonus!",
+    "efficiency": "{{percent}}% Effizienz"
   },
   "animeImport": {
     "title": "Anime-Charaktere importieren",

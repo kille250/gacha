@@ -21,31 +21,35 @@ const { getLevelMultiplier: getLevelMultiplierFromConfig } = require('./leveling
 
 const DOJO_RATES = {
   // Base points per hour by rarity
+  // Balanced for better early-game experience:
+  // - Commons/Uncommons buffed to feel rewarding for new players
+  // - Legendary slightly reduced to narrow gap with Epic
   baseRates: {
-    common: 2,
-    uncommon: 5,
-    rare: 12,
-    epic: 30,
-    legendary: 75
+    common: 5,      // Buffed from 2 (2.5x) - early game feels rewarding
+    uncommon: 8,    // Buffed from 5 (1.6x)
+    rare: 15,       // Buffed from 12 (1.25x)
+    epic: 30,       // Unchanged - anchor point
+    legendary: 60   // Reduced from 75 - now 2x Epic instead of 2.5x
   },
   
   // Ticket generation (per hour, chance-based)
+  // Buffed for early game - Commons now have meaningful ticket progress
   ticketChances: {
     // Chance to generate 1 roll ticket per hour
     rollTicket: {
-      common: 0.01,      // 1% per hour
-      uncommon: 0.02,    // 2% per hour
-      rare: 0.05,        // 5% per hour
-      epic: 0.10,        // 10% per hour
-      legendary: 0.20    // 20% per hour
+      common: 0.02,      // Buffed: 2% per hour (was 1%)
+      uncommon: 0.04,    // Buffed: 4% per hour (was 2%)
+      rare: 0.06,        // Buffed: 6% per hour (was 5%)
+      epic: 0.10,        // Unchanged: 10% per hour
+      legendary: 0.15    // Reduced: 15% per hour (was 20%)
     },
     // Chance to generate 1 premium ticket per hour
     premiumTicket: {
-      common: 0,
-      uncommon: 0,
-      rare: 0.01,        // 1% per hour
-      epic: 0.03,        // 3% per hour
-      legendary: 0.08    // 8% per hour
+      common: 0.005,     // New: 0.5% per hour (was 0)
+      uncommon: 0.01,    // New: 1% per hour (was 0)
+      rare: 0.02,        // Buffed: 2% per hour (was 1%)
+      epic: 0.04,        // Buffed: 4% per hour (was 3%)
+      legendary: 0.06    // Reduced: 6% per hour (was 8%)
     }
   }
 };
@@ -72,8 +76,9 @@ const DOJO_BALANCE = {
     premiumTickets: 5       // Max 5 premium tickets/day
   },
   
-  // Maximum synergy multiplier (prevents stacking)
-  maxSynergyMultiplier: 1.5  // Cap at +50%
+  // Maximum synergy multiplier (prevents stacking multiple series bonuses)
+  // With new curve, single series can reach 2.0, but multiple series stack additively
+  maxSynergyMultiplier: 2.0  // Cap at +100% total from synergies
 };
 
 // ===========================================
@@ -95,11 +100,24 @@ const DOJO_CONFIG = {
   // Minimum claim interval (prevent spam, in seconds)
   minClaimInterval: 3,
   
-  // Series synergy bonuses
+  // Catch-up bonus for players with fewer characters assigned
+  // Helps new players feel progression even with limited collection
+  // Key = number of characters assigned, Value = bonus multiplier
+  catchUpBonus: {
+    1: 2.0,   // Only 1 character: +100% bonus
+    2: 1.5,   // 2 characters: +50% bonus
+    3: 1.2,   // 3 characters: +20% bonus
+    // 4+ characters: no bonus (standard rate)
+  },
+  
+  // Series synergy bonuses - smoother curve for better progression feel
+  // Old: 2→3→4 had a big jump at 4. New curve is more gradual.
   seriesSynergy: {
-    2: 1.20,  // 2 chars from same series: +20%
-    3: 1.50,  // 3 chars: +50%
-    4: 2.00,  // 4+ chars: +100%
+    2: 1.15,  // 2 chars from same series: +15%
+    3: 1.35,  // 3 chars: +35%
+    4: 1.55,  // 4 chars: +55%
+    5: 1.75,  // 5 chars: +75%
+    6: 2.00,  // 6+ chars: +100% (max synergy bonus)
   },
   
   // Intensity upgrade bonus per level (25% per level)
@@ -270,6 +288,19 @@ function calculateSeriesSynergy(characters) {
 }
 
 /**
+ * Calculate catch-up bonus for players with fewer characters
+ * @param {number} characterCount - Number of characters in dojo
+ * @returns {Object} - { multiplier, isActive }
+ */
+function calculateCatchUpBonus(characterCount) {
+  const bonus = DOJO_CONFIG.catchUpBonus[characterCount];
+  if (bonus && bonus > 1) {
+    return { multiplier: bonus, isActive: true };
+  }
+  return { multiplier: 1, isActive: false };
+}
+
+/**
  * Calculate total rewards for accumulated time
  * 
  * Preview mode (isActive=false): Deterministic calculation for UI display
@@ -290,12 +321,14 @@ function calculateRewards(characters, hours, upgrades = {}, isActive = false) {
       breakdown: [],
       rawPointsPerHour: 0,
       effectivePointsPerHour: 0,
-      diminishingReturnsApplied: false
+      diminishingReturnsApplied: false,
+      catchUpBonus: { multiplier: 1, isActive: false }
     };
   }
   
   const { multiplier: synergyMultiplier, synergies, wasCapped: synergyCapped } = calculateSeriesSynergy(characters);
   const activeMultiplier = isActive ? DOJO_CONFIG.activeClaimMultiplier : 1;
+  const catchUpBonus = calculateCatchUpBonus(characters.length);
   
   let rawPointsPerHour = 0;
   let totalExpectedRollTickets = 0;
@@ -310,7 +343,8 @@ function calculateRewards(characters, hours, upgrades = {}, isActive = false) {
     const levelMultiplier = getLevelMultiplier(charLevel);
     
     const basePoints = getBasePointsPerHour(char.rarity, upgrades, charLevel);
-    const charPointsPerHour = basePoints * synergyMultiplier * activeMultiplier;
+    // Apply synergy, active bonus, AND catch-up bonus
+    const charPointsPerHour = basePoints * synergyMultiplier * activeMultiplier * catchUpBonus.multiplier;
     
     rawPointsPerHour += charPointsPerHour;
     
@@ -371,6 +405,7 @@ function calculateRewards(characters, hours, upgrades = {}, isActive = false) {
     synergyMultiplier,
     synergyCapped,
     activeMultiplier,
+    catchUpBonus,  // { multiplier, isActive }
     hours,
     // Debugging/transparency info
     rawPointsPerHour: Math.floor(rawPointsPerHour),
@@ -557,6 +592,7 @@ module.exports = {
   getLevelMultiplier,
   getBasePointsPerHour,
   calculateSeriesSynergy,
+  calculateCatchUpBonus,
   calculateRewards,
   getUpgradeCost,
   getAvailableUpgrades,

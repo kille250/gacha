@@ -27,6 +27,8 @@ const LEVELING_CONFIG = LEVEL_CONFIG;
  * - Duplicate: adds 1 shard (does NOT auto-level)
  * - Max level duplicate: awards bonus points (scaled by rarity)
  * 
+ * Uses transaction to prevent race conditions (e.g., rapid double-rolls)
+ * 
  * @param {number} userId - User ID
  * @param {number} characterId - Character ID
  * @param {Object} user - User model instance (for point rewards)
@@ -34,66 +36,79 @@ const LEVELING_CONFIG = LEVEL_CONFIG;
  * @returns {Promise<Object>} - Result object with acquisition details
  */
 const acquireCharacter = async (userId, characterId, user = null, rarity = null) => {
-  // Try to find existing entry
-  const existing = await UserCharacter.findOne({
-    where: {
-      UserId: userId,
-      CharacterId: characterId
-    }
-  });
+  const transaction = await sequelize.transaction();
   
-  if (!existing) {
-    // New character - create entry at level 1 with 0 shards
-    await UserCharacter.create({
-      UserId: userId,
-      CharacterId: characterId,
-      level: 1,
-      duplicateCount: 0  // duplicateCount = shards
+  try {
+    // Try to find existing entry with row lock
+    const existing = await UserCharacter.findOne({
+      where: {
+        UserId: userId,
+        CharacterId: characterId
+      },
+      lock: transaction.LOCK.UPDATE,
+      transaction
     });
     
-    return {
-      isNew: true,
-      isDuplicate: false,
-      shards: 0,
-      level: 1,
-      isMaxLevel: false,
-      bonusPoints: 0
-    };
-  }
-  
-  // Duplicate! Check if max level
-  const wasMaxLevel = isMaxLevel(existing.level);
-  let bonusPoints = 0;
-  
-  if (wasMaxLevel) {
-    // Max level - award bonus points based on rarity
-    // Fetch rarity if not provided
-    let charRarity = rarity;
-    if (!charRarity) {
-      const character = await Character.findByPk(characterId);
-      charRarity = character?.rarity || 'common';
+    if (!existing) {
+      // New character - create entry at level 1 with 0 shards
+      await UserCharacter.create({
+        UserId: userId,
+        CharacterId: characterId,
+        level: 1,
+        duplicateCount: 0  // duplicateCount = shards
+      }, { transaction });
+      
+      await transaction.commit();
+      
+      return {
+        isNew: true,
+        isDuplicate: false,
+        shards: 0,
+        level: 1,
+        isMaxLevel: false,
+        bonusPoints: 0
+      };
     }
     
-    bonusPoints = getMaxLevelDuplicatePoints(charRarity);
-    if (user) {
-      user.points += bonusPoints;
-      await user.save();
+    // Duplicate! Check if max level
+    const wasMaxLevel = isMaxLevel(existing.level);
+    let bonusPoints = 0;
+    
+    if (wasMaxLevel) {
+      // Max level - award bonus points based on rarity
+      // Fetch rarity if not provided
+      let charRarity = rarity;
+      if (!charRarity) {
+        const character = await Character.findByPk(characterId, { transaction });
+        charRarity = character?.rarity || 'common';
+      }
+      
+      bonusPoints = getMaxLevelDuplicatePoints(charRarity);
+      if (user) {
+        user.points += bonusPoints;
+        await user.save({ transaction });
+      }
+    } else {
+      // Add a shard
+      existing.duplicateCount += 1;
+      await existing.save({ transaction });
     }
-  } else {
-    // Add a shard
-    existing.duplicateCount += 1;
-    await existing.save();
+    
+    await transaction.commit();
+    
+    return {
+      isNew: false,
+      isDuplicate: true,
+      shards: existing.duplicateCount,
+      level: existing.level,
+      isMaxLevel: wasMaxLevel,
+      bonusPoints,
+      canLevelUp: !wasMaxLevel && existing.duplicateCount >= getShardsToLevel(existing.level)
+    };
+  } catch (err) {
+    await transaction.rollback();
+    throw err;
   }
-  
-  return {
-    isNew: false,
-    isDuplicate: true,
-    shards: existing.duplicateCount,
-    level: existing.level,
-    isMaxLevel: wasMaxLevel,
-    bonusPoints,
-    canLevelUp: !wasMaxLevel && existing.duplicateCount >= getShardsToLevel(existing.level)
-  };
 };
 
 /**

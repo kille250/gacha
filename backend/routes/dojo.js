@@ -19,18 +19,8 @@ const {
   getLevelMultiplier
 } = require('../config/dojo');
 
-// Rate limiting for claims (prevent spam)
-const claimCooldowns = new Map();
-
-// Cleanup old cooldowns periodically
-setInterval(() => {
-  const now = Date.now();
-  for (const [userId, lastTime] of claimCooldowns.entries()) {
-    if (now - lastTime > 120000) { // 2 minutes
-      claimCooldowns.delete(userId);
-    }
-  }
-}, 60000);
+// Rate limiting is now handled via dojoLastClaim in the database
+// This makes it multi-server safe (works behind load balancers)
 
 /**
  * GET /api/dojo/status
@@ -95,11 +85,19 @@ router.get('/status', auth, async (req, res) => {
       accumulatedRewards = calculateRewards(activeCharacters, accumulatedHours, upgrades, false);
     }
     
-    // Calculate hourly rate for display
+    // Calculate hourly rate for display (includes all bonuses)
     const activeCharacters = slotsWithCharacters.filter(c => c !== null);
     const hourlyRate = activeCharacters.length > 0
       ? calculateRewards(activeCharacters, 1, upgrades, false)
-      : { points: 0, rollTickets: 0, premiumTickets: 0 };
+      : { 
+          points: 0, 
+          rollTickets: 0, 
+          premiumTickets: 0,
+          rawPointsPerHour: 0,
+          effectivePointsPerHour: 0,
+          diminishingReturnsApplied: false,
+          catchUpBonus: { multiplier: 1, isActive: false }
+        };
     
     // Get available upgrades
     const availableUpgrades = getAvailableUpgrades(upgrades);
@@ -138,7 +136,15 @@ router.get('/status', auth, async (req, res) => {
         points: hourlyRate.points,
         rollTickets: hourlyRate.rollTickets || 0,
         premiumTickets: hourlyRate.premiumTickets || 0,
-        synergies: hourlyRate.synergies || []
+        synergies: hourlyRate.synergies || [],
+        // Transparency: Show raw vs effective rate
+        rawPointsPerHour: hourlyRate.rawPointsPerHour || 0,
+        effectivePointsPerHour: hourlyRate.effectivePointsPerHour || 0,
+        efficiency: hourlyRate.rawPointsPerHour > 0 
+          ? Math.round((hourlyRate.effectivePointsPerHour / hourlyRate.rawPointsPerHour) * 100)
+          : 100,
+        diminishingReturnsApplied: hourlyRate.diminishingReturnsApplied || false,
+        catchUpBonus: hourlyRate.catchUpBonus || { multiplier: 1, isActive: false }
       },
       accumulated: {
         hours: Math.floor(accumulatedHours * 100) / 100,
@@ -397,19 +403,6 @@ router.post('/unassign', auth, async (req, res) => {
  */
 router.post('/claim', auth, async (req, res) => {
   const userId = req.user.id;
-  
-  // Rate limiting check (before transaction to fail fast)
-  const lastCooldown = claimCooldowns.get(userId);
-  const now = Date.now();
-  if (lastCooldown && (now - lastCooldown) < DOJO_CONFIG.minClaimInterval * 1000) {
-    const remaining = Math.ceil((DOJO_CONFIG.minClaimInterval * 1000 - (now - lastCooldown)) / 1000);
-    return res.status(429).json({
-      error: 'Too fast',
-      message: `Please wait ${remaining} seconds`,
-      retryAfter: remaining
-    });
-  }
-  
   const transaction = await sequelize.transaction();
   
   try {
@@ -422,6 +415,23 @@ router.post('/claim', auth, async (req, res) => {
     if (!user) {
       await transaction.rollback();
       return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // DB-based rate limiting (multi-server safe)
+    if (user.dojoLastClaim) {
+      const lastClaimTime = new Date(user.dojoLastClaim).getTime();
+      const now = Date.now();
+      const minIntervalMs = DOJO_CONFIG.minClaimInterval * 1000;
+      
+      if (now - lastClaimTime < minIntervalMs) {
+        await transaction.rollback();
+        const remaining = Math.ceil((minIntervalMs - (now - lastClaimTime)) / 1000);
+        return res.status(429).json({
+          error: 'Too fast',
+          message: `Please wait ${remaining} seconds`,
+          retryAfter: remaining
+        });
+      }
     }
     
     const dojoSlots = user.dojoSlots || [];
@@ -556,8 +566,8 @@ router.post('/claim', auth, async (req, res) => {
     await user.save({ transaction });
     await transaction.commit();
     
-    // Set cooldown ONLY after successful transaction
-    claimCooldowns.set(userId, Date.now());
+    // Cooldown is now enforced via dojoLastClaim (set above)
+    // No need for in-memory tracking
     
     res.json({
       success: true,
@@ -570,8 +580,12 @@ router.post('/claim', auth, async (req, res) => {
       synergies: rewards.synergies,
       synergyCapped: rewards.synergyCapped,
       activeBonus: rewards.activeMultiplier > 1,
+      catchUpBonus: rewards.catchUpBonus,
       hoursAccumulated: Math.floor(elapsedHours * 100) / 100,
       diminishingReturnsApplied: rewards.diminishingReturnsApplied,
+      // Transparency: raw vs effective points
+      rawPointsPerHour: rewards.rawPointsPerHour,
+      effectivePointsPerHour: rewards.effectivePointsPerHour,
       // Daily cap info
       dailyCaps: {
         wasPointsCapped,

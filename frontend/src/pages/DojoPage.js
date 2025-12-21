@@ -291,6 +291,13 @@ const DojoPage = () => {
               {claimResult.activeBonus && (
                 <ActiveBonusTag>{t('dojo.activeBonusApplied')}</ActiveBonusTag>
               )}
+              {claimResult.catchUpBonus?.isActive && (
+                <CatchUpBonusTag>
+                  🚀 {t('dojo.catchUpBonusApplied', { 
+                    bonus: Math.round((claimResult.catchUpBonus.multiplier - 1) * 100) 
+                  })}
+                </CatchUpBonusTag>
+              )}
             </ClaimPopupContent>
           </ClaimPopup>
         )}
@@ -478,6 +485,15 @@ const DojoPage = () => {
               </LevelBonusBadges>
             </LevelBonusSection>
           )}
+          {/* Catch-Up Bonus for new players */}
+          {status?.hourlyRate?.catchUpBonus?.isActive && (
+            <CatchUpBonusBadge>
+              🚀 {t('dojo.catchUpBonus', { 
+                bonus: Math.round((status.hourlyRate.catchUpBonus.multiplier - 1) * 100) 
+              })}
+            </CatchUpBonusBadge>
+          )}
+          {/* Synergies */}
           {status?.hourlyRate?.synergies?.length > 0 && (
             <SynergyBadges>
               {status.hourlyRate.synergies.map((syn, idx) => (
@@ -486,6 +502,12 @@ const DojoPage = () => {
                 </SynergyBadge>
               ))}
             </SynergyBadges>
+          )}
+          {/* Diminishing Returns Indicator */}
+          {status?.hourlyRate?.diminishingReturnsApplied && (
+            <EfficiencyIndicator>
+              ⚖️ {t('dojo.efficiency', { percent: status.hourlyRate.efficiency || 100 })}
+            </EfficiencyIndicator>
           )}
         </HourlyRateCard>
 
@@ -965,6 +987,17 @@ const ActiveBonusTag = styled.div`
   display: inline-block;
 `;
 
+const CatchUpBonusTag = styled.div`
+  margin-top: ${theme.spacing.sm};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: linear-gradient(135deg, rgba(255, 159, 10, 0.2), rgba(255, 204, 0, 0.1));
+  border: 1px solid rgba(255, 159, 10, 0.4);
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.sm};
+  color: #ff9f0a;
+  display: inline-block;
+`;
+
 const MainContent = styled.main`
   max-width: 900px;
   margin: 0 auto;
@@ -1414,6 +1447,29 @@ const SynergyBadge = styled.div`
   font-size: ${theme.fontSizes.xs};
   color: #30d158;
   white-space: nowrap;
+`;
+
+const CatchUpBonusBadge = styled.div`
+  margin-top: ${theme.spacing.md};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: linear-gradient(135deg, rgba(255, 159, 10, 0.2), rgba(255, 204, 0, 0.15));
+  border: 1px solid rgba(255, 159, 10, 0.4);
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.sm};
+  color: #ff9f0a;
+  text-align: center;
+  font-weight: ${theme.fontWeights.semibold};
+`;
+
+const EfficiencyIndicator = styled.div`
+  margin-top: ${theme.spacing.sm};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: rgba(142, 142, 147, 0.1);
+  border: 1px solid rgba(142, 142, 147, 0.2);
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  text-align: center;
 `;
 
 const SlotsSection = styled.section`
