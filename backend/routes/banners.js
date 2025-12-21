@@ -608,28 +608,24 @@ router.post('/:id/roll', auth, async (req, res) => {
     const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters, orderedRarities);
     
     // Get rates from centralized config (async)
-    const standardDropRates = await getStandardRates(false, raritiesData);
     const premiumDropRates = await getPremiumRates(false, raritiesData);
     const bannerDropRates = await calculateBannerRates(banner.rateMultiplier, false, raritiesData);
     
     console.log(`Banner ${banner.name} rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
     
-    // Determine if we pull from banner or standard pool
-    const pullFromBanner = Math.random() < getBannerPullChance();
-    
-    // Choose the appropriate drop rates
-    let dropRates;
-    if (isPremium) {
-      dropRates = premiumDropRates;
-    } else {
-      dropRates = pullFromBanner ? bannerDropRates : standardDropRates;
-    }
+    // When rolling on a banner, ALWAYS use banner rates
+    // The bannerPullChance only affects which CHARACTER POOL to use, not the rates
+    const dropRates = isPremium ? premiumDropRates : bannerDropRates;
     
     // Roll for rarity using centralized helper
     let selectedRarity = rollRarity(dropRates, orderedRarities);
     
+    // Determine if we pull character from banner pool or all characters
+    // This is separate from rates - affects which character of the rolled rarity you get
+    const pullFromBannerPool = Math.random() < getBannerPullChance();
+    
     // Select character using centralized helper with banner pool priority when applicable
-    const primaryPool = pullFromBanner ? bannerCharactersByRarity : null;
+    const primaryPool = pullFromBannerPool ? bannerCharactersByRarity : null;
     const { character: randomChar, actualRarity } = selectCharacterWithFallback(
       primaryPool,
       allCharactersByRarity,
@@ -817,7 +813,6 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
     const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters, orderedRarities);
     
     // Get rates from centralized config (multi-pull rates, async)
-    const standardDropRates = await getStandardRates(true, raritiesData);
     const premiumDropRates = await getPremiumRates(true, raritiesData);
     const bannerDropRates = await calculateBannerRates(banner.rateMultiplier, true, raritiesData);
     const pityRates = await getPityRates(raritiesData);
@@ -838,18 +833,15 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       // Check if this roll uses a premium ticket
       const isPremiumRoll = i < premiumCount;
       
-      // Banner rate increases for the last few pulls
-      const isLast3 = i >= count - 3;
-      const pullFromBanner = Math.random() < getBannerPullChance(isLast3);
-      
-      // Select appropriate rates
+      // When rolling on a banner, ALWAYS use banner rates
+      // Select appropriate rates (premium > pity > banner)
       let currentRates;
       if (isPremiumRoll) {
         currentRates = premiumDropRates;
       } else if (needsPity) {
         currentRates = pityRates;
       } else {
-        currentRates = pullFromBanner ? bannerDropRates : standardDropRates;
+        currentRates = bannerDropRates;
       }
       
       // Roll for rarity using centralized helper
@@ -859,8 +851,13 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
         hasRarePlus = true;
       }
       
+      // Determine if we pull character from banner pool or all characters
+      // This is separate from rates - affects which character of the rolled rarity you get
+      const isLast3 = i >= count - 3;
+      const pullFromBannerPool = Math.random() < getBannerPullChance(isLast3);
+      
       // Select character using centralized helper with banner pool priority when applicable
-      const primaryPool = pullFromBanner ? bannerCharactersByRarity : null;
+      const primaryPool = pullFromBannerPool ? bannerCharactersByRarity : null;
       const { character: randomChar } = selectCharacterWithFallback(
         primaryPool,
         allCharactersByRarity,
