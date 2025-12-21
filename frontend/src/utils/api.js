@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { getToken, getTokenHash } from './authStorage';
+import { getToken, getTokenHash, getStoredUser } from './authStorage';
 
 // Use environment variable for API URL, with fallback for local development
 const getApiBase = () => {
@@ -178,7 +178,6 @@ export const getCollectionData = async () => {
 };
 
 // Re-export getStoredUser as getCurrentUser for backwards compatibility
-import { getStoredUser } from './authStorage';
 export const getCurrentUser = getStoredUser;
 
 export const getAllCharacters = async () => {

@@ -35,7 +35,6 @@ const Navigation = () => {
   const {
     available: rewardAvailable,
     loading: rewardLoading,
-    checked: rewardChecked,
     timeRemaining,
     showPopup: rewardPopupShow,
     popupAmount,

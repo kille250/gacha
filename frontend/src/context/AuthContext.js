@@ -4,8 +4,6 @@ import api, { invalidateCache, clearCache } from '../utils/api';
 import {
   getToken,
   setToken,
-  removeToken,
-  getStoredUser,
   setStoredUser,
   removeStoredUser,
   clearAuthStorage
