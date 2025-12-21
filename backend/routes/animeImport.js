@@ -1,14 +1,11 @@
 // routes/animeImport.js - Anime character import from external APIs
 const express = require('express');
 const router = express.Router();
-const path = require('path');
-const fs = require('fs');
-const http = require('http');
-const https = require('https');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { Character } = require('../models');
-const { UPLOAD_DIRS, getUrlPath } = require('../config/upload');
+const { getUrlPath } = require('../config/upload');
+const { downloadImage, generateUniqueFilename, getExtensionFromUrl } = require('../utils/fileUtils');
 
 // Jikan API base URL (free MyAnimeList API)
 const JIKAN_API = 'https://api.jikan.moe/v4';
@@ -128,95 +125,6 @@ router.get('/character/:mal_id', auth, adminAuth, async (req, res) => {
   }
 });
 
-/**
- * Download image/video and save locally - with proper headers for Danbooru
- * Handles redirects and validates downloaded file size
- * @param {string} url - URL to download from
- * @param {string} filename - Local filename to save as
- * @returns {Promise<string>} - Resolves with filepath on success
- */
-const downloadImage = (url, filename) => {
-  return new Promise((resolve, reject) => {
-    const filepath = path.join(UPLOAD_DIRS.characters, filename);
-    
-    // Parse URL to determine protocol and set proper options
-    const parsedUrl = new URL(url);
-    
-    const buildRequestOptions = (targetUrl) => ({
-      hostname: targetUrl.hostname,
-      port: targetUrl.port || (targetUrl.protocol === 'https:' ? 443 : 80),
-      path: targetUrl.pathname + targetUrl.search,
-      method: 'GET',
-      headers: {
-        'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
-        'Accept': '*/*',
-        'Referer': targetUrl.origin
-      }
-    });
-    
-    const makeRequest = (currentUrl, redirectCount = 0) => {
-      const MAX_REDIRECTS = 5;
-      if (redirectCount > MAX_REDIRECTS) {
-        reject(new Error('Too many redirects'));
-        return;
-      }
-      
-      const targetUrl = new URL(currentUrl);
-      const currentProtocol = targetUrl.protocol === 'https:' ? https : http;
-      const options = buildRequestOptions(targetUrl);
-      
-      const req = currentProtocol.request(options, (response) => {
-        // Handle redirects (301, 302, 303, 307, 308)
-        if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-          const redirectUrl = new URL(response.headers.location, currentUrl);
-          makeRequest(redirectUrl.href, redirectCount + 1);
-          return;
-        }
-        
-        // Check for successful response
-        if (response.statusCode !== 200) {
-          reject(new Error(`Download failed with status ${response.statusCode}`));
-          return;
-        }
-        
-        // Create write stream only after we have a successful response
-        const file = fs.createWriteStream(filepath);
-        
-        file.on('error', (err) => {
-          fs.unlink(filepath, () => {});
-          reject(err);
-        });
-        
-        response.pipe(file);
-        
-        file.on('finish', () => {
-          file.close(() => {
-            // Verify the file was actually downloaded
-            fs.stat(filepath, (err, stats) => {
-              if (err || stats.size < 1000) {
-                fs.unlink(filepath, () => {});
-                reject(new Error('Downloaded file is too small or corrupted'));
-              } else {
-                console.log(`Downloaded ${filename}: ${stats.size} bytes`);
-                resolve(filepath);
-              }
-            });
-          });
-        });
-      });
-      
-      req.on('error', (err) => {
-        fs.unlink(filepath, () => {});
-        reject(err);
-      });
-      
-      req.end();
-    };
-    
-    makeRequest(url);
-  });
-};
-
 // Import selected characters
 router.post('/import', auth, adminAuth, async (req, res) => {
   try {
@@ -257,10 +165,10 @@ router.post('/import', auth, adminAuth, async (req, res) => {
         }
         
         // Download the image
-        const ext = path.extname(new URL(char.image).pathname) || '.jpg';
-        const filename = `imported-${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
+        const ext = getExtensionFromUrl(char.image);
+        const filename = generateUniqueFilename('imported', ext);
         
-        await downloadImage(char.image, filename);
+        await downloadImage(char.image, filename, 'characters', { minFileSize: 1000 });
         const imagePath = getUrlPath('characters', filename);
         
         // Create the character

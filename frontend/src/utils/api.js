@@ -86,7 +86,10 @@ export const invalidateAdminCache = () => {
   clearCache('/coupons');
 };
 
-// Legacy alias for clearCache() - kept for backwards compatibility
+/**
+ * Invalidate entire cache - call on authentication events (login, logout, registration)
+ * This is preferred over clearCache() for auth-related cache clearing.
+ */
 export const invalidateCache = () => clearCache();
 
 const api = axios.create({

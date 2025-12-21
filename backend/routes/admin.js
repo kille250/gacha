@@ -4,15 +4,14 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-const http = require('http');
-const https = require('https');
 const { Op } = require('sequelize');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { User, Character, Banner, Coupon, CouponRedemption, FishInventory } = require('../models');
-const { getUrlPath, getFilePath, UPLOAD_BASE } = require('../config/upload');
+const { getUrlPath, UPLOAD_BASE } = require('../config/upload');
 const { characterUpload: upload } = require('../config/multer');
 const { isValidId } = require('../utils/validation');
+const { safeUnlink, safeDeleteUpload, safeUnlinkMany, downloadImage, generateUniqueFilename, getExtensionFromUrl } = require('../utils/fileUtils');
 const sequelize = require('../config/db');
 
 // Track server start time
@@ -255,7 +254,7 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
     const { name, series, rarity, isR18 } = req.body;
     if (!name || !series || !rarity) {
       // Delete uploaded file if other data is missing
-      fs.unlinkSync(req.file.path);
+      safeUnlink(req.file.path);
       return res.status(400).json({ error: 'All fields are required' });
     }
     // Save the relative path to the image or video file
@@ -273,14 +272,8 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
     });
   } catch (err) {
     console.error('Character upload error:', err);
-    // Try to delete the file if an error occurs
-    if (req.file) {
-      try {
-        fs.unlinkSync(req.file.path);
-      } catch (unlinkErr) {
-        console.error('Error deleting file:', unlinkErr);
-      }
-    }
+    // Clean up uploaded file on error
+    if (req.file) safeUnlink(req.file.path);
     res.status(500).json({ error: err.message || 'Server error' });
   }
 });
@@ -407,13 +400,9 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
     await character.save();
 
     // If the old image was an uploaded file, delete it
+    safeDeleteUpload(oldImage, 'characters');
     if (oldImage && oldImage.startsWith('/uploads/')) {
-      const oldFilename = path.basename(oldImage);
-      const oldFilePath = getFilePath('characters', oldFilename);
-      if (fs.existsSync(oldFilePath)) {
-        fs.unlinkSync(oldFilePath);
-        console.log(`Deleted old image/video: ${oldImage}`);
-      }
+      console.log(`Deleted old image/video: ${oldImage}`);
     }
 
     // Log the change
@@ -453,17 +442,13 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
       metadata = JSON.parse(req.body.metadata || '[]');
     } catch (e) {
       // Clean up uploaded files on parse error
-      req.files.forEach(file => {
-        try { fs.unlinkSync(file.path); } catch (err) {}
-      });
+      safeUnlinkMany(req.files);
       return res.status(400).json({ error: 'Invalid metadata format' });
     }
 
     // Validate we have metadata for each file
     if (metadata.length !== req.files.length) {
-      req.files.forEach(file => {
-        try { fs.unlinkSync(file.path); } catch (err) {}
-      });
+      safeUnlinkMany(req.files);
       return res.status(400).json({ 
         error: `Metadata count (${metadata.length}) doesn't match file count (${req.files.length})` 
       });
@@ -479,7 +464,7 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
       // Validate required fields
       if (!meta.name || !meta.series || !meta.rarity) {
         errors.push({ index: i, filename: file.originalname, error: 'Missing required fields (name, series, rarity)' });
-        try { fs.unlinkSync(file.path); } catch (err) {}
+        safeUnlink(file.path);
         continue;
       }
 
@@ -495,7 +480,7 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
         createdCharacters.push(character);
       } catch (err) {
         errors.push({ index: i, filename: file.originalname, error: err.message });
-        try { fs.unlinkSync(file.path); } catch (unlinkErr) {}
+        safeUnlink(file.path);
       }
     }
 
@@ -509,11 +494,7 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
   } catch (err) {
     console.error('Multi-upload error:', err);
     // Clean up any uploaded files on error
-    if (req.files) {
-      req.files.forEach(file => {
-        try { fs.unlinkSync(file.path); } catch (unlinkErr) {}
-      });
-    }
+    safeUnlinkMany(req.files);
     return res.status(500).json({ error: err.message || 'Server error' });
   }
 });
@@ -550,95 +531,13 @@ router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'Character not found' });
     }
     
-    // Determine file extension from URL
-    const urlPath = parsedUrl.pathname;
-    let ext = path.extname(urlPath).toLowerCase();
-    if (!ext || !['.jpg', '.jpeg', '.png', '.gif', '.webp', '.webm', '.mp4'].includes(ext)) {
-      ext = '.jpg'; // Default to jpg if extension is unclear
-    }
-    
-    // Generate unique filename
-    const filename = `alt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
-    const filepath = getFilePath('characters', filename);
-    
-    // Download the image with proper redirect handling
-    const downloadImage = (url, maxRedirects = 5) => {
-      return new Promise((resolve, reject) => {
-        let redirectCount = 0;
-        
-        const makeRequest = (reqUrl) => {
-          const currentUrl = new URL(reqUrl);
-          const protocol = currentUrl.protocol === 'https:' ? https : http;
-          
-          const options = {
-            hostname: currentUrl.hostname,
-            port: currentUrl.port || (currentUrl.protocol === 'https:' ? 443 : 80),
-            path: currentUrl.pathname + currentUrl.search,
-            method: 'GET',
-            headers: {
-              'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
-              'Accept': '*/*',
-              'Referer': currentUrl.origin
-            }
-          };
-          
-          const req = protocol.request(options, (response) => {
-            // Handle redirects
-            if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
-              redirectCount++;
-              if (redirectCount > maxRedirects) {
-                reject(new Error('Too many redirects'));
-                return;
-              }
-              const redirectUrl = new URL(response.headers.location, reqUrl);
-              console.log(`Following redirect ${redirectCount}: ${redirectUrl.href}`);
-              makeRequest(redirectUrl.href);
-              return;
-            }
-            
-            if (response.statusCode !== 200) {
-              reject(new Error(`Download failed with status ${response.statusCode}`));
-              return;
-            }
-            
-            const file = fs.createWriteStream(filepath);
-            response.pipe(file);
-            
-            file.on('finish', () => {
-              file.close(() => {
-                fs.stat(filepath, (err, stats) => {
-                  if (err || stats.size < 500) {
-                    fs.unlink(filepath, () => {});
-                    reject(new Error('Downloaded file is too small or corrupted'));
-                  } else {
-                    console.log(`Downloaded ${filename}: ${stats.size} bytes`);
-                    resolve(filepath);
-                  }
-                });
-              });
-            });
-            
-            file.on('error', (err) => {
-              fs.unlink(filepath, () => {});
-              reject(err);
-            });
-          });
-          
-          req.on('error', (err) => {
-            fs.unlink(filepath, () => {});
-            reject(err);
-          });
-          
-          req.end();
-        };
-        
-        makeRequest(url);
-      });
-    };
+    // Determine file extension and generate unique filename
+    const ext = getExtensionFromUrl(imageUrl);
+    const filename = generateUniqueFilename('alt', ext);
     
     // Download the image from URL
     console.log(`Downloading image from URL: ${imageUrl}`);
-    await downloadImage(imageUrl);
+    await downloadImage(imageUrl, filename, 'characters');
     
     // Save old image path to delete later
     const oldImage = character.image;
@@ -654,13 +553,9 @@ router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
     console.log(`Updated character ${character.id} image: ${oldImage} -> ${character.image}`);
     
     // Delete old image if it was an uploaded file
+    safeDeleteUpload(oldImage, 'characters');
     if (oldImage && oldImage.startsWith('/uploads/')) {
-      const oldFilename = path.basename(oldImage);
-      const oldFilePath = getFilePath('characters', oldFilename);
-      if (fs.existsSync(oldFilePath)) {
-        fs.unlinkSync(oldFilePath);
-        console.log(`Deleted old image: ${oldImage}`);
-      }
+      console.log(`Deleted old image: ${oldImage}`);
     }
     
     console.log(`Admin (ID: ${req.user.id}) updated character ${character.id} (${character.name}) image from URL`);
@@ -695,13 +590,9 @@ router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
     
     // If the image was an uploaded file, delete it
     const image = character.image;
+    safeDeleteUpload(image, 'characters');
     if (image && image.startsWith('/uploads/')) {
-      const filename = path.basename(image);
-      const filePath = getFilePath('characters', filename);
-      if (fs.existsSync(filePath)) {
-        fs.unlinkSync(filePath);
-        console.log(`Deleted media for deleted character: ${image}`);
-      }
+      console.log(`Deleted media for deleted character: ${image}`);
     }
     
     // Delete the character
