@@ -26,7 +26,7 @@ import {
   getAssetUrl
 } from '../utils/api';
 import { theme, Spinner } from '../styles/DesignSystem';
-import { PLACEHOLDER_IMAGE, isVideo } from '../utils/mediaUtils';
+import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../utils/mediaUtils';
 
 // ===========================================
 // ANIMATIONS
@@ -398,17 +398,17 @@ const DojoPage = () => {
                   $glow={getRarityGlow(char.rarity)}
                   whileHover={{ scale: 1.02 }}
                 >
-                  {/* Use placeholder for videos to avoid performance issues */}
-                  <SlotImage 
-                    src={isVideo(char.image) ? PLACEHOLDER_IMAGE : (getAssetUrl(char.image) || PLACEHOLDER_IMAGE)} 
-                    alt={char.name}
-                    loading="lazy"
-                    onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
-                  />
-                  {isVideo(char.image) && (
-                    <SlotVideoBadge>
-                      <FaPlay />
-                    </SlotVideoBadge>
+                  {/* Show video for filled slots (limited count), images otherwise */}
+                  {isVideo(char.image) ? (
+                    <SlotVideo autoPlay loop muted playsInline>
+                      <source src={getAssetUrl(char.image)} type={getVideoMimeType(char.image)} />
+                    </SlotVideo>
+                  ) : (
+                    <SlotImage 
+                      src={getAssetUrl(char.image) || PLACEHOLDER_IMAGE} 
+                      alt={char.name}
+                      onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
+                    />
                   )}
                   <SlotOverlay>
                     <SlotCharName>{char.name}</SlotCharName>
@@ -979,6 +979,12 @@ const SlotImage = styled.img`
   object-fit: cover;
 `;
 
+const SlotVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
 const SlotOverlay = styled.div`
   position: absolute;
   bottom: 0;
@@ -1372,12 +1378,6 @@ const VideoBadge = styled.div`
   color: white;
   font-size: 12px;
   pointer-events: none;
-`;
-
-const SlotVideoBadge = styled(VideoBadge)`
-  width: 36px;
-  height: 36px;
-  font-size: 14px;
 `;
 
 const SearchHint = styled.div`
