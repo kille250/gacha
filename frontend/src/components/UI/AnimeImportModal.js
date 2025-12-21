@@ -8,6 +8,10 @@ import api from '../../utils/api';
 const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const { t } = useTranslation();
   
+  // Hover preview state for alt media
+  const [hoveredMedia, setHoveredMedia] = useState(null);
+  const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [searchResults, setSearchResults] = useState([]);
@@ -658,6 +662,15 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                             <AltMediaCard
                               key={media.id}
                               onClick={() => selectAltMedia(media)}
+                              onMouseEnter={(e) => {
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                setHoverPosition({ 
+                                  x: rect.left + rect.width / 2, 
+                                  y: rect.top 
+                                });
+                                setHoveredMedia(media);
+                              }}
+                              onMouseLeave={() => setHoveredMedia(null)}
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               $isAnimated={media.isAnimated}
@@ -675,6 +688,38 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                             </AltMediaCard>
                           ))}
                         </AltMediaGrid>
+                        
+                        {/* Hover Preview */}
+                        <AnimatePresence>
+                          {hoveredMedia && (
+                            <HoverPreviewContainer
+                              initial={{ opacity: 0, scale: 0.9 }}
+                              animate={{ opacity: 1, scale: 1 }}
+                              exit={{ opacity: 0, scale: 0.9 }}
+                              transition={{ duration: 0.15 }}
+                              style={{
+                                left: Math.min(hoverPosition.x, window.innerWidth - 340),
+                                top: Math.max(hoverPosition.y - 280, 10)
+                              }}
+                            >
+                              {hoveredMedia.isAnimated ? (
+                                <HoverPreviewVideo
+                                  src={hoveredMedia.file}
+                                  autoPlay
+                                  loop
+                                  muted
+                                  playsInline
+                                />
+                              ) : (
+                                <HoverPreviewImage src={hoveredMedia.file} alt="Preview" />
+                              )}
+                              <HoverPreviewInfo>
+                                <span><FaStar /> {hoveredMedia.score}</span>
+                                <span>{hoveredMedia.fileExt?.toUpperCase()}</span>
+                              </HoverPreviewInfo>
+                            </HoverPreviewContainer>
+                          )}
+                        </AnimatePresence>
                         {altMediaHasMore && (
                           <LoadMoreButton onClick={loadMoreAltMedia} disabled={altMediaLoadingMore}>
                             {altMediaLoadingMore ? (
@@ -1661,6 +1706,60 @@ const LoadMoreButton = styled.button`
   &:disabled {
     opacity: 0.6;
     cursor: not-allowed;
+  }
+`;
+
+// Hover Preview Components
+const HoverPreviewContainer = styled(motion.div)`
+  position: fixed;
+  z-index: 2000;
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 12px;
+  padding: 8px;
+  box-shadow: 0 15px 50px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(155, 89, 182, 0.4);
+  transform: translateX(-50%);
+  pointer-events: none;
+  max-width: 320px;
+  max-height: 280px;
+`;
+
+const HoverPreviewImage = styled.img`
+  display: block;
+  max-width: 300px;
+  max-height: 240px;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain;
+`;
+
+const HoverPreviewVideo = styled.video`
+  display: block;
+  max-width: 300px;
+  max-height: 240px;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain;
+`;
+
+const HoverPreviewInfo = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 6px 4px 2px;
+  color: #aaa;
+  font-size: 0.75rem;
+  
+  span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    
+    svg {
+      color: #ffc107;
+      font-size: 10px;
+    }
   }
 `;
 
