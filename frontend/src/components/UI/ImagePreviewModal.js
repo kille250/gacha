@@ -13,7 +13,7 @@ const rarityIcons = {
   legendary: <FaTrophy />
 };
 
-const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned, isVideo, isBannerCharacter }) => {
+const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned, isVideo, isBannerCharacter, level }) => {
   const { getRarityColor } = useRarity();
   
   const handleModalClick = (e) => {
@@ -87,6 +87,11 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
                   {isOwned && (
                     <Badge variant="owned">
                       <MdCheckCircle /> Owned
+                    </Badge>
+                  )}
+                  {isOwned && level > 0 && (
+                    <Badge variant={level >= 5 ? 'maxLevel' : 'level'}>
+                      Lv.{level}{level >= 5 ? ' ★' : ''}
                     </Badge>
                   )}
                   {isBannerCharacter && (
@@ -243,6 +248,17 @@ const Badge = styled.div`
     svg {
       font-size: 14px;
     }
+  `}
+  
+  ${props => props.variant === 'level' && `
+    background: rgba(88, 86, 214, 0.15);
+    color: #5856D6;
+  `}
+  
+  ${props => props.variant === 'maxLevel' && `
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.25), rgba(255, 140, 0, 0.25));
+    color: #FFD700;
+    text-shadow: 0 0 8px rgba(255, 215, 0, 0.3);
   `}
   
   ${props => props.variant === 'banner' && `

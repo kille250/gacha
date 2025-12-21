@@ -3,6 +3,13 @@
  * 
  * Centralized configuration for the idle training dojo game.
  * Characters assigned to training slots generate passive rewards.
+ * 
+ * Character levels (from duplicate cards) multiply the base rates:
+ * - Level 1: 1.0x (base)
+ * - Level 2: 1.25x
+ * - Level 3: 1.5x
+ * - Level 4: 1.75x
+ * - Level 5: 2.0x (max)
  */
 
 // ===========================================
@@ -18,6 +25,9 @@ const DOJO_RATES = {
     epic: 30,
     legendary: 75
   },
+  
+  // Level bonus multiplier (per level above 1)
+  levelBonusPerLevel: 0.25,
   
   // Ticket generation (per hour, chance-based)
   ticketChances: {
@@ -122,13 +132,27 @@ const DOJO_UPGRADES = {
 // ===========================================
 
 /**
+ * Calculate level multiplier for a character
+ * @param {number} level - Character level (1-5)
+ * @returns {number} - Multiplier (1.0 to 2.0)
+ */
+function getLevelMultiplier(level) {
+  const safeLevel = Math.min(Math.max(level || 1, 1), 5);
+  return 1 + (safeLevel - 1) * DOJO_RATES.levelBonusPerLevel;
+}
+
+/**
  * Calculate points per hour for a character
  * @param {string} rarity - Character rarity
  * @param {Object} upgrades - User's dojo upgrades
+ * @param {number} level - Character level (1-5, default 1)
  * @returns {number} - Points per hour
  */
-function getBasePointsPerHour(rarity, upgrades = {}) {
+function getBasePointsPerHour(rarity, upgrades = {}, level = 1) {
   const baseRate = DOJO_RATES.baseRates[rarity] || 0;
+  
+  // Apply character level bonus
+  const levelMultiplier = getLevelMultiplier(level);
   
   // Apply intensity bonus
   const intensityLevel = upgrades.intensity || 0;
@@ -138,7 +162,7 @@ function getBasePointsPerHour(rarity, upgrades = {}) {
   const hasMastery = upgrades.masteries?.[rarity] || false;
   const masteryMultiplier = hasMastery ? (1 + DOJO_CONFIG.masteryBonus) : 1;
   
-  return baseRate * intensityMultiplier * masteryMultiplier;
+  return baseRate * levelMultiplier * intensityMultiplier * masteryMultiplier;
 }
 
 /**
@@ -181,7 +205,7 @@ function calculateSeriesSynergy(characters) {
 
 /**
  * Calculate total rewards for accumulated time
- * @param {Array} characters - Characters in training (with rarity, series)
+ * @param {Array} characters - Characters in training (with rarity, series, level)
  * @param {number} hours - Hours of accumulated training
  * @param {Object} upgrades - User's dojo upgrades
  * @param {boolean} isActive - Whether this is an active claim (bonus applies)
@@ -203,12 +227,17 @@ function calculateRewards(characters, hours, upgrades = {}, isActive = false) {
   characters.forEach(char => {
     if (!char) return;
     
-    const basePoints = getBasePointsPerHour(char.rarity, upgrades);
+    // Use character level if available (default to 1 for backwards compatibility)
+    const charLevel = char.level || 1;
+    const levelMultiplier = getLevelMultiplier(charLevel);
+    
+    const basePoints = getBasePointsPerHour(char.rarity, upgrades, charLevel);
     const charPoints = basePoints * hours * synergyMultiplier * activeMultiplier;
     
     // Calculate ticket chances (per hour, accumulative)
-    const rollChance = DOJO_RATES.ticketChances.rollTicket[char.rarity] || 0;
-    const premiumChance = DOJO_RATES.ticketChances.premiumTicket[char.rarity] || 0;
+    // Level also boosts ticket chances slightly
+    const rollChance = (DOJO_RATES.ticketChances.rollTicket[char.rarity] || 0) * levelMultiplier;
+    const premiumChance = (DOJO_RATES.ticketChances.premiumTicket[char.rarity] || 0) * levelMultiplier;
     
     // Expected tickets based on hours (with some randomness)
     const expectedRollTickets = rollChance * hours;
@@ -227,6 +256,8 @@ function calculateRewards(characters, hours, upgrades = {}, isActive = false) {
       characterName: char.name,
       rarity: char.rarity,
       series: char.series,
+      level: charLevel,
+      levelMultiplier,
       basePoints,
       earnedPoints: Math.floor(charPoints),
       rollTickets,
@@ -356,6 +387,7 @@ module.exports = {
   DOJO_RATES,
   DOJO_CONFIG,
   DOJO_UPGRADES,
+  getLevelMultiplier,
   getBasePointsPerHour,
   calculateSeriesSynergy,
   calculateRewards,

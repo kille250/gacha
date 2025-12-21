@@ -30,6 +30,10 @@ const {
   executeSingleBannerRoll,
   executeBannerMultiRoll
 } = require('../utils/rollEngine');
+const {
+  acquireCharacter,
+  acquireMultipleCharacters
+} = require('../utils/characterLeveling');
 
 // ===========================================
 // HELPER FUNCTIONS
@@ -629,10 +633,14 @@ router.post('/:id/roll', auth, async (req, res) => {
       return res.status(400).json({ error: 'No characters available to roll' });
     }
     
-    await user.addCharacter(result.character);
+    // Add character with leveling on duplicates
+    const acquisition = await acquireCharacter(userId, result.character.id);
     
     const isBannerPull = context.bannerCharacters.some(c => c.id === result.character.id);
-    console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${result.character.name} (${result.actualRarity}) from ${isBannerPull ? 'banner' : 'standard'} pool. Cost: ${cost} points`);
+    const levelInfo = acquisition.isDuplicate 
+      ? `(duplicate → Lv.${acquisition.newLevel}${acquisition.leveledUp ? ' LEVEL UP!' : ''})` 
+      : '(new)';
+    console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${result.character.name} (${result.actualRarity}) from ${isBannerPull ? 'banner' : 'standard'} pool ${levelInfo}. Cost: ${cost} points`);
     
     releaseRollLock(userId);
     
@@ -647,6 +655,14 @@ router.post('/:id/roll', auth, async (req, res) => {
       tickets: {
         rollTickets: user.rollTickets || 0,
         premiumTickets: user.premiumTickets || 0
+      },
+      acquisition: {
+        isNew: acquisition.isNew,
+        isDuplicate: acquisition.isDuplicate,
+        leveledUp: acquisition.leveledUp,
+        previousLevel: acquisition.previousLevel,
+        level: acquisition.newLevel,
+        isMaxLevel: acquisition.isMaxLevel
       }
     });
   } catch (err) {
@@ -780,24 +796,38 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
     
     const results = await executeBannerMultiRoll(context, count, premiumCount);
     
-    // Add all characters to collection
-    for (const result of results) {
-      if (result.character) {
-        await user.addCharacter(result.character);
-      }
-    }
+    // Add all characters to collection (with leveling on duplicates)
+    const characters = results.map(r => r.character).filter(c => c);
+    const acquisitions = await acquireMultipleCharacters(userId, characters);
+    
+    // Build character results with acquisition info
+    const charactersWithLevels = results.map(r => {
+      if (!r.character) return null;
+      const charData = r.character.get ? r.character.get({ plain: true }) : r.character;
+      const acq = acquisitions.find(a => a.characterId === charData.id);
+      return {
+        ...charData,
+        isBannerCharacter: r.isBannerCharacter,
+        acquisition: acq ? {
+          isNew: acq.isNew,
+          isDuplicate: acq.isDuplicate,
+          leveledUp: acq.leveledUp,
+          level: acq.newLevel,
+          isMaxLevel: acq.isMaxLevel
+        } : null
+      };
+    }).filter(c => c);
     
     const hasRarePlus = results.some(r => r.wasPity || ['rare', 'epic', 'legendary'].includes(r.actualRarity));
+    const levelUps = acquisitions.filter(a => a.leveledUp).length;
+    const newCards = acquisitions.filter(a => a.isNew).length;
     
-    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
+    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%, new: ${newCards}, levelups: ${levelUps})`);
     
     releaseRollLock(userId);
     
     res.json({
-      characters: results.map(r => ({
-        ...r.character.get ? r.character.get({ plain: true }) : r.character,
-        isBannerCharacter: r.isBannerCharacter
-      })),
+      characters: charactersWithLevels,
       bannerName: banner.name,
       cost: finalCost,
       updatedPoints: user.points,
@@ -806,6 +836,11 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       tickets: {
         rollTickets: user.rollTickets || 0,
         premiumTickets: user.premiumTickets || 0
+      },
+      summary: {
+        newCards,
+        levelUps,
+        duplicates: acquisitions.filter(a => a.isDuplicate).length
       }
     });
   } catch (err) {

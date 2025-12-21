@@ -5,6 +5,7 @@ const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { Coupon, CouponRedemption, User, Character } = require('../models');
 const { isValidUUID, parseDate } = require('../utils/validation');
+const { acquireCharacter } = require('../utils/characterLeveling');
 
 // ADMIN: Get all coupons
 router.get('/admin', [auth, adminAuth], async (req, res) => {
@@ -257,7 +258,7 @@ router.post('/redeem', auth, async (req, res) => {
       rewardDetails = { coins: coupon.value };
     } 
     else if (coupon.type === 'character') {
-      // Add character to user's collection
+      // Add character to user's collection (with leveling on duplicates)
       if (!coupon.characterId) {
         return res.status(400).json({ error: 'Invalid character coupon' });
       }
@@ -267,8 +268,17 @@ router.post('/redeem', auth, async (req, res) => {
         return res.status(404).json({ error: 'Character not found' });
       }
       
-      await user.addCharacter(character);
-      rewardDetails = { character };
+      const acquisition = await acquireCharacter(user.id, character.id);
+      rewardDetails = { 
+        character,
+        acquisition: {
+          isNew: acquisition.isNew,
+          isDuplicate: acquisition.isDuplicate,
+          leveledUp: acquisition.leveledUp,
+          level: acquisition.newLevel,
+          isMaxLevel: acquisition.isMaxLevel
+        }
+      };
     }
     // Could add more types in the future (items, etc)
 

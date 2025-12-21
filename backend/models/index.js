@@ -1,4 +1,6 @@
 // models/index.js
+const { DataTypes } = require('sequelize');
+const sequelize = require('../config/db');
 const User = require('./user');
 const Character = require('./character');
 const Banner = require('./banner');
@@ -8,12 +10,36 @@ const FishInventory = require('./fishInventory');
 const Rarity = require('./rarity');
 
 // ===========================================
+// USER CHARACTERS JUNCTION TABLE (with leveling)
+// ===========================================
+
+const UserCharacter = sequelize.define('UserCharacter', {
+  level: {
+    type: DataTypes.INTEGER,
+    defaultValue: 1,
+    allowNull: false,
+    validate: {
+      min: 1,
+      max: 5
+    }
+  },
+  duplicateCount: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    allowNull: false
+  }
+}, {
+  tableName: 'UserCharacters',
+  timestamps: true
+});
+
+// ===========================================
 // ASSOCIATIONS
 // ===========================================
 
-// User <-> Character (collection)
-User.belongsToMany(Character, { through: 'UserCharacters' });
-Character.belongsToMany(User, { through: 'UserCharacters' });
+// User <-> Character (collection with leveling)
+User.belongsToMany(Character, { through: UserCharacter });
+Character.belongsToMany(User, { through: UserCharacter });
 
 // Banner <-> Character
 Banner.belongsToMany(Character, { through: 'BannerCharacters' });
@@ -42,5 +68,6 @@ module.exports = {
   Coupon,
   CouponRedemption,
   FishInventory,
-  Rarity
+  Rarity,
+  UserCharacter
 };

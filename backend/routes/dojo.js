@@ -8,13 +8,14 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { User, Character } = require('../models');
+const { User, Character, UserCharacter } = require('../models');
 const { Op } = require('sequelize');
 const {
   DOJO_CONFIG,
   calculateRewards,
   getUpgradeCost,
-  getAvailableUpgrades
+  getAvailableUpgrades,
+  getLevelMultiplier
 } = require('../config/dojo');
 
 // Rate limiting for claims (prevent spam)
@@ -46,13 +47,30 @@ router.get('/status', auth, async (req, res) => {
     const maxSlots = upgrades.slots || DOJO_CONFIG.defaultSlots;
     const capHours = upgrades.capHours || DOJO_CONFIG.defaultCapHours;
     
-    // Get character details for slots
+    // Get character details for slots with level info
     const characterIds = dojoSlots.filter(id => id !== null);
-    const characters = characterIds.length > 0
-      ? await Character.findAll({ where: { id: characterIds } })
-      : [];
+    let characters = [];
     
-    // Map slot positions to character data
+    if (characterIds.length > 0) {
+      // Get characters with their levels from junction table
+      const userCharacters = await UserCharacter.findAll({
+        where: {
+          UserId: req.user.id,
+          CharacterId: characterIds
+        },
+        include: [{ model: Character }]
+      });
+      
+      characters = userCharacters
+        .filter(uc => uc.Character)
+        .map(uc => ({
+          ...uc.Character.toJSON(),
+          level: uc.level,
+          duplicateCount: uc.duplicateCount
+        }));
+    }
+    
+    // Map slot positions to character data (with levels)
     const slotsWithCharacters = dojoSlots.map(charId => {
       if (!charId) return null;
       return characters.find(c => c.id === charId) || null;
@@ -93,7 +111,9 @@ router.get('/status', auth, async (req, res) => {
           name: char.name,
           image: char.image,
           series: char.series,
-          rarity: char.rarity
+          rarity: char.rarity,
+          level: char.level || 1,
+          levelMultiplier: getLevelMultiplier(char.level || 1)
         } : null
       })),
       maxSlots,
@@ -139,23 +159,23 @@ router.get('/available-characters', auth, async (req, res) => {
     const dojoSlots = user.dojoSlots || [];
     const assignedIds = new Set(dojoSlots.filter(id => id !== null));
     
-    // Get user's collection
-    const userWithChars = await User.findByPk(req.user.id, {
-      include: [{
-        model: Character,
-        through: { attributes: [] }
-      }]
+    // Get user's collection with level info
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: req.user.id },
+      include: [{ model: Character }]
     });
     
-    // Filter out already assigned characters
-    const availableCharacters = (userWithChars.Characters || [])
-      .filter(char => !assignedIds.has(char.id))
-      .map(char => ({
-        id: char.id,
-        name: char.name,
-        image: char.image,
-        series: char.series,
-        rarity: char.rarity
+    // Filter out already assigned characters and include level info
+    const availableCharacters = userCharacters
+      .filter(uc => uc.Character && !assignedIds.has(uc.CharacterId))
+      .map(uc => ({
+        id: uc.Character.id,
+        name: uc.Character.name,
+        image: uc.Character.image,
+        series: uc.Character.series,
+        rarity: uc.Character.rarity,
+        level: uc.level || 1,
+        levelMultiplier: getLevelMultiplier(uc.level || 1)
       }));
     
     // Group by series for UI convenience
@@ -349,15 +369,31 @@ router.post('/claim', auth, async (req, res) => {
       return res.status(400).json({ error: 'No rewards to claim' });
     }
     
-    // Get characters in slots
+    // Get characters in slots with level info
     const characterIds = dojoSlots.filter(id => id !== null);
     if (characterIds.length === 0) {
       return res.status(400).json({ error: 'No characters training' });
     }
     
-    const characters = await Character.findAll({ where: { id: characterIds } });
+    // Get characters with their levels from junction table
+    const userCharacters = await UserCharacter.findAll({
+      where: {
+        UserId: userId,
+        CharacterId: characterIds
+      },
+      include: [{ model: Character }]
+    });
+    
+    const charactersWithLevels = userCharacters
+      .filter(uc => uc.Character)
+      .map(uc => ({
+        ...uc.Character.toJSON(),
+        level: uc.level,
+        duplicateCount: uc.duplicateCount
+      }));
+    
     const activeCharacters = dojoSlots
-      .map(id => characters.find(c => c.id === id))
+      .map(id => charactersWithLevels.find(c => c.id === id))
       .filter(c => c !== null);
     
     // Calculate time elapsed

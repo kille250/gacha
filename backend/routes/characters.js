@@ -1,7 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { User, Character } = require('../models');
+const { User, Character, UserCharacter } = require('../models');
 const { 
   PRICING_CONFIG, 
   getDiscountForCount,
@@ -19,6 +19,10 @@ const {
   executeSingleStandardRoll,
   executeStandardMultiRoll
 } = require('../utils/rollEngine');
+const {
+  acquireCharacter,
+  acquireMultipleCharacters
+} = require('../utils/characterLeveling');
 
 // ===========================================
 // ROLL ENDPOINTS
@@ -66,16 +70,27 @@ router.post('/roll', auth, async (req, res) => {
       return res.status(400).json({ error: 'No characters available to roll' });
     }
     
-    // Add character to user's collection
-    await user.addCharacter(result.character);
+    // Add character to user's collection (with leveling on duplicates)
+    const acquisition = await acquireCharacter(userId, result.character.id);
     
-    console.log(`User ${user.username} (ID: ${user.id}) rolled ${result.character.name} (${result.actualRarity})`);
+    const levelInfo = acquisition.isDuplicate 
+      ? `(duplicate → Lv.${acquisition.newLevel}${acquisition.leveledUp ? ' LEVEL UP!' : ''})` 
+      : '(new)';
+    console.log(`User ${user.username} (ID: ${user.id}) rolled ${result.character.name} (${result.actualRarity}) ${levelInfo}`);
     
     releaseRollLock(userId);
     
     res.json({
       ...result.character.toJSON(),
-      updatedPoints: user.points
+      updatedPoints: user.points,
+      acquisition: {
+        isNew: acquisition.isNew,
+        isDuplicate: acquisition.isDuplicate,
+        leveledUp: acquisition.leveledUp,
+        previousLevel: acquisition.previousLevel,
+        level: acquisition.newLevel,
+        isMaxLevel: acquisition.isMaxLevel
+      }
     });
   } catch (err) {
     releaseRollLock(userId);
@@ -125,22 +140,42 @@ router.post('/roll-multi', auth, async (req, res) => {
     // Execute multi-roll
     const results = await executeStandardMultiRoll(context, count);
     
-    // Add all characters to collection
-    for (const result of results) {
-      if (result.character) {
-        await user.addCharacter(result.character);
-      }
-    }
+    // Add all characters to collection (with leveling on duplicates)
+    const characters = results.map(r => r.character).filter(c => c);
+    const acquisitions = await acquireMultipleCharacters(userId, characters);
+    
+    // Build character results with acquisition info
+    const charactersWithLevels = results.map(r => {
+      if (!r.character) return null;
+      const acq = acquisitions.find(a => a.characterId === r.character.id);
+      return {
+        ...r.character.toJSON ? r.character.toJSON() : r.character,
+        acquisition: acq ? {
+          isNew: acq.isNew,
+          isDuplicate: acq.isDuplicate,
+          leveledUp: acq.leveledUp,
+          level: acq.newLevel,
+          isMaxLevel: acq.isMaxLevel
+        } : null
+      };
+    }).filter(c => c);
     
     const hasRarePlus = results.some(r => r.wasPity || ['rare', 'epic', 'legendary'].includes(r.actualRarity));
+    const levelUps = acquisitions.filter(a => a.leveledUp).length;
+    const newCards = acquisitions.filter(a => a.isNew).length;
     
-    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
+    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%, new: ${newCards}, levelups: ${levelUps})`);
     
     releaseRollLock(userId);
     
     res.json({
-      characters: results.map(r => r.character),
-      updatedPoints: user.points
+      characters: charactersWithLevels,
+      updatedPoints: user.points,
+      summary: {
+        newCards,
+        levelUps,
+        duplicates: acquisitions.filter(a => a.isDuplicate).length
+      }
     });
   } catch (err) {
     releaseRollLock(userId);
@@ -203,11 +238,24 @@ router.get('/pricing', async (req, res) => {
  */
 router.get('/collection', auth, async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id);
     const allowR18 = await getUserAllowR18(req.user.id);
-    const characters = await user.getCharacters();
     
-    res.json(filterR18Characters(characters, allowR18));
+    // Get characters with level info from junction table
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: req.user.id },
+      include: [{ model: Character }]
+    });
+    
+    const collection = userCharacters
+      .filter(uc => uc.Character)
+      .map(uc => ({
+        ...uc.Character.toJSON(),
+        level: uc.level,
+        duplicateCount: uc.duplicateCount,
+        isMaxLevel: uc.level >= 5
+      }));
+    
+    res.json(filterR18Characters(collection, allowR18));
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
@@ -220,13 +268,24 @@ router.get('/collection', auth, async (req, res) => {
  */
 router.get('/collection-data', auth, async (req, res) => {
   try {
-    const user = await User.findByPk(req.user.id);
     const allowR18 = await getUserAllowR18(req.user.id);
     
-    const [collection, allCharacters] = await Promise.all([
-      user.getCharacters(),
-      Character.findAll()
-    ]);
+    // Get user's collection with level info
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: req.user.id },
+      include: [{ model: Character }]
+    });
+    
+    const collection = userCharacters
+      .filter(uc => uc.Character)
+      .map(uc => ({
+        ...uc.Character.toJSON(),
+        level: uc.level,
+        duplicateCount: uc.duplicateCount,
+        isMaxLevel: uc.level >= 5
+      }));
+    
+    const allCharacters = await Character.findAll();
     
     res.json({ 
       collection: filterR18Characters(collection, allowR18), 

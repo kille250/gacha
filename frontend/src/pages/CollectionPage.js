@@ -84,6 +84,9 @@ const CollectionPage = () => {
   };
 
   const ownedCharIds = new Set(collection.map(char => char.id));
+  
+  // Map character IDs to their level info (from collection data)
+  const charLevels = new Map(collection.map(char => [char.id, { level: char.level || 1, isMaxLevel: char.isMaxLevel }]));
 
   const getFilteredCharacters = () => {
     let characters = [...allCharacters];
@@ -305,6 +308,9 @@ const CollectionPage = () => {
                 const isOwned = ownedCharIds.has(char.id);
                 const imagePath = getImagePath(char.image);
                 const isVideoMedia = isVideo(char.image);
+                const levelInfo = charLevels.get(char.id);
+                const level = levelInfo?.level || 1;
+                const isMaxLevel = levelInfo?.isMaxLevel || false;
                 
                 return (
                   <CharacterCard
@@ -313,7 +319,7 @@ const CollectionPage = () => {
                     $color={getRarityColor(char.rarity)}
                     $glow={getRarityGlow(char.rarity)}
                     $isOwned={isOwned}
-                    onClick={() => openPreview({...char, isOwned, isVideo: isVideoMedia})}
+                    onClick={() => openPreview({...char, isOwned, isVideo: isVideoMedia, level})}
                     whileHover={{ y: -6, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -343,6 +349,11 @@ const CollectionPage = () => {
                         <NotOwnedOverlay>
                           <NotOwnedLabel>{t('common.notOwned')}</NotOwnedLabel>
                         </NotOwnedOverlay>
+                      )}
+                      {isOwned && level > 1 && (
+                        <LevelBadge $isMaxLevel={isMaxLevel}>
+                          Lv.{level}
+                        </LevelBadge>
                       )}
                       <RarityIndicator $color={getRarityColor(char.rarity)} />
                     </CardImageWrapper>
@@ -388,6 +399,7 @@ const CollectionPage = () => {
         rarity={previewChar?.rarity || 'common'}
         isOwned={previewChar?.isOwned}
         isVideo={previewChar?.isVideo || isVideo(previewChar?.image)}
+        level={previewChar?.level || 1}
       />
     </StyledPageWrapper>
   );
@@ -796,6 +808,34 @@ const RarityIndicator = styled.div`
   right: 0;
   height: 3px;
   background: ${props => props.$color};
+`;
+
+const LevelBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 4px 8px;
+  background: ${props => props.$isMaxLevel 
+    ? 'linear-gradient(135deg, #ffd700, #ff8c00)' 
+    : 'rgba(0, 0, 0, 0.75)'};
+  backdrop-filter: blur(4px);
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${props => props.$isMaxLevel ? '#000' : '#fff'};
+  box-shadow: ${props => props.$isMaxLevel 
+    ? '0 0 10px rgba(255, 215, 0, 0.5)' 
+    : '0 2px 4px rgba(0, 0, 0, 0.3)'};
+  z-index: 2;
+  
+  ${props => props.$isMaxLevel && `
+    animation: pulse 2s ease-in-out infinite;
+    
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.05); }
+    }
+  `}
 `;
 
 const CardContent = styled.div`
