@@ -531,7 +531,7 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
     const orderTag = sort === 'newest' ? 'order:id_desc' : sort === 'favorites' ? 'order:favcount' : 'order:score';
     
     // Search with exact tag + safe rating + sorting
-    const searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+rating:general+${orderTag}&limit=${limit}&page=${page}`;
+    const searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+rating:g,s+${orderTag}&limit=${limit}&page=${page}`;
     
     const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
