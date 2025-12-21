@@ -627,13 +627,12 @@ const Header = styled.header`
   -webkit-backdrop-filter: blur(${theme.blur.lg});
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   position: sticky;
-  top: 60px; /* Account for main navigation bar */
+  top: 49px; /* Account for main navigation bar height */
   z-index: 100;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.md};
     gap: ${theme.spacing.sm};
-    top: 56px; /* Smaller nav on mobile */
   }
 `;
 
