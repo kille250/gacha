@@ -426,7 +426,7 @@ const Overlay = styled(motion.div)`
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1100;
+  z-index: 10001;
   padding: 20px;
 `;
 
@@ -823,7 +823,7 @@ const LoadMoreButton = styled.button`
 
 const HoverPreviewContainer = styled(motion.div)`
   position: fixed;
-  z-index: 2000;
+  z-index: 10002;
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
   border-radius: 12px;
   padding: 8px;
