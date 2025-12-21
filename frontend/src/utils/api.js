@@ -326,4 +326,44 @@ export const executeTrade = async (tradeId, quantity = 1) => {
   return response.data;
 };
 
+// ===========================================
+// DOJO (IDLE GAME) API
+// ===========================================
+
+export const getDojoStatus = async () => {
+  const response = await api.get('/dojo/status');
+  return response.data;
+};
+
+export const getDojoAvailableCharacters = async () => {
+  const response = await api.get('/dojo/available-characters');
+  return response.data;
+};
+
+export const assignCharacterToDojo = async (characterId, slotIndex) => {
+  clearCache('/dojo');
+  const response = await api.post('/dojo/assign', { characterId, slotIndex });
+  return response.data;
+};
+
+export const unassignCharacterFromDojo = async (slotIndex) => {
+  clearCache('/dojo');
+  const response = await api.post('/dojo/unassign', { slotIndex });
+  return response.data;
+};
+
+export const claimDojoRewards = async () => {
+  clearCache('/dojo');
+  clearCache('/auth/me');
+  const response = await api.post('/dojo/claim');
+  return response.data;
+};
+
+export const purchaseDojoUpgrade = async (upgradeType, rarity = null) => {
+  clearCache('/dojo');
+  clearCache('/auth/me');
+  const response = await api.post('/dojo/upgrade', { upgradeType, rarity });
+  return response.data;
+};
+
 export default api;

@@ -20,6 +20,7 @@ import CouponPage from './pages/CouponPage';
 import RollPage from './pages/RollPage';
 import FishingPage from './pages/FishingPage';
 import SettingsPage from './pages/SettingsPage';
+import DojoPage from './pages/DojoPage';
 
 // Components
 import Navigation from './components/Navigation/Navigation';
@@ -216,6 +217,17 @@ function App() {
             <Route path="/fishing" element={
               <ProtectedRoute>
                 <FishingPage />
+              </ProtectedRoute>
+            } />
+            {/* Dojo - Idle Training Game */}
+            <Route path="/dojo" element={
+              <ProtectedRoute>
+                <MainLayout>
+                  <Navigation />
+                  <PageContent>
+                    <DojoPage />
+                  </PageContent>
+                </MainLayout>
               </ProtectedRoute>
             } />
             {/* Settings Page */}

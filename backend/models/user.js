@@ -84,6 +84,35 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false
     },
+    // Dojo (idle game) fields
+    dojoSlots: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('dojoSlots');
+        return value ? JSON.parse(value) : [];
+      },
+      set(value) {
+        this.setDataValue('dojoSlots', JSON.stringify(value || []));
+      }
+    },
+    dojoLastClaim: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    dojoUpgrades: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"slots":3,"capHours":8,"intensity":0,"masteries":{}}',
+      get() {
+        const value = this.getDataValue('dojoUpgrades');
+        return value ? JSON.parse(value) : { slots: 3, capHours: 8, intensity: 0, masteries: {} };
+      },
+      set(value) {
+        this.setDataValue('dojoUpgrades', JSON.stringify(value || { slots: 3, capHours: 8, intensity: 0, masteries: {} }));
+      }
+    },
   },
   {
     sequelize,

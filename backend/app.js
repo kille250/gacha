@@ -237,6 +237,9 @@ app.use('/api/fishing', require('./routes/fishing'));
 // Rarity configuration routes
 app.use('/api/rarities', require('./routes/rarities'));
 
+// Dojo (idle game) routes
+app.use('/api/dojo', require('./routes/dojo'));
+
 const PORT = process.env.PORT || 5000;
 
 // Create HTTP server for Express + Socket.IO

@@ -16,7 +16,7 @@ import {
   MdKeyboardArrowDown,
   MdSettings
 } from 'react-icons/md';
-import { FaGift, FaTicketAlt, FaDice, FaFish } from 'react-icons/fa';
+import { FaGift, FaTicketAlt, FaDice, FaFish, FaDumbbell } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import api, { invalidateCache } from '../../utils/api';
 import { theme, LoadingSpinner as SharedLoadingSpinner } from '../../styles/DesignSystem';
@@ -117,6 +117,7 @@ const Navigation = () => {
       label: t('nav.activities') || 'Activities',
       items: [
         { path: '/fishing', label: t('nav.fishing'), icon: <FaFish /> },
+        { path: '/dojo', label: t('nav.dojo') || 'Dojo', icon: <FaDumbbell /> },
       ]
     },
     {
