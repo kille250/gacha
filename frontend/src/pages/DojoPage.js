@@ -227,19 +227,21 @@ const DojoPage = () => {
     <PageContainer>
       {/* Header */}
       <Header>
-        <BackButton onClick={() => navigate(-1)}>
-          <MdArrowBack />
-        </BackButton>
-        <HeaderContent>
-          <HeaderIcon>🏯</HeaderIcon>
-          <HeaderTitle>Character Dojo</HeaderTitle>
-        </HeaderContent>
-        <HeaderStats>
-          <StatBadge>
-            <FaCoins />
-            <span>{user?.points?.toLocaleString() || 0}</span>
-          </StatBadge>
-        </HeaderStats>
+        <HeaderInner>
+          <BackButton onClick={() => navigate(-1)}>
+            <MdArrowBack />
+          </BackButton>
+          <HeaderContent>
+            <HeaderIcon>🏯</HeaderIcon>
+            <HeaderTitle>Character Dojo</HeaderTitle>
+          </HeaderContent>
+          <HeaderStats>
+            <StatBadge>
+              <FaCoins />
+              <span>{user?.points?.toLocaleString() || 0}</span>
+            </StatBadge>
+          </HeaderStats>
+        </HeaderInner>
       </Header>
 
       {/* Error Display */}
@@ -250,10 +252,12 @@ const DojoPage = () => {
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
           >
-            <span>{error}</span>
-            <CloseErrorBtn onClick={() => setError(null)}>
-              <MdClose />
-            </CloseErrorBtn>
+            <ErrorBannerInner>
+              <span>{error}</span>
+              <CloseErrorBtn onClick={() => setError(null)}>
+                <MdClose />
+              </CloseErrorBtn>
+            </ErrorBannerInner>
           </ErrorBanner>
         )}
       </AnimatePresence>
@@ -590,8 +594,10 @@ const PageContainer = styled.div`
   min-height: 100vh;
   background: linear-gradient(180deg, 
     ${theme.colors.background} 0%, 
-    ${theme.colors.backgroundSecondary} 100%
+    ${theme.colors.backgroundSecondary} 50%,
+    ${theme.colors.background} 100%
   );
+  padding-bottom: env(safe-area-inset-bottom, 20px);
 `;
 
 const LoadingContainer = styled.div`
@@ -611,17 +617,32 @@ const LoadingText = styled.p`
 const Header = styled.header`
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: ${theme.spacing.md};
   padding: ${theme.spacing.lg} ${theme.spacing.xl};
   background: ${theme.colors.surface};
   backdrop-filter: blur(${theme.blur.lg});
+  -webkit-backdrop-filter: blur(${theme.blur.lg});
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   position: sticky;
-  top: 60px;
+  top: 0;
   z-index: 100;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.md};
+    gap: ${theme.spacing.sm};
+  }
+`;
+
+const HeaderInner = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  width: 100%;
+  max-width: 900px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
   }
 `;
 
@@ -629,8 +650,9 @@ const BackButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: ${theme.radius.lg};
   background: ${theme.colors.glass};
   border: 1px solid ${theme.colors.surfaceBorder};
@@ -642,6 +664,10 @@ const BackButton = styled.button`
   &:hover {
     background: ${theme.colors.surfaceHover};
   }
+  
+  &:active {
+    transform: scale(0.95);
+  }
 `;
 
 const HeaderContent = styled.div`
@@ -649,10 +675,16 @@ const HeaderContent = styled.div`
   align-items: center;
   gap: ${theme.spacing.sm};
   flex: 1;
+  min-width: 0;
 `;
 
 const HeaderIcon = styled.span`
   font-size: 28px;
+  flex-shrink: 0;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 24px;
+  }
 `;
 
 const HeaderTitle = styled.h1`
@@ -660,6 +692,7 @@ const HeaderTitle = styled.h1`
   font-weight: ${theme.fontWeights.bold};
   color: ${theme.colors.text};
   margin: 0;
+  white-space: nowrap;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     font-size: ${theme.fontSizes.lg};
@@ -669,6 +702,7 @@ const HeaderTitle = styled.h1`
 const HeaderStats = styled.div`
   display: flex;
   gap: ${theme.spacing.sm};
+  flex-shrink: 0;
 `;
 
 const StatBadge = styled.div`
@@ -686,17 +720,35 @@ const StatBadge = styled.div`
   svg {
     font-size: 14px;
   }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    font-size: ${theme.fontSizes.xs};
+    
+    svg {
+      font-size: 12px;
+    }
+  }
 `;
 
 const ErrorBanner = styled(motion.div)`
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: center;
   padding: ${theme.spacing.md} ${theme.spacing.xl};
   background: rgba(255, 59, 48, 0.15);
   border-bottom: 1px solid rgba(255, 59, 48, 0.3);
   color: ${theme.colors.error};
   font-size: ${theme.fontSizes.sm};
+`;
+
+const ErrorBannerInner = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  max-width: 900px;
+  gap: ${theme.spacing.md};
 `;
 
 const CloseErrorBtn = styled.button`
@@ -707,6 +759,10 @@ const CloseErrorBtn = styled.button`
   padding: ${theme.spacing.xs};
   display: flex;
   font-size: 18px;
+  min-width: 44px;
+  min-height: 44px;
+  align-items: center;
+  justify-content: center;
 `;
 
 const ClaimPopup = styled(motion.div)`
@@ -722,6 +778,12 @@ const ClaimPopup = styled(motion.div)`
   text-align: center;
   box-shadow: ${theme.shadows.xl};
   animation: ${glow} 2s ease-in-out infinite;
+  width: calc(100% - 32px);
+  max-width: 320px;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.lg};
+  }
 `;
 
 const ClaimPopupIcon = styled.div`
@@ -735,6 +797,10 @@ const ClaimPopupTitle = styled.h3`
   font-weight: ${theme.fontWeights.bold};
   color: ${theme.colors.text};
   margin: 0 0 ${theme.spacing.lg} 0;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.lg};
+  }
 `;
 
 const ClaimPopupRewards = styled.div`
@@ -751,6 +817,10 @@ const RewardItem = styled.div`
   font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.base};
+  }
 `;
 
 const ActiveBonusTag = styled.div`
@@ -761,6 +831,7 @@ const ActiveBonusTag = styled.div`
   border-radius: ${theme.radius.full};
   font-size: ${theme.fontSizes.sm};
   color: #30d158;
+  display: inline-block;
 `;
 
 const MainContent = styled.main`
@@ -770,9 +841,12 @@ const MainContent = styled.main`
   display: flex;
   flex-direction: column;
   gap: ${theme.spacing.xl};
+  width: 100%;
+  box-sizing: border-box;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.md};
+    gap: ${theme.spacing.lg};
   }
 `;
 
@@ -785,7 +859,13 @@ const AccumulatedCard = styled.div`
     : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
   padding: ${theme.spacing.xl};
+  backdrop-filter: blur(${theme.blur.md});
+  -webkit-backdrop-filter: blur(${theme.blur.md});
   ${props => props.$isCapped && css`animation: ${pulse} 2s ease-in-out infinite;`}
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.lg};
+  }
 `;
 
 const AccumulatedHeader = styled.div`
@@ -793,6 +873,8 @@ const AccumulatedHeader = styled.div`
   justify-content: space-between;
   align-items: center;
   margin-bottom: ${theme.spacing.md};
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
 `;
 
 const AccumulatedTitle = styled.div`
@@ -805,54 +887,103 @@ const AccumulatedTitle = styled.div`
   
   svg {
     color: ${theme.colors.primary};
+    flex-shrink: 0;
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.base};
   }
 `;
 
 const AccumulatedTime = styled.div`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
+  font-weight: ${theme.fontWeights.medium};
+  background: ${theme.colors.glass};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  border-radius: ${theme.radius.md};
 `;
 
 const ProgressBar = styled.div`
-  height: 8px;
+  height: 10px;
   background: ${theme.colors.backgroundTertiary};
   border-radius: ${theme.radius.full};
   overflow: hidden;
   margin-bottom: ${theme.spacing.lg};
+  box-shadow: inset 0 1px 2px rgba(0, 0, 0, 0.2);
 `;
 
 const ProgressFill = styled.div`
   height: 100%;
   background: ${props => props.$isCapped 
     ? 'linear-gradient(90deg, #ff9f0a, #ff6b00)'
-    : `linear-gradient(90deg, ${theme.colors.primary}, ${theme.colors.primaryDark})`};
+    : `linear-gradient(90deg, ${theme.colors.primary}, #00b4d8)`};
   border-radius: ${theme.radius.full};
   transition: width 0.5s ease;
+  position: relative;
+  
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    height: 50%;
+    background: linear-gradient(180deg, rgba(255, 255, 255, 0.2), transparent);
+    border-radius: ${theme.radius.full} ${theme.radius.full} 0 0;
+  }
 `;
 
 const AccumulatedRewards = styled.div`
-  display: flex;
-  justify-content: center;
-  gap: ${theme.spacing.xl};
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: ${theme.spacing.md};
   margin-bottom: ${theme.spacing.lg};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
+  }
 `;
 
 const AccumulatedReward = styled.div`
   display: flex;
+  flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: ${theme.spacing.xs};
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.bold};
-  color: ${props => props.$premium ? '#bf5af2' : theme.colors.text};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.glass};
+  border-radius: ${theme.radius.lg};
+  border: 1px solid ${props => props.$premium ? 'rgba(191, 90, 242, 0.3)' : 'rgba(255, 215, 0, 0.2)'};
+  
+  span {
+    font-size: ${theme.fontSizes.xl};
+    font-weight: ${theme.fontWeights.bold};
+    color: ${props => props.$premium ? '#bf5af2' : theme.colors.text};
+  }
   
   svg {
+    font-size: 20px;
     color: ${props => props.$premium ? '#bf5af2' : '#FFD700'};
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.sm};
+    
+    span {
+      font-size: ${theme.fontSizes.lg};
+    }
+    
+    svg {
+      font-size: 16px;
+    }
   }
 `;
 
 const ClaimButton = styled(motion.button)`
   width: 100%;
-  padding: ${theme.spacing.md};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  min-height: 52px;
   background: ${props => props.$canClaim 
     ? 'linear-gradient(135deg, #FFD700, #FFA500)'
     : theme.colors.backgroundTertiary};
@@ -863,6 +994,10 @@ const ClaimButton = styled(motion.button)`
   color: ${props => props.$canClaim ? '#1c1c1e' : theme.colors.textTertiary};
   cursor: ${props => props.$canClaim ? 'pointer' : 'default'};
   transition: all ${theme.transitions.fast};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
   
   .spin {
     animation: spin 1s linear infinite;
@@ -872,6 +1007,10 @@ const ClaimButton = styled(motion.button)`
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
   }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.sm};
+  }
 `;
 
 const HourlyRateCard = styled.div`
@@ -879,6 +1018,12 @@ const HourlyRateCard = styled.div`
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
   padding: ${theme.spacing.lg};
+  backdrop-filter: blur(${theme.blur.md});
+  -webkit-backdrop-filter: blur(${theme.blur.md});
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.md};
+  }
 `;
 
 const HourlyRateHeader = styled.div`
@@ -892,6 +1037,7 @@ const HourlyRateHeader = styled.div`
   
   svg {
     color: #30d158;
+    font-size: 20px;
   }
 `;
 
@@ -899,6 +1045,11 @@ const HourlyRateStats = styled.div`
   display: flex;
   gap: ${theme.spacing.lg};
   flex-wrap: wrap;
+  justify-content: center;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.md};
+  }
 `;
 
 const HourlyStat = styled.div`
@@ -907,9 +1058,17 @@ const HourlyStat = styled.div`
   gap: ${theme.spacing.xs};
   font-size: ${theme.fontSizes.base};
   color: ${props => props.$premium ? '#bf5af2' : theme.colors.textSecondary};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: ${theme.colors.glass};
+  border-radius: ${theme.radius.md};
   
   svg {
     color: ${props => props.$premium ? '#bf5af2' : '#FFD700'};
+    font-size: 14px;
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.sm};
   }
 `;
 
@@ -918,6 +1077,7 @@ const SynergyBadges = styled.div`
   gap: ${theme.spacing.sm};
   flex-wrap: wrap;
   margin-top: ${theme.spacing.md};
+  justify-content: center;
 `;
 
 const SynergyBadge = styled.div`
@@ -927,15 +1087,29 @@ const SynergyBadge = styled.div`
   border-radius: ${theme.radius.md};
   font-size: ${theme.fontSizes.xs};
   color: #30d158;
+  white-space: nowrap;
 `;
 
-const SlotsSection = styled.section``;
+const SlotsSection = styled.section`
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.xl};
+  backdrop-filter: blur(${theme.blur.md});
+  -webkit-backdrop-filter: blur(${theme.blur.md});
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.lg};
+  }
+`;
 
 const SlotsHeader = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   margin-bottom: ${theme.spacing.lg};
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
 `;
 
 const SlotsTitle = styled.h2`
@@ -950,17 +1124,33 @@ const SlotsTitle = styled.h2`
   svg {
     color: ${theme.colors.primary};
   }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.base};
+  }
 `;
 
 const SlotsCount = styled.span`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
+  background: ${theme.colors.glass};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  border-radius: ${theme.radius.md};
 `;
 
 const SlotsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: ${theme.spacing.md};
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: ${theme.spacing.sm};
+  }
+  
+  @media (max-width: 480px) {
+    grid-template-columns: repeat(2, 1fr);
+  }
 `;
 
 const FilledSlot = styled(motion.div)`
@@ -971,6 +1161,10 @@ const FilledSlot = styled(motion.div)`
   border: 2px solid ${props => props.$color || theme.colors.surfaceBorder};
   box-shadow: 0 0 20px ${props => props.$glow || 'transparent'};
   cursor: default;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    border-radius: ${theme.radius.lg};
+  }
 `;
 
 const SlotImage = styled.img`
@@ -992,6 +1186,10 @@ const SlotOverlay = styled.div`
   right: 0;
   padding: ${theme.spacing.sm};
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.xs};
+  }
 `;
 
 const SlotCharName = styled.div`
@@ -1001,6 +1199,10 @@ const SlotCharName = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.xs};
+  }
 `;
 
 const SlotCharSeries = styled.div`
@@ -1009,6 +1211,10 @@ const SlotCharSeries = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 10px;
+  }
 `;
 
 const SlotRarityBadge = styled.div`
@@ -1021,31 +1227,59 @@ const SlotRarityBadge = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: white;
   text-transform: uppercase;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 1px 4px;
+    font-size: 9px;
+  }
 `;
 
 const RemoveButton = styled.button`
   position: absolute;
   top: ${theme.spacing.xs};
   right: ${theme.spacing.xs};
-  width: 28px;
-  height: 28px;
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  min-height: 32px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.7);
-  border: none;
+  border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  opacity: 0;
-  transition: opacity ${theme.transitions.fast};
+  opacity: 0.8;
+  transition: all ${theme.transitions.fast};
+  font-size: 14px;
   
-  ${FilledSlot}:hover & {
+  /* Always visible on touch devices */
+  @media (hover: none) {
     opacity: 1;
   }
   
-  &:hover {
+  /* Hover behavior on desktop */
+  @media (hover: hover) {
+    opacity: 0;
+    
+    ${FilledSlot}:hover & {
+      opacity: 1;
+    }
+  }
+  
+  &:hover, &:active {
     background: ${theme.colors.error};
+    border-color: ${theme.colors.error};
+    transform: scale(1.1);
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 28px;
+    height: 28px;
+    min-width: 28px;
+    min-height: 28px;
+    font-size: 12px;
   }
 `;
 
@@ -1062,26 +1296,36 @@ const EmptySlot = styled(motion.div)`
   cursor: pointer;
   color: ${theme.colors.textSecondary};
   transition: all ${theme.transitions.fast};
+  min-height: 120px;
   
   svg {
-    font-size: 24px;
+    font-size: 28px;
   }
   
   span {
     font-size: ${theme.fontSizes.xs};
+    text-align: center;
   }
   
-  &:hover {
+  &:hover, &:active {
     border-color: ${theme.colors.primary};
     color: ${theme.colors.primary};
-    background: rgba(0, 113, 227, 0.05);
+    background: rgba(0, 113, 227, 0.08);
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    border-radius: ${theme.radius.lg};
+    
+    svg {
+      font-size: 24px;
+    }
   }
 `;
 
 const LockedSlot = styled.div`
   aspect-ratio: 3/4;
   border-radius: ${theme.radius.xl};
-  border: 1px solid ${theme.colors.surfaceBorder};
+  border: 1px dashed ${theme.colors.surfaceBorder};
   background: ${theme.colors.backgroundTertiary};
   display: flex;
   flex-direction: column;
@@ -1090,6 +1334,7 @@ const LockedSlot = styled.div`
   gap: ${theme.spacing.xs};
   color: ${theme.colors.textTertiary};
   opacity: 0.5;
+  min-height: 120px;
   
   svg {
     font-size: 20px;
@@ -1098,15 +1343,45 @@ const LockedSlot = styled.div`
   span {
     font-size: ${theme.fontSizes.xs};
   }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    border-radius: ${theme.radius.lg};
+    
+    svg {
+      font-size: 16px;
+    }
+  }
 `;
 
-const UpgradesSection = styled.section``;
+const UpgradesSection = styled.section`
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.xl};
+  backdrop-filter: blur(${theme.blur.md});
+  -webkit-backdrop-filter: blur(${theme.blur.md});
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.lg};
+  }
+`;
 
 const UpgradesTitle = styled.h2`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
   font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
   margin: 0 0 ${theme.spacing.lg} 0;
+  
+  &::before {
+    content: '⬆️';
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.base};
+  }
 `;
 
 const UpgradesGrid = styled.div`
@@ -1120,59 +1395,92 @@ const UpgradeCard = styled(motion.div)`
   align-items: center;
   gap: ${theme.spacing.md};
   padding: ${theme.spacing.md};
-  background: ${theme.colors.surface};
-  border: 1px solid ${theme.colors.surfaceBorder};
+  background: ${theme.colors.glass};
+  border: 1px solid ${props => props.$canAfford 
+    ? 'rgba(255, 215, 0, 0.2)' 
+    : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
   cursor: ${props => props.$canAfford ? 'pointer' : 'default'};
   opacity: ${props => props.$canAfford ? 1 : 0.6};
   transition: all ${theme.transitions.fast};
+  min-height: 60px;
   
-  &:hover {
+  &:hover, &:active {
     ${props => props.$canAfford && `
       background: ${theme.colors.surfaceHover};
-      border-color: ${theme.colors.primary};
+      border-color: rgba(255, 215, 0, 0.4);
+      transform: translateY(-1px);
     `}
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+    flex-wrap: wrap;
   }
 `;
 
 const UpgradeIcon = styled.div`
   font-size: 24px;
-  width: 40px;
-  height: 40px;
+  width: 48px;
+  height: 48px;
+  min-width: 48px;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${theme.colors.glass};
+  background: ${theme.colors.backgroundTertiary};
   border-radius: ${theme.radius.lg};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 40px;
+    height: 40px;
+    min-width: 40px;
+    font-size: 20px;
+  }
 `;
 
 const UpgradeInfo = styled.div`
   flex: 1;
+  min-width: 0;
 `;
 
 const UpgradeName = styled.div`
   font-size: ${theme.fontSizes.base};
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.sm};
+  }
 `;
 
 const UpgradeDesc = styled.div`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.xs};
+  }
 `;
 
 const UpgradeCost = styled.div`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: ${props => props.$canAfford 
-    ? 'rgba(255, 215, 0, 0.15)' 
+    ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.2), rgba(255, 165, 0, 0.15))' 
     : theme.colors.backgroundTertiary};
+  border: 1px solid ${props => props.$canAfford 
+    ? 'rgba(255, 215, 0, 0.3)' 
+    : 'transparent'};
   border-radius: ${theme.radius.full};
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.semibold};
   color: ${props => props.$canAfford ? '#FFD700' : theme.colors.textTertiary};
+  white-space: nowrap;
+  flex-shrink: 0;
   
   svg {
     font-size: 12px;
@@ -1181,6 +1489,11 @@ const UpgradeCost = styled.div`
   .spin {
     animation: spin 1s linear infinite;
   }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    font-size: ${theme.fontSizes.xs};
+  }
 `;
 
 const NoUpgrades = styled.div`
@@ -1188,31 +1501,47 @@ const NoUpgrades = styled.div`
   padding: ${theme.spacing.xl};
   color: ${theme.colors.textSecondary};
   font-size: ${theme.fontSizes.base};
+  background: ${theme.colors.glass};
+  border-radius: ${theme.radius.lg};
+  border: 1px dashed ${theme.colors.surfaceBorder};
 `;
 
 // Modal styles
 const ModalOverlay = styled(motion.div)`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(${theme.blur.sm});
+  background: rgba(0, 0, 0, 0.8);
+  backdrop-filter: blur(${theme.blur.md});
+  -webkit-backdrop-filter: blur(${theme.blur.md});
   z-index: 1000;
   display: flex;
-  align-items: center;
+  align-items: flex-end;
   justify-content: center;
-  padding: ${theme.spacing.md};
+  padding: 0;
+  
+  @media (min-width: ${theme.breakpoints.sm}) {
+    align-items: center;
+    padding: ${theme.spacing.md};
+  }
 `;
 
 const ModalContent = styled(motion.div)`
   width: 100%;
   max-width: 600px;
-  max-height: 80vh;
+  max-height: 90vh;
+  height: 85vh;
   background: ${theme.colors.backgroundSecondary};
   border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
+  border-radius: ${theme.radius.xl} ${theme.radius.xl} 0 0;
   display: flex;
   flex-direction: column;
   overflow: hidden;
+  
+  @media (min-width: ${theme.breakpoints.sm}) {
+    height: auto;
+    max-height: 80vh;
+    border-radius: ${theme.radius.xl};
+  }
 `;
 
 const ModalHeader = styled.div`
@@ -1221,6 +1550,30 @@ const ModalHeader = styled.div`
   align-items: center;
   padding: ${theme.spacing.lg};
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
+  flex-shrink: 0;
+  position: relative;
+  
+  /* Drag handle indicator on mobile */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 8px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 36px;
+    height: 4px;
+    background: ${theme.colors.surfaceBorder};
+    border-radius: 2px;
+    
+    @media (min-width: ${theme.breakpoints.sm}) {
+      display: none;
+    }
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.md};
+    padding-top: ${theme.spacing.lg};
+  }
 `;
 
 const ModalTitle = styled.h3`
@@ -1231,20 +1584,23 @@ const ModalTitle = styled.h3`
 `;
 
 const ModalCloseBtn = styled.button`
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
+  min-width: 44px;
   border-radius: ${theme.radius.lg};
   background: ${theme.colors.glass};
-  border: none;
+  border: 1px solid ${theme.colors.surfaceBorder};
   color: ${theme.colors.text};
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   font-size: 20px;
+  transition: all ${theme.transitions.fast};
   
-  &:hover {
+  &:hover, &:active {
     background: ${theme.colors.surfaceHover};
+    border-color: ${theme.colors.primary};
   }
 `;
 
@@ -1252,12 +1608,19 @@ const SearchContainer = styled.div`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
+  background: ${theme.colors.glass};
+  flex-shrink: 0;
   
   svg {
     color: ${theme.colors.textSecondary};
-    font-size: 18px;
+    font-size: 20px;
+    flex-shrink: 0;
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
   }
 `;
 
@@ -1268,6 +1631,8 @@ const SearchInput = styled.input`
   outline: none;
   font-size: ${theme.fontSizes.base};
   color: ${theme.colors.text};
+  min-width: 0;
+  height: 44px;
   
   &::placeholder {
     color: ${theme.colors.textTertiary};
@@ -1278,6 +1643,21 @@ const ModalBody = styled.div`
   flex: 1;
   overflow-y: auto;
   padding: ${theme.spacing.md};
+  -webkit-overflow-scrolling: touch;
+  
+  /* Custom scrollbar */
+  &::-webkit-scrollbar {
+    width: 6px;
+  }
+  
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  &::-webkit-scrollbar-thumb {
+    background: ${theme.colors.surfaceBorder};
+    border-radius: 3px;
+  }
 `;
 
 const ModalLoading = styled.div`
@@ -1288,12 +1668,17 @@ const ModalLoading = styled.div`
   padding: ${theme.spacing.xl};
   gap: ${theme.spacing.md};
   color: ${theme.colors.textSecondary};
+  min-height: 200px;
 `;
 
 const NoCharacters = styled.div`
   text-align: center;
   padding: ${theme.spacing.xl};
   color: ${theme.colors.textSecondary};
+  min-height: 200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const SeriesGroup = styled.div`
@@ -1305,14 +1690,26 @@ const SeriesTitle = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.textSecondary};
   margin-bottom: ${theme.spacing.sm};
-  padding: ${theme.spacing.xs} 0;
-  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: ${theme.colors.glass};
+  border-radius: ${theme.radius.md};
+  position: sticky;
+  top: 0;
+  z-index: 1;
 `;
 
 const CharacterGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  grid-template-columns: repeat(3, 1fr);
   gap: ${theme.spacing.sm};
+  
+  @media (min-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+  
+  @media (min-width: ${theme.breakpoints.md}) {
+    grid-template-columns: repeat(5, 1fr);
+  }
 `;
 
 const CharacterCard = styled(motion.div)`
@@ -1322,9 +1719,15 @@ const CharacterCard = styled(motion.div)`
   overflow: hidden;
   border: 2px solid ${props => props.$color || theme.colors.surfaceBorder};
   cursor: pointer;
+  transition: all ${theme.transitions.fast};
   
-  &:hover {
-    box-shadow: 0 0 15px ${props => props.$color || theme.colors.primary};
+  &:hover, &:active {
+    box-shadow: 0 0 20px ${props => props.$color || theme.colors.primary};
+    transform: scale(1.02);
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    border-radius: ${theme.radius.md};
   }
 `;
 
@@ -1356,6 +1759,10 @@ const CharName = styled.div`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 10px;
+  }
 `;
 
 const CharRarity = styled.div`
