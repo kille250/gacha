@@ -11,6 +11,7 @@ import confetti from 'canvas-confetti';
 import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
+import { useRarity } from '../context/RarityContext';
 
 // Design System
 import {
@@ -27,8 +28,6 @@ import {
   ModalOverlay,
   Alert,
   motionVariants,
-  getRarityColor,
-  getRarityGlow,
   scrollbarStyles
 } from '../styles/DesignSystem';
 
@@ -53,6 +52,7 @@ const BannerPage = () => {
   const { bannerId } = useParams();
   const navigate = useNavigate();
   const { user, refreshUser, setUser } = useContext(AuthContext);
+  const { getRarityColor, getRarityGlow } = useRarity();
   
   // State
   const [banner, setBanner] = useState(null);
@@ -148,7 +148,7 @@ const BannerPage = () => {
         colors: [getRarityColor(rarity), '#ffffff', '#ffd700']
       });
     }
-  }, []);
+  }, [getRarityColor]);
 
   // Handlers
   const handleRoll = async (useTicket = false, ticketType = 'roll') => {
@@ -414,8 +414,9 @@ const BannerPage = () => {
                 }).slice(0, 6).map(char => (
                   <Avatar
                     key={char.id}
-                    rarity={char.rarity}
-                    owned={isInCollection(char)}
+                    $color={getRarityColor(char.rarity)}
+                    $glow={getRarityGlow(char.rarity)}
+                    $owned={isInCollection(char)}
                     onClick={() => openPreview({...char, isOwned: isInCollection(char)})}
                     whileHover={{ scale: 1.1 }}
                     whileTap={{ scale: 0.95 }}
@@ -481,7 +482,7 @@ const BannerPage = () => {
             <RarityLabel>{t('common.recent')}:</RarityLabel>
             <RarityHistory>
               {lastRarities.map((rarity, i) => (
-                <RarityDot key={i} rarity={rarity}>{rarityIcons[rarity]}</RarityDot>
+                <RarityDot key={i} $color={getRarityColor(rarity)} $glow={getRarityGlow(rarity)}>{rarityIcons[rarity]}</RarityDot>
               ))}
             </RarityHistory>
           </RarityTracker>
@@ -498,10 +499,11 @@ const BannerPage = () => {
                   initial="hidden"
                   animate="visible"
                   exit="exit"
-                  rarity={currentChar?.rarity}
+                  $color={getRarityColor(currentChar?.rarity)}
+                  $glow={getRarityGlow(currentChar?.rarity)}
                 >
                   <CardImageWrapper onClick={() => openPreview(currentChar)}>
-                    <RarityGlowEffect rarity={currentChar?.rarity} />
+                    <RarityGlowEffect $color={getRarityColor(currentChar?.rarity)} />
                     {isVideo(currentChar?.image) ? (
                       <CardVideo src={getImagePath(currentChar?.image)} autoPlay loop muted playsInline />
                     ) : (
@@ -555,8 +557,8 @@ const BannerPage = () => {
                         variants={motionVariants.staggerItem}
                         custom={i}
                         whileHover={{ y: -4, scale: 1.02 }}
-                        rarity={char.rarity}
-                        isBanner={char.isBannerCharacter}
+                        $color={getRarityColor(char.rarity)}
+                        $isBanner={char.isBannerCharacter}
                         onClick={() => openPreview({...char, isOwned: isInCollection(char)})}
                       >
                         <MiniCardImage>
@@ -570,7 +572,7 @@ const BannerPage = () => {
                         </MiniCardImage>
                         <MiniCardInfo>
                           <MiniName>{char.name}</MiniName>
-                          <MiniRarityDot rarity={char.rarity}>{rarityIcons[char.rarity]}</MiniRarityDot>
+                          <MiniRarityDot $color={getRarityColor(char.rarity)}>{rarityIcons[char.rarity]}</MiniRarityDot>
                         </MiniCardInfo>
                       </MiniCard>
                     ))}
@@ -848,10 +850,10 @@ const BannerPage = () => {
                         </DropRateSectionTitle>
                         <DropRateGrid>
                           {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
-                            <DropRateItem key={rarity} rarity={rarity}>
-                              <RarityIcon rarity={rarity}>{rarityIcons[rarity]}</RarityIcon>
+                            <DropRateItem key={rarity} $color={getRarityColor(rarity)}>
+                              <RarityIcon $color={getRarityColor(rarity)}>{rarityIcons[rarity]}</RarityIcon>
                               <DropRateLabel>{rarity}</DropRateLabel>
-                              <DropRateValue rarity={rarity}>{pricing.dropRates.banner[rarity]}%</DropRateValue>
+                              <DropRateValue $color={getRarityColor(rarity)}>{pricing.dropRates.banner[rarity]}%</DropRateValue>
                             </DropRateItem>
                           ))}
                         </DropRateGrid>
@@ -863,10 +865,10 @@ const BannerPage = () => {
                         </DropRateSectionTitle>
                         <DropRateGrid>
                           {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
-                            <DropRateItem key={rarity} rarity={rarity}>
-                              <RarityIcon rarity={rarity}>{rarityIcons[rarity]}</RarityIcon>
+                            <DropRateItem key={rarity} $color={getRarityColor(rarity)}>
+                              <RarityIcon $color={getRarityColor(rarity)}>{rarityIcons[rarity]}</RarityIcon>
                               <DropRateLabel>{rarity}</DropRateLabel>
-                              <DropRateValue rarity={rarity}>{pricing.dropRates.standard[rarity]}%</DropRateValue>
+                              <DropRateValue $color={getRarityColor(rarity)}>{pricing.dropRates.standard[rarity]}%</DropRateValue>
                             </DropRateItem>
                           ))}
                         </DropRateGrid>
@@ -878,10 +880,10 @@ const BannerPage = () => {
                         </DropRateSectionTitle>
                         <DropRateGrid>
                           {['legendary', 'epic', 'rare'].map(rarity => (
-                            <DropRateItem key={rarity} rarity={rarity}>
-                              <RarityIcon rarity={rarity}>{rarityIcons[rarity]}</RarityIcon>
+                            <DropRateItem key={rarity} $color={getRarityColor(rarity)}>
+                              <RarityIcon $color={getRarityColor(rarity)}>{rarityIcons[rarity]}</RarityIcon>
                               <DropRateLabel>{rarity}</DropRateLabel>
-                              <DropRateValue rarity={rarity}>{pricing.dropRates.premium[rarity]}%</DropRateValue>
+                              <DropRateValue $color={getRarityColor(rarity)}>{pricing.dropRates.premium[rarity]}%</DropRateValue>
                             </DropRateItem>
                           ))}
                         </DropRateGrid>
@@ -907,7 +909,7 @@ const BannerPage = () => {
                         onClick={() => openPreview({...char, isOwned: isInCollection(char)})}
                         whileHover={{ backgroundColor: 'rgba(255, 255, 255, 0.08)' }}
                       >
-                        <FeaturedThumb rarity={char.rarity}>
+                        <FeaturedThumb $color={getRarityColor(char.rarity)}>
                           {isVideo(char.image) ? (
                             <video src={getImagePath(char.image)} autoPlay loop muted playsInline />
                           ) : (
@@ -916,7 +918,7 @@ const BannerPage = () => {
                         </FeaturedThumb>
                         <FeaturedInfo>
                           <FeaturedName>{char.name}</FeaturedName>
-                          <FeaturedRarity rarity={char.rarity}>
+                          <FeaturedRarity $color={getRarityColor(char.rarity)}>
                             {rarityIcons[char.rarity]} {char.rarity}
                           </FeaturedRarity>
                           {isInCollection(char) && <OwnedLabel>✓ {t('common.owned')}</OwnedLabel>}
@@ -1137,9 +1139,9 @@ const Avatar = styled(motion.div)`
   border-radius: ${theme.radius.full};
   overflow: hidden;
   cursor: pointer;
-  border: 2px solid ${props => getRarityColor(props.rarity)};
+  border: 2px solid ${props => props.$color};
   position: relative;
-  box-shadow: ${props => getRarityGlow(props.rarity)};
+  box-shadow: ${props => props.$glow};
   
   img, video { 
     width: 100%; 
@@ -1147,7 +1149,7 @@ const Avatar = styled(motion.div)`
     object-fit: cover; 
   }
   
-  ${props => props.owned && `
+  ${props => props.$owned && `
     &::after {
       content: "";
       position: absolute;
@@ -1283,13 +1285,13 @@ const RarityDot = styled.div`
   width: 32px;
   height: 32px;
   border-radius: ${theme.radius.full};
-  background: ${props => getRarityColor(props.rarity)};
+  background: ${props => props.$color};
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-size: 12px;
-  box-shadow: ${props => getRarityGlow(props.rarity)};
+  box-shadow: ${props => props.$glow};
 `;
 
 // Gacha Container
@@ -1315,8 +1317,8 @@ const CharacterCard = styled(motion.div)`
   overflow: hidden;
   width: 100%;
   max-width: 340px;
-  border: 2px solid ${props => getRarityColor(props.rarity)};
-  box-shadow: ${props => getRarityGlow(props.rarity)}, ${theme.shadows.lg};
+  border: 2px solid ${props => props.$color};
+  box-shadow: ${props => props.$glow}, ${theme.shadows.lg};
 `;
 
 const CardImageWrapper = styled.div`
@@ -1329,7 +1331,7 @@ const CardImageWrapper = styled.div`
 const RarityGlowEffect = styled.div`
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at 50% 100%, ${props => getRarityColor(props.rarity)}40 0%, transparent 70%);
+  background: radial-gradient(circle at 50% 100%, ${props => props.$color}40 0%, transparent 70%);
   pointer-events: none;
   z-index: 1;
 `;
@@ -1489,12 +1491,12 @@ const MultiResultsGrid = styled(motion.div)`
 `;
 
 const MiniCard = styled(motion.div)`
-  background: ${props => props.isBanner 
+  background: ${props => props.$isBanner 
     ? `linear-gradient(to bottom, rgba(255, 159, 10, 0.1), ${theme.colors.backgroundTertiary})`
     : theme.colors.backgroundTertiary};
   border-radius: ${theme.radius.lg};
   overflow: hidden;
-  border: 2px solid ${props => props.isBanner ? theme.colors.warning : getRarityColor(props.rarity)};
+  border: 2px solid ${props => props.$isBanner ? theme.colors.warning : props.$color};
   cursor: pointer;
 `;
 
@@ -1562,7 +1564,7 @@ const MiniRarityDot = styled.div`
   width: 20px;
   height: 20px;
   border-radius: ${theme.radius.full};
-  background: ${props => getRarityColor(props.rarity)};
+  background: ${props => props.$color};
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2115,7 +2117,7 @@ const DropRateItem = styled.div`
   padding: 6px 10px;
   background: rgba(0, 0, 0, 0.2);
   border-radius: ${theme.radius.md};
-  border: 1px solid ${props => getRarityColor(props.rarity)}40;
+  border: 1px solid ${props => props.$color}40;
 `;
 
 const RarityIcon = styled.span`
@@ -2124,7 +2126,7 @@ const RarityIcon = styled.span`
   justify-content: center;
   width: 18px;
   height: 18px;
-  color: ${props => getRarityColor(props.rarity)};
+  color: ${props => props.$color};
   font-size: 10px;
 `;
 
@@ -2137,7 +2139,7 @@ const DropRateLabel = styled.span`
 const DropRateValue = styled.span`
   font-size: ${theme.fontSizes.xs};
   font-weight: ${theme.fontWeights.bold};
-  color: ${props => getRarityColor(props.rarity)};
+  color: ${props => props.$color};
   margin-left: auto;
 `;
 
@@ -2192,7 +2194,7 @@ const FeaturedThumb = styled.div`
   height: 48px;
   border-radius: ${theme.radius.md};
   overflow: hidden;
-  border: 2px solid ${props => getRarityColor(props.rarity)};
+  border: 2px solid ${props => props.$color};
   flex-shrink: 0;
   
   img, video { 
@@ -2224,7 +2226,7 @@ const FeaturedRarity = styled.div`
   border-radius: ${theme.radius.full};
   font-size: ${theme.fontSizes.xs};
   background: rgba(0, 0, 0, 0.3);
-  color: ${props => getRarityColor(props.rarity)};
+  color: ${props => props.$color};
   text-transform: capitalize;
 `;
 

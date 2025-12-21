@@ -28,30 +28,6 @@ const DEFAULT_ANIMATION_CONFIG = {
   ringCount: 1
 };
 
-// Default rarity colors (used by styled-components which can't use hooks)
-// NOTE: These intentionally duplicate theme.colors.rarity from DesignSystem.js
-// because styled-component template literals cannot call React hooks (useRarity).
-// The actual animation config is fetched from context for component logic.
-const DEFAULT_RARITY_COLORS = {
-  common: '#8e8e93',
-  uncommon: '#30d158',
-  rare: '#0a84ff',
-  epic: '#bf5af2',
-  legendary: '#ff9f0a'
-};
-
-const DEFAULT_RARITY_ACCENT = {
-  common: '#a8a8ad',
-  uncommon: '#5fe07a',
-  rare: '#409cff',
-  epic: '#d183f5',
-  legendary: '#ffc040'
-};
-
-// Static getRarityColor for styled-components (fallback to defaults)
-const getRarityColor = (rarity) => DEFAULT_RARITY_COLORS[rarity?.toLowerCase()] || DEFAULT_RARITY_COLORS.common;
-const getRarityAccent = (rarity) => DEFAULT_RARITY_ACCENT[rarity?.toLowerCase()] || DEFAULT_RARITY_ACCENT.common;
-
 // ==================== ANIMATION PHASES ====================
 
 const PHASES = {
@@ -84,9 +60,13 @@ export const SummonAnimation = ({
   const hasCompletedRef = useRef(false); // Guard against double-click
   
   // Get dynamic rarity configuration from context
-  const { getRarityAnimation, ordered } = useRarity();
+  const { getRarityAnimation, getRarityColor, ordered } = useRarity();
   
   const effectRarity = ambientRarity || rarity;
+  
+  // Get dynamic colors from context (admin-configurable)
+  const rarityColor = getRarityColor(rarity);
+  const effectRarityColor = getRarityColor(effectRarity);
   
   // Memoize config to prevent unnecessary re-renders
   const config = useMemo(() => {
@@ -244,7 +224,7 @@ export const SummonAnimation = ({
         transition={{ duration: 0.2 }}
       >
         {/* Ambient Background Glow */}
-        <AmbientGlow $rarity={effectRarity} $phase={phase} />
+        <AmbientGlow $color={effectRarityColor} $phase={phase} />
         
         {/* Vignette overlay */}
         <Vignette />
@@ -259,17 +239,17 @@ export const SummonAnimation = ({
               transition={{ duration: 0.3 }}
             >
               {/* Central Orb */}
-              <CentralOrb $rarity={effectRarity}>
-                <OrbCore $rarity={effectRarity} />
-                <OrbPulse $rarity={effectRarity} />
-                <OrbPulse $rarity={effectRarity} $delay={0.5} />
+              <CentralOrb>
+                <OrbCore $color={effectRarityColor} $accentColor={ambientConfig.accentColor} />
+                <OrbPulse $color={effectRarityColor} />
+                <OrbPulse $color={effectRarityColor} $delay={0.5} />
               </CentralOrb>
 
               {/* Rotating Rings */}
               {[...Array(ambientConfig.ringCount)].map((_, i) => (
                 <Ring 
                   key={i} 
-                  $rarity={effectRarity} 
+                  $color={effectRarityColor}
                   $index={i}
                   $total={ambientConfig.ringCount}
                 />
@@ -280,7 +260,7 @@ export const SummonAnimation = ({
                 {[...Array(ambientConfig.orbCount)].map((_, i) => (
                   <FloatingOrb
                     key={i}
-                    $rarity={effectRarity}
+                    $color={effectRarityColor}
                     $index={i}
                     $total={ambientConfig.orbCount}
                   />
@@ -292,7 +272,7 @@ export const SummonAnimation = ({
                 initial={{ scale: 0, rotate: -180 }}
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: "spring", damping: 12, delay: 0.2 }}
-                $rarity={effectRarity}
+                $color={effectRarityColor}
               >
                 {ambientConfig.icon}
               </RarityIconContainer>
@@ -308,7 +288,7 @@ export const SummonAnimation = ({
               animate={{ opacity: 0 }}
               exit={{ opacity: 0 }}
               transition={{ duration: 0.4, ease: "easeOut" }}
-              $rarity={effectRarity}
+              $color={effectRarityColor}
             />
           )}
         </AnimatePresence>
@@ -332,7 +312,7 @@ export const SummonAnimation = ({
               }}
               exit={{ scale: 0.9, opacity: 0, y: -30 }}
             >
-              <CharacterCard $rarity={rarity}>
+              <CharacterCard>
                 <CardShine />
                 <CardImageContainer>
                   {isVideo(character.image) ? (
@@ -346,11 +326,11 @@ export const SummonAnimation = ({
                   ) : (
                     <CardImage src={getImagePath(character.image)} alt={character.name} />
                   )}
-                  <ImageGradient $rarity={rarity} />
+                  <ImageGradient $color={rarityColor} />
                 </CardImageContainer>
                 
                 <CardInfo>
-                  <RarityBadge $rarity={rarity}>
+                  <RarityBadge $color={rarityColor}>
                     {config.icon}
                     <span>{rarity.toUpperCase()}</span>
                   </RarityBadge>
@@ -358,7 +338,7 @@ export const SummonAnimation = ({
                   <CharacterSeries>{character.series}</CharacterSeries>
                 </CardInfo>
                 
-                <CardGlowBorder $rarity={rarity} />
+                <CardGlowBorder $color={rarityColor} />
               </CharacterCard>
             </CardContainer>
           )}
@@ -488,7 +468,7 @@ const AmbientGlow = styled.div`
   inset: 0;
   background: radial-gradient(
     ellipse 80% 60% at 50% 40%,
-    ${props => `${getRarityColor(props.$rarity)}${props.$phase === 'buildup' ? '25' : '15'}`} 0%,
+    ${props => `${props.$color}${props.$phase === 'buildup' ? '25' : '15'}`} 0%,
     transparent 70%
   );
   transition: all 0.5s ease;
@@ -535,12 +515,12 @@ const OrbCore = styled.div`
   border-radius: 50%;
   background: radial-gradient(
     circle at 30% 30%,
-    ${props => getRarityAccent(props.$rarity)},
-    ${props => getRarityColor(props.$rarity)}
+    ${props => props.$accentColor || props.$color},
+    ${props => props.$color}
   );
   box-shadow: 
-    0 0 40px ${props => getRarityColor(props.$rarity)}80,
-    0 0 80px ${props => getRarityColor(props.$rarity)}40,
+    0 0 40px ${props => props.$color}80,
+    0 0 80px ${props => props.$color}40,
     inset 0 0 20px rgba(255, 255, 255, 0.3);
   animation: ${pulse} 1.2s ease-in-out infinite;
 `;
@@ -549,7 +529,7 @@ const OrbPulse = styled.div`
   position: absolute;
   inset: 0;
   border-radius: 50%;
-  border: 2px solid ${props => getRarityColor(props.$rarity)};
+  border: 2px solid ${props => props.$color};
   animation: ${pulseGlow} 1.5s ease-out infinite;
   animation-delay: ${props => props.$delay || 0}s;
 `;
@@ -558,7 +538,7 @@ const Ring = styled.div`
   position: absolute;
   width: ${props => 180 + props.$index * 60}px;
   height: ${props => 180 + props.$index * 60}px;
-  border: 1.5px solid ${props => getRarityColor(props.$rarity)}40;
+  border: 1.5px solid ${props => props.$color}40;
   border-radius: 50%;
   animation: ${props => props.$index % 2 === 0 ? rotate : rotateReverse} ${props => 6 + props.$index * 2}s linear infinite;
   
@@ -567,12 +547,12 @@ const Ring = styled.div`
     position: absolute;
     width: 8px;
     height: 8px;
-    background: ${props => getRarityColor(props.$rarity)};
+    background: ${props => props.$color};
     border-radius: 50%;
     top: -4px;
     left: 50%;
     transform: translateX(-50%);
-    box-shadow: 0 0 10px ${props => getRarityColor(props.$rarity)};
+    box-shadow: 0 0 10px ${props => props.$color};
   }
   
   @media (max-width: 768px) {
@@ -594,9 +574,9 @@ const FloatingOrb = styled.div`
   left: 50%;
   width: 6px;
   height: 6px;
-  background: ${props => getRarityColor(props.$rarity)};
+  background: ${props => props.$color};
   border-radius: 50%;
-  box-shadow: 0 0 12px ${props => getRarityColor(props.$rarity)};
+  box-shadow: 0 0 12px ${props => props.$color};
   animation: ${orbitPath} ${props => 3 + (props.$index * 0.5)}s linear infinite;
   animation-delay: ${props => (props.$index / props.$total) * -3}s;
   transform-origin: center center;
@@ -610,8 +590,8 @@ const FloatingOrb = styled.div`
 const RarityIconContainer = styled(motion.div)`
   position: absolute;
   font-size: 28px;
-  color: ${props => getRarityColor(props.$rarity)};
-  filter: drop-shadow(0 0 15px ${props => getRarityColor(props.$rarity)});
+  color: ${props => props.$color};
+  filter: drop-shadow(0 0 15px ${props => props.$color});
   
   @media (max-width: 768px) {
     font-size: 22px;
@@ -622,7 +602,7 @@ const RarityIconContainer = styled(motion.div)`
 const FlashOverlay = styled(motion.div)`
   position: absolute;
   inset: 0;
-  background: ${props => getRarityColor(props.$rarity)};
+  background: ${props => props.$color};
   pointer-events: none;
 `;
 
@@ -675,10 +655,10 @@ const CardGlowBorder = styled.div`
   position: absolute;
   inset: 0;
   border-radius: 20px;
-  border: 2px solid ${props => getRarityColor(props.$rarity)};
+  border: 2px solid ${props => props.$color};
   box-shadow: 
-    0 0 30px ${props => getRarityColor(props.$rarity)}50,
-    inset 0 0 30px ${props => getRarityColor(props.$rarity)}15;
+    0 0 30px ${props => props.$color}50,
+    inset 0 0 30px ${props => props.$color}15;
   pointer-events: none;
 `;
 
@@ -711,7 +691,7 @@ const ImageGradient = styled.div`
   background: linear-gradient(
     to bottom,
     transparent 50%,
-    ${props => getRarityColor(props.$rarity)}20 80%,
+    ${props => props.$color}20 80%,
     rgba(10, 10, 15, 0.95) 100%
   );
   pointer-events: none;
@@ -728,14 +708,14 @@ const RarityBadge = styled.div`
   align-items: center;
   gap: 6px;
   padding: 6px 14px;
-  background: ${props => getRarityColor(props.$rarity)};
+  background: ${props => props.$color};
   color: white;
   font-size: 11px;
   font-weight: 700;
   letter-spacing: 1.5px;
   border-radius: 100px;
   margin-bottom: 14px;
-  box-shadow: 0 4px 12px ${props => getRarityColor(props.$rarity)}50;
+  box-shadow: 0 4px 12px ${props => props.$color}50;
   
   svg {
     font-size: 12px;
@@ -881,6 +861,9 @@ export const MultiSummonAnimation = ({
   const [showSkippedResults, setShowSkippedResults] = useState(false);
   const hasCompletedRef = useRef(false); // Guard against double-click
   
+  // Get dynamic rarity colors from context
+  const { getRarityColor } = useRarity();
+  
   const highestRarity = getHighestRarity(characters);
 
   useEffect(() => {
@@ -935,7 +918,7 @@ export const MultiSummonAnimation = ({
             {characters.map((char, index) => (
               <ResultCard
                 key={index}
-                $rarity={char.rarity}
+                $color={getRarityColor(char.rarity)}
                 initial={{ opacity: 0, scale: 0.8, y: 20 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
                 transition={{ delay: index * 0.02, type: "spring", damping: 15 }}
@@ -949,7 +932,7 @@ export const MultiSummonAnimation = ({
                 </ResultImageWrapper>
                 <ResultInfo>
                   <ResultName>{char.name}</ResultName>
-                  <ResultRarity $rarity={char.rarity}>{char.rarity}</ResultRarity>
+                  <ResultRarity $color={getRarityColor(char.rarity)}>{char.rarity}</ResultRarity>
                 </ResultInfo>
               </ResultCard>
             ))}
@@ -1054,8 +1037,8 @@ const ResultCard = styled(motion.div)`
   background: ${theme.colors.backgroundSecondary};
   border-radius: 14px;
   overflow: hidden;
-  border: 2px solid ${props => getRarityColor(props.$rarity)};
-  box-shadow: 0 0 16px ${props => getRarityColor(props.$rarity)}25;
+  border: 2px solid ${props => props.$color};
+  box-shadow: 0 0 16px ${props => props.$color}25;
 `;
 
 const ResultImageWrapper = styled.div`
@@ -1092,7 +1075,7 @@ const ResultRarity = styled.div`
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  color: ${props => getRarityColor(props.$rarity)};
+  color: ${props => props.$color};
   letter-spacing: 0.5px;
 `;
 

@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle, MdClose } from 'react-icons/md';
 import { FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
-import { getRarityColor } from '../../styles/DesignSystem';
+import { useRarity } from '../../context/RarityContext';
 
 const rarityIcons = {
   common: <FaDice />,
@@ -14,9 +14,14 @@ const rarityIcons = {
 };
 
 const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned, isVideo, isBannerCharacter }) => {
+  const { getRarityColor } = useRarity();
+  
   const handleModalClick = (e) => {
     e.stopPropagation();
   };
+  
+  // Get colors for styled components
+  const rarityColor = getRarityColor(rarity);
   
   return (
     <AnimatePresence>
@@ -34,7 +39,7 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 400 }}
             onMouseDown={handleModalClick}
-            rarity={rarity}
+            $color={rarityColor}
           >
             {/* Close Button */}
             <CloseButton onClick={onClose}>
@@ -71,7 +76,7 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
               )}
               
               {/* Subtle rarity glow at bottom */}
-              <RarityGlow rarity={rarity} />
+              <RarityGlow $color={rarityColor} />
             </MediaWrapper>
             
             {/* Info Bar */}
@@ -89,7 +94,7 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
                       ★ Featured
                     </Badge>
                   )}
-                  <RarityPill rarity={rarity}>
+                  <RarityPill $color={rarityColor}>
                     {rarityIcons[rarity]}
                     <span>{rarity}</span>
                   </RarityPill>
@@ -139,7 +144,7 @@ const ModalContent = styled(motion.div)`
   box-shadow: 
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 25px 80px -12px rgba(0, 0, 0, 0.6),
-    0 0 60px ${props => getRarityColor(props.rarity)}15;
+    0 0 60px ${props => props.$color}15;
 `;
 
 const CloseButton = styled.button`
@@ -196,7 +201,7 @@ const RarityGlow = styled.div`
   height: 120px;
   background: linear-gradient(
     to top,
-    ${props => getRarityColor(props.rarity)}30 0%,
+    ${props => props.$color}30 0%,
     transparent 100%
   );
   pointer-events: none;
@@ -256,8 +261,8 @@ const RarityPill = styled.div`
   font-weight: 600;
   text-transform: capitalize;
   letter-spacing: 0.02em;
-  background: ${props => getRarityColor(props.rarity)}20;
-  color: ${props => getRarityColor(props.rarity)};
+  background: ${props => props.$color}20;
+  color: ${props => props.$color};
   margin-left: auto;
   
   svg {

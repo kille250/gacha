@@ -9,6 +9,7 @@ import {
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../utils/api';
+import { useRarity } from '../../context/RarityContext';
 import {
   AdminContainer,
   HeaderRow,
@@ -171,6 +172,7 @@ const FIELD_TOOLTIP_KEYS = {
 
 const AdminRarities = ({ onRefresh }) => {
   const { t } = useTranslation();
+  const { refetch: refetchRarityContext } = useRarity();
   const [rarities, setRarities] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -409,6 +411,7 @@ const AdminRarities = ({ onRefresh }) => {
       }
       
       await fetchRarities();
+      await refetchRarityContext(); // Refresh the global rarity context with new colors
       setShowModal(false);
       if (onRefresh) onRefresh();
     } catch (err) {
@@ -430,6 +433,7 @@ const AdminRarities = ({ onRefresh }) => {
     try {
       await deleteRarity(rarity.id);
       await fetchRarities();
+      await refetchRarityContext(); // Refresh the global rarity context
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error('Error deleting rarity:', err);
@@ -445,6 +449,7 @@ const AdminRarities = ({ onRefresh }) => {
     try {
       await resetDefaultRarities();
       await fetchRarities();
+      await refetchRarityContext(); // Refresh the global rarity context
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error('Error resetting rarities:', err);

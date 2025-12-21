@@ -12,7 +12,7 @@
 import { useState, useCallback, useContext } from 'react';
 import confetti from 'canvas-confetti';
 import { AuthContext } from '../context/AuthContext';
-import { getRarityColor } from '../styles/DesignSystem';
+import { useRarity } from '../context/RarityContext';
 import { getAssetUrl } from '../utils/api';
 
 // ==================== CONSTANTS ====================
@@ -44,6 +44,7 @@ const MAX_RARITY_HISTORY = 5;
  */
 export const useGachaRoll = ({ onRollComplete } = {}) => {
   const { user, setUser } = useContext(AuthContext);
+  const { getRarityColor } = useRarity();
 
   // ==================== STATE ====================
   
@@ -88,7 +89,7 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
         colors: [getRarityColor(rarity), '#ffffff', '#ffd700']
       });
     }
-  }, []);
+  }, [getRarityColor]);
 
   /**
    * Get the highest rarity from a list of characters

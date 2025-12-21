@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes } from 'react-icons/fa';
 import { getAssetUrl } from '../../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
-import { getRarityColor } from '../../styles/DesignSystem';
+import { useRarity } from '../../context/RarityContext';
 
 // Helper function to get image URL with fallback
 const getImageUrl = (imagePath) => {
@@ -12,6 +12,7 @@ const getImageUrl = (imagePath) => {
 };
   
 const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
+  const { getRarityColor } = useRarity();
   const [formData, setFormData] = useState({
     name: '',
     description: '',
@@ -396,7 +397,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                       <CharacterOption
                         key={char.id}
                         $selected={formData.selectedCharacters.includes(char.id)}
-                        $rarity={char.rarity}
+                        $color={getRarityColor(char.rarity)}
                         onClick={() => handleCharacterToggle(char.id)}
                       >
                         {renderCharacterMedia(char)}
@@ -404,7 +405,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                           <CharOptionName>{char.name}</CharOptionName>
                           <CharOptionSeries>{char.series}</CharOptionSeries>
                           <CharOptionBadges>
-                            <CharOptionRarity $rarity={char.rarity}>{char.rarity}</CharOptionRarity>
+                            <CharOptionRarity $color={getRarityColor(char.rarity)}>{char.rarity}</CharOptionRarity>
                             {char.isR18 && <R18Badge>🔞 R18</R18Badge>}
                           </CharOptionBadges>
                         </CharOptionInfo>
@@ -817,13 +818,11 @@ const NoResults = styled.div`
   grid-column: 1 / -1;
 `;
 
-// Rarity colors now imported from DesignSystem via getRarityColor()
-  
 const CharacterOption = styled.div`
-  border: 2px solid ${props => props.$selected ? getRarityColor(props.$rarity) : 'rgba(255, 255, 255, 0.1)'};
+  border: 2px solid ${props => props.$selected ? props.$color : 'rgba(255, 255, 255, 0.1)'};
   border-radius: 12px;
   overflow: hidden;
-  background: ${props => props.$selected ? `${getRarityColor(props.$rarity)}15` : 'rgba(255, 255, 255, 0.03)'};
+  background: ${props => props.$selected ? `${props.$color}15` : 'rgba(255, 255, 255, 0.03)'};
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
@@ -833,7 +832,7 @@ const CharacterOption = styled.div`
   min-height: 90px;
   
   &:hover {
-    border-color: ${props => getRarityColor(props.$rarity)};
+    border-color: ${props => props.$color};
     transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.06);
   }
@@ -905,12 +904,12 @@ const CharOptionRarity = styled.div`
   display: inline-flex;
   align-items: center;
   font-size: 9px;
-  color: ${props => getRarityColor(props.$rarity)};
+  color: ${props => props.$color};
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.3px;
   padding: 2px 6px;
-  background: ${props => `${getRarityColor(props.$rarity)}25`};
+  background: ${props => `${props.$color}25`};
   border-radius: 3px;
 `;
 

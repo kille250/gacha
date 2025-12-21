@@ -11,6 +11,7 @@ import confetti from 'canvas-confetti';
 import api, { rollCharacter, getStandardPricing, getAssetUrl } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
+import { useRarity } from '../context/RarityContext';
 
 // Design System
 import {
@@ -24,7 +25,6 @@ import {
   Spinner,
   Alert,
   motionVariants,
-  getRarityColor,
   scrollbarStyles
 } from '../styles/DesignSystem';
 
@@ -109,6 +109,9 @@ const RollPage = () => {
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
   
+  // Get dynamic rarity colors from context
+  const { getRarityColor } = useRarity();
+
   // Callbacks
   const showRarePullEffect = useCallback((rarity) => {
     if (['legendary', 'epic'].includes(rarity)) {
@@ -119,7 +122,7 @@ const RollPage = () => {
         colors: [getRarityColor(rarity), '#ffffff', '#ffd700']
       });
     }
-  }, []);
+  }, [getRarityColor]);
   
   // Handlers
   const handleRoll = async () => {
@@ -301,7 +304,7 @@ const RollPage = () => {
             <RarityLabel>{t('common.recent')}:</RarityLabel>
             <RarityHistoryContainer>
               {lastRarities.map((rarity, i) => (
-                <RarityDot key={i} rarity={rarity} style={{ animationDelay: `${i * 0.1}s` }}>
+                <RarityDot key={i} $color={getRarityColor(rarity)} style={{ animationDelay: `${i * 0.1}s` }}>
                   {rarityIcons[rarity]}
                 </RarityDot>
               ))}
@@ -321,10 +324,10 @@ const RollPage = () => {
                   initial="hidden"
                   animate="visible"
                   exit="exit"
-                  rarity={currentChar?.rarity}
+                  $color={getRarityColor(currentChar?.rarity)}
                 >
                   <CardImageWrapper onClick={() => openPreview({...currentChar, isVideo: isVideo(currentChar.image)})}>
-                    <RarityGlow rarity={currentChar?.rarity} />
+                    <RarityGlow $color={getRarityColor(currentChar?.rarity)} />
                     {isVideo(currentChar?.image) ? (
                       <CardVideo src={getImagePath(currentChar?.image)} autoPlay loop muted playsInline />
                     ) : (
@@ -377,7 +380,7 @@ const RollPage = () => {
                         variants={motionVariants.staggerItem}
                         custom={i}
                         whileHover={{ y: -4, scale: 1.02 }}
-                        rarity={char.rarity}
+                        $color={getRarityColor(char.rarity)}
                         onClick={() => openPreview({...char, isVideo: isVideo(char.image)})}
                       >
                         <MiniCardImage>
@@ -390,7 +393,7 @@ const RollPage = () => {
                         </MiniCardImage>
                         <MiniCardInfo>
                           <MiniName>{char.name}</MiniName>
-                          <MiniRarityDot rarity={char.rarity}>{rarityIcons[char.rarity]}</MiniRarityDot>
+                          <MiniRarityDot $color={getRarityColor(char.rarity)}>{rarityIcons[char.rarity]}</MiniRarityDot>
                         </MiniCardInfo>
                       </MiniCard>
                     ))}
@@ -672,13 +675,13 @@ const RarityDot = styled.div`
   width: 32px;
   height: 32px;
   border-radius: 50%;
-  background: ${props => getRarityColor(props.rarity)};
+  background: ${props => props.$color};
   display: flex;
   align-items: center;
   justify-content: center;
   color: white;
   font-size: 12px;
-  box-shadow: 0 2px 10px ${props => getRarityColor(props.rarity)}50;
+  box-shadow: 0 2px 10px ${props => props.$color}50;
   animation: popIn 0.3s cubic-bezier(0.34, 1.56, 0.64, 1) backwards;
   
   @keyframes popIn {
@@ -718,11 +721,11 @@ const CharacterCard = styled(motion.div)`
   overflow: hidden;
   width: 100%;
   max-width: 320px;
-  border: 1px solid ${props => getRarityColor(props.rarity)}60;
+  border: 1px solid ${props => props.$color}60;
   box-shadow: 
     0 0 0 1px rgba(255, 255, 255, 0.05) inset,
     0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    0 0 40px ${props => getRarityColor(props.rarity)}20;
+    0 0 40px ${props => props.$color}20;
 `;
 
 const CardImageWrapper = styled.div`
@@ -735,7 +738,7 @@ const CardImageWrapper = styled.div`
 const RarityGlow = styled.div`
   position: absolute;
   inset: 0;
-  background: radial-gradient(ellipse at 50% 100%, ${props => getRarityColor(props.rarity)}30 0%, transparent 60%);
+  background: radial-gradient(ellipse at 50% 100%, ${props => props.$color}30 0%, transparent 60%);
   pointer-events: none;
   z-index: 1;
 `;
@@ -896,7 +899,7 @@ const MiniCard = styled(motion.div)`
   background: ${theme.colors.backgroundTertiary};
   border-radius: ${theme.radius.lg};
   overflow: hidden;
-  border: 2px solid ${props => getRarityColor(props.rarity)};
+  border: 2px solid ${props => props.$color};
   cursor: pointer;
 `;
 
@@ -949,7 +952,7 @@ const MiniRarityDot = styled.div`
   width: 20px;
   height: 20px;
   border-radius: ${theme.radius.full};
-  background: ${props => getRarityColor(props.rarity)};
+  background: ${props => props.$color};
   display: flex;
   align-items: center;
   justify-content: center;

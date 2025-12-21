@@ -6,6 +6,7 @@ import { getCollectionData, getAssetUrl } from '../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
+import { useRarity } from '../context/RarityContext';
 import {
   theme,
   PageWrapper,
@@ -13,13 +14,12 @@ import {
   Section,
   Text,
   Spinner,
-  motionVariants,
-  getRarityColor,
-  getRarityGlow
+  motionVariants
 } from '../styles/DesignSystem';
 
 const CollectionPage = () => {
   const { t } = useTranslation();
+  const { getRarityColor, getRarityGlow } = useRarity();
   const [collection, setCollection] = useState([]);
   const [allCharacters, setAllCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -239,7 +239,7 @@ const CollectionPage = () => {
                       key={rarity}
                       active={rarityFilter === rarity}
                       onClick={() => { setRarityFilter(rarity); setCurrentPage(1); }}
-                      color={getRarityColor(rarity)}
+                      $color={getRarityColor(rarity)}
                     >
                       {rarity}
                     </FilterChip>
@@ -310,8 +310,9 @@ const CollectionPage = () => {
                   <CharacterCard
                     key={char.id}
                     variants={motionVariants.staggerItem}
-                    rarity={char.rarity}
-                    isOwned={isOwned}
+                    $color={getRarityColor(char.rarity)}
+                    $glow={getRarityGlow(char.rarity)}
+                    $isOwned={isOwned}
                     onClick={() => openPreview({...char, isOwned, isVideo: isVideoMedia})}
                     whileHover={{ y: -6, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
@@ -324,13 +325,13 @@ const CollectionPage = () => {
                           loop
                           muted
                           playsInline
-                          isOwned={isOwned}
+                          $isOwned={isOwned}
                         />
                       ) : (
                         <CardImage
                           src={imagePath}
                           alt={char.name}
-                          isOwned={isOwned}
+                          $isOwned={isOwned}
                           onError={(e) => {
                             if (!e.target.src.includes('placeholder.com')) {
                               e.target.src = 'https://via.placeholder.com/200?text=No+Image';
@@ -343,11 +344,11 @@ const CollectionPage = () => {
                           <NotOwnedLabel>{t('common.notOwned')}</NotOwnedLabel>
                         </NotOwnedOverlay>
                       )}
-                      <RarityIndicator rarity={char.rarity} />
+                      <RarityIndicator $color={getRarityColor(char.rarity)} />
                     </CardImageWrapper>
                     <CardContent>
-                      <CharName isOwned={isOwned}>{char.name}</CharName>
-                      <CharSeries isOwned={isOwned}>{char.series}</CharSeries>
+                      <CharName $isOwned={isOwned}>{char.name}</CharName>
+                      <CharSeries $isOwned={isOwned}>{char.series}</CharSeries>
                     </CardContent>
                   </CharacterCard>
                 );
@@ -607,14 +608,14 @@ const FilterOptions = styled.div`
 const FilterChip = styled.button`
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: ${props => props.active 
-    ? props.color ? `${props.color}20` : 'rgba(88, 86, 214, 0.15)'
+    ? props.$color ? `${props.$color}20` : 'rgba(88, 86, 214, 0.15)'
     : theme.colors.glass};
   border: 1px solid ${props => props.active 
-    ? props.color || theme.colors.accent 
+    ? props.$color || theme.colors.accent 
     : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.full};
   color: ${props => props.active 
-    ? props.color || theme.colors.accent 
+    ? props.$color || theme.colors.accent 
     : theme.colors.textSecondary};
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.medium};
@@ -622,8 +623,8 @@ const FilterChip = styled.button`
   transition: all ${theme.transitions.fast};
   
   &:hover {
-    background: ${props => props.color ? `${props.color}30` : 'rgba(88, 86, 214, 0.2)'};
-    border-color: ${props => props.color || theme.colors.accent};
+    background: ${props => props.$color ? `${props.$color}30` : 'rgba(88, 86, 214, 0.2)'};
+    border-color: ${props => props.$color || theme.colors.accent};
   }
 `;
 
@@ -728,14 +729,14 @@ const CharacterCard = styled(motion.div)`
   border-radius: ${theme.radius.xl};
   overflow: hidden;
   cursor: pointer;
-  border: 1px solid ${props => props.isOwned 
+  border: 1px solid ${props => props.$isOwned 
     ? theme.colors.surfaceBorder 
     : 'rgba(255, 255, 255, 0.03)'};
   transition: all ${theme.transitions.fast};
   
   &:hover {
-    border-color: ${props => getRarityColor(props.rarity)};
-    box-shadow: ${props => getRarityGlow(props.rarity)};
+    border-color: ${props => props.$color};
+    box-shadow: ${props => props.$glow};
   }
 `;
 
@@ -749,12 +750,12 @@ const CardImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: ${props => props.isOwned ? 'none' : 'grayscale(70%) brightness(0.6)'};
+  filter: ${props => props.$isOwned ? 'none' : 'grayscale(70%) brightness(0.6)'};
   transition: all ${theme.transitions.slow};
   
   ${CharacterCard}:hover & {
     transform: scale(1.05);
-    filter: ${props => props.isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
+    filter: ${props => props.$isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
   }
 `;
 
@@ -762,11 +763,11 @@ const CardVideo = styled.video`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: ${props => props.isOwned ? 'none' : 'grayscale(70%) brightness(0.6)'};
+  filter: ${props => props.$isOwned ? 'none' : 'grayscale(70%) brightness(0.6)'};
   transition: filter ${theme.transitions.slow};
   
   ${CharacterCard}:hover & {
-    filter: ${props => props.isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
+    filter: ${props => props.$isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
   }
 `;
 
@@ -794,7 +795,7 @@ const RarityIndicator = styled.div`
   left: 0;
   right: 0;
   height: 3px;
-  background: ${props => getRarityColor(props.rarity)};
+  background: ${props => props.$color};
 `;
 
 const CardContent = styled.div`
@@ -804,7 +805,7 @@ const CardContent = styled.div`
 const CharName = styled.h3`
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.semibold};
-  color: ${props => props.isOwned ? theme.colors.text : theme.colors.textSecondary};
+  color: ${props => props.$isOwned ? theme.colors.text : theme.colors.textSecondary};
   margin: 0 0 2px;
   white-space: nowrap;
   overflow: hidden;
@@ -813,7 +814,7 @@ const CharName = styled.h3`
 
 const CharSeries = styled.p`
   font-size: ${theme.fontSizes.xs};
-  color: ${props => props.isOwned ? theme.colors.textSecondary : theme.colors.textMuted};
+  color: ${props => props.$isOwned ? theme.colors.textSecondary : theme.colors.textMuted};
   margin: 0;
   white-space: nowrap;
   overflow: hidden;

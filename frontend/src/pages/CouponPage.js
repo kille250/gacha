@@ -5,19 +5,20 @@ import { useTranslation } from 'react-i18next';
 import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
 import api, { getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
+import { useRarity } from '../context/RarityContext';
 import {
   theme,
   PageWrapper,
   Container,
   Section,
   Heading2,
-  Alert,
-  getRarityColor
+  Alert
 } from '../styles/DesignSystem';
 
 const CouponPage = () => {
   const { t } = useTranslation();
   const { user, setUser } = useContext(AuthContext);
+  const { getRarityColor } = useRarity();
   const [couponCode, setCouponCode] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState(null);
@@ -221,7 +222,7 @@ const CouponPage = () => {
                           <CharacterDetails>
                             <CharacterName>{rewardInfo.reward.character.name}</CharacterName>
                             <CharacterSeries>{rewardInfo.reward.character.series}</CharacterSeries>
-                            <RarityBadge rarity={rewardInfo.reward.character.rarity}>
+                            <RarityBadge $color={getRarityColor(rewardInfo.reward.character.rarity)}>
                               {rarityIcons[rewardInfo.reward.character.rarity]} {rewardInfo.reward.character.rarity}
                             </RarityBadge>
                           </CharacterDetails>
@@ -551,7 +552,7 @@ const RarityBadge = styled.span`
   display: inline-flex;
   align-items: center;
   gap: ${theme.spacing.xs};
-  background: ${props => getRarityColor(props.rarity)};
+  background: ${props => props.$color};
   color: white;
   padding: ${theme.spacing.xs} ${theme.spacing.md};
   border-radius: ${theme.radius.full};
