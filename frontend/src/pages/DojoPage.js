@@ -1643,7 +1643,7 @@ const SearchInput = styled.input`
 const ModalBody = styled.div`
   flex: 1;
   overflow-y: auto;
-  padding: ${theme.spacing.md};
+  padding: 0 ${theme.spacing.md} ${theme.spacing.md};
   -webkit-overflow-scrolling: touch;
   
   /* Custom scrollbar */
@@ -1684,6 +1684,10 @@ const NoCharacters = styled.div`
 
 const SeriesGroup = styled.div`
   margin-bottom: ${theme.spacing.lg};
+  
+  &:first-child {
+    padding-top: ${theme.spacing.md};
+  }
 `;
 
 const SeriesTitle = styled.div`
@@ -1691,22 +1695,22 @@ const SeriesTitle = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.textSecondary};
   margin-bottom: ${theme.spacing.sm};
-  padding: ${theme.spacing.sm} ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: ${theme.colors.backgroundSecondary};
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   position: sticky;
   top: 0;
-  z-index: 2;
+  z-index: 10;
   margin-left: -${theme.spacing.md};
   margin-right: -${theme.spacing.md};
-  padding-left: ${theme.spacing.md};
-  padding-right: ${theme.spacing.md};
 `;
 
 const CharacterGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(3, 1fr);
   gap: ${theme.spacing.sm};
+  position: relative;
+  z-index: 1;
   
   @media (min-width: ${theme.breakpoints.sm}) {
     grid-template-columns: repeat(4, 1fr);
