@@ -32,7 +32,8 @@ const {
 } = require('../utils/rollEngine');
 const {
   acquireCharacter,
-  acquireMultipleCharacters
+  acquireMultipleCharacters,
+  LEVELING_CONFIG
 } = require('../utils/characterLeveling');
 
 // ===========================================
@@ -633,14 +634,16 @@ router.post('/:id/roll', auth, async (req, res) => {
       return res.status(400).json({ error: 'No characters available to roll' });
     }
     
-    // Add character with leveling on duplicates
-    const acquisition = await acquireCharacter(userId, result.character.id);
+    // Add character (shards on duplicates, bonus points if max level)
+    const acquisition = await acquireCharacter(userId, result.character.id, user);
     
     const isBannerPull = context.bannerCharacters.some(c => c.id === result.character.id);
-    const levelInfo = acquisition.isDuplicate 
-      ? `(duplicate → Lv.${acquisition.newLevel}${acquisition.leveledUp ? ' LEVEL UP!' : ''})` 
+    const shardInfo = acquisition.isDuplicate 
+      ? acquisition.isMaxLevel 
+        ? `(max level → +${acquisition.bonusPoints} pts)` 
+        : `(+1 shard, total: ${acquisition.shards})`
       : '(new)';
-    console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${result.character.name} (${result.actualRarity}) from ${isBannerPull ? 'banner' : 'standard'} pool ${levelInfo}. Cost: ${cost} points`);
+    console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${result.character.name} (${result.actualRarity}) from ${isBannerPull ? 'banner' : 'standard'} pool ${shardInfo}. Cost: ${cost} points`);
     
     releaseRollLock(userId);
     
@@ -659,10 +662,11 @@ router.post('/:id/roll', auth, async (req, res) => {
       acquisition: {
         isNew: acquisition.isNew,
         isDuplicate: acquisition.isDuplicate,
-        leveledUp: acquisition.leveledUp,
-        previousLevel: acquisition.previousLevel,
-        level: acquisition.newLevel,
-        isMaxLevel: acquisition.isMaxLevel
+        level: acquisition.level,
+        shards: acquisition.shards,
+        isMaxLevel: acquisition.isMaxLevel,
+        bonusPoints: acquisition.bonusPoints,
+        canLevelUp: acquisition.canLevelUp
       }
     });
   } catch (err) {
@@ -796,9 +800,9 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
     
     const results = await executeBannerMultiRoll(context, count, premiumCount);
     
-    // Add all characters to collection (with leveling on duplicates)
+    // Add all characters (shards on duplicates, bonus points if max)
     const characters = results.map(r => r.character).filter(c => c);
-    const acquisitions = await acquireMultipleCharacters(userId, characters);
+    const acquisitions = await acquireMultipleCharacters(userId, characters, user);
     
     // Build character results with acquisition info
     const charactersWithLevels = results.map(r => {
@@ -811,18 +815,20 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
         acquisition: acq ? {
           isNew: acq.isNew,
           isDuplicate: acq.isDuplicate,
-          leveledUp: acq.leveledUp,
-          level: acq.newLevel,
-          isMaxLevel: acq.isMaxLevel
+          level: acq.level,
+          shards: acq.shards,
+          isMaxLevel: acq.isMaxLevel,
+          bonusPoints: acq.bonusPoints
         } : null
       };
     }).filter(c => c);
     
     const hasRarePlus = results.some(r => r.wasPity || ['rare', 'epic', 'legendary'].includes(r.actualRarity));
-    const levelUps = acquisitions.filter(a => a.leveledUp).length;
     const newCards = acquisitions.filter(a => a.isNew).length;
+    const shardsGained = acquisitions.filter(a => a.isDuplicate && !a.isMaxLevel).length;
+    const bonusPointsTotal = acquisitions.reduce((sum, a) => sum + (a.bonusPoints || 0), 0);
     
-    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%, new: ${newCards}, levelups: ${levelUps})`);
+    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);
     
     releaseRollLock(userId);
     
@@ -839,7 +845,8 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       },
       summary: {
         newCards,
-        levelUps,
+        shardsGained,
+        bonusPoints: bonusPointsTotal,
         duplicates: acquisitions.filter(a => a.isDuplicate).length
       }
     });

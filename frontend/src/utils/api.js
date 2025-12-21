@@ -177,6 +177,12 @@ export const getCollectionData = async () => {
   return response.data;
 };
 
+export const levelUpCharacter = async (characterId) => {
+  clearCache('/characters/collection');
+  const response = await api.post(`/characters/${characterId}/level-up`);
+  return response.data;
+};
+
 // Re-export getStoredUser as getCurrentUser for backwards compatibility
 export const getCurrentUser = getStoredUser;
 

@@ -1,8 +1,8 @@
-import React from 'react';
+import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle, MdClose } from 'react-icons/md';
-import { FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
+import { FaDice, FaGem, FaTrophy, FaStar, FaArrowUp } from 'react-icons/fa';
 import { useRarity } from '../../context/RarityContext';
 
 const rarityIcons = {
@@ -13,8 +13,22 @@ const rarityIcons = {
   legendary: <FaTrophy />
 };
 
-const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwned, isVideo, isBannerCharacter, level }) => {
+const ImagePreviewModal = ({ 
+  isOpen, onClose, image, name, series, rarity, isOwned, isVideo, isBannerCharacter, 
+  level, shards, shardsToNextLevel, canLevelUp, onLevelUp, characterId
+}) => {
   const { getRarityColor } = useRarity();
+  const [isLevelingUp, setIsLevelingUp] = useState(false);
+  
+  const handleLevelUp = async () => {
+    if (!onLevelUp || isLevelingUp) return;
+    setIsLevelingUp(true);
+    try {
+      await onLevelUp(characterId);
+    } finally {
+      setIsLevelingUp(false);
+    }
+  };
   
   const handleModalClick = (e) => {
     e.stopPropagation();
@@ -91,7 +105,12 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
                   )}
                   {isOwned && level > 0 && (
                     <Badge variant={level >= 5 ? 'maxLevel' : 'level'}>
-                      Lv.{level}{level >= 5 ? ' ★' : ''}
+                      Lv.{level}{level >= 5 ? ' MAX' : ''}
+                    </Badge>
+                  )}
+                  {isOwned && level < 5 && shards !== undefined && (
+                    <Badge variant="shards">
+                      ◆ {shards}/{shardsToNextLevel || '?'}
                     </Badge>
                   )}
                   {isBannerCharacter && (
@@ -104,6 +123,19 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
                     <span>{rarity}</span>
                   </RarityPill>
                 </BadgesRow>
+                
+                {/* Level Up Button */}
+                {isOwned && canLevelUp && onLevelUp && (
+                  <LevelUpButton 
+                    onClick={handleLevelUp}
+                    disabled={isLevelingUp}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <FaArrowUp />
+                    {isLevelingUp ? 'Leveling...' : `Level Up to Lv.${level + 1}`}
+                  </LevelUpButton>
+                )}
                 
                 {/* Character Info */}
                 <CharacterInfo>
@@ -265,6 +297,41 @@ const Badge = styled.div`
     background: rgba(255, 159, 10, 0.15);
     color: #FF9F0A;
   `}
+  
+  ${props => props.variant === 'shards' && `
+    background: rgba(175, 82, 222, 0.15);
+    color: #AF52DE;
+  `}
+`;
+
+const LevelUpButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  width: 100%;
+  padding: 14px 20px;
+  background: linear-gradient(135deg, #34C759, #30B350);
+  border: none;
+  border-radius: 12px;
+  color: white;
+  font-size: 15px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  svg {
+    font-size: 14px;
+  }
+  
+  &:hover:not(:disabled) {
+    box-shadow: 0 4px 20px rgba(52, 199, 89, 0.4);
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
 `;
 
 const RarityPill = styled.div`

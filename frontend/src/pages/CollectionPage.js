@@ -2,7 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { getCollectionData, getAssetUrl } from '../utils/api';
+import { getCollectionData, getAssetUrl, levelUpCharacter } from '../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
@@ -77,6 +77,40 @@ const CollectionPage = () => {
   const closePreview = () => {
     setPreviewOpen(false);
   };
+  
+  const handleLevelUp = async (characterId) => {
+    try {
+      const result = await levelUpCharacter(characterId);
+      if (result.success) {
+        // Update the collection state with new level
+        setCollection(prev => prev.map(char => 
+          char.id === characterId 
+            ? { 
+                ...char, 
+                level: result.newLevel, 
+                shards: result.shardsRemaining,
+                isMaxLevel: result.isMaxLevel,
+                shardsToNextLevel: result.shardsToNextLevel,
+                canLevelUp: result.shardsToNextLevel && result.shardsRemaining >= result.shardsToNextLevel
+              }
+            : char
+        ));
+        // Update preview char too
+        if (previewChar?.id === characterId) {
+          setPreviewChar(prev => ({
+            ...prev,
+            level: result.newLevel,
+            shards: result.shardsRemaining,
+            isMaxLevel: result.isMaxLevel,
+            shardsToNextLevel: result.shardsToNextLevel,
+            canLevelUp: result.shardsToNextLevel && result.shardsRemaining >= result.shardsToNextLevel
+          }));
+        }
+      }
+    } catch (err) {
+      console.error('Level up failed:', err);
+    }
+  };
 
   const getImagePath = (imageSrc) => {
     if (!imageSrc) return PLACEHOLDER_IMAGE;
@@ -86,7 +120,13 @@ const CollectionPage = () => {
   const ownedCharIds = new Set(collection.map(char => char.id));
   
   // Map character IDs to their level info (from collection data)
-  const charLevels = new Map(collection.map(char => [char.id, { level: char.level || 1, isMaxLevel: char.isMaxLevel }]));
+  const charLevels = new Map(collection.map(char => [char.id, { 
+    level: char.level || 1, 
+    isMaxLevel: char.isMaxLevel,
+    shards: char.shards || 0,
+    shardsToNextLevel: char.shardsToNextLevel,
+    canLevelUp: char.canLevelUp
+  }]));
 
   const getFilteredCharacters = () => {
     let characters = [...allCharacters];
@@ -311,6 +351,9 @@ const CollectionPage = () => {
                 const levelInfo = charLevels.get(char.id);
                 const level = levelInfo?.level || 1;
                 const isMaxLevel = levelInfo?.isMaxLevel || false;
+                const shards = levelInfo?.shards || 0;
+                const shardsToNextLevel = levelInfo?.shardsToNextLevel;
+                const canLevelUp = levelInfo?.canLevelUp || false;
                 
                 return (
                   <CharacterCard
@@ -319,7 +362,7 @@ const CollectionPage = () => {
                     $color={getRarityColor(char.rarity)}
                     $glow={getRarityGlow(char.rarity)}
                     $isOwned={isOwned}
-                    onClick={() => openPreview({...char, isOwned, isVideo: isVideoMedia, level})}
+                    onClick={() => openPreview({...char, isOwned, isVideo: isVideoMedia, level, shards, shardsToNextLevel, canLevelUp})}
                     whileHover={{ y: -6, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
@@ -350,9 +393,9 @@ const CollectionPage = () => {
                           <NotOwnedLabel>{t('common.notOwned')}</NotOwnedLabel>
                         </NotOwnedOverlay>
                       )}
-                      {isOwned && level > 1 && (
-                        <LevelBadge $isMaxLevel={isMaxLevel}>
-                          Lv.{level}
+                      {isOwned && (
+                        <LevelBadge $isMaxLevel={isMaxLevel} $canLevelUp={canLevelUp}>
+                          Lv.{level}{canLevelUp && ' ⬆'}
                         </LevelBadge>
                       )}
                       <RarityIndicator $color={getRarityColor(char.rarity)} />
@@ -400,6 +443,11 @@ const CollectionPage = () => {
         isOwned={previewChar?.isOwned}
         isVideo={previewChar?.isVideo || isVideo(previewChar?.image)}
         level={previewChar?.level || 1}
+        shards={previewChar?.shards}
+        shardsToNextLevel={previewChar?.shardsToNextLevel}
+        canLevelUp={previewChar?.canLevelUp}
+        characterId={previewChar?.id}
+        onLevelUp={handleLevelUp}
       />
     </StyledPageWrapper>
   );
@@ -815,20 +863,24 @@ const LevelBadge = styled.div`
   top: 8px;
   right: 8px;
   padding: 4px 8px;
-  background: ${props => props.$isMaxLevel 
-    ? 'linear-gradient(135deg, #ffd700, #ff8c00)' 
-    : 'rgba(0, 0, 0, 0.75)'};
+  background: ${props => {
+    if (props.$isMaxLevel) return 'linear-gradient(135deg, #ffd700, #ff8c00)';
+    if (props.$canLevelUp) return 'linear-gradient(135deg, #34C759, #30B350)';
+    return 'rgba(0, 0, 0, 0.75)';
+  }};
   backdrop-filter: blur(4px);
   border-radius: ${theme.radius.full};
   font-size: ${theme.fontSizes.xs};
   font-weight: ${theme.fontWeights.bold};
-  color: ${props => props.$isMaxLevel ? '#000' : '#fff'};
-  box-shadow: ${props => props.$isMaxLevel 
-    ? '0 0 10px rgba(255, 215, 0, 0.5)' 
-    : '0 2px 4px rgba(0, 0, 0, 0.3)'};
+  color: ${props => (props.$isMaxLevel || props.$canLevelUp) ? '#fff' : 'rgba(255,255,255,0.9)'};
+  box-shadow: ${props => {
+    if (props.$isMaxLevel) return '0 0 10px rgba(255, 215, 0, 0.5)';
+    if (props.$canLevelUp) return '0 0 10px rgba(52, 199, 89, 0.5)';
+    return '0 2px 4px rgba(0, 0, 0, 0.3)';
+  }};
   z-index: 2;
   
-  ${props => props.$isMaxLevel && `
+  ${props => (props.$isMaxLevel || props.$canLevelUp) && `
     animation: pulse 2s ease-in-out infinite;
     
     @keyframes pulse {

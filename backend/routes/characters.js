@@ -21,7 +21,10 @@ const {
 } = require('../utils/rollEngine');
 const {
   acquireCharacter,
-  acquireMultipleCharacters
+  acquireMultipleCharacters,
+  levelUpCharacter,
+  LEVELING_CONFIG,
+  getShardsToLevel
 } = require('../utils/characterLeveling');
 
 // ===========================================
@@ -70,26 +73,32 @@ router.post('/roll', auth, async (req, res) => {
       return res.status(400).json({ error: 'No characters available to roll' });
     }
     
-    // Add character to user's collection (with leveling on duplicates)
-    const acquisition = await acquireCharacter(userId, result.character.id);
+    // Add character to user's collection (shards on duplicates, bonus points if max level)
+    const acquisition = await acquireCharacter(userId, result.character.id, user);
     
-    const levelInfo = acquisition.isDuplicate 
-      ? `(duplicate → Lv.${acquisition.newLevel}${acquisition.leveledUp ? ' LEVEL UP!' : ''})` 
+    const shardInfo = acquisition.isDuplicate 
+      ? acquisition.isMaxLevel 
+        ? `(max level → +${acquisition.bonusPoints} pts)` 
+        : `(+1 shard, total: ${acquisition.shards})`
       : '(new)';
-    console.log(`User ${user.username} (ID: ${user.id}) rolled ${result.character.name} (${result.actualRarity}) ${levelInfo}`);
+    console.log(`User ${user.username} (ID: ${user.id}) rolled ${result.character.name} (${result.actualRarity}) ${shardInfo}`);
     
     releaseRollLock(userId);
     
+    // Refetch user points if bonus was awarded
+    const finalPoints = acquisition.bonusPoints > 0 ? user.points : user.points;
+    
     res.json({
       ...result.character.toJSON(),
-      updatedPoints: user.points,
+      updatedPoints: finalPoints,
       acquisition: {
         isNew: acquisition.isNew,
         isDuplicate: acquisition.isDuplicate,
-        leveledUp: acquisition.leveledUp,
-        previousLevel: acquisition.previousLevel,
-        level: acquisition.newLevel,
-        isMaxLevel: acquisition.isMaxLevel
+        level: acquisition.level,
+        shards: acquisition.shards,
+        isMaxLevel: acquisition.isMaxLevel,
+        bonusPoints: acquisition.bonusPoints,
+        canLevelUp: acquisition.canLevelUp
       }
     });
   } catch (err) {
@@ -140,9 +149,9 @@ router.post('/roll-multi', auth, async (req, res) => {
     // Execute multi-roll
     const results = await executeStandardMultiRoll(context, count);
     
-    // Add all characters to collection (with leveling on duplicates)
+    // Add all characters to collection (shards on duplicates, bonus points if max)
     const characters = results.map(r => r.character).filter(c => c);
-    const acquisitions = await acquireMultipleCharacters(userId, characters);
+    const acquisitions = await acquireMultipleCharacters(userId, characters, user);
     
     // Build character results with acquisition info
     const charactersWithLevels = results.map(r => {
@@ -153,18 +162,20 @@ router.post('/roll-multi', auth, async (req, res) => {
         acquisition: acq ? {
           isNew: acq.isNew,
           isDuplicate: acq.isDuplicate,
-          leveledUp: acq.leveledUp,
-          level: acq.newLevel,
-          isMaxLevel: acq.isMaxLevel
+          level: acq.level,
+          shards: acq.shards,
+          isMaxLevel: acq.isMaxLevel,
+          bonusPoints: acq.bonusPoints
         } : null
       };
     }).filter(c => c);
     
     const hasRarePlus = results.some(r => r.wasPity || ['rare', 'epic', 'legendary'].includes(r.actualRarity));
-    const levelUps = acquisitions.filter(a => a.leveledUp).length;
     const newCards = acquisitions.filter(a => a.isNew).length;
+    const shardsGained = acquisitions.filter(a => a.isDuplicate && !a.isMaxLevel).length;
+    const bonusPointsTotal = acquisitions.reduce((sum, a) => sum + (a.bonusPoints || 0), 0);
     
-    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%, new: ${newCards}, levelups: ${levelUps})`);
+    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);
     
     releaseRollLock(userId);
     
@@ -173,7 +184,8 @@ router.post('/roll-multi', auth, async (req, res) => {
       updatedPoints: user.points,
       summary: {
         newCards,
-        levelUps,
+        shardsGained,
+        bonusPoints: bonusPointsTotal,
         duplicates: acquisitions.filter(a => a.isDuplicate).length
       }
     });
@@ -248,12 +260,18 @@ router.get('/collection', auth, async (req, res) => {
     
     const collection = userCharacters
       .filter(uc => uc.Character)
-      .map(uc => ({
-        ...uc.Character.toJSON(),
-        level: uc.level,
-        duplicateCount: uc.duplicateCount,
-        isMaxLevel: uc.level >= 5
-      }));
+      .map(uc => {
+        const isMax = uc.level >= LEVELING_CONFIG.maxLevel;
+        const shardsNeeded = getShardsToLevel(uc.level);
+        return {
+          ...uc.Character.toJSON(),
+          level: uc.level,
+          shards: uc.duplicateCount,
+          isMaxLevel: isMax,
+          shardsToNextLevel: shardsNeeded,
+          canLevelUp: !isMax && uc.duplicateCount >= shardsNeeded
+        };
+      });
     
     res.json(filterR18Characters(collection, allowR18));
   } catch (err) {
@@ -278,21 +296,71 @@ router.get('/collection-data', auth, async (req, res) => {
     
     const collection = userCharacters
       .filter(uc => uc.Character)
-      .map(uc => ({
-        ...uc.Character.toJSON(),
-        level: uc.level,
-        duplicateCount: uc.duplicateCount,
-        isMaxLevel: uc.level >= 5
-      }));
+      .map(uc => {
+        const isMax = uc.level >= LEVELING_CONFIG.maxLevel;
+        const shardsNeeded = getShardsToLevel(uc.level);
+        return {
+          ...uc.Character.toJSON(),
+          level: uc.level,
+          shards: uc.duplicateCount,
+          isMaxLevel: isMax,
+          shardsToNextLevel: shardsNeeded,
+          canLevelUp: !isMax && uc.duplicateCount >= shardsNeeded
+        };
+      });
     
     const allCharacters = await Character.findAll();
     
     res.json({ 
       collection: filterR18Characters(collection, allowR18), 
-      allCharacters: filterR18Characters(allCharacters, allowR18) 
+      allCharacters: filterR18Characters(allCharacters, allowR18),
+      levelingConfig: {
+        maxLevel: LEVELING_CONFIG.maxLevel,
+        shardsToLevel: LEVELING_CONFIG.shardsToLevel,
+        maxLevelBonusPoints: LEVELING_CONFIG.maxLevelDuplicatePoints
+      }
     });
   } catch (err) {
     console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * Level up a character (manual action)
+ * POST /api/characters/:id/level-up
+ */
+router.post('/:id/level-up', auth, async (req, res) => {
+  try {
+    const characterId = parseInt(req.params.id, 10);
+    
+    if (isNaN(characterId) || characterId <= 0) {
+      return res.status(400).json({ error: 'Invalid character ID' });
+    }
+    
+    const character = await Character.findByPk(characterId);
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+    
+    const result = await levelUpCharacter(req.user.id, characterId);
+    
+    if (!result.success) {
+      return res.status(400).json(result);
+    }
+    
+    console.log(`User ${req.user.id} leveled up ${character.name}: Lv.${result.previousLevel} → Lv.${result.newLevel}`);
+    
+    res.json({
+      ...result,
+      character: {
+        id: character.id,
+        name: character.name,
+        rarity: character.rarity
+      }
+    });
+  } catch (err) {
+    console.error('Level up error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

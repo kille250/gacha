@@ -258,7 +258,7 @@ router.post('/redeem', auth, async (req, res) => {
       rewardDetails = { coins: coupon.value };
     } 
     else if (coupon.type === 'character') {
-      // Add character to user's collection (with leveling on duplicates)
+      // Add character to user's collection (shards on duplicates)
       if (!coupon.characterId) {
         return res.status(400).json({ error: 'Invalid character coupon' });
       }
@@ -268,15 +268,16 @@ router.post('/redeem', auth, async (req, res) => {
         return res.status(404).json({ error: 'Character not found' });
       }
       
-      const acquisition = await acquireCharacter(user.id, character.id);
+      const acquisition = await acquireCharacter(user.id, character.id, user);
       rewardDetails = { 
         character,
         acquisition: {
           isNew: acquisition.isNew,
           isDuplicate: acquisition.isDuplicate,
-          leveledUp: acquisition.leveledUp,
-          level: acquisition.newLevel,
-          isMaxLevel: acquisition.isMaxLevel
+          level: acquisition.level,
+          shards: acquisition.shards,
+          isMaxLevel: acquisition.isMaxLevel,
+          bonusPoints: acquisition.bonusPoints
         }
       };
     }
