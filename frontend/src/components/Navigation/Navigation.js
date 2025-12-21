@@ -1,4 +1,4 @@
-import React, { useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { useContext, useState, useEffect, useRef } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -19,9 +19,10 @@ import {
 import { FaGift, FaTicketAlt, FaDice, FaFish } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import api, { invalidateCache } from '../../utils/api';
-import { theme } from '../../styles/DesignSystem';
+import { theme, LoadingSpinner as SharedLoadingSpinner } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { languages } from '../../i18n';
+import { useHourlyReward } from '../../hooks';
 
 const Navigation = () => {
   const { t, i18n } = useTranslation();
@@ -30,17 +31,17 @@ const Navigation = () => {
   const navigate = useNavigate();
   const profileDropdownRef = useRef(null);
   
-  const [rewardStatus, setRewardStatus] = useState({
-    available: false,       
-    loading: true,         
-    timeRemaining: t('nav.checking'),
-    nextRewardTime: null,
-    checked: false          
-  });
-  const [rewardPopup, setRewardPopup] = useState({
-    show: false,
-    amount: 0
-  });
+  // Use the extracted hourly reward hook
+  const {
+    available: rewardAvailable,
+    loading: rewardLoading,
+    checked: rewardChecked,
+    timeRemaining,
+    showPopup: rewardPopupShow,
+    popupAmount,
+    claim: claimHourlyReward,
+    canClaim
+  } = useHourlyReward();
   
   // Mobile menu state
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
@@ -53,9 +54,6 @@ const Navigation = () => {
   
   // R18 toggle state
   const [isTogglingR18, setIsTogglingR18] = useState(false);
-  
-  // Track if we just claimed to prevent race conditions
-  const [justClaimed, setJustClaimed] = useState(false);
   
   // Close profile dropdown when clicking outside
   useEffect(() => {
@@ -97,183 +95,6 @@ const Navigation = () => {
     setShowProfileDropdown(false);
   }, [location]);
 
-  // Process reward data helper
-  const processRewardData = useCallback((lastRewardData) => {
-    if (justClaimed) return;
-    
-    const lastReward = lastRewardData ? new Date(lastRewardData) : null;
-    const now = new Date();
-    const rewardInterval = 60 * 60 * 1000;
-    
-    if (!lastReward || now - lastReward > rewardInterval) {
-      setRewardStatus({
-        available: true,
-        loading: false,
-        timeRemaining: null,
-        nextRewardTime: null,
-        checked: true
-      });
-    } else {
-      const remainingTime = rewardInterval - (now - lastReward);
-      const minutes = Math.floor(remainingTime / (60 * 1000));
-      const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
-      const nextTime = new Date(lastReward.getTime() + rewardInterval);
-      
-      setRewardStatus({
-        available: false,
-        loading: false,
-        timeRemaining: `${minutes}m ${seconds}s`,
-        nextRewardTime: nextTime,
-        checked: true
-      });
-    }
-  }, [justClaimed]);
-
-  // Check if hourly reward is available
-  const checkRewardAvailability = useCallback(async (forceRefresh = false) => {
-    if (justClaimed) return;
-    
-    if (!user) {
-      setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
-      return;
-    }
-    
-    const token = localStorage.getItem('token');
-    if (!token) {
-      setRewardStatus(prev => ({ ...prev, loading: false, checked: true }));
-      return;
-    }
-    
-    const lastRewardData = user.lastDailyReward;
-    
-    if (!lastRewardData && forceRefresh) {
-      try {
-        if (!rewardStatus.checked) {
-          setRewardStatus(prev => ({ 
-            ...prev, 
-            timeRemaining: "Checking...",
-            available: false
-          }));
-        }
-        
-        const response = await api.get('/auth/me');
-        processRewardData(response.data.lastDailyReward);
-      } catch (err) {
-        console.error('Error checking reward:', err);
-        setRewardStatus(prev => ({
-          ...prev,
-          loading: false,
-          available: false,
-          checked: true,
-          timeRemaining: "Check failed"
-        }));
-      }
-    } else {
-      processRewardData(lastRewardData);
-    }
-  }, [user, justClaimed, processRewardData, rewardStatus.checked]);
-  
-  
-  // Update timer periodically
-  useEffect(() => {
-    const updateTimer = () => {
-      if (!rewardStatus.nextRewardTime) return;
-      
-      const now = new Date();
-      const nextReward = new Date(rewardStatus.nextRewardTime);
-      
-      if (now >= nextReward) {
-        setRewardStatus(prev => ({
-          ...prev,
-          available: true,
-          timeRemaining: null,
-          nextRewardTime: null
-        }));
-      } else {
-        const remainingTime = nextReward - now;
-        const minutes = Math.floor(remainingTime / (60 * 1000));
-        const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
-        
-        setRewardStatus(prev => ({
-          ...prev,
-          timeRemaining: `${minutes}m ${seconds}s`
-        }));
-      }
-    };
-    
-    const timerInterval = setInterval(updateTimer, 1000);
-    return () => clearInterval(timerInterval);
-  }, [rewardStatus.nextRewardTime]);
-  
-  useEffect(() => {
-    checkRewardAvailability();
-  }, [user?.lastDailyReward, checkRewardAvailability]);
-  
-  // Claim the hourly reward
-  const claimHourlyReward = async () => {
-    if (rewardStatus.loading || !rewardStatus.available || justClaimed) return;
-    
-    setJustClaimed(true);
-    setRewardStatus(prev => ({ ...prev, loading: true, available: false }));
-    
-    try {
-      const token = localStorage.getItem('token');
-      if (!token) {
-        setJustClaimed(false);
-        return;
-      }
-      
-      const response = await api.post('/auth/daily-reward');
-      
-      setRewardPopup({
-        show: true,
-        amount: response.data.rewardAmount
-      });
-      
-      const now = new Date();
-      const rewardInterval = 60 * 60 * 1000;
-      const nextRewardTime = new Date(now.getTime() + rewardInterval);
-      
-      setRewardStatus({
-        available: false,
-        loading: false,
-        timeRemaining: '59m 59s',
-        nextRewardTime: nextRewardTime,
-        checked: true
-      });
-      
-      await refreshUser();
-      
-      setTimeout(() => {
-        setJustClaimed(false);
-      }, 2000);
-      
-      setTimeout(() => {
-        setRewardPopup({ show: false, amount: 0 });
-      }, 3000);
-      
-    } catch (err) {
-      console.error('Error claiming reward:', err);
-      
-      if (err.response?.data?.nextRewardTime) {
-        setRewardStatus({
-          available: false,
-          loading: false,
-          timeRemaining: `${err.response.data.nextRewardTime.minutes}m ${err.response.data.nextRewardTime.seconds}s`,
-          nextRewardTime: new Date(err.response.data.nextRewardTime.timestamp),
-          checked: true
-        });
-      } else {
-        setRewardStatus(prev => ({
-          ...prev,
-          loading: false,
-          available: false
-        }));
-        
-        setTimeout(checkRewardAvailability, 3000);
-      }
-    }
-  };
   
   const handleLogout = () => {
     logout();
@@ -358,16 +179,16 @@ const Navigation = () => {
           {/* Hourly Reward Button */}
           {user && (
             <RewardButton
-              available={rewardStatus.checked && rewardStatus.available}
-              onClick={rewardStatus.available && rewardStatus.checked ? claimHourlyReward : undefined}
-              disabled={!rewardStatus.available || rewardStatus.loading || !rewardStatus.checked}
-              whileHover={rewardStatus.available && rewardStatus.checked ? { scale: 1.02 } : {}}
-              whileTap={rewardStatus.available && rewardStatus.checked ? { scale: 0.98 } : {}}
-              title={rewardStatus.available ? t('nav.claim') : rewardStatus.timeRemaining}
+              available={canClaim}
+              onClick={canClaim ? claimHourlyReward : undefined}
+              disabled={!canClaim}
+              whileHover={canClaim ? { scale: 1.02 } : {}}
+              whileTap={canClaim ? { scale: 0.98 } : {}}
+              title={rewardAvailable ? t('nav.claim') : timeRemaining}
             >
-              {rewardStatus.loading ? (
+              {rewardLoading ? (
                 <LoadingSpinner />
-              ) : rewardStatus.available && rewardStatus.checked ? (
+              ) : canClaim ? (
                 <>
                   <FaGift />
                   <RewardText>{t('nav.claim')}</RewardText>
@@ -375,7 +196,7 @@ const Navigation = () => {
               ) : (
                 <>
                   <MdAccessTimeFilled />
-                  <TimeRemaining>{rewardStatus.timeRemaining || t('nav.wait')}</TimeRemaining>
+                  <TimeRemaining>{timeRemaining || t('nav.wait')}</TimeRemaining>
                 </>
               )}
             </RewardButton>
@@ -530,13 +351,13 @@ const Navigation = () => {
               {/* Hourly Reward - Mobile */}
               {user && (
                 <MobileRewardButton
-                  available={rewardStatus.checked && rewardStatus.available}
-                  onClick={rewardStatus.available && rewardStatus.checked ? claimHourlyReward : undefined}
-                  disabled={!rewardStatus.available || rewardStatus.loading || !rewardStatus.checked}
+                  available={canClaim}
+                  onClick={canClaim ? claimHourlyReward : undefined}
+                  disabled={!canClaim}
                 >
-                  {rewardStatus.loading ? (
+                  {rewardLoading ? (
                     <LoadingSpinner />
-                  ) : rewardStatus.available && rewardStatus.checked ? (
+                  ) : canClaim ? (
                     <>
                       <FaGift />
                       <span>{t('nav.claim')} {t('nav.hourlyReward')}</span>
@@ -544,7 +365,7 @@ const Navigation = () => {
                   ) : (
                     <>
                       <MdAccessTimeFilled />
-                      <span>{t('nav.hourlyReward')}: {rewardStatus.timeRemaining || t('nav.wait')}</span>
+                      <span>{t('nav.hourlyReward')}: {timeRemaining || t('nav.wait')}</span>
                     </>
                   )}
                 </MobileRewardButton>
@@ -656,7 +477,7 @@ const Navigation = () => {
       
       {/* Reward Popup */}
       <AnimatePresence>
-        {rewardPopup.show && (
+        {rewardPopupShow && (
           <PopupContainer>
             <RewardPopup
               initial={{ opacity: 0, y: -50, scale: 0.9 }}
@@ -667,7 +488,7 @@ const Navigation = () => {
               <MdCelebration className="celebration-icon" />
               <PopupContent>
                 <PopupTitle>{t('nav.hourlyReward')}</PopupTitle>
-                <PopupAmount>+{rewardPopup.amount} 🪙</PopupAmount>
+                <PopupAmount>+{popupAmount} 🪙</PopupAmount>
               </PopupContent>
             </RewardPopup>
           </PopupContainer>
@@ -853,18 +674,10 @@ const TimeRemaining = styled.span`
   white-space: nowrap;
 `;
 
-const LoadingSpinner = styled.div`
-  width: 14px;
-  height: 14px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-radius: 50%;
-  border-top-color: white;
-  animation: spin 0.8s linear infinite;
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-`;
+// Extend shared LoadingSpinner with 14px size for nav context
+const LoadingSpinner = styled(SharedLoadingSpinner).attrs({
+  $size: '14px'
+})``;
 
 // Profile Dropdown
 const ProfileDropdownContainer = styled.div`

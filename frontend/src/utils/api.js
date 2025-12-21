@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { getToken, getTokenHash } from './authStorage';
 
 // Use environment variable for API URL, with fallback for local development
 const getApiBase = () => {
@@ -55,9 +56,7 @@ const getCacheTTL = (url) => {
 
 const getCacheKey = (config) => {
   // Include auth token in cache key so different users get different cached responses
-  const token = localStorage.getItem('token');
-  const tokenHash = token ? token.slice(-8) : 'noauth';
-  return `${config.method || 'get'}:${config.url}:${tokenHash}`;
+  return `${config.method || 'get'}:${config.url}:${getTokenHash()}`;
 };
 
 /**
@@ -99,7 +98,7 @@ const api = axios.create({
 
 // Request interceptor to add auth token and handle caching
 api.interceptors.request.use(config => {
-  const token = localStorage.getItem('token');
+  const token = getToken();
   if (token) {
     config.headers['x-auth-token'] = token;
   }
@@ -178,16 +177,9 @@ export const getCollectionData = async () => {
   return response.data;
 };
 
-export const getCurrentUser = () => {
-  const userString = localStorage.getItem('user');
-  if (!userString) return null;
-  
-  try {
-    return JSON.parse(userString);
-  } catch {
-    return null;
-  }
-};
+// Re-export getStoredUser as getCurrentUser for backwards compatibility
+import { getStoredUser } from './authStorage';
+export const getCurrentUser = getStoredUser;
 
 export const getAllCharacters = async () => {
   const response = await api.get('/characters');

@@ -13,7 +13,7 @@ import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { arrayMove } from '@dnd-kit/sortable';
 import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons, AdminRarities } from '../components/Admin';
-import { theme, PageWrapper, Container } from '../styles/DesignSystem';
+import { theme, PageWrapper, Container, Spinner } from '../styles/DesignSystem';
 
 const AdminPage = () => {
   const { t } = useTranslation();
@@ -91,20 +91,19 @@ const AdminPage = () => {
     if (user?.isAdmin) {
       fetchAllData();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [user?.isAdmin]);
+  }, [user?.isAdmin, fetchAllData]);
 
   // Auto-clear messages
   useEffect(() => {
     if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), 4000);
+      const timer = setTimeout(() => setSuccessMessage(null), theme.timing.successMessageDismiss);
       return () => clearTimeout(timer);
     }
   }, [successMessage]);
 
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => setError(null), 6000);
+      const timer = setTimeout(() => setError(null), theme.timing.errorMessageDismiss);
       return () => clearTimeout(timer);
     }
   }, [error]);
@@ -612,18 +611,8 @@ const LoadingContainer = styled.div`
   padding: ${theme.spacing['4xl']};
 `;
 
-const LoadingSpinner = styled.div`
-  width: 48px;
-  height: 48px;
-  border: 3px solid ${theme.colors.surfaceBorder};
-  border-top-color: ${theme.colors.primary};
-  border-radius: 50%;
-  animation: spin 0.8s linear infinite;
-  
-  @keyframes spin {
-    to { transform: rotate(360deg); }
-  }
-`;
+// Use shared Spinner from DesignSystem (48px default)
+const LoadingSpinner = Spinner;
 
 const LoadingText = styled.p`
   margin-top: ${theme.spacing.lg};

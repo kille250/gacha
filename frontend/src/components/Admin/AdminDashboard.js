@@ -66,7 +66,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
 
   useEffect(() => {
     fetchHealth();
-    const interval = setInterval(fetchHealth, 60000);
+    const interval = setInterval(fetchHealth, theme.timing.healthCheckInterval);
     return () => clearInterval(interval);
   }, []);
 

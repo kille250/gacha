@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -35,12 +35,7 @@ const CollectionPage = () => {
   const [itemsPerPage, setItemsPerPage] = useState(24);
   const [showFilters, setShowFilters] = useState(false);
 
-  useEffect(() => {
-    fetchData();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
-  
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     try {
       setLoading(true);
       // Single API call instead of 2 separate calls
@@ -54,7 +49,11 @@ const CollectionPage = () => {
       setError(err.response?.data?.error || t('admin.failedLoadDashboard'));
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  useEffect(() => {
+    fetchData();
+  }, [fetchData]);
   
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);

@@ -1,6 +1,15 @@
 // src/context/AuthContext.js
 import React, { createContext, useState, useEffect, useCallback } from 'react';
 import api, { invalidateCache, clearCache } from '../utils/api';
+import {
+  getToken,
+  setToken,
+  removeToken,
+  getStoredUser,
+  setStoredUser,
+  removeStoredUser,
+  clearAuthStorage
+} from '../utils/authStorage';
 
 export const AuthContext = createContext();
 
@@ -12,7 +21,7 @@ export const AuthProvider = ({ children }) => {
   // Refresh user data from the server (forces fresh fetch by clearing auth cache)
   const refreshUser = useCallback(async () => {
     try {
-      const token = localStorage.getItem('token');
+      const token = getToken();
       if (!token) return null;
       
       // Clear auth cache to ensure fresh data
@@ -22,7 +31,7 @@ export const AuthProvider = ({ children }) => {
       
       const newUserData = { ...response.data };
       setCurrentUser(newUserData);
-      localStorage.setItem('user', JSON.stringify(newUserData));
+      setStoredUser(newUserData);
       
       return newUserData;
     } catch (error) {
@@ -33,11 +42,11 @@ export const AuthProvider = ({ children }) => {
 
   useEffect(() => {
     const checkLoggedIn = async () => {
-      const token = localStorage.getItem('token');
+      const token = getToken();
       
       if (!token) {
         // No token - ensure clean state
-        localStorage.removeItem('user');
+        removeStoredUser();
         setCurrentUser(null);
         setLoading(false);
         return;
@@ -52,13 +61,12 @@ export const AuthProvider = ({ children }) => {
         const response = await api.get('/auth/me');
         const freshUserData = { ...response.data };
         setCurrentUser(freshUserData);
-        localStorage.setItem('user', JSON.stringify(freshUserData));
+        setStoredUser(freshUserData);
       } catch (error) {
         console.error('Error fetching fresh user data:', error);
         // Token is likely invalid - clear everything
         if (error.response?.status === 401 || error.response?.status === 403) {
-          localStorage.removeItem('token');
-          localStorage.removeItem('user');
+          clearAuthStorage();
           setCurrentUser(null);
         }
       }
@@ -74,14 +82,14 @@ export const AuthProvider = ({ children }) => {
       // Clear any existing cached data before login
       invalidateCache();
       setCurrentUser(null);
-      localStorage.removeItem('user');
+      removeStoredUser();
       
       const response = await api.post('/auth/login', {
         username,
         password
       });
       
-      localStorage.setItem('token', response.data.token);
+      setToken(response.data.token);
       
       // Clear cache again after token is set (new token = new cache namespace)
       invalidateCache();
@@ -91,7 +99,7 @@ export const AuthProvider = ({ children }) => {
       
       const userData = userResponse.data;
       setCurrentUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
+      setStoredUser(userData);
       
       return true;
     } catch (err) {
@@ -106,7 +114,7 @@ export const AuthProvider = ({ children }) => {
       // Clear any existing cached data before registration
       invalidateCache();
       setCurrentUser(null);
-      localStorage.removeItem('user');
+      removeStoredUser();
       
       const response = await api.post('/auth/signup', {
         username,
@@ -114,7 +122,7 @@ export const AuthProvider = ({ children }) => {
         password
       });
       
-      localStorage.setItem('token', response.data.token);
+      setToken(response.data.token);
       
       // Clear cache after token is set
       invalidateCache();
@@ -124,7 +132,7 @@ export const AuthProvider = ({ children }) => {
       
       const userData = userResponse.data;
       setCurrentUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
+      setStoredUser(userData);
       
       return true;
     } catch (err) {
@@ -139,11 +147,11 @@ export const AuthProvider = ({ children }) => {
       // Clear any existing cached data before login
       invalidateCache();
       setCurrentUser(null);
-      localStorage.removeItem('user');
+      removeStoredUser();
       
       const response = await api.post('/auth/google', { credential });
       
-      localStorage.setItem('token', response.data.token);
+      setToken(response.data.token);
       
       // Clear cache after token is set
       invalidateCache();
@@ -153,7 +161,7 @@ export const AuthProvider = ({ children }) => {
       
       const userData = userResponse.data;
       setCurrentUser(userData);
-      localStorage.setItem('user', JSON.stringify(userData));
+      setStoredUser(userData);
       
       return true;
     } catch (err) {
@@ -200,8 +208,7 @@ export const AuthProvider = ({ children }) => {
   const logout = () => {
     // Clear all cached API data first (before removing token)
     invalidateCache();
-    localStorage.removeItem('token');
-    localStorage.removeItem('user');
+    clearAuthStorage();
     setCurrentUser(null);
   };
 

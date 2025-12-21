@@ -1,12 +1,12 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { FaUser, FaEnvelope, FaCheck, FaArrowLeft, FaGoogle, FaLock, FaUnlink, FaLink } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { theme } from '../styles/DesignSystem';
+import { theme, LoadingSpinner, ErrorMessage as SharedErrorMessage, SuccessMessage as SharedSuccessMessage } from '../styles/DesignSystem';
 import api from '../utils/api';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -368,11 +368,6 @@ const SettingsPage = () => {
   );
 };
 
-// Animations
-const spin = keyframes`
-  to { transform: rotate(360deg); }
-`;
-
 // Styled Components
 const PageContainer = styled.div`
   min-height: 100vh;
@@ -581,35 +576,9 @@ const SubmitButton = styled(motion.button)`
   }
 `;
 
-const LoadingSpinner = styled.div`
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: ${spin} 0.8s linear infinite;
-`;
-
-const ErrorMessage = styled.div`
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: rgba(255, 59, 48, 0.15);
-  border: 1px solid rgba(255, 59, 48, 0.3);
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.error};
-  font-size: ${theme.fontSizes.sm};
-`;
-
-const SuccessMessage = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: rgba(52, 199, 89, 0.15);
-  border: 1px solid rgba(52, 199, 89, 0.3);
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.success};
-  font-size: ${theme.fontSizes.sm};
-`;
+// Use shared ErrorMessage and SuccessMessage from DesignSystem
+const ErrorMessage = SharedErrorMessage;
+const SuccessMessage = SharedSuccessMessage;
 
 const WarningBox = styled.div`
   padding: ${theme.spacing.md};

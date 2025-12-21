@@ -1,13 +1,13 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaLock, FaDice, FaArrowRight } from 'react-icons/fa';
 import { MdLanguage } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { theme, motionVariants } from '../styles/DesignSystem';
+import { theme, motionVariants, LoadingSpinner, spin } from '../styles/DesignSystem';
 import { languages } from '../i18n';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -231,10 +231,6 @@ const float = keyframes`
 const pulse = keyframes`
   0%, 100% { opacity: 0.4; }
   50% { opacity: 0.8; }
-`;
-
-const spin = keyframes`
-  to { transform: rotate(360deg); }
 `;
 
 // Styled Components
@@ -485,14 +481,7 @@ const SubmitButton = styled(motion.button)`
   }
 `;
 
-const LoadingSpinner = styled.div`
-  width: 20px;
-  height: 20px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: ${spin} 0.8s linear infinite;
-`;
+// Using shared LoadingSpinner from DesignSystem
 
 const Divider = styled.div`
   display: flex;

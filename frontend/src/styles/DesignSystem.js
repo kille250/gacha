@@ -164,6 +164,18 @@ export const theme = {
     lg: '1024px',
     xl: '1280px',
     '2xl': '1536px'
+  },
+  
+  // Timing constants (in milliseconds)
+  timing: {
+    notificationDismiss: 3000,    // Auto-dismiss notifications
+    successMessageDismiss: 4000,  // Auto-dismiss success messages
+    errorMessageDismiss: 6000,    // Auto-dismiss error messages (longer for reading)
+    tradeResultDismiss: 1500,     // Quick feedback animations
+    stateTransition: 2000,        // Game/UI state transitions
+    retryDelay: 3000,             // Delay before retrying failed operations
+    claimCooldown: 2000,          // Prevent double-claims on rewards
+    healthCheckInterval: 60000,   // Admin health check polling
   }
 };
 
@@ -602,6 +614,20 @@ export const Spinner = styled.div`
   animation: ${spin} 0.8s linear infinite;
 `;
 
+/**
+ * Small inline loading spinner - use for buttons and inline loading states
+ * @prop {string} $size - Size in pixels (default: 20)
+ * @prop {string} $color - Spinner color (default: white)
+ */
+export const LoadingSpinner = styled.div`
+  width: ${props => props.$size || '20px'};
+  height: ${props => props.$size || '20px'};
+  border: 2px solid ${props => props.$color ? `${props.$color}30` : 'rgba(255, 255, 255, 0.3)'};
+  border-top-color: ${props => props.$color || 'white'};
+  border-radius: 50%;
+  animation: ${spin} 0.8s linear infinite;
+`;
+
 export const LoadingDots = styled.div`
   display: flex;
   gap: 6px;
@@ -689,6 +715,33 @@ export const Alert = styled(motion.div)`
     border: 1px solid rgba(255, 159, 10, 0.3);
     color: ${theme.colors.warning};
   `}
+`;
+
+/**
+ * Inline error message - for form validation and inline errors
+ */
+export const ErrorMessage = styled.div`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: rgba(255, 59, 48, 0.15);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.error};
+  font-size: ${theme.fontSizes.sm};
+`;
+
+/**
+ * Inline success message - for form success states
+ */
+export const SuccessMessage = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: rgba(52, 199, 89, 0.15);
+  border: 1px solid rgba(52, 199, 89, 0.3);
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.success};
+  font-size: ${theme.fontSizes.sm};
 `;
 
 // ==================== GRID & LAYOUT ====================

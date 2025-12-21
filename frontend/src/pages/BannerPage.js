@@ -117,8 +117,7 @@ const BannerPage = () => {
       }
     };
     fetchBannerAndPricing();
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [bannerId]);
+  }, [bannerId, t]);
 
   
   const fetchUserCollection = useCallback(async () => {

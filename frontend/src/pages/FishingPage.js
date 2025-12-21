@@ -7,8 +7,9 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import { io } from 'socket.io-client';
 import api, { clearCache, WS_URL, getTradingPostOptions, executeTrade } from '../utils/api';
+import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
-import { ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, motionVariants } from '../styles/DesignSystem';
+import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, motionVariants } from '../styles/DesignSystem';
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
 
 // Game configuration
@@ -75,6 +76,9 @@ const FishingPage = () => {
   const { user, setUser } = useContext(AuthContext);
   const canvasContainerRef = useRef(null);
   const movePlayerRef = useRef(null);
+  // Stable ref for translation function to avoid WebSocket reconnections
+  const tRef = useRef(t);
+  tRef.current = t;
   
   // Player state
   const [playerPos, setPlayerPos] = useState({ x: 10, y: 6 });
@@ -145,7 +149,7 @@ const FishingPage = () => {
   
   // Multiplayer WebSocket connection
   useEffect(() => {
-    const token = localStorage.getItem('token');
+    const token = getToken();
     if (!token) return;
     
     // Connect to fishing namespace using base URL
@@ -180,17 +184,12 @@ const FishingPage = () => {
       console.log('[Multiplayer] Duplicate session detected:', data.message);
       setNotification({
         type: 'error',
-        message: t('fishing.duplicateSession') || 'Disconnected: You opened fishing in another tab'
+        message: tRef.current('fishing.duplicateSession') || 'Disconnected: You opened fishing in another tab'
       });
     });
     
-    // Parse current user ID once for reuse
-    let currentUserId = null;
-    try {
-      currentUserId = JSON.parse(atob(token.split('.')[1]))?.user?.id;
-    } catch (e) {
-      console.error('[Multiplayer] Failed to parse token:', e);
-    }
+    // Get current user ID for filtering self from multiplayer
+    const currentUserId = getUserIdFromToken();
     
     // Initialize with existing players
     socket.on('init', (data) => {
@@ -260,7 +259,6 @@ const FishingPage = () => {
       socket.disconnect();
       socketRef.current = null;
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Sync playerCount with otherPlayers.length (single source of truth)
@@ -365,7 +363,7 @@ const FishingPage = () => {
   // Show notification
   const showNotification = useCallback((message, type = 'info') => {
     setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
+    setTimeout(() => setNotification(null), theme.timing.notificationDismiss);
   }, []);
   
   // Handle trade execution
@@ -389,7 +387,7 @@ const FishingPage = () => {
       setTradingLoading(false);
       
       // Clear result after animation
-      setTimeout(() => setTradeResult(null), 1500);
+      setTimeout(() => setTradeResult(null), theme.timing.tradeResultDismiss);
     } catch (err) {
       showNotification(err.response?.data?.message || t('fishing.tradeFailed'), 'error');
       setTradingLoading(false);
@@ -535,6 +533,23 @@ const FishingPage = () => {
     };
   }, [showHelp, showLeaderboard]);
   
+  // Handle missing fish (defined first as it's used by startFishing)
+  const handleMiss = useCallback(async (sid) => {
+    try {
+      const res = await api.post('/fishing/catch', { sessionId: sid });
+      setLastResult(res.data);
+      setGameState(GAME_STATES.FAILURE);
+      
+      setTimeout(() => {
+        setGameState(GAME_STATES.WALKING);
+        setSessionId(null);
+      }, 2000);
+    } catch (err) {
+      setGameState(GAME_STATES.WALKING);
+      setSessionId(null);
+    }
+  }, []);
+  
   // Start fishing
   const startFishing = useCallback(async () => {
     if (gameStateRef.current !== GAME_STATES.WALKING || !canFishRef.current) return;
@@ -566,8 +581,7 @@ const FishingPage = () => {
       showNotification(err.response?.data?.error || t('fishing.failedCast'), 'error');
       setGameState(GAME_STATES.WALKING);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [t, showNotification]);
+  }, [t, showNotification, handleMiss]);
   
   // Handle catching fish
   const handleCatch = useCallback(async () => {
@@ -610,23 +624,6 @@ const FishingPage = () => {
       setSessionId(null);
     }
   }, [sessionId, t, showNotification]);
-  
-  // Handle missing fish
-  const handleMiss = useCallback(async (sid) => {
-    try {
-      const res = await api.post('/fishing/catch', { sessionId: sid });
-      setLastResult(res.data);
-      setGameState(GAME_STATES.FAILURE);
-      
-      setTimeout(() => {
-        setGameState(GAME_STATES.WALKING);
-        setSessionId(null);
-      }, 2000);
-    } catch (err) {
-      setGameState(GAME_STATES.WALKING);
-      setSessionId(null);
-    }
-  }, []);
   
   // Keep function refs updated for keyboard handler
   useEffect(() => {

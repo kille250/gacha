@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCloudUploadAlt, FaTimes, FaImage, FaVideo, FaTrash, FaCopy, FaCheck, FaExclamationTriangle, FaMagic } from 'react-icons/fa';
 import { API_URL } from '../../utils/api';
+import { getToken } from '../../utils/authStorage';
 import { useRarity } from '../../context/RarityContext';
 
 const MultiUploadModal = ({ show, onClose, onSuccess }) => {
@@ -204,7 +205,7 @@ const response = await fetch(`${API_URL}/admin/characters/multi-upload`, {
     setUploadProgress(0);
     setUploadResult(null);
 
-    const token = localStorage.getItem('token');
+    const token = getToken();
     const BATCH_SIZE = 10; // Upload 10 files at a time
     const batches = [];
     
