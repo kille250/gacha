@@ -431,6 +431,7 @@
     "findAltImage": "Img. Alt.",
     "changeAltImage": "Cambiar Imagen",
     "findAltImageFor": "Buscar imagen alternativa para {{name}}",
+    "altImageSelected": "Imagen alternativa seleccionada de Danbooru",
     "searchingMedia": "Buscando...",
     "noMediaFound": "No se encontraron resultados para este tag",
     "selectThis": "Seleccionar",

@@ -429,6 +429,7 @@
     "findAltImage": "Alt. Bild",
     "changeAltImage": "Bild ändern",
     "findAltImageFor": "Alternatives Bild für {{name}} finden",
+    "altImageSelected": "Alternatives Bild von Danbooru ausgewählt",
     "searchingMedia": "Suche...",
     "noMediaFound": "Keine Ergebnisse für diesen Tag gefunden",
     "selectThis": "Auswählen",

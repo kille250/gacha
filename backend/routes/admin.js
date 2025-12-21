@@ -4,6 +4,8 @@ const router = express.Router();
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
+const http = require('http');
+const https = require('https');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { User, Character, Banner, Coupon, CouponRedemption, FishInventory } = require('../models');
@@ -512,6 +514,139 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
       });
     }
     return res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
+// Update character image from URL (for Danbooru/external images)
+router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
+  try {
+    const characterId = req.params.id;
+    const { imageUrl } = req.body;
+    
+    // Validate character ID
+    if (!isValidId(characterId)) {
+      return res.status(400).json({ error: 'Invalid character ID' });
+    }
+    
+    if (!imageUrl || typeof imageUrl !== 'string') {
+      return res.status(400).json({ error: 'Image URL is required' });
+    }
+    
+    // Validate URL format
+    let parsedUrl;
+    try {
+      parsedUrl = new URL(imageUrl);
+      if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
+        throw new Error('Invalid protocol');
+      }
+    } catch (e) {
+      return res.status(400).json({ error: 'Invalid image URL' });
+    }
+    
+    // Find the character
+    const character = await Character.findByPk(characterId);
+    if (!character) {
+      return res.status(404).json({ error: 'Character not found' });
+    }
+    
+    // Determine file extension from URL
+    const urlPath = parsedUrl.pathname;
+    let ext = path.extname(urlPath).toLowerCase();
+    if (!ext || !['.jpg', '.jpeg', '.png', '.gif', '.webp', '.webm', '.mp4'].includes(ext)) {
+      ext = '.jpg'; // Default to jpg if extension is unclear
+    }
+    
+    // Generate unique filename
+    const filename = `alt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
+    const filepath = path.join(UPLOAD_BASE, 'characters', filename);
+    
+    // Download the image
+    const downloadImage = (url) => {
+      return new Promise((resolve, reject) => {
+        const protocol = url.startsWith('https') ? https : http;
+        const file = fs.createWriteStream(filepath);
+        
+        const options = {
+          headers: {
+            'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
+            'Accept': '*/*',
+            'Referer': new URL(url).origin
+          }
+        };
+        
+        const makeRequest = (reqUrl) => {
+          protocol.get(reqUrl, options, (response) => {
+            // Handle redirects
+            if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+              const redirectUrl = new URL(response.headers.location, reqUrl);
+              makeRequest(redirectUrl.href);
+              return;
+            }
+            
+            if (response.statusCode !== 200) {
+              fs.unlink(filepath, () => {});
+              reject(new Error(`Download failed with status ${response.statusCode}`));
+              return;
+            }
+            
+            response.pipe(file);
+            file.on('finish', () => {
+              file.close(() => {
+                fs.stat(filepath, (err, stats) => {
+                  if (err || stats.size < 1000) {
+                    fs.unlink(filepath, () => {});
+                    reject(new Error('Downloaded file is too small or corrupted'));
+                  } else {
+                    resolve(filepath);
+                  }
+                });
+              });
+            });
+          }).on('error', (err) => {
+            fs.unlink(filepath, () => {});
+            reject(err);
+          });
+        };
+        
+        file.on('error', (err) => {
+          fs.unlink(filepath, () => {});
+          reject(err);
+        });
+        
+        makeRequest(url);
+      });
+    };
+    
+    // Download the image from URL
+    await downloadImage(imageUrl);
+    
+    // Save old image path to delete later
+    const oldImage = character.image;
+    
+    // Update character with new image path
+    const newImagePath = getUrlPath('characters', filename);
+    character.image = newImagePath;
+    await character.save();
+    
+    // Delete old image if it was an uploaded file
+    if (oldImage && oldImage.startsWith('/uploads/')) {
+      const oldFilename = path.basename(oldImage);
+      const oldFilePath = path.join(UPLOAD_BASE, 'characters', oldFilename);
+      if (fs.existsSync(oldFilePath)) {
+        fs.unlinkSync(oldFilePath);
+        console.log(`Deleted old image: ${oldImage}`);
+      }
+    }
+    
+    console.log(`Admin (ID: ${req.user.id}) updated character ${character.id} (${character.name}) image from URL`);
+    
+    res.json({
+      message: 'Character image updated successfully',
+      character
+    });
+  } catch (err) {
+    console.error('Error updating character image from URL:', err);
+    res.status(500).json({ error: err.message || 'Server error' });
   }
 });
 

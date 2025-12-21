@@ -431,6 +431,7 @@
     "findAltImage": "代替画像",
     "changeAltImage": "画像を変更",
     "findAltImageFor": "{{name}}の代替画像を探す",
+    "altImageSelected": "Danbooruから代替画像が選択されました",
     "searchingMedia": "検索中...",
     "noMediaFound": "このタグの結果が見つかりません",
     "selectThis": "選択",
