@@ -68,6 +68,7 @@ User.hasMany(FishInventory, { foreignKey: 'userId' });
 FishInventory.belongsTo(User, { foreignKey: 'userId' });
 
 module.exports = {
+  sequelize,
   User,
   Character,
   Banner,

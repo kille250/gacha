@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { User, Character, UserCharacter } = require('../models');
+const { User, Character, UserCharacter, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const {
   DOJO_CONFIG,
@@ -202,17 +202,27 @@ router.get('/available-characters', auth, async (req, res) => {
 /**
  * POST /api/dojo/assign
  * Assign a character to a training slot
+ * Uses transaction with row locking to prevent race conditions
  */
 router.post('/assign', auth, async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
   try {
     const { characterId, slotIndex } = req.body;
     
     if (characterId === undefined || slotIndex === undefined) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'characterId and slotIndex required' });
     }
     
-    const user = await User.findByPk(req.user.id);
+    // Lock user row to prevent concurrent modifications
+    const user = await User.findByPk(req.user.id, {
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
+    
     if (!user) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'User not found' });
     }
     
@@ -221,23 +231,26 @@ router.post('/assign', auth, async (req, res) => {
     
     // Validate slot index
     if (slotIndex < 0 || slotIndex >= maxSlots) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'Invalid slot index' });
     }
     
     // Verify user owns this character
-    const userWithChars = await User.findByPk(req.user.id, {
-      include: [{
-        model: Character,
-        where: { id: characterId },
-        required: false
-      }]
+    const userCharacter = await UserCharacter.findOne({
+      where: {
+        UserId: req.user.id,
+        CharacterId: characterId
+      },
+      include: [{ model: Character }],
+      transaction
     });
     
-    if (!userWithChars.Characters || userWithChars.Characters.length === 0) {
+    if (!userCharacter || !userCharacter.Character) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'You do not own this character' });
     }
     
-    const character = userWithChars.Characters[0];
+    const character = userCharacter.Character;
     
     // Get current slots
     let dojoSlots = user.dojoSlots || [];
@@ -250,6 +263,7 @@ router.post('/assign', auth, async (req, res) => {
     // Check if character is already assigned to another slot
     const existingSlot = dojoSlots.findIndex(id => id === characterId);
     if (existingSlot !== -1 && existingSlot !== slotIndex) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'Character already assigned to another slot' });
     }
     
@@ -262,7 +276,8 @@ router.post('/assign', auth, async (req, res) => {
       user.dojoLastClaim = new Date();
     }
     
-    await user.save();
+    await user.save({ transaction });
+    await transaction.commit();
     
     res.json({
       success: true,
@@ -280,6 +295,7 @@ router.post('/assign', auth, async (req, res) => {
     });
     
   } catch (err) {
+    await transaction.rollback();
     console.error('Dojo assign error:', err);
     res.status(500).json({ error: 'Server error' });
   }
@@ -337,26 +353,34 @@ router.post('/unassign', auth, async (req, res) => {
 /**
  * POST /api/dojo/claim
  * Claim accumulated rewards
+ * Uses transaction to ensure atomicity and proper cooldown handling
  */
 router.post('/claim', auth, async (req, res) => {
+  const userId = req.user.id;
+  
+  // Rate limiting check (before transaction to fail fast)
+  const lastCooldown = claimCooldowns.get(userId);
+  const now = Date.now();
+  if (lastCooldown && (now - lastCooldown) < DOJO_CONFIG.minClaimInterval * 1000) {
+    const remaining = Math.ceil((DOJO_CONFIG.minClaimInterval * 1000 - (now - lastCooldown)) / 1000);
+    return res.status(429).json({
+      error: 'Too fast',
+      message: `Please wait ${remaining} seconds`,
+      retryAfter: remaining
+    });
+  }
+  
+  const transaction = await sequelize.transaction();
+  
   try {
-    const userId = req.user.id;
+    // Lock user row
+    const user = await User.findByPk(userId, {
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
     
-    // Rate limiting
-    const lastClaim = claimCooldowns.get(userId);
-    const now = Date.now();
-    if (lastClaim && (now - lastClaim) < DOJO_CONFIG.minClaimInterval * 1000) {
-      const remaining = Math.ceil((DOJO_CONFIG.minClaimInterval * 1000 - (now - lastClaim)) / 1000);
-      return res.status(429).json({
-        error: 'Too fast',
-        message: `Please wait ${remaining} seconds`,
-        retryAfter: remaining
-      });
-    }
-    claimCooldowns.set(userId, now);
-    
-    const user = await User.findByPk(userId);
     if (!user) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'User not found' });
     }
     
@@ -366,12 +390,14 @@ router.post('/claim', auth, async (req, res) => {
     
     // Check if there's anything to claim
     if (!user.dojoLastClaim) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'No rewards to claim' });
     }
     
     // Get characters in slots with level info
     const characterIds = dojoSlots.filter(id => id !== null);
     if (characterIds.length === 0) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'No characters training' });
     }
     
@@ -381,7 +407,8 @@ router.post('/claim', auth, async (req, res) => {
         UserId: userId,
         CharacterId: characterIds
       },
-      include: [{ model: Character }]
+      include: [{ model: Character }],
+      transaction
     });
     
     const charactersWithLevels = userCharacters
@@ -394,7 +421,7 @@ router.post('/claim', auth, async (req, res) => {
     
     const activeCharacters = dojoSlots
       .map(id => charactersWithLevels.find(c => c.id === id))
-      .filter(c => c !== null);
+      .filter(c => c !== null && c !== undefined);
     
     // Calculate time elapsed
     const lastClaimTime = new Date(user.dojoLastClaim);
@@ -402,6 +429,7 @@ router.post('/claim', auth, async (req, res) => {
     const elapsedHours = Math.min(elapsedMs / (1000 * 60 * 60), capHours);
     
     if (elapsedHours < 0.01) { // Less than ~36 seconds
+      await transaction.rollback();
       return res.status(400).json({ error: 'Not enough time accumulated' });
     }
     
@@ -414,7 +442,11 @@ router.post('/claim', auth, async (req, res) => {
     user.premiumTickets = (user.premiumTickets || 0) + rewards.premiumTickets;
     user.dojoLastClaim = new Date();
     
-    await user.save();
+    await user.save({ transaction });
+    await transaction.commit();
+    
+    // Set cooldown ONLY after successful transaction
+    claimCooldowns.set(userId, Date.now());
     
     res.json({
       success: true,
@@ -425,8 +457,10 @@ router.post('/claim', auth, async (req, res) => {
       },
       breakdown: rewards.breakdown,
       synergies: rewards.synergies,
+      synergyCapped: rewards.synergyCapped,
       activeBonus: rewards.activeMultiplier > 1,
       hoursAccumulated: Math.floor(elapsedHours * 100) / 100,
+      diminishingReturnsApplied: rewards.diminishingReturnsApplied,
       newTotals: {
         points: user.points,
         rollTickets: user.rollTickets,
@@ -435,6 +469,7 @@ router.post('/claim', auth, async (req, res) => {
     });
     
   } catch (err) {
+    await transaction.rollback();
     console.error('Dojo claim error:', err);
     res.status(500).json({ error: 'Server error' });
   }
@@ -443,26 +478,36 @@ router.post('/claim', auth, async (req, res) => {
 /**
  * POST /api/dojo/upgrade
  * Purchase a dojo upgrade
+ * Uses transaction with row locking to prevent double-spending
  */
 router.post('/upgrade', auth, async (req, res) => {
+  const { upgradeType, rarity } = req.body; // rarity only for mastery upgrades
+  
+  // Validate input before starting transaction
+  if (!upgradeType) {
+    return res.status(400).json({ error: 'upgradeType required' });
+  }
+  
+  const validTypes = ['slot', 'cap', 'intensity', 'mastery'];
+  if (!validTypes.includes(upgradeType)) {
+    return res.status(400).json({ error: 'Invalid upgrade type' });
+  }
+  
+  if (upgradeType === 'mastery' && !rarity) {
+    return res.status(400).json({ error: 'rarity required for mastery upgrade' });
+  }
+  
+  const transaction = await sequelize.transaction();
+  
   try {
-    const { upgradeType, rarity } = req.body; // rarity only for mastery upgrades
+    // Lock user row to prevent concurrent modifications
+    const user = await User.findByPk(req.user.id, {
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
     
-    if (!upgradeType) {
-      return res.status(400).json({ error: 'upgradeType required' });
-    }
-    
-    const validTypes = ['slot', 'cap', 'intensity', 'mastery'];
-    if (!validTypes.includes(upgradeType)) {
-      return res.status(400).json({ error: 'Invalid upgrade type' });
-    }
-    
-    if (upgradeType === 'mastery' && !rarity) {
-      return res.status(400).json({ error: 'rarity required for mastery upgrade' });
-    }
-    
-    const user = await User.findByPk(req.user.id);
     if (!user) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'User not found' });
     }
     
@@ -471,11 +516,13 @@ router.post('/upgrade', auth, async (req, res) => {
     // Get cost
     const cost = getUpgradeCost(upgradeType, upgrades, rarity);
     if (cost === null) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'Upgrade already maxed or not available' });
     }
     
     // Check if user can afford
     if (user.points < cost) {
+      await transaction.rollback();
       return res.status(400).json({
         error: 'Not enough points',
         required: cost,
@@ -512,7 +559,8 @@ router.post('/upgrade', auth, async (req, res) => {
     }
     
     user.dojoUpgrades = upgrades;
-    await user.save();
+    await user.save({ transaction });
+    await transaction.commit();
     
     // Get updated available upgrades
     const availableUpgrades = getAvailableUpgrades(upgrades);
@@ -529,6 +577,7 @@ router.post('/upgrade', auth, async (req, res) => {
     });
     
   } catch (err) {
+    await transaction.rollback();
     console.error('Dojo upgrade error:', err);
     res.status(500).json({ error: 'Server error' });
   }

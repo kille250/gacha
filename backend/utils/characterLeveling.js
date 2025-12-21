@@ -4,78 +4,36 @@
  * Handles character acquisition and manual leveling system.
  * - Duplicates give "shards" that players can use to level up
  * - Players choose when to level up their cards
- * - Max level duplicates convert to bonus points
+ * - Max level duplicates convert to bonus points (scaled by rarity)
+ * 
+ * Configuration is centralized in config/leveling.js
  */
 
-const { UserCharacter } = require('../models');
+const { UserCharacter, Character } = require('../models');
+const {
+  LEVEL_CONFIG,
+  getLevelMultiplier,
+  getShardsToLevel,
+  isMaxLevel,
+  getMaxLevelDuplicatePoints
+} = require('../config/leveling');
 
-// ===========================================
-// LEVELING CONFIGURATION
-// ===========================================
-
-const LEVELING_CONFIG = {
-  maxLevel: 5,
-  
-  // Shards required to level up (from current level)
-  // Level 1 -> 2: 1 shard
-  // Level 2 -> 3: 1 shard
-  // Level 3 -> 4: 2 shards
-  // Level 4 -> 5: 2 shards
-  shardsToLevel: {
-    1: 1,  // 1 shard to go from Lv.1 to Lv.2
-    2: 1,  // 1 shard to go from Lv.2 to Lv.3
-    3: 2,  // 2 shards to go from Lv.3 to Lv.4
-    4: 2   // 2 shards to go from Lv.4 to Lv.5
-  },
-  
-  // Power multiplier per level (used in Dojo calculations)
-  // Level 1: 1.0x, Level 2: 1.25x, Level 3: 1.5x, Level 4: 1.75x, Level 5: 2.0x
-  powerBonusPerLevel: 0.25,
-  
-  // Points awarded when rolling a duplicate of a max-level character
-  maxLevelDuplicatePoints: 50
-};
-
-/**
- * Get shards required to level up from current level
- * @param {number} currentLevel - Current level (1-4)
- * @returns {number|null} - Shards needed, or null if at max level
- */
-const getShardsToLevel = (currentLevel) => {
-  if (currentLevel >= LEVELING_CONFIG.maxLevel) return null;
-  return LEVELING_CONFIG.shardsToLevel[currentLevel] || 1;
-};
-
-/**
- * Get power multiplier for a given level
- * @param {number} level - Character level (1-5)
- * @returns {number} - Power multiplier (1.0 - 2.0)
- */
-const getLevelMultiplier = (level) => {
-  return 1 + (Math.min(level, LEVELING_CONFIG.maxLevel) - 1) * LEVELING_CONFIG.powerBonusPerLevel;
-};
-
-/**
- * Check if a character is at max level
- * @param {number} level - Current level
- * @returns {boolean}
- */
-const isMaxLevel = (level) => {
-  return level >= LEVELING_CONFIG.maxLevel;
-};
+// Re-export LEVEL_CONFIG as LEVELING_CONFIG for backwards compatibility
+const LEVELING_CONFIG = LEVEL_CONFIG;
 
 /**
  * Acquire a character for a user
  * - New character: adds to collection at level 1
  * - Duplicate: adds 1 shard (does NOT auto-level)
- * - Max level duplicate: awards bonus points
+ * - Max level duplicate: awards bonus points (scaled by rarity)
  * 
  * @param {number} userId - User ID
  * @param {number} characterId - Character ID
  * @param {Object} user - User model instance (for point rewards)
+ * @param {string} rarity - Character rarity (optional, fetched if not provided)
  * @returns {Promise<Object>} - Result object with acquisition details
  */
-const acquireCharacter = async (userId, characterId, user = null) => {
+const acquireCharacter = async (userId, characterId, user = null, rarity = null) => {
   // Try to find existing entry
   const existing = await UserCharacter.findOne({
     where: {
@@ -108,8 +66,15 @@ const acquireCharacter = async (userId, characterId, user = null) => {
   let bonusPoints = 0;
   
   if (wasMaxLevel) {
-    // Max level - award bonus points instead of shard
-    bonusPoints = LEVELING_CONFIG.maxLevelDuplicatePoints;
+    // Max level - award bonus points based on rarity
+    // Fetch rarity if not provided
+    let charRarity = rarity;
+    if (!charRarity) {
+      const character = await Character.findByPk(characterId);
+      charRarity = character?.rarity || 'common';
+    }
+    
+    bonusPoints = getMaxLevelDuplicatePoints(charRarity);
     if (user) {
       user.points += bonusPoints;
       await user.save();
@@ -135,7 +100,7 @@ const acquireCharacter = async (userId, characterId, user = null) => {
  * Acquire multiple characters (for multi-rolls)
  * 
  * @param {number} userId - User ID
- * @param {Array<Object>} characters - Array of character objects (must have id property)
+ * @param {Array<Object>} characters - Array of character objects (must have id and rarity)
  * @param {Object} user - User model instance (for point rewards)
  * @returns {Promise<Array<Object>>} - Array of acquisition results
  */
@@ -147,7 +112,8 @@ const acquireMultipleCharacters = async (userId, characters, user = null) => {
   for (const character of characters) {
     if (character && character.id) {
       // Don't pass user to individual calls - we'll batch the point update
-      const result = await acquireCharacterInternal(userId, character.id);
+      // Pass rarity for max-level duplicate bonus calculation
+      const result = await acquireCharacterInternal(userId, character.id, character.rarity);
       totalBonusPoints += result.bonusPoints;
       results.push({
         characterId: character.id,
@@ -167,8 +133,11 @@ const acquireMultipleCharacters = async (userId, characters, user = null) => {
 
 /**
  * Internal acquire without user point update (for batching)
+ * @param {number} userId - User ID
+ * @param {number} characterId - Character ID
+ * @param {string} rarity - Character rarity for bonus point calculation
  */
-const acquireCharacterInternal = async (userId, characterId) => {
+const acquireCharacterInternal = async (userId, characterId, rarity = null) => {
   const existing = await UserCharacter.findOne({
     where: {
       UserId: userId,
@@ -198,7 +167,13 @@ const acquireCharacterInternal = async (userId, characterId) => {
   let bonusPoints = 0;
   
   if (wasMaxLevel) {
-    bonusPoints = LEVELING_CONFIG.maxLevelDuplicatePoints;
+    // Fetch rarity if not provided
+    let charRarity = rarity;
+    if (!charRarity) {
+      const character = await Character.findByPk(characterId);
+      charRarity = character?.rarity || 'common';
+    }
+    bonusPoints = getMaxLevelDuplicatePoints(charRarity);
   } else {
     existing.duplicateCount += 1;
     await existing.save();

@@ -4,13 +4,16 @@
  * Centralized configuration for the idle training dojo game.
  * Characters assigned to training slots generate passive rewards.
  * 
- * Character levels (from duplicate cards) multiply the base rates:
- * - Level 1: 1.0x (base)
- * - Level 2: 1.25x
- * - Level 3: 1.5x
- * - Level 4: 1.75x
- * - Level 5: 2.0x (max)
+ * Character levels (from duplicate cards) multiply the base rates.
+ * Level multipliers are defined in config/leveling.js (single source of truth).
+ * 
+ * Balance considerations:
+ * - Diminishing returns prevent runaway late-game scaling
+ * - Daily/weekly caps ensure active play remains rewarding
+ * - Synergy bonuses are capped to prevent stacking exploits
  */
+
+const { getLevelMultiplier: getLevelMultiplierFromConfig } = require('./leveling');
 
 // ===========================================
 // BASE RATES (Points per Hour)
@@ -25,9 +28,6 @@ const DOJO_RATES = {
     epic: 30,
     legendary: 75
   },
-  
-  // Level bonus multiplier (per level above 1)
-  levelBonusPerLevel: 0.25,
   
   // Ticket generation (per hour, chance-based)
   ticketChances: {
@@ -48,6 +48,31 @@ const DOJO_RATES = {
       legendary: 0.08    // 8% per hour
     }
   }
+};
+
+// ===========================================
+// BALANCE CAPS & DIMINISHING RETURNS
+// ===========================================
+
+const DOJO_BALANCE = {
+  // Diminishing returns brackets for hourly income
+  // Prevents runaway late-game scaling
+  incomeBrackets: [
+    { threshold: 0,    efficiency: 1.0 },   // 0-100 pts/h: 100%
+    { threshold: 100,  efficiency: 0.8 },   // 100-500: 80%
+    { threshold: 500,  efficiency: 0.5 },   // 500-1000: 50%
+    { threshold: 1000, efficiency: 0.25 },  // 1000+: 25%
+  ],
+  
+  // Daily caps (reset at midnight UTC)
+  dailyCaps: {
+    points: 15000,          // Max 15k points/day from Dojo
+    rollTickets: 20,        // Max 20 roll tickets/day
+    premiumTickets: 5       // Max 5 premium tickets/day
+  },
+  
+  // Maximum synergy multiplier (prevents stacking)
+  maxSynergyMultiplier: 1.5  // Cap at +50%
 };
 
 // ===========================================
@@ -133,12 +158,38 @@ const DOJO_UPGRADES = {
 
 /**
  * Calculate level multiplier for a character
+ * Delegates to centralized leveling config for consistency
  * @param {number} level - Character level (1-5)
- * @returns {number} - Multiplier (1.0 to 2.0)
+ * @returns {number} - Multiplier (1.0 to 1.5)
  */
 function getLevelMultiplier(level) {
-  const safeLevel = Math.min(Math.max(level || 1, 1), 5);
-  return 1 + (safeLevel - 1) * DOJO_RATES.levelBonusPerLevel;
+  return getLevelMultiplierFromConfig(level);
+}
+
+/**
+ * Apply diminishing returns to raw points per hour
+ * Prevents runaway scaling in late game
+ * @param {number} rawPointsPerHour - Unmodified points per hour
+ * @returns {number} - Adjusted points with diminishing returns
+ */
+function applyDiminishingReturns(rawPointsPerHour) {
+  const brackets = DOJO_BALANCE.incomeBrackets;
+  let effectivePoints = 0;
+  let remaining = rawPointsPerHour;
+  
+  for (let i = 0; i < brackets.length; i++) {
+    const bracket = brackets[i];
+    const nextThreshold = brackets[i + 1]?.threshold || Infinity;
+    const bracketSize = nextThreshold - bracket.threshold;
+    
+    const pointsInBracket = Math.min(remaining, bracketSize);
+    effectivePoints += pointsInBracket * bracket.efficiency;
+    remaining -= pointsInBracket;
+    
+    if (remaining <= 0) break;
+  }
+  
+  return effectivePoints;
 }
 
 /**
@@ -167,8 +218,9 @@ function getBasePointsPerHour(rarity, upgrades = {}, level = 1) {
 
 /**
  * Calculate series synergy multiplier
+ * Capped at DOJO_BALANCE.maxSynergyMultiplier to prevent stacking exploits
  * @param {Array} characters - Array of characters in slots
- * @returns {Object} - { multiplier, synergies: [{series, count, bonus}] }
+ * @returns {Object} - { multiplier, synergies: [{series, count, bonus}], wasCapped }
  */
 function calculateSeriesSynergy(characters) {
   // Count characters per series
@@ -200,56 +252,71 @@ function calculateSeriesSynergy(characters) {
     }
   });
   
-  return { multiplier: totalMultiplier, synergies };
+  // Apply cap to prevent excessive stacking
+  const maxMultiplier = DOJO_BALANCE.maxSynergyMultiplier;
+  const wasCapped = totalMultiplier > maxMultiplier;
+  const finalMultiplier = Math.min(totalMultiplier, maxMultiplier);
+  
+  return { 
+    multiplier: finalMultiplier, 
+    synergies,
+    wasCapped,
+    uncappedMultiplier: totalMultiplier
+  };
 }
 
 /**
  * Calculate total rewards for accumulated time
+ * 
+ * Preview mode (isActive=false): Deterministic calculation for UI display
+ * Claim mode (isActive=true): Applies randomness to ticket drops and active bonus
+ * 
  * @param {Array} characters - Characters in training (with rarity, series, level)
  * @param {number} hours - Hours of accumulated training
  * @param {Object} upgrades - User's dojo upgrades
- * @param {boolean} isActive - Whether this is an active claim (bonus applies)
- * @returns {Object} - { points, rollTickets, premiumTickets, breakdown }
+ * @param {boolean} isActive - Whether this is an active claim (bonus applies, randomness enabled)
+ * @returns {Object} - { points, rollTickets, premiumTickets, breakdown, ... }
  */
 function calculateRewards(characters, hours, upgrades = {}, isActive = false) {
   if (!characters || characters.length === 0 || hours <= 0) {
-    return { points: 0, rollTickets: 0, premiumTickets: 0, breakdown: [] };
+    return { 
+      points: 0, 
+      rollTickets: 0, 
+      premiumTickets: 0, 
+      breakdown: [],
+      rawPointsPerHour: 0,
+      effectivePointsPerHour: 0,
+      diminishingReturnsApplied: false
+    };
   }
   
-  const { multiplier: synergyMultiplier, synergies } = calculateSeriesSynergy(characters);
+  const { multiplier: synergyMultiplier, synergies, wasCapped: synergyCapped } = calculateSeriesSynergy(characters);
   const activeMultiplier = isActive ? DOJO_CONFIG.activeClaimMultiplier : 1;
   
-  let totalPoints = 0;
-  let totalRollTickets = 0;
-  let totalPremiumTickets = 0;
+  let rawPointsPerHour = 0;
+  let totalExpectedRollTickets = 0;
+  let totalExpectedPremiumTickets = 0;
   const breakdown = [];
   
+  // First pass: Calculate raw totals per hour
   characters.forEach(char => {
     if (!char) return;
     
-    // Use character level if available (default to 1 for backwards compatibility)
     const charLevel = char.level || 1;
     const levelMultiplier = getLevelMultiplier(charLevel);
     
     const basePoints = getBasePointsPerHour(char.rarity, upgrades, charLevel);
-    const charPoints = basePoints * hours * synergyMultiplier * activeMultiplier;
+    const charPointsPerHour = basePoints * synergyMultiplier * activeMultiplier;
     
-    // Calculate ticket chances (per hour, accumulative)
+    rawPointsPerHour += charPointsPerHour;
+    
+    // Calculate ticket chances (per hour)
     // Level also boosts ticket chances slightly
     const rollChance = (DOJO_RATES.ticketChances.rollTicket[char.rarity] || 0) * levelMultiplier;
     const premiumChance = (DOJO_RATES.ticketChances.premiumTicket[char.rarity] || 0) * levelMultiplier;
     
-    // Expected tickets based on hours (with some randomness)
-    const expectedRollTickets = rollChance * hours;
-    const expectedPremiumTickets = premiumChance * hours;
-    
-    // Apply randomness: use expected value + random variance
-    const rollTickets = Math.floor(expectedRollTickets) + (Math.random() < (expectedRollTickets % 1) ? 1 : 0);
-    const premiumTickets = Math.floor(expectedPremiumTickets) + (Math.random() < (expectedPremiumTickets % 1) ? 1 : 0);
-    
-    totalPoints += charPoints;
-    totalRollTickets += rollTickets;
-    totalPremiumTickets += premiumTickets;
+    totalExpectedRollTickets += rollChance * hours;
+    totalExpectedPremiumTickets += premiumChance * hours;
     
     breakdown.push({
       characterId: char.id,
@@ -258,22 +325,57 @@ function calculateRewards(characters, hours, upgrades = {}, isActive = false) {
       series: char.series,
       level: charLevel,
       levelMultiplier,
-      basePoints,
-      earnedPoints: Math.floor(charPoints),
-      rollTickets,
-      premiumTickets
+      basePointsPerHour: basePoints,
+      charPointsPerHour: Math.floor(charPointsPerHour)
     });
+  });
+  
+  // Apply diminishing returns to total points per hour
+  const effectivePointsPerHour = applyDiminishingReturns(rawPointsPerHour);
+  const diminishingReturnsApplied = effectivePointsPerHour < rawPointsPerHour;
+  
+  // Calculate total points with diminishing returns
+  const totalPoints = effectivePointsPerHour * hours;
+  
+  // Ticket calculation: Deterministic for preview, randomized for claims
+  let finalRollTickets, finalPremiumTickets;
+  
+  if (isActive) {
+    // Active claim: Apply randomness to fractional tickets
+    finalRollTickets = Math.floor(totalExpectedRollTickets) + 
+      (Math.random() < (totalExpectedRollTickets % 1) ? 1 : 0);
+    finalPremiumTickets = Math.floor(totalExpectedPremiumTickets) + 
+      (Math.random() < (totalExpectedPremiumTickets % 1) ? 1 : 0);
+  } else {
+    // Preview: Show expected value (deterministic)
+    finalRollTickets = Math.round(totalExpectedRollTickets * 10) / 10;
+    finalPremiumTickets = Math.round(totalExpectedPremiumTickets * 10) / 10;
+  }
+  
+  // Update breakdown with earned points (after diminishing returns)
+  const diminishingRatio = rawPointsPerHour > 0 ? effectivePointsPerHour / rawPointsPerHour : 1;
+  breakdown.forEach(entry => {
+    entry.earnedPoints = Math.floor(entry.charPointsPerHour * hours * diminishingRatio);
   });
   
   return {
     points: Math.floor(totalPoints),
-    rollTickets: totalRollTickets,
-    premiumTickets: totalPremiumTickets,
+    rollTickets: isActive ? finalRollTickets : finalRollTickets,
+    premiumTickets: isActive ? finalPremiumTickets : finalPremiumTickets,
     breakdown,
     synergies,
     synergyMultiplier,
+    synergyCapped,
     activeMultiplier,
-    hours
+    hours,
+    // Debugging/transparency info
+    rawPointsPerHour: Math.floor(rawPointsPerHour),
+    effectivePointsPerHour: Math.floor(effectivePointsPerHour),
+    diminishingReturnsApplied,
+    expectedTickets: {
+      roll: Math.round(totalExpectedRollTickets * 100) / 100,
+      premium: Math.round(totalExpectedPremiumTickets * 100) / 100
+    }
   };
 }
 
@@ -387,11 +489,13 @@ module.exports = {
   DOJO_RATES,
   DOJO_CONFIG,
   DOJO_UPGRADES,
+  DOJO_BALANCE,
   getLevelMultiplier,
   getBasePointsPerHour,
   calculateSeriesSynergy,
   calculateRewards,
   getUpgradeCost,
-  getAvailableUpgrades
+  getAvailableUpgrades,
+  applyDiminishingReturns
 };
 
