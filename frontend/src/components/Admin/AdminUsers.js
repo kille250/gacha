@@ -152,14 +152,13 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowCoinModal(false)}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowCoinModal(false); }}
           >
             <ModalContent
               $maxWidth="420px"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={e => e.stopPropagation()}
             >
               <ModalHeader>
                 <ModalTitle $iconColor="#ffd60a"><FaCoins /> {t('admin.addCoins')}</ModalTitle>

@@ -289,11 +289,10 @@ const GachaPage = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            onClick={() => setShowHelpModal(false)}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowHelpModal(false); }}
           >
             <HelpModalContent
               variants={motionVariants.modal}
-              onClick={e => e.stopPropagation()}
             >
               <ModalHeader>
                 <Heading2>{t('gacha.howToPlay')}</Heading2>

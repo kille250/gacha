@@ -899,11 +899,10 @@ const FishingPage = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            onClick={() => setShowHelp(false)}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowHelp(false); }}
           >
             <CozyModal
               variants={motionVariants.modal}
-              onClick={e => e.stopPropagation()}
             >
               <ModalHeader>
                 <ModalTitle>{t('fishing.howToFish')}</ModalTitle>
@@ -964,11 +963,10 @@ const FishingPage = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            onClick={() => setShowLeaderboard(false)}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowLeaderboard(false); }}
           >
             <CozyModal
               variants={motionVariants.modal}
-              onClick={e => e.stopPropagation()}
             >
               <ModalHeader>
                 <ModalTitle>
@@ -1025,11 +1023,10 @@ const FishingPage = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            onClick={() => setShowTradingPost(false)}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowTradingPost(false); }}
           >
             <TradingPostModal
               variants={motionVariants.modal}
-              onClick={e => e.stopPropagation()}
             >
               <ShopHeader>
                 <ShopTitleRow>

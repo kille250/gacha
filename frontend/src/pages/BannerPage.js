@@ -813,14 +813,13 @@ const BannerPage = () => {
             initial="hidden"
             animate="visible"
             exit="exit"
-            onClick={() => setShowInfoPanel(false)}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowInfoPanel(false); }}
           >
             <InfoPanel
               initial={{ x: '100%' }}
               animate={{ x: 0 }}
               exit={{ x: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
-              onClick={e => e.stopPropagation()}
             >
               <InfoPanelHeader>
                 <Heading2>{banner.name}</Heading2>

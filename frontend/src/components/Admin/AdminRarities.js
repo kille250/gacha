@@ -753,13 +753,12 @@ const AdminRarities = ({ onRefresh }) => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onClick={() => setShowModal(false)}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowModal(false); }}
           >
             <ModalContent
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={e => e.stopPropagation()}
               $maxWidth="750px"
             >
               <ModalHeader>

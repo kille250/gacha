@@ -187,13 +187,12 @@ const EditCharacterModal = ({
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
-          onClick={handleClose}
+          onMouseDown={(e) => { if (e.target === e.currentTarget) handleClose(); }}
         >
           <ModalContent
             initial={{ opacity: 0, scale: 0.95, y: 20 }}
             animate={{ opacity: 1, scale: 1, y: 0 }}
             exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            onClick={(e) => e.stopPropagation()}
           >
             <ModalHeader>
               <ModalTitle>
