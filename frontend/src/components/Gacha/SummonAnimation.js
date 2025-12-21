@@ -29,7 +29,9 @@ const DEFAULT_ANIMATION_CONFIG = {
 };
 
 // Default rarity colors (used by styled-components which can't use hooks)
-// These will match the database defaults and provide fallback for styled-components
+// NOTE: These intentionally duplicate theme.colors.rarity from DesignSystem.js
+// because styled-component template literals cannot call React hooks (useRarity).
+// The actual animation config is fetched from context for component logic.
 const DEFAULT_RARITY_COLORS = {
   common: '#8e8e93',
   uncommon: '#30d158',

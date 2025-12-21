@@ -125,7 +125,7 @@ const FishingPage = () => {
   // Multiplayer state
   const [otherPlayers, setOtherPlayers] = useState([]);
   const [isMultiplayerConnected, setIsMultiplayerConnected] = useState(false);
-  const [playerCount, setPlayerCount] = useState(1);
+  // playerCount is derived directly: otherPlayers.length + 1 (for self)
   const socketRef = useRef(null);
   const lastPositionRef = useRef({ x: 10, y: 6, direction: 'down' });
   
@@ -148,6 +148,8 @@ const FishingPage = () => {
   }, [movePlayer]);
   
   // Multiplayer WebSocket connection
+  // NOTE: Empty dependency array is intentional - we want a single WebSocket connection
+  // that persists for the component's lifetime. Token is read once on mount.
   useEffect(() => {
     const token = getToken();
     if (!token) return;
@@ -261,10 +263,8 @@ const FishingPage = () => {
     };
   }, []);
   
-  // Sync playerCount with otherPlayers.length (single source of truth)
-  useEffect(() => {
-    setPlayerCount(otherPlayers.length + 1); // +1 for self
-  }, [otherPlayers.length]);
+  // Derived state: player count is other players + self
+  const playerCount = otherPlayers.length + 1;
   
   // Send position updates to server
   useEffect(() => {

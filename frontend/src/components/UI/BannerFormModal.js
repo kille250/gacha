@@ -3,6 +3,13 @@ import styled from 'styled-components';
 import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes } from 'react-icons/fa';
 import { getAssetUrl } from '../../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
+import { getRarityColor } from '../../styles/DesignSystem';
+
+// Helper function to get image URL with fallback
+const getImageUrl = (imagePath) => {
+  if (!imagePath) return PLACEHOLDER_IMAGE;
+  return getAssetUrl(imagePath);
+};
   
 const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [formData, setFormData] = useState({
@@ -809,20 +816,14 @@ const NoResults = styled.div`
   color: rgba(255, 255, 255, 0.4);
   grid-column: 1 / -1;
 `;
-  
-const rarityColors = {
-  common: '#8E8E93',
-  uncommon: '#34C759',
-  rare: '#007AFF',
-  epic: '#AF52DE',
-  legendary: '#FF9F0A'
-};
+
+// Rarity colors now imported from DesignSystem via getRarityColor()
   
 const CharacterOption = styled.div`
-  border: 2px solid ${props => props.$selected ? rarityColors[props.$rarity] : 'rgba(255, 255, 255, 0.1)'};
+  border: 2px solid ${props => props.$selected ? getRarityColor(props.$rarity) : 'rgba(255, 255, 255, 0.1)'};
   border-radius: 12px;
   overflow: hidden;
-  background: ${props => props.$selected ? `${rarityColors[props.$rarity]}15` : 'rgba(255, 255, 255, 0.03)'};
+  background: ${props => props.$selected ? `${getRarityColor(props.$rarity)}15` : 'rgba(255, 255, 255, 0.03)'};
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
@@ -832,7 +833,7 @@ const CharacterOption = styled.div`
   min-height: 90px;
   
   &:hover {
-    border-color: ${props => rarityColors[props.$rarity]};
+    border-color: ${props => getRarityColor(props.$rarity)};
     transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.06);
   }
@@ -904,12 +905,12 @@ const CharOptionRarity = styled.div`
   display: inline-flex;
   align-items: center;
   font-size: 9px;
-  color: ${props => rarityColors[props.$rarity]};
+  color: ${props => getRarityColor(props.$rarity)};
   text-transform: uppercase;
   font-weight: 700;
   letter-spacing: 0.3px;
   padding: 2px 6px;
-  background: ${props => `${rarityColors[props.$rarity]}25`};
+  background: ${props => `${getRarityColor(props.$rarity)}25`};
   border-radius: 3px;
 `;
 
@@ -938,10 +939,5 @@ const CharOptionCheck = styled.div`
   margin-right: 10px;
   transition: all 0.2s;
 `;
-  
-const getImageUrl = (imagePath) => {
-  if (!imagePath) return PLACEHOLDER_IMAGE;
-  return getAssetUrl(imagePath);
-};
   
 export default BannerFormModal;

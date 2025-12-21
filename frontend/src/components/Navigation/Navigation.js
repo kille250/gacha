@@ -75,6 +75,8 @@ const Navigation = () => {
   };
   
   // Toggle R18 content preference
+  // NOTE: Silent failure is intentional - the toggle simply doesn't change state on error.
+  // User can retry, and the state remains consistent with the server.
   const toggleR18 = async () => {
     if (isTogglingR18) return;
     setIsTogglingR18(true);
