@@ -146,17 +146,22 @@ const calculateBannerRates = async (rateMultiplier, isMulti = false, raritiesDat
       const adjusted = baseRate * (1 + rateAdjustment * r.multiplierScaling);
       // Cap only limits how much the multiplier can boost the rate, 
       // but never reduces below the configured base rate
-      rates[r.name] = cap ? Math.max(baseRate, Math.min(adjusted, cap)) : adjusted;
+      let finalRate = cap ? Math.max(baseRate, Math.min(adjusted, cap)) : adjusted;
+      // Apply minimumRate as a floor for this rarity
+      finalRate = Math.max(finalRate, r.minimumRate || 0);
+      rates[r.name] = finalRate;
       totalHigher += rates[r.name];
     } else {
       // Common/filler rarity - calculated after
     }
   });
   
-  // Calculate common rate to ensure total is 100%
-  // Use minimumRate from database instead of hardcoded value
+  // Calculate common rate to fill remaining percentage
+  // Apply minimumRate as a floor for common as well
   const minCommon = commonRarity?.minimumRate ?? 0;
   rates[commonRarity.name] = Math.max(100 - totalHigher, minCommon);
+  
+  // Note: If minimumRates cause total to exceed 100%, rollRarity() normalizes automatically
   
   return rates;
 };
