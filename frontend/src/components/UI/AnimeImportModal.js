@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaTimes, FaCheck, FaExclamationTriangle, FaDownload, FaStar, FaUsers, FaSpinner, FaImage, FaVideo, FaPlay } from 'react-icons/fa';
@@ -11,6 +11,10 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   // Hover preview state for alt media
   const [hoveredMedia, setHoveredMedia] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
+  
+  // Long press for mobile preview
+  const longPressTimer = useRef(null);
+  const longPressTriggered = useRef(false);
   
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
@@ -215,6 +219,12 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
 
   // Close alt media picker
   const closeAltMediaPicker = useCallback(() => {
+    // Clear long press timer
+    if (longPressTimer.current) {
+      clearTimeout(longPressTimer.current);
+      longPressTimer.current = null;
+    }
+    setHoveredMedia(null);
     setAltMediaCharacter(null);
     setAltMediaResults([]);
     setAltMediaTags([]);
@@ -661,7 +671,14 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                           {altMediaResults.map(media => (
                             <AltMediaCard
                               key={media.id}
-                              onClick={() => selectAltMedia(media)}
+                              onClick={() => {
+                                // Don't select if long press was triggered (preview shown)
+                                if (longPressTriggered.current) {
+                                  longPressTriggered.current = false;
+                                  return;
+                                }
+                                selectAltMedia(media);
+                              }}
                               onMouseEnter={(e) => {
                                 const rect = e.currentTarget.getBoundingClientRect();
                                 setHoverPosition({ 
@@ -671,6 +688,37 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                                 setHoveredMedia(media);
                               }}
                               onMouseLeave={() => setHoveredMedia(null)}
+                              onTouchStart={(e) => {
+                                longPressTriggered.current = false;
+                                const touch = e.touches[0];
+                                const rect = e.currentTarget.getBoundingClientRect();
+                                longPressTimer.current = setTimeout(() => {
+                                  longPressTriggered.current = true;
+                                  setHoverPosition({ 
+                                    x: rect.left + rect.width / 2, 
+                                    y: rect.top 
+                                  });
+                                  setHoveredMedia(media);
+                                }, 500);
+                              }}
+                              onTouchEnd={() => {
+                                if (longPressTimer.current) {
+                                  clearTimeout(longPressTimer.current);
+                                  longPressTimer.current = null;
+                                }
+                                // Small delay before closing preview so user can see it
+                                if (longPressTriggered.current) {
+                                  setTimeout(() => setHoveredMedia(null), 100);
+                                }
+                              }}
+                              onTouchMove={() => {
+                                // Cancel long press if user moves finger
+                                if (longPressTimer.current) {
+                                  clearTimeout(longPressTimer.current);
+                                  longPressTimer.current = null;
+                                }
+                                setHoveredMedia(null);
+                              }}
                               whileHover={{ scale: 1.05 }}
                               whileTap={{ scale: 0.95 }}
                               $isAnimated={media.isAnimated}
