@@ -103,16 +103,6 @@ const ImagePreviewModal = ({
                       <MdCheckCircle /> Owned
                     </Badge>
                   )}
-                  {isOwned && level > 0 && (
-                    <Badge variant={level >= 5 ? 'maxLevel' : 'level'}>
-                      Lv.{level}{level >= 5 ? ' MAX' : ''}
-                    </Badge>
-                  )}
-                  {isOwned && level < 5 && shards !== undefined && (
-                    <Badge variant="shards">
-                      ◆ {shards}/{shardsToNextLevel || '?'}
-                    </Badge>
-                  )}
                   {isBannerCharacter && (
                     <Badge variant="banner">
                       ★ Featured
@@ -124,24 +114,70 @@ const ImagePreviewModal = ({
                   </RarityPill>
                 </BadgesRow>
                 
-                {/* Level Up Button */}
-                {isOwned && canLevelUp && onLevelUp && (
-                  <LevelUpButton 
-                    onClick={handleLevelUp}
-                    disabled={isLevelingUp}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    <FaArrowUp />
-                    {isLevelingUp ? 'Leveling...' : `Level Up to Lv.${level + 1}`}
-                  </LevelUpButton>
-                )}
-                
                 {/* Character Info */}
                 <CharacterInfo>
                   <CharacterName>{name}</CharacterName>
                   {series && <CharacterSeries>{series}</CharacterSeries>}
                 </CharacterInfo>
+                
+                {/* Level Section - Only for owned characters */}
+                {isOwned && (
+                  <LevelSection>
+                    <LevelHeader>
+                      <LevelTitle>
+                        <span>⚔️ Card Level</span>
+                        <LevelValue $isMaxLevel={level >= 5}>
+                          Lv.{level}{level >= 5 ? ' ★ MAX' : ''}
+                        </LevelValue>
+                      </LevelTitle>
+                      {level > 1 && (
+                        <PowerBonus>
+                          ⚡ {Math.round((1 + (level - 1) * 0.25) * 100)}% Dojo Power
+                        </PowerBonus>
+                      )}
+                    </LevelHeader>
+                    
+                    {level < 5 && (
+                      <>
+                        <ProgressContainer>
+                          <ProgressLabel>
+                            <span>◆ Shards</span>
+                            <span>{shards || 0} / {shardsToNextLevel || '?'}</span>
+                          </ProgressLabel>
+                          <ProgressBar>
+                            <ProgressFill 
+                              style={{ width: `${Math.min(100, ((shards || 0) / (shardsToNextLevel || 1)) * 100)}%` }}
+                              $complete={canLevelUp}
+                            />
+                          </ProgressBar>
+                        </ProgressContainer>
+                        
+                        <ShardHint>
+                          💡 Roll duplicates to earn shards for leveling up!
+                        </ShardHint>
+                      </>
+                    )}
+                    
+                    {level >= 5 && (
+                      <MaxLevelInfo>
+                        🎉 Max level reached! Duplicates now give +50 bonus points.
+                      </MaxLevelInfo>
+                    )}
+                    
+                    {/* Level Up Button */}
+                    {canLevelUp && onLevelUp && (
+                      <LevelUpButton 
+                        onClick={handleLevelUp}
+                        disabled={isLevelingUp}
+                        whileHover={{ scale: 1.02 }}
+                        whileTap={{ scale: 0.98 }}
+                      >
+                        <FaArrowUp />
+                        {isLevelingUp ? 'Leveling...' : `Level Up → Lv.${level + 1} (+25% power)`}
+                      </LevelUpButton>
+                    )}
+                  </LevelSection>
+                )}
               </InfoContent>
             </InfoBar>
           </ModalContent>
@@ -370,6 +406,108 @@ const CharacterSeries = styled.p`
   margin: 4px 0 0;
   font-size: 15px;
   color: rgba(255, 255, 255, 0.5);
+`;
+
+const LevelSection = styled.div`
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const LevelHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const LevelTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+`;
+
+const LevelValue = styled.span`
+  font-weight: 700;
+  font-size: 16px;
+  color: ${props => props.$isMaxLevel ? '#FFD700' : '#fff'};
+  ${props => props.$isMaxLevel && `
+    text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
+  `}
+`;
+
+const PowerBonus = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: #4ade80;
+  background: rgba(74, 222, 128, 0.15);
+  padding: 4px 10px;
+  border-radius: 100px;
+`;
+
+const ProgressContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+`;
+
+const ProgressLabel = styled.div`
+  display: flex;
+  justify-content: space-between;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  
+  span:last-child {
+    color: #AF52DE;
+    font-weight: 600;
+  }
+`;
+
+const ProgressBar = styled.div`
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 100px;
+  overflow: hidden;
+`;
+
+const ProgressFill = styled.div`
+  height: 100%;
+  background: ${props => props.$complete 
+    ? 'linear-gradient(90deg, #34C759, #4ade80)' 
+    : 'linear-gradient(90deg, #AF52DE, #BF5AF2)'};
+  border-radius: 100px;
+  transition: width 0.3s ease;
+  
+  ${props => props.$complete && `
+    animation: glow 1.5s ease-in-out infinite;
+    
+    @keyframes glow {
+      0%, 100% { box-shadow: 0 0 5px rgba(52, 199, 89, 0.5); }
+      50% { box-shadow: 0 0 15px rgba(52, 199, 89, 0.8); }
+    }
+  `}
+`;
+
+const ShardHint = styled.div`
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: center;
+  font-style: italic;
+`;
+
+const MaxLevelInfo = styled.div`
+  font-size: 12px;
+  color: #FFD700;
+  text-align: center;
+  padding: 8px;
+  background: rgba(255, 215, 0, 0.1);
+  border-radius: 8px;
 `;
 
 export default ImagePreviewModal;

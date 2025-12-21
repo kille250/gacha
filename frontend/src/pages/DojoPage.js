@@ -365,6 +365,25 @@ const DojoPage = () => {
               <span>~{((status?.hourlyRate?.premiumTickets || 0)).toFixed(2)}/h</span>
             </HourlyStat>
           </HourlyRateStats>
+          {/* Level Bonuses */}
+          {status?.slots?.filter(s => s?.character?.level > 1).length > 0 && (
+            <LevelBonusSection>
+              <LevelBonusLabel>⚔️ Level Bonuses:</LevelBonusLabel>
+              <LevelBonusBadges>
+                {status.slots
+                  .filter(s => s?.character?.level > 1)
+                  .map((slot, idx) => {
+                    const char = slot.character;
+                    const bonus = Math.round((char.levelMultiplier - 1) * 100);
+                    return (
+                      <LevelBonusBadge key={idx}>
+                        {char.name} Lv.{char.level} (+{bonus}%)
+                      </LevelBonusBadge>
+                    );
+                  })}
+              </LevelBonusBadges>
+            </LevelBonusSection>
+          )}
           {status?.hourlyRate?.synergies?.length > 0 && (
             <SynergyBadges>
               {status.hourlyRate.synergies.map((syn, idx) => (
@@ -414,9 +433,16 @@ const DojoPage = () => {
                   <SlotOverlay>
                     <SlotCharName>{char.name}</SlotCharName>
                     <SlotCharSeries>{char.series}</SlotCharSeries>
-                    <SlotRarityBadge $color={getRarityColor(char.rarity)}>
-                      {char.rarity}
-                    </SlotRarityBadge>
+                    <SlotBadgeRow>
+                      <SlotRarityBadge $color={getRarityColor(char.rarity)}>
+                        {char.rarity}
+                      </SlotRarityBadge>
+                      {char.level && (
+                        <SlotLevelBadge $isMaxLevel={char.level >= 5}>
+                          Lv.{char.level} {char.levelMultiplier > 1 && `(${Math.round(char.levelMultiplier * 100)}%)`}
+                        </SlotLevelBadge>
+                      )}
+                    </SlotBadgeRow>
                   </SlotOverlay>
                   <RemoveButton onClick={() => handleUnassign(idx)}>
                     <FaTimes />
@@ -558,9 +584,19 @@ const DojoPage = () => {
                             )}
                             <CharOverlay>
                               <CharName>{char.name}</CharName>
-                              <CharRarity $color={getRarityColor(char.rarity)}>
-                                {char.rarity}
-                              </CharRarity>
+                              <CharBadges>
+                                <CharRarity $color={getRarityColor(char.rarity)}>
+                                  {char.rarity}
+                                </CharRarity>
+                                {char.level && (
+                                  <CharLevel $isMaxLevel={char.level >= 5} $multiplier={char.levelMultiplier}>
+                                    Lv.{char.level}
+                                  </CharLevel>
+                                )}
+                              </CharBadges>
+                              {char.levelMultiplier > 1 && (
+                                <CharPowerBonus>⚡ {Math.round(char.levelMultiplier * 100)}% power</CharPowerBonus>
+                              )}
                             </CharOverlay>
                           </CharacterCard>
                           ))}
@@ -1073,6 +1109,36 @@ const HourlyStat = styled.div`
   }
 `;
 
+const LevelBonusSection = styled.div`
+  margin-top: ${theme.spacing.md};
+  padding-top: ${theme.spacing.md};
+  border-top: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+const LevelBonusLabel = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.sm};
+  text-align: center;
+`;
+
+const LevelBonusBadges = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  flex-wrap: wrap;
+  justify-content: center;
+`;
+
+const LevelBonusBadge = styled.div`
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: linear-gradient(135deg, rgba(88, 86, 214, 0.15), rgba(175, 82, 222, 0.15));
+  border: 1px solid rgba(88, 86, 214, 0.3);
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.xs};
+  color: #BF5AF2;
+  white-space: nowrap;
+`;
+
 const SynergyBadges = styled.div`
   display: flex;
   gap: ${theme.spacing.sm};
@@ -1218,9 +1284,17 @@ const SlotCharSeries = styled.div`
   }
 `;
 
+const SlotBadgeRow = styled.div`
+  display: flex;
+  gap: 4px;
+  align-items: center;
+  justify-content: center;
+  margin-top: 4px;
+  flex-wrap: wrap;
+`;
+
 const SlotRarityBadge = styled.div`
   display: inline-block;
-  margin-top: 4px;
   padding: 2px 6px;
   background: ${props => props.$color || theme.colors.primary};
   border-radius: ${theme.radius.sm};
@@ -1228,6 +1302,27 @@ const SlotRarityBadge = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: white;
   text-transform: uppercase;
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 1px 4px;
+    font-size: 9px;
+  }
+`;
+
+const SlotLevelBadge = styled.div`
+  display: inline-block;
+  padding: 2px 6px;
+  background: ${props => props.$isMaxLevel 
+    ? 'linear-gradient(135deg, #ffd700, #ff8c00)' 
+    : 'rgba(88, 86, 214, 0.9)'};
+  border-radius: ${theme.radius.sm};
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.bold};
+  color: white;
+  
+  ${props => props.$isMaxLevel && `
+    animation: ${pulse} 2s ease-in-out infinite;
+  `}
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: 1px 4px;
@@ -1780,6 +1875,33 @@ const CharRarity = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: white;
   text-transform: uppercase;
+`;
+
+const CharBadges = styled.div`
+  display: flex;
+  gap: 3px;
+  align-items: center;
+  justify-content: center;
+`;
+
+const CharLevel = styled.div`
+  display: inline-block;
+  padding: 1px 4px;
+  background: ${props => props.$isMaxLevel 
+    ? 'linear-gradient(135deg, #ffd700, #ff8c00)' 
+    : 'rgba(88, 86, 214, 0.9)'};
+  border-radius: ${theme.radius.sm};
+  font-size: 9px;
+  font-weight: ${theme.fontWeights.bold};
+  color: white;
+`;
+
+const CharPowerBonus = styled.div`
+  font-size: 8px;
+  color: #4ade80;
+  font-weight: ${theme.fontWeights.bold};
+  margin-top: 2px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
 `;
 
 export default DojoPage;

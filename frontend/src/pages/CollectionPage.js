@@ -339,6 +339,28 @@ const CollectionPage = () => {
               {t('common.showing')} {currentCharacters.length} {t('common.of')} {filteredCharacters.length} {t('common.characters')}
             </ResultsInfo>
             
+            <LevelingLegend>
+              <LegendTitle>⚔️ Card Leveling</LegendTitle>
+              <LegendItems>
+                <LegendItem>
+                  <LegendIcon $type="shard">◆</LegendIcon>
+                  <span>Shards from duplicates</span>
+                </LegendItem>
+                <LegendItem>
+                  <LegendIcon $type="levelup">⬆</LegendIcon>
+                  <span>Ready to level up!</span>
+                </LegendItem>
+                <LegendItem>
+                  <LegendIcon $type="max">★</LegendIcon>
+                  <span>Max level (Lv.5)</span>
+                </LegendItem>
+                <LegendItem>
+                  <LegendIcon $type="power">⚡</LegendIcon>
+                  <span>+25% Dojo power/level</span>
+                </LegendItem>
+              </LegendItems>
+            </LevelingLegend>
+            
             <CharacterGrid
               variants={motionVariants.staggerContainer}
               initial="hidden"
@@ -394,9 +416,16 @@ const CollectionPage = () => {
                         </NotOwnedOverlay>
                       )}
                       {isOwned && (
-                        <LevelBadge $isMaxLevel={isMaxLevel} $canLevelUp={canLevelUp}>
-                          Lv.{level}{canLevelUp && ' ⬆'}
-                        </LevelBadge>
+                        <>
+                          <LevelBadge $isMaxLevel={isMaxLevel} $canLevelUp={canLevelUp}>
+                            Lv.{level}{isMaxLevel ? '★' : ''}{canLevelUp && ' ⬆'}
+                          </LevelBadge>
+                          {!isMaxLevel && shards > 0 && (
+                            <ShardBadge $canLevelUp={canLevelUp}>
+                              ◆{shards}/{shardsToNextLevel}
+                            </ShardBadge>
+                          )}
+                        </>
                       )}
                       <RarityIndicator $color={getRarityColor(char.rarity)} />
                     </CardImageWrapper>
@@ -726,7 +755,71 @@ const ClearFiltersBtn = styled.button`
 const ResultsInfo = styled.div`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textTertiary};
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const LevelingLegend = styled.div`
+  background: rgba(88, 86, 214, 0.08);
+  border: 1px solid rgba(88, 86, 214, 0.15);
+  border-radius: ${theme.radius.lg};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
   margin-bottom: ${theme.spacing.lg};
+`;
+
+const LegendTitle = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  margin-bottom: ${theme.spacing.sm};
+`;
+
+const LegendItems = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md} ${theme.spacing.xl};
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm} ${theme.spacing.lg};
+  }
+`;
+
+const LegendItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+`;
+
+const LegendIcon = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: ${theme.radius.full};
+  font-size: 10px;
+  font-weight: bold;
+  
+  ${props => props.$type === 'shard' && `
+    background: rgba(175, 82, 222, 0.2);
+    color: #AF52DE;
+  `}
+  
+  ${props => props.$type === 'levelup' && `
+    background: rgba(52, 199, 89, 0.2);
+    color: #34C759;
+  `}
+  
+  ${props => props.$type === 'max' && `
+    background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 140, 0, 0.3));
+    color: #FFD700;
+  `}
+  
+  ${props => props.$type === 'power' && `
+    background: rgba(74, 222, 128, 0.2);
+    color: #4ade80;
+  `}
 `;
 
 const ErrorMessage = styled.div`
@@ -887,6 +980,25 @@ const LevelBadge = styled.div`
       0%, 100% { transform: scale(1); }
       50% { transform: scale(1.05); }
     }
+  `}
+`;
+
+const ShardBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 3px 6px;
+  background: ${props => props.$canLevelUp 
+    ? 'linear-gradient(135deg, rgba(52, 199, 89, 0.95), rgba(48, 179, 80, 0.95))'
+    : 'rgba(175, 82, 222, 0.9)'};
+  backdrop-filter: blur(4px);
+  border-radius: ${theme.radius.full};
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.bold};
+  color: white;
+  z-index: 2;
+  ${props => props.$canLevelUp && `
+    box-shadow: 0 0 8px rgba(52, 199, 89, 0.5);
   `}
 `;
 
