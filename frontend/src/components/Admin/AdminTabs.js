@@ -44,9 +44,8 @@ const AdminTabs = ({ activeTab, onTabChange }) => {
 const TabsContainer = styled.nav`
   position: sticky;
   top: 70px;
-  z-index: 100;
-  background: rgba(0, 0, 0, 0.8);
-  backdrop-filter: blur(20px);
+  z-index: 50;
+  background: rgba(0, 0, 0, 0.95);
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   padding: ${theme.spacing.sm} 0;
   margin-bottom: ${theme.spacing.xl};
