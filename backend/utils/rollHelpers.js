@@ -121,6 +121,11 @@ const selectCharacterWithFallback = (primaryPool, fallbackPool, selectedRarity, 
     characterPool = allCharacters;
   }
 
+  // Safety check: if still no characters available, return null
+  if (!characterPool || characterPool.length === 0) {
+    return { character: null, actualRarity: null };
+  }
+
   // Select random character from pool
   const character = characterPool[Math.floor(Math.random() * characterPool.length)];
   

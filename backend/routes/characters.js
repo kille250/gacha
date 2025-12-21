@@ -88,6 +88,9 @@ router.post('/roll-multi', auth, async (req, res) => {
         raritiesData
       );
       
+      // Safety check: if no character found, skip this roll
+      if (!character) continue;
+      
       await user.addCharacter(character);
       results.push(character);
     }
@@ -188,6 +191,14 @@ router.post('/roll', auth, async (req, res) => {
       characters,
       raritiesData
     );
+    
+    // Safety check: if no character found, refund and error
+    if (!character) {
+      user.points += PRICING_CONFIG.baseCost;
+      await user.save();
+      releaseRollLock(userId);
+      return res.status(400).json({ error: 'No characters available to roll' });
+    }
     
     await user.addCharacter(character);
     

@@ -638,6 +638,23 @@ router.post('/:id/roll', auth, async (req, res) => {
       raritiesData
     );
     
+    // Safety check: if no character found, refund and error
+    if (!randomChar) {
+      if (usedTicket) {
+        // Refund the ticket
+        if (usedTicket === 'premium') {
+          user.premiumTickets += 1;
+        } else {
+          user.rollTickets += 1;
+        }
+      } else {
+        user.points += cost;
+      }
+      await user.save();
+      releaseRollLock(userId);
+      return res.status(400).json({ error: 'No characters available to roll' });
+    }
+    
     // Auto-claim the character
     await user.addCharacter(randomChar);
     
@@ -851,6 +868,9 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
         allCharacters,
         raritiesData
       );
+      
+      // Safety check: if no character found, skip this roll
+      if (!randomChar) continue;
       
       // Auto-claim the character
       await user.addCharacter(randomChar);
