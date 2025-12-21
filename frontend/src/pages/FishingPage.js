@@ -9,6 +9,7 @@ import { io } from 'socket.io-client';
 import api, { clearCache, WS_URL, getTradingPostOptions, executeTrade } from '../utils/api';
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
+import { useRarity } from '../context/RarityContext';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, motionVariants } from '../styles/DesignSystem';
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
 
@@ -39,13 +40,7 @@ const TIME_PERIODS = {
   NIGHT: 'night'
 };
 
-const RARITY_COLORS = {
-  common: '#a8b5a0',
-  uncommon: '#7cb342',
-  rare: '#42a5f5',
-  epic: '#ab47bc',
-  legendary: '#ffc107'
-};
+// RARITY_COLORS is now dynamically provided by useRarity() hook
 
 // Rarity ranking for comparing fish (higher = better)
 const RARITY_RANK = {
@@ -62,18 +57,13 @@ const isBetterFish = (newFish, currentBest) => {
   return (RARITY_RANK[newFish.rarity] || 0) > (RARITY_RANK[currentBest.fish?.rarity] || 0);
 };
 
-const RARITY_GLOW = {
-  common: 'rgba(168, 181, 160, 0.3)',
-  uncommon: 'rgba(124, 179, 66, 0.4)',
-  rare: 'rgba(66, 165, 245, 0.5)',
-  epic: 'rgba(171, 71, 188, 0.5)',
-  legendary: 'rgba(255, 193, 7, 0.6)'
-};
+// RARITY_GLOW is now dynamically provided by useRarity() hook - getRarityGlow(rarity)
 
 const FishingPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, setUser } = useContext(AuthContext);
+  const { getRarityColor, getRarityGlow } = useRarity();
   const canvasContainerRef = useRef(null);
   const movePlayerRef = useRef(null);
   // Stable ref for translation function to avoid WebSocket reconnections
@@ -715,7 +705,7 @@ const FishingPage = () => {
             >
               <BubbleEmoji>{entry.fish?.emoji}</BubbleEmoji>
               <BubbleContent>
-                <BubbleFishName $rarity={entry.fish?.rarity}>{entry.fish?.name}</BubbleFishName>
+                <BubbleFishName>{entry.fish?.name}</BubbleFishName>
                 <BubbleReward $success={entry.success}>
                   {entry.success ? '+1 🐟' : t('fishing.escaped')}
                 </BubbleReward>
@@ -740,7 +730,7 @@ const FishingPage = () => {
           <>
             <StatDivider />
             <StatItem $highlight>
-              <StatValue style={{ color: RARITY_COLORS[sessionStats.bestCatch.fish.rarity] }}>
+              <StatValue style={{ color: getRarityColor(sessionStats.bestCatch.fish.rarity) }}>
                 {sessionStats.bestCatch.fish.emoji}
               </StatValue>
               <StatLabel>{t('fishing.best')}</StatLabel>
@@ -822,15 +812,16 @@ const FishingPage = () => {
               animate={{ opacity: 1, scale: 1, x: "-50%", y: "-50%" }}
               exit={{ opacity: 0, scale: 0.9, x: "-50%", y: "-50%" }}
               $success={lastResult.success}
-              $rarity={lastResult.fish?.rarity}
+              $color={getRarityColor(lastResult.fish?.rarity)}
+              $glow={getRarityGlow(lastResult.fish?.rarity)}
             >
-              <ResultGlow $rarity={lastResult.fish?.rarity} />
+              <ResultGlow $glow={getRarityGlow(lastResult.fish?.rarity)} />
               <ResultEmoji>{lastResult.fish?.emoji}</ResultEmoji>
               <ResultInfo>
                 <ResultTitle $success={lastResult.success}>
                   {lastResult.success ? t('fishing.caught') : t('fishing.escaped')}
                 </ResultTitle>
-                <ResultFishName $rarity={lastResult.fish?.rarity}>
+                <ResultFishName $color={getRarityColor(lastResult.fish?.rarity)}>
                   {lastResult.fish?.name}
                 </ResultFishName>
                 {lastResult.success && (
@@ -938,9 +929,9 @@ const FishingPage = () => {
                         if (!acc.find(f => f.rarity === fish.rarity)) acc.push(fish);
                         return acc;
                       }, []).map(fish => (
-                        <FishItem key={fish.rarity} $rarity={fish.rarity}>
+                        <FishItem key={fish.rarity} $color={getRarityColor(fish.rarity)}>
                           <FishEmoji>{fish.emoji}</FishEmoji>
-                          <FishRarity $rarity={fish.rarity}>
+                          <FishRarity $color={getRarityColor(fish.rarity)}>
                             {fish.rarity.charAt(0).toUpperCase() + fish.rarity.slice(1)}
                           </FishRarity>
                           <FishDifficulty>{fish.difficulty}</FishDifficulty>
@@ -1080,11 +1071,11 @@ const FishingPage = () => {
                     {/* Fish Inventory - Compact Horizontal Bar */}
                     <FishBar>
                       {['common', 'uncommon', 'rare', 'epic', 'legendary'].map(rarity => (
-                        <FishChip key={rarity} $rarity={rarity} $hasAny={(tradingOptions.totals[rarity] || 0) > 0}>
+                        <FishChip key={rarity} $color={getRarityColor(rarity)} $hasAny={(tradingOptions.totals[rarity] || 0) > 0}>
                           <FishChipEmoji>
                             {rarity === 'common' ? '🐟' : rarity === 'uncommon' ? '🐠' : rarity === 'rare' ? '🐡' : rarity === 'epic' ? '🦈' : '🐋'}
                           </FishChipEmoji>
-                          <FishChipCount $rarity={rarity}>{tradingOptions.totals[rarity] || 0}</FishChipCount>
+                          <FishChipCount $color={getRarityColor(rarity)}>{tradingOptions.totals[rarity] || 0}</FishChipCount>
                         </FishChip>
                       ))}
                     </FishBar>
@@ -1108,7 +1099,7 @@ const FishingPage = () => {
                                 {availableTrades.map(option => (
                                   <QuickTradeCard 
                                     key={option.id}
-                                    $rarity={option.requiredRarity}
+                                    $color={getRarityColor(option.requiredRarity)}
                                     whileHover={{ scale: 1.02, y: -2 }}
                                     whileTap={{ scale: 0.98 }}
                                   >
@@ -1181,7 +1172,7 @@ const FishingPage = () => {
                                         <LockedTradeText>
                                           <LockedTradeName>{option.currentQuantity}/{option.requiredQuantity} {t(`fishing.${option.requiredRarity}`)}</LockedTradeName>
                                           <ProgressBarContainer>
-                                            <ProgressBarFill $progress={progress} $rarity={option.requiredRarity} />
+                                            <ProgressBarFill $progress={progress} $color={getRarityColor(option.requiredRarity)} />
                                           </ProgressBarContainer>
                                         </LockedTradeText>
                                       </LockedTradeInfo>
@@ -2115,7 +2106,7 @@ const ResultPopup = styled(motion.div)`
   border-radius: 24px;
   box-shadow: 
     0 12px 40px rgba(0, 0, 0, 0.5),
-    ${props => props.$success && props.$rarity ? `0 0 30px ${RARITY_GLOW[props.$rarity]}` : 'none'};
+    ${props => props.$success && props.$glow ? `0 0 30px ${props.$glow}` : 'none'};
   z-index: 200;
   overflow: hidden;
   max-width: calc(100vw - 40px);
@@ -2138,7 +2129,7 @@ const ResultPopup = styled(motion.div)`
 const ResultGlow = styled.div`
   position: absolute;
   inset: 0;
-  background: radial-gradient(circle at center, ${props => RARITY_GLOW[props.$rarity] || 'transparent'} 0%, transparent 70%);
+  background: radial-gradient(circle at center, ${props => props.$glow || 'transparent'} 0%, transparent 70%);
   animation: ${glow} 1.5s ease-in-out infinite;
   pointer-events: none;
 `;
@@ -2180,7 +2171,7 @@ const ResultTitle = styled.div`
 const ResultFishName = styled.div`
   font-size: 21px;
   font-weight: 600;
-  color: ${props => RARITY_COLORS[props.$rarity] || '#5d4037'};
+  color: ${props => props.$color || '#5d4037'};
   text-shadow: 1px 1px 0 rgba(255,255,255,0.3);
 `;
 
@@ -2511,7 +2502,7 @@ const FishItem = styled.div`
   padding: 12px 16px;
   background: rgba(255,255,255,0.5);
   border-radius: 12px;
-  border-left: 5px solid ${props => RARITY_COLORS[props.$rarity] || '#666'};
+  border-left: 5px solid ${props => props.$color || '#666'};
   box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 `;
 
@@ -2521,7 +2512,7 @@ const FishEmoji = styled.span`
 
 const FishRarity = styled.span`
   font-weight: 800;
-  color: ${props => RARITY_COLORS[props.$rarity] || '#5d4037'};
+  color: ${props => props.$color || '#5d4037'};
   min-width: 90px;
   text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
 `;
@@ -2868,7 +2859,7 @@ const FishChip = styled.div`
     : 'rgba(255,255,255,0.3)'};
   border-radius: 10px;
   border: 2px solid ${props => props.$hasAny 
-    ? `${RARITY_COLORS[props.$rarity]}60`
+    ? `${props.$color}60`
     : 'rgba(139, 105, 20, 0.15)'};
   opacity: ${props => props.$hasAny ? 1 : 0.6};
   transition: all 0.2s;
@@ -2891,7 +2882,7 @@ const FishChipEmoji = styled.div`
 const FishChipCount = styled.div`
   font-size: 14px;
   font-weight: 800;
-  color: ${props => RARITY_COLORS[props.$rarity] || '#5d4037'};
+  color: ${props => props.$color || '#5d4037'};
   
   @media (max-width: 400px) {
     font-size: 12px;
@@ -2962,7 +2953,7 @@ const TradeGrid = styled.div`
 const QuickTradeCard = styled(motion.div)`
   background: rgba(255,255,255,0.8);
   border-radius: 14px;
-  border: 3px solid ${props => `${RARITY_COLORS[props.$rarity]}50` || 'rgba(139, 105, 20, 0.3)'};
+  border: 3px solid ${props => `${props.$color}50` || 'rgba(139, 105, 20, 0.3)'};
   padding: 12px 10px;
   display: flex;
   flex-direction: column;
@@ -2972,7 +2963,7 @@ const QuickTradeCard = styled(motion.div)`
   box-shadow: 0 2px 8px rgba(0,0,0,0.1);
   
   &:hover {
-    border-color: ${props => RARITY_COLORS[props.$rarity] || '#8b6914'};
+    border-color: ${props => props.$color || '#8b6914'};
     background: rgba(255,255,255,0.95);
     box-shadow: 0 4px 16px rgba(0,0,0,0.15);
     transform: translateY(-2px);
@@ -3154,7 +3145,7 @@ const ProgressBarContainer = styled.div`
 const ProgressBarFill = styled.div`
   height: 100%;
   width: ${props => props.$progress}%;
-  background: ${props => RARITY_COLORS[props.$rarity] || '#8b6914'};
+  background: ${props => props.$color || '#8b6914'};
   border-radius: 3px;
   transition: width 0.3s ease;
 `;
