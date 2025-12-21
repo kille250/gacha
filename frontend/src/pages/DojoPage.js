@@ -266,35 +266,37 @@ const DojoPage = () => {
       <AnimatePresence>
         {claimResult && (
           <ClaimPopup
-            initial={{ opacity: 0, scale: 0.9, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.9, y: 20 }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
           >
-            <ClaimPopupIcon>🎉</ClaimPopupIcon>
-            <ClaimPopupTitle>Training Complete!</ClaimPopupTitle>
-            <ClaimPopupRewards>
-              {claimResult.rewards.points > 0 && (
-                <RewardItem>
-                  <FaCoins color="#FFD700" />
-                  <span>+{claimResult.rewards.points.toLocaleString()} Points</span>
-                </RewardItem>
+            <ClaimPopupContent>
+              <ClaimPopupIcon>🎉</ClaimPopupIcon>
+              <ClaimPopupTitle>Training Complete!</ClaimPopupTitle>
+              <ClaimPopupRewards>
+                {claimResult.rewards.points > 0 && (
+                  <RewardItem>
+                    <FaCoins color="#FFD700" />
+                    <span>+{claimResult.rewards.points.toLocaleString()} Points</span>
+                  </RewardItem>
+                )}
+                {claimResult.rewards.rollTickets > 0 && (
+                  <RewardItem>
+                    <FaTicketAlt color="#0a84ff" />
+                    <span>+{claimResult.rewards.rollTickets} Roll Tickets</span>
+                  </RewardItem>
+                )}
+                {claimResult.rewards.premiumTickets > 0 && (
+                  <RewardItem>
+                    <FaStar color="#bf5af2" />
+                    <span>+{claimResult.rewards.premiumTickets} Premium Tickets</span>
+                  </RewardItem>
+                )}
+              </ClaimPopupRewards>
+              {claimResult.activeBonus && (
+                <ActiveBonusTag>1.5× Active Bonus Applied!</ActiveBonusTag>
               )}
-              {claimResult.rewards.rollTickets > 0 && (
-                <RewardItem>
-                  <FaTicketAlt color="#0a84ff" />
-                  <span>+{claimResult.rewards.rollTickets} Roll Tickets</span>
-                </RewardItem>
-              )}
-              {claimResult.rewards.premiumTickets > 0 && (
-                <RewardItem>
-                  <FaStar color="#bf5af2" />
-                  <span>+{claimResult.rewards.premiumTickets} Premium Tickets</span>
-                </RewardItem>
-              )}
-            </ClaimPopupRewards>
-            {claimResult.activeBonus && (
-              <ActiveBonusTag>1.5× Active Bonus Applied!</ActiveBonusTag>
-            )}
+            </ClaimPopupContent>
           </ClaimPopup>
         )}
       </AnimatePresence>
@@ -625,12 +627,13 @@ const Header = styled.header`
   -webkit-backdrop-filter: blur(${theme.blur.lg});
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   position: sticky;
-  top: 0;
+  top: 60px; /* Account for main navigation bar */
   z-index: 100;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.md};
     gap: ${theme.spacing.sm};
+    top: 56px; /* Smaller nav on mobile */
   }
 `;
 
@@ -767,10 +770,18 @@ const CloseErrorBtn = styled.button`
 
 const ClaimPopup = styled(motion.div)`
   position: fixed;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
   z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+`;
+
+const ClaimPopupContent = styled.div`
   background: ${theme.colors.backgroundSecondary};
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
@@ -780,6 +791,7 @@ const ClaimPopup = styled(motion.div)`
   animation: ${glow} 2s ease-in-out infinite;
   width: calc(100% - 32px);
   max-width: 320px;
+  pointer-events: auto;
   
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.lg};
