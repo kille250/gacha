@@ -1,12 +1,12 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const fs = require('fs');
 const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { Banner, Character, User } = require('../models');
 const { getUrlPath, getFilePath } = require('../config/upload');
+const { safeUnlink } = require('../utils/fileUtils');
 const { bannerUpload: upload } = require('../config/multer');
 const { 
   PRICING_CONFIG, 
@@ -436,10 +436,7 @@ router.put('/:id', [auth, adminAuth], upload.fields([
         // Delete old image if exists
         if (banner.image && banner.image.startsWith('/uploads/')) {
           const oldFilename = path.basename(banner.image);
-          const oldPath = getFilePath('banners', oldFilename);
-          if (fs.existsSync(oldPath)) {
-            fs.unlinkSync(oldPath);
-          }
+          safeUnlink(getFilePath('banners', oldFilename));
         }
         banner.image = getUrlPath('banners', req.files.image[0].filename);
       }
@@ -448,10 +445,7 @@ router.put('/:id', [auth, adminAuth], upload.fields([
         // Delete old video if exists
         if (banner.videoUrl && banner.videoUrl.startsWith('/uploads/')) {
           const oldFilename = path.basename(banner.videoUrl);
-          const oldPath = getFilePath('videos', oldFilename);
-          if (fs.existsSync(oldPath)) {
-            fs.unlinkSync(oldPath);
-          }
+          safeUnlink(getFilePath('videos', oldFilename));
         }
         banner.videoUrl = getUrlPath('videos', req.files.video[0].filename);
       }
@@ -499,20 +493,12 @@ router.delete('/:id', [auth, adminAuth], async (req, res) => {
     // Delete associated files
     if (banner.image && banner.image.startsWith('/uploads/')) {
       const filename = path.basename(banner.image);
-      const imagePath = getFilePath('banners', filename);
-      if (fs.existsSync(imagePath)) {
-        fs.unlinkSync(imagePath);
-        console.log('Deleted image file:', imagePath);
-      }
+      safeUnlink(getFilePath('banners', filename));
     }
     
     if (banner.videoUrl && banner.videoUrl.startsWith('/uploads/')) {
       const filename = path.basename(banner.videoUrl);
-      const videoPath = getFilePath('videos', filename);
-      if (fs.existsSync(videoPath)) {
-        fs.unlinkSync(videoPath);
-        console.log('Deleted video file:', videoPath);
-      }
+      safeUnlink(getFilePath('videos', filename));
     }
     
     await banner.destroy();

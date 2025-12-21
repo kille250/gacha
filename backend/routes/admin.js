@@ -399,13 +399,9 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
     character.image = newImagePath;
     await character.save();
 
-    // If the old image was an uploaded file, delete it
+    // Delete old image if it was an uploaded file
     safeDeleteUpload(oldImage, 'characters');
-    if (oldImage && oldImage.startsWith('/uploads/')) {
-      console.log(`Deleted old image/video: ${oldImage}`);
-    }
 
-    // Log the change
     console.log(`Admin (ID: ${req.user.id}) updated media for character ${character.id} (${character.name})`);
 
     res.json({
@@ -554,9 +550,6 @@ router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
     
     // Delete old image if it was an uploaded file
     safeDeleteUpload(oldImage, 'characters');
-    if (oldImage && oldImage.startsWith('/uploads/')) {
-      console.log(`Deleted old image: ${oldImage}`);
-    }
     
     console.log(`Admin (ID: ${req.user.id}) updated character ${character.id} (${character.name}) image from URL`);
     
@@ -588,12 +581,8 @@ router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
     // Save character data for response
     const deletedChar = { ...character.get() };
     
-    // If the image was an uploaded file, delete it
-    const image = character.image;
-    safeDeleteUpload(image, 'characters');
-    if (image && image.startsWith('/uploads/')) {
-      console.log(`Deleted media for deleted character: ${image}`);
-    }
+    // Delete associated image if it was an uploaded file
+    safeDeleteUpload(character.image, 'characters');
     
     // Delete the character
     await character.destroy();
