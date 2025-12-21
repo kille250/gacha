@@ -1,6 +1,6 @@
 // src/context/AuthContext.js
 import React, { createContext, useState, useEffect, useCallback } from 'react';
-import api, { invalidateCache } from '../utils/api';
+import api, { invalidateCache, clearCache } from '../utils/api';
 
 export const AuthContext = createContext();
 
@@ -13,10 +13,9 @@ export const AuthProvider = ({ children }) => {
   const refreshUser = useCallback(async () => {
     try {
       const token = localStorage.getItem('token');
-      if (!token) return;
+      if (!token) return null;
       
       // Clear auth cache to ensure fresh data
-      const { clearCache } = await import('../utils/api');
       clearCache('/auth/me');
       
       const response = await api.get('/auth/me');

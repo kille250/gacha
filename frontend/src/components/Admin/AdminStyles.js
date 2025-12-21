@@ -484,22 +484,3 @@ export const StatusBadge = styled.span`
   font-weight: ${theme.fontWeights.semibold};
 `;
 
-// ============================================
-// ANIMATION UTILITIES
-// ============================================
-
-/**
- * CSS for spin animation - add 'spin' class to elements that need to rotate
- * Usage: Add className="spin" to an icon that should spin
- */
-export const spinAnimation = `
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-  
-  .spin {
-    animation: spin 1s linear infinite;
-  }
-`;
-
