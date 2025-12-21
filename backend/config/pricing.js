@@ -219,19 +219,34 @@ const roundRatesForDisplay = (rates) => {
 /**
  * Roll a rarity based on rates
  * Uses ordering from database (highest order = rarest, checked first)
+ * Normalizes rates to handle cases where they don't sum to 100%
  * @param {Object} rates - Object with rarity keys and percentage values
  * @param {Array} orderedRarities - Array of rarity names in order (rarest first)
  * @returns {string} - The rolled rarity
  */
 const rollRarity = (rates, orderedRarities = null) => {
-  const roll = Math.random() * 100;
-  let cumulative = 0;
-  
   // If ordered rarities provided, use them; otherwise use rates keys
   const order = orderedRarities || Object.keys(rates).sort((a, b) => {
     // Sort by rate ascending (rarest first for cumulative check)
     return (rates[a] || 0) - (rates[b] || 0);
   });
+  
+  // Calculate total to normalize rates (handles cases where sum != 100)
+  let total = 0;
+  for (const rarity of order) {
+    if (rates[rarity] !== undefined && rates[rarity] > 0) {
+      total += rates[rarity];
+    }
+  }
+  
+  // If no valid rates, return fallback
+  if (total <= 0) {
+    return order[order.length - 1] || 'common';
+  }
+  
+  // Roll against the actual total (normalizes the probability distribution)
+  const roll = Math.random() * total;
+  let cumulative = 0;
   
   for (const rarity of order) {
     if (rates[rarity] !== undefined && rates[rarity] > 0) {
@@ -240,7 +255,7 @@ const rollRarity = (rates, orderedRarities = null) => {
     }
   }
   
-  // Fallback to first rarity in order (should be common)
+  // Fallback to last rarity in order (should be common)
   return order[order.length - 1] || 'common';
 };
 

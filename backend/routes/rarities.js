@@ -10,6 +10,7 @@ const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { Rarity } = require('../models');
 const { isValidId } = require('../utils/validation');
+const { invalidateRaritiesCache } = require('../config/pricing');
 
 // ===========================================
 // PUBLIC ROUTES (for frontend display)
@@ -195,6 +196,9 @@ router.post('/', [auth, adminAuth], async (req, res) => {
       isDefault: false
     });
     
+    // Invalidate cache so new rarity is picked up immediately
+    invalidateRaritiesCache();
+    
     console.log(`Admin (ID: ${req.user.id}) created rarity: ${rarity.name}`);
     res.status(201).json(rarity);
   } catch (err) {
@@ -253,6 +257,9 @@ router.put('/:id', [auth, adminAuth], async (req, res) => {
     
     await rarity.save();
     
+    // Invalidate cache so updates are picked up immediately
+    invalidateRaritiesCache();
+    
     console.log(`Admin (ID: ${req.user.id}) updated rarity: ${rarity.name}`);
     res.json(rarity);
   } catch (err) {
@@ -295,6 +302,9 @@ router.delete('/:id', [auth, adminAuth], async (req, res) => {
     const deletedName = rarity.name;
     await rarity.destroy();
     
+    // Invalidate cache so deletion is picked up immediately
+    invalidateRaritiesCache();
+    
     console.log(`Admin (ID: ${req.user.id}) deleted rarity: ${deletedName}`);
     res.json({ message: `Rarity "${deletedName}" deleted successfully` });
   } catch (err) {
@@ -322,6 +332,9 @@ router.post('/reset-defaults', [auth, adminAuth], async (req, res) => {
         await Rarity.create(defaultRarity);
       }
     }
+    
+    // Invalidate cache so reset values are picked up immediately
+    invalidateRaritiesCache();
     
     console.log(`Admin (ID: ${req.user.id}) reset default rarities`);
     
