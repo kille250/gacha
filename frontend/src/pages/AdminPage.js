@@ -371,7 +371,9 @@ const AdminPage = () => {
 
   const selectAltMedia = useCallback((media) => {
     setSelectedAltMedia(media);
-    setEditImagePreview(media.preview || media.file);
+    // For animated content, use the actual file URL so the video plays
+    // For static images, use preview (higher quality thumbnail) or file
+    setEditImagePreview(media.isAnimated ? media.file : (media.preview || media.file));
     setEditImageFile(null); // Clear local file if alt media is selected
   }, []);
 
