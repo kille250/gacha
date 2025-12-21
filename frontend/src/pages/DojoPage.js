@@ -13,7 +13,7 @@ import {
   MdAutorenew,
   MdSearch
 } from 'react-icons/md';
-import { FaDumbbell, FaCoins, FaTicketAlt, FaStar, FaTimes } from 'react-icons/fa';
+import { FaDumbbell, FaCoins, FaTicketAlt, FaStar, FaTimes, FaPlay } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import {
@@ -26,7 +26,7 @@ import {
   getAssetUrl
 } from '../utils/api';
 import { theme, Spinner } from '../styles/DesignSystem';
-import { PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
+import { PLACEHOLDER_IMAGE, isVideo } from '../utils/mediaUtils';
 
 // ===========================================
 // ANIMATIONS
@@ -35,11 +35,6 @@ import { PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 const pulse = keyframes`
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.05); opacity: 0.9; }
-`;
-
-const shimmer = keyframes`
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
 `;
 
 const float = keyframes`
@@ -57,7 +52,7 @@ const glow = keyframes`
 // ===========================================
 
 const DojoPage = () => {
-  const { t } = useTranslation();
+  useTranslation(); // For future i18n support
   const navigate = useNavigate();
   const { user, refreshUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
@@ -195,8 +190,13 @@ const DojoPage = () => {
            char.series?.toLowerCase().includes(query);
   });
 
+  // Limit visible characters for performance (show first 50, rest on scroll/search)
+  const MAX_VISIBLE = 50;
+  const visibleCharacters = filteredCharacters.slice(0, MAX_VISIBLE);
+  const hasMoreCharacters = filteredCharacters.length > MAX_VISIBLE;
+
   // Group by series for display
-  const charactersBySeries = filteredCharacters.reduce((acc, char) => {
+  const charactersBySeries = visibleCharacters.reduce((acc, char) => {
     const series = char.series || 'Unknown';
     if (!acc[series]) acc[series] = [];
     acc[series].push(char);
@@ -398,11 +398,18 @@ const DojoPage = () => {
                   $glow={getRarityGlow(char.rarity)}
                   whileHover={{ scale: 1.02 }}
                 >
+                  {/* Use placeholder for videos to avoid performance issues */}
                   <SlotImage 
-                    src={getAssetUrl(char.image) || PLACEHOLDER_IMAGE} 
+                    src={isVideo(char.image) ? PLACEHOLDER_IMAGE : (getAssetUrl(char.image) || PLACEHOLDER_IMAGE)} 
                     alt={char.name}
+                    loading="lazy"
                     onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
                   />
+                  {isVideo(char.image) && (
+                    <SlotVideoBadge>
+                      <FaPlay />
+                    </SlotVideoBadge>
+                  )}
                   <SlotOverlay>
                     <SlotCharName>{char.name}</SlotCharName>
                     <SlotCharSeries>{char.series}</SlotCharSeries>
@@ -523,34 +530,48 @@ const DojoPage = () => {
                     {searchQuery ? 'No matching characters found' : 'No available characters. Roll some in the gacha!'}
                   </NoCharacters>
                 ) : (
-                  Object.entries(charactersBySeries).map(([series, chars]) => (
-                    <SeriesGroup key={series}>
-                      <SeriesTitle>{series} ({chars.length})</SeriesTitle>
-                      <CharacterGrid>
-                        {chars.map(char => (
-                          <CharacterCard
-                            key={char.id}
-                            $color={getRarityColor(char.rarity)}
-                            onClick={() => handleAssign(char.id)}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                          >
-                            <CharImage 
-                              src={getAssetUrl(char.image) || PLACEHOLDER_IMAGE}
-                              alt={char.name}
-                              onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
-                            />
-                            <CharOverlay>
-                              <CharName>{char.name}</CharName>
-                              <CharRarity $color={getRarityColor(char.rarity)}>
-                                {char.rarity}
-                              </CharRarity>
-                            </CharOverlay>
-                          </CharacterCard>
-                        ))}
-                      </CharacterGrid>
-                    </SeriesGroup>
-                  ))
+                  <>
+                    {hasMoreCharacters && !searchQuery && (
+                      <SearchHint>
+                        Showing {MAX_VISIBLE} of {filteredCharacters.length} characters. Use search to find more.
+                      </SearchHint>
+                    )}
+                    {Object.entries(charactersBySeries).map(([series, chars]) => (
+                      <SeriesGroup key={series}>
+                        <SeriesTitle>{series} ({chars.length})</SeriesTitle>
+                        <CharacterGrid>
+                          {chars.map(char => (
+                            <CharacterCard
+                              key={char.id}
+                              $color={getRarityColor(char.rarity)}
+                              onClick={() => handleAssign(char.id)}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                            >
+                              {/* Use placeholder for videos, lazy load images */}
+                              <CharImage 
+                                src={isVideo(char.image) ? PLACEHOLDER_IMAGE : (getAssetUrl(char.image) || PLACEHOLDER_IMAGE)}
+                                alt={char.name}
+                                loading="lazy"
+                                onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
+                              />
+                              {isVideo(char.image) && (
+                                <VideoBadge>
+                                  <FaPlay />
+                                </VideoBadge>
+                              )}
+                              <CharOverlay>
+                                <CharName>{char.name}</CharName>
+                                <CharRarity $color={getRarityColor(char.rarity)}>
+                                  {char.rarity}
+                                </CharRarity>
+                              </CharOverlay>
+                            </CharacterCard>
+                          ))}
+                        </CharacterGrid>
+                      </SeriesGroup>
+                    ))}
+                  </>
                 )}
               </ModalBody>
             </ModalContent>
@@ -1334,6 +1355,40 @@ const CharRarity = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: white;
   text-transform: uppercase;
+`;
+
+const VideoBadge = styled.div`
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 12px;
+  pointer-events: none;
+`;
+
+const SlotVideoBadge = styled(VideoBadge)`
+  width: 36px;
+  height: 36px;
+  font-size: 14px;
+`;
+
+const SearchHint = styled.div`
+  text-align: center;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.md};
+  background: rgba(0, 113, 227, 0.1);
+  border: 1px solid rgba(0, 113, 227, 0.2);
+  border-radius: ${theme.radius.lg};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.primary};
 `;
 
 export default DojoPage;
