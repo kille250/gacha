@@ -129,39 +129,73 @@ const calculateBannerRates = async (rateMultiplier, isMulti = false, raritiesDat
   const effectiveMultiplier = Math.min(rateMultiplier || 1, PRICING_CONFIG.maxMultiplier);
   const rateAdjustment = (effectiveMultiplier - 1) * 0.1;
   
-  const rates = {};
-  let totalHigher = 0;
+  // First pass: calculate total minimumRate to see if it consumes all probability
+  let totalMinimumRate = 0;
   let commonRarity = null;
   
-  // Apply multiplier to each rarity (except common which is calculated last)
   rarities.forEach(r => {
-    // The rarity with the lowest order is considered "common" and fills the remaining %
     if (!commonRarity || r.order < commonRarity.order) {
       commonRarity = r;
     }
-    
+    totalMinimumRate += (r.minimumRate || 0);
+  });
+  
+  // Debug: log minimumRate values
+  console.log('[calculateBannerRates] minimumRates:', rarities.map(r => `${r.name}:${r.minimumRate || 0}`).join(', '), `total:${totalMinimumRate}`);
+  
+  const rates = {};
+  
+  // If minimumRates consume 100% or more, ONLY use minimumRates (ignore calculated rates)
+  if (totalMinimumRate >= 100) {
+    rarities.forEach(r => {
+      rates[r.name] = r.minimumRate || 0;
+    });
+    console.log('[calculateBannerRates] Using ONLY minimumRates:', rates);
+    return rates;
+  }
+  
+  // Otherwise, calculate rates normally with minimumRate as floors
+  // Available space after reserving minimumRates
+  const availableSpace = 100 - totalMinimumRate;
+  
+  let totalCalculated = 0;
+  const calculatedRates = {};
+  
+  // Calculate base rates for non-common rarities
+  rarities.forEach(r => {
     if (r.multiplierScaling > 0) {
       const cap = r[capField];
       const baseRate = baseRates[r.name];
       const adjusted = baseRate * (1 + rateAdjustment * r.multiplierScaling);
-      // Cap only limits how much the multiplier can boost the rate, 
-      // but never reduces below the configured base rate
       let finalRate = cap ? Math.max(baseRate, Math.min(adjusted, cap)) : adjusted;
-      // Apply minimumRate as a floor for this rarity
-      finalRate = Math.max(finalRate, r.minimumRate || 0);
-      rates[r.name] = finalRate;
-      totalHigher += rates[r.name];
-    } else {
-      // Common/filler rarity - calculated after
+      // Subtract this rarity's minimumRate since that's already reserved
+      const calculatedPortion = Math.max(0, finalRate - (r.minimumRate || 0));
+      calculatedRates[r.name] = calculatedPortion;
+      totalCalculated += calculatedPortion;
     }
   });
   
-  // Calculate common rate to fill remaining percentage
-  // Apply minimumRate as a floor for common as well
-  const minCommon = commonRarity?.minimumRate ?? 0;
-  rates[commonRarity.name] = Math.max(100 - totalHigher, minCommon);
+  // Add common's base rate to calculated portion
+  const commonBaseRate = baseRates[commonRarity.name] || 0;
+  const commonCalculatedPortion = Math.max(0, commonBaseRate - (commonRarity.minimumRate || 0));
+  calculatedRates[commonRarity.name] = commonCalculatedPortion;
+  totalCalculated += commonCalculatedPortion;
   
-  // Note: If minimumRates cause total to exceed 100%, rollRarity() normalizes automatically
+  // Distribute available space proportionally based on calculated rates
+  rarities.forEach(r => {
+    const minRate = r.minimumRate || 0;
+    let additionalRate = 0;
+    
+    if (totalCalculated > 0 && calculatedRates[r.name] > 0) {
+      // Proportional share of available space
+      additionalRate = (calculatedRates[r.name] / totalCalculated) * availableSpace;
+    } else if (totalCalculated === 0 && r.name === commonRarity.name) {
+      // If no calculated rates, give all available space to common
+      additionalRate = availableSpace;
+    }
+    
+    rates[r.name] = minRate + additionalRate;
+  });
   
   return rates;
 };

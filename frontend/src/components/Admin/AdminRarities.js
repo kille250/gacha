@@ -1,7 +1,11 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaStar, FaEdit, FaTrash, FaPlus, FaUndo, FaPercent, FaPalette, FaMagic, FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
+import { 
+  FaStar, FaEdit, FaTrash, FaPlus, FaUndo, FaPercent, FaPalette, FaMagic, 
+  FaExclamationTriangle, FaInfoCircle, FaChevronDown, FaChevronUp, FaCopy,
+  FaDice, FaLightbulb, FaQuestionCircle, FaCog
+} from 'react-icons/fa';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../utils/api';
@@ -33,6 +37,138 @@ import {
   CheckboxLabel,
 } from './AdminStyles';
 
+// ============================================
+// PRESETS - Common rarity configurations
+// ============================================
+
+const RARITY_PRESETS = {
+  common: {
+    label: 'Common (High drop, no premium)',
+    description: 'High standard rate, excluded from premium/pity pools',
+    values: {
+      dropRateStandardSingle: 70,
+      dropRateStandardMulti: 65,
+      dropRateBannerSingle: 60,
+      dropRateBannerMulti: 55,
+      dropRatePremiumSingle: 0,
+      dropRatePremiumMulti: 0,
+      dropRatePity: 0,
+      multiplierScaling: 0,
+      minimumRate: 35,
+      isPityEligible: false,
+      glowIntensity: 0.3,
+      buildupTime: 800,
+      confettiCount: 0,
+      orbCount: 3,
+      ringCount: 1,
+    }
+  },
+  uncommon: {
+    label: 'Uncommon (Medium drop)',
+    description: 'Moderate rate, slight banner boost, not pity eligible',
+    values: {
+      dropRateStandardSingle: 20,
+      dropRateStandardMulti: 22,
+      dropRateBannerSingle: 22,
+      dropRateBannerMulti: 24,
+      dropRatePremiumSingle: 0,
+      dropRatePremiumMulti: 0,
+      dropRatePity: 0,
+      multiplierScaling: 0.5,
+      minimumRate: 0,
+      isPityEligible: false,
+      glowIntensity: 0.5,
+      buildupTime: 1000,
+      confettiCount: 30,
+      orbCount: 4,
+      ringCount: 1,
+    }
+  },
+  rare: {
+    label: 'Rare (Low drop, pity eligible)',
+    description: 'Low rate, good premium rates, counts for pity guarantee',
+    values: {
+      dropRateStandardSingle: 7,
+      dropRateStandardMulti: 9,
+      dropRateBannerSingle: 12,
+      dropRateBannerMulti: 14,
+      dropRatePremiumSingle: 70,
+      dropRatePremiumMulti: 65,
+      dropRatePity: 85,
+      multiplierScaling: 1.0,
+      minimumRate: 0,
+      isPityEligible: true,
+      glowIntensity: 0.7,
+      buildupTime: 1400,
+      confettiCount: 80,
+      orbCount: 5,
+      ringCount: 2,
+    }
+  },
+  epic: {
+    label: 'Epic (Very low drop)',
+    description: 'Very rare, strong premium boost, pity eligible',
+    values: {
+      dropRateStandardSingle: 2.5,
+      dropRateStandardMulti: 3.5,
+      dropRateBannerSingle: 5,
+      dropRateBannerMulti: 6,
+      dropRatePremiumSingle: 25,
+      dropRatePremiumMulti: 28,
+      dropRatePity: 14,
+      multiplierScaling: 1.5,
+      minimumRate: 0,
+      isPityEligible: true,
+      glowIntensity: 0.85,
+      buildupTime: 1800,
+      confettiCount: 120,
+      orbCount: 6,
+      ringCount: 2,
+    }
+  },
+  legendary: {
+    label: 'Legendary (Ultra rare)',
+    description: 'Extremely rare, maximum effects, pity eligible',
+    values: {
+      dropRateStandardSingle: 0.5,
+      dropRateStandardMulti: 0.5,
+      dropRateBannerSingle: 1,
+      dropRateBannerMulti: 1,
+      dropRatePremiumSingle: 5,
+      dropRatePremiumMulti: 7,
+      dropRatePity: 1,
+      multiplierScaling: 2.0,
+      minimumRate: 0,
+      isPityEligible: true,
+      glowIntensity: 1.0,
+      buildupTime: 2200,
+      confettiCount: 200,
+      orbCount: 8,
+      ringCount: 3,
+    }
+  }
+};
+
+// ============================================
+// TOOLTIPS - Field explanations
+// ============================================
+
+const FIELD_TOOLTIPS = {
+  dropRateStandardSingle: 'Base chance (%) when doing a single standard pull. Rates are normalized to 100% total.',
+  dropRateStandardMulti: 'Base chance (%) when doing a 10× standard pull. Usually slightly better than single.',
+  dropRateBannerSingle: 'Base chance (%) on banner single pulls. Banner multiplier can boost this.',
+  dropRateBannerMulti: 'Base chance (%) on banner 10× pulls. Banner multiplier can boost this.',
+  dropRatePremiumSingle: 'Chance (%) when using a premium ticket. Set to 0 to exclude from premium pool.',
+  dropRatePremiumMulti: 'Chance (%) when using premium tickets in multi. Set to 0 to exclude.',
+  dropRatePity: 'Chance (%) in the pity pool (guaranteed rare+ on 10th pull). Only for pity-eligible rarities.',
+  capSingle: 'Maximum rate (%) this rarity can reach after banner multiplier is applied (single pulls).',
+  capMulti: 'Maximum rate (%) this rarity can reach after banner multiplier is applied (multi pulls).',
+  multiplierScaling: 'How strongly the banner rate multiplier affects this rarity. 0 = immune, 2 = double effect.',
+  minimumRate: 'Floor rate (%) - this rarity will never drop below this rate on banners. Good for commons.',
+  isPityEligible: 'If checked, pulling this rarity counts as a "rare+" and resets the pity counter.',
+  order: 'Priority order. Higher = rarer (checked first in roll calculations).',
+};
+
 const AdminRarities = ({ onRefresh }) => {
   const { t } = useTranslation();
   const [rarities, setRarities] = useState([]);
@@ -41,6 +177,19 @@ const AdminRarities = ({ onRefresh }) => {
   const [showModal, setShowModal] = useState(false);
   const [editingRarity, setEditingRarity] = useState(null);
   const [formData, setFormData] = useState(getEmptyFormData());
+  
+  // Collapsible sections state
+  const [expandedSections, setExpandedSections] = useState({
+    basic: true,
+    rates: true,
+    advanced: false,
+    visual: false,
+    animation: false
+  });
+  
+  // Simulator state
+  const [showSimulator, setShowSimulator] = useState(false);
+  const [simulatorPulls, setSimulatorPulls] = useState(100);
 
   function getEmptyFormData() {
     return {
@@ -103,8 +252,6 @@ const AdminRarities = ({ onRefresh }) => {
     
     return pools.map(pool => {
       const total = rarities.reduce((sum, r) => sum + (r[pool.field] || 0), 0);
-      const hasCommonMinimum = pool.key.includes('banner') || pool.key.includes('standard');
-      const commonRate = rarities.find(r => r.name === 'common')?.[pool.field] || 0;
       
       // Calculate effective rates after normalization
       const effectiveRates = {};
@@ -116,12 +263,31 @@ const AdminRarities = ({ onRefresh }) => {
         ...pool,
         total,
         isValid: Math.abs(total - 100) < 0.1,
-        hasCommonMinimum,
-        commonRate,
         effectiveRates,
       };
     });
   }, [rarities]);
+
+  // Simulate expected results
+  const simulatedResults = useMemo(() => {
+    if (!rateTotals || rarities.length === 0) return null;
+    
+    const results = {};
+    const pools = ['standardSingle', 'standardMulti', 'bannerSingle', 'premiumSingle'];
+    
+    pools.forEach(poolKey => {
+      const pool = rateTotals.find(p => p.key === poolKey);
+      if (!pool) return;
+      
+      results[poolKey] = {};
+      rarities.forEach(r => {
+        const effectiveRate = parseFloat(pool.effectiveRates[r.name]) || 0;
+        results[poolKey][r.name] = Math.round((effectiveRate / 100) * simulatorPulls * 10) / 10;
+      });
+    });
+    
+    return results;
+  }, [rateTotals, rarities, simulatorPulls]);
 
   // Check if any pool has invalid totals
   const hasInvalidTotals = rateTotals?.some(p => !p.isValid);
@@ -141,6 +307,35 @@ const AdminRarities = ({ onRefresh }) => {
       [name]: value === '' ? '' : parseFloat(value) || 0
     }));
   };
+
+  const toggleSection = (section) => {
+    setExpandedSections(prev => ({
+      ...prev,
+      [section]: !prev[section]
+    }));
+  };
+
+  // Apply a preset to the form
+  const applyPreset = useCallback((presetKey) => {
+    const preset = RARITY_PRESETS[presetKey];
+    if (!preset) return;
+    
+    setFormData(prev => ({
+      ...prev,
+      ...preset.values
+    }));
+  }, []);
+
+  // Copy single rates to multi (with optional adjustment)
+  const copySingleToMulti = useCallback((adjustment = 0) => {
+    setFormData(prev => ({
+      ...prev,
+      dropRateStandardMulti: Math.max(0, prev.dropRateStandardSingle + adjustment),
+      dropRateBannerMulti: Math.max(0, prev.dropRateBannerSingle + adjustment),
+      dropRatePremiumMulti: Math.max(0, prev.dropRatePremiumSingle + adjustment),
+      capMulti: prev.capSingle,
+    }));
+  }, []);
 
   const handleEditClick = (rarity) => {
     setEditingRarity(rarity);
@@ -168,12 +363,27 @@ const AdminRarities = ({ onRefresh }) => {
       ringCount: rarity.ringCount,
       isPityEligible: rarity.isPityEligible,
     });
+    // Expand basic sections, collapse advanced when editing
+    setExpandedSections({
+      basic: true,
+      rates: true,
+      advanced: false,
+      visual: false,
+      animation: false
+    });
     setShowModal(true);
   };
 
   const handleAddClick = () => {
     setEditingRarity(null);
     setFormData(getEmptyFormData());
+    setExpandedSections({
+      basic: true,
+      rates: true,
+      advanced: false,
+      visual: false,
+      animation: false
+    });
     setShowModal(true);
   };
 
@@ -280,34 +490,109 @@ const AdminRarities = ({ onRefresh }) => {
           <ActionButton onClick={handleAddClick}>
             <FaPlus /> {t('admin.rarities.addRarity')}
           </ActionButton>
+          <ActionButton $variant="secondary" onClick={() => setShowSimulator(!showSimulator)}>
+            <FaDice /> {showSimulator ? 'Hide' : 'Show'} Simulator
+          </ActionButton>
           <ActionButton $variant="warning" onClick={handleResetDefaults}>
             <FaUndo /> {t('admin.rarities.resetDefaults')}
           </ActionButton>
         </ActionGroup>
       </ActionBar>
 
-      {/* Rate System Info Box */}
+      {/* Quick Guide Box */}
       <InfoBox>
         <InfoHeader>
-          <FaInfoCircle /> {t('admin.rarities.infoTitle')}
+          <FaLightbulb /> Quick Guide
         </InfoHeader>
         <InfoContent>
-          <InfoText>
-            <strong>Rate Normalization:</strong> {t('admin.rarities.infoNormalization')}{' '}
-            <code>{t('admin.rarities.infoNormalizationFormula')}</code>
-          </InfoText>
-          <InfoText>
-            <strong>Minimum Rate:</strong> {t('admin.rarities.infoMinimumRate')}{' '}
-            <strong>{t('admin.rarities.infoMinimumRateTip')}</strong>
-          </InfoText>
-          <InfoText>
-            <strong>Banner Rate Multiplier:</strong> {t('admin.rarities.infoMultiplier')}
-          </InfoText>
-          <InfoText>
-            <strong>{t('admin.rarities.infoHowTo100')}</strong> {t('admin.rarities.infoHowTo100Steps')}
-          </InfoText>
+          <QuickGuideGrid>
+            <GuideItem>
+              <GuideIcon>📊</GuideIcon>
+              <GuideText>
+                <strong>Rates don't need to equal 100%</strong><br/>
+                They're automatically normalized. Use any numbers that feel right.
+              </GuideText>
+            </GuideItem>
+            <GuideItem>
+              <GuideIcon>🎯</GuideIcon>
+              <GuideText>
+                <strong>Single vs Multi</strong><br/>
+                Multi rates are usually slightly better (+2-5%) to reward bulk pulls.
+              </GuideText>
+            </GuideItem>
+            <GuideItem>
+              <GuideIcon>⭐</GuideIcon>
+              <GuideText>
+                <strong>Premium pools</strong><br/>
+                Set rate to 0 to exclude a rarity from premium/pity pools entirely.
+              </GuideText>
+            </GuideItem>
+            <GuideItem>
+              <GuideIcon>🛡️</GuideIcon>
+              <GuideText>
+                <strong>Minimum Rate</strong><br/>
+                Use on Common to guarantee some "bad luck" (e.g., 35% minimum).
+              </GuideText>
+            </GuideItem>
+          </QuickGuideGrid>
         </InfoContent>
       </InfoBox>
+
+      {/* Rate Simulator */}
+      <AnimatePresence>
+        {showSimulator && (
+          <SimulatorBox
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <SimulatorHeader>
+              <FaDice /> Rate Simulator
+              <SimulatorControls>
+                <span>Simulating</span>
+                <SimulatorInput
+                  type="number"
+                  value={simulatorPulls}
+                  onChange={(e) => setSimulatorPulls(Math.max(1, parseInt(e.target.value) || 100))}
+                  min="1"
+                  max="10000"
+                />
+                <span>pulls</span>
+              </SimulatorControls>
+            </SimulatorHeader>
+            <SimulatorContent>
+              <SimulatorNote>
+                Expected results based on current rates (normalized to 100%):
+              </SimulatorNote>
+              {simulatedResults && (
+                <SimulatorGrid>
+                  {['standardSingle', 'standardMulti', 'bannerSingle', 'premiumSingle'].map(poolKey => (
+                    <SimulatorPool key={poolKey}>
+                      <SimulatorPoolTitle>
+                        {poolKey === 'standardSingle' && '🎲 Standard (1×)'}
+                        {poolKey === 'standardMulti' && '🎲 Standard (10×)'}
+                        {poolKey === 'bannerSingle' && '⭐ Banner'}
+                        {poolKey === 'premiumSingle' && '💎 Premium'}
+                      </SimulatorPoolTitle>
+                      {rarities.map(r => (
+                        <SimulatorRow key={r.name} $color={r.color}>
+                          <SimulatorRarity $color={r.color}>{r.displayName}</SimulatorRarity>
+                          <SimulatorValue>
+                            ~{simulatedResults[poolKey]?.[r.name] || 0}
+                            <SimulatorPercent>
+                              ({rateTotals?.find(p => p.key === poolKey)?.effectiveRates[r.name] || 0}%)
+                            </SimulatorPercent>
+                          </SimulatorValue>
+                        </SimulatorRow>
+                      ))}
+                    </SimulatorPool>
+                  ))}
+                </SimulatorGrid>
+              )}
+            </SimulatorContent>
+          </SimulatorBox>
+        )}
+      </AnimatePresence>
 
       {/* Rate Totals Warning */}
       {hasInvalidTotals && rateTotals && (
@@ -317,7 +602,7 @@ const AdminRarities = ({ onRefresh }) => {
           </WarningHeader>
           <WarningContent>
             <WarningText>
-              {t('admin.rarities.warningText')}
+              Rates don't add up to 100% — that's OK! They'll be normalized automatically.
             </WarningText>
             <RateTotalsGrid>
               {rateTotals.map(pool => (
@@ -325,7 +610,7 @@ const AdminRarities = ({ onRefresh }) => {
                   <RateTotalLabel>{pool.label}</RateTotalLabel>
                   <RateTotalValue $isValid={pool.isValid}>
                     {pool.total.toFixed(1)}%
-                    {!pool.isValid && <span> → {t('admin.rarities.normalizedTo100')}</span>}
+                    {!pool.isValid && <span> → normalized</span>}
                   </RateTotalValue>
                 </RateTotalItem>
               ))}
@@ -455,7 +740,7 @@ const AdminRarities = ({ onRefresh }) => {
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={e => e.stopPropagation()}
-              $maxWidth="700px"
+              $maxWidth="750px"
             >
               <ModalHeader>
                 <ModalTitle $iconColor={theme.colors.warning}>
@@ -465,305 +750,487 @@ const AdminRarities = ({ onRefresh }) => {
               </ModalHeader>
               
               <ModalBody>
+                {/* Preset Buttons - only show when adding new */}
+                {!editingRarity && (
+                  <PresetSection>
+                    <PresetLabel>
+                      <FaLightbulb /> Quick Start - Apply a preset:
+                    </PresetLabel>
+                    <PresetGrid>
+                      {Object.entries(RARITY_PRESETS).map(([key, preset]) => (
+                        <PresetButton
+                          key={key}
+                          type="button"
+                          onClick={() => applyPreset(key)}
+                          title={preset.description}
+                        >
+                          {preset.label}
+                        </PresetButton>
+                      ))}
+                    </PresetGrid>
+                  </PresetSection>
+                )}
+
                 <form onSubmit={handleSubmit}>
-                  {/* Basic Info */}
-                  <FormSection>
-                    <FormSectionTitle>{t('admin.rarities.basicInfo')}</FormSectionTitle>
-                    <FormRow>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.internalName')}</Label>
-                        <Input
-                          type="text"
-                          name="name"
-                          value={formData.name}
-                          onChange={handleInputChange}
-                          placeholder="e.g., mythic"
-                          disabled={editingRarity?.isDefault}
-                          required
-                        />
-                      </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.displayName')}</Label>
-                        <Input
-                          type="text"
-                          name="displayName"
-                          value={formData.displayName}
-                          onChange={handleInputChange}
-                          placeholder="e.g., Mythic"
-                          required
-                        />
-                      </FormGroup>
-                      <FormGroup style={{ width: '100px' }}>
-                        <Label>{t('admin.rarities.order')}</Label>
-                        <Input
-                          type="number"
-                          name="order"
-                          value={formData.order}
-                          onChange={handleNumberChange}
-                          min="0"
-                        />
-                      </FormGroup>
-                    </FormRow>
-                  </FormSection>
+                  {/* Basic Info - Always visible */}
+                  <CollapsibleSection $expanded={expandedSections.basic}>
+                    <SectionHeader onClick={() => toggleSection('basic')}>
+                      <SectionHeaderTitle>
+                        <FaInfoCircle /> Basic Info
+                      </SectionHeaderTitle>
+                      {expandedSections.basic ? <FaChevronUp /> : <FaChevronDown />}
+                    </SectionHeader>
+                    <AnimatePresence>
+                      {expandedSections.basic && (
+                        <SectionContent
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                        >
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <LabelWithTooltip>
+                                <Label>{t('admin.rarities.internalName')}</Label>
+                                <Tooltip title="Unique identifier used in code (lowercase, no spaces)">
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="text"
+                                name="name"
+                                value={formData.name}
+                                onChange={handleInputChange}
+                                placeholder="e.g., mythic"
+                                disabled={editingRarity?.isDefault}
+                                required
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>{t('admin.rarities.displayName')}</Label>
+                              <Input
+                                type="text"
+                                name="displayName"
+                                value={formData.displayName}
+                                onChange={handleInputChange}
+                                placeholder="e.g., Mythic"
+                                required
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ width: '100px' }}>
+                              <LabelWithTooltip>
+                                <Label>{t('admin.rarities.order')}</Label>
+                                <Tooltip title={FIELD_TOOLTIPS.order}>
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="number"
+                                name="order"
+                                value={formData.order}
+                                onChange={handleNumberChange}
+                                min="0"
+                              />
+                            </FormGroup>
+                          </FormRow>
+                        </SectionContent>
+                      )}
+                    </AnimatePresence>
+                  </CollapsibleSection>
 
-                  {/* Drop Rates */}
-                  <FormSection>
-                    <FormSectionTitle><FaPercent /> {t('admin.rarities.dropRatesPercent')}</FormSectionTitle>
-                    <RateFormGrid>
-                      <FormGroup>
-                        <Label>{t('admin.rarities.standardSingle')}</Label>
-                        <Input
-                          type="number"
-                          name="dropRateStandardSingle"
-                          value={formData.dropRateStandardSingle}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          min="0"
-                          max="100"
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <Label>{t('admin.rarities.standardMulti')}</Label>
-                        <Input
-                          type="number"
-                          name="dropRateStandardMulti"
-                          value={formData.dropRateStandardMulti}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          min="0"
-                          max="100"
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <Label>{t('admin.rarities.bannerSingle')}</Label>
-                        <Input
-                          type="number"
-                          name="dropRateBannerSingle"
-                          value={formData.dropRateBannerSingle}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          min="0"
-                          max="100"
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <Label>{t('admin.rarities.bannerMulti')}</Label>
-                        <Input
-                          type="number"
-                          name="dropRateBannerMulti"
-                          value={formData.dropRateBannerMulti}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          min="0"
-                          max="100"
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <Label>{t('admin.rarities.premiumSingle')}</Label>
-                        <Input
-                          type="number"
-                          name="dropRatePremiumSingle"
-                          value={formData.dropRatePremiumSingle}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          min="0"
-                          max="100"
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <Label>{t('admin.rarities.premiumMulti')}</Label>
-                        <Input
-                          type="number"
-                          name="dropRatePremiumMulti"
-                          value={formData.dropRatePremiumMulti}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          min="0"
-                          max="100"
-                        />
-                      </FormGroup>
-                      <FormGroup>
-                        <Label>{t('admin.rarities.pity')}</Label>
-                        <Input
-                          type="number"
-                          name="dropRatePity"
-                          value={formData.dropRatePity}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          min="0"
-                          max="100"
-                        />
-                      </FormGroup>
-                    </RateFormGrid>
-                  </FormSection>
+                  {/* Drop Rates - Main section */}
+                  <CollapsibleSection $expanded={expandedSections.rates}>
+                    <SectionHeader onClick={() => toggleSection('rates')}>
+                      <SectionHeaderTitle>
+                        <FaPercent /> Drop Rates
+                        <SectionBadge>Core Settings</SectionBadge>
+                      </SectionHeaderTitle>
+                      {expandedSections.rates ? <FaChevronUp /> : <FaChevronDown />}
+                    </SectionHeader>
+                    <AnimatePresence>
+                      {expandedSections.rates && (
+                        <SectionContent
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                        >
+                          {/* Copy buttons */}
+                          <CopyButtonRow>
+                            <CopyButton type="button" onClick={() => copySingleToMulti(0)}>
+                              <FaCopy /> Copy Single → Multi (same)
+                            </CopyButton>
+                            <CopyButton type="button" onClick={() => copySingleToMulti(2)}>
+                              <FaCopy /> Copy Single → Multi (+2%)
+                            </CopyButton>
+                          </CopyButtonRow>
 
-                  {/* Caps & Scaling */}
-                  <FormSection>
-                    <FormSectionTitle>{t('admin.rarities.bannerMultiplierSettings')}</FormSectionTitle>
-                    <FormRow>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.capSingle')}</Label>
-                        <Input
-                          type="number"
-                          name="capSingle"
-                          value={formData.capSingle}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          placeholder={t('admin.rarities.noCap')}
-                        />
-                      </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.capMulti')}</Label>
-                        <Input
-                          type="number"
-                          name="capMulti"
-                          value={formData.capMulti}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          placeholder={t('admin.rarities.noCap')}
-                        />
-                      </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.multiplierScaling')}</Label>
-                        <Input
-                          type="number"
-                          name="multiplierScaling"
-                          value={formData.multiplierScaling}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          min="0"
-                        />
-                      </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.minimumRate')}</Label>
-                        <Input
-                          type="number"
-                          name="minimumRate"
-                          value={formData.minimumRate}
-                          onChange={handleNumberChange}
-                          step="1"
-                          min="0"
-                          max="100"
-                        />
-                        <FieldHint>{t('admin.rarities.minimumRateHint')}</FieldHint>
-                      </FormGroup>
-                    </FormRow>
-                  </FormSection>
+                          <RateGroupLabel>Standard Pool (currency pulls)</RateGroupLabel>
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <LabelWithTooltip>
+                                <Label>Single Pull %</Label>
+                                <Tooltip title={FIELD_TOOLTIPS.dropRateStandardSingle}>
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="number"
+                                name="dropRateStandardSingle"
+                                value={formData.dropRateStandardSingle}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                min="0"
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <LabelWithTooltip>
+                                <Label>Multi Pull %</Label>
+                                <Tooltip title={FIELD_TOOLTIPS.dropRateStandardMulti}>
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="number"
+                                name="dropRateStandardMulti"
+                                value={formData.dropRateStandardMulti}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                min="0"
+                              />
+                            </FormGroup>
+                          </FormRow>
 
-                  {/* Visual Settings */}
-                  <FormSection>
-                    <FormSectionTitle><FaPalette /> {t('admin.rarities.visualSettings')}</FormSectionTitle>
-                    <FormRow>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.primaryColor')}</Label>
-                        <ColorInputWrapper>
-                          <ColorInput
-                            type="color"
-                            name="color"
-                            value={formData.color}
-                            onChange={handleInputChange}
-                          />
-                          <Input
-                            type="text"
-                            value={formData.color}
-                            onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
-                            style={{ flex: 1 }}
-                          />
-                        </ColorInputWrapper>
-                      </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.accentColor')}</Label>
-                        <ColorInputWrapper>
-                          <ColorInput
-                            type="color"
-                            name="accentColor"
-                            value={formData.accentColor || '#ffffff'}
-                            onChange={handleInputChange}
-                          />
-                          <Input
-                            type="text"
-                            value={formData.accentColor}
-                            onChange={(e) => setFormData(prev => ({ ...prev, accentColor: e.target.value }))}
-                            placeholder={t('admin.rarities.accentColorAuto')}
-                            style={{ flex: 1 }}
-                          />
-                        </ColorInputWrapper>
-                      </FormGroup>
-                    </FormRow>
-                  </FormSection>
+                          <RateGroupLabel>Banner Pool (featured banners)</RateGroupLabel>
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Single Pull %</Label>
+                              <Input
+                                type="number"
+                                name="dropRateBannerSingle"
+                                value={formData.dropRateBannerSingle}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                min="0"
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Multi Pull %</Label>
+                              <Input
+                                type="number"
+                                name="dropRateBannerMulti"
+                                value={formData.dropRateBannerMulti}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                min="0"
+                              />
+                            </FormGroup>
+                          </FormRow>
 
-                  {/* Animation Settings */}
-                  <FormSection>
-                    <FormSectionTitle><FaMagic /> {t('admin.rarities.animationSettings')}</FormSectionTitle>
-                    <FormRow>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.glowIntensity')}</Label>
-                        <Input
-                          type="number"
-                          name="glowIntensity"
-                          value={formData.glowIntensity}
-                          onChange={handleNumberChange}
-                          step="0.1"
-                          min="0"
-                          max="1"
-                        />
-                      </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.buildupTime')}</Label>
-                        <Input
-                          type="number"
-                          name="buildupTime"
-                          value={formData.buildupTime}
-                          onChange={handleNumberChange}
-                          min="0"
-                        />
-                      </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.confettiCount')}</Label>
-                        <Input
-                          type="number"
-                          name="confettiCount"
-                          value={formData.confettiCount}
-                          onChange={handleNumberChange}
-                          min="0"
-                        />
-                      </FormGroup>
-                    </FormRow>
-                    <FormRow>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.orbCount')}</Label>
-                        <Input
-                          type="number"
-                          name="orbCount"
-                          value={formData.orbCount}
-                          onChange={handleNumberChange}
-                          min="0"
-                        />
-                      </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>{t('admin.rarities.ringCount')}</Label>
-                        <Input
-                          type="number"
-                          name="ringCount"
-                          value={formData.ringCount}
-                          onChange={handleNumberChange}
-                          min="0"
-                        />
-                      </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label>&nbsp;</Label>
-                        <CheckboxLabel $padded>
-                          <input
-                            type="checkbox"
-                            name="isPityEligible"
-                            checked={formData.isPityEligible}
-                            onChange={handleInputChange}
-                          />
-                          <span>{t('admin.rarities.isPityEligible')}</span>
-                        </CheckboxLabel>
-                      </FormGroup>
-                    </FormRow>
-                  </FormSection>
+                          <RateGroupLabel>Premium Pool (special tickets)</RateGroupLabel>
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <LabelWithTooltip>
+                                <Label>Single Pull %</Label>
+                                <Tooltip title={FIELD_TOOLTIPS.dropRatePremiumSingle}>
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="number"
+                                name="dropRatePremiumSingle"
+                                value={formData.dropRatePremiumSingle}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                min="0"
+                              />
+                              <FieldHint>Set to 0 to exclude from premium pool</FieldHint>
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Multi Pull %</Label>
+                              <Input
+                                type="number"
+                                name="dropRatePremiumMulti"
+                                value={formData.dropRatePremiumMulti}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                min="0"
+                              />
+                            </FormGroup>
+                          </FormRow>
+
+                          <RateGroupLabel>Pity System (10th pull guarantee)</RateGroupLabel>
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <LabelWithTooltip>
+                                <Label>Pity Rate %</Label>
+                                <Tooltip title={FIELD_TOOLTIPS.dropRatePity}>
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="number"
+                                name="dropRatePity"
+                                value={formData.dropRatePity}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                min="0"
+                              />
+                              <FieldHint>Only applies if pity eligible is checked</FieldHint>
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>&nbsp;</Label>
+                              <CheckboxLabel $padded>
+                                <input
+                                  type="checkbox"
+                                  name="isPityEligible"
+                                  checked={formData.isPityEligible}
+                                  onChange={handleInputChange}
+                                />
+                                <span>Pity Eligible (counts as "rare+")</span>
+                              </CheckboxLabel>
+                              <FieldHint>Resets pity counter when pulled</FieldHint>
+                            </FormGroup>
+                          </FormRow>
+                        </SectionContent>
+                      )}
+                    </AnimatePresence>
+                  </CollapsibleSection>
+
+                  {/* Advanced Settings - Collapsed by default */}
+                  <CollapsibleSection $expanded={expandedSections.advanced}>
+                    <SectionHeader onClick={() => toggleSection('advanced')}>
+                      <SectionHeaderTitle>
+                        <FaCog /> Advanced Banner Settings
+                        <SectionBadge $muted>Optional</SectionBadge>
+                      </SectionHeaderTitle>
+                      {expandedSections.advanced ? <FaChevronUp /> : <FaChevronDown />}
+                    </SectionHeader>
+                    <AnimatePresence>
+                      {expandedSections.advanced && (
+                        <SectionContent
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                        >
+                          <AdvancedNote>
+                            <FaInfoCircle /> These settings control how banner rate multipliers affect this rarity.
+                            Most users can leave these at defaults.
+                          </AdvancedNote>
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <LabelWithTooltip>
+                                <Label>Cap (Single)</Label>
+                                <Tooltip title={FIELD_TOOLTIPS.capSingle}>
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="number"
+                                name="capSingle"
+                                value={formData.capSingle}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                placeholder="No cap"
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <LabelWithTooltip>
+                                <Label>Cap (Multi)</Label>
+                                <Tooltip title={FIELD_TOOLTIPS.capMulti}>
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="number"
+                                name="capMulti"
+                                value={formData.capMulti}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                placeholder="No cap"
+                              />
+                            </FormGroup>
+                          </FormRow>
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <LabelWithTooltip>
+                                <Label>Multiplier Scaling</Label>
+                                <Tooltip title={FIELD_TOOLTIPS.multiplierScaling}>
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="number"
+                                name="multiplierScaling"
+                                value={formData.multiplierScaling}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                min="0"
+                              />
+                              <FieldHint>0 = immune to multiplier, 1 = normal, 2 = double effect</FieldHint>
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <LabelWithTooltip>
+                                <Label>Minimum Rate %</Label>
+                                <Tooltip title={FIELD_TOOLTIPS.minimumRate}>
+                                  <FaQuestionCircle />
+                                </Tooltip>
+                              </LabelWithTooltip>
+                              <Input
+                                type="number"
+                                name="minimumRate"
+                                value={formData.minimumRate}
+                                onChange={handleNumberChange}
+                                step="1"
+                                min="0"
+                                max="100"
+                              />
+                              <FieldHint>Floor rate - never drops below this on banners</FieldHint>
+                            </FormGroup>
+                          </FormRow>
+                        </SectionContent>
+                      )}
+                    </AnimatePresence>
+                  </CollapsibleSection>
+
+                  {/* Visual Settings - Collapsed by default */}
+                  <CollapsibleSection $expanded={expandedSections.visual}>
+                    <SectionHeader onClick={() => toggleSection('visual')}>
+                      <SectionHeaderTitle>
+                        <FaPalette /> Visual Settings
+                        <SectionBadge $muted>Optional</SectionBadge>
+                      </SectionHeaderTitle>
+                      {expandedSections.visual ? <FaChevronUp /> : <FaChevronDown />}
+                    </SectionHeader>
+                    <AnimatePresence>
+                      {expandedSections.visual && (
+                        <SectionContent
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                        >
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Primary Color</Label>
+                              <ColorInputWrapper>
+                                <ColorInput
+                                  type="color"
+                                  name="color"
+                                  value={formData.color}
+                                  onChange={handleInputChange}
+                                />
+                                <Input
+                                  type="text"
+                                  value={formData.color}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, color: e.target.value }))}
+                                  style={{ flex: 1 }}
+                                />
+                              </ColorInputWrapper>
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Accent Color</Label>
+                              <ColorInputWrapper>
+                                <ColorInput
+                                  type="color"
+                                  name="accentColor"
+                                  value={formData.accentColor || '#ffffff'}
+                                  onChange={handleInputChange}
+                                />
+                                <Input
+                                  type="text"
+                                  value={formData.accentColor}
+                                  onChange={(e) => setFormData(prev => ({ ...prev, accentColor: e.target.value }))}
+                                  placeholder="Auto (lighter)"
+                                  style={{ flex: 1 }}
+                                />
+                              </ColorInputWrapper>
+                            </FormGroup>
+                          </FormRow>
+                          <ColorPreview $color={formData.color} $accent={formData.accentColor || formData.color}>
+                            <ColorPreviewSwatch $color={formData.color} />
+                            <ColorPreviewText $color={formData.color}>{formData.displayName || 'Preview'}</ColorPreviewText>
+                          </ColorPreview>
+                        </SectionContent>
+                      )}
+                    </AnimatePresence>
+                  </CollapsibleSection>
+
+                  {/* Animation Settings - Collapsed by default */}
+                  <CollapsibleSection $expanded={expandedSections.animation}>
+                    <SectionHeader onClick={() => toggleSection('animation')}>
+                      <SectionHeaderTitle>
+                        <FaMagic /> Animation Settings
+                        <SectionBadge $muted>Optional</SectionBadge>
+                      </SectionHeaderTitle>
+                      {expandedSections.animation ? <FaChevronUp /> : <FaChevronDown />}
+                    </SectionHeader>
+                    <AnimatePresence>
+                      {expandedSections.animation && (
+                        <SectionContent
+                          initial={{ height: 0, opacity: 0 }}
+                          animate={{ height: 'auto', opacity: 1 }}
+                          exit={{ height: 0, opacity: 0 }}
+                        >
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Glow Intensity (0-1)</Label>
+                              <Input
+                                type="number"
+                                name="glowIntensity"
+                                value={formData.glowIntensity}
+                                onChange={handleNumberChange}
+                                step="0.1"
+                                min="0"
+                                max="1"
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Buildup Time (ms)</Label>
+                              <Input
+                                type="number"
+                                name="buildupTime"
+                                value={formData.buildupTime}
+                                onChange={handleNumberChange}
+                                min="0"
+                                step="100"
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Confetti Count</Label>
+                              <Input
+                                type="number"
+                                name="confettiCount"
+                                value={formData.confettiCount}
+                                onChange={handleNumberChange}
+                                min="0"
+                              />
+                            </FormGroup>
+                          </FormRow>
+                          <FormRow>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Orb Count</Label>
+                              <Input
+                                type="number"
+                                name="orbCount"
+                                value={formData.orbCount}
+                                onChange={handleNumberChange}
+                                min="0"
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }}>
+                              <Label>Ring Count</Label>
+                              <Input
+                                type="number"
+                                name="ringCount"
+                                value={formData.ringCount}
+                                onChange={handleNumberChange}
+                                min="0"
+                              />
+                            </FormGroup>
+                            <FormGroup style={{ flex: 1 }} />
+                          </FormRow>
+                        </SectionContent>
+                      )}
+                    </AnimatePresence>
+                  </CollapsibleSection>
 
                   <FormRow style={{ marginTop: theme.spacing.lg }}>
                     <SecondaryButton type="button" onClick={() => setShowModal(false)} style={{ flex: 1 }}>
@@ -814,27 +1281,142 @@ const InfoContent = styled.div`
   padding: ${theme.spacing.md} ${theme.spacing.lg};
 `;
 
-const InfoText = styled.p`
-  margin: 0 0 ${theme.spacing.sm};
+const QuickGuideGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: ${theme.spacing.md};
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    grid-template-columns: 1fr;
+  }
+`;
+
+const GuideItem = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  align-items: flex-start;
+`;
+
+const GuideIcon = styled.span`
+  font-size: 20px;
+  line-height: 1;
+`;
+
+const GuideText = styled.div`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
-  line-height: 1.5;
-  
-  &:last-child {
-    margin-bottom: 0;
-  }
+  line-height: 1.4;
   
   strong {
     color: ${theme.colors.text};
+    display: block;
+    margin-bottom: 2px;
   }
+`;
+
+// Simulator styles
+const SimulatorBox = styled(motion.div)`
+  background: rgba(48, 209, 88, 0.08);
+  border: 1px solid rgba(48, 209, 88, 0.3);
+  border-radius: ${theme.radius.lg};
+  margin-bottom: ${theme.spacing.lg};
+  overflow: hidden;
+`;
+
+const SimulatorHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  background: rgba(48, 209, 88, 0.15);
+  color: ${theme.colors.success};
+  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.sm};
+  flex-wrap: wrap;
   
-  code {
-    background: ${theme.colors.backgroundTertiary};
-    padding: 2px 6px;
-    border-radius: ${theme.radius.sm};
-    font-family: monospace;
-    font-size: ${theme.fontSizes.xs};
+  svg {
+    font-size: ${theme.fontSizes.md};
   }
+`;
+
+const SimulatorControls = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  font-weight: ${theme.fontWeights.normal};
+  color: ${theme.colors.textSecondary};
+`;
+
+const SimulatorInput = styled.input`
+  width: 80px;
+  padding: 4px 8px;
+  border: 1px solid rgba(48, 209, 88, 0.4);
+  border-radius: ${theme.radius.sm};
+  background: rgba(0, 0, 0, 0.2);
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.sm};
+  text-align: center;
+`;
+
+const SimulatorContent = styled.div`
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+`;
+
+const SimulatorNote = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textMuted};
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const SimulatorGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: ${theme.spacing.md};
+  
+  @media (max-width: ${theme.breakpoints.md}) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+`;
+
+const SimulatorPool = styled.div`
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: ${theme.radius.md};
+  padding: ${theme.spacing.sm};
+`;
+
+const SimulatorPoolTitle = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${theme.colors.text};
+  margin-bottom: ${theme.spacing.xs};
+  padding-bottom: ${theme.spacing.xs};
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+`;
+
+const SimulatorRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 0;
+  font-size: ${theme.fontSizes.xs};
+`;
+
+const SimulatorRarity = styled.span`
+  color: ${props => props.$color};
+  font-weight: ${theme.fontWeights.semibold};
+`;
+
+const SimulatorValue = styled.span`
+  color: ${theme.colors.text};
+  font-weight: ${theme.fontWeights.bold};
+`;
+
+const SimulatorPercent = styled.span`
+  color: ${theme.colors.textMuted};
+  font-weight: ${theme.fontWeights.normal};
+  font-size: 10px;
+  margin-left: 4px;
 `;
 
 const WarningBox = styled.div`
@@ -1087,39 +1669,186 @@ const RarityActions = styled.div`
   background: ${theme.colors.backgroundTertiary};
 `;
 
-const FormSection = styled.div`
+// Modal Form Styles
+const PresetSection = styled.div`
   margin-bottom: ${theme.spacing.lg};
-  padding-bottom: ${theme.spacing.lg};
-  border-bottom: 1px solid ${theme.colors.surfaceBorder};
-  
-  &:last-of-type {
-    border-bottom: none;
-    margin-bottom: 0;
-    padding-bottom: 0;
-  }
+  padding: ${theme.spacing.md};
+  background: rgba(255, 159, 10, 0.08);
+  border: 1px solid rgba(255, 159, 10, 0.2);
+  border-radius: ${theme.radius.lg};
 `;
 
-const FormSectionTitle = styled.h4`
+const PresetLabel = styled.div`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
-  margin: 0 0 ${theme.spacing.md};
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.textSecondary};
+  color: ${theme.colors.warning};
+  margin-bottom: ${theme.spacing.sm};
   
   svg {
-    color: ${theme.colors.primary};
+    font-size: ${theme.fontSizes.md};
   }
 `;
 
-const RateFormGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: ${theme.spacing.md};
+const PresetGrid = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
+const PresetButton = styled.button`
+  padding: 6px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.xs};
+  cursor: pointer;
+  transition: all 0.2s ease;
   
-  @media (min-width: ${theme.breakpoints.md}) {
-    grid-template-columns: repeat(4, 1fr);
+  &:hover {
+    background: rgba(255, 159, 10, 0.2);
+    border-color: ${theme.colors.warning};
+    color: ${theme.colors.warning};
+  }
+`;
+
+const CollapsibleSection = styled.div`
+  margin-bottom: ${theme.spacing.md};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  overflow: hidden;
+  background: ${props => props.$expanded ? 'rgba(255, 255, 255, 0.02)' : 'transparent'};
+`;
+
+const SectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  cursor: pointer;
+  user-select: none;
+  transition: background 0.2s ease;
+  
+  &:hover {
+    background: rgba(255, 255, 255, 0.03);
+  }
+  
+  svg:last-child {
+    color: ${theme.colors.textMuted};
+    font-size: 12px;
+  }
+`;
+
+const SectionHeaderTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  
+  svg {
+    color: ${theme.colors.primary};
+    font-size: ${theme.fontSizes.sm};
+  }
+`;
+
+const SectionBadge = styled.span`
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.normal};
+  padding: 2px 8px;
+  border-radius: ${theme.radius.full};
+  background: ${props => props.$muted ? 'rgba(255, 255, 255, 0.05)' : 'rgba(10, 132, 255, 0.15)'};
+  color: ${props => props.$muted ? theme.colors.textMuted : theme.colors.primary};
+`;
+
+const SectionContent = styled(motion.div)`
+  padding: 0 ${theme.spacing.lg} ${theme.spacing.lg};
+  overflow: hidden;
+`;
+
+const CopyButtonRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.md};
+  flex-wrap: wrap;
+`;
+
+const CopyButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: 6px 12px;
+  background: rgba(10, 132, 255, 0.1);
+  border: 1px solid rgba(10, 132, 255, 0.3);
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.primary};
+  font-size: ${theme.fontSizes.xs};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  
+  &:hover {
+    background: rgba(10, 132, 255, 0.2);
+    border-color: ${theme.colors.primary};
+  }
+  
+  svg {
+    font-size: 10px;
+  }
+`;
+
+const RateGroupLabel = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.textMuted};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.md};
+  
+  &:first-child {
+    margin-top: 0;
+  }
+`;
+
+const AdvancedNote = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: rgba(10, 132, 255, 0.08);
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.md};
+  line-height: 1.4;
+  
+  svg {
+    color: ${theme.colors.info};
+    flex-shrink: 0;
+    margin-top: 2px;
+  }
+`;
+
+const LabelWithTooltip = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+`;
+
+const Tooltip = styled.span`
+  color: ${theme.colors.textMuted};
+  cursor: help;
+  
+  svg {
+    font-size: 11px;
+  }
+  
+  &:hover {
+    color: ${theme.colors.primary};
   }
 `;
 
@@ -1147,5 +1876,30 @@ const ColorInput = styled.input`
   }
 `;
 
-export default AdminRarities;
+const ColorPreview = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  margin-top: ${theme.spacing.md};
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: ${theme.radius.md};
+  border: 1px solid ${props => props.$color}40;
+`;
 
+const ColorPreviewSwatch = styled.div`
+  width: 40px;
+  height: 40px;
+  border-radius: ${theme.radius.md};
+  background: ${props => props.$color};
+  box-shadow: 0 0 20px ${props => props.$color}50;
+`;
+
+const ColorPreviewText = styled.span`
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${props => props.$color};
+  text-shadow: 0 0 10px ${props => props.$color}50;
+`;
+
+export default AdminRarities;
