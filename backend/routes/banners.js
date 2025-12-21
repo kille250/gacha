@@ -17,7 +17,9 @@ const {
   getPityRates,
   getBannerPullChance,
   roundRatesForDisplay,
-  rollRarity
+  rollRarity,
+  getRarities,
+  getOrderedRarities
 } = require('../config/pricing');
 const { isValidId, validateIdArray, parseCharacterIds } = require('../utils/validation');
 const { getUserAllowR18, getR18PreferenceFromRequest } = require('../utils/userPreferences');
@@ -82,10 +84,16 @@ router.get('/:id/pricing', async (req, res) => {
       return res.status(404).json({ error: 'Banner not found' });
     }
     
+    // Load rarities from database
+    const raritiesData = await getRarities();
+    
     const singlePullCost = Math.floor(PRICING_CONFIG.baseCost * (banner.costMultiplier || 1));
     
-    // Calculate banner-specific rates using centralized config
-    const bannerDropRates = roundRatesForDisplay(calculateBannerRates(banner.rateMultiplier, false));
+    // Calculate banner-specific rates using centralized config (async)
+    const bannerDropRates = roundRatesForDisplay(await calculateBannerRates(banner.rateMultiplier, false, raritiesData));
+    const standardRates = await getStandardRates(false, raritiesData);
+    const premiumRates = await getPremiumRates(false, raritiesData);
+    const pityRates = await getPityRates(raritiesData);
     
     res.json({
       ...PRICING_CONFIG,
@@ -109,14 +117,20 @@ router.get('/:id/pricing', async (req, res) => {
       // Drop rate information from centralized config
       dropRates: {
         banner: bannerDropRates,
-        standard: getStandardRates(false),
-        premium: getPremiumRates(false),
+        standard: standardRates,
+        premium: premiumRates,
         bannerPullChance: Math.round(getBannerPullChance() * 100),
         pityInfo: {
           tenPullGuarantee: 'rare',
-          pityRates: getPityRates()
+          pityRates: pityRates
         }
-      }
+      },
+      rarities: raritiesData.map(r => ({ 
+        name: r.name, 
+        displayName: r.displayName, 
+        color: r.color,
+        order: r.order 
+      }))
     });
   } catch (err) {
     console.error('Error fetching banner pricing:', err);
@@ -585,14 +599,18 @@ router.post('/:id/roll', auth, async (req, res) => {
     const allChars = await Character.findAll();
     const allCharacters = filterR18Characters(allChars, allowR18);
     
-    // Group characters by rarity using helper
-    const allCharactersByRarity = groupCharactersByRarity(allCharacters);
-    const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters);
+    // Load rarities from database
+    const raritiesData = await getRarities();
+    const orderedRarities = raritiesData.map(r => r.name);
     
-    // Get rates from centralized config
-    const standardDropRates = getStandardRates(false);
-    const premiumDropRates = getPremiumRates(false);
-    const bannerDropRates = calculateBannerRates(banner.rateMultiplier, false);
+    // Group characters by rarity using helper
+    const allCharactersByRarity = groupCharactersByRarity(allCharacters, orderedRarities);
+    const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters, orderedRarities);
+    
+    // Get rates from centralized config (async)
+    const standardDropRates = await getStandardRates(false, raritiesData);
+    const premiumDropRates = await getPremiumRates(false, raritiesData);
+    const bannerDropRates = await calculateBannerRates(banner.rateMultiplier, false, raritiesData);
     
     console.log(`Banner ${banner.name} rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
     
@@ -608,7 +626,7 @@ router.post('/:id/roll', auth, async (req, res) => {
     }
     
     // Roll for rarity using centralized helper
-    let selectedRarity = rollRarity(dropRates);
+    let selectedRarity = rollRarity(dropRates, orderedRarities);
     
     // Select character using centralized helper with banner pool priority when applicable
     const primaryPool = pullFromBanner ? bannerCharactersByRarity : null;
@@ -616,7 +634,8 @@ router.post('/:id/roll', auth, async (req, res) => {
       primaryPool,
       allCharactersByRarity,
       selectedRarity,
-      allCharacters
+      allCharacters,
+      raritiesData
     );
     
     // Auto-claim the character
@@ -772,15 +791,19 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
     const allChars = await Character.findAll();
     const allCharacters = filterR18Characters(allChars, allowR18);
     
-    // Group characters by rarity using helper
-    const allCharactersByRarity = groupCharactersByRarity(allCharacters);
-    const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters);
+    // Load rarities from database
+    const raritiesData = await getRarities();
+    const orderedRarities = raritiesData.map(r => r.name);
     
-    // Get rates from centralized config (multi-pull rates)
-    const standardDropRates = getStandardRates(true);
-    const premiumDropRates = getPremiumRates(true);
-    const bannerDropRates = calculateBannerRates(banner.rateMultiplier, true);
-    const pityRates = getPityRates();
+    // Group characters by rarity using helper
+    const allCharactersByRarity = groupCharactersByRarity(allCharacters, orderedRarities);
+    const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters, orderedRarities);
+    
+    // Get rates from centralized config (multi-pull rates, async)
+    const standardDropRates = await getStandardRates(true, raritiesData);
+    const premiumDropRates = await getPremiumRates(true, raritiesData);
+    const bannerDropRates = await calculateBannerRates(banner.rateMultiplier, true, raritiesData);
+    const pityRates = await getPityRates(raritiesData);
     
     console.log(`Banner ${banner.name} multi-roll rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
     
@@ -813,9 +836,9 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       }
       
       // Roll for rarity using centralized helper
-      let selectedRarity = rollRarity(currentRates);
+      let selectedRarity = rollRarity(currentRates, orderedRarities);
       
-      if (isRarePlus(selectedRarity)) {
+      if (isRarePlus(selectedRarity, raritiesData)) {
         hasRarePlus = true;
       }
       
@@ -825,7 +848,8 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
         primaryPool,
         allCharactersByRarity,
         selectedRarity,
-        allCharacters
+        allCharacters,
+        raritiesData
       );
       
       // Auto-claim the character

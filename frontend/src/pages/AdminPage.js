@@ -12,7 +12,7 @@ import EditCharacterModal from '../components/Admin/EditCharacterModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { arrayMove } from '@dnd-kit/sortable';
-import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons } from '../components/Admin';
+import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons, AdminRarities } from '../components/Admin';
 import { theme, PageWrapper, Container } from '../styles/DesignSystem';
 
 const AdminPage = () => {
@@ -470,6 +470,12 @@ const AdminPage = () => {
                     onEditCoupon={(coupon) => { setEditingCoupon(coupon); setIsEditingCoupon(true); }}
                     onDeleteCoupon={handleDeleteCoupon}
                   />
+                </TabPanel>
+              )}
+              
+              {activeTab === 'rarities' && (
+                <TabPanel key="rarities">
+                  <AdminRarities onRefresh={fetchAllData} />
                 </TabPanel>
               )}
             </AnimatePresence>

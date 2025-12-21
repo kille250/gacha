@@ -2,6 +2,7 @@ import React, { useContext } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, AuthContext } from './context/AuthContext';
+import { RarityProvider } from './context/RarityContext';
 import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './styles/DesignSystem';
 
@@ -149,6 +150,7 @@ function App() {
   // Wrap with GoogleOAuthProvider only if client ID is configured
   const content = (
     <AuthProvider>
+      <RarityProvider>
       <Router>
         <GlobalStyle />
         <AppContainer>
@@ -231,6 +233,7 @@ function App() {
           </Routes>
         </AppContainer>
       </Router>
+      </RarityProvider>
     </AuthProvider>
   );
 

@@ -3,7 +3,10 @@
  * 
  * Centralized helpers for gacha roll operations
  * Eliminates code duplication between characters.js and banners.js
+ * Supports dynamic rarities from database
  */
+
+const { getRarities, getOrderedRarities, isRarePlusSync } = require('../config/pricing');
 
 // ===========================================
 // SECURITY: Race condition protection
@@ -34,24 +37,46 @@ const releaseRollLock = (userId) => {
 };
 
 /**
- * Groups an array of characters by their rarity
+ * Groups an array of characters by their rarity (dynamic, uses provided rarity names)
  * @param {Array} characters - Array of character objects
+ * @param {Array} rarityNames - Optional array of rarity names to group by
  * @returns {Object} - Object with rarity keys and character arrays
  */
-const groupCharactersByRarity = (characters) => {
-  return {
-    common: characters.filter(char => char.rarity === 'common'),
-    uncommon: characters.filter(char => char.rarity === 'uncommon'),
-    rare: characters.filter(char => char.rarity === 'rare'),
-    epic: characters.filter(char => char.rarity === 'epic'),
-    legendary: characters.filter(char => char.rarity === 'legendary')
-  };
+const groupCharactersByRarity = (characters, rarityNames = null) => {
+  const grouped = {};
+  
+  // If rarityNames provided, pre-initialize all rarity groups
+  if (rarityNames) {
+    rarityNames.forEach(name => {
+      grouped[name] = [];
+    });
+  }
+  
+  // Group characters by their rarity
+  characters.forEach(char => {
+    const rarity = char.rarity?.toLowerCase() || 'common';
+    if (!grouped[rarity]) {
+      grouped[rarity] = [];
+    }
+    grouped[rarity].push(char);
+  });
+  
+  return grouped;
 };
 
 /**
- * Order of rarities from highest to lowest (for fallback logic)
+ * Get rarity order (highest to lowest) from database
+ * Returns cached order for synchronous use after initial load
+ * @param {Array} raritiesData - Pre-loaded rarities from database
+ * @returns {Array<string>} - Ordered rarity names
  */
-const RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+const getRarityOrder = (raritiesData) => {
+  if (!raritiesData || raritiesData.length === 0) {
+    // Fallback to hardcoded order
+    return ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+  }
+  return raritiesData.map(r => r.name);
+};
 
 /**
  * Selects a character from the appropriate pool with fallback logic
@@ -61,11 +86,14 @@ const RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
  * @param {Object} fallbackPool - Fallback pool grouped by rarity (e.g., all characters)
  * @param {string} selectedRarity - The initially selected rarity
  * @param {Array} allCharacters - All available characters (final fallback)
+ * @param {Array} raritiesData - Pre-loaded rarities from database
  * @returns {{ character: Object, actualRarity: string }} - Selected character and actual rarity used
  */
-const selectCharacterWithFallback = (primaryPool, fallbackPool, selectedRarity, allCharacters) => {
+const selectCharacterWithFallback = (primaryPool, fallbackPool, selectedRarity, allCharacters, raritiesData = null) => {
   let characterPool = null;
   let actualRarity = selectedRarity;
+  
+  const rarityOrder = getRarityOrder(raritiesData);
 
   // First try primary pool at selected rarity
   if (primaryPool && primaryPool[selectedRarity]?.length > 0) {
@@ -75,11 +103,11 @@ const selectCharacterWithFallback = (primaryPool, fallbackPool, selectedRarity, 
   else if (fallbackPool && fallbackPool[selectedRarity]?.length > 0) {
     characterPool = fallbackPool[selectedRarity];
   }
-  // If no characters at selected rarity, find next available rarity
+  // If no characters at selected rarity, find next available rarity (lower rarity)
   else {
-    const startIndex = RARITY_ORDER.indexOf(selectedRarity);
-    for (let i = startIndex + 1; i < RARITY_ORDER.length; i++) {
-      const fallbackRarity = RARITY_ORDER[i];
+    const startIndex = rarityOrder.indexOf(selectedRarity);
+    for (let i = startIndex + 1; i < rarityOrder.length; i++) {
+      const fallbackRarity = rarityOrder[i];
       if (fallbackPool && fallbackPool[fallbackRarity]?.length > 0) {
         characterPool = fallbackPool[fallbackRarity];
         actualRarity = fallbackRarity;
@@ -111,12 +139,17 @@ const filterR18Characters = (characters, allowR18) => {
 };
 
 /**
- * Checks if a rarity is "rare or better"
- * Used for pity system tracking
+ * Checks if a rarity is "rare or better" (pity eligible)
+ * Uses pre-loaded rarities for sync operation
  * @param {string} rarity - The rarity to check
- * @returns {boolean} - True if rare, epic, or legendary
+ * @param {Array} raritiesData - Pre-loaded rarities from database
+ * @returns {boolean} - True if pity eligible
  */
-const isRarePlus = (rarity) => {
+const isRarePlus = (rarity, raritiesData = null) => {
+  if (raritiesData) {
+    return isRarePlusSync(rarity, raritiesData);
+  }
+  // Fallback to hardcoded check
   return ['rare', 'epic', 'legendary'].includes(rarity);
 };
 
@@ -127,5 +160,5 @@ module.exports = {
   selectCharacterWithFallback,
   filterR18Characters,
   isRarePlus,
-  RARITY_ORDER
+  getRarityOrder
 };

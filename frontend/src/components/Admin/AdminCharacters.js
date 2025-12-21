@@ -2,9 +2,10 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload } from 'react-icons/fa';
-import { theme, getRarityColor, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
+import { useRarity } from '../../context/RarityContext';
 import {
   AdminContainer,
   HeaderRow,
@@ -59,11 +60,15 @@ const AdminCharacters = ({
   uploadedImage
 }) => {
   const { t } = useTranslation();
+  const { getRarityColor, getOrderedRarities } = useRarity();
   const [searchQuery, setSearchQuery] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
+  
+  // Get ordered rarities for dropdown
+  const orderedRarities = getOrderedRarities();
   
   const filteredCharacters = characters.filter(char => 
     char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -167,12 +172,12 @@ const AdminCharacters = ({
                     <img src={getImageUrl(char.image)} alt={char.name} onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }} />
                   )}
                   {char.isR18 && <R18Badge>🔞</R18Badge>}
-                  <RarityOverlay $rarity={char.rarity} />
+                  <RarityOverlay $color={getRarityColor(char.rarity)} />
                 </CardMedia>
                 <CardContent>
                   <CardName>{char.name}</CardName>
                   <CardSeries>{char.series}</CardSeries>
-                  <RarityTag $rarity={char.rarity}>{char.rarity}</RarityTag>
+                  <RarityTag $color={getRarityColor(char.rarity)}>{char.rarity}</RarityTag>
                   <CardActions>
                     <CardIconButton onClick={() => onEditCharacter(char)} title="Edit">
                       <FaEdit />
@@ -210,7 +215,7 @@ const AdminCharacters = ({
                   <ListName>{char.name} {char.isR18 && <span>🔞</span>}</ListName>
                   <ListSeries>{char.series}</ListSeries>
                 </ListInfo>
-                <RarityTag $rarity={char.rarity}>{char.rarity}</RarityTag>
+                <RarityTag $color={getRarityColor(char.rarity)}>{char.rarity}</RarityTag>
                 <ListActions>
                   <IconButton onClick={() => onEditCharacter(char)}><FaEdit /></IconButton>
                   <IconButton $danger onClick={() => onDeleteCharacter(char.id)}><FaTrash /></IconButton>
@@ -274,11 +279,11 @@ const AdminCharacters = ({
                     <FormGroup style={{ flex: 1 }}>
                       <Label>{t('admin.rarity')}</Label>
                       <Select name="rarity" value={newCharacter.rarity} onChange={onCharacterChange}>
-                        <option value="common">{t('gacha.common')}</option>
-                        <option value="uncommon">{t('gacha.uncommon')}</option>
-                        <option value="rare">{t('gacha.rare')}</option>
-                        <option value="epic">{t('gacha.epic')}</option>
-                        <option value="legendary">{t('gacha.legendary')}</option>
+                        {orderedRarities.map(rarity => (
+                          <option key={rarity.name} value={rarity.name}>
+                            {rarity.displayName}
+                          </option>
+                        ))}
                       </Select>
                     </FormGroup>
                     <FormGroup>
@@ -381,7 +386,7 @@ const RarityOverlay = styled.div`
   left: 0;
   right: 0;
   height: 4px;
-  background: ${props => getRarityColor(props.$rarity)};
+  background: ${props => props.$color};
 `;
 
 const CardContent = styled.div`
@@ -410,7 +415,7 @@ const CardSeries = styled.p`
 const RarityTag = styled.span`
   display: inline-block;
   padding: 2px 10px;
-  background: ${props => getRarityColor(props.$rarity)};
+  background: ${props => props.$color};
   border-radius: ${theme.radius.full};
   font-size: 10px;
   font-weight: ${theme.fontWeights.bold};

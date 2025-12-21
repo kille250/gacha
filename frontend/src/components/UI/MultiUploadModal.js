@@ -3,8 +3,11 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCloudUploadAlt, FaTimes, FaImage, FaVideo, FaTrash, FaCopy, FaCheck, FaExclamationTriangle, FaMagic } from 'react-icons/fa';
 import { API_URL } from '../../utils/api';
+import { useRarity } from '../../context/RarityContext';
 
 const MultiUploadModal = ({ show, onClose, onSuccess }) => {
+  const { getOrderedRarities } = useRarity();
+  const orderedRarities = getOrderedRarities();
   const [files, setFiles] = useState([]);
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -291,11 +294,11 @@ const response = await fetch(`${API_URL}/admin/characters/multi-upload`, {
               <BulkInput>
                 <label>Rarity</label>
                 <select value={bulkRarity} onChange={e => setBulkRarity(e.target.value)}>
-                  <option value="common">Common</option>
-                  <option value="uncommon">Uncommon</option>
-                  <option value="rare">Rare</option>
-                  <option value="epic">Epic</option>
-                  <option value="legendary">Legendary</option>
+                  {orderedRarities.map(r => (
+                    <option key={r.id} value={r.name.toLowerCase()}>
+                      {r.name.charAt(0).toUpperCase() + r.name.slice(1).toLowerCase()}
+                    </option>
+                  ))}
                 </select>
               </BulkInput>
               <BulkInput>
@@ -415,11 +418,11 @@ const response = await fetch(`${API_URL}/admin/characters/multi-upload`, {
                               value={fileData.rarity}
                               onChange={e => updateFileMetadata(fileData.id, 'rarity', e.target.value)}
                             >
-                              <option value="common">Common</option>
-                              <option value="uncommon">Uncommon</option>
-                              <option value="rare">Rare</option>
-                              <option value="epic">Epic</option>
-                              <option value="legendary">Legendary</option>
+                              {orderedRarities.map(r => (
+                                <option key={r.id} value={r.name.toLowerCase()}>
+                                  {r.name.charAt(0).toUpperCase() + r.name.slice(1).toLowerCase()}
+                                </option>
+                              ))}
                             </select>
                           </MetaField>
                           

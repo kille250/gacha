@@ -291,7 +291,8 @@
       "users": "Users",
       "characters": "Characters",
       "banners": "Banners",
-      "coupons": "Coupons"
+      "coupons": "Coupons",
+      "rarities": "Rarities"
     },
     "addCoins": "Add Coins",
     "selectUser": "Select User",

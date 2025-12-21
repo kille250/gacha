@@ -24,6 +24,7 @@ import {
   ButtonRow,
 } from './AdminStyles';
 import { theme } from '../../styles/DesignSystem';
+import { useRarity } from '../../context/RarityContext';
 
 /**
  * EditCharacterModal - Modal for editing character details and media
@@ -38,6 +39,8 @@ const EditCharacterModal = ({
   getImageUrl,
 }) => {
   const { t } = useTranslation();
+  const { getOrderedRarities } = useRarity();
+  const orderedRarities = getOrderedRarities();
   
   // Form state
   const [editForm, setEditForm] = useState({
@@ -224,11 +227,11 @@ const EditCharacterModal = ({
                     value={editForm.rarity}
                     onChange={(e) => handleFormChange('rarity', e.target.value)}
                   >
-                    <option value="common">{t('gacha.common')}</option>
-                    <option value="uncommon">{t('gacha.uncommon')}</option>
-                    <option value="rare">{t('gacha.rare')}</option>
-                    <option value="epic">{t('gacha.epic')}</option>
-                    <option value="legendary">{t('gacha.legendary')}</option>
+                    {orderedRarities.map(rarity => (
+                      <option key={rarity.name} value={rarity.name}>
+                        {rarity.displayName}
+                      </option>
+                    ))}
                   </Select>
                 </FormGroup>
                 <FormGroup>

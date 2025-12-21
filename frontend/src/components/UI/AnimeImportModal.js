@@ -4,9 +4,12 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaTimes, FaCheck, FaExclamationTriangle, FaDownload, FaStar, FaUsers, FaSpinner, FaImage, FaVideo, FaPlay } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import api from '../../utils/api';
+import { useRarity } from '../../context/RarityContext';
 
 const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const { t } = useTranslation();
+  const { getOrderedRarities } = useRarity();
+  const orderedRarities = getOrderedRarities();
   
   // Hover preview state for alt media
   const [hoveredMedia, setHoveredMedia] = useState(null);
@@ -477,11 +480,11 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                                   value={isSelected.rarity || defaultRarity}
                                   onChange={e => setCharacterRarity(char.mal_id, e.target.value)}
                                 >
-                                  <option value="common">{t('gacha.common')}</option>
-                                  <option value="uncommon">{t('gacha.uncommon')}</option>
-                                  <option value="rare">{t('gacha.rare')}</option>
-                                  <option value="epic">{t('gacha.epic')}</option>
-                                  <option value="legendary">{t('gacha.legendary')}</option>
+                                  {orderedRarities.map(r => (
+                                    <option key={r.id} value={r.name.toLowerCase()}>
+                                      {t(`gacha.${r.name.toLowerCase()}`, r.name)}
+                                    </option>
+                                  ))}
                                 </RaritySelect>
                               </>
                             )}
@@ -513,11 +516,11 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                 <SettingsField>
                   <label>{t('animeImport.defaultRarity')}</label>
                   <select value={defaultRarity} onChange={e => setDefaultRarity(e.target.value)}>
-                    <option value="common">{t('gacha.common')}</option>
-                    <option value="uncommon">{t('gacha.uncommon')}</option>
-                    <option value="rare">{t('gacha.rare')}</option>
-                    <option value="epic">{t('gacha.epic')}</option>
-                    <option value="legendary">{t('gacha.legendary')}</option>
+                    {orderedRarities.map(r => (
+                      <option key={r.id} value={r.name.toLowerCase()}>
+                        {t(`gacha.${r.name.toLowerCase()}`, r.name)}
+                      </option>
+                    ))}
                   </select>
                 </SettingsField>
               </SettingsGrid>
@@ -690,7 +693,6 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                               onMouseLeave={() => setHoveredMedia(null)}
                               onTouchStart={(e) => {
                                 longPressTriggered.current = false;
-                                const touch = e.touches[0];
                                 const rect = e.currentTarget.getBoundingClientRect();
                                 longPressTimer.current = setTimeout(() => {
                                   longPressTriggered.current = true;

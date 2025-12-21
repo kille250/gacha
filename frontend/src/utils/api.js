@@ -272,6 +272,49 @@ export const getSystemHealth = async () => {
 };
 
 // ===========================================
+// RARITY CONFIGURATION API
+// ===========================================
+
+export const getRarities = async () => {
+  const response = await api.get('/rarities');
+  return response.data;
+};
+
+export const getRarityConfig = async () => {
+  const response = await api.get('/rarities/config');
+  return response.data;
+};
+
+export const getRarityById = async (id) => {
+  const response = await api.get(`/rarities/${id}`);
+  return response.data;
+};
+
+export const createRarity = async (rarityData) => {
+  clearCache('/rarities');
+  const response = await api.post('/rarities', rarityData);
+  return response.data;
+};
+
+export const updateRarity = async (id, rarityData) => {
+  clearCache('/rarities');
+  const response = await api.put(`/rarities/${id}`, rarityData);
+  return response.data;
+};
+
+export const deleteRarity = async (id) => {
+  clearCache('/rarities');
+  const response = await api.delete(`/rarities/${id}`);
+  return response.data;
+};
+
+export const resetDefaultRarities = async () => {
+  clearCache('/rarities');
+  const response = await api.post('/rarities/reset-defaults');
+  return response.data;
+};
+
+// ===========================================
 // FISHING TRADING POST API
 // ===========================================
 

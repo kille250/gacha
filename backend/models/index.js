@@ -5,6 +5,7 @@ const Banner = require('./banner');
 const Coupon = require('./coupon');
 const CouponRedemption = require('./couponRedemption');
 const FishInventory = require('./fishInventory');
+const Rarity = require('./rarity');
 
 // ===========================================
 // ASSOCIATIONS
@@ -40,5 +41,6 @@ module.exports = {
   Banner,
   Coupon,
   CouponRedemption,
-  FishInventory
+  FishInventory,
+  Rarity
 };

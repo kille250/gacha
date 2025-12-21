@@ -7,7 +7,9 @@ const {
   getDiscountForCount,
   getStandardRates,
   getPityRates,
-  rollRarity
+  rollRarity,
+  getRarities,
+  getOrderedRarities
 } = require('../config/pricing');
 const { getUserAllowR18, getR18PreferenceFromRequest } = require('../utils/userPreferences');
 const { 
@@ -52,11 +54,15 @@ router.post('/roll-multi', auth, async (req, res) => {
     const allowR18 = await getUserAllowR18(userId);
     const allCharacters = await Character.findAll();
     const characters = filterR18Characters(allCharacters, allowR18);
-    const charactersByRarity = groupCharactersByRarity(characters);
     
-    // Use centralized rates from pricing config
-    const dropRates = getStandardRates(count >= 10);
-    const pityRates = getPityRates();
+    // Load rarities from database
+    const raritiesData = await getRarities();
+    const orderedRarities = raritiesData.map(r => r.name);
+    const charactersByRarity = groupCharactersByRarity(characters, orderedRarities);
+    
+    // Use centralized rates from pricing config (async)
+    const dropRates = await getStandardRates(count >= 10, raritiesData);
+    const pityRates = await getPityRates(raritiesData);
     
     let results = [];
     let hasRarePlusResult = false;
@@ -67,9 +73,9 @@ router.post('/roll-multi', auth, async (req, res) => {
       
       // Use centralized rollRarity helper
       const currentRates = needsPity ? pityRates : dropRates;
-      const selectedRarity = rollRarity(currentRates);
+      const selectedRarity = rollRarity(currentRates, orderedRarities);
       
-      if (isRarePlus(selectedRarity)) {
+      if (isRarePlus(selectedRarity, raritiesData)) {
         hasRarePlusResult = true;
       }
       
@@ -78,7 +84,8 @@ router.post('/roll-multi', auth, async (req, res) => {
         null, // No primary pool for standard rolls
         charactersByRarity,
         selectedRarity,
-        characters
+        characters,
+        raritiesData
       );
       
       await user.addCharacter(character);
@@ -101,27 +108,41 @@ router.post('/roll-multi', auth, async (req, res) => {
 });
 
 // Get pricing configuration for standard pulls
-router.get('/pricing', (req, res) => {
-  const singlePullCost = PRICING_CONFIG.baseCost;
-  
-  res.json({
-    ...PRICING_CONFIG,
-    singlePullCost,
-    // Pre-calculated costs for quick select options
-    pullOptions: PRICING_CONFIG.quickSelectOptions.map(count => {
-      const discount = getDiscountForCount(count);
-      const baseCost = count * singlePullCost;
-      const finalCost = Math.floor(baseCost * (1 - discount));
-      return {
-        count,
-        discount,
-        discountPercent: Math.round(discount * 100),
-        baseCost,
-        finalCost,
-        savings: baseCost - finalCost
-      };
-    })
-  });
+router.get('/pricing', async (req, res) => {
+  try {
+    const singlePullCost = PRICING_CONFIG.baseCost;
+    const raritiesData = await getRarities();
+    const standardRates = await getStandardRates(false, raritiesData);
+    
+    res.json({
+      ...PRICING_CONFIG,
+      singlePullCost,
+      // Pre-calculated costs for quick select options
+      pullOptions: PRICING_CONFIG.quickSelectOptions.map(count => {
+        const discount = getDiscountForCount(count);
+        const baseCost = count * singlePullCost;
+        const finalCost = Math.floor(baseCost * (1 - discount));
+        return {
+          count,
+          discount,
+          discountPercent: Math.round(discount * 100),
+          baseCost,
+          finalCost,
+          savings: baseCost - finalCost
+        };
+      }),
+      dropRates: standardRates,
+      rarities: raritiesData.map(r => ({ 
+        name: r.name, 
+        displayName: r.displayName, 
+        color: r.color,
+        order: r.order 
+      }))
+    });
+  } catch (err) {
+    console.error('Error fetching pricing:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
 // Roll a single character
@@ -149,18 +170,23 @@ router.post('/roll', auth, async (req, res) => {
     const allowR18 = await getUserAllowR18(userId);
     const allCharacters = await Character.findAll();
     const characters = filterR18Characters(allCharacters, allowR18);
-    const charactersByRarity = groupCharactersByRarity(characters);
     
-    // Use centralized rates from pricing config
-    const dropRates = getStandardRates(false);
-    const selectedRarity = rollRarity(dropRates);
+    // Load rarities from database
+    const raritiesData = await getRarities();
+    const orderedRarities = raritiesData.map(r => r.name);
+    const charactersByRarity = groupCharactersByRarity(characters, orderedRarities);
+    
+    // Use centralized rates from pricing config (async)
+    const dropRates = await getStandardRates(false, raritiesData);
+    const selectedRarity = rollRarity(dropRates, orderedRarities);
     
     // Select character with fallback logic
     const { character, actualRarity } = selectCharacterWithFallback(
       null, // No primary pool for standard rolls
       charactersByRarity,
       selectedRarity,
-      characters
+      characters,
+      raritiesData
     );
     
     await user.addCharacter(character);

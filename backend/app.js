@@ -26,8 +26,8 @@ if (process.env.JWT_SECRET.length < 32) {
 }
 
 // Import models - triggers association setup in models/index.js
-// Only User is used directly here; other models are registered for associations
-const { User } = require('./models');
+// Only User and Rarity are used directly here; other models are registered for associations
+const { User, Rarity } = require('./models');
 
 // Create upload directories on startup
 initUploadDirs();
@@ -47,8 +47,10 @@ if (isProduction) {
 const ALLOWED_ORIGINS = [
   // Local development
   'http://localhost:3000',
+  'http://localhost:3001',
   'http://localhost:5000',
   'http://127.0.0.1:3000',
+  'http://127.0.0.1:3001',
   'http://127.0.0.1:5000',
   // Production domains
   'https://gacha.solidbooru.online',
@@ -232,6 +234,9 @@ app.use('/api/coupons', require('./routes/coupons'));
 app.use('/api/fishing/cast', fishingLimiter);
 app.use('/api/fishing', require('./routes/fishing'));
 
+// Rarity configuration routes
+app.use('/api/rarities', require('./routes/rarities'));
+
 const PORT = process.env.PORT || 5000;
 
 // Create HTTP server for Express + Socket.IO
@@ -334,6 +339,9 @@ async function startServer() {
     console.log('Database synced');
     
     await runMigrations();
+    
+    // Seed default rarities if none exist
+    await Rarity.seedDefaults();
     
     server.listen(PORT, () => {
       console.log(`Server running on port ${PORT}`);

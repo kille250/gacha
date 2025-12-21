@@ -1,7 +1,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { FaChartBar, FaUsers, FaImage, FaFlag, FaTicketAlt } from 'react-icons/fa';
+import { FaChartBar, FaUsers, FaImage, FaFlag, FaTicketAlt, FaStar } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../styles/DesignSystem';
 
@@ -11,6 +11,7 @@ const TAB_CONFIG = [
   { id: 'characters', labelKey: 'admin.tabs.characters', icon: FaImage },
   { id: 'banners', labelKey: 'admin.tabs.banners', icon: FaFlag },
   { id: 'coupons', labelKey: 'admin.tabs.coupons', icon: FaTicketAlt },
+  { id: 'rarities', labelKey: 'admin.tabs.rarities', icon: FaStar },
 ];
 
 const AdminTabs = ({ activeTab, onTabChange }) => {

@@ -10,50 +10,95 @@ const PRICING_CONFIG = {
     { minCount: 10, discount: 0.10, label: '10×' },  // 10% for 10-19 pulls
     { minCount: 5, discount: 0.05, label: '5×' },    // 5% for 5-9 pulls
   ],
-  quickSelectOptions: [1, 5, 10, 20] // Quick select buttons to show
+  quickSelectOptions: [1, 5, 10, 20], // Quick select buttons to show
+  
+  // Banner configuration
+  bannerPullChance: 0.70,           // 70% chance to pull from banner pool
+  bannerPullChanceLast3: 0.85,      // 85% for last 3 pulls in multi
+  maxMultiplier: 5.0                // Max effective multiplier
 };
 
 // ===========================================
-// DROP RATES CONFIGURATION (Single source of truth)
+// DYNAMIC RARITY SYSTEM (Database-backed with caching)
 // ===========================================
 
-const DROP_RATES = {
-  // Standard pool rates (off-banner pulls)
-  standard: {
-    single: { common: 70, uncommon: 20, rare: 7, epic: 2.5, legendary: 0.5 },
-    multi:  { common: 65, uncommon: 22, rare: 9, epic: 3.5, legendary: 0.5 }
-  },
+// Cache for rarities loaded from database
+let raritiesCache = null;
+let cacheTimestamp = 0;
+const CACHE_TTL = 60000; // 1 minute cache TTL
+
+/**
+ * Get rarities from database with caching
+ * Lazy-loads on first call to avoid circular dependencies
+ * @param {boolean} forceRefresh - Force cache refresh
+ * @returns {Promise<Array>} - Array of rarity objects ordered by 'order' field
+ */
+const getRarities = async (forceRefresh = false) => {
+  const now = Date.now();
   
-  // Base banner rates (before multiplier is applied)
-  bannerBase: {
-    single: { common: 60, uncommon: 22, rare: 12, epic: 5, legendary: 1 },
-    multi:  { common: 55, uncommon: 24, rare: 14, epic: 6, legendary: 1 }
-  },
+  if (!forceRefresh && raritiesCache && (now - cacheTimestamp) < CACHE_TTL) {
+    return raritiesCache;
+  }
   
-  // Premium ticket rates (guaranteed rare+)
-  premium: {
-    single: { common: 0, uncommon: 0, rare: 70, epic: 25, legendary: 5 },
-    multi:  { common: 0, uncommon: 0, rare: 65, epic: 28, legendary: 7 }
-  },
+  try {
+    // Lazy load to avoid circular dependency issues at module load time
+    const { Rarity } = require('../models');
+    const rarities = await Rarity.findAll({ order: [['order', 'DESC']] });
+    raritiesCache = rarities.map(r => r.get({ plain: true }));
+    cacheTimestamp = now;
+    return raritiesCache;
+  } catch (err) {
+    console.error('Error loading rarities from database:', err);
+    // Return cached data if available, even if stale
+    if (raritiesCache) return raritiesCache;
+    // Ultimate fallback - use hardcoded defaults
+    return getFallbackRarities();
+  }
+};
+
+/**
+ * Invalidate the rarities cache (call after updating rarities)
+ */
+const invalidateRaritiesCache = () => {
+  raritiesCache = null;
+  cacheTimestamp = 0;
+};
+
+/**
+ * Get ordered list of rarity names (highest to lowest)
+ * @returns {Promise<Array<string>>}
+ */
+const getOrderedRarities = async () => {
+  const rarities = await getRarities();
+  return rarities.map(r => r.name);
+};
+
+/**
+ * Build drop rates object from rarity records
+ * @param {Array} rarities - Rarity records from database
+ * @param {string} type - 'standardSingle', 'standardMulti', 'bannerSingle', 'bannerMulti', 'premiumSingle', 'premiumMulti', 'pity'
+ * @returns {Object} - Rates object { rarityName: percentage }
+ */
+const buildRatesFromRarities = (rarities, type) => {
+  const rates = {};
+  const fieldMap = {
+    standardSingle: 'dropRateStandardSingle',
+    standardMulti: 'dropRateStandardMulti',
+    bannerSingle: 'dropRateBannerSingle',
+    bannerMulti: 'dropRateBannerMulti',
+    premiumSingle: 'dropRatePremiumSingle',
+    premiumMulti: 'dropRatePremiumMulti',
+    pity: 'dropRatePity'
+  };
   
-  // Pity rates for 10+ pulls (rare+ guaranteed)
-  pity: { rare: 85, epic: 14, legendary: 1 },
+  const field = fieldMap[type];
+  if (!field) throw new Error(`Unknown rate type: ${type}`);
   
-  // Rate caps when applying multiplier
-  caps: {
-    single: { legendary: 3, epic: 10, rare: 18, uncommon: 25, commonMin: 40 },
-    multi:  { legendary: 3, epic: 12, rare: 20, uncommon: 28, commonMin: 35 }
-  },
+  rarities.forEach(r => {
+    rates[r.name] = r[field] || 0;
+  });
   
-  // Multiplier scaling factors for each rarity
-  multiplierScaling: { legendary: 2, epic: 1.5, rare: 1, uncommon: 0.5 },
-  
-  // Banner pull chance (vs standard pool)
-  bannerPullChance: 0.70,           // 70% chance to pull from banner pool
-  bannerPullChanceLast3: 0.85,      // 85% for last 3 pulls in multi
-  
-  // Max effective multiplier
-  maxMultiplier: 5.0
+  return rates;
 };
 
 // ===========================================
@@ -68,48 +113,98 @@ const getDiscountForCount = (count) => {
   return 0;
 };
 
-// Calculate banner-specific rates with multiplier applied
-const calculateBannerRates = (rateMultiplier, isMulti = false) => {
-  const type = isMulti ? 'multi' : 'single';
-  const base = DROP_RATES.bannerBase[type];
-  const caps = DROP_RATES.caps[type];
-  const scaling = DROP_RATES.multiplierScaling;
+/**
+ * Calculate banner-specific rates with multiplier applied
+ * @param {number} rateMultiplier - Banner rate multiplier
+ * @param {boolean} isMulti - Whether this is a multi-pull
+ * @param {Array} raritiesData - Optional pre-loaded rarities (avoids async if provided)
+ * @returns {Object|Promise<Object>} - Rates object
+ */
+const calculateBannerRates = async (rateMultiplier, isMulti = false, raritiesData = null) => {
+  const rarities = raritiesData || await getRarities();
+  const type = isMulti ? 'bannerMulti' : 'bannerSingle';
+  const capField = isMulti ? 'capMulti' : 'capSingle';
+  const baseRates = buildRatesFromRarities(rarities, type);
   
-  const effectiveMultiplier = Math.min(rateMultiplier || 1, DROP_RATES.maxMultiplier);
+  const effectiveMultiplier = Math.min(rateMultiplier || 1, PRICING_CONFIG.maxMultiplier);
   const rateAdjustment = (effectiveMultiplier - 1) * 0.1;
   
   const rates = {};
-  rates.legendary = Math.min(base.legendary * (1 + rateAdjustment * scaling.legendary), caps.legendary);
-  rates.epic = Math.min(base.epic * (1 + rateAdjustment * scaling.epic), caps.epic);
-  rates.rare = Math.min(base.rare * (1 + rateAdjustment * scaling.rare), caps.rare);
-  rates.uncommon = Math.min(base.uncommon * (1 + rateAdjustment * scaling.uncommon), caps.uncommon);
+  let totalHigher = 0;
+  let commonName = null;
   
-  // Calculate common to ensure total is 100%
-  const totalHigher = rates.legendary + rates.epic + rates.rare + rates.uncommon;
-  rates.common = Math.max(100 - totalHigher, caps.commonMin);
+  // Apply multiplier to each rarity (except common which is calculated last)
+  rarities.forEach(r => {
+    // The rarity with the lowest order is considered "common" and fills the remaining %
+    if (!commonName || r.order < rarities.find(x => x.name === commonName)?.order) {
+      commonName = r.name;
+    }
+    
+    if (r.multiplierScaling > 0) {
+      const cap = r[capField];
+      const adjusted = baseRates[r.name] * (1 + rateAdjustment * r.multiplierScaling);
+      rates[r.name] = cap ? Math.min(adjusted, cap) : adjusted;
+      totalHigher += rates[r.name];
+    } else {
+      // Common/filler rarity - calculated after
+    }
+  });
+  
+  // Calculate common rate to ensure total is 100%
+  const minCommon = isMulti ? 35 : 40;
+  rates[commonName] = Math.max(100 - totalHigher, minCommon);
   
   return rates;
 };
 
-// Get standard rates for single or multi
-const getStandardRates = (isMulti = false) => {
-  return isMulti ? DROP_RATES.standard.multi : DROP_RATES.standard.single;
+/**
+ * Get standard rates for single or multi (async version)
+ * @param {boolean} isMulti
+ * @param {Array} raritiesData - Optional pre-loaded rarities
+ * @returns {Promise<Object>}
+ */
+const getStandardRates = async (isMulti = false, raritiesData = null) => {
+  const rarities = raritiesData || await getRarities();
+  const type = isMulti ? 'standardMulti' : 'standardSingle';
+  return buildRatesFromRarities(rarities, type);
 };
 
-// Get premium rates for single or multi
-const getPremiumRates = (isMulti = false) => {
-  return isMulti ? DROP_RATES.premium.multi : DROP_RATES.premium.single;
+/**
+ * Get premium rates for single or multi
+ * @param {boolean} isMulti
+ * @param {Array} raritiesData - Optional pre-loaded rarities
+ * @returns {Promise<Object>}
+ */
+const getPremiumRates = async (isMulti = false, raritiesData = null) => {
+  const rarities = raritiesData || await getRarities();
+  const type = isMulti ? 'premiumMulti' : 'premiumSingle';
+  return buildRatesFromRarities(rarities, type);
 };
 
-// Get pity rates
-const getPityRates = () => DROP_RATES.pity;
+/**
+ * Get pity rates
+ * @param {Array} raritiesData - Optional pre-loaded rarities
+ * @returns {Promise<Object>}
+ */
+const getPityRates = async (raritiesData = null) => {
+  const rarities = raritiesData || await getRarities();
+  return buildRatesFromRarities(rarities, 'pity');
+};
 
-// Get banner pull chance
+/**
+ * Get banner pull chance
+ * @param {boolean} isLast3
+ * @returns {number}
+ */
 const getBannerPullChance = (isLast3 = false) => {
-  return isLast3 ? DROP_RATES.bannerPullChanceLast3 : DROP_RATES.bannerPullChance;
+  return isLast3 ? PRICING_CONFIG.bannerPullChanceLast3 : PRICING_CONFIG.bannerPullChance;
 };
 
-// Round rates for display (to 2 decimal places)
+/**
+ * Round rates for display (to 2 decimal places)
+ * @param {Object} rates
+ * @returns {Object}
+ */
 const roundRatesForDisplay = (rates) => {
   const rounded = {};
   Object.keys(rates).forEach(key => {
@@ -120,26 +215,66 @@ const roundRatesForDisplay = (rates) => {
 
 /**
  * Roll a rarity based on rates
- * Uses explicit ordering to ensure consistent behavior regardless of object key order
+ * Uses ordering from database (highest order = rarest, checked first)
  * @param {Object} rates - Object with rarity keys and percentage values
+ * @param {Array} orderedRarities - Array of rarity names in order (rarest first)
  * @returns {string} - The rolled rarity
  */
-const rollRarity = (rates) => {
+const rollRarity = (rates, orderedRarities = null) => {
   const roll = Math.random() * 100;
   let cumulative = 0;
   
-  // Explicit order to ensure consistent behavior (rarest first for proper cumulative calculation)
-  const orderedRarities = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+  // If ordered rarities provided, use them; otherwise use rates keys
+  const order = orderedRarities || Object.keys(rates).sort((a, b) => {
+    // Sort by rate ascending (rarest first for cumulative check)
+    return (rates[a] || 0) - (rates[b] || 0);
+  });
   
-  for (const rarity of orderedRarities) {
-    if (rates[rarity] !== undefined) {
+  for (const rarity of order) {
+    if (rates[rarity] !== undefined && rates[rarity] > 0) {
       cumulative += rates[rarity];
       if (roll < cumulative) return rarity;
     }
   }
   
-  return 'common'; // Fallback
+  // Fallback to first rarity in order (should be common)
+  return order[order.length - 1] || 'common';
 };
+
+/**
+ * Check if a rarity is "pity eligible" (rare or better)
+ * @param {string} rarityName
+ * @param {Array} raritiesData - Optional pre-loaded rarities
+ * @returns {Promise<boolean>}
+ */
+const isRarePlus = async (rarityName, raritiesData = null) => {
+  const rarities = raritiesData || await getRarities();
+  const rarity = rarities.find(r => r.name === rarityName);
+  return rarity?.isPityEligible || false;
+};
+
+/**
+ * Synchronous check for pity eligibility when rarities are pre-loaded
+ * @param {string} rarityName
+ * @param {Array} rarities - Pre-loaded rarities array
+ * @returns {boolean}
+ */
+const isRarePlusSync = (rarityName, rarities) => {
+  const rarity = rarities.find(r => r.name === rarityName);
+  return rarity?.isPityEligible || false;
+};
+
+// ===========================================
+// FALLBACK RARITIES (used when DB is unavailable)
+// ===========================================
+
+const getFallbackRarities = () => [
+  { name: 'legendary', order: 5, dropRateStandardSingle: 0.5, dropRateStandardMulti: 0.5, dropRateBannerSingle: 1, dropRateBannerMulti: 1, dropRatePremiumSingle: 5, dropRatePremiumMulti: 7, dropRatePity: 1, capSingle: 3, capMulti: 3, multiplierScaling: 2, isPityEligible: true },
+  { name: 'epic', order: 4, dropRateStandardSingle: 2.5, dropRateStandardMulti: 3.5, dropRateBannerSingle: 5, dropRateBannerMulti: 6, dropRatePremiumSingle: 25, dropRatePremiumMulti: 28, dropRatePity: 14, capSingle: 10, capMulti: 12, multiplierScaling: 1.5, isPityEligible: true },
+  { name: 'rare', order: 3, dropRateStandardSingle: 7, dropRateStandardMulti: 9, dropRateBannerSingle: 12, dropRateBannerMulti: 14, dropRatePremiumSingle: 70, dropRatePremiumMulti: 65, dropRatePity: 85, capSingle: 18, capMulti: 20, multiplierScaling: 1, isPityEligible: true },
+  { name: 'uncommon', order: 2, dropRateStandardSingle: 20, dropRateStandardMulti: 22, dropRateBannerSingle: 22, dropRateBannerMulti: 24, dropRatePremiumSingle: 0, dropRatePremiumMulti: 0, dropRatePity: 0, capSingle: 25, capMulti: 28, multiplierScaling: 0.5, isPityEligible: false },
+  { name: 'common', order: 1, dropRateStandardSingle: 70, dropRateStandardMulti: 65, dropRateBannerSingle: 60, dropRateBannerMulti: 55, dropRatePremiumSingle: 0, dropRatePremiumMulti: 0, dropRatePity: 0, capSingle: null, capMulti: null, multiplierScaling: 0, isPityEligible: false }
+];
 
 module.exports = {
   PRICING_CONFIG,
@@ -150,5 +285,10 @@ module.exports = {
   getPityRates,
   getBannerPullChance,
   roundRatesForDisplay,
-  rollRarity
+  rollRarity,
+  getRarities,
+  getOrderedRarities,
+  invalidateRaritiesCache,
+  isRarePlus,
+  isRarePlusSync
 };

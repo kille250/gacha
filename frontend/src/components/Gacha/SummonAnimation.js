@@ -1,65 +1,54 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaStar, FaGem, FaTrophy, FaDice } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
-import { theme, getRarityColor } from '../../styles/DesignSystem';
+import { theme } from '../../styles/DesignSystem';
 import { isVideo } from '../../utils/mediaUtils';
+import { useRarity } from '../../context/RarityContext';
 
-// ==================== RARITY CONFIGURATION ====================
-
-const RARITY_CONFIG = {
-  common: {
-    color: '#8e8e93',
-    accentColor: '#a8a8ad',
-    glowIntensity: 0.3,
-    buildupTime: 800,
-    confettiCount: 0,
-    icon: <FaDice />,
-    orbCount: 3,
-    ringCount: 1
-  },
-  uncommon: {
-    color: '#30d158',
-    accentColor: '#5fe07a',
-    glowIntensity: 0.5,
-    buildupTime: 1000,
-    confettiCount: 30,
-    icon: <FaStar />,
-    orbCount: 4,
-    ringCount: 1
-  },
-  rare: {
-    color: '#0a84ff',
-    accentColor: '#409cff',
-    glowIntensity: 0.7,
-    buildupTime: 1400,
-    confettiCount: 80,
-    icon: <FaGem />,
-    orbCount: 5,
-    ringCount: 2
-  },
-  epic: {
-    color: '#bf5af2',
-    accentColor: '#d183f5',
-    glowIntensity: 0.85,
-    buildupTime: 1800,
-    confettiCount: 120,
-    icon: <FaStar />,
-    orbCount: 6,
-    ringCount: 2
-  },
-  legendary: {
-    color: '#ff9f0a',
-    accentColor: '#ffc040',
-    glowIntensity: 1,
-    buildupTime: 2200,
-    confettiCount: 200,
-    icon: <FaTrophy />,
-    orbCount: 8,
-    ringCount: 3
-  }
+// ==================== RARITY ICON MAPPING ====================
+// Icons are React components and can't be stored in database, so we map by order
+const getIconByOrder = (order) => {
+  if (order >= 5) return <FaTrophy />;
+  if (order >= 4) return <FaStar />;
+  if (order >= 3) return <FaGem />;
+  if (order >= 2) return <FaStar />;
+  return <FaDice />;
 };
+
+// Fallback config for unknown rarities
+const DEFAULT_ANIMATION_CONFIG = {
+  color: '#8e8e93',
+  accentColor: '#a8a8ad',
+  glowIntensity: 0.3,
+  buildupTime: 800,
+  confettiCount: 0,
+  orbCount: 3,
+  ringCount: 1
+};
+
+// Default rarity colors (used by styled-components which can't use hooks)
+// These will match the database defaults and provide fallback for styled-components
+const DEFAULT_RARITY_COLORS = {
+  common: '#8e8e93',
+  uncommon: '#30d158',
+  rare: '#0a84ff',
+  epic: '#bf5af2',
+  legendary: '#ff9f0a'
+};
+
+const DEFAULT_RARITY_ACCENT = {
+  common: '#a8a8ad',
+  uncommon: '#5fe07a',
+  rare: '#409cff',
+  epic: '#d183f5',
+  legendary: '#ffc040'
+};
+
+// Static getRarityColor for styled-components (fallback to defaults)
+const getRarityColor = (rarity) => DEFAULT_RARITY_COLORS[rarity?.toLowerCase()] || DEFAULT_RARITY_COLORS.common;
+const getRarityAccent = (rarity) => DEFAULT_RARITY_ACCENT[rarity?.toLowerCase()] || DEFAULT_RARITY_ACCENT.common;
 
 // ==================== ANIMATION PHASES ====================
 
@@ -92,9 +81,31 @@ export const SummonAnimation = ({
   const hasStartedRef = useRef(false);
   const hasCompletedRef = useRef(false); // Guard against double-click
   
+  // Get dynamic rarity configuration from context
+  const { getRarityAnimation, ordered } = useRarity();
+  
   const effectRarity = ambientRarity || rarity;
-  const config = RARITY_CONFIG[rarity] || RARITY_CONFIG.common;
-  const ambientConfig = RARITY_CONFIG[effectRarity] || RARITY_CONFIG.common;
+  
+  // Memoize config to prevent unnecessary re-renders
+  const config = useMemo(() => {
+    const animConfig = getRarityAnimation(rarity);
+    const rarityInfo = ordered.find(r => r.name === rarity?.toLowerCase());
+    return {
+      ...DEFAULT_ANIMATION_CONFIG,
+      ...animConfig,
+      icon: getIconByOrder(rarityInfo?.order || 1)
+    };
+  }, [rarity, getRarityAnimation, ordered]);
+  
+  const ambientConfig = useMemo(() => {
+    const animConfig = getRarityAnimation(effectRarity);
+    const rarityInfo = ordered.find(r => r.name === effectRarity?.toLowerCase());
+    return {
+      ...DEFAULT_ANIMATION_CONFIG,
+      ...animConfig,
+      icon: getIconByOrder(rarityInfo?.order || 1)
+    };
+  }, [effectRarity, getRarityAnimation, ordered]);
 
   const clearAllTimers = useCallback(() => {
     timersRef.current.forEach(timer => clearTimeout(timer));
@@ -522,7 +533,7 @@ const OrbCore = styled.div`
   border-radius: 50%;
   background: radial-gradient(
     circle at 30% 30%,
-    ${props => RARITY_CONFIG[props.$rarity]?.accentColor || '#fff'},
+    ${props => getRarityAccent(props.$rarity)},
     ${props => getRarityColor(props.$rarity)}
   );
   box-shadow: 
