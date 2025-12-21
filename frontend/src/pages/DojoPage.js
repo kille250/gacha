@@ -531,9 +531,9 @@ const DojoPage = () => {
                     {searchQuery ? 'No matching characters found' : 'No available characters. Roll some in the gacha!'}
                   </NoCharacters>
                 ) : (
-                  <>
+                  <CharacterList>
                     {Object.entries(charactersBySeries).map(([series, chars]) => (
-                      <SeriesGroup key={series}>
+                      <React.Fragment key={series}>
                         <SeriesTitle>{series} ({chars.length})</SeriesTitle>
                         <CharacterGrid>
                           {chars.map(char => (
@@ -565,9 +565,9 @@ const DojoPage = () => {
                           </CharacterCard>
                           ))}
                         </CharacterGrid>
-                      </SeriesGroup>
+                      </React.Fragment>
                     ))}
-                  </>
+                  </CharacterList>
                 )}
               </ModalBody>
             </ModalContent>
@@ -1682,12 +1682,8 @@ const NoCharacters = styled.div`
   justify-content: center;
 `;
 
-const SeriesGroup = styled.div`
-  margin-bottom: ${theme.spacing.lg};
-  
-  &:first-child {
-    padding-top: ${theme.spacing.md};
-  }
+const CharacterList = styled.div`
+  padding-top: ${theme.spacing.sm};
 `;
 
 const SeriesTitle = styled.div`
@@ -1711,6 +1707,7 @@ const CharacterGrid = styled.div`
   gap: ${theme.spacing.sm};
   position: relative;
   z-index: 1;
+  margin-bottom: ${theme.spacing.lg};
   
   @media (min-width: ${theme.breakpoints.sm}) {
     grid-template-columns: repeat(4, 1fr);

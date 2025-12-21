@@ -57,7 +57,7 @@ const DOJO_CONFIG = {
   activeClaimMultiplier: 1.5,
   
   // Minimum claim interval (prevent spam, in seconds)
-  minClaimInterval: 60,
+  minClaimInterval: 3,
   
   // Series synergy bonuses
   seriesSynergy: {
