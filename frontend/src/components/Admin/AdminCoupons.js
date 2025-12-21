@@ -51,25 +51,25 @@ const AdminCoupons = ({
       <StatsRow>
         <MiniStat>
           <MiniStatValue>{activeCoupons.length}</MiniStatValue>
-          <MiniStatLabel>Active</MiniStatLabel>
+          <MiniStatLabel>{t('admin.activeCount')}</MiniStatLabel>
         </MiniStat>
         <MiniStat>
           <MiniStatValue>{expiredCoupons.length}</MiniStatValue>
-          <MiniStatLabel>Expired</MiniStatLabel>
+          <MiniStatLabel>{t('admin.expiredCount')}</MiniStatLabel>
         </MiniStat>
         <MiniStat>
           <MiniStatValue>{coupons.reduce((sum, c) => sum + c.currentUses, 0)}</MiniStatValue>
-          <MiniStatLabel>Total Uses</MiniStatLabel>
+          <MiniStatLabel>{t('admin.totalUses')}</MiniStatLabel>
         </MiniStat>
       </StatsRow>
       
       {coupons.length === 0 ? (
         <EmptyState>
           <EmptyIcon>🎫</EmptyIcon>
-          <EmptyText>No coupons yet</EmptyText>
-          <EmptySubtext>Create discount codes for your users</EmptySubtext>
+          <EmptyText>{t('admin.noCouponsYet')}</EmptyText>
+          <EmptySubtext>{t('admin.createDiscountCodes')}</EmptySubtext>
           <AddCouponButton onClick={onAddCoupon} style={{ marginTop: theme.spacing.lg }}>
-            <FaPlus /> Create Coupon
+            <FaPlus /> {t('admin.createCoupon')}
           </AddCouponButton>
         </EmptyState>
       ) : (
@@ -117,20 +117,20 @@ const AdminCoupons = ({
                   
                   <DetailsGrid>
                     <DetailItem>
-                      <DetailLabel>Uses</DetailLabel>
+                      <DetailLabel>{t('admin.uses')}</DetailLabel>
                       <DetailValue>
                         {coupon.currentUses} / {coupon.maxUses === -1 ? '∞' : coupon.maxUses}
                       </DetailValue>
                     </DetailItem>
                     <DetailItem>
-                      <DetailLabel>Per User</DetailLabel>
+                      <DetailLabel>{t('admin.perUser')}</DetailLabel>
                       <DetailValue>
                         {coupon.usesPerUser === -1 ? '∞' : coupon.usesPerUser}
                       </DetailValue>
                     </DetailItem>
                     {coupon.endDate && (
                       <DetailItem $full>
-                        <DetailLabel><FaCalendarAlt /> Expires</DetailLabel>
+                        <DetailLabel><FaCalendarAlt /> {t('admin.expires')}</DetailLabel>
                         <DetailValue>
                           {new Date(coupon.endDate).toLocaleDateString()}
                         </DetailValue>
@@ -141,10 +141,10 @@ const AdminCoupons = ({
                 
                 <CardActions>
                   <CouponActionButton onClick={() => onEditCoupon(coupon)}>
-                    <FaEdit /> Edit
+                    <FaEdit /> {t('common.edit')}
                   </CouponActionButton>
                   <CouponActionButton $danger onClick={() => onDeleteCoupon(coupon.id)}>
-                    <FaTrash /> Delete
+                    <FaTrash /> {t('common.delete')}
                   </CouponActionButton>
                 </CardActions>
               </CouponCard>

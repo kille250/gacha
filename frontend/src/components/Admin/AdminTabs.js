@@ -4,19 +4,20 @@ import { motion } from 'framer-motion';
 import { FaChartBar, FaUsers, FaImage, FaFlag, FaTicketAlt } from 'react-icons/fa';
 import { theme } from '../../styles/DesignSystem';
 
-const tabs = [
-  { id: 'dashboard', label: 'Dashboard', icon: FaChartBar },
-  { id: 'users', label: 'Users', icon: FaUsers },
-  { id: 'characters', label: 'Characters', icon: FaImage },
-  { id: 'banners', label: 'Banners', icon: FaFlag },
-  { id: 'coupons', label: 'Coupons', icon: FaTicketAlt },
+const TAB_CONFIG = [
+  { id: 'dashboard', labelKey: 'admin.tabs.dashboard', icon: FaChartBar },
+  { id: 'users', labelKey: 'admin.tabs.users', icon: FaUsers },
+  { id: 'characters', labelKey: 'admin.tabs.characters', icon: FaImage },
+  { id: 'banners', labelKey: 'admin.tabs.banners', icon: FaFlag },
+  { id: 'coupons', labelKey: 'admin.tabs.coupons', icon: FaTicketAlt },
 ];
 
 const AdminTabs = ({ activeTab, onTabChange }) => {
+  const { t } = useTranslation();
   return (
     <TabsContainer>
       <TabsList>
-        {tabs.map((tab) => {
+        {TAB_CONFIG.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
           return (
@@ -28,7 +29,7 @@ const AdminTabs = ({ activeTab, onTabChange }) => {
               whileTap={{ scale: 0.98 }}
             >
               <Icon />
-              <span>{tab.label}</span>
+              <span>{t(tab.labelKey)}</span>
               {isActive && <ActiveIndicator layoutId="activeTab" />}
             </TabButton>
           );

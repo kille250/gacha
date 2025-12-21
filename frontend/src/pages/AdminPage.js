@@ -2,35 +2,17 @@ import React, { useState, useEffect, useContext, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { FaEdit, FaImage, FaSpinner, FaCheck } from 'react-icons/fa';
-import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, clearCache, invalidateAdminCache } from '../utils/api';
-import { isVideo, PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
+import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, clearCache } from '../utils/api';
+import { PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
 import AnimeImportModal from '../components/UI/AnimeImportModal';
-import AltMediaPicker from '../components/Admin/AltMediaPicker';
+import EditCharacterModal from '../components/Admin/EditCharacterModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { arrayMove } from '@dnd-kit/sortable';
 import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons } from '../components/Admin';
-import {
-  ModalOverlay,
-  ModalContent,
-  ModalHeader,
-  ModalTitle,
-  CloseButton,
-  ModalBody,
-  FormGroup,
-  Label,
-  Input,
-  Select,
-  CheckboxLabel,
-  ImagePreview,
-  PrimaryButton,
-  SecondaryButton,
-  ButtonRow,
-} from '../components/Admin/AdminStyles';
 import { theme, PageWrapper, Container } from '../styles/DesignSystem';
 
 const AdminPage = () => {
@@ -66,17 +48,9 @@ const AdminPage = () => {
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
   
-  // Edit character states
+  // Edit character state (modal is now a separate component)
   const [isEditingCharacter, setIsEditingCharacter] = useState(false);
   const [editingCharacter, setEditingCharacter] = useState(null);
-  const [editForm, setEditForm] = useState({ name: '', series: '', rarity: 'common', isR18: false });
-  const [editImageFile, setEditImageFile] = useState(null);
-  const [editImagePreview, setEditImagePreview] = useState(null);
-  
-  // Alt media picker states
-  const [showAltMediaPicker, setShowAltMediaPicker] = useState(false);
-  const [selectedAltMedia, setSelectedAltMedia] = useState(null);
-  const [altMediaSaving, setAltMediaSaving] = useState(false);
   
   // Coin form
   const [coinForm, setCoinForm] = useState({ userId: '', amount: 100 });
@@ -187,38 +161,18 @@ const AdminPage = () => {
 
   const handleEditCharacter = (character) => {
     setEditingCharacter(character);
-    setEditForm({
-      name: character.name,
-      series: character.series,
-      rarity: character.rarity || 'common',
-      isR18: character.isR18 || false
-    });
-    setEditImagePreview(getImageUrl(character.image));
     setIsEditingCharacter(true);
   };
 
-  const handleSaveCharacter = async (e) => {
-    e.preventDefault();
-    if (!editingCharacter) return;
-    
-    try {
-      await api.put(`/admin/characters/${editingCharacter.id}`, editForm);
-      
-      if (editImageFile) {
-        const formData = new FormData();
-        formData.append('image', editImageFile);
-        await api.put(`/admin/characters/${editingCharacter.id}/image`, formData, {
-          headers: { 'Content-Type': 'multipart/form-data' }
-        });
-      }
-      
-      setSuccessMessage(t('admin.characterUpdated'));
-      fetchAllData();
-      closeEditCharacterModal();
-    } catch (err) {
-      setError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
-    }
-  };
+  const handleEditCharacterClose = useCallback(() => {
+    setIsEditingCharacter(false);
+    setEditingCharacter(null);
+  }, []);
+
+  const handleEditCharacterSuccess = useCallback((message) => {
+    setSuccessMessage(message);
+    fetchAllData();
+  }, [fetchAllData]);
 
   const handleDeleteCharacter = async (characterId) => {
     if (!window.confirm(t('admin.confirmDeleteCharacter'))) return;
@@ -232,55 +186,6 @@ const AdminPage = () => {
     }
   };
 
-  const closeEditCharacterModal = () => {
-    setIsEditingCharacter(false);
-    setEditingCharacter(null);
-    setEditImageFile(null);
-    setEditImagePreview(null);
-    setSelectedAltMedia(null);
-  };
-
-  // Alt media picker handlers
-  const openAltMediaPicker = useCallback(() => {
-    if (!editingCharacter) return;
-    setShowAltMediaPicker(true);
-  }, [editingCharacter]);
-
-  const handleAltMediaSelect = useCallback((media) => {
-    setSelectedAltMedia(media);
-    setEditImagePreview(media.isAnimated ? media.file : (media.preview || media.file));
-    setEditImageFile(null);
-    setShowAltMediaPicker(false);
-  }, []);
-
-  const handleAltMediaPickerClose = useCallback((clearSelection = false) => {
-    setShowAltMediaPicker(false);
-    if (clearSelection) {
-      setSelectedAltMedia(null);
-    }
-  }, []);
-
-  const saveAltMediaToCharacter = useCallback(async () => {
-    if (!editingCharacter || !selectedAltMedia) return;
-    
-    setAltMediaSaving(true);
-    try {
-      await api.put(`/admin/characters/${editingCharacter.id}`, editForm);
-      await api.put(`/admin/characters/${editingCharacter.id}/image-url`, {
-        imageUrl: selectedAltMedia.file
-      });
-      
-      invalidateAdminCache();
-      setSuccessMessage(t('admin.characterUpdated'));
-      await fetchAllData();
-      closeEditCharacterModal();
-    } catch (err) {
-      setError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
-    } finally {
-      setAltMediaSaving(false);
-    }
-  }, [editingCharacter, selectedAltMedia, editForm, t, fetchAllData]);
-
   // Coin handlers
   const handleCoinFormChange = (e) => {
     setCoinForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
@@ -292,7 +197,8 @@ const AdminPage = () => {
       const response = await api.post('/admin/add-coins', coinForm);
       setCoinMessage(response.data.message);
       fetchAllData();
-      if (coinForm.userId === user?.id) await refreshUser();
+      // Compare as strings since form values are strings
+      if (String(coinForm.userId) === String(user?.id)) await refreshUser();
       setCoinForm({ userId: '', amount: 100 });
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to add coins');
@@ -444,18 +350,6 @@ const AdminPage = () => {
         break;
       default:
         break;
-    }
-  };
-
-  // Handle edit image file change
-  const handleEditImageChange = (e) => {
-    const file = e.target.files[0];
-    setEditImageFile(file);
-    setSelectedAltMedia(null);
-    if (file) {
-      const reader = new FileReader();
-      reader.onload = (e) => setEditImagePreview(e.target.result);
-      reader.readAsDataURL(file);
     }
   };
 
@@ -622,138 +516,13 @@ const AdminPage = () => {
       />
 
       {/* Edit Character Modal */}
-      <AnimatePresence>
-        {isEditingCharacter && editingCharacter && (
-          <ModalOverlay 
-            initial={{ opacity: 0 }} 
-            animate={{ opacity: 1 }} 
-            exit={{ opacity: 0 }}
-            onClick={closeEditCharacterModal}
-          >
-            <ModalContent
-              initial={{ opacity: 0, scale: 0.95, y: 20 }}
-              animate={{ opacity: 1, scale: 1, y: 0 }}
-              exit={{ opacity: 0, scale: 0.95, y: 20 }}
-              onClick={e => e.stopPropagation()}
-            >
-              <ModalHeader>
-                <ModalTitle><FaEdit /> Edit: {editingCharacter.name}</ModalTitle>
-                <CloseButton onClick={closeEditCharacterModal}>×</CloseButton>
-              </ModalHeader>
-              <ModalBody>
-                <form onSubmit={handleSaveCharacter}>
-                  <FormGroup>
-                    <Label>{t('admin.name')}</Label>
-                    <Input 
-                      type="text" 
-                      name="name" 
-                      value={editForm.name} 
-                      onChange={(e) => setEditForm(prev => ({ ...prev, name: e.target.value }))} 
-                      required 
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <Label>{t('admin.series')}</Label>
-                    <Input 
-                      type="text" 
-                      name="series" 
-                      value={editForm.series} 
-                      onChange={(e) => setEditForm(prev => ({ ...prev, series: e.target.value }))} 
-                      required 
-                    />
-                  </FormGroup>
-                  <FormGroup>
-                    <Label>{t('admin.rarity')}</Label>
-                    <Select 
-                      name="rarity" 
-                      value={editForm.rarity} 
-                      onChange={(e) => setEditForm(prev => ({ ...prev, rarity: e.target.value }))}
-                    >
-                      <option value="common">{t('gacha.common')}</option>
-                      <option value="uncommon">{t('gacha.uncommon')}</option>
-                      <option value="rare">{t('gacha.rare')}</option>
-                      <option value="epic">{t('gacha.epic')}</option>
-                      <option value="legendary">{t('gacha.legendary')}</option>
-                    </Select>
-                  </FormGroup>
-                  <FormGroup>
-                    <CheckboxLabel>
-                      <input 
-                        type="checkbox" 
-                        checked={editForm.isR18} 
-                        onChange={(e) => setEditForm(prev => ({ ...prev, isR18: e.target.checked }))} 
-                      />
-                      <span>🔞 {t('admin.r18Content')}</span>
-                    </CheckboxLabel>
-                  </FormGroup>
-                  <FormGroup>
-                    <Label>{t('admin.imageVideo')}</Label>
-                    <ImageOptionsRow>
-                      <FileInputWrapper>
-                        <Input 
-                          type="file" 
-                          accept="image/*,video/mp4,video/webm" 
-                          onChange={handleEditImageChange} 
-                        />
-                      </FileInputWrapper>
-                      <AltImageButton type="button" onClick={openAltMediaPicker}>
-                        <FaImage /> {t('animeImport.findAltImage') || 'Find Alt Image'}
-                      </AltImageButton>
-                    </ImageOptionsRow>
-                    {selectedAltMedia && (
-                      <SelectedAltInfo>
-                        <FaCheck /> {t('animeImport.altImageSelected') || 'Alternative image selected from Danbooru'}
-                      </SelectedAltInfo>
-                    )}
-                    {editImagePreview && (
-                      <ImagePreview>
-                        {selectedAltMedia ? (
-                          selectedAltMedia.isAnimated ? (
-                            <video controls src={editImagePreview} autoPlay loop muted />
-                          ) : (
-                            <img src={editImagePreview} alt="Preview" />
-                          )
-                        ) : editImageFile ? (
-                          isVideo(editImageFile) ? (
-                            <video controls src={editImagePreview} autoPlay loop muted />
-                          ) : (
-                            <img src={editImagePreview} alt="Preview" />
-                          )
-                        ) : (
-                          isVideo(editingCharacter.image) ? (
-                            <video controls src={editImagePreview} autoPlay loop muted />
-                          ) : (
-                            <img src={editImagePreview} alt="Preview" />
-                          )
-                        )}
-                      </ImagePreview>
-                    )}
-                  </FormGroup>
-                  <ButtonRow>
-                    {selectedAltMedia ? (
-                      <PrimaryButton type="button" onClick={saveAltMediaToCharacter} disabled={altMediaSaving} style={{ flex: 1 }}>
-                        {altMediaSaving ? <><FaSpinner className="spin" /> {t('common.saving') || 'Saving...'}</> : t('admin.saveChanges')}
-                      </PrimaryButton>
-                    ) : (
-                      <PrimaryButton type="submit" style={{ flex: 1 }}>{t('admin.saveChanges')}</PrimaryButton>
-                    )}
-                    <SecondaryButton type="button" onClick={closeEditCharacterModal} style={{ flex: 1 }}>
-                      {t('common.cancel')}
-                    </SecondaryButton>
-                  </ButtonRow>
-                </form>
-              </ModalBody>
-            </ModalContent>
-          </ModalOverlay>
-        )}
-      </AnimatePresence>
-
-      {/* Alt Media Picker Modal */}
-      <AltMediaPicker
-        show={showAltMediaPicker}
-        onClose={handleAltMediaPickerClose}
-        characterName={editingCharacter?.name}
-        onSelectMedia={handleAltMediaSelect}
+      <EditCharacterModal
+        show={isEditingCharacter}
+        character={editingCharacter}
+        onClose={handleEditCharacterClose}
+        onSuccess={handleEditCharacterSuccess}
+        onError={setError}
+        getImageUrl={getImageUrl}
       />
     </StyledPageWrapper>
   );
@@ -865,51 +634,5 @@ const TabPanel = styled(motion.div).attrs({
   exit: { opacity: 0, x: -20 },
   transition: { duration: 0.2 }
 })``;
-
-// Alt Media Picker styled components
-const ImageOptionsRow = styled.div`
-  display: flex;
-  gap: ${theme.spacing.sm};
-  align-items: stretch;
-`;
-
-const FileInputWrapper = styled.div`
-  flex: 1;
-`;
-
-const AltImageButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md};
-  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
-  border: none;
-  border-radius: ${theme.radius.md};
-  color: white;
-  font-weight: ${theme.fontWeights.semibold};
-  font-size: ${theme.fontSizes.sm};
-  cursor: pointer;
-  white-space: nowrap;
-  transition: all 0.2s;
-  
-  &:hover {
-    transform: translateY(-1px);
-    box-shadow: 0 3px 10px rgba(155, 89, 182, 0.3);
-  }
-`;
-
-const SelectedAltInfo = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  margin-top: ${theme.spacing.sm};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: rgba(46, 204, 113, 0.15);
-  border: 1px solid rgba(46, 204, 113, 0.3);
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.success};
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-`;
 
 export default AdminPage;

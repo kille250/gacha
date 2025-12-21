@@ -6,6 +6,7 @@ import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getSystemHealth } from '../../utils/api';
 
 const AdminDashboard = ({ stats, onQuickAction }) => {
+  const { t } = useTranslation();
   const [healthData, setHealthData] = useState(null);
   const [healthLoading, setHealthLoading] = useState(true);
   const [healthError, setHealthError] = useState(null);
@@ -33,16 +34,18 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
   }, []);
 
   const formatUptime = (seconds) => {
-    if (!seconds) return '0s';
-    const days = Math.floor(seconds / 86400);
-    const hours = Math.floor((seconds % 86400) / 3600);
-    const minutes = Math.floor((seconds % 3600) / 60);
-    const secs = seconds % 60;
+    if (!seconds || seconds < 0) return '0s';
+    const totalSeconds = Math.floor(seconds);
+    const days = Math.floor(totalSeconds / 86400);
+    const hours = Math.floor((totalSeconds % 86400) / 3600);
+    const minutes = Math.floor((totalSeconds % 3600) / 60);
+    const secs = totalSeconds % 60;
     
     const parts = [];
     if (days > 0) parts.push(`${days}d`);
     if (hours > 0) parts.push(`${hours}h`);
     if (minutes > 0) parts.push(`${minutes}m`);
+    // Only show seconds if no larger units or if explicitly present
     if (secs > 0 && parts.length < 2) parts.push(`${secs}s`);
     return parts.join(' ') || '0s';
   };
@@ -57,7 +60,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
   const statCards = [
     { 
       id: 'users', 
-      label: 'Total Users', 
+      labelKey: 'admin.totalUsers', 
       value: stats.totalUsers || 0, 
       icon: FaUsers, 
       color: '#0a84ff',
@@ -65,7 +68,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
     },
     { 
       id: 'characters', 
-      label: 'Characters', 
+      labelKey: 'admin.totalCharacters', 
       value: stats.totalCharacters || 0, 
       icon: FaImage, 
       color: '#30d158',
@@ -73,7 +76,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
     },
     { 
       id: 'banners', 
-      label: 'Active Banners', 
+      labelKey: 'admin.activeBannersCount', 
       value: stats.activeBanners || 0, 
       icon: FaFlag, 
       color: '#ff9f0a',
@@ -81,7 +84,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
     },
     { 
       id: 'coupons', 
-      label: 'Active Coupons', 
+      labelKey: 'admin.activeCouponsCount', 
       value: stats.activeCoupons || 0, 
       icon: FaTicketAlt, 
       color: '#bf5af2',
@@ -89,7 +92,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
     },
     { 
       id: 'coins', 
-      label: 'Total Coins', 
+      labelKey: 'admin.totalCoins', 
       value: stats.totalCoins?.toLocaleString() || 0, 
       icon: FaCoins, 
       color: '#ffd60a',
@@ -97,7 +100,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
     },
     { 
       id: 'fish', 
-      label: 'Fish Caught', 
+      labelKey: 'admin.fishCaught', 
       value: stats.totalFish?.toLocaleString() || 0, 
       icon: FaFish, 
       color: '#64d2ff',
@@ -106,11 +109,11 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
   ];
 
   const quickActions = [
-    { id: 'addCharacter', label: 'Add Character', icon: FaPlus, action: 'character' },
-    { id: 'multiUpload', label: 'Multi Upload', icon: FaCloudUploadAlt, action: 'multiUpload' },
-    { id: 'animeImport', label: 'Anime Import', icon: FaDownload, action: 'animeImport' },
-    { id: 'addBanner', label: 'New Banner', icon: FaFlag, action: 'banner' },
-    { id: 'addCoupon', label: 'New Coupon', icon: FaTicketAlt, action: 'coupon' },
+    { id: 'addCharacter', labelKey: 'admin.addCharacter', icon: FaPlus, action: 'character' },
+    { id: 'multiUpload', labelKey: 'admin.multiUpload', icon: FaCloudUploadAlt, action: 'multiUpload' },
+    { id: 'animeImport', labelKey: 'admin.animeImport', icon: FaDownload, action: 'animeImport' },
+    { id: 'addBanner', labelKey: 'admin.newBanner', icon: FaFlag, action: 'banner' },
+    { id: 'addCoupon', labelKey: 'admin.newCoupon', icon: FaTicketAlt, action: 'coupon' },
   ];
 
   return (
@@ -121,7 +124,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
     >
       <SectionTitle>
         <TitleIcon>📊</TitleIcon>
-        Overview
+        {t('admin.overview')}
       </SectionTitle>
       
       <StatsGrid>
@@ -139,7 +142,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
               </StatIcon>
               <StatContent>
                 <StatValue>{stat.value}</StatValue>
-                <StatLabel>{stat.label}</StatLabel>
+                <StatLabel>{t(stat.labelKey)}</StatLabel>
               </StatContent>
               <StatGlow $color={stat.color} />
             </StatCard>
@@ -149,7 +152,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
       
       <SectionTitle style={{ marginTop: theme.spacing.xl }}>
         <TitleIcon>⚡</TitleIcon>
-        Quick Actions
+        {t('admin.quickActions')}
       </SectionTitle>
       
       <QuickActionsGrid>
@@ -163,7 +166,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
               whileTap={{ scale: 0.98 }}
             >
               <QuickActionIcon><Icon /></QuickActionIcon>
-              <span>{action.label}</span>
+              <span>{t(action.labelKey)}</span>
             </QuickActionButton>
           );
         })}
@@ -173,13 +176,13 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
         <SectionHeader>
           <SectionTitle>
             <TitleIcon>🖥️</TitleIcon>
-            System Status
+            {t('admin.systemStatus')}
           </SectionTitle>
           <RefreshButton onClick={fetchHealth} disabled={healthLoading}>
             <FaSync className={healthLoading ? 'spinning' : ''} />
             {lastRefresh && (
               <RefreshTime>
-                Updated {lastRefresh.toLocaleTimeString()}
+                {t('admin.updated')} {lastRefresh.toLocaleTimeString()}
               </RefreshTime>
             )}
           </RefreshButton>
@@ -188,17 +191,17 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
         {healthError ? (
           <ErrorBox>
             <span>⚠️ {healthError}</span>
-            <RetryButton onClick={fetchHealth}>Retry</RetryButton>
+            <RetryButton onClick={fetchHealth}>{t('admin.retry')}</RetryButton>
           </ErrorBox>
         ) : healthLoading && !healthData ? (
-          <LoadingBox>Loading system status...</LoadingBox>
+          <LoadingBox>{t('admin.loadingSystemStatus')}</LoadingBox>
         ) : healthData && (
           <StatusGrid>
             {/* Server Status */}
             <StatusCard>
               <StatusHeader>
                 <StatusIcon $color="#30d158"><FaServer /></StatusIcon>
-                <StatusTitle>Server</StatusTitle>
+                <StatusTitle>{t('admin.server')}</StatusTitle>
                 <StatusBadge $status={healthData.server?.status === 'online' ? 'success' : 'error'}>
                   {healthData.server?.status || 'unknown'}
                 </StatusBadge>
@@ -206,15 +209,15 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
               <StatusDetails>
                 <StatusRow>
                   <FaClock />
-                  <span>Uptime</span>
+                  <span>{t('admin.uptime')}</span>
                   <strong>{formatUptime(healthData.server?.uptime)}</strong>
                 </StatusRow>
                 <StatusRow>
-                  <span>Node</span>
+                  <span>{t('admin.node')}</span>
                   <strong>{healthData.server?.nodeVersion || 'N/A'}</strong>
                 </StatusRow>
                 <StatusRow>
-                  <span>Platform</span>
+                  <span>{t('admin.platform')}</span>
                   <strong>{healthData.server?.platform} ({healthData.server?.arch})</strong>
                 </StatusRow>
               </StatusDetails>
@@ -224,23 +227,23 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
             <StatusCard>
               <StatusHeader>
                 <StatusIcon $color="#0a84ff"><FaDatabase /></StatusIcon>
-                <StatusTitle>Database</StatusTitle>
+                <StatusTitle>{t('admin.database')}</StatusTitle>
                 <StatusBadge $status={healthData.database?.status === 'connected' ? 'success' : 'error'}>
                   {healthData.database?.status || 'unknown'}
                 </StatusBadge>
               </StatusHeader>
               <StatusDetails>
                 <StatusRow>
-                  <span>Response Time</span>
+                  <span>{t('admin.responseTime')}</span>
                   <strong>{healthData.database?.responseTime ? `${healthData.database.responseTime}ms` : 'N/A'}</strong>
                 </StatusRow>
                 <StatusRow>
-                  <span>Dialect</span>
+                  <span>{t('admin.dialect')}</span>
                   <strong>{healthData.database?.dialect || 'N/A'}</strong>
                 </StatusRow>
                 <StatusRow>
-                  <span>Active Today</span>
-                  <strong>{healthData.stats?.activeToday || 0} users</strong>
+                  <span>{t('admin.activeToday')}</span>
+                  <strong>{healthData.stats?.activeToday || 0} {t('admin.users')}</strong>
                 </StatusRow>
               </StatusDetails>
             </StatusCard>
@@ -249,20 +252,20 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
             <StatusCard>
               <StatusHeader>
                 <StatusIcon $color="#ff9f0a"><FaHdd /></StatusIcon>
-                <StatusTitle>Storage</StatusTitle>
+                <StatusTitle>{t('admin.storage')}</StatusTitle>
                 <StatusBadge $status={healthData.storage?.status === 'available' ? 'success' : 'warning'}>
                   {healthData.storage?.status || 'unknown'}
                 </StatusBadge>
               </StatusHeader>
               <StatusDetails>
                 <StatusRow>
-                  <span>Writable</span>
-                  <strong>{healthData.storage?.writable ? '✅ Yes' : '❌ No'}</strong>
+                  <span>{t('admin.writable')}</span>
+                  <strong>{healthData.storage?.writable ? '✅' : '❌'}</strong>
                 </StatusRow>
                 {healthData.storage?.directories && Object.entries(healthData.storage.directories).map(([dir, info]) => (
                   <StatusRow key={dir}>
                     <span>/{dir}</span>
-                    <strong>{info.exists ? `${info.fileCount} files` : 'Missing'}</strong>
+                    <strong>{info.exists ? `${info.fileCount} ${t('admin.files')}` : t('admin.missing')}</strong>
                   </StatusRow>
                 ))}
               </StatusDetails>
@@ -272,12 +275,12 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
             <StatusCard>
               <StatusHeader>
                 <StatusIcon $color="#bf5af2"><FaMemory /></StatusIcon>
-                <StatusTitle>Memory</StatusTitle>
+                <StatusTitle>{t('admin.memory')}</StatusTitle>
                 <StatusBadge $status={
                   healthData.memory?.usagePercent < 70 ? 'success' : 
                   healthData.memory?.usagePercent < 85 ? 'warning' : 'error'
                 }>
-                  {healthData.memory?.usagePercent || 0}% used
+                  {t('admin.usedPercent', { percent: healthData.memory?.usagePercent || 0 })}
                 </StatusBadge>
               </StatusHeader>
               <StatusDetails>
@@ -285,15 +288,15 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
                   <MemoryUsed $percent={healthData.memory?.usagePercent || 0} />
                 </MemoryBar>
                 <StatusRow>
-                  <span>Used</span>
+                  <span>{t('admin.used')}</span>
                   <strong>{formatBytes(healthData.memory?.used)}</strong>
                 </StatusRow>
                 <StatusRow>
-                  <span>Free</span>
+                  <span>{t('admin.free')}</span>
                   <strong>{formatBytes(healthData.memory?.free)}</strong>
                 </StatusRow>
                 <StatusRow>
-                  <span>Total</span>
+                  <span>{t('admin.total')}</span>
                   <strong>{formatBytes(healthData.memory?.total)}</strong>
                 </StatusRow>
               </StatusDetails>

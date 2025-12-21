@@ -5,4 +5,5 @@ export { default as AdminCharacters } from './AdminCharacters';
 export { default as AdminBanners } from './AdminBanners';
 export { default as AdminCoupons } from './AdminCoupons';
 export { default as AltMediaPicker } from './AltMediaPicker';
+export { default as EditCharacterModal } from './EditCharacterModal';
 export * from './AdminStyles';

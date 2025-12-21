@@ -13,7 +13,6 @@ import {
   HeaderRow,
   SectionTitle,
   ItemCount,
-  ActionButton,
   IconButton,
   EmptyState,
   EmptyIcon,
@@ -23,7 +22,7 @@ import {
 } from './AdminStyles';
 
 // Sortable Banner Item
-const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured, onEdit, onDelete }) => {
+const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured, onEdit, onDelete, t }) => {
   const {
     attributes,
     listeners,
@@ -64,10 +63,10 @@ const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured
           whileTap={{ scale: 0.95 }}
         >
           {banner.featured ? <FaStar /> : <FaRegStar />}
-          {banner.featured ? 'Featured' : 'Feature'}
+          {banner.featured ? t('admin.featured') : t('admin.feature')}
         </FeaturedButton>
         <StatusBadge $active={banner.active}>
-          {banner.active ? 'Active' : 'Inactive'}
+          {banner.active ? t('admin.active') : t('admin.inactive')}
         </StatusBadge>
       </BannerTags>
       <BannerActions>
@@ -128,10 +127,10 @@ const AdminBanners = ({
       {banners.length === 0 ? (
         <EmptyState>
           <EmptyIcon>🏳️</EmptyIcon>
-          <EmptyText>No banners yet</EmptyText>
-          <EmptySubtext>Create your first banner to get started</EmptySubtext>
+          <EmptyText>{t('admin.noBannersYet')}</EmptyText>
+          <EmptySubtext>{t('admin.createFirstBanner')}</EmptySubtext>
           <AddBannerButton onClick={onAddBanner} style={{ marginTop: theme.spacing.lg }}>
-            <FaPlus /> Create Banner
+            <FaPlus /> {t('admin.createBanner')}
           </AddBannerButton>
         </EmptyState>
       ) : (
@@ -147,6 +146,7 @@ const AdminBanners = ({
                   onToggleFeatured={onToggleFeatured}
                   onEdit={onEditBanner}
                   onDelete={onDeleteBanner}
+                  t={t}
                 />
               ))}
             </BannerList>
@@ -156,15 +156,15 @@ const AdminBanners = ({
       
       <StatsRow>
         <StatItem>
-          <StatLabel>Featured</StatLabel>
+          <StatLabel>{t('admin.featuredCount')}</StatLabel>
           <StatValue>{banners.filter(b => b.featured).length}</StatValue>
         </StatItem>
         <StatItem>
-          <StatLabel>Active</StatLabel>
+          <StatLabel>{t('admin.activeCount')}</StatLabel>
           <StatValue>{banners.filter(b => b.active).length}</StatValue>
         </StatItem>
         <StatItem>
-          <StatLabel>Total Characters</StatLabel>
+          <StatLabel>{t('admin.totalCharactersCount')}</StatLabel>
           <StatValue>{banners.reduce((sum, b) => sum + (b.Characters?.length || 0), 0)}</StatValue>
         </StatItem>
       </StatsRow>

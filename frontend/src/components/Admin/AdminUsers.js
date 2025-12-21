@@ -58,26 +58,26 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
             <FaSearch />
             <SearchInput 
               type="text" 
-              placeholder="Search users..." 
+              placeholder={t('admin.searchUsers')} 
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </SearchWrapper>
           <ActionButton $variant="gold" onClick={() => setShowCoinModal(true)}>
-            <FaCoins /> Add Coins
+            <FaCoins /> {t('admin.addCoins')}
           </ActionButton>
         </HeaderActions>
       </HeaderRow>
       
       <UsersTable>
         <TableHeader>
-          <HeaderCell $width="60px">Rank</HeaderCell>
-          <HeaderCell>Username</HeaderCell>
-          <HeaderCell $width="120px">Coins</HeaderCell>
-          <HeaderCell $width="80px">Admin</HeaderCell>
-          <HeaderCell $width="120px">R18</HeaderCell>
-          <HeaderCell $width="150px">Autofish</HeaderCell>
-          <HeaderCell $width="120px">Joined</HeaderCell>
+          <HeaderCell $width="60px">{t('admin.rank')}</HeaderCell>
+          <HeaderCell>{t('admin.username')}</HeaderCell>
+          <HeaderCell $width="120px">{t('admin.coins')}</HeaderCell>
+          <HeaderCell $width="80px">{t('admin.isAdmin')}</HeaderCell>
+          <HeaderCell $width="120px">{t('admin.r18')}</HeaderCell>
+          <HeaderCell $width="150px">{t('admin.autofish')}</HeaderCell>
+          <HeaderCell $width="120px">{t('admin.joined')}</HeaderCell>
         </TableHeader>
         
         <TableBody>
@@ -121,17 +121,17 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
                       $enabled={user.allowR18}
                       onClick={() => onToggleR18(user.id, !user.allowR18)}
                     >
-                      {user.allowR18 ? '🔞 Enabled' : 'Disabled'}
+                      {user.allowR18 ? t('admin.r18Enabled') : t('admin.r18DisabledShort')}
                     </ToggleButton>
                   </Cell>
                   <Cell $width="150px">
                     <AutofishCell>
-                      {isTopTen && <TopTenBadge>Top 10</TopTenBadge>}
+                      {isTopTen && <TopTenBadge>{t('admin.topTen')}</TopTenBadge>}
                       <ToggleButton 
                         $enabled={user.autofishEnabled}
                         onClick={() => onToggleAutofish(user.id, !user.autofishEnabled)}
                       >
-                        {user.autofishEnabled ? 'Manual ✓' : 'Enable'}
+                        {user.autofishEnabled ? t('admin.autofishManual') : t('admin.autofishEnable')}
                       </ToggleButton>
                     </AutofishCell>
                   </Cell>
