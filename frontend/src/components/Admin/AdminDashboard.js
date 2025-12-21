@@ -125,7 +125,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
       </SectionTitle>
       
       <StatsGrid>
-        {statCards.map((stat, index) => {
+        {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
             <StatCard

@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -61,7 +61,7 @@ const AltMediaPicker = ({
   }, []);
 
   // Initialize search when modal opens
-  React.useEffect(() => {
+  useEffect(() => {
     if (show && characterName) {
       // Prepare initial search query from character name
       let searchName = characterName;
@@ -189,12 +189,9 @@ const AltMediaPicker = ({
     setTypeFilter('all');
   }, []);
 
-  // Get category icon
-  const getCategoryIcon = (category) => {
-    if (category === 4) return '👤';
-    if (category === 3) return '📺';
-    return '🏷️';
-  };
+  // Category icons for tag types (4 = character, 3 = copyright/series)
+  const CATEGORY_ICONS = { 4: '👤', 3: '📺' };
+  const getCategoryIcon = (category) => CATEGORY_ICONS[category] || '🏷️';
 
   if (!show) return null;
 
@@ -892,4 +889,3 @@ const SourceNote = styled.span`
 `;
 
 export default AltMediaPicker;
-

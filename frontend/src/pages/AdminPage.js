@@ -738,14 +738,12 @@ const AdminPage = () => {
       </AnimatePresence>
 
       {/* Alt Media Picker Modal */}
-      <AnimatePresence>
-        <AltMediaPicker
-          show={showAltMediaPicker}
-          onClose={handleAltMediaPickerClose}
-          characterName={editingCharacter?.name}
-          onSelectMedia={handleAltMediaSelect}
-        />
-      </AnimatePresence>
+      <AltMediaPicker
+        show={showAltMediaPicker}
+        onClose={handleAltMediaPickerClose}
+        characterName={editingCharacter?.name}
+        onSelectMedia={handleAltMediaSelect}
+      />
     </StyledPageWrapper>
   );
 };

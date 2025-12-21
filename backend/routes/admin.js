@@ -6,6 +6,7 @@ const fs = require('fs');
 const os = require('os');
 const http = require('http');
 const https = require('https');
+const { Op } = require('sequelize');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { User, Character, Banner, Coupon, CouponRedemption, FishInventory } = require('../models');
@@ -112,11 +113,11 @@ router.get('/health', auth, adminAuth, async (req, res) => {
         healthData.stats.totalBanners = bannerCount;
         healthData.stats.totalCoupons = couponCount;
 
-        // Count users active in last 24 hours (based on lastDailyReward)
+        // Count users active in last 24 hours (based on updatedAt)
         const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
         const activeCount = await User.count({
           where: {
-            updatedAt: { [require('sequelize').Op.gte]: oneDayAgo }
+            updatedAt: { [Op.gte]: oneDayAgo }
           }
         });
         healthData.stats.activeToday = activeCount;

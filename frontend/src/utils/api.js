@@ -33,7 +33,6 @@ export const getAssetUrl = (path) => {
 // REQUEST CACHING & DEDUPLICATION
 // ===========================================
 
-// Simple in-memory cache with TTL
 const cache = new Map();
 const pendingRequests = new Map();
 
@@ -57,11 +56,14 @@ const getCacheTTL = (url) => {
 const getCacheKey = (config) => {
   // Include auth token in cache key so different users get different cached responses
   const token = localStorage.getItem('token');
-  const tokenHash = token ? token.slice(-8) : 'noauth'; // Use last 8 chars of token as identifier
+  const tokenHash = token ? token.slice(-8) : 'noauth';
   return `${config.method || 'get'}:${config.url}:${tokenHash}`;
 };
 
-// Clear cache for a specific pattern
+/**
+ * Clear cache entries matching a pattern, or all entries if no pattern provided
+ * @param {string} [pattern] - Optional pattern to match cache keys
+ */
 export const clearCache = (pattern) => {
   if (!pattern) {
     cache.clear();
@@ -74,14 +76,22 @@ export const clearCache = (pattern) => {
   }
 };
 
-// Clear all caches (useful after mutations)
-export const invalidateCache = () => {
-  cache.clear();
+/**
+ * Invalidate all admin-related caches after mutations
+ */
+export const invalidateAdminCache = () => {
+  clearCache('/admin');
+  clearCache('/characters');
+  clearCache('/banners');
+  clearCache('/coupons');
 };
+
+// Legacy alias for clearCache() - kept for backwards compatibility
+export const invalidateCache = () => clearCache();
 
 const api = axios.create({
   baseURL: API_URL,
-  timeout: 30000, // 30 second timeout
+  timeout: 30000,
 });
 
 // Request interceptor to add auth token and handle caching
@@ -97,13 +107,13 @@ api.interceptors.request.use(config => {
     const cached = cache.get(cacheKey);
     
     if (cached && Date.now() < cached.expiry) {
-      // Return cached response by using adapter
+      // Return cached response using adapter
       config.adapter = () => Promise.resolve({
         data: cached.data,
         status: 200,
         statusText: 'OK',
         headers: {},
-        config: config,
+        config,
         cached: true
       });
       return config;
@@ -132,14 +142,12 @@ api.interceptors.response.use(
         expiry: Date.now() + ttl
       });
       
-      // Remove from pending
       pendingRequests.delete(cacheKey);
     }
     
     return response;
   },
   (error) => {
-    // Remove from pending on error
     if (error.config) {
       const cacheKey = getCacheKey(error.config);
       pendingRequests.delete(cacheKey);
@@ -148,35 +156,23 @@ api.interceptors.response.use(
   }
 );
 
+// ===========================================
+// CHARACTER API
+// ===========================================
+
 export const rollCharacter = async () => {
-  try {
-    const response = await api.post('/characters/roll');
-    return response.data;
-  } catch (error) {
-    console.error('Error rolling character:', error);
-    throw error;
-  }
+  const response = await api.post('/characters/roll');
+  return response.data;
 };
 
 export const getCollection = async () => {
-  try {
-    const response = await api.get('/characters/collection');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching collection:', error);
-    throw error;
-  }
+  const response = await api.get('/characters/collection');
+  return response.data;
 };
 
-// Combined collection data - single request for collection page
 export const getCollectionData = async () => {
-  try {
-    const response = await api.get('/characters/collection-data');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching collection data:', error);
-    throw error;
-  }
+  const response = await api.get('/characters/collection-data');
+  return response.data;
 };
 
 export const getCurrentUser = () => {
@@ -185,8 +181,7 @@ export const getCurrentUser = () => {
   
   try {
     return JSON.parse(userString);
-  } catch (err) {
-    console.error('Error parsing user from localStorage:', err);
+  } catch {
     return null;
   }
 };
@@ -196,49 +191,49 @@ export const getAllCharacters = async () => {
   return response.data;
 };
 
-// Get all active banners
+// ===========================================
+// BANNER API
+// ===========================================
+
 export const getActiveBanners = async () => {
   const response = await api.get('/banners');
   return response.data;
 };
 
-// Get a single banner by ID
 export const getBannerById = async (bannerId) => {
   const response = await api.get(`/banners/${bannerId}`);
   return response.data;
 };
 
-// Get pricing configuration for standard pulls
 export const getStandardPricing = async () => {
   const response = await api.get('/characters/pricing');
   return response.data;
 };
 
-// Get pricing configuration for a specific banner
 export const getBannerPricing = async (bannerId) => {
   const response = await api.get(`/banners/${bannerId}/pricing`);
   return response.data;
 };
 
-// Get general pricing configuration (base config without banner multiplier)
 export const getBasePricing = async () => {
   const response = await api.get('/banners/pricing');
   return response.data;
 };
 
-// Roll on a specific banner
 export const rollOnBanner = async (bannerId) => {
   const response = await api.post(`/banners/${bannerId}/roll`);
   return response.data;
 };
 
-// Multi-roll on a banner
 export const multiRollOnBanner = async (bannerId, count = 10) => {
   const response = await api.post(`/banners/${bannerId}/roll-multi`, { count });
   return response.data;
 };
 
-// Admin functions
+// ===========================================
+// ADMIN BANNER MANAGEMENT
+// ===========================================
+
 export const createBanner = async (formData) => {
   const response = await api.post('/banners', formData, {
     headers: { 'Content-Type': 'multipart/form-data' }
@@ -259,63 +254,39 @@ export const deleteBanner = async (bannerId) => {
   return response.data;
 };
 
-// Combined admin dashboard - single request instead of 4
+// ===========================================
+// ADMIN DASHBOARD
+// ===========================================
+
 export const getAdminDashboard = async () => {
   const response = await api.get('/admin/dashboard');
   return response.data;
 };
 
-// Get system health status (admin only)
 export const getSystemHealth = async () => {
   const response = await api.get('/admin/health');
   return response.data;
 };
 
-// Invalidate admin cache after mutations
-export const invalidateAdminCache = () => {
-  clearCache('/admin');
-  clearCache('/characters');
-  clearCache('/banners');
-  clearCache('/coupons');
-};
-
-// =============================================
+// ===========================================
 // FISHING TRADING POST API
-// =============================================
+// ===========================================
 
-// Get user's fish inventory
 export const getFishInventory = async () => {
-  try {
-    const response = await api.get('/fishing/inventory');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching fish inventory:', error);
-    throw error;
-  }
+  const response = await api.get('/fishing/inventory');
+  return response.data;
 };
 
-// Get trading post options
 export const getTradingPostOptions = async () => {
-  try {
-    const response = await api.get('/fishing/trading-post');
-    return response.data;
-  } catch (error) {
-    console.error('Error fetching trading post:', error);
-    throw error;
-  }
+  const response = await api.get('/fishing/trading-post');
+  return response.data;
 };
 
-// Execute a trade
 export const executeTrade = async (tradeId, quantity = 1) => {
-  try {
-    clearCache('/fishing/inventory');
-    clearCache('/fishing/trading-post');
-    const response = await api.post('/fishing/trade', { tradeId, quantity });
-    return response.data;
-  } catch (error) {
-    console.error('Error executing trade:', error);
-    throw error;
-  }
+  clearCache('/fishing/inventory');
+  clearCache('/fishing/trading-post');
+  const response = await api.post('/fishing/trade', { tradeId, quantity });
+  return response.data;
 };
 
 export default api;
