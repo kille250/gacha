@@ -189,6 +189,11 @@ export const SummonAnimation = ({
     }
   }, [isActive, clearAllTimers]);
 
+  // Reset completed guard when character changes (for multi-pull)
+  useEffect(() => {
+    hasCompletedRef.current = false;
+  }, [currentPull]);
+
   // Handle skip/continue
   const handleInteraction = useCallback((e) => {
     e.stopPropagation();
