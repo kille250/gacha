@@ -77,8 +77,8 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
   if (!show) return null;
   
   return (
-    <ModalOverlay onClick={onClose}>
-      <ModalContent onClick={e => e.stopPropagation()}>
+    <ModalOverlay onMouseDown={onClose}>
+      <ModalContent onMouseDown={e => e.stopPropagation()}>
         <ModalHeader>
           <ModalTitle>
             <FaTicketAlt />

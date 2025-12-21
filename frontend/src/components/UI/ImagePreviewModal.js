@@ -26,14 +26,14 @@ const ImagePreviewModal = ({ isOpen, onClose, image, name, series, rarity, isOwn
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          onClick={onClose}
+          onMouseDown={onClose}
         >
           <ModalContent
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-            onClick={handleModalClick}
+            onMouseDown={handleModalClick}
             rarity={rarity}
           >
             {/* Close Button */}

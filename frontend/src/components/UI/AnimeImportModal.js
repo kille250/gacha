@@ -274,8 +274,8 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   if (!show) return null;
 
   return (
-    <ModalOverlay onClick={handleClose}>
-      <ModalContent onClick={e => e.stopPropagation()}>
+    <ModalOverlay onMouseDown={handleClose}>
+      <ModalContent onMouseDown={e => e.stopPropagation()}>
         <ModalHeader>
           <h2><FaDownload /> {t('animeImport.title')}</h2>
           <CloseButton onClick={handleClose}><FaTimes /></CloseButton>
@@ -486,13 +486,13 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                onClick={closeAltMediaPicker}
+                onMouseDown={closeAltMediaPicker}
               >
                 <AltMediaModal
                   initial={{ scale: 0.9, opacity: 0 }}
                   animate={{ scale: 1, opacity: 1 }}
                   exit={{ scale: 0.9, opacity: 0 }}
-                  onClick={e => e.stopPropagation()}
+                  onMouseDown={e => e.stopPropagation()}
                 >
                   <AltMediaHeader>
                     <h3><FaImage /> {t('animeImport.findAltImageFor', { name: altMediaCharacter.name })}</h3>

@@ -267,8 +267,8 @@ const response = await fetch(`${API_URL}/admin/characters/multi-upload`, {
   if (!show) return null;
 
   return (
-    <ModalOverlay onClick={handleClose}>
-      <ModalContent onClick={e => e.stopPropagation()}>
+    <ModalOverlay onMouseDown={handleClose}>
+      <ModalContent onMouseDown={e => e.stopPropagation()}>
         <ModalHeader>
           <h2><FaCloudUploadAlt /> Multi-Upload Characters</h2>
           <CloseButton onClick={handleClose}><FaTimes /></CloseButton>

@@ -196,8 +196,8 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   if (!show) return null;
   
   return (
-    <ModalOverlay onClick={onClose}>
-      <ModalContent onClick={e => e.stopPropagation()}>
+    <ModalOverlay onMouseDown={onClose}>
+      <ModalContent onMouseDown={e => e.stopPropagation()}>
         <ModalHeader>
           <ModalTitle>{banner ? 'Edit Banner' : 'Create New Banner'}</ModalTitle>
           <CloseButton onClick={onClose}><FaTimes /></CloseButton>
