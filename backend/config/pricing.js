@@ -142,8 +142,11 @@ const calculateBannerRates = async (rateMultiplier, isMulti = false, raritiesDat
     
     if (r.multiplierScaling > 0) {
       const cap = r[capField];
-      const adjusted = baseRates[r.name] * (1 + rateAdjustment * r.multiplierScaling);
-      rates[r.name] = cap ? Math.min(adjusted, cap) : adjusted;
+      const baseRate = baseRates[r.name];
+      const adjusted = baseRate * (1 + rateAdjustment * r.multiplierScaling);
+      // Cap only limits how much the multiplier can boost the rate, 
+      // but never reduces below the configured base rate
+      rates[r.name] = cap ? Math.max(baseRate, Math.min(adjusted, cap)) : adjusted;
       totalHigher += rates[r.name];
     } else {
       // Common/filler rarity - calculated after
