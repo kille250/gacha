@@ -1701,12 +1701,16 @@ const SeriesTitle = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.textSecondary};
   margin-bottom: ${theme.spacing.sm};
-  padding: ${theme.spacing.xs} ${theme.spacing.sm};
-  background: ${theme.colors.glass};
-  border-radius: ${theme.radius.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.sm};
+  background: ${theme.colors.backgroundSecondary};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
   position: sticky;
   top: 0;
-  z-index: 1;
+  z-index: 2;
+  margin-left: -${theme.spacing.md};
+  margin-right: -${theme.spacing.md};
+  padding-left: ${theme.spacing.md};
+  padding-right: ${theme.spacing.md};
 `;
 
 const CharacterGrid = styled.div`
