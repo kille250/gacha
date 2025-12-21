@@ -198,129 +198,77 @@ export const getAllCharacters = async () => {
 
 // Get all active banners
 export const getActiveBanners = async () => {
-  try {
-    const response = await api.get('/banners');
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.get('/banners');
+  return response.data;
 };
 
 // Get a single banner by ID
 export const getBannerById = async (bannerId) => {
-  try {
-    const response = await api.get(`/banners/${bannerId}`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.get(`/banners/${bannerId}`);
+  return response.data;
 };
 
 // Get pricing configuration for standard pulls
 export const getStandardPricing = async () => {
-  try {
-    const response = await api.get('/characters/pricing');
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.get('/characters/pricing');
+  return response.data;
 };
 
 // Get pricing configuration for a specific banner
 export const getBannerPricing = async (bannerId) => {
-  try {
-    const response = await api.get(`/banners/${bannerId}/pricing`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.get(`/banners/${bannerId}/pricing`);
+  return response.data;
 };
 
 // Get general pricing configuration (base config without banner multiplier)
 export const getBasePricing = async () => {
-  try {
-    const response = await api.get('/banners/pricing');
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.get('/banners/pricing');
+  return response.data;
 };
 
 // Roll on a specific banner
 export const rollOnBanner = async (bannerId) => {
-  try {
-    const response = await api.post(`/banners/${bannerId}/roll`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.post(`/banners/${bannerId}/roll`);
+  return response.data;
 };
 
 // Multi-roll on a banner
 export const multiRollOnBanner = async (bannerId, count = 10) => {
-  try {
-    const response = await api.post(`/banners/${bannerId}/roll-multi`, { count });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.post(`/banners/${bannerId}/roll-multi`, { count });
+  return response.data;
 };
 
 // Admin functions
 export const createBanner = async (formData) => {
-  try {
-    const response = await api.post('/banners', formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.post('/banners', formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
 };
 
 export const updateBanner = async (bannerId, formData) => {
-  try {
-    const response = await api.put(`/banners/${bannerId}`, formData, {
-      headers: {
-        'Content-Type': 'multipart/form-data'
-      }
-    });
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.put(`/banners/${bannerId}`, formData, {
+    headers: { 'Content-Type': 'multipart/form-data' }
+  });
+  return response.data;
 };
 
 export const deleteBanner = async (bannerId) => {
-  try {
-    clearCache('/banners');
-    const response = await api.delete(`/banners/${bannerId}`);
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  clearCache('/banners');
+  const response = await api.delete(`/banners/${bannerId}`);
+  return response.data;
 };
 
 // Combined admin dashboard - single request instead of 4
 export const getAdminDashboard = async () => {
-  try {
-    const response = await api.get('/admin/dashboard');
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.get('/admin/dashboard');
+  return response.data;
 };
 
 // Get system health status (admin only)
 export const getSystemHealth = async () => {
-  try {
-    const response = await api.get('/admin/health');
-    return response.data;
-  } catch (error) {
-    throw error;
-  }
+  const response = await api.get('/admin/health');
+  return response.data;
 };
 
 // Invalidate admin cache after mutations

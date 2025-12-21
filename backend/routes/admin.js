@@ -179,7 +179,7 @@ router.get('/dashboard', auth, adminAuth, async (req, res) => {
   }
 });
 
-// Alle Benutzer abrufen (nur Admin)
+// Get all users (admin only)
 router.get('/users', auth, adminAuth, async (req, res) => {
   try {
     const users = await User.findAll({
@@ -322,7 +322,7 @@ router.post('/add-coins', auth, adminAuth, async (req, res) => {
     await user.increment('points', { by: parsedAmount });
     await user.reload();
     
-    // Log erstellen
+    // Log the operation
     console.log(`Admin (ID: ${req.user.id}) added ${parsedAmount} coins to User ${user.username} (ID: ${userId}). Old balance: ${oldBalance}, New balance: ${user.points}`);
     
     res.json({
