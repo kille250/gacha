@@ -113,6 +113,32 @@ User.init(
         this.setDataValue('dojoUpgrades', JSON.stringify(value || { slots: 3, capHours: 8, intensity: 0, masteries: {} }));
       }
     },
+    // Daily stats tracking for cap enforcement
+    dojoDailyStats: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{}',
+      get() {
+        const value = this.getDataValue('dojoDailyStats');
+        return value ? JSON.parse(value) : {};
+      },
+      set(value) {
+        this.setDataValue('dojoDailyStats', JSON.stringify(value || {}));
+      }
+    },
+    // Ticket pity system - accumulated progress towards guaranteed tickets
+    dojoTicketProgress: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"roll":0,"premium":0}',
+      get() {
+        const value = this.getDataValue('dojoTicketProgress');
+        return value ? JSON.parse(value) : { roll: 0, premium: 0 };
+      },
+      set(value) {
+        this.setDataValue('dojoTicketProgress', JSON.stringify(value || { roll: 0, premium: 0 }));
+      }
+    },
   },
   {
     sequelize,

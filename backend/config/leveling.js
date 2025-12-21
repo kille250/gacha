@@ -16,14 +16,14 @@ const LEVEL_CONFIG = {
   maxLevel: 5,
   
   // Power multiplier bonus per level above 1
-  // Level 1: 1.0x, Level 2: 1.2x, Level 3: 1.35x, Level 4: 1.45x, Level 5: 1.5x
-  // Using diminishing returns instead of linear scaling
+  // Level 1: 1.0x, Level 2: 1.15x, Level 3: 1.30x, Level 4: 1.50x, Level 5: 1.75x
+  // Improved curve: gradual early, more impactful at max level for satisfaction
   levelMultipliers: {
     1: 1.0,
-    2: 1.2,
-    3: 1.35,
-    4: 1.45,
-    5: 1.5
+    2: 1.15,
+    3: 1.30,
+    4: 1.50,
+    5: 1.75
   },
   
   // Shards required to level up (from current level)

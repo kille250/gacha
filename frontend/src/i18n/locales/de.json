@@ -610,7 +610,7 @@
     "failedClaim": "Belohnungen konnten nicht abgeholt werden",
     "failedUpgrade": "Upgrade konnte nicht gekauft werden",
     "trainingComplete": "Training abgeschlossen!",
-    "points": "+{{count}} Punkte",
+    "points": "Punkte",
     "rollTickets": "+{{count}} Zieh-Tickets",
     "premiumTickets": "+{{count}} Premium-Tickets",
     "activeBonusApplied": "1,5× Aktiv-Bonus angewendet!",
@@ -628,7 +628,15 @@
     "searchCharacters": "Charaktere suchen...",
     "loadingCharacters": "Lade Charaktere...",
     "noMatchingCharacters": "Keine passenden Charaktere gefunden",
-    "noAvailableCharacters": "Keine verfügbaren Charaktere. Ziehe welche im Gacha!"
+    "noAvailableCharacters": "Keine verfügbaren Charaktere. Ziehe welche im Gacha!",
+    "dailyProgress": "Tagesfortschritt",
+    "resetsAtMidnight": "Reset um Mitternacht UTC",
+    "rollTicketsLabel": "Zieh-Tickets",
+    "premiumTicketsLabel": "Premium-Tickets",
+    "ticketProgress": "Nächstes Ticket Fortschritt",
+    "dailyCapReached": "Tageslimit erreicht!",
+    "pointsCapped": "Punkte für heute begrenzt",
+    "ticketsCapped": "Tickets für heute begrenzt"
   },
   "animeImport": {
     "title": "Anime-Charaktere importieren",

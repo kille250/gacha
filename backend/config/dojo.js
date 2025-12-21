@@ -56,12 +56,13 @@ const DOJO_RATES = {
 
 const DOJO_BALANCE = {
   // Diminishing returns brackets for hourly income
-  // Prevents runaway late-game scaling
+  // Softer curve - rewards late-game investment without runaway scaling
   incomeBrackets: [
-    { threshold: 0,    efficiency: 1.0 },   // 0-100 pts/h: 100%
-    { threshold: 100,  efficiency: 0.8 },   // 100-500: 80%
-    { threshold: 500,  efficiency: 0.5 },   // 500-1000: 50%
-    { threshold: 1000, efficiency: 0.25 },  // 1000+: 25%
+    { threshold: 0,    efficiency: 1.0 },   // 0-200 pts/h: 100%
+    { threshold: 200,  efficiency: 0.85 },  // 200-600: 85%
+    { threshold: 600,  efficiency: 0.70 },  // 600-1500: 70%
+    { threshold: 1500, efficiency: 0.50 },  // 1500-3000: 50%
+    { threshold: 3000, efficiency: 0.35 },  // 3000+: 35%
   ],
   
   // Daily caps (reset at midnight UTC)

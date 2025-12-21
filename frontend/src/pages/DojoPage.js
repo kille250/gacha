@@ -345,6 +345,100 @@ const DojoPage = () => {
           </ClaimButton>
         </AccumulatedCard>
 
+        {/* Daily Caps Display */}
+        {status?.dailyCaps && (
+          <DailyCapsCard $isCapped={status.dailyCaps.isPointsCapped}>
+            <DailyCapsHeader>
+              <DailyCapsTitle>
+                📊 {t('dojo.dailyProgress')}
+              </DailyCapsTitle>
+              <DailyCapsReset>
+                {t('dojo.resetsAtMidnight')}
+              </DailyCapsReset>
+            </DailyCapsHeader>
+            <DailyCapsGrid>
+              <DailyCapItem $isCapped={status.dailyCaps.remaining.points <= 0}>
+                <DailyCapIcon><FaCoins /></DailyCapIcon>
+                <DailyCapProgress>
+                  <DailyCapLabel>{t('dojo.points')}</DailyCapLabel>
+                  <DailyCapBar>
+                    <DailyCapFill 
+                      style={{ 
+                        width: `${Math.min(100, (status.dailyCaps.todayClaimed.points / status.dailyCaps.limits.points) * 100)}%` 
+                      }} 
+                      $isCapped={status.dailyCaps.remaining.points <= 0}
+                    />
+                  </DailyCapBar>
+                  <DailyCapNumbers>
+                    {status.dailyCaps.todayClaimed.points.toLocaleString()} / {status.dailyCaps.limits.points.toLocaleString()}
+                  </DailyCapNumbers>
+                </DailyCapProgress>
+              </DailyCapItem>
+              <DailyCapItem $isCapped={status.dailyCaps.remaining.rollTickets <= 0}>
+                <DailyCapIcon><FaTicketAlt /></DailyCapIcon>
+                <DailyCapProgress>
+                  <DailyCapLabel>{t('dojo.rollTicketsLabel')}</DailyCapLabel>
+                  <DailyCapBar>
+                    <DailyCapFill 
+                      style={{ 
+                        width: `${Math.min(100, (status.dailyCaps.todayClaimed.rollTickets / status.dailyCaps.limits.rollTickets) * 100)}%` 
+                      }}
+                      $isCapped={status.dailyCaps.remaining.rollTickets <= 0}
+                    />
+                  </DailyCapBar>
+                  <DailyCapNumbers>
+                    {status.dailyCaps.todayClaimed.rollTickets} / {status.dailyCaps.limits.rollTickets}
+                  </DailyCapNumbers>
+                </DailyCapProgress>
+              </DailyCapItem>
+              <DailyCapItem $isCapped={status.dailyCaps.remaining.premiumTickets <= 0}>
+                <DailyCapIcon $premium><FaStar /></DailyCapIcon>
+                <DailyCapProgress>
+                  <DailyCapLabel>{t('dojo.premiumTicketsLabel')}</DailyCapLabel>
+                  <DailyCapBar>
+                    <DailyCapFill 
+                      style={{ 
+                        width: `${Math.min(100, (status.dailyCaps.todayClaimed.premiumTickets / status.dailyCaps.limits.premiumTickets) * 100)}%` 
+                      }}
+                      $premium
+                      $isCapped={status.dailyCaps.remaining.premiumTickets <= 0}
+                    />
+                  </DailyCapBar>
+                  <DailyCapNumbers>
+                    {status.dailyCaps.todayClaimed.premiumTickets} / {status.dailyCaps.limits.premiumTickets}
+                  </DailyCapNumbers>
+                </DailyCapProgress>
+              </DailyCapItem>
+            </DailyCapsGrid>
+            {/* Ticket Progress (Pity System) */}
+            {status.ticketProgress && (status.ticketProgress.roll > 0 || status.ticketProgress.premium > 0) && (
+              <TicketProgressSection>
+                <TicketProgressLabel>🎫 {t('dojo.ticketProgress')}</TicketProgressLabel>
+                <TicketProgressBars>
+                  {status.ticketProgress.roll > 0 && (
+                    <TicketProgressItem>
+                      <FaTicketAlt />
+                      <TicketProgressBar>
+                        <TicketProgressFill style={{ width: `${status.ticketProgress.roll * 100}%` }} />
+                      </TicketProgressBar>
+                      <span>{Math.round(status.ticketProgress.roll * 100)}%</span>
+                    </TicketProgressItem>
+                  )}
+                  {status.ticketProgress.premium > 0 && (
+                    <TicketProgressItem $premium>
+                      <FaStar />
+                      <TicketProgressBar>
+                        <TicketProgressFill $premium style={{ width: `${status.ticketProgress.premium * 100}%` }} />
+                      </TicketProgressBar>
+                      <span>{Math.round(status.ticketProgress.premium * 100)}%</span>
+                    </TicketProgressItem>
+                  )}
+                </TicketProgressBars>
+              </TicketProgressSection>
+            )}
+          </DailyCapsCard>
+        )}
+
         {/* Hourly Rate Display */}
         <HourlyRateCard>
           <HourlyRateHeader>
@@ -1048,6 +1142,171 @@ const ClaimButton = styled(motion.button)`
   @media (max-width: ${theme.breakpoints.sm}) {
     font-size: ${theme.fontSizes.sm};
   }
+`;
+
+// Daily Caps Card Styles
+const DailyCapsCard = styled.div`
+  background: ${props => props.$isCapped 
+    ? 'linear-gradient(135deg, rgba(255, 59, 48, 0.08), rgba(255, 149, 0, 0.05))'
+    : theme.colors.surface};
+  border: 1px solid ${props => props.$isCapped 
+    ? 'rgba(255, 149, 0, 0.3)'
+    : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.lg};
+  backdrop-filter: blur(${theme.blur.md});
+  -webkit-backdrop-filter: blur(${theme.blur.md});
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.md};
+  }
+`;
+
+const DailyCapsHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${theme.spacing.md};
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
+const DailyCapsTitle = styled.div`
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+`;
+
+const DailyCapsReset = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textTertiary};
+  background: ${theme.colors.glass};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  border-radius: ${theme.radius.md};
+`;
+
+const DailyCapsGrid = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+const DailyCapItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm};
+  background: ${props => props.$isCapped 
+    ? 'rgba(255, 149, 0, 0.1)' 
+    : theme.colors.glass};
+  border-radius: ${theme.radius.md};
+  border: 1px solid ${props => props.$isCapped 
+    ? 'rgba(255, 149, 0, 0.2)' 
+    : 'transparent'};
+`;
+
+const DailyCapIcon = styled.div`
+  width: 32px;
+  height: 32px;
+  min-width: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.md};
+  color: ${props => props.$premium ? '#bf5af2' : '#FFD700'};
+  font-size: 14px;
+`;
+
+const DailyCapProgress = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const DailyCapLabel = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: 4px;
+`;
+
+const DailyCapBar = styled.div`
+  height: 6px;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.full};
+  overflow: hidden;
+  margin-bottom: 4px;
+`;
+
+const DailyCapFill = styled.div`
+  height: 100%;
+  background: ${props => props.$isCapped 
+    ? 'linear-gradient(90deg, #ff9500, #ff3b30)'
+    : props.$premium 
+      ? 'linear-gradient(90deg, #bf5af2, #af52de)'
+      : 'linear-gradient(90deg, #30d158, #34c759)'};
+  border-radius: ${theme.radius.full};
+  transition: width 0.3s ease;
+`;
+
+const DailyCapNumbers = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  font-weight: ${theme.fontWeights.medium};
+`;
+
+const TicketProgressSection = styled.div`
+  margin-top: ${theme.spacing.md};
+  padding-top: ${theme.spacing.md};
+  border-top: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+const TicketProgressLabel = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.sm};
+`;
+
+const TicketProgressBars = styled.div`
+  display: flex;
+  gap: ${theme.spacing.md};
+  flex-wrap: wrap;
+`;
+
+const TicketProgressItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  flex: 1;
+  min-width: 120px;
+  
+  svg {
+    color: ${props => props.$premium ? '#bf5af2' : '#0a84ff'};
+    font-size: 12px;
+  }
+  
+  span {
+    font-size: ${theme.fontSizes.xs};
+    color: ${theme.colors.textSecondary};
+    min-width: 36px;
+    text-align: right;
+  }
+`;
+
+const TicketProgressBar = styled.div`
+  flex: 1;
+  height: 4px;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.full};
+  overflow: hidden;
+`;
+
+const TicketProgressFill = styled.div`
+  height: 100%;
+  background: ${props => props.$premium 
+    ? 'linear-gradient(90deg, #bf5af2, #af52de)'
+    : 'linear-gradient(90deg, #0a84ff, #5ac8fa)'};
+  border-radius: ${theme.radius.full};
+  transition: width 0.3s ease;
 `;
 
 const HourlyRateCard = styled.div`

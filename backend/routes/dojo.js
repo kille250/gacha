@@ -12,6 +12,7 @@ const { User, Character, UserCharacter, sequelize } = require('../models');
 const { Op } = require('sequelize');
 const {
   DOJO_CONFIG,
+  DOJO_BALANCE,
   calculateRewards,
   getUpgradeCost,
   getAvailableUpgrades,
@@ -103,6 +104,20 @@ router.get('/status', auth, async (req, res) => {
     // Get available upgrades
     const availableUpgrades = getAvailableUpgrades(upgrades);
     
+    // Get daily cap status
+    const today = new Date().toISOString().split('T')[0];
+    const dailyStats = user.dojoDailyStats || {};
+    const todayStats = dailyStats[today] || { points: 0, rollTickets: 0, premiumTickets: 0 };
+    
+    const dailyCapsRemaining = {
+      points: Math.max(0, DOJO_BALANCE.dailyCaps.points - todayStats.points),
+      rollTickets: Math.max(0, DOJO_BALANCE.dailyCaps.rollTickets - todayStats.rollTickets),
+      premiumTickets: Math.max(0, DOJO_BALANCE.dailyCaps.premiumTickets - todayStats.premiumTickets)
+    };
+    
+    // Get ticket progress for pity system display
+    const ticketProgress = user.dojoTicketProgress || { roll: 0, premium: 0 };
+    
     res.json({
       slots: slotsWithCharacters.map((char, idx) => ({
         index: idx,
@@ -134,6 +149,17 @@ router.get('/status', auth, async (req, res) => {
           premiumTickets: accumulatedRewards.premiumTickets
         } : null,
         isCapped: accumulatedHours >= capHours
+      },
+      dailyCaps: {
+        limits: DOJO_BALANCE.dailyCaps,
+        todayClaimed: todayStats,
+        remaining: dailyCapsRemaining,
+        isPointsCapped: dailyCapsRemaining.points <= 0,
+        isTicketsCapped: dailyCapsRemaining.rollTickets <= 0 && dailyCapsRemaining.premiumTickets <= 0
+      },
+      ticketProgress: {
+        roll: Math.round(ticketProgress.roll * 100) / 100,
+        premium: Math.round(ticketProgress.premium * 100) / 100
       },
       availableUpgrades,
       lastClaim: user.dojoLastClaim
@@ -304,17 +330,27 @@ router.post('/assign', auth, async (req, res) => {
 /**
  * POST /api/dojo/unassign
  * Remove a character from a training slot
+ * Uses transaction to prevent race conditions
  */
 router.post('/unassign', auth, async (req, res) => {
+  const transaction = await sequelize.transaction();
+  
   try {
     const { slotIndex } = req.body;
     
     if (slotIndex === undefined) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'slotIndex required' });
     }
     
-    const user = await User.findByPk(req.user.id);
+    // Lock user row to prevent concurrent modifications
+    const user = await User.findByPk(req.user.id, {
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
+    
     if (!user) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'User not found' });
     }
     
@@ -322,21 +358,24 @@ router.post('/unassign', auth, async (req, res) => {
     
     // Validate slot index
     if (slotIndex < 0 || slotIndex >= dojoSlots.length) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'Invalid slot index' });
     }
     
     const removedCharId = dojoSlots[slotIndex];
     if (!removedCharId) {
+      await transaction.rollback();
       return res.status(400).json({ error: 'Slot is already empty' });
     }
     
     // Get character name for message
-    const character = await Character.findByPk(removedCharId);
+    const character = await Character.findByPk(removedCharId, { transaction });
     
     // Remove from slot
     dojoSlots[slotIndex] = null;
     user.dojoSlots = dojoSlots;
-    await user.save();
+    await user.save({ transaction });
+    await transaction.commit();
     
     res.json({
       success: true,
@@ -345,6 +384,7 @@ router.post('/unassign', auth, async (req, res) => {
     });
     
   } catch (err) {
+    await transaction.rollback();
     console.error('Dojo unassign error:', err);
     res.status(500).json({ error: 'Server error' });
   }
@@ -436,10 +476,78 @@ router.post('/claim', auth, async (req, res) => {
     // Calculate rewards (active claim bonus)
     const rewards = calculateRewards(activeCharacters, elapsedHours, upgrades, true);
     
+    // =============================================
+    // DAILY CAPS ENFORCEMENT
+    // =============================================
+    const today = new Date().toISOString().split('T')[0]; // YYYY-MM-DD
+    const dailyStats = user.dojoDailyStats || {};
+    const todayStats = dailyStats[today] || { points: 0, rollTickets: 0, premiumTickets: 0 };
+    
+    // Calculate remaining caps for today
+    const remainingCaps = {
+      points: Math.max(0, DOJO_BALANCE.dailyCaps.points - todayStats.points),
+      rollTickets: Math.max(0, DOJO_BALANCE.dailyCaps.rollTickets - todayStats.rollTickets),
+      premiumTickets: Math.max(0, DOJO_BALANCE.dailyCaps.premiumTickets - todayStats.premiumTickets)
+    };
+    
+    // Apply daily caps to rewards
+    const cappedRewards = {
+      points: Math.min(rewards.points, remainingCaps.points),
+      rollTickets: Math.min(rewards.rollTickets, remainingCaps.rollTickets),
+      premiumTickets: Math.min(rewards.premiumTickets, remainingCaps.premiumTickets)
+    };
+    
+    // Track if any rewards were capped
+    const wasPointsCapped = cappedRewards.points < rewards.points;
+    const wasTicketsCapped = cappedRewards.rollTickets < rewards.rollTickets || 
+                              cappedRewards.premiumTickets < rewards.premiumTickets;
+    
+    // Update today's stats
+    dailyStats[today] = {
+      points: todayStats.points + cappedRewards.points,
+      rollTickets: todayStats.rollTickets + cappedRewards.rollTickets,
+      premiumTickets: todayStats.premiumTickets + cappedRewards.premiumTickets
+    };
+    
+    // Cleanup old daily stats (keep only last 7 days)
+    const cutoffDate = new Date();
+    cutoffDate.setDate(cutoffDate.getDate() - 7);
+    for (const date of Object.keys(dailyStats)) {
+      if (new Date(date) < cutoffDate) {
+        delete dailyStats[date];
+      }
+    }
+    
+    user.dojoDailyStats = dailyStats;
+    
+    // =============================================
+    // TICKET PITY SYSTEM
+    // =============================================
+    // Accumulate fractional ticket progress for guaranteed drops
+    const ticketProgress = user.dojoTicketProgress || { roll: 0, premium: 0 };
+    
+    // Add expected ticket values to progress
+    ticketProgress.roll += rewards.expectedTickets?.roll || 0;
+    ticketProgress.premium += rewards.expectedTickets?.premium || 0;
+    
+    // Extract whole tickets from accumulated progress
+    const pityRollTickets = Math.floor(ticketProgress.roll);
+    const pityPremiumTickets = Math.floor(ticketProgress.premium);
+    
+    // Keep fractional part for next claim
+    ticketProgress.roll = ticketProgress.roll % 1;
+    ticketProgress.premium = ticketProgress.premium % 1;
+    
+    user.dojoTicketProgress = ticketProgress;
+    
+    // Use pity tickets instead of random tickets (more fair, deterministic)
+    const finalRollTickets = Math.min(pityRollTickets, remainingCaps.rollTickets);
+    const finalPremiumTickets = Math.min(pityPremiumTickets, remainingCaps.premiumTickets);
+    
     // Apply rewards
-    user.points += rewards.points;
-    user.rollTickets = (user.rollTickets || 0) + rewards.rollTickets;
-    user.premiumTickets = (user.premiumTickets || 0) + rewards.premiumTickets;
+    user.points += cappedRewards.points;
+    user.rollTickets = (user.rollTickets || 0) + finalRollTickets;
+    user.premiumTickets = (user.premiumTickets || 0) + finalPremiumTickets;
     user.dojoLastClaim = new Date();
     
     await user.save({ transaction });
@@ -451,9 +559,9 @@ router.post('/claim', auth, async (req, res) => {
     res.json({
       success: true,
       rewards: {
-        points: rewards.points,
-        rollTickets: rewards.rollTickets,
-        premiumTickets: rewards.premiumTickets
+        points: cappedRewards.points,
+        rollTickets: finalRollTickets,
+        premiumTickets: finalPremiumTickets
       },
       breakdown: rewards.breakdown,
       synergies: rewards.synergies,
@@ -461,6 +569,22 @@ router.post('/claim', auth, async (req, res) => {
       activeBonus: rewards.activeMultiplier > 1,
       hoursAccumulated: Math.floor(elapsedHours * 100) / 100,
       diminishingReturnsApplied: rewards.diminishingReturnsApplied,
+      // Daily cap info
+      dailyCaps: {
+        wasPointsCapped,
+        wasTicketsCapped,
+        remaining: {
+          points: remainingCaps.points - cappedRewards.points,
+          rollTickets: remainingCaps.rollTickets - finalRollTickets,
+          premiumTickets: remainingCaps.premiumTickets - finalPremiumTickets
+        },
+        todayTotal: dailyStats[today]
+      },
+      // Ticket pity info
+      ticketProgress: {
+        roll: Math.round(ticketProgress.roll * 100) / 100,
+        premium: Math.round(ticketProgress.premium * 100) / 100
+      },
       newTotals: {
         points: user.points,
         rollTickets: user.rollTickets,

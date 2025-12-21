@@ -612,7 +612,7 @@
     "failedClaim": "Failed to claim rewards",
     "failedUpgrade": "Failed to purchase upgrade",
     "trainingComplete": "Training Complete!",
-    "points": "+{{count}} Points",
+    "points": "Points",
     "rollTickets": "+{{count}} Roll Tickets",
     "premiumTickets": "+{{count}} Premium Tickets",
     "activeBonusApplied": "1.5× Active Bonus Applied!",
@@ -630,7 +630,15 @@
     "searchCharacters": "Search characters...",
     "loadingCharacters": "Loading characters...",
     "noMatchingCharacters": "No matching characters found",
-    "noAvailableCharacters": "No available characters. Roll some in the gacha!"
+    "noAvailableCharacters": "No available characters. Roll some in the gacha!",
+    "dailyProgress": "Daily Progress",
+    "resetsAtMidnight": "Resets at midnight UTC",
+    "rollTicketsLabel": "Roll Tickets",
+    "premiumTicketsLabel": "Premium Tickets",
+    "ticketProgress": "Next Ticket Progress",
+    "dailyCapReached": "Daily cap reached!",
+    "pointsCapped": "Points capped for today",
+    "ticketsCapped": "Tickets capped for today"
   },
   "animeImport": {
     "title": "Import Anime Characters",
