@@ -190,13 +190,8 @@ const DojoPage = () => {
            char.series?.toLowerCase().includes(query);
   });
 
-  // Limit visible characters for performance (show first 50, rest on scroll/search)
-  const MAX_VISIBLE = 50;
-  const visibleCharacters = filteredCharacters.slice(0, MAX_VISIBLE);
-  const hasMoreCharacters = filteredCharacters.length > MAX_VISIBLE;
-
   // Group by series for display
-  const charactersBySeries = visibleCharacters.reduce((acc, char) => {
+  const charactersBySeries = filteredCharacters.reduce((acc, char) => {
     const series = char.series || 'Unknown';
     if (!acc[series]) acc[series] = [];
     acc[series].push(char);
@@ -537,11 +532,6 @@ const DojoPage = () => {
                   </NoCharacters>
                 ) : (
                   <>
-                    {hasMoreCharacters && !searchQuery && (
-                      <SearchHint>
-                        Showing {MAX_VISIBLE} of {filteredCharacters.length} characters. Use search to find more.
-                      </SearchHint>
-                    )}
                     {Object.entries(charactersBySeries).map(([series, chars]) => (
                       <SeriesGroup key={series}>
                         <SeriesTitle>{series} ({chars.length})</SeriesTitle>
@@ -1789,17 +1779,6 @@ const CharRarity = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: white;
   text-transform: uppercase;
-`;
-
-const SearchHint = styled.div`
-  text-align: center;
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  margin-bottom: ${theme.spacing.md};
-  background: rgba(0, 113, 227, 0.1);
-  border: 1px solid rgba(0, 113, 227, 0.2);
-  border-radius: ${theme.radius.lg};
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.primary};
 `;
 
 export default DojoPage;
