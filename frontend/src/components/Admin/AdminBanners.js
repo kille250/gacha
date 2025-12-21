@@ -22,9 +22,12 @@ const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    transition,
-    opacity: isDragging ? 0.5 : 1,
+    // Use faster transition during drag, normal transition when settling
+    transition: isDragging ? 'none' : transition,
+    opacity: isDragging ? 0.8 : 1,
     zIndex: isDragging ? 1000 : 1,
+    // Prevent touch scroll conflicts on mobile
+    touchAction: 'none',
   };
 
   return (
@@ -265,7 +268,10 @@ const BannerCard = styled.div`
   background: ${props => props.$isDragging ? theme.colors.surface : theme.colors.backgroundTertiary};
   border: 1px solid ${props => props.$isDragging ? theme.colors.warning : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
-  transition: all ${theme.transitions.fast};
+  /* Only transition background and border, NOT transform - to avoid conflicting with drag */
+  transition: background ${theme.transitions.fast}, border-color ${theme.transitions.fast};
+  /* GPU acceleration for smooth dragging */
+  will-change: ${props => props.$isDragging ? 'transform' : 'auto'};
   
   &:hover {
     background: ${theme.colors.surface};
