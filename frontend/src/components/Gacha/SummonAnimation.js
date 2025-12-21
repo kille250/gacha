@@ -90,6 +90,7 @@ export const SummonAnimation = ({
   const [showSkipHint, setShowSkipHint] = useState(false);
   const timersRef = useRef([]);
   const hasStartedRef = useRef(false);
+  const hasCompletedRef = useRef(false); // Guard against double-click
   
   const effectRarity = ambientRarity || rarity;
   const config = RARITY_CONFIG[rarity] || RARITY_CONFIG.common;
@@ -184,6 +185,7 @@ export const SummonAnimation = ({
       setPhase(PHASES.IDLE);
       setShowSkipHint(false);
       hasStartedRef.current = false;
+      hasCompletedRef.current = false; // Reset guard for next animation
     }
   }, [isActive, clearAllTimers]);
 
@@ -192,6 +194,9 @@ export const SummonAnimation = ({
     e.stopPropagation();
     
     if (phase === PHASES.COMPLETE) {
+      // Guard against double-click
+      if (hasCompletedRef.current) return;
+      hasCompletedRef.current = true;
       onComplete?.();
     } else if (skipEnabled && phase === PHASES.BUILDUP) {
       clearAllTimers();
@@ -861,6 +866,7 @@ export const MultiSummonAnimation = ({
 }) => {
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSkippedResults, setShowSkippedResults] = useState(false);
+  const hasCompletedRef = useRef(false); // Guard against double-click
   
   const highestRarity = getHighestRarity(characters);
 
@@ -868,6 +874,7 @@ export const MultiSummonAnimation = ({
     if (!isActive) {
       setCurrentIndex(0);
       setShowSkippedResults(false);
+      hasCompletedRef.current = false; // Reset guard for next animation
     }
   }, [isActive]);
 
@@ -875,6 +882,9 @@ export const MultiSummonAnimation = ({
     if (currentIndex < characters.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
+      // Guard against double-click on last character
+      if (hasCompletedRef.current) return;
+      hasCompletedRef.current = true;
       onComplete?.();
     }
   }, [currentIndex, characters.length, onComplete]);
@@ -884,6 +894,9 @@ export const MultiSummonAnimation = ({
   }, []);
 
   const handleCloseSkippedResults = useCallback(() => {
+    // Guard against double-click
+    if (hasCompletedRef.current) return;
+    hasCompletedRef.current = true;
     onComplete?.();
   }, [onComplete]);
 
