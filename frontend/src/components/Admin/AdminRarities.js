@@ -272,19 +272,19 @@ const AdminRarities = ({ onRefresh }) => {
                 
                 <RarityBody>
                   <RaritySection>
-                    <SectionLabel><FaPercent /> Drop Rates</SectionLabel>
+                    <SectionLabel><FaPercent /> Drop Rates (Single / Multi)</SectionLabel>
                     <RateGrid>
                       <RateItem>
                         <RateLabel>Standard</RateLabel>
-                        <RateValue>{rarity.dropRateStandardSingle}%</RateValue>
+                        <RateValue>{rarity.dropRateStandardSingle}% / {rarity.dropRateStandardMulti}%</RateValue>
                       </RateItem>
                       <RateItem>
                         <RateLabel>Banner</RateLabel>
-                        <RateValue>{rarity.dropRateBannerSingle}%</RateValue>
+                        <RateValue>{rarity.dropRateBannerSingle}% / {rarity.dropRateBannerMulti}%</RateValue>
                       </RateItem>
                       <RateItem>
                         <RateLabel>Premium</RateLabel>
-                        <RateValue>{rarity.dropRatePremiumSingle}%</RateValue>
+                        <RateValue>{rarity.dropRatePremiumSingle}% / {rarity.dropRatePremiumMulti}%</RateValue>
                       </RateItem>
                       <RateItem>
                         <RateLabel>Pity</RateLabel>
