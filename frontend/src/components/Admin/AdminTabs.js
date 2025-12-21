@@ -2,6 +2,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { FaChartBar, FaUsers, FaImage, FaFlag, FaTicketAlt } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../styles/DesignSystem';
 
 const TAB_CONFIG = [
@@ -117,4 +118,3 @@ const ActiveIndicator = styled(motion.div)`
 `;
 
 export default AdminTabs;
-

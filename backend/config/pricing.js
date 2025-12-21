@@ -118,14 +118,24 @@ const roundRatesForDisplay = (rates) => {
   return rounded;
 };
 
-// Roll a rarity based on rates
+/**
+ * Roll a rarity based on rates
+ * Uses explicit ordering to ensure consistent behavior regardless of object key order
+ * @param {Object} rates - Object with rarity keys and percentage values
+ * @returns {string} - The rolled rarity
+ */
 const rollRarity = (rates) => {
   const roll = Math.random() * 100;
   let cumulative = 0;
   
-  for (const [rarity, rate] of Object.entries(rates)) {
-    cumulative += rate;
-    if (roll < cumulative) return rarity;
+  // Explicit order to ensure consistent behavior (rarest first for proper cumulative calculation)
+  const orderedRarities = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+  
+  for (const rarity of orderedRarities) {
+    if (rates[rarity] !== undefined) {
+      cumulative += rates[rarity];
+      if (roll < cumulative) return rarity;
+    }
   }
   
   return 'common'; // Fallback
@@ -142,4 +152,3 @@ module.exports = {
   roundRatesForDisplay,
   rollRarity
 };
-

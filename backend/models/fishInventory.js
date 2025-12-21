@@ -40,4 +40,3 @@ const FishInventory = sequelize.define('FishInventory', {
 });
 
 module.exports = FishInventory;
-

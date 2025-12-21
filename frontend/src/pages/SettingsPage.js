@@ -754,4 +754,3 @@ const CancelButton = styled.button`
 `;
 
 export default SettingsPage;
-

@@ -23,4 +23,3 @@ async function getUserAllowR18(userId) {
 module.exports = {
   getUserAllowR18
 };
-

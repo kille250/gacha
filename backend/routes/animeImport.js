@@ -128,60 +128,67 @@ router.get('/character/:mal_id', auth, adminAuth, async (req, res) => {
   }
 });
 
-// Download image/video and save locally - with proper headers for Danbooru
+/**
+ * Download image/video and save locally - with proper headers for Danbooru
+ * Handles redirects and validates downloaded file size
+ * @param {string} url - URL to download from
+ * @param {string} filename - Local filename to save as
+ * @returns {Promise<string>} - Resolves with filepath on success
+ */
 const downloadImage = (url, filename) => {
   return new Promise((resolve, reject) => {
     const filepath = path.join(UPLOAD_DIRS.characters, filename);
-    const file = fs.createWriteStream(filepath);
     
     // Parse URL to determine protocol and set proper options
     const parsedUrl = new URL(url);
-    const protocol = parsedUrl.protocol === 'https:' ? https : http;
     
-    const options = {
-      hostname: parsedUrl.hostname,
-      port: parsedUrl.port || (parsedUrl.protocol === 'https:' ? 443 : 80),
-      path: parsedUrl.pathname + parsedUrl.search,
+    const buildRequestOptions = (targetUrl) => ({
+      hostname: targetUrl.hostname,
+      port: targetUrl.port || (targetUrl.protocol === 'https:' ? 443 : 80),
+      path: targetUrl.pathname + targetUrl.search,
       method: 'GET',
       headers: {
         'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
         'Accept': '*/*',
-        'Referer': parsedUrl.origin
+        'Referer': targetUrl.origin
       }
-    };
+    });
     
-    const makeRequest = (reqOptions, currentUrl) => {
-      const req = protocol.request(reqOptions, (response) => {
+    const makeRequest = (currentUrl, redirectCount = 0) => {
+      const MAX_REDIRECTS = 5;
+      if (redirectCount > MAX_REDIRECTS) {
+        reject(new Error('Too many redirects'));
+        return;
+      }
+      
+      const targetUrl = new URL(currentUrl);
+      const currentProtocol = targetUrl.protocol === 'https:' ? https : http;
+      const options = buildRequestOptions(targetUrl);
+      
+      const req = currentProtocol.request(options, (response) => {
         // Handle redirects (301, 302, 303, 307, 308)
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
           const redirectUrl = new URL(response.headers.location, currentUrl);
-          const redirectProtocol = redirectUrl.protocol === 'https:' ? https : http;
-          
-          const redirectOptions = {
-            hostname: redirectUrl.hostname,
-            port: redirectUrl.port || (redirectUrl.protocol === 'https:' ? 443 : 80),
-            path: redirectUrl.pathname + redirectUrl.search,
-            method: 'GET',
-            headers: {
-              'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
-              'Accept': '*/*',
-              'Referer': redirectUrl.origin
-            }
-          };
-          
-          // Recursively follow redirect
-          makeRequest.call({ protocol: redirectProtocol }, redirectOptions, redirectUrl.href);
+          makeRequest(redirectUrl.href, redirectCount + 1);
           return;
         }
         
         // Check for successful response
         if (response.statusCode !== 200) {
-          fs.unlink(filepath, () => {});
           reject(new Error(`Download failed with status ${response.statusCode}`));
           return;
         }
         
+        // Create write stream only after we have a successful response
+        const file = fs.createWriteStream(filepath);
+        
+        file.on('error', (err) => {
+          fs.unlink(filepath, () => {});
+          reject(err);
+        });
+        
         response.pipe(file);
+        
         file.on('finish', () => {
           file.close(() => {
             // Verify the file was actually downloaded
@@ -206,12 +213,7 @@ const downloadImage = (url, filename) => {
       req.end();
     };
     
-    file.on('error', (err) => {
-      fs.unlink(filepath, () => {});
-      reject(err);
-    });
-    
-    makeRequest(options, url);
+    makeRequest(url);
   });
 };
 

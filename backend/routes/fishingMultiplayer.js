@@ -303,4 +303,3 @@ function initMultiplayer(io) {
 module.exports = {
   initMultiplayer
 };
-

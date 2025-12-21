@@ -109,5 +109,3 @@ module.exports = {
   imageVideoFilter,
   mediaFilter
 };
-
-
