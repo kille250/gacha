@@ -282,7 +282,12 @@ const AdminRarities = ({ onRefresh }) => {
       results[poolKey] = {};
       rarities.forEach(r => {
         const effectiveRate = parseFloat(pool.effectiveRates[r.name]) || 0;
-        results[poolKey][r.name] = Math.round((effectiveRate / 100) * simulatorPulls * 10) / 10;
+        // For display: show expected count for multi-pulls, or just the rate for single pulls
+        const expectedCount = (effectiveRate / 100) * simulatorPulls;
+        results[poolKey][r.name] = {
+          count: Math.round(expectedCount * 10) / 10,
+          rate: effectiveRate
+        };
       });
     });
     
@@ -509,8 +514,8 @@ const AdminRarities = ({ onRefresh }) => {
             <GuideItem>
               <GuideIcon>📊</GuideIcon>
               <GuideText>
-                <strong>Rates don't need to equal 100%</strong><br/>
-                They're automatically normalized. Use any numbers that feel right.
+                <strong>Rates are relative weights</strong><br/>
+                If Legendary=100 and Common=60, Legendary gets 100/(100+60+...)=~50%. Set others to 0 for 100%.
               </GuideText>
             </GuideItem>
             <GuideItem>
@@ -523,8 +528,8 @@ const AdminRarities = ({ onRefresh }) => {
             <GuideItem>
               <GuideIcon>⭐</GuideIcon>
               <GuideText>
-                <strong>Premium pools</strong><br/>
-                Set rate to 0 to exclude a rarity from premium/pity pools entirely.
+                <strong>Want 100% for one rarity?</strong><br/>
+                Set that rarity's rate to any number, and set ALL other rarities to 0.
               </GuideText>
             </GuideItem>
             <GuideItem>
@@ -562,7 +567,10 @@ const AdminRarities = ({ onRefresh }) => {
             </SimulatorHeader>
             <SimulatorContent>
               <SimulatorNote>
-                Expected results based on current rates (normalized to 100%):
+                {simulatorPulls === 1 
+                  ? 'Probability of each rarity on a single pull (normalized to 100%):'
+                  : `Expected results from ${simulatorPulls} pulls (rates normalized to 100%):`
+                }
               </SimulatorNote>
               {simulatedResults && (
                 <SimulatorGrid>
@@ -574,17 +582,29 @@ const AdminRarities = ({ onRefresh }) => {
                         {poolKey === 'bannerSingle' && '⭐ Banner'}
                         {poolKey === 'premiumSingle' && '💎 Premium'}
                       </SimulatorPoolTitle>
-                      {rarities.map(r => (
-                        <SimulatorRow key={r.name} $color={r.color}>
-                          <SimulatorRarity $color={r.color}>{r.displayName}</SimulatorRarity>
-                          <SimulatorValue>
-                            ~{simulatedResults[poolKey]?.[r.name] || 0}
-                            <SimulatorPercent>
-                              ({rateTotals?.find(p => p.key === poolKey)?.effectiveRates[r.name] || 0}%)
-                            </SimulatorPercent>
-                          </SimulatorValue>
-                        </SimulatorRow>
-                      ))}
+                      {rarities.map(r => {
+                        const result = simulatedResults[poolKey]?.[r.name];
+                        const rate = result?.rate || 0;
+                        const count = result?.count || 0;
+                        
+                        return (
+                          <SimulatorRow key={r.name} $color={r.color}>
+                            <SimulatorRarity $color={r.color}>{r.displayName}</SimulatorRarity>
+                            <SimulatorValue>
+                              {simulatorPulls === 1 ? (
+                                // For single pull, just show the percentage prominently
+                                <SimulatorMainRate>{rate.toFixed(1)}%</SimulatorMainRate>
+                              ) : (
+                                // For multi-pulls, show expected count with percentage
+                                <>
+                                  ~{count}
+                                  <SimulatorPercent>({rate.toFixed(1)}%)</SimulatorPercent>
+                                </>
+                              )}
+                            </SimulatorValue>
+                          </SimulatorRow>
+                        );
+                      })}
                     </SimulatorPool>
                   ))}
                 </SimulatorGrid>
@@ -1417,6 +1437,11 @@ const SimulatorPercent = styled.span`
   font-weight: ${theme.fontWeights.normal};
   font-size: 10px;
   margin-left: 4px;
+`;
+
+const SimulatorMainRate = styled.span`
+  font-weight: ${theme.fontWeights.bold};
+  color: ${theme.colors.text};
 `;
 
 const WarningBox = styled.div`
