@@ -4,6 +4,18 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaTicketAlt, FaPlus, FaEdit, FaTrash, FaCoins, FaUsers, FaCalendarAlt, FaCopy } from 'react-icons/fa';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
+import {
+  AdminContainer,
+  HeaderRow,
+  SectionTitle,
+  ItemCount,
+  ActionButton,
+  IconButton,
+  EmptyState,
+  EmptyIcon,
+  EmptyText,
+  EmptySubtext,
+} from './AdminStyles';
 
 const AdminCoupons = ({ 
   coupons, 
@@ -21,19 +33,19 @@ const AdminCoupons = ({
   const expiredCoupons = coupons.filter(c => !c.isActive);
 
   return (
-    <Container
+    <AdminContainer
       variants={motionVariants.staggerContainer}
       initial="hidden"
       animate="visible"
     >
       <HeaderRow>
-        <SectionTitle>
+        <SectionTitle $iconColor={theme.colors.accent}>
           <FaTicketAlt /> {t('admin.couponManagement')}
-          <CouponCount>{coupons.length} coupons</CouponCount>
+          <ItemCount>{coupons.length} coupons</ItemCount>
         </SectionTitle>
-        <AddButton onClick={onAddCoupon} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <AddCouponButton onClick={onAddCoupon} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
           <FaPlus /> {t('admin.createCoupon')}
-        </AddButton>
+        </AddCouponButton>
       </HeaderRow>
       
       <StatsRow>
@@ -56,9 +68,9 @@ const AdminCoupons = ({
           <EmptyIcon>🎫</EmptyIcon>
           <EmptyText>No coupons yet</EmptyText>
           <EmptySubtext>Create discount codes for your users</EmptySubtext>
-          <AddButton onClick={onAddCoupon} style={{ marginTop: theme.spacing.lg }}>
+          <AddCouponButton onClick={onAddCoupon} style={{ marginTop: theme.spacing.lg }}>
             <FaPlus /> Create Coupon
-          </AddButton>
+          </AddCouponButton>
         </EmptyState>
       ) : (
         <CouponGrid>
@@ -128,63 +140,27 @@ const AdminCoupons = ({
                 </CardBody>
                 
                 <CardActions>
-                  <ActionButton onClick={() => onEditCoupon(coupon)}>
+                  <CouponActionButton onClick={() => onEditCoupon(coupon)}>
                     <FaEdit /> Edit
-                  </ActionButton>
-                  <ActionButton $danger onClick={() => onDeleteCoupon(coupon.id)}>
+                  </CouponActionButton>
+                  <CouponActionButton $danger onClick={() => onDeleteCoupon(coupon.id)}>
                     <FaTrash /> Delete
-                  </ActionButton>
+                  </CouponActionButton>
                 </CardActions>
               </CouponCard>
             ))}
           </AnimatePresence>
         </CouponGrid>
       )}
-    </Container>
+    </AdminContainer>
   );
 };
 
-// Styled Components
-const Container = styled(motion.div)`
-  padding: 0 ${theme.spacing.md};
-`;
+// ============================================
+// COUPON-SPECIFIC STYLED COMPONENTS
+// ============================================
 
-const HeaderRow = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.md};
-  margin-bottom: ${theme.spacing.lg};
-  
-  @media (min-width: ${theme.breakpoints.md}) {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-`;
-
-const SectionTitle = styled.h2`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.bold};
-  margin: 0;
-  color: ${theme.colors.text};
-  
-  svg { color: ${theme.colors.accent}; }
-`;
-
-const CouponCount = styled.span`
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  color: ${theme.colors.textSecondary};
-  background: ${theme.colors.backgroundTertiary};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  border-radius: ${theme.radius.full};
-  margin-left: ${theme.spacing.sm};
-`;
-
-const AddButton = styled(motion.button)`
+const AddCouponButton = styled(motion.button)`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
@@ -223,31 +199,6 @@ const MiniStatLabel = styled.div`
   font-size: ${theme.fontSizes.xs};
   color: ${theme.colors.textSecondary};
   margin-top: 2px;
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: ${theme.spacing['3xl']};
-  background: ${theme.colors.surface};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
-`;
-
-const EmptyIcon = styled.div`
-  font-size: 64px;
-  margin-bottom: ${theme.spacing.md};
-`;
-
-const EmptyText = styled.div`
-  font-size: ${theme.fontSizes.lg};
-  font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.text};
-`;
-
-const EmptySubtext = styled.div`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
-  margin-top: ${theme.spacing.xs};
 `;
 
 const CouponGrid = styled.div`
@@ -394,7 +345,7 @@ const CardActions = styled.div`
   border-top: 1px solid ${theme.colors.surfaceBorder};
 `;
 
-const ActionButton = styled.button`
+const CouponActionButton = styled.button`
   flex: 1;
   display: flex;
   align-items: center;
@@ -416,4 +367,3 @@ const ActionButton = styled.button`
 `;
 
 export default AdminCoupons;
-

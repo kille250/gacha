@@ -8,9 +8,22 @@ import { CSS } from '@dnd-kit/utilities';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { PLACEHOLDER_BANNER } from '../../utils/mediaUtils';
+import {
+  AdminContainer,
+  HeaderRow,
+  SectionTitle,
+  ItemCount,
+  ActionButton,
+  IconButton,
+  EmptyState,
+  EmptyIcon,
+  EmptyText,
+  EmptySubtext,
+  StatusBadge,
+} from './AdminStyles';
 
 // Sortable Banner Item
-const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured, onEdit, onDelete, t }) => {
+const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured, onEdit, onDelete }) => {
   const {
     attributes,
     listeners,
@@ -22,11 +35,9 @@ const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured
 
   const style = {
     transform: CSS.Transform.toString(transform),
-    // Use faster transition during drag, normal transition when settling
     transition: isDragging ? 'none' : transition,
     opacity: isDragging ? 0.8 : 1,
     zIndex: isDragging ? 1000 : 1,
-    // Prevent touch scroll conflicts on mobile
     touchAction: 'none',
   };
 
@@ -60,12 +71,12 @@ const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured
         </StatusBadge>
       </BannerTags>
       <BannerActions>
-        <ActionButton onClick={() => onEdit(banner)}>
+        <BannerIconButton onClick={() => onEdit(banner)}>
           <FaEdit />
-        </ActionButton>
-        <ActionButton $danger onClick={() => onDelete(banner.id)}>
+        </BannerIconButton>
+        <BannerIconButton $danger onClick={() => onDelete(banner.id)}>
           <FaTrash />
-        </ActionButton>
+        </BannerIconButton>
       </BannerActions>
     </BannerCard>
   );
@@ -95,19 +106,19 @@ const AdminBanners = ({
   );
 
   return (
-    <Container
+    <AdminContainer
       variants={motionVariants.staggerContainer}
       initial="hidden"
       animate="visible"
     >
       <HeaderRow>
-        <SectionTitle>
+        <SectionTitle $iconColor={theme.colors.warning}>
           <FaFlag /> {t('admin.bannerManagement')}
-          <BannerCount>{banners.length} banners</BannerCount>
+          <ItemCount>{banners.length} banners</ItemCount>
         </SectionTitle>
-        <AddButton onClick={onAddBanner} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
+        <AddBannerButton onClick={onAddBanner} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
           <FaPlus /> {t('admin.addBanner')}
-        </AddButton>
+        </AddBannerButton>
       </HeaderRow>
       
       <DragHint>
@@ -119,9 +130,9 @@ const AdminBanners = ({
           <EmptyIcon>🏳️</EmptyIcon>
           <EmptyText>No banners yet</EmptyText>
           <EmptySubtext>Create your first banner to get started</EmptySubtext>
-          <AddButton onClick={onAddBanner} style={{ marginTop: theme.spacing.lg }}>
+          <AddBannerButton onClick={onAddBanner} style={{ marginTop: theme.spacing.lg }}>
             <FaPlus /> Create Banner
-          </AddButton>
+          </AddBannerButton>
         </EmptyState>
       ) : (
         <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
@@ -136,7 +147,6 @@ const AdminBanners = ({
                   onToggleFeatured={onToggleFeatured}
                   onEdit={onEditBanner}
                   onDelete={onDeleteBanner}
-                  t={t}
                 />
               ))}
             </BannerList>
@@ -158,51 +168,15 @@ const AdminBanners = ({
           <StatValue>{banners.reduce((sum, b) => sum + (b.Characters?.length || 0), 0)}</StatValue>
         </StatItem>
       </StatsRow>
-    </Container>
+    </AdminContainer>
   );
 };
 
-// Styled Components
-const Container = styled(motion.div)`
-  padding: 0 ${theme.spacing.md};
-`;
+// ============================================
+// BANNER-SPECIFIC STYLED COMPONENTS
+// ============================================
 
-const HeaderRow = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.md};
-  margin-bottom: ${theme.spacing.lg};
-  
-  @media (min-width: ${theme.breakpoints.md}) {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-`;
-
-const SectionTitle = styled.h2`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.bold};
-  margin: 0;
-  color: ${theme.colors.text};
-  
-  svg { color: ${theme.colors.warning}; }
-`;
-
-const BannerCount = styled.span`
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  color: ${theme.colors.textSecondary};
-  background: ${theme.colors.backgroundTertiary};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  border-radius: ${theme.radius.full};
-  margin-left: ${theme.spacing.sm};
-`;
-
-const AddButton = styled(motion.button)`
+const AddBannerButton = styled(motion.button)`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
@@ -229,31 +203,6 @@ const DragHint = styled.div`
   margin-bottom: ${theme.spacing.lg};
 `;
 
-const EmptyState = styled.div`
-  text-align: center;
-  padding: ${theme.spacing['3xl']};
-  background: ${theme.colors.surface};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
-`;
-
-const EmptyIcon = styled.div`
-  font-size: 64px;
-  margin-bottom: ${theme.spacing.md};
-`;
-
-const EmptyText = styled.div`
-  font-size: ${theme.fontSizes.lg};
-  font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.text};
-`;
-
-const EmptySubtext = styled.div`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
-  margin-top: ${theme.spacing.xs};
-`;
-
 const BannerList = styled.div`
   display: flex;
   flex-direction: column;
@@ -268,9 +217,7 @@ const BannerCard = styled.div`
   background: ${props => props.$isDragging ? theme.colors.surface : theme.colors.backgroundTertiary};
   border: 1px solid ${props => props.$isDragging ? theme.colors.warning : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
-  /* Only transition background and border, NOT transform - to avoid conflicting with drag */
   transition: background ${theme.transitions.fast}, border-color ${theme.transitions.fast};
-  /* GPU acceleration for smooth dragging */
   will-change: ${props => props.$isDragging ? 'transform' : 'auto'};
   
   &:hover {
@@ -390,38 +337,15 @@ const FeaturedButton = styled(motion.button)`
   box-shadow: ${props => props.$featured ? '0 4px 12px rgba(255, 215, 0, 0.3)' : 'none'};
 `;
 
-const StatusBadge = styled.span`
-  padding: 4px 12px;
-  background: ${props => props.$active ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255, 59, 48, 0.15)'};
-  border: 1px solid ${props => props.$active ? 'rgba(48, 209, 88, 0.3)' : 'rgba(255, 59, 48, 0.3)'};
-  border-radius: ${theme.radius.full};
-  color: ${props => props.$active ? theme.colors.success : theme.colors.error};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.semibold};
-`;
-
 const BannerActions = styled.div`
   display: flex;
   gap: ${theme.spacing.xs};
   flex-shrink: 0;
 `;
 
-const ActionButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
+const BannerIconButton = styled(IconButton)`
   width: 40px;
   height: 40px;
-  background: ${props => props.$danger ? 'rgba(255, 59, 48, 0.15)' : 'rgba(0, 113, 227, 0.15)'};
-  border: none;
-  border-radius: ${theme.radius.md};
-  color: ${props => props.$danger ? theme.colors.error : theme.colors.primary};
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  
-  &:hover {
-    background: ${props => props.$danger ? 'rgba(255, 59, 48, 0.25)' : 'rgba(0, 113, 227, 0.25)'};
-  }
 `;
 
 const StatsRow = styled.div`
@@ -452,4 +376,3 @@ const StatValue = styled.div`
 `;
 
 export default AdminBanners;
-

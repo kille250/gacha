@@ -14,6 +14,23 @@ import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { arrayMove } from '@dnd-kit/sortable';
 import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons } from '../components/Admin';
+import {
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  CloseButton,
+  ModalBody,
+  FormGroup,
+  Label,
+  Input,
+  Select,
+  CheckboxLabel,
+  ImagePreview,
+  PrimaryButton,
+  SecondaryButton,
+  ButtonRow,
+} from '../components/Admin/AdminStyles';
 import { theme, PageWrapper, Container } from '../styles/DesignSystem';
 
 const AdminPage = () => {
@@ -56,7 +73,7 @@ const AdminPage = () => {
   const [editImageFile, setEditImageFile] = useState(null);
   const [editImagePreview, setEditImagePreview] = useState(null);
   
-  // Alt media picker states (for editing existing characters)
+  // Alt media picker states
   const [showAltMediaPicker, setShowAltMediaPicker] = useState(false);
   const [selectedAltMedia, setSelectedAltMedia] = useState(null);
   const [altMediaSaving, setAltMediaSaving] = useState(false);
@@ -65,7 +82,7 @@ const AdminPage = () => {
   const [coinForm, setCoinForm] = useState({ userId: '', amount: 100 });
   const [coinMessage, setCoinMessage] = useState(null);
   
-  // API stats (from backend)
+  // API stats
   const [apiStats, setApiStats] = useState({ totalFishCaught: 0 });
 
   // Computed stats for dashboard
@@ -197,10 +214,7 @@ const AdminPage = () => {
       
       setSuccessMessage(t('admin.characterUpdated'));
       fetchAllData();
-      setIsEditingCharacter(false);
-      setEditingCharacter(null);
-      setEditImageFile(null);
-      setEditImagePreview(null);
+      closeEditCharacterModal();
     } catch (err) {
       setError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
     }
@@ -218,6 +232,14 @@ const AdminPage = () => {
     }
   };
 
+  const closeEditCharacterModal = () => {
+    setIsEditingCharacter(false);
+    setEditingCharacter(null);
+    setEditImageFile(null);
+    setEditImagePreview(null);
+    setSelectedAltMedia(null);
+  };
+
   // Alt media picker handlers
   const openAltMediaPicker = useCallback(() => {
     if (!editingCharacter) return;
@@ -226,10 +248,8 @@ const AdminPage = () => {
 
   const handleAltMediaSelect = useCallback((media) => {
     setSelectedAltMedia(media);
-    // For animated content, use the actual file URL so the video plays
-    // For static images, use preview (higher quality thumbnail) or file
     setEditImagePreview(media.isAnimated ? media.file : (media.preview || media.file));
-    setEditImageFile(null); // Clear local file if alt media is selected
+    setEditImageFile(null);
     setShowAltMediaPicker(false);
   }, []);
 
@@ -245,24 +265,15 @@ const AdminPage = () => {
     
     setAltMediaSaving(true);
     try {
-      // Save metadata first
       await api.put(`/admin/characters/${editingCharacter.id}`, editForm);
-      
-      // Then save the image from URL
       await api.put(`/admin/characters/${editingCharacter.id}/image-url`, {
         imageUrl: selectedAltMedia.file
       });
       
-      // Clear cache to ensure fresh data
       invalidateAdminCache();
-      
       setSuccessMessage(t('admin.characterUpdated'));
       await fetchAllData();
-      setIsEditingCharacter(false);
-      setSelectedAltMedia(null);
-      setEditingCharacter(null);
-      setEditImageFile(null);
-      setEditImagePreview(null);
+      closeEditCharacterModal();
     } catch (err) {
       setError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
     } finally {
@@ -436,6 +447,18 @@ const AdminPage = () => {
     }
   };
 
+  // Handle edit image file change
+  const handleEditImageChange = (e) => {
+    const file = e.target.files[0];
+    setEditImageFile(file);
+    setSelectedAltMedia(null);
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = (e) => setEditImagePreview(e.target.result);
+      reader.readAsDataURL(file);
+    }
+  };
+
   if (!user?.isAdmin) {
     return <Navigate to="/gacha" />;
   }
@@ -467,7 +490,7 @@ const AdminPage = () => {
               exit={{ opacity: 0, y: -20 }}
             >
               <span>{error}</span>
-              <CloseBtn onClick={() => setError(null)}>×</CloseBtn>
+              <NotificationClose onClick={() => setError(null)}>×</NotificationClose>
             </Notification>
           )}
           {successMessage && (
@@ -478,7 +501,7 @@ const AdminPage = () => {
               exit={{ opacity: 0, y: -20 }}
             >
               <span>{successMessage}</span>
-              <CloseBtn onClick={() => setSuccessMessage(null)}>×</CloseBtn>
+              <NotificationClose onClick={() => setSuccessMessage(null)}>×</NotificationClose>
             </Notification>
           )}
         </AnimatePresence>
@@ -605,7 +628,7 @@ const AdminPage = () => {
             initial={{ opacity: 0 }} 
             animate={{ opacity: 1 }} 
             exit={{ opacity: 0 }}
-            onClick={() => setIsEditingCharacter(false)}
+            onClick={closeEditCharacterModal}
           >
             <ModalContent
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -615,7 +638,7 @@ const AdminPage = () => {
             >
               <ModalHeader>
                 <ModalTitle><FaEdit /> Edit: {editingCharacter.name}</ModalTitle>
-                <CloseBtn onClick={() => setIsEditingCharacter(false)}>×</CloseBtn>
+                <CloseButton onClick={closeEditCharacterModal}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
                 <form onSubmit={handleSaveCharacter}>
@@ -670,16 +693,7 @@ const AdminPage = () => {
                         <Input 
                           type="file" 
                           accept="image/*,video/mp4,video/webm" 
-                          onChange={(e) => {
-                            const file = e.target.files[0];
-                            setEditImageFile(file);
-                            setSelectedAltMedia(null); // Clear alt media when local file is selected
-                            if (file) {
-                              const reader = new FileReader();
-                              reader.onload = (e) => setEditImagePreview(e.target.result);
-                              reader.readAsDataURL(file);
-                            }
-                          }} 
+                          onChange={handleEditImageChange} 
                         />
                       </FileInputWrapper>
                       <AltImageButton type="button" onClick={openAltMediaPicker}>
@@ -694,21 +708,18 @@ const AdminPage = () => {
                     {editImagePreview && (
                       <ImagePreview>
                         {selectedAltMedia ? (
-                          // Alt media selected - check if it's animated
                           selectedAltMedia.isAnimated ? (
                             <video controls src={editImagePreview} autoPlay loop muted />
                           ) : (
                             <img src={editImagePreview} alt="Preview" />
                           )
                         ) : editImageFile ? (
-                          // Local file selected - check if it's a video
                           isVideo(editImageFile) ? (
                             <video controls src={editImagePreview} autoPlay loop muted />
                           ) : (
                             <img src={editImagePreview} alt="Preview" />
                           )
                         ) : (
-                          // No new selection - show original character image
                           isVideo(editingCharacter.image) ? (
                             <video controls src={editImagePreview} autoPlay loop muted />
                           ) : (
@@ -720,15 +731,15 @@ const AdminPage = () => {
                   </FormGroup>
                   <ButtonRow>
                     {selectedAltMedia ? (
-                      <SubmitButton type="button" onClick={saveAltMediaToCharacter} disabled={altMediaSaving}>
+                      <PrimaryButton type="button" onClick={saveAltMediaToCharacter} disabled={altMediaSaving} style={{ flex: 1 }}>
                         {altMediaSaving ? <><FaSpinner className="spin" /> {t('common.saving') || 'Saving...'}</> : t('admin.saveChanges')}
-                      </SubmitButton>
+                      </PrimaryButton>
                     ) : (
-                      <SubmitButton type="submit">{t('admin.saveChanges')}</SubmitButton>
+                      <PrimaryButton type="submit" style={{ flex: 1 }}>{t('admin.saveChanges')}</PrimaryButton>
                     )}
-                    <CancelButton type="button" onClick={() => setIsEditingCharacter(false)}>
+                    <SecondaryButton type="button" onClick={closeEditCharacterModal} style={{ flex: 1 }}>
                       {t('common.cancel')}
-                    </CancelButton>
+                    </SecondaryButton>
                   </ButtonRow>
                 </form>
               </ModalBody>
@@ -748,7 +759,10 @@ const AdminPage = () => {
   );
 };
 
-// Styled Components
+// ============================================
+// PAGE-SPECIFIC STYLED COMPONENTS
+// ============================================
+
 const StyledPageWrapper = styled(PageWrapper)`
   padding-bottom: ${theme.spacing['3xl']};
 `;
@@ -802,7 +816,7 @@ const Notification = styled(motion.div)`
   font-weight: ${theme.fontWeights.medium};
 `;
 
-const CloseBtn = styled.button`
+const NotificationClose = styled.button`
   background: none;
   border: none;
   color: inherit;
@@ -852,149 +866,7 @@ const TabPanel = styled(motion.div).attrs({
   transition: { duration: 0.2 }
 })``;
 
-const ModalOverlay = styled(motion.div)`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: ${theme.zIndex.modal};
-  padding: ${theme.spacing.md};
-`;
-
-const ModalContent = styled(motion.div)`
-  background: ${theme.colors.backgroundSecondary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
-  width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: ${theme.spacing.lg};
-  border-bottom: 1px solid ${theme.colors.surfaceBorder};
-`;
-
-const ModalTitle = styled.h3`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  margin: 0;
-  font-size: ${theme.fontSizes.lg};
-  
-  svg { color: ${theme.colors.primary}; }
-`;
-
-const ModalBody = styled.div`
-  padding: ${theme.spacing.lg};
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: ${theme.spacing.md};
-`;
-
-const Label = styled.label`
-  display: block;
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  color: ${theme.colors.textSecondary};
-  margin-bottom: ${theme.spacing.xs};
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.base};
-  
-  &:focus {
-    outline: none;
-    border-color: ${theme.colors.primary};
-    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.base};
-  cursor: pointer;
-`;
-
-const CheckboxLabel = styled.label`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  cursor: pointer;
-  
-  input { width: 18px; height: 18px; }
-  span { color: ${theme.colors.error}; font-weight: ${theme.fontWeights.medium}; }
-`;
-
-const ImagePreview = styled.div`
-  margin-top: ${theme.spacing.md};
-  
-  img, video {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: ${theme.radius.md};
-    border: 1px solid ${theme.colors.surfaceBorder};
-  }
-`;
-
-const ButtonRow = styled.div`
-  display: flex;
-  gap: ${theme.spacing.md};
-  margin-top: ${theme.spacing.lg};
-`;
-
-const SubmitButton = styled.button`
-  flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md};
-  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
-  border: none;
-  border-radius: ${theme.radius.lg};
-  color: white;
-  font-weight: ${theme.fontWeights.bold};
-  font-size: ${theme.fontSizes.base};
-  cursor: pointer;
-  
-  &:hover { opacity: 0.9; }
-`;
-
-const CancelButton = styled.button`
-  flex: 1;
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  color: ${theme.colors.textSecondary};
-  font-weight: ${theme.fontWeights.medium};
-  font-size: ${theme.fontSizes.base};
-  cursor: pointer;
-  
-  &:hover { background: ${theme.colors.surface}; }
-`;
-
-// Alt Media Picker Styled Components (used in Edit Character Modal)
+// Alt Media Picker styled components
 const ImageOptionsRow = styled.div`
   display: flex;
   gap: ${theme.spacing.sm};

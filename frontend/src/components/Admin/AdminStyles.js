@@ -6,12 +6,18 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { theme } from '../../styles/DesignSystem';
 
-// Container components
+// ============================================
+// CONTAINER COMPONENTS
+// ============================================
+
 export const AdminContainer = styled(motion.div)`
   padding: 0 ${theme.spacing.md};
 `;
 
-// Header components
+// ============================================
+// HEADER COMPONENTS
+// ============================================
+
 export const HeaderRow = styled.div`
   display: flex;
   flex-direction: column;
@@ -33,6 +39,8 @@ export const SectionTitle = styled.h2`
   font-weight: ${theme.fontWeights.bold};
   margin: 0;
   color: ${theme.colors.text};
+  
+  svg { color: ${props => props.$iconColor || theme.colors.primary}; }
 `;
 
 export const ItemCount = styled.span`
@@ -51,7 +59,10 @@ export const HeaderActions = styled.div`
   flex-wrap: wrap;
 `;
 
-// Search components
+// ============================================
+// SEARCH COMPONENTS
+// ============================================
+
 export const SearchWrapper = styled.div`
   display: flex;
   align-items: center;
@@ -76,7 +87,20 @@ export const SearchInput = styled.input`
   &::placeholder { color: ${theme.colors.textMuted}; }
 `;
 
-// Modal components
+export const ItemsPerPageSelect = styled.select`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.sm};
+  cursor: pointer;
+`;
+
+// ============================================
+// MODAL COMPONENTS
+// ============================================
+
 export const ModalOverlay = styled(motion.div)`
   position: fixed;
   inset: 0;
@@ -94,7 +118,7 @@ export const ModalContent = styled(motion.div)`
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
   width: 100%;
-  max-width: 500px;
+  max-width: ${props => props.$maxWidth || '500px'};
   max-height: 90vh;
   overflow-y: auto;
 `;
@@ -114,7 +138,7 @@ export const ModalTitle = styled.h3`
   margin: 0;
   font-size: ${theme.fontSizes.lg};
   
-  svg { color: ${theme.colors.primary}; }
+  svg { color: ${props => props.$iconColor || theme.colors.primary}; }
 `;
 
 export const ModalBody = styled.div`
@@ -133,7 +157,10 @@ export const CloseButton = styled.button`
   &:hover { color: ${theme.colors.text}; }
 `;
 
-// Form components
+// ============================================
+// FORM COMPONENTS
+// ============================================
+
 export const FormGroup = styled.div`
   margin-bottom: ${theme.spacing.md};
 `;
@@ -178,16 +205,44 @@ export const Select = styled.select`
   cursor: pointer;
 `;
 
+export const FileInput = styled.input`
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.text};
+  
+  &::file-selector-button {
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+    background: ${theme.colors.primary};
+    border: none;
+    border-radius: ${theme.radius.md};
+    color: white;
+    font-weight: ${theme.fontWeights.medium};
+    cursor: pointer;
+    margin-right: ${theme.spacing.md};
+  }
+`;
+
 export const CheckboxLabel = styled.label`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
+  padding: ${props => props.$padded ? theme.spacing.md : 0};
+  background: ${props => props.$padded ? theme.colors.backgroundTertiary : 'transparent'};
+  border: ${props => props.$padded ? `1px solid ${theme.colors.surfaceBorder}` : 'none'};
+  border-radius: ${props => props.$padded ? theme.radius.md : 0};
   cursor: pointer;
   
   input { width: 18px; height: 18px; }
+  span { font-weight: ${theme.fontWeights.medium}; color: ${props => props.$highlight ? theme.colors.error : theme.colors.text}; }
 `;
 
-// Button components
+// ============================================
+// BUTTON COMPONENTS
+// ============================================
+
 export const PrimaryButton = styled.button`
   display: flex;
   align-items: center;
@@ -224,6 +279,29 @@ export const SecondaryButton = styled.button`
   &:hover { background: ${theme.colors.surface}; }
 `;
 
+export const ActionButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: ${props => {
+    if (props.$variant === 'secondary') return 'linear-gradient(135deg, #5856d6, #af52de)';
+    if (props.$variant === 'accent') return 'linear-gradient(135deg, #ff6b9d, #c44569)';
+    if (props.$variant === 'warning') return `linear-gradient(135deg, ${theme.colors.warning}, #ff6b35)`;
+    if (props.$variant === 'gold') return 'linear-gradient(135deg, #ffd60a, #ff9f0a)';
+    return `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})`;
+  }};
+  border: none;
+  border-radius: ${theme.radius.lg};
+  color: ${props => props.$variant === 'warning' || props.$variant === 'gold' ? '#1a1a1a' : 'white'};
+  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.sm};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover { opacity: 0.9; transform: translateY(-1px); }
+`;
+
 export const IconButton = styled.button`
   display: flex;
   align-items: center;
@@ -241,7 +319,6 @@ export const IconButton = styled.button`
   }
 `;
 
-// Toggle button for boolean states
 export const ToggleButton = styled.button`
   padding: 4px 12px;
   border: none;
@@ -257,7 +334,35 @@ export const ToggleButton = styled.button`
   &:hover { opacity: 0.8; }
 `;
 
-// Empty state components
+export const ViewToggle = styled.div`
+  display: flex;
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
+  padding: 4px;
+`;
+
+export const ViewButton = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${props => props.$active ? theme.colors.primary : 'transparent'};
+  border: none;
+  border-radius: ${theme.radius.md};
+  color: ${props => props.$active ? 'white' : theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+`;
+
+export const ButtonRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.md};
+  margin-top: ${theme.spacing.lg};
+`;
+
+// ============================================
+// EMPTY STATE COMPONENTS
+// ============================================
+
 export const EmptyState = styled.div`
   text-align: center;
   padding: ${theme.spacing['3xl']};
@@ -283,7 +388,10 @@ export const EmptySubtext = styled.div`
   margin-top: ${theme.spacing.xs};
 `;
 
-// Pagination components
+// ============================================
+// PAGINATION COMPONENTS
+// ============================================
+
 export const Pagination = styled.div`
   display: flex;
   justify-content: center;
@@ -313,7 +421,10 @@ export const PageInfo = styled.span`
   color: ${theme.colors.textSecondary};
 `;
 
-// Notification/feedback components
+// ============================================
+// FEEDBACK COMPONENTS
+// ============================================
+
 export const SuccessMessage = styled.p`
   margin-top: ${theme.spacing.md};
   padding: ${theme.spacing.md};
@@ -325,7 +436,10 @@ export const SuccessMessage = styled.p`
   text-align: center;
 `;
 
-// Image preview component
+// ============================================
+// MEDIA COMPONENTS
+// ============================================
+
 export const ImagePreview = styled.div`
   margin-top: ${theme.spacing.md};
   
@@ -335,5 +449,38 @@ export const ImagePreview = styled.div`
     border-radius: ${theme.radius.md};
     border: 1px solid ${theme.colors.surfaceBorder};
   }
+`;
+
+// ============================================
+// ACTION BAR COMPONENTS
+// ============================================
+
+export const ActionBar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.lg};
+`;
+
+export const ActionGroup = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  flex-wrap: wrap;
+`;
+
+// ============================================
+// STATUS COMPONENTS
+// ============================================
+
+export const StatusBadge = styled.span`
+  padding: 4px 12px;
+  background: ${props => props.$active ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255, 59, 48, 0.15)'};
+  border: 1px solid ${props => props.$active ? 'rgba(48, 209, 88, 0.3)' : 'rgba(255, 59, 48, 0.3)'};
+  border-radius: ${theme.radius.full};
+  color: ${props => props.$active ? theme.colors.success : theme.colors.error};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
 `;
 

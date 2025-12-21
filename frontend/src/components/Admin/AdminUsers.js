@@ -4,6 +4,29 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaUsers, FaCoins, FaSearch, FaCrown } from 'react-icons/fa';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
+import {
+  AdminContainer,
+  HeaderRow,
+  SectionTitle,
+  ItemCount,
+  HeaderActions,
+  SearchWrapper,
+  SearchInput,
+  ActionButton,
+  ToggleButton,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  CloseButton,
+  ModalBody,
+  FormGroup,
+  Label,
+  Input,
+  Select,
+  PrimaryButton,
+  SuccessMessage,
+} from './AdminStyles';
 
 const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAutofish, onToggleR18, coinMessage }) => {
   const { t } = useTranslation();
@@ -14,8 +37,13 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
     user.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const handleAddCoinsSubmit = (e) => {
+    onAddCoins(e);
+    setShowCoinModal(false);
+  };
+
   return (
-    <UsersContainer
+    <AdminContainer
       variants={motionVariants.staggerContainer}
       initial="hidden"
       animate="visible"
@@ -23,7 +51,7 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
       <HeaderRow>
         <SectionTitle>
           <FaUsers /> {t('admin.userManagement')}
-          <UserCount>{users.length} users</UserCount>
+          <ItemCount>{users.length} users</ItemCount>
         </SectionTitle>
         <HeaderActions>
           <SearchWrapper>
@@ -35,9 +63,9 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </SearchWrapper>
-          <AddCoinsButton onClick={() => setShowCoinModal(true)}>
+          <ActionButton $variant="gold" onClick={() => setShowCoinModal(true)}>
             <FaCoins /> Add Coins
-          </AddCoinsButton>
+          </ActionButton>
         </HeaderActions>
       </HeaderRow>
       
@@ -86,7 +114,7 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
                     </CoinDisplay>
                   </Cell>
                   <Cell $width="80px">
-                    <StatusIcon $active={user.isAdmin}>{user.isAdmin ? '✅' : '❌'}</StatusIcon>
+                    <StatusIcon>{user.isAdmin ? '✅' : '❌'}</StatusIcon>
                   </Cell>
                   <Cell $width="120px">
                     <ToggleButton 
@@ -127,17 +155,18 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
             onClick={() => setShowCoinModal(false)}
           >
             <ModalContent
+              $maxWidth="420px"
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
               animate={{ opacity: 1, scale: 1, y: 0 }}
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
               onClick={e => e.stopPropagation()}
             >
               <ModalHeader>
-                <ModalTitle><FaCoins /> {t('admin.addCoins')}</ModalTitle>
+                <ModalTitle $iconColor="#ffd60a"><FaCoins /> {t('admin.addCoins')}</ModalTitle>
                 <CloseButton onClick={() => setShowCoinModal(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
-                <form onSubmit={(e) => { onAddCoins(e); setShowCoinModal(false); }}>
+                <form onSubmit={handleAddCoinsSubmit}>
                   <FormGroup>
                     <Label>{t('admin.selectUser')}</Label>
                     <Select name="userId" value={coinForm.userId} onChange={onCoinFormChange} required>
@@ -159,9 +188,9 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
                       required 
                     />
                   </FormGroup>
-                  <SubmitButton type="submit">
+                  <CoinSubmitButton type="submit">
                     <FaCoins /> {t('admin.addCoins')}
-                  </SubmitButton>
+                  </CoinSubmitButton>
                 </form>
                 {coinMessage && <SuccessMessage>{coinMessage}</SuccessMessage>}
               </ModalBody>
@@ -169,95 +198,13 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
           </ModalOverlay>
         )}
       </AnimatePresence>
-    </UsersContainer>
+    </AdminContainer>
   );
 };
 
-const UsersContainer = styled(motion.div)`
-  padding: 0 ${theme.spacing.md};
-`;
-
-const HeaderRow = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.md};
-  margin-bottom: ${theme.spacing.lg};
-  
-  @media (min-width: ${theme.breakpoints.md}) {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-`;
-
-const SectionTitle = styled.h2`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.bold};
-  margin: 0;
-  color: ${theme.colors.text};
-  
-  svg { color: ${theme.colors.primary}; }
-`;
-
-const UserCount = styled.span`
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  color: ${theme.colors.textSecondary};
-  background: ${theme.colors.backgroundTertiary};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  border-radius: ${theme.radius.full};
-  margin-left: ${theme.spacing.sm};
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  gap: ${theme.spacing.md};
-  flex-wrap: wrap;
-`;
-
-const SearchWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  min-width: 200px;
-  
-  svg { color: ${theme.colors.textMuted}; font-size: 14px; }
-`;
-
-const SearchInput = styled.input`
-  border: none;
-  background: transparent;
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.sm};
-  flex: 1;
-  outline: none;
-  
-  &::placeholder { color: ${theme.colors.textMuted}; }
-`;
-
-const AddCoinsButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.sm} ${theme.spacing.lg};
-  background: linear-gradient(135deg, #ffd60a, #ff9f0a);
-  border: none;
-  border-radius: ${theme.radius.lg};
-  color: #1a1a1a;
-  font-weight: ${theme.fontWeights.semibold};
-  font-size: ${theme.fontSizes.sm};
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  
-  &:hover { opacity: 0.9; transform: translateY(-1px); }
-`;
+// ============================================
+// USER-SPECIFIC STYLED COMPONENTS
+// ============================================
 
 const UsersTable = styled.div`
   background: ${theme.colors.surface};
@@ -360,21 +307,6 @@ const StatusIcon = styled.span`
   font-size: 16px;
 `;
 
-const ToggleButton = styled.button`
-  padding: 4px 12px;
-  border: none;
-  border-radius: ${theme.radius.md};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.semibold};
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  background: ${props => props.$enabled ? 'rgba(48, 209, 88, 0.15)' : 'rgba(255, 255, 255, 0.05)'};
-  color: ${props => props.$enabled ? '#30d158' : theme.colors.textSecondary};
-  border: 1px solid ${props => props.$enabled ? 'rgba(48, 209, 88, 0.3)' : theme.colors.surfaceBorder};
-  
-  &:hover { opacity: 0.8; }
-`;
-
 const AutofishCell = styled.div`
   display: flex;
   align-items: center;
@@ -397,127 +329,10 @@ const DateText = styled.span`
   color: ${theme.colors.textSecondary};
 `;
 
-const ModalOverlay = styled(motion.div)`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: ${theme.spacing.md};
-`;
-
-const ModalContent = styled(motion.div)`
-  background: ${theme.colors.backgroundSecondary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
+const CoinSubmitButton = styled(PrimaryButton)`
   width: 100%;
-  max-width: 420px;
-  overflow: hidden;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: ${theme.spacing.lg};
-  border-bottom: 1px solid ${theme.colors.surfaceBorder};
-`;
-
-const ModalTitle = styled.h3`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  margin: 0;
-  font-size: ${theme.fontSizes.lg};
-  
-  svg { color: #ffd60a; }
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  color: ${theme.colors.textSecondary};
-  font-size: 24px;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  
-  &:hover { color: ${theme.colors.text}; }
-`;
-
-const ModalBody = styled.div`
-  padding: ${theme.spacing.lg};
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: ${theme.spacing.md};
-`;
-
-const Label = styled.label`
-  display: block;
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  color: ${theme.colors.textSecondary};
-  margin-bottom: ${theme.spacing.xs};
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.base};
-  
-  &:focus {
-    outline: none;
-    border-color: ${theme.colors.primary};
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.base};
-  cursor: pointer;
-`;
-
-const SubmitButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.sm};
-  width: 100%;
-  padding: ${theme.spacing.md};
   background: linear-gradient(135deg, #ffd60a, #ff9f0a);
-  border: none;
-  border-radius: ${theme.radius.lg};
   color: #1a1a1a;
-  font-weight: ${theme.fontWeights.bold};
-  font-size: ${theme.fontSizes.base};
-  cursor: pointer;
-  
-  &:hover { opacity: 0.9; }
-`;
-
-const SuccessMessage = styled.p`
-  margin-top: ${theme.spacing.md};
-  padding: ${theme.spacing.md};
-  background: rgba(48, 209, 88, 0.15);
-  border: 1px solid rgba(48, 209, 88, 0.3);
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.success};
-  font-size: ${theme.fontSizes.sm};
-  text-align: center;
 `;
 
 export default AdminUsers;
-

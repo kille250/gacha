@@ -5,6 +5,44 @@ import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownloa
 import { theme, getRarityColor, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
+import {
+  AdminContainer,
+  HeaderRow,
+  SectionTitle,
+  ItemCount,
+  HeaderActions,
+  SearchWrapper,
+  SearchInput,
+  ItemsPerPageSelect,
+  ActionBar,
+  ActionGroup,
+  ActionButton,
+  ViewToggle,
+  ViewButton,
+  EmptyState,
+  EmptyIcon,
+  EmptyText,
+  EmptySubtext,
+  Pagination,
+  PageButton,
+  PageInfo,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalTitle,
+  CloseButton,
+  ModalBody,
+  FormGroup,
+  FormRow,
+  Label,
+  Input,
+  Select,
+  FileInput,
+  CheckboxLabel,
+  ImagePreview,
+  PrimaryButton,
+  IconButton,
+} from './AdminStyles';
 
 const AdminCharacters = ({ 
   characters, 
@@ -41,16 +79,26 @@ const AdminCharacters = ({
     setCurrentPage(1);
   };
 
+  const handleItemsPerPageChange = (e) => {
+    setItemsPerPage(Number(e.target.value));
+    setCurrentPage(1);
+  };
+
+  const handleAddSubmit = (e) => {
+    onAddCharacter(e);
+    setShowAddModal(false);
+  };
+
   return (
-    <Container
+    <AdminContainer
       variants={motionVariants.staggerContainer}
       initial="hidden"
       animate="visible"
     >
       <HeaderRow>
-        <SectionTitle>
+        <SectionTitle $iconColor={theme.colors.success}>
           <FaImage /> {t('admin.characterManagement')}
-          <CharCount>{filteredCharacters.length} characters</CharCount>
+          <ItemCount>{filteredCharacters.length} characters</ItemCount>
         </SectionTitle>
         <HeaderActions>
           <SearchWrapper>
@@ -64,7 +112,7 @@ const AdminCharacters = ({
           </SearchWrapper>
           <ItemsPerPageSelect 
             value={itemsPerPage} 
-            onChange={(e) => { setItemsPerPage(Number(e.target.value)); setCurrentPage(1); }}
+            onChange={handleItemsPerPageChange}
           >
             <option value={10}>10</option>
             <option value={20}>20</option>
@@ -126,12 +174,12 @@ const AdminCharacters = ({
                   <CardSeries>{char.series}</CardSeries>
                   <RarityTag $rarity={char.rarity}>{char.rarity}</RarityTag>
                   <CardActions>
-                    <IconButton onClick={() => onEditCharacter(char)} title="Edit">
+                    <CardIconButton onClick={() => onEditCharacter(char)} title="Edit">
                       <FaEdit />
-                    </IconButton>
-                    <IconButton $danger onClick={() => onDeleteCharacter(char.id)} title="Delete">
+                    </CardIconButton>
+                    <CardIconButton $danger onClick={() => onDeleteCharacter(char.id)} title="Delete">
                       <FaTrash />
-                    </IconButton>
+                    </CardIconButton>
                   </CardActions>
                 </CardContent>
               </CharacterCard>
@@ -209,11 +257,11 @@ const AdminCharacters = ({
               onClick={e => e.stopPropagation()}
             >
               <ModalHeader>
-                <ModalTitle><FaPlus /> {t('admin.addCharacter')}</ModalTitle>
+                <ModalTitle $iconColor={theme.colors.success}><FaPlus /> {t('admin.addCharacter')}</ModalTitle>
                 <CloseButton onClick={() => setShowAddModal(false)}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
-                <form onSubmit={(e) => { onAddCharacter(e); setShowAddModal(false); }}>
+                <form onSubmit={handleAddSubmit}>
                   <FormGroup>
                     <Label>{t('admin.name')}</Label>
                     <Input type="text" name="name" value={newCharacter.name} onChange={onCharacterChange} required />
@@ -235,7 +283,7 @@ const AdminCharacters = ({
                     </FormGroup>
                     <FormGroup>
                       <Label>&nbsp;</Label>
-                      <CheckboxLabel>
+                      <CheckboxLabel $padded $highlight>
                         <input 
                           type="checkbox" 
                           checked={newCharacter.isR18} 
@@ -263,178 +311,22 @@ const AdminCharacters = ({
                       </ImagePreview>
                     )}
                   </FormGroup>
-                  <SubmitButton type="submit">
+                  <PrimaryButton type="submit" style={{ width: '100%' }}>
                     <FaPlus /> {t('admin.addCharacter')}
-                  </SubmitButton>
+                  </PrimaryButton>
                 </form>
               </ModalBody>
             </ModalContent>
           </ModalOverlay>
         )}
       </AnimatePresence>
-    </Container>
+    </AdminContainer>
   );
 };
 
-// Styled Components
-const Container = styled(motion.div)`
-  padding: 0 ${theme.spacing.md};
-`;
-
-const HeaderRow = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.md};
-  margin-bottom: ${theme.spacing.lg};
-  
-  @media (min-width: ${theme.breakpoints.md}) {
-    flex-direction: row;
-    justify-content: space-between;
-    align-items: center;
-  }
-`;
-
-const SectionTitle = styled.h2`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.bold};
-  margin: 0;
-  color: ${theme.colors.text};
-  
-  svg { color: ${theme.colors.success}; }
-`;
-
-const CharCount = styled.span`
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  color: ${theme.colors.textSecondary};
-  background: ${theme.colors.backgroundTertiary};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  border-radius: ${theme.radius.full};
-  margin-left: ${theme.spacing.sm};
-`;
-
-const HeaderActions = styled.div`
-  display: flex;
-  gap: ${theme.spacing.md};
-  flex-wrap: wrap;
-`;
-
-const SearchWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  min-width: 240px;
-  
-  svg { color: ${theme.colors.textMuted}; font-size: 14px; }
-`;
-
-const SearchInput = styled.input`
-  border: none;
-  background: transparent;
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.sm};
-  flex: 1;
-  outline: none;
-  
-  &::placeholder { color: ${theme.colors.textMuted}; }
-`;
-
-const ItemsPerPageSelect = styled.select`
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.sm};
-  cursor: pointer;
-`;
-
-const ActionBar = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-wrap: wrap;
-  gap: ${theme.spacing.md};
-  margin-bottom: ${theme.spacing.lg};
-`;
-
-const ActionGroup = styled.div`
-  display: flex;
-  gap: ${theme.spacing.sm};
-  flex-wrap: wrap;
-`;
-
-const ActionButton = styled.button`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.sm} ${theme.spacing.lg};
-  background: ${props => 
-    props.$variant === 'secondary' ? 'linear-gradient(135deg, #5856d6, #af52de)' :
-    props.$variant === 'accent' ? 'linear-gradient(135deg, #ff6b9d, #c44569)' :
-    `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})`
-  };
-  border: none;
-  border-radius: ${theme.radius.lg};
-  color: white;
-  font-weight: ${theme.fontWeights.semibold};
-  font-size: ${theme.fontSizes.sm};
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  
-  &:hover { opacity: 0.9; transform: translateY(-1px); }
-`;
-
-const ViewToggle = styled.div`
-  display: flex;
-  background: ${theme.colors.backgroundTertiary};
-  border-radius: ${theme.radius.lg};
-  padding: 4px;
-`;
-
-const ViewButton = styled.button`
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: ${props => props.$active ? theme.colors.primary : 'transparent'};
-  border: none;
-  border-radius: ${theme.radius.md};
-  color: ${props => props.$active ? 'white' : theme.colors.textSecondary};
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
-`;
-
-const EmptyState = styled.div`
-  text-align: center;
-  padding: ${theme.spacing['3xl']};
-  background: ${theme.colors.surface};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
-`;
-
-const EmptyIcon = styled.div`
-  font-size: 64px;
-  margin-bottom: ${theme.spacing.md};
-`;
-
-const EmptyText = styled.div`
-  font-size: ${theme.fontSizes.lg};
-  font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.text};
-`;
-
-const EmptySubtext = styled.div`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
-  margin-top: ${theme.spacing.xs};
-`;
+// ============================================
+// CHARACTER-SPECIFIC STYLED COMPONENTS
+// ============================================
 
 const CharacterGrid = styled.div`
   display: grid;
@@ -532,22 +424,9 @@ const CardActions = styled.div`
   margin-top: ${theme.spacing.sm};
 `;
 
-const IconButton = styled.button`
+// Card-specific icon button with flex: 1
+const CardIconButton = styled(IconButton)`
   flex: 1;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  padding: ${theme.spacing.sm};
-  background: ${props => props.$danger ? 'rgba(255, 59, 48, 0.15)' : 'rgba(0, 113, 227, 0.15)'};
-  border: none;
-  border-radius: ${theme.radius.md};
-  color: ${props => props.$danger ? theme.colors.error : theme.colors.primary};
-  cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  
-  &:hover {
-    background: ${props => props.$danger ? 'rgba(255, 59, 48, 0.25)' : 'rgba(0, 113, 227, 0.25)'};
-  }
 `;
 
 const CharacterList = styled.div`
@@ -605,196 +484,4 @@ const ListActions = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
-const Pagination = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  gap: ${theme.spacing.md};
-  margin-top: ${theme.spacing.xl};
-`;
-
-const PageButton = styled.button`
-  padding: ${theme.spacing.sm} ${theme.spacing.lg};
-  background: ${theme.colors.primary};
-  border: none;
-  border-radius: ${theme.radius.lg};
-  color: white;
-  font-weight: ${theme.fontWeights.medium};
-  cursor: pointer;
-  
-  &:disabled {
-    background: ${theme.colors.backgroundTertiary};
-    color: ${theme.colors.textMuted};
-    cursor: not-allowed;
-  }
-`;
-
-const PageInfo = styled.span`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
-`;
-
-const ModalOverlay = styled(motion.div)`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  z-index: 1000;
-  padding: ${theme.spacing.md};
-`;
-
-const ModalContent = styled(motion.div)`
-  background: ${theme.colors.backgroundSecondary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
-  width: 100%;
-  max-width: 500px;
-  max-height: 90vh;
-  overflow-y: auto;
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: ${theme.spacing.lg};
-  border-bottom: 1px solid ${theme.colors.surfaceBorder};
-`;
-
-const ModalTitle = styled.h3`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  margin: 0;
-  font-size: ${theme.fontSizes.lg};
-  
-  svg { color: ${theme.colors.success}; }
-`;
-
-const CloseButton = styled.button`
-  background: none;
-  border: none;
-  color: ${theme.colors.textSecondary};
-  font-size: 24px;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  
-  &:hover { color: ${theme.colors.text}; }
-`;
-
-const ModalBody = styled.div`
-  padding: ${theme.spacing.lg};
-`;
-
-const FormGroup = styled.div`
-  margin-bottom: ${theme.spacing.md};
-`;
-
-const FormRow = styled.div`
-  display: flex;
-  gap: ${theme.spacing.md};
-`;
-
-const Label = styled.label`
-  display: block;
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  color: ${theme.colors.textSecondary};
-  margin-bottom: ${theme.spacing.xs};
-`;
-
-const Input = styled.input`
-  width: 100%;
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.base};
-  
-  &:focus {
-    outline: none;
-    border-color: ${theme.colors.primary};
-  }
-`;
-
-const Select = styled.select`
-  width: 100%;
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.base};
-  cursor: pointer;
-`;
-
-const CheckboxLabel = styled.label`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  cursor: pointer;
-  
-  input { width: 18px; height: 18px; }
-  span { font-weight: ${theme.fontWeights.medium}; color: ${theme.colors.error}; }
-`;
-
-const FileInput = styled.input`
-  width: 100%;
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.text};
-  
-  &::file-selector-button {
-    padding: ${theme.spacing.sm} ${theme.spacing.md};
-    background: ${theme.colors.primary};
-    border: none;
-    border-radius: ${theme.radius.md};
-    color: white;
-    font-weight: ${theme.fontWeights.medium};
-    cursor: pointer;
-    margin-right: ${theme.spacing.md};
-  }
-`;
-
-const ImagePreview = styled.div`
-  margin-top: ${theme.spacing.md};
-  
-  img, video {
-    max-width: 100%;
-    max-height: 200px;
-    border-radius: ${theme.radius.md};
-    border: 1px solid ${theme.colors.surfaceBorder};
-  }
-`;
-
-const SubmitButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.sm};
-  width: 100%;
-  padding: ${theme.spacing.md};
-  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
-  border: none;
-  border-radius: ${theme.radius.lg};
-  color: white;
-  font-weight: ${theme.fontWeights.bold};
-  font-size: ${theme.fontSizes.base};
-  cursor: pointer;
-  
-  &:hover { opacity: 0.9; }
-`;
-
 export default AdminCharacters;
-
