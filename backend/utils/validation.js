@@ -141,6 +141,17 @@ const isValidUUID = (value) => {
   return uuidRegex.test(value);
 };
 
+/**
+ * Parse date value - converts empty/invalid strings to null
+ * @param {any} dateValue - Date value to parse (string, Date, or null/undefined)
+ * @returns {Date|null} - Valid Date object or null
+ */
+const parseDate = (dateValue) => {
+  if (!dateValue || dateValue === '') return null;
+  const date = new Date(dateValue);
+  return isNaN(date.getTime()) ? null : date;
+};
+
 module.exports = {
   isValidId,
   validateIdArray,
@@ -149,5 +160,6 @@ module.exports = {
   validatePassword,
   validateEmail,
   isValidUUID,
+  parseDate,
   RESERVED_USERNAMES
 };

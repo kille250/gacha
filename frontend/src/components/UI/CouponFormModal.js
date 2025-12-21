@@ -17,6 +17,19 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
     isActive: true
   });
   
+  // Helper to safely parse dates
+  const formatDateForInput = (dateValue) => {
+    if (!dateValue) return '';
+    try {
+      const date = new Date(dateValue);
+      // Check if the date is valid
+      if (isNaN(date.getTime())) return '';
+      return date.toISOString().split('T')[0];
+    } catch (e) {
+      return '';
+    }
+  };
+
   useEffect(() => {
     if (coupon) {
       setFormData({
@@ -27,8 +40,8 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
         characterId: coupon.characterId || '',
         maxUses: coupon.maxUses || 1,
         usesPerUser: coupon.usesPerUser || 1,
-        startDate: coupon.startDate ? new Date(coupon.startDate).toISOString().split('T')[0] : '',
-        endDate: coupon.endDate ? new Date(coupon.endDate).toISOString().split('T')[0] : '',
+        startDate: formatDateForInput(coupon.startDate),
+        endDate: formatDateForInput(coupon.endDate),
         isActive: coupon.isActive !== false
       });
     } else {

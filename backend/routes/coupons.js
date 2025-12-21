@@ -4,7 +4,7 @@ const { Op } = require('sequelize');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { Coupon, CouponRedemption, User, Character } = require('../models');
-const { isValidUUID } = require('../utils/validation');
+const { isValidUUID, parseDate } = require('../utils/validation');
 
 // ADMIN: Get all coupons
 router.get('/admin', [auth, adminAuth], async (req, res) => {
@@ -78,8 +78,8 @@ router.post('/admin', [auth, adminAuth], async (req, res) => {
       characterId: type === 'character' ? characterId : null,
       maxUses: maxUses || -1, // -1 means unlimited
       usesPerUser: usesPerUser || 1,
-      startDate: startDate || null,
-      endDate: endDate || null,
+      startDate: parseDate(startDate),
+      endDate: parseDate(endDate),
       isActive: isActive !== false
     });
 
@@ -147,8 +147,8 @@ router.put('/admin/:id', [auth, adminAuth], async (req, res) => {
       characterId: type === 'character' ? characterId : null,
       maxUses: maxUses !== undefined ? maxUses : coupon.maxUses,
       usesPerUser: usesPerUser !== undefined ? usesPerUser : coupon.usesPerUser,
-      startDate: startDate !== undefined ? startDate : coupon.startDate,
-      endDate: endDate !== undefined ? endDate : coupon.endDate,
+      startDate: startDate !== undefined ? parseDate(startDate) : coupon.startDate,
+      endDate: endDate !== undefined ? parseDate(endDate) : coupon.endDate,
       isActive: isActive !== undefined ? isActive : coupon.isActive
     });
 
