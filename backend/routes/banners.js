@@ -1,7 +1,6 @@
 const express = require('express');
 const router = express.Router();
 const path = require('path');
-const jwt = require('jsonwebtoken');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { Banner, Character, User } = require('../models');
@@ -17,20 +16,20 @@ const {
   getPityRates,
   getBannerPullChance,
   roundRatesForDisplay,
-  rollRarity,
-  getRarities,
-  getOrderedRarities
+  getRarities
 } = require('../config/pricing');
 const { isValidId, validateIdArray, parseCharacterIds } = require('../utils/validation');
 const { getUserAllowR18, getR18PreferenceFromRequest } = require('../utils/userPreferences');
 const { 
   acquireRollLock,
   releaseRollLock,
-  groupCharactersByRarity, 
-  selectCharacterWithFallback,
-  filterR18Characters,
-  isRarePlus
+  filterR18Characters
 } = require('../utils/rollHelpers');
+const {
+  buildBannerRollContext,
+  executeSingleBannerRoll,
+  executeBannerMultiRoll
+} = require('../utils/rollEngine');
 
 // ===========================================
 // HELPER FUNCTIONS
@@ -39,7 +38,7 @@ const {
 /**
  * Validate banner is available for rolling
  * @param {Object} banner - Banner instance
- * @returns {{ valid: boolean, error?: string }} - Validation result
+ * @returns {{ valid: boolean, error?: string, status?: number }}
  */
 const validateBannerForRoll = (banner) => {
   if (!banner) {
@@ -61,15 +60,21 @@ const validateBannerForRoll = (banner) => {
 };
 
 // ===========================================
-// PRICING ENDPOINT - Single source of truth for frontend
+// PRICING ENDPOINTS
 // ===========================================
 
+/**
+ * Get base pricing configuration
+ * GET /api/banners/pricing
+ */
 router.get('/pricing', (req, res) => {
-  // Return pricing config for frontend to use
   res.json(PRICING_CONFIG);
 });
 
-// Get pricing for a specific banner (includes costMultiplier and drop rates)
+/**
+ * Get pricing for a specific banner (includes costMultiplier and drop rates)
+ * GET /api/banners/:id/pricing
+ */
 router.get('/:id/pricing', async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
@@ -84,12 +89,10 @@ router.get('/:id/pricing', async (req, res) => {
       return res.status(404).json({ error: 'Banner not found' });
     }
     
-    // Load rarities from database
     const raritiesData = await getRarities();
-    
     const singlePullCost = Math.floor(PRICING_CONFIG.baseCost * (banner.costMultiplier || 1));
     
-    // Calculate banner-specific rates using centralized config (async)
+    // Calculate all rate tables
     const bannerDropRates = roundRatesForDisplay(await calculateBannerRates(banner.rateMultiplier, false, raritiesData));
     const standardRates = await getStandardRates(false, raritiesData);
     const premiumRates = await getPremiumRates(false, raritiesData);
@@ -100,7 +103,6 @@ router.get('/:id/pricing', async (req, res) => {
       costMultiplier: banner.costMultiplier || 1,
       rateMultiplier: banner.rateMultiplier || 1,
       singlePullCost,
-      // Pre-calculated costs for quick select options
       pullOptions: PRICING_CONFIG.quickSelectOptions.map(count => {
         const discount = getDiscountForCount(count);
         const baseCost = count * singlePullCost;
@@ -114,7 +116,6 @@ router.get('/:id/pricing', async (req, res) => {
           savings: baseCost - finalCost
         };
       }),
-      // Drop rate information from centralized config
       dropRates: {
         banner: bannerDropRates,
         standard: standardRates,
@@ -138,7 +139,14 @@ router.get('/:id/pricing', async (req, res) => {
   }
 });
 
-// Get all active banners (filters R18 banners and characters based on user preference)
+// ===========================================
+// BANNER CRUD ENDPOINTS
+// ===========================================
+
+/**
+ * Get all active banners (filters R18 based on user preference)
+ * GET /api/banners
+ */
 router.get('/', async (req, res) => {
   try {
     const showAll = req.query.showAll === 'true';
@@ -150,18 +158,16 @@ router.get('/', async (req, res) => {
       order: [['featured', 'DESC'], ['displayOrder', 'ASC'], ['createdAt', 'DESC']]
     });
     
-    // For admin view (showAll=true), skip R18 filtering
+    // Admin view: skip R18 filtering
     if (showAll) {
       res.json(banners.map(b => b.get({ plain: true })));
       return;
     }
     
-    // Check R18 preference
     const allowR18 = await getR18PreferenceFromRequest(req);
     
-    // Filter R18 banners and characters if user hasn't enabled R18
     const filteredBanners = banners
-      .filter(banner => allowR18 || !banner.isR18) // Filter out R18 banners
+      .filter(banner => allowR18 || !banner.isR18)
       .map(banner => {
         const bannerData = banner.get({ plain: true });
         if (!allowR18) {
@@ -177,10 +183,12 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get a specific banner by ID (filters R18 banners and characters based on user preference)
+/**
+ * Get a specific banner by ID
+ * GET /api/banners/:id
+ */
 router.get('/:id', async (req, res) => {
   try {
-    // Validate banner ID is a positive integer
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid banner ID' });
     }
@@ -193,15 +201,12 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ error: 'Banner not found' });
     }
     
-    // Check R18 preference
     const allowR18 = await getR18PreferenceFromRequest(req);
     
-    // Block access to R18 banner if user hasn't enabled R18
     if (banner.isR18 && !allowR18) {
       return res.status(403).json({ error: 'This banner requires R18 content to be enabled' });
     }
     
-    // Filter R18 characters if user hasn't enabled R18
     const bannerData = banner.get({ plain: true });
     if (!allowR18) {
       bannerData.Characters = bannerData.Characters.filter(char => !char.isR18);
@@ -214,9 +219,14 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Admin routes below require authentication and admin privileges
+// ===========================================
+// ADMIN BANNER MANAGEMENT
+// ===========================================
 
-// Update banner display order (admin only)
+/**
+ * Update banner display order
+ * POST /api/banners/update-order
+ */
 router.post('/update-order', [auth, adminAuth], async (req, res) => {
   try {
     const { bannerOrder } = req.body;
@@ -225,7 +235,6 @@ router.post('/update-order', [auth, adminAuth], async (req, res) => {
       return res.status(400).json({ error: 'bannerOrder array is required' });
     }
     
-    // Update each banner's displayOrder
     const updates = bannerOrder.map((bannerId, index) => 
       Banner.update({ displayOrder: index }, { where: { id: bannerId } })
     );
@@ -241,24 +250,24 @@ router.post('/update-order', [auth, adminAuth], async (req, res) => {
   }
 });
 
-// Bulk toggle featured status for multiple banners (admin only)
+/**
+ * Bulk toggle featured status
+ * POST /api/banners/bulk-toggle-featured
+ */
 router.post('/bulk-toggle-featured', [auth, adminAuth], async (req, res) => {
   try {
     const { bannerIds, featured } = req.body;
     
-    // Validate bannerIds
     if (!bannerIds || !Array.isArray(bannerIds) || bannerIds.length === 0) {
       return res.status(400).json({ error: 'bannerIds array is required' });
     }
     
-    // Validate all IDs
     if (!validateIdArray(bannerIds)) {
       return res.status(400).json({ error: 'Invalid banner IDs. All IDs must be positive integers.' });
     }
     
     const parsedIds = bannerIds.map(id => parseInt(id, 10));
     
-    // Find all banners
     const banners = await Banner.findAll({
       where: { id: parsedIds }
     });
@@ -267,8 +276,6 @@ router.post('/bulk-toggle-featured', [auth, adminAuth], async (req, res) => {
       return res.status(404).json({ error: 'No banners found with the provided IDs' });
     }
     
-    // Update featured status
-    // If 'featured' is provided, set to that value; otherwise toggle each banner
     const updatedBanners = [];
     for (const banner of banners) {
       if (featured !== undefined) {
@@ -296,10 +303,12 @@ router.post('/bulk-toggle-featured', [auth, adminAuth], async (req, res) => {
   }
 });
 
-// Toggle featured status for a single banner (admin only)
+/**
+ * Toggle featured status for a single banner
+ * PATCH /api/banners/:id/featured
+ */
 router.patch('/:id/featured', [auth, adminAuth], async (req, res) => {
   try {
-    // Validate banner ID
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid banner ID' });
     }
@@ -309,7 +318,6 @@ router.patch('/:id/featured', [auth, adminAuth], async (req, res) => {
       return res.status(404).json({ error: 'Banner not found' });
     }
 
-    // Toggle or set featured status
     const { featured } = req.body;
     banner.featured = featured !== undefined ? (featured === true || featured === 'true') : !banner.featured;
     await banner.save();
@@ -327,7 +335,10 @@ router.patch('/:id/featured', [auth, adminAuth], async (req, res) => {
   }
 });
 
-// Create a new banner (admin only)
+/**
+ * Create a new banner
+ * POST /api/banners
+ */
 router.post('/', [auth, adminAuth], upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'video', maxCount: 1 }
@@ -338,13 +349,11 @@ router.post('/', [auth, adminAuth], upload.fields([
       featured, costMultiplier, rateMultiplier, active, isR18 
     } = req.body;
     
-    // Parse and validate characterIds
     const characterIds = parseCharacterIds(req.body.characterIds);
     if (characterIds === null) {
       return res.status(400).json({ error: 'Invalid characterIds format. Must be an array of positive integers.' });
     }
     
-    // Handle file uploads
     let imagePath = null;
     let videoPath = null;
     
@@ -357,7 +366,6 @@ router.post('/', [auth, adminAuth], upload.fields([
       }
     }
     
-    // Create the banner
     const banner = await Banner.create({
       name,
       description,
@@ -373,7 +381,6 @@ router.post('/', [auth, adminAuth], upload.fields([
       isR18: isR18 === 'true' || isR18 === true
     });
 
-    // Add characters to banner if provided
     if (characterIds.length > 0) {
       const characters = await Character.findAll({
         where: { id: characterIds }
@@ -384,7 +391,6 @@ router.post('/', [auth, adminAuth], upload.fields([
       }
     }
     
-    // Fetch the created banner with associated characters
     const createdBanner = await Banner.findByPk(banner.id, {
       include: [{ model: Character }]
     });
@@ -396,13 +402,15 @@ router.post('/', [auth, adminAuth], upload.fields([
   }
 });
 
-// Update a banner (admin only)
+/**
+ * Update a banner
+ * PUT /api/banners/:id
+ */
 router.put('/:id', [auth, adminAuth], upload.fields([
   { name: 'image', maxCount: 1 },
   { name: 'video', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    // Validate banner ID
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid banner ID' });
     }
@@ -410,7 +418,6 @@ router.put('/:id', [auth, adminAuth], upload.fields([
     const banner = await Banner.findByPk(req.params.id);
     if (!banner) return res.status(404).json({ error: 'Banner not found' });
     
-    // Update fields if provided
     const fields = [
       'name', 'description', 'series', 'startDate', 'endDate',
       'featured', 'costMultiplier', 'rateMultiplier', 'active', 'isR18'
@@ -430,10 +437,8 @@ router.put('/:id', [auth, adminAuth], upload.fields([
       }
     });
     
-    // Handle file uploads
     if (req.files) {
       if (req.files.image) {
-        // Delete old image if exists
         if (banner.image && banner.image.startsWith('/uploads/')) {
           const oldFilename = path.basename(banner.image);
           safeUnlink(getFilePath('banners', oldFilename));
@@ -442,7 +447,6 @@ router.put('/:id', [auth, adminAuth], upload.fields([
       }
       
       if (req.files.video) {
-        // Delete old video if exists
         if (banner.videoUrl && banner.videoUrl.startsWith('/uploads/')) {
           const oldFilename = path.basename(banner.videoUrl);
           safeUnlink(getFilePath('videos', oldFilename));
@@ -453,7 +457,6 @@ router.put('/:id', [auth, adminAuth], upload.fields([
     
     await banner.save();
     
-    // Update character associations if provided
     if (req.body.characterIds) {
       const characterIds = parseCharacterIds(req.body.characterIds);
       if (characterIds === null) {
@@ -467,7 +470,6 @@ router.put('/:id', [auth, adminAuth], upload.fields([
       await banner.setCharacters(characters);
     }
     
-    // Return updated banner with characters
     const updatedBanner = await Banner.findByPk(banner.id, {
       include: [{ model: Character }]
     });
@@ -479,10 +481,12 @@ router.put('/:id', [auth, adminAuth], upload.fields([
   }
 });
 
-// Delete a banner (admin only)
+/**
+ * Delete a banner
+ * DELETE /api/banners/:id
+ */
 router.delete('/:id', [auth, adminAuth], async (req, res) => {
   try {
-    // Validate banner ID
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid banner ID' });
     }
@@ -490,7 +494,6 @@ router.delete('/:id', [auth, adminAuth], async (req, res) => {
     const banner = await Banner.findByPk(req.params.id);
     if (!banner) return res.status(404).json({ error: 'Banner not found' });
     
-    // Delete associated files
     if (banner.image && banner.image.startsWith('/uploads/')) {
       const filename = path.basename(banner.image);
       safeUnlink(getFilePath('banners', filename));
@@ -510,7 +513,14 @@ router.delete('/:id', [auth, adminAuth], async (req, res) => {
   }
 });
 
-// Roll on a specific banner
+// ===========================================
+// ROLL ENDPOINTS
+// ===========================================
+
+/**
+ * Single roll on a banner
+ * POST /api/banners/:id/roll
+ */
 router.post('/:id/roll', auth, async (req, res) => {
   const userId = req.user.id;
   
@@ -522,7 +532,6 @@ router.post('/:id/roll', auth, async (req, res) => {
   }
   
   try {
-    // Validate banner ID
     if (!isValidId(req.params.id)) {
       releaseRollLock(userId);
       return res.status(400).json({ error: 'Invalid banner ID' });
@@ -532,26 +541,22 @@ router.post('/:id/roll', auth, async (req, res) => {
       include: [{ model: Character }]
     });
     
-    // Validate banner availability
     const bannerValidation = validateBannerForRoll(banner);
     if (!bannerValidation.valid) {
       releaseRollLock(userId);
       return res.status(bannerValidation.status).json({ error: bannerValidation.error });
     }
     
-    // Get the user
     const user = await User.findByPk(userId);
     
-    // Check payment method: ticket or points
+    // Payment handling
     const { useTicket, ticketType } = req.body;
-    let cost = Math.floor(100 * banner.costMultiplier);
+    let cost = Math.floor(PRICING_CONFIG.baseCost * banner.costMultiplier);
     let usedTicket = null;
     let isPremium = false;
     
     if (useTicket) {
-      // Use ticket instead of points
       if (ticketType === 'premium') {
-        // User explicitly wants premium ticket
         if ((user.premiumTickets || 0) >= 1) {
           user.premiumTickets -= 1;
           usedTicket = 'premium';
@@ -566,7 +571,6 @@ router.post('/:id/roll', auth, async (req, res) => {
           });
         }
       } else if ((user.rollTickets || 0) >= 1) {
-        // Use roll ticket
         user.rollTickets -= 1;
         usedTicket = 'roll';
         cost = 0;
@@ -579,7 +583,6 @@ router.post('/:id/roll', auth, async (req, res) => {
         });
       }
     } else {
-      // Use points
       if (user.points < cost) {
         releaseRollLock(userId);
         return res.status(400).json({
@@ -593,51 +596,26 @@ router.post('/:id/roll', auth, async (req, res) => {
     
     await user.save();
     
-    // Get user's R18 preference and filter characters
-    const allowR18 = await getUserAllowR18(req.user.id);
-    const bannerCharacters = filterR18Characters(banner.Characters, allowR18);
-    const allChars = await Character.findAll();
-    const allCharacters = filterR18Characters(allChars, allowR18);
-    
-    // Load rarities from database
-    const raritiesData = await getRarities();
-    const orderedRarities = raritiesData.map(r => r.name);
-    
-    // Group characters by rarity using helper
-    const allCharactersByRarity = groupCharactersByRarity(allCharacters, orderedRarities);
-    const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters, orderedRarities);
-    
-    // Get rates from centralized config (async)
-    const premiumDropRates = await getPremiumRates(false, raritiesData);
-    const bannerDropRates = await calculateBannerRates(banner.rateMultiplier, false, raritiesData);
-    
-    console.log(`Banner ${banner.name} rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
-    
-    // When rolling on a banner, ALWAYS use banner rates
-    // The bannerPullChance only affects which CHARACTER POOL to use, not the rates
-    const dropRates = isPremium ? premiumDropRates : bannerDropRates;
-    
-    // Roll for rarity using centralized helper
-    let selectedRarity = rollRarity(dropRates, orderedRarities);
-    
-    // Determine if we pull character from banner pool or all characters
-    // This is separate from rates - affects which character of the rolled rarity you get
-    const pullFromBannerPool = Math.random() < getBannerPullChance();
-    
-    // Select character using centralized helper with banner pool priority when applicable
-    const primaryPool = pullFromBannerPool ? bannerCharactersByRarity : null;
-    const { character: randomChar, actualRarity } = selectCharacterWithFallback(
-      primaryPool,
-      allCharactersByRarity,
-      selectedRarity,
-      allCharacters,
-      raritiesData
+    // Build context and execute roll
+    const allowR18 = await getUserAllowR18(userId);
+    const allCharacters = await Character.findAll();
+    const context = await buildBannerRollContext(
+      allCharacters, 
+      banner.Characters, 
+      banner.rateMultiplier, 
+      allowR18
     );
     
-    // Safety check: if no character found, refund and error
-    if (!randomChar) {
+    const result = await executeSingleBannerRoll(context, {
+      isPremium,
+      needsPity: false,
+      isMulti: false,
+      isLast3: false
+    });
+    
+    // Refund on failure
+    if (!result.character) {
       if (usedTicket) {
-        // Refund the ticket
         if (usedTicket === 'premium') {
           user.premiumTickets += 1;
         } else {
@@ -651,19 +629,16 @@ router.post('/:id/roll', auth, async (req, res) => {
       return res.status(400).json({ error: 'No characters available to roll' });
     }
     
-    // Auto-claim the character
-    await user.addCharacter(randomChar);
+    await user.addCharacter(result.character);
     
-    // Log the pull for analysis
-    const isBannerPull = bannerCharacters.some(c => c.id === randomChar.id);
-    console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${randomChar.name} (${actualRarity}) from ${isBannerPull ? 'banner' : 'standard'} pool. Cost: ${cost} points`);
+    const isBannerPull = context.bannerCharacters.some(c => c.id === result.character.id);
+    console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${result.character.name} (${result.actualRarity}) from ${isBannerPull ? 'banner' : 'standard'} pool. Cost: ${cost} points`);
     
-    // Release lock before responding
     releaseRollLock(userId);
     
     res.json({
-      character: randomChar,
-      isBannerCharacter: bannerCharacters.some(c => c.id === randomChar.id),
+      character: result.character,
+      isBannerCharacter: isBannerPull,
       bannerName: banner.name,
       cost,
       updatedPoints: user.points,
@@ -675,14 +650,16 @@ router.post('/:id/roll', auth, async (req, res) => {
       }
     });
   } catch (err) {
-    // Always release lock on error
     releaseRollLock(userId);
     console.error(err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
-// Multi-roll on a banner (similar to standard multi-roll but with banner rates)
+/**
+ * Multi-roll on a banner
+ * POST /api/banners/:id/roll-multi
+ */
 router.post('/:id/roll-multi', auth, async (req, res) => {
   const userId = req.user.id;
   
@@ -694,7 +671,6 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
   }
   
   try {
-    // Validate banner ID
     if (!isValidId(req.params.id)) {
       releaseRollLock(userId);
       return res.status(400).json({ error: 'Invalid banner ID' });
@@ -705,17 +681,15 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       include: [{ model: Character }]
     });
     
-    // Validate banner availability
     const bannerValidation = validateBannerForRoll(banner);
     if (!bannerValidation.valid) {
       releaseRollLock(userId);
       return res.status(bannerValidation.status).json({ error: bannerValidation.error });
     }
     
-    // Get the user
     const user = await User.findByPk(userId);
     
-    // Check payment method: tickets or points
+    // Payment handling
     const { useTickets, ticketType } = req.body;
     let finalCost = 0;
     let discount = 0;
@@ -723,12 +697,10 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
     let premiumCount = 0;
     
     if (useTickets) {
-      // Use tickets for multi-roll
       const rollTickets = user.rollTickets || 0;
       const premiumTickets = user.premiumTickets || 0;
       
       if (ticketType === 'premium') {
-        // Use premium tickets first
         if (premiumTickets >= count) {
           user.premiumTickets -= count;
           usedTickets.premium = count;
@@ -742,7 +714,6 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
           });
         }
       } else if (ticketType === 'roll') {
-        // Use roll tickets
         if (rollTickets >= count) {
           user.rollTickets -= count;
           usedTickets.roll = count;
@@ -755,7 +726,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
           });
         }
       } else {
-        // Mixed: use premium first, then roll
+        // Mixed: premium first, then roll
         let remaining = count;
         if (premiumTickets > 0) {
           const usePremium = Math.min(premiumTickets, remaining);
@@ -779,8 +750,7 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
         }
       }
     } else {
-      // Use points
-      const singlePullCost = Math.floor(100 * banner.costMultiplier);
+      const singlePullCost = Math.floor(PRICING_CONFIG.baseCost * banner.costMultiplier);
       const baseCost = count * singlePullCost;
       discount = getDiscountForCount(count);
       finalCost = Math.floor(baseCost * (1 - discount));
@@ -798,95 +768,36 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
     
     await user.save();
     
-    // Get user's R18 preference and filter characters
-    const allowR18 = await getUserAllowR18(req.user.id);
-    const bannerCharacters = filterR18Characters(banner.Characters, allowR18);
-    const allChars = await Character.findAll();
-    const allCharacters = filterR18Characters(allChars, allowR18);
+    // Build context and execute multi-roll
+    const allowR18 = await getUserAllowR18(userId);
+    const allCharacters = await Character.findAll();
+    const context = await buildBannerRollContext(
+      allCharacters, 
+      banner.Characters, 
+      banner.rateMultiplier, 
+      allowR18
+    );
     
-    // Load rarities from database
-    const raritiesData = await getRarities();
-    const orderedRarities = raritiesData.map(r => r.name);
+    const results = await executeBannerMultiRoll(context, count, premiumCount);
     
-    // Group characters by rarity using helper
-    const allCharactersByRarity = groupCharactersByRarity(allCharacters, orderedRarities);
-    const bannerCharactersByRarity = groupCharactersByRarity(bannerCharacters, orderedRarities);
-    
-    // Get rates from centralized config (multi-pull rates, async)
-    const premiumDropRates = await getPremiumRates(true, raritiesData);
-    const bannerDropRates = await calculateBannerRates(banner.rateMultiplier, true, raritiesData);
-    const pityRates = await getPityRates(raritiesData);
-    
-    console.log(`Banner ${banner.name} multi-roll rates (multiplier: ${banner.rateMultiplier}):`, bannerDropRates);
-    
-    // Guaranteed pity mechanics
-    const guaranteedRare = count >= 10;
-    
-    let results = [];
-    let hasRarePlus = false;
-    
-    // Roll characters
-    for (let i = 0; i < count; i++) {
-      const isLastRoll = (i === count - 1);
-      const needsPity = guaranteedRare && isLastRoll && !hasRarePlus;
-      
-      // Check if this roll uses a premium ticket
-      const isPremiumRoll = i < premiumCount;
-      
-      // When rolling on a banner, ALWAYS use banner rates
-      // Select appropriate rates (premium > pity > banner)
-      let currentRates;
-      if (isPremiumRoll) {
-        currentRates = premiumDropRates;
-      } else if (needsPity) {
-        currentRates = pityRates;
-      } else {
-        currentRates = bannerDropRates;
+    // Add all characters to collection
+    for (const result of results) {
+      if (result.character) {
+        await user.addCharacter(result.character);
       }
-      
-      // Roll for rarity using centralized helper
-      let selectedRarity = rollRarity(currentRates, orderedRarities);
-      
-      if (isRarePlus(selectedRarity, raritiesData)) {
-        hasRarePlus = true;
-      }
-      
-      // Determine if we pull character from banner pool or all characters
-      // This is separate from rates - affects which character of the rolled rarity you get
-      const isLast3 = i >= count - 3;
-      const pullFromBannerPool = Math.random() < getBannerPullChance(isLast3);
-      
-      // Select character using centralized helper with banner pool priority when applicable
-      const primaryPool = pullFromBannerPool ? bannerCharactersByRarity : null;
-      const { character: randomChar } = selectCharacterWithFallback(
-        primaryPool,
-        allCharactersByRarity,
-        selectedRarity,
-        allCharacters,
-        raritiesData
-      );
-      
-      // Safety check: if no character found, skip this roll
-      if (!randomChar) continue;
-      
-      // Auto-claim the character
-      await user.addCharacter(randomChar);
-      
-      // Check if it's actually a banner character
-      const actuallyBannerChar = bannerCharacters.some(c => c.id === randomChar.id);
-      
-      results.push({
-        ...randomChar.get({ plain: true }),
-        isBannerCharacter: actuallyBannerChar
-      });
     }
+    
+    const hasRarePlus = results.some(r => r.wasPity || ['rare', 'epic', 'legendary'].includes(r.actualRarity));
     
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
     
     releaseRollLock(userId);
     
     res.json({
-      characters: results,
+      characters: results.map(r => ({
+        ...r.character.get ? r.character.get({ plain: true }) : r.character,
+        isBannerCharacter: r.isBannerCharacter
+      })),
       bannerName: banner.name,
       cost: finalCost,
       updatedPoints: user.points,
@@ -904,7 +815,10 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
   }
 });
 
-// GET /api/banners/user/tickets - Get user's ticket counts
+/**
+ * Get user's ticket counts
+ * GET /api/banners/user/tickets
+ */
 router.get('/user/tickets', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);

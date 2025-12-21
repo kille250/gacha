@@ -2,9 +2,17 @@
 // PRICING CONFIGURATION (Single source of truth)
 // ===========================================
 
+// Named constants - eliminates magic numbers
+const RATE_CONSTANTS = {
+  TOTAL_PERCENTAGE: 100,
+  RATE_ADJUSTMENT_FACTOR: 0.1,  // How much each multiplier point affects rates
+  FLOATING_POINT_EPSILON: 1e-10 // For floating-point comparison safety
+};
+
 const PRICING_CONFIG = {
   baseCost: 100,                    // Base cost per single pull
   maxPulls: 20,                     // Maximum pulls per multi-roll
+  pityThreshold: 10,                // Minimum pulls for pity guarantee
   discountTiers: [
     { minCount: 20, discount: 0.15, label: '20×' },  // 15% for 20+ pulls
     { minCount: 10, discount: 0.10, label: '10×' },  // 10% for 10-19 pulls
@@ -31,7 +39,7 @@ const CACHE_TTL = 60000; // 1 minute cache TTL
  * Get rarities from database with caching
  * Lazy-loads on first call to avoid circular dependencies
  * @param {boolean} forceRefresh - Force cache refresh
- * @returns {Promise<Array>} - Array of rarity objects ordered by 'order' field
+ * @returns {Promise<Array>} - Array of rarity objects ordered by 'order' field (DESC)
  */
 const getRarities = async (forceRefresh = false) => {
   const now = Date.now();
@@ -65,13 +73,17 @@ const invalidateRaritiesCache = () => {
 };
 
 /**
- * Get ordered list of rarity names (highest to lowest)
+ * Get ordered list of rarity names (highest to lowest by DB order)
  * @returns {Promise<Array<string>>}
  */
 const getOrderedRarities = async () => {
   const rarities = await getRarities();
   return rarities.map(r => r.name);
 };
+
+// ===========================================
+// PURE FUNCTIONS: Rate Building & Normalization
+// ===========================================
 
 /**
  * Build drop rates object from rarity records
@@ -80,7 +92,6 @@ const getOrderedRarities = async () => {
  * @returns {Object} - Rates object { rarityName: percentage }
  */
 const buildRatesFromRarities = (rarities, type) => {
-  const rates = {};
   const fieldMap = {
     standardSingle: 'dropRateStandardSingle',
     standardMulti: 'dropRateStandardMulti',
@@ -94,18 +105,70 @@ const buildRatesFromRarities = (rarities, type) => {
   const field = fieldMap[type];
   if (!field) throw new Error(`Unknown rate type: ${type}`);
   
-  rarities.forEach(r => {
+  const rates = {};
+  for (const r of rarities) {
     rates[r.name] = r[field] || 0;
-  });
+  }
   
   return rates;
+};
+
+/**
+ * Normalize rates to sum to exactly 100%
+ * Pure function - no side effects
+ * 
+ * @param {Object} rates - Object with rarity keys and percentage values
+ * @returns {Object} - Normalized rates that sum to 100
+ */
+const normalizeRates = (rates) => {
+  const total = Object.values(rates).reduce((sum, rate) => sum + (rate || 0), 0);
+  
+  if (total <= 0) {
+    // Return empty rates if no valid rates
+    return { ...rates };
+  }
+  
+  if (Math.abs(total - RATE_CONSTANTS.TOTAL_PERCENTAGE) < RATE_CONSTANTS.FLOATING_POINT_EPSILON) {
+    // Already normalized
+    return { ...rates };
+  }
+  
+  const normalized = {};
+  const scaleFactor = RATE_CONSTANTS.TOTAL_PERCENTAGE / total;
+  
+  for (const [key, value] of Object.entries(rates)) {
+    normalized[key] = (value || 0) * scaleFactor;
+  }
+  
+  return normalized;
+};
+
+/**
+ * Validate that rates sum to approximately 100%
+ * @param {Object} rates - Rates object
+ * @param {string} context - Context for error message
+ * @returns {boolean} - True if valid
+ */
+const validateRatesSum = (rates, context = 'unknown') => {
+  const total = Object.values(rates).reduce((sum, rate) => sum + (rate || 0), 0);
+  const isValid = Math.abs(total - RATE_CONSTANTS.TOTAL_PERCENTAGE) < 0.01;
+  
+  if (!isValid && process.env.NODE_ENV !== 'production') {
+    console.warn(`[validateRatesSum] Rates for ${context} sum to ${total.toFixed(2)}%, not 100%`);
+  }
+  
+  return isValid;
 };
 
 // ===========================================
 // HELPER FUNCTIONS
 // ===========================================
 
-// Helper to get discount for a given count
+/**
+ * Get discount for a given count
+ * @param {number} count - Number of pulls
+ * @returns {number} - Discount rate (0-1)
+ */
 const getDiscountForCount = (count) => {
   for (const tier of PRICING_CONFIG.discountTiers) {
     if (count >= tier.minCount) return tier.discount;
@@ -115,6 +178,13 @@ const getDiscountForCount = (count) => {
 
 /**
  * Calculate banner-specific rates with multiplier applied
+ * 
+ * Rate calculation flow:
+ * 1. Start with base banner rates from DB
+ * 2. Apply multiplier scaling per rarity (respecting caps)
+ * 3. Enforce minimum rates (floor values)
+ * 4. Normalize to 100% using common rarity as buffer
+ * 
  * @param {number} rateMultiplier - Banner rate multiplier
  * @param {boolean} isMulti - Whether this is a multi-pull
  * @param {Array} raritiesData - Optional pre-loaded rarities (avoids async if provided)
@@ -126,78 +196,93 @@ const calculateBannerRates = async (rateMultiplier, isMulti = false, raritiesDat
   const capField = isMulti ? 'capMulti' : 'capSingle';
   const baseRates = buildRatesFromRarities(rarities, type);
   
+  // Clamp multiplier to configured maximum
   const effectiveMultiplier = Math.min(rateMultiplier || 1, PRICING_CONFIG.maxMultiplier);
-  const rateAdjustment = (effectiveMultiplier - 1) * 0.1;
   
-  // First pass: calculate total minimumRate to see if it consumes all probability
-  let totalMinimumRate = 0;
+  // Calculate rate adjustment based on multiplier
+  // Formula: each point of multiplier adds RATE_ADJUSTMENT_FACTOR * scaling to the rate
+  const rateAdjustment = (effectiveMultiplier - 1) * RATE_CONSTANTS.RATE_ADJUSTMENT_FACTOR;
+  
+  // Identify common rarity (lowest order) - this absorbs remaining probability
   let commonRarity = null;
-  
-  rarities.forEach(r => {
+  for (const r of rarities) {
     if (!commonRarity || r.order < commonRarity.order) {
       commonRarity = r;
     }
-    totalMinimumRate += (r.minimumRate || 0);
-  });
-  
-  // Debug: log minimumRate values
-  console.log('[calculateBannerRates] minimumRates:', rarities.map(r => `${r.name}:${r.minimumRate || 0}`).join(', '), `total:${totalMinimumRate}`);
-  
-  const rates = {};
-  
-  // If minimumRates consume 100% or more, ONLY use minimumRates (ignore calculated rates)
-  if (totalMinimumRate >= 100) {
-    rarities.forEach(r => {
-      rates[r.name] = r.minimumRate || 0;
-    });
-    console.log('[calculateBannerRates] Using ONLY minimumRates:', rates);
-    return rates;
   }
   
-  // Otherwise, calculate rates normally with minimumRate as floors
-  // Available space after reserving minimumRates
-  const availableSpace = 100 - totalMinimumRate;
+  // Phase 1: Calculate adjusted rates for each rarity
+  const adjustedRates = {};
+  let nonCommonTotal = 0;
   
-  let totalCalculated = 0;
-  const calculatedRates = {};
-  
-  // Calculate base rates for non-common rarities
-  rarities.forEach(r => {
+  for (const r of rarities) {
+    const baseRate = baseRates[r.name] || 0;
+    const minimumRate = r.minimumRate || 0;
+    
+    if (r.name === commonRarity.name) {
+      // Common rarity handled separately as buffer
+      continue;
+    }
+    
+    // Apply multiplier scaling with cap
+    let adjustedRate;
     if (r.multiplierScaling > 0) {
+      const scaledRate = baseRate * (1 + rateAdjustment * r.multiplierScaling);
       const cap = r[capField];
-      const baseRate = baseRates[r.name];
-      const adjusted = baseRate * (1 + rateAdjustment * r.multiplierScaling);
-      let finalRate = cap ? Math.max(baseRate, Math.min(adjusted, cap)) : adjusted;
-      // Subtract this rarity's minimumRate since that's already reserved
-      const calculatedPortion = Math.max(0, finalRate - (r.minimumRate || 0));
-      calculatedRates[r.name] = calculatedPortion;
-      totalCalculated += calculatedPortion;
-    }
-  });
-  
-  // Add common's base rate to calculated portion
-  const commonBaseRate = baseRates[commonRarity.name] || 0;
-  const commonCalculatedPortion = Math.max(0, commonBaseRate - (commonRarity.minimumRate || 0));
-  calculatedRates[commonRarity.name] = commonCalculatedPortion;
-  totalCalculated += commonCalculatedPortion;
-  
-  // Distribute available space proportionally based on calculated rates
-  rarities.forEach(r => {
-    const minRate = r.minimumRate || 0;
-    let additionalRate = 0;
-    
-    if (totalCalculated > 0 && calculatedRates[r.name] > 0) {
-      // Proportional share of available space
-      additionalRate = (calculatedRates[r.name] / totalCalculated) * availableSpace;
-    } else if (totalCalculated === 0 && r.name === commonRarity.name) {
-      // If no calculated rates, give all available space to common
-      additionalRate = availableSpace;
+      
+      // Apply cap if defined, but never go below base rate
+      adjustedRate = cap ? Math.max(baseRate, Math.min(scaledRate, cap)) : scaledRate;
+    } else {
+      adjustedRate = baseRate;
     }
     
-    rates[r.name] = minRate + additionalRate;
-  });
+    // Enforce minimum rate floor
+    adjustedRates[r.name] = Math.max(adjustedRate, minimumRate);
+    nonCommonTotal += adjustedRates[r.name];
+  }
   
-  return rates;
+  // Phase 2: Calculate common rate as remaining probability
+  const commonMinimum = commonRarity.minimumRate || 0;
+  const remainingForCommon = RATE_CONSTANTS.TOTAL_PERCENTAGE - nonCommonTotal;
+  
+  // Common gets whatever is left, but at least its minimum
+  adjustedRates[commonRarity.name] = Math.max(remainingForCommon, commonMinimum);
+  
+  // Phase 3: If total exceeds 100%, normalize proportionally
+  const currentTotal = Object.values(adjustedRates).reduce((sum, rate) => sum + rate, 0);
+  
+  if (currentTotal > RATE_CONSTANTS.TOTAL_PERCENTAGE) {
+    // Calculate how much we need to reduce
+    const excess = currentTotal - RATE_CONSTANTS.TOTAL_PERCENTAGE;
+    
+    // Collect rates that can be reduced (above their minimum)
+    const reducibleRarities = [];
+    let totalReducible = 0;
+    
+    for (const r of rarities) {
+      const minimum = r.minimumRate || 0;
+      const current = adjustedRates[r.name];
+      const reducibleAmount = current - minimum;
+      
+      if (reducibleAmount > 0) {
+        reducibleRarities.push({ name: r.name, reducible: reducibleAmount });
+        totalReducible += reducibleAmount;
+      }
+    }
+    
+    // Proportionally reduce rates
+    if (totalReducible > 0) {
+      for (const { name, reducible } of reducibleRarities) {
+        const reduction = (reducible / totalReducible) * excess;
+        adjustedRates[name] -= reduction;
+      }
+    }
+  }
+  
+  // Validate final rates in development
+  validateRatesSum(adjustedRates, `banner-${type}-x${rateMultiplier}`);
+  
+  return adjustedRates;
 };
 
 /**
@@ -250,52 +335,71 @@ const getBannerPullChance = (isLast3 = false) => {
  */
 const roundRatesForDisplay = (rates) => {
   const rounded = {};
-  Object.keys(rates).forEach(key => {
-    rounded[key] = Math.round(rates[key] * 100) / 100;
-  });
+  for (const [key, value] of Object.entries(rates)) {
+    rounded[key] = Math.round(value * 100) / 100;
+  }
   return rounded;
 };
 
+// ===========================================
+// PURE FUNCTION: Weighted Random Selection
+// ===========================================
+
 /**
- * Roll a rarity based on rates
- * Uses ordering from database (highest order = rarest, checked first)
- * Normalizes rates to handle cases where they don't sum to 100%
+ * Roll a rarity based on weighted rates
+ * 
+ * Algorithm:
+ * 1. Normalize rates to handle cases where they don't sum to 100%
+ * 2. Generate random value in range [0, total)
+ * 3. Walk through rarities in order, accumulating probability
+ * 4. Return first rarity where cumulative >= random value
+ * 
+ * Order matters: orderedRarities should be rarest-first to ensure
+ * proper fallback behavior (common is always last)
+ * 
  * @param {Object} rates - Object with rarity keys and percentage values
- * @param {Array} orderedRarities - Array of rarity names in order (rarest first)
- * @returns {string} - The rolled rarity
+ * @param {Array<string>} orderedRarities - Rarity names in order (rarest first, from DB order DESC)
+ * @returns {string} - The rolled rarity name
  */
 const rollRarity = (rates, orderedRarities = null) => {
-  // If ordered rarities provided, use them; otherwise use rates keys
+  // Determine order: prefer provided order, otherwise sort by rate (ascending = rarest first)
   const order = orderedRarities || Object.keys(rates).sort((a, b) => {
-    // Sort by rate ascending (rarest first for cumulative check)
     return (rates[a] || 0) - (rates[b] || 0);
   });
   
-  // Calculate total to normalize rates (handles cases where sum != 100)
+  // Calculate total for normalization
   let total = 0;
   for (const rarity of order) {
-    if (rates[rarity] !== undefined && rates[rarity] > 0) {
-      total += rates[rarity];
+    const rate = rates[rarity];
+    if (rate !== undefined && rate > 0) {
+      total += rate;
     }
   }
   
-  // If no valid rates, return fallback
-  if (total <= 0) {
+  // Edge case: no valid rates
+  if (total <= RATE_CONSTANTS.FLOATING_POINT_EPSILON) {
+    // Return the last rarity in order (should be common/lowest)
     return order[order.length - 1] || 'common';
   }
   
-  // Roll against the actual total (normalizes the probability distribution)
+  // Generate random value in [0, total)
+  // Using total instead of 100 normalizes the distribution
   const roll = Math.random() * total;
-  let cumulative = 0;
   
+  // Accumulate probabilities and find the selected rarity
+  let cumulative = 0;
   for (const rarity of order) {
-    if (rates[rarity] !== undefined && rates[rarity] > 0) {
-      cumulative += rates[rarity];
-      if (roll < cumulative) return rarity;
+    const rate = rates[rarity];
+    if (rate !== undefined && rate > 0) {
+      cumulative += rate;
+      // Use <= instead of < to handle floating-point edge case where roll === total
+      if (roll < cumulative || cumulative >= total - RATE_CONSTANTS.FLOATING_POINT_EPSILON) {
+        return rarity;
+      }
     }
   }
   
-  // Fallback to last rarity in order (should be common)
+  // Fallback: should not reach here, but return common as safety
   return order[order.length - 1] || 'common';
 };
 
@@ -336,6 +440,7 @@ const getFallbackRarities = () => [
 
 module.exports = {
   PRICING_CONFIG,
+  RATE_CONSTANTS,
   getDiscountForCount,
   calculateBannerRates,
   getStandardRates,
@@ -348,5 +453,9 @@ module.exports = {
   getOrderedRarities,
   invalidateRaritiesCache,
   isRarePlus,
-  isRarePlusSync
+  isRarePlusSync,
+  // Export pure functions for testing
+  normalizeRates,
+  validateRatesSum,
+  buildRatesFromRarities
 };

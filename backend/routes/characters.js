@@ -6,22 +6,88 @@ const {
   PRICING_CONFIG, 
   getDiscountForCount,
   getStandardRates,
-  getPityRates,
-  rollRarity,
-  getRarities,
-  getOrderedRarities
+  getRarities
 } = require('../config/pricing');
 const { getUserAllowR18, getR18PreferenceFromRequest } = require('../utils/userPreferences');
 const { 
   acquireRollLock,
   releaseRollLock,
-  groupCharactersByRarity, 
-  selectCharacterWithFallback, 
-  filterR18Characters,
-  isRarePlus 
+  filterR18Characters
 } = require('../utils/rollHelpers');
+const {
+  buildStandardRollContext,
+  executeSingleStandardRoll,
+  executeStandardMultiRoll
+} = require('../utils/rollEngine');
 
-// Multi-roll endpoint (10 characters at once)
+// ===========================================
+// ROLL ENDPOINTS
+// ===========================================
+
+/**
+ * Roll a single character
+ * POST /api/characters/roll
+ */
+router.post('/roll', auth, async (req, res) => {
+  const userId = req.user.id;
+  
+  if (!acquireRollLock(userId)) {
+    return res.status(429).json({ 
+      error: 'Roll in progress',
+      message: 'Another roll request is being processed'
+    });
+  }
+  
+  try {
+    const user = await User.findByPk(userId);
+    
+    if (user.points < PRICING_CONFIG.baseCost) {
+      releaseRollLock(userId);
+      return res.status(400).json({ error: 'Not enough points' });
+    }
+    
+    // Deduct points
+    user.points -= PRICING_CONFIG.baseCost;
+    await user.save();
+    
+    // Build roll context
+    const allowR18 = await getUserAllowR18(userId);
+    const allCharacters = await Character.findAll();
+    const context = await buildStandardRollContext(allCharacters, allowR18);
+    
+    // Execute roll
+    const result = await executeSingleStandardRoll(context, false);
+    
+    // Safety check: refund if no character available
+    if (!result.character) {
+      user.points += PRICING_CONFIG.baseCost;
+      await user.save();
+      releaseRollLock(userId);
+      return res.status(400).json({ error: 'No characters available to roll' });
+    }
+    
+    // Add character to user's collection
+    await user.addCharacter(result.character);
+    
+    console.log(`User ${user.username} (ID: ${user.id}) rolled ${result.character.name} (${result.actualRarity})`);
+    
+    releaseRollLock(userId);
+    
+    res.json({
+      ...result.character.toJSON(),
+      updatedPoints: user.points
+    });
+  } catch (err) {
+    releaseRollLock(userId);
+    console.error(err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * Multi-roll endpoint
+ * POST /api/characters/roll-multi
+ */
 router.post('/roll-multi', auth, async (req, res) => {
   const userId = req.user.id;
   
@@ -34,73 +100,46 @@ router.post('/roll-multi', auth, async (req, res) => {
   
   try {
     const count = Math.min(req.body.count || 10, PRICING_CONFIG.maxPulls);
+    
+    // Calculate cost with discount
     const basePoints = count * PRICING_CONFIG.baseCost;
     const discount = getDiscountForCount(count);
     const finalCost = Math.floor(basePoints * (1 - discount));
     
     const user = await User.findByPk(userId);
+    
     if (user.points < finalCost) {
       releaseRollLock(userId);
       return res.status(400).json({ error: `Not enough points. Required: ${finalCost}` });
     }
     
+    // Deduct points
     user.points -= finalCost;
     await user.save();
     
-    // Pity system: guarantee at least one rare+ for 10-pulls
-    const guaranteedRare = count >= 10;
-    
-    // Get user's R18 preference and filter characters
+    // Build roll context
     const allowR18 = await getUserAllowR18(userId);
     const allCharacters = await Character.findAll();
-    const characters = filterR18Characters(allCharacters, allowR18);
+    const context = await buildStandardRollContext(allCharacters, allowR18);
     
-    // Load rarities from database
-    const raritiesData = await getRarities();
-    const orderedRarities = raritiesData.map(r => r.name);
-    const charactersByRarity = groupCharactersByRarity(characters, orderedRarities);
+    // Execute multi-roll
+    const results = await executeStandardMultiRoll(context, count);
     
-    // Use centralized rates from pricing config (async)
-    const dropRates = await getStandardRates(count >= 10, raritiesData);
-    const pityRates = await getPityRates(raritiesData);
-    
-    let results = [];
-    let hasRarePlusResult = false;
-    
-    for (let i = 0; i < count; i++) {
-      const isLastRoll = (i === count - 1);
-      const needsPity = guaranteedRare && isLastRoll && !hasRarePlusResult;
-      
-      // Use centralized rollRarity helper
-      const currentRates = needsPity ? pityRates : dropRates;
-      const selectedRarity = rollRarity(currentRates, orderedRarities);
-      
-      if (isRarePlus(selectedRarity, raritiesData)) {
-        hasRarePlusResult = true;
+    // Add all characters to collection
+    for (const result of results) {
+      if (result.character) {
+        await user.addCharacter(result.character);
       }
-      
-      // Select character with fallback logic
-      const { character } = selectCharacterWithFallback(
-        null, // No primary pool for standard rolls
-        charactersByRarity,
-        selectedRarity,
-        characters,
-        raritiesData
-      );
-      
-      // Safety check: if no character found, skip this roll
-      if (!character) continue;
-      
-      await user.addCharacter(character);
-      results.push(character);
     }
     
-    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll with ${hasRarePlusResult ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
+    const hasRarePlus = results.some(r => r.wasPity || ['rare', 'epic', 'legendary'].includes(r.actualRarity));
+    
+    console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll with ${hasRarePlus ? 'rare+' : 'no rare+'} result (cost: ${finalCost}, discount: ${discount * 100}%)`);
     
     releaseRollLock(userId);
     
     res.json({
-      characters: results,
+      characters: results.map(r => r.character),
       updatedPoints: user.points
     });
   } catch (err) {
@@ -110,7 +149,14 @@ router.post('/roll-multi', auth, async (req, res) => {
   }
 });
 
-// Get pricing configuration for standard pulls
+// ===========================================
+// PRICING ENDPOINT
+// ===========================================
+
+/**
+ * Get pricing configuration for standard pulls
+ * GET /api/characters/pricing
+ */
 router.get('/pricing', async (req, res) => {
   try {
     const singlePullCost = PRICING_CONFIG.baseCost;
@@ -120,7 +166,6 @@ router.get('/pricing', async (req, res) => {
     res.json({
       ...PRICING_CONFIG,
       singlePullCost,
-      // Pre-calculated costs for quick select options
       pullOptions: PRICING_CONFIG.quickSelectOptions.map(count => {
         const discount = getDiscountForCount(count);
         const baseCost = count * singlePullCost;
@@ -148,76 +193,14 @@ router.get('/pricing', async (req, res) => {
   }
 });
 
-// Roll a single character
-router.post('/roll', auth, async (req, res) => {
-  const userId = req.user.id;
-  
-  if (!acquireRollLock(userId)) {
-    return res.status(429).json({ 
-      error: 'Roll in progress',
-      message: 'Another roll request is being processed'
-    });
-  }
-  
-  try {
-    const user = await User.findByPk(userId);
-    if (user.points < PRICING_CONFIG.baseCost) {
-      releaseRollLock(userId);
-      return res.status(400).json({ error: 'Not enough points' });
-    }
-    
-    user.points -= PRICING_CONFIG.baseCost;
-    await user.save();
-    
-    // Get user's R18 preference and filter characters
-    const allowR18 = await getUserAllowR18(userId);
-    const allCharacters = await Character.findAll();
-    const characters = filterR18Characters(allCharacters, allowR18);
-    
-    // Load rarities from database
-    const raritiesData = await getRarities();
-    const orderedRarities = raritiesData.map(r => r.name);
-    const charactersByRarity = groupCharactersByRarity(characters, orderedRarities);
-    
-    // Use centralized rates from pricing config (async)
-    const dropRates = await getStandardRates(false, raritiesData);
-    const selectedRarity = rollRarity(dropRates, orderedRarities);
-    
-    // Select character with fallback logic
-    const { character, actualRarity } = selectCharacterWithFallback(
-      null, // No primary pool for standard rolls
-      charactersByRarity,
-      selectedRarity,
-      characters,
-      raritiesData
-    );
-    
-    // Safety check: if no character found, refund and error
-    if (!character) {
-      user.points += PRICING_CONFIG.baseCost;
-      await user.save();
-      releaseRollLock(userId);
-      return res.status(400).json({ error: 'No characters available to roll' });
-    }
-    
-    await user.addCharacter(character);
-    
-    console.log(`User ${user.username} (ID: ${user.id}) rolled ${character.name} (${actualRarity})`);
-    
-    releaseRollLock(userId);
-    
-    res.json({
-      ...character.toJSON(),
-      updatedPoints: user.points
-    });
-  } catch (err) {
-    releaseRollLock(userId);
-    console.error(err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
+// ===========================================
+// COLLECTION ENDPOINTS
+// ===========================================
 
-// Get user's collection (filtered by R18 preference)
+/**
+ * Get user's collection (filtered by R18 preference)
+ * GET /api/characters/collection
+ */
 router.get('/collection', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
@@ -231,13 +214,15 @@ router.get('/collection', auth, async (req, res) => {
   }
 });
 
-// Combined collection data endpoint - single request for collection page
+/**
+ * Combined collection data endpoint - single request for collection page
+ * GET /api/characters/collection-data
+ */
 router.get('/collection-data', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     const allowR18 = await getUserAllowR18(req.user.id);
     
-    // Get user's collection and all characters in parallel
     const [collection, allCharacters] = await Promise.all([
       user.getCharacters(),
       Character.findAll()
@@ -253,7 +238,10 @@ router.get('/collection-data', auth, async (req, res) => {
   }
 });
 
-// Get all characters (filtered by R18 preference if authenticated)
+/**
+ * Get all characters (filtered by R18 preference if authenticated)
+ * GET /api/characters
+ */
 router.get('/', async (req, res) => {
   try {
     const characters = await Character.findAll();
