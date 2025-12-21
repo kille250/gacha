@@ -13,7 +13,7 @@ import {
   MdAutorenew,
   MdSearch
 } from 'react-icons/md';
-import { FaDumbbell, FaCoins, FaTicketAlt, FaStar, FaTimes, FaPlay } from 'react-icons/fa';
+import { FaDumbbell, FaCoins, FaTicketAlt, FaStar, FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import {
@@ -541,32 +541,32 @@ const DojoPage = () => {
                         <SeriesTitle>{series} ({chars.length})</SeriesTitle>
                         <CharacterGrid>
                           {chars.map(char => (
-                            <CharacterCard
-                              key={char.id}
-                              $color={getRarityColor(char.rarity)}
-                              onClick={() => handleAssign(char.id)}
-                              whileHover={{ scale: 1.05 }}
-                              whileTap={{ scale: 0.95 }}
-                            >
-                              {/* Use placeholder for videos, lazy load images */}
+                          <CharacterCard
+                            key={char.id}
+                            $color={getRarityColor(char.rarity)}
+                            onClick={() => handleAssign(char.id)}
+                            whileHover={{ scale: 1.05 }}
+                            whileTap={{ scale: 0.95 }}
+                          >
+                            {isVideo(char.image) ? (
+                              <CharVideo autoPlay loop muted playsInline>
+                                <source src={getAssetUrl(char.image)} type={getVideoMimeType(char.image)} />
+                              </CharVideo>
+                            ) : (
                               <CharImage 
-                                src={isVideo(char.image) ? PLACEHOLDER_IMAGE : (getAssetUrl(char.image) || PLACEHOLDER_IMAGE)}
+                                src={getAssetUrl(char.image) || PLACEHOLDER_IMAGE}
                                 alt={char.name}
                                 loading="lazy"
                                 onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
                               />
-                              {isVideo(char.image) && (
-                                <VideoBadge>
-                                  <FaPlay />
-                                </VideoBadge>
-                              )}
-                              <CharOverlay>
-                                <CharName>{char.name}</CharName>
-                                <CharRarity $color={getRarityColor(char.rarity)}>
-                                  {char.rarity}
-                                </CharRarity>
-                              </CharOverlay>
-                            </CharacterCard>
+                            )}
+                            <CharOverlay>
+                              <CharName>{char.name}</CharName>
+                              <CharRarity $color={getRarityColor(char.rarity)}>
+                                {char.rarity}
+                              </CharRarity>
+                            </CharOverlay>
+                          </CharacterCard>
                           ))}
                         </CharacterGrid>
                       </SeriesGroup>
@@ -1334,6 +1334,12 @@ const CharImage = styled.img`
   object-fit: cover;
 `;
 
+const CharVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
 const CharOverlay = styled.div`
   position: absolute;
   bottom: 0;
@@ -1361,23 +1367,6 @@ const CharRarity = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: white;
   text-transform: uppercase;
-`;
-
-const VideoBadge = styled.div`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 32px;
-  height: 32px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.7);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: white;
-  font-size: 12px;
-  pointer-events: none;
 `;
 
 const SearchHint = styled.div`
