@@ -52,7 +52,7 @@ const glow = keyframes`
 // ===========================================
 
 const DojoPage = () => {
-  useTranslation(); // For future i18n support
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const { user, refreshUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
@@ -81,11 +81,11 @@ const DojoPage = () => {
       setError(null);
     } catch (err) {
       console.error('Failed to fetch dojo status:', err);
-      setError('Failed to load dojo status');
+      setError(t('dojo.failedLoadStatus'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     fetchStatus();
@@ -129,7 +129,7 @@ const DojoPage = () => {
       await fetchStatus();
     } catch (err) {
       console.error('Failed to assign character:', err);
-      setError(err.response?.data?.error || 'Failed to assign character');
+      setError(err.response?.data?.error || t('dojo.failedAssign'));
     }
   };
 
@@ -140,7 +140,7 @@ const DojoPage = () => {
       await fetchStatus();
     } catch (err) {
       console.error('Failed to unassign character:', err);
-      setError(err.response?.data?.error || 'Failed to remove character');
+      setError(err.response?.data?.error || t('dojo.failedUnassign'));
     }
   };
 
@@ -159,7 +159,7 @@ const DojoPage = () => {
       setTimeout(() => setClaimResult(null), 5000);
     } catch (err) {
       console.error('Failed to claim rewards:', err);
-      setError(err.response?.data?.error || 'Failed to claim rewards');
+      setError(err.response?.data?.error || t('dojo.failedClaim'));
     } finally {
       setClaiming(false);
     }
@@ -176,7 +176,7 @@ const DojoPage = () => {
       await refreshUser();
     } catch (err) {
       console.error('Failed to purchase upgrade:', err);
-      setError(err.response?.data?.error || 'Failed to purchase upgrade');
+      setError(err.response?.data?.error || t('dojo.failedUpgrade'));
     } finally {
       setUpgrading(null);
     }
@@ -212,7 +212,7 @@ const DojoPage = () => {
       <PageContainer>
         <LoadingContainer>
           <Spinner />
-          <LoadingText>Loading Dojo...</LoadingText>
+          <LoadingText>{t('dojo.loading')}</LoadingText>
         </LoadingContainer>
       </PageContainer>
     );
@@ -228,7 +228,7 @@ const DojoPage = () => {
           </BackButton>
           <HeaderContent>
             <HeaderIcon>🏯</HeaderIcon>
-            <HeaderTitle>Character Dojo</HeaderTitle>
+            <HeaderTitle>{t('dojo.title')}</HeaderTitle>
           </HeaderContent>
           <HeaderStats>
             <StatBadge>
@@ -267,29 +267,29 @@ const DojoPage = () => {
           >
             <ClaimPopupContent>
               <ClaimPopupIcon>🎉</ClaimPopupIcon>
-              <ClaimPopupTitle>Training Complete!</ClaimPopupTitle>
+              <ClaimPopupTitle>{t('dojo.trainingComplete')}</ClaimPopupTitle>
               <ClaimPopupRewards>
                 {claimResult.rewards.points > 0 && (
                   <RewardItem>
                     <FaCoins color="#FFD700" />
-                    <span>+{claimResult.rewards.points.toLocaleString()} Points</span>
+                    <span>{t('dojo.points', { count: claimResult.rewards.points.toLocaleString() })}</span>
                   </RewardItem>
                 )}
                 {claimResult.rewards.rollTickets > 0 && (
                   <RewardItem>
                     <FaTicketAlt color="#0a84ff" />
-                    <span>+{claimResult.rewards.rollTickets} Roll Tickets</span>
+                    <span>{t('dojo.rollTickets', { count: claimResult.rewards.rollTickets })}</span>
                   </RewardItem>
                 )}
                 {claimResult.rewards.premiumTickets > 0 && (
                   <RewardItem>
                     <FaStar color="#bf5af2" />
-                    <span>+{claimResult.rewards.premiumTickets} Premium Tickets</span>
+                    <span>{t('dojo.premiumTickets', { count: claimResult.rewards.premiumTickets })}</span>
                   </RewardItem>
                 )}
               </ClaimPopupRewards>
               {claimResult.activeBonus && (
-                <ActiveBonusTag>1.5× Active Bonus Applied!</ActiveBonusTag>
+                <ActiveBonusTag>{t('dojo.activeBonusApplied')}</ActiveBonusTag>
               )}
             </ClaimPopupContent>
           </ClaimPopup>
@@ -302,7 +302,7 @@ const DojoPage = () => {
           <AccumulatedHeader>
             <AccumulatedTitle>
               <MdAccessTime />
-              <span>Accumulated Rewards</span>
+              <span>{t('dojo.accumulatedRewards')}</span>
             </AccumulatedTitle>
             <AccumulatedTime>
               {status?.accumulated?.hours?.toFixed(1) || 0}h / {status?.accumulated?.capHours || 8}h
@@ -336,11 +336,11 @@ const DojoPage = () => {
             whileTap={canClaim ? { scale: 0.98 } : {}}
           >
             {claiming ? (
-              <><MdAutorenew className="spin" /> Claiming...</>
+              <><MdAutorenew className="spin" /> {t('dojo.claiming')}</>
             ) : canClaim ? (
-              <>Claim Rewards (1.5× Active Bonus)</>
+              <>{t('dojo.claimRewards')}</>
             ) : (
-              <>No Rewards Yet</>
+              <>{t('dojo.noRewardsYet')}</>
             )}
           </ClaimButton>
         </AccumulatedCard>
@@ -349,7 +349,7 @@ const DojoPage = () => {
         <HourlyRateCard>
           <HourlyRateHeader>
             <MdTrendingUp />
-            <span>Hourly Rate</span>
+            <span>{t('dojo.hourlyRate')}</span>
           </HourlyRateHeader>
           <HourlyRateStats>
             <HourlyStat>
@@ -381,7 +381,7 @@ const DojoPage = () => {
           <SlotsHeader>
             <SlotsTitle>
               <FaDumbbell />
-              <span>Training Slots</span>
+              <span>{t('dojo.trainingSlots')}</span>
             </SlotsTitle>
             <SlotsCount>{status?.usedSlots || 0} / {status?.maxSlots || 3}</SlotsCount>
           </SlotsHeader>
@@ -430,7 +430,7 @@ const DojoPage = () => {
                   whileTap={{ scale: 0.98 }}
                 >
                   <MdAdd />
-                  <span>Add Character</span>
+                  <span>{t('dojo.addCharacter')}</span>
                 </EmptySlot>
               );
             })}
@@ -439,7 +439,7 @@ const DojoPage = () => {
             {Array.from({ length: Math.min(2, 10 - (status?.maxSlots || 3)) }).map((_, idx) => (
               <LockedSlot key={`locked-${idx}`}>
                 <MdLock />
-                <span>Locked</span>
+                <span>{t('dojo.locked')}</span>
               </LockedSlot>
             ))}
           </SlotsGrid>
@@ -447,7 +447,7 @@ const DojoPage = () => {
 
         {/* Upgrades Section */}
         <UpgradesSection>
-          <UpgradesTitle>Upgrades</UpgradesTitle>
+          <UpgradesTitle>{t('dojo.upgrades')}</UpgradesTitle>
           <UpgradesGrid>
             {status?.availableUpgrades?.map((upgrade, idx) => {
               const isUpgrading = upgrading === (upgrade.type + (upgrade.rarity || ''));
@@ -481,7 +481,7 @@ const DojoPage = () => {
             })}
             
             {(!status?.availableUpgrades || status.availableUpgrades.length === 0) && (
-              <NoUpgrades>All upgrades purchased! 🎉</NoUpgrades>
+              <NoUpgrades>{t('dojo.allUpgradesPurchased')}</NoUpgrades>
             )}
           </UpgradesGrid>
         </UpgradesSection>
@@ -503,7 +503,7 @@ const DojoPage = () => {
               onClick={(e) => e.stopPropagation()}
             >
               <ModalHeader>
-                <ModalTitle>Select Character</ModalTitle>
+                <ModalTitle>{t('dojo.selectCharacter')}</ModalTitle>
                 <ModalCloseBtn onClick={() => setShowCharacterPicker(false)}>
                   <MdClose />
                 </ModalCloseBtn>
@@ -513,7 +513,7 @@ const DojoPage = () => {
                 <MdSearch />
                 <SearchInput
                   type="text"
-                  placeholder="Search characters..."
+                  placeholder={t('dojo.searchCharacters')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   autoFocus
@@ -524,11 +524,11 @@ const DojoPage = () => {
                 {charactersLoading ? (
                   <ModalLoading>
                     <Spinner />
-                    <span>Loading characters...</span>
+                    <span>{t('dojo.loadingCharacters')}</span>
                   </ModalLoading>
                 ) : filteredCharacters.length === 0 ? (
                   <NoCharacters>
-                    {searchQuery ? 'No matching characters found' : 'No available characters. Roll some in the gacha!'}
+                    {searchQuery ? t('dojo.noMatchingCharacters') : t('dojo.noAvailableCharacters')}
                   </NoCharacters>
                 ) : (
                   <CharacterList>
