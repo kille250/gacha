@@ -348,7 +348,7 @@ const AdminPage = () => {
     }
   }, [altMediaSelectedTag, altMediaExtraTags, altMediaTypeFilter, selectAltMediaTag]);
 
-  const closeAltMediaPicker = useCallback(() => {
+  const closeAltMediaPicker = useCallback((clearSelection = false) => {
     if (longPressTimer.current) {
       clearTimeout(longPressTimer.current);
       longPressTimer.current = null;
@@ -363,7 +363,10 @@ const AdminPage = () => {
     setAltMediaHasMore(false);
     setAltMediaExtraTags('');
     setAltMediaTypeFilter('all');
-    setSelectedAltMedia(null);
+    // Only clear selectedAltMedia if explicitly requested (e.g., when canceling)
+    if (clearSelection) {
+      setSelectedAltMedia(null);
+    }
   }, []);
 
   const selectAltMedia = useCallback((media) => {
@@ -398,7 +401,7 @@ const AdminPage = () => {
       setSuccessMessage(t('admin.characterUpdated'));
       await fetchAllData();
       setIsEditingCharacter(false);
-      closeAltMediaPicker();
+      setSelectedAltMedia(null);
       setEditingCharacter(null);
       setEditImageFile(null);
       setEditImagePreview(null);
@@ -409,7 +412,7 @@ const AdminPage = () => {
     } finally {
       setAltMediaSaving(false);
     }
-  }, [editingCharacter, selectedAltMedia, editForm, t, fetchAllData, closeAltMediaPicker]);
+  }, [editingCharacter, selectedAltMedia, editForm, t, fetchAllData]);
 
   // Coin handlers
   const handleCoinFormChange = (e) => {
@@ -868,7 +871,7 @@ const AdminPage = () => {
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onMouseDown={closeAltMediaPicker}
+            onMouseDown={() => closeAltMediaPicker(true)}
           >
             <AltMediaModal
               initial={{ scale: 0.9, opacity: 0 }}
@@ -878,7 +881,7 @@ const AdminPage = () => {
             >
               <AltMediaHeader>
                 <h3><FaImage /> {t('animeImport.findAltImageFor', { name: editingCharacter?.name }) || `Find Alt Image for ${editingCharacter?.name}`}</h3>
-                <AltMediaCloseButton onClick={closeAltMediaPicker}><FaTimes /></AltMediaCloseButton>
+                <AltMediaCloseButton onClick={() => closeAltMediaPicker(true)}><FaTimes /></AltMediaCloseButton>
               </AltMediaHeader>
               
               <AltMediaBody>
@@ -1081,7 +1084,7 @@ const AdminPage = () => {
               
               <AltMediaFooter>
                 <SourceNote>{t('animeImport.danbooru') || 'Images from Danbooru'}</SourceNote>
-                <SmallButton onClick={closeAltMediaPicker}>{t('common.cancel')}</SmallButton>
+                <SmallButton onClick={() => closeAltMediaPicker(true)}>{t('common.cancel')}</SmallButton>
               </AltMediaFooter>
             </AltMediaModal>
           </AltMediaOverlay>
