@@ -130,11 +130,6 @@ const ImagePreviewModal = ({
                           Lv.{level}{level >= 5 ? ' ★ MAX' : ''}
                         </LevelValue>
                       </LevelTitle>
-                      {level > 1 && (
-                        <PowerBonus>
-                          ⚡ {Math.round((1 + (level - 1) * 0.25) * 100)}% Dojo Power
-                        </PowerBonus>
-                      )}
                     </LevelHeader>
                     
                     {level < 5 && (
@@ -173,7 +168,7 @@ const ImagePreviewModal = ({
                         whileTap={{ scale: 0.98 }}
                       >
                         <FaArrowUp />
-                        {isLevelingUp ? 'Leveling...' : `Level Up → Lv.${level + 1} (+25% power)`}
+                        {isLevelingUp ? 'Leveling...' : `Level Up → Lv.${level + 1}`}
                       </LevelUpButton>
                     )}
                   </LevelSection>
@@ -440,15 +435,6 @@ const LevelValue = styled.span`
   ${props => props.$isMaxLevel && `
     text-shadow: 0 0 10px rgba(255, 215, 0, 0.5);
   `}
-`;
-
-const PowerBonus = styled.div`
-  font-size: 12px;
-  font-weight: 600;
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.15);
-  padding: 4px 10px;
-  border-radius: 100px;
 `;
 
 const ProgressContainer = styled.div`

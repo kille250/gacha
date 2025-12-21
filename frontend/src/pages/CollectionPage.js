@@ -354,10 +354,6 @@ const CollectionPage = () => {
                   <LegendIcon $type="max">★</LegendIcon>
                   <span>Max level (Lv.5)</span>
                 </LegendItem>
-                <LegendItem>
-                  <LegendIcon $type="power">⚡</LegendIcon>
-                  <span>+25% Dojo power/level</span>
-                </LegendItem>
               </LegendItems>
             </LevelingLegend>
             
@@ -814,11 +810,6 @@ const LegendIcon = styled.span`
   ${props => props.$type === 'max' && `
     background: linear-gradient(135deg, rgba(255, 215, 0, 0.3), rgba(255, 140, 0, 0.3));
     color: #FFD700;
-  `}
-  
-  ${props => props.$type === 'power' && `
-    background: rgba(74, 222, 128, 0.2);
-    color: #4ade80;
   `}
 `;
 
