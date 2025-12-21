@@ -27,6 +27,11 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const [altMediaSelectedTag, setAltMediaSelectedTag] = useState(null); // Selected tag
   const [altMediaSort, setAltMediaSort] = useState('score'); // score, favorites, newest
   const [altMediaSearchQuery, setAltMediaSearchQuery] = useState('');
+  const [altMediaPage, setAltMediaPage] = useState(1); // Pagination
+  const [altMediaHasMore, setAltMediaHasMore] = useState(false);
+  const [altMediaLoadingMore, setAltMediaLoadingMore] = useState(false);
+  const [altMediaExtraTags, setAltMediaExtraTags] = useState(''); // Additional filter tags
+  const [altMediaTypeFilter, setAltMediaTypeFilter] = useState('all'); // all, animated, static
   
   // Selected characters for import
   const [selectedCharacters, setSelectedCharacters] = useState([]);
@@ -102,18 +107,40 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
 
 
   // Select a tag and load images
-  const selectAltMediaTag = useCallback(async (tag) => {
-    setAltMediaSelectedTag(tag);
-    setAltMediaLoading(true);
-    setAltMediaResults([]);
+  const selectAltMediaTag = useCallback(async (tag, extraTags = '', typeFilter = 'all', page = 1, append = false) => {
+    if (!append) {
+      setAltMediaSelectedTag(tag);
+      setAltMediaLoading(true);
+      setAltMediaResults([]);
+      setAltMediaPage(1);
+    } else {
+      setAltMediaLoadingMore(true);
+    }
     
     try {
-      const response = await api.get(`/anime-import/search-danbooru-tag?tag=${encodeURIComponent(tag.name)}&sort=${altMediaSort}`);
-      setAltMediaResults(response.data.results || []);
+      let url = `/anime-import/search-danbooru-tag?tag=${encodeURIComponent(tag.name)}&sort=${altMediaSort}&page=${page}`;
+      if (extraTags.trim()) {
+        url += `&extraTags=${encodeURIComponent(extraTags.trim())}`;
+      }
+      if (typeFilter !== 'all') {
+        url += `&typeFilter=${typeFilter}`;
+      }
+      
+      const response = await api.get(url);
+      const newResults = response.data.results || [];
+      
+      if (append) {
+        setAltMediaResults(prev => [...prev, ...newResults]);
+      } else {
+        setAltMediaResults(newResults);
+      }
+      setAltMediaHasMore(response.data.hasMore || false);
+      setAltMediaPage(page);
     } catch (err) {
       console.error('Image search failed:', err);
     } finally {
       setAltMediaLoading(false);
+      setAltMediaLoadingMore(false);
     }
   }, [altMediaSort]);
 
@@ -122,16 +149,40 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     setAltMediaSort(newSort);
     if (altMediaSelectedTag) {
       setAltMediaLoading(true);
+      setAltMediaResults([]);
+      setAltMediaPage(1);
       try {
-        const response = await api.get(`/anime-import/search-danbooru-tag?tag=${encodeURIComponent(altMediaSelectedTag.name)}&sort=${newSort}`);
+        let url = `/anime-import/search-danbooru-tag?tag=${encodeURIComponent(altMediaSelectedTag.name)}&sort=${newSort}&page=1`;
+        if (altMediaExtraTags.trim()) {
+          url += `&extraTags=${encodeURIComponent(altMediaExtraTags.trim())}`;
+        }
+        if (altMediaTypeFilter !== 'all') {
+          url += `&typeFilter=${altMediaTypeFilter}`;
+        }
+        const response = await api.get(url);
         setAltMediaResults(response.data.results || []);
+        setAltMediaHasMore(response.data.hasMore || false);
       } catch (err) {
         console.error('Image search failed:', err);
       } finally {
         setAltMediaLoading(false);
       }
     }
-  }, [altMediaSelectedTag]);
+  }, [altMediaSelectedTag, altMediaExtraTags, altMediaTypeFilter]);
+
+  // Load more results
+  const loadMoreAltMedia = useCallback(() => {
+    if (altMediaSelectedTag && altMediaHasMore && !altMediaLoadingMore) {
+      selectAltMediaTag(altMediaSelectedTag, altMediaExtraTags, altMediaTypeFilter, altMediaPage + 1, true);
+    }
+  }, [altMediaSelectedTag, altMediaHasMore, altMediaLoadingMore, altMediaPage, altMediaExtraTags, altMediaTypeFilter, selectAltMediaTag]);
+
+  // Apply extra filters
+  const applyExtraFilters = useCallback(() => {
+    if (altMediaSelectedTag) {
+      selectAltMediaTag(altMediaSelectedTag, altMediaExtraTags, altMediaTypeFilter, 1, false);
+    }
+  }, [altMediaSelectedTag, altMediaExtraTags, altMediaTypeFilter, selectAltMediaTag]);
 
   // Select alternative media for a character
   const selectAltMedia = useCallback((media) => {
@@ -165,6 +216,10 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     setAltMediaTags([]);
     setAltMediaSelectedTag(null);
     setAltMediaSearchQuery('');
+    setAltMediaPage(1);
+    setAltMediaHasMore(false);
+    setAltMediaExtraTags('');
+    setAltMediaTypeFilter('all');
   }, []);
 
   // Select an anime and fetch its characters
@@ -545,18 +600,46 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
 
                     {/* Selected Tag Info */}
                     {altMediaSelectedTag && (
-                      <SelectedTagBar>
-                        <SelectedTagName>
-                          {altMediaSelectedTag.category === 4 ? '👤' : altMediaSelectedTag.category === 3 ? '📺' : '🏷️'}
-                          {altMediaSelectedTag.displayName}
-                        </SelectedTagName>
-                        <SmallButton onClick={() => {
-                          setAltMediaSelectedTag(null);
-                          setAltMediaResults([]);
-                        }}>
-                          {t('animeImport.changeTag')}
-                        </SmallButton>
-                      </SelectedTagBar>
+                      <>
+                        <SelectedTagBar>
+                          <SelectedTagName>
+                            {altMediaSelectedTag.category === 4 ? '👤' : altMediaSelectedTag.category === 3 ? '📺' : '🏷️'}
+                            {altMediaSelectedTag.displayName}
+                          </SelectedTagName>
+                          <SmallButton onClick={() => {
+                            setAltMediaSelectedTag(null);
+                            setAltMediaResults([]);
+                            setAltMediaExtraTags('');
+                            setAltMediaTypeFilter('all');
+                          }}>
+                            {t('animeImport.changeTag')}
+                          </SmallButton>
+                        </SelectedTagBar>
+                        
+                        {/* Extra Filters Row */}
+                        <AltMediaFilterRow>
+                          <AltMediaExtraTagsInput
+                            type="text"
+                            placeholder={t('animeImport.extraTagsPlaceholder') || 'Additional tags (e.g. solo, 1girl)'}
+                            value={altMediaExtraTags}
+                            onChange={e => setAltMediaExtraTags(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && applyExtraFilters()}
+                          />
+                          <AltMediaTypeSelect
+                            value={altMediaTypeFilter}
+                            onChange={e => {
+                              setAltMediaTypeFilter(e.target.value);
+                            }}
+                          >
+                            <option value="all">{t('animeImport.typeAll') || 'All Types'}</option>
+                            <option value="animated">{t('animeImport.typeAnimated') || 'Animated Only'}</option>
+                            <option value="static">{t('animeImport.typeStatic') || 'Static Only'}</option>
+                          </AltMediaTypeSelect>
+                          <FilterApplyButton onClick={applyExtraFilters}>
+                            <FaSearch /> {t('animeImport.applyFilters') || 'Apply'}
+                          </FilterApplyButton>
+                        </AltMediaFilterRow>
+                      </>
                     )}
 
                     {/* Results */}
@@ -565,28 +648,43 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                     ) : altMediaSelectedTag && altMediaResults.length === 0 ? (
                       <EmptyText>{t('animeImport.noVideosFound')}</EmptyText>
                     ) : altMediaResults.length > 0 ? (
-                      <AltMediaGrid>
-                        {altMediaResults.map(media => (
-                          <AltMediaCard
-                            key={media.id}
-                            onClick={() => selectAltMedia(media)}
-                            whileHover={{ scale: 1.05 }}
-                            whileTap={{ scale: 0.95 }}
-                            $isAnimated={media.isAnimated}
-                          >
-                            <img src={media.preview} alt={`Option ${media.id}`} />
-                            <AltMediaFormat $isAnimated={media.isAnimated}>
-                              {media.isAnimated ? <><FaPlay /> {media.fileExt?.toUpperCase()}</> : media.fileExt?.toUpperCase()}
-                            </AltMediaFormat>
-                            <AltMediaScore>
-                              <FaStar /> {media.score}
-                            </AltMediaScore>
-                            <AltMediaSelectOverlay>
-                              <FaCheck /> {t('animeImport.selectThis')}
-                            </AltMediaSelectOverlay>
-                          </AltMediaCard>
-                        ))}
-                      </AltMediaGrid>
+                      <>
+                        <AltMediaResultsInfo>
+                          {t('animeImport.showingResults') || 'Showing'} {altMediaResults.length} {t('animeImport.results') || 'results'}
+                          {altMediaHasMore && ` (${t('animeImport.moreAvailable') || 'more available'})`}
+                        </AltMediaResultsInfo>
+                        <AltMediaGrid>
+                          {altMediaResults.map(media => (
+                            <AltMediaCard
+                              key={media.id}
+                              onClick={() => selectAltMedia(media)}
+                              whileHover={{ scale: 1.05 }}
+                              whileTap={{ scale: 0.95 }}
+                              $isAnimated={media.isAnimated}
+                            >
+                              <img src={media.preview} alt={`Option ${media.id}`} />
+                              <AltMediaFormat $isAnimated={media.isAnimated}>
+                                {media.isAnimated ? <><FaPlay /> {media.fileExt?.toUpperCase()}</> : media.fileExt?.toUpperCase()}
+                              </AltMediaFormat>
+                              <AltMediaScore>
+                                <FaStar /> {media.score}
+                              </AltMediaScore>
+                              <AltMediaSelectOverlay>
+                                <FaCheck /> {t('animeImport.selectThis')}
+                              </AltMediaSelectOverlay>
+                            </AltMediaCard>
+                          ))}
+                        </AltMediaGrid>
+                        {altMediaHasMore && (
+                          <LoadMoreButton onClick={loadMoreAltMedia} disabled={altMediaLoadingMore}>
+                            {altMediaLoadingMore ? (
+                              <><FaSpinner className="spin" /> {t('animeImport.loadingMore') || 'Loading...'}</>
+                            ) : (
+                              <>{t('animeImport.loadMore') || 'Load More'}</>
+                            )}
+                          </LoadMoreButton>
+                        )}
+                      </>
                     ) : !altMediaSelectedTag && altMediaTags.length === 0 && !altMediaLoading ? (
                       <EmptyText>{t('animeImport.typeToSearch')}</EmptyText>
                     ) : null}
@@ -1463,6 +1561,107 @@ const AltMediaScore = styled.div`
   display: flex;
   align-items: center;
   gap: 3px;
+`;
+
+const AltMediaFilterRow = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 15px;
+  flex-wrap: wrap;
+`;
+
+const AltMediaExtraTagsInput = styled.input`
+  flex: 1;
+  min-width: 150px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 0.85rem;
+  
+  &:focus {
+    outline: none;
+    border-color: #9b59b6;
+  }
+  
+  &::placeholder {
+    color: #666;
+  }
+`;
+
+const AltMediaTypeSelect = styled.select`
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  border-radius: 8px;
+  padding: 8px 12px;
+  color: #fff;
+  font-size: 0.85rem;
+  cursor: pointer;
+  
+  &:focus {
+    outline: none;
+    border-color: #9b59b6;
+  }
+  
+  option {
+    background: #1a1a2e;
+    color: #fff;
+  }
+`;
+
+const FilterApplyButton = styled.button`
+  background: linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%);
+  border: none;
+  color: #fff;
+  padding: 8px 14px;
+  border-radius: 8px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 3px 10px rgba(155, 89, 182, 0.3);
+  }
+`;
+
+const AltMediaResultsInfo = styled.div`
+  color: #888;
+  font-size: 0.8rem;
+  margin-bottom: 10px;
+`;
+
+const LoadMoreButton = styled.button`
+  width: 100%;
+  background: rgba(155, 89, 182, 0.2);
+  border: 1px solid rgba(155, 89, 182, 0.4);
+  color: #fff;
+  padding: 12px 20px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 15px;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  
+  &:hover:not(:disabled) {
+    background: rgba(155, 89, 182, 0.3);
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
 `;
 
 export default AnimeImportModal;

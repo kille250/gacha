@@ -442,6 +442,15 @@
     "sortNewest": "新着順",
     "typeToSearch": "タグを検索するには入力...",
     "searchingVideos": "検索中...",
-    "noVideosFound": "このタグの結果が見つかりません"
+    "noVideosFound": "このタグの結果が見つかりません",
+    "extraTagsPlaceholder": "追加タグ（例：solo, 1girl）",
+    "typeAll": "すべてのタイプ",
+    "typeAnimated": "アニメーションのみ",
+    "typeStatic": "静止画のみ",
+    "applyFilters": "適用",
+    "showingResults": "表示中",
+    "results": "件の結果",
+    "moreAvailable": "さらに読み込み可能",
+    "loadingMore": "読み込み中..."
   }
 }

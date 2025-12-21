@@ -440,6 +440,15 @@
     "sortNewest": "Neueste",
     "typeToSearch": "Tippe um nach Tags zu suchen...",
     "searchingVideos": "Suche...",
-    "noVideosFound": "Keine Ergebnisse für diesen Tag gefunden"
+    "noVideosFound": "Keine Ergebnisse für diesen Tag gefunden",
+    "extraTagsPlaceholder": "Zusätzliche Tags (z.B. solo, 1girl)",
+    "typeAll": "Alle Typen",
+    "typeAnimated": "Nur animiert",
+    "typeStatic": "Nur statisch",
+    "applyFilters": "Anwenden",
+    "showingResults": "Zeige",
+    "results": "Ergebnisse",
+    "moreAvailable": "mehr verfügbar",
+    "loadingMore": "Laden..."
   }
 }

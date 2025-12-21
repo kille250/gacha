@@ -520,7 +520,7 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
 // Search Danbooru with exact tag and sorting options
 router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
   try {
-    const { tag, page = 1, sort = 'score' } = req.query;
+    const { tag, page = 1, sort = 'score', extraTags = '', typeFilter = 'all' } = req.query;
     
     if (!tag || tag.trim().length < 1) {
       return res.status(400).json({ error: 'Tag is required' });
@@ -530,8 +530,26 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
     // Sort options: score, favcount, id (newest)
     const orderTag = sort === 'newest' ? 'order:id_desc' : sort === 'favorites' ? 'order:favcount' : 'order:score';
     
+    // Build tags string
+    let tagsStr = encodeURIComponent(tag);
+    
+    // Add extra tags if provided (convert spaces to underscores for each tag)
+    if (extraTags.trim()) {
+      const extraTagsArr = extraTags.trim().split(/[\s,]+/).filter(t => t.length > 0);
+      for (const et of extraTagsArr) {
+        tagsStr += `+${encodeURIComponent(et.toLowerCase().replace(/\s+/g, '_'))}`;
+      }
+    }
+    
+    // Add type filter
+    if (typeFilter === 'animated') {
+      tagsStr += '+animated';
+    } else if (typeFilter === 'static') {
+      tagsStr += '+-animated';
+    }
+    
     // Search with exact tag + safe rating + sorting
-    const searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+rating:g,s+${orderTag}&limit=${limit}&page=${page}`;
+    const searchUrl = `${DANBOORU_API}/posts.json?tags=${tagsStr}+rating:g,s+${orderTag}&limit=${limit}&page=${page}`;
     
     const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
@@ -540,7 +558,7 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
     
     const posts = await response.json();
     
-    const results = posts
+    let results = posts
       .filter(post => post.file_url || post.large_file_url)
       .map(post => {
         const ext = (post.file_ext || '').toLowerCase();
@@ -561,6 +579,13 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
           isAnimated
         };
       });
+    
+    // Client-side filter for animated/static as backup (Danbooru tag might not be perfect)
+    if (typeFilter === 'animated') {
+      results = results.filter(r => r.isAnimated);
+    } else if (typeFilter === 'static') {
+      results = results.filter(r => !r.isAnimated);
+    }
     
     res.json({
       results,
