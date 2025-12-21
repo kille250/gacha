@@ -34,7 +34,6 @@ import {
 } from './AdminStyles';
 
 const AdminRarities = ({ onRefresh }) => {
-  // eslint-disable-next-line no-unused-vars
   const { t } = useTranslation();
   const [rarities, setRarities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -205,11 +204,11 @@ const AdminRarities = ({ onRefresh }) => {
 
   const handleDelete = async (rarity) => {
     if (rarity.isDefault) {
-      alert('Cannot delete default rarities. You can only modify their settings.');
+      alert(t('admin.rarities.cannotDeleteDefault'));
       return;
     }
     
-    if (!window.confirm(`Are you sure you want to delete "${rarity.displayName}"?`)) {
+    if (!window.confirm(`${t('admin.rarities.confirmDelete')} "${rarity.displayName}"?`)) {
       return;
     }
     
@@ -224,7 +223,7 @@ const AdminRarities = ({ onRefresh }) => {
   };
 
   const handleResetDefaults = async () => {
-    if (!window.confirm('Reset all default rarities to their original values? This will not affect custom rarities.')) {
+    if (!window.confirm(t('admin.rarities.confirmReset'))) {
       return;
     }
     
@@ -243,7 +242,7 @@ const AdminRarities = ({ onRefresh }) => {
       <AdminContainer>
         <EmptyState>
           <EmptyIcon>⏳</EmptyIcon>
-          <EmptyText>Loading rarities...</EmptyText>
+          <EmptyText>{t('admin.rarities.loading')}</EmptyText>
         </EmptyState>
       </AdminContainer>
     );
@@ -271,18 +270,18 @@ const AdminRarities = ({ onRefresh }) => {
     >
       <HeaderRow>
         <SectionTitle $iconColor={theme.colors.warning}>
-          <FaStar /> Rarity Configuration
-          <ItemCount>{rarities.length} rarities</ItemCount>
+          <FaStar /> {t('admin.rarities.title')}
+          <ItemCount>{rarities.length} {t('admin.tabs.rarities').toLowerCase()}</ItemCount>
         </SectionTitle>
       </HeaderRow>
       
       <ActionBar>
         <ActionGroup>
           <ActionButton onClick={handleAddClick}>
-            <FaPlus /> Add Rarity
+            <FaPlus /> {t('admin.rarities.addRarity')}
           </ActionButton>
           <ActionButton $variant="warning" onClick={handleResetDefaults}>
-            <FaUndo /> Reset Defaults
+            <FaUndo /> {t('admin.rarities.resetDefaults')}
           </ActionButton>
         </ActionGroup>
       </ActionBar>
@@ -290,26 +289,22 @@ const AdminRarities = ({ onRefresh }) => {
       {/* Rate System Info Box */}
       <InfoBox>
         <InfoHeader>
-          <FaInfoCircle /> How Drop Rates Work
+          <FaInfoCircle /> {t('admin.rarities.infoTitle')}
         </InfoHeader>
         <InfoContent>
           <InfoText>
-            <strong>Rate Normalization:</strong> Rates are normalized to sum to 100%. 
-            If you set one rarity to 100% but others have non-zero rates, the actual probability 
-            will be calculated as: <code>your_rate ÷ total_of_all_rates</code>
+            <strong>Rate Normalization:</strong> {t('admin.rarities.infoNormalization')}{' '}
+            <code>{t('admin.rarities.infoNormalizationFormula')}</code>
           </InfoText>
           <InfoText>
-            <strong>Minimum Rate:</strong> Each rarity has a configurable <code>Minimum Rate</code> that 
-            acts as a floor for banner pulls. By default, Common has 35% minimum. 
-            <strong> Set to 0 to allow true 100% guaranteed banners.</strong>
+            <strong>Minimum Rate:</strong> {t('admin.rarities.infoMinimumRate')}{' '}
+            <strong>{t('admin.rarities.infoMinimumRateTip')}</strong>
           </InfoText>
           <InfoText>
-            <strong>Banner Rate Multiplier:</strong> Each banner has a rate multiplier (default 5×) that boosts 
-            rare+ rates, but each rarity has a cap that limits the maximum boost.
+            <strong>Banner Rate Multiplier:</strong> {t('admin.rarities.infoMultiplier')}
           </InfoText>
           <InfoText>
-            <strong>To create a 100% Legendary banner:</strong> Set Legendary's banner rate to 100%, 
-            all other rarities to 0%, and set Common's Minimum Rate to 0%.
+            <strong>{t('admin.rarities.infoHowTo100')}</strong> {t('admin.rarities.infoHowTo100Steps')}
           </InfoText>
         </InfoContent>
       </InfoBox>
@@ -318,12 +313,11 @@ const AdminRarities = ({ onRefresh }) => {
       {hasInvalidTotals && rateTotals && (
         <WarningBox>
           <WarningHeader>
-            <FaExclamationTriangle /> Rate Totals Don't Equal 100%
+            <FaExclamationTriangle /> {t('admin.rarities.warningTitle')}
           </WarningHeader>
           <WarningContent>
             <WarningText>
-              Some rate pools don't sum to 100%. Rates will be normalized during rolls, 
-              which may produce unexpected probabilities.
+              {t('admin.rarities.warningText')}
             </WarningText>
             <RateTotalsGrid>
               {rateTotals.map(pool => (
@@ -331,7 +325,7 @@ const AdminRarities = ({ onRefresh }) => {
                   <RateTotalLabel>{pool.label}</RateTotalLabel>
                   <RateTotalValue $isValid={pool.isValid}>
                     {pool.total.toFixed(1)}%
-                    {!pool.isValid && <span> → normalized to 100%</span>}
+                    {!pool.isValid && <span> → {t('admin.rarities.normalizedTo100')}</span>}
                   </RateTotalValue>
                 </RateTotalItem>
               ))}
@@ -343,8 +337,8 @@ const AdminRarities = ({ onRefresh }) => {
       {rarities.length === 0 ? (
         <EmptyState>
           <EmptyIcon>⭐</EmptyIcon>
-          <EmptyText>No rarities configured</EmptyText>
-          <EmptySubtext>Add rarities to define drop rates and visual styles</EmptySubtext>
+          <EmptyText>{t('admin.rarities.noRarities')}</EmptyText>
+          <EmptySubtext>{t('admin.rarities.noRaritiesDesc')}</EmptySubtext>
         </EmptyState>
       ) : (
         <RarityGrid>
@@ -366,10 +360,10 @@ const AdminRarities = ({ onRefresh }) => {
                 
                 <RarityBody>
                   <RaritySection>
-                    <SectionLabel><FaPercent /> Drop Rates (Single / Multi)</SectionLabel>
+                    <SectionLabel><FaPercent /> {t('admin.rarities.dropRates')}</SectionLabel>
                     <RateGrid>
                       <RateItem>
-                        <RateLabel>Standard</RateLabel>
+                        <RateLabel>{t('admin.rarities.standard')}</RateLabel>
                         <RateValue>{rarity.dropRateStandardSingle}% / {rarity.dropRateStandardMulti}%</RateValue>
                         {rateTotals && (
                           <EffectiveRate>
@@ -378,7 +372,7 @@ const AdminRarities = ({ onRefresh }) => {
                         )}
                       </RateItem>
                       <RateItem>
-                        <RateLabel>Banner</RateLabel>
+                        <RateLabel>{t('admin.rarities.banner')}</RateLabel>
                         <RateValue>{rarity.dropRateBannerSingle}% / {rarity.dropRateBannerMulti}%</RateValue>
                         {rateTotals && (
                           <EffectiveRate>
@@ -387,7 +381,7 @@ const AdminRarities = ({ onRefresh }) => {
                         )}
                       </RateItem>
                       <RateItem>
-                        <RateLabel>Premium</RateLabel>
+                        <RateLabel>{t('admin.rarities.premium')}</RateLabel>
                         <RateValue>{rarity.dropRatePremiumSingle}% / {rarity.dropRatePremiumMulti}%</RateValue>
                         {rateTotals && (
                           <EffectiveRate>
@@ -396,7 +390,7 @@ const AdminRarities = ({ onRefresh }) => {
                         )}
                       </RateItem>
                       <RateItem>
-                        <RateLabel>Pity</RateLabel>
+                        <RateLabel>{t('admin.rarities.pity')}</RateLabel>
                         <RateValue>{rarity.dropRatePity}%</RateValue>
                         {rateTotals && (
                           <EffectiveRate>
@@ -408,26 +402,26 @@ const AdminRarities = ({ onRefresh }) => {
                   </RaritySection>
                   
                   <RaritySection>
-                    <SectionLabel><FaPalette /> Visual</SectionLabel>
+                    <SectionLabel><FaPalette /> {t('admin.rarities.visual')}</SectionLabel>
                     <VisualRow>
                       <ColorSwatch $color={rarity.color} title="Primary Color" />
                       {rarity.accentColor && (
                         <ColorSwatch $color={rarity.accentColor} title="Accent Color" />
                       )}
                       <VisualInfo>
-                        <span>Glow: {Math.round(rarity.glowIntensity * 100)}%</span>
-                        <span>Orbs: {rarity.orbCount}</span>
+                        <span>{t('admin.rarities.glow')}: {Math.round(rarity.glowIntensity * 100)}%</span>
+                        <span>{t('admin.rarities.orbs')}: {rarity.orbCount}</span>
                       </VisualInfo>
                     </VisualRow>
                   </RaritySection>
                   
                   <RarityMeta>
-                    <MetaItem>Order: {rarity.order}</MetaItem>
+                    <MetaItem>{t('admin.rarities.order')}: {rarity.order}</MetaItem>
                     {rarity.minimumRate > 0 && (
-                      <MetaItem $warning>Min: {rarity.minimumRate}%</MetaItem>
+                      <MetaItem $warning>{t('admin.rarities.min')}: {rarity.minimumRate}%</MetaItem>
                     )}
-                    {rarity.isPityEligible && <MetaItem $highlight>Pity Eligible</MetaItem>}
-                    {rarity.isDefault && <MetaItem $muted>Default</MetaItem>}
+                    {rarity.isPityEligible && <MetaItem $highlight>{t('admin.rarities.pityEligible')}</MetaItem>}
+                    {rarity.isDefault && <MetaItem $muted>{t('admin.rarities.default')}</MetaItem>}
                   </RarityMeta>
                 </RarityBody>
                 
@@ -465,7 +459,7 @@ const AdminRarities = ({ onRefresh }) => {
             >
               <ModalHeader>
                 <ModalTitle $iconColor={theme.colors.warning}>
-                  <FaStar /> {editingRarity ? 'Edit Rarity' : 'Add Rarity'}
+                  <FaStar /> {editingRarity ? t('admin.rarities.editRarity') : t('admin.rarities.addRarity')}
                 </ModalTitle>
                 <CloseButton onClick={() => setShowModal(false)}>×</CloseButton>
               </ModalHeader>
@@ -474,10 +468,10 @@ const AdminRarities = ({ onRefresh }) => {
                 <form onSubmit={handleSubmit}>
                   {/* Basic Info */}
                   <FormSection>
-                    <FormSectionTitle>Basic Information</FormSectionTitle>
+                    <FormSectionTitle>{t('admin.rarities.basicInfo')}</FormSectionTitle>
                     <FormRow>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Internal Name</Label>
+                        <Label>{t('admin.rarities.internalName')}</Label>
                         <Input
                           type="text"
                           name="name"
@@ -489,7 +483,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Display Name</Label>
+                        <Label>{t('admin.rarities.displayName')}</Label>
                         <Input
                           type="text"
                           name="displayName"
@@ -500,7 +494,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup style={{ width: '100px' }}>
-                        <Label>Order</Label>
+                        <Label>{t('admin.rarities.order')}</Label>
                         <Input
                           type="number"
                           name="order"
@@ -514,10 +508,10 @@ const AdminRarities = ({ onRefresh }) => {
 
                   {/* Drop Rates */}
                   <FormSection>
-                    <FormSectionTitle><FaPercent /> Drop Rates (%)</FormSectionTitle>
+                    <FormSectionTitle><FaPercent /> {t('admin.rarities.dropRatesPercent')}</FormSectionTitle>
                     <RateFormGrid>
                       <FormGroup>
-                        <Label>Standard Single</Label>
+                        <Label>{t('admin.rarities.standardSingle')}</Label>
                         <Input
                           type="number"
                           name="dropRateStandardSingle"
@@ -529,7 +523,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup>
-                        <Label>Standard Multi</Label>
+                        <Label>{t('admin.rarities.standardMulti')}</Label>
                         <Input
                           type="number"
                           name="dropRateStandardMulti"
@@ -541,7 +535,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup>
-                        <Label>Banner Single</Label>
+                        <Label>{t('admin.rarities.bannerSingle')}</Label>
                         <Input
                           type="number"
                           name="dropRateBannerSingle"
@@ -553,7 +547,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup>
-                        <Label>Banner Multi</Label>
+                        <Label>{t('admin.rarities.bannerMulti')}</Label>
                         <Input
                           type="number"
                           name="dropRateBannerMulti"
@@ -565,7 +559,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup>
-                        <Label>Premium Single</Label>
+                        <Label>{t('admin.rarities.premiumSingle')}</Label>
                         <Input
                           type="number"
                           name="dropRatePremiumSingle"
@@ -577,7 +571,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup>
-                        <Label>Premium Multi</Label>
+                        <Label>{t('admin.rarities.premiumMulti')}</Label>
                         <Input
                           type="number"
                           name="dropRatePremiumMulti"
@@ -589,7 +583,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup>
-                        <Label>Pity</Label>
+                        <Label>{t('admin.rarities.pity')}</Label>
                         <Input
                           type="number"
                           name="dropRatePity"
@@ -605,32 +599,32 @@ const AdminRarities = ({ onRefresh }) => {
 
                   {/* Caps & Scaling */}
                   <FormSection>
-                    <FormSectionTitle>Banner Multiplier Settings</FormSectionTitle>
+                    <FormSectionTitle>{t('admin.rarities.bannerMultiplierSettings')}</FormSectionTitle>
                     <FormRow>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Cap Single (%)</Label>
+                        <Label>{t('admin.rarities.capSingle')}</Label>
                         <Input
                           type="number"
                           name="capSingle"
                           value={formData.capSingle}
                           onChange={handleNumberChange}
                           step="0.1"
-                          placeholder="No cap"
+                          placeholder={t('admin.rarities.noCap')}
                         />
                       </FormGroup>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Cap Multi (%)</Label>
+                        <Label>{t('admin.rarities.capMulti')}</Label>
                         <Input
                           type="number"
                           name="capMulti"
                           value={formData.capMulti}
                           onChange={handleNumberChange}
                           step="0.1"
-                          placeholder="No cap"
+                          placeholder={t('admin.rarities.noCap')}
                         />
                       </FormGroup>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Multiplier Scaling</Label>
+                        <Label>{t('admin.rarities.multiplierScaling')}</Label>
                         <Input
                           type="number"
                           name="multiplierScaling"
@@ -641,7 +635,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Minimum Rate (%)</Label>
+                        <Label>{t('admin.rarities.minimumRate')}</Label>
                         <Input
                           type="number"
                           name="minimumRate"
@@ -651,17 +645,17 @@ const AdminRarities = ({ onRefresh }) => {
                           min="0"
                           max="100"
                         />
-                        <FieldHint>Floor rate for banner pulls. Set to 0 to allow true 100% banners.</FieldHint>
+                        <FieldHint>{t('admin.rarities.minimumRateHint')}</FieldHint>
                       </FormGroup>
                     </FormRow>
                   </FormSection>
 
                   {/* Visual Settings */}
                   <FormSection>
-                    <FormSectionTitle><FaPalette /> Visual Settings</FormSectionTitle>
+                    <FormSectionTitle><FaPalette /> {t('admin.rarities.visualSettings')}</FormSectionTitle>
                     <FormRow>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Primary Color</Label>
+                        <Label>{t('admin.rarities.primaryColor')}</Label>
                         <ColorInputWrapper>
                           <ColorInput
                             type="color"
@@ -678,7 +672,7 @@ const AdminRarities = ({ onRefresh }) => {
                         </ColorInputWrapper>
                       </FormGroup>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Accent Color (optional)</Label>
+                        <Label>{t('admin.rarities.accentColor')}</Label>
                         <ColorInputWrapper>
                           <ColorInput
                             type="color"
@@ -690,7 +684,7 @@ const AdminRarities = ({ onRefresh }) => {
                             type="text"
                             value={formData.accentColor}
                             onChange={(e) => setFormData(prev => ({ ...prev, accentColor: e.target.value }))}
-                            placeholder="Auto"
+                            placeholder={t('admin.rarities.accentColorAuto')}
                             style={{ flex: 1 }}
                           />
                         </ColorInputWrapper>
@@ -700,10 +694,10 @@ const AdminRarities = ({ onRefresh }) => {
 
                   {/* Animation Settings */}
                   <FormSection>
-                    <FormSectionTitle><FaMagic /> Animation Settings</FormSectionTitle>
+                    <FormSectionTitle><FaMagic /> {t('admin.rarities.animationSettings')}</FormSectionTitle>
                     <FormRow>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Glow Intensity (0-1)</Label>
+                        <Label>{t('admin.rarities.glowIntensity')}</Label>
                         <Input
                           type="number"
                           name="glowIntensity"
@@ -715,7 +709,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Buildup Time (ms)</Label>
+                        <Label>{t('admin.rarities.buildupTime')}</Label>
                         <Input
                           type="number"
                           name="buildupTime"
@@ -725,7 +719,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Confetti Count</Label>
+                        <Label>{t('admin.rarities.confettiCount')}</Label>
                         <Input
                           type="number"
                           name="confettiCount"
@@ -737,7 +731,7 @@ const AdminRarities = ({ onRefresh }) => {
                     </FormRow>
                     <FormRow>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Orb Count</Label>
+                        <Label>{t('admin.rarities.orbCount')}</Label>
                         <Input
                           type="number"
                           name="orbCount"
@@ -747,7 +741,7 @@ const AdminRarities = ({ onRefresh }) => {
                         />
                       </FormGroup>
                       <FormGroup style={{ flex: 1 }}>
-                        <Label>Ring Count</Label>
+                        <Label>{t('admin.rarities.ringCount')}</Label>
                         <Input
                           type="number"
                           name="ringCount"
@@ -765,7 +759,7 @@ const AdminRarities = ({ onRefresh }) => {
                             checked={formData.isPityEligible}
                             onChange={handleInputChange}
                           />
-                          <span>Pity Eligible (rare+)</span>
+                          <span>{t('admin.rarities.isPityEligible')}</span>
                         </CheckboxLabel>
                       </FormGroup>
                     </FormRow>
@@ -773,10 +767,10 @@ const AdminRarities = ({ onRefresh }) => {
 
                   <FormRow style={{ marginTop: theme.spacing.lg }}>
                     <SecondaryButton type="button" onClick={() => setShowModal(false)} style={{ flex: 1 }}>
-                      Cancel
+                      {t('common.cancel')}
                     </SecondaryButton>
                     <PrimaryButton type="submit" style={{ flex: 2 }}>
-                      {editingRarity ? 'Save Changes' : 'Create Rarity'}
+                      {editingRarity ? t('admin.rarities.saveChanges') : t('admin.rarities.createRarity')}
                     </PrimaryButton>
                   </FormRow>
                 </form>
