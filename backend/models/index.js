@@ -41,6 +41,12 @@ const UserCharacter = sequelize.define('UserCharacter', {
 User.belongsToMany(Character, { through: UserCharacter });
 Character.belongsToMany(User, { through: UserCharacter });
 
+// Explicit associations on junction table for direct queries
+UserCharacter.belongsTo(User, { foreignKey: 'UserId' });
+UserCharacter.belongsTo(Character, { foreignKey: 'CharacterId' });
+User.hasMany(UserCharacter, { foreignKey: 'UserId' });
+Character.hasMany(UserCharacter, { foreignKey: 'CharacterId' });
+
 // Banner <-> Character
 Banner.belongsToMany(Character, { through: 'BannerCharacters' });
 Character.belongsToMany(Banner, { through: 'BannerCharacters' });
