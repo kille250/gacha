@@ -1,7 +1,7 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaStar, FaEdit, FaTrash, FaPlus, FaUndo, FaPercent, FaPalette, FaMagic } from 'react-icons/fa';
+import { FaStar, FaEdit, FaTrash, FaPlus, FaUndo, FaPercent, FaPalette, FaMagic, FaExclamationTriangle, FaInfoCircle } from 'react-icons/fa';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../utils/api';
@@ -58,6 +58,7 @@ const AdminRarities = ({ onRefresh }) => {
       capSingle: '',
       capMulti: '',
       multiplierScaling: 1,
+      minimumRate: 0,
       color: '#8e8e93',
       accentColor: '',
       glowIntensity: 0.5,
@@ -86,6 +87,45 @@ const AdminRarities = ({ onRefresh }) => {
   useEffect(() => {
     fetchRarities();
   }, []);
+
+  // Calculate rate totals for each pool type
+  const rateTotals = useMemo(() => {
+    if (rarities.length === 0) return null;
+    
+    const pools = [
+      { key: 'standardSingle', label: 'Standard Single', field: 'dropRateStandardSingle' },
+      { key: 'standardMulti', label: 'Standard Multi', field: 'dropRateStandardMulti' },
+      { key: 'bannerSingle', label: 'Banner Single', field: 'dropRateBannerSingle' },
+      { key: 'bannerMulti', label: 'Banner Multi', field: 'dropRateBannerMulti' },
+      { key: 'premiumSingle', label: 'Premium Single', field: 'dropRatePremiumSingle' },
+      { key: 'premiumMulti', label: 'Premium Multi', field: 'dropRatePremiumMulti' },
+      { key: 'pity', label: 'Pity', field: 'dropRatePity' },
+    ];
+    
+    return pools.map(pool => {
+      const total = rarities.reduce((sum, r) => sum + (r[pool.field] || 0), 0);
+      const hasCommonMinimum = pool.key.includes('banner') || pool.key.includes('standard');
+      const commonRate = rarities.find(r => r.name === 'common')?.[pool.field] || 0;
+      
+      // Calculate effective rates after normalization
+      const effectiveRates = {};
+      rarities.forEach(r => {
+        effectiveRates[r.name] = total > 0 ? ((r[pool.field] || 0) / total * 100).toFixed(1) : 0;
+      });
+      
+      return {
+        ...pool,
+        total,
+        isValid: Math.abs(total - 100) < 0.1,
+        hasCommonMinimum,
+        commonRate,
+        effectiveRates,
+      };
+    });
+  }, [rarities]);
+
+  // Check if any pool has invalid totals
+  const hasInvalidTotals = rateTotals?.some(p => !p.isValid);
 
   const handleInputChange = (e) => {
     const { name, value, type, checked } = e.target;
@@ -119,6 +159,7 @@ const AdminRarities = ({ onRefresh }) => {
       capSingle: rarity.capSingle || '',
       capMulti: rarity.capMulti || '',
       multiplierScaling: rarity.multiplierScaling,
+      minimumRate: rarity.minimumRate || 0,
       color: rarity.color,
       accentColor: rarity.accentColor || '',
       glowIntensity: rarity.glowIntensity,
@@ -246,6 +287,59 @@ const AdminRarities = ({ onRefresh }) => {
         </ActionGroup>
       </ActionBar>
 
+      {/* Rate System Info Box */}
+      <InfoBox>
+        <InfoHeader>
+          <FaInfoCircle /> How Drop Rates Work
+        </InfoHeader>
+        <InfoContent>
+          <InfoText>
+            <strong>Rate Normalization:</strong> Rates are normalized to sum to 100%. 
+            If you set one rarity to 100% but others have non-zero rates, the actual probability 
+            will be calculated as: <code>your_rate ÷ total_of_all_rates</code>
+          </InfoText>
+          <InfoText>
+            <strong>Minimum Rate:</strong> Each rarity has a configurable <code>Minimum Rate</code> that 
+            acts as a floor for banner pulls. By default, Common has 35% minimum. 
+            <strong> Set to 0 to allow true 100% guaranteed banners.</strong>
+          </InfoText>
+          <InfoText>
+            <strong>Banner Rate Multiplier:</strong> Each banner has a rate multiplier (default 5×) that boosts 
+            rare+ rates, but each rarity has a cap that limits the maximum boost.
+          </InfoText>
+          <InfoText>
+            <strong>To create a 100% Legendary banner:</strong> Set Legendary's banner rate to 100%, 
+            all other rarities to 0%, and set Common's Minimum Rate to 0%.
+          </InfoText>
+        </InfoContent>
+      </InfoBox>
+
+      {/* Rate Totals Warning */}
+      {hasInvalidTotals && rateTotals && (
+        <WarningBox>
+          <WarningHeader>
+            <FaExclamationTriangle /> Rate Totals Don't Equal 100%
+          </WarningHeader>
+          <WarningContent>
+            <WarningText>
+              Some rate pools don't sum to 100%. Rates will be normalized during rolls, 
+              which may produce unexpected probabilities.
+            </WarningText>
+            <RateTotalsGrid>
+              {rateTotals.map(pool => (
+                <RateTotalItem key={pool.key} $isValid={pool.isValid}>
+                  <RateTotalLabel>{pool.label}</RateTotalLabel>
+                  <RateTotalValue $isValid={pool.isValid}>
+                    {pool.total.toFixed(1)}%
+                    {!pool.isValid && <span> → normalized to 100%</span>}
+                  </RateTotalValue>
+                </RateTotalItem>
+              ))}
+            </RateTotalsGrid>
+          </WarningContent>
+        </WarningBox>
+      )}
+
       {rarities.length === 0 ? (
         <EmptyState>
           <EmptyIcon>⭐</EmptyIcon>
@@ -277,18 +371,38 @@ const AdminRarities = ({ onRefresh }) => {
                       <RateItem>
                         <RateLabel>Standard</RateLabel>
                         <RateValue>{rarity.dropRateStandardSingle}% / {rarity.dropRateStandardMulti}%</RateValue>
+                        {rateTotals && (
+                          <EffectiveRate>
+                            → {rateTotals.find(p => p.key === 'standardSingle')?.effectiveRates[rarity.name]}% / {rateTotals.find(p => p.key === 'standardMulti')?.effectiveRates[rarity.name]}%
+                          </EffectiveRate>
+                        )}
                       </RateItem>
                       <RateItem>
                         <RateLabel>Banner</RateLabel>
                         <RateValue>{rarity.dropRateBannerSingle}% / {rarity.dropRateBannerMulti}%</RateValue>
+                        {rateTotals && (
+                          <EffectiveRate>
+                            → {rateTotals.find(p => p.key === 'bannerSingle')?.effectiveRates[rarity.name]}% / {rateTotals.find(p => p.key === 'bannerMulti')?.effectiveRates[rarity.name]}%
+                          </EffectiveRate>
+                        )}
                       </RateItem>
                       <RateItem>
                         <RateLabel>Premium</RateLabel>
                         <RateValue>{rarity.dropRatePremiumSingle}% / {rarity.dropRatePremiumMulti}%</RateValue>
+                        {rateTotals && (
+                          <EffectiveRate>
+                            → {rateTotals.find(p => p.key === 'premiumSingle')?.effectiveRates[rarity.name]}% / {rateTotals.find(p => p.key === 'premiumMulti')?.effectiveRates[rarity.name]}%
+                          </EffectiveRate>
+                        )}
                       </RateItem>
                       <RateItem>
                         <RateLabel>Pity</RateLabel>
                         <RateValue>{rarity.dropRatePity}%</RateValue>
+                        {rateTotals && (
+                          <EffectiveRate>
+                            → {rateTotals.find(p => p.key === 'pity')?.effectiveRates[rarity.name]}%
+                          </EffectiveRate>
+                        )}
                       </RateItem>
                     </RateGrid>
                   </RaritySection>
@@ -309,6 +423,9 @@ const AdminRarities = ({ onRefresh }) => {
                   
                   <RarityMeta>
                     <MetaItem>Order: {rarity.order}</MetaItem>
+                    {rarity.minimumRate > 0 && (
+                      <MetaItem $warning>Min: {rarity.minimumRate}%</MetaItem>
+                    )}
                     {rarity.isPityEligible && <MetaItem $highlight>Pity Eligible</MetaItem>}
                     {rarity.isDefault && <MetaItem $muted>Default</MetaItem>}
                   </RarityMeta>
@@ -523,6 +640,19 @@ const AdminRarities = ({ onRefresh }) => {
                           min="0"
                         />
                       </FormGroup>
+                      <FormGroup style={{ flex: 1 }}>
+                        <Label>Minimum Rate (%)</Label>
+                        <Input
+                          type="number"
+                          name="minimumRate"
+                          value={formData.minimumRate}
+                          onChange={handleNumberChange}
+                          step="1"
+                          min="0"
+                          max="100"
+                        />
+                        <FieldHint>Floor rate for banner pulls. Set to 0 to allow true 100% banners.</FieldHint>
+                      </FormGroup>
                     </FormRow>
                   </FormSection>
 
@@ -663,6 +793,129 @@ const AdminRarities = ({ onRefresh }) => {
 // STYLED COMPONENTS
 // ============================================
 
+const InfoBox = styled.div`
+  background: rgba(10, 132, 255, 0.1);
+  border: 1px solid rgba(10, 132, 255, 0.3);
+  border-radius: ${theme.radius.lg};
+  margin-bottom: ${theme.spacing.lg};
+  overflow: hidden;
+`;
+
+const InfoHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  background: rgba(10, 132, 255, 0.15);
+  color: ${theme.colors.info || '#0a84ff'};
+  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.sm};
+  
+  svg {
+    font-size: ${theme.fontSizes.md};
+  }
+`;
+
+const InfoContent = styled.div`
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+`;
+
+const InfoText = styled.p`
+  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  line-height: 1.5;
+  
+  &:last-child {
+    margin-bottom: 0;
+  }
+  
+  strong {
+    color: ${theme.colors.text};
+  }
+  
+  code {
+    background: ${theme.colors.backgroundTertiary};
+    padding: 2px 6px;
+    border-radius: ${theme.radius.sm};
+    font-family: monospace;
+    font-size: ${theme.fontSizes.xs};
+  }
+`;
+
+const WarningBox = styled.div`
+  background: rgba(255, 159, 10, 0.1);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  border-radius: ${theme.radius.lg};
+  margin-bottom: ${theme.spacing.lg};
+  overflow: hidden;
+`;
+
+const WarningHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  background: rgba(255, 159, 10, 0.15);
+  color: ${theme.colors.warning};
+  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.sm};
+  
+  svg {
+    font-size: ${theme.fontSizes.md};
+  }
+`;
+
+const WarningContent = styled.div`
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+`;
+
+const WarningText = styled.p`
+  margin: 0 0 ${theme.spacing.md};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  line-height: 1.5;
+`;
+
+const RateTotalsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: ${theme.spacing.sm};
+  
+  @media (min-width: ${theme.breakpoints.md}) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+`;
+
+const RateTotalItem = styled.div`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${props => props.$isValid 
+    ? 'rgba(48, 209, 88, 0.1)' 
+    : 'rgba(255, 69, 58, 0.1)'};
+  border: 1px solid ${props => props.$isValid 
+    ? 'rgba(48, 209, 88, 0.3)' 
+    : 'rgba(255, 69, 58, 0.3)'};
+  border-radius: ${theme.radius.md};
+`;
+
+const RateTotalLabel = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textMuted};
+  margin-bottom: 2px;
+`;
+
+const RateTotalValue = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${props => props.$isValid ? theme.colors.success : theme.colors.error};
+  
+  span {
+    font-size: ${theme.fontSizes.xs};
+    font-weight: ${theme.fontWeights.normal};
+    color: ${theme.colors.textMuted};
+  }
+`;
+
 const RarityGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(1, 1fr);
@@ -773,6 +1026,20 @@ const RateValue = styled.div`
   color: ${theme.colors.text};
 `;
 
+const EffectiveRate = styled.div`
+  font-size: 9px;
+  color: ${theme.colors.textMuted};
+  margin-top: 2px;
+  font-style: italic;
+`;
+
+const FieldHint = styled.div`
+  font-size: 10px;
+  color: ${theme.colors.textMuted};
+  margin-top: 4px;
+  line-height: 1.3;
+`;
+
 const VisualRow = styled.div`
   display: flex;
   align-items: center;
@@ -807,8 +1074,15 @@ const MetaItem = styled.span`
   font-size: ${theme.fontSizes.xs};
   padding: 2px 8px;
   border-radius: ${theme.radius.md};
-  background: ${props => props.$highlight ? 'rgba(48, 209, 88, 0.15)' : theme.colors.backgroundTertiary};
-  color: ${props => props.$highlight ? theme.colors.success : props.$muted ? theme.colors.textMuted : theme.colors.textSecondary};
+  background: ${props => 
+    props.$highlight ? 'rgba(48, 209, 88, 0.15)' : 
+    props.$warning ? 'rgba(255, 159, 10, 0.15)' : 
+    theme.colors.backgroundTertiary};
+  color: ${props => 
+    props.$highlight ? theme.colors.success : 
+    props.$warning ? theme.colors.warning : 
+    props.$muted ? theme.colors.textMuted : 
+    theme.colors.textSecondary};
 `;
 
 const RarityActions = styled.div`

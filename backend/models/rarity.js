@@ -89,6 +89,12 @@ const Rarity = sequelize.define('Rarity', {
     defaultValue: 1.0,
     comment: 'Scaling factor when applying banner rate multiplier'
   },
+  minimumRate: {
+    type: DataTypes.FLOAT,
+    allowNull: false,
+    defaultValue: 0,
+    comment: 'Minimum guaranteed rate % for banner pulls (prevents rate from going below this). Used for common to ensure some "bad luck" chance.'
+  },
   
   // Visual configuration
   color: {
@@ -171,6 +177,7 @@ Rarity.DEFAULT_RARITIES = [
     capSingle: null,
     capMulti: null,
     multiplierScaling: 0,
+    minimumRate: 35,  // Ensures at least 35% common on banner pulls
     color: '#8e8e93',
     accentColor: '#a8a8ad',
     glowIntensity: 0.3,
@@ -195,6 +202,7 @@ Rarity.DEFAULT_RARITIES = [
     capSingle: 25,
     capMulti: 28,
     multiplierScaling: 0.5,
+    minimumRate: 0,
     color: '#30d158',
     accentColor: '#5fe07a',
     glowIntensity: 0.5,
@@ -219,6 +227,7 @@ Rarity.DEFAULT_RARITIES = [
     capSingle: 18,
     capMulti: 20,
     multiplierScaling: 1.0,
+    minimumRate: 0,
     color: '#0a84ff',
     accentColor: '#409cff',
     glowIntensity: 0.7,
@@ -243,6 +252,7 @@ Rarity.DEFAULT_RARITIES = [
     capSingle: 10,
     capMulti: 12,
     multiplierScaling: 1.5,
+    minimumRate: 0,
     color: '#bf5af2',
     accentColor: '#d183f5',
     glowIntensity: 0.85,
@@ -267,6 +277,7 @@ Rarity.DEFAULT_RARITIES = [
     capSingle: 3,
     capMulti: 3,
     multiplierScaling: 2.0,
+    minimumRate: 0,
     color: '#ff9f0a',
     accentColor: '#ffc040',
     glowIntensity: 1.0,

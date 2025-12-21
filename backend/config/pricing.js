@@ -131,13 +131,13 @@ const calculateBannerRates = async (rateMultiplier, isMulti = false, raritiesDat
   
   const rates = {};
   let totalHigher = 0;
-  let commonName = null;
+  let commonRarity = null;
   
   // Apply multiplier to each rarity (except common which is calculated last)
   rarities.forEach(r => {
     // The rarity with the lowest order is considered "common" and fills the remaining %
-    if (!commonName || r.order < rarities.find(x => x.name === commonName)?.order) {
-      commonName = r.name;
+    if (!commonRarity || r.order < commonRarity.order) {
+      commonRarity = r;
     }
     
     if (r.multiplierScaling > 0) {
@@ -154,8 +154,9 @@ const calculateBannerRates = async (rateMultiplier, isMulti = false, raritiesDat
   });
   
   // Calculate common rate to ensure total is 100%
-  const minCommon = isMulti ? 35 : 40;
-  rates[commonName] = Math.max(100 - totalHigher, minCommon);
+  // Use minimumRate from database instead of hardcoded value
+  const minCommon = commonRarity?.minimumRate ?? 0;
+  rates[commonRarity.name] = Math.max(100 - totalHigher, minCommon);
   
   return rates;
 };
@@ -287,11 +288,11 @@ const isRarePlusSync = (rarityName, rarities) => {
 // ===========================================
 
 const getFallbackRarities = () => [
-  { name: 'legendary', order: 5, dropRateStandardSingle: 0.5, dropRateStandardMulti: 0.5, dropRateBannerSingle: 1, dropRateBannerMulti: 1, dropRatePremiumSingle: 5, dropRatePremiumMulti: 7, dropRatePity: 1, capSingle: 3, capMulti: 3, multiplierScaling: 2, isPityEligible: true },
-  { name: 'epic', order: 4, dropRateStandardSingle: 2.5, dropRateStandardMulti: 3.5, dropRateBannerSingle: 5, dropRateBannerMulti: 6, dropRatePremiumSingle: 25, dropRatePremiumMulti: 28, dropRatePity: 14, capSingle: 10, capMulti: 12, multiplierScaling: 1.5, isPityEligible: true },
-  { name: 'rare', order: 3, dropRateStandardSingle: 7, dropRateStandardMulti: 9, dropRateBannerSingle: 12, dropRateBannerMulti: 14, dropRatePremiumSingle: 70, dropRatePremiumMulti: 65, dropRatePity: 85, capSingle: 18, capMulti: 20, multiplierScaling: 1, isPityEligible: true },
-  { name: 'uncommon', order: 2, dropRateStandardSingle: 20, dropRateStandardMulti: 22, dropRateBannerSingle: 22, dropRateBannerMulti: 24, dropRatePremiumSingle: 0, dropRatePremiumMulti: 0, dropRatePity: 0, capSingle: 25, capMulti: 28, multiplierScaling: 0.5, isPityEligible: false },
-  { name: 'common', order: 1, dropRateStandardSingle: 70, dropRateStandardMulti: 65, dropRateBannerSingle: 60, dropRateBannerMulti: 55, dropRatePremiumSingle: 0, dropRatePremiumMulti: 0, dropRatePity: 0, capSingle: null, capMulti: null, multiplierScaling: 0, isPityEligible: false }
+  { name: 'legendary', order: 5, dropRateStandardSingle: 0.5, dropRateStandardMulti: 0.5, dropRateBannerSingle: 1, dropRateBannerMulti: 1, dropRatePremiumSingle: 5, dropRatePremiumMulti: 7, dropRatePity: 1, capSingle: 3, capMulti: 3, multiplierScaling: 2, minimumRate: 0, isPityEligible: true },
+  { name: 'epic', order: 4, dropRateStandardSingle: 2.5, dropRateStandardMulti: 3.5, dropRateBannerSingle: 5, dropRateBannerMulti: 6, dropRatePremiumSingle: 25, dropRatePremiumMulti: 28, dropRatePity: 14, capSingle: 10, capMulti: 12, multiplierScaling: 1.5, minimumRate: 0, isPityEligible: true },
+  { name: 'rare', order: 3, dropRateStandardSingle: 7, dropRateStandardMulti: 9, dropRateBannerSingle: 12, dropRateBannerMulti: 14, dropRatePremiumSingle: 70, dropRatePremiumMulti: 65, dropRatePity: 85, capSingle: 18, capMulti: 20, multiplierScaling: 1, minimumRate: 0, isPityEligible: true },
+  { name: 'uncommon', order: 2, dropRateStandardSingle: 20, dropRateStandardMulti: 22, dropRateBannerSingle: 22, dropRateBannerMulti: 24, dropRatePremiumSingle: 0, dropRatePremiumMulti: 0, dropRatePity: 0, capSingle: 25, capMulti: 28, multiplierScaling: 0.5, minimumRate: 0, isPityEligible: false },
+  { name: 'common', order: 1, dropRateStandardSingle: 70, dropRateStandardMulti: 65, dropRateBannerSingle: 60, dropRateBannerMulti: 55, dropRatePremiumSingle: 0, dropRatePremiumMulti: 0, dropRatePity: 0, capSingle: null, capMulti: null, multiplierScaling: 0, minimumRate: 35, isPityEligible: false }
 ];
 
 module.exports = {
