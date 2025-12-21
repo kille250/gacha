@@ -6,6 +6,12 @@
  * and dojo.js (passive income calculations).
  * 
  * Single source of truth for level-related constants.
+ * 
+ * DESIGN PHILOSOPHY:
+ * - Early levels are easy to achieve (1 shard each) for quick satisfaction
+ * - Later levels require more investment (2 shards each) for meaningful progression
+ * - Multiplier curve accelerates at higher levels to reward dedication
+ * - Max level bonus (+75%) is impactful but not game-breaking
  */
 
 // ===========================================
@@ -15,15 +21,24 @@
 const LEVEL_CONFIG = {
   maxLevel: 5,
   
-  // Power multiplier bonus per level above 1
-  // Level 1: 1.0x, Level 2: 1.15x, Level 3: 1.30x, Level 4: 1.50x, Level 5: 1.75x
-  // Improved curve: gradual early, more impactful at max level for satisfaction
+  /**
+   * Power multiplier bonus per level
+   * 
+   * Formula rationale: Accelerating curve with diminishing cost-efficiency
+   * - Lv1→2: +15% for 1 shard (15% per shard)
+   * - Lv2→3: +15% for 1 shard (15% per shard)  
+   * - Lv3→4: +20% for 2 shards (10% per shard)
+   * - Lv4→5: +25% for 2 shards (12.5% per shard)
+   * 
+   * This creates a "value sweet spot" at early levels while
+   * making max level feel like a prestigious achievement.
+   */
   levelMultipliers: {
-    1: 1.0,
-    2: 1.15,
-    3: 1.30,
-    4: 1.50,
-    5: 1.75
+    1: 1.00,  // Base power
+    2: 1.15,  // +15% - First duplicate feels rewarding
+    3: 1.30,  // +30% - Noticeable improvement
+    4: 1.50,  // +50% - Significant power spike
+    5: 1.75   // +75% - Max level prestige
   },
   
   // Shards required to level up (from current level)
@@ -111,12 +126,54 @@ function getTotalShardsToLevel(targetLevel) {
   return total;
 }
 
+// ===========================================
+// CONFIG VALIDATION (runs at server start)
+// ===========================================
+
+/**
+ * Validates leveling configuration for consistency
+ * Throws an error if configuration is invalid
+ */
+function validateLevelConfig() {
+  // Check that all levels 1 to maxLevel have multipliers
+  for (let level = 1; level <= LEVEL_CONFIG.maxLevel; level++) {
+    if (LEVEL_CONFIG.levelMultipliers[level] === undefined) {
+      throw new Error(`Leveling Config Error: Missing multiplier for level ${level}`);
+    }
+  }
+  
+  // Check that multipliers are monotonically increasing
+  for (let level = 2; level <= LEVEL_CONFIG.maxLevel; level++) {
+    if (LEVEL_CONFIG.levelMultipliers[level] <= LEVEL_CONFIG.levelMultipliers[level - 1]) {
+      throw new Error(`Leveling Config Error: Multiplier for level ${level} must be greater than level ${level - 1}`);
+    }
+  }
+  
+  // Check that all levels 1 to maxLevel-1 have shard requirements
+  for (let level = 1; level < LEVEL_CONFIG.maxLevel; level++) {
+    if (LEVEL_CONFIG.shardsToLevel[level] === undefined) {
+      throw new Error(`Leveling Config Error: Missing shard requirement for level ${level}`);
+    }
+    if (LEVEL_CONFIG.shardsToLevel[level] < 1) {
+      throw new Error(`Leveling Config Error: Shard requirement for level ${level} must be >= 1`);
+    }
+  }
+  
+  // Validate total shards calculation
+  const totalShards = getTotalShardsToLevel(LEVEL_CONFIG.maxLevel);
+  console.log(`✅ Leveling configuration validated (${totalShards} total shards to max level)`);
+}
+
+// Run validation when module is loaded
+validateLevelConfig();
+
 module.exports = {
   LEVEL_CONFIG,
   getLevelMultiplier,
   getShardsToLevel,
   isMaxLevel,
   getMaxLevelDuplicatePoints,
-  getTotalShardsToLevel
+  getTotalShardsToLevel,
+  validateLevelConfig  // Export for testing
 };
 

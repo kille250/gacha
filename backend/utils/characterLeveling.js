@@ -9,7 +9,7 @@
  * Configuration is centralized in config/leveling.js
  */
 
-const { UserCharacter, Character } = require('../models');
+const { UserCharacter, Character, sequelize } = require('../models');
 const {
   LEVEL_CONFIG,
   getLevelMultiplier,
@@ -99,36 +99,61 @@ const acquireCharacter = async (userId, characterId, user = null, rarity = null)
 /**
  * Acquire multiple characters (for multi-rolls)
  * 
+ * Uses a database transaction to ensure atomicity - prevents race conditions
+ * when processing multiple characters in the same batch (e.g., 10-pull).
+ * 
  * @param {number} userId - User ID
  * @param {Array<Object>} characters - Array of character objects (must have id and rarity)
  * @param {Object} user - User model instance (for point rewards)
+ * @param {Object} existingTransaction - Optional existing transaction to use
  * @returns {Promise<Array<Object>>} - Array of acquisition results
  */
-const acquireMultipleCharacters = async (userId, characters, user = null) => {
-  const results = [];
-  let totalBonusPoints = 0;
+const acquireMultipleCharacters = async (userId, characters, user = null, existingTransaction = null) => {
+  // Use existing transaction or create a new one
+  const transaction = existingTransaction || await sequelize.transaction();
+  const shouldCommit = !existingTransaction;
   
-  // Process sequentially to handle duplicates within the same batch correctly
-  for (const character of characters) {
-    if (character && character.id) {
-      // Don't pass user to individual calls - we'll batch the point update
-      // Pass rarity for max-level duplicate bonus calculation
-      const result = await acquireCharacterInternal(userId, character.id, character.rarity);
-      totalBonusPoints += result.bonusPoints;
-      results.push({
-        characterId: character.id,
-        ...result
-      });
+  try {
+    const results = [];
+    let totalBonusPoints = 0;
+    
+    // Process sequentially within transaction to handle duplicates correctly
+    for (const character of characters) {
+      if (character?.id) {
+        // Pass transaction for consistent reads/writes
+        const result = await acquireCharacterInternal(
+          userId, 
+          character.id, 
+          character.rarity,
+          transaction
+        );
+        totalBonusPoints += result.bonusPoints;
+        results.push({
+          characterId: character.id,
+          ...result
+        });
+      }
     }
+    
+    // Batch update points if any max-level duplicates
+    if (totalBonusPoints > 0 && user) {
+      user.points += totalBonusPoints;
+      await user.save({ transaction });
+    }
+    
+    // Only commit if we created the transaction
+    if (shouldCommit) {
+      await transaction.commit();
+    }
+    
+    return results;
+  } catch (err) {
+    // Only rollback if we created the transaction
+    if (shouldCommit) {
+      await transaction.rollback();
+    }
+    throw err;
   }
-  
-  // Batch update points if any max-level duplicates
-  if (totalBonusPoints > 0 && user) {
-    user.points += totalBonusPoints;
-    await user.save();
-  }
-  
-  return results;
 };
 
 /**
@@ -136,22 +161,26 @@ const acquireMultipleCharacters = async (userId, characters, user = null) => {
  * @param {number} userId - User ID
  * @param {number} characterId - Character ID
  * @param {string} rarity - Character rarity for bonus point calculation
+ * @param {Object} transaction - Optional Sequelize transaction
  */
-const acquireCharacterInternal = async (userId, characterId, rarity = null) => {
-  const existing = await UserCharacter.findOne({
-    where: {
-      UserId: userId,
-      CharacterId: characterId
-    }
-  });
+const acquireCharacterInternal = async (userId, characterId, rarity = null, transaction = null) => {
+  const queryOptions = transaction ? { where: { UserId: userId, CharacterId: characterId }, transaction } : { where: { UserId: userId, CharacterId: characterId } };
+  
+  const existing = await UserCharacter.findOne(queryOptions);
   
   if (!existing) {
-    await UserCharacter.create({
+    const createOptions = {
       UserId: userId,
       CharacterId: characterId,
       level: 1,
       duplicateCount: 0
-    });
+    };
+    
+    if (transaction) {
+      await UserCharacter.create(createOptions, { transaction });
+    } else {
+      await UserCharacter.create(createOptions);
+    }
     
     return {
       isNew: true,
@@ -170,13 +199,18 @@ const acquireCharacterInternal = async (userId, characterId, rarity = null) => {
     // Fetch rarity if not provided
     let charRarity = rarity;
     if (!charRarity) {
-      const character = await Character.findByPk(characterId);
+      const findOptions = transaction ? { transaction } : {};
+      const character = await Character.findByPk(characterId, findOptions);
       charRarity = character?.rarity || 'common';
     }
     bonusPoints = getMaxLevelDuplicatePoints(charRarity);
   } else {
     existing.duplicateCount += 1;
-    await existing.save();
+    if (transaction) {
+      await existing.save({ transaction });
+    } else {
+      await existing.save();
+    }
   }
   
   return {

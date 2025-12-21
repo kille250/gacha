@@ -509,12 +509,15 @@ router.post('/claim', auth, async (req, res) => {
       premiumTickets: todayStats.premiumTickets + cappedRewards.premiumTickets
     };
     
-    // Cleanup old daily stats (keep only last 7 days)
-    const cutoffDate = new Date();
-    cutoffDate.setDate(cutoffDate.getDate() - 7);
-    for (const date of Object.keys(dailyStats)) {
-      if (new Date(date) < cutoffDate) {
-        delete dailyStats[date];
+    // Lazy cleanup: Only clean old daily stats when > 10 entries exist
+    // This reduces processing on every claim while still preventing unbounded growth
+    if (Object.keys(dailyStats).length > 10) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 7);
+      for (const date of Object.keys(dailyStats)) {
+        if (new Date(date) < cutoffDate) {
+          delete dailyStats[date];
+        }
       }
     }
     

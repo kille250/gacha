@@ -116,22 +116,25 @@ const DOJO_CONFIG = {
 
 const DOJO_UPGRADES = {
   // Cost to unlock additional slots
+  // Smoother progression curve for better mid-game pacing
+  // Old total: 89,000 | New total: 46,500 (more accessible)
   slotCosts: [
-    500,    // 4th slot
-    1000,   // 5th slot
-    2500,   // 6th slot
-    5000,   // 7th slot
-    10000,  // 8th slot
-    20000,  // 9th slot
-    50000   // 10th slot
+    500,    // 4th slot  - Early unlock, quick win
+    1000,   // 5th slot  - Still accessible
+    2000,   // 6th slot  - Reasonable mid-game
+    4000,   // 7th slot  - Commitment required
+    7000,   // 8th slot  - Serious investment
+    12000,  // 9th slot  - Late-game goal
+    20000   // 10th slot - Endgame achievement
   ],
   
   // Cost to increase accumulation cap (per +4 hours)
+  // Reduced costs to encourage offline play variety
   capCosts: [
-    2000,   // 12 hours
-    5000,   // 16 hours
-    10000,  // 20 hours
-    25000   // 24 hours
+    1500,   // 12 hours - Accessible early
+    3500,   // 16 hours - Mid-game
+    7000,   // 20 hours - Late mid-game
+    15000   // 24 hours - Endgame convenience
   ],
   
   // Cost for intensity upgrades (per level)
@@ -486,6 +489,66 @@ function getAvailableUpgrades(currentUpgrades) {
   return upgrades;
 }
 
+// ===========================================
+// CONFIG VALIDATION (runs at server start)
+// ===========================================
+
+/**
+ * Validates dojo configuration for consistency
+ * Throws an error if configuration is invalid
+ */
+function validateDojoConfig() {
+  // Check that all rarities have base rates and ticket chances
+  const baseRarities = Object.keys(DOJO_RATES.baseRates);
+  const rollTicketRarities = Object.keys(DOJO_RATES.ticketChances.rollTicket);
+  const premiumTicketRarities = Object.keys(DOJO_RATES.ticketChances.premiumTicket);
+  
+  const missingRollRarities = baseRarities.filter(r => !rollTicketRarities.includes(r));
+  const missingPremiumRarities = baseRarities.filter(r => !premiumTicketRarities.includes(r));
+  
+  if (missingRollRarities.length > 0) {
+    console.warn(`⚠️  Dojo Config: Missing roll ticket chances for: ${missingRollRarities.join(', ')}`);
+  }
+  if (missingPremiumRarities.length > 0) {
+    console.warn(`⚠️  Dojo Config: Missing premium ticket chances for: ${missingPremiumRarities.join(', ')}`);
+  }
+  
+  // Validate income brackets are sorted ascending
+  const thresholds = DOJO_BALANCE.incomeBrackets.map(b => b.threshold);
+  const isSorted = thresholds.every((t, i) => i === 0 || t > thresholds[i - 1]);
+  if (!isSorted) {
+    throw new Error('Dojo Config Error: Income brackets must be sorted in ascending order by threshold');
+  }
+  
+  // Validate efficiency values are between 0 and 1
+  const invalidEfficiencies = DOJO_BALANCE.incomeBrackets.filter(b => b.efficiency < 0 || b.efficiency > 1);
+  if (invalidEfficiencies.length > 0) {
+    throw new Error('Dojo Config Error: Efficiency values must be between 0 and 1');
+  }
+  
+  // Validate slot costs match expected slot count
+  const expectedSlotUpgrades = DOJO_CONFIG.maxSlots - DOJO_CONFIG.defaultSlots;
+  if (DOJO_UPGRADES.slotCosts.length !== expectedSlotUpgrades) {
+    console.warn(`⚠️  Dojo Config: slotCosts has ${DOJO_UPGRADES.slotCosts.length} entries but expected ${expectedSlotUpgrades} (maxSlots - defaultSlots)`);
+  }
+  
+  // Validate intensity costs match max intensity level
+  if (DOJO_UPGRADES.intensityCosts.length !== DOJO_CONFIG.maxIntensityLevel) {
+    console.warn(`⚠️  Dojo Config: intensityCosts has ${DOJO_UPGRADES.intensityCosts.length} entries but maxIntensityLevel is ${DOJO_CONFIG.maxIntensityLevel}`);
+  }
+  
+  // Validate synergy thresholds are valid
+  const synergyThresholds = Object.keys(DOJO_CONFIG.seriesSynergy).map(Number);
+  if (synergyThresholds.some(t => t < 2)) {
+    throw new Error('Dojo Config Error: Synergy thresholds must be >= 2 (minimum for series bonus)');
+  }
+  
+  console.log('✅ Dojo configuration validated successfully');
+}
+
+// Run validation when module is loaded
+validateDojoConfig();
+
 module.exports = {
   DOJO_RATES,
   DOJO_CONFIG,
@@ -497,6 +560,7 @@ module.exports = {
   calculateRewards,
   getUpgradeCost,
   getAvailableUpgrades,
-  applyDiminishingReturns
+  applyDiminishingReturns,
+  validateDojoConfig  // Export for testing
 };
 
