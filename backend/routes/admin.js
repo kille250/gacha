@@ -558,66 +558,85 @@ router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
     
     // Generate unique filename
     const filename = `alt-${Date.now()}-${Math.random().toString(36).substr(2, 9)}${ext}`;
-    const filepath = path.join(UPLOAD_BASE, 'characters', filename);
+    const filepath = getFilePath('characters', filename);
     
-    // Download the image
-    const downloadImage = (url) => {
+    // Download the image with proper redirect handling
+    const downloadImage = (url, maxRedirects = 5) => {
       return new Promise((resolve, reject) => {
-        const protocol = url.startsWith('https') ? https : http;
-        const file = fs.createWriteStream(filepath);
-        
-        const options = {
-          headers: {
-            'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
-            'Accept': '*/*',
-            'Referer': new URL(url).origin
-          }
-        };
+        let redirectCount = 0;
         
         const makeRequest = (reqUrl) => {
-          protocol.get(reqUrl, options, (response) => {
+          const currentUrl = new URL(reqUrl);
+          const protocol = currentUrl.protocol === 'https:' ? https : http;
+          
+          const options = {
+            hostname: currentUrl.hostname,
+            port: currentUrl.port || (currentUrl.protocol === 'https:' ? 443 : 80),
+            path: currentUrl.pathname + currentUrl.search,
+            method: 'GET',
+            headers: {
+              'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
+              'Accept': '*/*',
+              'Referer': currentUrl.origin
+            }
+          };
+          
+          const req = protocol.request(options, (response) => {
             // Handle redirects
             if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
+              redirectCount++;
+              if (redirectCount > maxRedirects) {
+                reject(new Error('Too many redirects'));
+                return;
+              }
               const redirectUrl = new URL(response.headers.location, reqUrl);
+              console.log(`Following redirect ${redirectCount}: ${redirectUrl.href}`);
               makeRequest(redirectUrl.href);
               return;
             }
             
             if (response.statusCode !== 200) {
-              fs.unlink(filepath, () => {});
               reject(new Error(`Download failed with status ${response.statusCode}`));
               return;
             }
             
+            const file = fs.createWriteStream(filepath);
             response.pipe(file);
+            
             file.on('finish', () => {
               file.close(() => {
                 fs.stat(filepath, (err, stats) => {
-                  if (err || stats.size < 1000) {
+                  if (err || stats.size < 500) {
                     fs.unlink(filepath, () => {});
                     reject(new Error('Downloaded file is too small or corrupted'));
                   } else {
+                    console.log(`Downloaded ${filename}: ${stats.size} bytes`);
                     resolve(filepath);
                   }
                 });
               });
             });
-          }).on('error', (err) => {
+            
+            file.on('error', (err) => {
+              fs.unlink(filepath, () => {});
+              reject(err);
+            });
+          });
+          
+          req.on('error', (err) => {
             fs.unlink(filepath, () => {});
             reject(err);
           });
+          
+          req.end();
         };
-        
-        file.on('error', (err) => {
-          fs.unlink(filepath, () => {});
-          reject(err);
-        });
         
         makeRequest(url);
       });
     };
     
     // Download the image from URL
+    console.log(`Downloading image from URL: ${imageUrl}`);
     await downloadImage(imageUrl);
     
     // Save old image path to delete later
@@ -628,10 +647,12 @@ router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
     character.image = newImagePath;
     await character.save();
     
+    console.log(`Updated character ${character.id} image: ${oldImage} -> ${newImagePath}`);
+    
     // Delete old image if it was an uploaded file
     if (oldImage && oldImage.startsWith('/uploads/')) {
       const oldFilename = path.basename(oldImage);
-      const oldFilePath = path.join(UPLOAD_BASE, 'characters', oldFilename);
+      const oldFilePath = getFilePath('characters', oldFilename);
       if (fs.existsSync(oldFilePath)) {
         fs.unlinkSync(oldFilePath);
         console.log(`Deleted old image: ${oldImage}`);

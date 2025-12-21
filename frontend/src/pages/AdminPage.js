@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaEdit, FaImage, FaTimes, FaSearch, FaStar, FaSpinner, FaCheck, FaPlay } from 'react-icons/fa';
-import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, clearCache } from '../utils/api';
+import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, clearCache, invalidateAdminCache } from '../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
@@ -381,18 +381,24 @@ const AdminPage = () => {
       await api.put(`/admin/characters/${editingCharacter.id}`, editForm);
       
       // Then save the image from URL
-      await api.put(`/admin/characters/${editingCharacter.id}/image-url`, {
+      const response = await api.put(`/admin/characters/${editingCharacter.id}/image-url`, {
         imageUrl: selectedAltMedia.file
       });
       
+      console.log('Image update response:', response.data);
+      
+      // Clear cache to ensure fresh data
+      invalidateAdminCache();
+      
       setSuccessMessage(t('admin.characterUpdated'));
-      fetchAllData();
+      await fetchAllData();
       setIsEditingCharacter(false);
       closeAltMediaPicker();
       setEditingCharacter(null);
       setEditImageFile(null);
       setEditImagePreview(null);
     } catch (err) {
+      console.error('Failed to update character image:', err);
       setError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
     } finally {
       setAltMediaSaving(false);
