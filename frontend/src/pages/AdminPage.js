@@ -375,17 +375,22 @@ const AdminPage = () => {
   const saveAltMediaToCharacter = useCallback(async () => {
     if (!editingCharacter || !selectedAltMedia) return;
     
+    console.log('Saving alt media for character:', editingCharacter.id);
+    console.log('Selected alt media URL:', selectedAltMedia.file);
+    
     setAltMediaSaving(true);
     try {
       // Save metadata first
+      console.log('Step 1: Saving metadata...');
       await api.put(`/admin/characters/${editingCharacter.id}`, editForm);
+      console.log('Step 1 complete: Metadata saved');
       
       // Then save the image from URL
+      console.log('Step 2: Saving image from URL...');
       const response = await api.put(`/admin/characters/${editingCharacter.id}/image-url`, {
         imageUrl: selectedAltMedia.file
       });
-      
-      console.log('Image update response:', response.data);
+      console.log('Step 2 complete: Image saved', response.data);
       
       // Clear cache to ensure fresh data
       invalidateAdminCache();
@@ -398,8 +403,9 @@ const AdminPage = () => {
       setEditImageFile(null);
       setEditImagePreview(null);
     } catch (err) {
-      console.error('Failed to update character image:', err);
-      setError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
+      console.error('Failed to update character:', err);
+      console.error('Error details:', err.response?.status, err.response?.data);
+      setError(err.response?.data?.error || `Failed: ${err.message}`);
     } finally {
       setAltMediaSaving(false);
     }

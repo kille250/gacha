@@ -647,7 +647,10 @@ router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
     character.image = newImagePath;
     await character.save();
     
-    console.log(`Updated character ${character.id} image: ${oldImage} -> ${newImagePath}`);
+    // Reload to ensure we have the latest data
+    await character.reload();
+    
+    console.log(`Updated character ${character.id} image: ${oldImage} -> ${character.image}`);
     
     // Delete old image if it was an uploaded file
     if (oldImage && oldImage.startsWith('/uploads/')) {
