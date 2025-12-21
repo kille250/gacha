@@ -57,7 +57,6 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
             {filteredUsers.map((user, index) => {
               const rank = index + 1;
               const isTopTen = rank <= 10;
-              const canAutofish = user.autofishEnabled || isTopTen;
               
               return (
                 <TableRow 

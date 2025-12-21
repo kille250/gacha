@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useContext, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useContext, useCallback, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -83,11 +83,10 @@ const BannerPage = () => {
   
   // Ticket state
   const [tickets, setTickets] = useState({ rollTickets: 0, premiumTickets: 0 });
-  const [paymentMode, setPaymentMode] = useState('points'); // 'points', 'ticket', 'premium'
   
   // Computed values from pricing
   const singlePullCost = pricing?.singlePullCost || 100;
-  const pullOptions = pricing?.pullOptions || [];
+  const pullOptions = useMemo(() => pricing?.pullOptions || [], [pricing?.pullOptions]);
   
   const getMultiPullCost = useCallback((count) => {
     const option = pullOptions.find(o => o.count === count);
@@ -118,6 +117,7 @@ const BannerPage = () => {
       }
     };
     fetchBannerAndPricing();
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [bannerId]);
 
   

@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
-import styled, { keyframes, css } from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaStar, FaGem, FaTrophy, FaDice } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
@@ -435,11 +435,6 @@ const pulseGlow = keyframes`
     transform: scale(1.8); 
     opacity: 0;
   }
-`;
-
-const float = keyframes`
-  0%, 100% { transform: translateY(0) scale(1); }
-  50% { transform: translateY(-8px) scale(1.05); }
 `;
 
 const shimmer = keyframes`

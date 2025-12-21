@@ -1,4 +1,4 @@
-import React, { useState, useContext, useEffect, useCallback } from 'react';
+import React, { useState, useContext, useEffect, useCallback, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -82,7 +82,7 @@ const RollPage = () => {
   
   // Computed values from pricing
   const singlePullCost = pricing?.singlePullCost || DEFAULT_SINGLE_PULL_COST;
-  const pullOptions = pricing?.pullOptions || [];
+  const pullOptions = useMemo(() => pricing?.pullOptions || [], [pricing]);
   
   const calculateMultiPullCost = useCallback((count) => {
     const option = pullOptions.find(o => o.count === count);

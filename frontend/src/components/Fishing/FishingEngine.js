@@ -309,69 +309,16 @@ export const useFishingEngine = ({
   const otherPlayersRef = useRef(new Map()); // Map of playerId -> { container, visualPos, lastData }
   const otherPlayersContainerRef = useRef(null);
   
-  // Initialize PIXI Application
-  useEffect(() => {
-    if (!containerRef.current || appRef.current) return;
-    
-    const initApp = async () => {
-      const app = new PIXI.Application();
-      await app.init({
-        width: MAP_WIDTH * TILE_SIZE,
-        height: MAP_HEIGHT * TILE_SIZE,
-        backgroundColor: 0x1a3050,
-        antialias: false,
-        resolution: window.devicePixelRatio || 1,
-        autoDensity: true,
-      });
-      
-      containerRef.current.appendChild(app.canvas);
-      appRef.current = app;
-      
-      // Create main container
-      const mainContainer = new PIXI.Container();
-      app.stage.addChild(mainContainer);
-      containerObjRef.current = mainContainer;
-      
-      // Create layers in order (back to front)
-      createSkyLayer(mainContainer);
-      createTileLayer(mainContainer);
-      createWaterLayer(mainContainer);
-      createDecorationLayer(mainContainer);
-      createCampfireLayer(mainContainer);
-      createOtherPlayersLayer(mainContainer); // Multiplayer layer
-      createPlayer(mainContainer);
-      createParticleLayer(mainContainer);
-      createLightingLayer(mainContainer);
-      createFishingElements(mainContainer);
-      
-      // Game loop
-      app.ticker.add((ticker) => {
-        const dt = ticker.deltaTime / 60;
-        animFrameRef.current += dt;
-        updateGameRef.current?.(dt);
-      });
-    };
-    
-    initApp();
-    
-    return () => {
-      if (appRef.current) {
-        appRef.current.destroy(true, { children: true });
-        appRef.current = null;
-      }
-    };
-  }, []);
-  
   // Create sky gradient layer
-  const createSkyLayer = (container) => {
+  const createSkyLayer = useCallback((container) => {
     const sky = new PIXI.Graphics();
     sky.label = 'sky';
     sky.zIndex = -10;
     container.addChild(sky);
-  };
+  }, []);
   
   // Create tile layer with pixel-perfect art
-  const createTileLayer = (container) => {
+  const createTileLayer = useCallback((container) => {
     const tileContainer = new PIXI.Container();
     tileContainer.label = 'tiles';
     
@@ -388,26 +335,11 @@ export const useFishingEngine = ({
     }
     
     container.addChild(tileContainer);
-  };
-  
-  // Draw pixel art dithering pattern
-  const drawDither = (g, x, y, w, h, color1, color2, density = 0.3) => {
-    g.rect(x, y, w, h);
-    g.fill(color1);
-    for (let dy = 0; dy < h; dy += 2) {
-      for (let dx = (dy % 4 === 0 ? 0 : 1); dx < w; dx += 2) {
-        if (Math.random() < density) {
-          g.rect(x + dx, y + dy, 1, 1);
-          g.fill(color2);
-        }
-      }
-    }
-  };
+  }, []);
   
   // Draw individual tile with enhanced pixel art
   const drawTile = (g, tile, x, y) => {
     const variant = (x + y) % 4;
-    const seed = x * 1000 + y;
     
     switch (tile) {
       case TILES.GRASS:
@@ -417,8 +349,8 @@ export const useFishingEngine = ({
         
         // Pixel dither for texture
         for (let i = 0; i < 8; i++) {
-          const gx = ((seed + i * 7) % 36) + 2;
-          const gy = ((seed + i * 13) % 36) + 2;
+          const gx = (((x * 1000 + y) + i * 7) % 36) + 2;
+          const gy = (((x * 1000 + y) + i * 13) % 36) + 2;
           g.rect(gx, gy, 2, 2);
           g.fill(PALETTE.grassDark[variant]);
         }
@@ -427,7 +359,7 @@ export const useFishingEngine = ({
         for (let i = 0; i < 4; i++) {
           const gx = 6 + i * 10 + (variant * 2);
           const gy = 36;
-          const height = 8 + ((seed + i) % 5);
+          const height = 8 + (((x * 1000 + y) + i) % 5);
           g.moveTo(gx, gy);
           g.lineTo(gx - 1, gy - height);
           g.lineTo(gx + 1, gy - height + 2);
@@ -440,8 +372,9 @@ export const useFishingEngine = ({
         g.fill(PALETTE.sand[variant % 2]);
         // Sandy texture
         for (let i = 0; i < 6; i++) {
-          const px = (seed * (i + 1)) % 35 + 2;
-          const py = ((seed + 50) * (i + 1)) % 35 + 2;
+          const tileSeed = x * 1000 + y;
+          const px = (tileSeed * (i + 1)) % 35 + 2;
+          const py = ((tileSeed + 50) * (i + 1)) % 35 + 2;
           g.rect(px, py, 2, 2);
           g.fill(PALETTE.sand[(variant + 2) % 4]);
         }
@@ -474,15 +407,16 @@ export const useFishingEngine = ({
         g.fill(PALETTE.grass[variant]);
         // Draw 2-3 flowers
         const flowerColors = [0xff6b8a, 0xffd93d, 0xff8fab, 0xc9b1ff, 0x87ceeb, 0xffb347];
+        const flowerSeed = x * 1000 + y;
         for (let i = 0; i < 2 + variant % 2; i++) {
-          const fx = 8 + i * 14 + ((seed + i) % 5);
-          const fy = 12 + ((seed + i * 3) % 10);
+          const fx = 8 + i * 14 + ((flowerSeed + i) % 5);
+          const fy = 12 + ((flowerSeed + i * 3) % 10);
           // Stem
           g.moveTo(fx, fy + 6);
           g.lineTo(fx, fy + 18);
           g.stroke({ width: 2, color: 0x4a8030 });
           // Petals (pixel style)
-          const petalColor = flowerColors[(seed + i) % flowerColors.length];
+          const petalColor = flowerColors[(flowerSeed + i) % flowerColors.length];
           g.circle(fx - 4, fy, 3);
           g.circle(fx + 4, fy, 3);
           g.circle(fx, fy - 4, 3);
@@ -523,9 +457,10 @@ export const useFishingEngine = ({
         g.fill(PALETTE.grass[variant]);
         // Multiple tall grass blades
         for (let i = 0; i < 6; i++) {
-          const gx = 3 + i * 6 + ((seed + i) % 3);
-          const height = 18 + ((seed + i * 7) % 8);
-          const sway = ((seed + i) % 3) - 1;
+          const tileSeed = x * 1000 + y;
+          const gx = 3 + i * 6 + ((tileSeed + i) % 3);
+          const height = 18 + ((tileSeed + i * 7) % 8);
+          const sway = ((tileSeed + i) % 3) - 1;
           // Blade shape
           g.moveTo(gx, TILE_SIZE);
           g.lineTo(gx + sway - 2, TILE_SIZE - height);
@@ -719,7 +654,7 @@ export const useFishingEngine = ({
   };
   
   // Create decoration layer (trees, rocks, bushes)
-  const createDecorationLayer = (container) => {
+  const createDecorationLayer = useCallback((container) => {
     const decoContainer = new PIXI.Container();
     decoContainer.label = 'decorations';
     
@@ -737,11 +672,10 @@ export const useFishingEngine = ({
     }
     
     container.addChild(decoContainer);
-  };
+  }, []);
   
   const drawDecoration = (g, tile, x, y) => {
     const variant = (x * y) % 3;
-    const seed = x * 100 + y;
     
     if (tile === TILES.TREE) {
       // Tree shadow
@@ -987,6 +921,59 @@ export const useFishingEngine = ({
     container.addChild(fishingContainer);
   };
   
+  // Initialize PIXI Application
+  useEffect(() => {
+    if (!containerRef.current || appRef.current) return;
+    
+    const initApp = async () => {
+      const app = new PIXI.Application();
+      await app.init({
+        width: MAP_WIDTH * TILE_SIZE,
+        height: MAP_HEIGHT * TILE_SIZE,
+        backgroundColor: 0x1a3050,
+        antialias: false,
+        resolution: window.devicePixelRatio || 1,
+        autoDensity: true,
+      });
+      
+      containerRef.current.appendChild(app.canvas);
+      appRef.current = app;
+      
+      // Create main container
+      const mainContainer = new PIXI.Container();
+      app.stage.addChild(mainContainer);
+      containerObjRef.current = mainContainer;
+      
+      // Create layers in order (back to front)
+      createSkyLayer(mainContainer);
+      createTileLayer(mainContainer);
+      createWaterLayer(mainContainer);
+      createDecorationLayer(mainContainer);
+      createCampfireLayer(mainContainer);
+      createOtherPlayersLayer(mainContainer); // Multiplayer layer
+      createPlayer(mainContainer);
+      createParticleLayer(mainContainer);
+      createLightingLayer(mainContainer);
+      createFishingElements(mainContainer);
+      
+      // Game loop
+      app.ticker.add((ticker) => {
+        const dt = ticker.deltaTime / 60;
+        animFrameRef.current += dt;
+        updateGameRef.current?.(dt);
+      });
+    };
+    
+    initApp();
+    
+    return () => {
+      if (appRef.current) {
+        appRef.current.destroy(true, { children: true });
+        appRef.current = null;
+      }
+    };
+  }, [containerRef, createSkyLayer, createTileLayer, createDecorationLayer]);
+  
   // Update other players (multiplayer)
   const updateOtherPlayers = useCallback((dt) => {
     if (!otherPlayersContainerRef.current) return;
@@ -1199,7 +1186,6 @@ export const useFishingEngine = ({
         // Lily pad with animation
         if (water.isLily) {
           const lilyWave = Math.sin(phase * 0.5) * 2;
-          const lilyRotate = Math.sin(phase * 0.3) * 0.1;
           
           // Lily pad
           water.ellipse(20, 20 + lilyWave, 14, 9);
@@ -1298,8 +1284,6 @@ export const useFishingEngine = ({
       });
     }
     
-    // Update lanterns glow
-    const tileLayer = containerObjRef.current.getChildByLabel('tiles');
     // Lantern glow handled in lighting layer
     
     // Interpolate player position

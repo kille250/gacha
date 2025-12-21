@@ -97,6 +97,38 @@ const Navigation = () => {
     setShowProfileDropdown(false);
   }, [location]);
 
+  // Process reward data helper
+  const processRewardData = useCallback((lastRewardData) => {
+    if (justClaimed) return;
+    
+    const lastReward = lastRewardData ? new Date(lastRewardData) : null;
+    const now = new Date();
+    const rewardInterval = 60 * 60 * 1000;
+    
+    if (!lastReward || now - lastReward > rewardInterval) {
+      setRewardStatus({
+        available: true,
+        loading: false,
+        timeRemaining: null,
+        nextRewardTime: null,
+        checked: true
+      });
+    } else {
+      const remainingTime = rewardInterval - (now - lastReward);
+      const minutes = Math.floor(remainingTime / (60 * 1000));
+      const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
+      const nextTime = new Date(lastReward.getTime() + rewardInterval);
+      
+      setRewardStatus({
+        available: false,
+        loading: false,
+        timeRemaining: `${minutes}m ${seconds}s`,
+        nextRewardTime: nextTime,
+        checked: true
+      });
+    }
+  }, [justClaimed]);
+
   // Check if hourly reward is available
   const checkRewardAvailability = useCallback(async (forceRefresh = false) => {
     if (justClaimed) return;
@@ -139,38 +171,8 @@ const Navigation = () => {
     } else {
       processRewardData(lastRewardData);
     }
-  }, [user, justClaimed]);
+  }, [user, justClaimed, processRewardData, rewardStatus.checked]);
   
-  const processRewardData = useCallback((lastRewardData) => {
-    if (justClaimed) return;
-    
-    const lastReward = lastRewardData ? new Date(lastRewardData) : null;
-    const now = new Date();
-    const rewardInterval = 60 * 60 * 1000;
-    
-    if (!lastReward || now - lastReward > rewardInterval) {
-      setRewardStatus({
-        available: true,
-        loading: false,
-        timeRemaining: null,
-        nextRewardTime: null,
-        checked: true
-      });
-    } else {
-      const remainingTime = rewardInterval - (now - lastReward);
-      const minutes = Math.floor(remainingTime / (60 * 1000));
-      const seconds = Math.floor((remainingTime % (60 * 1000)) / 1000);
-      const nextTime = new Date(lastReward.getTime() + rewardInterval);
-      
-      setRewardStatus({
-        available: false,
-        loading: false,
-        timeRemaining: `${minutes}m ${seconds}s`,
-        nextRewardTime: nextTime,
-        checked: true
-      });
-    }
-  }, [justClaimed]);
   
   // Update timer periodically
   useEffect(() => {
@@ -304,9 +306,6 @@ const Navigation = () => {
       ]
     }
   ];
-
-  // Flat nav items for quick reference
-  const allNavItems = navGroups.flatMap(g => g.items);
 
   return (
     <>

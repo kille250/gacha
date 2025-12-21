@@ -39,6 +39,25 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
 
+  // Search for matching Danbooru tags
+  const searchAltMediaTags = useCallback(async (query) => {
+    if (!query || query.length < 2) {
+      setAltMediaTags([]);
+      return;
+    }
+    
+    setAltMediaLoading(true);
+    try {
+      // Search for character tags (category 4)
+      const response = await api.get(`/anime-import/sakuga-tags?q=${encodeURIComponent(query)}`);
+      setAltMediaTags(response.data.tags || []);
+    } catch (err) {
+      console.error('Tag search failed:', err);
+    } finally {
+      setAltMediaLoading(false);
+    }
+  }, []);
+
   // Search for anime (images mode - MAL)
   const handleSearch = useCallback(async () => {
     if (!searchQuery.trim() || searchQuery.length < 2) return;
@@ -79,26 +98,8 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     
     // Auto-search for tags
     searchAltMediaTags(searchName);
-  }, []);
+  }, [searchAltMediaTags]);
 
-  // Search for matching Danbooru tags
-  const searchAltMediaTags = useCallback(async (query) => {
-    if (!query || query.length < 2) {
-      setAltMediaTags([]);
-      return;
-    }
-    
-    setAltMediaLoading(true);
-    try {
-      // Search for character tags (category 4)
-      const response = await api.get(`/anime-import/sakuga-tags?q=${encodeURIComponent(query)}`);
-      setAltMediaTags(response.data.tags || []);
-    } catch (err) {
-      console.error('Tag search failed:', err);
-    } finally {
-      setAltMediaLoading(false);
-    }
-  }, []);
 
   // Select a tag and load images
   const selectAltMediaTag = useCallback(async (tag) => {

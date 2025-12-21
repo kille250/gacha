@@ -2,9 +2,9 @@ import React, { useState, useEffect, useContext } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { FaEdit, FaTrash } from 'react-icons/fa';
+import { FaEdit } from 'react-icons/fa';
 import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, clearCache } from '../utils/api';
-import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
+import { isVideo, PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
@@ -13,7 +13,7 @@ import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { arrayMove } from '@dnd-kit/sortable';
 import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons } from '../components/Admin';
-import { theme, PageWrapper, Container, getRarityColor } from '../styles/DesignSystem';
+import { theme, PageWrapper, Container } from '../styles/DesignSystem';
 
 const AdminPage = () => {
   const { t } = useTranslation();
@@ -94,7 +94,8 @@ const AdminPage = () => {
     if (user?.isAdmin) {
       fetchAllData();
     }
-  }, [user]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [user?.isAdmin]);
 
   // Auto-clear messages
   useEffect(() => {

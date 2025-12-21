@@ -2,13 +2,13 @@ import React, { useState, useEffect, useContext, useRef, useCallback } from 'rea
 import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight, MdLeaderboard, MdAutorenew, MdPeople, MdStorefront } from 'react-icons/md';
-import { FaFish, FaCrown, FaTrophy, FaExchangeAlt } from 'react-icons/fa';
+import { FaFish, FaCrown, FaTrophy } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import { io } from 'socket.io-client';
 import api, { clearCache, WS_URL, getTradingPostOptions, executeTrade } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
-import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, Heading2, Text, IconButton, motionVariants } from '../styles/DesignSystem';
+import { ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, motionVariants } from '../styles/DesignSystem';
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
 
 // Game configuration
@@ -260,6 +260,7 @@ const FishingPage = () => {
       socket.disconnect();
       socketRef.current = null;
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
   
   // Sync playerCount with otherPlayers.length (single source of truth)
@@ -361,6 +362,12 @@ const FishingPage = () => {
     }
   }, [showTradingPost]);
   
+  // Show notification
+  const showNotification = useCallback((message, type = 'info') => {
+    setNotification({ message, type });
+    setTimeout(() => setNotification(null), 3000);
+  }, []);
+  
   // Handle trade execution
   const handleTrade = useCallback(async (tradeId) => {
     try {
@@ -387,7 +394,7 @@ const FishingPage = () => {
       showNotification(err.response?.data?.message || t('fishing.tradeFailed'), 'error');
       setTradingLoading(false);
     }
-  }, [setUser, t]);
+  }, [setUser, t, showNotification]);
   
   // Autofishing loop with integrated cleanup
   useEffect(() => {
@@ -441,7 +448,7 @@ const FishingPage = () => {
         autofishIntervalRef.current = null;
       }
     };
-  }, [isAutofishing, rankData, setUser, t]);
+  }, [isAutofishing, rankData, setUser, t, showNotification]);
   
   // Keep-alive heartbeat (prevents inactive timeout disconnect for idle users)
   useEffect(() => {
@@ -559,7 +566,8 @@ const FishingPage = () => {
       showNotification(err.response?.data?.error || t('fishing.failedCast'), 'error');
       setGameState(GAME_STATES.WALKING);
     }
-  }, [t]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [t, showNotification]);
   
   // Handle catching fish
   const handleCatch = useCallback(async () => {
@@ -601,7 +609,7 @@ const FishingPage = () => {
       setGameState(GAME_STATES.WALKING);
       setSessionId(null);
     }
-  }, [sessionId, setUser, t]);
+  }, [sessionId, t, showNotification]);
   
   // Handle missing fish
   const handleMiss = useCallback(async (sid) => {
@@ -626,12 +634,6 @@ const FishingPage = () => {
     handleCatchRef.current = handleCatch;
   }, [startFishing, handleCatch]);
   
-  // Show notification
-  const showNotification = (message, type = 'info') => {
-    setNotification({ message, type });
-    setTimeout(() => setNotification(null), 3000);
-  };
-  
   // Toggle autofish
   const toggleAutofish = useCallback(() => {
     if (!rankData?.canAutofish) {
@@ -640,7 +642,7 @@ const FishingPage = () => {
     }
     setIsAutofishing(prev => !prev);
     setAutofishLog([]);
-  }, [rankData, t]);
+  }, [rankData, t, showNotification]);
   
   // Mobile controls
   const handleMobileMove = (dx, dy, dir) => {
@@ -1251,11 +1253,6 @@ const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
-const shimmer = keyframes`
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-`;
-
 const twinkle = keyframes`
   0%, 100% { opacity: 0.3; }
   50% { opacity: 1; }
@@ -1371,30 +1368,6 @@ const HeaderWoodGrain = styled.div`
   pointer-events: none;
 `;
 
-// Hanging Sign Animation
-const sway = keyframes`
-  0%, 100% { transform: rotate(-1.5deg); }
-  50% { transform: rotate(1.5deg); }
-`;
-
-const HangingSignContainer = styled.div`
-  position: absolute;
-  left: 50%;
-  top: 100%;
-  transform: translateX(-50%);
-  display: flex;
-  align-items: flex-start;
-  justify-content: center;
-  z-index: 101;
-  animation: ${sway} 4s ease-in-out infinite;
-  transform-origin: top center;
-  pointer-events: none;
-  
-  @media (max-width: 500px) {
-    display: none;
-  }
-`;
-
 const LocationSign = styled.div`
   position: absolute;
   top: 8px;
@@ -1417,55 +1390,6 @@ const LocationSign = styled.div`
   
   @media (max-width: 400px) {
     display: none;
-  }
-`;
-
-const ChainLeft = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: -2px;
-  margin-right: -2px;
-`;
-
-const ChainRight = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  margin-top: -2px;
-  margin-left: -2px;
-`;
-
-const ChainLink = styled.div`
-  width: 6px;
-  height: 10px;
-  border: 2px solid #a07830;
-  border-radius: 3px;
-  background: linear-gradient(90deg, #6d4c10 0%, #8b6914 50%, #6d4c10 100%);
-  margin-bottom: -3px;
-  box-shadow: 
-    inset 0 1px 0 rgba(255,220,150,0.3),
-    0 1px 2px rgba(0,0,0,0.3);
-    
-  &:nth-child(even) {
-    width: 8px;
-  }
-`;
-
-const HangingSign = styled.div`
-  position: relative;
-  background: linear-gradient(180deg, #a07830 0%, #8b6914 30%, #7a5820 70%, #6d4c10 100%);
-  border: 3px solid #5a3d0a;
-  border-radius: 8px;
-  padding: 8px 20px;
-  box-shadow: 
-    0 4px 12px rgba(0, 0, 0, 0.4),
-    inset 0 2px 0 rgba(255, 220, 150, 0.25),
-    inset 0 -2px 0 rgba(0, 0, 0, 0.2);
-  pointer-events: auto;
-  
-  @media (max-width: 700px) {
-    padding: 6px 14px;
   }
 `;
 
