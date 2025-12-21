@@ -329,10 +329,23 @@ router.get('/search-characters', auth, adminAuth, async (req, res) => {
 // ==========================================
 const DANBOORU_API = 'https://danbooru.donmai.us';
 
+// Danbooru API credentials (optional, from environment)
+const DANBOORU_LOGIN = process.env.DANBOORU_LOGIN || '';
+const DANBOORU_API_KEY = process.env.DANBOORU_API_KEY || '';
+
 // Headers for Danbooru API
 const DANBOORU_HEADERS = {
   'User-Agent': 'GachaApp/1.0 (Anime Character Import Tool)',
   'Accept': 'application/json'
+};
+
+// Helper to add auth params to Danbooru URL
+const addDanbooruAuth = (url) => {
+  if (DANBOORU_LOGIN && DANBOORU_API_KEY) {
+    const separator = url.includes('?') ? '&' : '?';
+    return `${url}${separator}login=${encodeURIComponent(DANBOORU_LOGIN)}&api_key=${encodeURIComponent(DANBOORU_API_KEY)}`;
+  }
+  return url;
 };
 
 // Helper to convert search query to Danbooru tag format
@@ -353,8 +366,9 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
     const tag = toDanbooruTag(q);
     const limit = 20;
     
-    // First try: search for animated content
-    let searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+animated+rating:general&limit=${limit}&page=${page}`;
+    // First try: search for animated content with safe rating
+    const animatedTags = `${tag} animated -rating:explicit -rating:questionable`;
+    let searchUrl = addDanbooruAuth(`${DANBOORU_API}/posts.json?tags=${encodeURIComponent(animatedTags)}&limit=${limit}&page=${page}`);
     
     let response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
@@ -363,9 +377,10 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
     
     let posts = await response.json();
     
-    // If no animated results, fallback to regular images (GIF priority)
+    // If no animated results, fallback to regular images
     if (posts.length === 0 && animated !== 'false') {
-      searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+rating:general&limit=${limit}&page=${page}`;
+      const fallbackTags = `${tag} -rating:explicit -rating:questionable`;
+      searchUrl = addDanbooruAuth(`${DANBOORU_API}/posts.json?tags=${encodeURIComponent(fallbackTags)}&limit=${limit}&page=${page}`);
       response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
       if (response.ok) {
         posts = await response.json();
@@ -424,7 +439,8 @@ router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
     const tag = toDanbooruTag(q);
     const limit = 30;
     // Search with animated tag and safe rating
-    const searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tag)}+animated+rating:general&limit=${limit}&page=${page}`;
+    const tagsQuery = `${tag} animated -rating:explicit -rating:questionable`;
+    const searchUrl = addDanbooruAuth(`${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tagsQuery)}&limit=${limit}&page=${page}`);
     
     const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
@@ -484,6 +500,9 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
       searchUrl += `&search[category]=${category}`;
     }
     
+    // Add auth
+    searchUrl = addDanbooruAuth(searchUrl);
+    
     const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
       throw new Error(`Danbooru tag API error: ${response.status}`);
@@ -526,33 +545,45 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'Tag is required' });
     }
     
-    const limit = 30;
+    const limit = 40; // Fetch more to compensate for client-side filtering
     // Sort options: score, favcount, id (newest)
     const orderTag = sort === 'newest' ? 'order:id_desc' : sort === 'favorites' ? 'order:favcount' : 'order:score';
     
-    // Build tags string
-    let tagsStr = encodeURIComponent(tag);
+    // Build tags array for proper encoding
+    const tagsList = [tag];
     
     // Add extra tags if provided (convert spaces to underscores for each tag)
     if (extraTags.trim()) {
       const extraTagsArr = extraTags.trim().split(/[\s,]+/).filter(t => t.length > 0);
       for (const et of extraTagsArr) {
-        tagsStr += `+${encodeURIComponent(et.toLowerCase().replace(/\s+/g, '_'))}`;
+        tagsList.push(et.toLowerCase().replace(/\s+/g, '_'));
       }
     }
     
-    // Add type filter
+    // Add type filter tag (only for animated - static uses client-side filter)
     if (typeFilter === 'animated') {
-      tagsStr += '+animated';
-    } else if (typeFilter === 'static') {
-      tagsStr += '+-animated';
+      tagsList.push('animated');
     }
+    // Note: For 'static', we filter client-side because -animated negation can cause API issues
     
-    // Search with exact tag + safe rating + sorting
-    const searchUrl = `${DANBOORU_API}/posts.json?tags=${tagsStr}+rating:g,s+${orderTag}&limit=${limit}&page=${page}`;
+    // Add safe rating filter (exclude explicit and questionable)
+    tagsList.push('-rating:explicit');
+    tagsList.push('-rating:questionable');
+    
+    // Add sorting
+    tagsList.push(orderTag);
+    
+    // Build URL with space-separated tags (Danbooru uses spaces, URL encodes them)
+    const tagsQuery = tagsList.join(' ');
+    let searchUrl = `${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tagsQuery)}&limit=${limit}&page=${page}`;
+    
+    // Add authentication if configured
+    searchUrl = addDanbooruAuth(searchUrl);
     
     const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Danbooru API error:', response.status, errorText);
       throw new Error(`Danbooru API error: ${response.status}`);
     }
     
@@ -562,7 +593,8 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
       .filter(post => post.file_url || post.large_file_url)
       .map(post => {
         const ext = (post.file_ext || '').toLowerCase();
-        const isAnimated = ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip';
+        const isAnimated = ext === 'webm' || ext === 'mp4' || ext === 'gif' || ext === 'zip' || 
+                          (post.tag_string && post.tag_string.includes('animated'));
         return {
           id: post.id,
           preview: post.preview_file_url || post.large_file_url,
@@ -580,10 +612,8 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
         };
       });
     
-    // Client-side filter for animated/static as backup (Danbooru tag might not be perfect)
-    if (typeFilter === 'animated') {
-      results = results.filter(r => r.isAnimated);
-    } else if (typeFilter === 'static') {
+    // Client-side filter for static (since -animated tag can cause API issues)
+    if (typeFilter === 'static') {
       results = results.filter(r => !r.isAnimated);
     }
     
