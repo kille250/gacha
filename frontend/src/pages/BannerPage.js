@@ -409,7 +409,10 @@ const BannerPage = () => {
             <FeaturedSection>
               <FeaturedLabel>{t('banner.featuredCharacters')}</FeaturedLabel>
               <CharacterAvatars>
-                {banner.Characters.slice(0, 6).map(char => (
+                {[...banner.Characters].sort((a, b) => {
+                  const rarityOrder = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
+                  return (rarityOrder[a.rarity] ?? 5) - (rarityOrder[b.rarity] ?? 5);
+                }).slice(0, 6).map(char => (
                   <Avatar
                     key={char.id}
                     rarity={char.rarity}
