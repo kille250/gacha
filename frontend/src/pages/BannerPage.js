@@ -92,6 +92,7 @@ const BannerPage = () => {
   // Pricing from server (single source of truth)
   const [pricing, setPricing] = useState(null);
   const [pricingLoaded, setPricingLoaded] = useState(false);
+  const [pricingError, setPricingError] = useState(null);
   
   // Ticket state
   const [tickets, setTickets] = useState({ rollTickets: 0, premiumTickets: 0 });
@@ -126,7 +127,8 @@ const BannerPage = () => {
   
   // Helper to get disabled reason for tooltips
   const getDisabledReason = useCallback((cost, isTicket = false, ticketCount = 0) => {
-    if (!pricingLoaded) return t('common.loading') || 'Loading...';
+    if (!pricingLoaded && !pricingError) return t('common.loading') || 'Loading...';
+    if (pricingError) return pricingError;
     if (isRolling) return t('common.summoning') || 'Summoning...';
     if (locked) return t('common.processing') || 'Processing...';
     if (isTicket && ticketLoadError) return t('banner.ticketLoadError') || 'Ticket data unavailable';
@@ -136,7 +138,7 @@ const BannerPage = () => {
       return t('banner.needMorePoints', { count: needed }) || `Need ${needed} more points`;
     }
     return undefined;
-  }, [pricingLoaded, isRolling, locked, ticketLoadError, user?.points, t]);
+  }, [pricingLoaded, pricingError, isRolling, locked, ticketLoadError, user?.points, t]);
 
   // Effects
   useEffect(() => {
@@ -144,15 +146,22 @@ const BannerPage = () => {
       try {
         setLoading(true);
         setTicketLoadError(false);
+        setPricingError(null);
         
-        // Fetch banner data and pricing first (required)
-        const [bannerData, pricingData] = await Promise.all([
-          getBannerById(bannerId),
-          getBannerPricing(bannerId)
-        ]);
+        // Fetch banner data first (required)
+        const bannerData = await getBannerById(bannerId);
         setBanner(bannerData);
-        setPricing(pricingData);
-        setPricingLoaded(true);
+        
+        // Fetch pricing separately to handle errors gracefully
+        try {
+          const pricingData = await getBannerPricing(bannerId);
+          setPricing(pricingData);
+          setPricingLoaded(true);
+        } catch (pricingErr) {
+          console.error('Failed to load pricing:', pricingErr);
+          setPricingError(t('common.pricingUnavailable') || 'Pricing unavailable. Please refresh.');
+          setPricingLoaded(true); // Set to true so UI doesn't show loading forever
+        }
         
         // Fetch tickets separately - don't block on failure but show warning
         try {
@@ -348,9 +357,9 @@ const BannerPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Update points immediately from response
-        if (typeof updatedPoints === 'number' && user) {
-          setUser({ ...user, points: updatedPoints });
+        // Update points immediately from response using functional update to avoid stale closure
+        if (typeof updatedPoints === 'number') {
+          setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
         
         // Update tickets if returned
@@ -391,8 +400,20 @@ const BannerPage = () => {
           // Ignore sessionStorage errors
         }
         
-        setError(err.response?.data?.error || t('roll.failedRoll'));
+        const errorMessage = err.response?.data?.error || t('roll.failedRoll');
+        setError(errorMessage);
         setIsRolling(false);
+        
+        // If error is ticket-related, force refresh tickets to sync stale state
+        if (errorMessage.toLowerCase().includes('ticket')) {
+          try {
+            const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+            setTickets(freshTickets);
+          } catch (ticketErr) {
+            console.warn('Failed to refresh tickets after error:', ticketErr);
+          }
+        }
+        
         // Refresh user data to sync points after failure (handles stale data)
         const refreshResult = await refreshUser();
         if (!refreshResult.success) {
@@ -467,9 +488,9 @@ const BannerPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Update points immediately from response
-        if (typeof updatedPoints === 'number' && user) {
-          setUser({ ...user, points: updatedPoints });
+        // Update points immediately from response using functional update to avoid stale closure
+        if (typeof updatedPoints === 'number') {
+          setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
         
         // Update tickets if returned
@@ -520,8 +541,20 @@ const BannerPage = () => {
           // Ignore sessionStorage errors
         }
         
-        setError(err.response?.data?.error || t('roll.failedMultiRoll'));
+        const errorMessage = err.response?.data?.error || t('roll.failedMultiRoll');
+        setError(errorMessage);
         setIsRolling(false);
+        
+        // If error is ticket-related, force refresh tickets to sync stale state
+        if (errorMessage.toLowerCase().includes('ticket')) {
+          try {
+            const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+            setTickets(freshTickets);
+          } catch (ticketErr) {
+            console.warn('Failed to refresh tickets after error:', ticketErr);
+          }
+        }
+        
         // Refresh user data to sync points after failure (handles stale data)
         const refreshResult = await refreshUser();
         if (!refreshResult.success) {
@@ -898,7 +931,7 @@ const BannerPage = () => {
                     }
                     handleRoll(false);
                   }}
-                  disabled={isRolling || !pricingLoaded || locked || user?.points < singlePullCost}
+                  disabled={isRolling || (!pricingLoaded && !pricingError) || pricingError || locked || user?.points < singlePullCost}
                   title={getDisabledReason(singlePullCost)}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
@@ -930,9 +963,9 @@ const BannerPage = () => {
                           }
                           handleMultiRoll(option.count, false);
                         }}
-                        disabled={isRolling || !pricingLoaded || locked || !canAfford}
+                        disabled={isRolling || (!pricingLoaded && !pricingError) || pricingError || locked || !canAfford}
                         title={getDisabledReason(option.finalCost)}
-                        $canAfford={canAfford && pricingLoaded}
+                        $canAfford={canAfford && pricingLoaded && !pricingError}
                         $isRecommended={option.count === 10}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
                         whileTap={{ scale: canAfford ? 0.97 : 1 }}

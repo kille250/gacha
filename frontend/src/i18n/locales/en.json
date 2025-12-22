@@ -6,6 +6,8 @@
     "cancel": "Cancel",
     "save": "Save",
     "saving": "Saving...",
+    "pricingUnavailable": "Pricing unavailable. Please refresh the page.",
+    "connectionLost": "Connection lost. Please check your network.",
     "delete": "Delete",
     "edit": "Edit",
     "close": "Close",

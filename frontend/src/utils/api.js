@@ -48,14 +48,22 @@ const CACHE_TTL = {
   default: 15 * 1000             // 15 seconds default
 };
 
-// Invalidate stale cache when tab becomes visible
+// Track last visibility change for smart cache invalidation
+let lastVisibilityChange = Date.now();
+const MIN_BACKGROUND_TIME_FOR_CACHE_CLEAR = 30000; // 30 seconds
+
+// Invalidate stale cache when tab becomes visible after being hidden for a while
 if (typeof document !== 'undefined') {
   document.addEventListener('visibilitychange', () => {
     if (document.visibilityState === 'visible') {
-      // Clear user-sensitive caches when tab regains focus
-      clearCache('/auth/me');
-      clearCache('/banners/user/tickets');
+      const elapsed = Date.now() - lastVisibilityChange;
+      // Only invalidate if tab was hidden for > 30 seconds to avoid unnecessary API calls
+      if (elapsed > MIN_BACKGROUND_TIME_FOR_CACHE_CLEAR) {
+        clearCache('/auth/me');
+        clearCache('/banners/user/tickets');
+      }
     }
+    lastVisibilityChange = Date.now();
   });
 }
 
@@ -103,6 +111,32 @@ export const invalidateAdminCache = () => {
  * This is preferred over clearCache() for auth-related cache clearing.
  */
 export const invalidateCache = () => clearCache();
+
+/**
+ * Invalidate caches after roll/gacha operations
+ * Call this after any roll to ensure consistent state across the app
+ */
+export const invalidateAfterRoll = () => {
+  clearCache('/auth/me');
+  clearCache('/characters/collection');
+  clearCache('/banners/user/tickets');
+};
+
+/**
+ * Invalidate caches after dojo operations
+ */
+export const invalidateAfterDojo = () => {
+  clearCache('/dojo');
+  clearCache('/auth/me');
+};
+
+/**
+ * Invalidate caches after fishing operations
+ */
+export const invalidateAfterFishing = () => {
+  clearCache('/fishing');
+  clearCache('/auth/me');
+};
 
 const api = axios.create({
   baseURL: API_URL,

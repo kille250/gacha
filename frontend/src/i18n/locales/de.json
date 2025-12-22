@@ -6,6 +6,8 @@
     "cancel": "Abbrechen",
     "save": "Speichern",
     "saving": "Speichern...",
+    "pricingUnavailable": "Preise nicht verfügbar. Bitte aktualisieren Sie die Seite.",
+    "connectionLost": "Verbindung verloren. Bitte überprüfen Sie Ihr Netzwerk.",
     "delete": "Löschen",
     "edit": "Bearbeiten",
     "close": "Schließen",

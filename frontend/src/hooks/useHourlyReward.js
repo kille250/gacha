@@ -7,7 +7,7 @@
  * - Claiming rewards
  * - Popup state for celebration
  */
-import { useState, useCallback, useEffect, useContext } from 'react';
+import { useState, useCallback, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import { hasToken } from '../utils/authStorage';
@@ -47,7 +47,9 @@ export const useHourlyReward = ({ onClaimSuccess } = {}) => {
     amount: 0
   });
 
-  // Prevent race conditions on claim
+  // Prevent race conditions on claim - use ref for synchronous lock check
+  // State is used for UI re-renders, ref is used for immediate synchronous checks
+  const claimingRef = useRef(false);
   const [justClaimed, setJustClaimed] = useState(false);
 
   // ==================== HELPERS ====================
@@ -176,14 +178,22 @@ export const useHourlyReward = ({ onClaimSuccess } = {}) => {
    * Claim the hourly reward
    */
   const claim = useCallback(async () => {
+    // Use ref for synchronous lock check to prevent race conditions from rapid clicks
+    if (claimingRef.current) {
+      return { success: false, error: 'Claim already in progress' };
+    }
+    
     if (rewardStatus.loading || !rewardStatus.available || justClaimed) {
       return { success: false, error: 'Cannot claim now' };
     }
 
+    // Set synchronous lock immediately
+    claimingRef.current = true;
     setJustClaimed(true);
     setRewardStatus(prev => ({ ...prev, loading: true, available: false }));
 
     if (!hasToken()) {
+      claimingRef.current = false;
       setJustClaimed(false);
       return { success: false, error: 'Not authenticated' };
     }
@@ -212,6 +222,7 @@ export const useHourlyReward = ({ onClaimSuccess } = {}) => {
 
       // Clear claim lock after cooldown
       setTimeout(() => {
+        claimingRef.current = false;
         setJustClaimed(false);
       }, CLAIM_COOLDOWN_MS);
 
@@ -249,6 +260,8 @@ export const useHourlyReward = ({ onClaimSuccess } = {}) => {
         setTimeout(checkAvailability, RETRY_DELAY_MS);
       }
 
+      // Release locks on error
+      claimingRef.current = false;
       setJustClaimed(false);
       return { 
         success: false, 

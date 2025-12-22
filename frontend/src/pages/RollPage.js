@@ -84,6 +84,7 @@ const RollPage = () => {
   // Pricing from server (single source of truth)
   const [pricing, setPricing] = useState(null);
   const [pricingLoaded, setPricingLoaded] = useState(false);
+  const [pricingError, setPricingError] = useState(null);
   
   // Computed values from pricing
   const singlePullCost = pricing?.singlePullCost || DEFAULT_SINGLE_PULL_COST;
@@ -101,17 +102,19 @@ const RollPage = () => {
   useEffect(() => {
     const fetchPricing = async () => {
       try {
+        setPricingError(null);
         const data = await getStandardPricing();
         setPricing(data);
       } catch (err) {
         console.error('Failed to fetch pricing:', err);
+        setPricingError(t('common.pricingUnavailable') || 'Pricing unavailable. Please refresh.');
         // Will use defaults
       } finally {
         setPricingLoaded(true);
       }
     };
     fetchPricing();
-  }, []);
+  }, [t]);
   
   // Auto-dismiss transient errors after 5 seconds
   // Critical errors stay visible longer
@@ -211,7 +214,8 @@ const RollPage = () => {
   
   // Helper to get disabled reason for tooltips
   const getDisabledReason = useCallback((cost) => {
-    if (!pricingLoaded) return t('common.loading') || 'Loading...';
+    if (!pricingLoaded && !pricingError) return t('common.loading') || 'Loading...';
+    if (pricingError) return pricingError;
     if (isRolling) return t('common.summoning') || 'Summoning...';
     if (locked) return t('common.processing') || 'Processing...';
     if (user?.points < cost) {
@@ -219,7 +223,7 @@ const RollPage = () => {
       return t('roll.needMorePoints', { count: needed }) || `Need ${needed} more points`;
     }
     return undefined;
-  }, [pricingLoaded, isRolling, locked, user?.points, t]);
+  }, [pricingLoaded, pricingError, isRolling, locked, user?.points, t]);
   
   // Get dynamic rarity colors from context
   const { getRarityColor } = useRarity();
@@ -275,9 +279,9 @@ const RollPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Update points immediately from response
-        if (typeof updatedPoints === 'number' && user) {
-          setUser({ ...user, points: updatedPoints });
+        // Update points immediately from response using functional update to avoid stale closure
+        if (typeof updatedPoints === 'number') {
+          setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
         
         if (skipAnimations) {
@@ -363,9 +367,9 @@ const RollPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Update points immediately from response
-        if (typeof updatedPoints === 'number' && user) {
-          setUser({ ...user, points: updatedPoints });
+        // Update points immediately from response using functional update to avoid stale closure
+        if (typeof updatedPoints === 'number') {
+          setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
         
         if (skipAnimations) {
@@ -671,7 +675,7 @@ const RollPage = () => {
                     }
                     handleRoll();
                   }}
-                  disabled={isRolling || !pricingLoaded || locked || user?.points < singlePullCost}
+                  disabled={isRolling || (!pricingLoaded && !pricingError) || pricingError || locked || user?.points < singlePullCost}
                   title={getDisabledReason(singlePullCost)}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
@@ -703,9 +707,9 @@ const RollPage = () => {
                           }
                           handleMultiRoll(option.count);
                         }}
-                        disabled={isRolling || !pricingLoaded || locked || !canAfford}
+                        disabled={isRolling || (!pricingLoaded && !pricingError) || pricingError || locked || !canAfford}
                         title={getDisabledReason(option.finalCost)}
-                        $canAfford={canAfford && pricingLoaded}
+                        $canAfford={canAfford && pricingLoaded && !pricingError}
                         $isRecommended={option.count === 10}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
                         whileTap={{ scale: canAfford ? 0.97 : 1 }}

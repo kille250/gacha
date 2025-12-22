@@ -9,7 +9,7 @@
  * - Rarity tracking
  * - Confetti effects
  */
-import { useState, useCallback, useContext, useEffect } from 'react';
+import { useState, useCallback, useContext } from 'react';
 import confetti from 'canvas-confetti';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';

@@ -63,13 +63,36 @@ const CollectionPage = () => {
       const isCriticalError = 
         error.includes('Not enough') || 
         error.includes('Insufficient') ||
-        error.includes('Server');
+        error.includes('Server') ||
+        error.includes('offline') ||
+        error.includes('connection');
       
       const dismissTime = isCriticalError ? 10000 : 5000;
       const timer = setTimeout(() => setError(null), dismissTime);
       return () => clearTimeout(timer);
     }
   }, [error]);
+  
+  // Handle network disconnect/reconnect
+  useEffect(() => {
+    const handleOffline = () => {
+      setError(t('common.connectionLost') || 'Connection lost. Please check your network.');
+    };
+    
+    const handleOnline = () => {
+      // Refresh data on reconnect
+      setError(null);
+      fetchData();
+    };
+    
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [t, fetchData]);
   
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);

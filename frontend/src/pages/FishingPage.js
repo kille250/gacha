@@ -775,7 +775,7 @@ const FishingPage = () => {
     } catch (err) {
       showNotification(err.response?.data?.error || t('fishing.errors.claimFailed'), 'error');
     }
-  }, [setUser, showNotification]);
+  }, [setUser, showNotification, t]);
   
   // Handle area selection
   const handleSelectArea = useCallback(async (areaId) => {
@@ -796,7 +796,7 @@ const FishingPage = () => {
     } finally {
       setEquipmentActionLoading(false);
     }
-  }, [showNotification, equipmentActionLoading]);
+  }, [showNotification, equipmentActionLoading, t]);
   
   // Handle area unlock (purchase)
   const handleUnlockArea = useCallback(async (areaId) => {
@@ -4105,23 +4105,6 @@ const SelectButton = styled.button`
   &:hover {
     background: linear-gradient(180deg, #64b5f6 0%, #42a5f5 100%);
     transform: translateY(-1px);
-  }
-`;
-
-const UnlockInfo = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: flex-end;
-  gap: 4px;
-  
-  span {
-    font-size: 12px;
-    font-weight: 700;
-    color: #795548;
-    
-    &:first-child {
-      color: #e65100;
-    }
   }
 `;
 

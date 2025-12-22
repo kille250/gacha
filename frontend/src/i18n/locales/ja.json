@@ -6,6 +6,8 @@
     "cancel": "キャンセル",
     "save": "保存",
     "saving": "保存中...",
+    "pricingUnavailable": "価格情報を読み込めません。ページを更新してください。",
+    "connectionLost": "接続が切断されました。ネットワークを確認してください。",
     "delete": "削除",
     "edit": "編集",
     "close": "閉じる",

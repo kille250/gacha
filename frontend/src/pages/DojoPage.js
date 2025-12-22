@@ -463,7 +463,14 @@ const DojoPage = () => {
           </AccumulatedRewards>
           
           <ClaimButton 
-            onClick={handleClaim}
+            onClick={() => {
+              const reason = getClaimDisabledReason();
+              if (reason) {
+                setError(reason);
+                return;
+              }
+              handleClaim();
+            }}
             disabled={!canClaim || claiming || locked}
             $canClaim={canClaim && !locked}
             title={getClaimDisabledReason()}
