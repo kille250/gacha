@@ -367,6 +367,7 @@
   "banner": {
     "loadingBanner": "Loading banner...",
     "bannerNotFound": "Banner not found or has expired",
+    "animationTimeout": "Animation timed out",
     "backToGacha": "Back to Gacha",
     "back": "Back",
     "featuredCharacters": "Featured Characters",

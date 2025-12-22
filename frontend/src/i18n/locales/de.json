@@ -44,6 +44,8 @@
     "pointsAvailable": "Punkte verfügbar",
     "fastMode": "Schnellmodus",
     "sessionExpired": "Sitzung abgelaufen. Bitte melde dich erneut an.",
+    "processing": "Verarbeiten...",
+    "networkDisconnected": "Netzwerk getrennt. Bitte überprüfe deine Verbindung und aktualisiere die Seite.",
     "claiming": "Abholen...",
     "normal": "Normal",
     "single": "Einzel",
@@ -325,7 +327,8 @@
     "allSeries": "Alle Serien",
     "loadingCollection": "Lade Sammlung...",
     "noCharactersFound": "Keine Charaktere gefunden",
-    "adjustFilters": "Versuche die Filter anzupassen, um mehr Charaktere zu sehen"
+    "adjustFilters": "Versuche die Filter anzupassen, um mehr Charaktere zu sehen",
+    "levelUpFailed": "Level-Up fehlgeschlagen. Bitte erneut versuchen."
   },
   "coupon": {
     "title": "Gutschein",
@@ -358,11 +361,13 @@
     "singlePull": "Einzel",
     "summoning": "Beschwöre...",
     "failedRoll": "Charakter konnte nicht gezogen werden",
-    "failedMultiRoll": "Mehrfach-Zug fehlgeschlagen"
+    "failedMultiRoll": "Mehrfach-Zug fehlgeschlagen",
+    "rollInterrupted": "Ein Zug wurde möglicherweise unterbrochen. Deine Daten wurden aktualisiert."
   },
   "banner": {
     "loadingBanner": "Lade Banner...",
     "bannerNotFound": "Banner nicht gefunden oder abgelaufen",
+    "animationTimeout": "Animation abgelaufen",
     "backToGacha": "Zurück zu Gacha",
     "back": "Zurück",
     "featuredCharacters": "Hervorgehobene Charaktere",
@@ -377,7 +382,8 @@
     "premiumRates": "Premium-Ticket",
     "guaranteedRare": "Garantiert Selten oder besser!",
     "pitySystem": "10-Zug Pity",
-    "pityDescription": "Jeder 10-Zug garantiert mindestens einen Seltenen oder höheren Charakter!"
+    "pityDescription": "Jeder 10-Zug garantiert mindestens einen Seltenen oder höheren Charakter!",
+    "rollInterrupted": "Ein Zug wurde möglicherweise unterbrochen. Deine Sammlung wurde aktualisiert."
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -461,6 +467,8 @@
     "bannerOrderUpdated": "Banner-Reihenfolge aktualisiert!",
     "failedUpdateBannerOrder": "Banner-Reihenfolge konnte nicht aktualisiert werden",
     "autofish": "Autoangeln",
+    "enableAutofish": "Autoangeln für diesen Benutzer aktivieren",
+    "disableAutofish": "Autoangeln für diesen Benutzer deaktivieren",
     "enableR18": "R18 für diesen Benutzer aktivieren",
     "disableR18": "R18 für diesen Benutzer deaktivieren",
     "markedAsFeatured": "als Hervorgehoben markiert",

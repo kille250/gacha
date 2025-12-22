@@ -44,6 +44,8 @@
     "pointsAvailable": "puntos disponibles",
     "fastMode": "Modo rápido",
     "sessionExpired": "Sesión expirada. Por favor inicia sesión de nuevo.",
+    "processing": "Procesando...",
+    "networkDisconnected": "Red desconectada. Por favor verifica tu conexión y actualiza la página.",
     "claiming": "Reclamando...",
     "normal": "Normal",
     "single": "Simple",
@@ -325,7 +327,8 @@
     "allSeries": "Todas las series",
     "loadingCollection": "Cargando colección...",
     "noCharactersFound": "No se encontraron personajes",
-    "adjustFilters": "Intenta ajustar tus filtros para ver más personajes"
+    "adjustFilters": "Intenta ajustar tus filtros para ver más personajes",
+    "levelUpFailed": "Error al subir de nivel. Por favor intenta de nuevo."
   },
   "coupon": {
     "title": "Canje de",
@@ -358,11 +361,13 @@
     "singlePull": "Simple",
     "summoning": "Invocando...",
     "failedRoll": "Error al tirar personaje",
-    "failedMultiRoll": "Error al realizar tirada múltiple"
+    "failedMultiRoll": "Error al realizar tirada múltiple",
+    "rollInterrupted": "Una tirada puede haber sido interrumpida. Tus datos han sido actualizados."
   },
   "banner": {
     "loadingBanner": "Cargando banner...",
     "bannerNotFound": "Banner no encontrado o ha expirado",
+    "animationTimeout": "La animación ha expirado",
     "backToGacha": "Volver a Gacha",
     "back": "Atrás",
     "featuredCharacters": "Personajes destacados",
@@ -377,7 +382,8 @@
     "premiumRates": "Ticket premium",
     "guaranteedRare": "¡Raro o mejor garantizado!",
     "pitySystem": "Pity de 10 tiradas",
-    "pityDescription": "¡Cada 10 tiradas garantiza al menos un personaje Raro o superior!"
+    "pityDescription": "¡Cada 10 tiradas garantiza al menos un personaje Raro o superior!",
+    "rollInterrupted": "Una tirada puede haber sido interrumpida. Tu colección ha sido actualizada."
   },
   "admin": {
     "title": "Panel de administración",

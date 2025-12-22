@@ -44,6 +44,8 @@
     "pointsAvailable": "ポイント利用可能",
     "fastMode": "高速モード",
     "sessionExpired": "セッションが期限切れです。再度ログインしてください。",
+    "processing": "処理中...",
+    "networkDisconnected": "ネットワークが切断されました。接続を確認してページを更新してください。",
     "claiming": "受け取り中...",
     "normal": "通常",
     "single": "単発",
@@ -325,7 +327,8 @@
     "allSeries": "すべてのシリーズ",
     "loadingCollection": "コレクション読み込み中...",
     "noCharactersFound": "キャラクターが見つかりません",
-    "adjustFilters": "フィルターを調整してもっとキャラクターを表示してみてください"
+    "adjustFilters": "フィルターを調整してもっとキャラクターを表示してみてください",
+    "levelUpFailed": "レベルアップに失敗しました。もう一度お試しください。"
   },
   "coupon": {
     "title": "クーポン",
@@ -358,11 +361,13 @@
     "singlePull": "単発",
     "summoning": "召喚中...",
     "failedRoll": "キャラクターの抽選に失敗しました",
-    "failedMultiRoll": "連続ガチャに失敗しました"
+    "failedMultiRoll": "連続ガチャに失敗しました",
+    "rollInterrupted": "ガチャが中断された可能性があります。データが更新されました。"
   },
   "banner": {
     "loadingBanner": "バナー読み込み中...",
     "bannerNotFound": "バナーが見つからないか期限切れです",
+    "animationTimeout": "アニメーションがタイムアウトしました",
     "backToGacha": "ガチャに戻る",
     "back": "戻る",
     "featuredCharacters": "ピックアップキャラクター",
@@ -377,7 +382,8 @@
     "premiumRates": "プレミアムチケット",
     "guaranteedRare": "レア以上確定！",
     "pitySystem": "10連天井",
-    "pityDescription": "10連ガチャでレア以上のキャラクターが1体確定！"
+    "pityDescription": "10連ガチャでレア以上のキャラクターが1体確定！",
+    "rollInterrupted": "ガチャが中断された可能性があります。コレクションが更新されました。"
   },
   "admin": {
     "title": "管理ダッシュボード",
