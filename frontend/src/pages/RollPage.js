@@ -13,7 +13,7 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { onVisibilityChange } from '../utils/cacheManager';
+import { onVisibilityChange, VISIBILITY_CALLBACK_IDS } from '../utils/cacheManager';
 import { executeStandardRoll, executeStandardMultiRoll } from '../utils/gachaActions';
 
 // Design System
@@ -130,7 +130,7 @@ const RollPage = () => {
   // NOTE: Pricing is always refreshed on any visibility change (not just stale threshold)
   // because admin pricing updates should be reflected immediately for accurate costs.
   useEffect(() => {
-    return onVisibilityChange('roll-pricing', async () => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.ROLL_PRICING, async () => {
       // Always refresh pricing on visibility change (pricing may have been updated by admin)
       try {
         const data = await getStandardPricing();

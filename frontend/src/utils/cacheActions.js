@@ -160,6 +160,42 @@ export const MODAL_ACTIONS = {
 };
 
 // ===========================================
+// PRE-TRANSACTION ACTIONS
+// ===========================================
+
+/**
+ * Pre-transaction actions for defensive revalidation before critical operations.
+ * Use these before spending currency to ensure fresh data and prevent stale-state bugs.
+ */
+export const PRE_TRANSACTION_ACTIONS = {
+  /** Before any gacha roll - ensures fresh user data and tickets */
+  PRE_ROLL: 'pre:roll',
+  /** Before any purchase - ensures fresh user points */
+  PRE_PURCHASE: 'pre:purchase',
+};
+
+// ===========================================
+// VISIBILITY CALLBACK IDS
+// ===========================================
+
+/**
+ * Standardized IDs for visibility change callbacks.
+ * Use these when registering with onVisibilityChange() for consistency.
+ */
+export const VISIBILITY_CALLBACK_IDS = {
+  /** Fishing page data refresh */
+  FISHING_DATA: 'fishing-data',
+  /** Banner page pricing and tickets refresh */
+  BANNER_PRICING: 'banner-pricing-and-tickets',
+  /** Standard roll page pricing refresh */
+  ROLL_PRICING: 'roll-pricing',
+  /** Admin dashboard data refresh */
+  ADMIN_DASHBOARD: 'admin-dashboard',
+  /** Dojo page status refresh */
+  DOJO_STATUS: 'dojo-status',
+};
+
+// ===========================================
 // COMBINED EXPORT
 // ===========================================
 
@@ -228,6 +264,10 @@ export const CACHE_ACTIONS = {
   MODAL_CHALLENGES_OPEN: MODAL_ACTIONS.CHALLENGES_OPEN,
   MODAL_LEADERBOARD_OPEN: MODAL_ACTIONS.LEADERBOARD_OPEN,
   MODAL_DOJO_OPEN: MODAL_ACTIONS.DOJO_OPEN,
+  
+  // Pre-transaction (defensive revalidation)
+  PRE_ROLL: PRE_TRANSACTION_ACTIONS.PRE_ROLL,
+  PRE_PURCHASE: PRE_TRANSACTION_ACTIONS.PRE_PURCHASE,
 };
 
 // NOTE: Default export removed - use named exports instead for better tree-shaking

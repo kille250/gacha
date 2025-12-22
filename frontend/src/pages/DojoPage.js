@@ -22,7 +22,7 @@ import {
   getDojoAvailableCharacters,
   getAssetUrl
 } from '../utils/api';
-import { onVisibilityChange, STALE_THRESHOLDS } from '../utils/cacheManager';
+import { onVisibilityChange, STALE_THRESHOLDS, VISIBILITY_CALLBACK_IDS } from '../utils/cacheManager';
 import {
   assignCharacter as dojoAssignCharacter,
   unassignCharacter as dojoUnassignCharacter,
@@ -149,7 +149,7 @@ const DojoPage = () => {
   // - /dojo/status (via VISIBILITY_INVALIDATIONS.normal)
   // This callback just re-fetches into component state after cache is cleared.
   useEffect(() => {
-    return onVisibilityChange('dojo-status', (staleLevel) => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.DOJO_STATUS, (staleLevel) => {
       // Check if data is stale based on our last fetch time
       const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
       if (timeSinceLastFetch > STALE_THRESHOLDS.normal) {

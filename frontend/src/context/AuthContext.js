@@ -1,6 +1,6 @@
 // src/context/AuthContext.js
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
-import api, { invalidateCache, AUTH_ERROR_EVENT } from '../utils/api';
+import api, { AUTH_ERROR_EVENT } from '../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
 import {
   getToken,
@@ -59,7 +59,7 @@ export const AuthProvider = ({ children }) => {
       // Don't trust localStorage as it might be from a different session
       try {
         // Clear auth cache to ensure we get fresh data on initial load
-        invalidateCache();
+        invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
         
         const response = await api.get('/auth/me');
         const freshUserData = { ...response.data };
@@ -90,7 +90,7 @@ export const AuthProvider = ({ children }) => {
       console.warn('Session expired, logging out:', event.detail);
       
       // Clear auth state
-      invalidateCache();
+      invalidateFor(CACHE_ACTIONS.AUTH_LOGOUT);
       clearAuthStorage();
       setCurrentUser(null);
       setSessionExpired(true);
@@ -126,7 +126,7 @@ export const AuthProvider = ({ children }) => {
       
       // Clear cache after token is set (new token = new cache namespace)
       // Single invalidation is sufficient since cache is keyed by token hash
-      invalidateCache();
+      invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
       
       // Get user data from backend (fresh, uncached)
       const userResponse = await api.get('/auth/me');
@@ -159,7 +159,7 @@ export const AuthProvider = ({ children }) => {
       
       // Clear cache after token is set (new token = new cache namespace)
       // Single invalidation is sufficient since cache is keyed by token hash
-      invalidateCache();
+      invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
       
       // Get user data from backend (fresh, uncached)
       const userResponse = await api.get('/auth/me');
@@ -188,7 +188,7 @@ export const AuthProvider = ({ children }) => {
       
       // Clear cache after token is set (new token = new cache namespace)
       // Single invalidation is sufficient since cache is keyed by token hash
-      invalidateCache();
+      invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
       
       // Get user data from backend (fresh, uncached)
       const userResponse = await api.get('/auth/me');

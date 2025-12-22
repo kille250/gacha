@@ -2,8 +2,25 @@ import React, { useState, useEffect, useContext, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS } from '../utils/cacheManager';
+import { getAssetUrl, getAdminDashboard } from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS, VISIBILITY_CALLBACK_IDS } from '../utils/cacheManager';
+import {
+  addCharacter as addCharacterAction,
+  deleteCharacter as deleteCharacterAction,
+  addCoins as addCoinsAction,
+  toggleAutofish as toggleAutofishAction,
+  toggleR18 as toggleR18Action,
+  addBanner as addBannerAction,
+  editBanner as editBannerAction,
+  removeBanner as removeBannerAction,
+  toggleBannerFeatured as toggleBannerFeaturedAction,
+  updateBannerOrder as updateBannerOrderAction,
+  addCoupon as addCouponAction,
+  editCoupon as editCouponAction,
+  removeCoupon as removeCouponAction,
+  handleBulkUploadSuccess,
+  handleAnimeImportSuccess
+} from '../utils/adminActions';
 import { PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
@@ -114,7 +131,7 @@ const AdminPage = () => {
   useEffect(() => {
     if (!user?.isAdmin) return;
     
-    return onVisibilityChange('admin-dashboard', (staleLevel, elapsed) => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.ADMIN_DASHBOARD, (staleLevel, elapsed) => {
       // Refresh if tab was hidden longer than admin staleness threshold
       if (elapsed > REFRESH_INTERVALS.adminStaleThresholdMs) {
         invalidateFor(CACHE_ACTIONS.ADMIN_VISIBILITY_CHANGE);
@@ -159,11 +176,9 @@ const AdminPage = () => {
       formData.append('rarity', newCharacter.rarity);
       formData.append('isR18', newCharacter.isR18);
       
-      await api.post('/admin/characters/upload', formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
+      // Use centralized action helper for consistent cache invalidation
+      await addCharacterAction(formData);
       
-      invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_ADD);
       setSuccessMessage(t('admin.characterAdded'));
       fetchAllData();
       setNewCharacter({ name: '', series: '', rarity: 'common', isR18: false });
@@ -185,6 +200,7 @@ const AdminPage = () => {
   }, []);
 
   const handleEditCharacterSuccess = useCallback((message) => {
+    // Cache invalidation handled by adminActions
     invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_EDIT);
     setSuccessMessage(message);
     fetchAllData();
@@ -194,8 +210,8 @@ const AdminPage = () => {
     if (!window.confirm(t('admin.confirmDeleteCharacter'))) return;
     
     try {
-      await api.delete(`/admin/characters/${characterId}`);
-      invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_DELETE);
+      // Use centralized action helper for consistent cache invalidation
+      await deleteCharacterAction(characterId);
       setSuccessMessage(t('admin.characterDeleted'));
       fetchAllData();
     } catch (err) {
@@ -211,12 +227,10 @@ const AdminPage = () => {
   const handleAddCoins = async (e) => {
     e.preventDefault();
     try {
-      const response = await api.post('/admin/add-coins', coinForm);
-      invalidateFor(CACHE_ACTIONS.ADMIN_USER_COINS);
-      setCoinMessage(response.data.message);
+      // Use centralized action helper for consistent cache invalidation
+      const result = await addCoinsAction(coinForm, refreshUser, user?.id);
+      setCoinMessage(result.message);
       fetchAllData();
-      // Compare as strings since form values are strings
-      if (String(coinForm.userId) === String(user?.id)) await refreshUser();
       setCoinForm({ userId: '', amount: 100 });
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to add coins');
@@ -226,9 +240,9 @@ const AdminPage = () => {
   // User toggle handlers
   const handleToggleAutofish = async (userId, enabled) => {
     try {
-      const response = await api.post('/fishing/admin/toggle-autofish', { userId, enabled });
-      invalidateFor(CACHE_ACTIONS.ADMIN_USER_TOGGLE_AUTOFISH);
-      setSuccessMessage(response.data.message);
+      // Use centralized action helper for consistent cache invalidation
+      const result = await toggleAutofishAction(userId, enabled);
+      setSuccessMessage(result.message);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, autofishEnabled: enabled } : u));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to toggle autofishing');
@@ -237,9 +251,9 @@ const AdminPage = () => {
 
   const handleToggleR18 = async (userId, enabled) => {
     try {
-      const response = await api.post('/admin/toggle-r18', { userId, enabled });
-      invalidateFor(CACHE_ACTIONS.ADMIN_USER_TOGGLE_R18);
-      setSuccessMessage(response.data.message);
+      // Use centralized action helper for consistent cache invalidation
+      const result = await toggleR18Action(userId, enabled);
+      setSuccessMessage(result.message);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, allowR18: enabled } : u));
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to toggle R18 access');
@@ -249,8 +263,8 @@ const AdminPage = () => {
   // Banner handlers
   const handleAddBanner = async (formData) => {
     try {
-      await createBanner(formData);
-      invalidateFor(CACHE_ACTIONS.ADMIN_BANNER_ADD);
+      // Use centralized action helper for consistent cache invalidation
+      await addBannerAction(formData);
       fetchAllData();
       setSuccessMessage(t('admin.bannerAdded'));
       setIsAddingBanner(false);
@@ -261,8 +275,8 @@ const AdminPage = () => {
 
   const handleUpdateBanner = async (formData) => {
     try {
-      await updateBanner(editingBanner.id, formData);
-      invalidateFor(CACHE_ACTIONS.ADMIN_BANNER_EDIT);
+      // Use centralized action helper for consistent cache invalidation
+      await editBannerAction(editingBanner.id, formData);
       fetchAllData();
       setSuccessMessage(t('admin.bannerUpdated'));
       setIsEditingBanner(false);
@@ -274,8 +288,8 @@ const AdminPage = () => {
   const handleDeleteBanner = async (bannerId) => {
     if (!window.confirm(t('admin.confirmDeleteBanner'))) return;
     try {
-      await deleteBanner(bannerId);
-      invalidateFor(CACHE_ACTIONS.ADMIN_BANNER_DELETE);
+      // Use centralized action helper for consistent cache invalidation
+      await removeBannerAction(bannerId);
       fetchAllData();
       setSuccessMessage(t('admin.bannerDeleted'));
     } catch (err) {
@@ -288,8 +302,8 @@ const AdminPage = () => {
     setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, featured: newFeaturedStatus } : b));
     
     try {
-      await api.patch(`/banners/${banner.id}/featured`, { featured: newFeaturedStatus });
-      invalidateFor(CACHE_ACTIONS.ADMIN_BANNER_FEATURED);
+      // Use centralized action helper for consistent cache invalidation
+      await toggleBannerFeaturedAction(banner.id, newFeaturedStatus);
       setSuccessMessage(`${banner.name} ${newFeaturedStatus ? t('admin.markedAsFeatured') : t('admin.unmarkedAsFeatured')}`);
     } catch (err) {
       setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, featured: !newFeaturedStatus } : b));
@@ -306,8 +320,8 @@ const AdminPage = () => {
       setBanners(newBanners);
       
       try {
-        await api.post('/banners/update-order', { bannerOrder: newBanners.map(b => b.id) });
-        invalidateFor(CACHE_ACTIONS.ADMIN_BANNER_REORDER);
+        // Use centralized action helper for consistent cache invalidation
+        await updateBannerOrderAction(newBanners.map(b => b.id));
         setSuccessMessage(t('admin.bannerOrderUpdated'));
       } catch (err) {
         setBanners(banners);
@@ -319,8 +333,8 @@ const AdminPage = () => {
   // Coupon handlers
   const handleAddCoupon = async (formData) => {
     try {
-      await api.post('/coupons/admin', formData);
-      invalidateFor(CACHE_ACTIONS.ADMIN_COUPON_ADD);
+      // Use centralized action helper for consistent cache invalidation
+      await addCouponAction(formData);
       fetchAllData();
       setSuccessMessage(t('admin.couponCreated'));
       setIsAddingCoupon(false);
@@ -331,8 +345,8 @@ const AdminPage = () => {
 
   const handleUpdateCoupon = async (formData) => {
     try {
-      await api.put(`/coupons/admin/${editingCoupon.id}`, formData);
-      invalidateFor(CACHE_ACTIONS.ADMIN_COUPON_EDIT);
+      // Use centralized action helper for consistent cache invalidation
+      await editCouponAction(editingCoupon.id, formData);
       fetchAllData();
       setSuccessMessage(t('admin.couponUpdated'));
       setIsEditingCoupon(false);
@@ -344,8 +358,8 @@ const AdminPage = () => {
   const handleDeleteCoupon = async (couponId) => {
     if (!window.confirm(t('admin.confirmDeleteCoupon'))) return;
     try {
-      await api.delete(`/coupons/admin/${couponId}`);
-      invalidateFor(CACHE_ACTIONS.ADMIN_COUPON_DELETE);
+      // Use centralized action helper for consistent cache invalidation
+      await removeCouponAction(couponId);
       fetchAllData();
       setSuccessMessage(t('admin.couponDeleted'));
     } catch (err) {
@@ -538,12 +552,12 @@ const AdminPage = () => {
       <MultiUploadModal 
         show={isMultiUploadOpen} 
         onClose={() => setIsMultiUploadOpen(false)} 
-        onSuccess={(result) => { invalidateFor(CACHE_ACTIONS.ADMIN_BULK_UPLOAD); setSuccessMessage(result.message); fetchAllData(); }} 
+        onSuccess={(result) => { handleBulkUploadSuccess(() => { setSuccessMessage(result.message); fetchAllData(); }, result); }} 
       />
       <AnimeImportModal 
         show={isAnimeImportOpen} 
         onClose={() => setIsAnimeImportOpen(false)} 
-        onSuccess={(result) => { invalidateFor(CACHE_ACTIONS.ADMIN_ANIME_IMPORT); setSuccessMessage(result.message); fetchAllData(); }} 
+        onSuccess={(result) => { handleAnimeImportSuccess(() => { setSuccessMessage(result.message); fetchAllData(); }, result); }} 
       />
 
       {/* Edit Character Modal */}

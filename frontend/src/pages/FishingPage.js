@@ -13,7 +13,7 @@ import api, {
   getFishingAreas,
   getFishingRods
 } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS } from '../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS, VISIBILITY_CALLBACK_IDS } from '../utils/cacheManager';
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -423,7 +423,7 @@ const FishingPage = () => {
   // - /fishing/info, /fishing/rank (via VISIBILITY_INVALIDATIONS.normal)
   // This callback just re-fetches into component state after cache is cleared.
   useEffect(() => {
-    return onVisibilityChange('fishing-data', async (staleLevel) => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.FISHING_DATA, async (staleLevel) => {
       // Only refresh if tab was hidden long enough to be considered stale
       if (staleLevel === 'critical' || staleLevel === 'normal' || staleLevel === 'static') {
         try {

@@ -13,7 +13,7 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { onVisibilityChange } from '../utils/cacheManager';
+import { onVisibilityChange, VISIBILITY_CALLBACK_IDS } from '../utils/cacheManager';
 import { executeBannerRoll, executeBannerMultiRoll } from '../utils/gachaActions';
 
 // Design System
@@ -191,7 +191,7 @@ const BannerPage = () => {
   useEffect(() => {
     if (!bannerId) return;
     
-    return onVisibilityChange('banner-pricing-and-tickets', async () => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.BANNER_PRICING, async () => {
       // Refresh both pricing and tickets in parallel on visibility change
       try {
         const [pricingData, ticketsData] = await Promise.all([

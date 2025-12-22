@@ -18,7 +18,18 @@
 import { clearCache } from './api';
 
 // Re-export CACHE_ACTIONS for convenience
-export { CACHE_ACTIONS, FISHING_ACTIONS, DOJO_ACTIONS, GACHA_ACTIONS, ADMIN_ACTIONS, AUTH_ACTIONS, COUPON_ACTIONS, MODAL_ACTIONS } from './cacheActions';
+export { 
+  CACHE_ACTIONS, 
+  FISHING_ACTIONS, 
+  DOJO_ACTIONS, 
+  GACHA_ACTIONS, 
+  ADMIN_ACTIONS, 
+  AUTH_ACTIONS, 
+  COUPON_ACTIONS, 
+  MODAL_ACTIONS,
+  PRE_TRANSACTION_ACTIONS,
+  VISIBILITY_CALLBACK_IDS
+} from './cacheActions';
 
 // ===========================================
 // STALENESS THRESHOLDS
@@ -146,6 +157,15 @@ const GACHA_PATTERNS = {
  */
 const COUPON_PATTERNS = {
   redeem: ['/auth/me', '/characters/collection', '/banners/user/tickets']
+};
+
+/**
+ * Pre-transaction invalidation patterns
+ * Use these for defensive revalidation before critical operations to prevent stale-state bugs
+ */
+const PRE_TRANSACTION_PATTERNS = {
+  roll: ['/auth/me', '/banners/user/tickets'],
+  purchase: ['/auth/me']
 };
 
 /**
@@ -281,6 +301,39 @@ export const initVisibilityHandler = (options = {}) => {
  */
 const cacheEvents = [];
 const MAX_CACHE_EVENTS = 100;
+const MAX_PERSISTED_EVENTS = 20;
+
+/**
+ * Persist recent cache events to sessionStorage for crash debugging
+ */
+const persistCacheEvents = () => {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    sessionStorage.setItem('__cache_debug_events', 
+      JSON.stringify(cacheEvents.slice(-MAX_PERSISTED_EVENTS))
+    );
+  } catch (e) {
+    // Silent fail - sessionStorage might be full or disabled
+  }
+};
+
+/**
+ * Restore persisted cache events (for debugging after page reload)
+ */
+const restorePersistedEvents = () => {
+  if (typeof sessionStorage === 'undefined') return;
+  try {
+    const stored = sessionStorage.getItem('__cache_debug_events');
+    if (stored) {
+      const events = JSON.parse(stored);
+      // Mark as restored
+      events.forEach(e => e.restored = true);
+      cacheEvents.push(...events);
+    }
+  } catch (e) {
+    // Silent fail
+  }
+};
 
 /**
  * All action types and their corresponding invalidation patterns.
@@ -362,7 +415,13 @@ const ACTION_HANDLERS = {
   'auth:toggle_r18': () => {
     clearCache('/characters');
     clearCache('/auth/me');
-  }
+  },
+
+  // ===========================================
+  // PRE-TRANSACTION ACTIONS (defensive revalidation)
+  // ===========================================
+  'pre:roll': () => invalidatePatterns(PRE_TRANSACTION_PATTERNS.roll),
+  'pre:purchase': () => invalidatePatterns(PRE_TRANSACTION_PATTERNS.purchase)
 };
 
 /**
@@ -426,6 +485,8 @@ export const invalidateFor = (action, options = {}) => {
     if (cacheEvents.length > MAX_CACHE_EVENTS) {
       cacheEvents.shift();
     }
+    // Persist for crash debugging
+    persistCacheEvents();
   }
 
   if (options.debug || (typeof window !== 'undefined' && window.__CACHE_DEBUG_ENABLED__)) {
@@ -472,6 +533,8 @@ export const getInvalidationPatterns = (action) => {
       if (actionName === 'toggle_r18') return ['/characters', '/auth/me'];
       if (actionName === 'refresh') return ['/auth/me'];
       return ['*']; // Full clear
+    case 'pre':
+      return PRE_TRANSACTION_PATTERNS[actionName] || null;
     default:
       return null;
   }
@@ -492,6 +555,39 @@ export const getCacheState = () => {
     visibilityHandlerInitialized,
     registeredActionCount: Object.keys(ACTION_HANDLERS).length,
     recentEvents: cacheEvents.slice(-10),
+  };
+};
+
+/**
+ * Get comprehensive cache audit log for production debugging.
+ * Provides statistics and event history for diagnosing cache issues.
+ * 
+ * @returns {Object} Audit log with events and statistics
+ */
+export const getCacheAuditLog = () => {
+  const events = [...cacheEvents];
+  
+  // Calculate statistics
+  const byAction = events.reduce((acc, e) => {
+    acc[e.action] = (acc[e.action] || 0) + 1;
+    return acc;
+  }, {});
+  
+  const avgDuration = events.length > 0
+    ? events.reduce((sum, e) => sum + (e.duration || 0), 0) / events.length
+    : 0;
+  
+  const restoredCount = events.filter(e => e.restored).length;
+  
+  return {
+    events,
+    stats: {
+      totalInvalidations: events.length,
+      byAction,
+      avgDuration: Math.round(avgDuration * 100) / 100,
+      restoredFromPreviousSession: restoredCount
+    },
+    state: getCacheState()
   };
 };
 
@@ -548,8 +644,14 @@ export const enableCacheDebugging = () => {
       admin: { ...ADMIN_PATTERNS },
       modal: { ...MODAL_PATTERNS },
       gacha: { ...GACHA_PATTERNS },
-      coupon: { ...COUPON_PATTERNS }
+      coupon: { ...COUPON_PATTERNS },
+      pre: { ...PRE_TRANSACTION_PATTERNS }
     }),
+
+    /**
+     * Get comprehensive audit log
+     */
+    getAuditLog: getCacheAuditLog,
 
     /**
      * Manually trigger visibility-based invalidation
@@ -597,6 +699,9 @@ export const enableCacheDebugging = () => {
     }
   };
 
+  // Restore any persisted events from previous session
+  restorePersistedEvents();
+  
   console.debug('[CacheManager] Debug mode enabled. Access via window.__CACHE_DEBUG__');
   console.debug('[CacheManager] Available actions:', getActionTypes());
   console.debug('[CacheManager] Current state:', getCacheState());

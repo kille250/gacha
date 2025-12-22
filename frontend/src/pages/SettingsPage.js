@@ -7,8 +7,12 @@ import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { theme, LoadingSpinner, ErrorMessage as SharedErrorMessage, SuccessMessage as SharedSuccessMessage } from '../styles/DesignSystem';
-import api from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import {
+  updateEmail as updateEmailAction,
+  updateUsername as updateUsernameAction,
+  updatePassword as updatePasswordAction,
+  resetAccount as resetAccountAction
+} from '../utils/settingsActions';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
@@ -81,11 +85,9 @@ const SettingsPage = () => {
     
     setEmailLoading(true);
     try {
-      const response = await api.put('/auth/profile/email', { 
-        email: email.trim().toLowerCase() 
-      });
-      setEmailSuccess(response.data.message || t('settings.emailUpdated'));
-      await refreshUser();
+      // Use centralized action helper for consistent cache invalidation
+      const result = await updateEmailAction(email, refreshUser);
+      setEmailSuccess(result.message || t('settings.emailUpdated'));
     } catch (err) {
       setEmailError(err.response?.data?.error || t('settings.emailUpdateFailed'));
     } finally {
@@ -110,11 +112,9 @@ const SettingsPage = () => {
     
     setUsernameLoading(true);
     try {
-      const response = await api.put('/auth/profile/username', { 
-        username: newUsername.trim() 
-      });
-      setUsernameSuccess(response.data.message || t('settings.usernameUpdated'));
-      await refreshUser();
+      // Use centralized action helper for consistent cache invalidation
+      const result = await updateUsernameAction(newUsername, refreshUser);
+      setUsernameSuccess(result.message || t('settings.usernameUpdated'));
     } catch (err) {
       setUsernameError(err.response?.data?.error || t('settings.usernameUpdateFailed'));
     } finally {
@@ -155,15 +155,15 @@ const SettingsPage = () => {
     
     setPasswordLoading(true);
     try {
-      const response = await api.put('/auth/profile/password', {
+      // Use centralized action helper for consistent cache invalidation
+      const result = await updatePasswordAction({
         currentPassword: user?.hasPassword ? currentPassword : undefined,
         newPassword
-      });
-      setPasswordSuccess(response.data.message || t('settings.passwordUpdated'));
+      }, refreshUser);
+      setPasswordSuccess(result.message || t('settings.passwordUpdated'));
       setCurrentPassword('');
       setNewPassword('');
       setConfirmPassword('');
-      await refreshUser();
     } catch (err) {
       setPasswordError(err.response?.data?.error || t('settings.passwordUpdateFailed'));
     } finally {
@@ -232,20 +232,17 @@ const SettingsPage = () => {
     
     setResetLoading(true);
     try {
-      const response = await api.post('/auth/reset-account', {
+      // Use centralized action helper for consistent cache invalidation
+      const result = await resetAccountAction({
         password: resetPassword || undefined,
         confirmationText: resetConfirmText
-      });
+      }, refreshUser);
       
-      setResetSuccess(response.data.message || t('settings.resetSuccess'));
+      setResetSuccess(result.message || t('settings.resetSuccess'));
       setShowResetConfirm(false);
       setResetStep(1);
       setResetPassword('');
       setResetConfirmText('');
-      
-      // Clear all caches and refresh user
-      invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
-      await refreshUser();
     } catch (err) {
       setResetError(err.response?.data?.error || t('settings.resetFailed'));
     } finally {

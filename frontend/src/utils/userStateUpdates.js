@@ -139,10 +139,13 @@ export const applyServerResponse = (setUser, serverData) => {
 /**
  * Handle action error with consistent recovery pattern.
  * Always refreshes user data to re-sync currency/tickets after failures.
+ * Optionally invalidates the action's caches to clear any partial state.
  * 
  * @param {Object} params
  * @param {Function} params.refreshUser - The refreshUser function from AuthContext
  * @param {Error} params.error - The error that occurred
+ * @param {string} [params.actionType] - Optional cache action to invalidate (e.g., CACHE_ACTIONS.FISHING_CATCH)
+ * @param {Function} [params.invalidateFor] - The invalidateFor function from cacheManager (required if actionType provided)
  * @param {string} [params.fallbackMessage='Action failed'] - Default error message
  * @returns {Promise<string>} The error message to display
  * 
@@ -150,12 +153,32 @@ export const applyServerResponse = (setUser, serverData) => {
  * try {
  *   await someAction();
  * } catch (err) {
- *   const errorMessage = await handleActionError({ refreshUser, error: err });
+ *   const errorMessage = await handleActionError({ 
+ *     refreshUser, 
+ *     error: err,
+ *     actionType: CACHE_ACTIONS.FISHING_CATCH,
+ *     invalidateFor
+ *   });
  *   setError(errorMessage);
  * }
  */
-export const handleActionError = async ({ refreshUser, error, fallbackMessage = 'Action failed' }) => {
+export const handleActionError = async ({ 
+  refreshUser, 
+  error, 
+  actionType,
+  invalidateFor: invalidateFn,
+  fallbackMessage = 'Action failed' 
+}) => {
   console.error('[ActionError]', error);
+  
+  // Invalidate the action's caches to clear any partial state
+  if (actionType && invalidateFn) {
+    try {
+      invalidateFn(actionType);
+    } catch (invalidateErr) {
+      console.warn('[ActionError] Failed to invalidate cache:', invalidateErr);
+    }
+  }
   
   // Always refresh user to re-sync currency after errors
   // This handles cases where the action partially succeeded or state is stale
