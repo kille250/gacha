@@ -133,8 +133,8 @@ export const AUTH_ACTIONS = {
 // ===========================================
 
 /**
- * Modal actions replace the forceRefresh pattern.
- * Use these when opening modals/views that need fresh data.
+ * Modal actions for pre-fetching fresh data when opening modals/views.
+ * Use these before fetching data to ensure fresh responses.
  * This makes cache invalidation explicit and auditable.
  */
 export const MODAL_ACTIONS = {
@@ -210,7 +210,7 @@ export const CACHE_ACTIONS = {
   AUTH_REFRESH: AUTH_ACTIONS.REFRESH,
   AUTH_TOGGLE_R18: AUTH_ACTIONS.TOGGLE_R18,
   
-  // Modal/View (replaces forceRefresh pattern)
+  // Modal/View (explicit cache invalidation before data fetch)
   MODAL_EQUIPMENT_OPEN: MODAL_ACTIONS.EQUIPMENT_OPEN,
   MODAL_TRADING_OPEN: MODAL_ACTIONS.TRADING_OPEN,
   MODAL_CHALLENGES_OPEN: MODAL_ACTIONS.CHALLENGES_OPEN,

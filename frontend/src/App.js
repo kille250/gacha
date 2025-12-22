@@ -32,8 +32,9 @@ initVisibilityHandler({
   debug: process.env.NODE_ENV === 'development'
 });
 
-// Enable cache debugging in development
-if (process.env.NODE_ENV === 'development') {
+// Enable cache debugging in development or when explicitly enabled via localStorage
+// In production, run: localStorage.setItem('CACHE_DEBUG', 'true') then refresh
+if (process.env.NODE_ENV === 'development' || localStorage.getItem('CACHE_DEBUG') === 'true') {
   enableCacheDebugging();
 }
 

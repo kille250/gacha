@@ -184,7 +184,7 @@ const ACTION_HANDLERS = {
   'fishing:select_area': () => invalidateFishingAction('select_area'),
   
   // ===========================================
-  // MODAL/VIEW ACTIONS (replaces forceRefresh pattern)
+  // MODAL/VIEW ACTIONS (pre-fetch cache invalidation)
   // ===========================================
   'modal:equipment_open': () => {
     clearCache('/fishing/areas');

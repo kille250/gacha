@@ -506,7 +506,7 @@ const FishingPage = () => {
   // Equipment (Areas & Rods) fetch - invalidate cache when modal opens
   useEffect(() => {
     if (showEquipment) {
-      // Use explicit cache action instead of forceRefresh pattern
+      // Invalidate cache before fetching fresh data
       invalidateFor(CACHE_ACTIONS.MODAL_EQUIPMENT_OPEN);
       Promise.all([
         getFishingAreas(), 

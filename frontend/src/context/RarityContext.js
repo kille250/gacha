@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getRarityConfig } from '../utils/api';
+import { onVisibilityChange, STALE_THRESHOLDS } from '../utils/cacheManager';
 
 /**
  * RarityContext
@@ -110,21 +111,20 @@ export const RarityProvider = ({ children }) => {
   
   // Refetch rarity config when tab regains focus after being hidden for 5+ minutes
   // This handles admin updates to rarity colors/settings while user is idle
+  // Uses centralized visibility handler from cacheManager for consistency
   useEffect(() => {
-    const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
-    
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
+    return onVisibilityChange('rarity-config', (staleLevel, elapsed) => {
+      // Refresh when static threshold is reached (5 minutes)
+      // or if staleLevel is 'static' (already categorized by cacheManager)
+      if (staleLevel === 'static' || elapsed > STALE_THRESHOLDS.static) {
         const timeSinceLastFetch = Date.now() - lastFetchRef.current;
-        if (timeSinceLastFetch > STALE_THRESHOLD_MS) {
+        // Only refetch if we haven't fetched recently (prevents duplicate calls)
+        if (timeSinceLastFetch > STALE_THRESHOLDS.static) {
           fetchConfig();
           lastFetchRef.current = Date.now();
         }
       }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    });
   }, [fetchConfig]);
 
   // Helper functions
