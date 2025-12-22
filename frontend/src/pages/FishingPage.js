@@ -4239,20 +4239,26 @@ const MoreButton = styled.button`
 `;
 
 const MoreMenuDropdown = styled(motion.div)`
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+  position: fixed;
+  top: 60px;  /* Below header */
+  right: 50px;  /* Aligned with more button */
   min-width: 200px;
   background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 100%);
   border: 3px solid #8b6914;
   border-radius: 12px;
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
-  z-index: 1000;
+  z-index: 9999;  /* Above everything */
   overflow: hidden;
+  
+  @media (max-width: 600px) {
+    top: 54px;
+    right: 44px;
+  }
   
   @media (max-width: 400px) {
     min-width: 180px;
-    right: -8px;
+    top: 48px;
+    right: 40px;
   }
 `;
 
