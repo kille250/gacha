@@ -262,8 +262,15 @@ router.post('/catch', auth, async (req, res, next) => {
       const rod = FISHING_RODS[rodId] || FISHING_RODS.basic;
       let daily = getOrResetDailyData(user);
       let achievements = user.fishingAchievements || {};
-      let challenges = getOrResetChallenges(user);
+      const { challenges: challengesData, autoClaimedRewards } = getOrResetChallenges(user);
+      let challenges = challengesData;
       let challengeRewards = [];
+      
+      // Auto-claimed rewards from reset (if any) - apply them
+      if (autoClaimedRewards.length > 0) {
+        applyChallengeRewards(user, autoClaimedRewards);
+        challengeRewards.push(...autoClaimedRewards);
+      }
       
       if (success) {
         const { quality: catchQuality, multiplier: bonusMultiplier, message: catchMessage } = 

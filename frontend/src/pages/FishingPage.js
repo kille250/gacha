@@ -588,6 +588,23 @@ const FishingPage = () => {
         setTradingOptions(newOptions);
         
         showNotification(result.message, 'success');
+        
+        // Show challenge completion notifications (rewards are auto-applied on completion)
+        if (result.challengesCompleted?.length > 0) {
+          result.challengesCompleted.forEach(ch => {
+            const rewardParts = [];
+            if (ch.reward?.points) rewardParts.push(`${ch.reward.points} points`);
+            if (ch.reward?.rollTickets) rewardParts.push(`${ch.reward.rollTickets} 🎟️`);
+            if (ch.reward?.premiumTickets) rewardParts.push(`${ch.reward.premiumTickets} 🌟`);
+            const rewardStr = rewardParts.length > 0 ? ` +${rewardParts.join(', ')}` : '';
+            
+            showNotification(`🏆 ${t('fishing.challengeComplete')}: ${t(`fishing.challengeNames.${ch.id}`) || ch.id}${rewardStr}`, 'success');
+          });
+          
+          // Refresh challenges state
+          getFishingChallenges().then(setChallenges).catch(() => {});
+        }
+        
         setTradingLoading(false);
         
         // Clear result after animation
@@ -701,24 +718,36 @@ const FishingPage = () => {
           return [newEntry, ...prev.filter(e => now - e.timestamp < 4000)].slice(0, maxBubbles);
         });
         
-        // Show challenge completion notifications
+        // Show challenge completion notifications (rewards are auto-applied on completion)
         if (result.challengesCompleted?.length > 0) {
           result.challengesCompleted.forEach(ch => {
-            showNotification(`🏆 ${t('fishing.challengeComplete')}: ${ch.id}`, 'success');
+            // Build reward string for clarity
+            const rewardParts = [];
+            if (ch.reward?.points) rewardParts.push(`${ch.reward.points} points`);
+            if (ch.reward?.rollTickets) rewardParts.push(`${ch.reward.rollTickets} 🎟️`);
+            if (ch.reward?.premiumTickets) rewardParts.push(`${ch.reward.premiumTickets} 🌟`);
+            const rewardStr = rewardParts.length > 0 ? ` +${rewardParts.join(', ')}` : '';
+            
+            showNotification(`🏆 ${t('fishing.challengeComplete')}: ${t(`fishing.challengeNames.${ch.id}`) || ch.id}${rewardStr}`, 'success');
           });
+          
+          // Refresh challenges state immediately to update UI
+          getFishingChallenges().then(setChallenges).catch(() => {});
         }
         
-        // Periodic refresh of fishInfo (pity progress) and rank every N catches
+        // Periodic refresh of fishInfo (pity progress), rank, and challenges every N catches
         autofishCatchCountRef.current += 1;
         if (autofishCatchCountRef.current >= REFRESH_INTERVALS.autofishCatchThreshold) {
           autofishCatchCountRef.current = 0;
           try {
-            const [fishRes, rankRes] = await Promise.all([
+            const [fishRes, rankRes, challengesRes] = await Promise.all([
               api.get('/fishing/info'),
-              api.get('/fishing/rank')
+              api.get('/fishing/rank'),
+              getFishingChallenges()
             ]);
             setFishInfo(fishRes.data);
             setRankData(rankRes.data);
+            setChallenges(challengesRes);
           } catch {
             // Silent fail - non-critical periodic refresh
           }
@@ -961,11 +990,21 @@ const FishingPage = () => {
           // Silent fail - pity was already updated from response
         });
         
-        // Show challenge completion notifications
+        // Show challenge completion notifications (rewards are auto-applied on completion)
         if (result.challengesCompleted?.length > 0) {
           result.challengesCompleted.forEach(ch => {
-            showNotification(`🏆 ${t('fishing.challengeComplete')}: ${ch.id}`, 'success');
+            // Build reward string for clarity
+            const rewardParts = [];
+            if (ch.reward?.points) rewardParts.push(`${ch.reward.points} points`);
+            if (ch.reward?.rollTickets) rewardParts.push(`${ch.reward.rollTickets} 🎟️`);
+            if (ch.reward?.premiumTickets) rewardParts.push(`${ch.reward.premiumTickets} 🌟`);
+            const rewardStr = rewardParts.length > 0 ? ` +${rewardParts.join(', ')}` : '';
+            
+            showNotification(`🏆 ${t('fishing.challengeComplete')}: ${t(`fishing.challengeNames.${ch.id}`) || ch.id}${rewardStr}`, 'success');
           });
+          
+          // Refresh challenges state immediately to update UI
+          getFishingChallenges().then(setChallenges).catch(() => {});
         }
       } else {
         setGameState(GAME_STATES.FAILURE);

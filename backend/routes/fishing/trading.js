@@ -344,12 +344,24 @@ router.post('/trade', auth, async (req, res, next) => {
     user.fishingDaily = daily;
     
     // Challenge progress
-    let challenges = getOrResetChallenges(user);
-    const tradeResult = updateChallengeProgress(challenges, 'trade', { 
-      isCollection: tradeOption.requiredRarity === 'collection' 
-    });
-    challenges = tradeResult.challenges;
-    const challengeRewards = tradeResult.newlyCompleted;
+    const { challenges: challengesData, autoClaimedRewards } = getOrResetChallenges(user);
+    let challenges = challengesData;
+    let challengeRewards = [];
+    
+    // Auto-claimed rewards from reset (if any) - apply them
+    if (autoClaimedRewards.length > 0) {
+      applyChallengeRewards(user, autoClaimedRewards);
+      challengeRewards.push(...autoClaimedRewards);
+    }
+    
+    // Process current trade for challenge progress (counting each trade in quantity)
+    for (let i = 0; i < tradeQuantity; i++) {
+      const tradeResult = updateChallengeProgress(challenges, 'trade', { 
+        isCollection: tradeOption.requiredRarity === 'collection' 
+      });
+      challenges = tradeResult.challenges;
+      challengeRewards.push(...tradeResult.newlyCompleted);
+    }
     
     if (challengeRewards.length > 0) {
       applyChallengeRewards(user, challengeRewards);

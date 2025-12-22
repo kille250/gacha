@@ -14,7 +14,7 @@ const { User } = require('../../models');
 const { DAILY_CHALLENGES } = require('../../config/fishing');
 
 // Service imports
-const { getOrResetChallenges } = require('../../services/fishingService');
+const { getOrResetChallenges, applyChallengeRewards } = require('../../services/fishingService');
 
 // Error classes
 const {
@@ -28,13 +28,18 @@ router.get('/', auth, async (req, res, next) => {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
     
-    const challenges = getOrResetChallenges(user);
+    const { challenges, autoClaimedRewards } = getOrResetChallenges(user);
     
     // Check if challenges were just reset
     const wasReset = challenges.date !== user.fishingChallenges?.date;
     
-    // Save if reset occurred
-    if (wasReset) {
+    // If reset occurred with unclaimed rewards, apply them now
+    if (autoClaimedRewards.length > 0) {
+      applyChallengeRewards(user, autoClaimedRewards);
+    }
+    
+    // Save if reset or auto-claim occurred
+    if (wasReset || autoClaimedRewards.length > 0) {
       user.fishingChallenges = challenges;
       await user.save();
     }
@@ -56,10 +61,22 @@ router.get('/', auth, async (req, res, next) => {
       };
     }).filter(Boolean);
     
+    // Calculate UTC midnight for reset time
+    const now = new Date();
+    const utcMidnight = new Date(Date.UTC(
+      now.getUTCFullYear(),
+      now.getUTCMonth(),
+      now.getUTCDate() + 1, // Next day
+      0, 0, 0, 0
+    ));
+    
     res.json({
       challenges: challengeDetails,
       completedToday: challenges.completed.length,
-      resetsAt: new Date(new Date().setHours(24, 0, 0, 0)).toISOString()
+      resetsAt: utcMidnight.toISOString(),
+      timezone: 'UTC', // Fix 5.1: Document that reset is UTC-based
+      // Include auto-claimed rewards info if any occurred during this request
+      autoClaimedRewards: autoClaimedRewards.length > 0 ? autoClaimedRewards : undefined
     });
   } catch (err) {
     next(err);
@@ -74,7 +91,20 @@ router.post('/:id/claim', auth, async (req, res, next) => {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
     
-    const challenges = getOrResetChallenges(user);
+    const { challenges, autoClaimedRewards } = getOrResetChallenges(user);
+    
+    // If reset occurred with auto-claims, apply them first
+    if (autoClaimedRewards.length > 0) {
+      applyChallengeRewards(user, autoClaimedRewards);
+      user.fishingChallenges = challenges;
+      await user.save();
+      
+      // Check if the requested challenge was auto-claimed
+      if (autoClaimedRewards.some(r => r.id === challengeId)) {
+        throw new ChallengeError('already_claimed');
+      }
+    }
+    
     const challenge = DAILY_CHALLENGES[challengeId];
     
     if (!challenge) {

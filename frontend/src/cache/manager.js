@@ -65,7 +65,7 @@ export const REFRESH_INTERVALS = {
  */
 const VISIBILITY_INVALIDATIONS = {
   critical: ['/auth/me', '/banners/user/tickets'],
-  normal: ['/fishing/info', '/fishing/rank', '/dojo/status'],
+  normal: ['/fishing/info', '/fishing/rank', '/fishing/challenges', '/dojo/status'],
   static: ['/characters', '/banners']
 };
 
@@ -84,7 +84,7 @@ const VISIBILITY_INVALIDATIONS = {
 const FISHING_PATTERNS = {
   catch: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'],
   autofish: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'],
-  trade: ['/fishing/inventory', '/fishing/trading-post', '/auth/me'],
+  trade: ['/fishing/inventory', '/fishing/trading-post', '/fishing/challenges', '/auth/me'],
   unlock_area: ['/fishing/areas', '/fishing/info', '/auth/me'],
   buy_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
   equip_rod: ['/fishing/rods', '/fishing/info'],

@@ -146,7 +146,14 @@ router.post('/', auth, async (req, res, next) => {
       
       let inventoryItem = null;
       let challengeRewards = [];
-      let challenges = getOrResetChallenges(user);
+      const { challenges: challengesData, autoClaimedRewards } = getOrResetChallenges(user);
+      let challenges = challengesData;
+      
+      // Auto-claimed rewards from reset (if any) - apply them
+      if (autoClaimedRewards.length > 0) {
+        applyChallengeRewards(user, autoClaimedRewards);
+        challengeRewards.push(...autoClaimedRewards);
+      }
       
       if (success) {
         const [item, created] = await FishInventory.findOrCreate({

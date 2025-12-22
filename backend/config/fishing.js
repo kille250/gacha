@@ -391,33 +391,36 @@ const DAILY_CHALLENGES = {
     difficulty: 'hard'
   },
   
-  // Streak challenges
+  // Streak challenges (manual fishing only - autofish doesn't count for streaks)
   streak_5: {
     id: 'streak_5',
     name: 'On a Roll',
-    description: 'Catch 5 fish in a row without missing',
+    description: 'Catch 5 fish in a row without missing (manual fishing only)',
     type: 'streak',
     target: 5,
     reward: { points: 250 },
-    difficulty: 'medium'
+    difficulty: 'medium',
+    requiresManual: true // Hint for challenge generation filtering
   },
   streak_10: {
     id: 'streak_10',
     name: 'Unstoppable',
-    description: 'Catch 10 fish in a row without missing',
+    description: 'Catch 10 fish in a row without missing (manual fishing only)',
     type: 'streak',
     target: 10,
     reward: { premiumTickets: 1 },
-    difficulty: 'hard'
+    difficulty: 'hard',
+    requiresManual: true
   },
   streak_20: {
     id: 'streak_20',
     name: 'Master Angler',
-    description: 'Catch 20 fish in a row without missing',
+    description: 'Catch 20 fish in a row without missing (manual fishing only)',
     type: 'streak',
     target: 20,
     reward: { premiumTickets: 2, points: 500 },
-    difficulty: 'legendary'
+    difficulty: 'legendary',
+    requiresManual: true
   },
   
   // Autofish challenges
@@ -433,11 +436,51 @@ const DAILY_CHALLENGES = {
 };
 
 /**
+ * Check if a challenge is completable in a given area
+ * @param {Object} challenge - Challenge definition
+ * @param {string} areaId - Current fishing area
+ * @returns {boolean} - Whether challenge is completable
+ */
+function isChallengeCompletableInArea(challenge, areaId) {
+  // If no area specified, assume all challenges are valid (backwards compatibility)
+  if (!areaId) return true;
+  
+  const area = FISHING_AREAS[areaId];
+  if (!area) return true;
+  
+  // Check rarity-based challenges
+  if (challenge.type === 'rarity' && challenge.targetRarity) {
+    // Get fish available in this area and their rarities
+    const areaFishIds = area.fishPool || [];
+    const areaRarities = new Set();
+    
+    for (const fishId of areaFishIds) {
+      const fish = FISH_TYPES.find(f => f.id === fishId);
+      if (fish) {
+        areaRarities.add(fish.rarity);
+      }
+    }
+    
+    // Check if ANY of the target rarities are available in this area
+    const hasRequiredRarity = challenge.targetRarity.some(r => areaRarities.has(r));
+    if (!hasRequiredRarity) return false;
+  }
+  
+  return true;
+}
+
+/**
  * Generate 3 random daily challenges based on difficulty distribution
+ * Filters out challenges that are impossible in the player's current area.
+ * 
+ * @param {string} [areaId='pond'] - Player's current fishing area
  * @returns {Array} Array of challenge IDs
  */
-function generateDailyChallenges() {
-  const challenges = Object.values(DAILY_CHALLENGES);
+function generateDailyChallenges(areaId = 'pond') {
+  const allChallenges = Object.values(DAILY_CHALLENGES);
+  
+  // Filter challenges that are completable in the current area
+  const challenges = allChallenges.filter(c => isChallengeCompletableInArea(c, areaId));
   
   // Distribution: 1 easy, 1 medium, 1 hard/legendary
   const easy = challenges.filter(c => c.difficulty === 'easy');

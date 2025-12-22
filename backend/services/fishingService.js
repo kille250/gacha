@@ -88,23 +88,50 @@ function getOrResetDailyData(user) {
 
 /**
  * Get or reset daily challenges
+ * Auto-claims any completed but unclaimed challenges before reset to prevent lost rewards.
+ * 
  * @param {Object} user - User model instance
- * @returns {Object} - Current challenges data (reset if new day)
+ * @param {Object} options - Optional settings
+ * @param {boolean} options.autoClaimOnReset - Whether to auto-claim unclaimed rewards on reset (default: true)
+ * @returns {Object} - { challenges, autoClaimedRewards: [] }
+ *   - challenges: Current challenges data (reset if new day)
+ *   - autoClaimedRewards: Array of { id, reward } for rewards auto-claimed during reset
  */
-function getOrResetChallenges(user) {
+function getOrResetChallenges(user, options = {}) {
+  const { autoClaimOnReset = true } = options;
   const today = getTodayString();
   let challenges = user.fishingChallenges || {};
+  let autoClaimedRewards = [];
   
   if (needsDailyReset(challenges.date)) {
+    // Before reset, check for unclaimed completed challenges
+    if (autoClaimOnReset && challenges.active && challenges.progress) {
+      for (const challengeId of challenges.active) {
+        // Skip already claimed
+        if (challenges.completed?.includes(challengeId)) continue;
+        
+        const challenge = DAILY_CHALLENGES[challengeId];
+        if (!challenge) continue;
+        
+        const progress = challenges.progress[challengeId] || 0;
+        // If progress meets target but not claimed, auto-claim
+        if (progress >= challenge.target) {
+          autoClaimedRewards.push({ id: challengeId, reward: challenge.reward });
+        }
+      }
+    }
+    
+    // Generate new challenges for the new day, filtered by user's current area
+    const userArea = user?.fishingAreas?.current || 'pond';
     challenges = {
       date: today,
-      active: generateDailyChallenges(),
+      active: generateDailyChallenges(userArea),
       completed: [],
       progress: {}
     };
   }
   
-  return challenges;
+  return { challenges, autoClaimedRewards };
 }
 
 /**
