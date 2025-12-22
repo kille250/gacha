@@ -1196,6 +1196,12 @@ router.get('/trading-post', auth, async (req, res) => {
     
     const totals = calculateFishTotals(inventory);
     
+    // Get daily limits info
+    const daily = getOrResetDailyData(user);
+    const currentRoll = daily.ticketsEarned?.roll || 0;
+    const currentPremium = daily.ticketsEarned?.premium || 0;
+    const currentPoints = daily.pointsFromTrades || 0;
+    
     // Check availability for each trade option
     const options = TRADE_OPTIONS.map(option => {
       let canTrade = false;
@@ -1210,9 +1216,24 @@ router.get('/trading-post', auth, async (req, res) => {
         canTrade = currentQuantity >= option.requiredQuantity;
       }
       
+      // Check if trade would exceed daily limits
+      let limitReached = false;
+      if (option.rewardType === 'rollTickets') {
+        limitReached = currentRoll >= DAILY_LIMITS.rollTickets;
+      } else if (option.rewardType === 'premiumTickets') {
+        limitReached = currentPremium >= DAILY_LIMITS.premiumTickets;
+      } else if (option.rewardType === 'points') {
+        limitReached = currentPoints >= DAILY_LIMITS.pointsFromTrades;
+      } else if (option.rewardType === 'mixed') {
+        const amounts = option.rewardAmount;
+        if (amounts.rollTickets && currentRoll >= DAILY_LIMITS.rollTickets) limitReached = true;
+        if (amounts.premiumTickets && currentPremium >= DAILY_LIMITS.premiumTickets) limitReached = true;
+      }
+      
       return {
         ...option,
-        canTrade,
+        canTrade: canTrade && !limitReached,
+        limitReached,
         currentQuantity,
         timesAvailable: option.requiredRarity === 'collection' 
           ? currentQuantity 
@@ -1226,6 +1247,23 @@ router.get('/trading-post', auth, async (req, res) => {
       tickets: {
         rollTickets: user?.rollTickets || 0,
         premiumTickets: user?.premiumTickets || 0
+      },
+      dailyLimits: {
+        rollTickets: {
+          used: currentRoll,
+          limit: DAILY_LIMITS.rollTickets,
+          remaining: Math.max(0, DAILY_LIMITS.rollTickets - currentRoll)
+        },
+        premiumTickets: {
+          used: currentPremium,
+          limit: DAILY_LIMITS.premiumTickets,
+          remaining: Math.max(0, DAILY_LIMITS.premiumTickets - currentPremium)
+        },
+        pointsFromTrades: {
+          used: currentPoints,
+          limit: DAILY_LIMITS.pointsFromTrades,
+          remaining: Math.max(0, DAILY_LIMITS.pointsFromTrades - currentPoints)
+        }
       }
     });
   } catch (err) {

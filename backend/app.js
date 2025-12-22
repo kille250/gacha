@@ -243,8 +243,9 @@ app.use('/api/coupons/redeem', couponLimiter);
 app.use('/api/coupons', require('./routes/coupons'));
 
 // Fishing minigame routes - rate limit casting
+// Uses modular routing from routes/fishing/index.js
 app.use('/api/fishing/cast', fishingLimiter);
-app.use('/api/fishing', require('./routes/fishing'));
+app.use('/api/fishing', require('./routes/fishing/index'));
 
 // Rarity configuration routes
 app.use('/api/rarities', require('./routes/rarities'));

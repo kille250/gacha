@@ -247,6 +247,7 @@ router.get('/rank', auth, async (req, res, next) => {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
     
+    const daily = getOrResetDailyData(user);
     const rank = await getUserRank(req.user.id);
     const totalUsers = await getTotalUsers();
     const hasPremium = (user.premiumTickets || 0) > 0;
@@ -259,8 +260,6 @@ router.get('/rank', auth, async (req, res, next) => {
       : 0;
     const autofishLimit = getAutofishLimit(rank, premiumStatusRank, prestigeBonusRank);
     const baseLimit = FISHING_CONFIG.autofish.baseDailyLimit;
-    
-    const daily = getOrResetDailyData(user);
     
     // Rank tier
     let rankTier = 'none';
