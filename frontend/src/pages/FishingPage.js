@@ -14,7 +14,8 @@ import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, 
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
 
 // Game configuration
-const AUTOFISH_INTERVAL = 3000;
+// Note: Backend has 4s cooldown, frontend uses slightly higher to account for latency
+const AUTOFISH_INTERVAL = 4500;
 
 const GAME_STATES = {
   WALKING: 'walking',
@@ -592,11 +593,13 @@ const FishingPage = () => {
       
       if (result.success) {
         setGameState(GAME_STATES.SUCCESS);
+        // Use fishQuantity from server (based on catch quality: perfect=2, great=1, normal=1)
+        const caughtQty = result.fishQuantity || 1;
         setSessionStats(prev => ({
           ...prev,
-          catches: prev.catches + 1,
+          catches: prev.catches + caughtQty,
           bestCatch: isBetterFish(result.fish, prev.bestCatch)
-            ? { fish: result.fish }
+            ? { fish: result.fish, quality: result.catchQuality }
             : prev.bestCatch
         }));
       } else {
@@ -825,7 +828,11 @@ const FishingPage = () => {
                   {lastResult.fish?.name}
                 </ResultFishName>
                 {lastResult.success && (
-                  <ResultReward>+1 🐟</ResultReward>
+                  <ResultReward $quality={lastResult.catchQuality}>
+                    +{lastResult.fishQuantity || 1} 🐟
+                    {lastResult.catchQuality === 'perfect' && ' ⭐'}
+                    {lastResult.catchQuality === 'great' && ' ✨'}
+                  </ResultReward>
                 )}
               </ResultInfo>
             </ResultPopup>
@@ -2179,10 +2186,13 @@ const ResultReward = styled.div`
   display: flex;
   align-items: center;
   gap: 8px;
-  font-size: 26px;
+  font-size: ${props => props.$quality === 'perfect' ? '30px' : props.$quality === 'great' ? '28px' : '26px'};
   font-weight: 700;
-  color: #e65100;
+  color: ${props => props.$quality === 'perfect' ? '#ffd700' : props.$quality === 'great' ? '#4caf50' : '#e65100'};
   text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
+  ${props => props.$quality === 'perfect' && `
+    animation: ${pulse} 0.5s ease-in-out infinite;
+  `}
 `;
 
 // Mobile Controls

@@ -13,8 +13,8 @@ const FISHING_CONFIG = {
   // Rank required to unlock autofishing (top X users)
   autofishUnlockRank: 10,
   
-  // Autofish cooldown in milliseconds
-  autofishCooldown: 2500,
+  // Autofish cooldown in milliseconds (increased for balance)
+  autofishCooldown: 4000,
   
   // Cast cooldown in milliseconds
   castCooldown: 5000,
@@ -22,13 +22,30 @@ const FISHING_CONFIG = {
   // Cost to cast (0 for free fishing)
   castCost: 0,
   
-  // Autofish success rates by rarity
+  // Network latency buffer for reaction time validation (ms)
+  latencyBuffer: 200,
+  
+  // Session cleanup interval (ms)
+  cleanupInterval: 15000,
+  
+  // Session expiry time (ms)
+  sessionExpiry: 30000,
+  
+  // Autofish success rates by rarity (nerfed for balance - ~50% of active fishing efficiency)
   autofishSuccessRates: {
-    legendary: 0.40,
-    epic: 0.55,
-    rare: 0.65,
-    uncommon: 0.75,
-    common: 0.85
+    legendary: 0.20,
+    epic: 0.30,
+    rare: 0.45,
+    uncommon: 0.55,
+    common: 0.65
+  },
+  
+  // Perfect/Great catch thresholds (percentage of timing window)
+  catchQuality: {
+    perfectThreshold: 0.30,  // 30% of window = Perfect
+    greatThreshold: 0.60,    // 60% of window = Great
+    perfectMultiplier: 2.0,  // Double reward for perfect
+    greatMultiplier: 1.5     // 50% bonus for great
   }
 };
 
@@ -130,7 +147,7 @@ const TRADE_OPTIONS = [
     requiredRarity: 'epic',
     requiredQuantity: 1,
     rewardType: 'points',
-    rewardAmount: 350,
+    rewardAmount: 250,  // Decreased from 350 for better rarity-value scaling
     emoji: '🦈',
     category: 'points'
   },
@@ -141,7 +158,7 @@ const TRADE_OPTIONS = [
     requiredRarity: 'legendary',
     requiredQuantity: 1,
     rewardType: 'points',
-    rewardAmount: 1000,
+    rewardAmount: 2500,  // Increased from 1000 for better rarity-value scaling
     emoji: '🐋',
     category: 'points'
   },

@@ -3,7 +3,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
-const { User, FishInventory } = require('../models');
+const { sequelize, User, FishInventory } = require('../models');
 const { Op } = require('sequelize');
 const { isValidId } = require('../utils/validation');
 const { 
@@ -19,6 +19,9 @@ const AUTOFISH_UNLOCK_RANK = FISHING_CONFIG.autofishUnlockRank;
 const AUTOFISH_COOLDOWN = FISHING_CONFIG.autofishCooldown;
 const CAST_COOLDOWN = FISHING_CONFIG.castCooldown;
 const CAST_COST = FISHING_CONFIG.castCost;
+const LATENCY_BUFFER = FISHING_CONFIG.latencyBuffer || 200;
+const CLEANUP_INTERVAL = FISHING_CONFIG.cleanupInterval || 15000;
+const SESSION_EXPIRY = FISHING_CONFIG.sessionExpiry || 30000;
 
 // Rate limiting maps (per user)
 const autofishCooldowns = new Map();
@@ -31,13 +34,13 @@ const tradeInProgress = new Set();
 // Store active fishing sessions (fish appears, waiting for catch)
 const activeSessions = new Map();
 
-// Cleanup interval - removes stale data from all maps/sessions
+// Cleanup interval - removes stale data from all maps/sessions (optimized: 15s instead of 60s)
 setInterval(() => {
   const now = Date.now();
   
-  // Clean up expired fishing sessions (30s timeout)
+  // Clean up expired fishing sessions
   for (const [key, session] of activeSessions.entries()) {
-    if (now - session.createdAt > 30000) {
+    if (now - session.createdAt > SESSION_EXPIRY) {
       activeSessions.delete(key);
     }
   }
@@ -53,7 +56,7 @@ setInterval(() => {
       castCooldowns.delete(userId);
     }
   }
-}, 60000);
+}, CLEANUP_INTERVAL);
 
 // POST /api/fishing/cast - Start fishing (cast the line)
 router.post('/cast', auth, async (req, res) => {
@@ -99,11 +102,14 @@ router.post('/cast', auth, async (req, res) => {
     
     // Create session with cryptographically random ID
     const sessionId = crypto.randomBytes(32).toString('hex');
+    const createdAt = Date.now();
     const session = {
       sessionId,
       fish,
       waitTime,
-      createdAt: Date.now(),
+      createdAt,
+      // Server tracks when fish appears for anti-cheat validation
+      fishAppearsAt: createdAt + waitTime,
       userId: req.user.id
     };
     
@@ -126,7 +132,7 @@ router.post('/cast', auth, async (req, res) => {
 // POST /api/fishing/catch - Attempt to catch the fish
 router.post('/catch', auth, async (req, res) => {
   try {
-    const { sessionId, reactionTime } = req.body;
+    const { sessionId, reactionTime: clientReactionTime } = req.body;
     
     if (!sessionId) {
       return res.status(400).json({ error: 'No fishing session' });
@@ -146,16 +152,53 @@ router.post('/catch', auth, async (req, res) => {
     activeSessions.delete(sessionId);
     
     const fish = session.fish;
+    const now = Date.now();
+    
+    // Server-side timing validation (anti-cheat)
+    // Calculate server's view of reaction time
+    const serverReactionTime = now - session.fishAppearsAt;
+    
+    // Use the higher of client time or (server time - latency buffer)
+    // This prevents cheating while accounting for network latency
+    const validatedReactionTime = clientReactionTime !== undefined
+      ? Math.max(clientReactionTime, serverReactionTime - LATENCY_BUFFER)
+      : undefined;
     
     // Check if player reacted within the timing window
-    // reactionTime is how long they took to click after the fish appeared
-    const success = reactionTime !== undefined && reactionTime <= fish.timingWindow;
+    const success = validatedReactionTime !== undefined && validatedReactionTime <= fish.timingWindow;
     
     if (success) {
       // Get user for response
       const user = await User.findByPk(req.user.id);
       
-      // Add fish to inventory (no automatic coin reward - use trading post to sell)
+      // Calculate catch quality (Perfect / Great / Normal)
+      const catchConfig = FISHING_CONFIG.catchQuality || { 
+        perfectThreshold: 0.30, 
+        greatThreshold: 0.60, 
+        perfectMultiplier: 2.0, 
+        greatMultiplier: 1.5 
+      };
+      
+      let catchQuality = 'normal';
+      let bonusMultiplier = 1.0;
+      let catchMessage = `You caught a ${fish.name}!`;
+      
+      const reactionRatio = validatedReactionTime / fish.timingWindow;
+      
+      if (reactionRatio <= catchConfig.perfectThreshold) {
+        catchQuality = 'perfect';
+        bonusMultiplier = catchConfig.perfectMultiplier;
+        catchMessage = `⭐ PERFECT! You caught a ${fish.name}!`;
+      } else if (reactionRatio <= catchConfig.greatThreshold) {
+        catchQuality = 'great';
+        bonusMultiplier = catchConfig.greatMultiplier;
+        catchMessage = `✨ Great catch! You caught a ${fish.name}!`;
+      }
+      
+      // Calculate fish quantity based on catch quality
+      const fishQuantity = Math.floor(bonusMultiplier);
+      
+      // Add fish to inventory (quantity based on catch quality)
       const [inventoryItem, created] = await FishInventory.findOrCreate({
         where: { userId: req.user.id, fishId: fish.id },
         defaults: {
@@ -164,12 +207,12 @@ router.post('/catch', auth, async (req, res) => {
           fishName: fish.name,
           fishEmoji: fish.emoji,
           rarity: fish.rarity,
-          quantity: 1
+          quantity: fishQuantity
         }
       });
       
       if (!created) {
-        inventoryItem.quantity += 1;
+        inventoryItem.quantity += fishQuantity;
         await inventoryItem.save();
       }
       
@@ -181,11 +224,14 @@ router.post('/catch', auth, async (req, res) => {
           emoji: fish.emoji,
           rarity: fish.rarity
         },
-        reactionTime,
+        catchQuality,
+        bonusMultiplier,
+        fishQuantity,
+        reactionTime: validatedReactionTime,
         timingWindow: fish.timingWindow,
         newPoints: user ? user.points : null,
         inventoryCount: inventoryItem.quantity,
-        message: `You caught a ${fish.name}!`
+        message: catchMessage
       });
     } else {
       return res.json({
@@ -197,9 +243,9 @@ router.post('/catch', auth, async (req, res) => {
           rarity: fish.rarity
         },
         reward: 0,
-        reactionTime: reactionTime || null,
+        reactionTime: validatedReactionTime || null,
         timingWindow: fish.timingWindow,
-        message: reactionTime === undefined 
+        message: validatedReactionTime === undefined 
           ? `The ${fish.name} got away! You were too slow.`
           : `The ${fish.name} escaped! You needed to react within ${fish.timingWindow}ms.`
       });
@@ -630,23 +676,27 @@ router.get('/trading-post', auth, async (req, res) => {
   }
 });
 
-// POST /api/fishing/trade - Execute a trade
+// POST /api/fishing/trade - Execute a trade (with database transaction for atomicity)
 router.post('/trade', auth, async (req, res) => {
   const userId = req.user.id;
   
+  // Prevent race condition - only one trade request at a time per user
+  if (tradeInProgress.has(userId)) {
+    return res.status(429).json({ 
+      error: 'Trade in progress',
+      message: 'Another trade request is being processed'
+    });
+  }
+  tradeInProgress.add(userId);
+  
+  // Start database transaction for atomicity
+  const transaction = await sequelize.transaction();
+  
   try {
-    // Prevent race condition - only one trade request at a time per user
-    if (tradeInProgress.has(userId)) {
-      return res.status(429).json({ 
-        error: 'Trade in progress',
-        message: 'Another trade request is being processed'
-      });
-    }
-    tradeInProgress.add(userId);
-    
     const { tradeId, quantity = 1 } = req.body;
     
     if (!tradeId) {
+      await transaction.rollback();
       tradeInProgress.delete(userId);
       return res.status(400).json({ error: 'Trade ID required' });
     }
@@ -656,19 +706,27 @@ router.post('/trade', auth, async (req, res) => {
     
     const tradeOption = TRADE_OPTIONS.find(t => t.id === tradeId);
     if (!tradeOption) {
+      await transaction.rollback();
       tradeInProgress.delete(userId);
       return res.status(400).json({ error: 'Invalid trade option' });
     }
     
-    const user = await User.findByPk(userId);
+    // Lock user row for update (prevents concurrent modification)
+    const user = await User.findByPk(userId, { 
+      lock: transaction.LOCK.UPDATE,
+      transaction 
+    });
     if (!user) {
+      await transaction.rollback();
       tradeInProgress.delete(userId);
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Get user's inventory
+    // Get user's inventory with lock
     const inventory = await FishInventory.findAll({
-      where: { userId: req.user.id }
+      where: { userId },
+      lock: transaction.LOCK.UPDATE,
+      transaction
     });
     
     const totals = calculateFishTotals(inventory);
@@ -678,6 +736,7 @@ router.post('/trade', auth, async (req, res) => {
       // Need at least 1 of each rarity per trade
       const minAvailable = Math.min(...Object.values(totals));
       if (minAvailable < tradeQuantity) {
+        await transaction.rollback();
         tradeInProgress.delete(userId);
         return res.status(400).json({ 
           error: 'Not enough fish',
@@ -699,9 +758,9 @@ router.post('/trade', auth, async (req, res) => {
           remaining -= toDeduct;
           
           if (item.quantity <= 0) {
-            await item.destroy();
+            await item.destroy({ transaction });
           } else {
-            await item.save();
+            await item.save({ transaction });
           }
         }
       }
@@ -709,6 +768,7 @@ router.post('/trade', auth, async (req, res) => {
       // Regular rarity trade
       const requiredTotal = tradeOption.requiredQuantity * tradeQuantity;
       if (totals[tradeOption.requiredRarity] < requiredTotal) {
+        await transaction.rollback();
         tradeInProgress.delete(userId);
         return res.status(400).json({ 
           error: 'Not enough fish',
@@ -728,9 +788,9 @@ router.post('/trade', auth, async (req, res) => {
         remaining -= toDeduct;
         
         if (item.quantity <= 0) {
-          await item.destroy();
+          await item.destroy({ transaction });
         } else {
-          await item.save();
+          await item.save({ transaction });
         }
       }
     }
@@ -768,11 +828,14 @@ router.post('/trade', auth, async (req, res) => {
         reward.points = pointsReward;
       }
     }
-    await user.save();
+    await user.save({ transaction });
     
-    // Get updated inventory
+    // Commit the transaction - all changes are now permanent
+    await transaction.commit();
+    
+    // Get updated inventory (after commit)
     const updatedInventory = await FishInventory.findAll({
-      where: { userId: req.user.id }
+      where: { userId }
     });
     
     const newTotals = calculateFishTotals(updatedInventory);
@@ -808,6 +871,8 @@ router.post('/trade', auth, async (req, res) => {
     });
     
   } catch (err) {
+    // Rollback transaction on error - no partial changes saved
+    await transaction.rollback();
     // Always release lock on error
     tradeInProgress.delete(userId);
     console.error('Trade error:', err);
