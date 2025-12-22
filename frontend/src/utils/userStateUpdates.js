@@ -136,12 +136,75 @@ export const applyServerResponse = (setUser, serverData) => {
   });
 };
 
+/**
+ * Handle action error with consistent recovery pattern.
+ * Always refreshes user data to re-sync currency/tickets after failures.
+ * 
+ * @param {Object} params
+ * @param {Function} params.refreshUser - The refreshUser function from AuthContext
+ * @param {Error} params.error - The error that occurred
+ * @param {string} [params.fallbackMessage='Action failed'] - Default error message
+ * @returns {Promise<string>} The error message to display
+ * 
+ * @example
+ * try {
+ *   await someAction();
+ * } catch (err) {
+ *   const errorMessage = await handleActionError({ refreshUser, error: err });
+ *   setError(errorMessage);
+ * }
+ */
+export const handleActionError = async ({ refreshUser, error, fallbackMessage = 'Action failed' }) => {
+  console.error('[ActionError]', error);
+  
+  // Always refresh user to re-sync currency after errors
+  // This handles cases where the action partially succeeded or state is stale
+  try {
+    const result = await refreshUser();
+    if (!result.success) {
+      console.warn('[ActionError] Failed to refresh user after error:', result.error);
+    }
+  } catch (refreshErr) {
+    console.warn('[ActionError] Exception during user refresh:', refreshErr);
+  }
+  
+  return error?.response?.data?.error || fallbackMessage;
+};
+
+/**
+ * Handle action error with additional ticket refresh.
+ * Use this for gacha/banner actions that involve tickets.
+ * 
+ * @param {Object} params
+ * @param {Function} params.refreshUser - The refreshUser function from AuthContext
+ * @param {Error} params.error - The error that occurred
+ * @param {Function} [params.refreshTickets] - Optional function to refresh ticket state
+ * @param {string} [params.fallbackMessage='Action failed'] - Default error message
+ * @returns {Promise<string>} The error message to display
+ */
+export const handleGachaError = async ({ refreshUser, error, refreshTickets, fallbackMessage = 'Roll failed' }) => {
+  const errorMessage = await handleActionError({ refreshUser, error, fallbackMessage });
+  
+  // Also refresh tickets if a refresh function is provided
+  if (refreshTickets) {
+    try {
+      await refreshTickets();
+    } catch (ticketErr) {
+      console.warn('[GachaError] Failed to refresh tickets:', ticketErr);
+    }
+  }
+  
+  return errorMessage;
+};
+
 const userStateUpdates = {
   applyPointsUpdate,
   applyTicketDelta,
   applyTicketValue,
   applyRewards,
-  applyServerResponse
+  applyServerResponse,
+  handleActionError,
+  handleGachaError
 };
 
 export default userStateUpdates;

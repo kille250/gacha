@@ -6,14 +6,19 @@
  * 
  * USAGE:
  * - Use invalidateFor(CACHE_ACTIONS.FISHING_CATCH) for type-safe invalidation
- * - Use forceRefresh: true option on GET functions when opening modals
+ * - Use onVisibilityChange() to register page-specific refresh callbacks
  * - Cache invalidation is the CALLER's responsibility (not API functions)
+ * 
+ * VISIBILITY HANDLING:
+ * - Global visibility changes are handled centrally
+ * - Pages can register callbacks via onVisibilityChange() for specific data refreshes
+ * - This replaces scattered document.addEventListener('visibilitychange', ...) calls
  */
 
 import { clearCache, invalidateFishingAction, invalidateDojoAction, invalidateAdminAction } from './api';
 
 // Re-export CACHE_ACTIONS for convenience
-export { CACHE_ACTIONS, FISHING_ACTIONS, DOJO_ACTIONS, GACHA_ACTIONS, ADMIN_ACTIONS, AUTH_ACTIONS } from './cacheActions';
+export { CACHE_ACTIONS, FISHING_ACTIONS, DOJO_ACTIONS, GACHA_ACTIONS, ADMIN_ACTIONS, AUTH_ACTIONS, MODAL_ACTIONS } from './cacheActions';
 
 // ===========================================
 // STALENESS THRESHOLDS
@@ -44,6 +49,47 @@ const VISIBILITY_INVALIDATIONS = {
 
 let lastHiddenTime = 0;
 let visibilityHandlerInitialized = false;
+
+/**
+ * Registry for page-specific visibility callbacks.
+ * Pages can register callbacks that run when the tab becomes visible.
+ * This replaces scattered visibility event listeners in individual pages.
+ */
+const visibilityCallbacks = new Map();
+
+/**
+ * Register a callback to run when the tab becomes visible after being hidden.
+ * Use this instead of adding your own visibilitychange event listener.
+ * 
+ * @param {string} id - Unique identifier for this callback (e.g., 'banner-pricing')
+ * @param {Function} callback - Function to call: (staleLevel, elapsedMs) => void
+ * @returns {Function} Cleanup function to unregister the callback
+ * 
+ * @example
+ * // In a React component:
+ * useEffect(() => {
+ *   return onVisibilityChange('my-page-data', async (staleLevel, elapsed) => {
+ *     if (staleLevel === 'critical') {
+ *       await refreshMyData();
+ *     }
+ *   });
+ * }, []);
+ */
+export const onVisibilityChange = (id, callback) => {
+  visibilityCallbacks.set(id, callback);
+  return () => {
+    visibilityCallbacks.delete(id);
+  };
+};
+
+/**
+ * Get elapsed time since tab was hidden (for manual checks)
+ * @returns {number} Milliseconds since tab was hidden, or 0 if never hidden
+ */
+export const getElapsedHiddenTime = () => {
+  if (lastHiddenTime === 0) return 0;
+  return Date.now() - lastHiddenTime;
+};
 
 /**
  * Initialize the global visibility change handler.
@@ -91,9 +137,20 @@ export const initVisibilityHandler = (options = {}) => {
         console.debug(`[CacheManager] Tab visible after ${elapsed}ms (${staleLevel} staleness)`);
       }
 
+      // Invoke the global onStale callback if provided
       if (staleLevel && onStale) {
         onStale(staleLevel, elapsed);
       }
+      
+      // Invoke all registered page-specific callbacks
+      // Run even if staleLevel is null (pages may want to know about any visibility change)
+      visibilityCallbacks.forEach((callback, id) => {
+        try {
+          callback(staleLevel, elapsed);
+        } catch (err) {
+          console.error(`[CacheManager] Error in visibility callback '${id}':`, err);
+        }
+      });
     }
   });
 
@@ -125,6 +182,28 @@ const ACTION_HANDLERS = {
   'fishing:equip_rod': () => invalidateFishingAction('equip_rod'),
   'fishing:claim_challenge': () => invalidateFishingAction('claim_challenge'),
   'fishing:select_area': () => invalidateFishingAction('select_area'),
+  
+  // ===========================================
+  // MODAL/VIEW ACTIONS (replaces forceRefresh pattern)
+  // ===========================================
+  'modal:equipment_open': () => {
+    clearCache('/fishing/areas');
+    clearCache('/fishing/rods');
+  },
+  'modal:trading_open': () => {
+    clearCache('/fishing/inventory');
+    clearCache('/fishing/trading-post');
+  },
+  'modal:challenges_open': () => {
+    clearCache('/fishing/challenges');
+  },
+  'modal:leaderboard_open': () => {
+    clearCache('/fishing/rank');
+  },
+  'modal:dojo_open': () => {
+    clearCache('/dojo/status');
+    clearCache('/dojo/available-characters');
+  },
 
   // ===========================================
   // DOJO ACTIONS
@@ -329,32 +408,6 @@ export const disableCacheDebugging = () => {
 };
 
 // ===========================================
-// REACT HOOK
-// ===========================================
-
-/**
- * Hook for using cache invalidation in React components.
- * Provides a memoized invalidateFor function.
- * 
- * @example
- * const { invalidate } = useCacheInvalidation();
- * 
- * const handleCatch = async () => {
- *   await api.post('/fishing/catch');
- *   invalidate('fishing:catch');
- * };
- */
-export const createInvalidator = () => {
-  return {
-    invalidate: invalidateFor,
-    invalidateFishing: (action) => invalidateFor(`fishing:${action}`),
-    invalidateDojo: (action) => invalidateFor(`dojo:${action}`),
-    invalidateGacha: (action) => invalidateFor(`gacha:${action}`),
-    invalidateAdmin: (action) => invalidateFor(`admin:${action}`)
-  };
-};
-
-// ===========================================
 // DEFAULT EXPORT
 // ===========================================
 
@@ -364,7 +417,8 @@ const cacheManager = {
   getActionTypes,
   enableCacheDebugging,
   disableCacheDebugging,
-  createInvalidator,
+  onVisibilityChange,
+  getElapsedHiddenTime,
   STALE_THRESHOLDS,
   // Re-export for convenience
   clearCache

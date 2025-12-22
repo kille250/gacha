@@ -503,13 +503,14 @@ const FishingPage = () => {
     }
   }, [showChallenges]);
   
-  // Equipment (Areas & Rods) fetch - use forceRefresh pattern for fresh data
+  // Equipment (Areas & Rods) fetch - invalidate cache when modal opens
   useEffect(() => {
     if (showEquipment) {
-      // Use forceRefresh to ensure fresh data when modal opens
+      // Use explicit cache action instead of forceRefresh pattern
+      invalidateFor(CACHE_ACTIONS.MODAL_EQUIPMENT_OPEN);
       Promise.all([
-        getFishingAreas({ forceRefresh: true }), 
-        getFishingRods({ forceRefresh: true })
+        getFishingAreas(), 
+        getFishingRods()
       ])
         .then(([areasData, rodsData]) => {
           setAreas(areasData);
@@ -540,8 +541,8 @@ const FishingPage = () => {
         // Invalidate trade-related caches (caller's responsibility)
         invalidateFor(CACHE_ACTIONS.FISHING_TRADE);
         
-        // Refresh trading options (includes new ticket counts) with fresh data
-        const newOptions = await getTradingPostOptions({ forceRefresh: true });
+        // Refresh trading options (cache already invalidated above)
+        const newOptions = await getTradingPostOptions();
         setTradingOptions(newOptions);
         
         showNotification(result.message, 'success');
@@ -960,8 +961,8 @@ const FishingPage = () => {
       // Invalidate claim_challenge caches (caller's responsibility)
       invalidateFor(CACHE_ACTIONS.FISHING_CLAIM_CHALLENGE);
       
-      // Refresh challenges with fresh data
-      const updatedChallenges = await getFishingChallenges({ forceRefresh: true });
+      // Refresh challenges (cache already invalidated above)
+      const updatedChallenges = await getFishingChallenges();
       setChallenges(updatedChallenges);
     } catch (err) {
       showNotification(err.response?.data?.error || t('fishing.errors.claimFailed'), 'error');
@@ -980,9 +981,9 @@ const FishingPage = () => {
       // Invalidate select_area caches (caller's responsibility)
       invalidateFor(CACHE_ACTIONS.FISHING_SELECT_AREA);
       
-      // Refresh areas and fish info with fresh data
+      // Refresh areas and fish info (cache already invalidated above)
       const [areasData, fishRes] = await Promise.all([
-        getFishingAreas({ forceRefresh: true }),
+        getFishingAreas(),
         api.get('/fishing/info')
       ]);
       setAreas(areasData);
@@ -1007,9 +1008,9 @@ const FishingPage = () => {
       // Invalidate unlock_area caches (caller's responsibility)
       invalidateFor(CACHE_ACTIONS.FISHING_UNLOCK_AREA);
       
-      // Refresh areas and fish info with fresh data
+      // Refresh areas and fish info (cache already invalidated above)
       const [areasData, fishRes] = await Promise.all([
-        getFishingAreas({ forceRefresh: true }),
+        getFishingAreas(),
         api.get('/fishing/info')
       ]);
       setAreas(areasData);
@@ -1041,9 +1042,9 @@ const FishingPage = () => {
       // Invalidate buy_rod caches (caller's responsibility)
       invalidateFor(CACHE_ACTIONS.FISHING_BUY_ROD);
       
-      // Refresh rods and fish info with fresh data
+      // Refresh rods and fish info (cache already invalidated above)
       const [rodsData, fishRes] = await Promise.all([
-        getFishingRods({ forceRefresh: true }),
+        getFishingRods(),
         api.get('/fishing/info')
       ]);
       setRods(rodsData);
@@ -1074,9 +1075,9 @@ const FishingPage = () => {
       // Invalidate equip_rod caches (caller's responsibility)
       invalidateFor(CACHE_ACTIONS.FISHING_EQUIP_ROD);
       
-      // Refresh rods and fish info with fresh data
+      // Refresh rods and fish info (cache already invalidated above)
       const [rodsData, fishRes] = await Promise.all([
-        getFishingRods({ forceRefresh: true }),
+        getFishingRods(),
         api.get('/fishing/info')
       ]);
       setRods(rodsData);

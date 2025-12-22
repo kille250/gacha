@@ -129,6 +129,28 @@ export const AUTH_ACTIONS = {
 };
 
 // ===========================================
+// MODAL/VIEW ACTIONS
+// ===========================================
+
+/**
+ * Modal actions replace the forceRefresh pattern.
+ * Use these when opening modals/views that need fresh data.
+ * This makes cache invalidation explicit and auditable.
+ */
+export const MODAL_ACTIONS = {
+  /** Opening equipment modal - clears areas and rods cache */
+  EQUIPMENT_OPEN: 'modal:equipment_open',
+  /** Opening trading modal - clears inventory and trading-post cache */
+  TRADING_OPEN: 'modal:trading_open',
+  /** Opening challenges modal - clears challenges cache */
+  CHALLENGES_OPEN: 'modal:challenges_open',
+  /** Opening leaderboard modal - clears rank cache */
+  LEADERBOARD_OPEN: 'modal:leaderboard_open',
+  /** Opening dojo modal - clears dojo status and available characters cache */
+  DOJO_OPEN: 'modal:dojo_open',
+};
+
+// ===========================================
 // COMBINED EXPORT
 // ===========================================
 
@@ -187,6 +209,13 @@ export const CACHE_ACTIONS = {
   AUTH_LOGOUT: AUTH_ACTIONS.LOGOUT,
   AUTH_REFRESH: AUTH_ACTIONS.REFRESH,
   AUTH_TOGGLE_R18: AUTH_ACTIONS.TOGGLE_R18,
+  
+  // Modal/View (replaces forceRefresh pattern)
+  MODAL_EQUIPMENT_OPEN: MODAL_ACTIONS.EQUIPMENT_OPEN,
+  MODAL_TRADING_OPEN: MODAL_ACTIONS.TRADING_OPEN,
+  MODAL_CHALLENGES_OPEN: MODAL_ACTIONS.CHALLENGES_OPEN,
+  MODAL_LEADERBOARD_OPEN: MODAL_ACTIONS.LEADERBOARD_OPEN,
+  MODAL_DOJO_OPEN: MODAL_ACTIONS.DOJO_OPEN,
 };
 
 export default CACHE_ACTIONS;

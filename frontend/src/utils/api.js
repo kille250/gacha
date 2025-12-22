@@ -174,7 +174,7 @@ export const invalidateDojoAction = (action) => {
  */
 const FISHING_INVALIDATION_MAP = {
   catch: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'],
-  autofish: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/auth/me'], // Added /fishing/inventory
+  autofish: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'], // Includes challenges (autofish can complete them)
   trade: ['/fishing/inventory', '/fishing/trading-post', '/auth/me'],
   unlock_area: ['/fishing/areas', '/fishing/info', '/auth/me'],
   buy_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
@@ -486,13 +486,23 @@ export const resetDefaultRarities = async () => {
 // ===========================================
 
 export const getFishInventory = async ({ forceRefresh = false } = {}) => {
-  if (forceRefresh) clearCache('/fishing/inventory');
+  if (forceRefresh) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Deprecated] forceRefresh is deprecated. Use invalidateFor(CACHE_ACTIONS.MODAL_TRADING_OPEN) before calling.');
+    }
+    clearCache('/fishing/inventory');
+  }
   const response = await api.get('/fishing/inventory');
   return response.data;
 };
 
 export const getTradingPostOptions = async ({ forceRefresh = false } = {}) => {
-  if (forceRefresh) clearCache('/fishing/trading-post');
+  if (forceRefresh) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Deprecated] forceRefresh is deprecated. Use invalidateFor(CACHE_ACTIONS.MODAL_TRADING_OPEN) before calling.');
+    }
+    clearCache('/fishing/trading-post');
+  }
   const response = await api.get('/fishing/trading-post');
   return response.data;
 };
@@ -511,7 +521,12 @@ export const executeTrade = async (tradeId, quantity = 1) => {
 
 // Daily Challenges
 export const getFishingChallenges = async ({ forceRefresh = false } = {}) => {
-  if (forceRefresh) clearCache('/fishing/challenges');
+  if (forceRefresh) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Deprecated] forceRefresh is deprecated. Use invalidateFor(CACHE_ACTIONS.MODAL_CHALLENGES_OPEN) before calling.');
+    }
+    clearCache('/fishing/challenges');
+  }
   const response = await api.get('/fishing/challenges');
   return response.data;
 };
@@ -528,7 +543,12 @@ export const claimFishingChallenge = async (challengeId) => {
 
 // Fishing Areas
 export const getFishingAreas = async ({ forceRefresh = false } = {}) => {
-  if (forceRefresh) clearCache('/fishing/areas');
+  if (forceRefresh) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Deprecated] forceRefresh is deprecated. Use invalidateFor(CACHE_ACTIONS.MODAL_EQUIPMENT_OPEN) before calling.');
+    }
+    clearCache('/fishing/areas');
+  }
   const response = await api.get('/fishing/areas');
   return response.data;
 };
@@ -555,7 +575,12 @@ export const selectFishingArea = async (areaId) => {
 
 // Fishing Rods
 export const getFishingRods = async ({ forceRefresh = false } = {}) => {
-  if (forceRefresh) clearCache('/fishing/rods');
+  if (forceRefresh) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Deprecated] forceRefresh is deprecated. Use invalidateFor(CACHE_ACTIONS.MODAL_EQUIPMENT_OPEN) before calling.');
+    }
+    clearCache('/fishing/rods');
+  }
   const response = await api.get('/fishing/rods');
   return response.data;
 };
@@ -591,13 +616,23 @@ export const getFishingDailyStats = async () => {
 // ===========================================
 
 export const getDojoStatus = async ({ forceRefresh = false } = {}) => {
-  if (forceRefresh) clearCache('/dojo/status');
+  if (forceRefresh) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Deprecated] forceRefresh is deprecated. Use invalidateFor(CACHE_ACTIONS.MODAL_DOJO_OPEN) before calling.');
+    }
+    clearCache('/dojo/status');
+  }
   const response = await api.get('/dojo/status');
   return response.data;
 };
 
 export const getDojoAvailableCharacters = async ({ forceRefresh = false } = {}) => {
-  if (forceRefresh) clearCache('/dojo/available-characters');
+  if (forceRefresh) {
+    if (process.env.NODE_ENV === 'development') {
+      console.warn('[Deprecated] forceRefresh is deprecated. Use invalidateFor(CACHE_ACTIONS.MODAL_DOJO_OPEN) before calling.');
+    }
+    clearCache('/dojo/available-characters');
+  }
   const response = await api.get('/dojo/available-characters');
   return response.data;
 };
