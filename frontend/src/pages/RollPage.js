@@ -13,7 +13,7 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange } from '../utils/cacheManager';
 import { applyPointsUpdate } from '../utils/userStateUpdates';
 
 // Design System
@@ -125,19 +125,17 @@ const RollPage = () => {
   }, [t]);
   
   // Refresh pricing when tab regains focus (handles admin pricing changes during session)
+  // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
   useEffect(() => {
-    const handleVisibility = async () => {
-      if (document.visibilityState === 'visible') {
-        try {
-          const data = await getStandardPricing();
-          setPricing(data);
-        } catch (err) {
-          console.warn('Failed to refresh pricing on visibility:', err);
-        }
+    return onVisibilityChange('roll-pricing', async () => {
+      // Always refresh pricing on visibility change (pricing may have been updated by admin)
+      try {
+        const data = await getStandardPricing();
+        setPricing(data);
+      } catch (err) {
+        console.warn('Failed to refresh pricing on visibility:', err);
       }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    });
   }, []);
   
   // Warn user before leaving during a roll to prevent lost data

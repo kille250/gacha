@@ -13,7 +13,7 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange } from '../utils/cacheManager';
 import { applyPointsUpdate } from '../utils/userStateUpdates';
 
 // Design System
@@ -194,19 +194,19 @@ const BannerPage = () => {
   }, [bannerId, t, setError]);
   
   // Refresh pricing when tab regains focus (handles admin pricing changes during session)
+  // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
   useEffect(() => {
-    const handleVisibility = async () => {
-      if (document.visibilityState === 'visible' && bannerId) {
-        try {
-          const pricingData = await getBannerPricing(bannerId);
-          setPricing(pricingData);
-        } catch (err) {
-          console.warn('Failed to refresh pricing on visibility:', err);
-        }
+    if (!bannerId) return;
+    
+    return onVisibilityChange('banner-pricing', async () => {
+      // Always refresh pricing on visibility change (pricing may have been updated by admin)
+      try {
+        const pricingData = await getBannerPricing(bannerId);
+        setPricing(pricingData);
+      } catch (err) {
+        console.warn('Failed to refresh pricing on visibility:', err);
       }
-    };
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    });
   }, [bannerId]);
   
   // Cross-tab ticket synchronization using BroadcastChannel with localStorage fallback

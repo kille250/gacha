@@ -35,6 +35,21 @@ export const STALE_THRESHOLDS = {
 };
 
 /**
+ * Centralized refresh interval configuration.
+ * Use these instead of magic numbers scattered across pages.
+ */
+export const REFRESH_INTERVALS = {
+  /** Refresh fishing/rank data every N autofish catches (to reduce API calls) */
+  autofishCatchThreshold: 10,
+  /** WebSocket keepalive heartbeat interval (ms) */
+  heartbeatMs: 30000,
+  /** Background periodic status refresh (ms) */
+  periodicRefreshMs: 30000,
+  /** Admin data staleness threshold (ms) - longer since admin changes are rare */
+  adminStaleThresholdMs: 60000,
+};
+
+/**
  * Cache patterns to invalidate at each staleness threshold
  */
 const VISIBILITY_INVALIDATIONS = {
@@ -327,6 +342,23 @@ export const invalidateFor = (action, options = {}) => {
  */
 export const getActionTypes = () => Object.keys(ACTION_HANDLERS);
 
+/**
+ * Get current cache state for debugging purposes.
+ * Useful for understanding cache behavior and diagnosing issues.
+ * 
+ * @returns {Object} Current cache state information
+ */
+export const getCacheState = () => {
+  return {
+    visibilityCallbackCount: visibilityCallbacks.size,
+    registeredCallbackIds: Array.from(visibilityCallbacks.keys()),
+    lastHiddenTime: lastHiddenTime > 0 ? new Date(lastHiddenTime).toISOString() : null,
+    elapsedSinceHidden: lastHiddenTime > 0 ? Date.now() - lastHiddenTime : 0,
+    visibilityHandlerInitialized,
+    registeredActionCount: Object.keys(ACTION_HANDLERS).length,
+  };
+};
+
 // ===========================================
 // DEBUGGING TOOLS
 // ===========================================
@@ -386,6 +418,11 @@ export const enableCacheDebugging = () => {
     },
 
     /**
+     * Get current cache state
+     */
+    getCacheState,
+
+    /**
      * Disable debug mode
      */
     disable: () => {
@@ -396,6 +433,7 @@ export const enableCacheDebugging = () => {
 
   console.debug('[CacheManager] Debug mode enabled. Access via window.__CACHE_DEBUG__');
   console.debug('[CacheManager] Available actions:', getActionTypes());
+  console.debug('[CacheManager] Current state:', getCacheState());
 };
 
 /**
@@ -415,11 +453,13 @@ const cacheManager = {
   initVisibilityHandler,
   invalidateFor,
   getActionTypes,
+  getCacheState,
   enableCacheDebugging,
   disableCacheDebugging,
   onVisibilityChange,
   getElapsedHiddenTime,
   STALE_THRESHOLDS,
+  REFRESH_INTERVALS,
   // Re-export for convenience
   clearCache
 };

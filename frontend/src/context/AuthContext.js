@@ -113,8 +113,7 @@ export const AuthProvider = ({ children }) => {
 
   const login = async (username, password) => {
     try {
-      // Clear any existing cached data before login
-      invalidateCache();
+      // Reset local state before login attempt
       setCurrentUser(null);
       removeStoredUser();
       
@@ -125,7 +124,8 @@ export const AuthProvider = ({ children }) => {
       
       setToken(response.data.token);
       
-      // Clear cache again after token is set (new token = new cache namespace)
+      // Clear cache after token is set (new token = new cache namespace)
+      // Single invalidation is sufficient since cache is keyed by token hash
       invalidateCache();
       
       // Get user data from backend (fresh, uncached)
@@ -145,8 +145,7 @@ export const AuthProvider = ({ children }) => {
 
   const register = async (username, email, password) => {
     try {
-      // Clear any existing cached data before registration
-      invalidateCache();
+      // Reset local state before registration attempt
       setCurrentUser(null);
       removeStoredUser();
       
@@ -158,7 +157,8 @@ export const AuthProvider = ({ children }) => {
       
       setToken(response.data.token);
       
-      // Clear cache after token is set
+      // Clear cache after token is set (new token = new cache namespace)
+      // Single invalidation is sufficient since cache is keyed by token hash
       invalidateCache();
       
       // Get user data from backend (fresh, uncached)
@@ -178,8 +178,7 @@ export const AuthProvider = ({ children }) => {
 
   const googleLogin = async (credential) => {
     try {
-      // Clear any existing cached data before login
-      invalidateCache();
+      // Reset local state before login attempt
       setCurrentUser(null);
       removeStoredUser();
       
@@ -187,7 +186,8 @@ export const AuthProvider = ({ children }) => {
       
       setToken(response.data.token);
       
-      // Clear cache after token is set
+      // Clear cache after token is set (new token = new cache namespace)
+      // Single invalidation is sufficient since cache is keyed by token hash
       invalidateCache();
       
       // Get user data from backend (fresh, uncached)

@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS } from '../utils/cacheManager';
 import { PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
@@ -110,27 +110,17 @@ const AdminPage = () => {
   }, [error]);
 
   // Visibility change handler - refresh admin data when tab becomes visible after being hidden
+  // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
   useEffect(() => {
     if (!user?.isAdmin) return;
     
-    let lastHiddenTime = null;
-    const STALE_THRESHOLD_MS = 60000; // 1 minute for admin data
-    
-    const handleVisibility = () => {
-      if (document.visibilityState === 'hidden') {
-        lastHiddenTime = Date.now();
-      } else if (document.visibilityState === 'visible' && lastHiddenTime) {
-        const elapsed = Date.now() - lastHiddenTime;
-        if (elapsed > STALE_THRESHOLD_MS) {
-          invalidateFor(CACHE_ACTIONS.ADMIN_VISIBILITY_CHANGE);
-          fetchAllData();
-        }
-        lastHiddenTime = null;
+    return onVisibilityChange('admin-dashboard', (staleLevel, elapsed) => {
+      // Refresh if tab was hidden longer than admin staleness threshold
+      if (elapsed > REFRESH_INTERVALS.adminStaleThresholdMs) {
+        invalidateFor(CACHE_ACTIONS.ADMIN_VISIBILITY_CHANGE);
+        fetchAllData();
       }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    });
   }, [user?.isAdmin, fetchAllData]);
 
   // Helper functions

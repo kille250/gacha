@@ -26,7 +26,7 @@ import {
   purchaseDojoUpgrade,
   getAssetUrl
 } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, STALE_THRESHOLDS } from '../utils/cacheManager';
 import { applyServerResponse, applyPointsUpdate } from '../utils/userStateUpdates';
 import { theme, Spinner } from '../styles/DesignSystem';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../utils/mediaUtils';
@@ -142,23 +142,17 @@ const DojoPage = () => {
   }, [fetchStatus, isInteracting]);
   
   // Maximum staleness check - force refresh if data is too old (prevents showing very outdated rewards)
-  // Note: Cache invalidation is handled by global visibility handler in cacheManager.
-  // This effect only handles the UI refetch after cache is cleared.
+  // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
+  // Cache invalidation is handled globally - this just refreshes UI state
   useEffect(() => {
-    const MAX_STALENESS_MS = 2 * 60 * 1000; // 2 minutes (matches cacheManager.STALE_THRESHOLDS.normal)
-    
-    const handleVisibility = () => {
-      if (document.visibilityState === 'visible') {
-        const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
-        if (timeSinceLastFetch > MAX_STALENESS_MS) {
-          // Global visibility handler already cleared caches - just refetch
-          fetchStatus();
-        }
+    return onVisibilityChange('dojo-status', (staleLevel) => {
+      // Check if data is stale based on our last fetch time
+      const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
+      if (timeSinceLastFetch > STALE_THRESHOLDS.normal) {
+        // Global visibility handler already cleared caches - just refetch
+        fetchStatus();
       }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibility);
-    return () => document.removeEventListener('visibilitychange', handleVisibility);
+    });
   }, [fetchStatus]);
   
   // Network offline detection during claim/upgrade operations

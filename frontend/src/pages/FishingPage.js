@@ -19,7 +19,7 @@ import api, {
   buyFishingRod,
   equipFishingRod
 } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS } from '../utils/cacheManager';
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -413,47 +413,33 @@ const FishingPage = () => {
   }, []);
   
   // Visibility change handler - refresh stale fishing data when tab regains focus
-  // Note: Cache invalidation is handled globally by cacheManager's visibility handler.
-  // This effect only handles page-specific data refresh for UI state.
+  // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
+  // Cache invalidation is handled globally by cacheManager - this just refreshes UI state
   useEffect(() => {
-    let lastHiddenTime = 0;
-    const STALE_THRESHOLD_MS = 30000; // 30 seconds
-    
-    const handleVisibilityChange = async () => {
-      if (document.visibilityState === 'hidden') {
-        lastHiddenTime = Date.now();
-      } else if (document.visibilityState === 'visible') {
-        const elapsed = Date.now() - lastHiddenTime;
-        
-        // Only refresh if tab was hidden for > 30 seconds
-        if (elapsed > STALE_THRESHOLD_MS) {
-          // Cache invalidation is handled by global visibility handler in api.js
-          // Here we just refresh the UI state with fresh data
-          try {
-            const [fishRes, rankRes] = await Promise.all([
-              api.get('/fishing/info'),
-              api.get('/fishing/rank')
-            ]);
-            setFishInfo(fishRes.data);
-            setRankData(rankRes.data);
-            
-            // Update daily stats from fresh info
-            if (fishRes.data.daily) {
-              setDailyStats({
-                used: fishRes.data.daily.autofishUsed,
-                limit: fishRes.data.daily.autofishLimit,
-                remaining: fishRes.data.daily.autofishLimit - fishRes.data.daily.autofishUsed
-              });
-            }
-          } catch (err) {
-            console.warn('Failed to refresh fishing data on visibility change:', err);
+    return onVisibilityChange('fishing-data', async (staleLevel) => {
+      // Only refresh if tab was hidden long enough to be considered stale
+      if (staleLevel === 'critical' || staleLevel === 'normal' || staleLevel === 'static') {
+        try {
+          const [fishRes, rankRes] = await Promise.all([
+            api.get('/fishing/info'),
+            api.get('/fishing/rank')
+          ]);
+          setFishInfo(fishRes.data);
+          setRankData(rankRes.data);
+          
+          // Update daily stats from fresh info
+          if (fishRes.data.daily) {
+            setDailyStats({
+              used: fishRes.data.daily.autofishUsed,
+              limit: fishRes.data.daily.autofishLimit,
+              remaining: fishRes.data.daily.autofishLimit - fishRes.data.daily.autofishUsed
+            });
           }
+        } catch (err) {
+          console.warn('Failed to refresh fishing data on visibility change:', err);
         }
       }
-    };
-    
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+    });
   }, []);
   
   // Leaderboard fetch - also refresh rank data to keep it in sync
@@ -561,7 +547,6 @@ const FishingPage = () => {
   
   // Counter for periodic refreshes during autofish
   const autofishCatchCountRef = useRef(0);
-  const REFRESH_INTERVAL_CATCHES = 10; // Refresh fishInfo/rank every N catches
   
   // Autofishing loop with integrated cleanup (now with daily limits)
   useEffect(() => {
@@ -653,7 +638,7 @@ const FishingPage = () => {
         
         // Periodic refresh of fishInfo (pity progress) and rank every N catches
         autofishCatchCountRef.current += 1;
-        if (autofishCatchCountRef.current >= REFRESH_INTERVAL_CATCHES) {
+        if (autofishCatchCountRef.current >= REFRESH_INTERVALS.autofishCatchThreshold) {
           autofishCatchCountRef.current = 0;
           try {
             const [fishRes, rankRes] = await Promise.all([
