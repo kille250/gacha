@@ -28,8 +28,8 @@ import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, 
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
 
 // Game configuration
-// Note: Backend has 4s cooldown, frontend uses slightly higher to account for latency
-const AUTOFISH_INTERVAL = 4500;
+// Note: Backend has 6s cooldown (config/fishing.js autofishCooldown), frontend uses slightly higher to account for latency
+const AUTOFISH_INTERVAL = 6500;
 
 const GAME_STATES = {
   WALKING: 'walking',

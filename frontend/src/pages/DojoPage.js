@@ -431,19 +431,19 @@ const DojoPage = () => {
                 {claimResult.rewards.points > 0 && (
                   <RewardItem>
                     <FaCoins color="#FFD700" />
-                    <span>{t('dojo.points', { count: claimResult.rewards.points.toLocaleString() })}</span>
+                    <span>+{claimResult.rewards.points.toLocaleString()} {t('common.points')}</span>
                   </RewardItem>
                 )}
                 {claimResult.rewards.rollTickets > 0 && (
                   <RewardItem>
                     <FaTicketAlt color="#0a84ff" />
-                    <span>{t('dojo.rollTickets', { count: claimResult.rewards.rollTickets })}</span>
+                    <span>+{claimResult.rewards.rollTickets} {t('dojo.rollTicketsLabel')}</span>
                   </RewardItem>
                 )}
                 {claimResult.rewards.premiumTickets > 0 && (
                   <RewardItem>
                     <FaStar color="#bf5af2" />
-                    <span>{t('dojo.premiumTickets', { count: claimResult.rewards.premiumTickets })}</span>
+                    <span>+{claimResult.rewards.premiumTickets} {t('dojo.premiumTicketsLabel')}</span>
                   </RewardItem>
                 )}
               </ClaimPopupRewards>
@@ -536,7 +536,7 @@ const DojoPage = () => {
               <DailyCapItem $isCapped={status.dailyCaps.remaining.points <= 0}>
                 <DailyCapIcon><FaCoins /></DailyCapIcon>
                 <DailyCapProgress>
-                  <DailyCapLabel>{t('dojo.points')}</DailyCapLabel>
+                  <DailyCapLabel>{t('common.points')}</DailyCapLabel>
                   <DailyCapBar>
                     <DailyCapFill 
                       style={{ 
