@@ -103,8 +103,8 @@ const RollPage = () => {
     return best?.count || null;
   }, [pullOptions]);
   
-  // Effects
-  useEffect(() => { refreshUser(); }, [refreshUser]);
+  // NOTE: refreshUser on mount removed - AuthContext already fetches fresh data on initial load.
+  // User data is refreshed via visibility handler or after actions that change currency.
   
   // Fetch pricing from server
   useEffect(() => {

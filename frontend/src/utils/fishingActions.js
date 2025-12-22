@@ -182,16 +182,5 @@ export const runAutofish = async (setUser) => {
   return result;
 };
 
-const fishingActions = {
-  executeFishTrade,
-  catchFish,
-  claimChallenge,
-  buyRod,
-  equipRod,
-  unlockArea,
-  selectArea,
-  runAutofish,
-};
-
-export default fishingActions;
+// NOTE: Default export removed - use named exports instead for better tree-shaking
 

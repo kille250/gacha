@@ -2,7 +2,7 @@
  * Centralized Cache Manager
  * 
  * Provides unified cache invalidation, visibility handling, and debugging tools.
- * This consolidates scattered cache logic into a single, auditable module.
+ * This is the SINGLE SOURCE OF TRUTH for all cache invalidation patterns.
  * 
  * USAGE:
  * - Use invalidateFor(CACHE_ACTIONS.FISHING_CATCH) for type-safe invalidation
@@ -15,7 +15,7 @@
  * - This replaces scattered document.addEventListener('visibilitychange', ...) calls
  */
 
-import { clearCache, invalidateFishingAction, invalidateDojoAction, invalidateAdminAction } from './api';
+import { clearCache } from './api';
 
 // Re-export CACHE_ACTIONS for convenience
 export { CACHE_ACTIONS, FISHING_ACTIONS, DOJO_ACTIONS, GACHA_ACTIONS, ADMIN_ACTIONS, AUTH_ACTIONS, MODAL_ACTIONS } from './cacheActions';
@@ -56,6 +56,95 @@ const VISIBILITY_INVALIDATIONS = {
   critical: ['/auth/me', '/banners/user/tickets'],
   normal: ['/fishing/info', '/fishing/rank', '/dojo/status'],
   static: ['/characters', '/banners']
+};
+
+// ===========================================
+// CONSOLIDATED INVALIDATION PATTERNS
+// Single source of truth for all cache invalidation
+// ===========================================
+
+/**
+ * Fishing action invalidation patterns
+ * Guidelines:
+ * - Include '/auth/me' only for actions that change user points/currency
+ * - Include '/fishing/inventory' for actions that add/remove fish
+ * - Include '/fishing/info' for actions that change equipped gear or area
+ */
+const FISHING_PATTERNS = {
+  catch: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'],
+  autofish: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'],
+  trade: ['/fishing/inventory', '/fishing/trading-post', '/auth/me'],
+  unlock_area: ['/fishing/areas', '/fishing/info', '/auth/me'],
+  buy_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
+  equip_rod: ['/fishing/rods', '/fishing/info'],
+  claim_challenge: ['/fishing/challenges', '/auth/me', '/banners/user/tickets'],
+  select_area: ['/fishing/areas', '/fishing/info']
+};
+
+/**
+ * Dojo action invalidation patterns
+ */
+const DOJO_PATTERNS = {
+  assign: ['/dojo/status', '/dojo/available-characters'],
+  unassign: ['/dojo/status', '/dojo/available-characters'],
+  claim: ['/dojo/status', '/auth/me', '/banners/user/tickets'],
+  upgrade: ['/dojo/status', '/auth/me']
+};
+
+/**
+ * Admin action invalidation patterns
+ * These actions affect both admin views AND user-facing pages
+ */
+const ADMIN_PATTERNS = {
+  character_add: ['/admin/dashboard', '/characters'],
+  character_edit: ['/admin/dashboard', '/characters', '/characters/collection'],
+  character_delete: ['/admin/dashboard', '/characters', '/characters/collection', '/banners'],
+  banner_add: ['/admin/dashboard', '/banners'],
+  banner_edit: ['/admin/dashboard', '/banners'],
+  banner_delete: ['/admin/dashboard', '/banners'],
+  banner_reorder: ['/banners'],
+  banner_featured: ['/banners'],
+  coupon_add: ['/admin/dashboard', '/coupons'],
+  coupon_edit: ['/admin/dashboard', '/coupons'],
+  coupon_delete: ['/admin/dashboard', '/coupons'],
+  rarity_add: ['/admin/dashboard', '/rarities', '/characters'],
+  rarity_edit: ['/admin/dashboard', '/rarities', '/characters'],
+  rarity_delete: ['/admin/dashboard', '/rarities', '/characters'],
+  rarity_reset: ['/admin/dashboard', '/rarities', '/characters'],
+  user_coins: ['/admin/dashboard', '/admin/users', '/auth/me'],
+  user_toggle_autofish: ['/admin/users'],
+  user_toggle_r18: ['/admin/users'],
+  bulk_upload: ['/admin/dashboard', '/characters'],
+  anime_import: ['/admin/dashboard', '/characters'],
+  visibility_change: ['/admin/dashboard', '/admin/users']
+};
+
+/**
+ * Modal/View pre-fetch invalidation patterns
+ * Use before fetching data to ensure fresh responses
+ */
+const MODAL_PATTERNS = {
+  equipment_open: ['/fishing/areas', '/fishing/rods'],
+  trading_open: ['/fishing/inventory', '/fishing/trading-post'],
+  challenges_open: ['/fishing/challenges'],
+  leaderboard_open: ['/fishing/rank'],
+  dojo_open: ['/dojo/status', '/dojo/available-characters']
+};
+
+/**
+ * Gacha action invalidation patterns
+ */
+const GACHA_PATTERNS = {
+  roll: ['/characters/collection', '/auth/me'],
+  roll_banner: ['/characters/collection', '/auth/me', '/banners/user/tickets'],
+  level_up: ['/characters/collection', '/auth/me']
+};
+
+/**
+ * Helper to invalidate patterns for an action
+ */
+const invalidatePatterns = (patterns) => {
+  patterns.forEach(p => clearCache(p));
 };
 
 // ===========================================
@@ -180,95 +269,76 @@ export const initVisibilityHandler = (options = {}) => {
 // ===========================================
 
 /**
- * All action types and their corresponding invalidation handlers.
+ * Cache invalidation event log for debugging
+ */
+const cacheEvents = [];
+const MAX_CACHE_EVENTS = 100;
+
+/**
+ * All action types and their corresponding invalidation patterns.
  * This provides a single entry point for all cache invalidation.
- * 
- * NOTE: When adding new actions, also add them to cacheActions.js for type safety.
  */
 const ACTION_HANDLERS = {
   // ===========================================
   // FISHING ACTIONS
   // ===========================================
-  'fishing:catch': () => invalidateFishingAction('catch'),
-  'fishing:autofish': () => invalidateFishingAction('autofish'),
-  'fishing:trade': () => invalidateFishingAction('trade'),
-  'fishing:unlock_area': () => invalidateFishingAction('unlock_area'),
-  'fishing:buy_rod': () => invalidateFishingAction('buy_rod'),
-  'fishing:equip_rod': () => invalidateFishingAction('equip_rod'),
-  'fishing:claim_challenge': () => invalidateFishingAction('claim_challenge'),
-  'fishing:select_area': () => invalidateFishingAction('select_area'),
+  'fishing:catch': () => invalidatePatterns(FISHING_PATTERNS.catch),
+  'fishing:autofish': () => invalidatePatterns(FISHING_PATTERNS.autofish),
+  'fishing:trade': () => invalidatePatterns(FISHING_PATTERNS.trade),
+  'fishing:unlock_area': () => invalidatePatterns(FISHING_PATTERNS.unlock_area),
+  'fishing:buy_rod': () => invalidatePatterns(FISHING_PATTERNS.buy_rod),
+  'fishing:equip_rod': () => invalidatePatterns(FISHING_PATTERNS.equip_rod),
+  'fishing:claim_challenge': () => invalidatePatterns(FISHING_PATTERNS.claim_challenge),
+  'fishing:select_area': () => invalidatePatterns(FISHING_PATTERNS.select_area),
   
   // ===========================================
   // MODAL/VIEW ACTIONS (pre-fetch cache invalidation)
   // ===========================================
-  'modal:equipment_open': () => {
-    clearCache('/fishing/areas');
-    clearCache('/fishing/rods');
-  },
-  'modal:trading_open': () => {
-    clearCache('/fishing/inventory');
-    clearCache('/fishing/trading-post');
-  },
-  'modal:challenges_open': () => {
-    clearCache('/fishing/challenges');
-  },
-  'modal:leaderboard_open': () => {
-    clearCache('/fishing/rank');
-  },
-  'modal:dojo_open': () => {
-    clearCache('/dojo/status');
-    clearCache('/dojo/available-characters');
-  },
+  'modal:equipment_open': () => invalidatePatterns(MODAL_PATTERNS.equipment_open),
+  'modal:trading_open': () => invalidatePatterns(MODAL_PATTERNS.trading_open),
+  'modal:challenges_open': () => invalidatePatterns(MODAL_PATTERNS.challenges_open),
+  'modal:leaderboard_open': () => invalidatePatterns(MODAL_PATTERNS.leaderboard_open),
+  'modal:dojo_open': () => invalidatePatterns(MODAL_PATTERNS.dojo_open),
 
   // ===========================================
   // DOJO ACTIONS
   // ===========================================
-  'dojo:assign': () => invalidateDojoAction('assign'),
-  'dojo:unassign': () => invalidateDojoAction('unassign'),
-  'dojo:claim': () => invalidateDojoAction('claim'),
-  'dojo:upgrade': () => invalidateDojoAction('upgrade'),
+  'dojo:assign': () => invalidatePatterns(DOJO_PATTERNS.assign),
+  'dojo:unassign': () => invalidatePatterns(DOJO_PATTERNS.unassign),
+  'dojo:claim': () => invalidatePatterns(DOJO_PATTERNS.claim),
+  'dojo:upgrade': () => invalidatePatterns(DOJO_PATTERNS.upgrade),
 
   // ===========================================
   // ADMIN ACTIONS
   // ===========================================
-  'admin:character_add': () => invalidateAdminAction('character_add'),
-  'admin:character_edit': () => invalidateAdminAction('character_edit'),
-  'admin:character_delete': () => invalidateAdminAction('character_delete'),
-  'admin:banner_add': () => invalidateAdminAction('banner_add'),
-  'admin:banner_edit': () => invalidateAdminAction('banner_edit'),
-  'admin:banner_delete': () => invalidateAdminAction('banner_delete'),
-  'admin:banner_reorder': () => invalidateAdminAction('banner_reorder'),
-  'admin:banner_featured': () => invalidateAdminAction('banner_featured'),
-  'admin:coupon_add': () => invalidateAdminAction('coupon_add'),
-  'admin:coupon_edit': () => invalidateAdminAction('coupon_edit'),
-  'admin:coupon_delete': () => invalidateAdminAction('coupon_delete'),
-  'admin:rarity_add': () => invalidateAdminAction('rarity_add'),
-  'admin:rarity_edit': () => invalidateAdminAction('rarity_edit'),
-  'admin:rarity_delete': () => invalidateAdminAction('rarity_delete'),
-  'admin:rarity_reset': () => invalidateAdminAction('rarity_reset'),
-  'admin:user_coins': () => invalidateAdminAction('user_coins'),
-  'admin:user_toggle_autofish': () => invalidateAdminAction('user_toggle_autofish'),
-  'admin:user_toggle_r18': () => invalidateAdminAction('user_toggle_r18'),
-  'admin:bulk_upload': () => invalidateAdminAction('bulk_upload'),
-  'admin:anime_import': () => invalidateAdminAction('anime_import'),
-  'admin:visibility_change': () => invalidateAdminAction('visibility_change'),
+  'admin:character_add': () => invalidatePatterns(ADMIN_PATTERNS.character_add),
+  'admin:character_edit': () => invalidatePatterns(ADMIN_PATTERNS.character_edit),
+  'admin:character_delete': () => invalidatePatterns(ADMIN_PATTERNS.character_delete),
+  'admin:banner_add': () => invalidatePatterns(ADMIN_PATTERNS.banner_add),
+  'admin:banner_edit': () => invalidatePatterns(ADMIN_PATTERNS.banner_edit),
+  'admin:banner_delete': () => invalidatePatterns(ADMIN_PATTERNS.banner_delete),
+  'admin:banner_reorder': () => invalidatePatterns(ADMIN_PATTERNS.banner_reorder),
+  'admin:banner_featured': () => invalidatePatterns(ADMIN_PATTERNS.banner_featured),
+  'admin:coupon_add': () => invalidatePatterns(ADMIN_PATTERNS.coupon_add),
+  'admin:coupon_edit': () => invalidatePatterns(ADMIN_PATTERNS.coupon_edit),
+  'admin:coupon_delete': () => invalidatePatterns(ADMIN_PATTERNS.coupon_delete),
+  'admin:rarity_add': () => invalidatePatterns(ADMIN_PATTERNS.rarity_add),
+  'admin:rarity_edit': () => invalidatePatterns(ADMIN_PATTERNS.rarity_edit),
+  'admin:rarity_delete': () => invalidatePatterns(ADMIN_PATTERNS.rarity_delete),
+  'admin:rarity_reset': () => invalidatePatterns(ADMIN_PATTERNS.rarity_reset),
+  'admin:user_coins': () => invalidatePatterns(ADMIN_PATTERNS.user_coins),
+  'admin:user_toggle_autofish': () => invalidatePatterns(ADMIN_PATTERNS.user_toggle_autofish),
+  'admin:user_toggle_r18': () => invalidatePatterns(ADMIN_PATTERNS.user_toggle_r18),
+  'admin:bulk_upload': () => invalidatePatterns(ADMIN_PATTERNS.bulk_upload),
+  'admin:anime_import': () => invalidatePatterns(ADMIN_PATTERNS.anime_import),
+  'admin:visibility_change': () => invalidatePatterns(ADMIN_PATTERNS.visibility_change),
 
   // ===========================================
   // GACHA/ROLL ACTIONS
   // ===========================================
-  'gacha:roll': () => {
-    clearCache('/characters/collection');
-    clearCache('/auth/me');
-  },
-  'gacha:roll_banner': () => {
-    clearCache('/characters/collection');
-    clearCache('/auth/me');
-    clearCache('/banners/user/tickets');
-  },
-  'gacha:level_up': () => {
-    clearCache('/characters/collection');
-    clearCache('/auth/me');
-  },
+  'gacha:roll': () => invalidatePatterns(GACHA_PATTERNS.roll),
+  'gacha:roll_banner': () => invalidatePatterns(GACHA_PATTERNS.roll_banner),
+  'gacha:level_up': () => invalidatePatterns(GACHA_PATTERNS.level_up),
 
   // ===========================================
   // AUTH ACTIONS
@@ -326,11 +396,27 @@ export const invalidateFor = (action, options = {}) => {
     return false;
   }
 
+  const startTime = performance.now();
   const handler = ACTION_HANDLERS[action];
   handler();
+  const duration = performance.now() - startTime;
+
+  // Track invalidation for debugging
+  if (typeof window !== 'undefined') {
+    const event = {
+      action,
+      timestamp: Date.now(),
+      duration: Math.round(duration * 100) / 100
+    };
+    cacheEvents.push(event);
+    // Keep only last N events
+    if (cacheEvents.length > MAX_CACHE_EVENTS) {
+      cacheEvents.shift();
+    }
+  }
 
   if (options.debug || (typeof window !== 'undefined' && window.__CACHE_DEBUG_ENABLED__)) {
-    console.debug(`[CacheManager] Invalidated for action: ${action}`);
+    console.debug(`[CacheManager] Invalidated for action: ${action} (${duration.toFixed(2)}ms)`);
   }
 
   return true;
@@ -341,6 +427,40 @@ export const invalidateFor = (action, options = {}) => {
  * Useful for autocomplete and documentation.
  */
 export const getActionTypes = () => Object.keys(ACTION_HANDLERS);
+
+/**
+ * Get the invalidation patterns for a specific action.
+ * Useful for debugging and understanding what caches an action clears.
+ * 
+ * @param {string} action - The action identifier
+ * @returns {string[]|null} Array of cache patterns, or null if action unknown
+ */
+export const getInvalidationPatterns = (action) => {
+  const parts = action.split(':');
+  if (parts.length !== 2) return null;
+  
+  const [domain, actionName] = parts;
+  
+  switch (domain) {
+    case 'fishing':
+      return FISHING_PATTERNS[actionName] || null;
+    case 'dojo':
+      return DOJO_PATTERNS[actionName] || null;
+    case 'admin':
+      return ADMIN_PATTERNS[actionName] || null;
+    case 'gacha':
+      return GACHA_PATTERNS[actionName] || null;
+    case 'modal':
+      return MODAL_PATTERNS[actionName] || null;
+    case 'auth':
+      // Auth actions use full clear or specific patterns
+      if (actionName === 'toggle_r18') return ['/characters', '/auth/me'];
+      if (actionName === 'refresh') return ['/auth/me'];
+      return ['*']; // Full clear
+    default:
+      return null;
+  }
+};
 
 /**
  * Get current cache state for debugging purposes.
@@ -356,6 +476,7 @@ export const getCacheState = () => {
     elapsedSinceHidden: lastHiddenTime > 0 ? Date.now() - lastHiddenTime : 0,
     visibilityHandlerInitialized,
     registeredActionCount: Object.keys(ACTION_HANDLERS).length,
+    recentEvents: cacheEvents.slice(-10),
   };
 };
 
@@ -389,6 +510,11 @@ export const enableCacheDebugging = () => {
     getActionTypes,
 
     /**
+     * Get invalidation patterns for an action
+     */
+    getInvalidationPatterns,
+
+    /**
      * Get staleness thresholds
      */
     getThresholds: () => ({ ...STALE_THRESHOLDS }),
@@ -397,6 +523,17 @@ export const enableCacheDebugging = () => {
      * Get visibility invalidation patterns
      */
     getVisibilityPatterns: () => ({ ...VISIBILITY_INVALIDATIONS }),
+
+    /**
+     * Get all invalidation pattern maps
+     */
+    getAllPatterns: () => ({
+      fishing: { ...FISHING_PATTERNS },
+      dojo: { ...DOJO_PATTERNS },
+      admin: { ...ADMIN_PATTERNS },
+      modal: { ...MODAL_PATTERNS },
+      gacha: { ...GACHA_PATTERNS }
+    }),
 
     /**
      * Manually trigger visibility-based invalidation
@@ -423,6 +560,19 @@ export const enableCacheDebugging = () => {
     getCacheState,
 
     /**
+     * Get recent cache events
+     */
+    getEvents: () => [...cacheEvents],
+
+    /**
+     * Clear event log
+     */
+    clearEvents: () => {
+      cacheEvents.length = 0;
+      console.debug('[CacheManager] Event log cleared');
+    },
+
+    /**
      * Disable debug mode
      */
     disable: () => {
@@ -446,23 +596,7 @@ export const disableCacheDebugging = () => {
 };
 
 // ===========================================
-// DEFAULT EXPORT
+// RE-EXPORT clearCache for convenience
 // ===========================================
 
-const cacheManager = {
-  initVisibilityHandler,
-  invalidateFor,
-  getActionTypes,
-  getCacheState,
-  enableCacheDebugging,
-  disableCacheDebugging,
-  onVisibilityChange,
-  getElapsedHiddenTime,
-  STALE_THRESHOLDS,
-  REFRESH_INTERVALS,
-  // Re-export for convenience
-  clearCache
-};
-
-export default cacheManager;
-
+export { clearCache };

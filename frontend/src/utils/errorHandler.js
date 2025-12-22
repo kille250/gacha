@@ -176,15 +176,5 @@ export const safeApiCall = async (apiCall, { onError, fallbackMessage } = {}) =>
   }
 };
 
-const errorHandler = {
-  getErrorMessage,
-  getErrorType,
-  isAuthError,
-  isNetworkError,
-  createErrorHandler,
-  safeApiCall,
-  ERROR_TYPES,
-};
-
-export default errorHandler;
+// NOTE: Default export removed - use named exports instead for better tree-shaking
 

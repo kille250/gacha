@@ -31,7 +31,7 @@ import {
 const GachaPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, refreshUser } = useContext(AuthContext);
+  const { user } = useContext(AuthContext);
   
   // State
   const [banners, setBanners] = useState([]);
@@ -39,8 +39,8 @@ const GachaPage = () => {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [featuredIndex, setFeaturedIndex] = useState(0);
   
-  // Effects
-  useEffect(() => { refreshUser(); }, [refreshUser]);
+  // NOTE: refreshUser on mount removed - AuthContext already fetches fresh data on initial load.
+  // User data is refreshed via visibility handler or after actions that change currency.
   
   useEffect(() => {
     const fetchBanners = async () => {

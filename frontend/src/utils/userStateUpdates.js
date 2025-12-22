@@ -197,15 +197,5 @@ export const handleGachaError = async ({ refreshUser, error, refreshTickets, fal
   return errorMessage;
 };
 
-const userStateUpdates = {
-  applyPointsUpdate,
-  applyTicketDelta,
-  applyTicketValue,
-  applyRewards,
-  applyServerResponse,
-  handleActionError,
-  handleGachaError
-};
-
-export default userStateUpdates;
+// NOTE: Default export removed - use named exports instead for better tree-shaking
 

@@ -218,5 +218,5 @@ export const CACHE_ACTIONS = {
   MODAL_DOJO_OPEN: MODAL_ACTIONS.DOJO_OPEN,
 };
 
-export default CACHE_ACTIONS;
+// NOTE: Default export removed - use named exports instead for better tree-shaking
 

@@ -105,18 +105,5 @@ export const getUserIdFromToken = () => {
   }
 };
 
-const authStorage = {
-  getToken,
-  setToken,
-  removeToken,
-  hasToken,
-  getTokenHash,
-  getStoredUser,
-  setStoredUser,
-  removeStoredUser,
-  clearAuthStorage,
-  getUserIdFromToken,
-};
-
-export default authStorage;
+// NOTE: Default export removed - use named exports instead for better tree-shaking
 

@@ -87,110 +87,13 @@ export const clearCache = (pattern) => {
 };
 
 /**
- * Admin action-based invalidation map
- * Maps admin actions to the cache patterns that should be invalidated
- * These actions affect both admin views AND user-facing pages
- */
-const ADMIN_INVALIDATION_MAP = {
-  // Character mutations
-  character_add: ['/admin/dashboard', '/characters'],
-  character_edit: ['/admin/dashboard', '/characters', '/characters/collection'],
-  character_delete: ['/admin/dashboard', '/characters', '/characters/collection', '/banners'],
-  
-  // Banner mutations
-  banner_add: ['/admin/dashboard', '/banners'],
-  banner_edit: ['/admin/dashboard', '/banners'],
-  banner_delete: ['/admin/dashboard', '/banners'],
-  banner_reorder: ['/banners'],
-  banner_featured: ['/banners'],
-  
-  // Coupon mutations
-  coupon_add: ['/admin/dashboard', '/coupons'],
-  coupon_edit: ['/admin/dashboard', '/coupons'],
-  coupon_delete: ['/admin/dashboard', '/coupons'],
-  
-  // Rarity mutations
-  rarity_add: ['/admin/dashboard', '/rarities', '/characters'],
-  rarity_edit: ['/admin/dashboard', '/rarities', '/characters'],
-  rarity_delete: ['/admin/dashboard', '/rarities', '/characters'],
-  rarity_reset: ['/admin/dashboard', '/rarities', '/characters'],
-  
-  // User mutations
-  user_coins: ['/admin/dashboard', '/admin/users', '/auth/me'],
-  user_toggle_autofish: ['/admin/users'],
-  user_toggle_r18: ['/admin/users'],
-  
-  // Multi-upload & import
-  bulk_upload: ['/admin/dashboard', '/characters'],
-  anime_import: ['/admin/dashboard', '/characters'],
-  
-  // Visibility change - refresh everything
-  visibility_change: ['/admin/dashboard', '/admin/users']
-};
-
-/**
- * Invalidate caches for a specific admin action
- * @param {string} action - The admin action (character_add, banner_edit, etc.)
- */
-export const invalidateAdminAction = (action) => {
-  const patterns = ADMIN_INVALIDATION_MAP[action] || [];
-  patterns.forEach(pattern => clearCache(pattern));
-};
-
-/**
  * Invalidate entire cache - call on authentication events (login, logout, registration)
  * This is preferred over clearCache() for auth-related cache clearing.
+ * 
+ * NOTE: Domain-specific invalidation (fishing, dojo, admin, gacha) has been
+ * consolidated into cacheManager.js. Use invalidateFor(CACHE_ACTIONS.*) instead.
  */
 export const invalidateCache = () => clearCache();
-
-/**
- * Dojo action-based invalidation map
- * Maps dojo actions to the cache patterns that should be invalidated
- */
-const DOJO_INVALIDATION_MAP = {
-  assign: ['/dojo/status', '/dojo/available-characters'],
-  unassign: ['/dojo/status', '/dojo/available-characters'],
-  claim: ['/dojo/status', '/auth/me', '/banners/user/tickets'],
-  upgrade: ['/dojo/status', '/auth/me']
-};
-
-/**
- * Invalidate caches for a specific dojo action
- * @param {string} action - The dojo action (assign, unassign, claim, upgrade)
- */
-export const invalidateDojoAction = (action) => {
-  const patterns = DOJO_INVALIDATION_MAP[action] || [];
-  patterns.forEach(pattern => clearCache(pattern));
-};
-
-/**
- * Fishing action-based invalidation map
- * Maps fishing actions to the cache patterns that should be invalidated
- * 
- * Guidelines:
- * - Include '/auth/me' only for actions that change user points/currency
- * - Include '/fishing/inventory' for actions that add/remove fish
- * - Include '/fishing/info' for actions that change equipped gear or area
- */
-const FISHING_INVALIDATION_MAP = {
-  catch: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'],
-  autofish: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'], // Includes challenges (autofish can complete them)
-  trade: ['/fishing/inventory', '/fishing/trading-post', '/auth/me'],
-  unlock_area: ['/fishing/areas', '/fishing/info', '/auth/me'],
-  buy_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
-  equip_rod: ['/fishing/rods', '/fishing/info'], // Removed /auth/me - equipping doesn't change currency
-  claim_challenge: ['/fishing/challenges', '/auth/me', '/banners/user/tickets'],
-  select_area: ['/fishing/areas', '/fishing/info']
-};
-
-/**
- * Invalidate caches for a specific fishing action
- * @param {string} action - The fishing action (catch, autofish, trade, etc.)
- */
-export const invalidateFishingAction = (action) => {
-  const patterns = FISHING_INVALIDATION_MAP[action] || [];
-  patterns.forEach(pattern => clearCache(pattern));
-};
 
 const api = axios.create({
   baseURL: API_URL,
