@@ -550,7 +550,7 @@ const FishingPage = () => {
     
     try {
       const res = await api.post('/fishing/cast');
-      const { sessionId: newSessionId, waitTime } = res.data;
+      const { sessionId: newSessionId, waitTime, missTimeout = 2500 } = res.data;
       
       setSessionId(newSessionId);
       setSessionStats(prev => ({ ...prev, casts: prev.casts + 1 }));
@@ -562,9 +562,10 @@ const FishingPage = () => {
           fishAppearedTime.current = Date.now();
           setGameState(GAME_STATES.FISH_APPEARED);
           
+          // Use server-provided missTimeout (varies by fish rarity for balance)
           missTimeoutRef.current = setTimeout(() => {
             handleMiss(newSessionId);
-          }, 2500);
+          }, missTimeout);
         }, waitTime);
       }, 600);
       

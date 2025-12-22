@@ -25,6 +25,8 @@ const MIN_REACTION_TIME = FISHING_CONFIG.minReactionTime || 80;
 const CLEANUP_INTERVAL = FISHING_CONFIG.cleanupInterval || 15000;
 const SESSION_EXPIRY = FISHING_CONFIG.sessionExpiry || 30000;
 const TRADE_TIMEOUT = FISHING_CONFIG.tradeTimeout || 30000;
+const MAX_ACTIVE_SESSIONS_PER_USER = 3; // Prevent session hoarding exploit
+const MAX_MAP_SIZE = 10000; // Prevent memory bloat from Maps
 
 // Rate limiting maps (per user)
 const autofishCooldowns = new Map();
@@ -44,6 +46,38 @@ const RANK_REFRESH_INTERVAL = 60000; // Refresh all ranks every 60 seconds
 
 // Store active fishing sessions (fish appears, waiting for catch)
 const activeSessions = new Map();
+
+/**
+ * Update pity counters based on catch result
+ * Fixed: Epic counter correctly resets on legendary catches too
+ * @param {Object} currentPity - Current pity data { legendary, epic }
+ * @param {Array} resetPity - Array of rarities to reset ['legendary', 'epic']
+ * @param {number} timestamp - Current timestamp
+ * @returns {Object} - Updated pity data
+ */
+function updatePityCounters(currentPity, resetPity, timestamp) {
+  const newPityData = { ...currentPity };
+  
+  // Legendary catch resets both counters
+  if (resetPity.includes('legendary')) {
+    newPityData.legendary = 0;
+    newPityData.epic = 0; // Fix: Legendary also resets epic pity
+  } else {
+    // No legendary - increment legendary counter
+    newPityData.legendary = (newPityData.legendary || 0) + 1;
+    
+    // Epic catch resets epic counter
+    if (resetPity.includes('epic')) {
+      newPityData.epic = 0;
+    } else {
+      // No epic - increment epic counter
+      newPityData.epic = (newPityData.epic || 0) + 1;
+    }
+  }
+  
+  newPityData.lastCast = timestamp;
+  return newPityData;
+}
 
 /**
  * Check if user is in conflicting fishing mode (multi-tab exploit prevention)
@@ -117,6 +151,42 @@ setInterval(() => {
       userRankCache.delete(userId);
     }
   }
+  
+  // Memory protection: Enforce map size limits
+  // If maps grow too large, remove oldest entries
+  const pruneMap = (map, maxSize, sortKey = null) => {
+    if (map.size > maxSize) {
+      const entries = [...map.entries()];
+      // Sort by value (timestamp) if it's a simple timestamp map
+      if (sortKey === null) {
+        entries.sort((a, b) => a[1] - b[1]);
+      }
+      // Remove oldest 50%
+      const toRemove = Math.floor(entries.length / 2);
+      for (let i = 0; i < toRemove; i++) {
+        map.delete(entries[i][0]);
+      }
+      console.log(`[Fishing] Pruned ${toRemove} entries from map (was ${entries.length})`);
+    }
+  };
+  
+  pruneMap(autofishCooldowns, MAX_MAP_SIZE);
+  pruneMap(castCooldowns, MAX_MAP_SIZE);
+  pruneMap(userRankCache, MAX_MAP_SIZE);
+  pruneMap(userFishingMode, MAX_MAP_SIZE);
+  pruneMap(tradeInProgress, MAX_MAP_SIZE);
+  
+  // Active sessions should naturally expire, but also enforce limit
+  if (activeSessions.size > MAX_MAP_SIZE) {
+    console.warn(`[Fishing] Active sessions exceeded limit: ${activeSessions.size}`);
+    // Remove oldest sessions
+    const entries = [...activeSessions.entries()]
+      .sort((a, b) => a[1].createdAt - b[1].createdAt);
+    const toRemove = Math.floor(entries.length / 2);
+    for (let i = 0; i < toRemove; i++) {
+      activeSessions.delete(entries[i][0]);
+    }
+  }
 }, CLEANUP_INTERVAL);
 
 // POST /api/fishing/cast - Start fishing (cast the line)
@@ -130,6 +200,16 @@ router.post('/cast', auth, async (req, res) => {
       return res.status(409).json({ 
         error: 'Mode conflict',
         message: modeConflict
+      });
+    }
+    
+    // Session hoarding prevention: limit active sessions per user
+    const userSessionCount = [...activeSessions.values()]
+      .filter(s => s.userId === userId).length;
+    if (userSessionCount >= MAX_ACTIVE_SESSIONS_PER_USER) {
+      return res.status(429).json({
+        error: 'Too many active sessions',
+        message: 'Please complete or let your current fishing attempts expire'
       });
     }
     
@@ -174,20 +254,8 @@ router.post('/cast', auth, async (req, res) => {
       // Select a fish with pity system
       const { fish, pityTriggered, resetPity } = selectRandomFish(pityData);
       
-      // Update pity counters
-      const newPityData = { ...pityData };
-      if (resetPity.includes('legendary')) {
-        newPityData.legendary = 0;
-      } else {
-        newPityData.legendary = (newPityData.legendary || 0) + 1;
-      }
-      if (resetPity.includes('epic')) {
-        newPityData.epic = 0;
-      } else if (!resetPity.includes('legendary')) {
-        newPityData.epic = (newPityData.epic || 0) + 1;
-      }
-      newPityData.lastCast = now;
-      user.fishingPity = newPityData;
+      // Update pity counters using helper function (fixes epic counter bug)
+      user.fishingPity = updatePityCounters(pityData, resetPity, now);
       
       // Update fishing stats
       const stats = user.fishingStats || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} };
@@ -220,9 +288,13 @@ router.post('/cast', auth, async (req, res) => {
     
     activeSessions.set(sessionId, session);
     
+    // Get miss timeout based on fish rarity (configured per rarity for balance)
+    const missTimeout = FISHING_CONFIG.missTimeout?.[fish.rarity] || 2500;
+    
     res.json({
       sessionId,
       waitTime,
+      missTimeout,  // Frontend uses this to know when fish escapes
       castCost: CAST_COST,
       newPoints: user.points,
       pityTriggered: pityTriggered || false,
@@ -671,6 +743,13 @@ router.post('/autofish', auth, async (req, res) => {
         throw new Error('USER_NOT_FOUND');
       }
       
+      // Server-side timestamp check (prevents multi-instance/restart exploits)
+      const lastDbAutofish = user.fishingPity?.lastCast || 0;
+      if (now - lastDbAutofish < AUTOFISH_COOLDOWN) {
+        const remainingMs = AUTOFISH_COOLDOWN - (now - lastDbAutofish);
+        throw new Error(`COOLDOWN:${remainingMs}`);
+      }
+      
       // Re-verify rank to ensure user still qualifies (use cache for performance)
       const currentRank = await getUserRank(userId);
       const stillQualifiesByRank = currentRank <= AUTOFISH_UNLOCK_RANK;
@@ -701,20 +780,8 @@ router.post('/autofish', auth, async (req, res) => {
       // Select a random fish with pity
       const { fish, pityTriggered, resetPity } = selectRandomFish(pityData);
       
-      // Update pity counters
-      const newPityData = { ...pityData };
-      if (resetPity.includes('legendary')) {
-        newPityData.legendary = 0;
-      } else {
-        newPityData.legendary = (newPityData.legendary || 0) + 1;
-      }
-      if (resetPity.includes('epic')) {
-        newPityData.epic = 0;
-      } else if (!resetPity.includes('legendary')) {
-        newPityData.epic = (newPityData.epic || 0) + 1;
-      }
-      newPityData.lastCast = now;
-      user.fishingPity = newPityData;
+      // Update pity counters using helper function (fixes epic counter bug)
+      user.fishingPity = updatePityCounters(pityData, resetPity, now);
       
       // Update fishing stats
       const stats = user.fishingStats || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} };
@@ -797,6 +864,15 @@ router.post('/autofish', auth, async (req, res) => {
     
     if (err.message === 'USER_NOT_FOUND') {
       return res.status(404).json({ error: 'User not found' });
+    }
+    // Handle server-side cooldown check (prevents multi-instance exploits)
+    if (err.message.startsWith('COOLDOWN:')) {
+      const remainingMs = parseInt(err.message.split(':')[1], 10);
+      return res.status(429).json({
+        error: 'Too fast',
+        message: `Please wait ${Math.ceil(remainingMs / 1000)} seconds`,
+        retryAfter: remainingMs
+      });
     }
     if (err.message === 'AUTOFISH_NOT_UNLOCKED') {
       return res.status(403).json({ 

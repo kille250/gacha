@@ -60,12 +60,22 @@ const FISHING_CONFIG = {
     greatMultiplier: 1.5,    // 50% bonus for great
     // Per-rarity overrides (harder fish = tighter windows)
     rarityThresholds: {
-      legendary: { perfect: 0.15, great: 0.40 },  // 60-75ms for perfect on 400-500ms window
-      epic: { perfect: 0.18, great: 0.45 },
-      rare: { perfect: 0.22, great: 0.50 },
+      legendary: { perfect: 0.20, great: 0.45 },  // Increased from 0.15 for fairer gameplay
+      epic: { perfect: 0.20, great: 0.48 },
+      rare: { perfect: 0.22, great: 0.52 },
       uncommon: { perfect: 0.25, great: 0.55 },
       common: { perfect: 0.30, great: 0.60 }
     }
+  },
+  
+  // Miss timeout per rarity (ms) - how long player has to catch after fish appears
+  // Rarer fish give slightly less time, adding to the challenge
+  missTimeout: {
+    common: 3000,      // 3 seconds
+    uncommon: 2800,
+    rare: 2500,
+    epic: 2200,
+    legendary: 2000    // 2 seconds - tense moment!
   },
   
   // Pity system - bad luck protection
