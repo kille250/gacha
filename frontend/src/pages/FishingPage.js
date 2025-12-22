@@ -24,6 +24,7 @@ import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock } from '../hooks';
+import { applyPointsUpdate, applyRewards } from '../utils/userStateUpdates';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, motionVariants } from '../styles/DesignSystem';
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
 
@@ -534,9 +535,7 @@ const FishingPage = () => {
         setTradeResult(result);
         
         // Optimistic update from response
-        if (result.newPoints !== undefined) {
-          setUser(prev => ({ ...prev, points: result.newPoints }));
-        }
+        applyPointsUpdate(setUser, result.newPoints);
         
         // Invalidate trade-related caches (caller's responsibility)
         invalidateFor(CACHE_ACTIONS.FISHING_TRADE);
@@ -595,9 +594,7 @@ const FishingPage = () => {
         const res = await api.post('/fishing/autofish');
         const result = res.data;
         
-        if (result.newPoints !== undefined) {
-          setUser(prev => ({ ...prev, points: result.newPoints }));
-        }
+        applyPointsUpdate(setUser, result.newPoints);
         
         // Invalidate autofish-related caches (caller's responsibility)
         invalidateFor(CACHE_ACTIONS.FISHING_AUTOFISH);
@@ -819,9 +816,7 @@ const FishingPage = () => {
       setSessionStats(prev => ({ ...prev, casts: prev.casts + 1 }));
       
       // Update user points from cast cost deduction
-      if (newPoints !== undefined) {
-        setUser(prev => ({ ...prev, points: newPoints }));
-      }
+      applyPointsUpdate(setUser, newPoints);
       
       // Update daily stats from cast response (tracks manual casts)
       if (daily) {
@@ -879,9 +874,7 @@ const FishingPage = () => {
         }));
         
         // Update user points from response
-        if (result.newPoints !== undefined) {
-          setUser(prev => ({ ...prev, points: result.newPoints }));
-        }
+        applyPointsUpdate(setUser, result.newPoints);
         
         // Invalidate fishing caches to ensure fresh data (caller's responsibility)
         invalidateFor(CACHE_ACTIONS.FISHING_CATCH);
@@ -962,15 +955,7 @@ const FishingPage = () => {
       showNotification(result.message, 'success');
       
       // Update user points/tickets
-      if (result.rewards?.points) {
-        setUser(prev => ({ ...prev, points: (prev.points || 0) + result.rewards.points }));
-      }
-      if (result.rewards?.rollTickets) {
-        setUser(prev => ({ ...prev, rollTickets: (prev.rollTickets || 0) + result.rewards.rollTickets }));
-      }
-      if (result.rewards?.premiumTickets) {
-        setUser(prev => ({ ...prev, premiumTickets: (prev.premiumTickets || 0) + result.rewards.premiumTickets }));
-      }
+      applyRewards(setUser, result.rewards);
       
       // Invalidate claim_challenge caches (caller's responsibility)
       invalidateFor(CACHE_ACTIONS.FISHING_CLAIM_CHALLENGE);
@@ -1016,7 +1001,7 @@ const FishingPage = () => {
     setEquipmentActionLoading(true);
     try {
       const result = await unlockFishingArea(areaId);
-      setUser(prev => ({ ...prev, points: result.newPoints }));
+      applyPointsUpdate(setUser, result.newPoints);
       showNotification(result.message, 'success');
       
       // Invalidate unlock_area caches (caller's responsibility)
@@ -1050,7 +1035,7 @@ const FishingPage = () => {
     setEquipmentActionLoading(true);
     try {
       const result = await buyFishingRod(rodId);
-      setUser(prev => ({ ...prev, points: result.newPoints }));
+      applyPointsUpdate(setUser, result.newPoints);
       showNotification(result.message, 'success');
       
       // Invalidate buy_rod caches (caller's responsibility)

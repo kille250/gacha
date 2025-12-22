@@ -14,6 +14,7 @@ import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
 import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { applyPointsUpdate } from '../utils/userStateUpdates';
 
 // Design System
 import {
@@ -291,10 +292,8 @@ const RollPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Update points immediately from response using functional update to avoid stale closure
-        if (typeof updatedPoints === 'number') {
-          setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
-        }
+        // Update points immediately from response
+        applyPointsUpdate(setUser, updatedPoints);
         
         // Invalidate gacha roll caches (caller's responsibility)
         invalidateFor(CACHE_ACTIONS.GACHA_ROLL);
@@ -398,10 +397,8 @@ const RollPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Update points immediately from response using functional update to avoid stale closure
-        if (typeof updatedPoints === 'number') {
-          setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
-        }
+        // Update points immediately from response
+        applyPointsUpdate(setUser, updatedPoints);
         
         // Invalidate gacha roll caches (caller's responsibility)
         invalidateFor(CACHE_ACTIONS.GACHA_ROLL);

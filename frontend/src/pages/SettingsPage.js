@@ -7,7 +7,8 @@ import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { theme, LoadingSpinner, ErrorMessage as SharedErrorMessage, SuccessMessage as SharedSuccessMessage } from '../styles/DesignSystem';
-import api, { clearCache } from '../utils/api';
+import api from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
@@ -243,7 +244,7 @@ const SettingsPage = () => {
       setResetConfirmText('');
       
       // Clear all caches and refresh user
-      clearCache();
+      invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
       await refreshUser();
     } catch (err) {
       setResetError(err.response?.data?.error || t('settings.resetFailed'));

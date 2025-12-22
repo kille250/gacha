@@ -14,6 +14,7 @@ import confetti from 'canvas-confetti';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { getAssetUrl } from '../utils/api';
+import { applyPointsUpdate } from '../utils/userStateUpdates';
 
 // ==================== CONSTANTS ====================
 
@@ -43,7 +44,7 @@ const MAX_RARITY_HISTORY = 5;
  * @returns {Object} Roll state and handlers
  */
 export const useGachaRoll = ({ onRollComplete } = {}) => {
-  const { user, setUser } = useContext(AuthContext);
+  const { setUser } = useContext(AuthContext);
   const { getRarityColor } = useRarity();
 
   // ==================== STATE ====================
@@ -172,10 +173,8 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
   const processSingleRoll = useCallback(async (result) => {
     const { character, updatedPoints, tickets } = result;
     
-    // Update points immediately from response (use typeof for safer check)
-    if (typeof updatedPoints === 'number' && user) {
-      setUser(prev => ({ ...prev, points: updatedPoints }));
-    }
+    // Update points immediately from response
+    applyPointsUpdate(setUser, updatedPoints);
     
     if (skipAnimations) {
       // Skip animation - show card directly
@@ -194,7 +193,7 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
     onRollComplete?.();
     
     return { character, tickets };
-  }, [user, setUser, skipAnimations, addToRarityHistory, showRarePullEffect, onRollComplete]);
+  }, [setUser, skipAnimations, addToRarityHistory, showRarePullEffect, onRollComplete]);
 
   /**
    * Start a single roll
@@ -227,10 +226,8 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
   const processMultiRoll = useCallback(async (result) => {
     const { characters, updatedPoints, tickets } = result;
     
-    // Update points immediately from response (use typeof for safer check)
-    if (typeof updatedPoints === 'number' && user) {
-      setUser(prev => ({ ...prev, points: updatedPoints }));
-    }
+    // Update points immediately from response
+    applyPointsUpdate(setUser, updatedPoints);
     
     if (skipAnimations) {
       // Skip animation - show results directly
@@ -255,7 +252,7 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
     onRollComplete?.();
     
     return { characters, tickets };
-  }, [user, setUser, skipAnimations, getBestRarity, addToRarityHistory, onRollComplete]);
+  }, [setUser, skipAnimations, getBestRarity, addToRarityHistory, onRollComplete]);
 
   /**
    * Start a multi-roll

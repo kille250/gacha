@@ -150,7 +150,7 @@ export const invalidateCache = () => clearCache();
 const DOJO_INVALIDATION_MAP = {
   assign: ['/dojo/status', '/dojo/available-characters'],
   unassign: ['/dojo/status', '/dojo/available-characters'],
-  claim: ['/dojo/status', '/auth/me'],
+  claim: ['/dojo/status', '/auth/me', '/banners/user/tickets'],
   upgrade: ['/dojo/status', '/auth/me']
 };
 
@@ -179,13 +179,8 @@ const FISHING_INVALIDATION_MAP = {
   unlock_area: ['/fishing/areas', '/fishing/info', '/auth/me'],
   buy_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
   equip_rod: ['/fishing/rods', '/fishing/info'], // Removed /auth/me - equipping doesn't change currency
-  claim_challenge: ['/fishing/challenges', '/auth/me'],
-  select_area: ['/fishing/areas', '/fishing/info'],
-  // Modal refresh actions - for explicit cache clear when UI opens
-  modal_equipment: ['/fishing/areas', '/fishing/rods'],
-  modal_trading: ['/fishing/trading-post', '/fishing/inventory'],
-  modal_challenges: ['/fishing/challenges'],
-  modal_leaderboard: ['/fishing/leaderboard', '/fishing/rank']
+  claim_challenge: ['/fishing/challenges', '/auth/me', '/banners/user/tickets'],
+  select_area: ['/fishing/areas', '/fishing/info']
 };
 
 /**

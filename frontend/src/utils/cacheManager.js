@@ -125,11 +125,6 @@ const ACTION_HANDLERS = {
   'fishing:equip_rod': () => invalidateFishingAction('equip_rod'),
   'fishing:claim_challenge': () => invalidateFishingAction('claim_challenge'),
   'fishing:select_area': () => invalidateFishingAction('select_area'),
-  // DEPRECATED: modal actions - prefer forceRefresh param on API functions
-  'fishing:modal_equipment': () => invalidateFishingAction('modal_equipment'),
-  'fishing:modal_trading': () => invalidateFishingAction('modal_trading'),
-  'fishing:modal_challenges': () => invalidateFishingAction('modal_challenges'),
-  'fishing:modal_leaderboard': () => invalidateFishingAction('modal_leaderboard'),
 
   // ===========================================
   // DOJO ACTIONS

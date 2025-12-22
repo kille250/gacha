@@ -27,6 +27,7 @@ import {
   getAssetUrl
 } from '../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { applyServerResponse, applyPointsUpdate } from '../utils/userStateUpdates';
 import { theme, Spinner } from '../styles/DesignSystem';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../utils/mediaUtils';
 
@@ -141,28 +142,24 @@ const DojoPage = () => {
   }, [fetchStatus, isInteracting]);
   
   // Maximum staleness check - force refresh if data is too old (prevents showing very outdated rewards)
-  // Note: Basic cache invalidation (auth/me, tickets) is handled by global visibility handler in cacheManager.
-  // This effect handles dojo-specific data refresh for UI state.
+  // Note: Cache invalidation is handled by global visibility handler in cacheManager.
+  // This effect only handles the UI refetch after cache is cleared.
   useEffect(() => {
-    const MAX_STALENESS_MS = 2 * 60 * 1000; // 2 minutes
+    const MAX_STALENESS_MS = 2 * 60 * 1000; // 2 minutes (matches cacheManager.STALE_THRESHOLDS.normal)
     
-    const handleVisibility = async () => {
+    const handleVisibility = () => {
       if (document.visibilityState === 'visible') {
         const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
         if (timeSinceLastFetch > MAX_STALENESS_MS) {
-          // Invalidate dojo caches before refreshing
-          invalidateFor(CACHE_ACTIONS.DOJO_CLAIM); // Clears /dojo/status and /auth/me
-          
-          // Refresh both dojo status and user data
+          // Global visibility handler already cleared caches - just refetch
           fetchStatus();
-          refreshUser();
         }
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [fetchStatus, refreshUser]);
+  }, [fetchStatus]);
   
   // Network offline detection during claim/upgrade operations
   useEffect(() => {
@@ -324,14 +321,7 @@ const DojoPage = () => {
         invalidateFor(CACHE_ACTIONS.DOJO_CLAIM);
         
         // Immediate optimistic update from response newTotals
-        if (result.newTotals) {
-          setUser(prev => ({
-            ...prev,
-            points: result.newTotals.points,
-            rollTickets: result.newTotals.rollTickets,
-            premiumTickets: result.newTotals.premiumTickets
-          }));
-        }
+        applyServerResponse(setUser, result);
         
         // Refresh dojo status (background, non-blocking)
         fetchStatus();
@@ -368,9 +358,7 @@ const DojoPage = () => {
         invalidateFor(CACHE_ACTIONS.DOJO_UPGRADE);
         
         // Immediate optimistic update from response
-        if (result.newPoints !== undefined) {
-          setUser(prev => ({ ...prev, points: result.newPoints }));
-        }
+        applyPointsUpdate(setUser, result.newPoints);
         
         // Refresh dojo status (background, non-blocking)
         fetchStatus();

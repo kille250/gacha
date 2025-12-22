@@ -8,12 +8,13 @@ import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from
 import confetti from 'canvas-confetti';
 
 // API & Context
-import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiRollOnBanner, clearCache } from '../utils/api';
+import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiRollOnBanner } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
 import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { applyPointsUpdate } from '../utils/userStateUpdates';
 
 // Design System
 import {
@@ -422,9 +423,6 @@ const BannerPage = () => {
         setMultiRollResults([]);
         setRollCount(prev => prev + 1);
         
-        // Invalidate pricing cache to ensure server charges current price
-        clearCache(`/banners/${bannerId}/pricing`);
-        
         // Save pending roll state for recovery after page reload
         try {
           sessionStorage.setItem('gacha_pendingRoll', JSON.stringify({ 
@@ -447,10 +445,8 @@ const BannerPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Update points immediately from response using functional update to avoid stale closure
-        if (typeof updatedPoints === 'number') {
-          setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
-        }
+        // Update points immediately from response
+        applyPointsUpdate(setUser, updatedPoints);
         
         // Invalidate gacha roll caches (caller's responsibility)
         invalidateFor(CACHE_ACTIONS.GACHA_ROLL_BANNER);
@@ -575,9 +571,6 @@ const BannerPage = () => {
         setError(null);
         setRollCount(prev => prev + count);
         
-        // Invalidate pricing cache to ensure server charges current price
-        clearCache(`/banners/${bannerId}/pricing`);
-        
         // Save pending roll state for recovery after page reload
         try {
           sessionStorage.setItem('gacha_pendingRoll', JSON.stringify({ 
@@ -601,10 +594,8 @@ const BannerPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Update points immediately from response using functional update to avoid stale closure
-        if (typeof updatedPoints === 'number') {
-          setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
-        }
+        // Update points immediately from response
+        applyPointsUpdate(setUser, updatedPoints);
         
         // Invalidate gacha roll caches (caller's responsibility)
         invalidateFor(CACHE_ACTIONS.GACHA_ROLL_BANNER);
