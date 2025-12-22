@@ -612,7 +612,7 @@
     "failedClaim": "Failed to claim rewards",
     "failedUpgrade": "Failed to purchase upgrade",
     "trainingComplete": "Training Complete!",
-    "points": "Points",
+    "points": "+{{count}} Points",
     "rollTickets": "+{{count}} Roll Tickets",
     "premiumTickets": "+{{count}} Premium Tickets",
     "activeBonusApplied": "1.5× Active Bonus Applied!",

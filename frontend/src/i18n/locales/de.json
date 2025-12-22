@@ -610,7 +610,7 @@
     "failedClaim": "Belohnungen konnten nicht abgeholt werden",
     "failedUpgrade": "Upgrade konnte nicht gekauft werden",
     "trainingComplete": "Training abgeschlossen!",
-    "points": "Punkte",
+    "points": "+{{count}} Punkte",
     "rollTickets": "+{{count}} Zieh-Tickets",
     "premiumTickets": "+{{count}} Premium-Tickets",
     "activeBonusApplied": "1,5× Aktiv-Bonus angewendet!",
