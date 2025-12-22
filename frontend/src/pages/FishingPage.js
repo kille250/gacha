@@ -904,14 +904,17 @@ const FishingPage = () => {
             <span>{user?.points?.toLocaleString() || 0}</span>
           </PointsDisplay>
           {/* Autofish button - now available to everyone */}
-          <AutofishButton onClick={toggleAutofish} $active={isAutofishing} title={dailyStats ? `${dailyStats.remaining}/${dailyStats.limit} remaining` : ''}>
-            <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
+          <AutofishButtonWrapper>
+            <AutofishButton onClick={toggleAutofish} $active={isAutofishing} title={dailyStats ? `${dailyStats.remaining}/${dailyStats.limit} remaining today` : ''}>
+              <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
+            </AutofishButton>
             {dailyStats && (
-              <AutofishCounter $warning={dailyStats.remaining < 20}>
-                {dailyStats.remaining}
-              </AutofishCounter>
+              <AutofishQuota $warning={dailyStats.remaining < 20} $active={isAutofishing}>
+                <span>{dailyStats.remaining}</span>
+                <small>/{dailyStats.limit}</small>
+              </AutofishQuota>
             )}
-          </AutofishButton>
+          </AutofishButtonWrapper>
           {/* Challenges button */}
           <ChallengesButton onClick={() => setShowChallenges(true)} $hasCompleted={challenges?.challenges?.some(c => c.progress >= c.target && !c.completed)}>
             <MdEmojiEvents />
@@ -3711,22 +3714,50 @@ const PityFill = styled.div`
 // AUTOFISH COUNTER & NEW BUTTONS
 // =============================================
 
-const AutofishCounter = styled.span`
-  position: absolute;
-  bottom: -4px;
-  right: -4px;
-  min-width: 18px;
-  height: 18px;
-  padding: 0 4px;
-  background: ${props => props.$warning ? '#ff5252' : '#43a047'};
-  border-radius: 9px;
-  font-size: 10px;
-  font-weight: 800;
-  color: white;
+const AutofishButtonWrapper = styled.div`
   display: flex;
   align-items: center;
-  justify-content: center;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  gap: 4px;
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 12px;
+  padding: 4px;
+  padding-right: 8px;
+  
+  @media (max-width: 600px) {
+    padding: 3px;
+    padding-right: 6px;
+    border-radius: 10px;
+  }
+`;
+
+const AutofishQuota = styled.div`
+  display: flex;
+  align-items: baseline;
+  gap: 1px;
+  font-family: 'SF Mono', 'Fira Code', monospace;
+  
+  span {
+    font-size: 14px;
+    font-weight: 800;
+    color: ${props => props.$warning ? '#ff5252' : props.$active ? '#a5d6a7' : '#fff8e1'};
+    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
+  }
+  
+  small {
+    font-size: 10px;
+    font-weight: 600;
+    color: ${props => props.$warning ? '#ff8a80' : 'rgba(255,255,255,0.5)'};
+  }
+  
+  @media (max-width: 600px) {
+    span { font-size: 12px; }
+    small { font-size: 9px; }
+  }
+  
+  @media (max-width: 400px) {
+    span { font-size: 11px; }
+    small { display: none; }
+  }
 `;
 
 const ChallengesButton = styled.button`
