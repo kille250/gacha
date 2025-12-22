@@ -89,10 +89,24 @@ router.get('/trading-post', auth, async (req, res, next) => {
     const options = TRADE_OPTIONS.map(option => {
       let canTrade = false;
       let currentQuantity = 0;
+      let bottleneck = null;
       
       if (option.requiredRarity === 'collection') {
         canTrade = Object.values(totals).every(qty => qty >= 1);
         currentQuantity = Math.min(...Object.values(totals));
+        
+        // Find the bottleneck rarity (the one with lowest quantity)
+        const rarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+        let minRarity = rarities[0];
+        let minQuantity = totals[rarities[0]] || 0;
+        for (const rarity of rarities) {
+          const qty = totals[rarity] || 0;
+          if (qty < minQuantity) {
+            minQuantity = qty;
+            minRarity = rarity;
+          }
+        }
+        bottleneck = { rarity: minRarity, quantity: minQuantity };
       } else {
         currentQuantity = totals[option.requiredRarity] || 0;
         canTrade = currentQuantity >= option.requiredQuantity;
@@ -112,7 +126,7 @@ router.get('/trading-post', auth, async (req, res, next) => {
         if (amounts.premiumTickets && currentPremium >= DAILY_LIMITS.premiumTickets) limitReached = true;
       }
       
-      return {
+      const result = {
         ...option,
         canTrade: canTrade && !limitReached,
         limitReached,
@@ -121,6 +135,13 @@ router.get('/trading-post', auth, async (req, res, next) => {
           ? currentQuantity 
           : Math.floor(currentQuantity / option.requiredQuantity)
       };
+      
+      // Add bottleneck info for collection trades
+      if (bottleneck) {
+        result.bottleneck = bottleneck;
+      }
+      
+      return result;
     });
     
     res.json({

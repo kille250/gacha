@@ -506,6 +506,23 @@ const FishingPage = () => {
     }
   }, [showTradingPost]);
   
+  // Visibility-based refresh for trading modal to prevent stale data
+  useEffect(() => {
+    if (!showTradingPost) return;
+    
+    return onVisibilityChange('trading-post-modal', async (staleLevel) => {
+      // Refresh trade options when tab becomes visible after being backgrounded
+      if (staleLevel) {
+        try {
+          const newOptions = await getTradingPostOptions();
+          setTradingOptions(newOptions);
+        } catch (err) {
+          console.error('Failed to refresh trading options on visibility change:', err);
+        }
+      }
+    });
+  }, [showTradingPost]);
+  
   // Challenges fetch
   useEffect(() => {
     if (showChallenges) {
@@ -545,14 +562,25 @@ const FishingPage = () => {
     setTimeout(() => setNotification(null), theme.timing.notificationDismiss);
   }, []);
   
-  // Handle trade execution
+  // Handle trade execution with timeout protection
   const handleTrade = useCallback(async (tradeId) => {
     // Use action lock to prevent rapid double-clicks
     await withTradeLock(async () => {
       try {
         setTradingLoading(true);
-        // Use centralized action helper for consistent cache invalidation and state updates
-        const result = await executeFishTrade(tradeId, 1, setUser);
+        
+        // Create timeout promise for client-side trade timeout protection
+        const TRADE_TIMEOUT_MS = 35000;
+        const timeoutPromise = new Promise((_, reject) => 
+          setTimeout(() => reject(new Error('TRADE_TIMEOUT')), TRADE_TIMEOUT_MS)
+        );
+        
+        // Race between trade execution and timeout
+        const result = await Promise.race([
+          executeFishTrade(tradeId, 1, setUser),
+          timeoutPromise
+        ]);
+        
         setTradeResult(result);
         
         // Refresh trading options (cache already invalidated by helper)
@@ -565,10 +593,30 @@ const FishingPage = () => {
         // Clear result after animation
         setTimeout(() => setTradeResult(null), theme.timing.tradeResultDismiss);
       } catch (err) {
-        showNotification(err.response?.data?.message || t('fishing.tradeFailed'), 'error');
+        // Handle specific error codes with appropriate messages
+        const errorCode = err.response?.data?.error || err.message;
+        const errorMessages = {
+          'TRADE_NOT_ENOUGH_FISH': t('fishing.errors.notEnoughFish') || 'Not enough fish for this trade',
+          'TRADE_NOT_FOUND': t('fishing.errors.tradeNotFound') || 'Trade option not found',
+          'TRADE_IN_PROGRESS': t('fishing.errors.tradeInProgress') || 'Another trade is being processed',
+          'DAILY_LIMIT_REACHED': t('fishing.errors.dailyLimitReached') || 'Daily limit reached for this reward',
+          'DAILY_POINTS_LIMIT': t('fishing.errors.dailyPointsLimit') || 'Daily points limit reached',
+          'DAILY_ROLL_TICKET_LIMIT': t('fishing.errors.dailyRollTicketLimit') || 'Daily roll ticket limit reached',
+          'DAILY_PREMIUM_TICKET_LIMIT': t('fishing.errors.dailyPremiumTicketLimit') || 'Daily premium ticket limit reached',
+          'INSUFFICIENT_FISH': t('fishing.errors.notEnoughFish') || 'Not enough fish for this trade',
+          'TRADE_TIMEOUT': t('fishing.errors.tradeTimeout') || 'Trade timed out, please try again'
+        };
+        
+        const message = errorMessages[errorCode] || err.response?.data?.message || t('fishing.tradeFailed');
+        showNotification(message, 'error');
         setTradingLoading(false);
-        // Refresh user to sync state after failure
-        await refreshUser();
+        
+        // Always refresh both user and trade options after failure to sync state
+        const [newOptions] = await Promise.all([
+          getTradingPostOptions(),
+          refreshUser()
+        ]);
+        setTradingOptions(newOptions);
       }
     });
   }, [setUser, t, showNotification, withTradeLock, refreshUser]);
@@ -1692,6 +1740,34 @@ const FishingPage = () => {
                                         </TradeGetContent>
                                       </TradeGetSection>
                                     </TradeCardTop>
+                                    {/* Soft cap warning for points trades */}
+                                    {option.rewardType === 'points' && 
+                                     tradingOptions.dailyLimits?.pointsFromTrades?.used >= 10000 && (
+                                      <SoftCapWarning title={t('fishing.softCapTooltip') || 'Daily soft cap reached - rewards reduced by 50%'}>
+                                        ⚠️ {t('fishing.reducedRewards') || '-50% rewards'}
+                                      </SoftCapWarning>
+                                    )}
+                                    {/* Near limit warning for ticket trades */}
+                                    {option.rewardType === 'rollTickets' && 
+                                     tradingOptions.dailyLimits?.rollTickets?.remaining > 0 &&
+                                     tradingOptions.dailyLimits?.rollTickets?.remaining <= option.rewardAmount && (
+                                      <NearLimitWarning>
+                                        🎫 {t('fishing.lastTradeToday') || 'Last one today!'}
+                                      </NearLimitWarning>
+                                    )}
+                                    {option.rewardType === 'premiumTickets' && 
+                                     tradingOptions.dailyLimits?.premiumTickets?.remaining > 0 &&
+                                     tradingOptions.dailyLimits?.premiumTickets?.remaining <= option.rewardAmount && (
+                                      <NearLimitWarning>
+                                        🌟 {t('fishing.lastTradeToday') || 'Last one today!'}
+                                      </NearLimitWarning>
+                                    )}
+                                    {/* Collection trade bottleneck indicator */}
+                                    {option.requiredRarity === 'collection' && option.bottleneck && (
+                                      <BottleneckInfo $color={getRarityColor(option.bottleneck.rarity)}>
+                                        {t('fishing.bottleneck') || 'Limiting:'} {option.bottleneck.quantity} {t(`fishing.${option.bottleneck.rarity}`)}
+                                      </BottleneckInfo>
+                                    )}
                                     <QuickTradeButton
                                       onClick={() => handleTrade(option.id)}
                                       disabled={tradingLoading}
@@ -3969,6 +4045,66 @@ const QuickTradeButton = styled(motion.button)`
     cursor: not-allowed;
     box-shadow: 0 2px 0 #616161;
   }
+`;
+
+// Soft cap warning for points trades (50% reduction after 10k daily)
+const SoftCapWarning = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin: 0 0 6px 0;
+  background: linear-gradient(180deg, rgba(255, 152, 0, 0.15) 0%, rgba(255, 152, 0, 0.1) 100%);
+  border: 1px solid rgba(255, 152, 0, 0.4);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #ff9800;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  cursor: help;
+`;
+
+// Near limit warning (last trade of this type today)
+const NearLimitWarning = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin: 0 0 6px 0;
+  background: linear-gradient(180deg, rgba(76, 175, 80, 0.15) 0%, rgba(76, 175, 80, 0.1) 100%);
+  border: 1px solid rgba(76, 175, 80, 0.4);
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #4caf50;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  animation: pulse 2s infinite;
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+`;
+
+// Collection trade bottleneck indicator
+const BottleneckInfo = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  padding: 4px 8px;
+  margin: 0 0 6px 0;
+  background: rgba(0, 0, 0, 0.05);
+  border: 1px solid ${props => props.$color || 'rgba(139, 105, 20, 0.3)'};
+  border-radius: 6px;
+  font-size: 10px;
+  font-weight: 600;
+  color: ${props => props.$color || '#8b6914'};
+  text-transform: capitalize;
 `;
 
 const LockedTradesList = styled.div`
