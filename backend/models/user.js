@@ -220,6 +220,19 @@ User.init(
       allowNull: true,
       defaultValue: 'basic'
     },
+    // Owned fishing rods (tracks all purchased rods)
+    fishingOwnedRods: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '["basic"]',
+      get() {
+        const value = this.getDataValue('fishingOwnedRods');
+        return value ? JSON.parse(value) : ['basic'];
+      },
+      set(value) {
+        this.setDataValue('fishingOwnedRods', JSON.stringify(value || ['basic']));
+      }
+    },
     // Lifetime achievements
     fishingAchievements: {
       type: DataTypes.TEXT,

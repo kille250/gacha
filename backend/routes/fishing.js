@@ -22,7 +22,8 @@ const {
   getAutofishLimit,
   getTodayString,
   needsDailyReset,
-  generateDailyChallenges
+  generateDailyChallenges,
+  calculatePityBonus
 } = require('../config/fishing');
 
 // Service imports
@@ -42,6 +43,9 @@ const {
   checkFishingModeConflict,
   setFishingMode
 } = require('../services/fishingService');
+
+// Extract daily limits from config
+const DAILY_LIMITS = FISHING_CONFIG.dailyLimits;
 
 const {
   getUserRank,
@@ -216,6 +220,12 @@ router.post('/cast', auth, async (req, res) => {
         throw new Error('USER_NOT_FOUND');
       }
       
+      // === DAILY LIMIT CHECK ===
+      let daily = getOrResetDailyData(user);
+      if (daily.manualCasts >= DAILY_LIMITS.manualCasts) {
+        throw new Error(`DAILY_LIMIT:${DAILY_LIMITS.manualCasts}`);
+      }
+      
       // Check if user has enough points (if there's a cost)
       if (CAST_COST > 0 && user.points < CAST_COST) {
         throw new Error('NOT_ENOUGH_POINTS');
@@ -226,11 +236,30 @@ router.post('/cast', auth, async (req, res) => {
         user.points -= CAST_COST;
       }
       
+      // === MERCY TIMER BONUS ===
+      // Calculate bonus timing based on consecutive misses
+      const mercyBonus = calculateMercyBonus(daily.missStreak || 0);
+      
+      // Get area and rod for bonuses
+      const areas = user.fishingAreas || { current: 'pond' };
+      const rodId = user.fishingRod || 'basic';
+      const rod = FISHING_RODS[rodId] || FISHING_RODS.basic;
+      
       // Get pity data for fish selection
       const pityData = user.fishingPity || { legendary: 0, epic: 0 };
       
-      // Select a fish with pity system
-      const { fish, pityTriggered, resetPity } = selectRandomFish(pityData);
+      // Select a fish with pity, area, and rod bonuses
+      const { fish: baseFish, pityTriggered, resetPity } = selectRandomFishWithBonuses(
+        pityData, 
+        areas.current, 
+        rodId
+      );
+      
+      // Apply timing bonuses to fish (rod bonus + mercy bonus)
+      const fish = {
+        ...baseFish,
+        timingWindow: baseFish.timingWindow + (rod.timingBonus || 0) + mercyBonus
+      };
       
       // Update pity counters using helper function (fixes epic counter bug)
       user.fishingPity = updatePityCounters(pityData, resetPity, now);
@@ -240,12 +269,16 @@ router.post('/cast', auth, async (req, res) => {
       stats.totalCasts = (stats.totalCasts || 0) + 1;
       user.fishingStats = stats;
       
+      // Increment daily manual cast counter
+      daily.manualCasts = (daily.manualCasts || 0) + 1;
+      user.fishingDaily = daily;
+      
       await user.save({ transaction });
       
-      return { user, fish, pityTriggered };
+      return { user, fish, pityTriggered, mercyBonus, daily };
     });
     
-    const { user, fish, pityTriggered } = result;
+    const { user, fish, pityTriggered, mercyBonus, daily } = result;
     
     // Random wait time before fish bites (from config)
     const waitTime = getRandomWaitTime();
@@ -269,14 +302,26 @@ router.post('/cast', auth, async (req, res) => {
     // Get miss timeout based on fish rarity (configured per rarity for balance)
     const missTimeout = getMissTimeout(fish.rarity);
     
+    // Build response message
+    let message = pityTriggered ? '✨ Lucky cast! A rare fish approaches...' : 'Line cast! Wait for a bite...';
+    if (mercyBonus > 0) {
+      message += ` (+${mercyBonus}ms mercy bonus!)`;
+    }
+    
     res.json({
       sessionId,
       waitTime,
       missTimeout,  // Frontend uses this to know when fish escapes
+      timingWindow: fish.timingWindow,  // Include adjusted timing window
       castCost: CAST_COST,
       newPoints: user.points,
       pityTriggered: pityTriggered || false,
-      message: pityTriggered ? '✨ Lucky cast! A rare fish approaches...' : 'Line cast! Wait for a bite...'
+      mercyBonus: mercyBonus > 0 ? mercyBonus : null,
+      daily: {
+        manualCasts: daily.manualCasts,
+        limit: DAILY_LIMITS.manualCasts
+      },
+      message
     });
     
   } catch (err) {
@@ -287,6 +332,14 @@ router.post('/cast', auth, async (req, res) => {
       return res.status(400).json({ 
         error: 'Not enough points',
         required: CAST_COST
+      });
+    }
+    if (err.message.startsWith('DAILY_LIMIT:')) {
+      const limit = parseInt(err.message.split(':')[1], 10);
+      return res.status(429).json({
+        error: 'Daily limit reached',
+        message: `Maximum ${limit} manual casts per day. Resets at midnight!`,
+        dailyLimit: limit
       });
     }
     console.error('Fishing cast error:', err);
@@ -337,53 +390,47 @@ router.post('/catch', auth, async (req, res) => {
     // Note: serverReactionTime < 0 means they clicked before fish appeared (impossible without cheating)
     const success = serverReactionTime >= 0 && validatedReactionTime <= fish.timingWindow;
     
-    if (success) {
-      // Use transaction for atomic inventory update
-      const result = await sequelize.transaction(async (transaction) => {
-        const user = await User.findByPk(userId, {
-          lock: transaction.LOCK.UPDATE,
-          transaction
-        });
+    // Use transaction for atomic operations
+    const result = await sequelize.transaction(async (transaction) => {
+      const user = await User.findByPk(userId, {
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+      
+      if (!user) {
+        throw new Error('USER_NOT_FOUND');
+      }
+      
+      // Get current rod for bonuses
+      const rodId = user.fishingRod || 'basic';
+      const rod = FISHING_RODS[rodId] || FISHING_RODS.basic;
+      
+      // Get daily data for streak tracking
+      let daily = getOrResetDailyData(user);
+      let achievements = user.fishingAchievements || {};
+      let challenges = getOrResetChallenges(user);
+      let challengeRewards = [];
+      
+      if (success) {
+        // Use service function for catch quality calculation (includes rod bonus)
+        const { quality: catchQuality, multiplier: bonusMultiplier, message: catchMessage } = 
+          calculateCatchQuality(validatedReactionTime, fish, rod);
         
-        if (!user) {
-          throw new Error('USER_NOT_FOUND');
+        // Calculate fish quantity using service function
+        let fishQuantity = calculateFishQuantity(bonusMultiplier);
+        
+        // === STREAK SYSTEM ===
+        const streakResult = updateStreakCounters(daily, true, achievements);
+        daily = streakResult.daily;
+        achievements = streakResult.achievements;
+        const streakBonus = streakResult.streakBonus;
+        
+        // Apply streak bonus: extra fish chance
+        if (streakBonus?.extraFishChance && Math.random() < streakBonus.extraFishChance) {
+          fishQuantity += 1;
         }
         
-        // Get rarity-specific catch quality thresholds (skill ceiling improvement)
-        const catchConfig = getCatchThresholds(fish.rarity);
-        
-        let catchQuality = 'normal';
-        let bonusMultiplier = 1.0;
-        let catchMessage = `You caught a ${fish.name}!`;
-        
-        const reactionRatio = validatedReactionTime / fish.timingWindow;
-        
-        if (reactionRatio <= catchConfig.perfectThreshold) {
-          catchQuality = 'perfect';
-          bonusMultiplier = catchConfig.perfectMultiplier;
-          catchMessage = `⭐ PERFECT! You caught a ${fish.name}!`;
-        } else if (reactionRatio <= catchConfig.greatThreshold) {
-          catchQuality = 'great';
-          bonusMultiplier = catchConfig.greatMultiplier;
-          catchMessage = `✨ Great catch! You caught a ${fish.name}!`;
-        }
-        
-        // Calculate fish quantity based on catch quality
-        // Perfect (2.0x) = guaranteed 2 fish
-        // Great (1.5x) = 50% chance for 2 fish, otherwise 1
-        // Normal (1.0x) = 1 fish
-        let fishQuantity;
-        if (bonusMultiplier >= 2.0) {
-          fishQuantity = 2;
-        } else if (bonusMultiplier > 1.0) {
-          // Probabilistic bonus: 1.5x = 50% chance for extra fish
-          const bonusChance = bonusMultiplier - 1.0; // 0.5 for great
-          fishQuantity = Math.random() < bonusChance ? 2 : 1;
-        } else {
-          fishQuantity = 1;
-        }
-        
-        // Add fish to inventory (quantity based on catch quality)
+        // Add fish to inventory (quantity based on catch quality + streak)
         const [inventoryItem, created] = await FishInventory.findOrCreate({
           where: { userId, fishId: fish.id },
           defaults: {
@@ -407,19 +454,100 @@ router.post('/catch', auth, async (req, res) => {
         stats.totalCatches = (stats.totalCatches || 0) + fishQuantity;
         if (catchQuality === 'perfect') {
           stats.perfectCatches = (stats.perfectCatches || 0) + 1;
+          achievements.totalPerfects = (achievements.totalPerfects || 0) + 1;
         }
         stats.fishCaught = stats.fishCaught || {};
         stats.fishCaught[fish.id] = (stats.fishCaught[fish.id] || 0) + fishQuantity;
         user.fishingStats = stats;
         
+        // Update daily catches
+        daily.catches = (daily.catches || 0) + fishQuantity;
+        if (catchQuality === 'perfect') {
+          daily.perfectCatches = (daily.perfectCatches || 0) + 1;
+        }
+        if (['rare', 'epic', 'legendary'].includes(fish.rarity)) {
+          daily.rareCatches = (daily.rareCatches || 0) + 1;
+        }
+        
+        // Update achievements for legendaries
+        if (fish.rarity === 'legendary') {
+          achievements.totalLegendaries = (achievements.totalLegendaries || 0) + 1;
+        }
+        
+        // === CHALLENGE PROGRESS ===
+        // Update catch challenge
+        const catchResult = updateChallengeProgress(challenges, 'catch', { rarity: fish.rarity });
+        challenges = catchResult.challenges;
+        challengeRewards.push(...catchResult.newlyCompleted);
+        
+        // Update perfect challenge if applicable
+        if (catchQuality === 'perfect') {
+          const perfectResult = updateChallengeProgress(challenges, 'perfect', {});
+          challenges = perfectResult.challenges;
+          challengeRewards.push(...perfectResult.newlyCompleted);
+        }
+        
+        // Update streak challenge
+        if (daily.currentStreak > 0) {
+          const streakChallengeResult = updateChallengeProgress(challenges, 'streak', { 
+            streakCount: daily.currentStreak 
+          });
+          challenges = streakChallengeResult.challenges;
+          challengeRewards.push(...streakChallengeResult.newlyCompleted);
+        }
+        
+        // Apply challenge rewards
+        if (challengeRewards.length > 0) {
+          applyChallengeRewards(user, challengeRewards);
+        }
+        
+        user.fishingDaily = daily;
+        user.fishingAchievements = achievements;
+        user.fishingChallenges = challenges;
         await user.save({ transaction });
         
-        return { user, catchQuality, bonusMultiplier, fishQuantity, catchMessage, inventoryItem };
-      });
+        return { 
+          user, catchQuality, bonusMultiplier, fishQuantity, catchMessage, inventoryItem,
+          streakBonus, currentStreak: daily.currentStreak, challengeRewards
+        };
+      } else {
+        // === MISS - Update streak counters ===
+        const streakResult = updateStreakCounters(daily, false, achievements);
+        daily = streakResult.daily;
+        achievements = streakResult.achievements;
+        
+        user.fishingDaily = daily;
+        user.fishingAchievements = achievements;
+        await user.save({ transaction });
+        
+        // Determine failure reason for better feedback
+        let failureMessage;
+        if (serverReactionTime < 0) {
+          failureMessage = `The ${fish.name} wasn't ready yet!`;
+        } else {
+          failureMessage = `The ${fish.name} escaped! You needed to react within ${fish.timingWindow}ms (took ${validatedReactionTime}ms).`;
+        }
+        
+        return { 
+          user, success: false, failureMessage, 
+          missStreak: daily.missStreak 
+        };
+      }
+    });
+    
+    if (success) {
+      const { 
+        user, catchQuality, bonusMultiplier, fishQuantity, catchMessage, inventoryItem,
+        streakBonus, currentStreak, challengeRewards 
+      } = result;
       
-      const { user, catchQuality, bonusMultiplier, fishQuantity, catchMessage, inventoryItem } = result;
+      // Build response message with streak info
+      let finalMessage = catchMessage;
+      if (streakBonus) {
+        finalMessage += ` ${streakBonus.message}`;
+      }
       
-      return res.json({
+      const response = {
         success: true,
         fish: {
           id: fish.id,
@@ -432,20 +560,28 @@ router.post('/catch', auth, async (req, res) => {
         fishQuantity,
         reactionTime: validatedReactionTime,
         timingWindow: fish.timingWindow,
-        newPoints: user ? user.points : null,
+        newPoints: user.points,
         inventoryCount: inventoryItem.quantity,
         pityTriggered: session.pityTriggered || false,
-        message: catchMessage
-      });
-    } else {
-      // Determine failure reason for better feedback
-      let failureMessage;
-      if (serverReactionTime < 0) {
-        // Clicked before fish appeared - possible cheat attempt or UI bug
-        failureMessage = `The ${fish.name} wasn't ready yet!`;
-      } else {
-        failureMessage = `The ${fish.name} escaped! You needed to react within ${fish.timingWindow}ms (took ${validatedReactionTime}ms).`;
+        streak: currentStreak,
+        streakBonus: streakBonus ? {
+          milestone: streakBonus.milestone,
+          message: streakBonus.message
+        } : null,
+        message: finalMessage
+      };
+      
+      // Include challenge completions if any
+      if (challengeRewards.length > 0) {
+        response.challengesCompleted = challengeRewards;
       }
+      
+      return res.json(response);
+    } else {
+      const { user, failureMessage, missStreak } = result;
+      
+      // Calculate mercy bonus for next attempt
+      const mercyBonus = calculateMercyBonus(missStreak);
       
       return res.json({
         success: false,
@@ -457,9 +593,11 @@ router.post('/catch', auth, async (req, res) => {
         },
         reward: 0,
         reactionTime: validatedReactionTime,
-        serverReactionTime, // Include server time for debugging/transparency
+        serverReactionTime,
         timingWindow: fish.timingWindow,
-        message: failureMessage
+        missStreak,
+        mercyBonus: mercyBonus > 0 ? mercyBonus : null,
+        message: failureMessage + (mercyBonus > 0 ? ` (+${mercyBonus}ms mercy bonus next cast!)` : '')
       });
     }
     
@@ -1340,11 +1478,11 @@ router.get('/rods', auth, async (req, res) => {
     }
     
     const currentRod = user.fishingRod || 'basic';
+    const ownedRods = user.fishingOwnedRods || ['basic'];
     const prestige = user.fishingAchievements?.prestige || 0;
     
     const rodsInfo = Object.values(FISHING_RODS).map(rod => {
-      const owned = rod.id === 'basic' || 
-                    (FISHING_RODS[currentRod]?.cost >= rod.cost);
+      const owned = ownedRods.includes(rod.id);
       const canBuy = !owned && 
                      user.points >= rod.cost &&
                      (!rod.requiresPrestige || prestige >= rod.requiresPrestige);
@@ -1361,6 +1499,7 @@ router.get('/rods', auth, async (req, res) => {
     res.json({
       rods: rodsInfo,
       current: currentRod,
+      ownedRods,
       prestige
     });
   } catch (err) {
@@ -1384,6 +1523,17 @@ router.post('/rods/:id/buy', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
+    // Get owned rods array
+    const ownedRods = user.fishingOwnedRods || ['basic'];
+    
+    // Check if already owned
+    if (ownedRods.includes(rodId)) {
+      return res.status(400).json({
+        error: 'Already owned',
+        message: 'You already own this rod'
+      });
+    }
+    
     // Check prestige requirement
     const prestige = user.fishingAchievements?.prestige || 0;
     if (rod.requiresPrestige && prestige < rod.requiresPrestige) {
@@ -1403,8 +1553,10 @@ router.post('/rods/:id/buy', auth, async (req, res) => {
       });
     }
     
-    // Deduct cost and equip
+    // Deduct cost, add to owned rods, and equip
     user.points -= rod.cost;
+    ownedRods.push(rodId);
+    user.fishingOwnedRods = ownedRods;
     user.fishingRod = rodId;
     await user.save();
     
@@ -1412,6 +1564,7 @@ router.post('/rods/:id/buy', auth, async (req, res) => {
       success: true,
       rod: rod.name,
       newPoints: user.points,
+      ownedRods,
       message: `Purchased ${rod.name}! ${rod.emoji}`
     });
   } catch (err) {
@@ -1434,15 +1587,13 @@ router.post('/rods/:id/equip', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
-    // Basic rod is always owned
-    if (rodId !== 'basic') {
-      const currentRod = FISHING_RODS[user.fishingRod || 'basic'];
-      const targetRod = FISHING_RODS[rodId];
-      
-      // Check if user owns this rod (has bought a rod of equal or higher value)
-      if (currentRod.cost < targetRod.cost) {
-        return res.status(403).json({ error: 'Rod not owned' });
-      }
+    // Check if user owns this rod
+    const ownedRods = user.fishingOwnedRods || ['basic'];
+    if (!ownedRods.includes(rodId)) {
+      return res.status(403).json({ 
+        error: 'Rod not owned',
+        message: 'You need to purchase this rod first'
+      });
     }
     
     user.fishingRod = rodId;
@@ -1561,6 +1712,68 @@ router.post('/trade', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
+    // === DAILY TRADE LIMITS CHECK ===
+    let daily = getOrResetDailyData(user);
+    
+    // Calculate what this trade would reward
+    let pendingPoints = 0;
+    let pendingRollTickets = 0;
+    let pendingPremiumTickets = 0;
+    
+    if (tradeOption.rewardType === 'points') {
+      pendingPoints = tradeOption.rewardAmount * tradeQuantity;
+    } else if (tradeOption.rewardType === 'rollTickets') {
+      pendingRollTickets = tradeOption.rewardAmount * tradeQuantity;
+    } else if (tradeOption.rewardType === 'premiumTickets') {
+      pendingPremiumTickets = tradeOption.rewardAmount * tradeQuantity;
+    } else if (tradeOption.rewardType === 'mixed') {
+      const amounts = tradeOption.rewardAmount;
+      pendingPoints = (amounts.points || 0) * tradeQuantity;
+      pendingRollTickets = (amounts.rollTickets || 0) * tradeQuantity;
+      pendingPremiumTickets = (amounts.premiumTickets || 0) * tradeQuantity;
+    }
+    
+    // Check daily limits
+    const currentPointsFromTrades = daily.pointsFromTrades || 0;
+    const currentRollTickets = daily.ticketsEarned?.roll || 0;
+    const currentPremiumTickets = daily.ticketsEarned?.premium || 0;
+    
+    if (pendingPoints > 0 && currentPointsFromTrades + pendingPoints > DAILY_LIMITS.pointsFromTrades) {
+      const remaining = DAILY_LIMITS.pointsFromTrades - currentPointsFromTrades;
+      await transaction.rollback();
+      tradeInProgress.delete(userId);
+      return res.status(429).json({
+        error: 'Daily points limit reached',
+        message: `You can only earn ${remaining} more points from trades today`,
+        limit: DAILY_LIMITS.pointsFromTrades,
+        used: currentPointsFromTrades
+      });
+    }
+    
+    if (pendingRollTickets > 0 && currentRollTickets + pendingRollTickets > DAILY_LIMITS.rollTickets) {
+      const remaining = DAILY_LIMITS.rollTickets - currentRollTickets;
+      await transaction.rollback();
+      tradeInProgress.delete(userId);
+      return res.status(429).json({
+        error: 'Daily roll ticket limit reached',
+        message: `You can only earn ${remaining} more roll tickets today`,
+        limit: DAILY_LIMITS.rollTickets,
+        used: currentRollTickets
+      });
+    }
+    
+    if (pendingPremiumTickets > 0 && currentPremiumTickets + pendingPremiumTickets > DAILY_LIMITS.premiumTickets) {
+      const remaining = DAILY_LIMITS.premiumTickets - currentPremiumTickets;
+      await transaction.rollback();
+      tradeInProgress.delete(userId);
+      return res.status(429).json({
+        error: 'Daily premium ticket limit reached',
+        message: `You can only earn ${remaining} more premium tickets today`,
+        limit: DAILY_LIMITS.premiumTickets,
+        used: currentPremiumTickets
+      });
+    }
+    
     // Get user's inventory with lock
     const inventory = await FishInventory.findAll({
       where: { userId },
@@ -1667,6 +1880,37 @@ router.post('/trade', auth, async (req, res) => {
         reward.points = pointsReward;
       }
     }
+    
+    // === UPDATE DAILY TRACKING ===
+    daily.tradesCompleted = (daily.tradesCompleted || 0) + tradeQuantity;
+    if (reward.points) {
+      daily.pointsFromTrades = (daily.pointsFromTrades || 0) + reward.points;
+    }
+    if (!daily.ticketsEarned) {
+      daily.ticketsEarned = { roll: 0, premium: 0 };
+    }
+    if (reward.rollTickets) {
+      daily.ticketsEarned.roll = (daily.ticketsEarned.roll || 0) + reward.rollTickets;
+    }
+    if (reward.premiumTickets) {
+      daily.ticketsEarned.premium = (daily.ticketsEarned.premium || 0) + reward.premiumTickets;
+    }
+    user.fishingDaily = daily;
+    
+    // Update challenge progress for trades
+    let challenges = getOrResetChallenges(user);
+    const tradeResult = updateChallengeProgress(challenges, 'trade', { 
+      isCollection: tradeOption.requiredRarity === 'collection' 
+    });
+    challenges = tradeResult.challenges;
+    const challengeRewards = tradeResult.newlyCompleted;
+    
+    // Apply challenge rewards
+    if (challengeRewards.length > 0) {
+      applyChallengeRewards(user, challengeRewards);
+    }
+    user.fishingChallenges = challenges;
+    
     await user.save({ transaction });
     
     // Commit the transaction - all changes are now permanent
@@ -1694,7 +1938,7 @@ router.post('/trade', auth, async (req, res) => {
     // Release lock before responding
     tradeInProgress.delete(userId);
     
-    res.json({
+    const response = {
       success: true,
       tradeName: tradeOption.name,
       quantity: tradeQuantity,
@@ -1706,8 +1950,33 @@ router.post('/trade', auth, async (req, res) => {
         premiumTickets: user.premiumTickets || 0
       },
       newTotals,
+      // Daily limits remaining
+      dailyLimits: {
+        pointsFromTrades: {
+          used: daily.pointsFromTrades,
+          limit: DAILY_LIMITS.pointsFromTrades,
+          remaining: DAILY_LIMITS.pointsFromTrades - daily.pointsFromTrades
+        },
+        rollTickets: {
+          used: daily.ticketsEarned.roll,
+          limit: DAILY_LIMITS.rollTickets,
+          remaining: DAILY_LIMITS.rollTickets - daily.ticketsEarned.roll
+        },
+        premiumTickets: {
+          used: daily.ticketsEarned.premium,
+          limit: DAILY_LIMITS.premiumTickets,
+          remaining: DAILY_LIMITS.premiumTickets - daily.ticketsEarned.premium
+        }
+      },
       message
-    });
+    };
+    
+    // Include challenge completions if any
+    if (challengeRewards.length > 0) {
+      response.challengesCompleted = challengeRewards;
+    }
+    
+    res.json(response);
     
   } catch (err) {
     // Rollback transaction on error - no partial changes saved
