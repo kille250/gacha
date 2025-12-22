@@ -25,7 +25,6 @@ const MIN_REACTION_TIME = FISHING_CONFIG.minReactionTime || 80;
 const CLEANUP_INTERVAL = FISHING_CONFIG.cleanupInterval || 15000;
 const SESSION_EXPIRY = FISHING_CONFIG.sessionExpiry || 30000;
 const TRADE_TIMEOUT = FISHING_CONFIG.tradeTimeout || 30000;
-const RANK_CACHE_TTL = FISHING_CONFIG.rankCacheTTL || 30000;
 
 // Rate limiting maps (per user)
 const autofishCooldowns = new Map();
@@ -38,9 +37,10 @@ const tradeInProgress = new Map(); // userId -> timestamp (for timeout detection
 // Multi-tab detection: track active fishing mode per user
 const userFishingMode = new Map(); // userId -> { mode: 'manual' | 'autofish', lastActivity: timestamp }
 
-// Rank cache for performance
-const rankCache = new Map(); // points -> { rank, expiry }
-const userRankCache = new Map(); // userId -> { rank, expiry }
+// Rank cache for performance - batch calculated periodically
+const userRankCache = new Map(); // oderId -> { rank, expiry }
+let lastRankRefresh = 0;
+const RANK_REFRESH_INTERVAL = 60000; // Refresh all ranks every 60 seconds
 
 // Store active fishing sessions (fish appears, waiting for catch)
 const activeSessions = new Map();
@@ -55,8 +55,9 @@ function checkFishingModeConflict(userId, requestedMode) {
   const current = userFishingMode.get(userId);
   if (!current) return false;
   
-  // 10 second window to detect concurrent activity
-  const isRecent = Date.now() - current.lastActivity < 10000;
+  // 15 second window to detect concurrent activity
+  // Longer than autofish cooldown (6s) + manual cooldown (5s) to prevent exploit
+  const isRecent = Date.now() - current.lastActivity < 15000;
   
   if (isRecent && current.mode !== requestedMode) {
     return `Cannot ${requestedMode} while ${current.mode} is active`;
@@ -103,9 +104,9 @@ setInterval(() => {
     }
   }
   
-  // Clean up fishing mode tracking (inactive for 30 seconds)
+  // Clean up fishing mode tracking (inactive for 20 seconds - slightly longer than conflict window)
   for (const [userId, data] of userFishingMode.entries()) {
-    if (now - data.lastActivity > 30000) {
+    if (now - data.lastActivity > 20000) {
       userFishingMode.delete(userId);
     }
   }
@@ -319,7 +320,19 @@ router.post('/catch', auth, async (req, res) => {
         }
         
         // Calculate fish quantity based on catch quality
-        const fishQuantity = Math.floor(bonusMultiplier);
+        // Perfect (2.0x) = guaranteed 2 fish
+        // Great (1.5x) = 50% chance for 2 fish, otherwise 1
+        // Normal (1.0x) = 1 fish
+        let fishQuantity;
+        if (bonusMultiplier >= 2.0) {
+          fishQuantity = 2;
+        } else if (bonusMultiplier > 1.0) {
+          // Probabilistic bonus: 1.5x = 50% chance for extra fish
+          const bonusChance = bonusMultiplier - 1.0; // 0.5 for great
+          fishQuantity = Math.random() < bonusChance ? 2 : 1;
+        } else {
+          fishQuantity = 1;
+        }
         
         // Add fish to inventory (quantity based on catch quality)
         const [inventoryItem, created] = await FishInventory.findOrCreate({
@@ -460,38 +473,79 @@ router.get('/info', auth, async (req, res) => {
 });
 
 /**
- * Get user's rank with caching for performance
+ * Batch refresh all user ranks - runs periodically for performance
+ * Single query instead of per-user queries
+ */
+async function refreshAllRanks() {
+  const now = Date.now();
+  
+  // Skip if recently refreshed
+  if (now - lastRankRefresh < RANK_REFRESH_INTERVAL) {
+    return;
+  }
+  
+  try {
+    // Single query to get all users ordered by points
+    const users = await User.findAll({
+      attributes: ['id', 'points'],
+      order: [['points', 'DESC']]
+    });
+    
+    // Assign ranks (1-indexed)
+    users.forEach((user, index) => {
+      userRankCache.set(user.id, {
+        rank: index + 1,
+        points: user.points,
+        expiry: now + RANK_REFRESH_INTERVAL + 5000 // Slightly longer than refresh interval
+      });
+    });
+    
+    lastRankRefresh = now;
+    console.log(`[Fishing] Refreshed ranks for ${users.length} users`);
+  } catch (err) {
+    console.error('[Fishing] Error refreshing ranks:', err);
+  }
+}
+
+/**
+ * Get user's rank with batch caching for performance
  * @param {number} userId 
- * @param {boolean} forceRefresh - Skip cache and recalculate
+ * @param {boolean} forceRefresh - Trigger batch refresh if needed
  * @returns {Promise<number|null>}
  */
 async function getUserRank(userId, forceRefresh = false) {
   const now = Date.now();
   
-  // Check cache first (unless force refresh)
-  if (!forceRefresh) {
-    const cached = userRankCache.get(userId);
-    if (cached && now < cached.expiry) {
-      return cached.rank;
-    }
+  // Check if we need to refresh the batch cache
+  if (forceRefresh || now - lastRankRefresh >= RANK_REFRESH_INTERVAL) {
+    await refreshAllRanks();
   }
   
+  // Check cache
+  const cached = userRankCache.get(userId);
+  if (cached && now < cached.expiry) {
+    return cached.rank;
+  }
+  
+  // Fallback: User not in cache (new user or cache miss)
+  // Do individual query but also trigger batch refresh
   const user = await User.findByPk(userId);
   if (!user) return null;
   
-  // Count users with more points
+  // Count users with more points (fallback for edge cases)
   const higherRanked = await User.count({
     where: {
       points: { [Op.gt]: user.points }
     }
   });
   
-  const rank = higherRanked + 1; // Rank is 1-indexed
+  const rank = higherRanked + 1;
   
   // Cache the result
   userRankCache.set(userId, {
     rank,
-    expiry: now + RANK_CACHE_TTL
+    points: user.points,
+    expiry: now + RANK_REFRESH_INTERVAL
   });
   
   return rank;

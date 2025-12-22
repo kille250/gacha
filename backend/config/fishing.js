@@ -40,13 +40,15 @@ const FISHING_CONFIG = {
   // Rank cache TTL in ms
   rankCacheTTL: 30000,
   
-  // Autofish success rates by rarity (nerfed for balance - ~35-40% of active fishing efficiency)
+  // Autofish success rates by rarity
+  // Philosophy: Rare fish are already hard to encounter - don't double-punish with low catch rates
+  // Overall efficiency: ~50% of active fishing (fair reward for top players)
   autofishSuccessRates: {
-    legendary: 0.10,  // Was: 0.20
-    epic: 0.15,       // Was: 0.30
-    rare: 0.25,       // Was: 0.45
-    uncommon: 0.40,   // Was: 0.55
-    common: 0.55      // Was: 0.65
+    legendary: 0.50,  // Rare encounter, fair catch when it appears
+    epic: 0.55,       // Slightly harder than common
+    rare: 0.60,       // Balanced
+    uncommon: 0.70,   // Easy to catch
+    common: 0.80      // Very reliable
   },
   
   // Perfect/Great catch thresholds - dynamic per rarity for better skill ceiling
@@ -118,6 +120,8 @@ const TOTAL_WEIGHT = FISH_TYPES.reduce((sum, fish) => sum + fish.weight, 0);
 
 /**
  * Calculate pity bonus for a given rarity
+ * Uses exponential scaling for a noticeable increase in odds as pity builds
+ * 
  * @param {Object} pityData - User's current pity counters
  * @param {string} rarity - 'legendary' or 'epic'
  * @returns {number} - Bonus weight to add
@@ -133,10 +137,25 @@ function calculatePityBonus(pityData, rarity) {
     return 1000; // Very high weight to guarantee
   }
   
-  // Soft pity - increasing odds
+  // Soft pity - exponential scaling for noticeable effect
+  // Example for Legendary (softPity: 80, hardPity: 120):
+  // At 80 casts: +0.4 weight (~1.4% chance, up from 1%)
+  // At 90 casts: +1.2 weight (~2.2% chance)
+  // At 100 casts: +3.6 weight (~4.6% chance)
+  // At 110 casts: +10.8 weight (~11.8% chance)
+  // At 119 casts: ~30 weight (~31% chance)
   if (count >= pityConfig.softPity) {
     const overPity = count - pityConfig.softPity;
-    return overPity * pityConfig.softPityBonus * 10; // Gradually increase weight
+    const pityRange = pityConfig.hardPity - pityConfig.softPity; // 40 for legendary
+    const progress = overPity / pityRange; // 0 to 1
+    
+    // Exponential curve: starts slow, accelerates near hard pity
+    // Base formula: baseWeight * (3^(progress * 2) - 1)
+    const baseWeight = rarity === 'legendary' ? 1.0 : 4.0; // Match base fish weights
+    const exponentialBonus = baseWeight * (Math.pow(3, progress * 2) - 1);
+    
+    // Cap at 50x base weight to prevent overflow before hard pity
+    return Math.min(exponentialBonus, baseWeight * 50);
   }
   
   return 0;
