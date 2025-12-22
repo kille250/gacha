@@ -182,6 +182,11 @@ router.post('/', auth, async (req, res, next) => {
         challenges = catchResult.challenges;
         challengeRewards = catchResult.newlyCompleted;
         
+        // Also track autofish-specific challenges (e.g., Idle Fisher)
+        const autofishResult = updateChallengeProgress(challenges, 'autofish_catch', { rarity: fish.rarity });
+        challenges = autofishResult.challenges;
+        challengeRewards = [...challengeRewards, ...autofishResult.newlyCompleted];
+        
         if (challengeRewards.length > 0) {
           applyChallengeRewards(user, challengeRewards);
         }

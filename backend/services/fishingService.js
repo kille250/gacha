@@ -153,6 +153,9 @@ function updateChallengeProgress(challenges, type, data = {}) {
           );
         }
         break;
+      case 'autofish_catch':
+        if (type === 'autofish_catch') shouldIncrement = true;
+        break;
     }
     
     if (shouldIncrement) {
