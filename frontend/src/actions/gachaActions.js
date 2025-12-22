@@ -11,7 +11,7 @@
  * const result = await executeRoll(rollFn, setUser);
  */
 
-import { rollCharacter, rollMultipleCharacters, rollOnBanner, multiRollOnBanner, levelUpCharacter } from '../utils/api';
+import { rollCharacter, rollMultipleCharacters, rollOnBanner, multiRollOnBanner, levelUpCharacter, levelUpAllCharacters } from '../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../cache';
 import { applyPointsUpdate } from '../utils/userStateUpdates';
 
@@ -129,6 +129,24 @@ export const executeLevelUp = async (characterId, setUser) => {
   applyPointsUpdate(setUser, result.newPoints);
   
   // Invalidate gacha-related caches
+  invalidateFor(CACHE_ACTIONS.GACHA_LEVEL_UP);
+  
+  return result;
+};
+
+/**
+ * Batch level up all upgradable characters (one level each).
+ * 
+ * @returns {Promise<Object>} Batch level up result with upgraded count and details
+ * @throws {Error} If batch level up fails
+ */
+export const executeUpgradeAll = async () => {
+  // Defensive revalidation before spending resources
+  invalidateFor(CACHE_ACTIONS.PRE_PURCHASE);
+  
+  const result = await levelUpAllCharacters();
+  
+  // Invalidate gacha-related caches (same as single level up)
   invalidateFor(CACHE_ACTIONS.GACHA_LEVEL_UP);
   
   return result;

@@ -5,11 +5,11 @@ import { useTranslation } from 'react-i18next';
 import { getCollectionData, getAssetUrl } from '../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
-import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
+import { FaSearch, FaFilter, FaTimes, FaArrowUp } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError } from '../hooks';
-import { executeLevelUp } from '../actions/gachaActions';
+import { executeLevelUp, executeUpgradeAll } from '../actions/gachaActions';
 import {
   theme,
   PageWrapper,
@@ -42,6 +42,7 @@ const CollectionPage = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [itemsPerPage, setItemsPerPage] = useState(24);
   const [showFilters, setShowFilters] = useState(false);
+  const [isUpgradingAll, setIsUpgradingAll] = useState(false);
 
   const fetchData = useCallback(async () => {
     try {
@@ -157,6 +158,31 @@ const CollectionPage = () => {
         refreshWithRetry();
       }
     });
+  };
+  
+  // Calculate count of characters that can be upgraded
+  const upgradableCount = collection.filter(char => char.canLevelUp).length;
+  
+  // Handle upgrade all action
+  const handleUpgradeAll = async () => {
+    if (isUpgradingAll || upgradableCount === 0) return;
+    
+    setIsUpgradingAll(true);
+    try {
+      const result = await executeUpgradeAll();
+      
+      if (result.success && result.upgraded > 0) {
+        // Refresh collection data to reflect all changes
+        await fetchData();
+      }
+    } catch (err) {
+      console.error('Upgrade all failed:', err);
+      setError(err.response?.data?.error || t('collection.upgradeAllFailed') || 'Failed to upgrade characters. Please try again.');
+      // Refresh to sync state after failure
+      fetchData();
+    } finally {
+      setIsUpgradingAll(false);
+    }
   };
 
   const getImagePath = (imageSrc) => {
@@ -387,19 +413,35 @@ const CollectionPage = () => {
             </ResultsInfo>
             
             <LevelingLegend>
-              <LegendTitle>⚔️ Card Leveling</LegendTitle>
+              <LegendHeader>
+                <LegendTitle>⚔️ {t('collection.cardLeveling') || 'Card Leveling'}</LegendTitle>
+                {upgradableCount > 0 && (
+                  <UpgradeAllButton
+                    onClick={handleUpgradeAll}
+                    disabled={isUpgradingAll}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
+                  >
+                    <FaArrowUp />
+                    {isUpgradingAll 
+                      ? (t('collection.upgrading') || 'Upgrading...') 
+                      : `${t('collection.upgradeAll') || 'Upgrade All'} (${upgradableCount})`
+                    }
+                  </UpgradeAllButton>
+                )}
+              </LegendHeader>
               <LegendItems>
                 <LegendItem>
                   <LegendIcon $type="shard">◆</LegendIcon>
-                  <span>Shards from duplicates</span>
+                  <span>{t('collection.shardsFromDuplicates') || 'Shards from duplicates'}</span>
                 </LegendItem>
                 <LegendItem>
                   <LegendIcon $type="levelup">⬆</LegendIcon>
-                  <span>Ready to level up!</span>
+                  <span>{t('collection.readyToLevelUp') || 'Ready to level up!'}</span>
                 </LegendItem>
                 <LegendItem>
                   <LegendIcon $type="max">★</LegendIcon>
-                  <span>Max level (Lv.5)</span>
+                  <span>{t('collection.maxLevel') || 'Max level (Lv.5)'}</span>
                 </LegendItem>
               </LegendItems>
             </LevelingLegend>
@@ -809,11 +851,53 @@ const LevelingLegend = styled.div`
   margin-bottom: ${theme.spacing.lg};
 `;
 
+const LegendHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: ${theme.spacing.sm};
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+`;
+
 const LegendTitle = styled.div`
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
-  margin-bottom: ${theme.spacing.sm};
+`;
+
+const UpgradeAllButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 14px;
+  background: linear-gradient(135deg, #34C759, #30B350);
+  border: none;
+  border-radius: ${theme.radius.full};
+  color: white;
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all 0.2s ease;
+  box-shadow: 0 2px 8px rgba(52, 199, 89, 0.3);
+  
+  svg {
+    font-size: 11px;
+  }
+  
+  &:hover:not(:disabled) {
+    box-shadow: 0 4px 16px rgba(52, 199, 89, 0.4);
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+  
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 6px 12px;
+    font-size: 11px;
+  }
 `;
 
 const LegendItems = styled.div`

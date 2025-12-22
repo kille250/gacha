@@ -328,7 +328,14 @@
     "loadingCollection": "Loading collection...",
     "noCharactersFound": "No characters found",
     "adjustFilters": "Try adjusting your filters to see more characters",
-    "levelUpFailed": "Level up failed. Please try again."
+    "levelUpFailed": "Level up failed. Please try again.",
+    "cardLeveling": "Card Leveling",
+    "upgradeAll": "Upgrade All",
+    "upgrading": "Upgrading...",
+    "upgradeAllFailed": "Failed to upgrade characters. Please try again.",
+    "shardsFromDuplicates": "Shards from duplicates",
+    "readyToLevelUp": "Ready to level up!",
+    "maxLevel": "Max level (Lv.5)"
   },
   "coupon": {
     "title": "Coupon",

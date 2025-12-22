@@ -213,6 +213,16 @@ export const levelUpCharacter = async (characterId) => {
   return response.data;
 };
 
+/**
+ * Batch level up all upgradable characters (one level each)
+ * NOTE: Cache invalidation is handled by caller using invalidateFor('gacha:level_up')
+ */
+export const levelUpAllCharacters = async () => {
+  const response = await api.post('/characters/level-up-all');
+  // Cache invalidation is now caller's responsibility via invalidateFor('gacha:level_up')
+  return response.data;
+};
+
 // Re-export getStoredUser as getCurrentUser for backwards compatibility
 export const getCurrentUser = getStoredUser;
 

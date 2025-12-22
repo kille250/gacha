@@ -326,6 +326,72 @@ router.get('/collection-data', auth, async (req, res) => {
 });
 
 /**
+ * Batch level up all upgradable characters (one level each)
+ * POST /api/characters/level-up-all
+ * 
+ * Upgrades all characters that have enough shards by one level each.
+ * Returns summary of upgraded characters.
+ */
+router.post('/level-up-all', auth, async (req, res) => {
+  try {
+    const userId = req.user.id;
+    
+    // Get all user's characters with their data
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: userId },
+      include: [{ model: Character, attributes: ['id', 'name', 'rarity'] }],
+      order: [['CharacterId', 'ASC']]
+    });
+    
+    // Filter to only upgradable characters
+    const upgradable = userCharacters.filter(uc => {
+      if (!uc.Character) return false;
+      const shardsNeeded = getShardsToLevel(uc.level);
+      return shardsNeeded !== null && uc.duplicateCount >= shardsNeeded;
+    });
+    
+    if (upgradable.length === 0) {
+      return res.json({ 
+        success: true, 
+        total: 0,
+        upgraded: 0,
+        results: [], 
+        message: 'No characters can be upgraded' 
+      });
+    }
+    
+    // Process each upgrade using existing logic (sequential for safety)
+    const results = [];
+    for (const uc of upgradable) {
+      const result = await levelUpCharacter(userId, uc.CharacterId);
+      results.push({
+        characterId: uc.CharacterId,
+        characterName: uc.Character?.name,
+        rarity: uc.Character?.rarity,
+        ...result
+      });
+    }
+    
+    const successCount = results.filter(r => r.success).length;
+    
+    console.log(`User ${userId} batch upgraded ${successCount}/${upgradable.length} characters`);
+    
+    res.json({
+      success: true,
+      total: upgradable.length,
+      upgraded: successCount,
+      results,
+      message: successCount === 1 
+        ? `Upgraded ${results[0].characterName}!`
+        : `Upgraded ${successCount} character(s)`
+    });
+  } catch (err) {
+    console.error('Batch level up error:', err);
+    res.status(500).json({ error: 'Failed to batch level up characters' });
+  }
+});
+
+/**
  * Level up a character (manual action)
  * POST /api/characters/:id/level-up
  */
