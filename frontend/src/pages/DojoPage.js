@@ -1635,7 +1635,7 @@ const SlotLevelBadge = styled.div`
   font-weight: ${theme.fontWeights.bold};
   color: white;
   
-  ${props => props.$isMaxLevel && `
+  ${props => props.$isMaxLevel && css`
     animation: ${pulse} 2s ease-in-out infinite;
   `}
   
