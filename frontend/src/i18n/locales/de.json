@@ -719,9 +719,16 @@
     "dailyCapReached": "Tageslimit erreicht!",
     "pointsCapped": "Punkte für heute begrenzt",
     "ticketsCapped": "Tickets für heute begrenzt",
+    "noRewardsAccumulated": "Noch keine Belohnungen angesammelt. Weiter trainieren!",
+    "notEnoughPoints": "{{cost}} Punkte benötigt",
     "catchUpBonus": "Aufhol-Bonus: +{{bonus}}%",
     "catchUpBonusApplied": "+{{bonus}}% Aufhol-Bonus!",
-    "efficiency": "{{percent}}% Effizienz"
+    "efficiency": "{{percent}}% Effizienz",
+    "levelBonuses": "Level-Boni",
+    "characterLevel": "Lv.{{level}}",
+    "characterLevelBonus": "Lv.{{level}} (+{{bonus}}%)",
+    "powerBonus": "{{percent}}% Stärke",
+    "synergyBonus": "{{series}} ×{{count}} (+{{bonus}}%)"
   },
   "animeImport": {
     "title": "Anime-Charaktere importieren",

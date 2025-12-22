@@ -599,7 +599,7 @@ const DojoPage = () => {
           {/* Level Bonuses */}
           {status?.slots?.filter(s => s?.character?.level > 1).length > 0 && (
             <LevelBonusSection>
-              <LevelBonusLabel>⚔️ Level Bonuses:</LevelBonusLabel>
+              <LevelBonusLabel>⚔️ {t('dojo.levelBonuses')}:</LevelBonusLabel>
               <LevelBonusBadges>
                 {status.slots
                   .filter(s => s?.character?.level > 1)
@@ -608,7 +608,7 @@ const DojoPage = () => {
                     const bonus = Math.round((char.levelMultiplier - 1) * 100);
                     return (
                       <LevelBonusBadge key={idx}>
-                        {char.name} Lv.{char.level} (+{bonus}%)
+                        {char.name} {t('dojo.characterLevelBonus', { level: char.level, bonus })}
                       </LevelBonusBadge>
                     );
                   })}
@@ -628,7 +628,7 @@ const DojoPage = () => {
             <SynergyBadges>
               {status.hourlyRate.synergies.map((syn, idx) => (
                 <SynergyBadge key={idx}>
-                  {syn.series} ×{syn.count} (+{Math.round((syn.bonus - 1) * 100)}%)
+                  {t('dojo.synergyBonus', { series: syn.series, count: syn.count, bonus: Math.round((syn.bonus - 1) * 100) })}
                 </SynergyBadge>
               ))}
             </SynergyBadges>
@@ -685,7 +685,9 @@ const DojoPage = () => {
                       </SlotRarityBadge>
                       {char.level && (
                         <SlotLevelBadge $isMaxLevel={char.level >= 5}>
-                          Lv.{char.level} {char.levelMultiplier > 1 && `(${Math.round(char.levelMultiplier * 100)}%)`}
+                          {char.levelMultiplier > 1 
+                            ? t('dojo.characterLevelBonus', { level: char.level, bonus: Math.round((char.levelMultiplier - 1) * 100) })
+                            : t('dojo.characterLevel', { level: char.level })}
                         </SlotLevelBadge>
                       )}
                     </SlotBadgeRow>
@@ -850,12 +852,12 @@ const DojoPage = () => {
                                 </CharRarity>
                                 {char.level && (
                                   <CharLevel $isMaxLevel={char.level >= 5} $multiplier={char.levelMultiplier}>
-                                    Lv.{char.level}
+                                    {t('dojo.characterLevel', { level: char.level })}
                                   </CharLevel>
                                 )}
                               </CharBadges>
                               {char.levelMultiplier > 1 && (
-                                <CharPowerBonus>⚡ {Math.round(char.levelMultiplier * 100)}% power</CharPowerBonus>
+                                <CharPowerBonus>⚡ {t('dojo.powerBonus', { percent: Math.round(char.levelMultiplier * 100) })}</CharPowerBonus>
                               )}
                             </CharOverlay>
                           </CharacterCard>

@@ -730,7 +730,12 @@
     "notEnoughPoints": "Need {{cost}} points",
     "catchUpBonus": "Catch-Up Bonus: +{{bonus}}%",
     "catchUpBonusApplied": "+{{bonus}}% Catch-Up Bonus!",
-    "efficiency": "{{percent}}% efficiency"
+    "efficiency": "{{percent}}% efficiency",
+    "levelBonuses": "Level Bonuses",
+    "characterLevel": "Lv.{{level}}",
+    "characterLevelBonus": "Lv.{{level}} (+{{bonus}}%)",
+    "powerBonus": "{{percent}}% power",
+    "synergyBonus": "{{series}} ×{{count}} (+{{bonus}}%)"
   },
   "animeImport": {
     "title": "Import Anime Characters",
