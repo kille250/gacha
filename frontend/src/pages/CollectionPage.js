@@ -7,7 +7,7 @@ import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock } from '../hooks';
+import { useActionLock, useAutoDismissError } from '../hooks';
 import {
   theme,
   PageWrapper,
@@ -22,10 +22,13 @@ const CollectionPage = () => {
   const { t } = useTranslation();
   const { getRarityColor, getRarityGlow } = useRarity();
   const { withLock } = useActionLock(200);
+  
+  // Auto-dismissing error state
+  const [error, setError, clearError] = useAutoDismissError();
+  
   const [collection, setCollection] = useState([]);
   const [allCharacters, setAllCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
   const [rarityFilter, setRarityFilter] = useState('all');
   const [seriesFilter, setSeriesFilter] = useState('all');
   const [ownershipFilter, setOwnershipFilter] = useState('all');
@@ -56,22 +59,6 @@ const CollectionPage = () => {
   useEffect(() => {
     fetchData();
   }, [fetchData]);
-  
-  // Auto-dismiss errors after a delay
-  useEffect(() => {
-    if (error) {
-      const isCriticalError = 
-        error.includes('Not enough') || 
-        error.includes('Insufficient') ||
-        error.includes('Server') ||
-        error.includes('offline') ||
-        error.includes('connection');
-      
-      const dismissTime = isCriticalError ? 10000 : 5000;
-      const timer = setTimeout(() => setError(null), dismissTime);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
   
   // Handle network disconnect/reconnect
   useEffect(() => {

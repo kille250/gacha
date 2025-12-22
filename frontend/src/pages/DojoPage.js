@@ -16,7 +16,7 @@ import {
 import { FaDumbbell, FaCoins, FaTicketAlt, FaStar, FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock } from '../hooks';
+import { useActionLock, useAutoDismissError } from '../hooks';
 import {
   getDojoStatus,
   getDojoAvailableCharacters,
@@ -61,6 +61,9 @@ const DojoPage = () => {
   // Action lock to prevent rapid double-clicks on claim/upgrade
   const { withLock, locked } = useActionLock(300);
   
+  // Auto-dismissing error state
+  const [error, setError] = useAutoDismissError();
+  
   // State
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -72,10 +75,12 @@ const DojoPage = () => {
   const [charactersLoading, setCharactersLoading] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
   const [claimResult, setClaimResult] = useState(null);
-  const [error, setError] = useState(null);
   
   // Auto-refresh interval for accumulated time
   const refreshIntervalRef = useRef(null);
+  
+  // Track last successful fetch time for staleness detection
+  const lastFetchTimeRef = useRef(Date.now());
   
   // Track if user is actively interacting (pause auto-refresh during interactions)
   const isInteracting = showCharacterPicker || claiming || upgrading || locked;
@@ -85,14 +90,14 @@ const DojoPage = () => {
     try {
       const data = await getDojoStatus();
       setStatus(data);
-      setError(null);
+      lastFetchTimeRef.current = Date.now(); // Track fetch time for staleness detection
     } catch (err) {
       console.error('Failed to fetch dojo status:', err);
       setError(t('dojo.failedLoadStatus'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, setError]);
 
   useEffect(() => {
     fetchStatus();
@@ -128,21 +133,22 @@ const DojoPage = () => {
     };
   }, [fetchStatus, isInteracting]);
   
-  // Auto-dismiss transient errors after 5 seconds
-  // Critical errors stay visible longer
+  // Maximum staleness check - force refresh if data is too old (prevents showing very outdated rewards)
   useEffect(() => {
-    if (error) {
-      const isCriticalError = 
-        error.includes('Not enough') || 
-        error.includes('Insufficient') ||
-        error.includes('Server') ||
-        error.includes('failed');
-      
-      const dismissTime = isCriticalError ? 10000 : 5000;
-      const timer = setTimeout(() => setError(null), dismissTime);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
+    const MAX_STALENESS_MS = 2 * 60 * 1000; // 2 minutes
+    
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
+        if (timeSinceLastFetch > MAX_STALENESS_MS) {
+          fetchStatus();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [fetchStatus]);
   
   // Network offline detection during claim/upgrade operations
   useEffect(() => {
@@ -167,7 +173,7 @@ const DojoPage = () => {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
-  }, [claiming, upgrading, locked, t, fetchStatus, refreshUser]);
+  }, [claiming, upgrading, locked, t, fetchStatus, refreshUser, setError]);
   
   // Calculate if can claim (defined early for use in callbacks)
   const canClaim = status?.accumulated?.rewards?.points > 0 || 

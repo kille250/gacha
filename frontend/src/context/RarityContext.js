@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getRarityConfig } from '../utils/api';
 
 /**
@@ -103,6 +103,28 @@ export const RarityProvider = ({ children }) => {
 
   useEffect(() => {
     fetchConfig();
+  }, [fetchConfig]);
+
+  // Track when config was last fetched
+  const lastFetchRef = useRef(Date.now());
+  
+  // Refetch rarity config when tab regains focus after being hidden for 5+ minutes
+  // This handles admin updates to rarity colors/settings while user is idle
+  useEffect(() => {
+    const STALE_THRESHOLD_MS = 5 * 60 * 1000; // 5 minutes
+    
+    const handleVisibility = () => {
+      if (document.visibilityState === 'visible') {
+        const timeSinceLastFetch = Date.now() - lastFetchRef.current;
+        if (timeSinceLastFetch > STALE_THRESHOLD_MS) {
+          fetchConfig();
+          lastFetchRef.current = Date.now();
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [fetchConfig]);
 
   // Helper functions

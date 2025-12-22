@@ -12,7 +12,7 @@ import { rollCharacter, rollMultipleCharacters, getStandardPricing, getAssetUrl 
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock } from '../hooks';
+import { useActionLock, useAutoDismissError } from '../hooks';
 
 // Design System
 import {
@@ -55,13 +55,15 @@ const RollPage = () => {
   // Action lock to prevent rapid double-clicks
   const { withLock, locked } = useActionLock(300);
   
+  // Auto-dismissing error state
+  const [error, setError] = useAutoDismissError();
+  
   // State
   const [currentChar, setCurrentChar] = useState(null);
   const [multiRollResults, setMultiRollResults] = useState([]);
   const [isRolling, setIsRolling] = useState(false);
   const [showCard, setShowCard] = useState(false);
   const [showMultiResults, setShowMultiResults] = useState(false);
-  const [error, setError] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChar, setPreviewChar] = useState(null);
   const [rollCount, setRollCount] = useState(0);
@@ -116,22 +118,34 @@ const RollPage = () => {
     fetchPricing();
   }, [t]);
   
-  // Auto-dismiss transient errors after 5 seconds
-  // Critical errors stay visible longer
+  // Refresh pricing when tab regains focus (handles admin pricing changes during session)
   useEffect(() => {
-    if (error) {
-      const isCriticalError = 
-        error.includes('Not enough') || 
-        error.includes('Insufficient') ||
-        error.includes('Server') ||
-        error.includes('500') ||
-        error.includes('interrupted');
-      
-      const dismissTime = isCriticalError ? 10000 : 5000;
-      const timer = setTimeout(() => setError(null), dismissTime);
-      return () => clearTimeout(timer);
+    const handleVisibility = async () => {
+      if (document.visibilityState === 'visible') {
+        try {
+          const data = await getStandardPricing();
+          setPricing(data);
+        } catch (err) {
+          console.warn('Failed to refresh pricing on visibility:', err);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, []);
+  
+  // Warn user before leaving during a roll to prevent lost data
+  useEffect(() => {
+    if (isRolling || showSummonAnimation || showMultiSummonAnimation) {
+      const handleBeforeUnload = (e) => {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
     }
-  }, [error]);
+  }, [isRolling, showSummonAnimation, showMultiSummonAnimation]);
   
   // Cleanup animation state on unmount to prevent stuck states
   useEffect(() => {
@@ -189,7 +203,7 @@ const RollPage = () => {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
-  }, [isRolling, showSummonAnimation, showMultiSummonAnimation, t, refreshUser]);
+  }, [isRolling, showSummonAnimation, showMultiSummonAnimation, t, refreshUser, setError]);
   
   // Check for pending roll on mount (handles page reload during roll)
   useEffect(() => {
@@ -207,7 +221,7 @@ const RollPage = () => {
     } catch {
       // Ignore sessionStorage errors
     }
-  }, [t, refreshUser]);
+  }, [t, refreshUser, setError]);
   
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;

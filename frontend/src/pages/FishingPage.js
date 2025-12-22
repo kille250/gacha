@@ -198,6 +198,8 @@ const FishingPage = () => {
       setOtherPlayers([]);
       // Stop autofishing on disconnect to prevent orphaned requests
       setIsAutofishing(false);
+      // Reset in-flight ref to allow autofishing to restart on reconnect
+      autofishInFlightRef.current = false;
     });
     
     socket.on('connect_error', (err) => {

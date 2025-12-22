@@ -51,6 +51,21 @@ export const useHourlyReward = ({ onClaimSuccess } = {}) => {
   // State is used for UI re-renders, ref is used for immediate synchronous checks
   const claimingRef = useRef(false);
   const [justClaimed, setJustClaimed] = useState(false);
+  
+  // Track timers for cleanup on unmount
+  const cooldownTimerRef = useRef(null);
+  const popupTimerRef = useRef(null);
+  const retryTimerRef = useRef(null);
+  
+  // Cleanup on unmount to prevent memory leaks and state updates after unmount
+  useEffect(() => {
+    return () => {
+      claimingRef.current = false;
+      if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
+      if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
+      if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
+    };
+  }, []);
 
   // ==================== HELPERS ====================
 
@@ -220,14 +235,14 @@ export const useHourlyReward = ({ onClaimSuccess } = {}) => {
       // Refresh user data to sync points
       await refreshUser();
 
-      // Clear claim lock after cooldown
-      setTimeout(() => {
+      // Clear claim lock after cooldown (use ref for cleanup)
+      cooldownTimerRef.current = setTimeout(() => {
         claimingRef.current = false;
         setJustClaimed(false);
       }, CLAIM_COOLDOWN_MS);
 
-      // Hide popup after duration
-      setTimeout(() => {
+      // Hide popup after duration (use ref for cleanup)
+      popupTimerRef.current = setTimeout(() => {
         setPopup({ show: false, amount: 0 });
       }, POPUP_DURATION_MS);
 
@@ -256,8 +271,8 @@ export const useHourlyReward = ({ onClaimSuccess } = {}) => {
           available: false
         }));
 
-        // Retry availability check after delay
-        setTimeout(checkAvailability, RETRY_DELAY_MS);
+        // Retry availability check after delay (use ref for cleanup)
+        retryTimerRef.current = setTimeout(checkAvailability, RETRY_DELAY_MS);
       }
 
       // Release locks on error

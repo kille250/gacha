@@ -12,7 +12,7 @@ import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiR
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock } from '../hooks';
+import { useActionLock, useAutoDismissError } from '../hooks';
 
 // Design System
 import {
@@ -58,6 +58,9 @@ const BannerPage = () => {
   // Action lock to prevent rapid double-clicks
   const { withLock, locked } = useActionLock(300);
   
+  // Auto-dismissing error state
+  const [error, setError] = useAutoDismissError();
+  
   // State
   const [banner, setBanner] = useState(null);
   const [currentChar, setCurrentChar] = useState(null);
@@ -65,7 +68,6 @@ const BannerPage = () => {
   const [isRolling, setIsRolling] = useState(false);
   const [showCard, setShowCard] = useState(false);
   const [showMultiResults, setShowMultiResults] = useState(false);
-  const [error, setError] = useState(null);
   const [previewOpen, setPreviewOpen] = useState(false);
   const [previewChar, setPreviewChar] = useState(null);
   const [rollCount, setRollCount] = useState(0);
@@ -126,13 +128,17 @@ const BannerPage = () => {
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
   
   // Helper to get disabled reason for tooltips
-  const getDisabledReason = useCallback((cost, isTicket = false, ticketCount = 0) => {
+  // Accepts requiredCount for multi-ticket validation (default 1 for single pulls)
+  const getDisabledReason = useCallback((cost, isTicket = false, ticketCount = 0, requiredCount = 1) => {
     if (!pricingLoaded && !pricingError) return t('common.loading') || 'Loading...';
     if (pricingError) return pricingError;
     if (isRolling) return t('common.summoning') || 'Summoning...';
     if (locked) return t('common.processing') || 'Processing...';
     if (isTicket && ticketLoadError) return t('banner.ticketLoadError') || 'Ticket data unavailable';
-    if (isTicket && ticketCount < 1) return t('banner.notEnoughTickets') || 'Not enough tickets';
+    if (isTicket && ticketCount < requiredCount) {
+      return t('banner.notEnoughTickets', { required: requiredCount, have: ticketCount }) || 
+        `Not enough tickets (need ${requiredCount}, have ${ticketCount})`;
+    }
     if (!isTicket && user?.points < cost) {
       const needed = cost - (user?.points || 0);
       return t('banner.needMorePoints', { count: needed }) || `Need ${needed} more points`;
@@ -179,24 +185,64 @@ const BannerPage = () => {
       }
     };
     fetchBannerAndPricing();
-  }, [bannerId, t]);
+  }, [bannerId, t, setError]);
   
-  // Auto-dismiss transient errors after 5 seconds
-  // Critical errors (not enough points, server errors) stay visible longer
+  // Refresh pricing when tab regains focus (handles admin pricing changes during session)
   useEffect(() => {
-    if (error) {
-      const isCriticalError = 
-        error.includes('Not enough') || 
-        error.includes('Insufficient') ||
-        error.includes('Server') ||
-        error.includes('500') ||
-        error.includes('interrupted');
-      
-      const dismissTime = isCriticalError ? 10000 : 5000;
-      const timer = setTimeout(() => setError(null), dismissTime);
-      return () => clearTimeout(timer);
+    const handleVisibility = async () => {
+      if (document.visibilityState === 'visible' && bannerId) {
+        try {
+          const pricingData = await getBannerPricing(bannerId);
+          setPricing(pricingData);
+        } catch (err) {
+          console.warn('Failed to refresh pricing on visibility:', err);
+        }
+      }
+    };
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [bannerId]);
+  
+  // Cross-tab ticket synchronization using BroadcastChannel
+  useEffect(() => {
+    // BroadcastChannel is not available in all browsers, use fallback
+    if (typeof BroadcastChannel === 'undefined') return;
+    
+    const channel = new BroadcastChannel('gacha_ticket_sync');
+    
+    channel.onmessage = (event) => {
+      if (event.data.type === 'TICKETS_UPDATED') {
+        setTickets(event.data.tickets);
+      }
+    };
+    
+    return () => channel.close();
+  }, []);
+  
+  // Broadcast ticket changes to other tabs
+  const broadcastTicketUpdate = useCallback((newTickets) => {
+    if (typeof BroadcastChannel === 'undefined') return;
+    try {
+      const channel = new BroadcastChannel('gacha_ticket_sync');
+      channel.postMessage({ type: 'TICKETS_UPDATED', tickets: newTickets });
+      channel.close();
+    } catch (err) {
+      // Ignore broadcast errors
     }
-  }, [error]);
+  }, []);
+  
+  // Warn user before leaving during a roll to prevent lost data
+  useEffect(() => {
+    if (isRolling || showSummonAnimation || showMultiSummonAnimation) {
+      const handleBeforeUnload = (e) => {
+        e.preventDefault();
+        e.returnValue = '';
+        return '';
+      };
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    }
+  }, [isRolling, showSummonAnimation, showMultiSummonAnimation]);
   
   // Cleanup animation state on unmount to prevent stuck states
   useEffect(() => {
@@ -270,7 +316,7 @@ const BannerPage = () => {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
-  }, [isRolling, showSummonAnimation, showMultiSummonAnimation, t, refreshUser, fetchUserCollection]);
+  }, [isRolling, showSummonAnimation, showMultiSummonAnimation, t, refreshUser, fetchUserCollection, setError]);
   
   // Check for pending roll on mount (handles page reload during roll)
   useEffect(() => {
@@ -289,7 +335,7 @@ const BannerPage = () => {
     } catch {
       // Ignore sessionStorage errors
     }
-  }, [bannerId, t, fetchUserCollection, refreshUser]);
+  }, [bannerId, t, fetchUserCollection, refreshUser, setError]);
 
   // Callbacks
   const isInCollection = useCallback((char) => {
@@ -362,9 +408,10 @@ const BannerPage = () => {
           setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
         
-        // Update tickets if returned
+        // Update tickets if returned and broadcast to other tabs
         if (newTickets) {
           setTickets(newTickets);
+          broadcastTicketUpdate(newTickets);
         }
         
         if (skipAnimations) {
@@ -409,6 +456,7 @@ const BannerPage = () => {
           try {
             const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
             setTickets(freshTickets);
+            broadcastTicketUpdate(freshTickets);
           } catch (ticketErr) {
             console.warn('Failed to refresh tickets after error:', ticketErr);
           }
@@ -493,9 +541,10 @@ const BannerPage = () => {
           setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
         
-        // Update tickets if returned
+        // Update tickets if returned and broadcast to other tabs
         if (newTickets) {
           setTickets(newTickets);
+          broadcastTicketUpdate(newTickets);
         }
         
         if (skipAnimations) {
@@ -550,6 +599,7 @@ const BannerPage = () => {
           try {
             const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
             setTickets(freshTickets);
+            broadcastTicketUpdate(freshTickets);
           } catch (ticketErr) {
             console.warn('Failed to refresh tickets after error:', ticketErr);
           }
@@ -1061,7 +1111,7 @@ const BannerPage = () => {
                     {tickets.rollTickets >= 10 && (
                       <TicketPullButton
                         onClick={() => {
-                          const reason = getDisabledReason(0, true, tickets.rollTickets >= 10 ? 10 : 0);
+                          const reason = getDisabledReason(0, true, tickets.rollTickets, 10);
                           if (reason) {
                             setError(reason);
                             return;
@@ -1069,7 +1119,7 @@ const BannerPage = () => {
                           handleMultiRoll(10, true, 'roll');
                         }}
                         disabled={isRolling || locked || tickets.rollTickets < 10 || ticketLoadError}
-                        title={getDisabledReason(0, true, tickets.rollTickets >= 10 ? 10 : 0)}
+                        title={getDisabledReason(0, true, tickets.rollTickets, 10)}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -1083,7 +1133,7 @@ const BannerPage = () => {
                     {tickets.premiumTickets >= 10 && (
                       <PremiumPullButton
                         onClick={() => {
-                          const reason = getDisabledReason(0, true, tickets.premiumTickets >= 10 ? 10 : 0);
+                          const reason = getDisabledReason(0, true, tickets.premiumTickets, 10);
                           if (reason) {
                             setError(reason);
                             return;
@@ -1091,7 +1141,7 @@ const BannerPage = () => {
                           handleMultiRoll(10, true, 'premium');
                         }}
                         disabled={isRolling || locked || tickets.premiumTickets < 10 || ticketLoadError}
-                        title={getDisabledReason(0, true, tickets.premiumTickets >= 10 ? 10 : 0)}
+                        title={getDisabledReason(0, true, tickets.premiumTickets, 10)}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
