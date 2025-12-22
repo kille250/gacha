@@ -24,9 +24,9 @@ import {
   unassignCharacterFromDojo,
   claimDojoRewards,
   purchaseDojoUpgrade,
-  getAssetUrl,
-  invalidateDojoAction
+  getAssetUrl
 } from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
 import { theme, Spinner } from '../styles/DesignSystem';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../utils/mediaUtils';
 
@@ -141,6 +141,8 @@ const DojoPage = () => {
   }, [fetchStatus, isInteracting]);
   
   // Maximum staleness check - force refresh if data is too old (prevents showing very outdated rewards)
+  // Note: Basic cache invalidation (auth/me, tickets) is handled by global visibility handler in cacheManager.
+  // This effect handles dojo-specific data refresh for UI state.
   useEffect(() => {
     const MAX_STALENESS_MS = 2 * 60 * 1000; // 2 minutes
     
@@ -149,7 +151,7 @@ const DojoPage = () => {
         const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
         if (timeSinceLastFetch > MAX_STALENESS_MS) {
           // Invalidate dojo caches before refreshing
-          invalidateDojoAction('claim'); // Clears /dojo/status and /auth/me
+          invalidateFor(CACHE_ACTIONS.DOJO_CLAIM); // Clears /dojo/status and /auth/me
           
           // Refresh both dojo status and user data
           fetchStatus();
@@ -255,8 +257,8 @@ const DojoPage = () => {
         // Check if still mounted before updating state
         if (!isMountedRef.current) return;
         
-        // Invalidate caches
-        invalidateDojoAction('assign');
+        // Invalidate caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.DOJO_ASSIGN);
         
         // Refresh status (background, non-blocking)
         fetchStatus();
@@ -289,8 +291,8 @@ const DojoPage = () => {
         // Check if still mounted before updating state
         if (!isMountedRef.current) return;
         
-        // Invalidate caches
-        invalidateDojoAction('unassign');
+        // Invalidate caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.DOJO_UNASSIGN);
         
         // Refresh status (background, non-blocking)
         fetchStatus();
@@ -318,8 +320,8 @@ const DojoPage = () => {
         
         setClaimResult(result);
         
-        // Invalidate dojo caches
-        invalidateDojoAction('claim');
+        // Invalidate dojo caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.DOJO_CLAIM);
         
         // Immediate optimistic update from response newTotals
         if (result.newTotals) {
@@ -362,8 +364,8 @@ const DojoPage = () => {
         // Check if still mounted before updating state
         if (!isMountedRef.current) return;
         
-        // Invalidate dojo caches
-        invalidateDojoAction('upgrade');
+        // Invalidate dojo caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.DOJO_UPGRADE);
         
         // Immediate optimistic update from response
         if (result.newPoints !== undefined) {

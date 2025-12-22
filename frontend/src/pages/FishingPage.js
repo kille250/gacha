@@ -7,8 +7,6 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import { io } from 'socket.io-client';
 import api, { 
-  clearCache,
-  invalidateFishingAction,
   WS_URL, 
   getTradingPostOptions, 
   executeTrade,
@@ -21,6 +19,7 @@ import api, {
   buyFishingRod,
   equipFishingRod
 } from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -413,6 +412,8 @@ const FishingPage = () => {
   }, []);
   
   // Visibility change handler - refresh stale fishing data when tab regains focus
+  // Note: Cache invalidation is handled globally by cacheManager's visibility handler.
+  // This effect only handles page-specific data refresh for UI state.
   useEffect(() => {
     let lastHiddenTime = 0;
     const STALE_THRESHOLD_MS = 30000; // 30 seconds
@@ -425,10 +426,8 @@ const FishingPage = () => {
         
         // Only refresh if tab was hidden for > 30 seconds
         if (elapsed > STALE_THRESHOLD_MS) {
-          // Invalidate fishing caches
-          invalidateFishingAction('catch');
-          
-          // Refresh critical data
+          // Cache invalidation is handled by global visibility handler in api.js
+          // Here we just refresh the UI state with fresh data
           try {
             const [fishRes, rankRes] = await Promise.all([
               api.get('/fishing/info'),
@@ -503,13 +502,14 @@ const FishingPage = () => {
     }
   }, [showChallenges]);
   
-  // Equipment (Areas & Rods) fetch - clear cache for fresh data
+  // Equipment (Areas & Rods) fetch - use forceRefresh pattern for fresh data
   useEffect(() => {
     if (showEquipment) {
-      // Clear cache to ensure fresh data when modal opens
-      clearCache('/fishing/areas');
-      clearCache('/fishing/rods');
-      Promise.all([getFishingAreas(), getFishingRods()])
+      // Use forceRefresh to ensure fresh data when modal opens
+      Promise.all([
+        getFishingAreas({ forceRefresh: true }), 
+        getFishingRods({ forceRefresh: true })
+      ])
         .then(([areasData, rodsData]) => {
           setAreas(areasData);
           setRods(rodsData);
@@ -533,14 +533,16 @@ const FishingPage = () => {
         const result = await executeTrade(tradeId, 1);
         setTradeResult(result);
         
-        // Update user points
+        // Optimistic update from response
         if (result.newPoints !== undefined) {
           setUser(prev => ({ ...prev, points: result.newPoints }));
-          clearCache('/auth/me');
         }
         
-        // Refresh trading options (includes new ticket counts)
-        const newOptions = await getTradingPostOptions();
+        // Invalidate trade-related caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.FISHING_TRADE);
+        
+        // Refresh trading options (includes new ticket counts) with fresh data
+        const newOptions = await getTradingPostOptions({ forceRefresh: true });
         setTradingOptions(newOptions);
         
         showNotification(result.message, 'success');
@@ -597,8 +599,8 @@ const FishingPage = () => {
           setUser(prev => ({ ...prev, points: result.newPoints }));
         }
         
-        // Invalidate autofish-related caches
-        invalidateFishingAction('autofish');
+        // Invalidate autofish-related caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.FISHING_AUTOFISH);
         
         // Update pity progress from response (immediate)
         if (result.pityInfo) {
@@ -881,8 +883,8 @@ const FishingPage = () => {
           setUser(prev => ({ ...prev, points: result.newPoints }));
         }
         
-        // Invalidate fishing caches to ensure fresh data
-        invalidateFishingAction('catch');
+        // Invalidate fishing caches to ensure fresh data (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.FISHING_CATCH);
         
         // Immediate optimistic update of pity from response (if available)
         if (result.pityInfo) {
@@ -970,8 +972,11 @@ const FishingPage = () => {
         setUser(prev => ({ ...prev, premiumTickets: (prev.premiumTickets || 0) + result.rewards.premiumTickets }));
       }
       
-      // Refresh challenges
-      const updatedChallenges = await getFishingChallenges();
+      // Invalidate claim_challenge caches (caller's responsibility)
+      invalidateFor(CACHE_ACTIONS.FISHING_CLAIM_CHALLENGE);
+      
+      // Refresh challenges with fresh data
+      const updatedChallenges = await getFishingChallenges({ forceRefresh: true });
       setChallenges(updatedChallenges);
     } catch (err) {
       showNotification(err.response?.data?.error || t('fishing.errors.claimFailed'), 'error');
@@ -986,9 +991,13 @@ const FishingPage = () => {
     setEquipmentActionLoading(true);
     try {
       await selectFishingArea(areaId);
-      // Refresh areas and fish info
+      
+      // Invalidate select_area caches (caller's responsibility)
+      invalidateFor(CACHE_ACTIONS.FISHING_SELECT_AREA);
+      
+      // Refresh areas and fish info with fresh data
       const [areasData, fishRes] = await Promise.all([
-        getFishingAreas(),
+        getFishingAreas({ forceRefresh: true }),
         api.get('/fishing/info')
       ]);
       setAreas(areasData);
@@ -1010,9 +1019,12 @@ const FishingPage = () => {
       setUser(prev => ({ ...prev, points: result.newPoints }));
       showNotification(result.message, 'success');
       
-      // Refresh areas and fish info
+      // Invalidate unlock_area caches (caller's responsibility)
+      invalidateFor(CACHE_ACTIONS.FISHING_UNLOCK_AREA);
+      
+      // Refresh areas and fish info with fresh data
       const [areasData, fishRes] = await Promise.all([
-        getFishingAreas(),
+        getFishingAreas({ forceRefresh: true }),
         api.get('/fishing/info')
       ]);
       setAreas(areasData);
@@ -1041,9 +1053,12 @@ const FishingPage = () => {
       setUser(prev => ({ ...prev, points: result.newPoints }));
       showNotification(result.message, 'success');
       
-      // Refresh rods and fish info
+      // Invalidate buy_rod caches (caller's responsibility)
+      invalidateFor(CACHE_ACTIONS.FISHING_BUY_ROD);
+      
+      // Refresh rods and fish info with fresh data
       const [rodsData, fishRes] = await Promise.all([
-        getFishingRods(),
+        getFishingRods({ forceRefresh: true }),
         api.get('/fishing/info')
       ]);
       setRods(rodsData);
@@ -1071,9 +1086,12 @@ const FishingPage = () => {
       const result = await equipFishingRod(rodId);
       showNotification(t('fishing.equippedRod', { rod: result.rod?.name || t('fishing.rods') }), 'success');
       
-      // Refresh rods and fish info
+      // Invalidate equip_rod caches (caller's responsibility)
+      invalidateFor(CACHE_ACTIONS.FISHING_EQUIP_ROD);
+      
+      // Refresh rods and fish info with fresh data
       const [rodsData, fishRes] = await Promise.all([
-        getFishingRods(),
+        getFishingRods({ forceRefresh: true }),
         api.get('/fishing/info')
       ]);
       setRods(rodsData);

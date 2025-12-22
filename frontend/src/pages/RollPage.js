@@ -13,6 +13,7 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
+import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
 
 // Design System
 import {
@@ -295,6 +296,9 @@ const RollPage = () => {
           setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
         
+        // Invalidate gacha roll caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.GACHA_ROLL);
+        
         if (skipAnimations) {
           // Skip animation - show card directly
           setCurrentChar(character);
@@ -398,6 +402,9 @@ const RollPage = () => {
         if (typeof updatedPoints === 'number') {
           setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
+        
+        // Invalidate gacha roll caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.GACHA_ROLL);
         
         if (skipAnimations) {
           // Skip animation - show results directly

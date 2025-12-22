@@ -8,7 +8,8 @@ import {
 } from 'react-icons/fa';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
-import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities, invalidateAdminAction } from '../../utils/api';
+import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../../utils/cacheManager';
 import { useRarity } from '../../context/RarityContext';
 import {
   AdminContainer,
@@ -406,10 +407,10 @@ const AdminRarities = ({ onRefresh }) => {
 
       if (editingRarity) {
         await updateRarity(editingRarity.id, submitData);
-        invalidateAdminAction('rarity_edit');
+        invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_EDIT);
       } else {
         await createRarity(submitData);
-        invalidateAdminAction('rarity_add');
+        invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_ADD);
       }
       
       await fetchRarities();
@@ -434,7 +435,7 @@ const AdminRarities = ({ onRefresh }) => {
     
     try {
       await deleteRarity(rarity.id);
-      invalidateAdminAction('rarity_delete');
+      invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_DELETE);
       await fetchRarities();
       await refetchRarityContext(); // Refresh the global rarity context
       if (onRefresh) onRefresh();
@@ -451,7 +452,7 @@ const AdminRarities = ({ onRefresh }) => {
     
     try {
       await resetDefaultRarities();
-      invalidateAdminAction('rarity_reset');
+      invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_RESET);
       await fetchRarities();
       await refetchRarityContext(); // Refresh the global rarity context
       if (onRefresh) onRefresh();

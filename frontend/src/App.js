@@ -5,6 +5,7 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { RarityProvider } from './context/RarityContext';
 import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './styles/DesignSystem';
+import { initVisibilityHandler, enableCacheDebugging } from './utils/cacheManager';
 
 // i18n
 import './i18n';
@@ -25,6 +26,16 @@ import DojoPage from './pages/DojoPage';
 // Components
 import Navigation from './components/Navigation/Navigation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+
+// Initialize cache manager visibility handler (runs once on app load)
+initVisibilityHandler({
+  debug: process.env.NODE_ENV === 'development'
+});
+
+// Enable cache debugging in development
+if (process.env.NODE_ENV === 'development') {
+  enableCacheDebugging();
+}
 
 // Google OAuth Client ID from environment variable
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;

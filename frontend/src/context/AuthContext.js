@@ -1,6 +1,7 @@
 // src/context/AuthContext.js
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
-import api, { invalidateCache, clearCache, AUTH_ERROR_EVENT } from '../utils/api';
+import api, { invalidateCache, AUTH_ERROR_EVENT } from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
 import {
   getToken,
   setToken,
@@ -27,7 +28,7 @@ export const AuthProvider = ({ children }) => {
       if (!token) return { success: false, error: 'No authentication token' };
       
       // Clear auth cache to ensure fresh data
-      clearCache('/auth/me');
+      invalidateFor(CACHE_ACTIONS.AUTH_REFRESH);
       
       const response = await api.get('/auth/me');
       
@@ -240,7 +241,7 @@ export const AuthProvider = ({ children }) => {
 
   const logout = () => {
     // Clear all cached API data first (before removing token)
-    invalidateCache();
+    invalidateFor(CACHE_ACTIONS.AUTH_LOGOUT);
     clearAuthStorage();
     setCurrentUser(null);
   };

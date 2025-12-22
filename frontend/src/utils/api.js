@@ -48,24 +48,12 @@ const CACHE_TTL = {
   default: 15 * 1000             // 15 seconds default
 };
 
-// Track last visibility change for smart cache invalidation
-let lastVisibilityChange = Date.now();
-const MIN_BACKGROUND_TIME_FOR_CACHE_CLEAR = 30000; // 30 seconds
+// Cache version - increment when API response format changes
+// This ensures stale cached data from old format doesn't cause issues
+const CACHE_VERSION = 1;
 
-// Invalidate stale cache when tab becomes visible after being hidden for a while
-if (typeof document !== 'undefined') {
-  document.addEventListener('visibilitychange', () => {
-    if (document.visibilityState === 'visible') {
-      const elapsed = Date.now() - lastVisibilityChange;
-      // Only invalidate if tab was hidden for > 30 seconds to avoid unnecessary API calls
-      if (elapsed > MIN_BACKGROUND_TIME_FOR_CACHE_CLEAR) {
-        clearCache('/auth/me');
-        clearCache('/banners/user/tickets');
-      }
-    }
-    lastVisibilityChange = Date.now();
-  });
-}
+// NOTE: Visibility-based cache invalidation is handled by cacheManager.js
+// with tiered staleness thresholds (30s/2min/5min). Do not duplicate here.
 
 const getCacheTTL = (url) => {
   for (const [key, ttl] of Object.entries(CACHE_TTL)) {
@@ -75,9 +63,11 @@ const getCacheTTL = (url) => {
 };
 
 const getCacheKey = (config) => {
-  // Include auth token and query params in cache key so different users/queries get different cached responses
+  // Include cache version, auth token, and query params in cache key
+  // so different users/queries get different cached responses
+  // and cache is invalidated on API format changes
   const params = config.params ? JSON.stringify(config.params) : '';
-  return `${config.method || 'get'}:${config.url}:${params}:${getTokenHash()}`;
+  return `v${CACHE_VERSION}:${config.method || 'get'}:${config.url}:${params}:${getTokenHash()}`;
 };
 
 /**
@@ -148,9 +138,13 @@ export const invalidateAdminAction = (action) => {
 };
 
 /**
- * Invalidate all admin-related caches after mutations (legacy, use invalidateAdminAction for granular control)
+ * @deprecated Use invalidateAdminAction(action) for granular control.
+ * This function clears too many caches and will be removed in a future version.
  */
 export const invalidateAdminCache = () => {
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('[DEPRECATED] invalidateAdminCache() - use invalidateAdminAction(action) instead');
+  }
   clearCache('/admin');
   clearCache('/characters');
   clearCache('/banners');
@@ -164,10 +158,13 @@ export const invalidateAdminCache = () => {
 export const invalidateCache = () => clearCache();
 
 /**
- * Invalidate caches after roll/gacha operations
- * Call this after any roll to ensure consistent state across the app
+ * @deprecated Use invalidateFor('gacha:roll') or invalidateFor('gacha:roll_banner') from cacheManager.
+ * This function will be removed in a future version.
  */
 export const invalidateAfterRoll = () => {
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('[DEPRECATED] invalidateAfterRoll() - use invalidateFor("gacha:roll") from cacheManager instead');
+  }
   clearCache('/auth/me');
   clearCache('/characters/collection');
   clearCache('/banners/user/tickets');
@@ -194,9 +191,13 @@ export const invalidateDojoAction = (action) => {
 };
 
 /**
- * Invalidate caches after dojo operations (legacy, use invalidateDojoAction for granular control)
+ * @deprecated Use invalidateDojoAction(action) for granular control.
+ * This function clears too many caches and will be removed in a future version.
  */
 export const invalidateAfterDojo = () => {
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('[DEPRECATED] invalidateAfterDojo() - use invalidateDojoAction(action) instead');
+  }
   clearCache('/dojo');
   clearCache('/auth/me');
 };
@@ -204,16 +205,26 @@ export const invalidateAfterDojo = () => {
 /**
  * Fishing action-based invalidation map
  * Maps fishing actions to the cache patterns that should be invalidated
+ * 
+ * Guidelines:
+ * - Include '/auth/me' only for actions that change user points/currency
+ * - Include '/fishing/inventory' for actions that add/remove fish
+ * - Include '/fishing/info' for actions that change equipped gear or area
  */
 const FISHING_INVALIDATION_MAP = {
   catch: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'],
-  autofish: ['/fishing/info', '/fishing/rank', '/auth/me'],
+  autofish: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/auth/me'], // Added /fishing/inventory
   trade: ['/fishing/inventory', '/fishing/trading-post', '/auth/me'],
   unlock_area: ['/fishing/areas', '/fishing/info', '/auth/me'],
   buy_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
-  equip_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
+  equip_rod: ['/fishing/rods', '/fishing/info'], // Removed /auth/me - equipping doesn't change currency
   claim_challenge: ['/fishing/challenges', '/auth/me'],
-  select_area: ['/fishing/areas', '/fishing/info']
+  select_area: ['/fishing/areas', '/fishing/info'],
+  // Modal refresh actions - for explicit cache clear when UI opens
+  modal_equipment: ['/fishing/areas', '/fishing/rods'],
+  modal_trading: ['/fishing/trading-post', '/fishing/inventory'],
+  modal_challenges: ['/fishing/challenges'],
+  modal_leaderboard: ['/fishing/leaderboard', '/fishing/rank']
 };
 
 /**
@@ -226,9 +237,13 @@ export const invalidateFishingAction = (action) => {
 };
 
 /**
- * Invalidate caches after fishing operations (legacy, use invalidateFishingAction for granular control)
+ * @deprecated Use invalidateFishingAction(action) for granular control.
+ * This function clears too many caches and will be removed in a future version.
  */
 export const invalidateAfterFishing = () => {
+  if (process.env.NODE_ENV === 'development') {
+    console.warn('[DEPRECATED] invalidateAfterFishing() - use invalidateFishingAction(action) instead');
+  }
   clearCache('/fishing');
   clearCache('/auth/me');
 };
@@ -320,19 +335,23 @@ api.interceptors.response.use(
 // CHARACTER API
 // ===========================================
 
+/**
+ * Roll a character from the standard gacha
+ * NOTE: Cache invalidation is handled by caller using invalidateFor('gacha:roll')
+ */
 export const rollCharacter = async () => {
   const response = await api.post('/characters/roll');
-  // Invalidate caches - collection (shards/ownership) and user data (points)
-  clearCache('/characters/collection');
-  clearCache('/auth/me');
+  // Cache invalidation is now caller's responsibility via invalidateFor('gacha:roll')
   return response.data;
 };
 
+/**
+ * Roll multiple characters from the standard gacha
+ * NOTE: Cache invalidation is handled by caller using invalidateFor('gacha:roll')
+ */
 export const rollMultipleCharacters = async (count) => {
   const response = await api.post('/characters/roll-multi', { count });
-  // Invalidate caches - collection (shards/ownership) and user data (points)
-  clearCache('/characters/collection');
-  clearCache('/auth/me');
+  // Cache invalidation is now caller's responsibility via invalidateFor('gacha:roll')
   return response.data;
 };
 
@@ -346,9 +365,13 @@ export const getCollectionData = async () => {
   return response.data;
 };
 
+/**
+ * Level up a character
+ * NOTE: This function clears collection cache internally as there's no dedicated action
+ */
 export const levelUpCharacter = async (characterId) => {
   const response = await api.post(`/characters/${characterId}/level-up`);
-  // Clear cache after successful response
+  // Clear cache - no dedicated action exists for level up
   clearCache('/characters/collection');
   return response.data;
 };
@@ -390,25 +413,27 @@ export const getBasePricing = async () => {
   return response.data;
 };
 
+/**
+ * Roll on a specific banner
+ * NOTE: Cache invalidation is handled by caller using invalidateFor('gacha:roll_banner')
+ */
 export const rollOnBanner = async (bannerId, useTicket = false, ticketType = 'roll') => {
   const payload = useTicket ? { useTicket: true, ticketType } : {};
   const response = await api.post(`/banners/${bannerId}/roll`, payload);
-  // Invalidate caches - collection (shards/ownership) and user data (points/tickets)
-  clearCache('/characters/collection');
-  clearCache('/auth/me');
-  clearCache('/banners/user/tickets');
+  // Cache invalidation is now caller's responsibility via invalidateFor('gacha:roll_banner')
   return response.data;
 };
 
+/**
+ * Multi-roll on a specific banner
+ * NOTE: Cache invalidation is handled by caller using invalidateFor('gacha:roll_banner')
+ */
 export const multiRollOnBanner = async (bannerId, count = 10, useTickets = false, ticketType = 'roll') => {
   const payload = useTickets 
     ? { count, useTickets: true, ticketType } 
     : { count };
   const response = await api.post(`/banners/${bannerId}/roll-multi`, payload);
-  // Invalidate caches - collection (shards/ownership) and user data (points/tickets)
-  clearCache('/characters/collection');
-  clearCache('/auth/me');
-  clearCache('/banners/user/tickets');
+  // Cache invalidation is now caller's responsibility via invalidateFor('gacha:roll_banner')
   return response.data;
 };
 
@@ -430,10 +455,13 @@ export const updateBanner = async (bannerId, formData) => {
   return response.data;
 };
 
+/**
+ * Delete a banner
+ * NOTE: Cache invalidation is handled by caller using invalidateAdminAction('banner_delete')
+ */
 export const deleteBanner = async (bannerId) => {
   const response = await api.delete(`/banners/${bannerId}`);
-  // Clear cache after successful response
-  clearCache('/banners');
+  // Cache invalidation is now caller's responsibility via invalidateAdminAction('banner_delete')
   return response.data;
 };
 
@@ -470,27 +498,43 @@ export const getRarityById = async (id) => {
   return response.data;
 };
 
+/**
+ * Create a new rarity
+ * NOTE: Cache invalidation is handled by caller using invalidateAdminAction('rarity_add')
+ */
 export const createRarity = async (rarityData) => {
   const response = await api.post('/rarities', rarityData);
-  clearCache('/rarities');
+  // Cache invalidation is now caller's responsibility via invalidateAdminAction('rarity_add')
   return response.data;
 };
 
+/**
+ * Update a rarity
+ * NOTE: Cache invalidation is handled by caller using invalidateAdminAction('rarity_edit')
+ */
 export const updateRarity = async (id, rarityData) => {
   const response = await api.put(`/rarities/${id}`, rarityData);
-  clearCache('/rarities');
+  // Cache invalidation is now caller's responsibility via invalidateAdminAction('rarity_edit')
   return response.data;
 };
 
+/**
+ * Delete a rarity
+ * NOTE: Cache invalidation is handled by caller using invalidateAdminAction('rarity_delete')
+ */
 export const deleteRarity = async (id) => {
   const response = await api.delete(`/rarities/${id}`);
-  clearCache('/rarities');
+  // Cache invalidation is now caller's responsibility via invalidateAdminAction('rarity_delete')
   return response.data;
 };
 
+/**
+ * Reset rarities to defaults
+ * NOTE: Cache invalidation is handled by caller using invalidateAdminAction('rarity_reset')
+ */
 export const resetDefaultRarities = async () => {
   const response = await api.post('/rarities/reset-defaults');
-  clearCache('/rarities');
+  // Cache invalidation is now caller's responsibility via invalidateAdminAction('rarity_reset')
   return response.data;
 };
 
@@ -498,80 +542,98 @@ export const resetDefaultRarities = async () => {
 // FISHING API
 // ===========================================
 
-export const getFishInventory = async () => {
+export const getFishInventory = async ({ forceRefresh = false } = {}) => {
+  if (forceRefresh) clearCache('/fishing/inventory');
   const response = await api.get('/fishing/inventory');
   return response.data;
 };
 
-export const getTradingPostOptions = async () => {
+export const getTradingPostOptions = async ({ forceRefresh = false } = {}) => {
+  if (forceRefresh) clearCache('/fishing/trading-post');
   const response = await api.get('/fishing/trading-post');
   return response.data;
 };
 
+/**
+ * Execute a fish trade
+ * NOTE: Cache invalidation is handled by caller using invalidateFishingAction('trade')
+ * @param {string} tradeId - The trade to execute
+ * @param {number} quantity - Quantity to trade
+ */
 export const executeTrade = async (tradeId, quantity = 1) => {
   const response = await api.post('/fishing/trade', { tradeId, quantity });
-  // Clear cache after successful response
-  clearCache('/fishing/inventory');
-  clearCache('/fishing/trading-post');
+  // Cache invalidation is now caller's responsibility via invalidateFishingAction('trade')
   return response.data;
 };
 
 // Daily Challenges
-export const getFishingChallenges = async () => {
+export const getFishingChallenges = async ({ forceRefresh = false } = {}) => {
+  if (forceRefresh) clearCache('/fishing/challenges');
   const response = await api.get('/fishing/challenges');
   return response.data;
 };
 
+/**
+ * Claim a fishing challenge reward
+ * NOTE: Cache invalidation is handled by caller using invalidateFishingAction('claim_challenge')
+ */
 export const claimFishingChallenge = async (challengeId) => {
   const response = await api.post(`/fishing/challenges/${challengeId}/claim`);
-  // Clear cache after successful response
-  clearCache('/fishing/challenges');
-  clearCache('/auth/me');
+  // Cache invalidation is now caller's responsibility via invalidateFishingAction('claim_challenge')
   return response.data;
 };
 
 // Fishing Areas
-export const getFishingAreas = async () => {
+export const getFishingAreas = async ({ forceRefresh = false } = {}) => {
+  if (forceRefresh) clearCache('/fishing/areas');
   const response = await api.get('/fishing/areas');
   return response.data;
 };
 
+/**
+ * Unlock a fishing area
+ * NOTE: Cache invalidation is handled by caller using invalidateFishingAction('unlock_area')
+ */
 export const unlockFishingArea = async (areaId) => {
   const response = await api.post(`/fishing/areas/${areaId}/unlock`);
-  // Clear cache after successful response to avoid stale data on failure
-  clearCache('/fishing/areas');
-  clearCache('/auth/me');
+  // Cache invalidation is now caller's responsibility via invalidateFishingAction('unlock_area')
   return response.data;
 };
 
+/**
+ * Select a fishing area
+ * NOTE: Cache invalidation is handled by caller using invalidateFishingAction('select_area')
+ */
 export const selectFishingArea = async (areaId) => {
   const response = await api.post(`/fishing/areas/${areaId}/select`);
-  // Clear cache after successful response
-  clearCache('/fishing/areas');
-  clearCache('/fishing/info');
+  // Cache invalidation is now caller's responsibility via invalidateFishingAction('select_area')
   return response.data;
 };
 
 // Fishing Rods
-export const getFishingRods = async () => {
+export const getFishingRods = async ({ forceRefresh = false } = {}) => {
+  if (forceRefresh) clearCache('/fishing/rods');
   const response = await api.get('/fishing/rods');
   return response.data;
 };
 
+/**
+ * Buy a fishing rod
+ * NOTE: Cache invalidation is handled by caller using invalidateFishingAction('buy_rod')
+ */
 export const buyFishingRod = async (rodId) => {
   const response = await api.post(`/fishing/rods/${rodId}/buy`);
-  // Clear cache after successful response
-  clearCache('/fishing/rods');
-  clearCache('/auth/me');
+  // Cache invalidation is now caller's responsibility via invalidateFishingAction('buy_rod')
   return response.data;
 };
 
+/**
+ * Equip a fishing rod
+ * NOTE: Cache invalidation is handled by caller using invalidateFishingAction('equip_rod')
+ */
 export const equipFishingRod = async (rodId) => {
   const response = await api.post(`/fishing/rods/${rodId}/equip`);
-  // Clear cache after successful response
-  clearCache('/fishing/rods');
-  clearCache('/fishing/info');
-  clearCache('/auth/me'); // User stats may be affected
+  // Cache invalidation is now caller's responsibility via invalidateFishingAction('equip_rod')
   return response.data;
 };
 
@@ -585,39 +647,55 @@ export const getFishingDailyStats = async () => {
 // DOJO (IDLE GAME) API
 // ===========================================
 
-export const getDojoStatus = async () => {
+export const getDojoStatus = async ({ forceRefresh = false } = {}) => {
+  if (forceRefresh) clearCache('/dojo/status');
   const response = await api.get('/dojo/status');
   return response.data;
 };
 
-export const getDojoAvailableCharacters = async () => {
+export const getDojoAvailableCharacters = async ({ forceRefresh = false } = {}) => {
+  if (forceRefresh) clearCache('/dojo/available-characters');
   const response = await api.get('/dojo/available-characters');
   return response.data;
 };
 
+/**
+ * Assign a character to a dojo training slot
+ * NOTE: Cache invalidation is handled by caller using invalidateDojoAction('assign')
+ */
 export const assignCharacterToDojo = async (characterId, slotIndex) => {
   const response = await api.post('/dojo/assign', { characterId, slotIndex });
-  clearCache('/dojo');
+  // Cache invalidation is now caller's responsibility via invalidateDojoAction('assign')
   return response.data;
 };
 
+/**
+ * Remove a character from a dojo training slot
+ * NOTE: Cache invalidation is handled by caller using invalidateDojoAction('unassign')
+ */
 export const unassignCharacterFromDojo = async (slotIndex) => {
   const response = await api.post('/dojo/unassign', { slotIndex });
-  clearCache('/dojo');
+  // Cache invalidation is now caller's responsibility via invalidateDojoAction('unassign')
   return response.data;
 };
 
+/**
+ * Claim accumulated dojo training rewards
+ * NOTE: Cache invalidation is handled by caller using invalidateDojoAction('claim')
+ */
 export const claimDojoRewards = async () => {
   const response = await api.post('/dojo/claim');
-  clearCache('/dojo');
-  clearCache('/auth/me');
+  // Cache invalidation is now caller's responsibility via invalidateDojoAction('claim')
   return response.data;
 };
 
+/**
+ * Purchase a dojo upgrade
+ * NOTE: Cache invalidation is handled by caller using invalidateDojoAction('upgrade')
+ */
 export const purchaseDojoUpgrade = async (upgradeType, rarity = null) => {
   const response = await api.post('/dojo/upgrade', { upgradeType, rarity });
-  clearCache('/dojo');
-  clearCache('/auth/me');
+  // Cache invalidation is now caller's responsibility via invalidateDojoAction('upgrade')
   return response.data;
 };
 

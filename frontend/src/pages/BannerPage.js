@@ -8,12 +8,12 @@ import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from
 import confetti from 'canvas-confetti';
 
 // API & Context
-import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiRollOnBanner } from '../utils/api';
+import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiRollOnBanner, clearCache } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { clearCache } from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
 
 // Design System
 import {
@@ -452,6 +452,9 @@ const BannerPage = () => {
           setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
         
+        // Invalidate gacha roll caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.GACHA_ROLL_BANNER);
+        
         // Update tickets if returned and broadcast to other tabs
         if (newTickets) {
           setTickets(newTickets);
@@ -587,7 +590,7 @@ const BannerPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Use helper function with cache invalidation
+        // Execute multi-roll
         const result = await multiRollOnBanner(bannerId, count, useTickets, ticketType);
         const { characters, updatedPoints, tickets: newTickets } = result;
         
@@ -602,6 +605,9 @@ const BannerPage = () => {
         if (typeof updatedPoints === 'number') {
           setUser(prev => prev ? { ...prev, points: updatedPoints } : prev);
         }
+        
+        // Invalidate gacha roll caches (caller's responsibility)
+        invalidateFor(CACHE_ACTIONS.GACHA_ROLL_BANNER);
         
         // Update tickets if returned and broadcast to other tabs
         if (newTickets) {
