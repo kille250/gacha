@@ -22,8 +22,7 @@ const { isValidId, validateIdArray, parseCharacterIds } = require('../utils/vali
 const { getUserAllowR18, getR18PreferenceFromRequest } = require('../utils/userPreferences');
 const { 
   acquireRollLock,
-  releaseRollLock,
-  filterR18Characters
+  releaseRollLock
 } = require('../utils/rollHelpers');
 const {
   buildBannerRollContext,
@@ -32,8 +31,7 @@ const {
 } = require('../utils/rollEngine');
 const {
   acquireCharacter,
-  acquireMultipleCharacters,
-  LEVELING_CONFIG
+  acquireMultipleCharacters
 } = require('../utils/characterLeveling');
 
 // ===========================================
@@ -823,7 +821,6 @@ router.post('/:id/roll-multi', auth, async (req, res) => {
       };
     }).filter(c => c);
     
-    const hasRarePlus = results.some(r => r.wasPity || ['rare', 'epic', 'legendary'].includes(r.actualRarity));
     const newCards = acquisitions.filter(a => a.isNew).length;
     const shardsGained = acquisitions.filter(a => a.isDuplicate && !a.isMaxLevel).length;
     const bonusPointsTotal = acquisitions.reduce((sum, a) => sum + (a.bonusPoints || 0), 0);

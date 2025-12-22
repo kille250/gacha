@@ -21,7 +21,6 @@ const crypto = require('crypto');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { sequelize, User, FishInventory } = require('../models');
-const { Op } = require('sequelize');
 const { isValidId } = require('../utils/validation');
 
 // Config imports
@@ -32,15 +31,9 @@ const {
   FISHING_AREAS,
   FISHING_RODS,
   DAILY_CHALLENGES,
-  selectRandomFish,
   selectRandomFishWithBonuses,
   calculateFishTotals,
-  getCatchThresholds,
-  getAutofishLimit,
-  getTodayString,
-  needsDailyReset,
-  generateDailyChallenges,
-  calculatePityBonus
+  getAutofishLimit
 } = require('../config/fishing');
 
 // Import new modular routes
@@ -60,7 +53,6 @@ const {
   getMissTimeout,
   updateStreakCounters,
   calculateMercyBonus,
-  applyStreakBonus,
   checkFishingModeConflict,
   setFishingMode,
   getUserPrestigeAutofishBonus,
@@ -72,7 +64,6 @@ const DAILY_LIMITS = FISHING_CONFIG.dailyLimits;
 
 const {
   getUserRank,
-  refreshAllRanks,
   getTotalUsers
 } = require('../services/rankService');
 
@@ -375,7 +366,7 @@ router.post('/catch', auth, async (req, res) => {
   const userId = req.user.id;
   
   try {
-    const { sessionId, reactionTime: clientReactionTime } = req.body;
+    const { sessionId, reactionTime: _clientReactionTime } = req.body;
     
     if (!sessionId) {
       return res.status(400).json({ error: 'No fishing session' });
@@ -601,7 +592,7 @@ router.post('/catch', auth, async (req, res) => {
       
       return res.json(response);
     } else {
-      const { user, failureMessage, missStreak } = result;
+      const { user: _user, failureMessage, missStreak } = result;
       
       // Calculate mercy bonus for next attempt
       const mercyBonus = calculateMercyBonus(missStreak);
@@ -741,7 +732,8 @@ router.get('/rank', auth, async (req, res) => {
     const prestigeBonusRank = getUserPrestigeAutofishBonus(user);
     const autofishLimit = getAutofishLimit(rank, premiumStatusRank, prestigeBonusRank);
     const baseLimit = FISHING_CONFIG.autofish.baseDailyLimit;
-    const bonusFromRank = autofishLimit - baseLimit - (hasPremiumBonus ? Math.floor(baseLimit * 0.5) : 0) - prestigeBonusRank;
+    const _bonusFromRank = autofishLimit - baseLimit - (hasPremiumBonus ? Math.floor(baseLimit * 0.5) : 0) - prestigeBonusRank;
+    void _bonusFromRank; // Reserved for future use
     
     // Determine rank tier for display
     let rankTier = 'none';
@@ -879,7 +871,6 @@ router.post('/autofish', auth, async (req, res) => {
       // === NEW: Democratized autofish with daily limits ===
       const daily = getOrResetDailyData(user);
       const currentRank = await getUserRank(userId);
-      const hasPremium = (user.premiumTickets || 0) > 0;
       // Use helper functions for cleaner code
       const premiumStatusAuto = buildPremiumStatus(user, daily);
       const prestigeBonusAuto = getUserPrestigeAutofishBonus(user);

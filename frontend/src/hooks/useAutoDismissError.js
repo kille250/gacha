@@ -50,6 +50,17 @@ const isCriticalError = (error) => {
 };
 
 /**
+ * Gets the severity level of an error for UI styling
+ * @param {string} error - The error message
+ * @returns {'error' | 'warning' | 'info'} Severity level
+ */
+const getErrorSeverity = (error) => {
+  if (!error || typeof error !== 'string') return 'info';
+  if (isCriticalError(error)) return 'error';
+  return 'warning';
+};
+
+/**
  * Custom hook for managing auto-dismissing error state
  * @param {Object} options - Hook options
  * @param {number} [options.transientTimeout=5000] - Timeout for transient errors
@@ -93,6 +104,11 @@ export const useAutoDismissError = (options = {}) => {
  * Utility to check if error is critical (exported for external use)
  */
 export { isCriticalError };
+
+/**
+ * Utility to get error severity for UI styling (exported for external use)
+ */
+export { getErrorSeverity };
 
 export default useAutoDismissError;
 

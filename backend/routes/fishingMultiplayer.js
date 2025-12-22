@@ -78,7 +78,7 @@ function initMultiplayer(io) {
       
       socket.user = user;
       next();
-    } catch (err) {
+    } catch (_err) {
       next(new Error('Authentication failed'));
     }
   });

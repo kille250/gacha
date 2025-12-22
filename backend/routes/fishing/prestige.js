@@ -8,7 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
-const { User, FishInventory } = require('../../models');
+const { User } = require('../../models');
 
 const {
   PRESTIGE_LEVELS,

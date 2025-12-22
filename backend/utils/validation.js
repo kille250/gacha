@@ -41,7 +41,7 @@ const parseCharacterIds = (characterIdsStr) => {
     const validated = parsed.map(id => parseInt(id, 10)).filter(id => !isNaN(id) && id > 0);
     if (validated.length !== parsed.length) return null;
     return validated;
-  } catch (e) {
+  } catch (_err) {
     return null;
   }
 };

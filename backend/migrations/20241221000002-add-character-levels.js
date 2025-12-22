@@ -39,7 +39,7 @@ module.exports = {
     }
   },
 
-  down: async (queryInterface, Sequelize) => {
+  down: async (queryInterface, _Sequelize) => {
     const tables = await queryInterface.showAllTables();
     if (!tables.includes('UserCharacters')) {
       return;

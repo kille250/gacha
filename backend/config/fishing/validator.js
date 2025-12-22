@@ -89,7 +89,7 @@ function validateRarityDistribution() {
   };
   
   for (const fish of FISH_TYPES) {
-    if (!rarityWeights.hasOwnProperty(fish.rarity)) {
+    if (!Object.hasOwn(rarityWeights, fish.rarity)) {
       throw new ConfigValidationError(`Unknown rarity "${fish.rarity}" for fish ${fish.id}`);
     }
     rarityWeights[fish.rarity] += fish.weight;

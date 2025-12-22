@@ -35,7 +35,7 @@ module.exports = {
     console.log('✅ Added dojo daily stats and ticket pity fields to Users table');
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     const tableInfo = await queryInterface.describeTable('Users');
     
     if (tableInfo.dojoDailyStats) {

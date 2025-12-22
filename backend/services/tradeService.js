@@ -354,7 +354,7 @@ async function executeTrade(userId, tradeId, quantity = 1) {
     }
     
     // Apply rewards
-    const { reward, actualPoints } = applyTradeRewards(user, tradeOption, tradeQuantity, daily);
+    const { reward } = applyTradeRewards(user, tradeOption, tradeQuantity, daily);
     
     // Update daily tracking
     daily.tradesCompleted = (daily.tradesCompleted || 0) + tradeQuantity;

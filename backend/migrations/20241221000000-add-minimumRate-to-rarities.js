@@ -26,7 +26,7 @@ module.exports = {
     }
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     const tableInfo = await queryInterface.describeTable('Rarities');
     
     if (tableInfo.minimumRate) {

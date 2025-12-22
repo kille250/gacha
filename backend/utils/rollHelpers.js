@@ -8,7 +8,7 @@
  * - Pity system eligibility checks
  */
 
-const { getRarities, isRarePlusSync, PRICING_CONFIG } = require('../config/pricing');
+const { isRarePlusSync, PRICING_CONFIG } = require('../config/pricing');
 
 // ===========================================
 // CONSTANTS

@@ -21,7 +21,7 @@ module.exports = {
     }
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     const tableInfo = await queryInterface.describeTable('Users');
     
     if (tableInfo.lastAutofish) {

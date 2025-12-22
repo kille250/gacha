@@ -334,7 +334,7 @@ function getCollectionBonuses(collection) {
   };
 
   // Add rarity completion bonuses
-  for (const [rarity, bonus] of Object.entries(collection.rarityBonuses || {})) {
+  for (const [_rarity, bonus] of Object.entries(collection.rarityBonuses || {})) {
     bonuses.timingBonus += bonus.timingBonus || 0;
     bonuses.rarityBonus += bonus.rarityBonus || 0;
     bonuses.autofishBonus += bonus.autofishBonus || 0;

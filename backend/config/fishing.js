@@ -490,8 +490,9 @@ const FISH_TYPES = [
   { id: 'dragon', name: 'Sea Dragon', emoji: '🐉', rarity: 'legendary', minReward: 800, maxReward: 1500, timingWindow: 400, weight: 0.1 },
 ];
 
-// Calculate total weight for probability
-const TOTAL_WEIGHT = FISH_TYPES.reduce((sum, fish) => sum + fish.weight, 0);
+// Calculate total weight for probability (used internally for reference)
+const _TOTAL_WEIGHT = FISH_TYPES.reduce((sum, fish) => sum + fish.weight, 0);
+void _TOTAL_WEIGHT; // Suppress unused warning - value is documented for reference
 
 /**
  * Calculate pity bonus for a given rarity
@@ -548,7 +549,6 @@ function selectRandomFish(pityData = null) {
     adjustedWeight: fish.weight
   }));
   
-  let pityTriggered = false;
   let resetPity = [];
   
   if (pityData) {
@@ -915,7 +915,7 @@ const RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
  * @param {string} targetRarity - The rarity we wanted (for determining reset behavior)
  * @returns {Object|null} - { fish, actualRarity } or null if no fish
  */
-function getHighestRarityFish(areaFish, targetRarity = 'legendary') {
+function getHighestRarityFish(areaFish, _targetRarity = 'legendary') {
   for (const rarity of RARITY_ORDER) {
     const fishOfRarity = areaFish.filter(f => f.rarity === rarity);
     if (fishOfRarity.length > 0) {

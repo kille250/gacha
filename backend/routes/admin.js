@@ -92,7 +92,7 @@ router.get('/health', auth, adminAuth, async (req, res) => {
       fs.unlinkSync(testFile);
       healthData.storage.writable = true;
       healthData.storage.status = 'available';
-    } catch (err) {
+    } catch (_err) {
       healthData.storage.writable = false;
       healthData.storage.status = 'read-only';
     }
@@ -436,7 +436,7 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
     let metadata = [];
     try {
       metadata = JSON.parse(req.body.metadata || '[]');
-    } catch (e) {
+    } catch (_err) {
       // Clean up uploaded files on parse error
       safeUnlinkMany(req.files);
       return res.status(400).json({ error: 'Invalid metadata format' });
@@ -517,7 +517,7 @@ router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
         throw new Error('Invalid protocol');
       }
-    } catch (e) {
+    } catch (_err) {
       return res.status(400).json({ error: 'Invalid image URL' });
     }
     

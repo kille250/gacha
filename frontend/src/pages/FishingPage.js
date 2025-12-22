@@ -119,6 +119,7 @@ const FishingPage = () => {
   const [autofishLog, setAutofishLog] = useState([]);
   const autofishIntervalRef = useRef(null);
   const autofishInFlightRef = useRef(false); // Prevent overlapping autofish requests
+  const autofishTimeoutRef = useRef(null); // Failsafe timeout to reset in-flight guard
   
   // Trading post state
   const [showTradingPost, setShowTradingPost] = useState(false);
@@ -289,6 +290,25 @@ const FishingPage = () => {
       socket.disconnect();
       socketRef.current = null;
     };
+  }, []);
+  
+  // Listen for global session expiry event (from AuthContext)
+  // This ensures WebSocket disconnects when auth token becomes invalid
+  useEffect(() => {
+    const handleSessionExpired = () => {
+      console.warn('[Fishing] Session expired - disconnecting WebSocket');
+      setIsAutofishing(false);
+      if (socketRef.current) {
+        socketRef.current.disconnect();
+      }
+      setNotification({
+        type: 'error',
+        message: tRef.current('common.sessionExpired') || 'Session expired. Please log in again.'
+      });
+    };
+    
+    window.addEventListener('session:expired', handleSessionExpired);
+    return () => window.removeEventListener('session:expired', handleSessionExpired);
   }, []);
   
   // Derived state: player count is other players + self
@@ -483,6 +503,15 @@ const FishingPage = () => {
       }
       
       autofishInFlightRef.current = true;
+      
+      // Failsafe timeout: reset in-flight guard after 30s in case of stuck request
+      autofishTimeoutRef.current = setTimeout(() => {
+        if (autofishInFlightRef.current) {
+          console.warn('[Autofish] Request timeout - resetting in-flight guard');
+          autofishInFlightRef.current = false;
+        }
+      }, 30000);
+      
       try {
         const res = await api.post('/fishing/autofish');
         const result = res.data;
@@ -544,6 +573,11 @@ const FishingPage = () => {
           showNotification(t('fishing.autofishError'), 'error');
         }
       } finally {
+        // Clear failsafe timeout and reset in-flight guard
+        if (autofishTimeoutRef.current) {
+          clearTimeout(autofishTimeoutRef.current);
+          autofishTimeoutRef.current = null;
+        }
         autofishInFlightRef.current = false;
       }
     }, AUTOFISH_INTERVAL);
@@ -552,6 +586,10 @@ const FishingPage = () => {
       if (autofishIntervalRef.current) {
         clearInterval(autofishIntervalRef.current);
         autofishIntervalRef.current = null;
+      }
+      if (autofishTimeoutRef.current) {
+        clearTimeout(autofishTimeoutRef.current);
+        autofishTimeoutRef.current = null;
       }
       autofishInFlightRef.current = false;
     };

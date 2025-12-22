@@ -94,6 +94,12 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(null);
       setSessionExpired(true);
       
+      // Broadcast session expiry to all listeners (e.g., WebSocket connections)
+      // This allows components like FishingPage to disconnect gracefully
+      window.dispatchEvent(new CustomEvent('session:expired', { 
+        detail: { reason: 'token_expired', ...event.detail }
+      }));
+      
       // Reset flag after a delay to allow re-triggering if needed
       setTimeout(() => {
         sessionExpiredHandled.current = false;

@@ -180,13 +180,17 @@ const DojoPage = () => {
                    status?.accumulated?.rewards?.rollTickets > 0 ||
                    status?.accumulated?.rewards?.premiumTickets > 0;
   
-  // Helper to get disabled reason for tooltips
+  // Helper to get disabled reason for tooltips - with specific messaging
   const getClaimDisabledReason = useCallback(() => {
     if (claiming) return t('dojo.claiming') || 'Claiming...';
     if (locked) return t('common.processing') || 'Processing...';
+    // Check if no characters are assigned first - most helpful for new players
+    if (status?.usedSlots === 0) {
+      return t('dojo.assignCharactersFirst') || 'Assign characters to training slots first!';
+    }
     if (!canClaim) return t('dojo.noRewardsAccumulated') || 'No rewards accumulated yet. Keep training!';
     return undefined;
-  }, [claiming, locked, canClaim, t]);
+  }, [claiming, locked, canClaim, status?.usedSlots, t]);
   
   const getUpgradeDisabledReason = useCallback((upgrade, isUpgrading, canAfford) => {
     if (isUpgrading) return t('common.processing') || 'Processing...';

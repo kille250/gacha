@@ -12,7 +12,7 @@ import { rollCharacter, rollMultipleCharacters, getStandardPricing, getAssetUrl 
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock, useAutoDismissError } from '../hooks';
+import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
 
 // Design System
 import {
@@ -68,14 +68,8 @@ const RollPage = () => {
   const [previewChar, setPreviewChar] = useState(null);
   const [rollCount, setRollCount] = useState(0);
   const [lastRarities, setLastRarities] = useState([]);
-  // Persist fast mode preference to localStorage
-  const [skipAnimations, setSkipAnimations] = useState(() => {
-    try {
-      return localStorage.getItem('gacha_skipAnimations') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  // Centralized animation skip preference (shared across gacha pages)
+  const [skipAnimations, setSkipAnimations] = useSkipAnimations();
   
   // Summoning animation state
   const [showSummonAnimation, setShowSummonAnimation] = useState(false);
@@ -96,6 +90,16 @@ const RollPage = () => {
     const option = pullOptions.find(o => o.count === count);
     return option?.finalCost || count * singlePullCost;
   }, [pullOptions, singlePullCost]);
+  
+  // Derive best value option from highest discount percentage (not hardcoded)
+  const bestValueCount = useMemo(() => {
+    const multiOptions = pullOptions.filter(o => o.count > 1);
+    if (multiOptions.length === 0) return null;
+    const best = multiOptions.reduce((acc, opt) => 
+      (opt.discountPercent || 0) > (acc.discountPercent || 0) ? opt : acc
+    , multiOptions[0]);
+    return best?.count || null;
+  }, [pullOptions]);
   
   // Effects
   useEffect(() => { refreshUser(); }, [refreshUser]);
@@ -158,25 +162,7 @@ const RollPage = () => {
     };
   }, []);
   
-  // Persist fast mode preference
-  useEffect(() => {
-    try {
-      localStorage.setItem('gacha_skipAnimations', skipAnimations.toString());
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, [skipAnimations]);
-  
-  // Sync fast mode preference across tabs
-  useEffect(() => {
-    const handleStorage = (e) => {
-      if (e.key === 'gacha_skipAnimations') {
-        setSkipAnimations(e.newValue === 'true');
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  // Note: skipAnimations persistence and cross-tab sync is handled by useSkipAnimations hook
   
   // Network offline detection during roll animations
   useEffect(() => {
@@ -450,6 +436,8 @@ const RollPage = () => {
       const timeout = setTimeout(() => {
         try {
           console.warn('[Animation] Single summon timeout - forcing completion');
+          // Notify user that animation was skipped but pull succeeded
+          setError(t('roll.animationSkipped') || 'Animation completed - check your collection!');
           handleSummonComplete();
         } catch (e) {
           console.error('[Animation] Force complete failed:', e);
@@ -460,7 +448,7 @@ const RollPage = () => {
       }, 15000); // Max 15 seconds for single animation
       return () => clearTimeout(timeout);
     }
-  }, [showSummonAnimation, pendingCharacter, handleSummonComplete]);
+  }, [showSummonAnimation, pendingCharacter, handleSummonComplete, t, setError]);
   
   useEffect(() => {
     if (showMultiSummonAnimation && pendingMultiResults.length > 0) {
@@ -469,6 +457,8 @@ const RollPage = () => {
       const timeout = setTimeout(() => {
         try {
           console.warn('[Animation] Multi-summon timeout - forcing completion');
+          // Notify user that animation was skipped but pulls succeeded
+          setError(t('roll.animationSkipped') || 'Animation completed - check your collection!');
           handleMultiSummonComplete();
         } catch (e) {
           console.error('[Animation] Multi-summon force complete failed:', e);
@@ -479,7 +469,7 @@ const RollPage = () => {
       }, maxTime);
       return () => clearTimeout(timeout);
     }
-  }, [showMultiSummonAnimation, pendingMultiResults, handleMultiSummonComplete]);
+  }, [showMultiSummonAnimation, pendingMultiResults, handleMultiSummonComplete, t, setError]);
   
   const getImagePath = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300?text=No+Image';
   
@@ -520,11 +510,11 @@ const RollPage = () => {
           <HeroSubtitle>{t('roll.subtitle')}</HeroSubtitle>
         </HeroSection>
         
-        {/* Error Alert */}
+        {/* Error Alert - uses severity to distinguish recoverable vs critical errors */}
         <AnimatePresence>
           {error && (
             <Alert
-              variant="error"
+              variant={getErrorSeverity(error)}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -724,11 +714,13 @@ const RollPage = () => {
                         disabled={isRolling || (!pricingLoaded && !pricingError) || pricingError || locked || !canAfford}
                         title={getDisabledReason(option.finalCost)}
                         $canAfford={canAfford && pricingLoaded && !pricingError}
-                        $isRecommended={option.count === 10}
+                        $isRecommended={option.count === bestValueCount}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
                         whileTap={{ scale: canAfford ? 0.97 : 1 }}
                       >
-                        {option.count === 10 && <RecommendedTag>{t('common.best') || 'BEST'}</RecommendedTag>}
+                        {option.count === bestValueCount && option.discountPercent > 0 && (
+                          <RecommendedTag>{t('common.best') || 'BEST'}</RecommendedTag>
+                        )}
                         <MultiPullCount>{option.count}×</MultiPullCount>
                         <MultiPullCost>
                           <span>{option.finalCost}</span>

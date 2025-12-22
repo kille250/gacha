@@ -41,7 +41,7 @@ const {
 
 // Import shared state from core module
 const coreModule = require('./core');
-const { userFishingMode, checkModeConflict, setMode } = coreModule;
+const { checkModeConflict, setMode } = coreModule;
 
 // Extract config values
 const AUTOFISH_COOLDOWN = FISHING_CONFIG.autofishCooldown;
@@ -99,7 +99,6 @@ router.post('/', auth, async (req, res, next) => {
       // Daily limit check
       const daily = getOrResetDailyData(user);
       const currentRank = await getUserRank(userId);
-      const hasPremium = (user.premiumTickets || 0) > 0;
       const premiumStatusAuto = {
         tickets: user.premiumTickets || 0,
         usedToday: daily?.ticketsUsed?.premium || 0
@@ -255,7 +254,6 @@ router.get('/rank', auth, async (req, res, next) => {
       tickets: user.premiumTickets || 0,
       usedToday: daily?.ticketsUsed?.premium || 0
     };
-    const hasPremiumBonus = (premiumStatusRank.usedToday > 0) || (premiumStatusRank.tickets >= 3);
     const prestigeBonusRank = user.fishingAchievements?.prestige 
       ? require('../../config/fishing/prestige').getPrestigeBonuses(user.fishingAchievements.prestige).autofishLimit 
       : 0;

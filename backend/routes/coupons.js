@@ -50,7 +50,7 @@ router.post('/admin', [auth, adminAuth], async (req, res) => {
     } = req.body;
 
     // Validate code (no spaces, alphanumeric with hyphens allowed)
-    if (!code || !/^[a-zA-Z0-9\-]+$/.test(code)) {
+    if (!code || !/^[a-zA-Z0-9-]+$/.test(code)) {
       return res.status(400).json({ 
         error: 'Invalid code format. Use only letters, numbers, and hyphens.' 
       });
@@ -121,7 +121,7 @@ router.put('/admin/:id', [auth, adminAuth], async (req, res) => {
 
     // If code is being changed, check for duplicates
     if (code && code !== coupon.code) {
-      if (!/^[a-zA-Z0-9\-]+$/.test(code)) {
+      if (!/^[a-zA-Z0-9-]+$/.test(code)) {
         return res.status(400).json({ 
           error: 'Invalid code format. Use only letters, numbers, and hyphens.' 
         });

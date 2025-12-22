@@ -9,7 +9,6 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const { User, Character, UserCharacter, sequelize } = require('../models');
-const { Op } = require('sequelize');
 const {
   DOJO_CONFIG,
   DOJO_BALANCE,
@@ -675,7 +674,7 @@ router.post('/upgrade', auth, async (req, res) => {
     user.points -= cost;
     
     switch (upgradeType) {
-      case 'slot':
+      case 'slot': {
         upgrades.slots = (upgrades.slots || DOJO_CONFIG.defaultSlots) + 1;
         // Extend dojoSlots array
         const dojoSlots = user.dojoSlots || [];
@@ -684,6 +683,7 @@ router.post('/upgrade', auth, async (req, res) => {
         }
         user.dojoSlots = dojoSlots;
         break;
+      }
         
       case 'cap':
         upgrades.capHours = (upgrades.capHours || DOJO_CONFIG.defaultCapHours) + 4;

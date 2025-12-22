@@ -45,7 +45,7 @@ module.exports = {
     }
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     await queryInterface.removeColumn('Users', 'allowR18');
     await queryInterface.removeColumn('Users', 'showR18');
     await queryInterface.removeColumn('Characters', 'isR18');

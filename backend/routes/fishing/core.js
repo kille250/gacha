@@ -18,7 +18,6 @@ const {
   FISHING_AREAS,
   FISHING_RODS,
   selectRandomFishWithBonuses,
-  getCatchThresholds,
   getAutofishLimit
 } = require('../../config/fishing');
 
@@ -53,9 +52,7 @@ const {
 const DAILY_LIMITS = FISHING_CONFIG.dailyLimits;
 const CAST_COOLDOWN = FISHING_CONFIG.castCooldown;
 const CAST_COST = FISHING_CONFIG.castCost;
-const LATENCY_BUFFER = FISHING_CONFIG.latencyBuffer || 200;
 const MIN_REACTION_TIME = FISHING_CONFIG.minReactionTime || 80;
-const SESSION_EXPIRY = FISHING_CONFIG.sessionExpiry || 30000;
 const MAX_ACTIVE_SESSIONS_PER_USER = FISHING_CONFIG.sessionLimits?.maxActiveSessionsPerUser || 3;
 
 // In-memory state (shared via module exports)
@@ -416,7 +413,7 @@ router.post('/catch', auth, async (req, res, next) => {
       
       return res.json(response);
     } else {
-      const { user, failureMessage, missStreak } = result;
+      const { user: _user, failureMessage, missStreak } = result;
       const mercyBonus = calculateMercyBonus(missStreak);
       
       return res.json({
@@ -528,6 +525,7 @@ router.get('/daily', auth, async (req, res, next) => {
       tickets: user.premiumTickets || 0,
       usedToday: daily?.ticketsUsed?.premium || 0
     };
+    const hasPremiumTickets = (user.premiumTickets || 0) > 0;
     const prestigeBonusDaily = user.fishingAchievements?.prestige 
       ? require('../../config/fishing/prestige').getPrestigeBonuses(user.fishingAchievements.prestige).autofishLimit 
       : 0;
@@ -556,7 +554,7 @@ router.get('/daily', auth, async (req, res, next) => {
         premiumTickets: { used: daily.ticketsEarned.premium, limit: FISHING_CONFIG.dailyLimits.premiumTickets }
       },
       rank,
-      hasPremium,
+      hasPremium: hasPremiumTickets,
       resetsAt: new Date(new Date().setHours(24, 0, 0, 0)).toISOString()
     });
   } catch (err) {

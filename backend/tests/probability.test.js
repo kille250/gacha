@@ -11,11 +11,7 @@
 const {
   rollRarity,
   normalizeRates,
-  validateRatesSum,
-  buildRatesFromRarities,
-  calculateBannerRates,
-  RATE_CONSTANTS,
-  PRICING_CONFIG
+  validateRatesSum
 } = require('../config/pricing');
 
 const {
@@ -53,7 +49,7 @@ const mockCharacters = [
  * Chi-squared test for uniform distribution
  * Returns true if distribution is statistically valid (p > 0.05)
  */
-const chiSquaredTest = (observed, expected, degreesOfFreedom) => {
+const _chiSquaredTest = (observed, expected, degreesOfFreedom) => {
   let chiSquared = 0;
   for (let i = 0; i < observed.length; i++) {
     if (expected[i] > 0) {

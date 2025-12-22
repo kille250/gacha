@@ -4,7 +4,6 @@ const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
 const rateLimit = require('express-rate-limit');
-const path = require('path');
 const sequelize = require('./config/db');
 const { initUploadDirs, UPLOAD_BASE, isProduction } = require('./config/upload');
 const schedule = require('node-schedule');

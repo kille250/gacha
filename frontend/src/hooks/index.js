@@ -4,5 +4,6 @@
 export { useGachaRoll } from './useGachaRoll';
 export { useHourlyReward } from './useHourlyReward';
 export { useActionLock } from './useActionLock';
-export { useAutoDismissError, isCriticalError } from './useAutoDismissError';
+export { useAutoDismissError, isCriticalError, getErrorSeverity } from './useAutoDismissError';
+export { useSkipAnimations } from './useSkipAnimations';
 

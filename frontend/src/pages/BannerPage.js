@@ -12,7 +12,8 @@ import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiR
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock, useAutoDismissError } from '../hooks';
+import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
+import { clearCache } from '../utils/api';
 
 // Design System
 import {
@@ -73,14 +74,8 @@ const BannerPage = () => {
   const [rollCount, setRollCount] = useState(0);
   const [lastRarities, setLastRarities] = useState([]);
   const [userCollection, setUserCollection] = useState([]);
-  // Persist fast mode preference to localStorage
-  const [skipAnimations, setSkipAnimations] = useState(() => {
-    try {
-      return localStorage.getItem('gacha_skipAnimations') === 'true';
-    } catch {
-      return false;
-    }
-  });
+  // Centralized animation skip preference (shared across gacha pages)
+  const [skipAnimations, setSkipAnimations] = useSkipAnimations();
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const [loading, setLoading] = useState(true);
   const [showInfoPanel, setShowInfoPanel] = useState(false);
@@ -123,6 +118,16 @@ const BannerPage = () => {
     const option = pullOptions.find(o => o.count === count);
     return option?.finalCost || count * singlePullCost;
   }, [pullOptions, singlePullCost]);
+  
+  // Derive best value option from highest discount percentage (not hardcoded)
+  const bestValueCount = useMemo(() => {
+    const multiOptions = pullOptions.filter(o => o.count > 1);
+    if (multiOptions.length === 0) return null;
+    const best = multiOptions.reduce((acc, opt) => 
+      (opt.discountPercent || 0) > (acc.discountPercent || 0) ? opt : acc
+    , multiOptions[0]);
+    return best?.count || null;
+  }, [pullOptions]);
   
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
@@ -203,31 +208,62 @@ const BannerPage = () => {
     return () => document.removeEventListener('visibilitychange', handleVisibility);
   }, [bannerId]);
   
-  // Cross-tab ticket synchronization using BroadcastChannel
+  // Cross-tab ticket synchronization using BroadcastChannel with localStorage fallback
   useEffect(() => {
-    // BroadcastChannel is not available in all browsers, use fallback
-    if (typeof BroadcastChannel === 'undefined') return;
+    // Try BroadcastChannel first (not available in Safari/older browsers)
+    if (typeof BroadcastChannel !== 'undefined') {
+      const channel = new BroadcastChannel('gacha_ticket_sync');
+      
+      channel.onmessage = (event) => {
+        if (event.data.type === 'TICKETS_UPDATED') {
+          setTickets(event.data.tickets);
+        }
+      };
+      
+      return () => channel.close();
+    }
     
-    const channel = new BroadcastChannel('gacha_ticket_sync');
-    
-    channel.onmessage = (event) => {
-      if (event.data.type === 'TICKETS_UPDATED') {
-        setTickets(event.data.tickets);
+    // Fallback: use localStorage storage event for cross-tab sync (Safari, etc.)
+    const handleStorage = (e) => {
+      if (e.key === 'gacha_tickets_sync' && e.newValue) {
+        try {
+          const syncData = JSON.parse(e.newValue);
+          if (syncData.tickets) {
+            setTickets(syncData.tickets);
+          }
+        } catch {
+          // Ignore parse errors
+        }
       }
     };
     
-    return () => channel.close();
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
   }, []);
   
-  // Broadcast ticket changes to other tabs
+  // Broadcast ticket changes to other tabs (with localStorage fallback for Safari)
   const broadcastTicketUpdate = useCallback((newTickets) => {
-    if (typeof BroadcastChannel === 'undefined') return;
+    // Try BroadcastChannel first
+    if (typeof BroadcastChannel !== 'undefined') {
+      try {
+        const channel = new BroadcastChannel('gacha_ticket_sync');
+        channel.postMessage({ type: 'TICKETS_UPDATED', tickets: newTickets });
+        channel.close();
+        return;
+      } catch (err) {
+        // Fall through to localStorage fallback
+      }
+    }
+    
+    // Fallback: use localStorage for cross-tab sync (Safari, etc.)
     try {
-      const channel = new BroadcastChannel('gacha_ticket_sync');
-      channel.postMessage({ type: 'TICKETS_UPDATED', tickets: newTickets });
-      channel.close();
-    } catch (err) {
-      // Ignore broadcast errors
+      // Write with timestamp to ensure storage event fires even with same data
+      localStorage.setItem('gacha_tickets_sync', JSON.stringify({ 
+        tickets: newTickets, 
+        timestamp: Date.now() 
+      }));
+    } catch {
+      // Ignore localStorage errors
     }
   }, []);
   
@@ -255,25 +291,7 @@ const BannerPage = () => {
     };
   }, []);
   
-  // Persist fast mode preference
-  useEffect(() => {
-    try {
-      localStorage.setItem('gacha_skipAnimations', skipAnimations.toString());
-    } catch {
-      // Ignore localStorage errors
-    }
-  }, [skipAnimations]);
-  
-  // Sync fast mode preference across tabs
-  useEffect(() => {
-    const handleStorage = (e) => {
-      if (e.key === 'gacha_skipAnimations') {
-        setSkipAnimations(e.newValue === 'true');
-      }
-    };
-    window.addEventListener('storage', handleStorage);
-    return () => window.removeEventListener('storage', handleStorage);
-  }, []);
+  // Note: skipAnimations persistence and cross-tab sync is handled by useSkipAnimations hook
 
   // Fetch user collection callback - defined before effects that use it
   const fetchUserCollection = useCallback(async () => {
@@ -380,6 +398,9 @@ const BannerPage = () => {
         setError(null);
         setMultiRollResults([]);
         setRollCount(prev => prev + 1);
+        
+        // Invalidate pricing cache to ensure server charges current price
+        clearCache(`/banners/${bannerId}/pricing`);
         
         // Save pending roll state for recovery after page reload
         try {
@@ -513,6 +534,9 @@ const BannerPage = () => {
         setError(null);
         setRollCount(prev => prev + count);
         
+        // Invalidate pricing cache to ensure server charges current price
+        clearCache(`/banners/${bannerId}/pricing`);
+        
         // Save pending roll state for recovery after page reload
         try {
           sessionStorage.setItem('gacha_pendingRoll', JSON.stringify({ 
@@ -637,6 +661,8 @@ const BannerPage = () => {
       const timeout = setTimeout(() => {
         try {
           console.warn('[Animation] Single summon timeout - forcing completion');
+          // Notify user that animation was skipped but pull succeeded
+          setError(t('banner.animationSkipped') || 'Animation completed - check your collection!');
           handleSummonComplete();
         } catch (e) {
           console.error('[Animation] Force complete failed:', e);
@@ -647,7 +673,7 @@ const BannerPage = () => {
       }, 15000); // Max 15 seconds for single animation
       return () => clearTimeout(timeout);
     }
-  }, [showSummonAnimation, pendingCharacter, handleSummonComplete]);
+  }, [showSummonAnimation, pendingCharacter, handleSummonComplete, t, setError]);
   
   useEffect(() => {
     if (showMultiSummonAnimation && pendingMultiResults.length > 0) {
@@ -656,6 +682,8 @@ const BannerPage = () => {
       const timeout = setTimeout(() => {
         try {
           console.warn('[Animation] Multi-summon timeout - forcing completion');
+          // Notify user that animation was skipped but pulls succeeded
+          setError(t('banner.animationSkipped') || 'Animation completed - check your collection!');
           handleMultiSummonComplete();
         } catch (e) {
           console.error('[Animation] Multi-summon force complete failed:', e);
@@ -666,7 +694,7 @@ const BannerPage = () => {
       }, maxTime);
       return () => clearTimeout(timeout);
     }
-  }, [showMultiSummonAnimation, pendingMultiResults, handleMultiSummonComplete]);
+  }, [showMultiSummonAnimation, pendingMultiResults, handleMultiSummonComplete, t, setError]);
 
   const getImagePath = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300?text=No+Image';
   const getBannerImage = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/1200x400?text=Banner';
@@ -811,11 +839,11 @@ const BannerPage = () => {
           </VideoSection>
         )}
         
-        {/* Error Alert */}
+        {/* Error Alert - uses severity to distinguish recoverable vs critical errors */}
         <AnimatePresence>
           {error && (
             <Alert
-              variant="error"
+              variant={getErrorSeverity(error)}
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               exit={{ opacity: 0 }}
@@ -1016,11 +1044,13 @@ const BannerPage = () => {
                         disabled={isRolling || (!pricingLoaded && !pricingError) || pricingError || locked || !canAfford}
                         title={getDisabledReason(option.finalCost)}
                         $canAfford={canAfford && pricingLoaded && !pricingError}
-                        $isRecommended={option.count === 10}
+                        $isRecommended={option.count === bestValueCount}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
                         whileTap={{ scale: canAfford ? 0.97 : 1 }}
                       >
-                        {option.count === 10 && <RecommendedTag>{t('common.best') || 'BEST'}</RecommendedTag>}
+                        {option.count === bestValueCount && option.discountPercent > 0 && (
+                          <RecommendedTag>{t('common.best') || 'BEST'}</RecommendedTag>
+                        )}
                         <MultiPullCount>{option.count}×</MultiPullCount>
                         <MultiPullCost>
                           <span>{option.finalCost}</span>

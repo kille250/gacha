@@ -14,8 +14,6 @@ const { FISH_TYPES } = require('../../config/fishing');
 
 const {
   buildCollectionData,
-  checkNewMilestones,
-  checkStarRewards,
   getCollectionBonuses,
   COLLECTION_MILESTONES,
   TOTAL_STAR_MILESTONES,
@@ -48,7 +46,7 @@ router.get('/', auth, async (req, res, next) => {
       legendary: []
     };
 
-    for (const [fishId, data] of Object.entries(collection.fish)) {
+    for (const [_fishId, data] of Object.entries(collection.fish)) {
       if (fishByRarity[data.rarity]) {
         fishByRarity[data.rarity].push(data);
       }

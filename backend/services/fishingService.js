@@ -8,11 +8,7 @@
 const {
   FISHING_CONFIG,
   FISH_TYPES,
-  FISHING_AREAS,
-  FISHING_RODS,
   DAILY_CHALLENGES,
-  selectRandomFish,
-  selectRandomFishWithBonuses,
   getCatchThresholds,
   getTodayString,
   needsDailyReset,

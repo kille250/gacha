@@ -43,7 +43,7 @@ module.exports = {
     console.log('✅ Added dojo fields to Users table');
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     await queryInterface.removeColumn('Users', 'dojoSlots');
     await queryInterface.removeColumn('Users', 'dojoLastClaim');
     await queryInterface.removeColumn('Users', 'dojoUpgrades');

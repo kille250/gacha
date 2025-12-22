@@ -146,7 +146,7 @@ class ChallengeError extends FishingError {
  * Error handler middleware for fishing routes
  * Converts FishingError instances to proper HTTP responses
  */
-function fishingErrorHandler(err, req, res, next) {
+function fishingErrorHandler(err, req, res, _next) {
   if (err instanceof FishingError) {
     return res.status(err.statusCode).json(err.toJSON());
   }

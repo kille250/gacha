@@ -24,7 +24,7 @@ const CollectionPage = () => {
   const { withLock } = useActionLock(200);
   
   // Auto-dismissing error state
-  const [error, setError, clearError] = useAutoDismissError();
+  const [error, setError] = useAutoDismissError();
   
   const [collection, setCollection] = useState([]);
   const [allCharacters, setAllCharacters] = useState([]);
@@ -54,7 +54,7 @@ const CollectionPage = () => {
       setError(err.response?.data?.error || t('admin.failedLoadDashboard'));
       setLoading(false);
     }
-  }, [t]);
+  }, [t, setError]);
 
   useEffect(() => {
     fetchData();
@@ -79,7 +79,7 @@ const CollectionPage = () => {
       window.removeEventListener('offline', handleOffline);
       window.removeEventListener('online', handleOnline);
     };
-  }, [t, fetchData]);
+  }, [t, fetchData, setError]);
   
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
