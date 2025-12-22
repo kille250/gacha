@@ -5,8 +5,31 @@
  * and provides permanent bonuses based on collection milestones.
  */
 
-// Star thresholds - how many of a fish type to catch for each star
-const STAR_THRESHOLDS = [1, 10, 50, 100, 500];
+// Base star thresholds - how many of a fish type to catch for each star
+const BASE_STAR_THRESHOLDS = [1, 10, 50, 100, 500];
+
+// Rarity multipliers for star thresholds (rarer fish = easier to max)
+const RARITY_THRESHOLD_MULTIPLIERS = {
+  common: 1.0,      // Full thresholds: [1, 10, 50, 100, 500]
+  uncommon: 0.6,    // Reduced: [1, 6, 30, 60, 300]
+  rare: 0.3,        // Reduced: [1, 3, 15, 30, 150]
+  epic: 0.15,       // Reduced: [1, 2, 8, 15, 75]
+  legendary: 0.06   // Reduced: [1, 1, 3, 6, 30]
+};
+
+/**
+ * Get star thresholds for a specific rarity
+ * Rarer fish have reduced thresholds since they're harder to catch
+ * @param {string} rarity - Fish rarity
+ * @returns {Array} - Star thresholds for this rarity
+ */
+function getStarThresholdsForRarity(rarity) {
+  const multiplier = RARITY_THRESHOLD_MULTIPLIERS[rarity] || 1.0;
+  return BASE_STAR_THRESHOLDS.map(t => Math.max(1, Math.floor(t * multiplier)));
+}
+
+// Default thresholds for backwards compatibility
+const STAR_THRESHOLDS = BASE_STAR_THRESHOLDS;
 
 // Rewards for reaching star milestones on a single fish
 const STAR_REWARDS = {
@@ -120,11 +143,13 @@ const TOTAL_STAR_MILESTONES = {
 /**
  * Calculate star level for a fish based on quantity caught
  * @param {number} quantity - How many of this fish have been caught
+ * @param {string} rarity - Fish rarity (optional, for rarity-based thresholds)
  * @returns {number} - Star level (0-5)
  */
-function calculateStarLevel(quantity) {
-  for (let i = STAR_THRESHOLDS.length - 1; i >= 0; i--) {
-    if (quantity >= STAR_THRESHOLDS[i]) {
+function calculateStarLevel(quantity, rarity = null) {
+  const thresholds = rarity ? getStarThresholdsForRarity(rarity) : STAR_THRESHOLDS;
+  for (let i = thresholds.length - 1; i >= 0; i--) {
+    if (quantity >= thresholds[i]) {
       return i + 1;
     }
   }
@@ -135,15 +160,18 @@ function calculateStarLevel(quantity) {
  * Get progress to next star
  * @param {number} quantity - Current quantity
  * @param {number} currentStars - Current star level
+ * @param {string} rarity - Fish rarity (optional, for rarity-based thresholds)
  * @returns {Object} - { current, needed, percent }
  */
-function getNextStarProgress(quantity, currentStars) {
+function getNextStarProgress(quantity, currentStars, rarity = null) {
+  const thresholds = rarity ? getStarThresholdsForRarity(rarity) : STAR_THRESHOLDS;
+  
   if (currentStars >= 5) {
-    return { current: quantity, needed: STAR_THRESHOLDS[4], percent: 100, maxed: true };
+    return { current: quantity, needed: thresholds[4], percent: 100, maxed: true };
   }
   
-  const nextThreshold = STAR_THRESHOLDS[currentStars];
-  const prevThreshold = currentStars > 0 ? STAR_THRESHOLDS[currentStars - 1] : 0;
+  const nextThreshold = thresholds[currentStars];
+  const prevThreshold = currentStars > 0 ? thresholds[currentStars - 1] : 0;
   const progressInTier = quantity - prevThreshold;
   const tierSize = nextThreshold - prevThreshold;
   
@@ -182,7 +210,7 @@ function buildCollectionData(fishCaught, fishTypes) {
   // Process each fish type
   for (const fish of fishTypes) {
     const quantity = fishCaught[fish.id] || 0;
-    const stars = calculateStarLevel(quantity);
+    const stars = calculateStarLevel(quantity, fish.rarity);
     
     collection.fish[fish.id] = {
       id: fish.id,
@@ -192,7 +220,8 @@ function buildCollectionData(fishCaught, fishTypes) {
       quantity: quantity,
       stars: stars,
       caught: quantity > 0,
-      progress: getNextStarProgress(quantity, stars)
+      progress: getNextStarProgress(quantity, stars, fish.rarity),
+      thresholds: getStarThresholdsForRarity(fish.rarity)
     };
 
     // Update rarity totals
@@ -270,11 +299,12 @@ function checkNewMilestones(oldCollection, newCollection) {
  * @param {string} fishId - Fish ID
  * @param {number} oldQuantity - Previous quantity
  * @param {number} newQuantity - New quantity
+ * @param {string} rarity - Fish rarity (optional, for rarity-based thresholds)
  * @returns {Array} - Array of earned star rewards
  */
-function checkStarRewards(fishId, oldQuantity, newQuantity) {
-  const oldStars = calculateStarLevel(oldQuantity);
-  const newStars = calculateStarLevel(newQuantity);
+function checkStarRewards(fishId, oldQuantity, newQuantity, rarity = null) {
+  const oldStars = calculateStarLevel(oldQuantity, rarity);
+  const newStars = calculateStarLevel(newQuantity, rarity);
   const rewards = [];
 
   for (let star = oldStars + 1; star <= newStars; star++) {
@@ -316,11 +346,14 @@ function getCollectionBonuses(collection) {
 
 module.exports = {
   STAR_THRESHOLDS,
+  BASE_STAR_THRESHOLDS,
+  RARITY_THRESHOLD_MULTIPLIERS,
   STAR_REWARDS,
   RARITY_COMPLETION_BONUSES,
   COLLECTION_MILESTONES,
   TOTAL_STAR_MILESTONES,
   calculateStarLevel,
+  getStarThresholdsForRarity,
   getNextStarProgress,
   buildCollectionData,
   checkNewMilestones,

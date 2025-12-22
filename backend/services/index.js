@@ -6,9 +6,11 @@
 
 const fishingService = require('./fishingService');
 const rankService = require('./rankService');
+const tradeService = require('./tradeService');
 
 module.exports = {
   ...fishingService,
-  ...rankService
+  ...rankService,
+  tradeService
 };
 

@@ -1700,13 +1700,16 @@ router.get('/daily', auth, async (req, res) => {
 // TRADING POST ROUTES
 // =============================================
 
+// Import trade service
+const { tradeService } = require('../services');
+
 // POST /api/fishing/trade - Execute a trade (with database transaction for atomicity)
+// Now uses tradeService for cleaner separation of concerns
 router.post('/trade', auth, async (req, res) => {
   const userId = req.user.id;
   const now = Date.now();
   
   // Prevent race condition - only one trade request at a time per user
-  // Use Map with timestamp for timeout cleanup
   if (tradeInProgress.has(userId)) {
     return res.status(429).json({ 
       error: 'Trade in progress',
@@ -1715,322 +1718,30 @@ router.post('/trade', auth, async (req, res) => {
   }
   tradeInProgress.set(userId, now);
   
-  // Start database transaction for atomicity
-  const transaction = await sequelize.transaction();
-  
   try {
     const { tradeId, quantity = 1 } = req.body;
     
-    if (!tradeId) {
-      await transaction.rollback();
-      tradeInProgress.delete(userId);
-      return res.status(400).json({ error: 'Trade ID required' });
-    }
-    
-    // Validate quantity
-    const tradeQuantity = Math.max(1, Math.min(100, parseInt(quantity, 10) || 1));
-    
-    const tradeOption = TRADE_OPTIONS.find(t => t.id === tradeId);
-    if (!tradeOption) {
-      await transaction.rollback();
-      tradeInProgress.delete(userId);
-      return res.status(400).json({ error: 'Invalid trade option' });
-    }
-    
-    // Lock user row for update (prevents concurrent modification)
-    const user = await User.findByPk(userId, { 
-      lock: transaction.LOCK.UPDATE,
-      transaction 
-    });
-    if (!user) {
-      await transaction.rollback();
-      tradeInProgress.delete(userId);
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // === DAILY TRADE LIMITS CHECK ===
-    let daily = getOrResetDailyData(user);
-    
-    // Calculate what this trade would reward
-    let pendingPoints = 0;
-    let pendingRollTickets = 0;
-    let pendingPremiumTickets = 0;
-    
-    if (tradeOption.rewardType === 'points') {
-      pendingPoints = tradeOption.rewardAmount * tradeQuantity;
-    } else if (tradeOption.rewardType === 'rollTickets') {
-      pendingRollTickets = tradeOption.rewardAmount * tradeQuantity;
-    } else if (tradeOption.rewardType === 'premiumTickets') {
-      pendingPremiumTickets = tradeOption.rewardAmount * tradeQuantity;
-    } else if (tradeOption.rewardType === 'mixed') {
-      const amounts = tradeOption.rewardAmount;
-      pendingPoints = (amounts.points || 0) * tradeQuantity;
-      pendingRollTickets = (amounts.rollTickets || 0) * tradeQuantity;
-      pendingPremiumTickets = (amounts.premiumTickets || 0) * tradeQuantity;
-    }
-    
-    // Check daily limits
-    const currentPointsFromTrades = daily.pointsFromTrades || 0;
-    const currentRollTickets = daily.ticketsEarned?.roll || 0;
-    const currentPremiumTickets = daily.ticketsEarned?.premium || 0;
-    
-    if (pendingPoints > 0 && currentPointsFromTrades + pendingPoints > DAILY_LIMITS.pointsFromTrades) {
-      const remaining = DAILY_LIMITS.pointsFromTrades - currentPointsFromTrades;
-      await transaction.rollback();
-      tradeInProgress.delete(userId);
-      return res.status(429).json({
-        error: 'Daily points limit reached',
-        message: `You can only earn ${remaining} more points from trades today`,
-        limit: DAILY_LIMITS.pointsFromTrades,
-        used: currentPointsFromTrades
-      });
-    }
-    
-    if (pendingRollTickets > 0 && currentRollTickets + pendingRollTickets > DAILY_LIMITS.rollTickets) {
-      const remaining = DAILY_LIMITS.rollTickets - currentRollTickets;
-      await transaction.rollback();
-      tradeInProgress.delete(userId);
-      return res.status(429).json({
-        error: 'Daily roll ticket limit reached',
-        message: `You can only earn ${remaining} more roll tickets today`,
-        limit: DAILY_LIMITS.rollTickets,
-        used: currentRollTickets
-      });
-    }
-    
-    if (pendingPremiumTickets > 0 && currentPremiumTickets + pendingPremiumTickets > DAILY_LIMITS.premiumTickets) {
-      const remaining = DAILY_LIMITS.premiumTickets - currentPremiumTickets;
-      await transaction.rollback();
-      tradeInProgress.delete(userId);
-      return res.status(429).json({
-        error: 'Daily premium ticket limit reached',
-        message: `You can only earn ${remaining} more premium tickets today`,
-        limit: DAILY_LIMITS.premiumTickets,
-        used: currentPremiumTickets
-      });
-    }
-    
-    // Get user's inventory with lock
-    // Optimization: Only load needed rarity for non-collection trades
-    let inventory;
-    if (tradeOption.requiredRarity === 'collection') {
-      // Collection trades need all fish
-      inventory = await FishInventory.findAll({
-        where: { userId },
-        lock: transaction.LOCK.UPDATE,
-        transaction
-      });
-    } else {
-      // Regular trades only need the specific rarity
-      inventory = await FishInventory.findAll({
-        where: { userId, rarity: tradeOption.requiredRarity },
-        lock: transaction.LOCK.UPDATE,
-        transaction
-      });
-    }
-    
-    const totals = calculateFishTotals(inventory);
-    
-    // Check if user can make the trade
-    if (tradeOption.requiredRarity === 'collection') {
-      // Need at least 1 of each rarity per trade
-      const minAvailable = Math.min(...Object.values(totals));
-      if (minAvailable < tradeQuantity) {
-        await transaction.rollback();
-        tradeInProgress.delete(userId);
-        return res.status(400).json({ 
-          error: 'Not enough fish',
-          message: `Need at least ${tradeQuantity} of each rarity`
-        });
-      }
-      
-      // Deduct 1 of each rarity per trade
-      const rarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-      for (const rarity of rarities) {
-        const itemsOfRarity = inventory.filter(i => i.rarity === rarity);
-        let remaining = tradeQuantity;
-        
-        for (const item of itemsOfRarity) {
-          if (remaining <= 0) break;
-          
-          const toDeduct = Math.min(item.quantity, remaining);
-          item.quantity -= toDeduct;
-          remaining -= toDeduct;
-          
-          if (item.quantity <= 0) {
-            await item.destroy({ transaction });
-          } else {
-            await item.save({ transaction });
-          }
-        }
-      }
-    } else {
-      // Regular rarity trade
-      const requiredTotal = tradeOption.requiredQuantity * tradeQuantity;
-      if (totals[tradeOption.requiredRarity] < requiredTotal) {
-        await transaction.rollback();
-        tradeInProgress.delete(userId);
-        return res.status(400).json({ 
-          error: 'Not enough fish',
-          message: `Need ${requiredTotal} ${tradeOption.requiredRarity} fish (have ${totals[tradeOption.requiredRarity]})`
-        });
-      }
-      
-      // Deduct fish from inventory
-      const itemsOfRarity = inventory.filter(i => i.rarity === tradeOption.requiredRarity);
-      let remaining = requiredTotal;
-      
-      for (const item of itemsOfRarity) {
-        if (remaining <= 0) break;
-        
-        const toDeduct = Math.min(item.quantity, remaining);
-        item.quantity -= toDeduct;
-        remaining -= toDeduct;
-        
-        if (item.quantity <= 0) {
-          await item.destroy({ transaction });
-        } else {
-          await item.save({ transaction });
-        }
-      }
-    }
-    
-    // Give reward based on type
-    let reward = {};
-    if (tradeOption.rewardType === 'points') {
-      const pointsReward = tradeOption.rewardAmount * tradeQuantity;
-      user.points += pointsReward;
-      reward = { points: pointsReward };
-    } else if (tradeOption.rewardType === 'rollTickets') {
-      const ticketReward = tradeOption.rewardAmount * tradeQuantity;
-      user.rollTickets = (user.rollTickets || 0) + ticketReward;
-      reward = { rollTickets: ticketReward };
-    } else if (tradeOption.rewardType === 'premiumTickets') {
-      const premiumReward = tradeOption.rewardAmount * tradeQuantity;
-      user.premiumTickets = (user.premiumTickets || 0) + premiumReward;
-      reward = { premiumTickets: premiumReward };
-    } else if (tradeOption.rewardType === 'mixed') {
-      // Handle mixed rewards (e.g., both rollTickets and premiumTickets)
-      const amounts = tradeOption.rewardAmount;
-      if (amounts.rollTickets) {
-        const ticketReward = amounts.rollTickets * tradeQuantity;
-        user.rollTickets = (user.rollTickets || 0) + ticketReward;
-        reward.rollTickets = ticketReward;
-      }
-      if (amounts.premiumTickets) {
-        const premiumReward = amounts.premiumTickets * tradeQuantity;
-        user.premiumTickets = (user.premiumTickets || 0) + premiumReward;
-        reward.premiumTickets = premiumReward;
-      }
-      if (amounts.points) {
-        const pointsReward = amounts.points * tradeQuantity;
-        user.points += pointsReward;
-        reward.points = pointsReward;
-      }
-    }
-    
-    // === UPDATE DAILY TRACKING ===
-    daily.tradesCompleted = (daily.tradesCompleted || 0) + tradeQuantity;
-    if (reward.points) {
-      daily.pointsFromTrades = (daily.pointsFromTrades || 0) + reward.points;
-    }
-    if (!daily.ticketsEarned) {
-      daily.ticketsEarned = { roll: 0, premium: 0 };
-    }
-    if (reward.rollTickets) {
-      daily.ticketsEarned.roll = (daily.ticketsEarned.roll || 0) + reward.rollTickets;
-    }
-    if (reward.premiumTickets) {
-      daily.ticketsEarned.premium = (daily.ticketsEarned.premium || 0) + reward.premiumTickets;
-    }
-    user.fishingDaily = daily;
-    
-    // Update challenge progress for trades
-    let challenges = getOrResetChallenges(user);
-    const tradeResult = updateChallengeProgress(challenges, 'trade', { 
-      isCollection: tradeOption.requiredRarity === 'collection' 
-    });
-    challenges = tradeResult.challenges;
-    const challengeRewards = tradeResult.newlyCompleted;
-    
-    // Apply challenge rewards
-    if (challengeRewards.length > 0) {
-      applyChallengeRewards(user, challengeRewards);
-    }
-    user.fishingChallenges = challenges;
-    
-    await user.save({ transaction });
-    
-    // Commit the transaction - all changes are now permanent
-    await transaction.commit();
-    
-    // Get updated inventory (after commit)
-    const updatedInventory = await FishInventory.findAll({
-      where: { userId }
-    });
-    
-    const newTotals = calculateFishTotals(updatedInventory);
-    
-    // Build message based on reward type
-    let message = 'Trade successful!';
-    if (reward.points) {
-      message = `+${reward.points} points!`;
-    } else if (reward.rollTickets && reward.premiumTickets) {
-      message = `+${reward.rollTickets} Roll Tickets, +${reward.premiumTickets} Premium Tickets!`;
-    } else if (reward.rollTickets) {
-      message = `+${reward.rollTickets} Roll Ticket${reward.rollTickets > 1 ? 's' : ''}!`;
-    } else if (reward.premiumTickets) {
-      message = `+${reward.premiumTickets} Premium Ticket${reward.premiumTickets > 1 ? 's' : ''}!`;
-    }
+    // Execute trade via service (handles all validation, transaction, and rewards)
+    const result = await tradeService.executeTrade(userId, tradeId, quantity);
     
     // Release lock before responding
     tradeInProgress.delete(userId);
     
-    const response = {
-      success: true,
-      tradeName: tradeOption.name,
-      quantity: tradeQuantity,
-      rewardType: tradeOption.rewardType,
-      reward,
-      newPoints: user.points,
-      newTickets: {
-        rollTickets: user.rollTickets || 0,
-        premiumTickets: user.premiumTickets || 0
-      },
-      newTotals,
-      // Daily limits remaining
-      dailyLimits: {
-        pointsFromTrades: {
-          used: daily.pointsFromTrades,
-          limit: DAILY_LIMITS.pointsFromTrades,
-          remaining: DAILY_LIMITS.pointsFromTrades - daily.pointsFromTrades
-        },
-        rollTickets: {
-          used: daily.ticketsEarned.roll,
-          limit: DAILY_LIMITS.rollTickets,
-          remaining: DAILY_LIMITS.rollTickets - daily.ticketsEarned.roll
-        },
-        premiumTickets: {
-          used: daily.ticketsEarned.premium,
-          limit: DAILY_LIMITS.premiumTickets,
-          remaining: DAILY_LIMITS.premiumTickets - daily.ticketsEarned.premium
-        }
-      },
-      message
-    };
-    
-    // Include challenge completions if any
-    if (challengeRewards.length > 0) {
-      response.challengesCompleted = challengeRewards;
-    }
-    
-    res.json(response);
+    res.json(result);
     
   } catch (err) {
-    // Rollback transaction on error - no partial changes saved
-    await transaction.rollback();
     // Always release lock on error
     tradeInProgress.delete(userId);
+    
+    // Handle known error types with appropriate status codes
+    if (err.status) {
+      return res.status(err.status).json({
+        error: err.code || 'TRADE_ERROR',
+        message: err.message,
+        ...err.details
+      });
+    }
+    
     console.error('Trade error:', err);
     res.status(500).json({ error: 'Server error' });
   }

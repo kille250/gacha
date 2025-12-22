@@ -44,7 +44,8 @@ const FISHING_CONFIG = {
   dailyLimits: {
     manualCasts: 500,         // Max manual casts per day
     autofishCasts: 150,       // Base autofish limit (see autofish.baseDailyLimit)
-    pointsFromTrades: 15000,  // Max points from trades per day
+    pointsFromTrades: 15000,  // Max points from trades per day (hard cap)
+    pointsSoftCap: 10000,     // Soft cap: 50% reduction after this amount
     rollTickets: 25,          // Max roll tickets from fishing per day
     premiumTickets: 8         // Max premium tickets from fishing per day
   },
@@ -808,9 +809,28 @@ function calculateFishTotals(inventory) {
 }
 
 /**
+ * Calculate rank bonus using logarithmic scaling
+ * Provides fairer distribution: small bonuses spread more evenly
+ * 
+ * @param {number} rank - User's current rank
+ * @returns {number} - Bonus autofish limit from rank
+ */
+function calculateRankBonus(rank) {
+  if (rank > 100) return 0;
+  
+  // Logarithmic scaling: Top 1 gets ~200, Top 10 gets ~100, Top 100 gets ~10
+  // Formula: maxBonus * log10(102 - rank) / log10(101)
+  const maxBonus = 200;
+  const bonus = Math.floor(maxBonus * Math.log10(102 - rank) / Math.log10(101));
+  
+  return Math.max(0, bonus);
+}
+
+/**
  * Calculate autofish daily limit for a user based on rank and premium status
  * 
- * UPDATED: Premium bonus now requires ACTIVE premium status, not just holding tickets.
+ * UPDATED: Uses logarithmic rank scaling for fairer distribution.
+ * Premium bonus now requires ACTIVE premium status, not just holding tickets.
  * Users get premium bonus if they have consumed premium tickets today OR have 3+ tickets.
  * This prevents hoarding tickets without using them.
  * 
@@ -825,18 +845,8 @@ function getAutofishLimit(rank, premiumStatus = false, prestigeBonus = 0) {
   const config = FISHING_CONFIG.autofish;
   let limit = config.baseDailyLimit;
   
-  // Apply rank bonuses
-  if (rank <= 5) {
-    limit += config.rankBonuses.top5;
-  } else if (rank <= 10) {
-    limit += config.rankBonuses.top10;
-  } else if (rank <= 25) {
-    limit += config.rankBonuses.top25;
-  } else if (rank <= 50) {
-    limit += config.rankBonuses.top50;
-  } else if (rank <= 100) {
-    limit += config.rankBonuses.top100;
-  }
+  // Apply logarithmic rank bonus (replaces step-based bonuses)
+  limit += calculateRankBonus(rank);
   
   // Apply premium multiplier
   // New logic: Premium bonus requires ACTIVE usage or substantial holdings
@@ -987,6 +997,7 @@ module.exports = {
   getCatchThresholds,
   calculatePityBonus,
   getAutofishLimit,
+  calculateRankBonus,
   getTodayString,
   needsDailyReset,
   getFishForArea,

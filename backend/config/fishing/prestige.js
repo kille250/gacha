@@ -8,21 +8,22 @@
 // Import directly from parent to avoid circular dependency (index.js imports this file)
 const { FISH_TYPES } = require('../fishing');
 
+// Smoother progression curve - reduced requirements for better player retention
 const PRESTIGE_LEVELS = {
   1: {
     name: 'Journeyman Angler',
     emoji: '🥉',
     requirements: {
-      totalCatches: 1000,
-      totalLegendaries: 5,
-      totalPerfects: 100,
-      areasUnlocked: 3,
-      rodsOwned: 3
+      totalCatches: 500,              // Reduced from 1000
+      totalLegendaries: 3,            // Reduced from 5
+      totalPerfects: 50,              // Reduced from 100
+      areasUnlocked: 2,               // Reduced from 3
+      rodsOwned: 2                    // Reduced from 3
     },
     rewards: {
       bonusPoints: 25000,
-      permanentTimingBonus: 25,      // +25ms to all timing windows
-      permanentRarityBonus: 0.02,    // +2% rare+ chance
+      permanentTimingBonus: 25,       // +25ms to all timing windows
+      permanentRarityBonus: 0.02,     // +2% rare+ chance
       unlocks: ['master_rod_purchase']
     },
     description: 'Prove your worth as a dedicated fisher'
@@ -31,12 +32,12 @@ const PRESTIGE_LEVELS = {
     name: 'Expert Angler',
     emoji: '🥈',
     requirements: {
-      totalCatches: 5000,
-      totalLegendaries: 25,
-      totalPerfects: 500,
-      areasUnlocked: 4,
-      longestStreak: 25,
-      challengesCompleted: 50
+      totalCatches: 2000,             // Reduced from 5000
+      totalLegendaries: 12,           // Reduced from 25
+      totalPerfects: 200,             // Reduced from 500
+      areasUnlocked: 3,               // Reduced from 4
+      longestStreak: 15,              // Reduced from 25
+      challengesCompleted: 25         // Reduced from 50
     },
     rewards: {
       bonusPoints: 75000,
@@ -51,19 +52,19 @@ const PRESTIGE_LEVELS = {
     name: 'Master Angler',
     emoji: '🥇',
     requirements: {
-      totalCatches: 15000,
-      totalLegendaries: 100,
-      totalPerfects: 1500,
-      longestStreak: 50,
-      challengesCompleted: 150,
-      collectionComplete: true      // All fish caught at least once
+      totalCatches: 6000,             // Reduced from 15000
+      totalLegendaries: 40,           // Reduced from 100
+      totalPerfects: 600,             // Reduced from 1500
+      longestStreak: 30,              // Reduced from 50
+      challengesCompleted: 75,        // Reduced from 150
+      collectionComplete: true        // All fish caught at least once
     },
     rewards: {
       bonusPoints: 200000,
       permanentTimingBonus: 100,
       permanentRarityBonus: 0.10,
       bonusAutofishLimit: 100,
-      premiumTicketBonus: 1,         // +1 premium ticket per day from challenges
+      premiumTicketBonus: 1,          // +1 premium ticket per day from challenges
       unlocks: ['mythic_rod_purchase', 'void_area']
     },
     description: 'Become a legend among fishers'
@@ -72,12 +73,12 @@ const PRESTIGE_LEVELS = {
     name: 'Legendary Angler',
     emoji: '👑',
     requirements: {
-      totalCatches: 50000,
-      totalLegendaries: 500,
-      totalPerfects: 5000,
-      longestStreak: 100,
-      challengesCompleted: 500,
-      allFishMaxStars: true          // All fish at 5 stars
+      totalCatches: 20000,            // Reduced from 50000
+      totalLegendaries: 150,          // Reduced from 500
+      totalPerfects: 2000,            // Reduced from 5000
+      longestStreak: 50,              // Reduced from 100
+      challengesCompleted: 200,       // Reduced from 500
+      allFishMaxStars: true           // All fish at 5 stars
     },
     rewards: {
       bonusPoints: 500000,
@@ -85,7 +86,7 @@ const PRESTIGE_LEVELS = {
       permanentRarityBonus: 0.15,
       bonusAutofishLimit: 200,
       premiumTicketBonus: 2,
-      autofishPerfectChance: 0.05,   // 5% chance for "perfect" quality on autofish
+      autofishPerfectChance: 0.05,    // 5% chance for "perfect" quality on autofish
       unlocks: ['legendary_title', 'celestial_rod_purchase']
     },
     description: 'Achieve immortal status in the fishing world'
@@ -94,8 +95,8 @@ const PRESTIGE_LEVELS = {
     name: 'Mythic Angler',
     emoji: '🌟',
     requirements: {
-      totalCatches: 100000,
-      totalLegendaries: 1000,
+      totalCatches: 50000,            // Reduced from 100000
+      totalLegendaries: 400,          // Reduced from 1000
       allPrestigeBonusesActive: true
     },
     rewards: {
@@ -105,7 +106,7 @@ const PRESTIGE_LEVELS = {
       bonusAutofishLimit: 350,
       premiumTicketBonus: 3,
       autofishPerfectChance: 0.10,
-      pityReduction: 0.20,           // 20% faster pity buildup
+      pityReduction: 0.20,            // 20% faster pity buildup
       unlocks: ['mythic_title', 'rainbow_rod']
     },
     description: 'Transcend mortal fishing limits'

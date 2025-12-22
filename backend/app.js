@@ -29,6 +29,19 @@ if (process.env.JWT_SECRET.length < 32) {
 // Only User and Rarity are used directly here; other models are registered for associations
 const { User, Rarity } = require('./models');
 
+// Validate fishing configuration on startup
+const { validateFishingConfig } = require('./config/fishing/validator');
+try {
+  validateFishingConfig();
+} catch (err) {
+  console.error('FATAL ERROR: Fishing configuration is invalid.');
+  console.error(err.message);
+  if (!isProduction) {
+    // Only exit in development - allow production to try to recover
+    process.exit(1);
+  }
+}
+
 // Create upload directories on startup
 initUploadDirs();
 
