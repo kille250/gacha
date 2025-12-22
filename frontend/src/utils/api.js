@@ -164,6 +164,15 @@ api.interceptors.response.use(
 
 export const rollCharacter = async () => {
   const response = await api.post('/characters/roll');
+  // Invalidate collection cache since shards/ownership may have changed
+  clearCache('/characters/collection');
+  return response.data;
+};
+
+export const rollMultipleCharacters = async (count) => {
+  const response = await api.post('/characters/roll-multi', { count });
+  // Invalidate collection cache since shards/ownership may have changed
+  clearCache('/characters/collection');
   return response.data;
 };
 
@@ -178,8 +187,10 @@ export const getCollectionData = async () => {
 };
 
 export const levelUpCharacter = async (characterId) => {
+  // Clear cache before AND after to ensure fresh data
   clearCache('/characters/collection');
   const response = await api.post(`/characters/${characterId}/level-up`);
+  clearCache('/characters/collection');
   return response.data;
 };
 
@@ -220,13 +231,21 @@ export const getBasePricing = async () => {
   return response.data;
 };
 
-export const rollOnBanner = async (bannerId) => {
-  const response = await api.post(`/banners/${bannerId}/roll`);
+export const rollOnBanner = async (bannerId, useTicket = false, ticketType = 'roll') => {
+  const payload = useTicket ? { useTicket: true, ticketType } : {};
+  const response = await api.post(`/banners/${bannerId}/roll`, payload);
+  // Invalidate collection cache since shards/ownership may have changed
+  clearCache('/characters/collection');
   return response.data;
 };
 
-export const multiRollOnBanner = async (bannerId, count = 10) => {
-  const response = await api.post(`/banners/${bannerId}/roll-multi`, { count });
+export const multiRollOnBanner = async (bannerId, count = 10, useTickets = false, ticketType = 'roll') => {
+  const payload = useTickets 
+    ? { count, useTickets: true, ticketType } 
+    : { count };
+  const response = await api.post(`/banners/${bannerId}/roll-multi`, payload);
+  // Invalidate collection cache since shards/ownership may have changed
+  clearCache('/characters/collection');
   return response.data;
 };
 

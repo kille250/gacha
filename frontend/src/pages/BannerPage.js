@@ -8,7 +8,7 @@ import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from
 import confetti from 'canvas-confetti';
 
 // API & Context
-import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api';
+import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiRollOnBanner, clearCache } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -175,10 +175,8 @@ const BannerPage = () => {
       setMultiRollResults([]);
       setRollCount(prev => prev + 1);
       
-      // Call API with ticket params if using tickets
-      const payload = useTicket ? { useTicket: true, ticketType } : {};
-      const response = await api.post(`/banners/${bannerId}/roll`, payload);
-      const result = response.data;
+      // Use helper function with cache invalidation
+      const result = await rollOnBanner(bannerId, useTicket, ticketType);
       const { character, updatedPoints, tickets: newTickets } = result;
       
       // Update points immediately from response
@@ -250,12 +248,8 @@ const BannerPage = () => {
       setError(null);
       setRollCount(prev => prev + count);
       
-      // Call API with ticket params if using tickets
-      const payload = useTickets 
-        ? { count, useTickets: true, ticketType } 
-        : { count };
-      const response = await api.post(`/banners/${bannerId}/roll-multi`, payload);
-      const result = response.data;
+      // Use helper function with cache invalidation
+      const result = await multiRollOnBanner(bannerId, count, useTickets, ticketType);
       const { characters, updatedPoints, tickets: newTickets } = result;
       
       // Update points immediately from response
