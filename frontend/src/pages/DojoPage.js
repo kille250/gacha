@@ -144,6 +144,31 @@ const DojoPage = () => {
     }
   }, [error]);
   
+  // Network offline detection during claim/upgrade operations
+  useEffect(() => {
+    const handleOffline = () => {
+      if (claiming || upgrading || locked) {
+        setError(t('common.networkDisconnected') || 'Network disconnected. Please check your connection and refresh.');
+        setClaiming(false);
+        setUpgrading(null);
+      }
+    };
+    
+    const handleOnline = () => {
+      // Refresh data when coming back online
+      fetchStatus();
+      refreshUser();
+    };
+    
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [claiming, upgrading, locked, t, fetchStatus, refreshUser]);
+  
   // Calculate if can claim (defined early for use in callbacks)
   const canClaim = status?.accumulated?.rewards?.points > 0 || 
                    status?.accumulated?.rewards?.rollTickets > 0 ||
@@ -182,30 +207,63 @@ const DojoPage = () => {
     }
   };
 
-  // Assign character to slot
+  // Assign character to slot - wrapped in action lock to prevent race conditions
   const handleAssign = async (characterId) => {
     if (selectedSlot === null) return;
     
-    try {
-      await assignCharacterToDojo(characterId, selectedSlot);
+    await withLock(async () => {
+      const selectedCharacter = availableCharacters.find(c => c.id === characterId);
+      const previousStatus = status;
+      
+      // Optimistic update - show character in slot immediately
+      if (selectedCharacter) {
+        setStatus(prev => ({
+          ...prev,
+          slots: prev.slots.map((s, i) => 
+            i === selectedSlot ? { ...s, character: selectedCharacter } : s
+          ),
+          usedSlots: (prev.usedSlots || 0) + 1
+        }));
+      }
       setShowCharacterPicker(false);
       setSelectedSlot(null);
-      await fetchStatus();
-    } catch (err) {
-      console.error('Failed to assign character:', err);
-      setError(err.response?.data?.error || t('dojo.failedAssign'));
-    }
+      
+      try {
+        await assignCharacterToDojo(characterId, selectedSlot);
+        await fetchStatus(); // Get authoritative data from server
+      } catch (err) {
+        console.error('Failed to assign character:', err);
+        // Rollback optimistic update on failure
+        setStatus(previousStatus);
+        setError(err.response?.data?.error || t('dojo.failedAssign'));
+      }
+    });
   };
 
-  // Remove character from slot
+  // Remove character from slot - wrapped in action lock
   const handleUnassign = async (slotIndex) => {
-    try {
-      await unassignCharacterFromDojo(slotIndex);
-      await fetchStatus();
-    } catch (err) {
-      console.error('Failed to unassign character:', err);
-      setError(err.response?.data?.error || t('dojo.failedUnassign'));
-    }
+    await withLock(async () => {
+      const previousStatus = status;
+      
+      // Optimistic update - remove character from slot immediately
+      setStatus(prev => ({
+        ...prev,
+        slots: prev.slots.map((s, i) => 
+          i === slotIndex ? { ...s, character: null } : s
+        ),
+        usedSlots: Math.max(0, (prev.usedSlots || 1) - 1)
+      }));
+      
+      try {
+        await unassignCharacterFromDojo(slotIndex);
+        await fetchStatus(); // Get authoritative data from server
+      } catch (err) {
+        console.error('Failed to unassign character:', err);
+        // Rollback optimistic update on failure
+        setStatus(previousStatus);
+        setError(err.response?.data?.error || t('dojo.failedUnassign'));
+      }
+    });
   };
 
   // Claim rewards
@@ -666,17 +724,28 @@ const DojoPage = () => {
             {status?.availableUpgrades?.map((upgrade, idx) => {
               const isUpgrading = upgrading === (upgrade.type + (upgrade.rarity || ''));
               const canAfford = (user?.points || 0) >= upgrade.cost;
+              const isDisabled = !canAfford || isUpgrading || locked;
+              const disabledReason = getUpgradeDisabledReason(upgrade, isUpgrading, canAfford);
               
               return (
                 <UpgradeCard
                   key={idx}
+                  as={motion.button}
+                  type="button"
+                  disabled={isDisabled}
                   $canAfford={canAfford && !locked}
-                  $disabled={!canAfford || isUpgrading || locked}
-                  onClick={() => canAfford && !isUpgrading && !locked && handleUpgrade(upgrade.type, upgrade.rarity)}
-                  title={getUpgradeDisabledReason(upgrade, isUpgrading, canAfford)}
-                  whileHover={canAfford && !locked ? { scale: 1.02 } : {}}
-                  whileTap={canAfford && !locked ? { scale: 0.98 } : {}}
-                  style={{ cursor: (!canAfford || isUpgrading || locked) ? 'not-allowed' : 'pointer' }}
+                  $disabled={isDisabled}
+                  onClick={() => {
+                    if (isDisabled && disabledReason) {
+                      // Show feedback for disabled state (especially for mobile)
+                      setError(disabledReason);
+                      return;
+                    }
+                    handleUpgrade(upgrade.type, upgrade.rarity);
+                  }}
+                  title={disabledReason}
+                  whileHover={!isDisabled ? { scale: 1.02 } : {}}
+                  whileTap={!isDisabled ? { scale: 0.98 } : {}}
                 >
                   <UpgradeIcon>{upgrade.icon}</UpgradeIcon>
                   <UpgradeInfo>
@@ -1886,17 +1955,32 @@ const UpgradeCard = styled(motion.div)`
     ? 'rgba(255, 215, 0, 0.2)' 
     : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
-  cursor: ${props => props.$canAfford ? 'pointer' : 'default'};
-  opacity: ${props => props.$canAfford ? 1 : 0.6};
+  cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
+  opacity: ${props => props.$disabled ? 0.6 : 1};
   transition: all ${theme.transitions.fast};
   min-height: 60px;
+  width: 100%;
+  text-align: left;
+  font-family: inherit;
+  font-size: inherit;
+  color: inherit;
   
-  &:hover, &:active {
+  &:disabled {
+    cursor: not-allowed;
+    opacity: 0.6;
+  }
+  
+  &:hover:not(:disabled), &:active:not(:disabled) {
     ${props => props.$canAfford && `
       background: ${theme.colors.surfaceHover};
       border-color: rgba(255, 215, 0, 0.4);
       transform: translateY(-1px);
     `}
+  }
+  
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
   }
   
   @media (max-width: ${theme.breakpoints.sm}) {

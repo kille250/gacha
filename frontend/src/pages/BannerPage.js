@@ -97,6 +97,21 @@ const BannerPage = () => {
   const [tickets, setTickets] = useState({ rollTickets: 0, premiumTickets: 0 });
   const [ticketLoadError, setTicketLoadError] = useState(false);
   
+  // Refresh tickets when tab regains focus to prevent stale ticket validation
+  useEffect(() => {
+    const handleFocus = async () => {
+      try {
+        const ticketsData = await api.get('/banners/user/tickets').then(res => res.data);
+        setTickets(ticketsData);
+        setTicketLoadError(false);
+      } catch (err) {
+        console.warn('Failed to refresh tickets on focus:', err);
+      }
+    };
+    window.addEventListener('focus', handleFocus);
+    return () => window.removeEventListener('focus', handleFocus);
+  }, []);
+  
   // Computed values from pricing
   const singlePullCost = pricing?.singlePullCost || 100;
   const pullOptions = useMemo(() => pricing?.pullOptions || [], [pricing?.pullOptions]);
@@ -193,6 +208,17 @@ const BannerPage = () => {
       // Ignore localStorage errors
     }
   }, [skipAnimations]);
+  
+  // Sync fast mode preference across tabs
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === 'gacha_skipAnimations') {
+        setSkipAnimations(e.newValue === 'true');
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
 
   // Fetch user collection callback - defined before effects that use it
   const fetchUserCollection = useCallback(async () => {
@@ -526,8 +552,15 @@ const BannerPage = () => {
   useEffect(() => {
     if (showSummonAnimation && pendingCharacter) {
       const timeout = setTimeout(() => {
-        console.warn('[Animation] Single summon timeout - forcing completion');
-        handleSummonComplete();
+        try {
+          console.warn('[Animation] Single summon timeout - forcing completion');
+          handleSummonComplete();
+        } catch (e) {
+          console.error('[Animation] Force complete failed:', e);
+          setIsRolling(false);
+          setShowSummonAnimation(false);
+          setPendingCharacter(null);
+        }
       }, 15000); // Max 15 seconds for single animation
       return () => clearTimeout(timeout);
     }
@@ -538,8 +571,15 @@ const BannerPage = () => {
       // Multi-summon can take longer: base 15s + 2s per character
       const maxTime = 15000 + (pendingMultiResults.length * 2000);
       const timeout = setTimeout(() => {
-        console.warn('[Animation] Multi-summon timeout - forcing completion');
-        handleMultiSummonComplete();
+        try {
+          console.warn('[Animation] Multi-summon timeout - forcing completion');
+          handleMultiSummonComplete();
+        } catch (e) {
+          console.error('[Animation] Multi-summon force complete failed:', e);
+          setIsRolling(false);
+          setShowMultiSummonAnimation(false);
+          setPendingMultiResults([]);
+        }
       }, maxTime);
       return () => clearTimeout(timeout);
     }
@@ -849,7 +889,15 @@ const BannerPage = () => {
               <PullActionsContainer>
                 {/* Primary Single Pull - Most Prominent */}
                 <PrimaryPullCard
-                  onClick={() => handleRoll(false)} 
+                  onClick={() => {
+                    const reason = getDisabledReason(singlePullCost);
+                    if (reason) {
+                      // Show feedback for disabled state (especially for mobile)
+                      setError(reason);
+                      return;
+                    }
+                    handleRoll(false);
+                  }}
                   disabled={isRolling || !pricingLoaded || locked || user?.points < singlePullCost}
                   title={getDisabledReason(singlePullCost)}
                   whileHover={{ scale: 1.02, y: -2 }}
@@ -874,7 +922,14 @@ const BannerPage = () => {
                     return (
                       <MultiPullCard
                         key={option.count}
-                        onClick={() => handleMultiRoll(option.count, false)}
+                        onClick={() => {
+                          const reason = getDisabledReason(option.finalCost);
+                          if (reason) {
+                            setError(reason);
+                            return;
+                          }
+                          handleMultiRoll(option.count, false);
+                        }}
                         disabled={isRolling || !pricingLoaded || locked || !canAfford}
                         title={getDisabledReason(option.finalCost)}
                         $canAfford={canAfford && pricingLoaded}
@@ -928,7 +983,14 @@ const BannerPage = () => {
                   <TicketButtonsGrid>
                     {tickets.rollTickets > 0 && (
                       <TicketPullButton
-                        onClick={() => handleRoll(true, 'roll')}
+                        onClick={() => {
+                          const reason = getDisabledReason(0, true, tickets.rollTickets);
+                          if (reason) {
+                            setError(reason);
+                            return;
+                          }
+                          handleRoll(true, 'roll');
+                        }}
                         disabled={isRolling || locked || tickets.rollTickets < 1 || ticketLoadError}
                         title={getDisabledReason(0, true, tickets.rollTickets)}
                         whileHover={{ scale: 1.02 }}
@@ -943,7 +1005,14 @@ const BannerPage = () => {
                     )}
                     {tickets.premiumTickets > 0 && (
                       <PremiumPullButton
-                        onClick={() => handleRoll(true, 'premium')}
+                        onClick={() => {
+                          const reason = getDisabledReason(0, true, tickets.premiumTickets);
+                          if (reason) {
+                            setError(reason);
+                            return;
+                          }
+                          handleRoll(true, 'premium');
+                        }}
                         disabled={isRolling || locked || tickets.premiumTickets < 1 || ticketLoadError}
                         title={getDisabledReason(0, true, tickets.premiumTickets)}
                         whileHover={{ scale: 1.02 }}
@@ -958,7 +1027,14 @@ const BannerPage = () => {
                     )}
                     {tickets.rollTickets >= 10 && (
                       <TicketPullButton
-                        onClick={() => handleMultiRoll(10, true, 'roll')}
+                        onClick={() => {
+                          const reason = getDisabledReason(0, true, tickets.rollTickets >= 10 ? 10 : 0);
+                          if (reason) {
+                            setError(reason);
+                            return;
+                          }
+                          handleMultiRoll(10, true, 'roll');
+                        }}
                         disabled={isRolling || locked || tickets.rollTickets < 10 || ticketLoadError}
                         title={getDisabledReason(0, true, tickets.rollTickets >= 10 ? 10 : 0)}
                         whileHover={{ scale: 1.02 }}
@@ -973,7 +1049,14 @@ const BannerPage = () => {
                     )}
                     {tickets.premiumTickets >= 10 && (
                       <PremiumPullButton
-                        onClick={() => handleMultiRoll(10, true, 'premium')}
+                        onClick={() => {
+                          const reason = getDisabledReason(0, true, tickets.premiumTickets >= 10 ? 10 : 0);
+                          if (reason) {
+                            setError(reason);
+                            return;
+                          }
+                          handleMultiRoll(10, true, 'premium');
+                        }}
                         disabled={isRolling || locked || tickets.premiumTickets < 10 || ticketLoadError}
                         title={getDisabledReason(0, true, tickets.premiumTickets >= 10 ? 10 : 0)}
                         whileHover={{ scale: 1.02 }}

@@ -40,6 +40,8 @@
     "pulls": "pulls",
     "pointsAvailable": "points available",
     "fastMode": "Fast Mode",
+    "processing": "Processing...",
+    "networkDisconnected": "Network disconnected. Please check your connection and refresh.",
     "normal": "Normal",
     "single": "Single",
     "banners": "Banners",
@@ -230,7 +232,8 @@
     "allSeries": "All Series",
     "loadingCollection": "Loading collection...",
     "noCharactersFound": "No characters found",
-    "adjustFilters": "Try adjusting your filters to see more characters"
+    "adjustFilters": "Try adjusting your filters to see more characters",
+    "levelUpFailed": "Level up failed. Please try again."
   },
   "coupon": {
     "title": "Coupon",
@@ -263,7 +266,8 @@
     "singlePull": "Single",
     "summoning": "Summoning...",
     "failedRoll": "Failed to roll character",
-    "failedMultiRoll": "Failed to perform multi-roll"
+    "failedMultiRoll": "Failed to perform multi-roll",
+    "rollInterrupted": "A roll may have been interrupted. Your data has been refreshed."
   },
   "banner": {
     "loadingBanner": "Loading banner...",
@@ -282,7 +286,8 @@
     "premiumRates": "Premium Ticket",
     "guaranteedRare": "Guaranteed Rare or better!",
     "pitySystem": "10-Pull Pity",
-    "pityDescription": "Every 10-pull guarantees at least one Rare or higher character!"
+    "pityDescription": "Every 10-pull guarantees at least one Rare or higher character!",
+    "rollInterrupted": "A roll may have been interrupted. Your collection has been refreshed."
   },
   "admin": {
     "title": "Admin Dashboard",
@@ -682,6 +687,8 @@
     "dailyCapReached": "Daily cap reached!",
     "pointsCapped": "Points capped for today",
     "ticketsCapped": "Tickets capped for today",
+    "noRewardsAccumulated": "No rewards accumulated yet. Keep training!",
+    "notEnoughPoints": "Need {{cost}} points",
     "catchUpBonus": "Catch-Up Bonus: +{{bonus}}%",
     "catchUpBonusApplied": "+{{bonus}}% Catch-Up Bonus!",
     "efficiency": "{{percent}}% efficiency"

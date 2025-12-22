@@ -150,6 +150,17 @@ const RollPage = () => {
     }
   }, [skipAnimations]);
   
+  // Sync fast mode preference across tabs
+  useEffect(() => {
+    const handleStorage = (e) => {
+      if (e.key === 'gacha_skipAnimations') {
+        setSkipAnimations(e.newValue === 'true');
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    return () => window.removeEventListener('storage', handleStorage);
+  }, []);
+  
   // Network offline detection during roll animations
   useEffect(() => {
     const handleOffline = () => {
@@ -419,8 +430,15 @@ const RollPage = () => {
   useEffect(() => {
     if (showSummonAnimation && pendingCharacter) {
       const timeout = setTimeout(() => {
-        console.warn('[Animation] Single summon timeout - forcing completion');
-        handleSummonComplete();
+        try {
+          console.warn('[Animation] Single summon timeout - forcing completion');
+          handleSummonComplete();
+        } catch (e) {
+          console.error('[Animation] Force complete failed:', e);
+          setIsRolling(false);
+          setShowSummonAnimation(false);
+          setPendingCharacter(null);
+        }
       }, 15000); // Max 15 seconds for single animation
       return () => clearTimeout(timeout);
     }
@@ -431,8 +449,15 @@ const RollPage = () => {
       // Multi-summon can take longer: base 15s + 2s per character
       const maxTime = 15000 + (pendingMultiResults.length * 2000);
       const timeout = setTimeout(() => {
-        console.warn('[Animation] Multi-summon timeout - forcing completion');
-        handleMultiSummonComplete();
+        try {
+          console.warn('[Animation] Multi-summon timeout - forcing completion');
+          handleMultiSummonComplete();
+        } catch (e) {
+          console.error('[Animation] Multi-summon force complete failed:', e);
+          setIsRolling(false);
+          setShowMultiSummonAnimation(false);
+          setPendingMultiResults([]);
+        }
       }, maxTime);
       return () => clearTimeout(timeout);
     }
@@ -637,7 +662,15 @@ const RollPage = () => {
               <PullActionsContainer>
                 {/* Primary Single Pull - Most Prominent */}
                 <PrimaryPullCard
-                  onClick={handleRoll} 
+                  onClick={() => {
+                    const reason = getDisabledReason(singlePullCost);
+                    if (reason) {
+                      // Show feedback for disabled state (especially for mobile)
+                      setError(reason);
+                      return;
+                    }
+                    handleRoll();
+                  }}
                   disabled={isRolling || !pricingLoaded || locked || user?.points < singlePullCost}
                   title={getDisabledReason(singlePullCost)}
                   whileHover={{ scale: 1.02, y: -2 }}
@@ -662,7 +695,14 @@ const RollPage = () => {
                     return (
                       <MultiPullCard
                         key={option.count}
-                        onClick={() => handleMultiRoll(option.count)}
+                        onClick={() => {
+                          const reason = getDisabledReason(option.finalCost);
+                          if (reason) {
+                            setError(reason);
+                            return;
+                          }
+                          handleMultiRoll(option.count);
+                        }}
                         disabled={isRolling || !pricingLoaded || locked || !canAfford}
                         title={getDisabledReason(option.finalCost)}
                         $canAfford={canAfford && pricingLoaded}
