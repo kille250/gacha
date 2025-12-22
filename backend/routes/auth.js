@@ -407,7 +407,7 @@ router.post('/google/unlink', auth, async (req, res) => {
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'username', 'email', 'googleId', 'googleEmail', 'points', 'isAdmin', 'lastDailyReward', 'allowR18', 'showR18', 'usernameChanged']
+      attributes: ['id', 'username', 'email', 'password', 'googleId', 'googleEmail', 'points', 'isAdmin', 'lastDailyReward', 'allowR18', 'showR18', 'usernameChanged']
     });
     
     if (!user) {
@@ -474,6 +474,47 @@ router.put('/profile/email', auth, async (req, res) => {
     });
   } catch (err) {
     console.error('Update email error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// PUT /api/auth/profile/password - Set or change password
+router.put('/profile/password', auth, async (req, res) => {
+  const { currentPassword, newPassword } = req.body;
+  
+  // Validate new password
+  const passwordValidation = validatePassword(newPassword);
+  if (!passwordValidation.valid) {
+    return res.status(400).json({ error: passwordValidation.error });
+  }
+  
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // If user already has a password, require current password verification
+    if (user.password) {
+      if (!currentPassword) {
+        return res.status(400).json({ error: 'Current password is required' });
+      }
+      if (!user.validPassword(currentPassword)) {
+        return res.status(401).json({ error: 'Current password is incorrect' });
+      }
+    }
+    // For Google-only users (no password), they can set one without verification
+    // since they've already authenticated via Google/JWT
+    
+    // Set the new password (the model's beforeCreate/beforeUpdate hook will hash it)
+    user.password = newPassword;
+    await user.save();
+    
+    res.json({ 
+      message: user.password ? 'Password updated successfully' : 'Password set successfully'
+    });
+  } catch (err) {
+    console.error('Set password error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

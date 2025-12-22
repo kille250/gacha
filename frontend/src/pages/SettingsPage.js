@@ -38,6 +38,14 @@ const SettingsPage = () => {
   const [showRelinkConfirm, setShowRelinkConfirm] = useState(false);
   const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
   
+  // Password state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
+  const [passwordLoading, setPasswordLoading] = useState(false);
+  const [passwordSuccess, setPasswordSuccess] = useState('');
+  const [passwordError, setPasswordError] = useState('');
+  
   // Account reset state
   const [showResetConfirm, setShowResetConfirm] = useState(false);
   const [resetStep, setResetStep] = useState(1); // 1: warning, 2: confirmation
@@ -110,6 +118,55 @@ const SettingsPage = () => {
       setUsernameError(err.response?.data?.error || t('settings.usernameUpdateFailed'));
     } finally {
       setUsernameLoading(false);
+    }
+  };
+
+  const handlePasswordSubmit = async (e) => {
+    e.preventDefault();
+    setPasswordError('');
+    setPasswordSuccess('');
+    
+    // Validate new password
+    if (!newPassword || newPassword.length < 8) {
+      setPasswordError(t('auth.passwordTooShort'));
+      return;
+    }
+    
+    // Check for at least one letter and one number
+    const hasLetter = /[a-zA-Z]/.test(newPassword);
+    const hasNumber = /[0-9]/.test(newPassword);
+    if (!hasLetter || !hasNumber) {
+      setPasswordError(t('auth.passwordRequirements'));
+      return;
+    }
+    
+    // Confirm password match
+    if (newPassword !== confirmPassword) {
+      setPasswordError(t('auth.passwordsMismatch'));
+      return;
+    }
+    
+    // If user has password, require current password
+    if (user?.hasPassword && !currentPassword) {
+      setPasswordError(t('settings.currentPasswordRequired'));
+      return;
+    }
+    
+    setPasswordLoading(true);
+    try {
+      const response = await api.put('/auth/profile/password', {
+        currentPassword: user?.hasPassword ? currentPassword : undefined,
+        newPassword
+      });
+      setPasswordSuccess(response.data.message || t('settings.passwordUpdated'));
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmPassword('');
+      await refreshUser();
+    } catch (err) {
+      setPasswordError(err.response?.data?.error || t('settings.passwordUpdateFailed'));
+    } finally {
+      setPasswordLoading(false);
     }
   };
 
@@ -356,6 +413,73 @@ const SettingsPage = () => {
             </Form>
           </>
         )}
+      </SubSection>
+
+      <Divider />
+
+      {/* Password Section */}
+      <SubSection>
+        <SubSectionTitle>
+          <FaLock /> {user?.hasPassword ? t('settings.changePassword') : t('settings.setPassword')}
+        </SubSectionTitle>
+        <SubSectionDescription>
+          {user?.hasPassword 
+            ? t('settings.changePasswordDesc') 
+            : t('settings.setPasswordDesc')
+          }
+        </SubSectionDescription>
+        
+        {!user?.hasPassword && (
+          <WarningBox style={{ background: 'rgba(0, 113, 227, 0.15)', borderColor: 'rgba(0, 113, 227, 0.3)', color: theme.colors.primary }}>
+            💡 {t('settings.setPasswordHint')}
+          </WarningBox>
+        )}
+        
+        <Form onSubmit={handlePasswordSubmit}>
+          {user?.hasPassword && (
+            <InputWrapper>
+              <InputIcon><FaLock /></InputIcon>
+              <StyledInput
+                type="password"
+                value={currentPassword}
+                onChange={(e) => setCurrentPassword(e.target.value)}
+                placeholder={t('settings.currentPasswordPlaceholder')}
+              />
+            </InputWrapper>
+          )}
+          
+          <InputWrapper>
+            <InputIcon><FaLock /></InputIcon>
+            <StyledInput
+              type="password"
+              value={newPassword}
+              onChange={(e) => setNewPassword(e.target.value)}
+              placeholder={t('settings.newPasswordPlaceholder')}
+            />
+          </InputWrapper>
+          
+          <InputWrapper>
+            <InputIcon><FaLock /></InputIcon>
+            <StyledInput
+              type="password"
+              value={confirmPassword}
+              onChange={(e) => setConfirmPassword(e.target.value)}
+              placeholder={t('settings.confirmPasswordPlaceholder')}
+            />
+          </InputWrapper>
+          
+          {passwordError && <ErrorMessage>{passwordError}</ErrorMessage>}
+          {passwordSuccess && <SuccessMessage><FaCheck /> {passwordSuccess}</SuccessMessage>}
+          
+          <SubmitButton 
+            type="submit" 
+            disabled={passwordLoading}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+          >
+            {passwordLoading ? <LoadingSpinner /> : (user?.hasPassword ? t('settings.updatePassword') : t('settings.setPasswordBtn'))}
+          </SubmitButton>
+        </Form>
       </SubSection>
     </TabContent>
   );
