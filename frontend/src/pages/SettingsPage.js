@@ -2,12 +2,12 @@ import React, { useState, useContext, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { FaUser, FaEnvelope, FaCheck, FaArrowLeft, FaGoogle, FaLock, FaUnlink, FaLink } from 'react-icons/fa';
+import { FaUser, FaEnvelope, FaCheck, FaArrowLeft, FaGoogle, FaLock, FaUnlink, FaLink, FaExclamationTriangle, FaTrash } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { theme, LoadingSpinner, ErrorMessage as SharedErrorMessage, SuccessMessage as SharedSuccessMessage } from '../styles/DesignSystem';
-import api from '../utils/api';
+import api, { clearCache } from '../utils/api';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
@@ -29,6 +29,15 @@ const SettingsPage = () => {
   const [googleError, setGoogleError] = useState('');
   const [showRelinkConfirm, setShowRelinkConfirm] = useState(false);
   const [showUnlinkConfirm, setShowUnlinkConfirm] = useState(false);
+  
+  // Account reset state
+  const [showResetConfirm, setShowResetConfirm] = useState(false);
+  const [resetStep, setResetStep] = useState(1); // 1: warning, 2: confirmation
+  const [resetPassword, setResetPassword] = useState('');
+  const [resetConfirmText, setResetConfirmText] = useState('');
+  const [resetLoading, setResetLoading] = useState(false);
+  const [resetError, setResetError] = useState('');
+  const [resetSuccess, setResetSuccess] = useState('');
   
   useEffect(() => {
     if (user?.email) {
@@ -136,7 +145,53 @@ const SettingsPage = () => {
   const handleGoogleError = () => {
     setGoogleError(t('settings.googleAuthFailed'));
   };
-  
+
+  const handleResetAccount = async () => {
+    setResetError('');
+    
+    const REQUIRED_TEXT = 'RESET MY ACCOUNT';
+    if (resetConfirmText !== REQUIRED_TEXT) {
+      setResetError(t('settings.resetConfirmTextMismatch', { text: REQUIRED_TEXT }));
+      return;
+    }
+    
+    // For password-based accounts, require password
+    if (user?.hasPassword && !resetPassword) {
+      setResetError(t('settings.resetPasswordRequired'));
+      return;
+    }
+    
+    setResetLoading(true);
+    try {
+      const response = await api.post('/auth/reset-account', {
+        password: resetPassword || undefined,
+        confirmationText: resetConfirmText
+      });
+      
+      setResetSuccess(response.data.message || t('settings.resetSuccess'));
+      setShowResetConfirm(false);
+      setResetStep(1);
+      setResetPassword('');
+      setResetConfirmText('');
+      
+      // Clear all caches and refresh user
+      clearCache();
+      await refreshUser();
+    } catch (err) {
+      setResetError(err.response?.data?.error || t('settings.resetFailed'));
+    } finally {
+      setResetLoading(false);
+    }
+  };
+
+  const cancelReset = () => {
+    setShowResetConfirm(false);
+    setResetStep(1);
+    setResetPassword('');
+    setResetConfirmText('');
+    setResetError('');
+  };
+
   return (
     <PageContainer>
       <Header>
@@ -363,6 +418,114 @@ const SettingsPage = () => {
             </>
           )}
         </Section>
+
+        {/* Danger Zone - Account Reset */}
+        <DangerSection>
+          <SectionTitle style={{ color: theme.colors.error }}>
+            <FaExclamationTriangle /> {t('settings.dangerZone')}
+          </SectionTitle>
+          <SectionDescription>
+            {t('settings.dangerZoneDescription')}
+          </SectionDescription>
+          
+          {resetSuccess && <SuccessMessage><FaCheck /> {resetSuccess}</SuccessMessage>}
+          
+          {!showResetConfirm ? (
+            <DangerButton
+              onClick={() => setShowResetConfirm(true)}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <FaTrash /> {t('settings.resetAccount')}
+            </DangerButton>
+          ) : resetStep === 1 ? (
+            <ResetConfirmBox>
+              <WarningHeader>
+                <FaExclamationTriangle />
+                <span>{t('settings.resetWarningTitle')}</span>
+              </WarningHeader>
+              <WarningList>
+                <li>{t('settings.resetWarning1')}</li>
+                <li>{t('settings.resetWarning2')}</li>
+                <li>{t('settings.resetWarning3')}</li>
+                <li>{t('settings.resetWarning4')}</li>
+                <li>{t('settings.resetWarning5')}</li>
+              </WarningList>
+              <KeepList>
+                <strong>{t('settings.resetKeepTitle')}</strong>
+                <li>{t('settings.resetKeep1')}</li>
+                <li>{t('settings.resetKeep2')}</li>
+              </KeepList>
+              <DangerButtonGroup>
+                <DangerButton
+                  onClick={() => setResetStep(2)}
+                  whileHover={{ scale: 1.02 }}
+                  whileTap={{ scale: 0.98 }}
+                >
+                  {t('settings.resetUnderstand')}
+                </DangerButton>
+                <CancelButton onClick={cancelReset}>
+                  {t('common.cancel')}
+                </CancelButton>
+              </DangerButtonGroup>
+            </ResetConfirmBox>
+          ) : (
+            <ResetConfirmBox>
+              <WarningHeader>
+                <FaExclamationTriangle />
+                <span>{t('settings.resetFinalConfirm')}</span>
+              </WarningHeader>
+              
+              {resetError && <ErrorMessage>{resetError}</ErrorMessage>}
+              
+              <ResetForm>
+                <ResetLabel>
+                  {t('settings.resetTypeConfirm', { text: 'RESET MY ACCOUNT' })}
+                </ResetLabel>
+                <StyledInput
+                  type="text"
+                  value={resetConfirmText}
+                  onChange={(e) => setResetConfirmText(e.target.value)}
+                  placeholder="RESET MY ACCOUNT"
+                  style={{ textAlign: 'center', fontWeight: 600, letterSpacing: '1px' }}
+                />
+                
+                {user?.hasPassword && (
+                  <>
+                    <ResetLabel style={{ marginTop: theme.spacing.md }}>
+                      <FaLock /> {t('settings.resetEnterPassword')}
+                    </ResetLabel>
+                    <InputWrapper>
+                      <InputIcon><FaLock /></InputIcon>
+                      <StyledInput
+                        type="password"
+                        value={resetPassword}
+                        onChange={(e) => setResetPassword(e.target.value)}
+                        placeholder={t('auth.enterPassword')}
+                      />
+                    </InputWrapper>
+                  </>
+                )}
+              </ResetForm>
+              
+              <DangerButtonGroup>
+                <DangerButton
+                  onClick={handleResetAccount}
+                  disabled={resetLoading || resetConfirmText !== 'RESET MY ACCOUNT'}
+                  whileHover={{ scale: resetConfirmText === 'RESET MY ACCOUNT' ? 1.02 : 1 }}
+                  whileTap={{ scale: resetConfirmText === 'RESET MY ACCOUNT' ? 0.98 : 1 }}
+                >
+                  {resetLoading ? <LoadingSpinner /> : (
+                    <><FaTrash /> {t('settings.resetAccountFinal')}</>
+                  )}
+                </DangerButton>
+                <CancelButton onClick={cancelReset}>
+                  {t('common.cancel')}
+                </CancelButton>
+              </DangerButtonGroup>
+            </ResetConfirmBox>
+          )}
+        </DangerSection>
       </Content>
     </PageContainer>
   );
@@ -719,6 +882,127 @@ const CancelButton = styled.button`
   
   &:hover {
     background: ${theme.colors.glass};
+  }
+`;
+
+// Danger Zone Styles
+const DangerSection = styled(Section)`
+  border-color: rgba(255, 59, 48, 0.3);
+  background: linear-gradient(135deg, 
+    rgba(255, 59, 48, 0.05) 0%, 
+    ${theme.colors.surface} 100%
+  );
+`;
+
+const DangerButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: linear-gradient(135deg, #ff3b30, #d63030);
+  border: none;
+  border-radius: ${theme.radius.lg};
+  font-family: ${theme.fonts.primary};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: white;
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    background: ${theme.colors.backgroundTertiary};
+    color: ${theme.colors.textMuted};
+  }
+`;
+
+const ResetConfirmBox = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.lg};
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: ${theme.radius.lg};
+`;
+
+const WarningHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${theme.colors.error};
+  
+  svg {
+    font-size: 24px;
+  }
+`;
+
+const WarningList = styled.ul`
+  margin: 0;
+  padding-left: ${theme.spacing.lg};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.text};
+  line-height: 1.8;
+  
+  li {
+    margin-bottom: ${theme.spacing.xs};
+    
+    &::marker {
+      color: ${theme.colors.error};
+    }
+  }
+`;
+
+const KeepList = styled.ul`
+  margin: 0;
+  padding: ${theme.spacing.md};
+  padding-left: calc(${theme.spacing.md} + ${theme.spacing.lg});
+  background: rgba(52, 199, 89, 0.1);
+  border: 1px solid rgba(52, 199, 89, 0.3);
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.text};
+  line-height: 1.6;
+  
+  strong {
+    display: block;
+    margin-bottom: ${theme.spacing.sm};
+    margin-left: -${theme.spacing.lg};
+    color: ${theme.colors.success};
+  }
+  
+  li::marker {
+    color: ${theme.colors.success};
+  }
+`;
+
+const DangerButtonGroup = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.sm};
+`;
+
+const ResetForm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+const ResetLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  
+  svg {
+    font-size: 14px;
   }
 `;
 

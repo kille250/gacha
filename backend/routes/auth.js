@@ -416,6 +416,7 @@ router.get('/me', auth, async (req, res) => {
     
     // Build response object (avoid mutating Sequelize instance)
     const hasGoogle = !!user.googleId;
+    const hasPassword = !!user.password;
     const response = {
       id: user.id,
       username: user.username,
@@ -427,6 +428,7 @@ router.get('/me', auth, async (req, res) => {
       showR18: user.showR18 === true,
       usernameChanged: user.usernameChanged === true,
       hasGoogle,
+      hasPassword,
       // The actual Google account email (updated on each Google login)
       linkedGoogleEmail: user.googleEmail || null
     };
@@ -522,6 +524,86 @@ router.put('/profile/username', auth, async (req, res) => {
   } catch (err) {
     console.error('Update username error:', err);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/auth/reset-account - Reset account progress (dangerous action)
+router.post('/reset-account', auth, async (req, res) => {
+  const { password, confirmationText } = req.body;
+  
+  // Security: Require exact confirmation text
+  const REQUIRED_CONFIRMATION = 'RESET MY ACCOUNT';
+  if (confirmationText !== REQUIRED_CONFIRMATION) {
+    return res.status(400).json({ 
+      error: `Please type "${REQUIRED_CONFIRMATION}" exactly to confirm` 
+    });
+  }
+  
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Security: For password-based accounts, require password verification
+    if (user.password) {
+      if (!password) {
+        return res.status(400).json({ error: 'Password is required to reset account' });
+      }
+      if (!user.validPassword(password)) {
+        return res.status(401).json({ error: 'Invalid password' });
+      }
+    }
+    // For Google-only accounts (no password), the confirmation text is sufficient
+    // since they've already authenticated via Google to get here
+    
+    // Import required models for deletion
+    const { UserCharacter, FishInventory, CouponRedemption } = require('../models');
+    
+    // Log the reset action (for security audit)
+    console.log(`[ACCOUNT RESET] User ${user.id} (${user.username}) initiated account reset at ${new Date().toISOString()}`);
+    
+    // Delete all associated data
+    await Promise.all([
+      // Delete character collection
+      UserCharacter.destroy({ where: { UserId: user.id } }),
+      // Delete fish inventory
+      FishInventory.destroy({ where: { userId: user.id } }),
+      // Delete coupon redemptions (allows re-redemption)
+      CouponRedemption.destroy({ where: { userId: user.id } })
+    ]);
+    
+    // Reset user fields to defaults
+    user.points = 1000;
+    user.rollTickets = 0;
+    user.premiumTickets = 0;
+    user.lastDailyReward = null;
+    user.autofishEnabled = false;
+    user.autofishUnlockedByRank = false;
+    user.usernameChanged = false; // Give back the username change
+    user.dojoSlots = [];
+    user.dojoLastClaim = null;
+    user.dojoUpgrades = { slots: 3, capHours: 8, intensity: 0, masteries: {} };
+    user.dojoDailyStats = {};
+    user.dojoTicketProgress = { roll: 0, premium: 0 };
+    
+    await user.save();
+    
+    console.log(`[ACCOUNT RESET] User ${user.id} (${user.username}) account reset completed successfully`);
+    
+    res.json({ 
+      message: 'Account reset successfully. Your progress has been cleared.',
+      user: {
+        id: user.id,
+        username: user.username,
+        points: user.points,
+        rollTickets: user.rollTickets,
+        premiumTickets: user.premiumTickets
+      }
+    });
+  } catch (err) {
+    console.error('Account reset error:', err);
+    res.status(500).json({ error: 'Failed to reset account' });
   }
 });
 
