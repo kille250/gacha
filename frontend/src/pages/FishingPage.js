@@ -2134,7 +2134,7 @@ const Header = styled.header`
   box-shadow: 
     0 4px 12px rgba(0, 0, 0, 0.4),
     inset 0 1px 0 rgba(255, 220, 150, 0.3);
-  z-index: 100;
+  z-index: 200;  /* Higher than StatsBar (100) so dropdown appears above it */
   position: relative;
   overflow: visible;
   flex-shrink: 0;
