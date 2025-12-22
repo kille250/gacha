@@ -209,11 +209,30 @@ router.post('/', auth, async (req, res, next) => {
     
     const { user, fish, success, inventoryItem, pityTriggered, dailyLimit, dailyUsed, challengeRewards, currentRank } = result;
     
+    // Calculate current pity progress for client state update
+    const pityData = user.fishingPity || { legendary: 0, epic: 0 };
+    const pityConfig = FISHING_CONFIG.pity;
+    const pityInfo = {
+      legendary: {
+        current: pityData.legendary || 0,
+        hardPity: pityConfig.legendary.hardPity,
+        progress: Math.min(100, ((pityData.legendary || 0) / pityConfig.legendary.hardPity) * 100),
+        inSoftPity: (pityData.legendary || 0) >= pityConfig.legendary.softPity
+      },
+      epic: {
+        current: pityData.epic || 0,
+        hardPity: pityConfig.epic.hardPity,
+        progress: Math.min(100, ((pityData.epic || 0) / pityConfig.epic.hardPity) * 100),
+        inSoftPity: (pityData.epic || 0) >= pityConfig.epic.softPity
+      }
+    };
+    
     const response = {
       success,
       fish: { id: fish.id, name: fish.name, emoji: fish.emoji, rarity: fish.rarity },
       newPoints: user.points,
       pityTriggered,
+      pityInfo, // Include current pity state for client update
       daily: {
         used: dailyUsed,
         limit: dailyLimit,

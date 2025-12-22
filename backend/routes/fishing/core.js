@@ -391,6 +391,24 @@ router.post('/catch', auth, async (req, res, next) => {
         finalMessage += ` ${streakBonus.message}`;
       }
       
+      // Calculate current pity progress for client state update
+      const pityData = user.fishingPity || { legendary: 0, epic: 0 };
+      const pityConfig = FISHING_CONFIG.pity;
+      const pityInfo = {
+        legendary: {
+          current: pityData.legendary || 0,
+          hardPity: pityConfig.legendary.hardPity,
+          progress: Math.min(100, ((pityData.legendary || 0) / pityConfig.legendary.hardPity) * 100),
+          inSoftPity: (pityData.legendary || 0) >= pityConfig.legendary.softPity
+        },
+        epic: {
+          current: pityData.epic || 0,
+          hardPity: pityConfig.epic.hardPity,
+          progress: Math.min(100, ((pityData.epic || 0) / pityConfig.epic.hardPity) * 100),
+          inSoftPity: (pityData.epic || 0) >= pityConfig.epic.softPity
+        }
+      };
+      
       const response = {
         success: true,
         fish: { id: fish.id, name: fish.name, emoji: fish.emoji, rarity: fish.rarity },
@@ -402,6 +420,7 @@ router.post('/catch', auth, async (req, res, next) => {
         newPoints: user.points,
         inventoryCount: inventoryItem.quantity,
         pityTriggered: session.pityTriggered || false,
+        pityInfo, // Include current pity state for client update
         streak: currentStreak,
         streakBonus: streakBonus ? { milestone: streakBonus.milestone, message: streakBonus.message } : null,
         message: finalMessage

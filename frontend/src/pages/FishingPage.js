@@ -7,7 +7,8 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import { io } from 'socket.io-client';
 import api, { 
-  clearCache, 
+  clearCache,
+  invalidateFishingAction,
   WS_URL, 
   getTradingPostOptions, 
   executeTrade,
@@ -411,6 +412,50 @@ const FishingPage = () => {
     return () => clearInterval(interval);
   }, []);
   
+  // Visibility change handler - refresh stale fishing data when tab regains focus
+  useEffect(() => {
+    let lastHiddenTime = 0;
+    const STALE_THRESHOLD_MS = 30000; // 30 seconds
+    
+    const handleVisibilityChange = async () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenTime = Date.now();
+      } else if (document.visibilityState === 'visible') {
+        const elapsed = Date.now() - lastHiddenTime;
+        
+        // Only refresh if tab was hidden for > 30 seconds
+        if (elapsed > STALE_THRESHOLD_MS) {
+          // Invalidate fishing caches
+          invalidateFishingAction('catch');
+          
+          // Refresh critical data
+          try {
+            const [fishRes, rankRes] = await Promise.all([
+              api.get('/fishing/info'),
+              api.get('/fishing/rank')
+            ]);
+            setFishInfo(fishRes.data);
+            setRankData(rankRes.data);
+            
+            // Update daily stats from fresh info
+            if (fishRes.data.daily) {
+              setDailyStats({
+                used: fishRes.data.daily.autofishUsed,
+                limit: fishRes.data.daily.autofishLimit,
+                remaining: fishRes.data.daily.autofishLimit - fishRes.data.daily.autofishUsed
+              });
+            }
+          } catch (err) {
+            console.warn('Failed to refresh fishing data on visibility change:', err);
+          }
+        }
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, []);
+  
   // Leaderboard fetch - also refresh rank data to keep it in sync
   useEffect(() => {
     if (showLeaderboard) {
@@ -512,10 +557,15 @@ const FishingPage = () => {
     });
   }, [setUser, t, showNotification, withTradeLock, refreshUser]);
   
+  // Counter for periodic refreshes during autofish
+  const autofishCatchCountRef = useRef(0);
+  const REFRESH_INTERVAL_CATCHES = 10; // Refresh fishInfo/rank every N catches
+  
   // Autofishing loop with integrated cleanup (now with daily limits)
   useEffect(() => {
     // NEW: Everyone can autofish now (canAutofish is always true)
     if (!isAutofishing) {
+      autofishCatchCountRef.current = 0; // Reset counter when stopping
       return;
     }
     
@@ -545,7 +595,17 @@ const FishingPage = () => {
         
         if (result.newPoints !== undefined) {
           setUser(prev => ({ ...prev, points: result.newPoints }));
-          clearCache('/auth/me');
+        }
+        
+        // Invalidate autofish-related caches
+        invalidateFishingAction('autofish');
+        
+        // Update pity progress from response (immediate)
+        if (result.pityInfo) {
+          setFishInfo(prev => ({
+            ...prev,
+            pity: result.pityInfo
+          }));
         }
         
         // Update daily stats from response
@@ -589,6 +649,22 @@ const FishingPage = () => {
           result.challengesCompleted.forEach(ch => {
             showNotification(`🏆 ${t('fishing.challengeComplete')}: ${ch.id}`, 'success');
           });
+        }
+        
+        // Periodic refresh of fishInfo (pity progress) and rank every N catches
+        autofishCatchCountRef.current += 1;
+        if (autofishCatchCountRef.current >= REFRESH_INTERVAL_CATCHES) {
+          autofishCatchCountRef.current = 0;
+          try {
+            const [fishRes, rankRes] = await Promise.all([
+              api.get('/fishing/info'),
+              api.get('/fishing/rank')
+            ]);
+            setFishInfo(fishRes.data);
+            setRankData(rankRes.data);
+          } catch {
+            // Silent fail - non-critical periodic refresh
+          }
         }
         
       } catch (err) {
@@ -735,10 +811,21 @@ const FishingPage = () => {
     
     try {
       const res = await api.post('/fishing/cast');
-      const { sessionId: newSessionId, waitTime, missTimeout = 2500 } = res.data;
+      const { sessionId: newSessionId, waitTime, missTimeout = 2500, newPoints, daily } = res.data;
       
       setSessionId(newSessionId);
       setSessionStats(prev => ({ ...prev, casts: prev.casts + 1 }));
+      
+      // Update user points from cast cost deduction
+      if (newPoints !== undefined) {
+        setUser(prev => ({ ...prev, points: newPoints }));
+      }
+      
+      // Update daily stats from cast response (tracks manual casts)
+      if (daily) {
+        // daily contains { manualCasts, limit } from cast endpoint
+        // We can use this to track manual cast progress if needed
+      }
       
       setTimeout(() => {
         setGameState(GAME_STATES.WAITING);
@@ -758,7 +845,7 @@ const FishingPage = () => {
       showNotification(err.response?.data?.error || t('fishing.failedCast'), 'error');
       setGameState(GAME_STATES.WALKING);
     }
-  }, [t, showNotification, handleMiss]);
+  }, [t, showNotification, handleMiss, setUser]);
   
   // Handle catching fish
   const handleCatch = useCallback(async () => {
@@ -788,6 +875,46 @@ const FishingPage = () => {
             ? { fish: result.fish, quality: result.catchQuality }
             : prev.bestCatch
         }));
+        
+        // Update user points from response
+        if (result.newPoints !== undefined) {
+          setUser(prev => ({ ...prev, points: result.newPoints }));
+        }
+        
+        // Invalidate fishing caches to ensure fresh data
+        invalidateFishingAction('catch');
+        
+        // Immediate optimistic update of pity from response (if available)
+        if (result.pityInfo) {
+          setFishInfo(prev => ({
+            ...prev,
+            pity: result.pityInfo
+          }));
+        }
+        
+        // Background refresh of full fishInfo for complete state sync
+        // This runs async and doesn't block the success animation
+        api.get('/fishing/info').then(freshInfo => {
+          setFishInfo(freshInfo.data);
+          
+          // Update daily stats from fresh info
+          if (freshInfo.data.daily) {
+            setDailyStats({
+              used: freshInfo.data.daily.autofishUsed,
+              limit: freshInfo.data.daily.autofishLimit,
+              remaining: freshInfo.data.daily.autofishLimit - freshInfo.data.daily.autofishUsed
+            });
+          }
+        }).catch(() => {
+          // Silent fail - pity was already updated from response
+        });
+        
+        // Show challenge completion notifications
+        if (result.challengesCompleted?.length > 0) {
+          result.challengesCompleted.forEach(ch => {
+            showNotification(`🏆 ${t('fishing.challengeComplete')}: ${ch.id}`, 'success');
+          });
+        }
       } else {
         setGameState(GAME_STATES.FAILURE);
       }
@@ -802,7 +929,7 @@ const FishingPage = () => {
       setGameState(GAME_STATES.WALKING);
       setSessionId(null);
     }
-  }, [sessionId, t, showNotification]);
+  }, [sessionId, t, showNotification, setUser]);
   
   // Keep function refs updated for keyboard handler
   useEffect(() => {

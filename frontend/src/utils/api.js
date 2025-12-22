@@ -131,7 +131,31 @@ export const invalidateAfterDojo = () => {
 };
 
 /**
- * Invalidate caches after fishing operations
+ * Fishing action-based invalidation map
+ * Maps fishing actions to the cache patterns that should be invalidated
+ */
+const FISHING_INVALIDATION_MAP = {
+  catch: ['/fishing/info', '/fishing/rank', '/fishing/inventory', '/fishing/challenges', '/auth/me'],
+  autofish: ['/fishing/info', '/fishing/rank', '/auth/me'],
+  trade: ['/fishing/inventory', '/fishing/trading-post', '/auth/me'],
+  unlock_area: ['/fishing/areas', '/fishing/info', '/auth/me'],
+  buy_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
+  equip_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
+  claim_challenge: ['/fishing/challenges', '/auth/me'],
+  select_area: ['/fishing/areas', '/fishing/info']
+};
+
+/**
+ * Invalidate caches for a specific fishing action
+ * @param {string} action - The fishing action (catch, autofish, trade, etc.)
+ */
+export const invalidateFishingAction = (action) => {
+  const patterns = FISHING_INVALIDATION_MAP[action] || [];
+  patterns.forEach(pattern => clearCache(pattern));
+};
+
+/**
+ * Invalidate caches after fishing operations (legacy, use invalidateFishingAction for granular control)
  */
 export const invalidateAfterFishing = () => {
   clearCache('/fishing');
