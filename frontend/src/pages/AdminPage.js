@@ -2,7 +2,7 @@ import React, { useState, useEffect, useContext, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, clearCache } from '../utils/api';
+import api, { createBanner, updateBanner, deleteBanner, getAssetUrl, getAdminDashboard, clearCache, invalidateAdminAction } from '../utils/api';
 import { PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
@@ -108,6 +108,30 @@ const AdminPage = () => {
     }
   }, [error]);
 
+  // Visibility change handler - refresh admin data when tab becomes visible after being hidden
+  useEffect(() => {
+    if (!user?.isAdmin) return;
+    
+    let lastHiddenTime = null;
+    const STALE_THRESHOLD_MS = 60000; // 1 minute for admin data
+    
+    const handleVisibility = () => {
+      if (document.visibilityState === 'hidden') {
+        lastHiddenTime = Date.now();
+      } else if (document.visibilityState === 'visible' && lastHiddenTime) {
+        const elapsed = Date.now() - lastHiddenTime;
+        if (elapsed > STALE_THRESHOLD_MS) {
+          invalidateAdminAction('visibility_change');
+          fetchAllData();
+        }
+        lastHiddenTime = null;
+      }
+    };
+    
+    document.addEventListener('visibilitychange', handleVisibility);
+    return () => document.removeEventListener('visibilitychange', handleVisibility);
+  }, [user?.isAdmin, fetchAllData]);
+
   // Helper functions
   const getImageUrl = (imagePath) => imagePath ? getAssetUrl(imagePath) : PLACEHOLDER_IMAGE;
   const getBannerImageUrl = (imagePath) => imagePath ? getAssetUrl(imagePath) : PLACEHOLDER_BANNER;
@@ -148,6 +172,7 @@ const AdminPage = () => {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
       
+      invalidateAdminAction('character_add');
       setSuccessMessage(t('admin.characterAdded'));
       fetchAllData();
       setNewCharacter({ name: '', series: '', rarity: 'common', isR18: false });
@@ -169,6 +194,7 @@ const AdminPage = () => {
   }, []);
 
   const handleEditCharacterSuccess = useCallback((message) => {
+    invalidateAdminAction('character_edit');
     setSuccessMessage(message);
     fetchAllData();
   }, [fetchAllData]);
@@ -178,6 +204,7 @@ const AdminPage = () => {
     
     try {
       await api.delete(`/admin/characters/${characterId}`);
+      invalidateAdminAction('character_delete');
       setSuccessMessage(t('admin.characterDeleted'));
       fetchAllData();
     } catch (err) {
@@ -194,6 +221,7 @@ const AdminPage = () => {
     e.preventDefault();
     try {
       const response = await api.post('/admin/add-coins', coinForm);
+      invalidateAdminAction('user_coins');
       setCoinMessage(response.data.message);
       fetchAllData();
       // Compare as strings since form values are strings
@@ -208,6 +236,7 @@ const AdminPage = () => {
   const handleToggleAutofish = async (userId, enabled) => {
     try {
       const response = await api.post('/fishing/admin/toggle-autofish', { userId, enabled });
+      invalidateAdminAction('user_toggle_autofish');
       setSuccessMessage(response.data.message);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, autofishEnabled: enabled } : u));
     } catch (err) {
@@ -218,6 +247,7 @@ const AdminPage = () => {
   const handleToggleR18 = async (userId, enabled) => {
     try {
       const response = await api.post('/admin/toggle-r18', { userId, enabled });
+      invalidateAdminAction('user_toggle_r18');
       setSuccessMessage(response.data.message);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, allowR18: enabled } : u));
     } catch (err) {
@@ -229,6 +259,7 @@ const AdminPage = () => {
   const handleAddBanner = async (formData) => {
     try {
       await createBanner(formData);
+      invalidateAdminAction('banner_add');
       fetchAllData();
       setSuccessMessage(t('admin.bannerAdded'));
       setIsAddingBanner(false);
@@ -240,6 +271,7 @@ const AdminPage = () => {
   const handleUpdateBanner = async (formData) => {
     try {
       await updateBanner(editingBanner.id, formData);
+      invalidateAdminAction('banner_edit');
       fetchAllData();
       setSuccessMessage(t('admin.bannerUpdated'));
       setIsEditingBanner(false);
@@ -252,6 +284,7 @@ const AdminPage = () => {
     if (!window.confirm(t('admin.confirmDeleteBanner'))) return;
     try {
       await deleteBanner(bannerId);
+      invalidateAdminAction('banner_delete');
       fetchAllData();
       setSuccessMessage(t('admin.bannerDeleted'));
     } catch (err) {
@@ -265,6 +298,7 @@ const AdminPage = () => {
     
     try {
       await api.patch(`/banners/${banner.id}/featured`, { featured: newFeaturedStatus });
+      invalidateAdminAction('banner_featured');
       setSuccessMessage(`${banner.name} ${newFeaturedStatus ? t('admin.markedAsFeatured') : t('admin.unmarkedAsFeatured')}`);
     } catch (err) {
       setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, featured: !newFeaturedStatus } : b));
@@ -282,6 +316,7 @@ const AdminPage = () => {
       
       try {
         await api.post('/banners/update-order', { bannerOrder: newBanners.map(b => b.id) });
+        invalidateAdminAction('banner_reorder');
         setSuccessMessage(t('admin.bannerOrderUpdated'));
       } catch (err) {
         setBanners(banners);
@@ -294,7 +329,7 @@ const AdminPage = () => {
   const handleAddCoupon = async (formData) => {
     try {
       await api.post('/coupons/admin', formData);
-      clearCache('/coupons');
+      invalidateAdminAction('coupon_add');
       fetchAllData();
       setSuccessMessage(t('admin.couponCreated'));
       setIsAddingCoupon(false);
@@ -306,7 +341,7 @@ const AdminPage = () => {
   const handleUpdateCoupon = async (formData) => {
     try {
       await api.put(`/coupons/admin/${editingCoupon.id}`, formData);
-      clearCache('/coupons');
+      invalidateAdminAction('coupon_edit');
       fetchAllData();
       setSuccessMessage(t('admin.couponUpdated'));
       setIsEditingCoupon(false);
@@ -319,7 +354,7 @@ const AdminPage = () => {
     if (!window.confirm(t('admin.confirmDeleteCoupon'))) return;
     try {
       await api.delete(`/coupons/admin/${couponId}`);
-      clearCache('/coupons');
+      invalidateAdminAction('coupon_delete');
       fetchAllData();
       setSuccessMessage(t('admin.couponDeleted'));
     } catch (err) {
@@ -512,12 +547,12 @@ const AdminPage = () => {
       <MultiUploadModal 
         show={isMultiUploadOpen} 
         onClose={() => setIsMultiUploadOpen(false)} 
-        onSuccess={(result) => { setSuccessMessage(result.message); fetchAllData(); }} 
+        onSuccess={(result) => { invalidateAdminAction('bulk_upload'); setSuccessMessage(result.message); fetchAllData(); }} 
       />
       <AnimeImportModal 
         show={isAnimeImportOpen} 
         onClose={() => setIsAnimeImportOpen(false)} 
-        onSuccess={(result) => { setSuccessMessage(result.message); fetchAllData(); }} 
+        onSuccess={(result) => { invalidateAdminAction('anime_import'); setSuccessMessage(result.message); fetchAllData(); }} 
       />
 
       {/* Edit Character Modal */}

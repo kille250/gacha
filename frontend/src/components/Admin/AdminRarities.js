@@ -8,7 +8,7 @@ import {
 } from 'react-icons/fa';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
-import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../utils/api';
+import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities, invalidateAdminAction } from '../../utils/api';
 import { useRarity } from '../../context/RarityContext';
 import {
   AdminContainer,
@@ -406,8 +406,10 @@ const AdminRarities = ({ onRefresh }) => {
 
       if (editingRarity) {
         await updateRarity(editingRarity.id, submitData);
+        invalidateAdminAction('rarity_edit');
       } else {
         await createRarity(submitData);
+        invalidateAdminAction('rarity_add');
       }
       
       await fetchRarities();
@@ -432,6 +434,7 @@ const AdminRarities = ({ onRefresh }) => {
     
     try {
       await deleteRarity(rarity.id);
+      invalidateAdminAction('rarity_delete');
       await fetchRarities();
       await refetchRarityContext(); // Refresh the global rarity context
       if (onRefresh) onRefresh();
@@ -448,6 +451,7 @@ const AdminRarities = ({ onRefresh }) => {
     
     try {
       await resetDefaultRarities();
+      invalidateAdminAction('rarity_reset');
       await fetchRarities();
       await refetchRarityContext(); // Refresh the global rarity context
       if (onRefresh) onRefresh();

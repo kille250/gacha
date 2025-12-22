@@ -97,7 +97,58 @@ export const clearCache = (pattern) => {
 };
 
 /**
- * Invalidate all admin-related caches after mutations
+ * Admin action-based invalidation map
+ * Maps admin actions to the cache patterns that should be invalidated
+ * These actions affect both admin views AND user-facing pages
+ */
+const ADMIN_INVALIDATION_MAP = {
+  // Character mutations
+  character_add: ['/admin/dashboard', '/characters'],
+  character_edit: ['/admin/dashboard', '/characters', '/characters/collection'],
+  character_delete: ['/admin/dashboard', '/characters', '/characters/collection', '/banners'],
+  
+  // Banner mutations
+  banner_add: ['/admin/dashboard', '/banners'],
+  banner_edit: ['/admin/dashboard', '/banners'],
+  banner_delete: ['/admin/dashboard', '/banners'],
+  banner_reorder: ['/banners'],
+  banner_featured: ['/banners'],
+  
+  // Coupon mutations
+  coupon_add: ['/admin/dashboard', '/coupons'],
+  coupon_edit: ['/admin/dashboard', '/coupons'],
+  coupon_delete: ['/admin/dashboard', '/coupons'],
+  
+  // Rarity mutations
+  rarity_add: ['/admin/dashboard', '/rarities', '/characters'],
+  rarity_edit: ['/admin/dashboard', '/rarities', '/characters'],
+  rarity_delete: ['/admin/dashboard', '/rarities', '/characters'],
+  rarity_reset: ['/admin/dashboard', '/rarities', '/characters'],
+  
+  // User mutations
+  user_coins: ['/admin/dashboard', '/admin/users', '/auth/me'],
+  user_toggle_autofish: ['/admin/users'],
+  user_toggle_r18: ['/admin/users'],
+  
+  // Multi-upload & import
+  bulk_upload: ['/admin/dashboard', '/characters'],
+  anime_import: ['/admin/dashboard', '/characters'],
+  
+  // Visibility change - refresh everything
+  visibility_change: ['/admin/dashboard', '/admin/users']
+};
+
+/**
+ * Invalidate caches for a specific admin action
+ * @param {string} action - The admin action (character_add, banner_edit, etc.)
+ */
+export const invalidateAdminAction = (action) => {
+  const patterns = ADMIN_INVALIDATION_MAP[action] || [];
+  patterns.forEach(pattern => clearCache(pattern));
+};
+
+/**
+ * Invalidate all admin-related caches after mutations (legacy, use invalidateAdminAction for granular control)
  */
 export const invalidateAdminCache = () => {
   clearCache('/admin');
