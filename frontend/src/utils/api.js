@@ -86,15 +86,6 @@ export const clearCache = (pattern) => {
   }
 };
 
-/**
- * Invalidate entire cache - call on authentication events (login, logout, registration)
- * This is preferred over clearCache() for auth-related cache clearing.
- * 
- * NOTE: Domain-specific invalidation (fishing, dojo, admin, gacha) has been
- * consolidated into cacheManager.js. Use invalidateFor(CACHE_ACTIONS.*) instead.
- */
-export const invalidateCache = () => clearCache();
-
 const api = axios.create({
   baseURL: API_URL,
   timeout: 30000,

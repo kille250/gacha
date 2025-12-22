@@ -23,6 +23,9 @@ import { applyPointsUpdate } from './userStateUpdates';
  * @throws {Error} If roll fails
  */
 export const executeStandardRoll = async (setUser) => {
+  // Defensive revalidation before spending currency to prevent stale-state bugs
+  invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+  
   const result = await rollCharacter();
   
   // Update user state from response
@@ -43,6 +46,9 @@ export const executeStandardRoll = async (setUser) => {
  * @throws {Error} If roll fails
  */
 export const executeStandardMultiRoll = async (count, setUser) => {
+  // Defensive revalidation before spending currency to prevent stale-state bugs
+  invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+  
   const result = await rollMultipleCharacters(count);
   
   // Update user state from response
@@ -65,6 +71,9 @@ export const executeStandardMultiRoll = async (count, setUser) => {
  * @throws {Error} If roll fails
  */
 export const executeBannerRoll = async (bannerId, useTicket, ticketType, setUser) => {
+  // Defensive revalidation before spending currency to prevent stale-state bugs
+  invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+  
   const result = await rollOnBanner(bannerId, useTicket, ticketType);
   
   // Update user state from response
@@ -88,6 +97,9 @@ export const executeBannerRoll = async (bannerId, useTicket, ticketType, setUser
  * @throws {Error} If roll fails
  */
 export const executeBannerMultiRoll = async (bannerId, count, useTickets, ticketType, setUser) => {
+  // Defensive revalidation before spending currency to prevent stale-state bugs
+  invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+  
   const result = await multiRollOnBanner(bannerId, count, useTickets, ticketType);
   
   // Update user state from response
@@ -108,6 +120,9 @@ export const executeBannerMultiRoll = async (bannerId, count, useTickets, ticket
  * @throws {Error} If level up fails
  */
 export const executeLevelUp = async (characterId, setUser) => {
+  // Defensive revalidation before spending currency to prevent stale-state bugs
+  invalidateFor(CACHE_ACTIONS.PRE_PURCHASE);
+  
   const result = await levelUpCharacter(characterId);
   
   // Update user state from response

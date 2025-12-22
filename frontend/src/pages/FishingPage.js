@@ -452,6 +452,9 @@ const FishingPage = () => {
   // Leaderboard fetch - also refresh rank data to keep it in sync
   useEffect(() => {
     if (showLeaderboard) {
+      // Ensure fresh data when opening leaderboard modal
+      invalidateFor(CACHE_ACTIONS.MODAL_LEADERBOARD_OPEN);
+      
       Promise.all([
         api.get('/fishing/leaderboard'),
         api.get('/fishing/rank')
