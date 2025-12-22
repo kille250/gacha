@@ -3,6 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { getCollectionData, getAssetUrl, levelUpCharacter } from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
 import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
@@ -109,6 +110,10 @@ const CollectionPage = () => {
     await withLock(async () => {
       try {
         const result = await levelUpCharacter(characterId);
+        
+        // Invalidate cache to ensure other components see fresh data
+        invalidateFor(CACHE_ACTIONS.GACHA_LEVEL_UP);
+        
         if (result.success) {
           // Update the collection state with new level
           setCollection(prev => prev.map(char => 

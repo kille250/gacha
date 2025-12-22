@@ -18,7 +18,8 @@ import {
 } from 'react-icons/md';
 import { FaGift, FaTicketAlt, FaDice, FaFish, FaDumbbell } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
-import api, { invalidateCache } from '../../utils/api';
+import api from '../../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../../utils/cacheManager';
 import { theme, LoadingSpinner as SharedLoadingSpinner } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { languages } from '../../i18n';
@@ -81,7 +82,7 @@ const Navigation = () => {
     setIsTogglingR18(true);
     try {
       await api.post('/auth/toggle-r18');
-      invalidateCache();
+      invalidateFor(CACHE_ACTIONS.AUTH_TOGGLE_R18);
       await refreshUser();
     } catch (err) {
       console.error('Failed to toggle R18 preference:', err);

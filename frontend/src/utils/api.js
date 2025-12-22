@@ -138,37 +138,10 @@ export const invalidateAdminAction = (action) => {
 };
 
 /**
- * @deprecated Use invalidateAdminAction(action) for granular control.
- * This function clears too many caches and will be removed in a future version.
- */
-export const invalidateAdminCache = () => {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('[DEPRECATED] invalidateAdminCache() - use invalidateAdminAction(action) instead');
-  }
-  clearCache('/admin');
-  clearCache('/characters');
-  clearCache('/banners');
-  clearCache('/coupons');
-};
-
-/**
  * Invalidate entire cache - call on authentication events (login, logout, registration)
  * This is preferred over clearCache() for auth-related cache clearing.
  */
 export const invalidateCache = () => clearCache();
-
-/**
- * @deprecated Use invalidateFor('gacha:roll') or invalidateFor('gacha:roll_banner') from cacheManager.
- * This function will be removed in a future version.
- */
-export const invalidateAfterRoll = () => {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('[DEPRECATED] invalidateAfterRoll() - use invalidateFor("gacha:roll") from cacheManager instead');
-  }
-  clearCache('/auth/me');
-  clearCache('/characters/collection');
-  clearCache('/banners/user/tickets');
-};
 
 /**
  * Dojo action-based invalidation map
@@ -188,18 +161,6 @@ const DOJO_INVALIDATION_MAP = {
 export const invalidateDojoAction = (action) => {
   const patterns = DOJO_INVALIDATION_MAP[action] || [];
   patterns.forEach(pattern => clearCache(pattern));
-};
-
-/**
- * @deprecated Use invalidateDojoAction(action) for granular control.
- * This function clears too many caches and will be removed in a future version.
- */
-export const invalidateAfterDojo = () => {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('[DEPRECATED] invalidateAfterDojo() - use invalidateDojoAction(action) instead');
-  }
-  clearCache('/dojo');
-  clearCache('/auth/me');
 };
 
 /**
@@ -234,18 +195,6 @@ const FISHING_INVALIDATION_MAP = {
 export const invalidateFishingAction = (action) => {
   const patterns = FISHING_INVALIDATION_MAP[action] || [];
   patterns.forEach(pattern => clearCache(pattern));
-};
-
-/**
- * @deprecated Use invalidateFishingAction(action) for granular control.
- * This function clears too many caches and will be removed in a future version.
- */
-export const invalidateAfterFishing = () => {
-  if (process.env.NODE_ENV === 'development') {
-    console.warn('[DEPRECATED] invalidateAfterFishing() - use invalidateFishingAction(action) instead');
-  }
-  clearCache('/fishing');
-  clearCache('/auth/me');
 };
 
 const api = axios.create({
@@ -367,12 +316,11 @@ export const getCollectionData = async () => {
 
 /**
  * Level up a character
- * NOTE: This function clears collection cache internally as there's no dedicated action
+ * NOTE: Cache invalidation is handled by caller using invalidateFor('gacha:level_up')
  */
 export const levelUpCharacter = async (characterId) => {
   const response = await api.post(`/characters/${characterId}/level-up`);
-  // Clear cache - no dedicated action exists for level up
-  clearCache('/characters/collection');
+  // Cache invalidation is now caller's responsibility via invalidateFor('gacha:level_up')
   return response.data;
 };
 

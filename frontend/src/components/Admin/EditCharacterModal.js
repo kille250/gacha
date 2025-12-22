@@ -3,7 +3,8 @@ import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaEdit, FaImage, FaSpinner, FaCheck } from 'react-icons/fa';
-import api, { invalidateAdminCache } from '../../utils/api';
+import api from '../../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../../utils/cacheManager';
 import { isVideo } from '../../utils/mediaUtils';
 import AltMediaPicker from './AltMediaPicker';
 import {
@@ -123,7 +124,7 @@ const EditCharacterModal = ({
         });
       }
       
-      invalidateAdminCache();
+      invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_EDIT);
       onSuccess(t('admin.characterUpdated'));
       handleClose();
     } catch (err) {
@@ -144,7 +145,7 @@ const EditCharacterModal = ({
         imageUrl: selectedAltMedia.file,
       });
       
-      invalidateAdminCache();
+      invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_EDIT);
       onSuccess(t('admin.characterUpdated'));
       handleClose();
     } catch (err) {

@@ -60,6 +60,8 @@ export const GACHA_ACTIONS = {
   ROLL: 'gacha:roll',
   /** Banner-specific roll - updates collection, points, tickets */
   ROLL_BANNER: 'gacha:roll_banner',
+  /** Level up a character - updates collection, points */
+  LEVEL_UP: 'gacha:level_up',
 };
 
 // ===========================================
@@ -122,6 +124,8 @@ export const AUTH_ACTIONS = {
   LOGOUT: 'auth:logout',
   /** Refreshing user data */
   REFRESH: 'auth:refresh',
+  /** Toggling R18 content preference - updates characters visibility */
+  TOGGLE_R18: 'auth:toggle_r18',
 };
 
 // ===========================================
@@ -153,6 +157,7 @@ export const CACHE_ACTIONS = {
   // Gacha
   GACHA_ROLL: GACHA_ACTIONS.ROLL,
   GACHA_ROLL_BANNER: GACHA_ACTIONS.ROLL_BANNER,
+  GACHA_LEVEL_UP: GACHA_ACTIONS.LEVEL_UP,
   
   // Admin
   ADMIN_CHARACTER_ADD: ADMIN_ACTIONS.CHARACTER_ADD,
@@ -181,6 +186,7 @@ export const CACHE_ACTIONS = {
   AUTH_LOGIN: AUTH_ACTIONS.LOGIN,
   AUTH_LOGOUT: AUTH_ACTIONS.LOGOUT,
   AUTH_REFRESH: AUTH_ACTIONS.REFRESH,
+  AUTH_TOGGLE_R18: AUTH_ACTIONS.TOGGLE_R18,
 };
 
 export default CACHE_ACTIONS;

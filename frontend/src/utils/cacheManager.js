@@ -176,13 +176,21 @@ const ACTION_HANDLERS = {
     clearCache('/auth/me');
     clearCache('/banners/user/tickets');
   },
+  'gacha:level_up': () => {
+    clearCache('/characters/collection');
+    clearCache('/auth/me');
+  },
 
   // ===========================================
   // AUTH ACTIONS
   // ===========================================
   'auth:login': () => clearCache(),
   'auth:logout': () => clearCache(),
-  'auth:refresh': () => clearCache('/auth/me')
+  'auth:refresh': () => clearCache('/auth/me'),
+  'auth:toggle_r18': () => {
+    clearCache('/characters');
+    clearCache('/auth/me');
+  }
 };
 
 /**
