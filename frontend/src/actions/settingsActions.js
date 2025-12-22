@@ -6,13 +6,13 @@
  * consistent cache behavior and reduce the chance of forgetting invalidation.
  * 
  * USAGE:
- * import { updateEmail, updateUsername, updatePassword, resetAccount } from '../utils/settingsActions';
+ * import { updateEmail, updateUsername, updatePassword, resetAccount } from '../actions/settingsActions';
  * 
  * const result = await updateEmail(email, refreshUser);
  */
 
-import api from './api';
-import { invalidateFor, CACHE_ACTIONS } from './cacheManager';
+import api from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../cache';
 
 // ===========================================
 // PROFILE ACTIONS

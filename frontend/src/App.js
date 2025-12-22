@@ -5,7 +5,7 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { RarityProvider } from './context/RarityContext';
 import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './styles/DesignSystem';
-import { initVisibilityHandler, enableCacheDebugging } from './utils/cacheManager';
+import { initVisibilityHandler, enableCacheDebugging } from './cache';
 
 // i18n
 import './i18n';

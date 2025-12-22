@@ -6,14 +6,14 @@
  * consistent cache behavior and reduce the chance of forgetting invalidation.
  * 
  * USAGE:
- * import { executeRoll, executeMultiRoll, executeLevelUp } from '../utils/gachaActions';
+ * import { executeRoll, executeMultiRoll, executeLevelUp } from '../actions/gachaActions';
  * 
  * const result = await executeRoll(rollFn, setUser);
  */
 
-import { rollCharacter, rollMultipleCharacters, rollOnBanner, multiRollOnBanner, levelUpCharacter } from './api';
-import { invalidateFor, CACHE_ACTIONS } from './cacheManager';
-import { applyPointsUpdate } from './userStateUpdates';
+import { rollCharacter, rollMultipleCharacters, rollOnBanner, multiRollOnBanner, levelUpCharacter } from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../cache';
+import { applyPointsUpdate } from '../utils/userStateUpdates';
 
 /**
  * Execute a standard gacha roll with proper cache invalidation and state updates.

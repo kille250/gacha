@@ -15,7 +15,7 @@
  * - This replaces scattered document.addEventListener('visibilitychange', ...) calls
  */
 
-import { clearCache } from './api';
+import { clearCache } from '../utils/api';
 
 // Re-export CACHE_ACTIONS for convenience
 export { 
@@ -29,7 +29,7 @@ export {
   MODAL_ACTIONS,
   PRE_TRANSACTION_ACTIONS,
   VISIBILITY_CALLBACK_IDS
-} from './cacheActions';
+} from './constants';
 
 // ===========================================
 // STALENESS THRESHOLDS
@@ -459,7 +459,7 @@ const validateAction = (action) => {
  * @returns {boolean} Whether the action was handled
  * 
  * @example
- * import { CACHE_ACTIONS } from '../utils/cacheManager';
+ * import { CACHE_ACTIONS } from '../cache';
  * invalidateFor(CACHE_ACTIONS.FISHING_CATCH);
  * invalidateFor(CACHE_ACTIONS.DOJO_CLAIM, { debug: true });
  */

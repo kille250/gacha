@@ -6,7 +6,7 @@ import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy
 import { getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { redeemCoupon as redeemCouponAction } from '../utils/couponActions';
+import { redeemCoupon as redeemCouponAction } from '../actions/couponActions';
 import {
   theme,
   PageWrapper,

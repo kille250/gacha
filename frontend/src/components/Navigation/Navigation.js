@@ -19,7 +19,7 @@ import {
 import { FaGift, FaTicketAlt, FaDice, FaFish, FaDumbbell } from 'react-icons/fa';
 import { AuthContext } from '../../context/AuthContext';
 import api from '../../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS } from '../../cache';
 import { theme, LoadingSpinner as SharedLoadingSpinner } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { languages } from '../../i18n';

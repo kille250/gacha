@@ -12,7 +12,7 @@ import {
   updateUsername as updateUsernameAction,
   updatePassword as updatePasswordAction,
   resetAccount as resetAccountAction
-} from '../utils/settingsActions';
+} from '../actions/settingsActions';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 

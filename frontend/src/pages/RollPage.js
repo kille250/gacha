@@ -13,8 +13,8 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { onVisibilityChange, VISIBILITY_CALLBACK_IDS } from '../utils/cacheManager';
-import { executeStandardRoll, executeStandardMultiRoll } from '../utils/gachaActions';
+import { onVisibilityChange, VISIBILITY_CALLBACK_IDS } from '../cache';
+import { executeStandardRoll, executeStandardMultiRoll } from '../actions/gachaActions';
 
 // Design System
 import {

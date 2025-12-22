@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
 import { getRarityConfig } from '../utils/api';
-import { onVisibilityChange, STALE_THRESHOLDS } from '../utils/cacheManager';
+import { onVisibilityChange, STALE_THRESHOLDS } from '../cache';
 
 /**
  * RarityContext

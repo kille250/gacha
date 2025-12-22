@@ -6,14 +6,14 @@
  * consistent cache behavior and reduce the chance of forgetting invalidation.
  * 
  * USAGE:
- * import { executeFishTrade, catchFish, claimChallenge } from '../utils/fishingActions';
+ * import { executeFishTrade, catchFish, claimChallenge } from '../actions/fishingActions';
  * 
  * const result = await executeFishTrade(tradeId, 1, setUser);
  */
 
-import api from './api';
-import { invalidateFor, CACHE_ACTIONS } from './cacheManager';
-import { applyPointsUpdate, applyRewards } from './userStateUpdates';
+import api from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../cache';
+import { applyPointsUpdate, applyRewards } from '../utils/userStateUpdates';
 
 /**
  * Execute a fish trade with proper cache invalidation and state updates.

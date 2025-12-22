@@ -3,7 +3,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { getAssetUrl, getAdminDashboard } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS, VISIBILITY_CALLBACK_IDS } from '../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS, VISIBILITY_CALLBACK_IDS } from '../cache';
 import {
   addCharacter as addCharacterAction,
   deleteCharacter as deleteCharacterAction,
@@ -20,7 +20,7 @@ import {
   removeCoupon as removeCouponAction,
   handleBulkUploadSuccess,
   handleAnimeImportSuccess
-} from '../utils/adminActions';
+} from '../actions/adminActions';
 import { PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';

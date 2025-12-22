@@ -1,7 +1,7 @@
 // src/context/AuthContext.js
 import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
 import api, { AUTH_ERROR_EVENT } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS } from '../cache';
 import {
   getToken,
   setToken,

@@ -4,7 +4,7 @@ import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaEdit, FaImage, FaSpinner, FaCheck } from 'react-icons/fa';
 import api from '../../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS } from '../../cache';
 import { isVideo } from '../../utils/mediaUtils';
 import AltMediaPicker from './AltMediaPicker';
 import {

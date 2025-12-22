@@ -6,13 +6,13 @@
  * consistent cache behavior and reduce the chance of forgetting invalidation.
  * 
  * USAGE:
- * import { addCharacter, addCoins, toggleAutofish } from '../utils/adminActions';
+ * import { addCharacter, addCoins, toggleAutofish } from '../actions/adminActions';
  * 
  * const result = await addCoins(coinForm, refreshUser, currentUserId);
  */
 
-import api, { createBanner, updateBanner, deleteBanner } from './api';
-import { invalidateFor, CACHE_ACTIONS } from './cacheManager';
+import api, { createBanner, updateBanner, deleteBanner } from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../cache';
 
 // ===========================================
 // CHARACTER ACTIONS

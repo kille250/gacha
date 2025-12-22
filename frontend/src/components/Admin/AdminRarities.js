@@ -9,7 +9,7 @@ import {
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS } from '../../cache';
 import { useRarity } from '../../context/RarityContext';
 import {
   AdminContainer,

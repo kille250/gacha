@@ -8,7 +8,7 @@
  * useVisibilityRefresh('my-page-data', fetchData, { threshold: 'normal' });
  */
 import { useEffect, useCallback, useRef } from 'react';
-import { onVisibilityChange, STALE_THRESHOLDS } from '../utils/cacheManager';
+import { onVisibilityChange, STALE_THRESHOLDS } from '../cache';
 
 /**
  * Register a component for visibility-based data refresh.

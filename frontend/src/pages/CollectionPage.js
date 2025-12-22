@@ -9,7 +9,7 @@ import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError } from '../hooks';
-import { executeLevelUp } from '../utils/gachaActions';
+import { executeLevelUp } from '../actions/gachaActions';
 import {
   theme,
   PageWrapper,

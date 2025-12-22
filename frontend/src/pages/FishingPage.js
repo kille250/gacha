@@ -13,7 +13,7 @@ import api, {
   getFishingAreas,
   getFishingRods
 } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS, VISIBILITY_CALLBACK_IDS } from '../utils/cacheManager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS, VISIBILITY_CALLBACK_IDS } from '../cache';
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -28,7 +28,7 @@ import {
   selectArea,
   runAutofish,
   castLine
-} from '../utils/fishingActions';
+} from '../actions/fishingActions';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, motionVariants } from '../styles/DesignSystem';
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
 

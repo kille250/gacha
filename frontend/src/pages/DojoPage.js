@@ -22,13 +22,13 @@ import {
   getDojoAvailableCharacters,
   getAssetUrl
 } from '../utils/api';
-import { onVisibilityChange, STALE_THRESHOLDS, VISIBILITY_CALLBACK_IDS } from '../utils/cacheManager';
+import { onVisibilityChange, STALE_THRESHOLDS, VISIBILITY_CALLBACK_IDS } from '../cache';
 import {
   assignCharacter as dojoAssignCharacter,
   unassignCharacter as dojoUnassignCharacter,
   claimRewards as dojoClaimRewards,
   purchaseUpgrade as dojoPurchaseUpgrade
-} from '../utils/dojoActions';
+} from '../actions/dojoActions';
 import { theme, Spinner } from '../styles/DesignSystem';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../utils/mediaUtils';
 

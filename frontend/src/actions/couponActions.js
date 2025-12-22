@@ -6,14 +6,14 @@
  * consistent cache behavior and reduce the chance of forgetting invalidation.
  * 
  * USAGE:
- * import { redeemCoupon } from '../utils/couponActions';
+ * import { redeemCoupon } from '../actions/couponActions';
  * 
  * const result = await redeemCoupon(code, setUser);
  */
 
-import api from './api';
-import { invalidateFor, CACHE_ACTIONS } from './cacheManager';
-import { applyPointsUpdate } from './userStateUpdates';
+import api from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../cache';
+import { applyPointsUpdate } from '../utils/userStateUpdates';
 
 /**
  * Redeem a coupon code with proper cache invalidation and state updates.

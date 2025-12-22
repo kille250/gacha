@@ -6,7 +6,7 @@
  * consistent cache behavior and reduce the chance of forgetting invalidation.
  * 
  * USAGE:
- * import { assignCharacter, claimRewards, purchaseUpgrade } from '../utils/dojoActions';
+ * import { assignCharacter, claimRewards, purchaseUpgrade } from '../actions/dojoActions';
  * 
  * const result = await claimRewards(setUser);
  */
@@ -16,9 +16,9 @@ import {
   unassignCharacterFromDojo,
   claimDojoRewards,
   purchaseDojoUpgrade
-} from './api';
-import { invalidateFor, CACHE_ACTIONS } from './cacheManager';
-import { applyPointsUpdate, applyServerResponse } from './userStateUpdates';
+} from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../cache';
+import { applyPointsUpdate, applyServerResponse } from '../utils/userStateUpdates';
 
 /**
  * Assign a character to a dojo training slot with proper cache invalidation.

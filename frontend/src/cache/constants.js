@@ -9,7 +9,7 @@
  * - Single source of truth for action names
  * 
  * @example
- * import { CACHE_ACTIONS } from '../utils/cacheActions';
+ * import { CACHE_ACTIONS } from '../cache';
  * invalidateFor(CACHE_ACTIONS.FISHING_CATCH);
  */
 
