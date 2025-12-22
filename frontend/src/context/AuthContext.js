@@ -1,6 +1,6 @@
 // src/context/AuthContext.js
-import React, { createContext, useState, useEffect, useCallback } from 'react';
-import api, { invalidateCache, clearCache } from '../utils/api';
+import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
+import api, { invalidateCache, clearCache, AUTH_ERROR_EVENT } from '../utils/api';
 import {
   getToken,
   setToken,
@@ -15,6 +15,8 @@ export const AuthProvider = ({ children }) => {
   const [currentUser, setCurrentUser] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
+  const [sessionExpired, setSessionExpired] = useState(false);
+  const sessionExpiredHandled = useRef(false);
 
   // Refresh user data from the server (forces fresh fetch by clearing auth cache)
   const refreshUser = useCallback(async () => {
@@ -73,6 +75,31 @@ export const AuthProvider = ({ children }) => {
     };
     
     checkLoggedIn();
+  }, []);
+
+  // Listen for global auth errors (token expired during active session)
+  useEffect(() => {
+    const handleAuthError = (event) => {
+      // Prevent handling multiple times
+      if (sessionExpiredHandled.current) return;
+      sessionExpiredHandled.current = true;
+      
+      console.warn('Session expired, logging out:', event.detail);
+      
+      // Clear auth state
+      invalidateCache();
+      clearAuthStorage();
+      setCurrentUser(null);
+      setSessionExpired(true);
+      
+      // Reset flag after a delay to allow re-triggering if needed
+      setTimeout(() => {
+        sessionExpiredHandled.current = false;
+      }, 5000);
+    };
+
+    window.addEventListener(AUTH_ERROR_EVENT, handleAuthError);
+    return () => window.removeEventListener(AUTH_ERROR_EVENT, handleAuthError);
   }, []);
 
   const login = async (username, password) => {
@@ -210,6 +237,12 @@ export const AuthProvider = ({ children }) => {
     setCurrentUser(null);
   };
 
+  // Clear session expired flag when user successfully logs in
+  const clearSessionExpired = useCallback(() => {
+    setSessionExpired(false);
+    sessionExpiredHandled.current = false;
+  }, []);
+
   return (
     <AuthContext.Provider value={{ 
       user: currentUser, 
@@ -222,7 +255,9 @@ export const AuthProvider = ({ children }) => {
       googleUnlink,
       logout,
       setUser: setCurrentUser,
-      refreshUser
+      refreshUser,
+      sessionExpired,
+      clearSessionExpired
     }}>
       {children}
     </AuthContext.Provider>

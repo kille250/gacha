@@ -8,10 +8,11 @@ import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from
 import confetti from 'canvas-confetti';
 
 // API & Context
-import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiRollOnBanner, clearCache } from '../utils/api';
+import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiRollOnBanner } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
+import { useActionLock } from '../hooks';
 
 // Design System
 import {
@@ -54,6 +55,9 @@ const BannerPage = () => {
   const { user, refreshUser, setUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
   
+  // Action lock to prevent rapid double-clicks
+  const { withLock, isLocked } = useActionLock(300);
+  
   // State
   const [banner, setBanner] = useState(null);
   const [currentChar, setCurrentChar] = useState(null);
@@ -80,6 +84,7 @@ const BannerPage = () => {
 
   // Pricing from server (single source of truth)
   const [pricing, setPricing] = useState(null);
+  const [pricingLoaded, setPricingLoaded] = useState(false);
   
   // Ticket state
   const [tickets, setTickets] = useState({ rollTickets: 0, premiumTickets: 0 });
@@ -110,6 +115,7 @@ const BannerPage = () => {
         setBanner(bannerData);
         setPricing(pricingData);
         setTickets(ticketsData);
+        setPricingLoaded(true);
       } catch (err) {
         setError(err.response?.data?.error || t('admin.failedLoadBanners'));
       } finally {
@@ -167,46 +173,51 @@ const BannerPage = () => {
       return;
     }
     
-    try {
-      setIsRolling(true);
-      setShowCard(false);
-      setShowMultiResults(false);
-      setError(null);
-      setMultiRollResults([]);
-      setRollCount(prev => prev + 1);
-      
-      // Use helper function with cache invalidation
-      const result = await rollOnBanner(bannerId, useTicket, ticketType);
-      const { character, updatedPoints, tickets: newTickets } = result;
-      
-      // Update points immediately from response
-      if (updatedPoints !== undefined && user) {
-        setUser({ ...user, points: updatedPoints });
-      }
-      
-      // Update tickets if returned
-      if (newTickets) {
-        setTickets(newTickets);
-      }
-      
-      if (skipAnimations) {
-        // Skip animation - show card directly
-        setCurrentChar(character);
-        setShowCard(true);
-        setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
-        showRarePullEffect(character.rarity);
+    // Use action lock to prevent rapid double-clicks
+    await withLock(async () => {
+      try {
+        setIsRolling(true);
+        setShowCard(false);
+        setShowMultiResults(false);
+        setError(null);
+        setMultiRollResults([]);
+        setRollCount(prev => prev + 1);
+        
+        // Use helper function with cache invalidation
+        const result = await rollOnBanner(bannerId, useTicket, ticketType);
+        const { character, updatedPoints, tickets: newTickets } = result;
+        
+        // Update points immediately from response
+        if (updatedPoints !== undefined && user) {
+          setUser({ ...user, points: updatedPoints });
+        }
+        
+        // Update tickets if returned
+        if (newTickets) {
+          setTickets(newTickets);
+        }
+        
+        if (skipAnimations) {
+          // Skip animation - show card directly
+          setCurrentChar(character);
+          setShowCard(true);
+          setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
+          showRarePullEffect(character.rarity);
+          setIsRolling(false);
+        } else {
+          // Show summoning animation
+          setPendingCharacter(character);
+          setShowSummonAnimation(true);
+        }
+        
+        await fetchUserCollection();
+      } catch (err) {
+        setError(err.response?.data?.error || t('roll.failedRoll'));
         setIsRolling(false);
-      } else {
-        // Show summoning animation
-        setPendingCharacter(character);
-        setShowSummonAnimation(true);
+        // Refresh user data to sync points after failure (handles stale data)
+        await refreshUser();
       }
-      
-      await fetchUserCollection();
-    } catch (err) {
-      setError(err.response?.data?.error || t('roll.failedRoll'));
-      setIsRolling(false);
-    }
+    });
   };
   
   const handleSummonComplete = useCallback(() => {
@@ -241,55 +252,60 @@ const BannerPage = () => {
       }
     }
     
-    try {
-      setIsRolling(true);
-      setShowCard(false);
-      setShowMultiResults(false);
-      setError(null);
-      setRollCount(prev => prev + count);
-      
-      // Use helper function with cache invalidation
-      const result = await multiRollOnBanner(bannerId, count, useTickets, ticketType);
-      const { characters, updatedPoints, tickets: newTickets } = result;
-      
-      // Update points immediately from response
-      if (updatedPoints !== undefined && user) {
-        setUser({ ...user, points: updatedPoints });
-      }
-      
-      // Update tickets if returned
-      if (newTickets) {
-        setTickets(newTickets);
-      }
-      
-      if (skipAnimations) {
-        // Skip animation - show results directly
-        setMultiRollResults(characters);
-        setShowMultiResults(true);
+    // Use action lock to prevent rapid double-clicks
+    await withLock(async () => {
+      try {
+        setIsRolling(true);
+        setShowCard(false);
+        setShowMultiResults(false);
+        setError(null);
+        setRollCount(prev => prev + count);
         
-        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-        const bestRarity = characters.reduce((best, char) => {
-          const idx = rarityOrder.indexOf(char.rarity);
-          return idx > rarityOrder.indexOf(best) ? char.rarity : best;
-        }, 'common');
+        // Use helper function with cache invalidation
+        const result = await multiRollOnBanner(bannerId, count, useTickets, ticketType);
+        const { characters, updatedPoints, tickets: newTickets } = result;
         
-        setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
-        
-        if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
-          confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
+        // Update points immediately from response
+        if (updatedPoints !== undefined && user) {
+          setUser({ ...user, points: updatedPoints });
         }
+        
+        // Update tickets if returned
+        if (newTickets) {
+          setTickets(newTickets);
+        }
+        
+        if (skipAnimations) {
+          // Skip animation - show results directly
+          setMultiRollResults(characters);
+          setShowMultiResults(true);
+          
+          const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+          const bestRarity = characters.reduce((best, char) => {
+            const idx = rarityOrder.indexOf(char.rarity);
+            return idx > rarityOrder.indexOf(best) ? char.rarity : best;
+          }, 'common');
+          
+          setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
+          
+          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
+            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
+          }
+          setIsRolling(false);
+        } else {
+          // Show multi-summon animation
+          setPendingMultiResults(characters);
+          setShowMultiSummonAnimation(true);
+        }
+        
+        await fetchUserCollection();
+      } catch (err) {
+        setError(err.response?.data?.error || t('roll.failedMultiRoll'));
         setIsRolling(false);
-      } else {
-        // Show multi-summon animation
-        setPendingMultiResults(characters);
-        setShowMultiSummonAnimation(true);
+        // Refresh user data to sync points after failure (handles stale data)
+        await refreshUser();
       }
-      
-      await fetchUserCollection();
-    } catch (err) {
-      setError(err.response?.data?.error || t('roll.failedMultiRoll'));
-      setIsRolling(false);
-    }
+    });
   };
   
   const handleMultiSummonComplete = useCallback(() => {
@@ -520,8 +536,8 @@ const BannerPage = () => {
                   </CardContent>
                   <CardActions>
                     <RollAgainBtn 
-                      onClick={handleRoll} 
-                      disabled={isRolling || user?.points < singlePullCost}
+                      onClick={() => handleRoll(false)} 
+                      disabled={isRolling || isLocked() || user?.points < singlePullCost}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -614,7 +630,7 @@ const BannerPage = () => {
                 {/* Primary Single Pull - Most Prominent */}
                 <PrimaryPullCard
                   onClick={() => handleRoll(false)} 
-                  disabled={isRolling || user?.points < singlePullCost}
+                  disabled={isRolling || !pricingLoaded || isLocked() || user?.points < singlePullCost}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -638,8 +654,8 @@ const BannerPage = () => {
                       <MultiPullCard
                         key={option.count}
                         onClick={() => handleMultiRoll(option.count, false)}
-                        disabled={isRolling || !canAfford}
-                        $canAfford={canAfford}
+                        disabled={isRolling || !pricingLoaded || isLocked() || !canAfford}
+                        $canAfford={canAfford && pricingLoaded}
                         $isRecommended={option.count === 10}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
                         whileTap={{ scale: canAfford ? 0.97 : 1 }}
@@ -684,7 +700,7 @@ const BannerPage = () => {
                     {tickets.rollTickets > 0 && (
                       <TicketPullButton
                         onClick={() => handleRoll(true, 'roll')}
-                        disabled={isRolling}
+                        disabled={isRolling || isLocked() || tickets.rollTickets < 1}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -698,7 +714,7 @@ const BannerPage = () => {
                     {tickets.premiumTickets > 0 && (
                       <PremiumPullButton
                         onClick={() => handleRoll(true, 'premium')}
-                        disabled={isRolling}
+                        disabled={isRolling || isLocked() || tickets.premiumTickets < 1}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -712,7 +728,7 @@ const BannerPage = () => {
                     {tickets.rollTickets >= 10 && (
                       <TicketPullButton
                         onClick={() => handleMultiRoll(10, true, 'roll')}
-                        disabled={isRolling}
+                        disabled={isRolling || isLocked() || tickets.rollTickets < 10}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -726,7 +742,7 @@ const BannerPage = () => {
                     {tickets.premiumTickets >= 10 && (
                       <PremiumPullButton
                         onClick={() => handleMultiRoll(10, true, 'premium')}
-                        disabled={isRolling}
+                        disabled={isRolling || isLocked() || tickets.premiumTickets < 10}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -924,8 +940,8 @@ const BannerPage = () => {
                 </InfoBlock>
                 
                 <RollFromPanelBtn
-                  onClick={() => { setShowInfoPanel(false); setTimeout(handleRoll, 300); }}
-                  disabled={isRolling || user?.points < singlePullCost}
+                  onClick={() => { setShowInfoPanel(false); setTimeout(() => handleRoll(false), 300); }}
+                  disabled={isRolling || isLocked() || user?.points < singlePullCost}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >

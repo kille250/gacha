@@ -16,6 +16,7 @@ import {
 import { FaDumbbell, FaCoins, FaTicketAlt, FaStar, FaTimes } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
+import { useActionLock } from '../hooks';
 import {
   getDojoStatus,
   getDojoAvailableCharacters,
@@ -56,6 +57,9 @@ const DojoPage = () => {
   const navigate = useNavigate();
   const { user, refreshUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
+  
+  // Action lock to prevent rapid double-clicks on claim/upgrade
+  const { withLock, isLocked } = useActionLock(300);
   
   // State
   const [status, setStatus] = useState(null);
@@ -147,39 +151,49 @@ const DojoPage = () => {
   // Claim rewards
   const handleClaim = async () => {
     if (claiming) return;
-    setClaiming(true);
     
-    try {
-      const result = await claimDojoRewards();
-      setClaimResult(result);
-      await fetchStatus();
-      await refreshUser();
+    await withLock(async () => {
+      setClaiming(true);
       
-      // Auto-hide after 5 seconds
-      setTimeout(() => setClaimResult(null), 5000);
-    } catch (err) {
-      console.error('Failed to claim rewards:', err);
-      setError(err.response?.data?.error || t('dojo.failedClaim'));
-    } finally {
-      setClaiming(false);
-    }
+      try {
+        const result = await claimDojoRewards();
+        setClaimResult(result);
+        await fetchStatus();
+        await refreshUser();
+        
+        // Auto-hide after 5 seconds
+        setTimeout(() => setClaimResult(null), 5000);
+      } catch (err) {
+        console.error('Failed to claim rewards:', err);
+        setError(err.response?.data?.error || t('dojo.failedClaim'));
+        // Refresh user to sync state after failure
+        await refreshUser();
+      } finally {
+        setClaiming(false);
+      }
+    });
   };
 
   // Purchase upgrade
   const handleUpgrade = async (upgradeType, rarity = null) => {
     if (upgrading) return;
-    setUpgrading(upgradeType + (rarity || ''));
     
-    try {
-      await purchaseDojoUpgrade(upgradeType, rarity);
-      await fetchStatus();
-      await refreshUser();
-    } catch (err) {
-      console.error('Failed to purchase upgrade:', err);
-      setError(err.response?.data?.error || t('dojo.failedUpgrade'));
-    } finally {
-      setUpgrading(null);
-    }
+    await withLock(async () => {
+      setUpgrading(upgradeType + (rarity || ''));
+      
+      try {
+        await purchaseDojoUpgrade(upgradeType, rarity);
+        await fetchStatus();
+        await refreshUser();
+      } catch (err) {
+        console.error('Failed to purchase upgrade:', err);
+        setError(err.response?.data?.error || t('dojo.failedUpgrade'));
+        // Refresh user to sync state after failure
+        await refreshUser();
+      } finally {
+        setUpgrading(null);
+      }
+    });
   };
 
   // Filter characters by search
@@ -337,8 +351,8 @@ const DojoPage = () => {
           
           <ClaimButton 
             onClick={handleClaim}
-            disabled={!canClaim || claiming}
-            $canClaim={canClaim}
+            disabled={!canClaim || claiming || isLocked()}
+            $canClaim={canClaim && !isLocked()}
             whileHover={canClaim ? { scale: 1.02 } : {}}
             whileTap={canClaim ? { scale: 0.98 } : {}}
           >
@@ -598,10 +612,12 @@ const DojoPage = () => {
               return (
                 <UpgradeCard
                   key={idx}
-                  $canAfford={canAfford}
-                  onClick={() => canAfford && !isUpgrading && handleUpgrade(upgrade.type, upgrade.rarity)}
-                  whileHover={canAfford ? { scale: 1.02 } : {}}
-                  whileTap={canAfford ? { scale: 0.98 } : {}}
+                  $canAfford={canAfford && !isLocked()}
+                  $disabled={!canAfford || isUpgrading || isLocked()}
+                  onClick={() => canAfford && !isUpgrading && !isLocked() && handleUpgrade(upgrade.type, upgrade.rarity)}
+                  whileHover={canAfford && !isLocked() ? { scale: 1.02 } : {}}
+                  whileTap={canAfford && !isLocked() ? { scale: 0.98 } : {}}
+                  style={{ cursor: (!canAfford || isUpgrading || isLocked()) ? 'not-allowed' : 'pointer' }}
                 >
                   <UpgradeIcon>{upgrade.icon}</UpgradeIcon>
                   <UpgradeInfo>

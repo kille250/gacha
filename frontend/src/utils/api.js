@@ -55,8 +55,9 @@ const getCacheTTL = (url) => {
 };
 
 const getCacheKey = (config) => {
-  // Include auth token in cache key so different users get different cached responses
-  return `${config.method || 'get'}:${config.url}:${getTokenHash()}`;
+  // Include auth token and query params in cache key so different users/queries get different cached responses
+  const params = config.params ? JSON.stringify(config.params) : '';
+  return `${config.method || 'get'}:${config.url}:${params}:${getTokenHash()}`;
 };
 
 /**
@@ -131,7 +132,10 @@ api.interceptors.request.use(config => {
   return config;
 });
 
-// Response interceptor to cache successful responses
+// Auth error event for global handling (token expiry)
+export const AUTH_ERROR_EVENT = 'auth:error';
+
+// Response interceptor to cache successful responses and handle auth errors
 api.interceptors.response.use(
   (response) => {
     // Cache successful GET responses
@@ -154,6 +158,19 @@ api.interceptors.response.use(
       const cacheKey = getCacheKey(error.config);
       pendingRequests.delete(cacheKey);
     }
+    
+    // Handle auth errors globally (token expired, invalid, etc.)
+    // Skip for auth endpoints to avoid redirect loops
+    if (error.response?.status === 401 || error.response?.status === 403) {
+      const isAuthEndpoint = error.config?.url?.includes('/auth/');
+      if (!isAuthEndpoint) {
+        // Dispatch custom event for AuthContext to handle
+        window.dispatchEvent(new CustomEvent(AUTH_ERROR_EVENT, { 
+          detail: { status: error.response.status, url: error.config?.url }
+        }));
+      }
+    }
+    
     return Promise.reject(error);
   }
 );

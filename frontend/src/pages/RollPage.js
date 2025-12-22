@@ -12,6 +12,7 @@ import { rollCharacter, rollMultipleCharacters, getStandardPricing, getAssetUrl 
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
+import { useActionLock } from '../hooks';
 
 // Design System
 import {
@@ -51,6 +52,9 @@ const RollPage = () => {
   const navigate = useNavigate();
   const { user, refreshUser, setUser } = useContext(AuthContext);
   
+  // Action lock to prevent rapid double-clicks
+  const { withLock, isLocked } = useActionLock(300);
+  
   // State
   const [currentChar, setCurrentChar] = useState(null);
   const [multiRollResults, setMultiRollResults] = useState([]);
@@ -72,6 +76,7 @@ const RollPage = () => {
   
   // Pricing from server (single source of truth)
   const [pricing, setPricing] = useState(null);
+  const [pricingLoaded, setPricingLoaded] = useState(false);
   
   // Computed values from pricing
   const singlePullCost = pricing?.singlePullCost || DEFAULT_SINGLE_PULL_COST;
@@ -94,6 +99,8 @@ const RollPage = () => {
       } catch (err) {
         console.error('Failed to fetch pricing:', err);
         // Will use defaults
+      } finally {
+        setPricingLoaded(true);
       }
     };
     fetchPricing();
@@ -119,39 +126,44 @@ const RollPage = () => {
   
   // Handlers
   const handleRoll = async () => {
-    try {
-      setIsRolling(true);
-      setShowCard(false);
-      setShowMultiResults(false);
-      setError(null);
-      setMultiRollResults([]);
-      setRollCount(prev => prev + 1);
-      
-      // Fetch character immediately
-      const result = await rollCharacter();
-      const { updatedPoints, ...character } = result;
-      
-      // Update points immediately from response
-      if (updatedPoints !== undefined && user) {
-        setUser({ ...user, points: updatedPoints });
-      }
-      
-      if (skipAnimations) {
-        // Skip animation - show card directly
-        setCurrentChar(character);
-        setShowCard(true);
-        setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
-        showRarePullEffect(character.rarity);
+    // Use action lock to prevent rapid double-clicks
+    await withLock(async () => {
+      try {
+        setIsRolling(true);
+        setShowCard(false);
+        setShowMultiResults(false);
+        setError(null);
+        setMultiRollResults([]);
+        setRollCount(prev => prev + 1);
+        
+        // Fetch character immediately
+        const result = await rollCharacter();
+        const { updatedPoints, ...character } = result;
+        
+        // Update points immediately from response
+        if (updatedPoints !== undefined && user) {
+          setUser({ ...user, points: updatedPoints });
+        }
+        
+        if (skipAnimations) {
+          // Skip animation - show card directly
+          setCurrentChar(character);
+          setShowCard(true);
+          setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
+          showRarePullEffect(character.rarity);
+          setIsRolling(false);
+        } else {
+          // Show summoning animation
+          setPendingCharacter(character);
+          setShowSummonAnimation(true);
+        }
+      } catch (err) {
+        setError(err.response?.data?.error || t('roll.failedRoll'));
         setIsRolling(false);
-      } else {
-        // Show summoning animation
-        setPendingCharacter(character);
-        setShowSummonAnimation(true);
+        // Refresh user data to sync points after failure (handles stale data)
+        await refreshUser();
       }
-    } catch (err) {
-      setError(err.response?.data?.error || t('roll.failedRoll'));
-      setIsRolling(false);
-    }
+    });
   };
   
   const handleSummonComplete = useCallback(() => {
@@ -174,47 +186,52 @@ const RollPage = () => {
       return;
     }
     
-    try {
-      setIsRolling(true);
-      setShowCard(false);
-      setShowMultiResults(false);
-      setError(null);
-      setRollCount(prev => prev + count);
-      
-      const result = await rollMultipleCharacters(count);
-      const { characters, updatedPoints } = result;
-      
-      // Update points immediately from response
-      if (updatedPoints !== undefined && user) {
-        setUser({ ...user, points: updatedPoints });
-      }
-      
-      if (skipAnimations) {
-        // Skip animation - show results directly
-        setMultiRollResults(characters);
-        setShowMultiResults(true);
+    // Use action lock to prevent rapid double-clicks
+    await withLock(async () => {
+      try {
+        setIsRolling(true);
+        setShowCard(false);
+        setShowMultiResults(false);
+        setError(null);
+        setRollCount(prev => prev + count);
         
-        const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-        const bestRarity = characters.reduce((best, char) => {
-          const idx = rarityOrder.indexOf(char.rarity);
-          return idx > rarityOrder.indexOf(best) ? char.rarity : best;
-        }, 'common');
+        const result = await rollMultipleCharacters(count);
+        const { characters, updatedPoints } = result;
         
-        setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
-        
-        if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
-          confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
+        // Update points immediately from response
+        if (updatedPoints !== undefined && user) {
+          setUser({ ...user, points: updatedPoints });
         }
+        
+        if (skipAnimations) {
+          // Skip animation - show results directly
+          setMultiRollResults(characters);
+          setShowMultiResults(true);
+          
+          const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+          const bestRarity = characters.reduce((best, char) => {
+            const idx = rarityOrder.indexOf(char.rarity);
+            return idx > rarityOrder.indexOf(best) ? char.rarity : best;
+          }, 'common');
+          
+          setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
+          
+          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
+            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
+          }
+          setIsRolling(false);
+        } else {
+          // Show multi-summon animation
+          setPendingMultiResults(characters);
+          setShowMultiSummonAnimation(true);
+        }
+      } catch (err) {
+        setError(err.response?.data?.error || t('roll.failedMultiRoll'));
         setIsRolling(false);
-      } else {
-        // Show multi-summon animation
-        setPendingMultiResults(characters);
-        setShowMultiSummonAnimation(true);
+        // Refresh user data to sync points after failure (handles stale data)
+        await refreshUser();
       }
-    } catch (err) {
-      setError(err.response?.data?.error || t('roll.failedMultiRoll'));
-      setIsRolling(false);
-    }
+    });
   };
   
   const handleMultiSummonComplete = useCallback(() => {
@@ -343,7 +360,7 @@ const RollPage = () => {
                   <CardActions>
                     <RollAgainBtn 
                       onClick={handleRoll} 
-                      disabled={isRolling || user?.points < singlePullCost}
+                      disabled={isRolling || isLocked() || user?.points < singlePullCost}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -434,7 +451,7 @@ const RollPage = () => {
                 {/* Primary Single Pull - Most Prominent */}
                 <PrimaryPullCard
                   onClick={handleRoll} 
-                  disabled={isRolling || user?.points < singlePullCost}
+                  disabled={isRolling || !pricingLoaded || isLocked() || user?.points < singlePullCost}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -458,8 +475,8 @@ const RollPage = () => {
                       <MultiPullCard
                         key={option.count}
                         onClick={() => handleMultiRoll(option.count)}
-                        disabled={isRolling || !canAfford}
-                        $canAfford={canAfford}
+                        disabled={isRolling || !pricingLoaded || isLocked() || !canAfford}
+                        $canAfford={canAfford && pricingLoaded}
                         $isRecommended={option.count === 10}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
                         whileTap={{ scale: canAfford ? 0.97 : 1 }}

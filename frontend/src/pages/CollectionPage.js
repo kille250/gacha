@@ -7,6 +7,7 @@ import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
 import { useRarity } from '../context/RarityContext';
+import { useActionLock } from '../hooks';
 import {
   theme,
   PageWrapper,
@@ -20,6 +21,7 @@ import {
 const CollectionPage = () => {
   const { t } = useTranslation();
   const { getRarityColor, getRarityGlow } = useRarity();
+  const { withLock } = useActionLock(200);
   const [collection, setCollection] = useState([]);
   const [allCharacters, setAllCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -79,37 +81,42 @@ const CollectionPage = () => {
   };
   
   const handleLevelUp = async (characterId) => {
-    try {
-      const result = await levelUpCharacter(characterId);
-      if (result.success) {
-        // Update the collection state with new level
-        setCollection(prev => prev.map(char => 
-          char.id === characterId 
-            ? { 
-                ...char, 
-                level: result.newLevel, 
-                shards: result.shardsRemaining,
-                isMaxLevel: result.isMaxLevel,
-                shardsToNextLevel: result.shardsToNextLevel,
-                canLevelUp: result.shardsToNextLevel && result.shardsRemaining >= result.shardsToNextLevel
-              }
-            : char
-        ));
-        // Update preview char too
-        if (previewChar?.id === characterId) {
-          setPreviewChar(prev => ({
-            ...prev,
-            level: result.newLevel,
-            shards: result.shardsRemaining,
-            isMaxLevel: result.isMaxLevel,
-            shardsToNextLevel: result.shardsToNextLevel,
-            canLevelUp: result.shardsToNextLevel && result.shardsRemaining >= result.shardsToNextLevel
-          }));
+    // Use action lock to prevent rapid double-clicks
+    await withLock(async () => {
+      try {
+        const result = await levelUpCharacter(characterId);
+        if (result.success) {
+          // Update the collection state with new level
+          setCollection(prev => prev.map(char => 
+            char.id === characterId 
+              ? { 
+                  ...char, 
+                  level: result.newLevel, 
+                  shards: result.shardsRemaining,
+                  isMaxLevel: result.isMaxLevel,
+                  shardsToNextLevel: result.shardsToNextLevel,
+                  canLevelUp: result.shardsToNextLevel && result.shardsRemaining >= result.shardsToNextLevel
+                }
+              : char
+          ));
+          // Update preview char too
+          if (previewChar?.id === characterId) {
+            setPreviewChar(prev => ({
+              ...prev,
+              level: result.newLevel,
+              shards: result.shardsRemaining,
+              isMaxLevel: result.isMaxLevel,
+              shardsToNextLevel: result.shardsToNextLevel,
+              canLevelUp: result.shardsToNextLevel && result.shardsRemaining >= result.shardsToNextLevel
+            }));
+          }
         }
+      } catch (err) {
+        console.error('Level up failed:', err);
+        // Refresh collection data to sync state after failure
+        await fetchData();
       }
-    } catch (err) {
-      console.error('Level up failed:', err);
-    }
+    });
   };
 
   const getImagePath = (imageSrc) => {

@@ -23,6 +23,7 @@ import api, {
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
+import { useActionLock } from '../hooks';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, motionVariants } from '../styles/DesignSystem';
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
 
@@ -76,8 +77,9 @@ const isBetterFish = (newFish, currentBest) => {
 const FishingPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, setUser } = useContext(AuthContext);
+  const { user, setUser, refreshUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
+  const { withLock: withTradeLock, isLocked: isTradeLocked } = useActionLock(300);
   const canvasContainerRef = useRef(null);
   const movePlayerRef = useRef(null);
   // Stable ref for translation function to avoid WebSocket reconnections
@@ -427,31 +429,36 @@ const FishingPage = () => {
   
   // Handle trade execution
   const handleTrade = useCallback(async (tradeId) => {
-    try {
-      setTradingLoading(true);
-      const result = await executeTrade(tradeId, 1);
-      setTradeResult(result);
-      
-      // Update user points
-      if (result.newPoints !== undefined) {
-        setUser(prev => ({ ...prev, points: result.newPoints }));
-        clearCache('/auth/me');
+    // Use action lock to prevent rapid double-clicks
+    await withTradeLock(async () => {
+      try {
+        setTradingLoading(true);
+        const result = await executeTrade(tradeId, 1);
+        setTradeResult(result);
+        
+        // Update user points
+        if (result.newPoints !== undefined) {
+          setUser(prev => ({ ...prev, points: result.newPoints }));
+          clearCache('/auth/me');
+        }
+        
+        // Refresh trading options (includes new ticket counts)
+        const newOptions = await getTradingPostOptions();
+        setTradingOptions(newOptions);
+        
+        showNotification(result.message, 'success');
+        setTradingLoading(false);
+        
+        // Clear result after animation
+        setTimeout(() => setTradeResult(null), theme.timing.tradeResultDismiss);
+      } catch (err) {
+        showNotification(err.response?.data?.message || t('fishing.tradeFailed'), 'error');
+        setTradingLoading(false);
+        // Refresh user to sync state after failure
+        await refreshUser();
       }
-      
-      // Refresh trading options (includes new ticket counts)
-      const newOptions = await getTradingPostOptions();
-      setTradingOptions(newOptions);
-      
-      showNotification(result.message, 'success');
-      setTradingLoading(false);
-      
-      // Clear result after animation
-      setTimeout(() => setTradeResult(null), theme.timing.tradeResultDismiss);
-    } catch (err) {
-      showNotification(err.response?.data?.message || t('fishing.tradeFailed'), 'error');
-      setTradingLoading(false);
-    }
-  }, [setUser, t, showNotification]);
+    });
+  }, [setUser, t, showNotification, withTradeLock, refreshUser]);
   
   // Autofishing loop with integrated cleanup (now with daily limits)
   useEffect(() => {
@@ -800,10 +807,12 @@ const FishingPage = () => {
         'insufficient_points': t('fishing.errors.notEnoughPoints') || 'Not enough coins'
       };
       showNotification(errorMessages[errorCode] || err.response?.data?.message || 'Failed to unlock area', 'error');
+      // Refresh user to sync state after failure
+      await refreshUser();
     } finally {
       setEquipmentActionLoading(false);
     }
-  }, [setUser, showNotification, equipmentActionLoading, t]);
+  }, [setUser, showNotification, equipmentActionLoading, t, refreshUser]);
   
   // Handle rod purchase
   const handleBuyRod = useCallback(async (rodId) => {
@@ -829,10 +838,12 @@ const FishingPage = () => {
         'insufficient_points': t('fishing.errors.notEnoughPoints') || 'Not enough coins'
       };
       showNotification(errorMessages[errorCode] || err.response?.data?.message || 'Failed to buy rod', 'error');
+      // Refresh user to sync state after failure
+      await refreshUser();
     } finally {
       setEquipmentActionLoading(false);
     }
-  }, [setUser, showNotification, equipmentActionLoading, t]);
+  }, [setUser, showNotification, equipmentActionLoading, t, refreshUser]);
   
   // Handle rod equip (for already owned rods)
   const handleEquipRod = useCallback(async (rodId) => {

@@ -3,4 +3,5 @@
  */
 export { useGachaRoll } from './useGachaRoll';
 export { useHourlyReward } from './useHourlyReward';
+export { useActionLock } from './useActionLock';
 
