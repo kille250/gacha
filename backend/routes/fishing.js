@@ -11,7 +11,8 @@ const {
   FISH_TYPES, 
   TRADE_OPTIONS, 
   selectRandomFish, 
-  calculateFishTotals 
+  calculateFishTotals,
+  getCatchThresholds
 } = require('../config/fishing');
 
 // Extract frequently used config values
@@ -20,21 +21,58 @@ const AUTOFISH_COOLDOWN = FISHING_CONFIG.autofishCooldown;
 const CAST_COOLDOWN = FISHING_CONFIG.castCooldown;
 const CAST_COST = FISHING_CONFIG.castCost;
 const LATENCY_BUFFER = FISHING_CONFIG.latencyBuffer || 200;
+const MIN_REACTION_TIME = FISHING_CONFIG.minReactionTime || 80;
 const CLEANUP_INTERVAL = FISHING_CONFIG.cleanupInterval || 15000;
 const SESSION_EXPIRY = FISHING_CONFIG.sessionExpiry || 30000;
+const TRADE_TIMEOUT = FISHING_CONFIG.tradeTimeout || 30000;
+const RANK_CACHE_TTL = FISHING_CONFIG.rankCacheTTL || 30000;
 
 // Rate limiting maps (per user)
 const autofishCooldowns = new Map();
 const castCooldowns = new Map();
 
-// Race condition protection sets (per user)
+// Race condition protection with timestamps for timeout cleanup
 const autofishInProgress = new Set();
-const tradeInProgress = new Set();
+const tradeInProgress = new Map(); // userId -> timestamp (for timeout detection)
+
+// Multi-tab detection: track active fishing mode per user
+const userFishingMode = new Map(); // userId -> { mode: 'manual' | 'autofish', lastActivity: timestamp }
+
+// Rank cache for performance
+const rankCache = new Map(); // points -> { rank, expiry }
+const userRankCache = new Map(); // userId -> { rank, expiry }
 
 // Store active fishing sessions (fish appears, waiting for catch)
 const activeSessions = new Map();
 
-// Cleanup interval - removes stale data from all maps/sessions (optimized: 15s instead of 60s)
+/**
+ * Check if user is in conflicting fishing mode (multi-tab exploit prevention)
+ * @param {number} userId 
+ * @param {string} requestedMode - 'manual' or 'autofish'
+ * @returns {boolean|string} - false if OK, or error message
+ */
+function checkFishingModeConflict(userId, requestedMode) {
+  const current = userFishingMode.get(userId);
+  if (!current) return false;
+  
+  // 10 second window to detect concurrent activity
+  const isRecent = Date.now() - current.lastActivity < 10000;
+  
+  if (isRecent && current.mode !== requestedMode) {
+    return `Cannot ${requestedMode} while ${current.mode} is active`;
+  }
+  
+  return false;
+}
+
+/**
+ * Update user's fishing mode (for multi-tab detection)
+ */
+function setFishingMode(userId, mode) {
+  userFishingMode.set(userId, { mode, lastActivity: Date.now() });
+}
+
+// Cleanup interval - removes stale data from all maps/sessions
 setInterval(() => {
   const now = Date.now();
   
@@ -56,13 +94,46 @@ setInterval(() => {
       castCooldowns.delete(userId);
     }
   }
+  
+  // Clean up stuck trades (timeout protection)
+  for (const [userId, startTime] of tradeInProgress.entries()) {
+    if (now - startTime > TRADE_TIMEOUT) {
+      tradeInProgress.delete(userId);
+      console.warn(`[Fishing] Trade timeout for user ${userId}, releasing lock`);
+    }
+  }
+  
+  // Clean up fishing mode tracking (inactive for 30 seconds)
+  for (const [userId, data] of userFishingMode.entries()) {
+    if (now - data.lastActivity > 30000) {
+      userFishingMode.delete(userId);
+    }
+  }
+  
+  // Clean up expired rank cache entries
+  for (const [userId, data] of userRankCache.entries()) {
+    if (now > data.expiry) {
+      userRankCache.delete(userId);
+    }
+  }
 }, CLEANUP_INTERVAL);
 
 // POST /api/fishing/cast - Start fishing (cast the line)
 router.post('/cast', auth, async (req, res) => {
+  const userId = req.user.id;
+  
   try {
+    // Multi-tab detection: check for autofish conflict
+    const modeConflict = checkFishingModeConflict(userId, 'manual');
+    if (modeConflict) {
+      return res.status(409).json({ 
+        error: 'Mode conflict',
+        message: modeConflict
+      });
+    }
+    
     // Rate limiting check (prevent spam casting)
-    const lastCast = castCooldowns.get(req.user.id);
+    const lastCast = castCooldowns.get(userId);
     const now = Date.now();
     if (lastCast && (now - lastCast) < CAST_COOLDOWN) {
       const remainingMs = CAST_COOLDOWN - (now - lastCast);
@@ -72,30 +143,62 @@ router.post('/cast', auth, async (req, res) => {
         retryAfter: remainingMs
       });
     }
-    castCooldowns.set(req.user.id, now);
+    castCooldowns.set(userId, now);
+    setFishingMode(userId, 'manual');
     
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Check if user has enough points (if there's a cost)
-    if (CAST_COST > 0 && user.points < CAST_COST) {
-      return res.status(400).json({ 
-        error: 'Not enough points',
-        required: CAST_COST,
-        current: user.points
+    // Use transaction with row lock for atomic points deduction
+    const result = await sequelize.transaction(async (transaction) => {
+      const user = await User.findByPk(userId, {
+        lock: transaction.LOCK.UPDATE,
+        transaction
       });
-    }
+      
+      if (!user) {
+        throw new Error('USER_NOT_FOUND');
+      }
+      
+      // Check if user has enough points (if there's a cost)
+      if (CAST_COST > 0 && user.points < CAST_COST) {
+        throw new Error('NOT_ENOUGH_POINTS');
+      }
+      
+      // Deduct cost if any (atomic operation)
+      if (CAST_COST > 0) {
+        user.points -= CAST_COST;
+      }
+      
+      // Get pity data for fish selection
+      const pityData = user.fishingPity || { legendary: 0, epic: 0 };
+      
+      // Select a fish with pity system
+      const { fish, pityTriggered, resetPity } = selectRandomFish(pityData);
+      
+      // Update pity counters
+      const newPityData = { ...pityData };
+      if (resetPity.includes('legendary')) {
+        newPityData.legendary = 0;
+      } else {
+        newPityData.legendary = (newPityData.legendary || 0) + 1;
+      }
+      if (resetPity.includes('epic')) {
+        newPityData.epic = 0;
+      } else if (!resetPity.includes('legendary')) {
+        newPityData.epic = (newPityData.epic || 0) + 1;
+      }
+      newPityData.lastCast = now;
+      user.fishingPity = newPityData;
+      
+      // Update fishing stats
+      const stats = user.fishingStats || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} };
+      stats.totalCasts = (stats.totalCasts || 0) + 1;
+      user.fishingStats = stats;
+      
+      await user.save({ transaction });
+      
+      return { user, fish, pityTriggered };
+    });
     
-    // Deduct cost if any
-    if (CAST_COST > 0) {
-      user.points -= CAST_COST;
-      await user.save();
-    }
-    
-    // Select a fish
-    const fish = selectRandomFish();
+    const { user, fish, pityTriggered } = result;
     
     // Random wait time before fish bites (1.5 to 6 seconds)
     const waitTime = Math.floor(Math.random() * 4500) + 1500;
@@ -108,9 +211,10 @@ router.post('/cast', auth, async (req, res) => {
       fish,
       waitTime,
       createdAt,
+      pityTriggered,
       // Server tracks when fish appears for anti-cheat validation
       fishAppearsAt: createdAt + waitTime,
-      userId: req.user.id
+      userId
     };
     
     activeSessions.set(sessionId, session);
@@ -120,10 +224,20 @@ router.post('/cast', auth, async (req, res) => {
       waitTime,
       castCost: CAST_COST,
       newPoints: user.points,
-      message: 'Line cast! Wait for a bite...'
+      pityTriggered: pityTriggered || false,
+      message: pityTriggered ? '✨ Lucky cast! A rare fish approaches...' : 'Line cast! Wait for a bite...'
     });
     
   } catch (err) {
+    if (err.message === 'USER_NOT_FOUND') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (err.message === 'NOT_ENOUGH_POINTS') {
+      return res.status(400).json({ 
+        error: 'Not enough points',
+        required: CAST_COST
+      });
+    }
     console.error('Fishing cast error:', err);
     res.status(500).json({ error: 'Server error' });
   }
@@ -131,6 +245,8 @@ router.post('/cast', auth, async (req, res) => {
 
 // POST /api/fishing/catch - Attempt to catch the fish
 router.post('/catch', auth, async (req, res) => {
+  const userId = req.user.id;
+  
   try {
     const { sessionId, reactionTime: clientReactionTime } = req.body;
     
@@ -144,7 +260,7 @@ router.post('/catch', auth, async (req, res) => {
       return res.status(400).json({ error: 'Fishing session expired or invalid' });
     }
     
-    if (session.userId !== req.user.id) {
+    if (session.userId !== userId) {
       return res.status(403).json({ error: 'Not your fishing session' });
     }
     
@@ -155,66 +271,91 @@ router.post('/catch', auth, async (req, res) => {
     const now = Date.now();
     
     // Server-side timing validation (anti-cheat)
-    // Calculate server's view of reaction time
     const serverReactionTime = now - session.fishAppearsAt;
     
-    // Use the higher of client time or (server time - latency buffer)
-    // This prevents cheating while accounting for network latency
-    const validatedReactionTime = clientReactionTime !== undefined
-      ? Math.max(clientReactionTime, serverReactionTime - LATENCY_BUFFER)
-      : undefined;
+    // Anti-cheat: Minimum reaction time (humans can't react < 80ms)
+    // Use the higher of: minimum reaction time, client time, or (server time - latency buffer)
+    let validatedReactionTime;
+    if (clientReactionTime !== undefined) {
+      validatedReactionTime = Math.max(
+        MIN_REACTION_TIME,  // Minimum human-possible reaction
+        clientReactionTime,
+        serverReactionTime - LATENCY_BUFFER
+      );
+    }
     
     // Check if player reacted within the timing window
     const success = validatedReactionTime !== undefined && validatedReactionTime <= fish.timingWindow;
     
     if (success) {
-      // Get user for response
-      const user = await User.findByPk(req.user.id);
-      
-      // Calculate catch quality (Perfect / Great / Normal)
-      const catchConfig = FISHING_CONFIG.catchQuality || { 
-        perfectThreshold: 0.30, 
-        greatThreshold: 0.60, 
-        perfectMultiplier: 2.0, 
-        greatMultiplier: 1.5 
-      };
-      
-      let catchQuality = 'normal';
-      let bonusMultiplier = 1.0;
-      let catchMessage = `You caught a ${fish.name}!`;
-      
-      const reactionRatio = validatedReactionTime / fish.timingWindow;
-      
-      if (reactionRatio <= catchConfig.perfectThreshold) {
-        catchQuality = 'perfect';
-        bonusMultiplier = catchConfig.perfectMultiplier;
-        catchMessage = `⭐ PERFECT! You caught a ${fish.name}!`;
-      } else if (reactionRatio <= catchConfig.greatThreshold) {
-        catchQuality = 'great';
-        bonusMultiplier = catchConfig.greatMultiplier;
-        catchMessage = `✨ Great catch! You caught a ${fish.name}!`;
-      }
-      
-      // Calculate fish quantity based on catch quality
-      const fishQuantity = Math.floor(bonusMultiplier);
-      
-      // Add fish to inventory (quantity based on catch quality)
-      const [inventoryItem, created] = await FishInventory.findOrCreate({
-        where: { userId: req.user.id, fishId: fish.id },
-        defaults: {
-          userId: req.user.id,
-          fishId: fish.id,
-          fishName: fish.name,
-          fishEmoji: fish.emoji,
-          rarity: fish.rarity,
-          quantity: fishQuantity
+      // Use transaction for atomic inventory update
+      const result = await sequelize.transaction(async (transaction) => {
+        const user = await User.findByPk(userId, {
+          lock: transaction.LOCK.UPDATE,
+          transaction
+        });
+        
+        if (!user) {
+          throw new Error('USER_NOT_FOUND');
         }
+        
+        // Get rarity-specific catch quality thresholds (skill ceiling improvement)
+        const catchConfig = getCatchThresholds(fish.rarity);
+        
+        let catchQuality = 'normal';
+        let bonusMultiplier = 1.0;
+        let catchMessage = `You caught a ${fish.name}!`;
+        
+        const reactionRatio = validatedReactionTime / fish.timingWindow;
+        
+        if (reactionRatio <= catchConfig.perfectThreshold) {
+          catchQuality = 'perfect';
+          bonusMultiplier = catchConfig.perfectMultiplier;
+          catchMessage = `⭐ PERFECT! You caught a ${fish.name}!`;
+        } else if (reactionRatio <= catchConfig.greatThreshold) {
+          catchQuality = 'great';
+          bonusMultiplier = catchConfig.greatMultiplier;
+          catchMessage = `✨ Great catch! You caught a ${fish.name}!`;
+        }
+        
+        // Calculate fish quantity based on catch quality
+        const fishQuantity = Math.floor(bonusMultiplier);
+        
+        // Add fish to inventory (quantity based on catch quality)
+        const [inventoryItem, created] = await FishInventory.findOrCreate({
+          where: { userId, fishId: fish.id },
+          defaults: {
+            userId,
+            fishId: fish.id,
+            fishName: fish.name,
+            fishEmoji: fish.emoji,
+            rarity: fish.rarity,
+            quantity: fishQuantity
+          },
+          transaction
+        });
+        
+        if (!created) {
+          inventoryItem.quantity += fishQuantity;
+          await inventoryItem.save({ transaction });
+        }
+        
+        // Update fishing stats
+        const stats = user.fishingStats || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} };
+        stats.totalCatches = (stats.totalCatches || 0) + fishQuantity;
+        if (catchQuality === 'perfect') {
+          stats.perfectCatches = (stats.perfectCatches || 0) + 1;
+        }
+        stats.fishCaught = stats.fishCaught || {};
+        stats.fishCaught[fish.id] = (stats.fishCaught[fish.id] || 0) + fishQuantity;
+        user.fishingStats = stats;
+        
+        await user.save({ transaction });
+        
+        return { user, catchQuality, bonusMultiplier, fishQuantity, catchMessage, inventoryItem };
       });
       
-      if (!created) {
-        inventoryItem.quantity += fishQuantity;
-        await inventoryItem.save();
-      }
+      const { user, catchQuality, bonusMultiplier, fishQuantity, catchMessage, inventoryItem } = result;
       
       return res.json({
         success: true,
@@ -231,6 +372,7 @@ router.post('/catch', auth, async (req, res) => {
         timingWindow: fish.timingWindow,
         newPoints: user ? user.points : null,
         inventoryCount: inventoryItem.quantity,
+        pityTriggered: session.pityTriggered || false,
         message: catchMessage
       });
     } else {
@@ -252,36 +394,88 @@ router.post('/catch', auth, async (req, res) => {
     }
     
   } catch (err) {
+    if (err.message === 'USER_NOT_FOUND') {
+      return res.status(404).json({ error: 'User not found' });
+    }
     console.error('Fishing catch error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });
 
 // GET /api/fishing/info - Get fishing game info
-router.get('/info', auth, (req, res) => {
-  // Return fish info without weights (so players can see what's possible)
-  const fishInfo = FISH_TYPES.map(f => ({
-    id: f.id,
-    name: f.name,
-    emoji: f.emoji,
-    rarity: f.rarity,
-    minReward: f.minReward,
-    maxReward: f.maxReward,
-    difficulty: f.timingWindow <= 500 ? 'Extreme' : 
-                f.timingWindow <= 700 ? 'Very Hard' :
-                f.timingWindow <= 1000 ? 'Hard' :
-                f.timingWindow <= 1500 ? 'Medium' : 'Easy'
-  }));
-  
-  res.json({
-    castCost: CAST_COST,
-    cooldown: CAST_COOLDOWN,
-    fish: fishInfo
-  });
+router.get('/info', auth, async (req, res) => {
+  try {
+    // Get user for pity info
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['fishingPity', 'fishingStats']
+    });
+    
+    // Return fish info without weights (so players can see what's possible)
+    const fishInfo = FISH_TYPES.map(f => ({
+      id: f.id,
+      name: f.name,
+      emoji: f.emoji,
+      rarity: f.rarity,
+      minReward: f.minReward,
+      maxReward: f.maxReward,
+      difficulty: f.timingWindow <= 500 ? 'Extreme' : 
+                  f.timingWindow <= 700 ? 'Very Hard' :
+                  f.timingWindow <= 1000 ? 'Hard' :
+                  f.timingWindow <= 1500 ? 'Medium' : 'Easy'
+    }));
+    
+    // Calculate pity progress percentages
+    const pityData = user?.fishingPity || { legendary: 0, epic: 0 };
+    const pityConfig = FISHING_CONFIG.pity;
+    
+    const pityProgress = {
+      legendary: {
+        current: pityData.legendary || 0,
+        softPity: pityConfig.legendary.softPity,
+        hardPity: pityConfig.legendary.hardPity,
+        progress: Math.min(100, ((pityData.legendary || 0) / pityConfig.legendary.hardPity) * 100),
+        inSoftPity: (pityData.legendary || 0) >= pityConfig.legendary.softPity
+      },
+      epic: {
+        current: pityData.epic || 0,
+        softPity: pityConfig.epic.softPity,
+        hardPity: pityConfig.epic.hardPity,
+        progress: Math.min(100, ((pityData.epic || 0) / pityConfig.epic.hardPity) * 100),
+        inSoftPity: (pityData.epic || 0) >= pityConfig.epic.softPity
+      }
+    };
+    
+    res.json({
+      castCost: CAST_COST,
+      cooldown: CAST_COOLDOWN,
+      autofishCooldown: AUTOFISH_COOLDOWN,
+      fish: fishInfo,
+      pity: pityProgress,
+      stats: user?.fishingStats || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} }
+    });
+  } catch (err) {
+    console.error('Fishing info error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
 });
 
-// Helper function to get user's rank
-async function getUserRank(userId) {
+/**
+ * Get user's rank with caching for performance
+ * @param {number} userId 
+ * @param {boolean} forceRefresh - Skip cache and recalculate
+ * @returns {Promise<number|null>}
+ */
+async function getUserRank(userId, forceRefresh = false) {
+  const now = Date.now();
+  
+  // Check cache first (unless force refresh)
+  if (!forceRefresh) {
+    const cached = userRankCache.get(userId);
+    if (cached && now < cached.expiry) {
+      return cached.rank;
+    }
+  }
+  
   const user = await User.findByPk(userId);
   if (!user) return null;
   
@@ -292,7 +486,15 @@ async function getUserRank(userId) {
     }
   });
   
-  return higherRanked + 1; // Rank is 1-indexed
+  const rank = higherRanked + 1; // Rank is 1-indexed
+  
+  // Cache the result
+  userRankCache.set(userId, {
+    rank,
+    expiry: now + RANK_CACHE_TTL
+  });
+  
+  return rank;
 }
 
 // GET /api/fishing/rank - Get user's ranking and autofish status
@@ -366,8 +568,17 @@ router.get('/leaderboard', auth, async (req, res) => {
 
 // POST /api/fishing/autofish - Perform an autofish catch (for users with autofishing enabled)
 router.post('/autofish', auth, async (req, res) => {
+  const userId = req.user.id;
+  
   try {
-    const userId = req.user.id;
+    // Multi-tab detection: check for manual fishing conflict
+    const modeConflict = checkFishingModeConflict(userId, 'autofish');
+    if (modeConflict) {
+      return res.status(409).json({ 
+        error: 'Mode conflict',
+        message: modeConflict
+      });
+    }
     
     // Prevent race condition - only one autofish request at a time per user
     if (autofishInProgress.has(userId)) {
@@ -393,77 +604,112 @@ router.post('/autofish', auth, async (req, res) => {
     // Lock this user's autofish
     autofishInProgress.add(userId);
     autofishCooldowns.set(userId, now);
+    setFishingMode(userId, 'autofish');
     
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      autofishInProgress.delete(userId);
-      return res.status(404).json({ error: 'User not found' });
-    }
-    
-    // Re-verify rank to ensure user still qualifies
-    const currentRank = await getUserRank(req.user.id);
-    const stillQualifiesByRank = currentRank <= AUTOFISH_UNLOCK_RANK;
-    
-    // Update rank status if it changed
-    if (stillQualifiesByRank !== user.autofishUnlockedByRank) {
-      user.autofishUnlockedByRank = stillQualifiesByRank;
-      await user.save();
-    }
-    
-    // Check if user can autofish (admin-enabled OR qualified by rank)
-    if (!user.autofishEnabled && !stillQualifiesByRank) {
-      autofishInProgress.delete(userId);
-      return res.status(403).json({ 
-        error: 'Autofishing not unlocked',
-        message: 'Reach top ' + AUTOFISH_UNLOCK_RANK + ' to unlock autofishing',
-        currentRank
-      });
-    }
-    
-    // Check cast cost
-    if (CAST_COST > 0 && user.points < CAST_COST) {
-      autofishInProgress.delete(userId);
-      return res.status(400).json({ 
-        error: 'Not enough points',
-        required: CAST_COST,
-        current: user.points
-      });
-    }
-    
-    // Deduct cost if any
-    if (CAST_COST > 0) {
-      user.points -= CAST_COST;
-    }
-    
-    // Select a random fish
-    const fish = selectRandomFish();
-    
-    // Autofish success rate varies by fish rarity (configured in config/fishing.js)
-    const successChance = FISHING_CONFIG.autofishSuccessRates[fish.rarity] || 0.70;
-    const success = Math.random() < successChance;
-    
-    if (success) {
-      // Add fish to inventory (no automatic coin reward - use trading post to sell)
-      const [inventoryItem, created] = await FishInventory.findOrCreate({
-        where: { userId: req.user.id, fishId: fish.id },
-        defaults: {
-          userId: req.user.id,
-          fishId: fish.id,
-          fishName: fish.name,
-          fishEmoji: fish.emoji,
-          rarity: fish.rarity,
-          quantity: 1
-        }
+    // Use transaction for atomic operations
+    const result = await sequelize.transaction(async (transaction) => {
+      const user = await User.findByPk(userId, {
+        lock: transaction.LOCK.UPDATE,
+        transaction
       });
       
-      if (!created) {
-        inventoryItem.quantity += 1;
-        await inventoryItem.save();
+      if (!user) {
+        throw new Error('USER_NOT_FOUND');
       }
       
-      // Release lock
-      autofishInProgress.delete(userId);
+      // Re-verify rank to ensure user still qualifies (use cache for performance)
+      const currentRank = await getUserRank(userId);
+      const stillQualifiesByRank = currentRank <= AUTOFISH_UNLOCK_RANK;
       
+      // Update rank status if it changed
+      if (stillQualifiesByRank !== user.autofishUnlockedByRank) {
+        user.autofishUnlockedByRank = stillQualifiesByRank;
+      }
+      
+      // Check if user can autofish (admin-enabled OR qualified by rank)
+      if (!user.autofishEnabled && !stillQualifiesByRank) {
+        throw new Error('AUTOFISH_NOT_UNLOCKED');
+      }
+      
+      // Check cast cost
+      if (CAST_COST > 0 && user.points < CAST_COST) {
+        throw new Error('NOT_ENOUGH_POINTS');
+      }
+      
+      // Deduct cost if any
+      if (CAST_COST > 0) {
+        user.points -= CAST_COST;
+      }
+      
+      // Get pity data (autofish also contributes to pity)
+      const pityData = user.fishingPity || { legendary: 0, epic: 0 };
+      
+      // Select a random fish with pity
+      const { fish, pityTriggered, resetPity } = selectRandomFish(pityData);
+      
+      // Update pity counters
+      const newPityData = { ...pityData };
+      if (resetPity.includes('legendary')) {
+        newPityData.legendary = 0;
+      } else {
+        newPityData.legendary = (newPityData.legendary || 0) + 1;
+      }
+      if (resetPity.includes('epic')) {
+        newPityData.epic = 0;
+      } else if (!resetPity.includes('legendary')) {
+        newPityData.epic = (newPityData.epic || 0) + 1;
+      }
+      newPityData.lastCast = now;
+      user.fishingPity = newPityData;
+      
+      // Update fishing stats
+      const stats = user.fishingStats || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} };
+      stats.totalCasts = (stats.totalCasts || 0) + 1;
+      
+      // Autofish success rate varies by fish rarity (nerfed for balance)
+      const successChance = FISHING_CONFIG.autofishSuccessRates[fish.rarity] || 0.40;
+      const success = Math.random() < successChance;
+      
+      let inventoryItem = null;
+      
+      if (success) {
+        // Add fish to inventory
+        const [item, created] = await FishInventory.findOrCreate({
+          where: { userId, fishId: fish.id },
+          defaults: {
+            userId,
+            fishId: fish.id,
+            fishName: fish.name,
+            fishEmoji: fish.emoji,
+            rarity: fish.rarity,
+            quantity: 1
+          },
+          transaction
+        });
+        
+        if (!created) {
+          item.quantity += 1;
+          await item.save({ transaction });
+        }
+        
+        inventoryItem = item;
+        stats.totalCatches = (stats.totalCatches || 0) + 1;
+        stats.fishCaught = stats.fishCaught || {};
+        stats.fishCaught[fish.id] = (stats.fishCaught[fish.id] || 0) + 1;
+      }
+      
+      user.fishingStats = stats;
+      await user.save({ transaction });
+      
+      return { user, fish, success, inventoryItem, pityTriggered };
+    });
+    
+    // Release lock
+    autofishInProgress.delete(userId);
+    
+    const { user, fish, success, inventoryItem, pityTriggered } = result;
+    
+    if (success) {
       return res.json({
         success: true,
         fish: {
@@ -473,13 +719,11 @@ router.post('/autofish', auth, async (req, res) => {
           rarity: fish.rarity
         },
         newPoints: user.points,
-        inventoryCount: inventoryItem.quantity,
-        message: `Autofished a ${fish.name}!`
+        inventoryCount: inventoryItem?.quantity || 1,
+        pityTriggered,
+        message: pityTriggered ? `✨ Lucky! Autofished a ${fish.name}!` : `Autofished a ${fish.name}!`
       });
     } else {
-      // Release lock
-      autofishInProgress.delete(userId);
-      
       return res.json({
         success: false,
         fish: {
@@ -495,7 +739,24 @@ router.post('/autofish', auth, async (req, res) => {
     
   } catch (err) {
     // Release lock on error
-    autofishInProgress.delete(req.user.id);
+    autofishInProgress.delete(userId);
+    
+    if (err.message === 'USER_NOT_FOUND') {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    if (err.message === 'AUTOFISH_NOT_UNLOCKED') {
+      return res.status(403).json({ 
+        error: 'Autofishing not unlocked',
+        message: `Reach top ${AUTOFISH_UNLOCK_RANK} to unlock autofishing`
+      });
+    }
+    if (err.message === 'NOT_ENOUGH_POINTS') {
+      return res.status(400).json({ 
+        error: 'Not enough points',
+        required: CAST_COST
+      });
+    }
+    
     console.error('Autofish error:', err);
     res.status(500).json({ error: 'Server error' });
   }
@@ -679,15 +940,17 @@ router.get('/trading-post', auth, async (req, res) => {
 // POST /api/fishing/trade - Execute a trade (with database transaction for atomicity)
 router.post('/trade', auth, async (req, res) => {
   const userId = req.user.id;
+  const now = Date.now();
   
   // Prevent race condition - only one trade request at a time per user
+  // Use Map with timestamp for timeout cleanup
   if (tradeInProgress.has(userId)) {
     return res.status(429).json({ 
       error: 'Trade in progress',
       message: 'Another trade request is being processed'
     });
   }
-  tradeInProgress.add(userId);
+  tradeInProgress.set(userId, now);
   
   // Start database transaction for atomicity
   const transaction = await sequelize.transaction();

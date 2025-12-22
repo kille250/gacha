@@ -139,6 +139,32 @@ User.init(
         this.setDataValue('dojoTicketProgress', JSON.stringify(value || { roll: 0, premium: 0 }));
       }
     },
+    // Fishing pity system - bad luck protection
+    fishingPity: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"legendary":0,"epic":0,"lastCast":null}',
+      get() {
+        const value = this.getDataValue('fishingPity');
+        return value ? JSON.parse(value) : { legendary: 0, epic: 0, lastCast: null };
+      },
+      set(value) {
+        this.setDataValue('fishingPity', JSON.stringify(value || { legendary: 0, epic: 0, lastCast: null }));
+      }
+    },
+    // Fishing statistics
+    fishingStats: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"totalCasts":0,"totalCatches":0,"perfectCatches":0,"fishCaught":{}}',
+      get() {
+        const value = this.getDataValue('fishingStats');
+        return value ? JSON.parse(value) : { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} };
+      },
+      set(value) {
+        this.setDataValue('fishingStats', JSON.stringify(value || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} }));
+      }
+    },
   },
   {
     sequelize,

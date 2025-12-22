@@ -740,6 +740,22 @@ const FishingPage = () => {
             </StatItem>
           </>
         )}
+        {/* Pity Progress Indicator */}
+        {fishInfo?.pity && (
+          <>
+            <StatDivider />
+            <StatItem title={`${fishInfo.pity.legendary.current}/${fishInfo.pity.legendary.hardPity} casts`}>
+              <PityBar>
+                <PityFill 
+                  $progress={fishInfo.pity.legendary.progress} 
+                  $inSoftPity={fishInfo.pity.legendary.inSoftPity}
+                  $color="#ffc107"
+                />
+              </PityBar>
+              <StatLabel>🐋 Pity</StatLabel>
+            </StatItem>
+          </>
+        )}
       </StatsBar>
       
       {/* Game Canvas */}
@@ -3223,6 +3239,31 @@ const TradeSuccessText = styled.div`
   font-weight: 700;
   color: #fff;
   text-shadow: 1px 1px 0 rgba(0,0,0,0.2);
+`;
+
+// Pity system progress bar
+const PityBar = styled.div`
+  width: 50px;
+  height: 8px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 4px;
+  overflow: hidden;
+  
+  @media (max-width: 600px) {
+    width: 40px;
+    height: 6px;
+  }
+`;
+
+const PityFill = styled.div`
+  height: 100%;
+  width: ${props => props.$progress}%;
+  background: ${props => props.$inSoftPity 
+    ? `linear-gradient(90deg, ${props.$color} 0%, #ff4444 100%)`
+    : props.$color};
+  border-radius: 4px;
+  transition: width 0.3s ease, background 0.3s ease;
+  box-shadow: ${props => props.$inSoftPity ? '0 0 8px rgba(255, 68, 68, 0.6)' : 'none'};
 `;
 
 export default FishingPage;

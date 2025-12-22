@@ -13,8 +13,8 @@ const FISHING_CONFIG = {
   // Rank required to unlock autofishing (top X users)
   autofishUnlockRank: 10,
   
-  // Autofish cooldown in milliseconds (increased for balance)
-  autofishCooldown: 4000,
+  // Autofish cooldown in milliseconds (increased for better balance - ~40% efficiency of active)
+  autofishCooldown: 6000,
   
   // Cast cooldown in milliseconds
   castCooldown: 5000,
@@ -25,27 +25,60 @@ const FISHING_CONFIG = {
   // Network latency buffer for reaction time validation (ms)
   latencyBuffer: 200,
   
+  // Minimum human reaction time (anti-cheat, prevents instant catches)
+  minReactionTime: 80,
+  
   // Session cleanup interval (ms)
   cleanupInterval: 15000,
   
   // Session expiry time (ms)
   sessionExpiry: 30000,
   
-  // Autofish success rates by rarity (nerfed for balance - ~50% of active fishing efficiency)
+  // Trade timeout in ms (for stuck trade cleanup)
+  tradeTimeout: 30000,
+  
+  // Rank cache TTL in ms
+  rankCacheTTL: 30000,
+  
+  // Autofish success rates by rarity (nerfed for balance - ~35-40% of active fishing efficiency)
   autofishSuccessRates: {
-    legendary: 0.20,
-    epic: 0.30,
-    rare: 0.45,
-    uncommon: 0.55,
-    common: 0.65
+    legendary: 0.10,  // Was: 0.20
+    epic: 0.15,       // Was: 0.30
+    rare: 0.25,       // Was: 0.45
+    uncommon: 0.40,   // Was: 0.55
+    common: 0.55      // Was: 0.65
   },
   
-  // Perfect/Great catch thresholds (percentage of timing window)
+  // Perfect/Great catch thresholds - dynamic per rarity for better skill ceiling
   catchQuality: {
-    perfectThreshold: 0.30,  // 30% of window = Perfect
-    greatThreshold: 0.60,    // 60% of window = Great
-    perfectMultiplier: 2.0,  // Double reward for perfect
-    greatMultiplier: 1.5     // 50% bonus for great
+    // Default thresholds
+    perfectThreshold: 0.25,  // 25% of window = Perfect (was 30%)
+    greatThreshold: 0.55,    // 55% of window = Great (was 60%)
+    perfectMultiplier: 2.0,  // Double fish for perfect
+    greatMultiplier: 1.5,    // 50% bonus for great
+    // Per-rarity overrides (harder fish = tighter windows)
+    rarityThresholds: {
+      legendary: { perfect: 0.15, great: 0.40 },  // 60-75ms for perfect on 400-500ms window
+      epic: { perfect: 0.18, great: 0.45 },
+      rare: { perfect: 0.22, great: 0.50 },
+      uncommon: { perfect: 0.25, great: 0.55 },
+      common: { perfect: 0.30, great: 0.60 }
+    }
+  },
+  
+  // Pity system - bad luck protection
+  pity: {
+    // Casts required for guaranteed rarity (soft pity starts earlier)
+    legendary: {
+      softPity: 80,     // Start increasing odds at 80 casts
+      hardPity: 120,    // Guaranteed at 120 casts
+      softPityBonus: 0.02  // +2% per cast after soft pity
+    },
+    epic: {
+      softPity: 30,
+      hardPity: 50,
+      softPityBonus: 0.03
+    }
   }
 };
 
@@ -84,21 +117,130 @@ const FISH_TYPES = [
 const TOTAL_WEIGHT = FISH_TYPES.reduce((sum, fish) => sum + fish.weight, 0);
 
 /**
- * Select a random fish based on weights
- * @returns {Object} - The selected fish type
+ * Calculate pity bonus for a given rarity
+ * @param {Object} pityData - User's current pity counters
+ * @param {string} rarity - 'legendary' or 'epic'
+ * @returns {number} - Bonus weight to add
  */
-function selectRandomFish() {
-  const random = Math.random() * TOTAL_WEIGHT;
+function calculatePityBonus(pityData, rarity) {
+  const pityConfig = FISHING_CONFIG.pity[rarity];
+  if (!pityConfig || !pityData) return 0;
+  
+  const count = pityData[rarity] || 0;
+  
+  // Hard pity - guaranteed
+  if (count >= pityConfig.hardPity) {
+    return 1000; // Very high weight to guarantee
+  }
+  
+  // Soft pity - increasing odds
+  if (count >= pityConfig.softPity) {
+    const overPity = count - pityConfig.softPity;
+    return overPity * pityConfig.softPityBonus * 10; // Gradually increase weight
+  }
+  
+  return 0;
+}
+
+/**
+ * Select a random fish based on weights with optional pity system
+ * @param {Object} pityData - Optional user's pity counters for bad luck protection
+ * @returns {Object} - { fish, pityTriggered: boolean, resetPity: string[] }
+ */
+function selectRandomFish(pityData = null) {
+  // Calculate adjusted weights with pity bonuses
+  let adjustedWeights = FISH_TYPES.map(fish => ({
+    ...fish,
+    adjustedWeight: fish.weight
+  }));
+  
+  let pityTriggered = false;
+  let resetPity = [];
+  
+  if (pityData) {
+    // Check for hard pity (guaranteed)
+    const legendaryPity = FISHING_CONFIG.pity.legendary;
+    const epicPity = FISHING_CONFIG.pity.epic;
+    
+    if (pityData.legendary >= legendaryPity.hardPity) {
+      // Force legendary fish
+      const legendaryFish = FISH_TYPES.filter(f => f.rarity === 'legendary');
+      const fish = legendaryFish[Math.floor(Math.random() * legendaryFish.length)];
+      return { 
+        fish, 
+        pityTriggered: true, 
+        resetPity: ['legendary', 'epic']  // Reset both counters
+      };
+    }
+    
+    if (pityData.epic >= epicPity.hardPity) {
+      // Force epic fish
+      const epicFish = FISH_TYPES.filter(f => f.rarity === 'epic');
+      const fish = epicFish[Math.floor(Math.random() * epicFish.length)];
+      return { 
+        fish, 
+        pityTriggered: true, 
+        resetPity: ['epic']  // Reset epic counter
+      };
+    }
+    
+    // Apply soft pity bonuses
+    const legendaryBonus = calculatePityBonus(pityData, 'legendary');
+    const epicBonus = calculatePityBonus(pityData, 'epic');
+    
+    adjustedWeights = adjustedWeights.map(fish => {
+      let bonus = 0;
+      if (fish.rarity === 'legendary') bonus = legendaryBonus;
+      else if (fish.rarity === 'epic') bonus = epicBonus;
+      
+      return {
+        ...fish,
+        adjustedWeight: fish.weight + bonus
+      };
+    });
+  }
+  
+  const totalAdjusted = adjustedWeights.reduce((sum, f) => sum + f.adjustedWeight, 0);
+  const random = Math.random() * totalAdjusted;
   let cumulative = 0;
   
-  for (const fish of FISH_TYPES) {
-    cumulative += fish.weight;
+  for (const fish of adjustedWeights) {
+    cumulative += fish.adjustedWeight;
     if (random < cumulative) {
-      return fish;
+      // Determine which pity counters to reset based on caught rarity
+      if (fish.rarity === 'legendary') {
+        resetPity = ['legendary', 'epic'];
+      } else if (fish.rarity === 'epic') {
+        resetPity = ['epic'];
+      }
+      
+      return { 
+        fish: FISH_TYPES.find(f => f.id === fish.id), 
+        pityTriggered: false, 
+        resetPity 
+      };
     }
   }
   
-  return FISH_TYPES[0]; // Fallback to first fish
+  return { fish: FISH_TYPES[0], pityTriggered: false, resetPity: [] };
+}
+
+/**
+ * Get catch quality thresholds for a specific rarity
+ * @param {string} rarity - Fish rarity
+ * @returns {Object} - { perfectThreshold, greatThreshold }
+ */
+function getCatchThresholds(rarity) {
+  const overrides = FISHING_CONFIG.catchQuality.rarityThresholds?.[rarity];
+  if (overrides) {
+    return {
+      perfectThreshold: overrides.perfect,
+      greatThreshold: overrides.great,
+      perfectMultiplier: FISHING_CONFIG.catchQuality.perfectMultiplier,
+      greatMultiplier: FISHING_CONFIG.catchQuality.greatMultiplier
+    };
+  }
+  return FISHING_CONFIG.catchQuality;
 }
 
 // ===========================================
@@ -277,5 +419,7 @@ module.exports = {
   FISH_TYPES,
   TRADE_OPTIONS,
   selectRandomFish,
-  calculateFishTotals
+  calculateFishTotals,
+  getCatchThresholds,
+  calculatePityBonus
 };
