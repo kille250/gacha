@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight, MdLeaderboard, MdAutorenew, MdPeople, MdStorefront, MdEmojiEvents, MdSettings, MdCheckCircle } from 'react-icons/md';
+import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight, MdLeaderboard, MdAutorenew, MdPeople, MdStorefront, MdEmojiEvents, MdSettings, MdCheckCircle, MdMoreVert } from 'react-icons/md';
 import { FaFish, FaCrown, FaTrophy } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
@@ -170,6 +170,10 @@ const FishingPage = () => {
   
   // NEW: Daily autofish limits
   const [dailyStats, setDailyStats] = useState(null);
+  
+  // Mobile UI: More menu (overflow menu for secondary actions)
+  const [showMoreMenu, setShowMoreMenu] = useState(false);
+  const moreMenuRef = useRef(null);
   
   // Time of day
   const [timeOfDay, setTimeOfDay] = useState(TIME_PERIODS.DAY);
@@ -343,6 +347,25 @@ const FishingPage = () => {
   
   // Derived state: player count is other players + self
   const playerCount = otherPlayers.length + 1;
+  
+  // Close more menu when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (moreMenuRef.current && !moreMenuRef.current.contains(event.target)) {
+        setShowMoreMenu(false);
+      }
+    };
+    
+    if (showMoreMenu) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+    
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [showMoreMenu]);
   
   // Send position updates to server
   useEffect(() => {
@@ -625,8 +648,9 @@ const FishingPage = () => {
             success: result.success,
             timestamp: now
           };
-          // Keep only entries less than 4 seconds old, limit to 6
-          return [newEntry, ...prev.filter(e => now - e.timestamp < 4000)].slice(0, 6);
+          // Keep only entries less than 4 seconds old, limit to 3 on mobile, 6 on desktop
+          const maxBubbles = window.innerWidth < 768 ? 3 : 6;
+          return [newEntry, ...prev.filter(e => now - e.timestamp < 4000)].slice(0, maxBubbles);
         });
         
         // Show challenge completion notifications
@@ -1083,59 +1107,90 @@ const FishingPage = () => {
       {/* Ambient stars overlay for night */}
       {timeOfDay === TIME_PERIODS.NIGHT && <StarsOverlay />}
       
-      {/* Header - Rustic wooden style */}
+      {/* Header - Rustic wooden style - Mobile optimized */}
       <Header>
         <HeaderWoodGrain />
         <BackButton onClick={() => navigate('/gacha')}>
           <MdArrowBack />
         </BackButton>
         <HeaderRight>
-          {/* Multiplayer indicator */}
-          <MultiplayerBadge $connected={isMultiplayerConnected}>
-            <MdPeople />
-            <span>{playerCount}</span>
-          </MultiplayerBadge>
-          {rankData && (
-            <RankBadge onClick={() => setShowLeaderboard(true)} $canAutofish={rankData.canAutofish}>
-              <FaCrown style={{ color: rankData.canAutofish ? '#ffd54f' : '#a1887f' }} />
-              <span>#{rankData.rank}</span>
-            </RankBadge>
+          {/* Multiplayer indicator - only show when >1 player (conditional for less clutter) */}
+          {playerCount > 1 && (
+            <MultiplayerBadge $connected={isMultiplayerConnected}>
+              <MdPeople />
+              <span>{playerCount}</span>
+            </MultiplayerBadge>
           )}
-          <PointsDisplay>
-            <CoinDot />
-            <span>{user?.points?.toLocaleString() || 0}</span>
-          </PointsDisplay>
-          {/* Autofish button - now available to everyone */}
-          <AutofishButtonWrapper>
-            <AutofishButton 
-              onClick={toggleAutofish} 
-              $active={isAutofishing} 
-              $inFlight={autofishInFlight}
-              title={dailyStats ? `${dailyStats.remaining}/${dailyStats.limit} ${t('fishing.remainingToday')}` : ''}
-            >
-              <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
-            </AutofishButton>
-            {dailyStats && (
-              <AutofishQuota $warning={dailyStats.remaining < 20} $active={isAutofishing}>
-                <span>{dailyStats.remaining}</span>
-                <small>/{dailyStats.limit}</small>
-              </AutofishQuota>
-            )}
-          </AutofishButtonWrapper>
-          {/* Challenges button */}
-          <ChallengesButton onClick={() => setShowChallenges(true)} $hasCompleted={challenges?.challenges?.some(c => c.progress >= c.target && !c.completed)}>
+          {/* Autofish button - primary action, always visible */}
+          <AutofishButton 
+            onClick={toggleAutofish} 
+            $active={isAutofishing} 
+            $inFlight={autofishInFlight}
+            $lowQuota={dailyStats && dailyStats.remaining < 20}
+            title={dailyStats ? `${dailyStats.remaining}/${dailyStats.limit} ${t('fishing.remainingToday')}` : ''}
+          >
+            <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
+            {dailyStats && dailyStats.remaining < 20 && <LowQuotaDot />}
+          </AutofishButton>
+          {/* Challenges button - show on desktop, hide on mobile (moved to More menu) */}
+          <ChallengesButtonDesktop onClick={() => setShowChallenges(true)} $hasCompleted={challenges?.challenges?.some(c => c.progress >= c.target && !c.completed)}>
             <MdEmojiEvents />
-          </ChallengesButton>
-          {/* Equipment button (Areas & Rods) */}
-          <WoodButton onClick={() => setShowEquipment(true)} title={t('fishing.equipment')}>
-            <MdSettings />
-          </WoodButton>
-          <WoodButton onClick={() => setShowLeaderboard(true)}>
-            <MdLeaderboard />
-          </WoodButton>
-          <TradingPostButton onClick={() => setShowTradingPost(true)}>
-            <MdStorefront />
-          </TradingPostButton>
+          </ChallengesButtonDesktop>
+          {/* More menu - consolidates secondary actions on mobile */}
+          <MoreMenuWrapper ref={moreMenuRef}>
+            <MoreButton onClick={() => setShowMoreMenu(!showMoreMenu)} $isOpen={showMoreMenu}>
+              <MdMoreVert />
+            </MoreButton>
+            <AnimatePresence>
+              {showMoreMenu && (
+                <MoreMenuDropdown
+                  initial={{ opacity: 0, y: -10, scale: 0.95 }}
+                  animate={{ opacity: 1, y: 0, scale: 1 }}
+                  exit={{ opacity: 0, y: -10, scale: 0.95 }}
+                  transition={{ duration: 0.15 }}
+                >
+                  {/* Rank info */}
+                  {rankData && (
+                    <MoreMenuItem onClick={() => { setShowLeaderboard(true); setShowMoreMenu(false); }}>
+                      <FaCrown style={{ color: rankData.canAutofish ? '#ffd54f' : '#a1887f' }} />
+                      <span>#{rankData.rank}</span>
+                      {rankData.canAutofish && <MoreMenuBadge>⭐</MoreMenuBadge>}
+                    </MoreMenuItem>
+                  )}
+                  {/* Autofish quota info */}
+                  {dailyStats && (
+                    <MoreMenuInfo>
+                      <MdAutorenew />
+                      <span>{dailyStats.remaining}/{dailyStats.limit} {t('fishing.remainingToday') || 'left today'}</span>
+                    </MoreMenuInfo>
+                  )}
+                  <MoreMenuDivider />
+                  {/* Challenges - mobile only (desktop has dedicated button) */}
+                  <MoreMenuItemMobile onClick={() => { setShowChallenges(true); setShowMoreMenu(false); }} $hasNotification={challenges?.challenges?.some(c => c.progress >= c.target && !c.completed)}>
+                    <MdEmojiEvents />
+                    <span>{t('fishing.challenges') || 'Challenges'}</span>
+                    {challenges?.challenges?.some(c => c.progress >= c.target && !c.completed) && <MoreMenuBadge>!</MoreMenuBadge>}
+                  </MoreMenuItemMobile>
+                  {/* Equipment */}
+                  <MoreMenuItem onClick={() => { setShowEquipment(true); setShowMoreMenu(false); }}>
+                    <MdSettings />
+                    <span>{t('fishing.equipment') || 'Equipment'}</span>
+                  </MoreMenuItem>
+                  {/* Leaderboard */}
+                  <MoreMenuItem onClick={() => { setShowLeaderboard(true); setShowMoreMenu(false); }}>
+                    <MdLeaderboard />
+                    <span>{t('fishing.leaderboard') || 'Leaderboard'}</span>
+                  </MoreMenuItem>
+                  {/* Trading Post */}
+                  <MoreMenuItem onClick={() => { setShowTradingPost(true); setShowMoreMenu(false); }}>
+                    <MdStorefront />
+                    <span>{t('fishing.tradingPost') || 'Trading Post'}</span>
+                  </MoreMenuItem>
+                </MoreMenuDropdown>
+              )}
+            </AnimatePresence>
+          </MoreMenuWrapper>
+          {/* Help button - always visible */}
           <WoodButton onClick={() => setShowHelp(true)}>
             <MdHelpOutline />
           </WoodButton>
@@ -1167,21 +1222,24 @@ const FishingPage = () => {
         </AnimatePresence>
       </AutofishBubblesContainer>
       
-      {/* Stats Bar */}
+      {/* Stats Bar - Mobile optimized: no wrapping, prioritized catches */}
       <StatsBar>
-        <StatItem>
+        {/* Catches first - primary success metric */}
+        <StatItem $primary>
+          <StatValue $success>{sessionStats.catches}</StatValue>
+          <StatLabel>{t('fishing.catches')}</StatLabel>
+        </StatItem>
+        <StatDivider />
+        {/* Casts - secondary metric */}
+        <StatItem $secondary>
           <StatValue>{sessionStats.casts}</StatValue>
           <StatLabel>{t('fishing.casts')}</StatLabel>
         </StatItem>
-        <StatDivider />
-        <StatItem>
-          <StatValue>{sessionStats.catches}</StatValue>
-          <StatLabel>{t('fishing.catches')}</StatLabel>
-        </StatItem>
+        {/* Best catch - show on desktop, hide on very small mobile */}
         {sessionStats.bestCatch && (
           <>
-            <StatDivider />
-            <StatItem $highlight>
+            <StatDivider className="hide-on-tiny" />
+            <StatItem $highlight className="hide-on-tiny">
               <StatValue style={{ color: getRarityColor(sessionStats.bestCatch.fish.rarity) }}>
                 {sessionStats.bestCatch.fish.emoji}
               </StatValue>
@@ -1189,11 +1247,11 @@ const FishingPage = () => {
             </StatItem>
           </>
         )}
-        {/* Pity Progress Indicator */}
-        {fishInfo?.pity && (
+        {/* Pity Progress - only show when approaching pity (soft pity active) */}
+        {fishInfo?.pity?.legendary?.inSoftPity && (
           <>
             <StatDivider />
-            <StatItem title={`${fishInfo.pity.legendary.current}/${fishInfo.pity.legendary.hardPity} ${t('fishing.casts').toLowerCase()}`}>
+            <StatItem $pity title={`${fishInfo.pity.legendary.current}/${fishInfo.pity.legendary.hardPity} ${t('fishing.casts').toLowerCase()}`}>
               <PityBar>
                 <PityFill 
                   $progress={fishInfo.pity.legendary.progress} 
@@ -2164,8 +2222,9 @@ const SignContent = styled.div`
 `;
 
 const BackButton = styled.button`
-  width: 40px;
-  height: 40px;
+  /* Fluid sizing: min 32px, preferred 9vw, max 40px */
+  width: clamp(32px, 9vw, 40px);
+  height: clamp(32px, 9vw, 40px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2173,7 +2232,7 @@ const BackButton = styled.button`
   border: 3px solid #5a4010;
   border-radius: 10px;
   color: #fff8e1;
-  font-size: 22px;
+  font-size: clamp(16px, 4.5vw, 22px);
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 
@@ -2181,19 +2240,25 @@ const BackButton = styled.button`
     0 3px 0 #4a3008,
     0 5px 8px rgba(0,0,0,0.3);
   flex-shrink: 0;
+  position: relative;
+  
+  /* Invisible touch target padding for 44px minimum */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 14px;
+  }
   
   @media (max-width: 600px) {
-    width: 36px;
-    height: 36px;
-    font-size: 18px;
     border-width: 2px;
     border-radius: 8px;
   }
   
-  @media (max-width: 400px) {
-    width: 32px;
-    height: 32px;
-    font-size: 16px;
+  @media (max-width: 360px) {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
   }
   
   &:hover {
@@ -2219,44 +2284,19 @@ const HeaderRight = styled.div`
   flex-shrink: 0;
   
   @media (max-width: 600px) {
-    gap: 6px;
+    gap: 8px;  /* Increased from 6px for better touch separation */
   }
   
   @media (max-width: 400px) {
+    gap: 6px;  /* Increased from 4px for better touch separation */
+  }
+  
+  @media (max-width: 360px) {
     gap: 4px;
   }
 `;
 
-const PointsDisplay = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 16px;
-  background: linear-gradient(180deg, #ffd54f 0%, #ffb300 100%);
-  border: 3px solid #e65100;
-  border-radius: 20px;
-  font-weight: 700;
-  font-size: 14px;
-  color: #5d4037;
-  box-shadow: 
-    inset 0 2px 0 rgba(255,255,255,0.5),
-    0 3px 0 #bf360c,
-    0 5px 8px rgba(0,0,0,0.2);
-  flex-shrink: 0;
-  
-  @media (max-width: 600px) {
-    padding: 6px 12px;
-    font-size: 14px;
-    gap: 5px;
-    border-width: 2px;
-    font-weight: 600;
-  }
-  
-  @media (max-width: 400px) {
-    padding: 5px 10px;
-    font-size: 13px;
-  }
-`;
+// PointsDisplay removed - redundant with global navigation
 
 const CoinDot = styled.div`
   width: ${props => props.$small ? '10px' : '14px'};
@@ -2275,8 +2315,9 @@ const CoinDot = styled.div`
 `;
 
 const WoodButton = styled.button`
-  width: 40px;
-  height: 40px;
+  /* Fluid sizing: min 32px, preferred 9vw, max 40px */
+  width: clamp(32px, 9vw, 40px);
+  height: clamp(32px, 9vw, 40px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -2284,26 +2325,32 @@ const WoodButton = styled.button`
   border: 3px solid #5a4010;
   border-radius: 10px;
   color: #fff8e1;
-  font-size: 22px;
+  font-size: clamp(16px, 4.5vw, 22px);
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: 
     inset 0 2px 0 rgba(255,255,255,0.2),
     0 3px 0 #4a3008;
   flex-shrink: 0;
+  position: relative;
+  
+  /* Invisible touch target padding for 44px minimum */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 14px;
+  }
   
   @media (max-width: 600px) {
-    width: 34px;
-    height: 34px;
-    font-size: 18px;
     border-width: 2px;
     border-radius: 8px;
   }
   
-  @media (max-width: 400px) {
-    width: 30px;
-    height: 30px;
-    font-size: 16px;
+  @media (max-width: 360px) {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
   }
   
   &:hover {
@@ -2358,54 +2405,24 @@ const MultiplayerBadge = styled.div`
   }
 `;
 
-const RankBadge = styled.button`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 8px 14px;
-  background: ${props => props.$canAutofish 
-    ? 'linear-gradient(180deg, #ffd54f 0%, #ffc107 100%)' 
-    : 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'};
-  border: 3px solid ${props => props.$canAutofish ? '#e65100' : '#5a4010'};
-  border-radius: 20px;
-  color: ${props => props.$canAutofish ? '#5d4037' : '#fff8e1'};
-  font-weight: 800;
-  font-size: 14px;
-  cursor: pointer;
-  transition: all 0.2s;
-  box-shadow: ${props => props.$canAutofish
-    ? 'inset 0 2px 0 rgba(255,255,255,0.5), 0 3px 0 #bf360c, 0 0 12px rgba(255, 193, 7, 0.4)'
-    : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #4a3008'};
-  flex-shrink: 0;
-  
-  @media (max-width: 600px) {
-    padding: 6px 10px;
-    font-size: 12px;
-    gap: 4px;
-    border-width: 2px;
-  }
-  
-  @media (max-width: 400px) {
-    padding: 5px 8px;
-    font-size: 11px;
-  }
-  
-  &:hover { transform: translateY(-2px); }
-`;
+// RankBadge removed - now displayed in More menu dropdown
 
 const AutofishButton = styled.button`
-  width: 40px;
-  height: 40px;
+  /* Fluid sizing: min 32px, preferred 9vw, max 40px */
+  width: clamp(32px, 9vw, 40px);
+  height: clamp(32px, 9vw, 40px);
   display: flex;
   align-items: center;
   justify-content: center;
   background: ${props => props.$active 
     ? 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)' 
-    : 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'};
-  border: 3px solid ${props => props.$active ? '#2e7d32' : '#5a4010'};
+    : props.$lowQuota 
+      ? 'linear-gradient(180deg, #ff9800 0%, #f57c00 100%)'
+      : 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'};
+  border: 3px solid ${props => props.$active ? '#2e7d32' : props.$lowQuota ? '#e65100' : '#5a4010'};
   border-radius: 10px;
   color: ${props => props.$active ? '#e8f5e9' : '#fff8e1'};
-  font-size: 22px;
+  font-size: clamp(16px, 4.5vw, 22px);
   cursor: pointer;
   transition: all 0.2s;
   box-shadow: ${props => props.$active
@@ -2413,6 +2430,14 @@ const AutofishButton = styled.button`
     : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #4a3008'};
   flex-shrink: 0;
   position: relative;
+  
+  /* Invisible touch target padding for 44px minimum */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 14px;
+  }
   
   /* Pulsing ring when request is in-flight */
   ${props => props.$inFlight && props.$active && css`
@@ -2432,20 +2457,30 @@ const AutofishButton = styled.button`
   `}
   
   @media (max-width: 600px) {
-    width: 34px;
-    height: 34px;
-    font-size: 18px;
     border-width: 2px;
     border-radius: 8px;
   }
   
-  @media (max-width: 400px) {
-    width: 30px;
-    height: 30px;
-    font-size: 16px;
+  @media (max-width: 360px) {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
   }
   
   svg.spinning { animation: ${spin} 1s linear infinite; }
+`;
+
+/* Low quota warning dot */
+const LowQuotaDot = styled.div`
+  position: absolute;
+  top: -2px;
+  right: -2px;
+  width: 8px;
+  height: 8px;
+  background: #ff5252;
+  border-radius: 50%;
+  border: 2px solid #fff;
+  animation: ${pulse} 1s ease-in-out infinite;
 `;
 
 const AutofishBubblesContainer = styled.div`
@@ -2561,7 +2596,20 @@ const StatsBar = styled.div`
   box-shadow: inset 0 1px 0 rgba(255, 220, 150, 0.2);
   z-index: 100;
   flex-shrink: 0;
-  flex-wrap: wrap;
+  flex-wrap: nowrap;  /* Prevent wrapping for consistent height */
+  overflow-x: auto;   /* Allow horizontal scroll if needed */
+  -webkit-overflow-scrolling: touch;
+  
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none;
+  &::-webkit-scrollbar { display: none; }
+  
+  /* Hide best catch on very small screens */
+  .hide-on-tiny {
+    @media (max-width: 360px) {
+      display: none;
+    }
+  }
   
   @media (max-width: 600px) {
     gap: 4px;
@@ -2583,10 +2631,29 @@ const StatItem = styled.div`
   background: rgba(0, 0, 0, 0.25);
   border-radius: 12px;
   border: 2px solid rgba(255, 220, 150, 0.15);
+  flex-shrink: 0;  /* Prevent shrinking */
+  
+  /* Primary stat (catches) - emphasized */
+  ${props => props.$primary && css`
+    background: rgba(76, 175, 80, 0.2);
+    border-color: rgba(76, 175, 80, 0.4);
+    padding: 6px 16px;
+  `}
+  
+  /* Secondary stat (casts) - muted */
+  ${props => props.$secondary && css`
+    opacity: 0.85;
+  `}
   
   ${props => props.$highlight && css`
     background: rgba(255, 193, 7, 0.15);
     border-color: rgba(255, 193, 7, 0.3);
+  `}
+  
+  /* Pity indicator styling */
+  ${props => props.$pity && css`
+    background: rgba(255, 193, 7, 0.1);
+    border-color: rgba(255, 193, 7, 0.25);
   `}
   
   @media (max-width: 600px) {
@@ -2606,6 +2673,20 @@ const StatValue = styled.span`
   font-weight: 700;
   color: #fff8e1;
   text-shadow: 1px 1px 0 rgba(0,0,0,0.5);
+  
+  /* Success styling for catches */
+  ${props => props.$success && css`
+    color: #a5d6a7;
+    font-size: 20px;
+    
+    @media (max-width: 600px) {
+      font-size: 18px;
+    }
+    
+    @media (max-width: 400px) {
+      font-size: 16px;
+    }
+  `}
   
   @media (max-width: 600px) {
     font-size: 16px;
@@ -3428,51 +3509,7 @@ const AutofishBadge = styled.div`
 // TRADING POST STYLED COMPONENTS - REDESIGNED
 // =============================================
 
-const TradingPostButton = styled(motion.button)`
-  width: 40px;
-  height: 40px;
-  border-radius: 12px;
-  border: none;
-  background: linear-gradient(180deg, #43a047 0%, #2e7d32 100%);
-  color: #fff;
-  font-size: 22px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  box-shadow: 
-    inset 0 2px 0 rgba(255,255,255,0.3),
-    0 3px 0 #1b5e20,
-    0 4px 8px rgba(0,0,0,0.3);
-  transition: all 0.15s;
-  flex-shrink: 0;
-  
-  @media (max-width: 600px) {
-    width: 34px;
-    height: 34px;
-    font-size: 18px;
-    border-radius: 8px;
-  }
-  
-  @media (max-width: 400px) {
-    width: 30px;
-    height: 30px;
-    font-size: 16px;
-  }
-  
-  &:hover {
-    background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
-    transform: translateY(-1px);
-  }
-  
-  &:active {
-    transform: translateY(1px);
-    box-shadow: 
-      inset 0 2px 0 rgba(255,255,255,0.3),
-      0 1px 0 #1b5e20,
-      0 2px 4px rgba(0,0,0,0.3);
-  }
-`;
+// TradingPostButton removed - now accessed through More menu dropdown
 
 const TradingPostModal = styled(motion.div)`
   background: linear-gradient(180deg, #fff8e1 0%, #ffecb3 100%);
@@ -4084,51 +4121,8 @@ const PityFill = styled.div`
 // AUTOFISH COUNTER & NEW BUTTONS
 // =============================================
 
-const AutofishButtonWrapper = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 4px;
-  background: rgba(0, 0, 0, 0.2);
-  border-radius: 12px;
-  padding: 4px;
-  padding-right: 8px;
-  
-  @media (max-width: 600px) {
-    padding: 3px;
-    padding-right: 6px;
-    border-radius: 10px;
-  }
-`;
-
-const AutofishQuota = styled.div`
-  display: flex;
-  align-items: baseline;
-  gap: 1px;
-  font-family: 'SF Mono', 'Fira Code', monospace;
-  
-  span {
-    font-size: 14px;
-    font-weight: 800;
-    color: ${props => props.$warning ? '#ff5252' : props.$active ? '#a5d6a7' : '#fff8e1'};
-    text-shadow: 0 1px 2px rgba(0,0,0,0.3);
-  }
-  
-  small {
-    font-size: 10px;
-    font-weight: 600;
-    color: ${props => props.$warning ? '#ff8a80' : 'rgba(255,255,255,0.5)'};
-  }
-  
-  @media (max-width: 600px) {
-    span { font-size: 12px; }
-    small { font-size: 9px; }
-  }
-  
-  @media (max-width: 400px) {
-    span { font-size: 11px; }
-    small { display: none; }
-  }
-`;
+// AutofishButtonWrapper and AutofishQuota removed - replaced with simpler LowQuotaDot indicator
+// Quota details now shown in More menu dropdown
 
 const ChallengesButton = styled.button`
   position: relative;
@@ -4181,6 +4175,153 @@ const ChallengesButton = styled.button`
     transform: translateY(-1px);
     background: linear-gradient(180deg, #ffd54f 0%, #ffa726 100%);
   }
+`;
+
+// Desktop-only challenges button (hidden on mobile, shown in More menu instead)
+const ChallengesButtonDesktop = styled(ChallengesButton)`
+  @media (max-width: 768px) {
+    display: none;
+  }
+`;
+
+// =============================================
+// MORE MENU STYLES (Mobile overflow menu)
+// =============================================
+
+const MoreMenuWrapper = styled.div`
+  position: relative;
+`;
+
+const MoreButton = styled.button`
+  /* Fluid sizing */
+  width: clamp(32px, 9vw, 40px);
+  height: clamp(32px, 9vw, 40px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${props => props.$isOpen 
+    ? 'linear-gradient(180deg, #8a6828 0%, #6a4818 100%)'
+    : 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'};
+  border: 3px solid #5a4010;
+  border-radius: 10px;
+  color: #fff8e1;
+  font-size: clamp(16px, 4.5vw, 22px);
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.2),
+    0 3px 0 #4a3008;
+  flex-shrink: 0;
+  position: relative;
+  
+  /* Invisible touch target padding for 44px minimum */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border-radius: 14px;
+  }
+  
+  @media (max-width: 600px) {
+    border-width: 2px;
+    border-radius: 8px;
+  }
+  
+  @media (max-width: 360px) {
+    width: 28px;
+    height: 28px;
+    font-size: 14px;
+  }
+  
+  &:hover {
+    background: linear-gradient(180deg, #b88a40 0%, #8a6828 100%);
+  }
+`;
+
+const MoreMenuDropdown = styled(motion.div)`
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  min-width: 200px;
+  background: linear-gradient(180deg, #f5e6c8 0%, #e8d4a8 100%);
+  border: 3px solid #8b6914;
+  border-radius: 12px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.4);
+  z-index: 1000;
+  overflow: hidden;
+  
+  @media (max-width: 400px) {
+    min-width: 180px;
+    right: -8px;
+  }
+`;
+
+const MoreMenuItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  color: #5d4037;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.15s;
+  
+  svg {
+    font-size: 18px;
+    color: #8b6914;
+  }
+  
+  &:hover {
+    background: rgba(139, 105, 20, 0.15);
+  }
+  
+  &:active {
+    background: rgba(139, 105, 20, 0.25);
+  }
+`;
+
+// Mobile-only menu item (challenges - has dedicated button on desktop)
+const MoreMenuItemMobile = styled(MoreMenuItem)`
+  @media (min-width: 769px) {
+    display: none;
+  }
+  
+  ${props => props.$hasNotification && css`
+    background: rgba(255, 193, 7, 0.15);
+  `}
+`;
+
+const MoreMenuInfo = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  color: #795548;
+  font-size: 12px;
+  font-weight: 500;
+  background: rgba(0, 0, 0, 0.05);
+  
+  svg {
+    font-size: 14px;
+    color: #66bb6a;
+  }
+`;
+
+const MoreMenuDivider = styled.div`
+  height: 1px;
+  background: rgba(139, 105, 20, 0.2);
+  margin: 4px 0;
+`;
+
+const MoreMenuBadge = styled.span`
+  margin-left: auto;
+  padding: 2px 6px;
+  background: #ffc107;
+  border-radius: 8px;
+  font-size: 11px;
+  font-weight: 700;
+  color: #5d4037;
 `;
 
 // =============================================
