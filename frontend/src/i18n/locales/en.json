@@ -330,9 +330,9 @@
     "adjustFilters": "Try adjusting your filters to see more characters",
     "levelUpFailed": "Level up failed. Please try again.",
     "cardLeveling": "Card Leveling",
-    "upgradeAll": "Upgrade All",
-    "upgrading": "Upgrading...",
-    "upgradeAllFailed": "Failed to upgrade characters. Please try again.",
+    "upgradeAll": "Max All",
+    "upgrading": "Maxing...",
+    "upgradeAllFailed": "Failed to max characters. Please try again.",
     "shardsFromDuplicates": "Shards from duplicates",
     "readyToLevelUp": "Ready to level up!",
     "maxLevel": "Max level (Lv.5)"

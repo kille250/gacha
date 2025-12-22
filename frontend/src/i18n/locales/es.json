@@ -330,9 +330,9 @@
     "adjustFilters": "Intenta ajustar tus filtros para ver más personajes",
     "levelUpFailed": "Error al subir de nivel. Por favor intenta de nuevo.",
     "cardLeveling": "Mejora de Cartas",
-    "upgradeAll": "Mejorar Todo",
-    "upgrading": "Mejorando...",
-    "upgradeAllFailed": "Error al mejorar personajes. Por favor intenta de nuevo.",
+    "upgradeAll": "Maximizar Todo",
+    "upgrading": "Maximizando...",
+    "upgradeAllFailed": "Error al maximizar personajes. Por favor intenta de nuevo.",
     "shardsFromDuplicates": "Fragmentos de duplicados",
     "readyToLevelUp": "¡Listo para subir de nivel!",
     "maxLevel": "Nivel máximo (Lv.5)"

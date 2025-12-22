@@ -326,11 +326,11 @@ router.get('/collection-data', auth, async (req, res) => {
 });
 
 /**
- * Batch level up all upgradable characters (one level each)
+ * Batch max level all upgradable characters
  * POST /api/characters/level-up-all
  * 
- * Upgrades all characters that have enough shards by one level each.
- * Returns summary of upgraded characters.
+ * Upgrades all characters to their maximum possible level based on available shards.
+ * Returns summary of upgraded characters with total levels gained.
  */
 router.post('/level-up-all', auth, async (req, res) => {
   try {
@@ -355,35 +355,63 @@ router.post('/level-up-all', auth, async (req, res) => {
         success: true, 
         total: 0,
         upgraded: 0,
+        totalLevelsGained: 0,
         results: [], 
         message: 'No characters can be upgraded' 
       });
     }
     
-    // Process each upgrade using existing logic (sequential for safety)
+    // Process each character - upgrade to max possible level
     const results = [];
+    let totalLevelsGained = 0;
+    
     for (const uc of upgradable) {
-      const result = await levelUpCharacter(userId, uc.CharacterId);
-      results.push({
+      const charResult = {
         characterId: uc.CharacterId,
         characterName: uc.Character?.name,
         rarity: uc.Character?.rarity,
-        ...result
-      });
+        startLevel: uc.level,
+        levelsGained: 0,
+        finalLevel: uc.level,
+        isMaxLevel: false
+      };
+      
+      // Keep upgrading until we can't anymore
+      let keepUpgrading = true;
+      while (keepUpgrading) {
+        const result = await levelUpCharacter(userId, uc.CharacterId);
+        if (result.success) {
+          charResult.levelsGained++;
+          charResult.finalLevel = result.newLevel;
+          charResult.isMaxLevel = result.isMaxLevel;
+          totalLevelsGained++;
+          
+          // Stop if max level reached
+          if (result.isMaxLevel) {
+            keepUpgrading = false;
+          }
+        } else {
+          // Not enough shards for next level
+          keepUpgrading = false;
+        }
+      }
+      
+      results.push(charResult);
     }
     
-    const successCount = results.filter(r => r.success).length;
+    const successCount = results.filter(r => r.levelsGained > 0).length;
     
-    console.log(`User ${userId} batch upgraded ${successCount}/${upgradable.length} characters`);
+    console.log(`User ${userId} batch max-leveled ${successCount} characters (+${totalLevelsGained} levels total)`);
     
     res.json({
       success: true,
       total: upgradable.length,
       upgraded: successCount,
+      totalLevelsGained,
       results,
       message: successCount === 1 
-        ? `Upgraded ${results[0].characterName}!`
-        : `Upgraded ${successCount} character(s)`
+        ? `Maxed ${results[0].characterName} (+${results[0].levelsGained} levels)!`
+        : `Upgraded ${successCount} character(s) (+${totalLevelsGained} levels)`
     });
   } catch (err) {
     console.error('Batch level up error:', err);

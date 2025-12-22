@@ -330,9 +330,9 @@
     "adjustFilters": "フィルターを調整してもっとキャラクターを表示してみてください",
     "levelUpFailed": "レベルアップに失敗しました。もう一度お試しください。",
     "cardLeveling": "カードレベリング",
-    "upgradeAll": "すべて強化",
-    "upgrading": "強化中...",
-    "upgradeAllFailed": "キャラクターの強化に失敗しました。もう一度お試しください。",
+    "upgradeAll": "すべて最大化",
+    "upgrading": "最大化中...",
+    "upgradeAllFailed": "キャラクターの最大化に失敗しました。もう一度お試しください。",
     "shardsFromDuplicates": "複製からのかけら",
     "readyToLevelUp": "レベルアップ可能！",
     "maxLevel": "最大レベル (Lv.5)"

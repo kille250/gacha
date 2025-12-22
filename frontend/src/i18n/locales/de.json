@@ -330,9 +330,9 @@
     "adjustFilters": "Versuche die Filter anzupassen, um mehr Charaktere zu sehen",
     "levelUpFailed": "Level-Up fehlgeschlagen. Bitte erneut versuchen.",
     "cardLeveling": "Karten-Leveling",
-    "upgradeAll": "Alle aufwerten",
-    "upgrading": "Werte auf...",
-    "upgradeAllFailed": "Aufwertung fehlgeschlagen. Bitte erneut versuchen.",
+    "upgradeAll": "Alle maximieren",
+    "upgrading": "Maximiere...",
+    "upgradeAllFailed": "Maximierung fehlgeschlagen. Bitte erneut versuchen.",
     "shardsFromDuplicates": "Scherben von Duplikaten",
     "readyToLevelUp": "Bereit zum Aufwerten!",
     "maxLevel": "Max. Level (Lv.5)"
