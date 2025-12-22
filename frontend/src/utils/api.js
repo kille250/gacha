@@ -187,9 +187,8 @@ export const getCollectionData = async () => {
 };
 
 export const levelUpCharacter = async (characterId) => {
-  // Clear cache before AND after to ensure fresh data
-  clearCache('/characters/collection');
   const response = await api.post(`/characters/${characterId}/level-up`);
+  // Clear cache after successful response
   clearCache('/characters/collection');
   return response.data;
 };
@@ -268,8 +267,9 @@ export const updateBanner = async (bannerId, formData) => {
 };
 
 export const deleteBanner = async (bannerId) => {
-  clearCache('/banners');
   const response = await api.delete(`/banners/${bannerId}`);
+  // Clear cache after successful response
+  clearCache('/banners');
   return response.data;
 };
 
@@ -307,26 +307,26 @@ export const getRarityById = async (id) => {
 };
 
 export const createRarity = async (rarityData) => {
-  clearCache('/rarities');
   const response = await api.post('/rarities', rarityData);
+  clearCache('/rarities');
   return response.data;
 };
 
 export const updateRarity = async (id, rarityData) => {
-  clearCache('/rarities');
   const response = await api.put(`/rarities/${id}`, rarityData);
+  clearCache('/rarities');
   return response.data;
 };
 
 export const deleteRarity = async (id) => {
-  clearCache('/rarities');
   const response = await api.delete(`/rarities/${id}`);
+  clearCache('/rarities');
   return response.data;
 };
 
 export const resetDefaultRarities = async () => {
-  clearCache('/rarities');
   const response = await api.post('/rarities/reset-defaults');
+  clearCache('/rarities');
   return response.data;
 };
 
@@ -345,9 +345,10 @@ export const getTradingPostOptions = async () => {
 };
 
 export const executeTrade = async (tradeId, quantity = 1) => {
+  const response = await api.post('/fishing/trade', { tradeId, quantity });
+  // Clear cache after successful response
   clearCache('/fishing/inventory');
   clearCache('/fishing/trading-post');
-  const response = await api.post('/fishing/trade', { tradeId, quantity });
   return response.data;
 };
 
@@ -358,9 +359,10 @@ export const getFishingChallenges = async () => {
 };
 
 export const claimFishingChallenge = async (challengeId) => {
+  const response = await api.post(`/fishing/challenges/${challengeId}/claim`);
+  // Clear cache after successful response
   clearCache('/fishing/challenges');
   clearCache('/auth/me');
-  const response = await api.post(`/fishing/challenges/${challengeId}/claim`);
   return response.data;
 };
 
@@ -371,16 +373,18 @@ export const getFishingAreas = async () => {
 };
 
 export const unlockFishingArea = async (areaId) => {
+  const response = await api.post(`/fishing/areas/${areaId}/unlock`);
+  // Clear cache after successful response to avoid stale data on failure
   clearCache('/fishing/areas');
   clearCache('/auth/me');
-  const response = await api.post(`/fishing/areas/${areaId}/unlock`);
   return response.data;
 };
 
 export const selectFishingArea = async (areaId) => {
+  const response = await api.post(`/fishing/areas/${areaId}/select`);
+  // Clear cache after successful response
   clearCache('/fishing/areas');
   clearCache('/fishing/info');
-  const response = await api.post(`/fishing/areas/${areaId}/select`);
   return response.data;
 };
 
@@ -391,16 +395,18 @@ export const getFishingRods = async () => {
 };
 
 export const buyFishingRod = async (rodId) => {
+  const response = await api.post(`/fishing/rods/${rodId}/buy`);
+  // Clear cache after successful response
   clearCache('/fishing/rods');
   clearCache('/auth/me');
-  const response = await api.post(`/fishing/rods/${rodId}/buy`);
   return response.data;
 };
 
 export const equipFishingRod = async (rodId) => {
+  const response = await api.post(`/fishing/rods/${rodId}/equip`);
+  // Clear cache after successful response
   clearCache('/fishing/rods');
   clearCache('/fishing/info');
-  const response = await api.post(`/fishing/rods/${rodId}/equip`);
   return response.data;
 };
 
@@ -425,28 +431,28 @@ export const getDojoAvailableCharacters = async () => {
 };
 
 export const assignCharacterToDojo = async (characterId, slotIndex) => {
-  clearCache('/dojo');
   const response = await api.post('/dojo/assign', { characterId, slotIndex });
+  clearCache('/dojo');
   return response.data;
 };
 
 export const unassignCharacterFromDojo = async (slotIndex) => {
-  clearCache('/dojo');
   const response = await api.post('/dojo/unassign', { slotIndex });
+  clearCache('/dojo');
   return response.data;
 };
 
 export const claimDojoRewards = async () => {
+  const response = await api.post('/dojo/claim');
   clearCache('/dojo');
   clearCache('/auth/me');
-  const response = await api.post('/dojo/claim');
   return response.data;
 };
 
 export const purchaseDojoUpgrade = async (upgradeType, rarity = null) => {
+  const response = await api.post('/dojo/upgrade', { upgradeType, rarity });
   clearCache('/dojo');
   clearCache('/auth/me');
-  const response = await api.post('/dojo/upgrade', { upgradeType, rarity });
   return response.data;
 };
 

@@ -15,8 +15,10 @@ import api, {
   claimFishingChallenge,
   getFishingAreas,
   selectFishingArea,
+  unlockFishingArea,
   getFishingRods,
-  buyFishingRod
+  buyFishingRod,
+  equipFishingRod
 } from '../utils/api';
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
@@ -131,6 +133,7 @@ const FishingPage = () => {
   const [areas, setAreas] = useState(null);
   const [rods, setRods] = useState(null);
   const [equipmentTab, setEquipmentTab] = useState('areas'); // 'areas' or 'rods'
+  const [equipmentActionLoading, setEquipmentActionLoading] = useState(false);
   
   // NEW: Daily autofish limits
   const [dailyStats, setDailyStats] = useState(null);
@@ -401,9 +404,12 @@ const FishingPage = () => {
     }
   }, [showChallenges]);
   
-  // Equipment (Areas & Rods) fetch
+  // Equipment (Areas & Rods) fetch - clear cache for fresh data
   useEffect(() => {
     if (showEquipment) {
+      // Clear cache to ensure fresh data when modal opens
+      clearCache('/fishing/areas');
+      clearCache('/fishing/rods');
       Promise.all([getFishingAreas(), getFishingRods()])
         .then(([areasData, rodsData]) => {
           setAreas(areasData);
@@ -751,6 +757,8 @@ const FishingPage = () => {
   
   // Handle area selection
   const handleSelectArea = useCallback(async (areaId) => {
+    if (equipmentActionLoading) return;
+    setEquipmentActionLoading(true);
     try {
       await selectFishingArea(areaId);
       // Refresh areas and fish info
@@ -763,11 +771,44 @@ const FishingPage = () => {
       showNotification(`Switched to ${areasData.areas.find(a => a.id === areaId)?.name}!`, 'success');
     } catch (err) {
       showNotification(err.response?.data?.error || 'Failed to switch area', 'error');
+    } finally {
+      setEquipmentActionLoading(false);
     }
-  }, [showNotification]);
+  }, [showNotification, equipmentActionLoading]);
+  
+  // Handle area unlock (purchase)
+  const handleUnlockArea = useCallback(async (areaId) => {
+    if (equipmentActionLoading) return;
+    setEquipmentActionLoading(true);
+    try {
+      const result = await unlockFishingArea(areaId);
+      setUser(prev => ({ ...prev, points: result.newPoints }));
+      showNotification(result.message, 'success');
+      
+      // Refresh areas and fish info
+      const [areasData, fishRes] = await Promise.all([
+        getFishingAreas(),
+        api.get('/fishing/info')
+      ]);
+      setAreas(areasData);
+      setFishInfo(fishRes.data);
+    } catch (err) {
+      const errorCode = err.response?.data?.error;
+      const errorMessages = {
+        'already_unlocked': t('fishing.errors.alreadyUnlocked') || 'Area already unlocked!',
+        'rank_required': t('fishing.errors.rankRequired') || 'Higher rank required',
+        'insufficient_points': t('fishing.errors.notEnoughPoints') || 'Not enough coins'
+      };
+      showNotification(errorMessages[errorCode] || err.response?.data?.message || 'Failed to unlock area', 'error');
+    } finally {
+      setEquipmentActionLoading(false);
+    }
+  }, [setUser, showNotification, equipmentActionLoading, t]);
   
   // Handle rod purchase
   const handleBuyRod = useCallback(async (rodId) => {
+    if (equipmentActionLoading) return;
+    setEquipmentActionLoading(true);
     try {
       const result = await buyFishingRod(rodId);
       setUser(prev => ({ ...prev, points: result.newPoints }));
@@ -781,9 +822,44 @@ const FishingPage = () => {
       setRods(rodsData);
       setFishInfo(fishRes.data);
     } catch (err) {
-      showNotification(err.response?.data?.error || 'Failed to buy rod', 'error');
+      const errorCode = err.response?.data?.error;
+      const errorMessages = {
+        'already_owned': t('fishing.errors.alreadyOwned') || 'You already own this rod!',
+        'prestige_required': t('fishing.errors.prestigeRequired') || 'Higher prestige level required',
+        'insufficient_points': t('fishing.errors.notEnoughPoints') || 'Not enough coins'
+      };
+      showNotification(errorMessages[errorCode] || err.response?.data?.message || 'Failed to buy rod', 'error');
+    } finally {
+      setEquipmentActionLoading(false);
     }
-  }, [setUser, showNotification]);
+  }, [setUser, showNotification, equipmentActionLoading, t]);
+  
+  // Handle rod equip (for already owned rods)
+  const handleEquipRod = useCallback(async (rodId) => {
+    if (equipmentActionLoading) return;
+    setEquipmentActionLoading(true);
+    try {
+      const result = await equipFishingRod(rodId);
+      showNotification(`Equipped ${result.rod?.name || 'rod'}!`, 'success');
+      
+      // Refresh rods and fish info
+      const [rodsData, fishRes] = await Promise.all([
+        getFishingRods(),
+        api.get('/fishing/info')
+      ]);
+      setRods(rodsData);
+      setFishInfo(fishRes.data);
+    } catch (err) {
+      const errorCode = err.response?.data?.error;
+      const errorMessages = {
+        'not_owned': t('fishing.errors.notOwned') || 'You don\'t own this rod',
+        'not_found': t('fishing.errors.notFound') || 'Rod not found'
+      };
+      showNotification(errorMessages[errorCode] || err.response?.data?.message || 'Failed to equip rod', 'error');
+    } finally {
+      setEquipmentActionLoading(false);
+    }
+  }, [showNotification, equipmentActionLoading, t]);
   
   // Mobile controls
   const handleMobileMove = (dx, dy, dir) => {
@@ -1536,14 +1612,21 @@ const FishingPage = () => {
                         {area.current ? (
                           <CurrentBadge>{t('fishing.current') || 'Current'}</CurrentBadge>
                         ) : area.unlocked ? (
-                          <SelectButton onClick={() => handleSelectArea(area.id)}>
-                            {t('fishing.select') || 'Select'}
+                          <SelectButton 
+                            onClick={() => handleSelectArea(area.id)}
+                            disabled={equipmentActionLoading}
+                          >
+                            {equipmentActionLoading ? '...' : (t('fishing.select') || 'Select')}
                           </SelectButton>
                         ) : (
-                          <UnlockInfo>
+                          <UnlockButton
+                            onClick={() => handleUnlockArea(area.id)}
+                            disabled={equipmentActionLoading || !area.canUnlock}
+                            $canAfford={user?.points >= area.unlockCost}
+                          >
                             <span>🪙 {area.unlockCost.toLocaleString()}</span>
-                            {area.unlockRank && <span>#{area.unlockRank}</span>}
-                          </UnlockInfo>
+                            {area.unlockRank && <span style={{ fontSize: '10px', opacity: 0.8 }}>Rank #{area.unlockRank}+</span>}
+                          </UnlockButton>
                         )}
                       </EquipmentCard>
                     ))}
@@ -1573,17 +1656,20 @@ const FishingPage = () => {
                         {rod.equipped ? (
                           <CurrentBadge>{t('fishing.equipped') || 'Equipped'}</CurrentBadge>
                         ) : rod.owned ? (
-                          <SelectButton onClick={() => handleBuyRod(rod.id)}>
-                            {t('fishing.equip') || 'Equip'}
+                          <SelectButton 
+                            onClick={() => handleEquipRod(rod.id)}
+                            disabled={equipmentActionLoading}
+                          >
+                            {equipmentActionLoading ? '...' : (t('fishing.equip') || 'Equip')}
                           </SelectButton>
                         ) : rod.locked ? (
                           <LockedBadge>🔒 Prestige {rod.requiresPrestige}</LockedBadge>
                         ) : (
                           <BuyButton 
                             onClick={() => handleBuyRod(rod.id)}
-                            disabled={user?.points < rod.cost}
+                            disabled={equipmentActionLoading || !rod.canBuy}
                           >
-                            🪙 {rod.cost.toLocaleString()}
+                            {equipmentActionLoading ? '...' : `🪙 ${rod.cost.toLocaleString()}`}
                           </BuyButton>
                         )}
                       </EquipmentCard>
@@ -3995,6 +4081,37 @@ const BuyButton = styled.button`
   
   &:hover:not(:disabled) {
     background: linear-gradient(180deg, #ffd54f 0%, #ffa726 100%);
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const UnlockButton = styled.button`
+  padding: 8px 14px;
+  background: ${props => props.$canAfford 
+    ? 'linear-gradient(180deg, #ffc107 0%, #ff9800 100%)'
+    : 'linear-gradient(180deg, #9e9e9e 0%, #757575 100%)'};
+  border: none;
+  border-radius: 10px;
+  color: ${props => props.$canAfford ? '#5d4037' : '#ffffff'};
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: ${props => props.$canAfford ? '0 2px 0 #e65100' : '0 2px 0 #424242'};
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  min-width: 80px;
+  
+  &:hover:not(:disabled) {
+    background: ${props => props.$canAfford 
+      ? 'linear-gradient(180deg, #ffd54f 0%, #ffa726 100%)'
+      : 'linear-gradient(180deg, #bdbdbd 0%, #9e9e9e 100%)'};
     transform: translateY(-1px);
   }
   
