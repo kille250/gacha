@@ -3,10 +3,10 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
-import api, { getAssetUrl } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
+import { redeemCoupon as redeemCouponAction } from '../utils/couponActions';
 import {
   theme,
   PageWrapper,
@@ -50,20 +50,12 @@ const CouponPage = () => {
     setRewardInfo(null);
     
     try {
-      const response = await api.post('/coupons/redeem', { code: couponCode });
+      // Use centralized action helper for consistent cache invalidation and state updates
+      const result = await redeemCouponAction(couponCode, setUser);
       
-      setSuccess(response.data.message);
-      setRewardInfo(response.data);
+      setSuccess(result.message);
+      setRewardInfo(result);
       setCouponCode('');
-      
-      // Invalidate caches - coupons can grant points, characters, or tickets
-      invalidateFor(CACHE_ACTIONS.COUPON_REDEEM);
-      
-      // Update points immediately from response (optimistic update)
-      const { updatedPoints } = response.data;
-      if (updatedPoints !== undefined && user) {
-        setUser({ ...user, points: updatedPoints });
-      }
     } catch (err) {
       setError(err.response?.data?.error || t('coupon.failedRedeem'));
     } finally {

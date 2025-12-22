@@ -9,22 +9,26 @@ import { io } from 'socket.io-client';
 import api, { 
   WS_URL, 
   getTradingPostOptions, 
-  executeTrade,
   getFishingChallenges,
-  claimFishingChallenge,
   getFishingAreas,
-  selectFishingArea,
-  unlockFishingArea,
-  getFishingRods,
-  buyFishingRod,
-  equipFishingRod
+  getFishingRods
 } from '../utils/api';
 import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS } from '../utils/cacheManager';
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock } from '../hooks';
-import { applyPointsUpdate, applyRewards } from '../utils/userStateUpdates';
+import {
+  executeFishTrade,
+  catchFish,
+  claimChallenge,
+  buyRod,
+  equipRod,
+  unlockArea,
+  selectArea,
+  runAutofish,
+  castLine
+} from '../utils/fishingActions';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, motionVariants } from '../styles/DesignSystem';
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
 
@@ -521,16 +525,11 @@ const FishingPage = () => {
     await withTradeLock(async () => {
       try {
         setTradingLoading(true);
-        const result = await executeTrade(tradeId, 1);
+        // Use centralized action helper for consistent cache invalidation and state updates
+        const result = await executeFishTrade(tradeId, 1, setUser);
         setTradeResult(result);
         
-        // Optimistic update from response
-        applyPointsUpdate(setUser, result.newPoints);
-        
-        // Invalidate trade-related caches (caller's responsibility)
-        invalidateFor(CACHE_ACTIONS.FISHING_TRADE);
-        
-        // Refresh trading options (cache already invalidated above)
+        // Refresh trading options (cache already invalidated by helper)
         const newOptions = await getTradingPostOptions();
         setTradingOptions(newOptions);
         
@@ -580,13 +579,8 @@ const FishingPage = () => {
       }, 30000);
       
       try {
-        const res = await api.post('/fishing/autofish');
-        const result = res.data;
-        
-        applyPointsUpdate(setUser, result.newPoints);
-        
-        // Invalidate autofish-related caches (caller's responsibility)
-        invalidateFor(CACHE_ACTIONS.FISHING_AUTOFISH);
+        // Use centralized action helper for consistent cache invalidation
+        const result = await runAutofish(setUser);
         
         // Update pity progress from response (immediate)
         if (result.pityInfo) {
@@ -781,8 +775,10 @@ const FishingPage = () => {
   // - Fresh data is fetched on visibility change or next successful catch
   const handleMiss = useCallback(async (sid) => {
     try {
-      const res = await api.post('/fishing/catch', { sessionId: sid });
-      setLastResult(res.data);
+      // Use catchFish helper without reactionTime to signal a miss
+      // The helper only invalidates cache on success, so misses are handled correctly
+      const result = await catchFish(sid, undefined, setUser);
+      setLastResult(result);
       setGameState(GAME_STATES.FAILURE);
       
       setTimeout(() => {
@@ -793,7 +789,7 @@ const FishingPage = () => {
       setGameState(GAME_STATES.WALKING);
       setSessionId(null);
     }
-  }, []);
+  }, [setUser]);
   
   // Start fishing
   const startFishing = useCallback(async () => {
@@ -803,14 +799,12 @@ const FishingPage = () => {
     setGameState(GAME_STATES.CASTING);
     
     try {
-      const res = await api.post('/fishing/cast');
-      const { sessionId: newSessionId, waitTime, missTimeout = 2500, newPoints, daily } = res.data;
+      // Use centralized action helper for consistent state updates
+      const result = await castLine(setUser);
+      const { sessionId: newSessionId, waitTime, missTimeout = 2500, daily } = result;
       
       setSessionId(newSessionId);
       setSessionStats(prev => ({ ...prev, casts: prev.casts + 1 }));
-      
-      // Update user points from cast cost deduction
-      applyPointsUpdate(setUser, newPoints);
       
       // Update daily stats from cast response (tracks manual casts)
       if (daily) {
@@ -850,8 +844,8 @@ const FishingPage = () => {
     setGameState(GAME_STATES.CATCHING);
     
     try {
-      const res = await api.post('/fishing/catch', { sessionId, reactionTime });
-      const result = res.data;
+      // Use centralized action helper for consistent cache invalidation and state updates
+      const result = await catchFish(sessionId, reactionTime, setUser);
       
       setLastResult(result);
       
@@ -866,12 +860,6 @@ const FishingPage = () => {
             ? { fish: result.fish, quality: result.catchQuality }
             : prev.bestCatch
         }));
-        
-        // Update user points from response
-        applyPointsUpdate(setUser, result.newPoints);
-        
-        // Invalidate fishing caches to ensure fresh data (caller's responsibility)
-        invalidateFor(CACHE_ACTIONS.FISHING_CATCH);
         
         // Immediate optimistic update of pity from response (if available)
         if (result.pityInfo) {
@@ -945,16 +933,11 @@ const FishingPage = () => {
     setClaimingChallenges(prev => ({ ...prev, [challengeId]: true }));
     
     try {
-      const result = await claimFishingChallenge(challengeId);
+      // Use centralized action helper for consistent cache invalidation and state updates
+      const result = await claimChallenge(challengeId, setUser);
       showNotification(result.message, 'success');
       
-      // Update user points/tickets
-      applyRewards(setUser, result.rewards);
-      
-      // Invalidate claim_challenge caches (caller's responsibility)
-      invalidateFor(CACHE_ACTIONS.FISHING_CLAIM_CHALLENGE);
-      
-      // Refresh challenges (cache already invalidated above)
+      // Refresh challenges (cache already invalidated by helper)
       const updatedChallenges = await getFishingChallenges();
       setChallenges(updatedChallenges);
     } catch (err) {
@@ -969,12 +952,10 @@ const FishingPage = () => {
     if (equipmentActionLoading) return;
     setEquipmentActionLoading(true);
     try {
-      await selectFishingArea(areaId);
+      // Use centralized action helper for consistent cache invalidation
+      await selectArea(areaId);
       
-      // Invalidate select_area caches (caller's responsibility)
-      invalidateFor(CACHE_ACTIONS.FISHING_SELECT_AREA);
-      
-      // Refresh areas and fish info (cache already invalidated above)
+      // Refresh areas and fish info (cache already invalidated by helper)
       const [areasData, fishRes] = await Promise.all([
         getFishingAreas(),
         api.get('/fishing/info')
@@ -994,14 +975,11 @@ const FishingPage = () => {
     if (equipmentActionLoading) return;
     setEquipmentActionLoading(true);
     try {
-      const result = await unlockFishingArea(areaId);
-      applyPointsUpdate(setUser, result.newPoints);
+      // Use centralized action helper for consistent cache invalidation and state updates
+      const result = await unlockArea(areaId, setUser);
       showNotification(result.message, 'success');
       
-      // Invalidate unlock_area caches (caller's responsibility)
-      invalidateFor(CACHE_ACTIONS.FISHING_UNLOCK_AREA);
-      
-      // Refresh areas and fish info (cache already invalidated above)
+      // Refresh areas and fish info (cache already invalidated by helper)
       const [areasData, fishRes] = await Promise.all([
         getFishingAreas(),
         api.get('/fishing/info')
@@ -1028,14 +1006,11 @@ const FishingPage = () => {
     if (equipmentActionLoading) return;
     setEquipmentActionLoading(true);
     try {
-      const result = await buyFishingRod(rodId);
-      applyPointsUpdate(setUser, result.newPoints);
+      // Use centralized action helper for consistent cache invalidation and state updates
+      const result = await buyRod(rodId, setUser);
       showNotification(result.message, 'success');
       
-      // Invalidate buy_rod caches (caller's responsibility)
-      invalidateFor(CACHE_ACTIONS.FISHING_BUY_ROD);
-      
-      // Refresh rods and fish info (cache already invalidated above)
+      // Refresh rods and fish info (cache already invalidated by helper)
       const [rodsData, fishRes] = await Promise.all([
         getFishingRods(),
         api.get('/fishing/info')
@@ -1062,13 +1037,11 @@ const FishingPage = () => {
     if (equipmentActionLoading) return;
     setEquipmentActionLoading(true);
     try {
-      const result = await equipFishingRod(rodId);
+      // Use centralized action helper for consistent cache invalidation
+      const result = await equipRod(rodId);
       showNotification(t('fishing.equippedRod', { rod: result.rod?.name || t('fishing.rods') }), 'success');
       
-      // Invalidate equip_rod caches (caller's responsibility)
-      invalidateFor(CACHE_ACTIONS.FISHING_EQUIP_ROD);
-      
-      // Refresh rods and fish info (cache already invalidated above)
+      // Refresh rods and fish info (cache already invalidated by helper)
       const [rodsData, fishRes] = await Promise.all([
         getFishingRods(),
         api.get('/fishing/info')

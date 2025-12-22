@@ -96,20 +96,9 @@ const BannerPage = () => {
   const [tickets, setTickets] = useState({ rollTickets: 0, premiumTickets: 0 });
   const [ticketLoadError, setTicketLoadError] = useState(false);
   
-  // Refresh tickets when tab regains focus to prevent stale ticket validation
-  useEffect(() => {
-    const handleFocus = async () => {
-      try {
-        const ticketsData = await api.get('/banners/user/tickets').then(res => res.data);
-        setTickets(ticketsData);
-        setTicketLoadError(false);
-      } catch (err) {
-        console.warn('Failed to refresh tickets on focus:', err);
-      }
-    };
-    window.addEventListener('focus', handleFocus);
-    return () => window.removeEventListener('focus', handleFocus);
-  }, []);
+  // NOTE: Ticket refresh on visibility change is handled by the centralized visibility handler below.
+  // Removed redundant window.focus handler - onVisibilityChange provides the same functionality
+  // with better staleness detection and consistency with other pages.
   
   // Computed values from pricing
   const singlePullCost = pricing?.singlePullCost || 100;
@@ -193,21 +182,27 @@ const BannerPage = () => {
     fetchBannerAndPricing();
   }, [bannerId, t, setError]);
   
-  // Refresh pricing when tab regains focus (handles admin pricing changes during session)
+  // Refresh pricing and tickets when tab regains visibility
   // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
   // 
-  // NOTE: Pricing is always refreshed on any visibility change (not just stale threshold)
-  // because admin pricing updates should be reflected immediately for accurate costs.
+  // NOTE: Both pricing and tickets are refreshed on any visibility change:
+  // - Pricing may have been updated by admin
+  // - Tickets may have been used in another tab or earned elsewhere
   useEffect(() => {
     if (!bannerId) return;
     
-    return onVisibilityChange('banner-pricing', async () => {
-      // Always refresh pricing on visibility change (pricing may have been updated by admin)
+    return onVisibilityChange('banner-pricing-and-tickets', async () => {
+      // Refresh both pricing and tickets in parallel on visibility change
       try {
-        const pricingData = await getBannerPricing(bannerId);
+        const [pricingData, ticketsData] = await Promise.all([
+          getBannerPricing(bannerId),
+          api.get('/banners/user/tickets').then(res => res.data)
+        ]);
         setPricing(pricingData);
+        setTickets(ticketsData);
+        setTicketLoadError(false);
       } catch (err) {
-        console.warn('Failed to refresh pricing on visibility:', err);
+        console.warn('Failed to refresh data on visibility:', err);
       }
     });
   }, [bannerId]);

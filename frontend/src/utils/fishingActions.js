@@ -182,5 +182,28 @@ export const runAutofish = async (setUser) => {
   return result;
 };
 
+/**
+ * Cast a fishing line to start a fishing session.
+ * 
+ * NOTE: Cast deducts points but doesn't need full cache invalidation.
+ * The fishing session is ephemeral - persistent state only changes on catch.
+ * 
+ * @param {Function} setUser - React state setter for user
+ * @returns {Promise<Object>} Cast result from API containing sessionId, waitTime, missTimeout, daily stats
+ * @throws {Error} If cast fails
+ */
+export const castLine = async (setUser) => {
+  const response = await api.post('/fishing/cast');
+  const result = response.data;
+  
+  // Update user points from cast cost deduction
+  applyPointsUpdate(setUser, result.newPoints);
+  
+  // No cache invalidation needed - cast creates a transient session
+  // Cache is invalidated on catch (success or miss)
+  
+  return result;
+};
+
 // NOTE: Default export removed - use named exports instead for better tree-shaking
 

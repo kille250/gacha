@@ -1,14 +1,15 @@
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useContext } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { getCollectionData, getAssetUrl, levelUpCharacter } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
+import { getCollectionData, getAssetUrl } from '../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
+import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError } from '../hooks';
+import { executeLevelUp } from '../utils/gachaActions';
 import {
   theme,
   PageWrapper,
@@ -21,6 +22,7 @@ import {
 
 const CollectionPage = () => {
   const { t } = useTranslation();
+  const { setUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
   const { withLock } = useActionLock(200);
   
@@ -109,10 +111,8 @@ const CollectionPage = () => {
     // Use action lock to prevent rapid double-clicks
     await withLock(async () => {
       try {
-        const result = await levelUpCharacter(characterId);
-        
-        // Invalidate cache to ensure other components see fresh data
-        invalidateFor(CACHE_ACTIONS.GACHA_LEVEL_UP);
+        // Use centralized action helper for consistent cache invalidation and state updates
+        const result = await executeLevelUp(characterId, setUser);
         
         if (result.success) {
           // Update the collection state with new level
