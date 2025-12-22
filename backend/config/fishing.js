@@ -10,10 +10,28 @@
 // ===========================================
 
 const FISHING_CONFIG = {
-  // Rank required to unlock autofishing (top X users)
-  autofishUnlockRank: 10,
+  // === DEMOCRATIZED AUTOFISH SYSTEM ===
+  // Everyone can autofish with daily limits
+  // Higher ranks get bonus capacity
+  autofish: {
+    // Base daily limit for all players
+    baseDailyLimit: 150,
+    // Bonus limits based on rank
+    rankBonuses: {
+      top5: 200,    // Top 5: +200 extra
+      top10: 150,   // Top 6-10: +150 extra
+      top25: 100,   // Top 11-25: +100 extra
+      top50: 50,    // Top 26-50: +50 extra
+      top100: 25    // Top 51-100: +25 extra
+    },
+    // Premium ticket holders get multiplier
+    premiumMultiplier: 1.5
+  },
   
-  // Autofish cooldown in milliseconds (increased for better balance - ~40% efficiency of active)
+  // Legacy field - kept for backwards compatibility
+  autofishUnlockRank: 999, // Effectively disabled - everyone can autofish now
+  
+  // Autofish cooldown in milliseconds
   autofishCooldown: 6000,
   
   // Cast cooldown in milliseconds
@@ -21,6 +39,15 @@ const FISHING_CONFIG = {
   
   // Cost to cast (0 for free fishing)
   castCost: 0,
+  
+  // === DAILY LIMITS (Anti-Inflation) ===
+  dailyLimits: {
+    manualCasts: 500,         // Max manual casts per day
+    autofishCasts: 150,       // Base autofish limit (see autofish.baseDailyLimit)
+    pointsFromTrades: 15000,  // Max points from trades per day
+    rollTickets: 25,          // Max roll tickets from fishing per day
+    premiumTickets: 8         // Max premium tickets from fishing per day
+  },
   
   // Network latency buffer for reaction time validation (ms)
   latencyBuffer: 200,
@@ -93,6 +120,279 @@ const FISHING_CONFIG = {
     }
   }
 };
+
+// ===========================================
+// FISHING AREAS
+// ===========================================
+
+const FISHING_AREAS = {
+  pond: {
+    id: 'pond',
+    name: 'Peaceful Pond',
+    emoji: '🏞️',
+    description: 'A calm pond perfect for beginners',
+    unlockCost: 0,
+    unlockRank: null,
+    fishPool: ['sardine', 'anchovy', 'herring', 'bass', 'trout'],
+    rarityBonus: 0,
+    background: 'pond'
+  },
+  river: {
+    id: 'river',
+    name: 'Rushing River',
+    emoji: '🏔️',
+    description: 'Fast-flowing waters with better catches',
+    unlockCost: 3000,
+    unlockRank: null,
+    fishPool: ['trout', 'mackerel', 'salmon', 'tuna', 'snapper'],
+    rarityBonus: 0.1, // +10% rare+ chance
+    background: 'river'
+  },
+  ocean: {
+    id: 'ocean',
+    name: 'Open Ocean',
+    emoji: '🌊',
+    description: 'Deep waters where legends lurk',
+    unlockCost: 10000,
+    unlockRank: 100,
+    fishPool: ['tuna', 'snapper', 'swordfish', 'marlin', 'manta', 'whale'],
+    rarityBonus: 0.2, // +20% rare+ chance
+    background: 'ocean'
+  },
+  abyss: {
+    id: 'abyss',
+    name: 'The Abyss',
+    emoji: '🌑',
+    description: 'Where mythical creatures dwell',
+    unlockCost: 50000,
+    unlockRank: 25,
+    fishPool: ['marlin', 'manta', 'whale', 'kraken', 'dragon'],
+    rarityBonus: 0.35, // +35% rare+ chance
+    background: 'abyss'
+  }
+};
+
+// ===========================================
+// FISHING RODS
+// ===========================================
+
+const FISHING_RODS = {
+  basic: {
+    id: 'basic',
+    name: 'Basic Rod',
+    emoji: '🎣',
+    description: 'A simple fishing rod',
+    cost: 0,
+    timingBonus: 0,       // Extra ms for timing window
+    rarityBonus: 0,       // % bonus to rare+ fish
+    perfectBonus: 0       // % bonus to perfect threshold
+  },
+  bronze: {
+    id: 'bronze',
+    name: 'Bronze Rod',
+    emoji: '🥉',
+    description: 'Slightly better grip for timing',
+    cost: 1500,
+    timingBonus: 50,
+    rarityBonus: 0,
+    perfectBonus: 0.02
+  },
+  silver: {
+    id: 'silver',
+    name: 'Silver Rod',
+    emoji: '🥈',
+    description: 'Attracts uncommon fish',
+    cost: 5000,
+    timingBonus: 100,
+    rarityBonus: 0.05,
+    perfectBonus: 0.03
+  },
+  gold: {
+    id: 'gold',
+    name: 'Golden Rod',
+    emoji: '🥇',
+    description: 'Premium craftsmanship',
+    cost: 15000,
+    timingBonus: 150,
+    rarityBonus: 0.1,
+    perfectBonus: 0.05
+  },
+  diamond: {
+    id: 'diamond',
+    name: 'Diamond Rod',
+    emoji: '💎',
+    description: 'Legendary fishing equipment',
+    cost: 50000,
+    timingBonus: 200,
+    rarityBonus: 0.15,
+    perfectBonus: 0.08
+  },
+  master: {
+    id: 'master',
+    name: 'Master Angler\'s Rod',
+    emoji: '👑',
+    description: 'The ultimate fishing tool',
+    cost: 150000,
+    timingBonus: 300,
+    rarityBonus: 0.25,
+    perfectBonus: 0.1,
+    requiresPrestige: 1
+  }
+};
+
+// ===========================================
+// DAILY CHALLENGES
+// ===========================================
+
+const DAILY_CHALLENGES = {
+  // Catch-based challenges
+  catch_10: {
+    id: 'catch_10',
+    name: 'Warming Up',
+    description: 'Catch 10 fish',
+    type: 'catch',
+    target: 10,
+    reward: { points: 100 },
+    difficulty: 'easy'
+  },
+  catch_50: {
+    id: 'catch_50',
+    name: 'Busy Day',
+    description: 'Catch 50 fish',
+    type: 'catch',
+    target: 50,
+    reward: { rollTickets: 2 },
+    difficulty: 'medium'
+  },
+  catch_100: {
+    id: 'catch_100',
+    name: 'Fishing Marathon',
+    description: 'Catch 100 fish',
+    type: 'catch',
+    target: 100,
+    reward: { premiumTickets: 1, points: 500 },
+    difficulty: 'hard'
+  },
+  
+  // Perfect catch challenges
+  perfect_3: {
+    id: 'perfect_3',
+    name: 'Quick Reflexes',
+    description: 'Get 3 Perfect catches',
+    type: 'perfect',
+    target: 3,
+    reward: { points: 200 },
+    difficulty: 'easy'
+  },
+  perfect_10: {
+    id: 'perfect_10',
+    name: 'Master Timing',
+    description: 'Get 10 Perfect catches',
+    type: 'perfect',
+    target: 10,
+    reward: { rollTickets: 3 },
+    difficulty: 'hard'
+  },
+  
+  // Rarity challenges
+  catch_rare: {
+    id: 'catch_rare',
+    name: 'Rare Find',
+    description: 'Catch 5 Rare or better fish',
+    type: 'rarity',
+    targetRarity: ['rare', 'epic', 'legendary'],
+    target: 5,
+    reward: { points: 300 },
+    difficulty: 'medium'
+  },
+  catch_epic: {
+    id: 'catch_epic',
+    name: 'Epic Hunter',
+    description: 'Catch 2 Epic or Legendary fish',
+    type: 'rarity',
+    targetRarity: ['epic', 'legendary'],
+    target: 2,
+    reward: { premiumTickets: 1 },
+    difficulty: 'hard'
+  },
+  catch_legendary: {
+    id: 'catch_legendary',
+    name: 'Legend Seeker',
+    description: 'Catch a Legendary fish',
+    type: 'rarity',
+    targetRarity: ['legendary'],
+    target: 1,
+    reward: { premiumTickets: 2, points: 1000 },
+    difficulty: 'legendary'
+  },
+  
+  // Trade challenges
+  trade_3: {
+    id: 'trade_3',
+    name: 'Trader',
+    description: 'Complete 3 trades',
+    type: 'trade',
+    target: 3,
+    reward: { points: 150 },
+    difficulty: 'easy'
+  },
+  collection_trade: {
+    id: 'collection_trade',
+    name: 'Collector',
+    description: 'Complete a Collection trade',
+    type: 'collection_trade',
+    target: 1,
+    reward: { rollTickets: 2, premiumTickets: 1 },
+    difficulty: 'hard'
+  },
+  
+  // Streak challenges
+  streak_5: {
+    id: 'streak_5',
+    name: 'On a Roll',
+    description: 'Catch 5 fish in a row without missing',
+    type: 'streak',
+    target: 5,
+    reward: { points: 250 },
+    difficulty: 'medium'
+  },
+  streak_10: {
+    id: 'streak_10',
+    name: 'Unstoppable',
+    description: 'Catch 10 fish in a row without missing',
+    type: 'streak',
+    target: 10,
+    reward: { premiumTickets: 1 },
+    difficulty: 'hard'
+  }
+};
+
+/**
+ * Generate 3 random daily challenges based on difficulty distribution
+ * @returns {Array} Array of challenge IDs
+ */
+function generateDailyChallenges() {
+  const challenges = Object.values(DAILY_CHALLENGES);
+  
+  // Distribution: 1 easy, 1 medium, 1 hard/legendary
+  const easy = challenges.filter(c => c.difficulty === 'easy');
+  const medium = challenges.filter(c => c.difficulty === 'medium');
+  const hard = challenges.filter(c => c.difficulty === 'hard' || c.difficulty === 'legendary');
+  
+  const selected = [];
+  
+  if (easy.length > 0) {
+    selected.push(easy[Math.floor(Math.random() * easy.length)].id);
+  }
+  if (medium.length > 0) {
+    selected.push(medium[Math.floor(Math.random() * medium.length)].id);
+  }
+  if (hard.length > 0) {
+    selected.push(hard[Math.floor(Math.random() * hard.length)].id);
+  }
+  
+  return selected;
+}
 
 // ===========================================
 // FISH TYPES
@@ -443,12 +743,166 @@ function calculateFishTotals(inventory) {
   return totals;
 }
 
+/**
+ * Calculate autofish daily limit for a user based on rank and premium status
+ * @param {number} rank - User's current rank
+ * @param {boolean} hasPremiumTickets - Whether user has any premium tickets
+ * @returns {number} - Daily autofish limit
+ */
+function getAutofishLimit(rank, hasPremiumTickets = false) {
+  const config = FISHING_CONFIG.autofish;
+  let limit = config.baseDailyLimit;
+  
+  // Apply rank bonuses
+  if (rank <= 5) {
+    limit += config.rankBonuses.top5;
+  } else if (rank <= 10) {
+    limit += config.rankBonuses.top10;
+  } else if (rank <= 25) {
+    limit += config.rankBonuses.top25;
+  } else if (rank <= 50) {
+    limit += config.rankBonuses.top50;
+  } else if (rank <= 100) {
+    limit += config.rankBonuses.top100;
+  }
+  
+  // Apply premium multiplier
+  if (hasPremiumTickets) {
+    limit = Math.floor(limit * config.premiumMultiplier);
+  }
+  
+  return limit;
+}
+
+/**
+ * Get today's date string in YYYY-MM-DD format
+ * @returns {string}
+ */
+function getTodayString() {
+  return new Date().toISOString().split('T')[0];
+}
+
+/**
+ * Check if daily data needs to be reset
+ * @param {string} storedDate - The date stored in user's daily data
+ * @returns {boolean}
+ */
+function needsDailyReset(storedDate) {
+  return storedDate !== getTodayString();
+}
+
+/**
+ * Get fish available in a specific area
+ * @param {string} areaId - Area ID
+ * @returns {Array} - Array of fish objects available in that area
+ */
+function getFishForArea(areaId) {
+  const area = FISHING_AREAS[areaId];
+  if (!area) return FISH_TYPES; // Fallback to all fish
+  
+  return FISH_TYPES.filter(fish => area.fishPool.includes(fish.id));
+}
+
+/**
+ * Select random fish with area and rod bonuses
+ * @param {Object} pityData - User's pity counters
+ * @param {string} areaId - Current fishing area
+ * @param {string} rodId - Current fishing rod
+ * @returns {Object} - { fish, pityTriggered, resetPity }
+ */
+function selectRandomFishWithBonuses(pityData, areaId = 'pond', rodId = 'basic') {
+  const area = FISHING_AREAS[areaId] || FISHING_AREAS.pond;
+  const rod = FISHING_RODS[rodId] || FISHING_RODS.basic;
+  const areaFish = getFishForArea(areaId);
+  
+  // Calculate total rarity bonus
+  const totalRarityBonus = (area.rarityBonus || 0) + (rod.rarityBonus || 0);
+  
+  // Check for hard pity first
+  const legendaryPity = FISHING_CONFIG.pity.legendary;
+  const epicPity = FISHING_CONFIG.pity.epic;
+  
+  if (pityData && pityData.legendary >= legendaryPity.hardPity) {
+    const legendaryFish = areaFish.filter(f => f.rarity === 'legendary');
+    if (legendaryFish.length > 0) {
+      return {
+        fish: legendaryFish[Math.floor(Math.random() * legendaryFish.length)],
+        pityTriggered: true,
+        resetPity: ['legendary', 'epic']
+      };
+    }
+  }
+  
+  if (pityData && pityData.epic >= epicPity.hardPity) {
+    const epicFish = areaFish.filter(f => f.rarity === 'epic');
+    if (epicFish.length > 0) {
+      return {
+        fish: epicFish[Math.floor(Math.random() * epicFish.length)],
+        pityTriggered: true,
+        resetPity: ['epic']
+      };
+    }
+  }
+  
+  // Calculate adjusted weights with pity and area/rod bonuses
+  let adjustedWeights = areaFish.map(fish => {
+    let weight = fish.weight;
+    
+    // Apply pity bonus
+    if (fish.rarity === 'legendary' && pityData) {
+      weight += calculatePityBonus(pityData, 'legendary');
+    } else if (fish.rarity === 'epic' && pityData) {
+      weight += calculatePityBonus(pityData, 'epic');
+    }
+    
+    // Apply rarity bonus for rare+ fish
+    if (['rare', 'epic', 'legendary'].includes(fish.rarity)) {
+      weight *= (1 + totalRarityBonus);
+    }
+    
+    return { ...fish, adjustedWeight: weight };
+  });
+  
+  const totalWeight = adjustedWeights.reduce((sum, f) => sum + f.adjustedWeight, 0);
+  const random = Math.random() * totalWeight;
+  let cumulative = 0;
+  
+  for (const fish of adjustedWeights) {
+    cumulative += fish.adjustedWeight;
+    if (random < cumulative) {
+      let resetPity = [];
+      if (fish.rarity === 'legendary') {
+        resetPity = ['legendary', 'epic'];
+      } else if (fish.rarity === 'epic') {
+        resetPity = ['epic'];
+      }
+      
+      return {
+        fish: areaFish.find(f => f.id === fish.id),
+        pityTriggered: false,
+        resetPity
+      };
+    }
+  }
+  
+  return { fish: areaFish[0], pityTriggered: false, resetPity: [] };
+}
+
 module.exports = {
   FISHING_CONFIG,
   FISH_TYPES,
   TRADE_OPTIONS,
+  FISHING_AREAS,
+  FISHING_RODS,
+  DAILY_CHALLENGES,
   selectRandomFish,
+  selectRandomFishWithBonuses,
   calculateFishTotals,
   getCatchThresholds,
-  calculatePityBonus
+  calculatePityBonus,
+  getAutofishLimit,
+  getTodayString,
+  needsDailyReset,
+  getFishForArea,
+  generateDailyChallenges
 };

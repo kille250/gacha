@@ -9,10 +9,18 @@ const { isValidId } = require('../utils/validation');
 const { 
   FISHING_CONFIG, 
   FISH_TYPES, 
-  TRADE_OPTIONS, 
-  selectRandomFish, 
+  TRADE_OPTIONS,
+  FISHING_AREAS,
+  FISHING_RODS,
+  DAILY_CHALLENGES,
+  selectRandomFish,
+  selectRandomFishWithBonuses,
   calculateFishTotals,
-  getCatchThresholds
+  getCatchThresholds,
+  getAutofishLimit,
+  getTodayString,
+  needsDailyReset,
+  generateDailyChallenges
 } = require('../config/fishing');
 
 // Extract frequently used config values
@@ -78,6 +86,141 @@ function updatePityCounters(currentPity, resetPity, timestamp) {
   
   newPityData.lastCast = timestamp;
   return newPityData;
+}
+
+/**
+ * Get or reset daily fishing data
+ * @param {Object} user - User model instance
+ * @returns {Object} - Current daily data (reset if new day)
+ */
+function getOrResetDailyData(user) {
+  const today = getTodayString();
+  let daily = user.fishingDaily || {};
+  
+  if (needsDailyReset(daily.date)) {
+    daily = {
+      date: today,
+      manualCasts: 0,
+      autofishCasts: 0,
+      catches: 0,
+      perfectCatches: 0,
+      rareCatches: 0,
+      tradesCompleted: 0,
+      pointsFromTrades: 0,
+      ticketsEarned: { roll: 0, premium: 0 }
+    };
+  }
+  
+  return daily;
+}
+
+/**
+ * Get or reset daily challenges
+ * @param {Object} user - User model instance
+ * @returns {Object} - Current challenges data (reset if new day)
+ */
+function getOrResetChallenges(user) {
+  const today = getTodayString();
+  let challenges = user.fishingChallenges || {};
+  
+  if (needsDailyReset(challenges.date)) {
+    challenges = {
+      date: today,
+      active: generateDailyChallenges(),
+      completed: [],
+      progress: {}
+    };
+  }
+  
+  return challenges;
+}
+
+/**
+ * Update challenge progress based on action
+ * @param {Object} challenges - Current challenges data
+ * @param {string} type - Challenge type ('catch', 'perfect', 'rarity', 'trade', 'streak')
+ * @param {Object} data - Action data { rarity, isCollection, streakCount }
+ * @returns {Object} - { challenges, newlyCompleted: [] }
+ */
+function updateChallengeProgress(challenges, type, data = {}) {
+  const newlyCompleted = [];
+  
+  for (const challengeId of challenges.active) {
+    if (challenges.completed.includes(challengeId)) continue;
+    
+    const challenge = DAILY_CHALLENGES[challengeId];
+    if (!challenge) continue;
+    
+    let shouldIncrement = false;
+    
+    switch (challenge.type) {
+      case 'catch':
+        if (type === 'catch') shouldIncrement = true;
+        break;
+      case 'perfect':
+        if (type === 'perfect') shouldIncrement = true;
+        break;
+      case 'rarity':
+        if (type === 'catch' && data.rarity && 
+            challenge.targetRarity.includes(data.rarity)) {
+          shouldIncrement = true;
+        }
+        break;
+      case 'trade':
+        if (type === 'trade') shouldIncrement = true;
+        break;
+      case 'collection_trade':
+        if (type === 'trade' && data.isCollection) shouldIncrement = true;
+        break;
+      case 'streak':
+        if (type === 'streak') {
+          // Streak challenges set progress directly
+          challenges.progress[challengeId] = Math.max(
+            challenges.progress[challengeId] || 0,
+            data.streakCount || 0
+          );
+        }
+        break;
+    }
+    
+    if (shouldIncrement) {
+      challenges.progress[challengeId] = (challenges.progress[challengeId] || 0) + 1;
+    }
+    
+    // Check if challenge is now completed
+    if ((challenges.progress[challengeId] || 0) >= challenge.target) {
+      if (!challenges.completed.includes(challengeId)) {
+        challenges.completed.push(challengeId);
+        newlyCompleted.push({ id: challengeId, reward: challenge.reward });
+      }
+    }
+  }
+  
+  return { challenges, newlyCompleted };
+}
+
+/**
+ * Apply challenge rewards to user
+ * @param {Object} user - User model instance
+ * @param {Array} rewards - Array of { id, reward } objects
+ */
+function applyChallengeRewards(user, rewards) {
+  for (const { reward } of rewards) {
+    if (reward.points) {
+      user.points = (user.points || 0) + reward.points;
+    }
+    if (reward.rollTickets) {
+      user.rollTickets = (user.rollTickets || 0) + reward.rollTickets;
+    }
+    if (reward.premiumTickets) {
+      user.premiumTickets = (user.premiumTickets || 0) + reward.premiumTickets;
+    }
+  }
+  
+  // Update achievements
+  const achievements = user.fishingAchievements || {};
+  achievements.challengesCompleted = (achievements.challengesCompleted || 0) + rewards.length;
+  user.fishingAchievements = achievements;
 }
 
 /**
@@ -507,10 +650,12 @@ router.post('/catch', auth, async (req, res) => {
 // GET /api/fishing/info - Get fishing game info
 router.get('/info', auth, async (req, res) => {
   try {
-    // Get user for pity info
-    const user = await User.findByPk(req.user.id, {
-      attributes: ['fishingPity', 'fishingStats']
-    });
+    // Get user for pity info and current area/rod
+    const user = await User.findByPk(req.user.id);
+    
+    const currentArea = user?.fishingAreas?.current || 'pond';
+    const currentRod = user?.fishingRod || 'basic';
+    const rod = FISHING_RODS[currentRod] || FISHING_RODS.basic;
     
     // Return fish info without weights (so players can see what's possible)
     const fishInfo = FISH_TYPES.map(f => ({
@@ -520,10 +665,12 @@ router.get('/info', auth, async (req, res) => {
       rarity: f.rarity,
       minReward: f.minReward,
       maxReward: f.maxReward,
-      difficulty: f.timingWindow <= 500 ? 'Extreme' : 
-                  f.timingWindow <= 700 ? 'Very Hard' :
-                  f.timingWindow <= 1000 ? 'Hard' :
-                  f.timingWindow <= 1500 ? 'Medium' : 'Easy'
+      // Include rod timing bonus in difficulty display
+      timingWindow: f.timingWindow + (rod.timingBonus || 0),
+      difficulty: (f.timingWindow + (rod.timingBonus || 0)) <= 500 ? 'Extreme' : 
+                  (f.timingWindow + (rod.timingBonus || 0)) <= 700 ? 'Very Hard' :
+                  (f.timingWindow + (rod.timingBonus || 0)) <= 1000 ? 'Hard' :
+                  (f.timingWindow + (rod.timingBonus || 0)) <= 1500 ? 'Medium' : 'Easy'
     }));
     
     // Calculate pity progress percentages
@@ -547,13 +694,32 @@ router.get('/info', auth, async (req, res) => {
       }
     };
     
+    // Get daily data for limits display
+    const daily = user ? getOrResetDailyData(user) : null;
+    const rank = await getUserRank(req.user.id);
+    const hasPremium = (user?.premiumTickets || 0) > 0;
+    const autofishLimit = getAutofishLimit(rank, hasPremium);
+    
     res.json({
       castCost: CAST_COST,
       cooldown: CAST_COOLDOWN,
       autofishCooldown: AUTOFISH_COOLDOWN,
       fish: fishInfo,
       pity: pityProgress,
-      stats: user?.fishingStats || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} }
+      stats: user?.fishingStats || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} },
+      achievements: user?.fishingAchievements || {},
+      // Current equipment
+      currentArea: currentArea,
+      currentRod: currentRod,
+      rodBonus: rod,
+      areaInfo: FISHING_AREAS[currentArea],
+      // Daily limits summary
+      daily: daily ? {
+        autofishUsed: daily.autofishCasts,
+        autofishLimit: autofishLimit,
+        catches: daily.catches
+      } : null,
+      rank
     });
   } catch (err) {
     console.error('Fishing info error:', err);
@@ -660,34 +826,58 @@ router.get('/rank', auth, async (req, res) => {
     
     const rank = await getUserRank(req.user.id);
     const totalUsers = await User.count();
+    const hasPremium = (user.premiumTickets || 0) > 0;
     
-    // Check if user qualifies for autofishing by rank
-    const qualifiesByRank = rank <= AUTOFISH_UNLOCK_RANK;
+    // NEW: Everyone can autofish with daily limits
+    // Rank now affects daily limit, not unlock status
+    const autofishLimit = getAutofishLimit(rank, hasPremium);
+    const baseLimit = FISHING_CONFIG.autofish.baseDailyLimit;
+    const bonusFromRank = autofishLimit - baseLimit - (hasPremium ? Math.floor(baseLimit * 0.5) : 0);
     
-    // Update autofishUnlockedByRank if status changed
-    if (qualifiesByRank !== user.autofishUnlockedByRank) {
-      user.autofishUnlockedByRank = qualifiesByRank;
-      // Auto-enable autofishing when first unlocked by rank
-      if (qualifiesByRank && !user.autofishEnabled) {
-        user.autofishEnabled = true;
-      }
-      await user.save();
+    // Get current daily usage
+    const daily = getOrResetDailyData(user);
+    
+    // Determine rank tier for display
+    let rankTier = 'none';
+    let rankBonus = 0;
+    if (rank <= 5) {
+      rankTier = 'top5';
+      rankBonus = FISHING_CONFIG.autofish.rankBonuses.top5;
+    } else if (rank <= 10) {
+      rankTier = 'top10';
+      rankBonus = FISHING_CONFIG.autofish.rankBonuses.top10;
+    } else if (rank <= 25) {
+      rankTier = 'top25';
+      rankBonus = FISHING_CONFIG.autofish.rankBonuses.top25;
+    } else if (rank <= 50) {
+      rankTier = 'top50';
+      rankBonus = FISHING_CONFIG.autofish.rankBonuses.top50;
+    } else if (rank <= 100) {
+      rankTier = 'top100';
+      rankBonus = FISHING_CONFIG.autofish.rankBonuses.top100;
     }
-    
-    // User can autofish if manually enabled by admin OR qualified by rank
-    const canAutofish = user.autofishEnabled || user.autofishUnlockedByRank;
     
     res.json({
       rank,
       totalUsers,
       points: user.points,
+      // NEW: Democratized autofish - everyone can use it
+      canAutofish: true,
       autofishEnabled: user.autofishEnabled,
-      autofishUnlockedByRank: user.autofishUnlockedByRank,
-      canAutofish,
-      requiredRank: AUTOFISH_UNLOCK_RANK,
-      message: qualifiesByRank 
-        ? 'Autofishing unlocked! You are in the top ' + AUTOFISH_UNLOCK_RANK + '!'
-        : `Reach top ${AUTOFISH_UNLOCK_RANK} to unlock autofishing (currently #${rank})`
+      // Daily limit info
+      autofish: {
+        dailyLimit: autofishLimit,
+        baseLimit: baseLimit,
+        rankBonus: rankBonus,
+        premiumBonus: hasPremium ? Math.floor(baseLimit * 0.5) : 0,
+        used: daily.autofishCasts,
+        remaining: Math.max(0, autofishLimit - daily.autofishCasts)
+      },
+      rankTier,
+      hasPremium,
+      message: rankTier !== 'none'
+        ? `🎖️ ${rankTier.toUpperCase()} - ${autofishLimit} daily autofish (+${rankBonus} bonus)`
+        : `${autofishLimit} daily autofish available${hasPremium ? ' (+50% premium)' : ''}`
     });
   } catch (err) {
     console.error('Rank fetch error:', err);
@@ -719,7 +909,7 @@ router.get('/leaderboard', auth, async (req, res) => {
   }
 });
 
-// POST /api/fishing/autofish - Perform an autofish catch (for users with autofishing enabled)
+// POST /api/fishing/autofish - Perform an autofish catch (democratized - available to all with daily limits)
 router.post('/autofish', auth, async (req, res) => {
   const userId = req.user.id;
   
@@ -771,7 +961,6 @@ router.post('/autofish', auth, async (req, res) => {
       }
       
       // Server-side timestamp check (prevents multi-instance/restart exploits)
-      // Uses dedicated lastAutofish field for reliable cooldown tracking
       const lastDbAutofish = user.lastAutofish ? new Date(user.lastAutofish).getTime() : 0;
       if (now - lastDbAutofish < AUTOFISH_COOLDOWN) {
         const remainingMs = AUTOFISH_COOLDOWN - (now - lastDbAutofish);
@@ -781,19 +970,19 @@ router.post('/autofish', auth, async (req, res) => {
       // Update the dedicated autofish timestamp
       user.lastAutofish = new Date(now);
       
-      // Re-verify rank to ensure user still qualifies (use cache for performance)
+      // === NEW: Democratized autofish with daily limits ===
+      const daily = getOrResetDailyData(user);
       const currentRank = await getUserRank(userId);
-      const stillQualifiesByRank = currentRank <= AUTOFISH_UNLOCK_RANK;
+      const hasPremium = (user.premiumTickets || 0) > 0;
+      const dailyLimit = getAutofishLimit(currentRank, hasPremium);
       
-      // Update rank status if it changed
-      if (stillQualifiesByRank !== user.autofishUnlockedByRank) {
-        user.autofishUnlockedByRank = stillQualifiesByRank;
+      // Check if user has reached daily limit
+      if (daily.autofishCasts >= dailyLimit) {
+        throw new Error(`DAILY_LIMIT:${dailyLimit}`);
       }
       
-      // Check if user can autofish (admin-enabled OR qualified by rank)
-      if (!user.autofishEnabled && !stillQualifiesByRank) {
-        throw new Error('AUTOFISH_NOT_UNLOCKED');
-      }
+      // Increment daily autofish counter
+      daily.autofishCasts += 1;
       
       // Check cast cost
       if (CAST_COST > 0 && user.points < CAST_COST) {
@@ -805,24 +994,36 @@ router.post('/autofish', auth, async (req, res) => {
         user.points -= CAST_COST;
       }
       
+      // Get fishing area and rod for bonuses
+      const areas = user.fishingAreas || { current: 'pond' };
+      const rodId = user.fishingRod || 'basic';
+      
       // Get pity data (autofish also contributes to pity)
       const pityData = user.fishingPity || { legendary: 0, epic: 0 };
       
-      // Select a random fish with pity
-      const { fish, pityTriggered, resetPity } = selectRandomFish(pityData);
+      // Select a random fish with pity, area, and rod bonuses
+      const { fish, pityTriggered, resetPity } = selectRandomFishWithBonuses(
+        pityData, 
+        areas.current, 
+        rodId
+      );
       
-      // Update pity counters using helper function (fixes epic counter bug)
+      // Update pity counters
       user.fishingPity = updatePityCounters(pityData, resetPity, now);
       
       // Update fishing stats
       const stats = user.fishingStats || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} };
       stats.totalCasts = (stats.totalCasts || 0) + 1;
       
-      // Autofish success rate varies by fish rarity (nerfed for balance)
+      // Autofish success rate varies by fish rarity
       const successChance = FISHING_CONFIG.autofishSuccessRates[fish.rarity] || 0.40;
       const success = Math.random() < successChance;
       
       let inventoryItem = null;
+      let challengeRewards = [];
+      
+      // Get challenges for potential updates
+      let challenges = getOrResetChallenges(user);
       
       if (success) {
         // Add fish to inventory
@@ -848,46 +1049,80 @@ router.post('/autofish', auth, async (req, res) => {
         stats.totalCatches = (stats.totalCatches || 0) + 1;
         stats.fishCaught = stats.fishCaught || {};
         stats.fishCaught[fish.id] = (stats.fishCaught[fish.id] || 0) + 1;
+        
+        // Update daily stats
+        daily.catches += 1;
+        if (['rare', 'epic', 'legendary'].includes(fish.rarity)) {
+          daily.rareCatches += 1;
+        }
+        
+        // Update challenges
+        const catchResult = updateChallengeProgress(challenges, 'catch', { rarity: fish.rarity });
+        challenges = catchResult.challenges;
+        challengeRewards = catchResult.newlyCompleted;
+        
+        // Apply challenge rewards
+        if (challengeRewards.length > 0) {
+          applyChallengeRewards(user, challengeRewards);
+        }
+        
+        // Update achievements for legendaries
+        if (fish.rarity === 'legendary') {
+          const achievements = user.fishingAchievements || {};
+          achievements.totalLegendaries = (achievements.totalLegendaries || 0) + 1;
+          user.fishingAchievements = achievements;
+        }
       }
       
       user.fishingStats = stats;
+      user.fishingDaily = daily;
+      user.fishingChallenges = challenges;
       await user.save({ transaction });
       
-      return { user, fish, success, inventoryItem, pityTriggered };
+      return { 
+        user, fish, success, inventoryItem, pityTriggered, 
+        dailyLimit, dailyUsed: daily.autofishCasts, 
+        challengeRewards, currentRank 
+      };
     });
     
     // Release lock
     autofishInProgress.delete(userId);
     
-    const { user, fish, success, inventoryItem, pityTriggered } = result;
+    const { user, fish, success, inventoryItem, pityTriggered, dailyLimit, dailyUsed, challengeRewards, currentRank } = result;
+    
+    const response = {
+      success,
+      fish: {
+        id: fish.id,
+        name: fish.name,
+        emoji: fish.emoji,
+        rarity: fish.rarity
+      },
+      newPoints: user.points,
+      pityTriggered,
+      // Daily limit info
+      daily: {
+        used: dailyUsed,
+        limit: dailyLimit,
+        remaining: dailyLimit - dailyUsed
+      },
+      rank: currentRank
+    };
     
     if (success) {
-      return res.json({
-        success: true,
-        fish: {
-          id: fish.id,
-          name: fish.name,
-          emoji: fish.emoji,
-          rarity: fish.rarity
-        },
-        newPoints: user.points,
-        inventoryCount: inventoryItem?.quantity || 1,
-        pityTriggered,
-        message: pityTriggered ? `✨ Lucky! Autofished a ${fish.name}!` : `Autofished a ${fish.name}!`
-      });
+      response.inventoryCount = inventoryItem?.quantity || 1;
+      response.message = pityTriggered ? `✨ Lucky! Autofished a ${fish.name}!` : `Autofished a ${fish.name}!`;
     } else {
-      return res.json({
-        success: false,
-        fish: {
-          id: fish.id,
-          name: fish.name,
-          emoji: fish.emoji,
-          rarity: fish.rarity
-        },
-        newPoints: user.points,
-        message: `The ${fish.name} got away during autofishing.`
-      });
+      response.message = `The ${fish.name} got away during autofishing.`;
     }
+    
+    // Include challenge completions if any
+    if (challengeRewards.length > 0) {
+      response.challengesCompleted = challengeRewards;
+    }
+    
+    return res.json(response);
     
   } catch (err) {
     // Release lock on error
@@ -896,7 +1131,6 @@ router.post('/autofish', auth, async (req, res) => {
     if (err.message === 'USER_NOT_FOUND') {
       return res.status(404).json({ error: 'User not found' });
     }
-    // Handle server-side cooldown check (prevents multi-instance exploits)
     if (err.message.startsWith('COOLDOWN:')) {
       const remainingMs = parseInt(err.message.split(':')[1], 10);
       return res.status(429).json({
@@ -905,10 +1139,12 @@ router.post('/autofish', auth, async (req, res) => {
         retryAfter: remainingMs
       });
     }
-    if (err.message === 'AUTOFISH_NOT_UNLOCKED') {
-      return res.status(403).json({ 
-        error: 'Autofishing not unlocked',
-        message: `Reach top ${AUTOFISH_UNLOCK_RANK} to unlock autofishing`
+    if (err.message.startsWith('DAILY_LIMIT:')) {
+      const limit = parseInt(err.message.split(':')[1], 10);
+      return res.status(429).json({
+        error: 'Daily limit reached',
+        message: `You've used all ${limit} autofish casts for today. Resets at midnight!`,
+        dailyLimit: limit
       });
     }
     if (err.message === 'NOT_ENOUGH_POINTS') {
@@ -1097,6 +1333,447 @@ router.get('/trading-post', auth, async (req, res) => {
     res.status(500).json({ error: 'Server error' });
   }
 });
+
+// =============================================
+// DAILY CHALLENGES ROUTES
+// =============================================
+
+// GET /api/fishing/challenges - Get current daily challenges
+router.get('/challenges', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const challenges = getOrResetChallenges(user);
+    
+    // Check if challenges were just reset
+    const wasReset = challenges.date !== user.fishingChallenges?.date;
+    
+    // Save if reset occurred
+    if (wasReset) {
+      user.fishingChallenges = challenges;
+      await user.save();
+    }
+    
+    // Build detailed challenge info
+    const challengeDetails = challenges.active.map(id => {
+      const challenge = DAILY_CHALLENGES[id];
+      if (!challenge) return null;
+      
+      return {
+        id: challenge.id,
+        name: challenge.name,
+        description: challenge.description,
+        difficulty: challenge.difficulty,
+        target: challenge.target,
+        progress: challenges.progress[id] || 0,
+        completed: challenges.completed.includes(id),
+        reward: challenge.reward
+      };
+    }).filter(Boolean);
+    
+    res.json({
+      challenges: challengeDetails,
+      completedToday: challenges.completed.length,
+      resetsAt: new Date(new Date().setHours(24, 0, 0, 0)).toISOString()
+    });
+  } catch (err) {
+    console.error('Challenges fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/fishing/challenges/:id/claim - Claim a completed challenge reward
+router.post('/challenges/:id/claim', auth, async (req, res) => {
+  try {
+    const { id: challengeId } = req.params;
+    
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const challenges = getOrResetChallenges(user);
+    const challenge = DAILY_CHALLENGES[challengeId];
+    
+    if (!challenge) {
+      return res.status(404).json({ error: 'Challenge not found' });
+    }
+    
+    if (!challenges.active.includes(challengeId)) {
+      return res.status(400).json({ error: 'Challenge not active today' });
+    }
+    
+    const progress = challenges.progress[challengeId] || 0;
+    if (progress < challenge.target) {
+      return res.status(400).json({ 
+        error: 'Challenge not completed',
+        progress,
+        target: challenge.target
+      });
+    }
+    
+    if (challenges.completed.includes(challengeId)) {
+      return res.status(400).json({ error: 'Challenge already claimed' });
+    }
+    
+    // Apply rewards
+    const rewards = [];
+    if (challenge.reward.points) {
+      user.points = (user.points || 0) + challenge.reward.points;
+      rewards.push(`+${challenge.reward.points} points`);
+    }
+    if (challenge.reward.rollTickets) {
+      user.rollTickets = (user.rollTickets || 0) + challenge.reward.rollTickets;
+      rewards.push(`+${challenge.reward.rollTickets} roll tickets`);
+    }
+    if (challenge.reward.premiumTickets) {
+      user.premiumTickets = (user.premiumTickets || 0) + challenge.reward.premiumTickets;
+      rewards.push(`+${challenge.reward.premiumTickets} premium tickets`);
+    }
+    
+    // Mark as completed
+    challenges.completed.push(challengeId);
+    user.fishingChallenges = challenges;
+    
+    // Update achievements
+    const achievements = user.fishingAchievements || {};
+    achievements.challengesCompleted = (achievements.challengesCompleted || 0) + 1;
+    user.fishingAchievements = achievements;
+    
+    await user.save();
+    
+    res.json({
+      success: true,
+      challenge: challengeId,
+      rewards: challenge.reward,
+      message: `Challenge completed! ${rewards.join(', ')}`
+    });
+  } catch (err) {
+    console.error('Challenge claim error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// =============================================
+// FISHING AREAS ROUTES
+// =============================================
+
+// GET /api/fishing/areas - Get available fishing areas
+router.get('/areas', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userAreas = user.fishingAreas || { unlocked: ['pond'], current: 'pond' };
+    const rank = await getUserRank(req.user.id);
+    
+    const areasInfo = Object.values(FISHING_AREAS).map(area => ({
+      ...area,
+      unlocked: userAreas.unlocked.includes(area.id),
+      current: userAreas.current === area.id,
+      canUnlock: !userAreas.unlocked.includes(area.id) && 
+                 user.points >= area.unlockCost &&
+                 (!area.unlockRank || rank <= area.unlockRank)
+    }));
+    
+    res.json({
+      areas: areasInfo,
+      current: userAreas.current,
+      userRank: rank
+    });
+  } catch (err) {
+    console.error('Areas fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/fishing/areas/:id/unlock - Unlock a fishing area
+router.post('/areas/:id/unlock', auth, async (req, res) => {
+  try {
+    const { id: areaId } = req.params;
+    const area = FISHING_AREAS[areaId];
+    
+    if (!area) {
+      return res.status(404).json({ error: 'Area not found' });
+    }
+    
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userAreas = user.fishingAreas || { unlocked: ['pond'], current: 'pond' };
+    
+    if (userAreas.unlocked.includes(areaId)) {
+      return res.status(400).json({ error: 'Area already unlocked' });
+    }
+    
+    // Check rank requirement
+    if (area.unlockRank) {
+      const rank = await getUserRank(req.user.id);
+      if (rank > area.unlockRank) {
+        return res.status(403).json({ 
+          error: 'Rank too low',
+          message: `Requires top ${area.unlockRank} rank`,
+          currentRank: rank
+        });
+      }
+    }
+    
+    // Check cost
+    if (user.points < area.unlockCost) {
+      return res.status(400).json({ 
+        error: 'Not enough points',
+        required: area.unlockCost,
+        current: user.points
+      });
+    }
+    
+    // Deduct cost and unlock
+    user.points -= area.unlockCost;
+    userAreas.unlocked.push(areaId);
+    userAreas.current = areaId; // Auto-switch to new area
+    user.fishingAreas = userAreas;
+    
+    await user.save();
+    
+    res.json({
+      success: true,
+      area: area.name,
+      newPoints: user.points,
+      message: `Unlocked ${area.name}! 🎉`
+    });
+  } catch (err) {
+    console.error('Area unlock error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/fishing/areas/:id/select - Select a fishing area
+router.post('/areas/:id/select', auth, async (req, res) => {
+  try {
+    const { id: areaId } = req.params;
+    
+    if (!FISHING_AREAS[areaId]) {
+      return res.status(404).json({ error: 'Area not found' });
+    }
+    
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const userAreas = user.fishingAreas || { unlocked: ['pond'], current: 'pond' };
+    
+    if (!userAreas.unlocked.includes(areaId)) {
+      return res.status(403).json({ error: 'Area not unlocked' });
+    }
+    
+    userAreas.current = areaId;
+    user.fishingAreas = userAreas;
+    await user.save();
+    
+    res.json({
+      success: true,
+      current: areaId,
+      area: FISHING_AREAS[areaId]
+    });
+  } catch (err) {
+    console.error('Area select error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// =============================================
+// FISHING RODS ROUTES
+// =============================================
+
+// GET /api/fishing/rods - Get available fishing rods
+router.get('/rods', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const currentRod = user.fishingRod || 'basic';
+    const prestige = user.fishingAchievements?.prestige || 0;
+    
+    const rodsInfo = Object.values(FISHING_RODS).map(rod => {
+      const owned = rod.id === 'basic' || 
+                    (FISHING_RODS[currentRod]?.cost >= rod.cost);
+      const canBuy = !owned && 
+                     user.points >= rod.cost &&
+                     (!rod.requiresPrestige || prestige >= rod.requiresPrestige);
+      
+      return {
+        ...rod,
+        owned,
+        equipped: currentRod === rod.id,
+        canBuy,
+        locked: rod.requiresPrestige && prestige < rod.requiresPrestige
+      };
+    });
+    
+    res.json({
+      rods: rodsInfo,
+      current: currentRod,
+      prestige
+    });
+  } catch (err) {
+    console.error('Rods fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/fishing/rods/:id/buy - Buy a fishing rod
+router.post('/rods/:id/buy', auth, async (req, res) => {
+  try {
+    const { id: rodId } = req.params;
+    const rod = FISHING_RODS[rodId];
+    
+    if (!rod) {
+      return res.status(404).json({ error: 'Rod not found' });
+    }
+    
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Check prestige requirement
+    const prestige = user.fishingAchievements?.prestige || 0;
+    if (rod.requiresPrestige && prestige < rod.requiresPrestige) {
+      return res.status(403).json({
+        error: 'Prestige required',
+        message: `Requires prestige level ${rod.requiresPrestige}`,
+        currentPrestige: prestige
+      });
+    }
+    
+    // Check cost
+    if (user.points < rod.cost) {
+      return res.status(400).json({
+        error: 'Not enough points',
+        required: rod.cost,
+        current: user.points
+      });
+    }
+    
+    // Deduct cost and equip
+    user.points -= rod.cost;
+    user.fishingRod = rodId;
+    await user.save();
+    
+    res.json({
+      success: true,
+      rod: rod.name,
+      newPoints: user.points,
+      message: `Purchased ${rod.name}! ${rod.emoji}`
+    });
+  } catch (err) {
+    console.error('Rod buy error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// POST /api/fishing/rods/:id/equip - Equip an owned rod
+router.post('/rods/:id/equip', auth, async (req, res) => {
+  try {
+    const { id: rodId } = req.params;
+    
+    if (!FISHING_RODS[rodId]) {
+      return res.status(404).json({ error: 'Rod not found' });
+    }
+    
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Basic rod is always owned
+    if (rodId !== 'basic') {
+      const currentRod = FISHING_RODS[user.fishingRod || 'basic'];
+      const targetRod = FISHING_RODS[rodId];
+      
+      // Check if user owns this rod (has bought a rod of equal or higher value)
+      if (currentRod.cost < targetRod.cost) {
+        return res.status(403).json({ error: 'Rod not owned' });
+      }
+    }
+    
+    user.fishingRod = rodId;
+    await user.save();
+    
+    res.json({
+      success: true,
+      current: rodId,
+      rod: FISHING_RODS[rodId]
+    });
+  } catch (err) {
+    console.error('Rod equip error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// =============================================
+// DAILY STATS & LIMITS
+// =============================================
+
+// GET /api/fishing/daily - Get daily stats and limits
+router.get('/daily', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const daily = getOrResetDailyData(user);
+    const rank = await getUserRank(req.user.id);
+    const hasPremium = (user.premiumTickets || 0) > 0;
+    const autofishLimit = getAutofishLimit(rank, hasPremium);
+    
+    // Save if reset occurred
+    if (daily.date !== user.fishingDaily?.date) {
+      user.fishingDaily = daily;
+      await user.save();
+    }
+    
+    res.json({
+      date: daily.date,
+      stats: {
+        manualCasts: daily.manualCasts,
+        autofishCasts: daily.autofishCasts,
+        catches: daily.catches,
+        perfectCatches: daily.perfectCatches,
+        rareCatches: daily.rareCatches,
+        tradesCompleted: daily.tradesCompleted
+      },
+      limits: {
+        manual: { used: daily.manualCasts, limit: FISHING_CONFIG.dailyLimits.manualCasts },
+        autofish: { used: daily.autofishCasts, limit: autofishLimit },
+        pointsFromTrades: { used: daily.pointsFromTrades, limit: FISHING_CONFIG.dailyLimits.pointsFromTrades },
+        rollTickets: { used: daily.ticketsEarned.roll, limit: FISHING_CONFIG.dailyLimits.rollTickets },
+        premiumTickets: { used: daily.ticketsEarned.premium, limit: FISHING_CONFIG.dailyLimits.premiumTickets }
+      },
+      rank,
+      hasPremium,
+      resetsAt: new Date(new Date().setHours(24, 0, 0, 0)).toISOString()
+    });
+  } catch (err) {
+    console.error('Daily stats error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// =============================================
+// TRADING POST ROUTES
+// =============================================
 
 // POST /api/fishing/trade - Execute a trade (with database transaction for atomicity)
 router.post('/trade', auth, async (req, res) => {

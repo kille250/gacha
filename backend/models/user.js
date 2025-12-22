@@ -171,6 +171,71 @@ User.init(
         this.setDataValue('fishingStats', JSON.stringify(value || { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} }));
       }
     },
+    // Daily fishing limits and stats (resets daily)
+    fishingDaily: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"date":null,"manualCasts":0,"autofishCasts":0,"catches":0,"perfectCatches":0,"rareCatches":0,"tradesCompleted":0,"pointsFromTrades":0,"ticketsEarned":{"roll":0,"premium":0}}',
+      get() {
+        const value = this.getDataValue('fishingDaily');
+        return value ? JSON.parse(value) : {
+          date: null, manualCasts: 0, autofishCasts: 0, catches: 0,
+          perfectCatches: 0, rareCatches: 0, tradesCompleted: 0,
+          pointsFromTrades: 0, ticketsEarned: { roll: 0, premium: 0 }
+        };
+      },
+      set(value) {
+        this.setDataValue('fishingDaily', JSON.stringify(value || {}));
+      }
+    },
+    // Daily challenges tracking
+    fishingChallenges: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"date":null,"active":[],"completed":[],"progress":{}}',
+      get() {
+        const value = this.getDataValue('fishingChallenges');
+        return value ? JSON.parse(value) : { date: null, active: [], completed: [], progress: {} };
+      },
+      set(value) {
+        this.setDataValue('fishingChallenges', JSON.stringify(value || {}));
+      }
+    },
+    // Unlocked fishing areas
+    fishingAreas: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"unlocked":["pond"],"current":"pond"}',
+      get() {
+        const value = this.getDataValue('fishingAreas');
+        return value ? JSON.parse(value) : { unlocked: ['pond'], current: 'pond' };
+      },
+      set(value) {
+        this.setDataValue('fishingAreas', JSON.stringify(value || { unlocked: ['pond'], current: 'pond' }));
+      }
+    },
+    // Current fishing rod
+    fishingRod: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'basic'
+    },
+    // Lifetime achievements
+    fishingAchievements: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"totalLegendaries":0,"totalPerfects":0,"longestStreak":0,"currentStreak":0,"challengesCompleted":0,"prestige":0}',
+      get() {
+        const value = this.getDataValue('fishingAchievements');
+        return value ? JSON.parse(value) : {
+          totalLegendaries: 0, totalPerfects: 0, longestStreak: 0,
+          currentStreak: 0, challengesCompleted: 0, prestige: 0
+        };
+      },
+      set(value) {
+        this.setDataValue('fishingAchievements', JSON.stringify(value || {}));
+      }
+    },
   },
   {
     sequelize,

@@ -331,7 +331,7 @@ export const resetDefaultRarities = async () => {
 };
 
 // ===========================================
-// FISHING TRADING POST API
+// FISHING API
 // ===========================================
 
 export const getFishInventory = async () => {
@@ -348,6 +348,65 @@ export const executeTrade = async (tradeId, quantity = 1) => {
   clearCache('/fishing/inventory');
   clearCache('/fishing/trading-post');
   const response = await api.post('/fishing/trade', { tradeId, quantity });
+  return response.data;
+};
+
+// Daily Challenges
+export const getFishingChallenges = async () => {
+  const response = await api.get('/fishing/challenges');
+  return response.data;
+};
+
+export const claimFishingChallenge = async (challengeId) => {
+  clearCache('/fishing/challenges');
+  clearCache('/auth/me');
+  const response = await api.post(`/fishing/challenges/${challengeId}/claim`);
+  return response.data;
+};
+
+// Fishing Areas
+export const getFishingAreas = async () => {
+  const response = await api.get('/fishing/areas');
+  return response.data;
+};
+
+export const unlockFishingArea = async (areaId) => {
+  clearCache('/fishing/areas');
+  clearCache('/auth/me');
+  const response = await api.post(`/fishing/areas/${areaId}/unlock`);
+  return response.data;
+};
+
+export const selectFishingArea = async (areaId) => {
+  clearCache('/fishing/areas');
+  clearCache('/fishing/info');
+  const response = await api.post(`/fishing/areas/${areaId}/select`);
+  return response.data;
+};
+
+// Fishing Rods
+export const getFishingRods = async () => {
+  const response = await api.get('/fishing/rods');
+  return response.data;
+};
+
+export const buyFishingRod = async (rodId) => {
+  clearCache('/fishing/rods');
+  clearCache('/auth/me');
+  const response = await api.post(`/fishing/rods/${rodId}/buy`);
+  return response.data;
+};
+
+export const equipFishingRod = async (rodId) => {
+  clearCache('/fishing/rods');
+  clearCache('/fishing/info');
+  const response = await api.post(`/fishing/rods/${rodId}/equip`);
+  return response.data;
+};
+
+// Daily Stats & Limits
+export const getFishingDailyStats = async () => {
+  const response = await api.get('/fishing/daily');
   return response.data;
 };
 

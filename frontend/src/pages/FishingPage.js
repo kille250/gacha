@@ -1,12 +1,23 @@
 import React, { useState, useEffect, useContext, useRef, useCallback } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight, MdLeaderboard, MdAutorenew, MdPeople, MdStorefront } from 'react-icons/md';
+import { MdArrowBack, MdHelpOutline, MdClose, MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight, MdLeaderboard, MdAutorenew, MdPeople, MdStorefront, MdEmojiEvents, MdSettings, MdCheckCircle } from 'react-icons/md';
 import { FaFish, FaCrown, FaTrophy } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import { io } from 'socket.io-client';
-import api, { clearCache, WS_URL, getTradingPostOptions, executeTrade } from '../utils/api';
+import api, { 
+  clearCache, 
+  WS_URL, 
+  getTradingPostOptions, 
+  executeTrade,
+  getFishingChallenges,
+  claimFishingChallenge,
+  getFishingAreas,
+  selectFishingArea,
+  getFishingRods,
+  buyFishingRod
+} from '../utils/api';
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -109,6 +120,20 @@ const FishingPage = () => {
   const [tradingOptions, setTradingOptions] = useState(null);
   const [tradingLoading, setTradingLoading] = useState(false);
   const [tradeResult, setTradeResult] = useState(null);
+  
+  // NEW: Daily challenges state
+  const [showChallenges, setShowChallenges] = useState(false);
+  const [challenges, setChallenges] = useState(null);
+  const [challengesLoading, setChallengesLoading] = useState(false);
+  
+  // NEW: Areas & Rods state
+  const [showEquipment, setShowEquipment] = useState(false);
+  const [areas, setAreas] = useState(null);
+  const [rods, setRods] = useState(null);
+  const [equipmentTab, setEquipmentTab] = useState('areas'); // 'areas' or 'rods'
+  
+  // NEW: Daily autofish limits
+  const [dailyStats, setDailyStats] = useState(null);
   
   // Time of day
   const [timeOfDay, setTimeOfDay] = useState(TIME_PERIODS.DAY);
@@ -294,6 +319,15 @@ const FishingPage = () => {
         ]);
         setFishInfo(fishRes.data);
         setRankData(rankRes.data);
+        
+        // Set initial daily stats from rank response
+        if (rankRes.data.autofish) {
+          setDailyStats({
+            used: rankRes.data.autofish.used,
+            limit: rankRes.data.autofish.dailyLimit,
+            remaining: rankRes.data.autofish.remaining
+          });
+        }
       } catch (err) {
         console.error('Failed to fetch fishing data:', err);
       }
@@ -351,6 +385,34 @@ const FishingPage = () => {
     }
   }, [showTradingPost]);
   
+  // Challenges fetch
+  useEffect(() => {
+    if (showChallenges) {
+      setChallengesLoading(true);
+      getFishingChallenges()
+        .then(data => {
+          setChallenges(data);
+          setChallengesLoading(false);
+        })
+        .catch(err => {
+          console.error('Failed to fetch challenges:', err);
+          setChallengesLoading(false);
+        });
+    }
+  }, [showChallenges]);
+  
+  // Equipment (Areas & Rods) fetch
+  useEffect(() => {
+    if (showEquipment) {
+      Promise.all([getFishingAreas(), getFishingRods()])
+        .then(([areasData, rodsData]) => {
+          setAreas(areasData);
+          setRods(rodsData);
+        })
+        .catch(err => console.error('Failed to fetch equipment:', err));
+    }
+  }, [showEquipment]);
+  
   // Show notification
   const showNotification = useCallback((message, type = 'info') => {
     setNotification({ message, type });
@@ -385,9 +447,10 @@ const FishingPage = () => {
     }
   }, [setUser, t, showNotification]);
   
-  // Autofishing loop with integrated cleanup
+  // Autofishing loop with integrated cleanup (now with daily limits)
   useEffect(() => {
-    if (!isAutofishing || !rankData?.canAutofish) {
+    // NEW: Everyone can autofish now (canAutofish is always true)
+    if (!isAutofishing) {
       return;
     }
     
@@ -400,6 +463,21 @@ const FishingPage = () => {
         if (result.newPoints !== undefined) {
           setUser(prev => ({ ...prev, points: result.newPoints }));
           clearCache('/auth/me');
+        }
+        
+        // Update daily stats from response
+        if (result.daily) {
+          setDailyStats({
+            used: result.daily.used,
+            limit: result.daily.limit,
+            remaining: result.daily.remaining
+          });
+          
+          // Auto-stop if limit reached
+          if (result.daily.remaining <= 0) {
+            setIsAutofishing(false);
+            showNotification(t('fishing.dailyLimitReached') || 'Daily autofish limit reached!', 'info');
+          }
         }
         
         setSessionStats(prev => ({
@@ -423,10 +501,20 @@ const FishingPage = () => {
           return [newEntry, ...prev.filter(e => now - e.timestamp < 4000)].slice(0, 6);
         });
         
+        // Show challenge completion notifications
+        if (result.challengesCompleted?.length > 0) {
+          result.challengesCompleted.forEach(ch => {
+            showNotification(`🏆 ${t('fishing.challengeComplete')}: ${ch.id}`, 'success');
+          });
+        }
+        
       } catch (err) {
-        if (err.response?.status === 403) {
+        if (err.response?.status === 429 && err.response?.data?.error === 'Daily limit reached') {
           setIsAutofishing(false);
-          showNotification(t('fishing.autofishLocked', { rank: rankData?.requiredRank || 10 }), 'error');
+          showNotification(err.response.data.message || t('fishing.dailyLimitReached'), 'info');
+        } else if (err.response?.status === 403) {
+          setIsAutofishing(false);
+          showNotification(t('fishing.autofishError'), 'error');
         }
       }
     }, AUTOFISH_INTERVAL);
@@ -437,7 +525,7 @@ const FishingPage = () => {
         autofishIntervalRef.current = null;
       }
     };
-  }, [isAutofishing, rankData, setUser, t, showNotification]);
+  }, [isAutofishing, setUser, t, showNotification]);
   
   // Keep-alive heartbeat (prevents inactive timeout disconnect for idle users)
   useEffect(() => {
@@ -625,15 +713,77 @@ const FishingPage = () => {
     handleCatchRef.current = handleCatch;
   }, [startFishing, handleCatch]);
   
-  // Toggle autofish
+  // Toggle autofish (now available to everyone with daily limits)
   const toggleAutofish = useCallback(() => {
-    if (!rankData?.canAutofish) {
-      showNotification(t('fishing.autofishLocked', { rank: rankData?.requiredRank || 10 }), 'error');
+    // Check if daily limit is already reached
+    if (dailyStats && dailyStats.remaining <= 0) {
+      showNotification(t('fishing.dailyLimitReached') || 'Daily autofish limit reached! Resets at midnight.', 'info');
       return;
     }
     setIsAutofishing(prev => !prev);
     setAutofishLog([]);
-  }, [rankData, t, showNotification]);
+  }, [dailyStats, t, showNotification]);
+  
+  // Handle challenge claim
+  const handleClaimChallenge = useCallback(async (challengeId) => {
+    try {
+      const result = await claimFishingChallenge(challengeId);
+      showNotification(result.message, 'success');
+      
+      // Update user points/tickets
+      if (result.rewards?.points) {
+        setUser(prev => ({ ...prev, points: (prev.points || 0) + result.rewards.points }));
+      }
+      if (result.rewards?.rollTickets) {
+        setUser(prev => ({ ...prev, rollTickets: (prev.rollTickets || 0) + result.rewards.rollTickets }));
+      }
+      if (result.rewards?.premiumTickets) {
+        setUser(prev => ({ ...prev, premiumTickets: (prev.premiumTickets || 0) + result.rewards.premiumTickets }));
+      }
+      
+      // Refresh challenges
+      const updatedChallenges = await getFishingChallenges();
+      setChallenges(updatedChallenges);
+    } catch (err) {
+      showNotification(err.response?.data?.error || 'Failed to claim challenge', 'error');
+    }
+  }, [setUser, showNotification]);
+  
+  // Handle area selection
+  const handleSelectArea = useCallback(async (areaId) => {
+    try {
+      await selectFishingArea(areaId);
+      // Refresh areas and fish info
+      const [areasData, fishRes] = await Promise.all([
+        getFishingAreas(),
+        api.get('/fishing/info')
+      ]);
+      setAreas(areasData);
+      setFishInfo(fishRes.data);
+      showNotification(`Switched to ${areasData.areas.find(a => a.id === areaId)?.name}!`, 'success');
+    } catch (err) {
+      showNotification(err.response?.data?.error || 'Failed to switch area', 'error');
+    }
+  }, [showNotification]);
+  
+  // Handle rod purchase
+  const handleBuyRod = useCallback(async (rodId) => {
+    try {
+      const result = await buyFishingRod(rodId);
+      setUser(prev => ({ ...prev, points: result.newPoints }));
+      showNotification(result.message, 'success');
+      
+      // Refresh rods and fish info
+      const [rodsData, fishRes] = await Promise.all([
+        getFishingRods(),
+        api.get('/fishing/info')
+      ]);
+      setRods(rodsData);
+      setFishInfo(fishRes.data);
+    } catch (err) {
+      showNotification(err.response?.data?.error || 'Failed to buy rod', 'error');
+    }
+  }, [setUser, showNotification]);
   
   // Mobile controls
   const handleMobileMove = (dx, dy, dir) => {
@@ -677,11 +827,23 @@ const FishingPage = () => {
             <CoinDot />
             <span>{user?.points?.toLocaleString() || 0}</span>
           </PointsDisplay>
-          {rankData?.canAutofish && (
-            <AutofishButton onClick={toggleAutofish} $active={isAutofishing}>
-              <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
-            </AutofishButton>
-          )}
+          {/* Autofish button - now available to everyone */}
+          <AutofishButton onClick={toggleAutofish} $active={isAutofishing} title={dailyStats ? `${dailyStats.remaining}/${dailyStats.limit} remaining` : ''}>
+            <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
+            {dailyStats && (
+              <AutofishCounter $warning={dailyStats.remaining < 20}>
+                {dailyStats.remaining}
+              </AutofishCounter>
+            )}
+          </AutofishButton>
+          {/* Challenges button */}
+          <ChallengesButton onClick={() => setShowChallenges(true)} $hasCompleted={challenges?.challenges?.some(c => c.progress >= c.target && !c.completed)}>
+            <MdEmojiEvents />
+          </ChallengesButton>
+          {/* Equipment button (Areas & Rods) */}
+          <WoodButton onClick={() => setShowEquipment(true)} title={t('fishing.equipment')}>
+            <MdSettings />
+          </WoodButton>
           <WoodButton onClick={() => setShowLeaderboard(true)}>
             <MdLeaderboard />
           </WoodButton>
@@ -1238,6 +1400,198 @@ const FishingPage = () => {
                 )}
               </ShopBody>
             </TradingPostModal>
+          </ModalOverlay>
+        )}
+      </AnimatePresence>
+      
+      {/* Daily Challenges Modal */}
+      <AnimatePresence>
+        {showChallenges && (
+          <ModalOverlay
+            variants={motionVariants.overlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowChallenges(false); }}
+          >
+            <CozyModal variants={motionVariants.modal}>
+              <ModalHeader>
+                <ModalTitle>
+                  <MdEmojiEvents style={{ color: '#ffc107', marginRight: '8px' }} />
+                  {t('fishing.dailyChallenges') || 'Daily Challenges'}
+                </ModalTitle>
+                <CloseButton onClick={() => setShowChallenges(false)}><MdClose /></CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                {challengesLoading ? (
+                  <TradingLoadingState>
+                    <FaFish className="loading-fish" />
+                    <span>{t('common.loading')}</span>
+                  </TradingLoadingState>
+                ) : challenges ? (
+                  <ChallengesList>
+                    {challenges.challenges.map(challenge => (
+                      <ChallengeCard 
+                        key={challenge.id} 
+                        $completed={challenge.completed}
+                        $difficulty={challenge.difficulty}
+                      >
+                        <ChallengeHeader>
+                          <ChallengeName>{challenge.name}</ChallengeName>
+                          <DifficultyBadge $difficulty={challenge.difficulty}>
+                            {challenge.difficulty}
+                          </DifficultyBadge>
+                        </ChallengeHeader>
+                        <ChallengeDescription>{challenge.description}</ChallengeDescription>
+                        <ChallengeProgress>
+                          <ProgressBarContainer>
+                            <ProgressBarFill 
+                              $progress={Math.min(100, (challenge.progress / challenge.target) * 100)} 
+                              $color={challenge.completed ? '#4caf50' : '#ffc107'}
+                            />
+                          </ProgressBarContainer>
+                          <ProgressText>{challenge.progress}/{challenge.target}</ProgressText>
+                        </ChallengeProgress>
+                        <ChallengeReward>
+                          {challenge.reward.points && <span>🪙 {challenge.reward.points}</span>}
+                          {challenge.reward.rollTickets && <span>🎟️ {challenge.reward.rollTickets}</span>}
+                          {challenge.reward.premiumTickets && <span>🌟 {challenge.reward.premiumTickets}</span>}
+                        </ChallengeReward>
+                        {challenge.progress >= challenge.target && !challenge.completed && (
+                          <ClaimButton onClick={() => handleClaimChallenge(challenge.id)}>
+                            <MdCheckCircle /> {t('fishing.claim') || 'Claim'}
+                          </ClaimButton>
+                        )}
+                        {challenge.completed && (
+                          <CompletedBadge>
+                            <MdCheckCircle /> {t('fishing.completed') || 'Completed'}
+                          </CompletedBadge>
+                        )}
+                      </ChallengeCard>
+                    ))}
+                  </ChallengesList>
+                ) : (
+                  <TradingLoadingState>
+                    <span>{t('fishing.noChallenges') || 'No challenges available'}</span>
+                  </TradingLoadingState>
+                )}
+              </ModalBody>
+            </CozyModal>
+          </ModalOverlay>
+        )}
+      </AnimatePresence>
+      
+      {/* Equipment Modal (Areas & Rods) */}
+      <AnimatePresence>
+        {showEquipment && (
+          <ModalOverlay
+            variants={motionVariants.overlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowEquipment(false); }}
+          >
+            <CozyModal variants={motionVariants.modal}>
+              <ModalHeader>
+                <ModalTitle>
+                  <MdSettings style={{ marginRight: '8px' }} />
+                  {t('fishing.equipment') || 'Equipment'}
+                </ModalTitle>
+                <CloseButton onClick={() => setShowEquipment(false)}><MdClose /></CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                {/* Tab Selector */}
+                <EquipmentTabs>
+                  <EquipmentTab 
+                    $active={equipmentTab === 'areas'} 
+                    onClick={() => setEquipmentTab('areas')}
+                  >
+                    🏞️ {t('fishing.areas') || 'Areas'}
+                  </EquipmentTab>
+                  <EquipmentTab 
+                    $active={equipmentTab === 'rods'} 
+                    onClick={() => setEquipmentTab('rods')}
+                  >
+                    🎣 {t('fishing.rods') || 'Rods'}
+                  </EquipmentTab>
+                </EquipmentTabs>
+                
+                {/* Areas Tab */}
+                {equipmentTab === 'areas' && areas && (
+                  <EquipmentList>
+                    {areas.areas.map(area => (
+                      <EquipmentCard 
+                        key={area.id}
+                        $unlocked={area.unlocked}
+                        $current={area.current}
+                      >
+                        <EquipmentIcon>{area.emoji}</EquipmentIcon>
+                        <EquipmentInfo>
+                          <EquipmentName>{area.name}</EquipmentName>
+                          <EquipmentDesc>{area.description}</EquipmentDesc>
+                          {area.rarityBonus > 0 && (
+                            <EquipmentBonus>+{Math.round(area.rarityBonus * 100)}% {t('fishing.rareChance') || 'rare chance'}</EquipmentBonus>
+                          )}
+                        </EquipmentInfo>
+                        {area.current ? (
+                          <CurrentBadge>{t('fishing.current') || 'Current'}</CurrentBadge>
+                        ) : area.unlocked ? (
+                          <SelectButton onClick={() => handleSelectArea(area.id)}>
+                            {t('fishing.select') || 'Select'}
+                          </SelectButton>
+                        ) : (
+                          <UnlockInfo>
+                            <span>🪙 {area.unlockCost.toLocaleString()}</span>
+                            {area.unlockRank && <span>#{area.unlockRank}</span>}
+                          </UnlockInfo>
+                        )}
+                      </EquipmentCard>
+                    ))}
+                  </EquipmentList>
+                )}
+                
+                {/* Rods Tab */}
+                {equipmentTab === 'rods' && rods && (
+                  <EquipmentList>
+                    {rods.rods.map(rod => (
+                      <EquipmentCard 
+                        key={rod.id}
+                        $unlocked={rod.owned}
+                        $current={rod.equipped}
+                        $locked={rod.locked}
+                      >
+                        <EquipmentIcon>{rod.emoji}</EquipmentIcon>
+                        <EquipmentInfo>
+                          <EquipmentName>{rod.name}</EquipmentName>
+                          <EquipmentDesc>{rod.description}</EquipmentDesc>
+                          <RodBonuses>
+                            {rod.timingBonus > 0 && <span>⏱️ +{rod.timingBonus}ms</span>}
+                            {rod.rarityBonus > 0 && <span>✨ +{Math.round(rod.rarityBonus * 100)}%</span>}
+                            {rod.perfectBonus > 0 && <span>⭐ +{Math.round(rod.perfectBonus * 100)}%</span>}
+                          </RodBonuses>
+                        </EquipmentInfo>
+                        {rod.equipped ? (
+                          <CurrentBadge>{t('fishing.equipped') || 'Equipped'}</CurrentBadge>
+                        ) : rod.owned ? (
+                          <SelectButton onClick={() => handleBuyRod(rod.id)}>
+                            {t('fishing.equip') || 'Equip'}
+                          </SelectButton>
+                        ) : rod.locked ? (
+                          <LockedBadge>🔒 Prestige {rod.requiresPrestige}</LockedBadge>
+                        ) : (
+                          <BuyButton 
+                            onClick={() => handleBuyRod(rod.id)}
+                            disabled={user?.points < rod.cost}
+                          >
+                            🪙 {rod.cost.toLocaleString()}
+                          </BuyButton>
+                        )}
+                      </EquipmentCard>
+                    ))}
+                  </EquipmentList>
+                )}
+              </ModalBody>
+            </CozyModal>
           </ModalOverlay>
         )}
       </AnimatePresence>
@@ -3265,6 +3619,398 @@ const PityFill = styled.div`
   border-radius: 4px;
   transition: width 0.3s ease, background 0.3s ease;
   box-shadow: ${props => props.$inSoftPity ? '0 0 8px rgba(255, 68, 68, 0.6)' : 'none'};
+`;
+
+// =============================================
+// AUTOFISH COUNTER & NEW BUTTONS
+// =============================================
+
+const AutofishCounter = styled.span`
+  position: absolute;
+  bottom: -4px;
+  right: -4px;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 4px;
+  background: ${props => props.$warning ? '#ff5252' : '#43a047'};
+  border-radius: 9px;
+  font-size: 10px;
+  font-weight: 800;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+`;
+
+const ChallengesButton = styled.button`
+  position: relative;
+  width: 40px;
+  height: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: linear-gradient(180deg, #ffc107 0%, #ff9800 100%);
+  border: 3px solid #e65100;
+  border-radius: 10px;
+  color: #5d4037;
+  font-size: 22px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.3),
+    0 3px 0 #bf360c;
+  flex-shrink: 0;
+  
+  ${props => props.$hasCompleted && css`
+    &::after {
+      content: '!';
+      position: absolute;
+      top: -6px;
+      right: -6px;
+      width: 18px;
+      height: 18px;
+      background: #ff3333;
+      border-radius: 50%;
+      font-size: 12px;
+      font-weight: 800;
+      color: white;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      animation: ${pulse} 1s ease-in-out infinite;
+    }
+  `}
+  
+  @media (max-width: 600px) {
+    width: 34px;
+    height: 34px;
+    font-size: 18px;
+    border-width: 2px;
+    border-radius: 8px;
+  }
+  
+  &:hover {
+    transform: translateY(-1px);
+    background: linear-gradient(180deg, #ffd54f 0%, #ffa726 100%);
+  }
+`;
+
+// =============================================
+// CHALLENGES MODAL STYLES
+// =============================================
+
+const ChallengesList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const ChallengeCard = styled.div`
+  padding: 16px;
+  background: ${props => props.$completed 
+    ? 'linear-gradient(180deg, rgba(76, 175, 80, 0.15) 0%, rgba(56, 142, 60, 0.1) 100%)'
+    : 'rgba(255, 255, 255, 0.5)'};
+  border-radius: 14px;
+  border: 3px solid ${props => {
+    if (props.$completed) return 'rgba(76, 175, 80, 0.4)';
+    switch (props.$difficulty) {
+      case 'legendary': return '#ffc107';
+      case 'hard': return '#ab47bc';
+      case 'medium': return '#42a5f5';
+      default: return 'rgba(139, 105, 20, 0.2)';
+    }
+  }};
+  position: relative;
+  opacity: ${props => props.$completed ? 0.7 : 1};
+`;
+
+const ChallengeHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 8px;
+`;
+
+const ChallengeName = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  color: #5d4037;
+`;
+
+const DifficultyBadge = styled.span`
+  padding: 3px 8px;
+  border-radius: 8px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  background: ${props => {
+    switch (props.$difficulty) {
+      case 'legendary': return 'linear-gradient(180deg, #ffc107 0%, #ff9800 100%)';
+      case 'hard': return 'linear-gradient(180deg, #ce93d8 0%, #ab47bc 100%)';
+      case 'medium': return 'linear-gradient(180deg, #64b5f6 0%, #42a5f5 100%)';
+      default: return 'linear-gradient(180deg, #a5d6a7 0%, #81c784 100%)';
+    }
+  }};
+  color: ${props => props.$difficulty === 'easy' ? '#2e7d32' : '#fff'};
+  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+`;
+
+const ChallengeDescription = styled.div`
+  font-size: 14px;
+  color: #795548;
+  margin-bottom: 12px;
+`;
+
+const ChallengeProgress = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 8px;
+`;
+
+const ProgressText = styled.span`
+  font-size: 13px;
+  font-weight: 700;
+  color: #5d4037;
+  min-width: 50px;
+`;
+
+const ChallengeReward = styled.div`
+  display: flex;
+  gap: 12px;
+  margin-top: 8px;
+  
+  span {
+    font-size: 14px;
+    font-weight: 600;
+    color: #795548;
+  }
+`;
+
+const ClaimButton = styled.button`
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 3px 0 #2e7d32, 0 4px 8px rgba(0,0,0,0.2);
+  
+  &:hover {
+    background: linear-gradient(180deg, #66bb6a 0%, #43a047 100%);
+    transform: translateY(-1px);
+  }
+  
+  &:active {
+    transform: translateY(1px);
+    box-shadow: 0 1px 0 #2e7d32;
+  }
+`;
+
+const CompletedBadge = styled.div`
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  background: rgba(76, 175, 80, 0.2);
+  border-radius: 10px;
+  color: #2e7d32;
+  font-size: 14px;
+  font-weight: 700;
+`;
+
+// =============================================
+// EQUIPMENT MODAL STYLES
+// =============================================
+
+const EquipmentTabs = styled.div`
+  display: flex;
+  gap: 8px;
+  margin-bottom: 16px;
+  padding: 4px;
+  background: rgba(139, 105, 20, 0.1);
+  border-radius: 12px;
+`;
+
+const EquipmentTab = styled.button`
+  flex: 1;
+  padding: 10px 16px;
+  border: none;
+  border-radius: 10px;
+  font-size: 14px;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.2s;
+  background: ${props => props.$active 
+    ? 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'
+    : 'transparent'};
+  color: ${props => props.$active ? '#fff8e1' : '#795548'};
+  box-shadow: ${props => props.$active ? '0 3px 0 #4a3008' : 'none'};
+  
+  &:hover {
+    background: ${props => props.$active 
+      ? 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'
+      : 'rgba(139, 105, 20, 0.1)'};
+  }
+`;
+
+const EquipmentList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  max-height: 400px;
+  overflow-y: auto;
+`;
+
+const EquipmentCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  padding: 14px 16px;
+  background: ${props => {
+    if (props.$current) return 'linear-gradient(180deg, rgba(102, 187, 106, 0.2) 0%, rgba(76, 175, 80, 0.15) 100%)';
+    if (!props.$unlocked) return 'rgba(0, 0, 0, 0.05)';
+    return 'rgba(255, 255, 255, 0.5)';
+  }};
+  border-radius: 14px;
+  border: 3px solid ${props => {
+    if (props.$current) return 'rgba(76, 175, 80, 0.5)';
+    if (props.$locked) return 'rgba(0, 0, 0, 0.2)';
+    if (!props.$unlocked) return 'rgba(139, 105, 20, 0.15)';
+    return 'rgba(139, 105, 20, 0.2)';
+  }};
+  opacity: ${props => props.$locked ? 0.6 : 1};
+`;
+
+const EquipmentIcon = styled.div`
+  font-size: 36px;
+  filter: drop-shadow(2px 2px 3px rgba(0, 0, 0, 0.2));
+`;
+
+const EquipmentInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const EquipmentName = styled.div`
+  font-size: 16px;
+  font-weight: 700;
+  color: #5d4037;
+  margin-bottom: 4px;
+`;
+
+const EquipmentDesc = styled.div`
+  font-size: 12px;
+  color: #795548;
+  margin-bottom: 4px;
+`;
+
+const EquipmentBonus = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: #4caf50;
+`;
+
+const RodBonuses = styled.div`
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  
+  span {
+    font-size: 11px;
+    font-weight: 600;
+    color: #4caf50;
+    padding: 2px 6px;
+    background: rgba(76, 175, 80, 0.15);
+    border-radius: 6px;
+  }
+`;
+
+const CurrentBadge = styled.div`
+  padding: 8px 14px;
+  background: linear-gradient(180deg, #66bb6a 0%, #4caf50 100%);
+  border-radius: 10px;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 2px 0 #2e7d32;
+`;
+
+const SelectButton = styled.button`
+  padding: 8px 14px;
+  background: linear-gradient(180deg, #42a5f5 0%, #1e88e5 100%);
+  border: none;
+  border-radius: 10px;
+  color: white;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #1565c0;
+  
+  &:hover {
+    background: linear-gradient(180deg, #64b5f6 0%, #42a5f5 100%);
+    transform: translateY(-1px);
+  }
+`;
+
+const UnlockInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 4px;
+  
+  span {
+    font-size: 12px;
+    font-weight: 700;
+    color: #795548;
+    
+    &:first-child {
+      color: #e65100;
+    }
+  }
+`;
+
+const BuyButton = styled.button`
+  padding: 8px 14px;
+  background: linear-gradient(180deg, #ffc107 0%, #ff9800 100%);
+  border: none;
+  border-radius: 10px;
+  color: #5d4037;
+  font-size: 12px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 2px 0 #e65100;
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(180deg, #ffd54f 0%, #ffa726 100%);
+    transform: translateY(-1px);
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const LockedBadge = styled.div`
+  padding: 8px 14px;
+  background: rgba(0, 0, 0, 0.1);
+  border-radius: 10px;
+  color: #795548;
+  font-size: 12px;
+  font-weight: 600;
 `;
 
 export default FishingPage;
