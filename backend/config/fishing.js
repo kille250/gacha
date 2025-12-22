@@ -906,6 +906,28 @@ function getFishForArea(areaId) {
  * @param {string} rodId - Current fishing rod
  * @returns {Object} - { fish, pityTriggered, resetPity }
  */
+// Rarity hierarchy for fallback selection
+const RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+
+/**
+ * Get the highest rarity fish available in an area
+ * @param {Array} areaFish - Fish available in the area
+ * @param {string} targetRarity - The rarity we wanted (for determining reset behavior)
+ * @returns {Object|null} - { fish, actualRarity } or null if no fish
+ */
+function getHighestRarityFish(areaFish, targetRarity = 'legendary') {
+  for (const rarity of RARITY_ORDER) {
+    const fishOfRarity = areaFish.filter(f => f.rarity === rarity);
+    if (fishOfRarity.length > 0) {
+      return {
+        fish: fishOfRarity[Math.floor(Math.random() * fishOfRarity.length)],
+        actualRarity: rarity
+      };
+    }
+  }
+  return null;
+}
+
 function selectRandomFishWithBonuses(pityData, areaId = 'pond', rodId = 'basic') {
   const area = FISHING_AREAS[areaId] || FISHING_AREAS.pond;
   const rod = FISHING_RODS[rodId] || FISHING_RODS.basic;
@@ -921,22 +943,49 @@ function selectRandomFishWithBonuses(pityData, areaId = 'pond', rodId = 'basic')
   if (pityData && pityData.legendary >= legendaryPity.hardPity) {
     const legendaryFish = areaFish.filter(f => f.rarity === 'legendary');
     if (legendaryFish.length > 0) {
+      // Area has legendary fish - give one
       return {
         fish: legendaryFish[Math.floor(Math.random() * legendaryFish.length)],
         pityTriggered: true,
         resetPity: ['legendary', 'epic']
       };
+    } else {
+      // BUGFIX: Area has no legendary - give highest rarity available and reset pity
+      // This prevents pity from exceeding hardPity in areas without legendary fish
+      const fallback = getHighestRarityFish(areaFish, 'legendary');
+      if (fallback) {
+        return {
+          fish: fallback.fish,
+          pityTriggered: true,
+          // Reset legendary pity since we're honoring the pity guarantee (even if with lower rarity)
+          // Also reset epic if we gave epic or higher
+          resetPity: ['legendary', 'epic'].includes(fallback.actualRarity) 
+            ? ['legendary', 'epic'] 
+            : ['legendary']
+        };
+      }
     }
   }
   
   if (pityData && pityData.epic >= epicPity.hardPity) {
     const epicFish = areaFish.filter(f => f.rarity === 'epic');
     if (epicFish.length > 0) {
+      // Area has epic fish - give one
       return {
         fish: epicFish[Math.floor(Math.random() * epicFish.length)],
         pityTriggered: true,
         resetPity: ['epic']
       };
+    } else {
+      // BUGFIX: Area has no epic - give highest rarity available (up to rare) and reset epic pity
+      const fallback = getHighestRarityFish(areaFish, 'epic');
+      if (fallback && RARITY_ORDER.indexOf(fallback.actualRarity) <= RARITY_ORDER.indexOf('rare')) {
+        return {
+          fish: fallback.fish,
+          pityTriggered: true,
+          resetPity: ['epic']
+        };
+      }
     }
   }
   
