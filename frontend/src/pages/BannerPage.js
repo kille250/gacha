@@ -321,10 +321,17 @@ const BannerPage = () => {
       }
     };
     
-    const handleOnline = () => {
-      // Refresh user data when coming back online
+    const handleOnline = async () => {
+      // Refresh user data and tickets when coming back online
       refreshUser();
       fetchUserCollection();
+      // Also refresh tickets to ensure sync
+      try {
+        const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+        setTickets(freshTickets);
+      } catch (err) {
+        console.warn('Failed to refresh tickets on reconnect:', err);
+      }
     };
     
     window.addEventListener('offline', handleOffline);
@@ -347,8 +354,24 @@ const BannerPage = () => {
           setError(t('banner.rollInterrupted') || 'A roll may have been interrupted. Your collection has been refreshed.');
           fetchUserCollection();
           refreshUser();
+          // Also refresh tickets to ensure sync
+          api.get('/banners/user/tickets').then(res => setTickets(res.data)).catch(() => {});
         }
         sessionStorage.removeItem('gacha_pendingRoll');
+      }
+      
+      // Check for unviewed roll results (user navigated away during animation)
+      const unviewedRoll = sessionStorage.getItem('gacha_unviewedRoll');
+      if (unviewedRoll) {
+        const { bannerId: unviewedBannerId, timestamp } = JSON.parse(unviewedRoll);
+        // Only notify if it's recent (within 5 minutes)
+        if (Date.now() - timestamp < 5 * 60 * 1000) {
+          const message = unviewedBannerId === bannerId 
+            ? t('banner.unviewedRoll') || 'You have an unviewed pull! Check your collection.'
+            : t('banner.unviewedRollOtherBanner') || 'You have unviewed pulls from another banner. Check your collection!';
+          setError(message);
+        }
+        sessionStorage.removeItem('gacha_unviewedRoll');
       }
     } catch {
       // Ignore sessionStorage errors
@@ -443,6 +466,17 @@ const BannerPage = () => {
           showRarePullEffect(character.rarity);
           setIsRolling(false);
         } else {
+          // Persist roll result before animation for recovery if user navigates away
+          try {
+            sessionStorage.setItem('gacha_unviewedRoll', JSON.stringify({
+              bannerId,
+              character,
+              timestamp: Date.now(),
+              type: 'single'
+            }));
+          } catch {
+            // Ignore sessionStorage errors
+          }
           // Show summoning animation
           setPendingCharacter(character);
           setShowSummonAnimation(true);
@@ -472,21 +506,19 @@ const BannerPage = () => {
         setError(errorMessage);
         setIsRolling(false);
         
-        // If error is ticket-related, force refresh tickets to sync stale state
-        if (errorMessage.toLowerCase().includes('ticket')) {
-          try {
-            const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
-            setTickets(freshTickets);
-            broadcastTicketUpdate(freshTickets);
-          } catch (ticketErr) {
-            console.warn('Failed to refresh tickets after error:', ticketErr);
-          }
-        }
-        
-        // Refresh user data to sync points after failure (handles stale data)
+        // Refresh user data and tickets to sync state after failure
         const refreshResult = await refreshUser();
         if (!refreshResult.success) {
           console.warn('Failed to refresh user after roll error:', refreshResult.error);
+        }
+        
+        // Also refresh tickets to ensure sync (especially for ticket-related errors)
+        try {
+          const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+          setTickets(freshTickets);
+          broadcastTicketUpdate(freshTickets);
+        } catch (ticketErr) {
+          console.warn('Failed to refresh tickets after error:', ticketErr);
         }
       }
     });
@@ -497,6 +529,12 @@ const BannerPage = () => {
       // Don't show the card again - animation already revealed it
       // Just update the rarity history
       setLastRarities(prev => [pendingCharacter.rarity, ...prev.slice(0, 4)]);
+    }
+    // Clear unviewed roll since animation was viewed
+    try {
+      sessionStorage.removeItem('gacha_unviewedRoll');
+    } catch {
+      // Ignore sessionStorage errors
     }
     setShowSummonAnimation(false);
     setPendingCharacter(null);
@@ -589,6 +627,17 @@ const BannerPage = () => {
           }
           setIsRolling(false);
         } else {
+          // Persist roll results before animation for recovery if user navigates away
+          try {
+            sessionStorage.setItem('gacha_unviewedRoll', JSON.stringify({
+              bannerId,
+              characters,
+              timestamp: Date.now(),
+              type: 'multi'
+            }));
+          } catch {
+            // Ignore sessionStorage errors
+          }
           // Show multi-summon animation
           setPendingMultiResults(characters);
           setShowMultiSummonAnimation(true);
@@ -618,21 +667,19 @@ const BannerPage = () => {
         setError(errorMessage);
         setIsRolling(false);
         
-        // If error is ticket-related, force refresh tickets to sync stale state
-        if (errorMessage.toLowerCase().includes('ticket')) {
-          try {
-            const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
-            setTickets(freshTickets);
-            broadcastTicketUpdate(freshTickets);
-          } catch (ticketErr) {
-            console.warn('Failed to refresh tickets after error:', ticketErr);
-          }
-        }
-        
-        // Refresh user data to sync points after failure (handles stale data)
+        // Refresh user data and tickets to sync state after failure
         const refreshResult = await refreshUser();
         if (!refreshResult.success) {
           console.warn('Failed to refresh user after roll error:', refreshResult.error);
+        }
+        
+        // Also refresh tickets to ensure sync (especially for ticket-related errors)
+        try {
+          const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+          setTickets(freshTickets);
+          broadcastTicketUpdate(freshTickets);
+        } catch (ticketErr) {
+          console.warn('Failed to refresh tickets after error:', ticketErr);
         }
       }
     });
@@ -646,6 +693,13 @@ const BannerPage = () => {
       const idx = rarityOrder.indexOf(char.rarity);
       return idx > rarityOrder.indexOf(best) ? char.rarity : best;
     }, 'common');
+    
+    // Clear unviewed roll since animation was viewed
+    try {
+      sessionStorage.removeItem('gacha_unviewedRoll');
+    } catch {
+      // Ignore sessionStorage errors
+    }
     
     setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
     setShowMultiSummonAnimation(false);
@@ -661,8 +715,8 @@ const BannerPage = () => {
       const timeout = setTimeout(() => {
         try {
           console.warn('[Animation] Single summon timeout - forcing completion');
-          // Notify user that animation was skipped but pull succeeded
-          setError(t('banner.animationSkipped') || 'Animation completed - check your collection!');
+          // Notify user that animation timed out but pull was successful
+          setError(t('banner.animationTimeout') || 'Animation timed out, but your pull was successful! Check your collection.');
           handleSummonComplete();
         } catch (e) {
           console.error('[Animation] Force complete failed:', e);
@@ -682,8 +736,8 @@ const BannerPage = () => {
       const timeout = setTimeout(() => {
         try {
           console.warn('[Animation] Multi-summon timeout - forcing completion');
-          // Notify user that animation was skipped but pulls succeeded
-          setError(t('banner.animationSkipped') || 'Animation completed - check your collection!');
+          // Notify user that animation timed out but pulls were successful
+          setError(t('banner.animationTimeout') || 'Animation timed out, but your pulls were successful! Check your collection.');
           handleMultiSummonComplete();
         } catch (e) {
           console.error('[Animation] Multi-summon force complete failed:', e);

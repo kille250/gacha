@@ -104,12 +104,34 @@ const FishingPage = () => {
   const waitTimeoutRef = useRef(null);
   const missTimeoutRef = useRef(null);
   
-  // Session stats
-  const [sessionStats, setSessionStats] = useState({
-    casts: 0,
-    catches: 0,
-    bestCatch: null
+  // Session stats - persisted to sessionStorage for reload recovery
+  const [sessionStats, setSessionStats] = useState(() => {
+    try {
+      const saved = sessionStorage.getItem('fishing_sessionStats');
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        // Only restore if it's from the same session (within last 30 minutes)
+        if (parsed.timestamp && Date.now() - parsed.timestamp < 30 * 60 * 1000) {
+          return { casts: parsed.casts || 0, catches: parsed.catches || 0, bestCatch: parsed.bestCatch || null };
+        }
+      }
+    } catch {
+      // Ignore errors
+    }
+    return { casts: 0, catches: 0, bestCatch: null };
   });
+  
+  // Persist session stats to sessionStorage
+  useEffect(() => {
+    try {
+      sessionStorage.setItem('fishing_sessionStats', JSON.stringify({
+        ...sessionStats,
+        timestamp: Date.now()
+      }));
+    } catch {
+      // Ignore errors
+    }
+  }, [sessionStats]);
   
   // Ranking and autofishing
   const [rankData, setRankData] = useState(null);
@@ -120,6 +142,7 @@ const FishingPage = () => {
   const autofishIntervalRef = useRef(null);
   const autofishInFlightRef = useRef(false); // Prevent overlapping autofish requests
   const autofishTimeoutRef = useRef(null); // Failsafe timeout to reset in-flight guard
+  const [autofishInFlight, setAutofishInFlight] = useState(false); // State version for UI rendering
   
   // Trading post state
   const [showTradingPost, setShowTradingPost] = useState(false);
@@ -131,6 +154,7 @@ const FishingPage = () => {
   const [showChallenges, setShowChallenges] = useState(false);
   const [challenges, setChallenges] = useState(null);
   const [challengesLoading, setChallengesLoading] = useState(false);
+  const [claimingChallenges, setClaimingChallenges] = useState({}); // Track which challenges are being claimed
   
   // NEW: Areas & Rods state
   const [showEquipment, setShowEquipment] = useState(false);
@@ -201,6 +225,7 @@ const FishingPage = () => {
       setIsAutofishing(false);
       // Reset in-flight ref to allow autofishing to restart on reconnect
       autofishInFlightRef.current = false;
+      setAutofishInFlight(false);
     });
     
     socket.on('connect_error', (err) => {
@@ -503,12 +528,14 @@ const FishingPage = () => {
       }
       
       autofishInFlightRef.current = true;
+      setAutofishInFlight(true);
       
       // Failsafe timeout: reset in-flight guard after 30s in case of stuck request
       autofishTimeoutRef.current = setTimeout(() => {
         if (autofishInFlightRef.current) {
           console.warn('[Autofish] Request timeout - resetting in-flight guard');
           autofishInFlightRef.current = false;
+          setAutofishInFlight(false);
         }
       }, 30000);
       
@@ -579,6 +606,7 @@ const FishingPage = () => {
           autofishTimeoutRef.current = null;
         }
         autofishInFlightRef.current = false;
+        setAutofishInFlight(false);
       }
     }, AUTOFISH_INTERVAL);
     
@@ -592,6 +620,7 @@ const FishingPage = () => {
         autofishTimeoutRef.current = null;
       }
       autofishInFlightRef.current = false;
+      setAutofishInFlight(false);
     };
   }, [isAutofishing, setUser, t, showNotification]);
   
@@ -792,8 +821,13 @@ const FishingPage = () => {
     setAutofishLog([]);
   }, [dailyStats, t, showNotification]);
   
-  // Handle challenge claim
+  // Handle challenge claim - with claiming state to prevent double-clicks
   const handleClaimChallenge = useCallback(async (challengeId) => {
+    // Prevent double-claim
+    if (claimingChallenges[challengeId]) return;
+    
+    setClaimingChallenges(prev => ({ ...prev, [challengeId]: true }));
+    
     try {
       const result = await claimFishingChallenge(challengeId);
       showNotification(result.message, 'success');
@@ -814,8 +848,10 @@ const FishingPage = () => {
       setChallenges(updatedChallenges);
     } catch (err) {
       showNotification(err.response?.data?.error || t('fishing.errors.claimFailed'), 'error');
+    } finally {
+      setClaimingChallenges(prev => ({ ...prev, [challengeId]: false }));
     }
-  }, [setUser, showNotification, t]);
+  }, [claimingChallenges, setUser, showNotification, t]);
   
   // Handle area selection
   const handleSelectArea = useCallback(async (areaId) => {
@@ -971,7 +1007,12 @@ const FishingPage = () => {
           </PointsDisplay>
           {/* Autofish button - now available to everyone */}
           <AutofishButtonWrapper>
-            <AutofishButton onClick={toggleAutofish} $active={isAutofishing} title={dailyStats ? `${dailyStats.remaining}/${dailyStats.limit} ${t('fishing.remainingToday')}` : ''}>
+            <AutofishButton 
+              onClick={toggleAutofish} 
+              $active={isAutofishing} 
+              $inFlight={autofishInFlight}
+              title={dailyStats ? `${dailyStats.remaining}/${dailyStats.limit} ${t('fishing.remainingToday')}` : ''}
+            >
               <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
             </AutofishButton>
             {dailyStats && (
@@ -1603,8 +1644,15 @@ const FishingPage = () => {
                           {challenge.reward.premiumTickets && <span>🌟 {challenge.reward.premiumTickets}</span>}
                         </ChallengeReward>
                         {challenge.progress >= challenge.target && !challenge.completed && (
-                          <ClaimButton onClick={() => handleClaimChallenge(challenge.id)}>
-                            <MdCheckCircle /> {t('fishing.claim') || 'Claim'}
+                          <ClaimButton 
+                            onClick={() => handleClaimChallenge(challenge.id)}
+                            disabled={claimingChallenges[challenge.id]}
+                          >
+                            {claimingChallenges[challenge.id] ? (
+                              <><MdAutorenew className="spinning" /> {t('common.claiming') || 'Claiming...'}</>
+                            ) : (
+                              <><MdCheckCircle /> {t('fishing.claim') || 'Claim'}</>
+                            )}
                           </ClaimButton>
                         )}
                         {challenge.completed && (
@@ -2194,6 +2242,24 @@ const AutofishButton = styled.button`
     ? '0 0 15px rgba(102, 187, 106, 0.5), inset 0 2px 0 rgba(255,255,255,0.3)'
     : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #4a3008'};
   flex-shrink: 0;
+  position: relative;
+  
+  /* Pulsing ring when request is in-flight */
+  ${props => props.$inFlight && props.$active && css`
+    &::after {
+      content: '';
+      position: absolute;
+      inset: -4px;
+      border: 2px solid rgba(102, 187, 106, 0.8);
+      border-radius: 14px;
+      animation: pulse-ring 1s ease-out infinite;
+    }
+    
+    @keyframes pulse-ring {
+      0% { transform: scale(1); opacity: 1; }
+      100% { transform: scale(1.2); opacity: 0; }
+    }
+  `}
   
   @media (max-width: 600px) {
     width: 34px;
@@ -3987,15 +4053,32 @@ const ClaimButton = styled.button`
   font-weight: 700;
   cursor: pointer;
   box-shadow: 0 3px 0 #2e7d32, 0 4px 8px rgba(0,0,0,0.2);
+  transition: all 0.2s;
   
-  &:hover {
+  &:hover:not(:disabled) {
     background: linear-gradient(180deg, #66bb6a 0%, #43a047 100%);
     transform: translateY(-1px);
   }
   
-  &:active {
+  &:active:not(:disabled) {
     transform: translateY(1px);
     box-shadow: 0 1px 0 #2e7d32;
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+    background: linear-gradient(180deg, #78909c 0%, #607d8b 100%);
+    box-shadow: 0 3px 0 #455a64, 0 4px 8px rgba(0,0,0,0.2);
+  }
+  
+  .spinning {
+    animation: spin 1s linear infinite;
+  }
+  
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 `;
 

@@ -64,6 +64,12 @@ const DojoPage = () => {
   // Auto-dismissing error state
   const [error, setError] = useAutoDismissError();
   
+  // Unmount guard for async operations
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    return () => { isMountedRef.current = false; };
+  }, []);
+  
   // State
   const [status, setStatus] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -240,8 +246,11 @@ const DojoPage = () => {
       
       try {
         await assignCharacterToDojo(characterId, selectedSlot);
+        // Check if still mounted before updating state
+        if (!isMountedRef.current) return;
         await fetchStatus(); // Get authoritative data from server
       } catch (err) {
+        if (!isMountedRef.current) return;
         console.error('Failed to assign character:', err);
         // Rollback optimistic update on failure
         setStatus(previousStatus);
@@ -266,8 +275,11 @@ const DojoPage = () => {
       
       try {
         await unassignCharacterFromDojo(slotIndex);
+        // Check if still mounted before updating state
+        if (!isMountedRef.current) return;
         await fetchStatus(); // Get authoritative data from server
       } catch (err) {
+        if (!isMountedRef.current) return;
         console.error('Failed to unassign character:', err);
         // Rollback optimistic update on failure
         setStatus(previousStatus);
@@ -285,19 +297,25 @@ const DojoPage = () => {
       
       try {
         const result = await claimDojoRewards();
+        // Check if still mounted before updating state
+        if (!isMountedRef.current) return;
+        
         setClaimResult(result);
         await fetchStatus();
         await refreshUser();
         
-        // Auto-hide after 5 seconds
-        setTimeout(() => setClaimResult(null), 5000);
+        // Auto-hide after 5 seconds (with mounted check)
+        setTimeout(() => {
+          if (isMountedRef.current) setClaimResult(null);
+        }, 5000);
       } catch (err) {
+        if (!isMountedRef.current) return;
         console.error('Failed to claim rewards:', err);
         setError(err.response?.data?.error || t('dojo.failedClaim'));
         // Refresh user to sync state after failure
         await refreshUser();
       } finally {
-        setClaiming(false);
+        if (isMountedRef.current) setClaiming(false);
       }
     });
   };
@@ -311,15 +329,19 @@ const DojoPage = () => {
       
       try {
         await purchaseDojoUpgrade(upgradeType, rarity);
+        // Check if still mounted before updating state
+        if (!isMountedRef.current) return;
+        
         await fetchStatus();
         await refreshUser();
       } catch (err) {
+        if (!isMountedRef.current) return;
         console.error('Failed to purchase upgrade:', err);
         setError(err.response?.data?.error || t('dojo.failedUpgrade'));
         // Refresh user to sync state after failure
         await refreshUser();
       } finally {
-        setUpgrading(null);
+        if (isMountedRef.current) setUpgrading(null);
       }
     });
   };

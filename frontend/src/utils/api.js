@@ -476,6 +476,7 @@ export const equipFishingRod = async (rodId) => {
   // Clear cache after successful response
   clearCache('/fishing/rods');
   clearCache('/fishing/info');
+  clearCache('/auth/me'); // User stats may be affected
   return response.data;
 };
 

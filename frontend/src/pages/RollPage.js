@@ -204,6 +204,17 @@ const RollPage = () => {
         }
         sessionStorage.removeItem('gacha_pendingRoll_standard');
       }
+      
+      // Check for unviewed roll results (user navigated away during animation)
+      const unviewedRoll = sessionStorage.getItem('gacha_unviewedRoll_standard');
+      if (unviewedRoll) {
+        const { timestamp } = JSON.parse(unviewedRoll);
+        // Only notify if it's recent (within 5 minutes)
+        if (Date.now() - timestamp < 5 * 60 * 1000) {
+          setError(t('roll.unviewedRoll') || 'You have unviewed pulls! Check your collection.');
+        }
+        sessionStorage.removeItem('gacha_unviewedRoll_standard');
+      }
     } catch {
       // Ignore sessionStorage errors
     }
@@ -292,6 +303,16 @@ const RollPage = () => {
           showRarePullEffect(character.rarity);
           setIsRolling(false);
         } else {
+          // Persist roll result before animation for recovery if user navigates away
+          try {
+            sessionStorage.setItem('gacha_unviewedRoll_standard', JSON.stringify({
+              character,
+              timestamp: Date.now(),
+              type: 'single'
+            }));
+          } catch {
+            // Ignore sessionStorage errors
+          }
           // Show summoning animation
           setPendingCharacter(character);
           setShowSummonAnimation(true);
@@ -320,6 +341,12 @@ const RollPage = () => {
       // Don't show the card again - animation already revealed it
       // Just update the rarity history
       setLastRarities(prev => [pendingCharacter.rarity, ...prev.slice(0, 4)]);
+    }
+    // Clear unviewed roll since animation was viewed
+    try {
+      sessionStorage.removeItem('gacha_unviewedRoll_standard');
+    } catch {
+      // Ignore sessionStorage errors
     }
     setShowSummonAnimation(false);
     setPendingCharacter(null);
@@ -390,6 +417,16 @@ const RollPage = () => {
           }
           setIsRolling(false);
         } else {
+          // Persist roll results before animation for recovery if user navigates away
+          try {
+            sessionStorage.setItem('gacha_unviewedRoll_standard', JSON.stringify({
+              characters,
+              timestamp: Date.now(),
+              type: 'multi'
+            }));
+          } catch {
+            // Ignore sessionStorage errors
+          }
           // Show multi-summon animation
           setPendingMultiResults(characters);
           setShowMultiSummonAnimation(true);
@@ -422,6 +459,13 @@ const RollPage = () => {
       return idx > rarityOrder.indexOf(best) ? char.rarity : best;
     }, 'common');
     
+    // Clear unviewed roll since animation was viewed
+    try {
+      sessionStorage.removeItem('gacha_unviewedRoll_standard');
+    } catch {
+      // Ignore sessionStorage errors
+    }
+    
     setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
     setShowMultiSummonAnimation(false);
     setPendingMultiResults([]);
@@ -436,8 +480,8 @@ const RollPage = () => {
       const timeout = setTimeout(() => {
         try {
           console.warn('[Animation] Single summon timeout - forcing completion');
-          // Notify user that animation was skipped but pull succeeded
-          setError(t('roll.animationSkipped') || 'Animation completed - check your collection!');
+          // Notify user that animation timed out but pull was successful
+          setError(t('roll.animationTimeout') || 'Animation timed out, but your pull was successful! Check your collection.');
           handleSummonComplete();
         } catch (e) {
           console.error('[Animation] Force complete failed:', e);
@@ -457,8 +501,8 @@ const RollPage = () => {
       const timeout = setTimeout(() => {
         try {
           console.warn('[Animation] Multi-summon timeout - forcing completion');
-          // Notify user that animation was skipped but pulls succeeded
-          setError(t('roll.animationSkipped') || 'Animation completed - check your collection!');
+          // Notify user that animation timed out but pulls were successful
+          setError(t('roll.animationTimeout') || 'Animation timed out, but your pulls were successful! Check your collection.');
           handleMultiSummonComplete();
         } catch (e) {
           console.error('[Animation] Multi-summon force complete failed:', e);
