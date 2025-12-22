@@ -232,6 +232,9 @@
     "completed": "Abgeschlossen",
     "noChallenges": "Keine Herausforderungen verfügbar",
     "dailyLimitReached": "Tägliches Autoangeln-Limit erreicht! Reset um Mitternacht.",
+    "dailyLimitReachedTitle": "Tageslimit erreicht",
+    "limitResetsAtMidnight": "Reset um Mitternacht UTC",
+    "dailyLimitInfo": "Täglich: {{used}}/{{limit}}",
     "pity": "Mitleid",
     "remainingToday": "heute übrig",
     "difficulty": {

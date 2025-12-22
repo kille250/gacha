@@ -232,6 +232,9 @@
     "completed": "Completado",
     "noChallenges": "No hay desafíos disponibles",
     "dailyLimitReached": "¡Límite diario de autopesca alcanzado! Se reinicia a medianoche.",
+    "dailyLimitReachedTitle": "Límite diario alcanzado",
+    "limitResetsAtMidnight": "Se reinicia a medianoche UTC",
+    "dailyLimitInfo": "Diario: {{used}}/{{limit}}",
     "pity": "Pity",
     "remainingToday": "restante hoy",
     "difficulty": {

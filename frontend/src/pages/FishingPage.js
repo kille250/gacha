@@ -1412,6 +1412,33 @@ const FishingPage = () => {
                     </WalletItem>
                   </WalletStrip>
                 )}
+                
+                {/* Daily Limits Display */}
+                {tradingOptions?.dailyLimits && (
+                  <DailyLimitsStrip>
+                    <DailyLimitItem 
+                      $atLimit={tradingOptions.dailyLimits.rollTickets.remaining === 0}
+                      title={t('fishing.dailyLimitInfo', { used: tradingOptions.dailyLimits.rollTickets.used, limit: tradingOptions.dailyLimits.rollTickets.limit }) || `Daily: ${tradingOptions.dailyLimits.rollTickets.used}/${tradingOptions.dailyLimits.rollTickets.limit}`}
+                    >
+                      <span>🎟️</span>
+                      <DailyLimitText $atLimit={tradingOptions.dailyLimits.rollTickets.remaining === 0}>
+                        {tradingOptions.dailyLimits.rollTickets.used}/{tradingOptions.dailyLimits.rollTickets.limit}
+                      </DailyLimitText>
+                      {tradingOptions.dailyLimits.rollTickets.remaining === 0 && <LimitReachedBadge>MAX</LimitReachedBadge>}
+                    </DailyLimitItem>
+                    <DailyLimitDivider />
+                    <DailyLimitItem 
+                      $atLimit={tradingOptions.dailyLimits.premiumTickets.remaining === 0}
+                      title={t('fishing.dailyLimitInfo', { used: tradingOptions.dailyLimits.premiumTickets.used, limit: tradingOptions.dailyLimits.premiumTickets.limit }) || `Daily: ${tradingOptions.dailyLimits.premiumTickets.used}/${tradingOptions.dailyLimits.premiumTickets.limit}`}
+                    >
+                      <span>🌟</span>
+                      <DailyLimitText $atLimit={tradingOptions.dailyLimits.premiumTickets.remaining === 0}>
+                        {tradingOptions.dailyLimits.premiumTickets.used}/{tradingOptions.dailyLimits.premiumTickets.limit}
+                      </DailyLimitText>
+                      {tradingOptions.dailyLimits.premiumTickets.remaining === 0 && <LimitReachedBadge>MAX</LimitReachedBadge>}
+                    </DailyLimitItem>
+                  </DailyLimitsStrip>
+                )}
               </ShopHeader>
               
               <ShopBody>
@@ -1455,7 +1482,8 @@ const FishingPage = () => {
                     {/* Available Trades Section */}
                     {(() => {
                       const availableTrades = tradingOptions.options.filter(o => o.canTrade);
-                      const unavailableTrades = tradingOptions.options.filter(o => !o.canTrade);
+                      const limitReachedTrades = tradingOptions.options.filter(o => !o.canTrade && o.limitReached);
+                      const needMoreFishTrades = tradingOptions.options.filter(o => !o.canTrade && !o.limitReached);
                       
                       return (
                         <>
@@ -1520,16 +1548,58 @@ const FishingPage = () => {
                             </TradeSection>
                           )}
                           
+                          {/* Daily Limit Reached - Separate Section */}
+                          {limitReachedTrades.length > 0 && (
+                            <TradeSection $limitReached>
+                              <TradeSectionHeader $limitReached>
+                                <TradeSectionBadge $limitReached>⏰</TradeSectionBadge>
+                                <TradeSectionTitle>{t('fishing.dailyLimitReachedTitle') || 'Daily Limit Reached'}</TradeSectionTitle>
+                                <TradeSectionCount>{limitReachedTrades.length}</TradeSectionCount>
+                              </TradeSectionHeader>
+                              <LimitReachedNote>{t('fishing.limitResetsAtMidnight') || 'Resets at midnight UTC'}</LimitReachedNote>
+                              <LockedTradesList>
+                                {limitReachedTrades.map(option => (
+                                  <LockedTradeRow key={option.id} $limitReached>
+                                    <LockedTradeInfo>
+                                      <LockedTradeEmoji>
+                                        {option.requiredRarity === 'common' ? '🐟' : 
+                                         option.requiredRarity === 'uncommon' ? '🐠' : 
+                                         option.requiredRarity === 'rare' ? '🐡' : 
+                                         option.requiredRarity === 'epic' ? '🦈' : 
+                                         option.requiredRarity === 'special' ? '🎣' : '🐋'}
+                                      </LockedTradeEmoji>
+                                      <LockedTradeText>
+                                        <LockedTradeName>×{option.requiredQuantity} {t(`fishing.${option.requiredRarity}`)}</LockedTradeName>
+                                      </LockedTradeText>
+                                    </LockedTradeInfo>
+                                    <LockedTradeReward $limitReached>
+                                      <span>
+                                        {option.rewardType === 'premiumTickets' ? '🌟' : 
+                                         option.rewardType === 'rollTickets' ? '🎟️' : 
+                                         option.rewardType === 'mixed' ? '🎁' : '🪙'}
+                                      </span>
+                                      <span style={{ textDecoration: 'line-through', opacity: 0.5 }}>
+                                        {option.rewardType === 'mixed' 
+                                          ? `${option.rewardAmount.rollTickets}+${option.rewardAmount.premiumTickets}`
+                                          : `+${option.rewardAmount}`}
+                                      </span>
+                                    </LockedTradeReward>
+                                  </LockedTradeRow>
+                                ))}
+                              </LockedTradesList>
+                            </TradeSection>
+                          )}
+                          
                           {/* Locked Trades - Progress Section */}
-                          {unavailableTrades.length > 0 && (
+                          {needMoreFishTrades.length > 0 && (
                             <TradeSection $locked>
                               <TradeSectionHeader>
                                 <TradeSectionBadge>🔒</TradeSectionBadge>
                                 <TradeSectionTitle>{t('fishing.needMoreFish') || 'Need More Fish'}</TradeSectionTitle>
-                                <TradeSectionCount>{unavailableTrades.length}</TradeSectionCount>
+                                <TradeSectionCount>{needMoreFishTrades.length}</TradeSectionCount>
                               </TradeSectionHeader>
                               <LockedTradesList>
-                                {unavailableTrades.map(option => {
+                                {needMoreFishTrades.map(option => {
                                   const progress = Math.min((option.currentQuantity / option.requiredQuantity) * 100, 100);
                                   return (
                                     <LockedTradeRow key={option.id}>
@@ -1568,7 +1638,7 @@ const FishingPage = () => {
                           )}
                           
                           {/* Empty State */}
-                          {availableTrades.length === 0 && unavailableTrades.length === 0 && (
+                          {availableTrades.length === 0 && limitReachedTrades.length === 0 && needMoreFishTrades.length === 0 && (
                             <EmptyTradeState>
                               <span>🎣</span>
                               <p>{t('fishing.catchFishToTrade')}</p>
@@ -3390,6 +3460,54 @@ const WalletValue = styled.span`
   text-shadow: 0 1px 2px rgba(0,0,0,0.3);
 `;
 
+const DailyLimitsStrip = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0;
+  background: rgba(0,0,0,0.15);
+  border-radius: 8px;
+  padding: 4px 12px;
+  margin-top: 8px;
+  border: 1px solid rgba(255,248,225,0.15);
+`;
+
+const DailyLimitItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0 10px;
+  opacity: ${props => props.$atLimit ? 0.7 : 1};
+  
+  span:first-child {
+    font-size: 12px;
+  }
+`;
+
+const DailyLimitDivider = styled.div`
+  width: 1px;
+  height: 16px;
+  background: rgba(255,248,225,0.2);
+`;
+
+const DailyLimitText = styled.span`
+  font-size: 11px;
+  font-weight: 600;
+  color: ${props => props.$atLimit ? '#ff8a80' : 'rgba(255,248,225,0.7)'};
+`;
+
+const LimitReachedBadge = styled.span`
+  font-size: 9px;
+  font-weight: 700;
+  color: #fff;
+  background: linear-gradient(135deg, #e53935 0%, #c62828 100%);
+  padding: 1px 4px;
+  border-radius: 3px;
+  margin-left: 3px;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+`;
+
 const ShopBody = styled.div`
   flex: 1;
   overflow-y: auto;
@@ -3504,7 +3622,9 @@ const TradeSectionHeader = styled.div`
   padding-bottom: 8px;
   border-bottom: 2px solid ${props => props.$available 
     ? 'rgba(76, 175, 80, 0.4)' 
-    : 'rgba(139, 105, 20, 0.2)'};
+    : props.$limitReached 
+      ? 'rgba(255, 152, 0, 0.4)'
+      : 'rgba(139, 105, 20, 0.2)'};
 `;
 
 const TradeSectionBadge = styled.div`
@@ -3518,9 +3638,26 @@ const TradeSectionBadge = styled.div`
   font-weight: 700;
   background: ${props => props.$available 
     ? 'linear-gradient(180deg, #4caf50 0%, #388e3c 100%)'
-    : 'rgba(139, 105, 20, 0.2)'};
-  color: ${props => props.$available ? '#fff' : '#795548'};
-  box-shadow: ${props => props.$available ? '0 2px 0 #2e7d32' : 'none'};
+    : props.$limitReached
+      ? 'linear-gradient(180deg, #ff9800 0%, #f57c00 100%)'
+      : 'rgba(139, 105, 20, 0.2)'};
+  color: ${props => (props.$available || props.$limitReached) ? '#fff' : '#795548'};
+  box-shadow: ${props => props.$available 
+    ? '0 2px 0 #2e7d32' 
+    : props.$limitReached 
+      ? '0 2px 0 #e65100' 
+      : 'none'};
+`;
+
+const LimitReachedNote = styled.div`
+  font-size: 11px;
+  color: #e65100;
+  background: rgba(255, 152, 0, 0.1);
+  padding: 4px 10px;
+  border-radius: 6px;
+  margin-bottom: 10px;
+  text-align: center;
+  font-weight: 500;
 `;
 
 const TradeSectionTitle = styled.div`
@@ -3708,9 +3845,9 @@ const LockedTradeRow = styled.div`
   align-items: center;
   gap: 10px;
   padding: 10px 12px;
-  background: rgba(255,255,255,0.5);
+  background: ${props => props.$limitReached ? 'rgba(255, 152, 0, 0.08)' : 'rgba(255,255,255,0.5)'};
   border-radius: 10px;
-  border: 2px solid rgba(139, 105, 20, 0.15);
+  border: 2px solid ${props => props.$limitReached ? 'rgba(255, 152, 0, 0.25)' : 'rgba(139, 105, 20, 0.15)'};
 `;
 
 const LockedTradeInfo = styled.div`
@@ -3758,7 +3895,8 @@ const LockedTradeReward = styled.div`
   gap: 4px;
   font-size: 13px;
   font-weight: 700;
-  color: #795548;
+  color: ${props => props.$limitReached ? '#e65100' : '#795548'};
+  opacity: ${props => props.$limitReached ? 0.7 : 1};
   
   span:first-child {
     font-size: 15px;

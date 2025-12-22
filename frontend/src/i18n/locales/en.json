@@ -234,6 +234,9 @@
     "completed": "Completed",
     "noChallenges": "No challenges available",
     "dailyLimitReached": "Daily autofish limit reached! Resets at midnight.",
+    "dailyLimitReachedTitle": "Daily Limit Reached",
+    "limitResetsAtMidnight": "Resets at midnight UTC",
+    "dailyLimitInfo": "Daily: {{used}}/{{limit}}",
     "pity": "Pity",
     "remainingToday": "remaining today",
     "difficulty": {

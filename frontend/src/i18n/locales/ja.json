@@ -232,6 +232,9 @@
     "completed": "完了",
     "noChallenges": "チャレンジがありません",
     "dailyLimitReached": "自動釣りの1日の上限に達しました！深夜にリセットされます。",
+    "dailyLimitReachedTitle": "1日の上限に達しました",
+    "limitResetsAtMidnight": "深夜（UTC）にリセット",
+    "dailyLimitInfo": "本日: {{used}}/{{limit}}",
     "pity": "天井",
     "remainingToday": "本日残り",
     "difficulty": {
