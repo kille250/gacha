@@ -622,11 +622,31 @@ router.post('/reset-account', auth, async (req, res) => {
     user.autofishEnabled = false;
     user.autofishUnlockedByRank = false;
     user.usernameChanged = false; // Give back the username change
+    
+    // Reset Dojo fields
     user.dojoSlots = [];
     user.dojoLastClaim = null;
     user.dojoUpgrades = { slots: 3, capHours: 8, intensity: 0, masteries: {} };
     user.dojoDailyStats = {};
     user.dojoTicketProgress = { roll: 0, premium: 0 };
+    
+    // Reset Fishing fields
+    user.lastAutofish = null;
+    user.fishingPity = { legendary: 0, epic: 0, lastCast: null };
+    user.fishingStats = { totalCasts: 0, totalCatches: 0, perfectCatches: 0, fishCaught: {} };
+    user.fishingDaily = {
+      date: null, manualCasts: 0, autofishCasts: 0, catches: 0,
+      perfectCatches: 0, rareCatches: 0, tradesCompleted: 0,
+      pointsFromTrades: 0, ticketsEarned: { roll: 0, premium: 0 }
+    };
+    user.fishingChallenges = { date: null, active: [], completed: [], progress: {} };
+    user.fishingAreas = { unlocked: ['pond'], current: 'pond' };
+    user.fishingRod = 'basic';
+    user.fishingOwnedRods = ['basic'];
+    user.fishingAchievements = {
+      totalLegendaries: 0, totalPerfects: 0, longestStreak: 0,
+      currentStreak: 0, challengesCompleted: 0, prestige: 0
+    };
     
     await user.save();
     
