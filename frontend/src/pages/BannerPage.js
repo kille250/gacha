@@ -56,7 +56,7 @@ const BannerPage = () => {
   const { getRarityColor, getRarityGlow } = useRarity();
   
   // Action lock to prevent rapid double-clicks
-  const { withLock, isLocked } = useActionLock(300);
+  const { withLock, locked } = useActionLock(300);
   
   // State
   const [banner, setBanner] = useState(null);
@@ -88,6 +88,7 @@ const BannerPage = () => {
   
   // Ticket state
   const [tickets, setTickets] = useState({ rollTickets: 0, premiumTickets: 0 });
+  const [ticketLoadError, setTicketLoadError] = useState(false);
   
   // Computed values from pricing
   const singlePullCost = pricing?.singlePullCost || 100;
@@ -106,16 +107,26 @@ const BannerPage = () => {
     const fetchBannerAndPricing = async () => {
       try {
         setLoading(true);
-        // Fetch banner data, pricing, and tickets in parallel
-        const [bannerData, pricingData, ticketsData] = await Promise.all([
+        setTicketLoadError(false);
+        
+        // Fetch banner data and pricing first (required)
+        const [bannerData, pricingData] = await Promise.all([
           getBannerById(bannerId),
-          getBannerPricing(bannerId),
-          api.get('/banners/user/tickets').then(res => res.data).catch(() => ({ rollTickets: 0, premiumTickets: 0 }))
+          getBannerPricing(bannerId)
         ]);
         setBanner(bannerData);
         setPricing(pricingData);
-        setTickets(ticketsData);
         setPricingLoaded(true);
+        
+        // Fetch tickets separately - don't block on failure but show warning
+        try {
+          const ticketsData = await api.get('/banners/user/tickets').then(res => res.data);
+          setTickets(ticketsData);
+        } catch (ticketErr) {
+          console.warn('Failed to load tickets:', ticketErr);
+          setTicketLoadError(true);
+          // Keep existing tickets or default to 0
+        }
       } catch (err) {
         setError(err.response?.data?.error || t('admin.failedLoadBanners'));
       } finally {
@@ -124,6 +135,25 @@ const BannerPage = () => {
     };
     fetchBannerAndPricing();
   }, [bannerId, t]);
+  
+  // Auto-dismiss errors after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+  
+  // Cleanup animation state on unmount to prevent stuck states
+  useEffect(() => {
+    return () => {
+      setIsRolling(false);
+      setShowSummonAnimation(false);
+      setShowMultiSummonAnimation(false);
+      setPendingCharacter(null);
+      setPendingMultiResults([]);
+    };
+  }, []);
 
   
   const fetchUserCollection = useCallback(async () => {
@@ -158,24 +188,25 @@ const BannerPage = () => {
 
   // Handlers
   const handleRoll = async (useTicket = false, ticketType = 'roll') => {
-    // Check if can afford
-    if (useTicket) {
-      if (ticketType === 'premium' && tickets.premiumTickets < 1) {
-        setError('No premium tickets available');
-        return;
-      }
-      if (ticketType === 'roll' && tickets.rollTickets < 1) {
-        setError('No roll tickets available');
-        return;
-      }
-    } else if (user?.points < singlePullCost) {
-      setError(t('banner.notEnoughPoints', { count: 1, cost: singlePullCost }));
-      return;
-    }
-    
     // Use action lock to prevent rapid double-clicks
+    // All validation happens INSIDE the lock to prevent race conditions
     await withLock(async () => {
       try {
+        // Validate INSIDE the lock to prevent race conditions from rapid clicks
+        if (useTicket) {
+          if (ticketType === 'premium' && tickets.premiumTickets < 1) {
+            setError('No premium tickets available');
+            return;
+          }
+          if (ticketType === 'roll' && tickets.rollTickets < 1) {
+            setError('No roll tickets available');
+            return;
+          }
+        } else if (user?.points < singlePullCost) {
+          setError(t('banner.notEnoughPoints', { count: 1, cost: singlePullCost }));
+          return;
+        }
+        
         setIsRolling(true);
         setShowCard(false);
         setShowMultiResults(false);
@@ -210,7 +241,10 @@ const BannerPage = () => {
           setShowSummonAnimation(true);
         }
         
-        await fetchUserCollection();
+        // Non-blocking collection refresh - don't fail the roll if this fails
+        fetchUserCollection().catch(err => {
+          console.warn('Failed to refresh collection after roll:', err);
+        });
       } catch (err) {
         setError(err.response?.data?.error || t('roll.failedRoll'));
         setIsRolling(false);
@@ -234,27 +268,28 @@ const BannerPage = () => {
   }, [pendingCharacter]);
 
   const handleMultiRoll = async (count, useTickets = false, ticketType = 'roll') => {
-    // Check if can afford
-    if (useTickets) {
-      if (ticketType === 'premium' && tickets.premiumTickets < count) {
-        setError(`Not enough premium tickets. Need ${count}, have ${tickets.premiumTickets}`);
-        return;
-      }
-      if (ticketType === 'roll' && tickets.rollTickets < count) {
-        setError(`Not enough roll tickets. Need ${count}, have ${tickets.rollTickets}`);
-        return;
-      }
-    } else {
-      const cost = getMultiPullCost(count);
-      if (user?.points < cost) {
-        setError(t('banner.notEnoughPoints', { count, cost }));
-        return;
-      }
-    }
-    
     // Use action lock to prevent rapid double-clicks
+    // All validation happens INSIDE the lock to prevent race conditions
     await withLock(async () => {
       try {
+        // Validate INSIDE the lock to prevent race conditions from rapid clicks
+        if (useTickets) {
+          if (ticketType === 'premium' && tickets.premiumTickets < count) {
+            setError(`Not enough premium tickets. Need ${count}, have ${tickets.premiumTickets}`);
+            return;
+          }
+          if (ticketType === 'roll' && tickets.rollTickets < count) {
+            setError(`Not enough roll tickets. Need ${count}, have ${tickets.rollTickets}`);
+            return;
+          }
+        } else {
+          const cost = getMultiPullCost(count);
+          if (user?.points < cost) {
+            setError(t('banner.notEnoughPoints', { count, cost }));
+            return;
+          }
+        }
+        
         setIsRolling(true);
         setShowCard(false);
         setShowMultiResults(false);
@@ -298,7 +333,10 @@ const BannerPage = () => {
           setShowMultiSummonAnimation(true);
         }
         
-        await fetchUserCollection();
+        // Non-blocking collection refresh - don't fail the roll if this fails
+        fetchUserCollection().catch(err => {
+          console.warn('Failed to refresh collection after multi-roll:', err);
+        });
       } catch (err) {
         setError(err.response?.data?.error || t('roll.failedMultiRoll'));
         setIsRolling(false);
@@ -537,7 +575,7 @@ const BannerPage = () => {
                   <CardActions>
                     <RollAgainBtn 
                       onClick={() => handleRoll(false)} 
-                      disabled={isRolling || isLocked() || user?.points < singlePullCost}
+                      disabled={isRolling || locked || user?.points < singlePullCost}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -630,7 +668,7 @@ const BannerPage = () => {
                 {/* Primary Single Pull - Most Prominent */}
                 <PrimaryPullCard
                   onClick={() => handleRoll(false)} 
-                  disabled={isRolling || !pricingLoaded || isLocked() || user?.points < singlePullCost}
+                  disabled={isRolling || !pricingLoaded || locked || user?.points < singlePullCost}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -654,7 +692,7 @@ const BannerPage = () => {
                       <MultiPullCard
                         key={option.count}
                         onClick={() => handleMultiRoll(option.count, false)}
-                        disabled={isRolling || !pricingLoaded || isLocked() || !canAfford}
+                        disabled={isRolling || !pricingLoaded || locked || !canAfford}
                         $canAfford={canAfford && pricingLoaded}
                         $isRecommended={option.count === 10}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
@@ -674,6 +712,13 @@ const BannerPage = () => {
                   })}
                 </MultiPullGrid>
               </PullActionsContainer>
+              
+              {/* Ticket load warning */}
+              {ticketLoadError && (
+                <TicketWarning>
+                  ⚠️ {t('banner.ticketLoadError') || 'Could not load ticket count. Ticket options may be unavailable.'}
+                </TicketWarning>
+              )}
               
               {/* Ticket Section - Only show if user has tickets */}
               {(tickets.rollTickets > 0 || tickets.premiumTickets > 0) && (
@@ -700,7 +745,7 @@ const BannerPage = () => {
                     {tickets.rollTickets > 0 && (
                       <TicketPullButton
                         onClick={() => handleRoll(true, 'roll')}
-                        disabled={isRolling || isLocked() || tickets.rollTickets < 1}
+                        disabled={isRolling || locked || tickets.rollTickets < 1}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -714,7 +759,7 @@ const BannerPage = () => {
                     {tickets.premiumTickets > 0 && (
                       <PremiumPullButton
                         onClick={() => handleRoll(true, 'premium')}
-                        disabled={isRolling || isLocked() || tickets.premiumTickets < 1}
+                        disabled={isRolling || locked || tickets.premiumTickets < 1}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -728,7 +773,7 @@ const BannerPage = () => {
                     {tickets.rollTickets >= 10 && (
                       <TicketPullButton
                         onClick={() => handleMultiRoll(10, true, 'roll')}
-                        disabled={isRolling || isLocked() || tickets.rollTickets < 10}
+                        disabled={isRolling || locked || tickets.rollTickets < 10}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -742,7 +787,7 @@ const BannerPage = () => {
                     {tickets.premiumTickets >= 10 && (
                       <PremiumPullButton
                         onClick={() => handleMultiRoll(10, true, 'premium')}
-                        disabled={isRolling || isLocked() || tickets.premiumTickets < 10}
+                        disabled={isRolling || locked || tickets.premiumTickets < 10}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -941,7 +986,7 @@ const BannerPage = () => {
                 
                 <RollFromPanelBtn
                   onClick={() => { setShowInfoPanel(false); setTimeout(() => handleRoll(false), 300); }}
-                  disabled={isRolling || isLocked() || user?.points < singlePullCost}
+                  disabled={isRolling || locked || user?.points < singlePullCost}
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -1832,6 +1877,16 @@ const MultiPullDiscount = styled.div`
 `;
 
 // Ticket Section
+const TicketWarning = styled.div`
+  margin-top: 12px;
+  padding: 8px 12px;
+  font-size: 12px;
+  color: ${theme.colors.warning || '#ffa500'};
+  background: rgba(255, 165, 0, 0.1);
+  border-radius: 6px;
+  text-align: center;
+`;
+
 const TicketSection = styled.div`
   margin-top: 20px;
   padding-top: 20px;

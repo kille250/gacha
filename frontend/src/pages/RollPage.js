@@ -53,7 +53,7 @@ const RollPage = () => {
   const { user, refreshUser, setUser } = useContext(AuthContext);
   
   // Action lock to prevent rapid double-clicks
-  const { withLock, isLocked } = useActionLock(300);
+  const { withLock, locked } = useActionLock(300);
   
   // State
   const [currentChar, setCurrentChar] = useState(null);
@@ -104,6 +104,25 @@ const RollPage = () => {
       }
     };
     fetchPricing();
+  }, []);
+  
+  // Auto-dismiss errors after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+  
+  // Cleanup animation state on unmount to prevent stuck states
+  useEffect(() => {
+    return () => {
+      setIsRolling(false);
+      setShowSummonAnimation(false);
+      setShowMultiSummonAnimation(false);
+      setPendingCharacter(null);
+      setPendingMultiResults([]);
+    };
   }, []);
   
   // Check if animation is currently showing
@@ -180,15 +199,17 @@ const RollPage = () => {
   }, [pendingCharacter]);
   
   const handleMultiRoll = async (count) => {
-    const cost = calculateMultiPullCost(count);
-    if (user?.points < cost) {
-      setError(t('roll.notEnoughPoints', { count, cost }));
-      return;
-    }
-    
     // Use action lock to prevent rapid double-clicks
+    // All validation happens INSIDE the lock to prevent race conditions
     await withLock(async () => {
       try {
+        // Validate INSIDE the lock to prevent race conditions from rapid clicks
+        const cost = calculateMultiPullCost(count);
+        if (user?.points < cost) {
+          setError(t('roll.notEnoughPoints', { count, cost }));
+          return;
+        }
+        
         setIsRolling(true);
         setShowCard(false);
         setShowMultiResults(false);
@@ -360,7 +381,7 @@ const RollPage = () => {
                   <CardActions>
                     <RollAgainBtn 
                       onClick={handleRoll} 
-                      disabled={isRolling || isLocked() || user?.points < singlePullCost}
+                      disabled={isRolling || locked || user?.points < singlePullCost}
                       whileHover={{ scale: 1.02 }}
                       whileTap={{ scale: 0.98 }}
                     >
@@ -451,7 +472,7 @@ const RollPage = () => {
                 {/* Primary Single Pull - Most Prominent */}
                 <PrimaryPullCard
                   onClick={handleRoll} 
-                  disabled={isRolling || !pricingLoaded || isLocked() || user?.points < singlePullCost}
+                  disabled={isRolling || !pricingLoaded || locked || user?.points < singlePullCost}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -475,7 +496,7 @@ const RollPage = () => {
                       <MultiPullCard
                         key={option.count}
                         onClick={() => handleMultiRoll(option.count)}
-                        disabled={isRolling || !pricingLoaded || isLocked() || !canAfford}
+                        disabled={isRolling || !pricingLoaded || locked || !canAfford}
                         $canAfford={canAfford && pricingLoaded}
                         $isRecommended={option.count === 10}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}

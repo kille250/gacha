@@ -38,7 +38,7 @@ const cache = new Map();
 const pendingRequests = new Map();
 
 const CACHE_TTL = {
-  '/auth/me': 30 * 1000,        // 30 seconds for user data
+  '/auth/me': 10 * 1000,         // 10 seconds for user data (keep short to avoid stale points/currency)
   '/characters': 60 * 1000,      // 1 minute for characters
   '/banners': 60 * 1000,         // 1 minute for banners
   '/admin/dashboard': 30 * 1000, // 30 seconds for admin dashboard
@@ -181,15 +181,17 @@ api.interceptors.response.use(
 
 export const rollCharacter = async () => {
   const response = await api.post('/characters/roll');
-  // Invalidate collection cache since shards/ownership may have changed
+  // Invalidate caches - collection (shards/ownership) and user data (points)
   clearCache('/characters/collection');
+  clearCache('/auth/me');
   return response.data;
 };
 
 export const rollMultipleCharacters = async (count) => {
   const response = await api.post('/characters/roll-multi', { count });
-  // Invalidate collection cache since shards/ownership may have changed
+  // Invalidate caches - collection (shards/ownership) and user data (points)
   clearCache('/characters/collection');
+  clearCache('/auth/me');
   return response.data;
 };
 
@@ -250,8 +252,9 @@ export const getBasePricing = async () => {
 export const rollOnBanner = async (bannerId, useTicket = false, ticketType = 'roll') => {
   const payload = useTicket ? { useTicket: true, ticketType } : {};
   const response = await api.post(`/banners/${bannerId}/roll`, payload);
-  // Invalidate collection cache since shards/ownership may have changed
+  // Invalidate caches - collection (shards/ownership) and user data (points/tickets)
   clearCache('/characters/collection');
+  clearCache('/auth/me');
   return response.data;
 };
 
@@ -260,8 +263,9 @@ export const multiRollOnBanner = async (bannerId, count = 10, useTickets = false
     ? { count, useTickets: true, ticketType } 
     : { count };
   const response = await api.post(`/banners/${bannerId}/roll-multi`, payload);
-  // Invalidate collection cache since shards/ownership may have changed
+  // Invalidate caches - collection (shards/ownership) and user data (points/tickets)
   clearCache('/characters/collection');
+  clearCache('/auth/me');
   return response.data;
 };
 

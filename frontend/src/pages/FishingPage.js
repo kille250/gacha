@@ -79,7 +79,7 @@ const FishingPage = () => {
   const navigate = useNavigate();
   const { user, setUser, refreshUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
-  const { withLock: withTradeLock, isLocked: isTradeLocked } = useActionLock(300);
+  const { withLock: withTradeLock } = useActionLock(300);
   const canvasContainerRef = useRef(null);
   const movePlayerRef = useRef(null);
   // Stable ref for translation function to avoid WebSocket reconnections

@@ -59,7 +59,7 @@ const DojoPage = () => {
   const { getRarityColor, getRarityGlow } = useRarity();
   
   // Action lock to prevent rapid double-clicks on claim/upgrade
-  const { withLock, isLocked } = useActionLock(300);
+  const { withLock, locked } = useActionLock(300);
   
   // State
   const [status, setStatus] = useState(null);
@@ -76,6 +76,9 @@ const DojoPage = () => {
   
   // Auto-refresh interval for accumulated time
   const refreshIntervalRef = useRef(null);
+  
+  // Track if user is actively interacting (pause auto-refresh during interactions)
+  const isInteracting = showCharacterPicker || claiming || upgrading || locked;
 
   // Fetch dojo status
   const fetchStatus = useCallback(async () => {
@@ -93,16 +96,35 @@ const DojoPage = () => {
 
   useEffect(() => {
     fetchStatus();
+  }, [fetchStatus]);
+  
+  // Auto-refresh timer - pauses during user interactions to prevent UI disruption
+  useEffect(() => {
+    // Clear any existing interval
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
     
-    // Refresh every 30 seconds to update accumulated time
-    refreshIntervalRef.current = setInterval(fetchStatus, 30000);
+    // Only run auto-refresh when not interacting
+    if (!isInteracting) {
+      refreshIntervalRef.current = setInterval(fetchStatus, 30000);
+    }
     
     return () => {
       if (refreshIntervalRef.current) {
         clearInterval(refreshIntervalRef.current);
       }
     };
-  }, [fetchStatus]);
+  }, [fetchStatus, isInteracting]);
+  
+  // Auto-dismiss errors after 5 seconds
+  useEffect(() => {
+    if (error) {
+      const timer = setTimeout(() => setError(null), 5000);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
 
   // Open character picker for a slot
   const openCharacterPicker = async (slotIndex) => {
@@ -351,8 +373,8 @@ const DojoPage = () => {
           
           <ClaimButton 
             onClick={handleClaim}
-            disabled={!canClaim || claiming || isLocked()}
-            $canClaim={canClaim && !isLocked()}
+            disabled={!canClaim || claiming || locked}
+            $canClaim={canClaim && !locked}
             whileHover={canClaim ? { scale: 1.02 } : {}}
             whileTap={canClaim ? { scale: 0.98 } : {}}
           >
@@ -612,12 +634,12 @@ const DojoPage = () => {
               return (
                 <UpgradeCard
                   key={idx}
-                  $canAfford={canAfford && !isLocked()}
-                  $disabled={!canAfford || isUpgrading || isLocked()}
-                  onClick={() => canAfford && !isUpgrading && !isLocked() && handleUpgrade(upgrade.type, upgrade.rarity)}
-                  whileHover={canAfford && !isLocked() ? { scale: 1.02 } : {}}
-                  whileTap={canAfford && !isLocked() ? { scale: 0.98 } : {}}
-                  style={{ cursor: (!canAfford || isUpgrading || isLocked()) ? 'not-allowed' : 'pointer' }}
+                  $canAfford={canAfford && !locked}
+                  $disabled={!canAfford || isUpgrading || locked}
+                  onClick={() => canAfford && !isUpgrading && !locked && handleUpgrade(upgrade.type, upgrade.rarity)}
+                  whileHover={canAfford && !locked ? { scale: 1.02 } : {}}
+                  whileTap={canAfford && !locked ? { scale: 0.98 } : {}}
+                  style={{ cursor: (!canAfford || isUpgrading || locked) ? 'not-allowed' : 'pointer' }}
                 >
                   <UpgradeIcon>{upgrade.icon}</UpgradeIcon>
                   <UpgradeInfo>
