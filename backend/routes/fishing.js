@@ -40,8 +40,9 @@ const tradeInProgress = new Map(); // userId -> timestamp (for timeout detection
 const userFishingMode = new Map(); // userId -> { mode: 'manual' | 'autofish', lastActivity: timestamp }
 
 // Rank cache for performance - batch calculated periodically
-const userRankCache = new Map(); // oderId -> { rank, expiry }
+const userRankCache = new Map(); // userId -> { rank, expiry }
 let lastRankRefresh = 0;
+let rankRefreshInProgress = false; // Mutex to prevent concurrent refreshes
 const RANK_REFRESH_INTERVAL = 60000; // Refresh all ranks every 60 seconds
 
 // Store active fishing sessions (fish appears, waiting for catch)
@@ -112,8 +113,17 @@ setInterval(() => {
   const now = Date.now();
   
   // Clean up expired fishing sessions
+  // Sessions expire when: fish has appeared + missTimeout + buffer has passed
+  // This prevents legitimate catches from being deleted prematurely
   for (const [key, session] of activeSessions.entries()) {
-    if (now - session.createdAt > SESSION_EXPIRY) {
+    // Calculate actual expiry: when the fish appears + max reaction window + network buffer
+    const missTimeout = FISHING_CONFIG.missTimeout?.[session.fish?.rarity] || 2500;
+    const sessionExpiry = session.fishAppearsAt + missTimeout + LATENCY_BUFFER + 1000; // Extra 1s buffer
+    
+    // Fallback: also expire very old sessions (safety net)
+    const absoluteExpiry = session.createdAt + SESSION_EXPIRY;
+    
+    if (now > sessionExpiry || now > absoluteExpiry) {
       activeSessions.delete(key);
     }
   }
@@ -344,21 +354,20 @@ router.post('/catch', auth, async (req, res) => {
     const now = Date.now();
     
     // Server-side timing validation (anti-cheat)
+    // SECURITY: Use server time only - never trust client-reported reaction time
+    // This prevents timing attacks where clients fake low latency
     const serverReactionTime = now - session.fishAppearsAt;
     
     // Anti-cheat: Minimum reaction time (humans can't react < 80ms)
-    // Use the higher of: minimum reaction time, client time, or (server time - latency buffer)
-    let validatedReactionTime;
-    if (clientReactionTime !== undefined) {
-      validatedReactionTime = Math.max(
-        MIN_REACTION_TIME,  // Minimum human-possible reaction
-        clientReactionTime,
-        serverReactionTime - LATENCY_BUFFER
-      );
-    }
+    // Server time is authoritative - client time is ignored for security
+    const validatedReactionTime = Math.max(
+      MIN_REACTION_TIME,  // Minimum human-possible reaction
+      serverReactionTime
+    );
     
     // Check if player reacted within the timing window
-    const success = validatedReactionTime !== undefined && validatedReactionTime <= fish.timingWindow;
+    // Note: serverReactionTime < 0 means they clicked before fish appeared (impossible without cheating)
+    const success = serverReactionTime >= 0 && validatedReactionTime <= fish.timingWindow;
     
     if (success) {
       // Use transaction for atomic inventory update
@@ -461,6 +470,15 @@ router.post('/catch', auth, async (req, res) => {
         message: catchMessage
       });
     } else {
+      // Determine failure reason for better feedback
+      let failureMessage;
+      if (serverReactionTime < 0) {
+        // Clicked before fish appeared - possible cheat attempt or UI bug
+        failureMessage = `The ${fish.name} wasn't ready yet!`;
+      } else {
+        failureMessage = `The ${fish.name} escaped! You needed to react within ${fish.timingWindow}ms (took ${validatedReactionTime}ms).`;
+      }
+      
       return res.json({
         success: false,
         fish: {
@@ -470,11 +488,10 @@ router.post('/catch', auth, async (req, res) => {
           rarity: fish.rarity
         },
         reward: 0,
-        reactionTime: validatedReactionTime || null,
+        reactionTime: validatedReactionTime,
+        serverReactionTime, // Include server time for debugging/transparency
         timingWindow: fish.timingWindow,
-        message: validatedReactionTime === undefined 
-          ? `The ${fish.name} got away! You were too slow.`
-          : `The ${fish.name} escaped! You needed to react within ${fish.timingWindow}ms.`
+        message: failureMessage
       });
     }
     
@@ -547,6 +564,7 @@ router.get('/info', auth, async (req, res) => {
 /**
  * Batch refresh all user ranks - runs periodically for performance
  * Single query instead of per-user queries
+ * Uses mutex to prevent concurrent refresh attempts under high load
  */
 async function refreshAllRanks() {
   const now = Date.now();
@@ -555,6 +573,13 @@ async function refreshAllRanks() {
   if (now - lastRankRefresh < RANK_REFRESH_INTERVAL) {
     return;
   }
+  
+  // Mutex: Skip if another refresh is already in progress
+  if (rankRefreshInProgress) {
+    return;
+  }
+  
+  rankRefreshInProgress = true;
   
   try {
     // Single query to get all users ordered by points
@@ -576,6 +601,8 @@ async function refreshAllRanks() {
     console.log(`[Fishing] Refreshed ranks for ${users.length} users`);
   } catch (err) {
     console.error('[Fishing] Error refreshing ranks:', err);
+  } finally {
+    rankRefreshInProgress = false;
   }
 }
 
@@ -744,11 +771,15 @@ router.post('/autofish', auth, async (req, res) => {
       }
       
       // Server-side timestamp check (prevents multi-instance/restart exploits)
-      const lastDbAutofish = user.fishingPity?.lastCast || 0;
+      // Uses dedicated lastAutofish field for reliable cooldown tracking
+      const lastDbAutofish = user.lastAutofish ? new Date(user.lastAutofish).getTime() : 0;
       if (now - lastDbAutofish < AUTOFISH_COOLDOWN) {
         const remainingMs = AUTOFISH_COOLDOWN - (now - lastDbAutofish);
         throw new Error(`COOLDOWN:${remainingMs}`);
       }
+      
+      // Update the dedicated autofish timestamp
+      user.lastAutofish = new Date(now);
       
       // Re-verify rank to ensure user still qualifies (use cache for performance)
       const currentRank = await getUserRank(userId);

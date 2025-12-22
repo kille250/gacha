@@ -70,6 +70,12 @@ User.init(
       type: DataTypes.BOOLEAN,
       defaultValue: false
     },
+    // Dedicated autofish cooldown tracking (prevents multi-instance exploits)
+    lastAutofish: {
+      type: DataTypes.DATE,
+      allowNull: true,
+      defaultValue: null
+    },
     // Gacha tickets from fishing
     rollTickets: {
       type: DataTypes.INTEGER,
