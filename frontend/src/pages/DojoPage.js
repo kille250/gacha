@@ -24,7 +24,8 @@ import {
   unassignCharacterFromDojo,
   claimDojoRewards,
   purchaseDojoUpgrade,
-  getAssetUrl
+  getAssetUrl,
+  invalidateDojoAction
 } from '../utils/api';
 import { theme, Spinner } from '../styles/DesignSystem';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../utils/mediaUtils';
@@ -55,7 +56,7 @@ const glow = keyframes`
 const DojoPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { user, refreshUser } = useContext(AuthContext);
+  const { user, setUser, refreshUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
   
   // Action lock to prevent rapid double-clicks on claim/upgrade
@@ -143,18 +144,23 @@ const DojoPage = () => {
   useEffect(() => {
     const MAX_STALENESS_MS = 2 * 60 * 1000; // 2 minutes
     
-    const handleVisibility = () => {
+    const handleVisibility = async () => {
       if (document.visibilityState === 'visible') {
         const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
         if (timeSinceLastFetch > MAX_STALENESS_MS) {
+          // Invalidate dojo caches before refreshing
+          invalidateDojoAction('claim'); // Clears /dojo/status and /auth/me
+          
+          // Refresh both dojo status and user data
           fetchStatus();
+          refreshUser();
         }
       }
     };
     
     document.addEventListener('visibilitychange', handleVisibility);
     return () => document.removeEventListener('visibilitychange', handleVisibility);
-  }, [fetchStatus]);
+  }, [fetchStatus, refreshUser]);
   
   // Network offline detection during claim/upgrade operations
   useEffect(() => {
@@ -248,7 +254,12 @@ const DojoPage = () => {
         await assignCharacterToDojo(characterId, selectedSlot);
         // Check if still mounted before updating state
         if (!isMountedRef.current) return;
-        await fetchStatus(); // Get authoritative data from server
+        
+        // Invalidate caches
+        invalidateDojoAction('assign');
+        
+        // Refresh status (background, non-blocking)
+        fetchStatus();
       } catch (err) {
         if (!isMountedRef.current) return;
         console.error('Failed to assign character:', err);
@@ -277,7 +288,12 @@ const DojoPage = () => {
         await unassignCharacterFromDojo(slotIndex);
         // Check if still mounted before updating state
         if (!isMountedRef.current) return;
-        await fetchStatus(); // Get authoritative data from server
+        
+        // Invalidate caches
+        invalidateDojoAction('unassign');
+        
+        // Refresh status (background, non-blocking)
+        fetchStatus();
       } catch (err) {
         if (!isMountedRef.current) return;
         console.error('Failed to unassign character:', err);
@@ -301,8 +317,22 @@ const DojoPage = () => {
         if (!isMountedRef.current) return;
         
         setClaimResult(result);
-        await fetchStatus();
-        await refreshUser();
+        
+        // Invalidate dojo caches
+        invalidateDojoAction('claim');
+        
+        // Immediate optimistic update from response newTotals
+        if (result.newTotals) {
+          setUser(prev => ({
+            ...prev,
+            points: result.newTotals.points,
+            rollTickets: result.newTotals.rollTickets,
+            premiumTickets: result.newTotals.premiumTickets
+          }));
+        }
+        
+        // Refresh dojo status (background, non-blocking)
+        fetchStatus();
         
         // Auto-hide after 5 seconds (with mounted check)
         setTimeout(() => {
@@ -328,12 +358,20 @@ const DojoPage = () => {
       setUpgrading(upgradeType + (rarity || ''));
       
       try {
-        await purchaseDojoUpgrade(upgradeType, rarity);
+        const result = await purchaseDojoUpgrade(upgradeType, rarity);
         // Check if still mounted before updating state
         if (!isMountedRef.current) return;
         
-        await fetchStatus();
-        await refreshUser();
+        // Invalidate dojo caches
+        invalidateDojoAction('upgrade');
+        
+        // Immediate optimistic update from response
+        if (result.newPoints !== undefined) {
+          setUser(prev => ({ ...prev, points: result.newPoints }));
+        }
+        
+        // Refresh dojo status (background, non-blocking)
+        fetchStatus();
       } catch (err) {
         if (!isMountedRef.current) return;
         console.error('Failed to purchase upgrade:', err);

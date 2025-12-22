@@ -123,7 +123,27 @@ export const invalidateAfterRoll = () => {
 };
 
 /**
- * Invalidate caches after dojo operations
+ * Dojo action-based invalidation map
+ * Maps dojo actions to the cache patterns that should be invalidated
+ */
+const DOJO_INVALIDATION_MAP = {
+  assign: ['/dojo/status', '/dojo/available-characters'],
+  unassign: ['/dojo/status', '/dojo/available-characters'],
+  claim: ['/dojo/status', '/auth/me'],
+  upgrade: ['/dojo/status', '/auth/me']
+};
+
+/**
+ * Invalidate caches for a specific dojo action
+ * @param {string} action - The dojo action (assign, unassign, claim, upgrade)
+ */
+export const invalidateDojoAction = (action) => {
+  const patterns = DOJO_INVALIDATION_MAP[action] || [];
+  patterns.forEach(pattern => clearCache(pattern));
+};
+
+/**
+ * Invalidate caches after dojo operations (legacy, use invalidateDojoAction for granular control)
  */
 export const invalidateAfterDojo = () => {
   clearCache('/dojo');
