@@ -1927,12 +1927,12 @@ const FishingPage = () => {
                         $difficulty={challenge.difficulty}
                       >
                         <ChallengeHeader>
-                          <ChallengeName>{challenge.name}</ChallengeName>
+                          <ChallengeName>{t(`fishing.challengeNames.${challenge.id}`) || challenge.name}</ChallengeName>
                           <DifficultyBadge $difficulty={challenge.difficulty}>
                             {t(`fishing.difficulty.${challenge.difficulty}`) || challenge.difficulty}
                           </DifficultyBadge>
                         </ChallengeHeader>
-                        <ChallengeDescription>{challenge.description}</ChallengeDescription>
+                        <ChallengeDescription>{t(`fishing.challengeDescriptions.${challenge.id}`) || challenge.description}</ChallengeDescription>
                         <ChallengeProgress>
                           <ProgressBarContainer>
                             <ProgressBarFill 
