@@ -9,7 +9,7 @@
  * - Rarity tracking
  * - Confetti effects
  */
-import { useState, useCallback, useContext } from 'react';
+import { useState, useCallback, useContext, useEffect } from 'react';
 import confetti from 'canvas-confetti';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -56,8 +56,24 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
   const [showMultiResults, setShowMultiResults] = useState(false);
   const [error, setError] = useState(null);
   
-  // Animation state
-  const [skipAnimations, setSkipAnimations] = useState(false);
+  // Animation state - persist fast mode preference
+  const [skipAnimations, setSkipAnimationsState] = useState(() => {
+    try {
+      return localStorage.getItem('gacha_skipAnimations') === 'true';
+    } catch {
+      return false;
+    }
+  });
+  
+  // Persist skipAnimations to localStorage when it changes
+  const setSkipAnimations = useCallback((value) => {
+    setSkipAnimationsState(value);
+    try {
+      localStorage.setItem('gacha_skipAnimations', value.toString());
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, []);
   const [showSummonAnimation, setShowSummonAnimation] = useState(false);
   const [pendingCharacter, setPendingCharacter] = useState(null);
   const [showMultiSummonAnimation, setShowMultiSummonAnimation] = useState(false);
@@ -156,8 +172,8 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
   const processSingleRoll = useCallback(async (result) => {
     const { character, updatedPoints, tickets } = result;
     
-    // Update points immediately from response
-    if (updatedPoints !== undefined && user) {
+    // Update points immediately from response (use typeof for safer check)
+    if (typeof updatedPoints === 'number' && user) {
       setUser(prev => ({ ...prev, points: updatedPoints }));
     }
     
@@ -211,8 +227,8 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
   const processMultiRoll = useCallback(async (result) => {
     const { characters, updatedPoints, tickets } = result;
     
-    // Update points immediately from response
-    if (updatedPoints !== undefined && user) {
+    // Update points immediately from response (use typeof for safer check)
+    if (typeof updatedPoints === 'number' && user) {
       setUser(prev => ({ ...prev, points: updatedPoints }));
     }
     

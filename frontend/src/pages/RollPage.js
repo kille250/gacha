@@ -66,7 +66,14 @@ const RollPage = () => {
   const [previewChar, setPreviewChar] = useState(null);
   const [rollCount, setRollCount] = useState(0);
   const [lastRarities, setLastRarities] = useState([]);
-  const [skipAnimations, setSkipAnimations] = useState(false);
+  // Persist fast mode preference to localStorage
+  const [skipAnimations, setSkipAnimations] = useState(() => {
+    try {
+      return localStorage.getItem('gacha_skipAnimations') === 'true';
+    } catch {
+      return false;
+    }
+  });
   
   // Summoning animation state
   const [showSummonAnimation, setShowSummonAnimation] = useState(false);
@@ -106,10 +113,19 @@ const RollPage = () => {
     fetchPricing();
   }, []);
   
-  // Auto-dismiss errors after 5 seconds
+  // Auto-dismiss transient errors after 5 seconds
+  // Critical errors stay visible longer
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => setError(null), 5000);
+      const isCriticalError = 
+        error.includes('Not enough') || 
+        error.includes('Insufficient') ||
+        error.includes('Server') ||
+        error.includes('500') ||
+        error.includes('interrupted');
+      
+      const dismissTime = isCriticalError ? 10000 : 5000;
+      const timer = setTimeout(() => setError(null), dismissTime);
       return () => clearTimeout(timer);
     }
   }, [error]);
@@ -124,6 +140,60 @@ const RollPage = () => {
       setPendingMultiResults([]);
     };
   }, []);
+  
+  // Persist fast mode preference
+  useEffect(() => {
+    try {
+      localStorage.setItem('gacha_skipAnimations', skipAnimations.toString());
+    } catch {
+      // Ignore localStorage errors
+    }
+  }, [skipAnimations]);
+  
+  // Network offline detection during roll animations
+  useEffect(() => {
+    const handleOffline = () => {
+      if (isRolling || showSummonAnimation || showMultiSummonAnimation) {
+        setError(t('common.networkDisconnected') || 'Network disconnected. Please check your connection and refresh.');
+        setIsRolling(false);
+        setShowSummonAnimation(false);
+        setShowMultiSummonAnimation(false);
+        setPendingCharacter(null);
+        setPendingMultiResults([]);
+      }
+    };
+    
+    const handleOnline = () => {
+      // Refresh user data when coming back online
+      refreshUser();
+    };
+    
+    window.addEventListener('offline', handleOffline);
+    window.addEventListener('online', handleOnline);
+    
+    return () => {
+      window.removeEventListener('offline', handleOffline);
+      window.removeEventListener('online', handleOnline);
+    };
+  }, [isRolling, showSummonAnimation, showMultiSummonAnimation, t, refreshUser]);
+  
+  // Check for pending roll on mount (handles page reload during roll)
+  useEffect(() => {
+    try {
+      const pendingRoll = sessionStorage.getItem('gacha_pendingRoll_standard');
+      if (pendingRoll) {
+        const { timestamp } = JSON.parse(pendingRoll);
+        // Only process if it's recent (within 30 seconds)
+        if (Date.now() - timestamp < 30000) {
+          setError(t('roll.rollInterrupted') || 'A roll may have been interrupted. Your data has been refreshed.');
+          refreshUser();
+        }
+        sessionStorage.removeItem('gacha_pendingRoll_standard');
+      }
+    } catch {
+      // Ignore sessionStorage errors
+    }
+  }, [t, refreshUser]);
   
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
@@ -173,12 +243,29 @@ const RollPage = () => {
         setMultiRollResults([]);
         setRollCount(prev => prev + 1);
         
+        // Save pending roll state for recovery after page reload
+        try {
+          sessionStorage.setItem('gacha_pendingRoll_standard', JSON.stringify({ 
+            timestamp: Date.now(),
+            type: 'single'
+          }));
+        } catch {
+          // Ignore sessionStorage errors
+        }
+        
         // Fetch character immediately
         const result = await rollCharacter();
         const { updatedPoints, ...character } = result;
         
+        // Clear pending roll state on success
+        try {
+          sessionStorage.removeItem('gacha_pendingRoll_standard');
+        } catch {
+          // Ignore sessionStorage errors
+        }
+        
         // Update points immediately from response
-        if (updatedPoints !== undefined && user) {
+        if (typeof updatedPoints === 'number' && user) {
           setUser({ ...user, points: updatedPoints });
         }
         
@@ -195,10 +282,20 @@ const RollPage = () => {
           setShowSummonAnimation(true);
         }
       } catch (err) {
+        // Clear pending roll state on error
+        try {
+          sessionStorage.removeItem('gacha_pendingRoll_standard');
+        } catch {
+          // Ignore sessionStorage errors
+        }
+        
         setError(err.response?.data?.error || t('roll.failedRoll'));
         setIsRolling(false);
         // Refresh user data to sync points after failure (handles stale data)
-        await refreshUser();
+        const refreshResult = await refreshUser();
+        if (!refreshResult.success) {
+          console.warn('Failed to refresh user after roll error:', refreshResult.error);
+        }
       }
     });
   };
@@ -234,11 +331,29 @@ const RollPage = () => {
         setError(null);
         setRollCount(prev => prev + count);
         
+        // Save pending roll state for recovery after page reload
+        try {
+          sessionStorage.setItem('gacha_pendingRoll_standard', JSON.stringify({ 
+            timestamp: Date.now(),
+            type: 'multi',
+            count
+          }));
+        } catch {
+          // Ignore sessionStorage errors
+        }
+        
         const result = await rollMultipleCharacters(count);
         const { characters, updatedPoints } = result;
         
+        // Clear pending roll state on success
+        try {
+          sessionStorage.removeItem('gacha_pendingRoll_standard');
+        } catch {
+          // Ignore sessionStorage errors
+        }
+        
         // Update points immediately from response
-        if (updatedPoints !== undefined && user) {
+        if (typeof updatedPoints === 'number' && user) {
           setUser({ ...user, points: updatedPoints });
         }
         
@@ -265,10 +380,20 @@ const RollPage = () => {
           setShowMultiSummonAnimation(true);
         }
       } catch (err) {
+        // Clear pending roll state on error
+        try {
+          sessionStorage.removeItem('gacha_pendingRoll_standard');
+        } catch {
+          // Ignore sessionStorage errors
+        }
+        
         setError(err.response?.data?.error || t('roll.failedMultiRoll'));
         setIsRolling(false);
         // Refresh user data to sync points after failure (handles stale data)
-        await refreshUser();
+        const refreshResult = await refreshUser();
+        if (!refreshResult.success) {
+          console.warn('Failed to refresh user after roll error:', refreshResult.error);
+        }
       }
     });
   };

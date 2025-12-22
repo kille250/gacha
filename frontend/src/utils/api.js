@@ -38,7 +38,8 @@ const cache = new Map();
 const pendingRequests = new Map();
 
 const CACHE_TTL = {
-  '/auth/me': 10 * 1000,         // 10 seconds for user data (keep short to avoid stale points/currency)
+  '/auth/me': 5 * 1000,          // 5 seconds for user data (keep very short to avoid stale points/currency)
+  '/banners/user/tickets': 5 * 1000, // 5 seconds for tickets
   '/characters': 60 * 1000,      // 1 minute for characters
   '/banners': 60 * 1000,         // 1 minute for banners
   '/admin/dashboard': 30 * 1000, // 30 seconds for admin dashboard
@@ -46,6 +47,17 @@ const CACHE_TTL = {
   '/coupons/admin': 30 * 1000,   // 30 seconds for coupons
   default: 15 * 1000             // 15 seconds default
 };
+
+// Invalidate stale cache when tab becomes visible
+if (typeof document !== 'undefined') {
+  document.addEventListener('visibilitychange', () => {
+    if (document.visibilityState === 'visible') {
+      // Clear user-sensitive caches when tab regains focus
+      clearCache('/auth/me');
+      clearCache('/banners/user/tickets');
+    }
+  });
+}
 
 const getCacheTTL = (url) => {
   for (const [key, ttl] of Object.entries(CACHE_TTL)) {
@@ -255,6 +267,7 @@ export const rollOnBanner = async (bannerId, useTicket = false, ticketType = 'ro
   // Invalidate caches - collection (shards/ownership) and user data (points/tickets)
   clearCache('/characters/collection');
   clearCache('/auth/me');
+  clearCache('/banners/user/tickets');
   return response.data;
 };
 
@@ -266,6 +279,7 @@ export const multiRollOnBanner = async (bannerId, count = 10, useTickets = false
   // Invalidate caches - collection (shards/ownership) and user data (points/tickets)
   clearCache('/characters/collection');
   clearCache('/auth/me');
+  clearCache('/banners/user/tickets');
   return response.data;
 };
 

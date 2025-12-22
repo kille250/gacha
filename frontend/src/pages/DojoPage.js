@@ -98,6 +98,9 @@ const DojoPage = () => {
     fetchStatus();
   }, [fetchStatus]);
   
+  // Track previous interaction state to trigger refresh when interaction ends
+  const wasInteractingRef = useRef(isInteracting);
+  
   // Auto-refresh timer - pauses during user interactions to prevent UI disruption
   useEffect(() => {
     // Clear any existing interval
@@ -108,8 +111,15 @@ const DojoPage = () => {
     
     // Only run auto-refresh when not interacting
     if (!isInteracting) {
+      // If we just finished interacting, refresh immediately to get latest data
+      if (wasInteractingRef.current) {
+        fetchStatus();
+      }
       refreshIntervalRef.current = setInterval(fetchStatus, 30000);
     }
+    
+    // Update ref for next comparison
+    wasInteractingRef.current = isInteracting;
     
     return () => {
       if (refreshIntervalRef.current) {
@@ -118,13 +128,41 @@ const DojoPage = () => {
     };
   }, [fetchStatus, isInteracting]);
   
-  // Auto-dismiss errors after 5 seconds
+  // Auto-dismiss transient errors after 5 seconds
+  // Critical errors stay visible longer
   useEffect(() => {
     if (error) {
-      const timer = setTimeout(() => setError(null), 5000);
+      const isCriticalError = 
+        error.includes('Not enough') || 
+        error.includes('Insufficient') ||
+        error.includes('Server') ||
+        error.includes('failed');
+      
+      const dismissTime = isCriticalError ? 10000 : 5000;
+      const timer = setTimeout(() => setError(null), dismissTime);
       return () => clearTimeout(timer);
     }
   }, [error]);
+  
+  // Calculate if can claim (defined early for use in callbacks)
+  const canClaim = status?.accumulated?.rewards?.points > 0 || 
+                   status?.accumulated?.rewards?.rollTickets > 0 ||
+                   status?.accumulated?.rewards?.premiumTickets > 0;
+  
+  // Helper to get disabled reason for tooltips
+  const getClaimDisabledReason = useCallback(() => {
+    if (claiming) return t('dojo.claiming') || 'Claiming...';
+    if (locked) return t('common.processing') || 'Processing...';
+    if (!canClaim) return t('dojo.noRewardsAccumulated') || 'No rewards accumulated yet. Keep training!';
+    return undefined;
+  }, [claiming, locked, canClaim, t]);
+  
+  const getUpgradeDisabledReason = useCallback((upgrade, isUpgrading, canAfford) => {
+    if (isUpgrading) return t('common.processing') || 'Processing...';
+    if (locked) return t('common.processing') || 'Processing...';
+    if (!canAfford) return t('dojo.notEnoughPoints', { cost: upgrade.cost.toLocaleString() }) || `Need ${upgrade.cost.toLocaleString()} points`;
+    return undefined;
+  }, [locked, t]);
 
   // Open character picker for a slot
   const openCharacterPicker = async (slotIndex) => {
@@ -233,11 +271,6 @@ const DojoPage = () => {
     acc[series].push(char);
     return acc;
   }, {});
-
-  // Calculate if can claim
-  const canClaim = status?.accumulated?.rewards?.points > 0 || 
-                   status?.accumulated?.rewards?.rollTickets > 0 ||
-                   status?.accumulated?.rewards?.premiumTickets > 0;
 
   // Get progress percentage
   const progressPercent = status?.accumulated ? 
@@ -375,6 +408,7 @@ const DojoPage = () => {
             onClick={handleClaim}
             disabled={!canClaim || claiming || locked}
             $canClaim={canClaim && !locked}
+            title={getClaimDisabledReason()}
             whileHover={canClaim && !locked ? { scale: 1.02 } : {}}
             whileTap={canClaim && !locked ? { scale: 0.98 } : {}}
           >
@@ -639,6 +673,7 @@ const DojoPage = () => {
                   $canAfford={canAfford && !locked}
                   $disabled={!canAfford || isUpgrading || locked}
                   onClick={() => canAfford && !isUpgrading && !locked && handleUpgrade(upgrade.type, upgrade.rarity)}
+                  title={getUpgradeDisabledReason(upgrade, isUpgrading, canAfford)}
                   whileHover={canAfford && !locked ? { scale: 1.02 } : {}}
                   whileTap={canAfford && !locked ? { scale: 0.98 } : {}}
                   style={{ cursor: (!canAfford || isUpgrading || locked) ? 'not-allowed' : 'pointer' }}

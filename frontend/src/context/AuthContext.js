@@ -19,10 +19,12 @@ export const AuthProvider = ({ children }) => {
   const sessionExpiredHandled = useRef(false);
 
   // Refresh user data from the server (forces fresh fetch by clearing auth cache)
+  // Returns { success: true, user: userData } on success
+  // Returns { success: false, error: string } on failure
   const refreshUser = useCallback(async () => {
     try {
       const token = getToken();
-      if (!token) return null;
+      if (!token) return { success: false, error: 'No authentication token' };
       
       // Clear auth cache to ensure fresh data
       clearCache('/auth/me');
@@ -33,10 +35,10 @@ export const AuthProvider = ({ children }) => {
       setCurrentUser(newUserData);
       setStoredUser(newUserData);
       
-      return newUserData;
+      return { success: true, user: newUserData };
     } catch (error) {
       console.error('Error refreshing user:', error);
-      return null;
+      return { success: false, error: error.response?.data?.error || 'Failed to refresh user data' };
     }
   }, []);
 

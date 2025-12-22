@@ -57,6 +57,20 @@ const CollectionPage = () => {
     fetchData();
   }, [fetchData]);
   
+  // Auto-dismiss errors after a delay
+  useEffect(() => {
+    if (error) {
+      const isCriticalError = 
+        error.includes('Not enough') || 
+        error.includes('Insufficient') ||
+        error.includes('Server');
+      
+      const dismissTime = isCriticalError ? 10000 : 5000;
+      const timer = setTimeout(() => setError(null), dismissTime);
+      return () => clearTimeout(timer);
+    }
+  }, [error]);
+  
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
     setCurrentPage(1);
@@ -113,8 +127,19 @@ const CollectionPage = () => {
         }
       } catch (err) {
         console.error('Level up failed:', err);
-        // Refresh collection data to sync state after failure
-        await fetchData();
+        setError(err.response?.data?.error || t('collection.levelUpFailed') || 'Level up failed. Please try again.');
+        // Refresh collection data to sync state after failure with retry
+        const refreshWithRetry = async (retries = 2) => {
+          try {
+            await fetchData();
+          } catch (refreshErr) {
+            console.warn(`Failed to refresh collection (${retries} retries left):`, refreshErr);
+            if (retries > 0) {
+              setTimeout(() => refreshWithRetry(retries - 1), 1000);
+            }
+          }
+        };
+        refreshWithRetry();
       }
     });
   };
