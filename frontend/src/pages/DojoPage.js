@@ -115,7 +115,12 @@ const DojoPage = () => {
   // Track previous interaction state to trigger refresh when interaction ends
   const wasInteractingRef = useRef(isInteracting);
   
-  // Auto-refresh timer - pauses during user interactions to prevent UI disruption
+  // Auto-refresh timer for idle game rewards accumulation
+  // NOTE: This timer is intentional and not redundant with visibility-based refresh:
+  // - Dojo is an idle game where rewards accumulate in real-time
+  // - Users expect to see the "accumulated rewards" counter increasing while viewing the page
+  // - 30s interval balances freshness vs API load
+  // - Timer pauses during interactions to prevent UI disruption during claims/upgrades
   useEffect(() => {
     // Clear any existing interval
     if (refreshIntervalRef.current) {

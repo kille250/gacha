@@ -185,6 +185,8 @@ export const PRE_TRANSACTION_ACTIONS = {
 export const VISIBILITY_CALLBACK_IDS = {
   /** Fishing page data refresh */
   FISHING_DATA: 'fishing-data',
+  /** Trading post modal data refresh */
+  TRADING_POST: 'trading-post-modal',
   /** Banner page pricing and tickets refresh */
   BANNER_PRICING: 'banner-pricing-and-tickets',
   /** Standard roll page pricing refresh */

@@ -13,7 +13,7 @@ import api, {
   getFishingAreas,
   getFishingRods
 } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS, VISIBILITY_CALLBACK_IDS } from '../cache';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, VISIBILITY_CALLBACK_IDS, STALE_THRESHOLDS } from '../cache';
 import { getToken, getUserIdFromToken } from '../utils/authStorage';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -507,10 +507,11 @@ const FishingPage = () => {
   }, [showTradingPost]);
   
   // Visibility-based refresh for trading modal to prevent stale data
+  // Uses centralized VISIBILITY_CALLBACK_IDS for consistency and auditability
   useEffect(() => {
     if (!showTradingPost) return;
     
-    return onVisibilityChange('trading-post-modal', async (staleLevel) => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.TRADING_POST, async (staleLevel) => {
       // Refresh trade options when tab becomes visible after being backgrounded
       if (staleLevel) {
         try {
@@ -638,14 +639,15 @@ const FishingPage = () => {
     });
   }, [setUser, t, showNotification, withTradeLock, refreshUser]);
   
-  // Counter for periodic refreshes during autofish
-  const autofishCatchCountRef = useRef(0);
+  // Time-based staleness tracking for autofish refreshes
+  // Replaces counter-based approach for consistency with centralized cache patterns
+  const lastAutofishRefreshRef = useRef(Date.now());
   
   // Autofishing loop with integrated cleanup (now with daily limits)
   useEffect(() => {
     // NEW: Everyone can autofish now (canAutofish is always true)
     if (!isAutofishing) {
-      autofishCatchCountRef.current = 0; // Reset counter when stopping
+      lastAutofishRefreshRef.current = Date.now(); // Reset timer when stopping
       return;
     }
     
@@ -735,10 +737,11 @@ const FishingPage = () => {
           getFishingChallenges().then(setChallenges).catch(() => {});
         }
         
-        // Periodic refresh of fishInfo (pity progress), rank, and challenges every N catches
-        autofishCatchCountRef.current += 1;
-        if (autofishCatchCountRef.current >= REFRESH_INTERVALS.autofishCatchThreshold) {
-          autofishCatchCountRef.current = 0;
+        // Time-based refresh of fishInfo, rank, and challenges during long autofish sessions
+        // Uses STALE_THRESHOLDS.normal (2 min) for consistency with visibility-based invalidation
+        const timeSinceLastRefresh = Date.now() - lastAutofishRefreshRef.current;
+        if (timeSinceLastRefresh > STALE_THRESHOLDS.normal) {
+          lastAutofishRefreshRef.current = Date.now();
           try {
             const [fishRes, rankRes, challengesRes] = await Promise.all([
               api.get('/fishing/info'),
