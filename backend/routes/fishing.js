@@ -6,6 +6,8 @@ const adminAuth = require('../middleware/adminAuth');
 const { sequelize, User, FishInventory } = require('../models');
 const { Op } = require('sequelize');
 const { isValidId } = require('../utils/validation');
+
+// Config imports
 const { 
   FISHING_CONFIG, 
   FISH_TYPES, 
@@ -23,6 +25,30 @@ const {
   generateDailyChallenges
 } = require('../config/fishing');
 
+// Service imports
+const {
+  updatePityCounters,
+  getOrResetDailyData,
+  getOrResetChallenges,
+  updateChallengeProgress,
+  applyChallengeRewards,
+  calculateCatchQuality,
+  calculateFishQuantity,
+  getRandomWaitTime,
+  getMissTimeout,
+  updateStreakCounters,
+  calculateMercyBonus,
+  applyStreakBonus,
+  checkFishingModeConflict,
+  setFishingMode
+} = require('../services/fishingService');
+
+const {
+  getUserRank,
+  refreshAllRanks,
+  getTotalUsers
+} = require('../services/rankService');
+
 // Extract frequently used config values
 const AUTOFISH_UNLOCK_RANK = FISHING_CONFIG.autofishUnlockRank;
 const AUTOFISH_COOLDOWN = FISHING_CONFIG.autofishCooldown;
@@ -33,8 +59,10 @@ const MIN_REACTION_TIME = FISHING_CONFIG.minReactionTime || 80;
 const CLEANUP_INTERVAL = FISHING_CONFIG.cleanupInterval || 15000;
 const SESSION_EXPIRY = FISHING_CONFIG.sessionExpiry || 30000;
 const TRADE_TIMEOUT = FISHING_CONFIG.tradeTimeout || 30000;
-const MAX_ACTIVE_SESSIONS_PER_USER = 3; // Prevent session hoarding exploit
-const MAX_MAP_SIZE = 10000; // Prevent memory bloat from Maps
+
+// Session limits from config (with fallbacks)
+const MAX_ACTIVE_SESSIONS_PER_USER = FISHING_CONFIG.sessionLimits?.maxActiveSessionsPerUser || 3;
+const MAX_MAP_SIZE = FISHING_CONFIG.sessionLimits?.maxMapSize || 10000;
 
 // Rate limiting maps (per user)
 const autofishCooldowns = new Map();
@@ -47,209 +75,12 @@ const tradeInProgress = new Map(); // userId -> timestamp (for timeout detection
 // Multi-tab detection: track active fishing mode per user
 const userFishingMode = new Map(); // userId -> { mode: 'manual' | 'autofish', lastActivity: timestamp }
 
-// Rank cache for performance - batch calculated periodically
-const userRankCache = new Map(); // userId -> { rank, expiry }
-let lastRankRefresh = 0;
-let rankRefreshInProgress = false; // Mutex to prevent concurrent refreshes
-const RANK_REFRESH_INTERVAL = 60000; // Refresh all ranks every 60 seconds
-
 // Store active fishing sessions (fish appears, waiting for catch)
 const activeSessions = new Map();
 
-/**
- * Update pity counters based on catch result
- * Fixed: Epic counter correctly resets on legendary catches too
- * @param {Object} currentPity - Current pity data { legendary, epic }
- * @param {Array} resetPity - Array of rarities to reset ['legendary', 'epic']
- * @param {number} timestamp - Current timestamp
- * @returns {Object} - Updated pity data
- */
-function updatePityCounters(currentPity, resetPity, timestamp) {
-  const newPityData = { ...currentPity };
-  
-  // Legendary catch resets both counters
-  if (resetPity.includes('legendary')) {
-    newPityData.legendary = 0;
-    newPityData.epic = 0; // Fix: Legendary also resets epic pity
-  } else {
-    // No legendary - increment legendary counter
-    newPityData.legendary = (newPityData.legendary || 0) + 1;
-    
-    // Epic catch resets epic counter
-    if (resetPity.includes('epic')) {
-      newPityData.epic = 0;
-    } else {
-      // No epic - increment epic counter
-      newPityData.epic = (newPityData.epic || 0) + 1;
-    }
-  }
-  
-  newPityData.lastCast = timestamp;
-  return newPityData;
-}
-
-/**
- * Get or reset daily fishing data
- * @param {Object} user - User model instance
- * @returns {Object} - Current daily data (reset if new day)
- */
-function getOrResetDailyData(user) {
-  const today = getTodayString();
-  let daily = user.fishingDaily || {};
-  
-  if (needsDailyReset(daily.date)) {
-    daily = {
-      date: today,
-      manualCasts: 0,
-      autofishCasts: 0,
-      catches: 0,
-      perfectCatches: 0,
-      rareCatches: 0,
-      tradesCompleted: 0,
-      pointsFromTrades: 0,
-      ticketsEarned: { roll: 0, premium: 0 }
-    };
-  }
-  
-  return daily;
-}
-
-/**
- * Get or reset daily challenges
- * @param {Object} user - User model instance
- * @returns {Object} - Current challenges data (reset if new day)
- */
-function getOrResetChallenges(user) {
-  const today = getTodayString();
-  let challenges = user.fishingChallenges || {};
-  
-  if (needsDailyReset(challenges.date)) {
-    challenges = {
-      date: today,
-      active: generateDailyChallenges(),
-      completed: [],
-      progress: {}
-    };
-  }
-  
-  return challenges;
-}
-
-/**
- * Update challenge progress based on action
- * @param {Object} challenges - Current challenges data
- * @param {string} type - Challenge type ('catch', 'perfect', 'rarity', 'trade', 'streak')
- * @param {Object} data - Action data { rarity, isCollection, streakCount }
- * @returns {Object} - { challenges, newlyCompleted: [] }
- */
-function updateChallengeProgress(challenges, type, data = {}) {
-  const newlyCompleted = [];
-  
-  for (const challengeId of challenges.active) {
-    if (challenges.completed.includes(challengeId)) continue;
-    
-    const challenge = DAILY_CHALLENGES[challengeId];
-    if (!challenge) continue;
-    
-    let shouldIncrement = false;
-    
-    switch (challenge.type) {
-      case 'catch':
-        if (type === 'catch') shouldIncrement = true;
-        break;
-      case 'perfect':
-        if (type === 'perfect') shouldIncrement = true;
-        break;
-      case 'rarity':
-        if (type === 'catch' && data.rarity && 
-            challenge.targetRarity.includes(data.rarity)) {
-          shouldIncrement = true;
-        }
-        break;
-      case 'trade':
-        if (type === 'trade') shouldIncrement = true;
-        break;
-      case 'collection_trade':
-        if (type === 'trade' && data.isCollection) shouldIncrement = true;
-        break;
-      case 'streak':
-        if (type === 'streak') {
-          // Streak challenges set progress directly
-          challenges.progress[challengeId] = Math.max(
-            challenges.progress[challengeId] || 0,
-            data.streakCount || 0
-          );
-        }
-        break;
-    }
-    
-    if (shouldIncrement) {
-      challenges.progress[challengeId] = (challenges.progress[challengeId] || 0) + 1;
-    }
-    
-    // Check if challenge is now completed
-    if ((challenges.progress[challengeId] || 0) >= challenge.target) {
-      if (!challenges.completed.includes(challengeId)) {
-        challenges.completed.push(challengeId);
-        newlyCompleted.push({ id: challengeId, reward: challenge.reward });
-      }
-    }
-  }
-  
-  return { challenges, newlyCompleted };
-}
-
-/**
- * Apply challenge rewards to user
- * @param {Object} user - User model instance
- * @param {Array} rewards - Array of { id, reward } objects
- */
-function applyChallengeRewards(user, rewards) {
-  for (const { reward } of rewards) {
-    if (reward.points) {
-      user.points = (user.points || 0) + reward.points;
-    }
-    if (reward.rollTickets) {
-      user.rollTickets = (user.rollTickets || 0) + reward.rollTickets;
-    }
-    if (reward.premiumTickets) {
-      user.premiumTickets = (user.premiumTickets || 0) + reward.premiumTickets;
-    }
-  }
-  
-  // Update achievements
-  const achievements = user.fishingAchievements || {};
-  achievements.challengesCompleted = (achievements.challengesCompleted || 0) + rewards.length;
-  user.fishingAchievements = achievements;
-}
-
-/**
- * Check if user is in conflicting fishing mode (multi-tab exploit prevention)
- * @param {number} userId 
- * @param {string} requestedMode - 'manual' or 'autofish'
- * @returns {boolean|string} - false if OK, or error message
- */
-function checkFishingModeConflict(userId, requestedMode) {
-  const current = userFishingMode.get(userId);
-  if (!current) return false;
-  
-  // 15 second window to detect concurrent activity
-  // Longer than autofish cooldown (6s) + manual cooldown (5s) to prevent exploit
-  const isRecent = Date.now() - current.lastActivity < 15000;
-  
-  if (isRecent && current.mode !== requestedMode) {
-    return `Cannot ${requestedMode} while ${current.mode} is active`;
-  }
-  
-  return false;
-}
-
-/**
- * Update user's fishing mode (for multi-tab detection)
- */
-function setFishingMode(userId, mode) {
-  userFishingMode.set(userId, { mode, lastActivity: Date.now() });
-}
+// Helper wrappers for service functions that need the userFishingMode map
+const checkModeConflict = (userId, mode) => checkFishingModeConflict(userFishingMode, userId, mode);
+const setMode = (userId, mode) => setFishingMode(userFishingMode, userId, mode);
 
 // Cleanup interval - removes stale data from all maps/sessions
 setInterval(() => {
@@ -298,12 +129,7 @@ setInterval(() => {
     }
   }
   
-  // Clean up expired rank cache entries
-  for (const [userId, data] of userRankCache.entries()) {
-    if (now > data.expiry) {
-      userRankCache.delete(userId);
-    }
-  }
+  // Note: Rank cache is now handled by rankService.js
   
   // Memory protection: Enforce map size limits
   // If maps grow too large, remove oldest entries
@@ -325,7 +151,6 @@ setInterval(() => {
   
   pruneMap(autofishCooldowns, MAX_MAP_SIZE);
   pruneMap(castCooldowns, MAX_MAP_SIZE);
-  pruneMap(userRankCache, MAX_MAP_SIZE);
   pruneMap(userFishingMode, MAX_MAP_SIZE);
   pruneMap(tradeInProgress, MAX_MAP_SIZE);
   
@@ -348,7 +173,7 @@ router.post('/cast', auth, async (req, res) => {
   
   try {
     // Multi-tab detection: check for autofish conflict
-    const modeConflict = checkFishingModeConflict(userId, 'manual');
+    const modeConflict = checkModeConflict(userId, 'manual');
     if (modeConflict) {
       return res.status(409).json({ 
         error: 'Mode conflict',
@@ -378,7 +203,7 @@ router.post('/cast', auth, async (req, res) => {
       });
     }
     castCooldowns.set(userId, now);
-    setFishingMode(userId, 'manual');
+    setMode(userId, 'manual');
     
     // Use transaction with row lock for atomic points deduction
     const result = await sequelize.transaction(async (transaction) => {
@@ -422,8 +247,8 @@ router.post('/cast', auth, async (req, res) => {
     
     const { user, fish, pityTriggered } = result;
     
-    // Random wait time before fish bites (1.5 to 6 seconds)
-    const waitTime = Math.floor(Math.random() * 4500) + 1500;
+    // Random wait time before fish bites (from config)
+    const waitTime = getRandomWaitTime();
     
     // Create session with cryptographically random ID
     const sessionId = crypto.randomBytes(32).toString('hex');
@@ -442,7 +267,7 @@ router.post('/cast', auth, async (req, res) => {
     activeSessions.set(sessionId, session);
     
     // Get miss timeout based on fish rarity (configured per rarity for balance)
-    const missTimeout = FISHING_CONFIG.missTimeout?.[fish.rarity] || 2500;
+    const missTimeout = getMissTimeout(fish.rarity);
     
     res.json({
       sessionId,
@@ -727,94 +552,7 @@ router.get('/info', auth, async (req, res) => {
   }
 });
 
-/**
- * Batch refresh all user ranks - runs periodically for performance
- * Single query instead of per-user queries
- * Uses mutex to prevent concurrent refresh attempts under high load
- */
-async function refreshAllRanks() {
-  const now = Date.now();
-  
-  // Skip if recently refreshed
-  if (now - lastRankRefresh < RANK_REFRESH_INTERVAL) {
-    return;
-  }
-  
-  // Mutex: Skip if another refresh is already in progress
-  if (rankRefreshInProgress) {
-    return;
-  }
-  
-  rankRefreshInProgress = true;
-  
-  try {
-    // Single query to get all users ordered by points
-    const users = await User.findAll({
-      attributes: ['id', 'points'],
-      order: [['points', 'DESC']]
-    });
-    
-    // Assign ranks (1-indexed)
-    users.forEach((user, index) => {
-      userRankCache.set(user.id, {
-        rank: index + 1,
-        points: user.points,
-        expiry: now + RANK_REFRESH_INTERVAL + 5000 // Slightly longer than refresh interval
-      });
-    });
-    
-    lastRankRefresh = now;
-    console.log(`[Fishing] Refreshed ranks for ${users.length} users`);
-  } catch (err) {
-    console.error('[Fishing] Error refreshing ranks:', err);
-  } finally {
-    rankRefreshInProgress = false;
-  }
-}
-
-/**
- * Get user's rank with batch caching for performance
- * @param {number} userId 
- * @param {boolean} forceRefresh - Trigger batch refresh if needed
- * @returns {Promise<number|null>}
- */
-async function getUserRank(userId, forceRefresh = false) {
-  const now = Date.now();
-  
-  // Check if we need to refresh the batch cache
-  if (forceRefresh || now - lastRankRefresh >= RANK_REFRESH_INTERVAL) {
-    await refreshAllRanks();
-  }
-  
-  // Check cache
-  const cached = userRankCache.get(userId);
-  if (cached && now < cached.expiry) {
-    return cached.rank;
-  }
-  
-  // Fallback: User not in cache (new user or cache miss)
-  // Do individual query but also trigger batch refresh
-  const user = await User.findByPk(userId);
-  if (!user) return null;
-  
-  // Count users with more points (fallback for edge cases)
-  const higherRanked = await User.count({
-    where: {
-      points: { [Op.gt]: user.points }
-    }
-  });
-  
-  const rank = higherRanked + 1;
-  
-  // Cache the result
-  userRankCache.set(userId, {
-    rank,
-    points: user.points,
-    expiry: now + RANK_REFRESH_INTERVAL
-  });
-  
-  return rank;
-}
+// Note: refreshAllRanks and getUserRank functions moved to services/rankService.js
 
 // GET /api/fishing/rank - Get user's ranking and autofish status
 router.get('/rank', auth, async (req, res) => {
@@ -825,7 +563,7 @@ router.get('/rank', auth, async (req, res) => {
     }
     
     const rank = await getUserRank(req.user.id);
-    const totalUsers = await User.count();
+    const totalUsers = await getTotalUsers();
     const hasPremium = (user.premiumTickets || 0) > 0;
     
     // NEW: Everyone can autofish with daily limits
@@ -915,7 +653,7 @@ router.post('/autofish', auth, async (req, res) => {
   
   try {
     // Multi-tab detection: check for manual fishing conflict
-    const modeConflict = checkFishingModeConflict(userId, 'autofish');
+    const modeConflict = checkModeConflict(userId, 'autofish');
     if (modeConflict) {
       return res.status(409).json({ 
         error: 'Mode conflict',
@@ -947,7 +685,7 @@ router.post('/autofish', auth, async (req, res) => {
     // Lock this user's autofish
     autofishInProgress.add(userId);
     autofishCooldowns.set(userId, now);
-    setFishingMode(userId, 'autofish');
+    setMode(userId, 'autofish');
     
     // Use transaction for atomic operations
     const result = await sequelize.transaction(async (transaction) => {

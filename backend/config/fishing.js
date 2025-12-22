@@ -118,6 +118,50 @@ const FISHING_CONFIG = {
       hardPity: 50,
       softPityBonus: 0.03
     }
+  },
+  
+  // === CASTING TIMING ===
+  casting: {
+    minWaitTime: 1500,    // Minimum time before fish bites (ms)
+    maxWaitTime: 6000     // Maximum time before fish bites (ms)
+  },
+  
+  // === STREAK BONUS SYSTEM ===
+  // Consecutive catches without missing award bonuses
+  streakBonuses: {
+    5: { 
+      pointsMultiplier: 1.1,   // +10% points from trades
+      message: '🔥 5 streak! +10% bonus!'
+    },
+    10: { 
+      pointsMultiplier: 1.2,   // +20% points
+      message: '🔥🔥 10 streak! +20% bonus!'
+    },
+    20: { 
+      pointsMultiplier: 1.3,   // +30% points
+      extraFishChance: 0.1,    // 10% chance for extra fish
+      message: '🔥🔥🔥 20 streak! +30% bonus + extra fish chance!'
+    },
+    50: { 
+      pointsMultiplier: 1.5,   // +50% points
+      extraFishChance: 0.2,    // 20% chance for extra fish
+      rarityBonus: 0.05,       // +5% rare+ chance
+      message: '🌟 LEGENDARY 50 STREAK! Maximum bonuses!'
+    }
+  },
+  
+  // === MERCY TIMER (Anti-Frustration) ===
+  // After consecutive misses, timing window increases
+  mercyTimer: {
+    missThreshold: 3,         // After 3 misses in a row
+    timingBonusPerMiss: 150,  // +150ms per miss over threshold
+    maxTimingBonus: 600       // Max +600ms bonus (caps at 3 mercy stacks)
+  },
+  
+  // === SESSION LIMITS (Exploit Prevention) ===
+  sessionLimits: {
+    maxActiveSessionsPerUser: 3,  // Max concurrent fishing sessions
+    maxMapSize: 10000             // Max entries in memory maps
   }
 };
 
@@ -364,6 +408,26 @@ const DAILY_CHALLENGES = {
     target: 10,
     reward: { premiumTickets: 1 },
     difficulty: 'hard'
+  },
+  streak_20: {
+    id: 'streak_20',
+    name: 'Master Angler',
+    description: 'Catch 20 fish in a row without missing',
+    type: 'streak',
+    target: 20,
+    reward: { premiumTickets: 2, points: 500 },
+    difficulty: 'legendary'
+  },
+  
+  // Autofish challenges
+  autofish_50: {
+    id: 'autofish_50',
+    name: 'Idle Fisher',
+    description: 'Catch 50 fish with autofish',
+    type: 'autofish_catch',
+    target: 50,
+    reward: { points: 200 },
+    difficulty: 'easy'
   }
 };
 
@@ -618,7 +682,7 @@ const TRADE_OPTIONS = [
     requiredRarity: 'epic',
     requiredQuantity: 1,
     rewardType: 'points',
-    rewardAmount: 250,  // Decreased from 350 for better rarity-value scaling
+    rewardAmount: 400,  // Adjusted for better rarity-value scaling (was 250)
     emoji: '🦈',
     category: 'points'
   },
