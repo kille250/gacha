@@ -101,6 +101,20 @@ const BannerPage = () => {
   
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
+  
+  // Helper to get disabled reason for tooltips
+  const getDisabledReason = useCallback((cost, isTicket = false, ticketCount = 0) => {
+    if (!pricingLoaded) return t('common.loading') || 'Loading...';
+    if (isRolling) return t('common.summoning') || 'Summoning...';
+    if (locked) return t('common.processing') || 'Processing...';
+    if (isTicket && ticketLoadError) return t('banner.ticketLoadError') || 'Ticket data unavailable';
+    if (isTicket && ticketCount < 1) return t('banner.notEnoughTickets') || 'Not enough tickets';
+    if (!isTicket && user?.points < cost) {
+      const needed = cost - (user?.points || 0);
+      return t('banner.needMorePoints', { count: needed }) || `Need ${needed} more points`;
+    }
+    return undefined;
+  }, [pricingLoaded, isRolling, locked, ticketLoadError, user?.points, t]);
 
   // Effects
   useEffect(() => {
@@ -362,6 +376,29 @@ const BannerPage = () => {
     setShowMultiResults(false);
     setIsRolling(false);
   }, [pendingMultiResults]);
+  
+  // Animation timeout fallback - prevents stuck states if animation fails
+  useEffect(() => {
+    if (showSummonAnimation && pendingCharacter) {
+      const timeout = setTimeout(() => {
+        console.warn('[Animation] Single summon timeout - forcing completion');
+        handleSummonComplete();
+      }, 15000); // Max 15 seconds for single animation
+      return () => clearTimeout(timeout);
+    }
+  }, [showSummonAnimation, pendingCharacter, handleSummonComplete]);
+  
+  useEffect(() => {
+    if (showMultiSummonAnimation && pendingMultiResults.length > 0) {
+      // Multi-summon can take longer: base 15s + 2s per character
+      const maxTime = 15000 + (pendingMultiResults.length * 2000);
+      const timeout = setTimeout(() => {
+        console.warn('[Animation] Multi-summon timeout - forcing completion');
+        handleMultiSummonComplete();
+      }, maxTime);
+      return () => clearTimeout(timeout);
+    }
+  }, [showMultiSummonAnimation, pendingMultiResults, handleMultiSummonComplete]);
 
   const getImagePath = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300?text=No+Image';
   const getBannerImage = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/1200x400?text=Banner';
@@ -669,6 +706,7 @@ const BannerPage = () => {
                 <PrimaryPullCard
                   onClick={() => handleRoll(false)} 
                   disabled={isRolling || !pricingLoaded || locked || user?.points < singlePullCost}
+                  title={getDisabledReason(singlePullCost)}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -693,6 +731,7 @@ const BannerPage = () => {
                         key={option.count}
                         onClick={() => handleMultiRoll(option.count, false)}
                         disabled={isRolling || !pricingLoaded || locked || !canAfford}
+                        title={getDisabledReason(option.finalCost)}
                         $canAfford={canAfford && pricingLoaded}
                         $isRecommended={option.count === 10}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}
@@ -745,7 +784,8 @@ const BannerPage = () => {
                     {tickets.rollTickets > 0 && (
                       <TicketPullButton
                         onClick={() => handleRoll(true, 'roll')}
-                        disabled={isRolling || locked || tickets.rollTickets < 1}
+                        disabled={isRolling || locked || tickets.rollTickets < 1 || ticketLoadError}
+                        title={getDisabledReason(0, true, tickets.rollTickets)}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -759,7 +799,8 @@ const BannerPage = () => {
                     {tickets.premiumTickets > 0 && (
                       <PremiumPullButton
                         onClick={() => handleRoll(true, 'premium')}
-                        disabled={isRolling || locked || tickets.premiumTickets < 1}
+                        disabled={isRolling || locked || tickets.premiumTickets < 1 || ticketLoadError}
+                        title={getDisabledReason(0, true, tickets.premiumTickets)}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -773,7 +814,8 @@ const BannerPage = () => {
                     {tickets.rollTickets >= 10 && (
                       <TicketPullButton
                         onClick={() => handleMultiRoll(10, true, 'roll')}
-                        disabled={isRolling || locked || tickets.rollTickets < 10}
+                        disabled={isRolling || locked || tickets.rollTickets < 10 || ticketLoadError}
+                        title={getDisabledReason(0, true, tickets.rollTickets >= 10 ? 10 : 0)}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
@@ -787,7 +829,8 @@ const BannerPage = () => {
                     {tickets.premiumTickets >= 10 && (
                       <PremiumPullButton
                         onClick={() => handleMultiRoll(10, true, 'premium')}
-                        disabled={isRolling || locked || tickets.premiumTickets < 10}
+                        disabled={isRolling || locked || tickets.premiumTickets < 10 || ticketLoadError}
+                        title={getDisabledReason(0, true, tickets.premiumTickets >= 10 ? 10 : 0)}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >

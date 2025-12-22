@@ -118,6 +118,7 @@ const FishingPage = () => {
   const [isAutofishing, setIsAutofishing] = useState(false);
   const [autofishLog, setAutofishLog] = useState([]);
   const autofishIntervalRef = useRef(null);
+  const autofishInFlightRef = useRef(false); // Prevent overlapping autofish requests
   
   // Trading post state
   const [showTradingPost, setShowTradingPost] = useState(false);
@@ -195,6 +196,8 @@ const FishingPage = () => {
       console.log('[Multiplayer] Disconnected from fishing server');
       setIsMultiplayerConnected(false);
       setOtherPlayers([]);
+      // Stop autofishing on disconnect to prevent orphaned requests
+      setIsAutofishing(false);
     });
     
     socket.on('connect_error', (err) => {
@@ -205,6 +208,8 @@ const FishingPage = () => {
     // Handle duplicate session (same user connected in another tab)
     socket.on('duplicate_session', (data) => {
       console.log('[Multiplayer] Duplicate session detected:', data.message);
+      // Stop autofishing immediately on duplicate session
+      setIsAutofishing(false);
       setNotification({
         type: 'error',
         message: tRef.current('fishing.duplicateSession') || 'Disconnected: You opened fishing in another tab'
@@ -469,6 +474,13 @@ const FishingPage = () => {
     
     // Single interval for autofishing
     autofishIntervalRef.current = setInterval(async () => {
+      // Skip if previous request still in flight (prevents overlap on slow network)
+      if (autofishInFlightRef.current) {
+        console.debug('[Autofish] Skipping - previous request still in flight');
+        return;
+      }
+      
+      autofishInFlightRef.current = true;
       try {
         const res = await api.post('/fishing/autofish');
         const result = res.data;
@@ -529,6 +541,8 @@ const FishingPage = () => {
           setIsAutofishing(false);
           showNotification(t('fishing.autofishError'), 'error');
         }
+      } finally {
+        autofishInFlightRef.current = false;
       }
     }, AUTOFISH_INTERVAL);
     
@@ -537,6 +551,7 @@ const FishingPage = () => {
         clearInterval(autofishIntervalRef.current);
         autofishIntervalRef.current = null;
       }
+      autofishInFlightRef.current = false;
     };
   }, [isAutofishing, setUser, t, showNotification]);
   

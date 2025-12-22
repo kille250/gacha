@@ -128,6 +128,18 @@ const RollPage = () => {
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
   
+  // Helper to get disabled reason for tooltips
+  const getDisabledReason = useCallback((cost) => {
+    if (!pricingLoaded) return t('common.loading') || 'Loading...';
+    if (isRolling) return t('common.summoning') || 'Summoning...';
+    if (locked) return t('common.processing') || 'Processing...';
+    if (user?.points < cost) {
+      const needed = cost - (user?.points || 0);
+      return t('roll.needMorePoints', { count: needed }) || `Need ${needed} more points`;
+    }
+    return undefined;
+  }, [pricingLoaded, isRolling, locked, user?.points, t]);
+  
   // Get dynamic rarity colors from context
   const { getRarityColor } = useRarity();
 
@@ -148,6 +160,12 @@ const RollPage = () => {
     // Use action lock to prevent rapid double-clicks
     await withLock(async () => {
       try {
+        // Validate INSIDE the lock to prevent race conditions from rapid clicks
+        if (user?.points < singlePullCost) {
+          setError(t('roll.notEnoughPoints', { count: 1, cost: singlePullCost }));
+          return;
+        }
+        
         setIsRolling(true);
         setShowCard(false);
         setShowMultiResults(false);
@@ -271,6 +289,29 @@ const RollPage = () => {
     setShowMultiResults(false);
     setIsRolling(false);
   }, [pendingMultiResults]);
+  
+  // Animation timeout fallback - prevents stuck states if animation fails
+  useEffect(() => {
+    if (showSummonAnimation && pendingCharacter) {
+      const timeout = setTimeout(() => {
+        console.warn('[Animation] Single summon timeout - forcing completion');
+        handleSummonComplete();
+      }, 15000); // Max 15 seconds for single animation
+      return () => clearTimeout(timeout);
+    }
+  }, [showSummonAnimation, pendingCharacter, handleSummonComplete]);
+  
+  useEffect(() => {
+    if (showMultiSummonAnimation && pendingMultiResults.length > 0) {
+      // Multi-summon can take longer: base 15s + 2s per character
+      const maxTime = 15000 + (pendingMultiResults.length * 2000);
+      const timeout = setTimeout(() => {
+        console.warn('[Animation] Multi-summon timeout - forcing completion');
+        handleMultiSummonComplete();
+      }, maxTime);
+      return () => clearTimeout(timeout);
+    }
+  }, [showMultiSummonAnimation, pendingMultiResults, handleMultiSummonComplete]);
   
   const getImagePath = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300?text=No+Image';
   
@@ -473,6 +514,7 @@ const RollPage = () => {
                 <PrimaryPullCard
                   onClick={handleRoll} 
                   disabled={isRolling || !pricingLoaded || locked || user?.points < singlePullCost}
+                  title={getDisabledReason(singlePullCost)}
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
@@ -497,6 +539,7 @@ const RollPage = () => {
                         key={option.count}
                         onClick={() => handleMultiRoll(option.count)}
                         disabled={isRolling || !pricingLoaded || locked || !canAfford}
+                        title={getDisabledReason(option.finalCost)}
                         $canAfford={canAfford && pricingLoaded}
                         $isRecommended={option.count === 10}
                         whileHover={{ scale: canAfford ? 1.03 : 1, y: canAfford ? -3 : 0 }}

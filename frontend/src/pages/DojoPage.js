@@ -375,11 +375,13 @@ const DojoPage = () => {
             onClick={handleClaim}
             disabled={!canClaim || claiming || locked}
             $canClaim={canClaim && !locked}
-            whileHover={canClaim ? { scale: 1.02 } : {}}
-            whileTap={canClaim ? { scale: 0.98 } : {}}
+            whileHover={canClaim && !locked ? { scale: 1.02 } : {}}
+            whileTap={canClaim && !locked ? { scale: 0.98 } : {}}
           >
             {claiming ? (
               <><MdAutorenew className="spin" /> {t('dojo.claiming')}</>
+            ) : locked ? (
+              <><MdAutorenew className="spin" /> {t('common.processing') || 'Processing...'}</>
             ) : canClaim ? (
               <>{t('dojo.claimRewards')}</>
             ) : (
