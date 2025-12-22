@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
 import api, { getAssetUrl } from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../utils/cacheManager';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import {
@@ -55,7 +56,10 @@ const CouponPage = () => {
       setRewardInfo(response.data);
       setCouponCode('');
       
-      // Update points immediately from response
+      // Invalidate caches - coupons can grant points, characters, or tickets
+      invalidateFor(CACHE_ACTIONS.COUPON_REDEEM);
+      
+      // Update points immediately from response (optimistic update)
       const { updatedPoints } = response.data;
       if (updatedPoints !== undefined && user) {
         setUser({ ...user, points: updatedPoints });

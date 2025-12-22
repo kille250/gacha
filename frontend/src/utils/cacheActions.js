@@ -129,6 +129,15 @@ export const AUTH_ACTIONS = {
 };
 
 // ===========================================
+// COUPON ACTIONS
+// ===========================================
+
+export const COUPON_ACTIONS = {
+  /** Redeeming a coupon - may grant points, characters, or tickets */
+  REDEEM: 'coupon:redeem',
+};
+
+// ===========================================
 // MODAL/VIEW ACTIONS
 // ===========================================
 
@@ -209,6 +218,9 @@ export const CACHE_ACTIONS = {
   AUTH_LOGOUT: AUTH_ACTIONS.LOGOUT,
   AUTH_REFRESH: AUTH_ACTIONS.REFRESH,
   AUTH_TOGGLE_R18: AUTH_ACTIONS.TOGGLE_R18,
+  
+  // Coupon
+  COUPON_REDEEM: COUPON_ACTIONS.REDEEM,
   
   // Modal/View (explicit cache invalidation before data fetch)
   MODAL_EQUIPMENT_OPEN: MODAL_ACTIONS.EQUIPMENT_OPEN,

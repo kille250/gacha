@@ -8,13 +8,13 @@ import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from
 import confetti from 'canvas-confetti';
 
 // API & Context
-import api, { getBannerById, getBannerPricing, getAssetUrl, rollOnBanner, multiRollOnBanner } from '../utils/api';
+import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { invalidateFor, CACHE_ACTIONS, onVisibilityChange } from '../utils/cacheManager';
-import { applyPointsUpdate } from '../utils/userStateUpdates';
+import { onVisibilityChange } from '../utils/cacheManager';
+import { executeBannerRoll, executeBannerMultiRoll } from '../utils/gachaActions';
 
 // Design System
 import {
@@ -195,6 +195,9 @@ const BannerPage = () => {
   
   // Refresh pricing when tab regains focus (handles admin pricing changes during session)
   // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
+  // 
+  // NOTE: Pricing is always refreshed on any visibility change (not just stale threshold)
+  // because admin pricing updates should be reflected immediately for accurate costs.
   useEffect(() => {
     if (!bannerId) return;
     
@@ -434,9 +437,9 @@ const BannerPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Use helper function with cache invalidation
-        const result = await rollOnBanner(bannerId, useTicket, ticketType);
-        const { character, updatedPoints, tickets: newTickets } = result;
+        // Use gachaActions helper - handles API call + cache invalidation + user state update
+        const result = await executeBannerRoll(bannerId, useTicket, ticketType, setUser);
+        const { character, tickets: newTickets } = result;
         
         // Clear pending roll state on success
         try {
@@ -444,12 +447,6 @@ const BannerPage = () => {
         } catch {
           // Ignore sessionStorage errors
         }
-        
-        // Update points immediately from response
-        applyPointsUpdate(setUser, updatedPoints);
-        
-        // Invalidate gacha roll caches (caller's responsibility)
-        invalidateFor(CACHE_ACTIONS.GACHA_ROLL_BANNER);
         
         // Update tickets if returned and broadcast to other tabs
         if (newTickets) {
@@ -583,9 +580,9 @@ const BannerPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Execute multi-roll
-        const result = await multiRollOnBanner(bannerId, count, useTickets, ticketType);
-        const { characters, updatedPoints, tickets: newTickets } = result;
+        // Use gachaActions helper - handles API call + cache invalidation + user state update
+        const result = await executeBannerMultiRoll(bannerId, count, useTickets, ticketType, setUser);
+        const { characters, tickets: newTickets } = result;
         
         // Clear pending roll state on success
         try {
@@ -593,12 +590,6 @@ const BannerPage = () => {
         } catch {
           // Ignore sessionStorage errors
         }
-        
-        // Update points immediately from response
-        applyPointsUpdate(setUser, updatedPoints);
-        
-        // Invalidate gacha roll caches (caller's responsibility)
-        invalidateFor(CACHE_ACTIONS.GACHA_ROLL_BANNER);
         
         // Update tickets if returned and broadcast to other tabs
         if (newTickets) {

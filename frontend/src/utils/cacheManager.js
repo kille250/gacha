@@ -18,7 +18,7 @@
 import { clearCache } from './api';
 
 // Re-export CACHE_ACTIONS for convenience
-export { CACHE_ACTIONS, FISHING_ACTIONS, DOJO_ACTIONS, GACHA_ACTIONS, ADMIN_ACTIONS, AUTH_ACTIONS, MODAL_ACTIONS } from './cacheActions';
+export { CACHE_ACTIONS, FISHING_ACTIONS, DOJO_ACTIONS, GACHA_ACTIONS, ADMIN_ACTIONS, AUTH_ACTIONS, COUPON_ACTIONS, MODAL_ACTIONS } from './cacheActions';
 
 // ===========================================
 // STALENESS THRESHOLDS
@@ -138,6 +138,14 @@ const GACHA_PATTERNS = {
   roll: ['/characters/collection', '/auth/me'],
   roll_banner: ['/characters/collection', '/auth/me', '/banners/user/tickets'],
   level_up: ['/characters/collection', '/auth/me']
+};
+
+/**
+ * Coupon action invalidation patterns
+ * Coupons can grant points, characters, or tickets - invalidate all relevant caches
+ */
+const COUPON_PATTERNS = {
+  redeem: ['/auth/me', '/characters/collection', '/banners/user/tickets']
 };
 
 /**
@@ -341,6 +349,11 @@ const ACTION_HANDLERS = {
   'gacha:level_up': () => invalidatePatterns(GACHA_PATTERNS.level_up),
 
   // ===========================================
+  // COUPON ACTIONS
+  // ===========================================
+  'coupon:redeem': () => invalidatePatterns(COUPON_PATTERNS.redeem),
+
+  // ===========================================
   // AUTH ACTIONS
   // ===========================================
   'auth:login': () => clearCache(),
@@ -450,6 +463,8 @@ export const getInvalidationPatterns = (action) => {
       return ADMIN_PATTERNS[actionName] || null;
     case 'gacha':
       return GACHA_PATTERNS[actionName] || null;
+    case 'coupon':
+      return COUPON_PATTERNS[actionName] || null;
     case 'modal':
       return MODAL_PATTERNS[actionName] || null;
     case 'auth':
@@ -532,7 +547,8 @@ export const enableCacheDebugging = () => {
       dojo: { ...DOJO_PATTERNS },
       admin: { ...ADMIN_PATTERNS },
       modal: { ...MODAL_PATTERNS },
-      gacha: { ...GACHA_PATTERNS }
+      gacha: { ...GACHA_PATTERNS },
+      coupon: { ...COUPON_PATTERNS }
     }),
 
     /**

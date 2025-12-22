@@ -8,13 +8,13 @@ import { useNavigate } from 'react-router-dom';
 import confetti from 'canvas-confetti';
 
 // API & Context
-import { rollCharacter, rollMultipleCharacters, getStandardPricing, getAssetUrl } from '../utils/api';
+import { getStandardPricing, getAssetUrl } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { invalidateFor, CACHE_ACTIONS, onVisibilityChange } from '../utils/cacheManager';
-import { applyPointsUpdate } from '../utils/userStateUpdates';
+import { onVisibilityChange } from '../utils/cacheManager';
+import { executeStandardRoll, executeStandardMultiRoll } from '../utils/gachaActions';
 
 // Design System
 import {
@@ -126,6 +126,9 @@ const RollPage = () => {
   
   // Refresh pricing when tab regains focus (handles admin pricing changes during session)
   // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
+  // 
+  // NOTE: Pricing is always refreshed on any visibility change (not just stale threshold)
+  // because admin pricing updates should be reflected immediately for accurate costs.
   useEffect(() => {
     return onVisibilityChange('roll-pricing', async () => {
       // Always refresh pricing on visibility change (pricing may have been updated by admin)
@@ -279,8 +282,8 @@ const RollPage = () => {
           // Ignore sessionStorage errors
         }
         
-        // Fetch character immediately
-        const result = await rollCharacter();
+        // Use gachaActions helper - handles API call + cache invalidation + user state update
+        const result = await executeStandardRoll(setUser);
         const { updatedPoints, ...character } = result;
         
         // Clear pending roll state on success
@@ -289,12 +292,6 @@ const RollPage = () => {
         } catch {
           // Ignore sessionStorage errors
         }
-        
-        // Update points immediately from response
-        applyPointsUpdate(setUser, updatedPoints);
-        
-        // Invalidate gacha roll caches (caller's responsibility)
-        invalidateFor(CACHE_ACTIONS.GACHA_ROLL);
         
         if (skipAnimations) {
           // Skip animation - show card directly
@@ -385,8 +382,9 @@ const RollPage = () => {
           // Ignore sessionStorage errors
         }
         
-        const result = await rollMultipleCharacters(count);
-        const { characters, updatedPoints } = result;
+        // Use gachaActions helper - handles API call + cache invalidation + user state update
+        const result = await executeStandardMultiRoll(count, setUser);
+        const { characters } = result;
         
         // Clear pending roll state on success
         try {
@@ -394,12 +392,6 @@ const RollPage = () => {
         } catch {
           // Ignore sessionStorage errors
         }
-        
-        // Update points immediately from response
-        applyPointsUpdate(setUser, updatedPoints);
-        
-        // Invalidate gacha roll caches (caller's responsibility)
-        invalidateFor(CACHE_ACTIONS.GACHA_ROLL);
         
         if (skipAnimations) {
           // Skip animation - show results directly

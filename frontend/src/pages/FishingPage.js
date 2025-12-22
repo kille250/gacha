@@ -414,7 +414,10 @@ const FishingPage = () => {
   
   // Visibility change handler - refresh stale fishing data when tab regains focus
   // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
-  // Cache invalidation is handled globally by cacheManager - this just refreshes UI state
+  // 
+  // CACHE DEPENDENCY: cacheManager.initVisibilityHandler() clears these at 'normal' threshold:
+  // - /fishing/info, /fishing/rank (via VISIBILITY_INVALIDATIONS.normal)
+  // This callback just re-fetches into component state after cache is cleared.
   useEffect(() => {
     return onVisibilityChange('fishing-data', async (staleLevel) => {
       // Only refresh if tab was hidden long enough to be considered stale
@@ -771,6 +774,11 @@ const FishingPage = () => {
   }, [showHelp, showLeaderboard]);
   
   // Handle missing fish (defined first as it's used by startFishing)
+  // NOTE: Misses do NOT invalidate caches because:
+  // - No fish/points are granted (no inventory/auth change)
+  // - Server records the miss but it doesn't affect client-visible state
+  // - Challenge progress for "catch" challenges only counts successes
+  // - Fresh data is fetched on visibility change or next successful catch
   const handleMiss = useCallback(async (sid) => {
     try {
       const res = await api.post('/fishing/catch', { sessionId: sid });
