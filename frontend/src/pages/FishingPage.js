@@ -171,6 +171,11 @@ const FishingPage = () => {
   // NEW: Daily autofish limits
   const [dailyStats, setDailyStats] = useState(null);
   
+  // Prestige system state
+  const [prestigeData, setPrestigeData] = useState(null);
+  const [showPrestigeModal, setShowPrestigeModal] = useState(false);
+  const [claimingPrestige, setClaimingPrestige] = useState(false);
+  
   // Mobile UI: More menu (overflow menu for secondary actions)
   const [showMoreMenu, setShowMoreMenu] = useState(false);
   const moreMenuRef = useRef(null);
@@ -394,16 +399,18 @@ const FishingPage = () => {
     });
   }, [gameState, isMultiplayerConnected, lastResult]);
   
-  // Fetch fish info and rank on mount
+  // Fetch fish info, rank, and prestige on mount
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fishRes, rankRes] = await Promise.all([
+        const [fishRes, rankRes, prestigeRes] = await Promise.all([
           api.get('/fishing/info'),
-          api.get('/fishing/rank')
+          api.get('/fishing/rank'),
+          api.get('/fishing/prestige')
         ]);
         setFishInfo(fishRes.data);
         setRankData(rankRes.data);
+        setPrestigeData(prestigeRes.data);
         
         // Set initial daily stats from rank response
         if (rankRes.data.autofish) {
@@ -450,12 +457,14 @@ const FishingPage = () => {
       // Only refresh if tab was hidden long enough to be considered stale
       if (staleLevel === 'critical' || staleLevel === 'normal' || staleLevel === 'static') {
         try {
-          const [fishRes, rankRes] = await Promise.all([
+          const [fishRes, rankRes, prestigeRes] = await Promise.all([
             api.get('/fishing/info'),
-            api.get('/fishing/rank')
+            api.get('/fishing/rank'),
+            api.get('/fishing/prestige')
           ]);
           setFishInfo(fishRes.data);
           setRankData(rankRes.data);
+          setPrestigeData(prestigeRes.data);
           
           // Update daily stats from fresh info
           if (fishRes.data.daily) {
@@ -1211,6 +1220,19 @@ const FishingPage = () => {
               <span>{playerCount}</span>
             </MultiplayerBadge>
           )}
+          {/* Prestige Badge - tappable, shows current level */}
+          <PrestigeBadge 
+            onClick={() => setShowPrestigeModal(true)}
+            $level={prestigeData?.currentLevel || 0}
+            title={prestigeData?.currentName || t('fishing.noviceAngler')}
+          >
+            <PrestigeEmoji>{prestigeData?.currentEmoji || '🎣'}</PrestigeEmoji>
+            <PrestigeName>
+              {prestigeData?.currentLevel > 0 
+                ? prestigeData.currentName?.split(' ')[0] 
+                : t('fishing.novice') || 'Novice'}
+            </PrestigeName>
+          </PrestigeBadge>
           {/* Autofish button - primary action, always visible */}
           <AutofishButton 
             onClick={toggleAutofish} 
@@ -1239,6 +1261,14 @@ const FishingPage = () => {
                   exit={{ opacity: 0, y: -10, scale: 0.95 }}
                   transition={{ duration: 0.15 }}
                 >
+                  {/* Prestige info - first in menu for visibility */}
+                  {prestigeData && (
+                    <MoreMenuItem onClick={() => { setShowPrestigeModal(true); setShowMoreMenu(false); }}>
+                      <span>{prestigeData.currentEmoji || '🎣'}</span>
+                      <span>{prestigeData.currentName || t('fishing.noviceAngler')}</span>
+                      {prestigeData.canPrestige && <MoreMenuBadge $glow>!</MoreMenuBadge>}
+                    </MoreMenuItem>
+                  )}
                   {/* Rank info */}
                   {rankData && (
                     <MoreMenuItem onClick={() => { setShowLeaderboard(true); setShowMoreMenu(false); }}>
@@ -2138,6 +2168,257 @@ const FishingPage = () => {
                       </EquipmentCard>
                     ))}
                   </EquipmentList>
+                )}
+              </ModalBody>
+            </CozyModal>
+          </ModalOverlay>
+        )}
+      </AnimatePresence>
+      
+      {/* Prestige Modal */}
+      <AnimatePresence>
+        {showPrestigeModal && (
+          <ModalOverlay
+            variants={motionVariants.overlay}
+            initial="hidden"
+            animate="visible"
+            exit="exit"
+            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowPrestigeModal(false); }}
+          >
+            <CozyModal variants={motionVariants.modal}>
+              <ModalHeader>
+                <ModalTitle>
+                  <span style={{ marginRight: '8px' }}>{prestigeData?.currentEmoji || '🎣'}</span>
+                  {t('fishing.prestige') || 'Prestige'}
+                </ModalTitle>
+                <CloseButton onClick={() => setShowPrestigeModal(false)}><MdClose /></CloseButton>
+              </ModalHeader>
+              <ModalBody>
+                {prestigeData ? (
+                  <>
+                    {/* Current Level Display */}
+                    <PrestigeCurrentLevel $level={prestigeData.currentLevel}>
+                      <PrestigeLevelEmoji>{prestigeData.currentEmoji || '🎣'}</PrestigeLevelEmoji>
+                      <PrestigeLevelInfo>
+                        <PrestigeLevelTitle>{prestigeData.currentName || t('fishing.noviceAngler')}</PrestigeLevelTitle>
+                        <PrestigeLevelSubtitle>
+                          {prestigeData.currentLevel > 0 
+                            ? t('fishing.prestigeLevel', { level: prestigeData.currentLevel, max: 5 }) || `Prestige Level ${prestigeData.currentLevel} of 5`
+                            : t('fishing.notPrestigedYet') || 'Not prestiged yet'}
+                        </PrestigeLevelSubtitle>
+                      </PrestigeLevelInfo>
+                    </PrestigeCurrentLevel>
+                    
+                    {/* Active Bonuses */}
+                    {prestigeData.currentLevel > 0 && prestigeData.currentBonuses && (
+                      <PrestigeBonusSection>
+                        <PrestigeSectionTitle>{t('fishing.activeBonuses') || 'Active Bonuses'}</PrestigeSectionTitle>
+                        <PrestigeBonusList>
+                          {prestigeData.currentBonuses.timingBonus > 0 && (
+                            <PrestigeBonusItem>
+                              <span>⏱️</span>
+                              <span>+{prestigeData.currentBonuses.timingBonus}ms {t('fishing.timingWindow') || 'timing window'}</span>
+                            </PrestigeBonusItem>
+                          )}
+                          {prestigeData.currentBonuses.rarityBonus > 0 && (
+                            <PrestigeBonusItem>
+                              <span>✨</span>
+                              <span>+{Math.round(prestigeData.currentBonuses.rarityBonus * 100)}% {t('fishing.rareChance') || 'rare fish chance'}</span>
+                            </PrestigeBonusItem>
+                          )}
+                          {prestigeData.currentBonuses.autofishLimit > 0 && (
+                            <PrestigeBonusItem>
+                              <span>🔄</span>
+                              <span>+{prestigeData.currentBonuses.autofishLimit} {t('fishing.dailyAutofish') || 'daily autofish'}</span>
+                            </PrestigeBonusItem>
+                          )}
+                          {prestigeData.currentBonuses.premiumTicketBonus > 0 && (
+                            <PrestigeBonusItem>
+                              <span>🌟</span>
+                              <span>+{prestigeData.currentBonuses.premiumTicketBonus} {t('fishing.dailyPremiumTickets') || 'daily premium tickets'}</span>
+                            </PrestigeBonusItem>
+                          )}
+                          {prestigeData.currentBonuses.autofishPerfectChance > 0 && (
+                            <PrestigeBonusItem>
+                              <span>⭐</span>
+                              <span>{Math.round(prestigeData.currentBonuses.autofishPerfectChance * 100)}% {t('fishing.autofishPerfect') || 'autofish perfect chance'}</span>
+                            </PrestigeBonusItem>
+                          )}
+                          {prestigeData.currentBonuses.pityReduction > 0 && (
+                            <PrestigeBonusItem>
+                              <span>🐋</span>
+                              <span>{Math.round(prestigeData.currentBonuses.pityReduction * 100)}% {t('fishing.fasterPity') || 'faster pity buildup'}</span>
+                            </PrestigeBonusItem>
+                          )}
+                        </PrestigeBonusList>
+                      </PrestigeBonusSection>
+                    )}
+                    
+                    {/* Next Level Progress */}
+                    {!prestigeData.progress?.maxPrestige && prestigeData.progress?.nextLevelInfo && (
+                      <PrestigeProgressSection>
+                        <PrestigeSectionTitle>
+                          {t('fishing.nextLevel') || 'Next Level'}: {prestigeData.progress.nextLevelInfo.emoji} {prestigeData.progress.nextLevelInfo.name}
+                        </PrestigeSectionTitle>
+                        <PrestigeDescription>{prestigeData.progress.nextLevelInfo.description}</PrestigeDescription>
+                        
+                        {/* Overall Progress Bar */}
+                        <PrestigeOverallProgress>
+                          <PrestigeProgressBarWrapper>
+                            <PrestigeProgressFill $percent={prestigeData.progress.overallProgress || 0} />
+                          </PrestigeProgressBarWrapper>
+                          <PrestigeProgressPercent>{prestigeData.progress.overallProgress || 0}%</PrestigeProgressPercent>
+                        </PrestigeOverallProgress>
+                        
+                        {/* Detailed Requirements */}
+                        <PrestigeRequirementsList>
+                          {prestigeData.progress.progress?.catches && (
+                            <PrestigeRequirementItem $complete={prestigeData.progress.progress.catches.percent >= 100}>
+                              <PrestigeReqIcon>{prestigeData.progress.progress.catches.percent >= 100 ? '✓' : '🐟'}</PrestigeReqIcon>
+                              <PrestigeReqContent>
+                                <PrestigeReqLabel>{t('fishing.totalCatches') || 'Total Catches'}</PrestigeReqLabel>
+                                <PrestigeReqBar>
+                                  <PrestigeReqFill $percent={prestigeData.progress.progress.catches.percent} />
+                                </PrestigeReqBar>
+                                <PrestigeReqValue>
+                                  {prestigeData.progress.progress.catches.current.toLocaleString()} / {prestigeData.progress.progress.catches.required.toLocaleString()}
+                                </PrestigeReqValue>
+                              </PrestigeReqContent>
+                            </PrestigeRequirementItem>
+                          )}
+                          {prestigeData.progress.progress?.legendaries && (
+                            <PrestigeRequirementItem $complete={prestigeData.progress.progress.legendaries.percent >= 100}>
+                              <PrestigeReqIcon>{prestigeData.progress.progress.legendaries.percent >= 100 ? '✓' : '🐋'}</PrestigeReqIcon>
+                              <PrestigeReqContent>
+                                <PrestigeReqLabel>{t('fishing.legendaryCatches') || 'Legendary Catches'}</PrestigeReqLabel>
+                                <PrestigeReqBar>
+                                  <PrestigeReqFill $percent={prestigeData.progress.progress.legendaries.percent} />
+                                </PrestigeReqBar>
+                                <PrestigeReqValue>
+                                  {prestigeData.progress.progress.legendaries.current} / {prestigeData.progress.progress.legendaries.required}
+                                </PrestigeReqValue>
+                              </PrestigeReqContent>
+                            </PrestigeRequirementItem>
+                          )}
+                          {prestigeData.progress.progress?.perfects && (
+                            <PrestigeRequirementItem $complete={prestigeData.progress.progress.perfects.percent >= 100}>
+                              <PrestigeReqIcon>{prestigeData.progress.progress.perfects.percent >= 100 ? '✓' : '⭐'}</PrestigeReqIcon>
+                              <PrestigeReqContent>
+                                <PrestigeReqLabel>{t('fishing.perfectCatches') || 'Perfect Catches'}</PrestigeReqLabel>
+                                <PrestigeReqBar>
+                                  <PrestigeReqFill $percent={prestigeData.progress.progress.perfects.percent} />
+                                </PrestigeReqBar>
+                                <PrestigeReqValue>
+                                  {prestigeData.progress.progress.perfects.current} / {prestigeData.progress.progress.perfects.required}
+                                </PrestigeReqValue>
+                              </PrestigeReqContent>
+                            </PrestigeRequirementItem>
+                          )}
+                          {prestigeData.progress.progress?.streak && (
+                            <PrestigeRequirementItem $complete={prestigeData.progress.progress.streak.percent >= 100}>
+                              <PrestigeReqIcon>{prestigeData.progress.progress.streak.percent >= 100 ? '✓' : '🔥'}</PrestigeReqIcon>
+                              <PrestigeReqContent>
+                                <PrestigeReqLabel>{t('fishing.longestStreak') || 'Longest Streak'}</PrestigeReqLabel>
+                                <PrestigeReqBar>
+                                  <PrestigeReqFill $percent={prestigeData.progress.progress.streak.percent} />
+                                </PrestigeReqBar>
+                                <PrestigeReqValue>
+                                  {prestigeData.progress.progress.streak.current} / {prestigeData.progress.progress.streak.required}
+                                </PrestigeReqValue>
+                              </PrestigeReqContent>
+                            </PrestigeRequirementItem>
+                          )}
+                          {prestigeData.progress.progress?.challenges && (
+                            <PrestigeRequirementItem $complete={prestigeData.progress.progress.challenges.percent >= 100}>
+                              <PrestigeReqIcon>{prestigeData.progress.progress.challenges.percent >= 100 ? '✓' : '🏆'}</PrestigeReqIcon>
+                              <PrestigeReqContent>
+                                <PrestigeReqLabel>{t('fishing.challengesCompleted') || 'Challenges Completed'}</PrestigeReqLabel>
+                                <PrestigeReqBar>
+                                  <PrestigeReqFill $percent={prestigeData.progress.progress.challenges.percent} />
+                                </PrestigeReqBar>
+                                <PrestigeReqValue>
+                                  {prestigeData.progress.progress.challenges.current} / {prestigeData.progress.progress.challenges.required}
+                                </PrestigeReqValue>
+                              </PrestigeReqContent>
+                            </PrestigeRequirementItem>
+                          )}
+                        </PrestigeRequirementsList>
+                        
+                        {/* Claim Button */}
+                        {prestigeData.canPrestige && (
+                          <PrestigeClaimButton
+                            onClick={async () => {
+                              setClaimingPrestige(true);
+                              try {
+                                const res = await api.post('/fishing/prestige/claim');
+                                setPrestigeData(prev => ({
+                                  ...prev,
+                                  currentLevel: res.data.newLevel,
+                                  currentName: res.data.levelName,
+                                  currentEmoji: res.data.levelEmoji,
+                                  currentBonuses: res.data.newBonuses,
+                                  canPrestige: false
+                                }));
+                                showNotification(res.data.message, 'success');
+                                // Refresh full prestige data
+                                const freshData = await api.get('/fishing/prestige');
+                                setPrestigeData(freshData.data);
+                                // Refresh user for updated points
+                                await refreshUser();
+                              } catch (err) {
+                                showNotification(err.response?.data?.message || t('fishing.errors.claimFailed'), 'error');
+                              } finally {
+                                setClaimingPrestige(false);
+                              }
+                            }}
+                            disabled={claimingPrestige}
+                            whileHover={{ scale: 1.02 }}
+                            whileTap={{ scale: 0.98 }}
+                          >
+                            {claimingPrestige ? '...' : (t('fishing.claimPrestige') || '🎉 Claim Prestige!')}
+                          </PrestigeClaimButton>
+                        )}
+                      </PrestigeProgressSection>
+                    )}
+                    
+                    {/* Max Prestige Message */}
+                    {prestigeData.progress?.maxPrestige && (
+                      <PrestigeMaxLevel>
+                        <PrestigeMaxIcon>🌟</PrestigeMaxIcon>
+                        <PrestigeMaxText>{t('fishing.maxPrestige') || 'Maximum Prestige Achieved!'}</PrestigeMaxText>
+                        <PrestigeMaxSubtext>{t('fishing.maxPrestigeDesc') || 'You have mastered the art of fishing.'}</PrestigeMaxSubtext>
+                      </PrestigeMaxLevel>
+                    )}
+                    
+                    {/* All Levels Overview */}
+                    {prestigeData.allLevels && (
+                      <PrestigeLevelsOverview>
+                        <PrestigeSectionTitle>{t('fishing.allLevels') || 'All Prestige Levels'}</PrestigeSectionTitle>
+                        <PrestigeLevelsList>
+                          {prestigeData.allLevels.map(level => (
+                            <PrestigeLevelCard 
+                              key={level.level} 
+                              $unlocked={level.unlocked} 
+                              $current={level.current}
+                            >
+                              <PrestigeLevelCardEmoji>{level.emoji}</PrestigeLevelCardEmoji>
+                              <PrestigeLevelCardInfo>
+                                <PrestigeLevelCardName $unlocked={level.unlocked}>{level.name}</PrestigeLevelCardName>
+                                {level.current && <PrestigeLevelCardBadge>{t('fishing.current') || 'Current'}</PrestigeLevelCardBadge>}
+                              </PrestigeLevelCardInfo>
+                              {level.unlocked && !level.current && <PrestigeLevelCardCheck>✓</PrestigeLevelCardCheck>}
+                              {!level.unlocked && <PrestigeLevelCardLock>🔒</PrestigeLevelCardLock>}
+                            </PrestigeLevelCard>
+                          ))}
+                        </PrestigeLevelsList>
+                      </PrestigeLevelsOverview>
+                    )}
+                  </>
+                ) : (
+                  <TradingLoadingState>
+                    <FaFish className="loading-fish" />
+                    <span>{t('common.loading')}</span>
+                  </TradingLoadingState>
                 )}
               </ModalBody>
             </CozyModal>
@@ -4854,6 +5135,388 @@ const LockedBadge = styled.div`
   color: #795548;
   font-size: 12px;
   font-weight: 600;
+`;
+
+// ==================== PRESTIGE STYLED COMPONENTS ====================
+
+const getPrestigeGradient = (level) => {
+  switch (level) {
+    case 1: return 'linear-gradient(180deg, #cd7f32 0%, #8b4513 100%)'; // Bronze
+    case 2: return 'linear-gradient(180deg, #c0c0c0 0%, #808080 100%)'; // Silver
+    case 3: return 'linear-gradient(180deg, #ffd700 0%, #b8860b 100%)'; // Gold
+    case 4: return 'linear-gradient(180deg, #ff6b00 0%, #cc5500 100%)'; // Legendary
+    case 5: return 'linear-gradient(180deg, #9c27b0 0%, #6a1b9a 100%)'; // Mythic
+    default: return 'linear-gradient(180deg, #78909c 0%, #546e7a 100%)'; // Novice
+  }
+};
+
+const getPrestigeBorder = (level) => {
+  switch (level) {
+    case 1: return '#5a3d0a'; // Bronze
+    case 2: return '#606060'; // Silver
+    case 3: return '#8b6914'; // Gold
+    case 4: return '#993d00'; // Legendary
+    case 5: return '#4a148c'; // Mythic
+    default: return '#37474f'; // Novice
+  }
+};
+
+const PrestigeBadge = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 12px;
+  background: ${props => getPrestigeGradient(props.$level)};
+  border: 2px solid ${props => getPrestigeBorder(props.$level)};
+  border-radius: 16px;
+  color: #fff8e1;
+  font-weight: 700;
+  font-size: 12px;
+  cursor: pointer;
+  transition: all 0.2s;
+  box-shadow: 
+    inset 0 1px 0 rgba(255,255,255,0.3),
+    0 2px 4px rgba(0,0,0,0.3),
+    ${props => props.$level > 0 ? `0 0 8px ${props.$level >= 3 ? 'rgba(255, 215, 0, 0.4)' : 'rgba(200, 160, 80, 0.3)'}` : 'none'};
+  flex-shrink: 0;
+  
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 
+      inset 0 1px 0 rgba(255,255,255,0.3),
+      0 3px 6px rgba(0,0,0,0.3),
+      ${props => props.$level > 0 ? `0 0 12px ${props.$level >= 3 ? 'rgba(255, 215, 0, 0.6)' : 'rgba(200, 160, 80, 0.5)'}` : 'none'};
+  }
+  
+  @media (max-width: 600px) {
+    padding: 5px 8px;
+    font-size: 11px;
+    gap: 4px;
+  }
+  
+  @media (max-width: 400px) {
+    /* Hide text, show only emoji on very small screens */
+    padding: 5px 6px;
+    
+    span:last-child {
+      display: none;
+    }
+  }
+`;
+
+const PrestigeEmoji = styled.span`
+  font-size: 14px;
+  
+  @media (max-width: 600px) {
+    font-size: 12px;
+  }
+`;
+
+const PrestigeName = styled.span`
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 80px;
+  
+  @media (max-width: 600px) {
+    max-width: 50px;
+  }
+`;
+
+const PrestigeCurrentLevel = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  padding: 20px;
+  background: ${props => getPrestigeGradient(props.$level)};
+  border-radius: 16px;
+  margin-bottom: 20px;
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.2),
+    0 4px 12px rgba(0,0,0,0.3);
+`;
+
+const PrestigeLevelEmoji = styled.div`
+  font-size: 48px;
+  line-height: 1;
+  
+  @media (max-width: 400px) {
+    font-size: 36px;
+  }
+`;
+
+const PrestigeLevelInfo = styled.div`
+  flex: 1;
+`;
+
+const PrestigeLevelTitle = styled.div`
+  font-size: 20px;
+  font-weight: 800;
+  color: white;
+  text-shadow: 0 2px 4px rgba(0,0,0,0.3);
+  
+  @media (max-width: 400px) {
+    font-size: 16px;
+  }
+`;
+
+const PrestigeLevelSubtitle = styled.div`
+  font-size: 13px;
+  color: rgba(255,255,255,0.8);
+  margin-top: 4px;
+`;
+
+const PrestigeBonusSection = styled.div`
+  background: rgba(76, 175, 80, 0.1);
+  border: 2px solid rgba(76, 175, 80, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+`;
+
+const PrestigeSectionTitle = styled.div`
+  font-size: 14px;
+  font-weight: 700;
+  color: #5d4037;
+  margin-bottom: 12px;
+`;
+
+const PrestigeBonusList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const PrestigeBonusItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 13px;
+  color: #4caf50;
+  font-weight: 600;
+  
+  span:first-child {
+    font-size: 16px;
+  }
+`;
+
+const PrestigeProgressSection = styled.div`
+  background: rgba(255, 193, 7, 0.1);
+  border: 2px solid rgba(255, 193, 7, 0.3);
+  border-radius: 12px;
+  padding: 16px;
+  margin-bottom: 20px;
+`;
+
+const PrestigeDescription = styled.div`
+  font-size: 12px;
+  color: #795548;
+  font-style: italic;
+  margin-bottom: 16px;
+`;
+
+const PrestigeOverallProgress = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 16px;
+`;
+
+const PrestigeProgressBarWrapper = styled.div`
+  flex: 1;
+  height: 12px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 6px;
+  overflow: hidden;
+`;
+
+const PrestigeProgressFill = styled.div`
+  height: 100%;
+  width: ${props => props.$percent}%;
+  background: linear-gradient(90deg, #ffc107 0%, #ff9800 100%);
+  border-radius: 6px;
+  transition: width 0.3s ease;
+`;
+
+const PrestigeProgressPercent = styled.div`
+  font-size: 14px;
+  font-weight: 700;
+  color: #ff9800;
+  min-width: 40px;
+  text-align: right;
+`;
+
+const PrestigeRequirementsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+`;
+
+const PrestigeRequirementItem = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  opacity: ${props => props.$complete ? 0.7 : 1};
+`;
+
+const PrestigeReqIcon = styled.div`
+  font-size: 16px;
+  width: 24px;
+  text-align: center;
+  flex-shrink: 0;
+`;
+
+const PrestigeReqContent = styled.div`
+  flex: 1;
+`;
+
+const PrestigeReqLabel = styled.div`
+  font-size: 12px;
+  font-weight: 600;
+  color: #5d4037;
+  margin-bottom: 4px;
+`;
+
+const PrestigeReqBar = styled.div`
+  height: 6px;
+  background: rgba(0,0,0,0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: 2px;
+`;
+
+const PrestigeReqFill = styled.div`
+  height: 100%;
+  width: ${props => Math.min(props.$percent, 100)}%;
+  background: ${props => props.$percent >= 100 
+    ? 'linear-gradient(90deg, #4caf50 0%, #66bb6a 100%)' 
+    : 'linear-gradient(90deg, #ffc107 0%, #ff9800 100%)'};
+  border-radius: 3px;
+  transition: width 0.3s ease;
+`;
+
+const PrestigeReqValue = styled.div`
+  font-size: 11px;
+  color: #8d6e63;
+`;
+
+const PrestigeClaimButton = styled(motion.button)`
+  width: 100%;
+  padding: 14px 20px;
+  margin-top: 16px;
+  background: linear-gradient(180deg, #4caf50 0%, #388e3c 100%);
+  border: 3px solid #2e7d32;
+  border-radius: 12px;
+  color: white;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  box-shadow: 
+    inset 0 2px 0 rgba(255,255,255,0.3),
+    0 4px 0 #1b5e20,
+    0 0 20px rgba(76, 175, 80, 0.5);
+  
+  &:hover:not(:disabled) {
+    background: linear-gradient(180deg, #66bb6a 0%, #4caf50 100%);
+  }
+  
+  &:disabled {
+    opacity: 0.7;
+    cursor: not-allowed;
+  }
+`;
+
+const PrestigeMaxLevel = styled.div`
+  text-align: center;
+  padding: 30px 20px;
+  background: linear-gradient(180deg, rgba(156, 39, 176, 0.15) 0%, rgba(106, 27, 154, 0.15) 100%);
+  border: 2px solid rgba(156, 39, 176, 0.3);
+  border-radius: 16px;
+  margin-bottom: 20px;
+`;
+
+const PrestigeMaxIcon = styled.div`
+  font-size: 48px;
+  margin-bottom: 12px;
+`;
+
+const PrestigeMaxText = styled.div`
+  font-size: 18px;
+  font-weight: 800;
+  color: #9c27b0;
+  margin-bottom: 8px;
+`;
+
+const PrestigeMaxSubtext = styled.div`
+  font-size: 13px;
+  color: #7b1fa2;
+`;
+
+const PrestigeLevelsOverview = styled.div`
+  margin-top: 20px;
+`;
+
+const PrestigeLevelsList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+`;
+
+const PrestigeLevelCard = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: ${props => props.$current 
+    ? 'linear-gradient(180deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.2) 100%)'
+    : props.$unlocked 
+      ? 'rgba(76, 175, 80, 0.1)' 
+      : 'rgba(0, 0, 0, 0.05)'};
+  border: 2px solid ${props => props.$current 
+    ? 'rgba(255, 193, 7, 0.5)' 
+    : props.$unlocked 
+      ? 'rgba(76, 175, 80, 0.3)' 
+      : 'rgba(0, 0, 0, 0.1)'};
+  border-radius: 12px;
+  opacity: ${props => props.$unlocked ? 1 : 0.6};
+`;
+
+const PrestigeLevelCardEmoji = styled.div`
+  font-size: 24px;
+`;
+
+const PrestigeLevelCardInfo = styled.div`
+  flex: 1;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-wrap: wrap;
+`;
+
+const PrestigeLevelCardName = styled.div`
+  font-size: 14px;
+  font-weight: 700;
+  color: ${props => props.$unlocked ? '#5d4037' : '#9e9e9e'};
+`;
+
+const PrestigeLevelCardBadge = styled.div`
+  padding: 2px 8px;
+  background: linear-gradient(180deg, #ffc107 0%, #ff9800 100%);
+  border-radius: 10px;
+  font-size: 10px;
+  font-weight: 700;
+  color: #5d4037;
+`;
+
+const PrestigeLevelCardCheck = styled.div`
+  color: #4caf50;
+  font-weight: 700;
+  font-size: 16px;
+`;
+
+const PrestigeLevelCardLock = styled.div`
+  font-size: 16px;
+  opacity: 0.5;
 `;
 
 export default FishingPage;
