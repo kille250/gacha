@@ -773,7 +773,7 @@ const FishingPage = () => {
       const updatedChallenges = await getFishingChallenges();
       setChallenges(updatedChallenges);
     } catch (err) {
-      showNotification(err.response?.data?.error || 'Failed to claim challenge', 'error');
+      showNotification(err.response?.data?.error || t('fishing.errors.claimFailed'), 'error');
     }
   }, [setUser, showNotification]);
   
@@ -790,9 +790,9 @@ const FishingPage = () => {
       ]);
       setAreas(areasData);
       setFishInfo(fishRes.data);
-      showNotification(`Switched to ${areasData.areas.find(a => a.id === areaId)?.name}!`, 'success');
+      showNotification(t('fishing.switchedTo', { area: areasData.areas.find(a => a.id === areaId)?.name }), 'success');
     } catch (err) {
-      showNotification(err.response?.data?.error || 'Failed to switch area', 'error');
+      showNotification(err.response?.data?.error || t('fishing.errors.switchAreaFailed'), 'error');
     } finally {
       setEquipmentActionLoading(false);
     }
@@ -821,7 +821,7 @@ const FishingPage = () => {
         'rank_required': t('fishing.errors.rankRequired') || 'Higher rank required',
         'insufficient_points': t('fishing.errors.notEnoughPoints') || 'Not enough coins'
       };
-      showNotification(errorMessages[errorCode] || err.response?.data?.message || 'Failed to unlock area', 'error');
+      showNotification(errorMessages[errorCode] || err.response?.data?.message || t('fishing.errors.unlockAreaFailed'), 'error');
       // Refresh user to sync state after failure
       await refreshUser();
     } finally {
@@ -852,7 +852,7 @@ const FishingPage = () => {
         'prestige_required': t('fishing.errors.prestigeRequired') || 'Higher prestige level required',
         'insufficient_points': t('fishing.errors.notEnoughPoints') || 'Not enough coins'
       };
-      showNotification(errorMessages[errorCode] || err.response?.data?.message || 'Failed to buy rod', 'error');
+      showNotification(errorMessages[errorCode] || err.response?.data?.message || t('fishing.errors.buyRodFailed'), 'error');
       // Refresh user to sync state after failure
       await refreshUser();
     } finally {
@@ -866,7 +866,7 @@ const FishingPage = () => {
     setEquipmentActionLoading(true);
     try {
       const result = await equipFishingRod(rodId);
-      showNotification(`Equipped ${result.rod?.name || 'rod'}!`, 'success');
+      showNotification(t('fishing.equippedRod', { rod: result.rod?.name || t('fishing.rods') }), 'success');
       
       // Refresh rods and fish info
       const [rodsData, fishRes] = await Promise.all([
@@ -881,7 +881,7 @@ const FishingPage = () => {
         'not_owned': t('fishing.errors.notOwned') || 'You don\'t own this rod',
         'not_found': t('fishing.errors.notFound') || 'Rod not found'
       };
-      showNotification(errorMessages[errorCode] || err.response?.data?.message || 'Failed to equip rod', 'error');
+      showNotification(errorMessages[errorCode] || err.response?.data?.message || t('fishing.errors.equipRodFailed'), 'error');
     } finally {
       setEquipmentActionLoading(false);
     }
@@ -931,7 +931,7 @@ const FishingPage = () => {
           </PointsDisplay>
           {/* Autofish button - now available to everyone */}
           <AutofishButtonWrapper>
-            <AutofishButton onClick={toggleAutofish} $active={isAutofishing} title={dailyStats ? `${dailyStats.remaining}/${dailyStats.limit} remaining today` : ''}>
+            <AutofishButton onClick={toggleAutofish} $active={isAutofishing} title={dailyStats ? `${dailyStats.remaining}/${dailyStats.limit} ${t('fishing.remainingToday')}` : ''}>
               <MdAutorenew className={isAutofishing ? 'spinning' : ''} />
             </AutofishButton>
             {dailyStats && (
@@ -1012,7 +1012,7 @@ const FishingPage = () => {
         {fishInfo?.pity && (
           <>
             <StatDivider />
-            <StatItem title={`${fishInfo.pity.legendary.current}/${fishInfo.pity.legendary.hardPity} casts`}>
+            <StatItem title={`${fishInfo.pity.legendary.current}/${fishInfo.pity.legendary.hardPity} ${t('fishing.casts').toLowerCase()}`}>
               <PityBar>
                 <PityFill 
                   $progress={fishInfo.pity.legendary.progress} 
@@ -1020,7 +1020,7 @@ const FishingPage = () => {
                   $color="#ffc107"
                 />
               </PityBar>
-              <StatLabel>🐋 Pity</StatLabel>
+              <StatLabel>🐋 {t('fishing.pity')}</StatLabel>
             </StatItem>
           </>
         )}
@@ -1223,7 +1223,7 @@ const FishingPage = () => {
                         <FishItem key={fish.rarity} $color={getRarityColor(fish.rarity)}>
                           <FishEmoji>{fish.emoji}</FishEmoji>
                           <FishRarity $color={getRarityColor(fish.rarity)}>
-                            {fish.rarity.charAt(0).toUpperCase() + fish.rarity.slice(1)}
+                            {t(`fishing.${fish.rarity}`)}
                           </FishRarity>
                           <FishDifficulty>{fish.difficulty}</FishDifficulty>
                         </FishItem>
@@ -1544,7 +1544,7 @@ const FishingPage = () => {
                         <ChallengeHeader>
                           <ChallengeName>{challenge.name}</ChallengeName>
                           <DifficultyBadge $difficulty={challenge.difficulty}>
-                            {challenge.difficulty}
+                            {t(`fishing.difficulty.${challenge.difficulty}`) || challenge.difficulty}
                           </DifficultyBadge>
                         </ChallengeHeader>
                         <ChallengeDescription>{challenge.description}</ChallengeDescription>
@@ -1654,7 +1654,7 @@ const FishingPage = () => {
                             $canAfford={user?.points >= area.unlockCost}
                           >
                             <span>🪙 {area.unlockCost.toLocaleString()}</span>
-                            {area.unlockRank && <span style={{ fontSize: '10px', opacity: 0.8 }}>Rank #{area.unlockRank}+</span>}
+                            {area.unlockRank && <span style={{ fontSize: '10px', opacity: 0.8 }}>{t('fishing.rankRequired', { rank: area.unlockRank })}</span>}
                           </UnlockButton>
                         )}
                       </EquipmentCard>
@@ -1692,7 +1692,7 @@ const FishingPage = () => {
                             {equipmentActionLoading ? '...' : (t('fishing.equip') || 'Equip')}
                           </SelectButton>
                         ) : rod.locked ? (
-                          <LockedBadge>🔒 Prestige {rod.requiresPrestige}</LockedBadge>
+                          <LockedBadge>🔒 {t('fishing.prestigeRequired', { level: rod.requiresPrestige })}</LockedBadge>
                         ) : (
                           <BuyButton 
                             onClick={() => handleBuyRod(rod.id)}
