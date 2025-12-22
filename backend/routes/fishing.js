@@ -62,7 +62,9 @@ const {
   calculateMercyBonus,
   applyStreakBonus,
   checkFishingModeConflict,
-  setFishingMode
+  setFishingMode,
+  getUserPrestigeAutofishBonus,
+  buildPremiumStatus
 } = require('../services/fishingService');
 
 // Extract daily limits from config
@@ -681,14 +683,9 @@ router.get('/info', auth, async (req, res) => {
     // Get daily data for limits display
     const daily = user ? getOrResetDailyData(user) : null;
     const rank = await getUserRank(req.user.id);
-    // Use new premium status object for proper bonus calculation
-    const premiumStatus = {
-      tickets: user?.premiumTickets || 0,
-      usedToday: daily?.ticketsUsed?.premium || 0
-    };
-    const prestigeBonus = user?.fishingAchievements?.prestige 
-      ? require('../config/fishing/prestige').getPrestigeBonuses(user.fishingAchievements.prestige).autofishLimit 
-      : 0;
+    // Use helper functions for cleaner code
+    const premiumStatus = buildPremiumStatus(user, daily);
+    const prestigeBonus = getUserPrestigeAutofishBonus(user);
     const autofishLimit = getAutofishLimit(rank, premiumStatus, prestigeBonus);
     
     res.json({
@@ -732,23 +729,19 @@ router.get('/rank', auth, async (req, res) => {
     const totalUsers = await getTotalUsers();
     const hasPremium = (user.premiumTickets || 0) > 0;
     
+    // Get current daily usage FIRST (was causing undefined bug)
+    const daily = getOrResetDailyData(user);
+    
     // NEW: Everyone can autofish with daily limits
     // Rank now affects daily limit, not unlock status
     // Use new premium status format
-    const premiumStatusRank = {
-      tickets: user.premiumTickets || 0,
-      usedToday: daily?.ticketsUsed?.premium || 0
-    };
+    // Use helper functions for cleaner code
+    const premiumStatusRank = buildPremiumStatus(user, daily);
     const hasPremiumBonus = (premiumStatusRank.usedToday > 0) || (premiumStatusRank.tickets >= 3);
-    const prestigeBonusRank = user.fishingAchievements?.prestige 
-      ? require('../config/fishing/prestige').getPrestigeBonuses(user.fishingAchievements.prestige).autofishLimit 
-      : 0;
+    const prestigeBonusRank = getUserPrestigeAutofishBonus(user);
     const autofishLimit = getAutofishLimit(rank, premiumStatusRank, prestigeBonusRank);
     const baseLimit = FISHING_CONFIG.autofish.baseDailyLimit;
     const bonusFromRank = autofishLimit - baseLimit - (hasPremiumBonus ? Math.floor(baseLimit * 0.5) : 0) - prestigeBonusRank;
-    
-    // Get current daily usage
-    const daily = getOrResetDailyData(user);
     
     // Determine rank tier for display
     let rankTier = 'none';
@@ -887,13 +880,9 @@ router.post('/autofish', auth, async (req, res) => {
       const daily = getOrResetDailyData(user);
       const currentRank = await getUserRank(userId);
       const hasPremium = (user.premiumTickets || 0) > 0;
-      const premiumStatusAuto = {
-        tickets: user.premiumTickets || 0,
-        usedToday: daily?.ticketsUsed?.premium || 0
-      };
-      const prestigeBonusAuto = user.fishingAchievements?.prestige 
-        ? require('../config/fishing/prestige').getPrestigeBonuses(user.fishingAchievements.prestige).autofishLimit 
-        : 0;
+      // Use helper functions for cleaner code
+      const premiumStatusAuto = buildPremiumStatus(user, daily);
+      const prestigeBonusAuto = getUserPrestigeAutofishBonus(user);
       const dailyLimit = getAutofishLimit(currentRank, premiumStatusAuto, prestigeBonusAuto);
       
       // Check if user has reached daily limit
@@ -1669,13 +1658,9 @@ router.get('/daily', auth, async (req, res) => {
     const daily = getOrResetDailyData(user);
     const rank = await getUserRank(req.user.id);
     const hasPremium = (user.premiumTickets || 0) > 0;
-    const premiumStatusDaily = {
-      tickets: user.premiumTickets || 0,
-      usedToday: daily?.ticketsUsed?.premium || 0
-    };
-    const prestigeBonusDaily = user.fishingAchievements?.prestige 
-      ? require('../config/fishing/prestige').getPrestigeBonuses(user.fishingAchievements.prestige).autofishLimit 
-      : 0;
+    // Use helper functions for cleaner code
+    const premiumStatusDaily = buildPremiumStatus(user, daily);
+    const prestigeBonusDaily = getUserPrestigeAutofishBonus(user);
     const autofishLimit = getAutofishLimit(rank, premiumStatusDaily, prestigeBonusDaily);
     
     // Save if reset occurred
@@ -1826,11 +1811,23 @@ router.post('/trade', auth, async (req, res) => {
     }
     
     // Get user's inventory with lock
-    const inventory = await FishInventory.findAll({
-      where: { userId },
-      lock: transaction.LOCK.UPDATE,
-      transaction
-    });
+    // Optimization: Only load needed rarity for non-collection trades
+    let inventory;
+    if (tradeOption.requiredRarity === 'collection') {
+      // Collection trades need all fish
+      inventory = await FishInventory.findAll({
+        where: { userId },
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+    } else {
+      // Regular trades only need the specific rarity
+      inventory = await FishInventory.findAll({
+        where: { userId, rarity: tradeOption.requiredRarity },
+        lock: transaction.LOCK.UPDATE,
+        transaction
+      });
+    }
     
     const totals = calculateFishTotals(inventory);
     

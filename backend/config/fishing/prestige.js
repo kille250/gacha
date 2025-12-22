@@ -5,6 +5,9 @@
  * Each prestige level requires achievements and offers permanent bonuses.
  */
 
+// Import directly from parent to avoid circular dependency (index.js imports this file)
+const { FISH_TYPES } = require('../fishing');
+
 const PRESTIGE_LEVELS = {
   1: {
     name: 'Journeyman Angler',
@@ -156,9 +159,8 @@ function checkPrestigeRequirements(achievements, stats, areas, ownedRods, target
   }
 
   if (req.collectionComplete) {
-    // This would need to be checked against fish types - simplified here
     const uniqueFishCaught = Object.keys(stats.fishCaught || {}).length;
-    const totalFishTypes = 16; // From FISH_TYPES
+    const totalFishTypes = FISH_TYPES.length;
     if (uniqueFishCaught < totalFishTypes) {
       missing.push(`Catch all fish species (${uniqueFishCaught}/${totalFishTypes})`);
     }

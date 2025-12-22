@@ -19,6 +19,9 @@ const {
   generateDailyChallenges
 } = require('../config/fishing');
 
+const { getPrestigeBonuses } = require('../config/fishing/prestige');
+const { buildCollectionData, getCollectionBonuses } = require('../config/fishing/collection');
+
 /**
  * Update pity counters based on catch result
  * Epic counter correctly resets on legendary catches too
@@ -384,6 +387,63 @@ function setFishingMode(userFishingMode, userId, mode) {
   userFishingMode.set(userId, { mode, lastActivity: Date.now() });
 }
 
+/**
+ * Get user's prestige autofish limit bonus
+ * Reduces redundant code across routes
+ * @param {Object} user - User model instance
+ * @returns {number} - Bonus autofish limit from prestige
+ */
+function getUserPrestigeAutofishBonus(user) {
+  const prestige = user?.fishingAchievements?.prestige;
+  return prestige ? getPrestigeBonuses(prestige).autofishLimit : 0;
+}
+
+/**
+ * Get all cumulative bonuses for a user (prestige + collection)
+ * Single source of truth for bonus calculations
+ * @param {Object} user - User model instance
+ * @returns {Object} - Combined bonuses { timing, rarity, autofish, pity, premium, autofishPerfect, pityReduction, unlocks }
+ */
+function getUserBonuses(user) {
+  const achievements = user?.fishingAchievements || {};
+  const stats = user?.fishingStats || {};
+  const prestige = achievements.prestige || 0;
+  
+  // Get prestige bonuses
+  const prestigeBonuses = getPrestigeBonuses(prestige);
+  
+  // Get collection bonuses
+  const collection = buildCollectionData(stats.fishCaught || {}, FISH_TYPES);
+  const collectionBonuses = getCollectionBonuses(collection);
+  
+  return {
+    timing: prestigeBonuses.timingBonus + collectionBonuses.timingBonus,
+    rarity: prestigeBonuses.rarityBonus + collectionBonuses.rarityBonus,
+    autofish: prestigeBonuses.autofishLimit + (collectionBonuses.autofishBonus || 0),
+    pity: collectionBonuses.pityBonus || 0,
+    premium: prestigeBonuses.premiumTicketBonus || 0,
+    autofishPerfect: prestigeBonuses.autofishPerfectChance || 0,
+    pityReduction: prestigeBonuses.pityReduction || 0,
+    unlocks: prestigeBonuses.unlocks || [],
+    // Include source breakdown for transparency
+    _prestige: prestigeBonuses,
+    _collection: collectionBonuses
+  };
+}
+
+/**
+ * Build premium status object for autofish limit calculation
+ * @param {Object} user - User model instance
+ * @param {Object} daily - Daily data from getOrResetDailyData
+ * @returns {Object} - { tickets, usedToday }
+ */
+function buildPremiumStatus(user, daily) {
+  return {
+    tickets: user?.premiumTickets || 0,
+    usedToday: daily?.ticketsUsed?.premium || 0
+  };
+}
+
 module.exports = {
   // Pity & Daily
   updatePityCounters,
@@ -407,6 +467,11 @@ module.exports = {
   
   // Mode management
   checkFishingModeConflict,
-  setFishingMode
+  setFishingMode,
+  
+  // Bonus helpers (reduces code redundancy)
+  getUserPrestigeAutofishBonus,
+  getUserBonuses,
+  buildPremiumStatus
 };
 
