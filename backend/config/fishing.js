@@ -809,11 +809,19 @@ function calculateFishTotals(inventory) {
 
 /**
  * Calculate autofish daily limit for a user based on rank and premium status
+ * 
+ * UPDATED: Premium bonus now requires ACTIVE premium status, not just holding tickets.
+ * Users get premium bonus if they have consumed premium tickets today OR have 3+ tickets.
+ * This prevents hoarding tickets without using them.
+ * 
  * @param {number} rank - User's current rank
- * @param {boolean} hasPremiumTickets - Whether user has any premium tickets
+ * @param {boolean|Object} premiumStatus - Whether user has premium status
+ *   - If boolean: legacy mode (has any premium tickets)
+ *   - If object: { tickets, usedToday } for proper calculation
+ * @param {number} prestigeBonus - Additional limit from prestige level (default 0)
  * @returns {number} - Daily autofish limit
  */
-function getAutofishLimit(rank, hasPremiumTickets = false) {
+function getAutofishLimit(rank, premiumStatus = false, prestigeBonus = 0) {
   const config = FISHING_CONFIG.autofish;
   let limit = config.baseDailyLimit;
   
@@ -831,9 +839,23 @@ function getAutofishLimit(rank, hasPremiumTickets = false) {
   }
   
   // Apply premium multiplier
-  if (hasPremiumTickets) {
+  // New logic: Premium bonus requires ACTIVE usage or substantial holdings
+  let hasPremiumBonus = false;
+  if (typeof premiumStatus === 'object' && premiumStatus !== null) {
+    // New format: check for active premium
+    // Premium if: used premium tickets today OR has 3+ tickets
+    hasPremiumBonus = (premiumStatus.usedToday > 0) || (premiumStatus.tickets >= 3);
+  } else {
+    // Legacy boolean format (backwards compatible)
+    hasPremiumBonus = !!premiumStatus;
+  }
+  
+  if (hasPremiumBonus) {
     limit = Math.floor(limit * config.premiumMultiplier);
   }
+  
+  // Apply prestige bonus (additive, not multiplicative)
+  limit += prestigeBonus;
   
   return limit;
 }

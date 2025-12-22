@@ -71,11 +71,17 @@ function getOrResetDailyData(user) {
       tradesCompleted: 0,
       pointsFromTrades: 0,
       ticketsEarned: { roll: 0, premium: 0 },
+      ticketsUsed: { roll: 0, premium: 0 },  // NEW: Track tickets consumed today
       // Streak tracking
       currentStreak: 0,
       bestStreak: 0,
       missStreak: 0
     };
+  }
+  
+  // Ensure ticketsUsed exists for backwards compatibility
+  if (!daily.ticketsUsed) {
+    daily.ticketsUsed = { roll: 0, premium: 0 };
   }
   
   return daily;
