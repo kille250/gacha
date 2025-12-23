@@ -187,8 +187,9 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   
-  // Build key for failed attempt tracking (IP-based for login since user unknown)
-  const attemptKey = `login:${req.deviceSignals?.ipHash || 'unknown'}`;
+  // Build key for failed attempt tracking
+  // Key must match format used in captchaMiddleware: `${userId || 'anon'}:${ipHash}`
+  const attemptKey = `anon:${req.deviceSignals?.ipHash || 'unknown'}`;
   
   // SECURITY: Check if IP is locked out due to too many failed attempts
   const lockoutStatus = checkLockout(attemptKey);
@@ -678,7 +679,8 @@ router.get('/me', auth, async (req, res) => {
 // Security: enforcement checked, rate limited, CAPTCHA protected
 router.put('/profile/email', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('account_link')], async (req, res) => {
   const { email } = req.body;
-  const attemptKey = `email:${req.user.id}`;
+  // Key must match format used in captchaMiddleware: `${userId}:${ipHash}`
+  const attemptKey = `${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
   
   // Validate email
   const emailValidation = validateEmail(email);
@@ -733,7 +735,8 @@ router.put('/profile/email', [auth, enforcementMiddleware, sensitiveActionLimite
 // Security: rate limited, CAPTCHA protected, enforcement checked
 router.put('/profile/password', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('password_change')], async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  const attemptKey = `password:${req.user.id}`;
+  // Key must match format used in captchaMiddleware: `${userId}:${ipHash}`
+  const attemptKey = `${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
   
   // Validate new password
   const passwordValidation = validatePassword(newPassword);
@@ -857,7 +860,8 @@ router.put('/profile/username', [auth, enforcementMiddleware, sensitiveActionLim
 // Security: rate limited, CAPTCHA protected, enforcement checked
 router.post('/reset-account', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('password_change')], async (req, res) => {
   const { password, confirmationText } = req.body;
-  const attemptKey = `reset:${req.user.id}`;
+  // Key must match format used in captchaMiddleware: `${userId}:${ipHash}`
+  const attemptKey = `${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
   
   // Security: Require exact confirmation text
   const REQUIRED_CONFIRMATION = 'RESET MY ACCOUNT';

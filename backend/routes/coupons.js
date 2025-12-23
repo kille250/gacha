@@ -198,7 +198,8 @@ router.delete('/admin/:id', [auth, adminAuth], async (req, res) => {
 // USER: Redeem a coupon
 // Security: enforcement checked, policy enforced, rate limited, CAPTCHA protected
 router.post('/redeem', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canRedeemCoupon'), captchaMiddleware('coupon_redeem')], async (req, res) => {
-  const attemptKey = `coupon:${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
+  // Key must match format used in captchaMiddleware: `${userId}:${ipHash}`
+  const attemptKey = `${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
   
   try {
     const { code } = req.body;
