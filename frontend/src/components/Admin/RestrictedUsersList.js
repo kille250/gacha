@@ -10,6 +10,7 @@ import { FaBan, FaSync, FaEye, FaUsers } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getRestrictedUsers } from '../../utils/api';
+import { RESTRICTION_COLORS, getRiskColor } from '../../constants/securityConstants';
 import {
   HeaderRow,
   SectionTitle,
@@ -18,14 +19,6 @@ import {
   Select,
 } from './AdminStyles';
 import BulkActionsModal from './BulkActionsModal';
-
-const RESTRICTION_COLORS = {
-  perm_ban: '#ff3b30',
-  temp_ban: '#ff9500',
-  shadowban: '#8e8e93',
-  rate_limited: '#af52de',
-  warning: '#ffcc00'
-};
 
 const RestrictedUsersList = ({ onViewUser, onSuccess }) => {
   const { t } = useTranslation();
@@ -90,28 +83,29 @@ const RestrictedUsersList = ({ onViewUser, onSuccess }) => {
     >
       <HeaderRow>
         <SectionTitle>
-          <FaBan /> Restricted Users
-          <ItemCount>{users.length} users</ItemCount>
+          <FaBan /> {t('admin.security.restrictedUsers')}
+          <ItemCount>{users.length} {t('admin.users')}</ItemCount>
         </SectionTitle>
         <HeaderActions>
           <TypeFilter 
             value={typeFilter} 
             onChange={(e) => setTypeFilter(e.target.value)}
+            aria-label={t('admin.security.restrictionType')}
           >
-            <option value="">All Types</option>
-            <option value="perm_ban">Permanent Ban ({stats.perm_ban || 0})</option>
-            <option value="temp_ban">Temporary Ban ({stats.temp_ban || 0})</option>
-            <option value="shadowban">Shadowban ({stats.shadowban || 0})</option>
-            <option value="rate_limited">Rate Limited ({stats.rate_limited || 0})</option>
-            <option value="warning">Warning ({stats.warning || 0})</option>
+            <option value="">{t('admin.security.allTypes')}</option>
+            <option value="perm_ban">{t('admin.security.permanentBan')} ({stats.perm_ban || 0})</option>
+            <option value="temp_ban">{t('admin.security.temporaryBan')} ({stats.temp_ban || 0})</option>
+            <option value="shadowban">{t('admin.security.shadowban')} ({stats.shadowban || 0})</option>
+            <option value="rate_limited">{t('admin.security.rateLimited')} ({stats.rate_limited || 0})</option>
+            <option value="warning">{t('admin.security.warning')} ({stats.warning || 0})</option>
           </TypeFilter>
           {selectedUsers.length > 0 && (
-            <BulkButton onClick={() => setShowBulkActions(true)}>
-              <FaUsers /> Bulk Action ({selectedUsers.length})
+            <BulkButton onClick={() => setShowBulkActions(true)} aria-label={t('admin.security.bulkActionSelected', { count: selectedUsers.length })}>
+              <FaUsers aria-hidden="true" /> {t('admin.security.bulkAction')} ({selectedUsers.length})
             </BulkButton>
           )}
-          <SecondaryButton onClick={fetchUsers} disabled={loading}>
-            <FaSync className={loading ? 'spin' : ''} />
+          <SecondaryButton onClick={fetchUsers} disabled={loading} aria-label={t('admin.security.refresh')}>
+            <FaSync className={loading ? 'spin' : ''} aria-hidden="true" />
           </SecondaryButton>
         </HeaderActions>
       </HeaderRow>
@@ -126,21 +120,21 @@ const RestrictedUsersList = ({ onViewUser, onSuccess }) => {
             />
           </HeaderCell>
           <HeaderCell>{t('admin.username')}</HeaderCell>
-          <HeaderCell $width="120px">Type</HeaderCell>
-          <HeaderCell $width="150px">Reason</HeaderCell>
-          <HeaderCell $width="100px">Expires</HeaderCell>
-          <HeaderCell $width="80px">Risk</HeaderCell>
-          <HeaderCell $width="80px">Warnings</HeaderCell>
-          <HeaderCell $width="80px">Actions</HeaderCell>
+          <HeaderCell $width="120px">{t('admin.security.restrictionType')}</HeaderCell>
+          <HeaderCell $width="150px">{t('admin.security.reason')}</HeaderCell>
+          <HeaderCell $width="100px">{t('admin.security.expires')}</HeaderCell>
+          <HeaderCell $width="80px">{t('admin.security.risk')}</HeaderCell>
+          <HeaderCell $width="80px">{t('admin.security.warnings')}</HeaderCell>
+          <HeaderCell $width="80px">{t('admin.security.actions')}</HeaderCell>
         </TableHeader>
         
         <TableBody>
           {loading ? (
             <LoadingRow>
-              <FaSync className="spin" /> Loading...
+              <FaSync className="spin" /> {t('common.loading')}
             </LoadingRow>
           ) : users.length === 0 ? (
-            <EmptyRow>No restricted users found</EmptyRow>
+            <EmptyRow>{t('admin.security.noRestrictedUsers')}</EmptyRow>
           ) : (
             <AnimatePresence>
               {users.map((user) => {
@@ -184,8 +178,8 @@ const RestrictedUsersList = ({ onViewUser, onSuccess }) => {
                       {user.warningCount > 0 ? `⚠️ ${user.warningCount}` : '—'}
                     </Cell>
                     <Cell $width="80px">
-                      <ActionButton onClick={() => onViewUser(user.id)}>
-                        <FaEye />
+                      <ActionButton onClick={() => onViewUser(user.id)} aria-label={t('admin.security.viewUserDetails')}>
+                        <FaEye aria-hidden="true" />
                       </ActionButton>
                     </Cell>
                   </TableRow>
@@ -341,16 +335,8 @@ const RiskBadge = styled.span`
   border-radius: ${theme.radius.full};
   font-size: ${theme.fontSizes.xs};
   font-weight: ${theme.fontWeights.bold};
-  background: ${props => {
-    if (props.$score >= 70) return 'rgba(255, 59, 48, 0.15)';
-    if (props.$score >= 50) return 'rgba(255, 149, 0, 0.15)';
-    return 'rgba(52, 199, 89, 0.15)';
-  }};
-  color: ${props => {
-    if (props.$score >= 70) return '#ff3b30';
-    if (props.$score >= 50) return '#ff9500';
-    return '#34c759';
-  }};
+  background: ${props => `${getRiskColor(props.$score)}20`};
+  color: ${props => getRiskColor(props.$score)};
 `;
 
 const ActionButton = styled.button`

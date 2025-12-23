@@ -14,18 +14,13 @@ import {
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getSecurityAlerts } from '../../utils/api';
+import { SEVERITY_COLORS } from '../../constants/securityConstants';
 
 const ALERT_ICONS = {
   'security': FaShieldAlt,
   'anomaly': FaExclamationCircle,
   'policy': FaLock,
   'auth': FaUserSecret,
-};
-
-const SEVERITY_COLORS = {
-  critical: '#ff3b30',
-  warning: '#ff9500',
-  info: '#007aff',
 };
 
 const SecurityAlerts = ({ maxAlerts = 10, autoRefresh = true, refreshInterval = 30000 }) => {
@@ -107,10 +102,10 @@ const SecurityAlerts = ({ maxAlerts = 10, autoRefresh = true, refreshInterval = 
           </HeaderTitle>
           <AlertCounts>
             {criticalCount > 0 && (
-              <CountBadge $severity="critical">{criticalCount} critical</CountBadge>
+              <CountBadge $severity="critical">{criticalCount} {t('admin.security.critical')}</CountBadge>
             )}
             {warningCount > 0 && (
-              <CountBadge $severity="warning">{warningCount} warnings</CountBadge>
+              <CountBadge $severity="warning">{warningCount} {t('admin.security.warnings')}</CountBadge>
             )}
           </AlertCounts>
         </HeaderLeft>

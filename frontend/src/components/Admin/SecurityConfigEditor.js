@@ -10,6 +10,7 @@ import { AnimatePresence } from 'framer-motion';
 import { 
   FaCog, FaSave, FaUndo, FaExclamationTriangle 
 } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../styles/DesignSystem';
 import { getSecurityConfig, updateSecurityConfig } from '../../utils/api';
 import {
@@ -26,17 +27,18 @@ import {
   SecondaryButton,
 } from './AdminStyles';
 
-const CATEGORY_LABELS = {
-  risk_thresholds: 'Risk Scoring',
-  risk_weights: 'Risk Weights',
-  rate_limits: 'Rate Limits',
-  captcha: 'CAPTCHA Settings',
-  policies: 'Policy Settings',
-  enforcement: 'Enforcement Penalties',
-  lockout: 'Lockout Settings'
+const CATEGORY_KEYS = {
+  risk_thresholds: 'riskThresholds',
+  risk_weights: 'riskWeights',
+  rate_limits: 'rateLimits',
+  captcha: 'captcha',
+  policies: 'policies',
+  enforcement: 'enforcement',
+  lockout: 'lockout'
 };
 
 const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
+  const { t } = useTranslation();
   const [config, setConfig] = useState(null);
   const [editedValues, setEditedValues] = useState({});
   const [loading, setLoading] = useState(true);
@@ -167,7 +169,7 @@ const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
         >
           <ModalHeader>
             <ModalTitle>
-              <FaCog /> Edit Security Configuration
+              <FaCog /> {t('admin.security.editConfiguration')}
             </ModalTitle>
             <CloseButton onClick={onClose}>×</CloseButton>
           </ModalHeader>
@@ -175,25 +177,28 @@ const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
           {!showConfirm ? (
             <>
               <CategoryTabs>
-                {config?.config && Object.keys(config.config).map(category => (
-                  <CategoryTab
-                    key={category}
-                    $active={activeCategory === category}
-                    onClick={() => setActiveCategory(category)}
-                  >
-                    {CATEGORY_LABELS[category] || category}
-                  </CategoryTab>
-                ))}
+                {config?.config && Object.keys(config.config).map(category => {
+                  const categoryKey = CATEGORY_KEYS[category] || category;
+                  return (
+                    <CategoryTab
+                      key={category}
+                      $active={activeCategory === category}
+                      onClick={() => setActiveCategory(category)}
+                    >
+                      {t(`admin.security.configCategories.${categoryKey}`, category)}
+                    </CategoryTab>
+                  );
+                })}
               </CategoryTabs>
               
               <ModalBody>
                 {loading ? (
-                  <LoadingText>Loading configuration...</LoadingText>
+                  <LoadingText>{t('admin.security.loadingConfig')}</LoadingText>
                 ) : (
                   <ConfigForm>
                     {activeCategory === 'rate_limits' && (
                       <InfoNote>
-                        ⚡ Note: Changes to rate limit <strong>WINDOW</strong> values (time periods) require a server restart to take effect. MAX values update within 60 seconds.
+                        ⚡ {t('admin.security.rateLimitNote')}
                       </InfoNote>
                     )}
                     {config?.config?.[activeCategory]?.map(item => (
@@ -216,13 +221,13 @@ const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
               
               <ModalFooter>
                 <SecondaryButton onClick={handleReset} disabled={!hasChanges}>
-                  <FaUndo /> Reset
+                  <FaUndo /> {t('admin.security.resetForm')}
                 </SecondaryButton>
                 <PrimaryButton 
                   onClick={() => setShowConfirm(true)} 
                   disabled={!hasChanges || saving}
                 >
-                  <FaSave /> Save Changes
+                  <FaSave /> {t('admin.security.saveChanges')}
                 </PrimaryButton>
               </ModalFooter>
             </>
@@ -231,16 +236,16 @@ const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
               <WarningIcon>
                 <FaExclamationTriangle />
               </WarningIcon>
-              <ConfirmTitle>Confirm Configuration Changes</ConfirmTitle>
+              <ConfirmTitle>{t('admin.security.confirmChanges')}</ConfirmTitle>
               <ConfirmText>
-                You are about to modify security settings. These changes will take effect immediately and may affect user experience.
+                {t('admin.security.confirmChangesText')}
               </ConfirmText>
               <WarningNote>
-                ⚠️ Note: Rate limit and lockout changes may take up to 60 seconds to propagate across all servers.
+                ⚠️ {t('admin.security.propagationNote')}
               </WarningNote>
               
               <ChangesList>
-                <ChangesTitle>Changes to be applied:</ChangesTitle>
+                <ChangesTitle>{t('admin.security.changesToApply')}:</ChangesTitle>
                 {Object.entries(getChangedValues()).map(([key, value]) => (
                   <ChangeItem key={key}>
                     <span>{formatKeyName(key)}</span>
@@ -251,10 +256,10 @@ const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
               
               <ConfirmButtons>
                 <SecondaryButton onClick={() => setShowConfirm(false)}>
-                  Cancel
+                  {t('common.cancel')}
                 </SecondaryButton>
                 <DangerButton onClick={handleSave} disabled={saving}>
-                  {saving ? 'Saving...' : 'Confirm & Save'}
+                  {saving ? t('common.saving') : t('admin.security.confirmSave')}
                 </DangerButton>
               </ConfirmButtons>
             </ConfirmPanel>

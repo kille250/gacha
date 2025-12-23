@@ -17,6 +17,12 @@ import {
   warnUser, resetUserWarnings, clearUserDevices,
   recalculateUserRisk, resetUserRisk
 } from '../../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../../cache';
+import { 
+  RESTRICTION_TYPES, 
+  DURATION_OPTIONS, 
+  getRestrictionColor 
+} from '../../constants/securityConstants';
 import LinkedAccountsModal from './LinkedAccountsModal';
 import DeviceHistoryPanel from './DeviceHistoryPanel';
 import SessionActivityPanel from './SessionActivityPanel';
@@ -35,23 +41,6 @@ import {
   PrimaryButton,
   SecondaryButton,
 } from './AdminStyles';
-
-const RESTRICTION_TYPES = [
-  { value: 'none', label: 'No Restriction', color: '#34c759' },
-  { value: 'warning', label: 'Warning', color: '#ffcc00' },
-  { value: 'rate_limited', label: 'Rate Limited', color: '#af52de' },
-  { value: 'shadowban', label: 'Shadowban', color: '#8e8e93' },
-  { value: 'temp_ban', label: 'Temporary Ban', color: '#ff9500' },
-  { value: 'perm_ban', label: 'Permanent Ban', color: '#ff3b30' },
-];
-
-const DURATION_OPTIONS = [
-  { value: '1h', label: '1 Hour' },
-  { value: '6h', label: '6 Hours' },
-  { value: '24h', label: '24 Hours' },
-  { value: '7d', label: '7 Days' },
-  { value: '30d', label: '30 Days' },
-];
 
 const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => {
   const { t } = useTranslation();
@@ -122,7 +111,8 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
     setActionLoading(true);
     try {
       if (restrictionForm.restrictionType === 'none') {
-        await unrestrictUser(userId, restrictionForm.reason || 'Restriction removed');
+        await unrestrictUser(userId, restrictionForm.reason || t('admin.security.restrictionRemovedDefault'));
+        invalidateFor(CACHE_ACTIONS.ADMIN_UNRESTRICT_USER);
       } else {
         await restrictUser(userId, {
           restrictionType: restrictionForm.restrictionType,
@@ -130,6 +120,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
             ? restrictionForm.duration : null,
           reason: restrictionForm.reason
         });
+        invalidateFor(CACHE_ACTIONS.ADMIN_RESTRICT_USER);
       }
       onSuccess(t('admin.security.restrictionApplied'));
       setShowPermBanConfirm(false);
@@ -160,6 +151,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
     setActionLoading(true);
     try {
       await warnUser(userId, warningReason);
+      invalidateFor(CACHE_ACTIONS.ADMIN_WARN_USER);
       onSuccess(t('admin.security.warningIssued'));
       setWarningReason('');
       fetchUserSecurity();
@@ -176,6 +168,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
     setActionLoading(true);
     try {
       await resetUserWarnings(userId);
+      invalidateFor(CACHE_ACTIONS.ADMIN_RESET_WARNINGS);
       onSuccess(t('admin.security.warningsReset'));
       fetchUserSecurity();
     } catch (err) {
@@ -186,12 +179,13 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
   };
   
   const handleClearDevices = async () => {
-    if (!window.confirm('Clear all device fingerprints for this user? They will need to re-authenticate on their devices.')) return;
+    if (!window.confirm(t('admin.security.confirmClearDevices'))) return;
     
     setActionLoading(true);
     try {
       const result = await clearUserDevices(userId);
-      onSuccess(result.message || 'Device fingerprints cleared');
+      invalidateFor(CACHE_ACTIONS.ADMIN_CLEAR_DEVICES);
+      onSuccess(result.message || t('admin.security.devicesFingerprintsCleared'));
       fetchUserSecurity();
     } catch (err) {
       console.error('Failed to clear devices:', err);
@@ -204,7 +198,8 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
     setActionLoading(true);
     try {
       const result = await recalculateUserRisk(userId);
-      onSuccess(`Risk score recalculated: ${result.oldScore} → ${result.newScore}`);
+      invalidateFor(CACHE_ACTIONS.ADMIN_RECALCULATE_RISK);
+      onSuccess(t('admin.security.riskRecalculatedResult', { oldScore: result.oldScore, newScore: result.newScore }));
       fetchUserSecurity();
     } catch (err) {
       console.error('Failed to recalculate risk:', err);
@@ -214,23 +209,19 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
   };
   
   const handleResetRisk = async () => {
-    if (!window.confirm('Reset risk score to 0? This is typically used after reviewing a false positive.')) return;
+    if (!window.confirm(t('admin.security.confirmResetRisk'))) return;
     
     setActionLoading(true);
     try {
-      const result = await resetUserRisk(userId, 'Manual reset by admin');
-      onSuccess(result.message || 'Risk score reset to 0');
+      const result = await resetUserRisk(userId, t('admin.security.manualResetByAdmin'));
+      invalidateFor(CACHE_ACTIONS.ADMIN_RESET_RISK);
+      onSuccess(result.message || t('admin.security.riskReset'));
       fetchUserSecurity();
     } catch (err) {
       console.error('Failed to reset risk:', err);
     } finally {
       setActionLoading(false);
     }
-  };
-  
-  const getRestrictionColor = (type) => {
-    const found = RESTRICTION_TYPES.find(r => r.value === type);
-    return found?.color || theme.colors.textSecondary;
   };
   
   const formatTimestamp = (ts) => new Date(ts).toLocaleString();
@@ -281,19 +272,19 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
               $active={activeTab === 'devices'} 
               onClick={() => setActiveTab('devices')}
             >
-              Devices
+              {t('admin.security.devices')}
             </Tab>
             <Tab 
               $active={activeTab === 'sessions'} 
               onClick={() => setActiveTab('sessions')}
             >
-              Sessions
+              {t('admin.security.sessions')}
             </Tab>
             <Tab 
               $active={activeTab === 'risk'} 
               onClick={() => setActiveTab('risk')}
             >
-              Risk History
+              {t('admin.security.riskHistory')}
             </Tab>
             <Tab 
               $active={activeTab === 'actions'} 
@@ -340,11 +331,11 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                           {userData.riskScore || 0}
                         </RiskScore>
                         <RiskActions>
-                          <MiniButton onClick={handleRecalculateRisk} disabled={actionLoading} title="Recalculate">
-                            <FaSync />
+                          <MiniButton onClick={handleRecalculateRisk} disabled={actionLoading} title={t('admin.security.recalculate')} aria-label={t('admin.security.recalculate')}>
+                            <FaSync aria-hidden="true" />
                           </MiniButton>
-                          <MiniButton onClick={handleResetRisk} disabled={actionLoading} title="Reset to 0">
-                            <FaUndo />
+                          <MiniButton onClick={handleResetRisk} disabled={actionLoading} title={t('admin.security.resetToZero')} aria-label={t('admin.security.resetToZero')}>
+                            <FaUndo aria-hidden="true" />
                           </MiniButton>
                         </RiskActions>
                       </InfoCard>
@@ -375,12 +366,12 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                           <FaFingerprint /> {t('admin.security.knownDevices')} ({userData.deviceFingerprints?.length || 0})
                         </SectionLabel>
                         <DeviceActions>
-                          <MiniButton onClick={() => setShowLinkedAccounts(true)} title="View linked accounts">
-                            <FaLink />
+                          <MiniButton onClick={() => setShowLinkedAccounts(true)} title={t('admin.security.viewLinkedAccounts')} aria-label={t('admin.security.viewLinkedAccounts')}>
+                            <FaLink aria-hidden="true" />
                           </MiniButton>
                           {userData.deviceFingerprints?.length > 0 && (
-                            <MiniButton onClick={handleClearDevices} disabled={actionLoading} title="Clear all devices" $danger>
-                              <FaTrash />
+                            <MiniButton onClick={handleClearDevices} disabled={actionLoading} title={t('admin.security.clearAllDevices')} aria-label={t('admin.security.clearAllDevices')} $danger>
+                              <FaTrash aria-hidden="true" />
                             </MiniButton>
                           )}
                         </DeviceActions>
@@ -409,27 +400,27 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                   <TabContent>
                     <IPAnalysisSection>
                       <SectionHeader>
-                        <FaGlobe /> IP Analysis
+                        <FaGlobe /> {t('admin.security.ipAnalysis')}
                       </SectionHeader>
                       
                       <IPInfoCard>
-                        <IPLabel>Current IP Hash</IPLabel>
-                        <IPValue>{userData.lastKnownIP || 'Unknown'}</IPValue>
+                        <IPLabel>{t('admin.security.currentIpHash')}</IPLabel>
+                        <IPValue>{userData.lastKnownIP || t('admin.security.unknown')}</IPValue>
                       </IPInfoCard>
                       
                       <CollisionSection>
                         <CollisionHeader>
-                          IP Collisions ({ipCollisions.length} users)
+                          {t('admin.security.ipCollisions')} ({ipCollisions.length} {t('admin.security.usersCount')})
                           {ipCollisions.some(u => u.isBanned) && (
                             <BanWarning>
-                              <FaExclamationTriangle /> Shares IP with banned users!
+                              <FaExclamationTriangle /> {t('admin.security.sharesIpWithBanned')}
                             </BanWarning>
                           )}
                         </CollisionHeader>
                         
                         {ipCollisions.length === 0 ? (
                           <NoCollisions>
-                            ✓ No other users found with the same IP
+                            ✓ {t('admin.security.noIpCollisions')}
                           </NoCollisions>
                         ) : (
                           <CollisionList>
@@ -460,8 +451,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                       <RiskNote>
                         <FaExclamationTriangle />
                         <span>
-                          IP collisions may indicate ban evasion or shared networks (VPN, school, workplace).
-                          Review audit logs and account creation dates for suspicious patterns.
+                          {t('admin.security.ipCollisionNote')}
                         </span>
                       </RiskNote>
                     </IPAnalysisSection>
@@ -500,10 +490,11 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                             ...prev, 
                             restrictionType: e.target.value 
                           }))}
+                          aria-label={t('admin.security.restrictionType')}
                         >
                           {RESTRICTION_TYPES.map(type => (
                             <option key={type.value} value={type.value}>
-                              {type.label}
+                              {t(type.labelKey)}
                             </option>
                           ))}
                         </Select>
@@ -518,10 +509,11 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                               ...prev, 
                               duration: e.target.value 
                             }))}
+                            aria-label={t('admin.security.duration')}
                           >
                             {DURATION_OPTIONS.map(opt => (
                               <option key={opt.value} value={opt.value}>
-                                {opt.label}
+                                {t(opt.labelKey)}
                               </option>
                             ))}
                           </Select>
@@ -614,41 +606,40 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
           <PermBanModal onClick={e => e.stopPropagation()}>
             <PermBanHeader>
               <FaBan style={{ color: '#ff3b30' }} />
-              Confirm Permanent Ban
+              {t('admin.security.confirmPermBan')}
             </PermBanHeader>
             <PermBanBody>
               <PermBanWarning>
                 <FaExclamationTriangle />
                 <span>
-                  You are about to <strong>permanently ban</strong> user <strong>{userData?.username}</strong>.
-                  This action is severe and should only be used for serious violations.
+                  {t('admin.security.permBanWarning', { username: userData?.username })}
                 </span>
               </PermBanWarning>
               
               <PermBanReason>
-                <strong>Reason:</strong> {restrictionForm.reason}
+                <strong>{t('admin.security.reason')}:</strong> {restrictionForm.reason}
               </PermBanReason>
               
               <PermBanConfirmInput>
-                <label>Type <strong>PERMANENT BAN</strong> to confirm:</label>
+                <label>{t('admin.security.typeToConfirm', { text: t('admin.security.permanentBanText') })}:</label>
                 <Input 
                   type="text"
                   value={permBanConfirmText}
                   onChange={(e) => setPermBanConfirmText(e.target.value)}
-                  placeholder="PERMANENT BAN"
+                  placeholder={t('admin.security.permanentBanText')}
                   autoFocus
                 />
               </PermBanConfirmInput>
             </PermBanBody>
             <PermBanFooter>
               <SecondaryButton onClick={handleCancelPermBan}>
-                Cancel
+                {t('common.cancel')}
               </SecondaryButton>
               <DangerButton 
                 onClick={handleConfirmPermBan}
                 disabled={permBanConfirmText !== 'PERMANENT BAN' || actionLoading}
               >
-                {actionLoading ? 'Applying...' : 'Confirm Permanent Ban'}
+                {actionLoading ? t('admin.security.applying') : t('admin.security.confirmPermanentBan')}
               </DangerButton>
             </PermBanFooter>
           </PermBanModal>

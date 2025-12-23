@@ -30,14 +30,14 @@ const CATEGORY_ICONS = {
   lockout: FaLock
 };
 
-const CATEGORY_LABELS = {
-  risk_thresholds: 'Risk Scoring',
-  risk_weights: 'Risk Weights',
-  rate_limits: 'Rate Limits',
-  captcha: 'CAPTCHA Settings',
-  policies: 'Policy Settings',
-  enforcement: 'Enforcement Penalties',
-  lockout: 'Lockout Settings'
+const CATEGORY_KEYS = {
+  risk_thresholds: 'riskThresholds',
+  risk_weights: 'riskWeights',
+  rate_limits: 'rateLimits',
+  captcha: 'captcha',
+  policies: 'policies',
+  enforcement: 'enforcement',
+  lockout: 'lockout'
 };
 
 const CATEGORY_COLORS = {
@@ -109,7 +109,7 @@ const SecurityConfigPanel = ({ onEdit }) => {
   if (loading) {
     return (
       <LoadingContainer>
-        <FaSync className="spin" /> Loading configuration...
+        <FaSync className="spin" /> {t('admin.security.loadingConfig')}
       </LoadingContainer>
     );
   }
@@ -117,9 +117,9 @@ const SecurityConfigPanel = ({ onEdit }) => {
   if (error) {
     return (
       <ErrorContainer>
-        {error}
+        {t('admin.security.failedLoadConfig')}
         <SecondaryButton onClick={fetchConfig}>
-          <FaSync /> Retry
+          <FaSync /> {t('admin.retry')}
         </SecondaryButton>
       </ErrorContainer>
     );
@@ -133,7 +133,7 @@ const SecurityConfigPanel = ({ onEdit }) => {
     >
       <HeaderRow>
         <SectionTitle>
-          <FaCog /> {t('admin.security.configuration', 'Security Configuration')}
+          <FaCog /> {t('admin.security.configuration')}
         </SectionTitle>
         <HeaderActions>
           <SecondaryButton onClick={fetchConfig}>
@@ -141,7 +141,7 @@ const SecurityConfigPanel = ({ onEdit }) => {
           </SecondaryButton>
           {onEdit && (
             <EditButton onClick={onEdit}>
-              <FaEdit /> Edit Settings
+              <FaEdit /> {t('admin.security.editSettings')}
             </EditButton>
           )}
         </HeaderActions>
@@ -150,7 +150,8 @@ const SecurityConfigPanel = ({ onEdit }) => {
       <ConfigGrid>
         {config?.config && Object.entries(config.config).map(([category, items]) => {
           const Icon = CATEGORY_ICONS[category] || FaCog;
-          const label = CATEGORY_LABELS[category] || category;
+          const categoryKey = CATEGORY_KEYS[category] || category;
+          const label = t(`admin.security.configCategories.${categoryKey}`, category);
           const color = CATEGORY_COLORS[category] || theme.colors.primary;
           
           return (
@@ -182,7 +183,7 @@ const SecurityConfigPanel = ({ onEdit }) => {
       
       {config?.lastUpdated && (
         <LastUpdated>
-          Last refreshed: {new Date(config.lastUpdated).toLocaleString()}
+          {t('admin.security.lastRefreshed')}: {new Date(config.lastUpdated).toLocaleString()}
         </LastUpdated>
       )}
     </Container>

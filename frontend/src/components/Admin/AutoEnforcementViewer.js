@@ -7,8 +7,10 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaRobot, FaSync, FaBan, FaEyeSlash, FaClock, FaExclamationTriangle } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getAutoEnforcements } from '../../utils/api';
+import { RESTRICTION_COLORS } from '../../constants/securityConstants';
 import { SecondaryButton } from './AdminStyles';
 
 const ACTION_ICONS = {
@@ -19,15 +21,8 @@ const ACTION_ICONS = {
   warning: FaExclamationTriangle
 };
 
-const ACTION_COLORS = {
-  perm_ban: '#ff3b30',
-  temp_ban: '#ff9500',
-  shadowban: '#8e8e93',
-  rate_limited: '#af52de',
-  warning: '#ffcc00'
-};
-
 const AutoEnforcementViewer = ({ onViewUser }) => {
+  const { t } = useTranslation();
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
@@ -69,27 +64,26 @@ const AutoEnforcementViewer = ({ onViewUser }) => {
     >
       <Header>
         <Title>
-          <FaRobot /> Auto-Enforcement Events
+          <FaRobot /> {t('admin.security.autoEnforcementEvents')}
         </Title>
         <HeaderActions>
-          <EventCount>{total} total event(s)</EventCount>
-          <RefreshButton onClick={fetchEvents} disabled={loading}>
-            <FaSync className={loading ? 'spin' : ''} />
+          <EventCount>{total} {t('admin.security.totalEvents')}</EventCount>
+          <RefreshButton onClick={fetchEvents} disabled={loading} aria-label={t('admin.security.refresh')}>
+            <FaSync className={loading ? 'spin' : ''} aria-hidden="true" />
           </RefreshButton>
         </HeaderActions>
       </Header>
 
       <Description>
-        These are restrictions automatically applied by the system based on risk scores
-        and suspicious behavior detection.
+        {t('admin.security.autoEnforcementDesc')}
       </Description>
 
       {loading ? (
-        <LoadingState>Loading...</LoadingState>
+        <LoadingState>{t('common.loading')}</LoadingState>
       ) : events.length === 0 ? (
         <EmptyState>
           <FaRobot />
-          <span>No auto-enforcement events recorded</span>
+          <span>{t('admin.security.noAutoEnforcements')}</span>
         </EmptyState>
       ) : (
         <>
@@ -97,7 +91,7 @@ const AutoEnforcementViewer = ({ onViewUser }) => {
             <AnimatePresence>
               {events.map((event) => {
                 const Icon = ACTION_ICONS[event.action] || FaExclamationTriangle;
-                const color = ACTION_COLORS[event.action] || '#8e8e93';
+                const color = RESTRICTION_COLORS[event.action] || '#8e8e93';
                 
                 return (
                   <EventCard
@@ -117,21 +111,21 @@ const AutoEnforcementViewer = ({ onViewUser }) => {
                         </Username>
                         <ActionBadge $color={color}>
                           {event.action?.replace('_', ' ')}
-                          {event.escalated && <EscalatedTag>ESCALATED</EscalatedTag>}
+                          {event.escalated && <EscalatedTag>{t('admin.security.escalated')}</EscalatedTag>}
                         </ActionBadge>
                       </EventHeader>
                       <EventReason>{event.reason}</EventReason>
                       <EventMeta>
                         <MetaItem>
-                          <strong>Previous:</strong> {event.previousRestriction || 'none'}
+                          <strong>{t('admin.security.previousRestriction')}:</strong> {event.previousRestriction || t('admin.security.restrictionTypes.none')}
                         </MetaItem>
                         {event.expiresAt && (
                           <MetaItem>
-                            <strong>Expires:</strong> {formatTimestamp(event.expiresAt)}
+                            <strong>{t('admin.security.expires')}:</strong> {formatTimestamp(event.expiresAt)}
                           </MetaItem>
                         )}
                         <MetaItem>
-                          <strong>Time:</strong> {formatTimestamp(event.timestamp)}
+                          <strong>{t('admin.security.time')}:</strong> {formatTimestamp(event.timestamp)}
                         </MetaItem>
                       </EventMeta>
                     </EventContent>
@@ -143,13 +137,13 @@ const AutoEnforcementViewer = ({ onViewUser }) => {
 
           <Pagination>
             <SecondaryButton onClick={handlePrevPage} disabled={offset === 0}>
-              ← Previous
+              ← {t('admin.security.previous')}
             </SecondaryButton>
             <PageInfo>
-              {offset + 1} - {Math.min(offset + limit, total)} of {total}
+              {offset + 1} - {Math.min(offset + limit, total)} {t('common.of')} {total}
             </PageInfo>
             <SecondaryButton onClick={handleNextPage} disabled={offset + limit >= total}>
-              Next →
+              {t('common.next')} →
             </SecondaryButton>
           </Pagination>
         </>

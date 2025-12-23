@@ -171,6 +171,24 @@ const PRE_TRANSACTION_PATTERNS = {
 };
 
 /**
+ * Security action invalidation patterns
+ * For admin security operations that affect user states and audit data
+ */
+const SECURITY_PATTERNS = {
+  restrict_user: ['/admin/security', '/admin/users'],
+  unrestrict_user: ['/admin/security', '/admin/users'],
+  warn_user: ['/admin/security', '/admin/users'],
+  reset_warnings: ['/admin/security', '/admin/users'],
+  clear_devices: ['/admin/security', '/admin/users'],
+  recalculate_risk: ['/admin/security', '/admin/users'],
+  reset_risk: ['/admin/security', '/admin/users'],
+  security_config_update: ['/admin/security'],
+  approve_appeal: ['/admin/security', '/admin/users'],
+  deny_appeal: ['/admin/security'],
+  risk_decay: ['/admin/security']
+};
+
+/**
  * Helper to invalidate patterns for an action
  */
 const invalidatePatterns = (patterns) => {
@@ -397,6 +415,18 @@ const ACTION_HANDLERS = {
   'admin:bulk_upload': () => invalidatePatterns(ADMIN_PATTERNS.bulk_upload),
   'admin:anime_import': () => invalidatePatterns(ADMIN_PATTERNS.anime_import),
   'admin:visibility_change': () => invalidatePatterns(ADMIN_PATTERNS.visibility_change),
+  // Security actions
+  'admin:restrict_user': () => invalidatePatterns(SECURITY_PATTERNS.restrict_user),
+  'admin:unrestrict_user': () => invalidatePatterns(SECURITY_PATTERNS.unrestrict_user),
+  'admin:warn_user': () => invalidatePatterns(SECURITY_PATTERNS.warn_user),
+  'admin:reset_warnings': () => invalidatePatterns(SECURITY_PATTERNS.reset_warnings),
+  'admin:clear_devices': () => invalidatePatterns(SECURITY_PATTERNS.clear_devices),
+  'admin:recalculate_risk': () => invalidatePatterns(SECURITY_PATTERNS.recalculate_risk),
+  'admin:reset_risk': () => invalidatePatterns(SECURITY_PATTERNS.reset_risk),
+  'admin:security_config_update': () => invalidatePatterns(SECURITY_PATTERNS.security_config_update),
+  'admin:approve_appeal': () => invalidatePatterns(SECURITY_PATTERNS.approve_appeal),
+  'admin:deny_appeal': () => invalidatePatterns(SECURITY_PATTERNS.deny_appeal),
+  'admin:risk_decay': () => invalidatePatterns(SECURITY_PATTERNS.risk_decay),
 
   // ===========================================
   // GACHA/ROLL ACTIONS
@@ -525,7 +555,8 @@ export const getInvalidationPatterns = (action) => {
     case 'dojo':
       return DOJO_PATTERNS[actionName] || null;
     case 'admin':
-      return ADMIN_PATTERNS[actionName] || null;
+      // Check security patterns first, then admin patterns
+      return SECURITY_PATTERNS[actionName] || ADMIN_PATTERNS[actionName] || null;
     case 'gacha':
       return GACHA_PATTERNS[actionName] || null;
     case 'coupon':
@@ -646,6 +677,7 @@ export const enableCacheDebugging = () => {
       fishing: { ...FISHING_PATTERNS },
       dojo: { ...DOJO_PATTERNS },
       admin: { ...ADMIN_PATTERNS },
+      security: { ...SECURITY_PATTERNS },
       modal: { ...MODAL_PATTERNS },
       gacha: { ...GACHA_PATTERNS },
       coupon: { ...COUPON_PATTERNS },

@@ -10,6 +10,7 @@ import { FaUserShield, FaSync, FaEye } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getHighRiskUsers } from '../../utils/api';
+import { getRiskColor } from '../../constants/securityConstants';
 import {
   HeaderRow,
   SectionTitle,
@@ -40,12 +41,6 @@ const HighRiskUsersList = ({ onViewUser }) => {
     fetchUsers();
   }, [fetchUsers]);
   
-  const getRiskColor = (score) => {
-    if (score >= 70) return '#ff3b30';
-    if (score >= 50) return '#ff9500';
-    return '#ffcc00';
-  };
-  
   const getRiskLevel = (score) => {
     if (score >= 70) return t('admin.security.riskHigh');
     if (score >= 50) return t('admin.security.riskMedium');
@@ -67,13 +62,14 @@ const HighRiskUsersList = ({ onViewUser }) => {
           <ThresholdSelect 
             value={threshold} 
             onChange={(e) => setThreshold(parseInt(e.target.value, 10))}
+            aria-label={t('admin.security.threshold')}
           >
             <option value={30}>{t('admin.security.threshold')} 30+</option>
             <option value={50}>{t('admin.security.threshold')} 50+</option>
             <option value={70}>{t('admin.security.threshold')} 70+</option>
           </ThresholdSelect>
-          <SecondaryButton onClick={fetchUsers} disabled={loading}>
-            <FaSync className={loading ? 'spin' : ''} />
+          <SecondaryButton onClick={fetchUsers} disabled={loading} aria-label={t('admin.security.refresh')}>
+            <FaSync className={loading ? 'spin' : ''} aria-hidden="true" />
           </SecondaryButton>
         </HeaderActions>
       </HeaderRow>
@@ -135,8 +131,8 @@ const HighRiskUsersList = ({ onViewUser }) => {
                     <DateText>{new Date(user.createdAt).toLocaleDateString()}</DateText>
                   </Cell>
                   <Cell $width="80px">
-                    <ActionButton onClick={() => onViewUser(user.id)}>
-                      <FaEye />
+                    <ActionButton onClick={() => onViewUser(user.id)} aria-label={t('admin.security.viewUserDetails')}>
+                      <FaEye aria-hidden="true" />
                     </ActionButton>
                   </Cell>
                 </TableRow>

@@ -7,6 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { FaChartLine, FaSync, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../styles/DesignSystem';
 import { triggerRiskScoreDecay, getRiskStats } from '../../utils/api';
 import { PrimaryButton, SecondaryButton, Select } from './AdminStyles';
@@ -20,6 +21,7 @@ const DECAY_OPTIONS = [
 ];
 
 const RiskDecayPanel = ({ onSuccess }) => {
+  const { t } = useTranslation();
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [decayPercentage, setDecayPercentage] = useState(0.1);
@@ -66,7 +68,7 @@ const RiskDecayPanel = ({ onSuccess }) => {
     <Container>
       <Header>
         <Title>
-          <FaChartLine /> Risk Score Management
+          <FaChartLine /> {t('admin.security.riskScoreManagement')}
         </Title>
         <RefreshButton onClick={fetchStats} disabled={loading}>
           <FaSync className={loading ? 'spin' : ''} />
@@ -74,42 +76,42 @@ const RiskDecayPanel = ({ onSuccess }) => {
       </Header>
 
       {loading ? (
-        <LoadingText>Loading statistics...</LoadingText>
+        <LoadingText>{t('admin.security.loadingStats')}</LoadingText>
       ) : stats ? (
         <>
           <StatsGrid>
             <StatCard>
-              <StatLabel>Average Score</StatLabel>
+              <StatLabel>{t('admin.security.averageScore')}</StatLabel>
               <StatValue $color={getScoreColor(stats.avgScore)}>
                 {stats.avgScore}
               </StatValue>
             </StatCard>
             <StatCard>
-              <StatLabel>Max Score</StatLabel>
+              <StatLabel>{t('admin.security.maxScore')}</StatLabel>
               <StatValue $color={getScoreColor(stats.maxScore)}>
                 {stats.maxScore}
               </StatValue>
             </StatCard>
             <StatCard>
-              <StatLabel>Monitoring (30+)</StatLabel>
+              <StatLabel>{t('admin.security.monitoringCount')}</StatLabel>
               <StatValue $warning={stats.distribution.monitoring > 0}>
                 {stats.distribution.monitoring}
               </StatValue>
             </StatCard>
             <StatCard>
-              <StatLabel>Elevated (50+)</StatLabel>
+              <StatLabel>{t('admin.security.elevatedCount')}</StatLabel>
               <StatValue $warning={stats.distribution.elevated > 0}>
                 {stats.distribution.elevated}
               </StatValue>
             </StatCard>
             <StatCard>
-              <StatLabel>High Risk (70+)</StatLabel>
+              <StatLabel>{t('admin.security.highRiskCount')}</StatLabel>
               <StatValue $danger={stats.distribution.high > 0}>
                 {stats.distribution.high}
               </StatValue>
             </StatCard>
             <StatCard>
-              <StatLabel>Critical (85+)</StatLabel>
+              <StatLabel>{t('admin.security.criticalCount')}</StatLabel>
               <StatValue $danger={stats.distribution.critical > 0}>
                 {stats.distribution.critical}
               </StatValue>
@@ -118,17 +120,16 @@ const RiskDecayPanel = ({ onSuccess }) => {
 
           <DecaySection>
             <DecayHeader>
-              <DecayTitle>Risk Score Decay</DecayTitle>
+              <DecayTitle>{t('admin.security.riskScoreDecay')}</DecayTitle>
               <DecayDescription>
-                Periodically decay risk scores to allow users to recover from false positives
-                and reward good behavior over time.
+                {t('admin.security.decayDescription')}
               </DecayDescription>
             </DecayHeader>
 
             {lastDecay && (
               <LastDecayInfo>
                 <FaCheckCircle />
-                Last decay: {lastDecay.count} user(s) reduced by {lastDecay.percentage * 100}%
+                {t('admin.security.lastDecay')}: {lastDecay.count} {t('admin.security.usersReduced')} {lastDecay.percentage * 100}%
                 <span> ({new Date(lastDecay.timestamp).toLocaleTimeString()})</span>
               </LastDecayInfo>
             )}
@@ -147,7 +148,7 @@ const RiskDecayPanel = ({ onSuccess }) => {
                   onClick={() => setShowConfirm(true)}
                   disabled={stats.distribution.monitoring === 0}
                 >
-                  Apply Decay
+                  {t('admin.security.applyDecay')}
                 </PrimaryButton>
               </DecayControls>
             ) : (
@@ -156,15 +157,14 @@ const RiskDecayPanel = ({ onSuccess }) => {
                   <FaExclamationTriangle />
                 </WarningIcon>
                 <ConfirmText>
-                  This will reduce risk scores for <strong>{stats.distribution.monitoring}</strong> user(s) 
-                  with scores ≥5 by <strong>{decayPercentage * 100}%</strong>.
+                  {t('admin.security.decayConfirmText', { count: stats.distribution.monitoring, percent: decayPercentage * 100 })}
                 </ConfirmText>
                 <ConfirmButtons>
                   <SecondaryButton onClick={() => setShowConfirm(false)}>
-                    Cancel
+                    {t('common.cancel')}
                   </SecondaryButton>
                   <DangerButton onClick={handleDecay} disabled={decaying}>
-                    {decaying ? 'Applying...' : 'Confirm Decay'}
+                    {decaying ? t('admin.security.applying') : t('admin.security.confirmDecay')}
                   </DangerButton>
                 </ConfirmButtons>
               </ConfirmSection>
@@ -172,7 +172,7 @@ const RiskDecayPanel = ({ onSuccess }) => {
           </DecaySection>
         </>
       ) : (
-        <ErrorText>Failed to load statistics</ErrorText>
+        <ErrorText>{t('admin.security.failedLoadStats')}</ErrorText>
       )}
     </Container>
   );

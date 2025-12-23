@@ -10,6 +10,7 @@ import { FaShieldAlt, FaCog, FaBan } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getSecurityOverview, getAppealStats } from '../../utils/api';
+import { onVisibilityChange, REFRESH_INTERVALS } from '../../cache';
 import { AdminContainer, SectionTitle } from './AdminStyles';
 import SecurityOverview from './SecurityOverview';
 import SecurityAlerts from './SecurityAlerts';
@@ -66,6 +67,16 @@ const AdminSecurity = ({ onSuccess }) => {
     fetchSecurityData();
   }, [fetchSecurityData]);
   
+  // Visibility change handler - refresh security data when tab becomes visible after being hidden
+  useEffect(() => {
+    return onVisibilityChange('admin-security', (staleLevel, elapsed) => {
+      // Refresh if tab was hidden longer than admin staleness threshold
+      if (elapsed > REFRESH_INTERVALS.adminStaleThresholdMs) {
+        fetchSecurityData();
+      }
+    });
+  }, [fetchSecurityData]);
+  
   const handleViewUser = (userId) => {
     setSelectedUserId(userId);
   };
@@ -118,7 +129,7 @@ const AdminSecurity = ({ onSuccess }) => {
             $active={currentView === VIEWS.RESTRICTED}
             onClick={() => setCurrentView(VIEWS.RESTRICTED)}
           >
-            <FaBan /> Restricted
+            <FaBan /> {t('admin.security.restricted')}
             {securityData?.totalRestricted > 0 && (
               <CountBadge>{securityData.totalRestricted}</CountBadge>
             )}
@@ -127,7 +138,7 @@ const AdminSecurity = ({ onSuccess }) => {
             $active={currentView === VIEWS.AUTO_ENFORCE}
             onClick={() => setCurrentView(VIEWS.AUTO_ENFORCE)}
           >
-            Auto-Enforce
+            {t('admin.security.autoEnforce')}
           </ViewTab>
           <ViewTab 
             $active={currentView === VIEWS.AUDIT}
@@ -148,7 +159,7 @@ const AdminSecurity = ({ onSuccess }) => {
             $active={currentView === VIEWS.CONFIG}
             onClick={() => setCurrentView(VIEWS.CONFIG)}
           >
-            <FaCog /> Config
+            <FaCog /> {t('admin.security.config')}
           </ViewTab>
         </ViewTabs>
       </Header>

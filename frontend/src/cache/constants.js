@@ -113,6 +113,29 @@ export const ADMIN_ACTIONS = {
   ANIME_IMPORT: 'admin:anime_import',
   /** Visibility change refresh */
   VISIBILITY_CHANGE: 'admin:visibility_change',
+  // Security Actions
+  /** Restricting a user (ban, shadowban, etc.) */
+  RESTRICT_USER: 'admin:restrict_user',
+  /** Removing a user restriction */
+  UNRESTRICT_USER: 'admin:unrestrict_user',
+  /** Issuing a warning to a user */
+  WARN_USER: 'admin:warn_user',
+  /** Resetting user warnings */
+  RESET_WARNINGS: 'admin:reset_warnings',
+  /** Clearing user device fingerprints */
+  CLEAR_DEVICES: 'admin:clear_devices',
+  /** Recalculating user risk score */
+  RECALCULATE_RISK: 'admin:recalculate_risk',
+  /** Resetting user risk score */
+  RESET_RISK: 'admin:reset_risk',
+  /** Updating security configuration */
+  SECURITY_CONFIG_UPDATE: 'admin:security_config_update',
+  /** Approving an appeal */
+  APPROVE_APPEAL: 'admin:approve_appeal',
+  /** Denying an appeal */
+  DENY_APPEAL: 'admin:deny_appeal',
+  /** Triggering risk score decay */
+  RISK_DECAY: 'admin:risk_decay',
 };
 
 // ===========================================
@@ -255,6 +278,17 @@ export const CACHE_ACTIONS = {
   ADMIN_BULK_UPLOAD: ADMIN_ACTIONS.BULK_UPLOAD,
   ADMIN_ANIME_IMPORT: ADMIN_ACTIONS.ANIME_IMPORT,
   ADMIN_VISIBILITY_CHANGE: ADMIN_ACTIONS.VISIBILITY_CHANGE,
+  ADMIN_RESTRICT_USER: ADMIN_ACTIONS.RESTRICT_USER,
+  ADMIN_UNRESTRICT_USER: ADMIN_ACTIONS.UNRESTRICT_USER,
+  ADMIN_WARN_USER: ADMIN_ACTIONS.WARN_USER,
+  ADMIN_RESET_WARNINGS: ADMIN_ACTIONS.RESET_WARNINGS,
+  ADMIN_CLEAR_DEVICES: ADMIN_ACTIONS.CLEAR_DEVICES,
+  ADMIN_RECALCULATE_RISK: ADMIN_ACTIONS.RECALCULATE_RISK,
+  ADMIN_RESET_RISK: ADMIN_ACTIONS.RESET_RISK,
+  ADMIN_SECURITY_CONFIG_UPDATE: ADMIN_ACTIONS.SECURITY_CONFIG_UPDATE,
+  ADMIN_APPROVE_APPEAL: ADMIN_ACTIONS.APPROVE_APPEAL,
+  ADMIN_DENY_APPEAL: ADMIN_ACTIONS.DENY_APPEAL,
+  ADMIN_RISK_DECAY: ADMIN_ACTIONS.RISK_DECAY,
   
   // Auth
   AUTH_LOGIN: AUTH_ACTIONS.LOGIN,

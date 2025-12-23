@@ -3,13 +3,14 @@
  * 
  * Filterable audit log viewer for security events.
  */
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaHistory, FaSync, FaFilter, FaDownload } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getAuditLog, exportAuditLog } from '../../utils/api';
+import { AUDIT_CATEGORIES } from '../../constants/securityConstants';
 import {
   HeaderRow,
   SectionTitle,
@@ -18,14 +19,6 @@ import {
   Select,
   Input,
 } from './AdminStyles';
-
-const EVENT_CATEGORIES = {
-  'auth': ['auth.login.success', 'auth.login.failed', 'auth.signup', 'auth.google.login', 'auth.password.change'],
-  'admin': ['admin.restrict', 'admin.unrestrict', 'admin.warning', 'admin.points_adjust'],
-  'security': ['security.device.new', 'security.risk.change', 'security.auto_restriction', 'security.ban_evasion'],
-  'economy': ['economy.trade', 'economy.coupon.redeemed', 'economy.anomaly'],
-  'appeal': ['appeal.submitted', 'appeal.approved', 'appeal.denied']
-};
 
 const SEVERITY_COLORS = {
   info: '#0a84ff',
@@ -74,9 +67,33 @@ const AuditLogViewer = () => {
     fetchEvents();
   }, [fetchEvents]);
   
+  // Debounce timer ref for text inputs
+  const debounceTimerRef = useRef(null);
+  
   const handleFilterChange = (key, value) => {
     setFilters(prev => ({ ...prev, [key]: value, offset: 0 }));
   };
+  
+  // Debounced filter change for text inputs (userId, adminId)
+  const handleDebouncedFilterChange = (key, value) => {
+    // Clear previous timer
+    if (debounceTimerRef.current) {
+      clearTimeout(debounceTimerRef.current);
+    }
+    // Set new timer
+    debounceTimerRef.current = setTimeout(() => {
+      setFilters(prev => ({ ...prev, [key]: value, offset: 0 }));
+    }, 500);
+  };
+  
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (debounceTimerRef.current) {
+        clearTimeout(debounceTimerRef.current);
+      }
+    };
+  }, []);
   
   const handleNextPage = () => {
     setFilters(prev => ({ ...prev, offset: prev.offset + prev.limit }));
@@ -136,6 +153,7 @@ const AuditLogViewer = () => {
   };
   
   const getEventIcon = (eventType) => {
+    // Returns emoji icon for event type - rendered with aria-hidden in JSX
     if (eventType.startsWith('auth.login.failed')) return '❌';
     if (eventType.startsWith('auth')) return '🔐';
     if (eventType.startsWith('admin')) return '👑';
@@ -157,20 +175,20 @@ const AuditLogViewer = () => {
           <ItemCount>{total} {t('admin.security.events')}</ItemCount>
         </SectionTitle>
         <HeaderActions>
-          <SecondaryButton onClick={() => setShowFilters(!showFilters)}>
-            <FaFilter /> {t('admin.security.filters')}
+          <SecondaryButton onClick={() => setShowFilters(!showFilters)} aria-expanded={showFilters} aria-controls="filters-panel">
+            <FaFilter aria-hidden="true" /> {t('admin.security.filters')}
           </SecondaryButton>
           <ExportDropdown>
-            <SecondaryButton disabled={exporting}>
-              <FaDownload /> {exporting ? 'Exporting...' : 'Export'}
+            <SecondaryButton disabled={exporting} aria-haspopup="true">
+              <FaDownload aria-hidden="true" /> {exporting ? t('admin.security.exporting') : t('admin.security.export')}
             </SecondaryButton>
-            <ExportMenu>
-              <ExportOption onClick={() => handleExport('json')}>JSON</ExportOption>
-              <ExportOption onClick={() => handleExport('csv')}>CSV</ExportOption>
+            <ExportMenu role="menu">
+              <ExportOption onClick={() => handleExport('json')} role="menuitem">JSON</ExportOption>
+              <ExportOption onClick={() => handleExport('csv')} role="menuitem">CSV</ExportOption>
             </ExportMenu>
           </ExportDropdown>
-          <SecondaryButton onClick={fetchEvents} disabled={loading}>
-            <FaSync className={loading ? 'spin' : ''} />
+          <SecondaryButton onClick={fetchEvents} disabled={loading} aria-label={t('admin.security.refresh')}>
+            <FaSync className={loading ? 'spin' : ''} aria-hidden="true" />
           </SecondaryButton>
         </HeaderActions>
       </HeaderRow>
@@ -178,6 +196,7 @@ const AuditLogViewer = () => {
       <AnimatePresence>
         {showFilters && (
           <FiltersPanel
+            id="filters-panel"
             initial={{ height: 0, opacity: 0 }}
             animate={{ height: 'auto', opacity: 1 }}
             exit={{ height: 0, opacity: 0 }}
@@ -189,54 +208,57 @@ const AuditLogViewer = () => {
                 onChange={(e) => handleFilterChange('severity', e.target.value)}
               >
                 <option value="">{t('common.all')}</option>
-                <option value="info">Info</option>
-                <option value="warning">Warning</option>
-                <option value="critical">Critical</option>
+                <option value="info">{t('admin.security.info')}</option>
+                <option value="warning">{t('admin.security.warning')}</option>
+                <option value="critical">{t('admin.security.critical')}</option>
               </Select>
             </FilterGroup>
             
             <FilterGroup>
-              <FilterLabel>{t('admin.security.category')}</FilterLabel>
+              <FilterLabel id="category-label">{t('admin.security.category')}</FilterLabel>
               <Select 
                 value={filters.eventType} 
                 onChange={(e) => handleFilterChange('eventType', e.target.value)}
+                aria-labelledby="category-label"
               >
                 <option value="">{t('common.all')}</option>
-                {Object.keys(EVENT_CATEGORIES).map(cat => (
+                {Object.keys(AUDIT_CATEGORIES).map(cat => (
                   <option key={cat} value={cat}>{cat}</option>
                 ))}
               </Select>
             </FilterGroup>
             
             <FilterGroup>
-              <FilterLabel>{t('admin.security.userId')}</FilterLabel>
+              <FilterLabel id="userid-label">{t('admin.security.userId')}</FilterLabel>
               <Input 
                 type="number"
-                placeholder="User ID"
-                value={filters.userId}
-                onChange={(e) => handleFilterChange('userId', e.target.value)}
+                placeholder={t('admin.security.userIdPlaceholder')}
+                defaultValue={filters.userId}
+                onChange={(e) => handleDebouncedFilterChange('userId', e.target.value)}
+                aria-labelledby="userid-label"
               />
             </FilterGroup>
             
             <FilterGroup>
-              <FilterLabel>Admin ID</FilterLabel>
+              <FilterLabel id="adminid-label">{t('admin.security.adminId')}</FilterLabel>
               <Input 
                 type="number"
-                placeholder="Admin ID"
-                value={filters.adminId}
-                onChange={(e) => handleFilterChange('adminId', e.target.value)}
+                placeholder={t('admin.security.adminIdPlaceholder')}
+                defaultValue={filters.adminId}
+                onChange={(e) => handleDebouncedFilterChange('adminId', e.target.value)}
+                aria-labelledby="adminid-label"
               />
             </FilterGroup>
             
             <FilterGroup>
-              <FilterLabel>Admin Actions</FilterLabel>
+              <FilterLabel>{t('admin.security.adminActions')}</FilterLabel>
               <CheckboxLabel>
                 <Checkbox 
                   type="checkbox"
                   checked={filters.adminActionsOnly}
                   onChange={(e) => handleFilterChange('adminActionsOnly', e.target.checked)}
                 />
-                Show admin actions only
+                {t('admin.security.showAdminActionsOnly')}
               </CheckboxLabel>
             </FilterGroup>
           </FiltersPanel>
@@ -274,7 +296,7 @@ const AuditLogViewer = () => {
                   $severity={event.severity}
                 >
                   <Cell $width="50px">
-                    <EventIcon>{getEventIcon(event.eventType)}</EventIcon>
+                    <EventIcon aria-hidden="true">{getEventIcon(event.eventType)}</EventIcon>
                   </Cell>
                   <Cell $width="180px">
                     <Timestamp>{formatTimestamp(event.createdAt)}</Timestamp>
