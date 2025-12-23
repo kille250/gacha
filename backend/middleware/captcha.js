@@ -101,6 +101,7 @@ async function getCaptchaConfig() {
     // Action-specific score thresholds (lower = stricter)
     actionScoreThresholds: {
       login: await securityConfigService.getNumber('RECAPTCHA_SCORE_LOGIN', 0.5),
+      signup: await securityConfigService.getNumber('RECAPTCHA_SCORE_SIGNUP', 0.5),
       trade: await securityConfigService.getNumber('RECAPTCHA_SCORE_TRADE', 0.6),
       coupon_redeem: await securityConfigService.getNumber('RECAPTCHA_SCORE_COUPON', 0.4),
       password_change: await securityConfigService.getNumber('RECAPTCHA_SCORE_PASSWORD_CHANGE', 0.7),
@@ -113,12 +114,13 @@ async function getCaptchaConfig() {
 const CAPTCHA_CONFIG = {
   riskScoreThreshold: RISK_THRESHOLDS.SOFT_RESTRICTION,
   failedAttemptsThreshold: 3,
-  sensitiveActions: ['login', 'trade', 'coupon_redeem', 'password_change', 'account_link'],
+  sensitiveActions: ['login', 'signup', 'trade', 'coupon_redeem', 'password_change', 'account_link'],
   tokenValidityMs: 5 * 60 * 1000,
   ...CAPTCHA_STATIC_CONFIG,
   recaptchaMinScore: parseFloat(process.env.RECAPTCHA_MIN_SCORE) || 0.5,
   actionScoreThresholds: {
     login: 0.5,
+    signup: 0.5,
     trade: 0.6,
     coupon_redeem: 0.4,
     password_change: 0.7,

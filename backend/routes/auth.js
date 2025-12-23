@@ -89,25 +89,75 @@ router.post('/daily-reward', [auth, lockoutMiddleware(), enforcementMiddleware, 
 });
 
 // POST /api/auth/signup - Register new user
-// Security: rate limited by IP to prevent mass account creation
-router.post('/signup', [signupVelocityLimiter], async (req, res) => {
+// Security: lockout checked (fail-fast), rate limited by IP, CAPTCHA after failed attempts
+router.post('/signup', [lockoutMiddleware('signup'), signupVelocityLimiter], async (req, res) => {
   const { username, email, password } = req.body;
+  
+  // Build key for failed attempt tracking using centralized helper
+  const attemptKey = req.attemptKey || getAttemptKey(req, 'signup');
+  
+  // SECURITY: Check if CAPTCHA is required after multiple failed signup attempts
+  const captchaConfig = await getCaptchaConfig();
+  const lockoutConfig = await getLockoutConfig();
+  const remainingBeforeCaptcha = getRemainingAttempts(attemptKey, lockoutConfig);
+  const failedAttemptsThreshold = captchaConfig.failedAttemptsThreshold;
+  const totalAttempts = lockoutConfig.maxAttempts - remainingBeforeCaptcha;
+  
+  if (totalAttempts >= failedAttemptsThreshold) {
+    // CAPTCHA required - check for valid token
+    const recaptchaToken = req.header('x-recaptcha-token');
+    const fallbackToken = req.header('x-captcha-token');
+    const fallbackAnswer = req.header('x-captcha-answer');
+    const recaptchaEnabled = await isRecaptchaEnabled();
+    
+    let captchaVerified = false;
+    
+    // Try reCAPTCHA first
+    if (recaptchaToken && recaptchaEnabled) {
+      const result = await verifyRecaptcha(recaptchaToken, 'signup', req);
+      captchaVerified = result.success;
+    }
+    // Try fallback CAPTCHA
+    else if (fallbackToken && fallbackAnswer) {
+      captchaVerified = await verifyFallbackTokenAsync(fallbackToken, fallbackAnswer);
+    }
+    
+    if (!captchaVerified) {
+      await logSecurityEvent(AUDIT_EVENTS.CAPTCHA_TRIGGERED || 'security.captcha.triggered', null, {
+        action: 'signup',
+        reason: 'failed_attempts',
+        failedAttempts: totalAttempts
+      }, req);
+      
+      return res.status(403).json({
+        error: 'CAPTCHA verification required',
+        code: 'CAPTCHA_REQUIRED',
+        captchaRequired: true,
+        captchaType: recaptchaEnabled ? 'recaptcha' : 'fallback',
+        siteKey: recaptchaEnabled ? CAPTCHA_CONFIG.recaptchaSiteKey : undefined,
+        action: 'signup'
+      });
+    }
+  }
   
   // Validate username
   const usernameValidation = validateUsername(username);
   if (!usernameValidation.valid) {
+    recordFailedAttempt(attemptKey);
     return res.status(400).json({ error: usernameValidation.error });
   }
   
   // Validate email
   const emailValidation = validateEmail(email);
   if (!emailValidation.valid) {
+    recordFailedAttempt(attemptKey);
     return res.status(400).json({ error: emailValidation.error });
   }
   
   // Validate password
   const passwordValidation = validatePassword(password);
   if (!passwordValidation.valid) {
+    recordFailedAttempt(attemptKey);
     return res.status(400).json({ error: passwordValidation.error });
   }
   
@@ -119,7 +169,8 @@ router.post('/signup', [signupVelocityLimiter], async (req, res) => {
     });
     
     if (!signupRisk.allowed) {
-      await logSecurityEvent(AUDIT_EVENTS.SIGNUP || 'auth.signup.blocked', null, {
+      recordFailedAttempt(attemptKey);
+      await logSecurityEvent(AUDIT_EVENTS.SIGNUP_BLOCKED || 'auth.signup.blocked', null, {
         reason: signupRisk.reason,
         ipHash: req.deviceSignals?.ipHash?.substring(0, 8)
       }, req);
@@ -129,12 +180,14 @@ router.post('/signup', [signupVelocityLimiter], async (req, res) => {
     // Check if username already exists
     const existingUser = await User.findOne({ where: { username: usernameValidation.value } });
     if (existingUser) {
+      recordFailedAttempt(attemptKey);
       return res.status(400).json({ error: 'Username already exists' });
     }
     
     // Check if email already exists
     const existingEmail = await User.findOne({ where: { email: emailValidation.value } });
     if (existingEmail) {
+      recordFailedAttempt(attemptKey);
       return res.status(400).json({ error: 'Email already registered' });
     }
     
@@ -186,9 +239,13 @@ router.post('/signup', [signupVelocityLimiter], async (req, res) => {
       });
     });
     
+    // Clear failed attempts on successful signup
+    clearFailedAttempts(attemptKey);
+    
     res.json({ token });
   } catch (err) {
     console.error('Registration error:', err);
+    recordFailedAttempt(attemptKey);
     res.status(400).json({ error: 'Registration failed: ' + (err.message || '') });
   }
 });

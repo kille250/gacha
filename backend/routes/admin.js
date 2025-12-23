@@ -7,6 +7,7 @@ const os = require('os');
 const { Op } = require('sequelize');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
+const { generalRateLimiter, sensitiveActionLimiter } = require('../middleware/rateLimiter');
 const { User, Character, Banner, Coupon, CouponRedemption, FishInventory, AuditEvent } = require('../models');
 const { getUrlPath, UPLOAD_BASE } = require('../config/upload');
 const { logAdminAction, AUDIT_EVENTS, getSecurityEvents } = require('../services/auditService');
@@ -17,6 +18,12 @@ const { characterUpload: upload } = require('../config/multer');
 const { isValidId } = require('../utils/validation');
 const { safeUnlink, safeDeleteUpload, safeUnlinkMany, downloadImage, generateUniqueFilename, getExtensionFromUrl } = require('../utils/fileUtils');
 const sequelize = require('../config/db');
+
+// ===========================================
+// ADMIN RATE LIMITING
+// ===========================================
+// Apply general rate limiting to all admin routes to prevent abuse
+router.use(generalRateLimiter);
 
 // Track server start time
 const serverStartTime = Date.now();
@@ -773,7 +780,8 @@ router.get('/users/:id/security', auth, adminAuth, async (req, res) => {
 });
 
 // POST /api/admin/users/:id/restrict - Apply restriction to user
-router.post('/users/:id/restrict', auth, adminAuth, async (req, res) => {
+// Security: sensitive action rate limited
+router.post('/users/:id/restrict', [auth, adminAuth, sensitiveActionLimiter], async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
     const { restrictionType, duration, reason } = req.body;
@@ -1103,7 +1111,8 @@ router.get('/security/config', auth, adminAuth, async (req, res) => {
 });
 
 // PUT /api/admin/security/config - Update security configuration
-router.put('/security/config', auth, adminAuth, async (req, res) => {
+// Security: sensitive action rate limited (high-impact operation)
+router.put('/security/config', [auth, adminAuth, sensitiveActionLimiter], async (req, res) => {
   try {
     const { updates } = req.body;
     
@@ -1332,7 +1341,8 @@ router.get('/users/:id/linked-accounts', auth, adminAuth, async (req, res) => {
 // ===========================================
 
 // POST /api/admin/users/bulk-restrict - Apply restriction to multiple users
-router.post('/users/bulk-restrict', auth, adminAuth, async (req, res) => {
+// Security: sensitive action rate limited (bulk operation)
+router.post('/users/bulk-restrict', [auth, adminAuth, sensitiveActionLimiter], async (req, res) => {
   try {
     const { userIds, restrictionType, duration, reason } = req.body;
     
@@ -1418,7 +1428,8 @@ router.post('/users/bulk-restrict', auth, adminAuth, async (req, res) => {
 });
 
 // POST /api/admin/users/bulk-unrestrict - Remove restrictions from multiple users
-router.post('/users/bulk-unrestrict', auth, adminAuth, async (req, res) => {
+// Security: sensitive action rate limited (bulk operation)
+router.post('/users/bulk-unrestrict', [auth, adminAuth, sensitiveActionLimiter], async (req, res) => {
   try {
     const { userIds, reason } = req.body;
     
@@ -1631,7 +1642,8 @@ router.get('/security/alerts', auth, adminAuth, async (req, res) => {
 // ===========================================
 
 // POST /api/admin/users/:id/force-logout - Invalidate user sessions
-router.post('/users/:id/force-logout', auth, adminAuth, async (req, res) => {
+// Security: sensitive action rate limited
+router.post('/users/:id/force-logout', [auth, adminAuth, sensitiveActionLimiter], async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
     const { reason } = req.body;
@@ -1674,7 +1686,8 @@ router.post('/users/:id/force-logout', auth, adminAuth, async (req, res) => {
 });
 
 // POST /api/admin/users/bulk-force-logout - Force logout multiple users
-router.post('/users/bulk-force-logout', auth, adminAuth, async (req, res) => {
+// Security: sensitive action rate limited (bulk operation)
+router.post('/users/bulk-force-logout', [auth, adminAuth, sensitiveActionLimiter], async (req, res) => {
   try {
     const { userIds, reason } = req.body;
     

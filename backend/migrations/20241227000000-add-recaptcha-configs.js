@@ -26,6 +26,18 @@ const MISSING_CONFIGS = [
     category: 'captcha', 
     description: 'Default minimum reCAPTCHA score (0.0-1.0, higher = stricter)' 
   },
+  {
+    key: 'RECAPTCHA_SCORE_LOGIN',
+    value: '0.5',
+    category: 'captcha',
+    description: 'Minimum reCAPTCHA score required for login action'
+  },
+  {
+    key: 'RECAPTCHA_SCORE_SIGNUP',
+    value: '0.5',
+    category: 'captcha',
+    description: 'Minimum reCAPTCHA score required for signup action'
+  },
   { 
     key: 'RECAPTCHA_SCORE_TRADE', 
     value: '0.6', 

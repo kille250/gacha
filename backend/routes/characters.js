@@ -3,6 +3,7 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const { enforcementMiddleware } = require('../middleware/enforcement');
 const { enforcePolicy } = require('../middleware/policies');
+const { lockoutMiddleware } = require('../middleware/captcha');
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 const { User, Character, UserCharacter } = require('../models');
 const { 
@@ -37,9 +38,9 @@ const {
 /**
  * Roll a single character
  * POST /api/characters/roll
- * Security: enforcement checked, policy enforced
+ * Security: lockout checked (fail-fast), enforcement checked, rate limited, policy enforced
  */
-router.post('/roll', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
+router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {
@@ -115,9 +116,9 @@ router.post('/roll', [auth, enforcementMiddleware, sensitiveActionLimiter, enfor
 /**
  * Multi-roll endpoint
  * POST /api/characters/roll-multi
- * Security: enforcement checked, policy enforced
+ * Security: lockout checked (fail-fast), enforcement checked, rate limited, policy enforced
  */
-router.post('/roll-multi', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
+router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {
