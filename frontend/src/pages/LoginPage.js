@@ -197,7 +197,7 @@ const LoginPage = () => {
                     onError={handleGoogleError}
                     theme="filled_black"
                     size="large"
-                    width="100%"
+                    width={400}
                     text="signin_with"
                     shape="rectangular"
                   />

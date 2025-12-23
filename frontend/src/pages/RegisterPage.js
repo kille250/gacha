@@ -275,7 +275,7 @@ const RegisterPage = () => {
                     onError={handleGoogleError}
                     theme="filled_black"
                     size="large"
-                    width="100%"
+                    width={400}
                     text="signup_with"
                     shape="rectangular"
                   />
