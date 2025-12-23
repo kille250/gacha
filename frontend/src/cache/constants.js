@@ -159,6 +159,8 @@ export const MODAL_ACTIONS = {
   LEADERBOARD_OPEN: 'modal:leaderboard_open',
   /** Opening dojo modal - clears dojo status and available characters cache */
   DOJO_OPEN: 'modal:dojo_open',
+  /** Opening prestige modal - clears prestige cache */
+  PRESTIGE_OPEN: 'modal:prestige_open',
 };
 
 // ===========================================
@@ -269,6 +271,7 @@ export const CACHE_ACTIONS = {
   MODAL_CHALLENGES_OPEN: MODAL_ACTIONS.CHALLENGES_OPEN,
   MODAL_LEADERBOARD_OPEN: MODAL_ACTIONS.LEADERBOARD_OPEN,
   MODAL_DOJO_OPEN: MODAL_ACTIONS.DOJO_OPEN,
+  MODAL_PRESTIGE_OPEN: MODAL_ACTIONS.PRESTIGE_OPEN,
   
   // Pre-transaction (defensive revalidation)
   PRE_ROLL: PRE_TRANSACTION_ACTIONS.PRE_ROLL,

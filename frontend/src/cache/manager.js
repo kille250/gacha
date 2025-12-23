@@ -140,7 +140,8 @@ const MODAL_PATTERNS = {
   trading_open: ['/fishing/inventory', '/fishing/trading-post'],
   challenges_open: ['/fishing/challenges'],
   leaderboard_open: ['/fishing/rank'],
-  dojo_open: ['/dojo/status', '/dojo/available-characters']
+  dojo_open: ['/dojo/status', '/dojo/available-characters'],
+  prestige_open: ['/fishing/prestige']
 };
 
 /**
@@ -362,6 +363,7 @@ const ACTION_HANDLERS = {
   'modal:challenges_open': () => invalidatePatterns(MODAL_PATTERNS.challenges_open),
   'modal:leaderboard_open': () => invalidatePatterns(MODAL_PATTERNS.leaderboard_open),
   'modal:dojo_open': () => invalidatePatterns(MODAL_PATTERNS.dojo_open),
+  'modal:prestige_open': () => invalidatePatterns(MODAL_PATTERNS.prestige_open),
 
   // ===========================================
   // DOJO ACTIONS

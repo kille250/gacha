@@ -482,6 +482,9 @@ const FishingPage = () => {
   // Prestige modal fetch - refresh prestige data when opening
   useEffect(() => {
     if (showPrestigeModal) {
+      // Ensure fresh data when opening prestige modal
+      invalidateFor(CACHE_ACTIONS.MODAL_PRESTIGE_OPEN);
+      
       getFishingPrestige()
         .then(freshPrestigeData => {
           setPrestigeData(freshPrestigeData);
