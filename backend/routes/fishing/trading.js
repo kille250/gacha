@@ -25,6 +25,9 @@ const {
   applyChallengeRewards
 } = require('../../services/fishingService');
 
+const { isTradingAllowed } = require('../../services/enforcementService');
+const { logEconomyAction, AUDIT_EVENTS } = require('../../services/auditService');
+
 // Error classes
 const {
   UserNotFoundError,
@@ -178,6 +181,18 @@ router.get('/trading-post', auth, async (req, res, next) => {
 router.post('/trade', auth, async (req, res, next) => {
   const userId = req.user.id;
   const now = Date.now();
+  
+  // Shadowban check - silently block trading
+  if (!isTradingAllowed(req)) {
+    // Return a fake "success" with reduced rewards to not alert the user
+    return res.json({
+      success: true,
+      message: 'Trade completed!',
+      reward: { points: 0 },
+      newPoints: 0,
+      _note: 'shadowbanned'
+    });
+  }
   
   // Trade lock
   if (tradeInProgress.has(userId)) {
@@ -370,6 +385,14 @@ router.post('/trade', auth, async (req, res, next) => {
     
     await user.save({ transaction });
     await transaction.commit();
+    
+    // Log the trade for audit
+    await logEconomyAction(AUDIT_EVENTS.TRADE_COMPLETED, userId, {
+      tradeId,
+      quantity: tradeQuantity,
+      reward,
+      tradeName: tradeOption.name
+    }, req);
     
     // Get updated inventory
     const updatedInventory = await FishInventory.findAll({ where: { userId } });

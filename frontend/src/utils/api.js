@@ -1,5 +1,6 @@
 import axios from 'axios';
 import { getToken, getTokenHash, getStoredUser } from './authStorage';
+import { getDeviceHeaders } from './deviceFingerprint';
 
 // Use environment variable for API URL, with fallback for local development
 const getApiBase = () => {
@@ -91,12 +92,17 @@ const api = axios.create({
   timeout: 30000,
 });
 
-// Request interceptor to add auth token and handle caching
+// Request interceptor to add auth token, device headers, and handle caching
 api.interceptors.request.use(config => {
   const token = getToken();
   if (token) {
     config.headers['x-auth-token'] = token;
   }
+  
+  // Add device fingerprint headers for abuse prevention
+  const deviceHeaders = getDeviceHeaders();
+  config.headers['X-Device-Fingerprint'] = deviceHeaders['X-Device-Fingerprint'];
+  config.headers['X-Device-Id'] = deviceHeaders['X-Device-Id'];
   
   // Only cache GET requests
   if (config.method === 'get' || !config.method) {

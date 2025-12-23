@@ -7,8 +7,10 @@ const os = require('os');
 const { Op } = require('sequelize');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
-const { User, Character, Banner, Coupon, CouponRedemption, FishInventory } = require('../models');
+const { User, Character, Banner, Coupon, CouponRedemption, FishInventory, AuditEvent } = require('../models');
 const { getUrlPath, UPLOAD_BASE } = require('../config/upload');
+const { logAdminAction, AUDIT_EVENTS, getSecurityEvents } = require('../services/auditService');
+const { getHighRiskUsers, RISK_THRESHOLDS } = require('../services/riskService');
 const { characterUpload: upload } = require('../config/multer');
 const { isValidId } = require('../utils/validation');
 const { safeUnlink, safeDeleteUpload, safeUnlinkMany, downloadImage, generateUniqueFilename, getExtensionFromUrl } = require('../utils/fileUtils');
@@ -597,6 +599,426 @@ router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
   } catch (err) {
     console.error('Error deleting character:', err);
     res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ===========================================
+// SECURITY & ABUSE PREVENTION ENDPOINTS
+// ===========================================
+
+// Valid restriction types
+const VALID_RESTRICTIONS = ['none', 'warning', 'rate_limited', 'shadowban', 'temp_ban', 'perm_ban'];
+
+/**
+ * Parse duration string to milliseconds
+ * Formats: 1h, 24h, 7d, 30d
+ */
+function parseDuration(durationStr) {
+  if (!durationStr) return null;
+  
+  const match = durationStr.match(/^(\d+)(h|d)$/i);
+  if (!match) return null;
+  
+  const value = parseInt(match[1], 10);
+  const unit = match[2].toLowerCase();
+  
+  if (unit === 'h') return value * 60 * 60 * 1000;
+  if (unit === 'd') return value * 24 * 60 * 60 * 1000;
+  
+  return null;
+}
+
+// GET /api/admin/security/overview - Security dashboard overview
+router.get('/security/overview', auth, adminAuth, async (req, res) => {
+  try {
+    // Get counts of restricted users
+    const [
+      totalBanned,
+      tempBanned,
+      shadowbanned,
+      rateLimited,
+      warnings,
+      highRiskUsers,
+      recentEvents
+    ] = await Promise.all([
+      User.count({ where: { restrictionType: 'perm_ban' } }),
+      User.count({ where: { restrictionType: 'temp_ban' } }),
+      User.count({ where: { restrictionType: 'shadowban' } }),
+      User.count({ where: { restrictionType: 'rate_limited' } }),
+      User.sum('warningCount') || 0,
+      getHighRiskUsers(RISK_THRESHOLDS.MONITORING, 10),
+      getSecurityEvents({ limit: 20, severity: 'warning' })
+    ]);
+    
+    res.json({
+      restrictions: {
+        permBanned: totalBanned,
+        tempBanned,
+        shadowbanned,
+        rateLimited,
+        totalWarnings: warnings
+      },
+      highRiskUsers: highRiskUsers.map(u => ({
+        id: u.id,
+        username: u.username,
+        riskScore: u.riskScore,
+        warningCount: u.warningCount
+      })),
+      recentEvents: recentEvents.slice(0, 10),
+      thresholds: RISK_THRESHOLDS
+    });
+  } catch (err) {
+    console.error('Security overview error:', err);
+    res.status(500).json({ error: 'Failed to fetch security overview' });
+  }
+});
+
+// GET /api/admin/users/:id/security - Get user security details
+router.get('/users/:id/security', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId, {
+      attributes: [
+        'id', 'username', 'email', 'createdAt',
+        'restrictionType', 'restrictedUntil', 'restrictionReason',
+        'riskScore', 'warningCount', 'deviceFingerprints', 'linkedAccounts', 'lastKnownIP'
+      ]
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get recent audit events for this user
+    const auditTrail = await AuditEvent.findAll({
+      where: {
+        [Op.or]: [
+          { userId: userId },
+          { targetUserId: userId }
+        ]
+      },
+      order: [['createdAt', 'DESC']],
+      limit: 50
+    });
+    
+    res.json({
+      user: {
+        id: user.id,
+        username: user.username,
+        email: user.email,
+        createdAt: user.createdAt,
+        restriction: {
+          type: user.restrictionType || 'none',
+          until: user.restrictedUntil,
+          reason: user.restrictionReason
+        },
+        riskScore: user.riskScore || 0,
+        warningCount: user.warningCount || 0,
+        deviceFingerprints: user.deviceFingerprints || [],
+        linkedAccounts: user.linkedAccounts || [],
+        lastKnownIP: user.lastKnownIP
+      },
+      auditTrail
+    });
+  } catch (err) {
+    console.error('Get user security error:', err);
+    res.status(500).json({ error: 'Failed to fetch user security info' });
+  }
+});
+
+// POST /api/admin/users/:id/restrict - Apply restriction to user
+router.post('/users/:id/restrict', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { restrictionType, duration, reason } = req.body;
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    if (!restrictionType || !VALID_RESTRICTIONS.includes(restrictionType)) {
+      return res.status(400).json({ 
+        error: 'Invalid restriction type',
+        validTypes: VALID_RESTRICTIONS
+      });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Prevent self-restriction
+    if (user.id === req.user.id) {
+      return res.status(400).json({ error: 'Cannot restrict your own account' });
+    }
+    
+    // Prevent restricting other admins
+    if (user.isAdmin) {
+      return res.status(400).json({ error: 'Cannot restrict admin accounts' });
+    }
+    
+    const oldRestriction = user.restrictionType;
+    
+    // Update restriction
+    user.restrictionType = restrictionType;
+    user.restrictionReason = reason || null;
+    user.lastRestrictionChange = new Date();
+    
+    // Handle duration for temp restrictions
+    if (['temp_ban', 'rate_limited'].includes(restrictionType) && duration) {
+      const durationMs = parseDuration(duration);
+      if (!durationMs) {
+        return res.status(400).json({ 
+          error: 'Invalid duration format. Use: 1h, 24h, 7d, 30d' 
+        });
+      }
+      user.restrictedUntil = new Date(Date.now() + durationMs);
+    } else if (restrictionType === 'none') {
+      user.restrictedUntil = null;
+      user.restrictionReason = null;
+    } else {
+      user.restrictedUntil = null;
+    }
+    
+    // Increment warning count for warnings
+    if (restrictionType === 'warning') {
+      user.warningCount = (user.warningCount || 0) + 1;
+    }
+    
+    await user.save();
+    
+    // Log the action
+    await logAdminAction(AUDIT_EVENTS.ADMIN_RESTRICT, req.user.id, user.id, {
+      oldRestriction,
+      newRestriction: restrictionType,
+      duration,
+      reason
+    }, req);
+    
+    console.log(`Admin (ID: ${req.user.id}) applied ${restrictionType} to user ${user.username} (ID: ${userId})`);
+    
+    res.json({
+      success: true,
+      message: `${restrictionType === 'none' ? 'Restriction removed' : `${restrictionType} applied`} for ${user.username}`,
+      user: {
+        id: user.id,
+        username: user.username,
+        restrictionType: user.restrictionType,
+        restrictedUntil: user.restrictedUntil,
+        restrictionReason: user.restrictionReason,
+        warningCount: user.warningCount
+      }
+    });
+  } catch (err) {
+    console.error('Restrict user error:', err);
+    res.status(500).json({ error: 'Failed to apply restriction' });
+  }
+});
+
+// POST /api/admin/users/:id/unrestrict - Remove all restrictions
+router.post('/users/:id/unrestrict', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { reason } = req.body;
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const oldRestriction = user.restrictionType;
+    
+    // Clear restrictions
+    user.restrictionType = 'none';
+    user.restrictedUntil = null;
+    user.restrictionReason = null;
+    user.lastRestrictionChange = new Date();
+    
+    await user.save();
+    
+    // Log the action
+    await logAdminAction(AUDIT_EVENTS.ADMIN_UNRESTRICT, req.user.id, user.id, {
+      oldRestriction,
+      reason: reason || 'Manual unrestriction'
+    }, req);
+    
+    console.log(`Admin (ID: ${req.user.id}) removed restrictions from user ${user.username} (ID: ${userId})`);
+    
+    res.json({
+      success: true,
+      message: `All restrictions removed for ${user.username}`,
+      user: {
+        id: user.id,
+        username: user.username,
+        restrictionType: 'none'
+      }
+    });
+  } catch (err) {
+    console.error('Unrestrict user error:', err);
+    res.status(500).json({ error: 'Failed to remove restriction' });
+  }
+});
+
+// POST /api/admin/users/:id/warn - Issue a warning
+router.post('/users/:id/warn', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { reason } = req.body;
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    if (!reason) {
+      return res.status(400).json({ error: 'Warning reason is required' });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Increment warning count
+    const oldCount = user.warningCount || 0;
+    user.warningCount = oldCount + 1;
+    
+    // Auto-escalation: 3+ warnings = temp ban
+    let autoAction = null;
+    if (user.warningCount >= 3 && user.restrictionType === 'none') {
+      user.restrictionType = 'temp_ban';
+      user.restrictedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      user.restrictionReason = 'Multiple warnings';
+      user.lastRestrictionChange = new Date();
+      autoAction = 'temp_ban (7 days)';
+    }
+    
+    await user.save();
+    
+    // Log the warning
+    await logAdminAction(AUDIT_EVENTS.ADMIN_WARNING, req.user.id, user.id, {
+      warningNumber: user.warningCount,
+      reason,
+      autoAction
+    }, req);
+    
+    console.log(`Admin (ID: ${req.user.id}) warned user ${user.username} (warning #${user.warningCount})`);
+    
+    res.json({
+      success: true,
+      message: `Warning issued to ${user.username} (warning #${user.warningCount})`,
+      user: {
+        id: user.id,
+        username: user.username,
+        warningCount: user.warningCount,
+        restrictionType: user.restrictionType
+      },
+      autoAction
+    });
+  } catch (err) {
+    console.error('Warn user error:', err);
+    res.status(500).json({ error: 'Failed to issue warning' });
+  }
+});
+
+// POST /api/admin/users/:id/reset-warnings - Reset warning count
+router.post('/users/:id/reset-warnings', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const oldCount = user.warningCount || 0;
+    user.warningCount = 0;
+    await user.save();
+    
+    await logAdminAction(AUDIT_EVENTS.ADMIN_WARNING, req.user.id, user.id, {
+      action: 'reset',
+      oldCount
+    }, req);
+    
+    res.json({
+      success: true,
+      message: `Warnings reset for ${user.username}`,
+      oldCount,
+      newCount: 0
+    });
+  } catch (err) {
+    console.error('Reset warnings error:', err);
+    res.status(500).json({ error: 'Failed to reset warnings' });
+  }
+});
+
+// GET /api/admin/security/audit - Get audit log
+router.get('/security/audit', auth, adminAuth, async (req, res) => {
+  try {
+    const { limit = 100, offset = 0, userId, eventType, severity } = req.query;
+    
+    const where = {};
+    if (userId) where.userId = parseInt(userId, 10);
+    if (eventType) where.eventType = eventType;
+    if (severity) where.severity = severity;
+    
+    const events = await AuditEvent.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      limit: Math.min(parseInt(limit, 10) || 100, 500),
+      offset: parseInt(offset, 10) || 0
+    });
+    
+    const total = await AuditEvent.count({ where });
+    
+    res.json({
+      events,
+      total,
+      limit: parseInt(limit, 10) || 100,
+      offset: parseInt(offset, 10) || 0
+    });
+  } catch (err) {
+    console.error('Audit log error:', err);
+    res.status(500).json({ error: 'Failed to fetch audit log' });
+  }
+});
+
+// GET /api/admin/security/high-risk - Get high-risk users
+router.get('/security/high-risk', auth, adminAuth, async (req, res) => {
+  try {
+    const { threshold = 50, limit = 50 } = req.query;
+    
+    const users = await getHighRiskUsers(
+      parseInt(threshold, 10) || 50,
+      parseInt(limit, 10) || 50
+    );
+    
+    res.json({
+      users: users.map(u => ({
+        id: u.id,
+        username: u.username,
+        riskScore: u.riskScore,
+        warningCount: u.warningCount,
+        createdAt: u.createdAt,
+        deviceCount: (u.deviceFingerprints || []).length
+      })),
+      thresholds: RISK_THRESHOLDS
+    });
+  } catch (err) {
+    console.error('High risk users error:', err);
+    res.status(500).json({ error: 'Failed to fetch high risk users' });
   }
 });
 

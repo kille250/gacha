@@ -249,6 +249,91 @@ User.init(
         this.setDataValue('fishingAchievements', JSON.stringify(value || {}));
       }
     },
+    
+    // ===========================================
+    // SECURITY & ABUSE PREVENTION FIELDS
+    // ===========================================
+    
+    // Restriction type: none, warning, rate_limited, shadowban, temp_ban, perm_ban
+    restrictionType: {
+      type: DataTypes.STRING,
+      allowNull: true,
+      defaultValue: 'none'
+    },
+    
+    // When restriction expires (for temp_ban, rate_limited)
+    restrictedUntil: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    
+    // Human-readable reason for restriction
+    restrictionReason: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    
+    // Risk score (0-100, higher = more suspicious)
+    riskScore: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
+    },
+    
+    // Number of warnings received
+    warningCount: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
+    },
+    
+    // Device fingerprints seen for this user (JSON array)
+    deviceFingerprints: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('deviceFingerprints');
+        try {
+          return value ? JSON.parse(value) : [];
+        } catch {
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('deviceFingerprints', JSON.stringify(value || []));
+      }
+    },
+    
+    // IDs of accounts suspected to be linked (JSON array)
+    linkedAccounts: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('linkedAccounts');
+        try {
+          return value ? JSON.parse(value) : [];
+        } catch {
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('linkedAccounts', JSON.stringify(value || []));
+      }
+    },
+    
+    // Last known IP (hashed for privacy)
+    lastKnownIP: {
+      type: DataTypes.STRING,
+      allowNull: true
+    },
+    
+    // When restriction was last changed (for audit)
+    lastRestrictionChange: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
   },
   {
     sequelize,

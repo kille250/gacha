@@ -1,0 +1,209 @@
+/**
+ * Audit Service
+ * 
+ * Centralized logging for security-relevant events.
+ * Supports both database storage and console logging.
+ */
+
+// Event type constants
+const AUDIT_EVENTS = {
+  // Authentication
+  LOGIN_SUCCESS: 'auth.login.success',
+  LOGIN_FAILED: 'auth.login.failed',
+  SIGNUP: 'auth.signup',
+  GOOGLE_LOGIN: 'auth.google.login',
+  PASSWORD_CHANGE: 'auth.password.change',
+  
+  // Economy actions
+  TRADE_COMPLETED: 'economy.trade',
+  GACHA_ROLL: 'economy.gacha.roll',
+  COUPON_REDEEMED: 'economy.coupon.redeemed',
+  COUPON_FAILED: 'economy.coupon.failed',
+  DAILY_REWARD: 'economy.daily_reward',
+  
+  // Fishing
+  FISH_CAUGHT: 'fishing.catch',
+  AUTOFISH_SESSION: 'fishing.autofish',
+  
+  // Admin actions
+  ADMIN_RESTRICT: 'admin.restrict',
+  ADMIN_UNRESTRICT: 'admin.unrestrict',
+  ADMIN_WARNING: 'admin.warning',
+  ADMIN_POINTS_ADJUST: 'admin.points_adjust',
+  
+  // Security events
+  DEVICE_NEW: 'security.device.new',
+  DEVICE_COLLISION: 'security.device.collision',
+  RISK_SCORE_CHANGE: 'security.risk.change',
+  AUTO_RESTRICTION: 'security.auto_restriction',
+  
+  // Anomalies
+  TIMING_ANOMALY: 'anomaly.timing',
+  RATE_EXCEEDED: 'anomaly.rate_exceeded',
+  SUSPICIOUS_PATTERN: 'anomaly.suspicious'
+};
+
+// Severity levels
+const SEVERITY = {
+  INFO: 'info',
+  WARNING: 'warning',
+  CRITICAL: 'critical'
+};
+
+// In-memory buffer for batch writes (optional optimization)
+// TODO: Implement batch write functionality
+// const eventBuffer = [];
+// const BUFFER_SIZE = 10;
+// const FLUSH_INTERVAL = 30000; // 30 seconds
+
+/**
+ * Log an audit event
+ * @param {Object} event - Event details
+ */
+async function logEvent(event) {
+  const {
+    eventType,
+    severity = SEVERITY.INFO,
+    userId = null,
+    adminId = null,
+    targetUserId = null,
+    data = {},
+    req = null // Express request object for context
+  } = event;
+  
+  // Extract request context if provided
+  let ipHash = null;
+  let userAgent = null;
+  let deviceFingerprint = null;
+  
+  if (req) {
+    ipHash = req.deviceSignals?.ipHash || null;
+    userAgent = req.headers?.['user-agent']?.substring(0, 255) || null;
+    deviceFingerprint = req.deviceSignals?.fingerprint || null;
+  }
+  
+  // Always log to console for immediate visibility
+  const logPrefix = severity === SEVERITY.CRITICAL ? '🚨' : 
+                    severity === SEVERITY.WARNING ? '⚠️' : 'ℹ️';
+  console.log(`[AUDIT] ${logPrefix} ${eventType}`, JSON.stringify({
+    userId,
+    targetUserId,
+    ...data
+  }));
+  
+  // Try to persist to database
+  try {
+    const AuditEvent = require('../models/auditEvent');
+    await AuditEvent.log({
+      eventType,
+      severity,
+      userId,
+      adminId,
+      targetUserId,
+      data,
+      ipHash,
+      userAgent,
+      deviceFingerprint
+    });
+  } catch (err) {
+    // Database logging failed - already logged to console
+    console.error('[AUDIT] DB write failed:', err.message);
+  }
+}
+
+/**
+ * Log a security-critical event (shorthand)
+ */
+async function logSecurityEvent(eventType, userId, data = {}, req = null) {
+  return logEvent({
+    eventType,
+    severity: SEVERITY.WARNING,
+    userId,
+    data,
+    req
+  });
+}
+
+/**
+ * Log an admin action
+ */
+async function logAdminAction(eventType, adminId, targetUserId, data = {}, req = null) {
+  return logEvent({
+    eventType,
+    severity: SEVERITY.WARNING,
+    adminId,
+    targetUserId,
+    data,
+    req
+  });
+}
+
+/**
+ * Log an economy action
+ */
+async function logEconomyAction(eventType, userId, data = {}, req = null) {
+  return logEvent({
+    eventType,
+    severity: SEVERITY.INFO,
+    userId,
+    data,
+    req
+  });
+}
+
+/**
+ * Log a critical security event
+ */
+async function logCritical(eventType, userId, data = {}, req = null) {
+  return logEvent({
+    eventType,
+    severity: SEVERITY.CRITICAL,
+    userId,
+    data,
+    req
+  });
+}
+
+/**
+ * Get audit trail for a user
+ */
+async function getUserAuditTrail(userId, options = {}) {
+  try {
+    const AuditEvent = require('../models/auditEvent');
+    return AuditEvent.getForUser(userId, options);
+  } catch (err) {
+    console.error('[AUDIT] Failed to get audit trail:', err.message);
+    return [];
+  }
+}
+
+/**
+ * Get recent security events (for admin dashboard)
+ */
+async function getSecurityEvents(options = {}) {
+  try {
+    const AuditEvent = require('../models/auditEvent');
+    return AuditEvent.getSecurityEvents(options);
+  } catch (err) {
+    console.error('[AUDIT] Failed to get security events:', err.message);
+    return [];
+  }
+}
+
+module.exports = {
+  // Event types
+  AUDIT_EVENTS,
+  SEVERITY,
+  
+  // Logging functions
+  logEvent,
+  logSecurityEvent,
+  logAdminAction,
+  logEconomyAction,
+  logCritical,
+  
+  // Query functions
+  getUserAuditTrail,
+  getSecurityEvents
+};
+
