@@ -12,6 +12,7 @@ import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getSecurityOverview, getAppealStats } from '../../utils/api';
 import { AdminContainer, SectionTitle } from './AdminStyles';
 import SecurityOverview from './SecurityOverview';
+import SecurityAlerts from './SecurityAlerts';
 import HighRiskUsersList from './HighRiskUsersList';
 import AuditLogViewer from './AuditLogViewer';
 import AppealsList from './AppealsList';
@@ -149,12 +150,15 @@ const AdminSecurity = ({ onSuccess }) => {
         ) : (
           <>
             {currentView === VIEWS.OVERVIEW && (
-              <SecurityOverview 
-                data={securityData}
-                appealStats={appealStats}
-                onViewHighRisk={() => setCurrentView(VIEWS.HIGH_RISK)}
-                onViewAppeals={() => setCurrentView(VIEWS.APPEALS)}
-              />
+              <>
+                <SecurityAlerts maxAlerts={10} autoRefresh={true} refreshInterval={30000} />
+                <SecurityOverview 
+                  data={securityData}
+                  appealStats={appealStats}
+                  onViewHighRisk={() => setCurrentView(VIEWS.HIGH_RISK)}
+                  onViewAppeals={() => setCurrentView(VIEWS.APPEALS)}
+                />
+              </>
             )}
             
             {currentView === VIEWS.HIGH_RISK && (

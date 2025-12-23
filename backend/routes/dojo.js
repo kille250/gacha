@@ -8,6 +8,8 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { enforcementMiddleware } = require('../middleware/enforcement');
+const { enforcePolicy } = require('../middleware/policies');
 const { User, Character, UserCharacter, sequelize } = require('../models');
 const {
   DOJO_CONFIG,
@@ -400,7 +402,7 @@ router.post('/unassign', auth, async (req, res) => {
  * Claim accumulated rewards
  * Uses transaction to ensure atomicity and proper cooldown handling
  */
-router.post('/claim', auth, async (req, res) => {
+router.post('/claim', auth, enforcementMiddleware, enforcePolicy('canClaimRewards'), async (req, res) => {
   const userId = req.user.id;
   const transaction = await sequelize.transaction();
   

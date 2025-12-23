@@ -334,6 +334,30 @@ User.init(
       type: DataTypes.DATE,
       allowNull: true
     },
+    
+    // Session invalidation timestamp - JWTs issued before this are rejected
+    sessionInvalidatedAt: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+    
+    // Username change history (JSON array of {oldUsername, changedAt})
+    usernameHistory: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('usernameHistory');
+        try {
+          return value ? JSON.parse(value) : [];
+        } catch {
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('usernameHistory', JSON.stringify(value || []));
+      }
+    },
   },
   {
     sequelize,

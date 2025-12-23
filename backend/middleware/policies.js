@@ -6,6 +6,7 @@
  */
 
 const { User } = require('../models');
+const { logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');
 
 /**
  * Policy definitions
@@ -159,6 +160,85 @@ const policies = {
     }
     
     return { allowed: true };
+  },
+  
+  /**
+   * Check if user can perform gacha pulls
+   * Requirements: Not banned, not shadowbanned, not rate limited
+   */
+  canGachaPull: async (req) => {
+    if (req.shadowbanned) {
+      return { allowed: false, reason: 'Gacha pulls are temporarily unavailable' };
+    }
+    
+    if (req.restrictedRateLimit) {
+      return { allowed: false, reason: 'Your account is under review' };
+    }
+    
+    if (!req.user?.id) {
+      return { allowed: false, reason: 'Authentication required' };
+    }
+    
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['restrictionType', 'restrictedUntil']
+    });
+    
+    if (!user) {
+      return { allowed: false, reason: 'User not found' };
+    }
+    
+    // Check for active ban
+    if (user.restrictionType === 'banned') {
+      return { allowed: false, reason: 'Your account is banned from this action' };
+    }
+    
+    // Check for active temporary restriction
+    if (user.restrictionType === 'restricted' && user.restrictedUntil) {
+      const now = new Date();
+      if (new Date(user.restrictedUntil) > now) {
+        const hoursRemaining = Math.ceil((new Date(user.restrictedUntil) - now) / (1000 * 60 * 60));
+        return { 
+          allowed: false, 
+          reason: `Gacha pulls are restricted for ${hoursRemaining} more hour(s)`,
+          restrictedUntil: user.restrictedUntil
+        };
+      }
+    }
+    
+    return { allowed: true };
+  },
+  
+  /**
+   * Check if user can claim dojo/idle rewards
+   * Requirements: Not banned, not shadowbanned
+   */
+  canClaimRewards: async (req) => {
+    if (req.shadowbanned) {
+      return { allowed: false, reason: 'Rewards are temporarily unavailable' };
+    }
+    
+    if (req.restrictedRateLimit) {
+      return { allowed: false, reason: 'Your account is under review' };
+    }
+    
+    if (!req.user?.id) {
+      return { allowed: false, reason: 'Authentication required' };
+    }
+    
+    const user = await User.findByPk(req.user.id, {
+      attributes: ['restrictionType', 'restrictedUntil']
+    });
+    
+    if (!user) {
+      return { allowed: false, reason: 'User not found' };
+    }
+    
+    // Check for active ban
+    if (user.restrictionType === 'banned') {
+      return { allowed: false, reason: 'Your account is banned from claiming rewards' };
+    }
+    
+    return { allowed: true };
   }
 };
 
@@ -179,6 +259,18 @@ const enforcePolicy = (policyName) => async (req, res, next) => {
     const result = await policy(req);
     
     if (!result.allowed) {
+      // Log policy denial to audit trail
+      if (req.user?.id) {
+        await logSecurityEvent(AUDIT_EVENTS.POLICY_DENIED, req.user.id, {
+          policy: policyName,
+          reason: result.reason,
+          path: req.originalUrl,
+          method: req.method
+        }, req).catch(err => {
+          console.error('[Policy] Failed to log denial:', err.message);
+        });
+      }
+      
       const response = { 
         error: result.reason || 'Action not permitted',
         code: 'POLICY_DENIED'
@@ -190,6 +282,10 @@ const enforcePolicy = (policyName) => async (req, res, next) => {
       
       if (result.requiresVerification) {
         response.requiresVerification = true;
+      }
+      
+      if (result.restrictedUntil) {
+        response.restrictedUntil = result.restrictedUntil;
       }
       
       return res.status(403).json(response);

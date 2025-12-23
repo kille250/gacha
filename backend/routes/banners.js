@@ -3,6 +3,8 @@ const router = express.Router();
 const path = require('path');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
+const { enforcementMiddleware } = require('../middleware/enforcement');
+const { enforcePolicy } = require('../middleware/policies');
 const { Banner, Character, User } = require('../models');
 const { getUrlPath, getFilePath } = require('../config/upload');
 const { safeUnlink } = require('../utils/fileUtils');
@@ -524,7 +526,7 @@ router.delete('/:id', [auth, adminAuth], async (req, res) => {
  * Single roll on a banner
  * POST /api/banners/:id/roll
  */
-router.post('/:id/roll', auth, async (req, res) => {
+router.post('/:id/roll', auth, enforcementMiddleware, enforcePolicy('canGachaPull'), async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {
@@ -678,7 +680,7 @@ router.post('/:id/roll', auth, async (req, res) => {
  * Multi-roll on a banner
  * POST /api/banners/:id/roll-multi
  */
-router.post('/:id/roll-multi', auth, async (req, res) => {
+router.post('/:id/roll-multi', auth, enforcementMiddleware, enforcePolicy('canGachaPull'), async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {

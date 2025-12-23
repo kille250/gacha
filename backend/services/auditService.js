@@ -50,6 +50,13 @@ const AUDIT_EVENTS = {
   SUSPICIOUS_PATTERN: 'anomaly.suspicious',
   VELOCITY_EXCEEDED: 'anomaly.velocity_exceeded',
   
+  // Policy enforcement
+  POLICY_DENIED: 'policy.denied',
+  
+  // Session management
+  SESSION_INVALIDATED: 'session.invalidated',
+  FORCE_LOGOUT: 'admin.session.force_logout',
+  
   // Appeals
   APPEAL_SUBMITTED: 'appeal.submitted',
   APPEAL_APPROVED: 'appeal.approved',

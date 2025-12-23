@@ -9,8 +9,9 @@ const { User } = require('../models');
 const { Op } = require('sequelize');
 const { findFingerprintCollisions } = require('../middleware/deviceSignals');
 const { logSecurityEvent, AUDIT_EVENTS } = require('./auditService');
+const { getRiskWeights } = require('./securityConfigService');
 
-// Risk weight configuration
+// Default risk weight configuration (can be overridden via security config)
 const RISK_WEIGHTS = {
   // Positive signals (reduce risk)
   accountAge: {
@@ -39,6 +40,32 @@ const RISK_WEIGHTS = {
   multiAccountSuspicion: 25
 };
 
+/**
+ * Get risk weights with configurable overrides
+ * @returns {Promise<Object>} - Merged risk weights
+ */
+async function getConfigurableWeights() {
+  try {
+    const configWeights = await getRiskWeights();
+    return {
+      ...RISK_WEIGHTS,
+      deviceCollision: configWeights.sharedDevice || RISK_WEIGHTS.deviceCollision,
+      deviceCollisionWithBanned: configWeights.bannedDevice || RISK_WEIGHTS.deviceCollisionWithBanned,
+      timingAnomaly: configWeights.timingAnomaly || RISK_WEIGHTS.timingAnomaly,
+      previousWarning: configWeights.previousWarning || RISK_WEIGHTS.previousWarning,
+      rapidActions: configWeights.velocityBreach || RISK_WEIGHTS.rapidActions,
+      accountAge: {
+        ...RISK_WEIGHTS.accountAge,
+        moreThan30Days: configWeights.accountAgeBonus || RISK_WEIGHTS.accountAge.moreThan30Days
+      },
+      googleLinked: configWeights.verifiedAccountBonus || RISK_WEIGHTS.googleLinked
+    };
+  } catch (err) {
+    console.error('[RiskService] Failed to get configurable weights:', err.message);
+    return RISK_WEIGHTS;
+  }
+}
+
 // Thresholds for automated actions
 const RISK_THRESHOLDS = {
   MONITORING: 30,
@@ -57,39 +84,42 @@ async function calculateRiskScore(userId, context = {}) {
   const user = await User.findByPk(userId);
   if (!user) return 0;
   
+  // Get configurable weights
+  const weights = await getConfigurableWeights();
+  
   let score = 0;
   
   // === Account Age ===
   const ageInDays = (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
   if (ageInDays > 30) {
-    score += RISK_WEIGHTS.accountAge.moreThan30Days;
+    score += weights.accountAge.moreThan30Days;
   } else if (ageInDays > 7) {
-    score += RISK_WEIGHTS.accountAge.moreThan7Days;
+    score += weights.accountAge.moreThan7Days;
   } else if (ageInDays > 1) {
-    score += RISK_WEIGHTS.accountAge.moreThan1Day;
+    score += weights.accountAge.moreThan1Day;
   } else {
-    score += RISK_WEIGHTS.accountAge.lessThan1Day;
+    score += weights.accountAge.lessThan1Day;
   }
   
   // === OAuth Linked ===
   if (user.googleId) {
-    score += RISK_WEIGHTS.googleLinked;
+    score += weights.googleLinked;
   }
   
   // === Has Password (not just OAuth) ===
   if (user.password) {
-    score += RISK_WEIGHTS.hasPassword;
+    score += weights.hasPassword;
   }
   
   // === Previous Warnings ===
   const warningCount = user.warningCount || 0;
-  score += warningCount * RISK_WEIGHTS.previousWarning;
+  score += warningCount * weights.previousWarning;
   
   // === Context-based signals ===
   
   // Reaction time anomaly (bot detection)
   if (context.reactionTime !== undefined && context.reactionTime < 100) {
-    score += RISK_WEIGHTS.timingAnomaly;
+    score += weights.timingAnomaly;
   }
   
   // Device fingerprint collision
@@ -98,16 +128,16 @@ async function calculateRiskScore(userId, context = {}) {
     if (collisions.length > 0) {
       const hasBannedCollision = collisions.some(c => c.isBanned);
       if (hasBannedCollision) {
-        score += RISK_WEIGHTS.deviceCollisionWithBanned;
+        score += weights.deviceCollisionWithBanned;
       } else {
-        score += RISK_WEIGHTS.deviceCollision;
+        score += weights.deviceCollision;
       }
     }
   }
   
   // Rapid actions indicator
   if (context.actionsPerMinute && context.actionsPerMinute > 60) {
-    score += RISK_WEIGHTS.rapidActions;
+    score += weights.rapidActions;
   }
   
   // Clamp to 0-100
@@ -466,6 +496,7 @@ module.exports = {
   calculateRiskScore,
   updateRiskScore,
   checkAutoEnforcement,
+  getConfigurableWeights,
   
   // Enforcement
   applyAutomatedEnforcement,

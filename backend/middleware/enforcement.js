@@ -18,11 +18,26 @@ const enforcementMiddleware = async (req, res, next) => {
   
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'restrictionType', 'restrictedUntil', 'restrictionReason']
+      attributes: ['id', 'restrictionType', 'restrictedUntil', 'restrictionReason', 'sessionInvalidatedAt']
     });
     
     if (!user) {
       return next();
+    }
+    
+    // Check if session was invalidated (force logout)
+    if (user.sessionInvalidatedAt) {
+      // JWT has iat (issued at) in seconds, sessionInvalidatedAt is a Date
+      const tokenIssuedAt = req.user.iat ? req.user.iat * 1000 : 0;
+      const sessionInvalidatedAt = new Date(user.sessionInvalidatedAt).getTime();
+      
+      if (tokenIssuedAt < sessionInvalidatedAt) {
+        return res.status(401).json({
+          error: 'Session has been invalidated',
+          code: 'SESSION_INVALIDATED',
+          message: 'Please log in again'
+        });
+      }
     }
     
     const now = new Date();

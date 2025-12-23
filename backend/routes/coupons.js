@@ -3,9 +3,12 @@ const router = express.Router();
 const { Op } = require('sequelize');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
+const { enforcementMiddleware } = require('../middleware/enforcement');
+const { enforcePolicy } = require('../middleware/policies');
 const { Coupon, CouponRedemption, User, Character } = require('../models');
 const { isValidUUID, parseDate } = require('../utils/validation');
 const { acquireCharacter } = require('../utils/characterLeveling');
+const { logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');
 
 // ADMIN: Get all coupons
 router.get('/admin', [auth, adminAuth], async (req, res) => {
@@ -187,7 +190,7 @@ router.delete('/admin/:id', [auth, adminAuth], async (req, res) => {
 });
 
 // USER: Redeem a coupon
-router.post('/redeem', auth, async (req, res) => {
+router.post('/redeem', auth, enforcementMiddleware, enforcePolicy('canRedeemCoupon'), async (req, res) => {
   try {
     const { code } = req.body;
     if (!code) {
@@ -292,6 +295,13 @@ router.post('/redeem', auth, async (req, res) => {
     // Update coupon usage count
     coupon.currentUses += 1;
     await coupon.save();
+
+    // Log successful redemption
+    await logSecurityEvent(AUDIT_EVENTS.COUPON_REDEEMED, user.id, {
+      couponCode: coupon.code,
+      couponType: coupon.type,
+      value: coupon.value
+    }, req);
 
     return res.json({
       message: 'Coupon redeemed successfully',

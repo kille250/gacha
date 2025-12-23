@@ -1487,6 +1487,191 @@ router.get('/security/audit/export', auth, adminAuth, async (req, res) => {
 });
 
 // ===========================================
+// SECURITY ALERTS
+// ===========================================
+
+// GET /api/admin/security/alerts - Get real-time security alerts
+router.get('/security/alerts', auth, adminAuth, async (req, res) => {
+  try {
+    const { limit = 50, since } = req.query;
+    
+    // Build where clause
+    const where = {
+      severity: { [Op.in]: ['warning', 'critical'] },
+      eventType: {
+        [Op.or]: [
+          { [Op.like]: 'security.%' },
+          { [Op.like]: 'anomaly.%' },
+          { [Op.like]: 'policy.%' },
+          { [Op.eq]: 'auth.login.failed' },
+          { [Op.eq]: 'auth.signup.blocked' }
+        ]
+      }
+    };
+    
+    // Filter by time if `since` provided (ISO timestamp or epoch ms)
+    if (since) {
+      const sinceDate = new Date(isNaN(since) ? since : parseInt(since, 10));
+      if (!isNaN(sinceDate.getTime())) {
+        where.createdAt = { [Op.gt]: sinceDate };
+      }
+    }
+    
+    const alerts = await AuditEvent.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      limit: Math.min(parseInt(limit, 10) || 50, 200),
+      include: [{
+        model: User,
+        as: 'user',
+        attributes: ['id', 'username'],
+        required: false
+      }]
+    });
+    
+    // Group alerts by type for summary
+    const summary = {
+      total: alerts.length,
+      byType: {},
+      bySeverity: { warning: 0, critical: 0 }
+    };
+    
+    alerts.forEach(alert => {
+      const type = alert.eventType.split('.')[0];
+      summary.byType[type] = (summary.byType[type] || 0) + 1;
+      if (alert.severity === 'critical') {
+        summary.bySeverity.critical++;
+      } else {
+        summary.bySeverity.warning++;
+      }
+    });
+    
+    res.json({
+      alerts: alerts.map(a => ({
+        id: a.id,
+        eventType: a.eventType,
+        severity: a.severity,
+        userId: a.userId,
+        username: a.user?.username || null,
+        data: a.data,
+        ipHash: a.ipHash,
+        createdAt: a.createdAt
+      })),
+      summary,
+      fetchedAt: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Security alerts error:', err);
+    res.status(500).json({ error: 'Failed to fetch security alerts' });
+  }
+});
+
+// ===========================================
+// SESSION MANAGEMENT
+// ===========================================
+
+// POST /api/admin/users/:id/force-logout - Invalidate user sessions
+router.post('/users/:id/force-logout', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { reason } = req.body;
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Prevent force-logout of other admins
+    if (user.isAdmin && user.id !== req.user.id) {
+      return res.status(400).json({ error: 'Cannot force logout other admin accounts' });
+    }
+    
+    // Update session invalidation timestamp
+    // Any JWT issued before this time will be rejected
+    user.sessionInvalidatedAt = new Date();
+    await user.save();
+    
+    // Log the action
+    await logAdminAction(AUDIT_EVENTS.FORCE_LOGOUT, req.user.id, userId, {
+      reason: reason || 'Admin initiated force logout'
+    }, req);
+    
+    console.log(`Admin (ID: ${req.user.id}) force logged out user ${user.username} (ID: ${userId})`);
+    
+    res.json({
+      success: true,
+      message: `${user.username} has been logged out from all sessions`,
+      sessionInvalidatedAt: user.sessionInvalidatedAt
+    });
+  } catch (err) {
+    console.error('Force logout error:', err);
+    res.status(500).json({ error: 'Failed to force logout user' });
+  }
+});
+
+// POST /api/admin/users/bulk-force-logout - Force logout multiple users
+router.post('/users/bulk-force-logout', auth, adminAuth, async (req, res) => {
+  try {
+    const { userIds, reason } = req.body;
+    
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: 'userIds array is required' });
+    }
+    
+    if (userIds.length > 100) {
+      return res.status(400).json({ error: 'Maximum 100 users per bulk action' });
+    }
+    
+    const results = { success: [], failed: [] };
+    const invalidationTime = new Date();
+    
+    for (const userId of userIds) {
+      try {
+        const user = await User.findByPk(userId);
+        if (!user) {
+          results.failed.push({ userId, error: 'User not found' });
+          continue;
+        }
+        
+        // Skip other admins
+        if (user.isAdmin && user.id !== req.user.id) {
+          results.failed.push({ userId, error: 'Cannot force logout admin' });
+          continue;
+        }
+        
+        user.sessionInvalidatedAt = invalidationTime;
+        await user.save();
+        results.success.push({ userId, username: user.username });
+      } catch (err) {
+        results.failed.push({ userId, error: err.message });
+      }
+    }
+    
+    // Log bulk action
+    await logAdminAction(AUDIT_EVENTS.ADMIN_BULK_ACTION, req.user.id, null, {
+      action: 'bulk_force_logout',
+      reason: reason || 'Bulk force logout',
+      successCount: results.success.length,
+      failedCount: results.failed.length,
+      affectedUsers: results.success.map(r => r.userId)
+    }, req);
+    
+    res.json({
+      success: true,
+      message: `Logged out ${results.success.length} user(s) from all sessions`,
+      results
+    });
+  } catch (err) {
+    console.error('Bulk force logout error:', err);
+    res.status(500).json({ error: 'Failed to perform bulk force logout' });
+  }
+});
+
+// ===========================================
 // RESTRICTED USERS LIST
 // ===========================================
 

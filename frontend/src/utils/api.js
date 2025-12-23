@@ -609,6 +609,32 @@ export const getRestrictedUsers = async (type) => {
 };
 
 // ===========================================
+// SECURITY ALERTS
+// ===========================================
+
+export const getSecurityAlerts = async (options = {}) => {
+  const { limit, since } = options;
+  const params = { limit, since };
+  Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
+  const response = await api.get('/admin/security/alerts', { params });
+  return response.data;
+};
+
+// ===========================================
+// SESSION MANAGEMENT
+// ===========================================
+
+export const forceLogoutUser = async (userId, reason) => {
+  const response = await api.post(`/admin/users/${userId}/force-logout`, { reason });
+  return response.data;
+};
+
+export const bulkForceLogoutUsers = async (userIds, reason) => {
+  const response = await api.post('/admin/users/bulk-force-logout', { userIds, reason });
+  return response.data;
+};
+
+// ===========================================
 // AUDIT LOG EXPORT
 // ===========================================
 

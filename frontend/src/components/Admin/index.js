@@ -6,6 +6,7 @@ export { default as AdminBanners } from './AdminBanners';
 export { default as AdminCoupons } from './AdminCoupons';
 export { default as AdminRarities } from './AdminRarities';
 export { default as AdminSecurity } from './AdminSecurity';
+export { default as SecurityAlerts } from './SecurityAlerts';
 export { default as AltMediaPicker } from './AltMediaPicker';
 export { default as EditCharacterModal } from './EditCharacterModal';
 export { default as UserSecurityModal } from './UserSecurityModal';

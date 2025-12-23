@@ -18,6 +18,17 @@ const DEFAULTS = {
   RISK_THRESHOLD_TEMP_BAN: 85,
   RISK_SCORE_DECAY_PERCENTAGE: 0.1,
   
+  // Risk Score Weights (for calculateRiskScore)
+  RISK_WEIGHT_NEW_DEVICE: 10,
+  RISK_WEIGHT_MULTIPLE_DEVICES: 15,
+  RISK_WEIGHT_SHARED_DEVICE: 25,
+  RISK_WEIGHT_BANNED_DEVICE: 50,
+  RISK_WEIGHT_VELOCITY_BREACH: 20,
+  RISK_WEIGHT_TIMING_ANOMALY: 15,
+  RISK_WEIGHT_PREVIOUS_WARNING: 10,
+  RISK_WEIGHT_ACCOUNT_AGE_BONUS: -5,
+  RISK_WEIGHT_VERIFIED_ACCOUNT_BONUS: -10,
+  
   // Rate Limits
   RATE_LIMIT_GENERAL_WINDOW: 60000,
   RATE_LIMIT_GENERAL_MAX: 100,
@@ -156,6 +167,24 @@ async function getShadowbanConfig() {
 }
 
 /**
+ * Get risk score weights configuration
+ * @returns {Promise<Object>}
+ */
+async function getRiskWeights() {
+  return {
+    newDevice: await getConfig('RISK_WEIGHT_NEW_DEVICE'),
+    multipleDevices: await getConfig('RISK_WEIGHT_MULTIPLE_DEVICES'),
+    sharedDevice: await getConfig('RISK_WEIGHT_SHARED_DEVICE'),
+    bannedDevice: await getConfig('RISK_WEIGHT_BANNED_DEVICE'),
+    velocityBreach: await getConfig('RISK_WEIGHT_VELOCITY_BREACH'),
+    timingAnomaly: await getConfig('RISK_WEIGHT_TIMING_ANOMALY'),
+    previousWarning: await getConfig('RISK_WEIGHT_PREVIOUS_WARNING'),
+    accountAgeBonus: await getConfig('RISK_WEIGHT_ACCOUNT_AGE_BONUS'),
+    verifiedAccountBonus: await getConfig('RISK_WEIGHT_VERIFIED_ACCOUNT_BONUS')
+  };
+}
+
+/**
  * Get all security configuration (for admin display)
  * @returns {Promise<Object>}
  */
@@ -246,6 +275,7 @@ module.exports = {
   getCaptchaConfig,
   getPolicyConfig,
   getShadowbanConfig,
+  getRiskWeights,
   getAllSecurityConfig,
   
   // Admin functions
