@@ -3445,7 +3445,7 @@ const ResultReward = styled.div`
   font-weight: 700;
   color: ${props => props.$quality === 'perfect' ? '#ffd700' : props.$quality === 'great' ? '#4caf50' : '#e65100'};
   text-shadow: 1px 1px 0 rgba(255,255,255,0.5);
-  ${props => props.$quality === 'perfect' && `
+  ${props => props.$quality === 'perfect' && css`
     animation: ${pulse} 0.5s ease-in-out infinite;
   `}
 `;
