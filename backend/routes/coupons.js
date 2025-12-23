@@ -9,6 +9,12 @@ const { Coupon, CouponRedemption, User, Character } = require('../models');
 const { isValidUUID, parseDate } = require('../utils/validation');
 const { acquireCharacter } = require('../utils/characterLeveling');
 const { logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');
+const { 
+  captchaMiddleware, 
+  recordFailedAttempt, 
+  clearFailedAttempts 
+} = require('../middleware/captcha');
+const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 
 // ADMIN: Get all coupons
 router.get('/admin', [auth, adminAuth], async (req, res) => {
@@ -190,7 +196,10 @@ router.delete('/admin/:id', [auth, adminAuth], async (req, res) => {
 });
 
 // USER: Redeem a coupon
-router.post('/redeem', auth, enforcementMiddleware, enforcePolicy('canRedeemCoupon'), async (req, res) => {
+// Security: enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.post('/redeem', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canRedeemCoupon'), captchaMiddleware('coupon_redeem')], async (req, res) => {
+  const attemptKey = `coupon:${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
+  
   try {
     const { code } = req.body;
     if (!code) {
@@ -211,6 +220,14 @@ router.post('/redeem', auth, enforcementMiddleware, enforcePolicy('canRedeemCoup
 
     // Check if coupon exists
     if (!coupon) {
+      // Record failed attempt for CAPTCHA escalation (potential brute-force)
+      recordFailedAttempt(attemptKey);
+      
+      await logSecurityEvent(AUDIT_EVENTS.COUPON_FAILED, req.user.id, {
+        attemptedCode: code.substring(0, 4) + '***',
+        reason: 'Invalid code'
+      }, req);
+      
       return res.status(404).json({ error: 'Invalid coupon code' });
     }
 
@@ -296,6 +313,9 @@ router.post('/redeem', auth, enforcementMiddleware, enforcePolicy('canRedeemCoup
     coupon.currentUses += 1;
     await coupon.save();
 
+    // Clear failed attempts on successful redemption
+    clearFailedAttempts(attemptKey);
+    
     // Log successful redemption
     await logSecurityEvent(AUDIT_EVENTS.COUPON_REDEEMED, user.id, {
       couponCode: coupon.code,

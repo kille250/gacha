@@ -31,6 +31,8 @@ const { logEconomyAction, AUDIT_EVENTS } = require('../../services/auditService'
 const { checkVelocityLimit, detectVelocityAnomaly } = require('../../services/economyService');
 const { updateRiskScore } = require('../../services/riskService');
 const { enforcePolicy } = require('../../middleware/policies');
+const { captchaMiddleware } = require('../../middleware/captcha');
+const { sensitiveActionLimiter } = require('../../middleware/rateLimiter');
 
 // Error classes
 const {
@@ -182,7 +184,8 @@ router.get('/trading-post', auth, async (req, res, next) => {
 });
 
 // POST /trade - Execute a trade
-router.post('/trade', auth, enforcementMiddleware, enforcePolicy('canTrade'), async (req, res, next) => {
+// Security: enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.post('/trade', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canTrade'), captchaMiddleware('trade')], async (req, res, next) => {
   const userId = req.user.id;
   const now = Date.now();
   const enforcement = getEnforcementContext(req);

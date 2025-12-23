@@ -237,7 +237,7 @@ router.get('/available-characters', auth, async (req, res) => {
  * Assign a character to a training slot
  * Uses transaction with row locking to prevent race conditions
  */
-router.post('/assign', auth, async (req, res) => {
+router.post('/assign', [auth, enforcementMiddleware], async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
@@ -339,7 +339,7 @@ router.post('/assign', auth, async (req, res) => {
  * Remove a character from a training slot
  * Uses transaction to prevent race conditions
  */
-router.post('/unassign', auth, async (req, res) => {
+router.post('/unassign', [auth, enforcementMiddleware], async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
@@ -624,7 +624,7 @@ router.post('/claim', auth, enforcementMiddleware, enforcePolicy('canClaimReward
  * Purchase a dojo upgrade
  * Uses transaction with row locking to prevent double-spending
  */
-router.post('/upgrade', auth, async (req, res) => {
+router.post('/upgrade', [auth, enforcementMiddleware], async (req, res) => {
   const { upgradeType, rarity } = req.body; // rarity only for mastery upgrades
   
   // Validate input before starting transaction

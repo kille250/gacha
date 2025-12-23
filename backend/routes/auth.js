@@ -8,13 +8,21 @@ const { validateUsername, validatePassword, validateEmail } = require('../utils/
 const { checkSignupRisk, updateRiskScore } = require('../services/riskService');
 const { recordDeviceFingerprint, recordIPHash } = require('../middleware/deviceSignals');
 const { logSecurityEvent, logEvent, AUDIT_EVENTS, SEVERITY } = require('../services/auditService');
+const { enforcementMiddleware, getRestrictionStatus } = require('../middleware/enforcement');
+const { 
+  captchaMiddleware, 
+  recordFailedAttempt, 
+  clearFailedAttempts 
+} = require('../middleware/captcha');
+const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // POST /api/auth/daily-reward - Claim hourly reward
 // Note: Route name is legacy ("daily") but actual interval is 1 hour for better engagement
-router.post('/daily-reward', auth, async (req, res) => {
+// Security: enforcement checked
+router.post('/daily-reward', [auth, enforcementMiddleware], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     
@@ -177,6 +185,9 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   
+  // Build key for failed attempt tracking (IP-based for login since user unknown)
+  const attemptKey = `login:${req.deviceSignals?.ipHash || 'unknown'}`;
+  
   // Basic validation (don't reveal which field is wrong)
   if (!username || !password) {
     return res.status(401).json({ error: 'Invalid credentials' });
@@ -185,6 +196,9 @@ router.post('/login', async (req, res) => {
   try {
     const user = await User.findOne({ where: { username: username.trim() } });
     if (!user || !user.validPassword(password)) {
+      // Record failed attempt for CAPTCHA escalation
+      recordFailedAttempt(attemptKey);
+      
       // Log failed login
       await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, null, {
         attemptedUsername: username.trim(),
@@ -192,6 +206,38 @@ router.post('/login', async (req, res) => {
       }, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    
+    // Check if user is banned BEFORE issuing token
+    const restriction = await getRestrictionStatus(user.id);
+    if (restriction) {
+      if (restriction.type === 'perm_ban') {
+        await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, user.id, {
+          reason: 'Account permanently banned',
+          attemptedUsername: username.trim()
+        }, req);
+        return res.status(403).json({
+          error: 'Account permanently suspended',
+          reason: restriction.reason || 'Terms of Service violation',
+          canAppeal: true,
+          code: 'ACCOUNT_BANNED'
+        });
+      }
+      if (restriction.type === 'temp_ban') {
+        await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, user.id, {
+          reason: 'Account temporarily banned',
+          attemptedUsername: username.trim()
+        }, req);
+        return res.status(403).json({
+          error: 'Account temporarily suspended',
+          reason: restriction.reason || 'Policy violation',
+          expiresAt: restriction.expiresAt,
+          code: 'ACCOUNT_TEMP_BANNED'
+        });
+      }
+    }
+    
+    // Clear failed attempts on successful login
+    clearFailedAttempts(attemptKey);
     
     // Update device signals
     if (req.deviceSignals?.fingerprint) {
@@ -418,7 +464,8 @@ router.post('/google', async (req, res) => {
 });
 
 // POST /api/auth/google/relink - Link or relink Google account (authenticated users only)
-router.post('/google/relink', auth, async (req, res) => {
+// Security: enforcement checked, rate limited, CAPTCHA protected
+router.post('/google/relink', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('account_link')], async (req, res) => {
   const { credential } = req.body;
   
   if (!credential) {
@@ -483,7 +530,8 @@ router.post('/google/relink', auth, async (req, res) => {
 });
 
 // POST /api/auth/google/unlink - Unlink Google account (authenticated users only)
-router.post('/google/unlink', auth, async (req, res) => {
+// Security: enforcement checked, rate limited
+router.post('/google/unlink', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) {
@@ -552,7 +600,8 @@ router.get('/me', auth, async (req, res) => {
 });
 
 // PUT /api/auth/profile/email - Add or update email
-router.put('/profile/email', auth, async (req, res) => {
+// Security: enforcement checked, rate limited
+router.put('/profile/email', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
   const { email } = req.body;
   
   // Validate email
@@ -590,8 +639,10 @@ router.put('/profile/email', auth, async (req, res) => {
 });
 
 // PUT /api/auth/profile/password - Set or change password
-router.put('/profile/password', auth, async (req, res) => {
+// Security: rate limited, CAPTCHA protected, enforcement checked
+router.put('/profile/password', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('password_change')], async (req, res) => {
   const { currentPassword, newPassword } = req.body;
+  const attemptKey = `password:${req.user.id}`;
   
   // Validate new password
   const passwordValidation = validatePassword(newPassword);
@@ -611,15 +662,33 @@ router.put('/profile/password', auth, async (req, res) => {
         return res.status(400).json({ error: 'Current password is required' });
       }
       if (!user.validPassword(currentPassword)) {
+        // Record failed attempt for CAPTCHA escalation
+        recordFailedAttempt(attemptKey);
+        
+        // Log failed password attempt
+        await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
+          success: false,
+          reason: 'Invalid current password'
+        }, req);
+        
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
     }
     // For Google-only users (no password), they can set one without verification
     // since they've already authenticated via Google/JWT
     
+    // Clear failed attempts on success
+    clearFailedAttempts(attemptKey);
+    
     // Set the new password (the model's beforeCreate/beforeUpdate hook will hash it)
     user.password = newPassword;
     await user.save();
+    
+    // Log successful password change
+    await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
+      success: true,
+      hadPreviousPassword: !!user.password
+    }, req);
     
     res.json({ 
       message: user.password ? 'Password updated successfully' : 'Password set successfully'
@@ -631,7 +700,8 @@ router.put('/profile/password', auth, async (req, res) => {
 });
 
 // PUT /api/auth/profile/username - Change username (one time only)
-router.put('/profile/username', auth, async (req, res) => {
+// Security: enforcement checked, rate limited
+router.put('/profile/username', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
   const { username } = req.body;
   
   // Validate username
@@ -680,8 +750,10 @@ router.put('/profile/username', auth, async (req, res) => {
 });
 
 // POST /api/auth/reset-account - Reset account progress (dangerous action)
-router.post('/reset-account', auth, async (req, res) => {
+// Security: rate limited, CAPTCHA protected, enforcement checked
+router.post('/reset-account', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('password_change')], async (req, res) => {
   const { password, confirmationText } = req.body;
+  const attemptKey = `reset:${req.user.id}`;
   
   // Security: Require exact confirmation text
   const REQUIRED_CONFIRMATION = 'RESET MY ACCOUNT';
@@ -703,11 +775,23 @@ router.post('/reset-account', auth, async (req, res) => {
         return res.status(400).json({ error: 'Password is required to reset account' });
       }
       if (!user.validPassword(password)) {
+        // Record failed attempt for CAPTCHA escalation
+        recordFailedAttempt(attemptKey);
+        
+        await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
+          action: 'account_reset',
+          success: false,
+          reason: 'Invalid password'
+        }, req);
+        
         return res.status(401).json({ error: 'Invalid password' });
       }
     }
     // For Google-only accounts (no password), the confirmation text is sufficient
     // since they've already authenticated via Google to get here
+    
+    // Clear failed attempts on success
+    clearFailedAttempts(attemptKey);
     
     // Import required models for deletion
     const { UserCharacter, FishInventory, CouponRedemption } = require('../models');
@@ -780,7 +864,8 @@ router.post('/reset-account', auth, async (req, res) => {
 });
 
 // POST /api/auth/toggle-r18 - Toggle R18 content preference
-router.post('/toggle-r18', auth, async (req, res) => {
+// Security: enforcement checked
+router.post('/toggle-r18', [auth, enforcementMiddleware], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
       attributes: ['id', 'allowR18', 'showR18']
