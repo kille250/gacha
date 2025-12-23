@@ -26,8 +26,11 @@ const {
   applyChallengeRewards
 } = require('../../services/fishingService');
 
-const { isTradingAllowed } = require('../../services/enforcementService');
+const { isTradingAllowed, applyShadowbanPenalty, getEnforcementContext } = require('../../services/enforcementService');
 const { logEconomyAction, AUDIT_EVENTS } = require('../../services/auditService');
+const { checkVelocityLimit, detectVelocityAnomaly } = require('../../services/economyService');
+const { updateRiskScore } = require('../../services/riskService');
+const { enforcePolicy } = require('../../middleware/policies');
 
 // Error classes
 const {
@@ -179,9 +182,10 @@ router.get('/trading-post', auth, async (req, res, next) => {
 });
 
 // POST /trade - Execute a trade
-router.post('/trade', auth, enforcementMiddleware, async (req, res, next) => {
+router.post('/trade', auth, enforcementMiddleware, enforcePolicy('canTrade'), async (req, res, next) => {
   const userId = req.user.id;
   const now = Date.now();
+  const enforcement = getEnforcementContext(req);
   
   // Shadowban check - silently block trading
   if (!isTradingAllowed(req)) {
@@ -191,8 +195,25 @@ router.post('/trade', auth, enforcementMiddleware, async (req, res, next) => {
       message: 'Trade completed!',
       reward: { points: 0 },
       newPoints: 0,
-      _note: 'shadowbanned'
+      _shadowbanned: true
     });
+  }
+  
+  // Check velocity limits
+  const velocityCheck = await checkVelocityLimit(userId, 'tradesCompleted', 1);
+  if (!velocityCheck.allowed) {
+    return res.status(429).json({
+      error: 'Daily trade limit reached',
+      code: 'DAILY_LIMIT',
+      current: velocityCheck.current,
+      limit: velocityCheck.limit
+    });
+  }
+  
+  // Detect velocity anomalies (potential bot)
+  const anomaly = await detectVelocityAnomaly(userId, 'trading');
+  if (anomaly.isAnomaly) {
+    await updateRiskScore(userId, { rapidActions: true });
   }
   
   // Trade lock
@@ -317,6 +338,13 @@ router.post('/trade', auth, enforcementMiddleware, async (req, res, next) => {
           await item.save({ transaction });
         }
       }
+    }
+    
+    // Apply shadowban penalty to rewards if applicable
+    if (enforcement.isShadowbanned) {
+      pendingPoints = applyShadowbanPenalty(pendingPoints, 'points', true);
+      pendingRollTickets = applyShadowbanPenalty(pendingRollTickets, 'tickets', true);
+      pendingPremiumTickets = applyShadowbanPenalty(pendingPremiumTickets, 'tickets', true);
     }
     
     // Give rewards

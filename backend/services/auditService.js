@@ -11,6 +11,7 @@ const AUDIT_EVENTS = {
   LOGIN_SUCCESS: 'auth.login.success',
   LOGIN_FAILED: 'auth.login.failed',
   SIGNUP: 'auth.signup',
+  SIGNUP_BLOCKED: 'auth.signup.blocked',
   GOOGLE_LOGIN: 'auth.google.login',
   PASSWORD_CHANGE: 'auth.password.change',
   
@@ -20,6 +21,8 @@ const AUDIT_EVENTS = {
   COUPON_REDEEMED: 'economy.coupon.redeemed',
   COUPON_FAILED: 'economy.coupon.failed',
   DAILY_REWARD: 'economy.daily_reward',
+  ECONOMY_ANOMALY: 'economy.anomaly',
+  ECONOMY_VELOCITY: 'economy.velocity_breach',
   
   // Fishing
   FISH_CAUGHT: 'fishing.catch',
@@ -34,13 +37,23 @@ const AUDIT_EVENTS = {
   // Security events
   DEVICE_NEW: 'security.device.new',
   DEVICE_COLLISION: 'security.device.collision',
+  DEVICE_MISMATCH: 'security.device.mismatch',
   RISK_SCORE_CHANGE: 'security.risk.change',
   AUTO_RESTRICTION: 'security.auto_restriction',
+  BAN_EVASION: 'security.ban_evasion',
+  CAPTCHA_TRIGGERED: 'security.captcha.triggered',
+  CAPTCHA_FAILED: 'security.captcha.failed',
   
   // Anomalies
   TIMING_ANOMALY: 'anomaly.timing',
   RATE_EXCEEDED: 'anomaly.rate_exceeded',
-  SUSPICIOUS_PATTERN: 'anomaly.suspicious'
+  SUSPICIOUS_PATTERN: 'anomaly.suspicious',
+  VELOCITY_EXCEEDED: 'anomaly.velocity_exceeded',
+  
+  // Appeals
+  APPEAL_SUBMITTED: 'appeal.submitted',
+  APPEAL_APPROVED: 'appeal.approved',
+  APPEAL_DENIED: 'appeal.denied'
 };
 
 // Severity levels

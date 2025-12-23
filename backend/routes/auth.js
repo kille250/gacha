@@ -5,6 +5,9 @@ const { OAuth2Client } = require('google-auth-library');
 const auth = require('../middleware/auth');
 const { User } = require('../models');
 const { validateUsername, validatePassword, validateEmail } = require('../utils/validation');
+const { checkSignupRisk, updateRiskScore } = require('../services/riskService');
+const { recordDeviceFingerprint, recordIPHash } = require('../middleware/deviceSignals');
+const { logSecurityEvent, logEvent, AUDIT_EVENTS, SEVERITY } = require('../services/auditService');
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -89,6 +92,20 @@ router.post('/signup', async (req, res) => {
   }
   
   try {
+    // Check signup risk (IP velocity, ban evasion)
+    const signupRisk = await checkSignupRisk({
+      fingerprint: req.deviceSignals?.fingerprint,
+      ipHash: req.deviceSignals?.ipHash
+    });
+    
+    if (!signupRisk.allowed) {
+      await logSecurityEvent(AUDIT_EVENTS.SIGNUP || 'auth.signup.blocked', null, {
+        reason: signupRisk.reason,
+        ipHash: req.deviceSignals?.ipHash?.substring(0, 8)
+      }, req);
+      return res.status(403).json({ error: signupRisk.reason });
+    }
+    
     // Check if username already exists
     const existingUser = await User.findOne({ where: { username: usernameValidation.value } });
     if (existingUser) {
@@ -105,13 +122,33 @@ router.post('/signup', async (req, res) => {
     const userCount = await User.count();
     const isFirstUser = userCount === 0;
     
-    // Create user
+    // Create user with initial risk score
     const user = await User.create({
       username: usernameValidation.value,
       email: emailValidation.value,
       password,
       points: 1000,
-      isAdmin: isFirstUser // First user becomes admin
+      isAdmin: isFirstUser, // First user becomes admin
+      riskScore: signupRisk.riskScore || 0,
+      lastKnownIP: req.deviceSignals?.ipHash
+    });
+    
+    // Record device fingerprint
+    if (req.deviceSignals?.fingerprint) {
+      await recordDeviceFingerprint(user, req.deviceSignals.fingerprint);
+    }
+    
+    // Log signup
+    await logEvent({
+      eventType: AUDIT_EVENTS.SIGNUP,
+      severity: SEVERITY.INFO,
+      userId: user.id,
+      data: { 
+        username: user.username,
+        riskScore: signupRisk.riskScore,
+        warning: signupRisk.warning
+      },
+      req
     });
     
     // Create token
@@ -148,8 +185,35 @@ router.post('/login', async (req, res) => {
   try {
     const user = await User.findOne({ where: { username: username.trim() } });
     if (!user || !user.validPassword(password)) {
+      // Log failed login
+      await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, null, {
+        attemptedUsername: username.trim(),
+        ipHash: req.deviceSignals?.ipHash?.substring(0, 8)
+      }, req);
       return res.status(401).json({ error: 'Invalid credentials' });
     }
+    
+    // Update device signals
+    if (req.deviceSignals?.fingerprint) {
+      await recordDeviceFingerprint(user, req.deviceSignals.fingerprint);
+    }
+    if (req.deviceSignals?.ipHash) {
+      await recordIPHash(user, req.deviceSignals.ipHash);
+    }
+    
+    // Update risk score with login context
+    await updateRiskScore(user.id, {
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
+    
+    // Log successful login
+    await logEvent({
+      eventType: AUDIT_EVENTS.LOGIN_SUCCESS,
+      severity: SEVERITY.INFO,
+      userId: user.id,
+      data: { username: user.username },
+      req
+    });
     
     const payload = { 
       user: { 
@@ -238,6 +302,21 @@ router.post('/google', async (req, res) => {
         await user.save();
       }
     } else {
+      // Check signup risk for new Google accounts
+      const signupRisk = await checkSignupRisk({
+        fingerprint: req.deviceSignals?.fingerprint,
+        ipHash: req.deviceSignals?.ipHash
+      });
+      
+      if (!signupRisk.allowed) {
+        await logSecurityEvent(AUDIT_EVENTS.SIGNUP || 'auth.signup.blocked', null, {
+          reason: signupRisk.reason,
+          method: 'google',
+          ipHash: req.deviceSignals?.ipHash?.substring(0, 8)
+        }, req);
+        return res.status(403).json({ error: signupRisk.reason });
+      }
+      
       // Create new user - generate unique username from email or name
       let baseUsername = (name || email.split('@')[0]).replace(/[^a-zA-Z0-9_-]/g, '');
       
@@ -277,9 +356,41 @@ router.post('/google', async (req, res) => {
         googleEmail: normalizedEmail,
         password: null, // No password for Google SSO users
         points: 1000,
-        isAdmin: isFirstUser
+        isAdmin: isFirstUser,
+        riskScore: signupRisk.riskScore || 0,
+        lastKnownIP: req.deviceSignals?.ipHash
+      });
+      
+      // Log signup
+      await logEvent({
+        eventType: AUDIT_EVENTS.SIGNUP,
+        severity: SEVERITY.INFO,
+        userId: user.id,
+        data: { 
+          username: user.username,
+          method: 'google',
+          riskScore: signupRisk.riskScore
+        },
+        req
       });
     }
+    
+    // Record device signals for returning users too
+    if (req.deviceSignals?.fingerprint) {
+      await recordDeviceFingerprint(user, req.deviceSignals.fingerprint);
+    }
+    if (req.deviceSignals?.ipHash) {
+      await recordIPHash(user, req.deviceSignals.ipHash);
+    }
+    
+    // Log Google login
+    await logEvent({
+      eventType: AUDIT_EVENTS.GOOGLE_LOGIN,
+      severity: SEVERITY.INFO,
+      userId: user.id,
+      data: { username: user.username },
+      req
+    });
     
     // Create JWT token
     const jwtPayload = { 

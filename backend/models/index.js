@@ -9,6 +9,7 @@ const CouponRedemption = require('./couponRedemption');
 const FishInventory = require('./fishInventory');
 const Rarity = require('./rarity');
 const AuditEvent = require('./auditEvent');
+const Appeal = require('./appeal');
 
 // ===========================================
 // USER CHARACTERS JUNCTION TABLE (with leveling)
@@ -72,6 +73,14 @@ FishInventory.belongsTo(User, { foreignKey: 'userId' });
 User.hasMany(AuditEvent, { foreignKey: 'userId', as: 'auditEvents' });
 AuditEvent.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 
+// User <-> Appeal (for appeals system)
+User.hasMany(Appeal, { foreignKey: 'userId', as: 'appeals' });
+Appeal.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// Admin <-> Appeal (for reviewed appeals)
+User.hasMany(Appeal, { foreignKey: 'reviewedBy', as: 'reviewedAppeals' });
+Appeal.belongsTo(User, { foreignKey: 'reviewedBy', as: 'reviewer' });
+
 module.exports = {
   sequelize,
   User,
@@ -82,5 +91,6 @@ module.exports = {
   FishInventory,
   Rarity,
   UserCharacter,
-  AuditEvent
+  AuditEvent,
+  Appeal
 };

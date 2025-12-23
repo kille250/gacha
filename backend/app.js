@@ -10,6 +10,11 @@ const schedule = require('node-schedule');
 const { Server } = require('socket.io');
 const { initMultiplayer } = require('./routes/fishingMultiplayer');
 const { collectDeviceSignals } = require('./middleware/deviceSignals');
+const { 
+  signupVelocityLimiter, 
+  burstProtectionLimiter 
+} = require('./middleware/rateLimiter');
+const { decayRiskScores } = require('./services/riskService');
 
 // ===========================================
 // SECURITY: Validate required environment variables at startup
@@ -144,6 +149,17 @@ schedule.scheduleJob('0 0 * * *', async function() {
   }
 });
 
+// Risk score decay: Reduce risk scores by 10% every 6 hours for users with no recent issues
+schedule.scheduleJob('0 */6 * * *', async function() {
+  console.log('[Scheduled Job] Running risk score decay');
+  try {
+    const decayedCount = await decayRiskScores(0.1);
+    console.log(`[Scheduled Job] Decayed risk scores for ${decayedCount} users`);
+  } catch (err) {
+    console.error('[Scheduled Job] Error decaying risk scores:', err);
+  }
+});
+
 // ===========================================
 // MIDDLEWARE (Order matters!)
 // ===========================================
@@ -164,6 +180,9 @@ app.use(express.urlencoded({ extended: true, limit: '50kb' }));
 
 // 4. Device signal collection (for fingerprinting)
 app.use(collectDeviceSignals);
+
+// 5. Burst protection (early rejection of obvious spam)
+app.use('/api/', burstProtectionLimiter);
 
 // ===========================================
 // RATE LIMITING (Only for specific sensitive routes)
@@ -225,12 +244,15 @@ app.get('/api/health', (req, res) => {
 // ROUTES
 // ===========================================
 
-// Auth routes - rate limit only login/signup/google
+// Auth routes - rate limit login/signup/google + signup velocity
 const authRoutes = require('./routes/auth');
 app.use('/api/auth/login', authLimiter);
-app.use('/api/auth/signup', authLimiter);
-app.use('/api/auth/google', authLimiter); // Applies to /google, /google/relink, /google/unlink
+app.use('/api/auth/signup', authLimiter, signupVelocityLimiter);
+app.use('/api/auth/google', authLimiter, signupVelocityLimiter); // Also limit Google signups
 app.use('/api/auth', authRoutes);
+
+// Appeals routes
+app.use('/api/appeals', require('./routes/appeals'));
 
 // Character routes - rate limit only roll endpoints
 const characterRoutes = require('./routes/characters');
