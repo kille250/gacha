@@ -33,6 +33,7 @@ const RISK_WEIGHTS = {
   timingAnomaly: 25,
   
   previousWarning: 10, // Per warning
+  failedLoginAttempt: 5, // Per failed login attempt
   failedCouponAttempts: 2, // Per failed attempt
   
   alwaysMaxDailyLimit: 5,
@@ -178,6 +179,16 @@ async function calculateRiskScore(userId, context = {}) {
   
   // Rapid actions indicator
   if (context.actionsPerMinute && context.actionsPerMinute > 60) {
+    score += weights.rapidActions;
+  }
+  
+  // Failed login attempts (incremental per attempt)
+  if (context.failedAttempts && context.failedAttempts > 0) {
+    score += context.failedAttempts * (weights.failedLoginAttempt || 5);
+  }
+  
+  // Rapid actions flag (from trading, etc.)
+  if (context.rapidActions) {
     score += weights.rapidActions;
   }
   
