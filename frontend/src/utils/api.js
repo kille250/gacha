@@ -500,6 +500,83 @@ export const getDojoStatus = async () => {
   return response.data;
 };
 
+// ===========================================
+// SECURITY ADMIN API
+// ===========================================
+
+export const getSecurityOverview = async () => {
+  const response = await api.get('/admin/security/overview');
+  return response.data;
+};
+
+export const getHighRiskUsers = async (threshold = 50, limit = 50) => {
+  const response = await api.get('/admin/security/high-risk', { 
+    params: { threshold, limit } 
+  });
+  return response.data;
+};
+
+export const getAuditLog = async (options = {}) => {
+  const response = await api.get('/admin/security/audit', { params: options });
+  return response.data;
+};
+
+export const getUserSecurity = async (userId) => {
+  const response = await api.get(`/admin/users/${userId}/security`);
+  return response.data;
+};
+
+export const restrictUser = async (userId, { restrictionType, duration, reason }) => {
+  const response = await api.post(`/admin/users/${userId}/restrict`, {
+    restrictionType, duration, reason
+  });
+  return response.data;
+};
+
+export const unrestrictUser = async (userId, reason) => {
+  const response = await api.post(`/admin/users/${userId}/unrestrict`, { reason });
+  return response.data;
+};
+
+export const warnUser = async (userId, reason) => {
+  const response = await api.post(`/admin/users/${userId}/warn`, { reason });
+  return response.data;
+};
+
+export const resetUserWarnings = async (userId) => {
+  const response = await api.post(`/admin/users/${userId}/reset-warnings`);
+  return response.data;
+};
+
+// ===========================================
+// APPEALS ADMIN API
+// ===========================================
+
+export const getPendingAppeals = async (options = {}) => {
+  const response = await api.get('/appeals/admin/pending', { params: options });
+  return response.data;
+};
+
+export const getAppealStats = async () => {
+  const response = await api.get('/appeals/admin/stats');
+  return response.data;
+};
+
+export const getAppealDetails = async (appealId) => {
+  const response = await api.get(`/appeals/admin/${appealId}`);
+  return response.data;
+};
+
+export const approveAppeal = async (appealId, notes) => {
+  const response = await api.post(`/appeals/admin/${appealId}/approve`, { notes });
+  return response.data;
+};
+
+export const denyAppeal = async (appealId, notes) => {
+  const response = await api.post(`/appeals/admin/${appealId}/deny`, { notes });
+  return response.data;
+};
+
 export const getDojoAvailableCharacters = async () => {
   const response = await api.get('/dojo/available-characters');
   return response.data;

@@ -30,7 +30,7 @@ import EditCharacterModal from '../components/Admin/EditCharacterModal';
 import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { arrayMove } from '@dnd-kit/sortable';
-import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons, AdminRarities } from '../components/Admin';
+import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons, AdminRarities, AdminSecurity } from '../components/Admin';
 import { theme, PageWrapper, Container, Spinner } from '../styles/DesignSystem';
 
 const AdminPage = () => {
@@ -464,6 +464,7 @@ const AdminPage = () => {
                     onToggleAutofish={handleToggleAutofish}
                     onToggleR18={handleToggleR18}
                     coinMessage={coinMessage}
+                    onSecurityAction={setSuccessMessage}
                   />
                 </TabPanel>
               )}
@@ -515,6 +516,12 @@ const AdminPage = () => {
               {activeTab === 'rarities' && (
                 <TabPanel key="rarities">
                   <AdminRarities onRefresh={fetchAllData} />
+                </TabPanel>
+              )}
+              
+              {activeTab === 'security' && (
+                <TabPanel key="security">
+                  <AdminSecurity onSuccess={setSuccessMessage} />
                 </TabPanel>
               )}
             </AnimatePresence>

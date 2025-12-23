@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUsers, FaCoins, FaSearch, FaCrown } from 'react-icons/fa';
+import { FaUsers, FaCoins, FaSearch, FaCrown, FaShieldAlt } from 'react-icons/fa';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import {
@@ -27,15 +27,36 @@ import {
   PrimaryButton,
   SuccessMessage,
 } from './AdminStyles';
+import UserSecurityModal from './UserSecurityModal';
 
-const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAutofish, onToggleR18, coinMessage }) => {
+const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAutofish, onToggleR18, coinMessage, onSecurityAction }) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [showCoinModal, setShowCoinModal] = useState(false);
+  const [selectedUserId, setSelectedUserId] = useState(null);
   
   const filteredUsers = users.filter(user => 
     user.username.toLowerCase().includes(searchQuery.toLowerCase())
   );
+  
+  const getRestrictionBadge = (user) => {
+    if (user.restrictionType && user.restrictionType !== 'none') {
+      const colors = {
+        perm_ban: '#ff3b30',
+        temp_ban: '#ff9500',
+        shadowban: '#8e8e93',
+        rate_limited: '#af52de',
+        warning: '#ffcc00'
+      };
+      return { type: user.restrictionType, color: colors[user.restrictionType] || '#8e8e93' };
+    }
+    return null;
+  };
+  
+  const handleSecuritySuccess = (message) => {
+    if (onSecurityAction) onSecurityAction(message);
+    setSelectedUserId(null);
+  };
 
   const handleAddCoinsSubmit = (e) => {
     onAddCoins(e);
@@ -74,10 +95,11 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
           <HeaderCell $width="60px">{t('admin.rank')}</HeaderCell>
           <HeaderCell>{t('admin.username')}</HeaderCell>
           <HeaderCell $width="120px">{t('admin.coins')}</HeaderCell>
+          <HeaderCell $width="100px">{t('admin.security.status')}</HeaderCell>
           <HeaderCell $width="80px">{t('admin.isAdmin')}</HeaderCell>
           <HeaderCell $width="120px">{t('admin.r18')}</HeaderCell>
           <HeaderCell $width="150px">{t('admin.autofish')}</HeaderCell>
-          <HeaderCell $width="120px">{t('admin.joined')}</HeaderCell>
+          <HeaderCell $width="80px">{t('admin.security.actions')}</HeaderCell>
         </TableHeader>
         
         <TableBody>
@@ -113,6 +135,22 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
                       {user.points?.toLocaleString()}
                     </CoinDisplay>
                   </Cell>
+                  <Cell $width="100px">
+                    {(() => {
+                      const badge = getRestrictionBadge(user);
+                      if (badge) {
+                        return (
+                          <RestrictionBadge $color={badge.color}>
+                            {badge.type.replace('_', ' ')}
+                          </RestrictionBadge>
+                        );
+                      }
+                      if (user.riskScore >= 50) {
+                        return <RiskBadge>⚠️ {user.riskScore}</RiskBadge>;
+                      }
+                      return <StatusOK>✓</StatusOK>;
+                    })()}
+                  </Cell>
                   <Cell $width="80px">
                     <StatusIcon>{user.isAdmin ? '✅' : '❌'}</StatusIcon>
                   </Cell>
@@ -135,8 +173,10 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
                       </ToggleButton>
                     </AutofishCell>
                   </Cell>
-                  <Cell $width="120px">
-                    <DateText>{new Date(user.createdAt).toLocaleDateString()}</DateText>
+                  <Cell $width="80px">
+                    <SecurityButton onClick={() => setSelectedUserId(user.id)}>
+                      <FaShieldAlt />
+                    </SecurityButton>
                   </Cell>
                 </TableRow>
               );
@@ -197,6 +237,14 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
           </ModalOverlay>
         )}
       </AnimatePresence>
+      
+      {/* User Security Modal */}
+      <UserSecurityModal
+        show={!!selectedUserId}
+        userId={selectedUserId}
+        onClose={() => setSelectedUserId(null)}
+        onSuccess={handleSecuritySuccess}
+      />
     </AdminContainer>
   );
 };
@@ -323,9 +371,42 @@ const TopTenBadge = styled.span`
   color: #ffd60a;
 `;
 
-const DateText = styled.span`
+const RestrictionBadge = styled.span`
+  display: inline-block;
+  padding: 2px 8px;
+  border-radius: ${theme.radius.full};
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.bold};
+  text-transform: capitalize;
+  background: ${props => props.$color}20;
+  color: ${props => props.$color};
+`;
+
+const RiskBadge = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  color: #ff9500;
+`;
+
+const StatusOK = styled.span`
+  color: ${theme.colors.success};
   font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
+`;
+
+const SecurityButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: ${theme.spacing.sm};
+  background: rgba(255, 149, 0, 0.15);
+  border: none;
+  border-radius: ${theme.radius.md};
+  color: #ff9500;
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover {
+    background: rgba(255, 149, 0, 0.25);
+  }
 `;
 
 const CoinSubmitButton = styled(PrimaryButton)`
