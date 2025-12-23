@@ -1,13 +1,19 @@
 'use strict';
 
 /**
- * Migration: Add missing reCAPTCHA configuration values
+ * Migration: Add missing security configuration values
  * 
- * These configs exist in securityConfigService DEFAULTS but were not seeded,
- * making them invisible in the admin UI.
+ * These configs exist in securityConfigService DEFAULTS or are referenced in code
+ * but were not seeded, making them invisible in the admin UI.
+ * 
+ * Categories:
+ * - captcha: reCAPTCHA score thresholds and enablement
+ * - policies: Policy-based access control thresholds  
+ * - enforcement: Shadowban and rate limit penalty multipliers
  */
 
-const MISSING_RECAPTCHA_CONFIGS = [
+const MISSING_CONFIGS = [
+  // reCAPTCHA configs
   { 
     key: 'RECAPTCHA_ENABLED', 
     value: 'false', 
@@ -43,6 +49,72 @@ const MISSING_RECAPTCHA_CONFIGS = [
     value: '0.7', 
     category: 'captcha', 
     description: 'Minimum reCAPTCHA score required for account linking' 
+  },
+  
+  // Policy thresholds
+  {
+    key: 'POLICY_TRADE_ACCOUNT_AGE_HOURS',
+    value: '24',
+    category: 'policies',
+    description: 'Minimum account age in hours before trading is allowed'
+  },
+  {
+    key: 'POLICY_WARNING_ESCALATION_THRESHOLD',
+    value: '3',
+    category: 'policies',
+    description: 'Number of warnings before automatic temp ban escalation'
+  },
+  {
+    key: 'POLICY_WARNING_ESCALATION_DURATION',
+    value: '7d',
+    category: 'policies',
+    description: 'Duration of auto-ban when warning threshold reached (e.g., 7d, 24h)'
+  },
+  
+  // Shadowban enforcement multipliers
+  {
+    key: 'SHADOWBAN_REWARD_MULTIPLIER',
+    value: '0.1',
+    category: 'enforcement',
+    description: 'Reward multiplier for shadowbanned users (0.1 = 10%)'
+  },
+  {
+    key: 'SHADOWBAN_TICKET_MULTIPLIER',
+    value: '0',
+    category: 'enforcement',
+    description: 'Ticket reward multiplier for shadowbanned users (0 = none)'
+  },
+  {
+    key: 'SHADOWBAN_FISH_MULTIPLIER',
+    value: '0.5',
+    category: 'enforcement',
+    description: 'Fish quantity multiplier for shadowbanned users'
+  },
+  {
+    key: 'SHADOWBAN_POINTS_MULTIPLIER',
+    value: '0.1',
+    category: 'enforcement',
+    description: 'Points multiplier for shadowbanned users'
+  },
+  {
+    key: 'SHADOWBAN_TIMING_PENALTY',
+    value: '-100',
+    category: 'enforcement',
+    description: 'Timing window penalty in ms for shadowbanned users (negative = harder)'
+  },
+  
+  // Rate limit enforcement multipliers
+  {
+    key: 'RATE_LIMIT_PENALTY_MULTIPLIER',
+    value: '0.5',
+    category: 'enforcement',
+    description: 'Daily limit multiplier for rate-limited users (0.5 = 50%)'
+  },
+  {
+    key: 'RATE_LIMIT_COOLDOWN_MULTIPLIER',
+    value: '2.0',
+    category: 'enforcement',
+    description: 'Cooldown multiplier for rate-limited users (2.0 = 2x longer)'
   }
 ];
 
@@ -62,7 +134,7 @@ module.exports = {
     }
     
     // Insert missing configs
-    for (const config of MISSING_RECAPTCHA_CONFIGS) {
+    for (const config of MISSING_CONFIGS) {
       try {
         const [existing] = await queryInterface.sequelize.query(
           'SELECT key FROM "SecurityConfigs" WHERE key = :key',
@@ -91,7 +163,7 @@ module.exports = {
 
   async down(queryInterface) {
     // Remove added configs
-    const keys = MISSING_RECAPTCHA_CONFIGS.map(c => c.key);
+    const keys = MISSING_CONFIGS.map(c => c.key);
     await queryInterface.bulkDelete('SecurityConfigs', {
       key: keys
     });
