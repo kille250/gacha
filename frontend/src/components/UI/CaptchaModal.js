@@ -205,6 +205,8 @@ const RecaptchaBadge = styled.div`
  * @param {Object} props.challenge - Fallback challenge object {id, question}
  * @param {string} props.captchaType - 'recaptcha' or 'fallback'
  * @param {string} props.siteKey - reCAPTCHA site key (if not from context)
+ * @param {boolean} props.isSubmitting - Whether the parent is retrying the request
+ * @param {string} props.submitError - Error from the parent's retry attempt
  */
 const CaptchaModal = ({ 
   isOpen, 
@@ -213,7 +215,9 @@ const CaptchaModal = ({
   action = 'verify',
   challenge = null,
   captchaType = 'recaptcha',
-  siteKey: propSiteKey = null
+  siteKey: propSiteKey = null,
+  isSubmitting = false,
+  submitError = null
 }) => {
   const { executeRecaptcha, isReady, updateSiteKey, siteKey: contextSiteKey } = useRecaptcha();
   const [answer, setAnswer] = useState('');
@@ -327,27 +331,34 @@ const CaptchaModal = ({
           }
         </Description>
         
-        {error && <ErrorMessage>{error}</ErrorMessage>}
+        {(error || submitError) && <ErrorMessage>{submitError || error}</ErrorMessage>}
         
         {captchaType === 'recaptcha' ? (
           <>
             <RecaptchaStatus>
-              {loading || autoRetrying ? (
+              {isSubmitting ? (
+                <>
+                  <Spinner />
+                  <span>Submitting request...</span>
+                </>
+              ) : loading || autoRetrying ? (
                 <>
                   <Spinner />
                   <span>{autoRetrying ? 'Loading verification...' : 'Verifying...'}</span>
                 </>
+              ) : submitError ? (
+                <span>Verification failed</span>
               ) : (
                 <span>Verification ready</span>
               )}
             </RecaptchaStatus>
             
             <ButtonGroup>
-              <SecondaryButton onClick={onClose}>
-                Cancel
+              <SecondaryButton onClick={onClose} disabled={isSubmitting}>
+                {submitError ? 'Close' : 'Cancel'}
               </SecondaryButton>
-              <PrimaryButton onClick={handleRetry} disabled={loading || autoRetrying}>
-                {loading ? 'Verifying...' : 'Retry Verification'}
+              <PrimaryButton onClick={handleRetry} disabled={loading || autoRetrying || isSubmitting}>
+                {isSubmitting ? 'Submitting...' : loading ? 'Verifying...' : 'Retry Verification'}
               </PrimaryButton>
             </ButtonGroup>
             

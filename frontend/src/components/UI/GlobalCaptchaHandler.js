@@ -14,6 +14,8 @@ import api from '../../utils/api';
 const GlobalCaptchaHandler = () => {
   const [showModal, setShowModal] = useState(false);
   const [captchaData, setCaptchaData] = useState(null);
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [retryError, setRetryError] = useState(null);
   
   // Store pending retry function
   const pendingRetry = useRef(null);
@@ -39,6 +41,9 @@ const GlobalCaptchaHandler = () => {
         action: detail.action || 'verify'
       });
       
+      // Reset retry state
+      setIsRetrying(false);
+      setRetryError(null);
       setShowModal(true);
     };
     
@@ -51,12 +56,17 @@ const GlobalCaptchaHandler = () => {
   
   // Handle CAPTCHA solved
   const handleSolved = useCallback(async ({ token, answer, type }) => {
-    setShowModal(false);
+    // Don't close modal yet - wait for retry to complete
     
     if (!pendingRetry.current) {
       console.warn('[GlobalCaptcha] No pending request to retry');
+      setShowModal(false);
       return;
     }
+    
+    // Show retrying state
+    setIsRetrying(true);
+    setRetryError(null);
     
     try {
       // Build headers based on CAPTCHA type
@@ -78,6 +88,11 @@ const GlobalCaptchaHandler = () => {
         await api.request(config);
       }
       
+      // Only close modal after successful retry
+      setShowModal(false);
+      setIsRetrying(false);
+      pendingRetry.current = null;
+      
       // Dispatch success event for any interested listeners
       window.dispatchEvent(new CustomEvent('captcha:solved', { 
         detail: { success: true } 
@@ -85,6 +100,7 @@ const GlobalCaptchaHandler = () => {
       
     } catch (err) {
       console.error('[GlobalCaptcha] Retry failed:', err);
+      setIsRetrying(false);
       
       // Check if CAPTCHA failed again
       if (err.response?.data?.code === 'CAPTCHA_FAILED' || 
@@ -96,16 +112,21 @@ const GlobalCaptchaHandler = () => {
           siteKey: err.response.data.siteKey || null,
           action: err.response.data.action || 'verify'
         });
-        setShowModal(true);
+        // Modal stays open with new challenge
         return;
       }
       
-      // Dispatch failure event
+      // For other errors (rate limiting, etc.), show error in modal
+      const errorMessage = err.response?.data?.error || err.message;
+      setRetryError(errorMessage);
+      
+      // Dispatch failure event with details
       window.dispatchEvent(new CustomEvent('captcha:failed', { 
-        detail: { error: err.message } 
+        detail: { 
+          error: errorMessage,
+          code: err.response?.data?.code
+        } 
       }));
-    } finally {
-      pendingRetry.current = null;
     }
   }, []);
   
@@ -129,6 +150,8 @@ const GlobalCaptchaHandler = () => {
       captchaType={captchaData.captchaType}
       challenge={captchaData.challenge}
       siteKey={captchaData.siteKey}
+      isSubmitting={isRetrying}
+      submitError={retryError}
     />
   );
 };
