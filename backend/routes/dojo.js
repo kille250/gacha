@@ -20,6 +20,7 @@ const {
   getLevelMultiplier
 } = require('../config/dojo');
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
+const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 
 // Rate limiting is now handled via dojoLastClaim in the database
 // This makes it multi-server safe (works behind load balancers)
@@ -410,6 +411,7 @@ router.post('/unassign', [auth, enforcementMiddleware, sensitiveActionLimiter], 
  */
 router.post('/claim', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canClaimRewards')], async (req, res) => {
   const userId = req.user.id;
+  
   const transaction = await sequelize.transaction();
   
   try {
@@ -575,6 +577,15 @@ router.post('/claim', [auth, enforcementMiddleware, sensitiveActionLimiter, enfo
     await user.save({ transaction });
     await transaction.commit();
     
+    // SECURITY: Update risk score for dojo claim AFTER successful transaction
+    // This ensures risk is only tracked for completed actions
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.DOJO_CLAIM,
+      reason: 'dojo_reward_claimed',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
+    
     // Cooldown is now enforced via dojoLastClaim (set above)
     // No need for in-memory tracking
     
@@ -628,11 +639,12 @@ router.post('/claim', [auth, enforcementMiddleware, sensitiveActionLimiter, enfo
 /**
  * POST /api/dojo/upgrade
  * Purchase a dojo upgrade
- * Security: enforcement checked, rate limited
+ * Security: enforcement checked, rate limited, risk tracked
  * Uses transaction with row locking to prevent double-spending
  */
 router.post('/upgrade', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
   const { upgradeType, rarity } = req.body; // rarity only for mastery upgrades
+  const userId = req.user.id;
   
   // Validate input before starting transaction
   if (!upgradeType) {
@@ -652,7 +664,7 @@ router.post('/upgrade', [auth, enforcementMiddleware, sensitiveActionLimiter], a
   
   try {
     // Lock user row to prevent concurrent modifications
-    const user = await User.findByPk(req.user.id, {
+    const user = await User.findByPk(userId, {
       lock: transaction.LOCK.UPDATE,
       transaction
     });
@@ -713,6 +725,14 @@ router.post('/upgrade', [auth, enforcementMiddleware, sensitiveActionLimiter], a
     user.dojoUpgrades = upgrades;
     await user.save({ transaction });
     await transaction.commit();
+    
+    // SECURITY: Track dojo upgrade for risk scoring (point spending)
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.DOJO_UPGRADE,
+      reason: 'dojo_upgrade_purchased',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
     
     // Get updated available upgrades
     const availableUpgrades = getAvailableUpgrades(upgrades);

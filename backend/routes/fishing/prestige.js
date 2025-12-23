@@ -27,6 +27,9 @@ const { FISH_TYPES } = require('../../config/fishing');
 
 const { UserNotFoundError } = require('../../errors/FishingErrors');
 
+// Service imports
+const { updateRiskScore, buildRiskContext, RISK_ACTIONS } = require('../../services/riskService');
+
 // GET /prestige - Get prestige status and progress
 // Security: enforcement checked (banned users cannot access game features)
 router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
@@ -77,7 +80,7 @@ router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
 });
 
 // POST /prestige/claim - Claim next prestige level
-// Security: enforcement checked (banned users cannot prestige)
+// Security: enforcement checked (banned users cannot prestige), risk tracked
 router.post('/claim', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
@@ -122,6 +125,9 @@ router.post('/claim', [auth, enforcementMiddleware], async (req, res, next) => {
     user.fishingAchievements = achievements;
 
     await user.save();
+
+    // SECURITY: Track prestige claim for risk scoring (high-value reward)
+    await updateRiskScore(req.user.id, buildRiskContext(req, RISK_ACTIONS.PRESTIGE_CLAIM, 'prestige_level_claimed'));
 
     // Get new cumulative bonuses
     const newBonuses = getPrestigeBonuses(nextLevel);

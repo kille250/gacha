@@ -6,6 +6,57 @@
  */
 
 const { User } = require('../models');
+
+/**
+ * Standardized action identifiers for risk scoring.
+ * Use these constants to ensure consistent keys across the codebase.
+ * 
+ * Usage Status Legend:
+ * - ACTIVE: Currently integrated and contributing to risk scoring
+ * - RESERVED: Defined for future use, not yet integrated
+ */
+const RISK_ACTIONS = {
+  // Authentication actions
+  LOGIN_FAILED: 'login_failed',         // ACTIVE: auth.js /login (failed attempts)
+  LOGIN_SUCCESS: 'login_success',       // ACTIVE: auth.js /login, /google
+  SIGNUP: 'signup',                     // ACTIVE: auth.js /signup (used for checkSignupRisk)
+  SIGNUP_BLOCKED: 'signup_blocked',     // ACTIVE: auth.js /signup (blocked registrations)
+  
+  // Account security actions
+  PASSWORD_CHANGE: 'password_change',   // ACTIVE: auth.js /profile/password
+  EMAIL_CHANGE: 'email_change',         // ACTIVE: auth.js /profile/email
+  USERNAME_CHANGE: 'username_change',   // ACTIVE: auth.js /profile/username
+  PREFERENCE_CHANGE: 'preference_change', // ACTIVE: auth.js /toggle-r18 (settings changes)
+  ACCOUNT_RESET: 'account_reset',       // ACTIVE: auth.js /reset-account
+  GOOGLE_LINK: 'google_link',           // ACTIVE: auth.js /google/relink
+  GOOGLE_UNLINK: 'google_unlink',       // ACTIVE: auth.js /google/unlink
+  
+  // Economy actions
+  COUPON_FAILED: 'coupon_failed',       // ACTIVE: coupons.js /redeem (invalid codes)
+  COUPON_REDEEMED: 'coupon_redeemed',   // ACTIVE: coupons.js /redeem (successful)
+  TRADE: 'trade',                       // RESERVED: Generic trade action (use TRADE_SUCCESS instead)
+  TRADE_SUCCESS: 'trade_success',       // ACTIVE: fishing/trading.js /trade
+  TRADE_FAILED: 'trade_failed',         // RESERVED: For failed trade attempts (validation errors)
+  GACHA_ROLL: 'gacha_roll',             // ACTIVE: characters.js /roll, banners.js /:id/roll
+  GACHA_MULTI_ROLL: 'gacha_multi_roll', // ACTIVE: characters.js /roll-multi, banners.js /:id/roll-multi
+  BATCH_LEVEL_UP: 'batch_level_up',     // ACTIVE: characters.js /level-up-all (batch leveling)
+  DOJO_CLAIM: 'dojo_claim',             // ACTIVE: dojo.js /claim
+  DOJO_UPGRADE: 'dojo_upgrade',         // ACTIVE: dojo.js /upgrade (dojo upgrades)
+  DAILY_REWARD: 'daily_reward',         // ACTIVE: auth.js /daily-reward
+  
+  // Fishing actions
+  FISHING_CAST: 'fishing_cast',         // ACTIVE: fishing/core.js /cast
+  FISHING_CATCH: 'fishing_catch',       // ACTIVE: fishing/core.js /catch
+  FISHING_AUTOFISH: 'fishing_autofish', // ACTIVE: fishing/autofish.js
+  FISHING_AREA_PURCHASE: 'fishing_area_purchase',   // ACTIVE: fishing/areas.js /unlock
+  FISHING_ROD_PURCHASE: 'fishing_rod_purchase',     // ACTIVE: fishing/rods.js /buy
+  PRESTIGE_CLAIM: 'prestige_claim',                 // ACTIVE: fishing/prestige.js /claim
+  COLLECTION_MILESTONE: 'collection_milestone',     // ACTIVE: fishing/collection.js /claim-milestone
+  
+  // Anomaly detection
+  VELOCITY_BREACH: 'velocity_breach',   // ACTIVE: economyService.js, fishing/trading.js
+  TIMING_ANOMALY: 'timing_anomaly'      // RESERVED: For reaction time anomalies (bot detection)
+};
 const { Op } = require('sequelize');
 const { findFingerprintCollisions } = require('../middleware/deviceSignals');
 const { logSecurityEvent, AUDIT_EVENTS } = require('./auditService');
@@ -177,8 +228,21 @@ async function calculateRiskScore(userId, context = {}) {
     }
   }
   
-  // Rapid actions indicator
+  // IP collision with banned users
+  if (context.ipHash) {
+    const bannedOnIP = await findBannedUsersOnIP(context.ipHash, userId);
+    if (bannedOnIP.length > 0) {
+      score += weights.ipCollision;
+    }
+  }
+  
+  // Rapid actions indicator (by rate)
   if (context.actionsPerMinute && context.actionsPerMinute > 60) {
+    score += weights.rapidActions;
+  }
+  
+  // Rapid actions flag (from trading velocity, etc.)
+  if (context.rapidActions) {
     score += weights.rapidActions;
   }
   
@@ -187,9 +251,14 @@ async function calculateRiskScore(userId, context = {}) {
     score += context.failedAttempts * (weights.failedLoginAttempt || 5);
   }
   
-  // Rapid actions flag (from trading, etc.)
-  if (context.rapidActions) {
-    score += weights.rapidActions;
+  // Failed coupon attempts
+  if (context.failedCouponAttempts && context.failedCouponAttempts > 0) {
+    score += context.failedCouponAttempts * (weights.failedCouponAttempts || 2);
+  }
+  
+  // Multi-account suspicion (e.g., from linked account detection)
+  if (context.multiAccountSuspicion) {
+    score += weights.multiAccountSuspicion;
   }
   
   // Clamp to 0-100
@@ -200,17 +269,22 @@ async function calculateRiskScore(userId, context = {}) {
  * Update user's stored risk score
  * @param {number} userId - User ID
  * @param {Object} context - Context for calculation
- * @returns {Promise<Object>} - { oldScore, newScore, delta }
+ * @param {Object} options - { autoEnforce: boolean } - Whether to auto-apply enforcement
+ * @returns {Promise<Object>} - { oldScore, newScore, delta, enforcement }
  */
-async function updateRiskScore(userId, context = {}) {
+async function updateRiskScore(userId, context = {}, options = {}) {
+  const { autoEnforce = true } = options;
   const user = await User.findByPk(userId);
   if (!user) return null;
   
   const oldScore = user.riskScore || 0;
   const newScore = await calculateRiskScore(userId, context);
   
-  // Only update if changed significantly (>5 points)
-  if (Math.abs(newScore - oldScore) >= 5) {
+  let enforcement = null;
+  
+  // Only update if changed significantly (>5 points) OR if it's a security event
+  const isSecurityEvent = context.failedAttempts || context.rapidActions || context.multiAccountSuspicion;
+  if (Math.abs(newScore - oldScore) >= 5 || isSecurityEvent) {
     user.riskScore = newScore;
     
     // Record in history for trend analysis
@@ -221,6 +295,10 @@ async function updateRiskScore(userId, context = {}) {
       timestamp: new Date().toISOString(),
       reason: context.reason || 'automatic_update'
     });
+    // Keep history manageable (last 50 entries)
+    if (history.length > 50) {
+      history.splice(0, history.length - 50);
+    }
     user.riskScoreHistory = history;
     
     await user.save();
@@ -234,9 +312,17 @@ async function updateRiskScore(userId, context = {}) {
         context
       });
     }
+    
+    // Auto-enforce if score increased and option enabled
+    if (autoEnforce && newScore > oldScore) {
+      const recommendation = await checkAutoEnforcement(userId);
+      if (recommendation && recommendation.action !== 'monitor') {
+        enforcement = await applyAutomatedEnforcement(userId, recommendation);
+      }
+    }
   }
   
-  return { oldScore, newScore, delta: newScore - oldScore };
+  return { oldScore, newScore, delta: newScore - oldScore, enforcement };
 }
 
 /**
@@ -554,10 +640,31 @@ async function checkSignupRisk(signals) {
   };
 }
 
+/**
+ * Helper function to build a consistent risk context object from a request.
+ * Use this to ensure device signals are always extracted the same way.
+ * 
+ * @param {Object} req - Express request object
+ * @param {string} action - RISK_ACTIONS constant
+ * @param {string} reason - Human-readable reason for the update
+ * @param {Object} extras - Additional context fields (failedAttempts, rapidActions, etc.)
+ * @returns {Object} - Context object for updateRiskScore()
+ */
+function buildRiskContext(req, action, reason, extras = {}) {
+  return {
+    action,
+    reason,
+    ipHash: req.deviceSignals?.ipHash,
+    deviceFingerprint: req.deviceSignals?.fingerprint,
+    ...extras
+  };
+}
+
 module.exports = {
   // Constants
   RISK_WEIGHTS,
   RISK_THRESHOLDS,
+  RISK_ACTIONS,
   
   // Core functions
   calculateRiskScore,
@@ -565,6 +672,9 @@ module.exports = {
   checkAutoEnforcement,
   getConfigurableWeights,
   getDynamicRiskThresholds,
+  
+  // Helpers
+  buildRiskContext,
   
   // Enforcement
   applyAutomatedEnforcement,

@@ -5,7 +5,7 @@ const { OAuth2Client } = require('google-auth-library');
 const auth = require('../middleware/auth');
 const { User } = require('../models');
 const { validateUsername, validatePassword, validateEmail } = require('../utils/validation');
-const { checkSignupRisk, updateRiskScore } = require('../services/riskService');
+const { checkSignupRisk, updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { recordDeviceFingerprint, recordIPHash } = require('../middleware/deviceSignals');
 const { logSecurityEvent, logEvent, AUDIT_EVENTS, SEVERITY } = require('../services/auditService');
 const { enforcementMiddleware, getRestrictionStatus } = require('../middleware/enforcement');
@@ -32,9 +32,17 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // POST /api/auth/daily-reward - Claim hourly reward
 // Note: Route name is legacy ("daily") but actual interval is 1 hour for better engagement
-// Security: lockout checked, enforcement checked, rate limited
+// Security: lockout checked, enforcement checked, rate limited, risk tracked
 router.post('/daily-reward', [auth, lockoutMiddleware(), enforcementMiddleware, generalRateLimiter], async (req, res) => {
   try {
+    // SECURITY: Track daily reward claim for risk scoring
+    await updateRiskScore(req.user.id, {
+      action: RISK_ACTIONS.DAILY_REWARD,
+      reason: 'daily_reward_claimed',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
+    
     const user = await User.findByPk(req.user.id);
     
     if (!user) {
@@ -335,11 +343,20 @@ router.post('/login', async (req, res) => {
       const remainingAttempts = getRemainingAttempts(attemptKey);
       
       // Update risk score if user exists (potential targeted attack)
+      // This also triggers auto-enforcement if thresholds are exceeded
       if (user) {
-        await updateRiskScore(user.id, { 
+        const riskResult = await updateRiskScore(user.id, { 
+          action: RISK_ACTIONS.LOGIN_FAILED,
           reason: 'failed_login_attempt',
-          failedAttempts: failCount 
+          failedAttempts: failCount,
+          ipHash: req.deviceSignals?.ipHash,
+          deviceFingerprint: req.deviceSignals?.fingerprint
         });
+        
+        // If auto-enforcement was applied, log it
+        if (riskResult?.enforcement) {
+          console.log(`[Auth] Auto-enforcement applied to user ${user.id}: ${riskResult.enforcement.applied}`);
+        }
       }
       
       // Log failed login
@@ -399,8 +416,11 @@ router.post('/login', async (req, res) => {
       await recordIPHash(user, req.deviceSignals.ipHash);
     }
     
-    // Update risk score with login context
+    // SECURITY: Update risk score for successful login with proper action identifier
     await updateRiskScore(user.id, {
+      action: RISK_ACTIONS.LOGIN_SUCCESS,
+      reason: 'successful_login',
+      ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
     
@@ -675,6 +695,14 @@ router.post('/google', async (req, res) => {
       await recordIPHash(user, req.deviceSignals.ipHash);
     }
     
+    // SECURITY: Update risk score for Google SSO login (existing user)
+    await updateRiskScore(user.id, {
+      action: RISK_ACTIONS.LOGIN_SUCCESS,
+      reason: 'google_sso_login',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
+    
     // Log Google login
     await logEvent({
       eventType: AUDIT_EVENTS.GOOGLE_LOGIN,
@@ -728,6 +756,14 @@ router.post('/google/relink', [auth, lockoutMiddleware(), enforcementMiddleware,
   const { credential } = req.body;
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
+  
+  // SECURITY: Update risk score for Google account linking (account security action)
+  await updateRiskScore(req.user.id, {
+    action: RISK_ACTIONS.GOOGLE_LINK,
+    reason: 'google_account_linked',
+    ipHash: req.deviceSignals?.ipHash,
+    deviceFingerprint: req.deviceSignals?.fingerprint
+  });
   
   if (!credential) {
     recordFailedAttempt(attemptKey);
@@ -818,6 +854,14 @@ router.post('/google/unlink', [auth, lockoutMiddleware(), enforcementMiddleware,
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
   
+  // SECURITY: Update risk score for Google account unlinking (account security action)
+  await updateRiskScore(req.user.id, {
+    action: RISK_ACTIONS.GOOGLE_UNLINK,
+    reason: 'google_account_unlinked',
+    ipHash: req.deviceSignals?.ipHash,
+    deviceFingerprint: req.deviceSignals?.fingerprint
+  });
+  
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) {
@@ -904,6 +948,14 @@ router.put('/profile/email', [auth, lockoutMiddleware(), enforcementMiddleware, 
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
   
+  // SECURITY: Update risk score for email change attempt (account security action)
+  await updateRiskScore(req.user.id, {
+    action: RISK_ACTIONS.EMAIL_CHANGE,
+    reason: 'email_change_attempt',
+    ipHash: req.deviceSignals?.ipHash,
+    deviceFingerprint: req.deviceSignals?.fingerprint
+  });
+  
   // Validate email
   const emailValidation = validateEmail(email);
   if (!emailValidation.valid) {
@@ -959,6 +1011,14 @@ router.put('/profile/password', [auth, lockoutMiddleware(), enforcementMiddlewar
   const { currentPassword, newPassword } = req.body;
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
+  
+  // SECURITY: Update risk score for password change attempt (account security action)
+  await updateRiskScore(req.user.id, {
+    action: RISK_ACTIONS.PASSWORD_CHANGE,
+    reason: 'password_change_attempt',
+    ipHash: req.deviceSignals?.ipHash,
+    deviceFingerprint: req.deviceSignals?.fingerprint
+  });
   
   // Validate new password
   const passwordValidation = validatePassword(newPassword);
@@ -1024,6 +1084,14 @@ router.put('/profile/username', [auth, lockoutMiddleware(), enforcementMiddlewar
   const { username } = req.body;
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
+  
+  // SECURITY: Update risk score for username change attempt (account security action)
+  await updateRiskScore(req.user.id, {
+    action: RISK_ACTIONS.USERNAME_CHANGE,
+    reason: 'username_change_attempt',
+    ipHash: req.deviceSignals?.ipHash,
+    deviceFingerprint: req.deviceSignals?.fingerprint
+  });
   
   // Validate username
   const usernameValidation = validateUsername(username);
@@ -1091,6 +1159,14 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
   const { password, confirmationText } = req.body;
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
+  
+  // SECURITY: Update risk score for account reset attempt (high-risk action)
+  await updateRiskScore(req.user.id, {
+    action: RISK_ACTIONS.ACCOUNT_RESET,
+    reason: 'account_reset_initiated',
+    ipHash: req.deviceSignals?.ipHash,
+    deviceFingerprint: req.deviceSignals?.fingerprint
+  });
   
   // Security: Require exact confirmation text
   // Record failed attempt for incorrect confirmation to prevent automated attacks
@@ -1203,7 +1279,7 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
 });
 
 // POST /api/auth/toggle-r18 - Toggle R18 content preference
-// Security: lockout checked, enforcement checked, rate limited
+// Security: lockout checked, enforcement checked, rate limited, risk tracked
 router.post('/toggle-r18', [auth, lockoutMiddleware(), enforcementMiddleware, generalRateLimiter], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
@@ -1226,6 +1302,14 @@ router.post('/toggle-r18', [auth, lockoutMiddleware(), enforcementMiddleware, ge
     const newValue = user.showR18 !== true;
     user.showR18 = newValue;
     await user.save();
+    
+    // SECURITY: Track R18 preference change for risk scoring (account setting change)
+    await updateRiskScore(req.user.id, {
+      action: RISK_ACTIONS.PREFERENCE_CHANGE,
+      reason: 'r18_preference_toggled',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
     
     res.json({ 
       message: newValue ? 'R18 content enabled' : 'R18 content disabled',

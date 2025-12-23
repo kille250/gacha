@@ -30,6 +30,7 @@ const {
   LEVELING_CONFIG,
   getShardsToLevel
 } = require('../utils/characterLeveling');
+const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 
 // ===========================================
 // ROLL ENDPOINTS
@@ -87,6 +88,14 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiv
         : `(+1 shard, total: ${acquisition.shards})`
       : '(new)';
     console.log(`User ${user.username} (ID: ${user.id}) rolled ${result.character.name} (${result.actualRarity}) ${shardInfo}`);
+    
+    // SECURITY: Update risk score AFTER successful roll
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.GACHA_ROLL,
+      reason: 'standard_gacha_roll',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
     
     releaseRollLock(userId);
     
@@ -181,6 +190,14 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, se
     const bonusPointsTotal = acquisitions.reduce((sum, a) => sum + (a.bonusPoints || 0), 0);
     
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);
+    
+    // SECURITY: Update risk score AFTER successful multi-roll
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.GACHA_MULTI_ROLL,
+      reason: 'standard_multi_roll',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
     
     releaseRollLock(userId);
     
@@ -408,6 +425,17 @@ router.post('/level-up-all', [auth, enforcementMiddleware], async (req, res) => 
     const successCount = results.filter(r => r.levelsGained > 0).length;
     
     console.log(`User ${userId} batch max-leveled ${successCount} characters (+${totalLevelsGained} levels total)`);
+    
+    // SECURITY: Track significant batch level-up operations for risk scoring
+    // Only track if meaningful batch (3+ levels) to avoid noise from small upgrades
+    if (totalLevelsGained >= 3) {
+      await updateRiskScore(userId, {
+        action: RISK_ACTIONS.BATCH_LEVEL_UP,
+        reason: 'batch_level_up_operation',
+        ipHash: req.deviceSignals?.ipHash,
+        deviceFingerprint: req.deviceSignals?.fingerprint
+      });
+    }
     
     res.json({
       success: true,

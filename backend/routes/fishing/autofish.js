@@ -32,6 +32,7 @@ const {
 } = require('../../services/fishingService');
 
 const { getUserRank, getTotalUsers } = require('../../services/rankService');
+const { updateRiskScore, RISK_ACTIONS } = require('../../services/riskService');
 
 // Error classes
 const {
@@ -56,12 +57,12 @@ const autofishCooldowns = new Map();
 const autofishInProgress = new Set();
 
 // POST /autofish - Perform an autofish catch
-// Security: lockout checked (fail-fast), enforcement checked (banned users cannot autofish)
+// Security: lockout checked (fail-fast), enforcement checked (banned users cannot autofish), risk tracked
 router.post('/', [auth, lockoutMiddleware(), enforcementMiddleware], async (req, res, next) => {
   const userId = req.user.id;
   
   try {
-    // Mode conflict check
+    // Mode conflict check (validate BEFORE tracking risk)
     const conflict = checkModeConflict(userId, 'autofish');
     if (conflict) {
       throw new ModeConflictError('manual', 'autofish');
@@ -254,6 +255,15 @@ router.post('/', [auth, lockoutMiddleware(), enforcementMiddleware], async (req,
     });
     
     autofishInProgress.delete(userId);
+    
+    // SECURITY: Track autofish action AFTER successful transaction
+    // This ensures risk is only tracked for completed actions, not failed validations
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.FISHING_AUTOFISH,
+      reason: 'autofish_session',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
     
     const { user, fish, success, inventoryItem, pityTriggered, dailyLimit, dailyUsed, challengeRewards, currentRank } = result;
     

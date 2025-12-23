@@ -23,6 +23,9 @@ const {
 
 const { UserNotFoundError } = require('../../errors/FishingErrors');
 
+// Service imports
+const { updateRiskScore, buildRiskContext, RISK_ACTIONS } = require('../../services/riskService');
+
 // GET /collection - Get full collection/codex data
 // Security: enforcement checked (banned users cannot access game features)
 router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
@@ -154,7 +157,7 @@ router.get('/bonuses', [auth, enforcementMiddleware], async (req, res, next) => 
 });
 
 // POST /collection/claim-milestone - Claim a collection milestone reward
-// Security: enforcement checked (banned users cannot claim rewards)
+// Security: enforcement checked (banned users cannot claim rewards), risk tracked
 router.post('/claim-milestone', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { type, threshold } = req.body;
@@ -212,6 +215,9 @@ router.post('/claim-milestone', [auth, enforcementMiddleware], async (req, res, 
     user.fishingAchievements = achievements;
 
     await user.save();
+
+    // SECURITY: Track milestone claim for risk scoring (reward claim)
+    await updateRiskScore(req.user.id, buildRiskContext(req, RISK_ACTIONS.COLLECTION_MILESTONE, 'collection_milestone_claimed'));
 
     res.json({
       success: true,

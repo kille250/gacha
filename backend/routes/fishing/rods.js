@@ -14,6 +14,9 @@ const { User } = require('../../models');
 // Config imports
 const { FISHING_RODS } = require('../../config/fishing');
 
+// Service imports
+const { updateRiskScore, buildRiskContext, RISK_ACTIONS } = require('../../services/riskService');
+
 // Error classes
 const {
   UserNotFoundError,
@@ -59,7 +62,7 @@ router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
 });
 
 // POST /:id/buy - Buy a fishing rod
-// Security: enforcement checked (banned users cannot buy rods)
+// Security: enforcement checked (banned users cannot buy rods), risk tracked
 router.post('/:id/buy', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { id: rodId } = req.params;
@@ -96,6 +99,9 @@ router.post('/:id/buy', [auth, enforcementMiddleware], async (req, res, next) =>
     user.fishingOwnedRods = ownedRods;
     user.fishingRod = rodId;
     await user.save();
+    
+    // SECURITY: Track rod purchase for risk scoring (point spending)
+    await updateRiskScore(req.user.id, buildRiskContext(req, RISK_ACTIONS.FISHING_ROD_PURCHASE, 'rod_purchase'));
     
     res.json({
       success: true,

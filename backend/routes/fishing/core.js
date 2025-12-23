@@ -40,6 +40,7 @@ const {
 } = require('../../services/fishingService');
 
 const { getUserRank } = require('../../services/rankService');
+const { updateRiskScore, RISK_ACTIONS } = require('../../services/riskService');
 
 // Error classes
 const {
@@ -139,11 +140,13 @@ function setMode(userId, mode) {
 }
 
 // POST /cast - Start fishing (cast the line)
-// Security: lockout checked (fail-fast), enforcement checked (banned users cannot fish)
+// Security: lockout checked (fail-fast), enforcement checked (banned users cannot fish), risk tracked
 router.post('/cast', [auth, lockoutMiddleware(), enforcementMiddleware], async (req, res, next) => {
   const userId = req.user.id;
   
   try {
+    // Validate BEFORE tracking risk (don't inflate risk for legitimate failed attempts)
+    
     // Multi-tab detection
     const modeConflict = checkModeConflict(userId, 'manual');
     if (modeConflict) {
@@ -252,6 +255,14 @@ router.post('/cast', [auth, lockoutMiddleware(), enforcementMiddleware], async (
     
     const missTimeout = getMissTimeout(fish.rarity);
     
+    // SECURITY: Track fishing cast AFTER successful validation and transaction
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.FISHING_CAST,
+      reason: 'fishing_cast_success',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
+    
     let message = pityTriggered ? '✨ Lucky cast! A rare fish approaches...' : 'Line cast! Wait for a bite...';
     if (mercyBonus > 0) {
       message += ` (+${mercyBonus}ms mercy bonus!)`;
@@ -279,11 +290,12 @@ router.post('/cast', [auth, lockoutMiddleware(), enforcementMiddleware], async (
 });
 
 // POST /catch - Attempt to catch the fish
-// Security: lockout checked (fail-fast), enforcement checked (banned users cannot complete catches)
+// Security: lockout checked (fail-fast), enforcement checked (banned users cannot complete catches), risk tracked
 router.post('/catch', [auth, lockoutMiddleware(), enforcementMiddleware], async (req, res, next) => {
   const userId = req.user.id;
   
   try {
+    // Validate session BEFORE tracking risk (don't inflate risk for invalid requests)
     const { sessionId } = req.body;
     
     if (!sessionId) {
@@ -461,6 +473,14 @@ router.post('/catch', [auth, lockoutMiddleware(), enforcementMiddleware], async 
           user, success: false, failureMessage, missStreak: daily.missStreak 
         };
       }
+    });
+    
+    // SECURITY: Track fishing catch AFTER successful transaction (valid session, valid timing)
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.FISHING_CATCH,
+      reason: result.success ? 'fishing_catch_success' : 'fishing_catch_miss',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
     });
     
     if (result.success) {

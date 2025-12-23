@@ -194,8 +194,10 @@ async function detectVelocityAnomaly(userId, actionType) {
     
     return { isAnomaly: false, actionsPerMinute: count };
   } catch (err) {
-    console.error('[Economy] Anomaly detection error:', err.message);
-    return { isAnomaly: false };
+    // SECURITY: Fail-closed - assume potential anomaly on error
+    // This prevents attackers from exploiting errors to bypass detection
+    console.error('[Economy] Anomaly detection error (fail-closed):', err.message);
+    return { isAnomaly: true, reason: 'detection_error', error: true };
   }
 }
 
@@ -276,9 +278,14 @@ async function logEconomyEvent(eventType, userId, data, req = null) {
           ...velocityAnomaly
         }, req);
         
-        // Update user's risk score
-        const { updateRiskScore } = require('./riskService');
-        await updateRiskScore(userId, { rapidActions: true });
+        // Update user's risk score with standardized action identifier
+        const { updateRiskScore, RISK_ACTIONS } = require('./riskService');
+        await updateRiskScore(userId, { 
+          action: RISK_ACTIONS.VELOCITY_BREACH,
+          reason: 'velocity_anomaly_detected',
+          rapidActions: true,
+          actionsPerMinute: velocityAnomaly.actionsPerMinute
+        });
       }
     }
     

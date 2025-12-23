@@ -16,6 +16,7 @@ const { FISHING_AREAS } = require('../../config/fishing');
 
 // Service imports
 const { getUserRank } = require('../../services/rankService');
+const { updateRiskScore, buildRiskContext, RISK_ACTIONS } = require('../../services/riskService');
 
 // Error classes
 const {
@@ -54,7 +55,7 @@ router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
 });
 
 // POST /:id/unlock - Unlock a fishing area
-// Security: enforcement checked (banned users cannot unlock areas)
+// Security: enforcement checked (banned users cannot unlock areas), risk tracked
 router.post('/:id/unlock', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { id: areaId } = req.params;
@@ -94,6 +95,9 @@ router.post('/:id/unlock', [auth, enforcementMiddleware], async (req, res, next)
     user.fishingAreas = userAreas;
     
     await user.save();
+    
+    // SECURITY: Track area unlock for risk scoring (point spending)
+    await updateRiskScore(req.user.id, buildRiskContext(req, RISK_ACTIONS.FISHING_AREA_PURCHASE, 'area_unlock_purchase'));
     
     res.json({
       success: true,

@@ -36,6 +36,7 @@ const {
   acquireMultipleCharacters
 } = require('../utils/characterLeveling');
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
+const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 
 // ===========================================
 // HELPER FUNCTIONS
@@ -647,6 +648,14 @@ router.post('/:id/roll', [auth, enforcementMiddleware, sensitiveActionLimiter, e
       : '(new)';
     console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${result.character.name} (${result.actualRarity}) from ${isBannerPull ? 'banner' : 'standard'} pool ${shardInfo}. Cost: ${cost} points`);
     
+    // SECURITY: Update risk score AFTER successful banner roll
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.GACHA_ROLL,
+      reason: 'banner_gacha_roll',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
+    
     releaseRollLock(userId);
     
     res.json({
@@ -831,6 +840,14 @@ router.post('/:id/roll-multi', [auth, enforcementMiddleware, sensitiveActionLimi
     const bonusPointsTotal = acquisitions.reduce((sum, a) => sum + (a.bonusPoints || 0), 0);
     
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);
+    
+    // SECURITY: Update risk score AFTER successful banner multi-roll
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.GACHA_MULTI_ROLL,
+      reason: 'banner_multi_roll',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
     
     releaseRollLock(userId);
     

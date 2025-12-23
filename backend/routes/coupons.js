@@ -9,6 +9,7 @@ const { Coupon, CouponRedemption, User, Character } = require('../models');
 const { isValidUUID, parseDate } = require('../utils/validation');
 const { acquireCharacter } = require('../utils/characterLeveling');
 const { logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');
+const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { 
   captchaMiddleware,
   lockoutMiddleware,  // Early lockout check for fail-fast behavior
@@ -224,11 +225,21 @@ router.post('/redeem', [auth, lockoutMiddleware(), enforcementMiddleware, sensit
     // Check if coupon exists
     if (!coupon) {
       // Record failed attempt for CAPTCHA escalation (potential brute-force)
-      recordFailedAttempt(attemptKey);
+      const failCount = recordFailedAttempt(attemptKey);
+      
+      // Update risk score for failed coupon attempts (brute-force detection)
+      await updateRiskScore(req.user.id, {
+        action: RISK_ACTIONS.COUPON_FAILED,
+        reason: 'Invalid coupon code',
+        failedCouponAttempts: failCount,
+        ipHash: req.deviceSignals?.ipHash,
+        deviceFingerprint: req.deviceSignals?.fingerprint
+      });
       
       await logSecurityEvent(AUDIT_EVENTS.COUPON_FAILED, req.user.id, {
         attemptedCode: code.substring(0, 4) + '***',
-        reason: 'Invalid code'
+        reason: 'Invalid code',
+        failCount
       }, req);
       
       return res.status(404).json({ error: 'Invalid coupon code' });
@@ -325,6 +336,14 @@ router.post('/redeem', [auth, lockoutMiddleware(), enforcementMiddleware, sensit
       couponType: coupon.type,
       value: coupon.value
     }, req);
+    
+    // SECURITY: Track successful redemption for risk scoring
+    await updateRiskScore(req.user.id, {
+      action: RISK_ACTIONS.COUPON_REDEEMED,
+      reason: 'coupon_successfully_redeemed',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
 
     return res.json({
       message: 'Coupon redeemed successfully',

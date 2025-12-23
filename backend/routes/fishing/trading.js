@@ -29,7 +29,7 @@ const {
 const { isTradingAllowed, applyShadowbanPenalty, getEnforcementContext } = require('../../services/enforcementService');
 const { logEconomyAction, AUDIT_EVENTS } = require('../../services/auditService');
 const { checkVelocityLimit, detectVelocityAnomaly } = require('../../services/economyService');
-const { updateRiskScore } = require('../../services/riskService');
+const { updateRiskScore, RISK_ACTIONS } = require('../../services/riskService');
 const { enforcePolicy } = require('../../middleware/policies');
 const { 
   captchaMiddleware, 
@@ -226,7 +226,14 @@ router.post('/trade', [auth, lockoutMiddleware(), enforcementMiddleware, sensiti
   // Detect velocity anomalies (potential bot)
   const anomaly = await detectVelocityAnomaly(userId, 'trading');
   if (anomaly.isAnomaly) {
-    await updateRiskScore(userId, { rapidActions: true });
+    // SECURITY: Use VELOCITY_BREACH for consistency with economyService
+    await updateRiskScore(userId, { 
+      action: RISK_ACTIONS.VELOCITY_BREACH,
+      reason: 'trade_velocity_anomaly',
+      rapidActions: true,
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
   }
   
   // Trade lock
@@ -434,6 +441,14 @@ router.post('/trade', [auth, lockoutMiddleware(), enforcementMiddleware, sensiti
     
     // SECURITY: Clear failed attempts only AFTER successful transaction
     clearFailedAttempts(attemptKey);
+    
+    // SECURITY: Track successful trade for risk scoring
+    await updateRiskScore(userId, {
+      action: RISK_ACTIONS.TRADE_SUCCESS,
+      reason: 'fish_trade_completed',
+      ipHash: req.deviceSignals?.ipHash,
+      deviceFingerprint: req.deviceSignals?.fingerprint
+    });
     
     // Log the trade for audit
     await logEconomyAction(AUDIT_EVENTS.TRADE_COMPLETED, userId, {

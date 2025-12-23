@@ -11,7 +11,7 @@ const { generalRateLimiter, sensitiveActionLimiter } = require('../middleware/ra
 const { User, Character, Banner, Coupon, CouponRedemption, FishInventory, AuditEvent } = require('../models');
 const { getUrlPath, UPLOAD_BASE } = require('../config/upload');
 const { logAdminAction, AUDIT_EVENTS, getSecurityEvents } = require('../services/auditService');
-const { getHighRiskUsers, RISK_THRESHOLDS, calculateRiskScore } = require('../services/riskService');
+const { getHighRiskUsers, RISK_THRESHOLDS, calculateRiskScore, parseDuration } = require('../services/riskService');
 const securityConfigService = require('../services/securityConfigService');
 const { getAllSecurityConfig, updateSecurityConfig, DEFAULTS: CONFIG_DEFAULTS } = securityConfigService;
 const { characterUpload: upload } = require('../config/multer');
@@ -634,24 +634,7 @@ router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
 // Valid restriction types
 const VALID_RESTRICTIONS = ['none', 'warning', 'rate_limited', 'shadowban', 'temp_ban', 'perm_ban'];
 
-/**
- * Parse duration string to milliseconds
- * Formats: 1h, 24h, 7d, 30d
- */
-function parseDuration(durationStr) {
-  if (!durationStr) return null;
-  
-  const match = durationStr.match(/^(\d+)(h|d)$/i);
-  if (!match) return null;
-  
-  const value = parseInt(match[1], 10);
-  const unit = match[2].toLowerCase();
-  
-  if (unit === 'h') return value * 60 * 60 * 1000;
-  if (unit === 'd') return value * 24 * 60 * 60 * 1000;
-  
-  return null;
-}
+// NOTE: parseDuration is now imported from riskService to avoid duplication
 
 // GET /api/admin/security/overview - Security dashboard overview
 router.get('/security/overview', auth, adminAuth, async (req, res) => {
