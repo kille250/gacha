@@ -191,6 +191,11 @@ const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
                   <LoadingText>Loading configuration...</LoadingText>
                 ) : (
                   <ConfigForm>
+                    {activeCategory === 'rate_limits' && (
+                      <InfoNote>
+                        ⚡ Note: Changes to rate limit <strong>WINDOW</strong> values (time periods) require a server restart to take effect. MAX values update within 60 seconds.
+                      </InfoNote>
+                    )}
                     {config?.config?.[activeCategory]?.map(item => (
                       <FormGroup key={item.key}>
                         <Label>{formatKeyName(item.key)}</Label>
@@ -377,6 +382,17 @@ const WarningNote = styled.div`
   margin-bottom: ${theme.spacing.lg};
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.warning};
+  text-align: left;
+`;
+
+const InfoNote = styled.div`
+  background: ${theme.colors.primary}15;
+  border: 1px solid ${theme.colors.primary}40;
+  border-radius: ${theme.radius.md};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.md};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.primary};
   text-align: left;
 `;
 

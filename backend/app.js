@@ -156,12 +156,17 @@ schedule.scheduleJob('0 0 * * *', async function() {
   }
 });
 
-// Risk score decay: Reduce risk scores by 10% every 6 hours for users with no recent issues
+// Risk score decay: Reduce risk scores by configurable percentage every 6 hours
+// Default 10%, configurable via RISK_SCORE_DECAY_PERCENTAGE in SecurityConfig
 schedule.scheduleJob('0 */6 * * *', async function() {
   console.log('[Scheduled Job] Running risk score decay');
   try {
-    const decayedCount = await decayRiskScores(0.1);
-    console.log(`[Scheduled Job] Decayed risk scores for ${decayedCount} users`);
+    // Get configurable decay percentage (default 10%)
+    const { getNumber } = require('./services/securityConfigService');
+    const decayPercentage = await getNumber('RISK_SCORE_DECAY_PERCENTAGE', 0.1);
+    
+    const decayedCount = await decayRiskScores(decayPercentage);
+    console.log(`[Scheduled Job] Decayed risk scores by ${decayPercentage * 100}% for ${decayedCount} users`);
   } catch (err) {
     console.error('[Scheduled Job] Error decaying risk scores:', err);
   }

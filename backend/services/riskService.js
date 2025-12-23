@@ -66,13 +66,54 @@ async function getConfigurableWeights() {
   }
 }
 
-// Thresholds for automated actions
-const RISK_THRESHOLDS = {
+// Default thresholds for automated actions (can be overridden via security config)
+const DEFAULT_RISK_THRESHOLDS = {
   MONITORING: 30,
   SOFT_RESTRICTION: 50,
   SHADOWBAN: 70,
   TEMP_BAN: 85
 };
+
+// Exported for backwards compatibility
+const RISK_THRESHOLDS = DEFAULT_RISK_THRESHOLDS;
+
+// Cached thresholds (updated periodically)
+let riskThresholdsCache = { ...DEFAULT_RISK_THRESHOLDS };
+let lastThresholdsLoad = 0;
+const THRESHOLDS_REFRESH_INTERVAL = 60000; // 1 minute
+
+/**
+ * Get dynamic risk thresholds from SecurityConfig
+ * @returns {Promise<Object>} - Risk thresholds
+ */
+async function getDynamicRiskThresholds() {
+  const now = Date.now();
+  if (now - lastThresholdsLoad < THRESHOLDS_REFRESH_INTERVAL) {
+    return riskThresholdsCache;
+  }
+  
+  try {
+    const securityConfigService = require('./securityConfigService');
+    const [monitoring, softRestriction, shadowban, tempBan] = await Promise.all([
+      securityConfigService.getNumber('RISK_THRESHOLD_MONITORING', DEFAULT_RISK_THRESHOLDS.MONITORING),
+      securityConfigService.getNumber('RISK_THRESHOLD_SOFT_RESTRICTION', DEFAULT_RISK_THRESHOLDS.SOFT_RESTRICTION),
+      securityConfigService.getNumber('RISK_THRESHOLD_SHADOWBAN', DEFAULT_RISK_THRESHOLDS.SHADOWBAN),
+      securityConfigService.getNumber('RISK_THRESHOLD_TEMP_BAN', DEFAULT_RISK_THRESHOLDS.TEMP_BAN)
+    ]);
+    
+    riskThresholdsCache = {
+      MONITORING: monitoring,
+      SOFT_RESTRICTION: softRestriction,
+      SHADOWBAN: shadowban,
+      TEMP_BAN: tempBan
+    };
+    lastThresholdsLoad = now;
+  } catch (err) {
+    console.error('[RiskService] Failed to load thresholds, using defaults:', err.message);
+  }
+  
+  return riskThresholdsCache;
+}
 
 /**
  * Calculate risk score for a user
@@ -189,6 +230,7 @@ async function updateRiskScore(userId, context = {}) {
 
 /**
  * Check if user should be auto-restricted based on risk score
+ * Uses dynamic thresholds from SecurityConfig for runtime configurability
  * @param {number} userId - User ID
  * @returns {Promise<Object|null>} - Recommended action or null
  */
@@ -204,24 +246,27 @@ async function checkAutoEnforcement(userId) {
     return null;
   }
   
+  // Get dynamic thresholds from config
+  const thresholds = await getDynamicRiskThresholds();
+  
   // New accounts get grace period (7 days)
   const ageInDays = (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
   if (ageInDays < 7) {
     // Only warn, don't auto-restrict new accounts
-    if (score >= RISK_THRESHOLDS.SHADOWBAN) {
+    if (score >= thresholds.SHADOWBAN) {
       return { action: 'warning', reason: 'High risk score (new account grace period)' };
     }
     return null;
   }
   
-  // Determine recommended action
-  if (score >= RISK_THRESHOLDS.TEMP_BAN) {
+  // Determine recommended action using dynamic thresholds
+  if (score >= thresholds.TEMP_BAN) {
     return { action: 'temp_ban', reason: 'Extremely high risk score', duration: '7d' };
-  } else if (score >= RISK_THRESHOLDS.SHADOWBAN) {
+  } else if (score >= thresholds.SHADOWBAN) {
     return { action: 'shadowban', reason: 'High risk score detected' };
-  } else if (score >= RISK_THRESHOLDS.SOFT_RESTRICTION) {
+  } else if (score >= thresholds.SOFT_RESTRICTION) {
     return { action: 'rate_limited', reason: 'Elevated risk score', duration: '24h' };
-  } else if (score >= RISK_THRESHOLDS.MONITORING) {
+  } else if (score >= thresholds.MONITORING) {
     return { action: 'monitor', reason: 'Risk score above monitoring threshold' };
   }
   
@@ -508,6 +553,7 @@ module.exports = {
   updateRiskScore,
   checkAutoEnforcement,
   getConfigurableWeights,
+  getDynamicRiskThresholds,
   
   // Enforcement
   applyAutomatedEnforcement,
