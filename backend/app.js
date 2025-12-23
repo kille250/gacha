@@ -123,7 +123,11 @@ const corsOptions = {
     'x-auth-token', 
     'Authorization',
     'X-Device-Fingerprint',
-    'X-Device-Id'
+    'X-Device-Id',
+    // CAPTCHA headers
+    'x-recaptcha-token',
+    'x-captcha-token',
+    'x-captcha-answer'
   ]
 };
 
