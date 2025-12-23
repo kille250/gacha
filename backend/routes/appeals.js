@@ -206,6 +206,10 @@ router.get('/admin/:id', auth, adminAuth, async (req, res) => {
   try {
     const appealId = parseInt(req.params.id, 10);
     
+    if (isNaN(appealId)) {
+      return res.status(400).json({ error: 'Invalid appeal ID' });
+    }
+    
     const appeal = await Appeal.findByPk(appealId, {
       include: [{
         model: User,
@@ -233,6 +237,11 @@ router.get('/admin/:id', auth, adminAuth, async (req, res) => {
 router.post('/admin/:id/approve', auth, adminAuth, async (req, res) => {
   try {
     const appealId = parseInt(req.params.id, 10);
+    
+    if (isNaN(appealId)) {
+      return res.status(400).json({ error: 'Invalid appeal ID' });
+    }
+    
     const { notes } = req.body;
     
     const appeal = await Appeal.approve(appealId, req.user.id, notes || 'Approved');
@@ -259,6 +268,11 @@ router.post('/admin/:id/approve', auth, adminAuth, async (req, res) => {
 router.post('/admin/:id/deny', auth, adminAuth, async (req, res) => {
   try {
     const appealId = parseInt(req.params.id, 10);
+    
+    if (isNaN(appealId)) {
+      return res.status(400).json({ error: 'Invalid appeal ID' });
+    }
+    
     const { notes } = req.body;
     
     if (!notes || notes.length < 10) {

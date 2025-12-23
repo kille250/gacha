@@ -44,6 +44,16 @@ const DEFAULTS = {
   // CAPTCHA
   CAPTCHA_FAILED_ATTEMPTS_THRESHOLD: 3,
   CAPTCHA_TOKEN_VALIDITY_MS: 300000,
+  CAPTCHA_RISK_THRESHOLD: 50,
+  CAPTCHA_SENSITIVE_ACTIONS: 'trade,coupon_redeem,password_change,account_link',
+  
+  // reCAPTCHA
+  RECAPTCHA_ENABLED: false,
+  RECAPTCHA_MIN_SCORE: 0.5,
+  RECAPTCHA_SCORE_TRADE: 0.6,
+  RECAPTCHA_SCORE_COUPON: 0.4,
+  RECAPTCHA_SCORE_PASSWORD_CHANGE: 0.7,
+  RECAPTCHA_SCORE_ACCOUNT_LINK: 0.7,
   
   // Policies
   POLICY_TRADE_ACCOUNT_AGE_HOURS: 24,
@@ -100,6 +110,45 @@ async function getConfigs(keys) {
     result[key] = await getConfig(key);
   }
   return result;
+}
+
+/**
+ * Get a config value with optional default (alias for getConfig)
+ * @param {string} key - Config key
+ * @param {*} defaultValue - Default value if not found
+ * @returns {Promise<*>} - Config value
+ */
+async function get(key, defaultValue) {
+  const value = await getConfig(key);
+  return value !== undefined ? value : defaultValue;
+}
+
+/**
+ * Get a config value as a number
+ * @param {string} key - Config key
+ * @param {number} defaultValue - Default value if not found or invalid
+ * @returns {Promise<number>} - Numeric config value
+ */
+async function getNumber(key, defaultValue) {
+  const value = await getConfig(key);
+  const num = parseFloat(value);
+  return !isNaN(num) ? num : defaultValue;
+}
+
+/**
+ * Get a config value as a boolean
+ * @param {string} key - Config key
+ * @param {boolean} defaultValue - Default value if not found
+ * @returns {Promise<boolean>} - Boolean config value
+ */
+async function getBoolean(key, defaultValue) {
+  const value = await getConfig(key);
+  if (value === undefined || value === null) return defaultValue;
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'string') {
+    return value.toLowerCase() === 'true' || value === '1';
+  }
+  return Boolean(value);
 }
 
 /**
@@ -268,6 +317,9 @@ module.exports = {
   // Core functions
   getConfig,
   getConfigs,
+  get,
+  getNumber,
+  getBoolean,
   
   // Grouped getters
   getRiskThresholds,
