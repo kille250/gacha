@@ -34,6 +34,8 @@ export const FISHING_ACTIONS = {
   CLAIM_CHALLENGE: 'fishing:claim_challenge',
   /** Selecting an area to fish in - updates areas, info */
   SELECT_AREA: 'fishing:select_area',
+  /** Claiming a prestige level - updates prestige, points */
+  CLAIM_PRESTIGE: 'fishing:claim_prestige',
 };
 
 // ===========================================
@@ -216,6 +218,7 @@ export const CACHE_ACTIONS = {
   FISHING_EQUIP_ROD: FISHING_ACTIONS.EQUIP_ROD,
   FISHING_CLAIM_CHALLENGE: FISHING_ACTIONS.CLAIM_CHALLENGE,
   FISHING_SELECT_AREA: FISHING_ACTIONS.SELECT_AREA,
+  FISHING_CLAIM_PRESTIGE: FISHING_ACTIONS.CLAIM_PRESTIGE,
   
   // Dojo
   DOJO_ASSIGN: DOJO_ACTIONS.ASSIGN,

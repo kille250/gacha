@@ -89,7 +89,8 @@ const FISHING_PATTERNS = {
   buy_rod: ['/fishing/rods', '/fishing/info', '/auth/me'],
   equip_rod: ['/fishing/rods', '/fishing/info'],
   claim_challenge: ['/fishing/challenges', '/auth/me', '/banners/user/tickets'],
-  select_area: ['/fishing/areas', '/fishing/info']
+  select_area: ['/fishing/areas', '/fishing/info'],
+  claim_prestige: ['/fishing/prestige', '/fishing/info', '/auth/me']
 };
 
 /**
@@ -351,6 +352,7 @@ const ACTION_HANDLERS = {
   'fishing:equip_rod': () => invalidatePatterns(FISHING_PATTERNS.equip_rod),
   'fishing:claim_challenge': () => invalidatePatterns(FISHING_PATTERNS.claim_challenge),
   'fishing:select_area': () => invalidatePatterns(FISHING_PATTERNS.select_area),
+  'fishing:claim_prestige': () => invalidatePatterns(FISHING_PATTERNS.claim_prestige),
   
   // ===========================================
   // MODAL/VIEW ACTIONS (pre-fetch cache invalidation)

@@ -205,5 +205,75 @@ export const castLine = async (setUser) => {
   return result;
 };
 
+/**
+ * Claim prestige level with proper cache invalidation.
+ * 
+ * @returns {Promise<Object>} Prestige claim result from API
+ * @throws {Error} If claim fails
+ */
+export const claimPrestige = async () => {
+  const response = await api.post('/fishing/prestige/claim');
+  const result = response.data;
+  
+  // Invalidate prestige-related caches
+  invalidateFor(CACHE_ACTIONS.FISHING_CLAIM_PRESTIGE);
+  
+  return result;
+};
+
+// ===========================================
+// FISHING DATA FETCHERS
+// ===========================================
+
+/**
+ * Fetch fishing info (current status, equipped gear, pity, etc.)
+ * @returns {Promise<Object>} Fishing info from API
+ */
+export const getFishingInfo = async () => {
+  const response = await api.get('/fishing/info');
+  return response.data;
+};
+
+/**
+ * Fetch fishing rank data
+ * @returns {Promise<Object>} Rank data from API
+ */
+export const getFishingRank = async () => {
+  const response = await api.get('/fishing/rank');
+  return response.data;
+};
+
+/**
+ * Fetch prestige data
+ * @returns {Promise<Object>} Prestige data from API
+ */
+export const getFishingPrestige = async () => {
+  const response = await api.get('/fishing/prestige');
+  return response.data;
+};
+
+/**
+ * Fetch leaderboard data
+ * @returns {Promise<Object>} Leaderboard data from API
+ */
+export const getFishingLeaderboard = async () => {
+  const response = await api.get('/fishing/leaderboard');
+  return response.data;
+};
+
+/**
+ * Fetch all core fishing data at once (info, rank, prestige)
+ * Useful for initial page load and visibility-based refresh
+ * @returns {Promise<{fishInfo: Object, rankData: Object, prestigeData: Object}>}
+ */
+export const fetchAllFishingData = async () => {
+  const [fishInfo, rankData, prestigeData] = await Promise.all([
+    getFishingInfo(),
+    getFishingRank(),
+    getFishingPrestige()
+  ]);
+  return { fishInfo, rankData, prestigeData };
+};
+
 // NOTE: Default export removed - use named exports instead for better tree-shaking
 

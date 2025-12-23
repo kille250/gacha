@@ -6,7 +6,7 @@ import { FaFish, FaCrown, FaTrophy } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation, Trans } from 'react-i18next';
 import { io } from 'socket.io-client';
-import api, { 
+import { 
   WS_URL, 
   getTradingPostOptions, 
   getFishingChallenges,
@@ -27,7 +27,13 @@ import {
   unlockArea,
   selectArea,
   runAutofish,
-  castLine
+  castLine,
+  claimPrestige,
+  getFishingInfo,
+  getFishingRank,
+  getFishingPrestige,
+  getFishingLeaderboard,
+  fetchAllFishingData
 } from '../actions/fishingActions';
 import { theme, ModalOverlay, ModalContent, ModalHeader, ModalBody, IconButton, motionVariants } from '../styles/DesignSystem';
 import { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from '../components/Fishing/FishingEngine';
@@ -403,21 +409,17 @@ const FishingPage = () => {
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [fishRes, rankRes, prestigeRes] = await Promise.all([
-          api.get('/fishing/info'),
-          api.get('/fishing/rank'),
-          api.get('/fishing/prestige')
-        ]);
-        setFishInfo(fishRes.data);
-        setRankData(rankRes.data);
-        setPrestigeData(prestigeRes.data);
+        const { fishInfo, rankData, prestigeData } = await fetchAllFishingData();
+        setFishInfo(fishInfo);
+        setRankData(rankData);
+        setPrestigeData(prestigeData);
         
         // Set initial daily stats from rank response
-        if (rankRes.data.autofish) {
+        if (rankData.autofish) {
           setDailyStats({
-            used: rankRes.data.autofish.used,
-            limit: rankRes.data.autofish.dailyLimit,
-            remaining: rankRes.data.autofish.remaining
+            used: rankData.autofish.used,
+            limit: rankData.autofish.dailyLimit,
+            remaining: rankData.autofish.remaining
           });
         }
       } catch (err) {
@@ -457,21 +459,17 @@ const FishingPage = () => {
       // Only refresh if tab was hidden long enough to be considered stale
       if (staleLevel === 'critical' || staleLevel === 'normal' || staleLevel === 'static') {
         try {
-          const [fishRes, rankRes, prestigeRes] = await Promise.all([
-            api.get('/fishing/info'),
-            api.get('/fishing/rank'),
-            api.get('/fishing/prestige')
-          ]);
-          setFishInfo(fishRes.data);
-          setRankData(rankRes.data);
-          setPrestigeData(prestigeRes.data);
+          const { fishInfo, rankData, prestigeData } = await fetchAllFishingData();
+          setFishInfo(fishInfo);
+          setRankData(rankData);
+          setPrestigeData(prestigeData);
           
           // Update daily stats from fresh info
-          if (fishRes.data.daily) {
+          if (fishInfo.daily) {
             setDailyStats({
-              used: fishRes.data.daily.autofishUsed,
-              limit: fishRes.data.daily.autofishLimit,
-              remaining: fishRes.data.daily.autofishLimit - fishRes.data.daily.autofishUsed
+              used: fishInfo.daily.autofishUsed,
+              limit: fishInfo.daily.autofishLimit,
+              remaining: fishInfo.daily.autofishLimit - fishInfo.daily.autofishUsed
             });
           }
         } catch (err) {
@@ -488,12 +486,12 @@ const FishingPage = () => {
       invalidateFor(CACHE_ACTIONS.MODAL_LEADERBOARD_OPEN);
       
       Promise.all([
-        api.get('/fishing/leaderboard'),
-        api.get('/fishing/rank')
+        getFishingLeaderboard(),
+        getFishingRank()
       ])
-        .then(([leaderboardRes, rankRes]) => {
-          setLeaderboard(leaderboardRes.data.leaderboard);
-          setRankData(rankRes.data);
+        .then(([leaderboardData, rankData]) => {
+          setLeaderboard(leaderboardData.leaderboard);
+          setRankData(rankData);
         })
         .catch(err => console.error('Failed to fetch leaderboard:', err));
     }
@@ -752,14 +750,14 @@ const FishingPage = () => {
         if (timeSinceLastRefresh > STALE_THRESHOLDS.normal) {
           lastAutofishRefreshRef.current = Date.now();
           try {
-            const [fishRes, rankRes, challengesRes] = await Promise.all([
-              api.get('/fishing/info'),
-              api.get('/fishing/rank'),
+            const [fishInfo, rankData, challengesData] = await Promise.all([
+              getFishingInfo(),
+              getFishingRank(),
               getFishingChallenges()
             ]);
-            setFishInfo(fishRes.data);
-            setRankData(rankRes.data);
-            setChallenges(challengesRes);
+            setFishInfo(fishInfo);
+            setRankData(rankData);
+            setChallenges(challengesData);
           } catch {
             // Silent fail - non-critical periodic refresh
           }
@@ -987,15 +985,15 @@ const FishingPage = () => {
         
         // Background refresh of full fishInfo for complete state sync
         // This runs async and doesn't block the success animation
-        api.get('/fishing/info').then(freshInfo => {
-          setFishInfo(freshInfo.data);
+        getFishingInfo().then(fishInfo => {
+          setFishInfo(fishInfo);
           
           // Update daily stats from fresh info
-          if (freshInfo.data.daily) {
+          if (fishInfo.daily) {
             setDailyStats({
-              used: freshInfo.data.daily.autofishUsed,
-              limit: freshInfo.data.daily.autofishLimit,
-              remaining: freshInfo.data.daily.autofishLimit - freshInfo.data.daily.autofishUsed
+              used: fishInfo.daily.autofishUsed,
+              limit: fishInfo.daily.autofishLimit,
+              remaining: fishInfo.daily.autofishLimit - fishInfo.daily.autofishUsed
             });
           }
         }).catch(() => {
@@ -1082,12 +1080,12 @@ const FishingPage = () => {
       await selectArea(areaId);
       
       // Refresh areas and fish info (cache already invalidated by helper)
-      const [areasData, fishRes] = await Promise.all([
+      const [areasData, fishInfo] = await Promise.all([
         getFishingAreas(),
-        api.get('/fishing/info')
+        getFishingInfo()
       ]);
       setAreas(areasData);
-      setFishInfo(fishRes.data);
+      setFishInfo(fishInfo);
       showNotification(t('fishing.switchedTo', { area: areasData.areas.find(a => a.id === areaId)?.name }), 'success');
     } catch (err) {
       showNotification(err.response?.data?.error || t('fishing.errors.switchAreaFailed'), 'error');
@@ -1106,12 +1104,12 @@ const FishingPage = () => {
       showNotification(result.message, 'success');
       
       // Refresh areas and fish info (cache already invalidated by helper)
-      const [areasData, fishRes] = await Promise.all([
+      const [areasData, fishInfo] = await Promise.all([
         getFishingAreas(),
-        api.get('/fishing/info')
+        getFishingInfo()
       ]);
       setAreas(areasData);
-      setFishInfo(fishRes.data);
+      setFishInfo(fishInfo);
     } catch (err) {
       const errorCode = err.response?.data?.error;
       const errorMessages = {
@@ -1137,12 +1135,12 @@ const FishingPage = () => {
       showNotification(result.message, 'success');
       
       // Refresh rods and fish info (cache already invalidated by helper)
-      const [rodsData, fishRes] = await Promise.all([
+      const [rodsData, fishInfo] = await Promise.all([
         getFishingRods(),
-        api.get('/fishing/info')
+        getFishingInfo()
       ]);
       setRods(rodsData);
-      setFishInfo(fishRes.data);
+      setFishInfo(fishInfo);
     } catch (err) {
       const errorCode = err.response?.data?.error;
       const errorMessages = {
@@ -1168,12 +1166,12 @@ const FishingPage = () => {
       showNotification(t('fishing.equippedRod', { rod: result.rod?.name || t('fishing.rods') }), 'success');
       
       // Refresh rods and fish info (cache already invalidated by helper)
-      const [rodsData, fishRes] = await Promise.all([
+      const [rodsData, fishInfo] = await Promise.all([
         getFishingRods(),
-        api.get('/fishing/info')
+        getFishingInfo()
       ]);
       setRods(rodsData);
-      setFishInfo(fishRes.data);
+      setFishInfo(fishInfo);
     } catch (err) {
       const errorCode = err.response?.data?.error;
       const errorMessages = {
@@ -2350,19 +2348,20 @@ const FishingPage = () => {
                             onClick={async () => {
                               setClaimingPrestige(true);
                               try {
-                                const res = await api.post('/fishing/prestige/claim');
+                                // Use centralized action helper for consistent cache invalidation
+                                const result = await claimPrestige();
                                 setPrestigeData(prev => ({
                                   ...prev,
-                                  currentLevel: res.data.newLevel,
-                                  currentName: res.data.levelName,
-                                  currentEmoji: res.data.levelEmoji,
-                                  currentBonuses: res.data.newBonuses,
+                                  currentLevel: result.newLevel,
+                                  currentName: result.levelName,
+                                  currentEmoji: result.levelEmoji,
+                                  currentBonuses: result.newBonuses,
                                   canPrestige: false
                                 }));
-                                showNotification(res.data.message, 'success');
-                                // Refresh full prestige data
-                                const freshData = await api.get('/fishing/prestige');
-                                setPrestigeData(freshData.data);
+                                showNotification(result.message, 'success');
+                                // Refresh full prestige data (cache already invalidated by helper)
+                                const freshData = await getFishingPrestige();
+                                setPrestigeData(freshData);
                                 // Refresh user for updated points
                                 await refreshUser();
                               } catch (err) {
