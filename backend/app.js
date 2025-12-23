@@ -334,6 +334,34 @@ async function runMigrations() {
   }
 }
 
+// ===========================================
+// GLOBAL ERROR HANDLER (Must be last middleware)
+// Ensures CORS headers are sent even on errors
+// ===========================================
+app.use((err, req, res, _next) => {
+  console.error('[Error Handler]', err.message || err);
+  
+  // Ensure CORS headers are present on error responses
+  const origin = req.headers.origin;
+  if (origin) {
+    const isAllowed = ALLOWED_ORIGINS.some(allowed => {
+      if (allowed instanceof RegExp) return allowed.test(origin);
+      return allowed === origin;
+    });
+    if (isAllowed) {
+      res.header('Access-Control-Allow-Origin', origin);
+      res.header('Access-Control-Allow-Credentials', 'true');
+    }
+  }
+  
+  // Send appropriate error response
+  const statusCode = err.status || err.statusCode || 500;
+  res.status(statusCode).json({
+    error: err.message || 'Internal server error',
+    ...(process.env.NODE_ENV !== 'production' && { stack: err.stack })
+  });
+});
+
 // Run migrations and start server
 async function startServer() {
   try {
