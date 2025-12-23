@@ -609,6 +609,51 @@ export const getRestrictedUsers = async (type) => {
 };
 
 // ===========================================
+// RISK SCORE MANAGEMENT
+// ===========================================
+
+export const triggerRiskScoreDecay = async (decayPercentage = 0.1) => {
+  const response = await api.post('/admin/security/decay-risk-scores', { decayPercentage });
+  return response.data;
+};
+
+export const getRiskStats = async () => {
+  const response = await api.get('/admin/security/risk-stats');
+  return response.data;
+};
+
+export const getUserRiskHistory = async (userId) => {
+  const response = await api.get(`/admin/users/${userId}/risk-history`);
+  return response.data;
+};
+
+// ===========================================
+// SESSION & DEVICE MANAGEMENT
+// ===========================================
+
+export const getUserSessions = async (userId) => {
+  const response = await api.get(`/admin/users/${userId}/sessions`);
+  return response.data;
+};
+
+export const getUserDeviceHistory = async (userId) => {
+  const response = await api.get(`/admin/users/${userId}/device-history`);
+  return response.data;
+};
+
+// ===========================================
+// AUTO-ENFORCEMENT EVENTS
+// ===========================================
+
+export const getAutoEnforcements = async (options = {}) => {
+  const { limit, offset } = options;
+  const params = { limit, offset };
+  Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
+  const response = await api.get('/admin/security/auto-enforcements', { params });
+  return response.data;
+};
+
+// ===========================================
 // SECURITY ALERTS
 // ===========================================
 

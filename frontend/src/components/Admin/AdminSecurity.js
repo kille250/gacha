@@ -21,11 +21,14 @@ import SecurityConfigPanel from './SecurityConfigPanel';
 import SecurityConfigEditor from './SecurityConfigEditor';
 import UserSecurityModal from './UserSecurityModal';
 import AppealReviewModal from './AppealReviewModal';
+import RiskDecayPanel from './RiskDecayPanel';
+import AutoEnforcementViewer from './AutoEnforcementViewer';
 
 const VIEWS = {
   OVERVIEW: 'overview',
   HIGH_RISK: 'highRisk',
   RESTRICTED: 'restricted',
+  AUTO_ENFORCE: 'autoEnforce',
   AUDIT: 'audit',
   APPEALS: 'appeals',
   CONFIG: 'config'
@@ -121,6 +124,12 @@ const AdminSecurity = ({ onSuccess }) => {
             )}
           </ViewTab>
           <ViewTab 
+            $active={currentView === VIEWS.AUTO_ENFORCE}
+            onClick={() => setCurrentView(VIEWS.AUTO_ENFORCE)}
+          >
+            Auto-Enforce
+          </ViewTab>
+          <ViewTab 
             $active={currentView === VIEWS.AUDIT}
             onClick={() => setCurrentView(VIEWS.AUDIT)}
           >
@@ -180,8 +189,15 @@ const AdminSecurity = ({ onSuccess }) => {
               />
             )}
             
+            {currentView === VIEWS.AUTO_ENFORCE && (
+              <AutoEnforcementViewer onViewUser={handleViewUser} />
+            )}
+            
             {currentView === VIEWS.CONFIG && (
-              <SecurityConfigPanel onEdit={() => setShowConfigEditor(true)} />
+              <>
+                <RiskDecayPanel onSuccess={handleModalSuccess} />
+                <SecurityConfigPanel onEdit={() => setShowConfigEditor(true)} />
+              </>
             )}
           </>
         )}

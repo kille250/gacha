@@ -1725,4 +1725,360 @@ router.get('/users/restricted', auth, adminAuth, async (req, res) => {
   }
 });
 
+// ===========================================
+// RISK SCORE MANAGEMENT
+// ===========================================
+
+// POST /api/admin/security/decay-risk-scores - Trigger risk score decay
+router.post('/security/decay-risk-scores', auth, adminAuth, async (req, res) => {
+  try {
+    const { decayPercentage = 0.1 } = req.body;
+    
+    // Validate decay percentage
+    const decay = parseFloat(decayPercentage);
+    if (isNaN(decay) || decay <= 0 || decay > 0.5) {
+      return res.status(400).json({ 
+        error: 'Decay percentage must be between 0.01 and 0.5 (1% to 50%)' 
+      });
+    }
+    
+    const { decayRiskScores } = require('../services/riskService');
+    const decayedCount = await decayRiskScores(decay);
+    
+    await logAdminAction(AUDIT_EVENTS.ADMIN_BULK_ACTION, req.user.id, null, {
+      action: 'risk_score_decay',
+      decayPercentage: decay,
+      affectedUsers: decayedCount
+    }, req);
+    
+    console.log(`Admin (ID: ${req.user.id}) triggered risk score decay: ${decay * 100}% for ${decayedCount} users`);
+    
+    res.json({
+      success: true,
+      message: `Decayed risk scores for ${decayedCount} user(s) by ${decay * 100}%`,
+      decayedCount,
+      decayPercentage: decay
+    });
+  } catch (err) {
+    console.error('Risk decay error:', err);
+    res.status(500).json({ error: 'Failed to decay risk scores' });
+  }
+});
+
+// GET /api/admin/security/risk-stats - Get risk score statistics
+router.get('/security/risk-stats', auth, adminAuth, async (req, res) => {
+  try {
+    const stats = await User.findAll({
+      attributes: [
+        [sequelize.fn('COUNT', sequelize.col('id')), 'total'],
+        [sequelize.fn('AVG', sequelize.col('riskScore')), 'avgScore'],
+        [sequelize.fn('MAX', sequelize.col('riskScore')), 'maxScore'],
+        [sequelize.fn('SUM', sequelize.literal('CASE WHEN riskScore >= 30 THEN 1 ELSE 0 END')), 'monitoring'],
+        [sequelize.fn('SUM', sequelize.literal('CASE WHEN riskScore >= 50 THEN 1 ELSE 0 END')), 'elevated'],
+        [sequelize.fn('SUM', sequelize.literal('CASE WHEN riskScore >= 70 THEN 1 ELSE 0 END')), 'high'],
+        [sequelize.fn('SUM', sequelize.literal('CASE WHEN riskScore >= 85 THEN 1 ELSE 0 END')), 'critical']
+      ],
+      raw: true
+    });
+    
+    const result = stats[0] || {};
+    
+    res.json({
+      total: parseInt(result.total) || 0,
+      avgScore: Math.round(parseFloat(result.avgScore) || 0),
+      maxScore: parseInt(result.maxScore) || 0,
+      distribution: {
+        monitoring: parseInt(result.monitoring) || 0,
+        elevated: parseInt(result.elevated) || 0,
+        high: parseInt(result.high) || 0,
+        critical: parseInt(result.critical) || 0
+      }
+    });
+  } catch (err) {
+    console.error('Risk stats error:', err);
+    res.status(500).json({ error: 'Failed to fetch risk statistics' });
+  }
+});
+
+// ===========================================
+// SESSION ACTIVITY
+// ===========================================
+
+// GET /api/admin/users/:id/sessions - Get user's session activity from audit log
+router.get('/users/:id/sessions', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'username', 'lastKnownIP', 'sessionInvalidatedAt', 'createdAt']
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get login events from audit log
+    const loginEvents = await AuditEvent.findAll({
+      where: {
+        userId,
+        eventType: {
+          [Op.in]: ['auth.login.success', 'auth.google.login', 'auth.login.failed']
+        }
+      },
+      order: [['createdAt', 'DESC']],
+      limit: 50,
+      attributes: ['id', 'eventType', 'ipHash', 'userAgent', 'deviceFingerprint', 'createdAt', 'data']
+    });
+    
+    // Get the last successful login
+    const lastSuccessfulLogin = loginEvents.find(e => 
+      e.eventType === 'auth.login.success' || e.eventType === 'auth.google.login'
+    );
+    
+    // Count failed logins in last 24 hours
+    const oneDayAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+    const recentFailedLogins = loginEvents.filter(e => 
+      e.eventType === 'auth.login.failed' && new Date(e.createdAt) > oneDayAgo
+    ).length;
+    
+    res.json({
+      userId,
+      username: user.username,
+      lastKnownIP: user.lastKnownIP,
+      sessionInvalidatedAt: user.sessionInvalidatedAt,
+      accountCreated: user.createdAt,
+      lastSuccessfulLogin: lastSuccessfulLogin ? {
+        timestamp: lastSuccessfulLogin.createdAt,
+        ipHash: lastSuccessfulLogin.ipHash,
+        method: lastSuccessfulLogin.eventType === 'auth.google.login' ? 'google' : 'password'
+      } : null,
+      recentFailedLogins,
+      loginHistory: loginEvents.map(e => ({
+        id: e.id,
+        type: e.eventType,
+        success: e.eventType !== 'auth.login.failed',
+        ipHash: e.ipHash,
+        userAgent: e.userAgent?.substring(0, 100),
+        timestamp: e.createdAt
+      }))
+    });
+  } catch (err) {
+    console.error('Get sessions error:', err);
+    res.status(500).json({ error: 'Failed to fetch session activity' });
+  }
+});
+
+// ===========================================
+// DEVICE HISTORY
+// ===========================================
+
+// GET /api/admin/users/:id/device-history - Get detailed device history
+router.get('/users/:id/device-history', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'username', 'deviceFingerprints', 'lastKnownIP']
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get device-related events from audit log
+    const deviceEvents = await AuditEvent.findAll({
+      where: {
+        userId,
+        eventType: {
+          [Op.in]: ['security.device.new', 'security.device.collision', 'security.device.mismatch']
+        }
+      },
+      order: [['createdAt', 'DESC']],
+      limit: 50,
+      attributes: ['id', 'eventType', 'deviceFingerprint', 'ipHash', 'createdAt', 'data']
+    });
+    
+    // Get unique device fingerprints with first/last seen from login events
+    const loginEvents = await AuditEvent.findAll({
+      where: {
+        userId,
+        eventType: {
+          [Op.in]: ['auth.login.success', 'auth.google.login']
+        },
+        deviceFingerprint: { [Op.ne]: null }
+      },
+      order: [['createdAt', 'ASC']],
+      attributes: ['deviceFingerprint', 'ipHash', 'createdAt']
+    });
+    
+    // Build device history with timestamps
+    const deviceMap = new Map();
+    for (const event of loginEvents) {
+      const fp = event.deviceFingerprint;
+      if (!fp) continue;
+      
+      if (!deviceMap.has(fp)) {
+        deviceMap.set(fp, {
+          fingerprint: fp,
+          firstSeen: event.createdAt,
+          lastSeen: event.createdAt,
+          ipHashes: new Set([event.ipHash]),
+          loginCount: 1
+        });
+      } else {
+        const device = deviceMap.get(fp);
+        device.lastSeen = event.createdAt;
+        if (event.ipHash) device.ipHashes.add(event.ipHash);
+        device.loginCount++;
+      }
+    }
+    
+    const deviceHistory = Array.from(deviceMap.values()).map(d => ({
+      fingerprint: d.fingerprint?.substring(0, 16) + '...',
+      fullFingerprint: d.fingerprint,
+      firstSeen: d.firstSeen,
+      lastSeen: d.lastSeen,
+      ipCount: d.ipHashes.size,
+      loginCount: d.loginCount
+    })).sort((a, b) => new Date(b.lastSeen) - new Date(a.lastSeen));
+    
+    res.json({
+      userId,
+      username: user.username,
+      currentDevices: (user.deviceFingerprints || []).map(fp => 
+        typeof fp === 'string' ? fp.substring(0, 16) + '...' : fp
+      ),
+      deviceHistory,
+      deviceEvents: deviceEvents.map(e => ({
+        id: e.id,
+        type: e.eventType,
+        fingerprint: e.deviceFingerprint?.substring(0, 16) + '...',
+        ipHash: e.ipHash,
+        timestamp: e.createdAt,
+        data: e.data
+      })),
+      totalDevicesEverSeen: deviceMap.size
+    });
+  } catch (err) {
+    console.error('Get device history error:', err);
+    res.status(500).json({ error: 'Failed to fetch device history' });
+  }
+});
+
+// ===========================================
+// AUTO-ENFORCEMENT EVENTS
+// ===========================================
+
+// GET /api/admin/security/auto-enforcements - Get auto-enforcement events
+router.get('/security/auto-enforcements', auth, adminAuth, async (req, res) => {
+  try {
+    const { limit = 50, offset = 0 } = req.query;
+    
+    const events = await AuditEvent.findAll({
+      where: {
+        eventType: 'security.auto_restriction'
+      },
+      order: [['createdAt', 'DESC']],
+      limit: Math.min(parseInt(limit, 10) || 50, 200),
+      offset: parseInt(offset, 10) || 0
+    });
+    
+    const total = await AuditEvent.count({
+      where: { eventType: 'security.auto_restriction' }
+    });
+    
+    // Get usernames for the events
+    const userIds = [...new Set(events.map(e => e.userId).filter(Boolean))];
+    const users = await User.findAll({
+      where: { id: { [Op.in]: userIds } },
+      attributes: ['id', 'username']
+    });
+    const userMap = new Map(users.map(u => [u.id, u.username]));
+    
+    res.json({
+      events: events.map(e => ({
+        id: e.id,
+        userId: e.userId,
+        username: userMap.get(e.userId) || 'Unknown',
+        action: e.data?.action,
+        reason: e.data?.reason,
+        escalated: e.data?.escalated,
+        previousRestriction: e.data?.previousRestriction,
+        expiresAt: e.data?.expiresAt,
+        timestamp: e.createdAt
+      })),
+      total,
+      limit: parseInt(limit, 10) || 50,
+      offset: parseInt(offset, 10) || 0
+    });
+  } catch (err) {
+    console.error('Get auto-enforcements error:', err);
+    res.status(500).json({ error: 'Failed to fetch auto-enforcement events' });
+  }
+});
+
+// ===========================================
+// RISK SCORE HISTORY
+// ===========================================
+
+// GET /api/admin/users/:id/risk-history - Get user's risk score change history
+router.get('/users/:id/risk-history', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'username', 'riskScore', 'riskScoreHistory']
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Get risk score change events from audit log
+    const riskEvents = await AuditEvent.findAll({
+      where: {
+        userId,
+        eventType: {
+          [Op.in]: ['security.risk.change', 'admin.security.reset_risk', 'admin.security.recalculate_risk']
+        }
+      },
+      order: [['createdAt', 'DESC']],
+      limit: 50,
+      attributes: ['id', 'eventType', 'data', 'createdAt', 'adminId']
+    });
+    
+    res.json({
+      userId,
+      username: user.username,
+      currentScore: user.riskScore || 0,
+      history: user.riskScoreHistory || [],
+      events: riskEvents.map(e => ({
+        id: e.id,
+        type: e.eventType,
+        oldScore: e.data?.oldScore,
+        newScore: e.data?.newScore,
+        delta: e.data?.delta,
+        reason: e.data?.reason,
+        adminId: e.adminId,
+        timestamp: e.createdAt
+      }))
+    });
+  } catch (err) {
+    console.error('Get risk history error:', err);
+    res.status(500).json({ error: 'Failed to fetch risk history' });
+  }
+});
+
 module.exports = router;

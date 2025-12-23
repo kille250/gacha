@@ -6,9 +6,9 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
-import { FaLink, FaFingerprint, FaGlobe, FaSync, FaEye } from 'react-icons/fa';
+import { FaLink, FaFingerprint, FaGlobe, FaSync, FaEye, FaBan, FaExclamationTriangle, FaCheck } from 'react-icons/fa';
 import { theme } from '../../styles/DesignSystem';
-import { getUserLinkedAccounts } from '../../utils/api';
+import { getUserLinkedAccounts, bulkRestrictUsers } from '../../utils/api';
 import {
   ModalOverlay,
   ModalContent,
@@ -16,6 +16,10 @@ import {
   ModalTitle,
   CloseButton,
   ModalBody,
+  PrimaryButton,
+  SecondaryButton,
+  Select,
+  Input
 } from './AdminStyles';
 
 const RESTRICTION_COLORS = {
@@ -27,9 +31,25 @@ const RESTRICTION_COLORS = {
   none: '#34c759'
 };
 
-const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser }) => {
+const RESTRICTION_TYPES = [
+  { value: 'warning', label: 'Warning' },
+  { value: 'rate_limited', label: 'Rate Limited' },
+  { value: 'shadowban', label: 'Shadowban' },
+  { value: 'temp_ban', label: 'Temporary Ban' },
+  { value: 'perm_ban', label: 'Permanent Ban' },
+];
+
+const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSuccess }) => {
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [selectedAccounts, setSelectedAccounts] = useState([]);
+  const [showBulkAction, setShowBulkAction] = useState(false);
+  const [bulkAction, setBulkAction] = useState({
+    type: 'shadowban',
+    duration: '7d',
+    reason: ''
+  });
+  const [actionLoading, setActionLoading] = useState(false);
   
   const fetchLinkedAccounts = useCallback(async () => {
     if (!userId) return;
@@ -37,6 +57,7 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser }) =>
     try {
       const result = await getUserLinkedAccounts(userId);
       setData(result);
+      setSelectedAccounts([]);
     } catch (err) {
       console.error('Failed to fetch linked accounts:', err);
     } finally {
@@ -47,6 +68,7 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser }) =>
   useEffect(() => {
     if (show && userId) {
       fetchLinkedAccounts();
+      setShowBulkAction(false);
     }
   }, [show, userId, fetchLinkedAccounts]);
   
@@ -54,6 +76,51 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser }) =>
     if (onViewUser) {
       onClose();
       setTimeout(() => onViewUser(id), 100);
+    }
+  };
+  
+  const toggleAccountSelection = (accountId) => {
+    setSelectedAccounts(prev => 
+      prev.includes(accountId)
+        ? prev.filter(id => id !== accountId)
+        : [...prev, accountId]
+    );
+  };
+  
+  const selectAllLinked = () => {
+    if (!data) return;
+    const allIds = [
+      ...(data.linkedByFingerprint || []).map(a => a.id),
+      ...(data.linkedByIP || []).map(a => a.id)
+    ];
+    setSelectedAccounts([...new Set(allIds)]);
+  };
+  
+  const clearSelection = () => {
+    setSelectedAccounts([]);
+  };
+  
+  const handleBulkRestrict = async () => {
+    if (selectedAccounts.length === 0 || !bulkAction.reason) return;
+    
+    setActionLoading(true);
+    try {
+      await bulkRestrictUsers(
+        selectedAccounts,
+        bulkAction.type,
+        bulkAction.type === 'temp_ban' || bulkAction.type === 'rate_limited' ? bulkAction.duration : null,
+        bulkAction.reason
+      );
+      if (onSuccess) {
+        onSuccess(`Restricted ${selectedAccounts.length} linked account(s)`);
+      }
+      setShowBulkAction(false);
+      setSelectedAccounts([]);
+      fetchLinkedAccounts();
+    } catch (err) {
+      console.error('Bulk restrict failed:', err);
+    } finally {
+      setActionLoading(false);
     }
   };
   
@@ -104,6 +171,82 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser }) =>
                   </SummaryItem>
                 </SummaryCard>
                 
+                {/* Bulk Action Bar */}
+                {data.totalLinked > 0 && (
+                  <ActionBar>
+                    <SelectionControls>
+                      <SmallButton onClick={selectAllLinked}>
+                        <FaCheck /> Select All
+                      </SmallButton>
+                      {selectedAccounts.length > 0 && (
+                        <SmallButton onClick={clearSelection}>
+                          Clear ({selectedAccounts.length})
+                        </SmallButton>
+                      )}
+                    </SelectionControls>
+                    {selectedAccounts.length > 0 && (
+                      <DangerButton onClick={() => setShowBulkAction(true)}>
+                        <FaBan /> Restrict {selectedAccounts.length} Account(s)
+                      </DangerButton>
+                    )}
+                  </ActionBar>
+                )}
+                
+                {/* Bulk Action Panel */}
+                {showBulkAction && (
+                  <BulkActionPanel>
+                    <BulkActionHeader>
+                      <FaExclamationTriangle /> Bulk Restrict {selectedAccounts.length} Account(s)
+                    </BulkActionHeader>
+                    <BulkActionForm>
+                      <FormRow>
+                        <FormLabel>Type:</FormLabel>
+                        <Select 
+                          value={bulkAction.type}
+                          onChange={(e) => setBulkAction(prev => ({ ...prev, type: e.target.value }))}
+                        >
+                          {RESTRICTION_TYPES.map(t => (
+                            <option key={t.value} value={t.value}>{t.label}</option>
+                          ))}
+                        </Select>
+                      </FormRow>
+                      {(bulkAction.type === 'temp_ban' || bulkAction.type === 'rate_limited') && (
+                        <FormRow>
+                          <FormLabel>Duration:</FormLabel>
+                          <Select 
+                            value={bulkAction.duration}
+                            onChange={(e) => setBulkAction(prev => ({ ...prev, duration: e.target.value }))}
+                          >
+                            <option value="1h">1 Hour</option>
+                            <option value="24h">24 Hours</option>
+                            <option value="7d">7 Days</option>
+                            <option value="30d">30 Days</option>
+                          </Select>
+                        </FormRow>
+                      )}
+                      <FormRow>
+                        <FormLabel>Reason:</FormLabel>
+                        <Input
+                          placeholder="Enter reason for bulk restriction..."
+                          value={bulkAction.reason}
+                          onChange={(e) => setBulkAction(prev => ({ ...prev, reason: e.target.value }))}
+                        />
+                      </FormRow>
+                      <BulkActionButtons>
+                        <SecondaryButton onClick={() => setShowBulkAction(false)}>
+                          Cancel
+                        </SecondaryButton>
+                        <PrimaryButton 
+                          onClick={handleBulkRestrict}
+                          disabled={!bulkAction.reason || actionLoading}
+                        >
+                          {actionLoading ? 'Applying...' : 'Apply Restrictions'}
+                        </PrimaryButton>
+                      </BulkActionButtons>
+                    </BulkActionForm>
+                  </BulkActionPanel>
+                )}
+                
                 {data.linkedByFingerprint?.length > 0 && (
                   <Section>
                     <SectionHeader>
@@ -111,7 +254,15 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser }) =>
                     </SectionHeader>
                     <AccountList>
                       {data.linkedByFingerprint.map(account => (
-                        <AccountItem key={account.id}>
+                        <AccountItem 
+                          key={account.id}
+                          $selected={selectedAccounts.includes(account.id)}
+                        >
+                          <Checkbox
+                            type="checkbox"
+                            checked={selectedAccounts.includes(account.id)}
+                            onChange={() => toggleAccountSelection(account.id)}
+                          />
                           <AccountInfo>
                             <AccountName>{account.username}</AccountName>
                             <AccountMeta>
@@ -144,7 +295,15 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser }) =>
                     </SectionHeader>
                     <AccountList>
                       {data.linkedByIP.map(account => (
-                        <AccountItem key={account.id}>
+                        <AccountItem 
+                          key={account.id}
+                          $selected={selectedAccounts.includes(account.id)}
+                        >
+                          <Checkbox
+                            type="checkbox"
+                            checked={selectedAccounts.includes(account.id)}
+                            onChange={() => toggleAccountSelection(account.id)}
+                          />
                           <AccountInfo>
                             <AccountName>{account.username}</AccountName>
                             <AccountMeta>
@@ -253,13 +412,119 @@ const AccountList = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
-const AccountItem = styled.div`
+const ActionBar = styled.div`
   display: flex;
   justify-content: space-between;
   align-items: center;
   padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
+  margin-bottom: ${theme.spacing.lg};
+`;
+
+const SelectionControls = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+`;
+
+const SmallButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
   background: ${theme.colors.surface};
   border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.xs};
+  cursor: pointer;
+  
+  &:hover {
+    color: ${theme.colors.text};
+    background: ${theme.colors.surfaceBorder};
+  }
+`;
+
+const DangerButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: rgba(255, 59, 48, 0.15);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: ${theme.radius.md};
+  color: #ff3b30;
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  
+  &:hover {
+    background: rgba(255, 59, 48, 0.25);
+  }
+`;
+
+const BulkActionPanel = styled.div`
+  background: rgba(255, 59, 48, 0.08);
+  border: 1px solid rgba(255, 59, 48, 0.2);
+  border-radius: ${theme.radius.lg};
+  padding: ${theme.spacing.lg};
+  margin-bottom: ${theme.spacing.lg};
+`;
+
+const BulkActionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  color: #ff3b30;
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const BulkActionForm = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+`;
+
+const FormRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  
+  select, input {
+    flex: 1;
+  }
+`;
+
+const FormLabel = styled.label`
+  width: 70px;
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.text};
+  flex-shrink: 0;
+`;
+
+const BulkActionButtons = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: ${theme.spacing.md};
+  margin-top: ${theme.spacing.sm};
+`;
+
+const Checkbox = styled.input`
+  width: 18px;
+  height: 18px;
+  accent-color: ${theme.colors.primary};
+  cursor: pointer;
+  flex-shrink: 0;
+`;
+
+const AccountItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  background: ${props => props.$selected ? 'rgba(0, 122, 255, 0.1)' : theme.colors.surface};
+  border: 1px solid ${props => props.$selected ? 'rgba(0, 122, 255, 0.3)' : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
 `;
 

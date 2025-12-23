@@ -18,6 +18,9 @@ import {
   recalculateUserRisk, resetUserRisk
 } from '../../utils/api';
 import LinkedAccountsModal from './LinkedAccountsModal';
+import DeviceHistoryPanel from './DeviceHistoryPanel';
+import SessionActivityPanel from './SessionActivityPanel';
+import RiskScoreHistoryPanel from './RiskScoreHistoryPanel';
 import {
   ModalOverlay,
   ModalContent,
@@ -234,6 +237,24 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
               {t('admin.security.overview')}
             </Tab>
             <Tab 
+              $active={activeTab === 'devices'} 
+              onClick={() => setActiveTab('devices')}
+            >
+              Devices
+            </Tab>
+            <Tab 
+              $active={activeTab === 'sessions'} 
+              onClick={() => setActiveTab('sessions')}
+            >
+              Sessions
+            </Tab>
+            <Tab 
+              $active={activeTab === 'risk'} 
+              onClick={() => setActiveTab('risk')}
+            >
+              Risk History
+            </Tab>
+            <Tab 
               $active={activeTab === 'actions'} 
               onClick={() => setActiveTab('actions')}
             >
@@ -341,6 +362,24 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                       )}
                     </DeviceSection>
                   </OverviewTab>
+                )}
+                
+                {activeTab === 'devices' && (
+                  <TabContent>
+                    <DeviceHistoryPanel userId={userId} username={userData?.username} />
+                  </TabContent>
+                )}
+                
+                {activeTab === 'sessions' && (
+                  <TabContent>
+                    <SessionActivityPanel userId={userId} />
+                  </TabContent>
+                )}
+                
+                {activeTab === 'risk' && (
+                  <TabContent>
+                    <RiskScoreHistoryPanel userId={userId} />
+                  </TabContent>
                 )}
                 
                 {activeTab === 'actions' && (
@@ -508,6 +547,10 @@ const ErrorState = styled.div`
 `;
 
 const OverviewTab = styled.div``;
+
+const TabContent = styled.div`
+  padding: ${theme.spacing.xs} 0;
+`;
 
 const InfoGrid = styled.div`
   display: grid;

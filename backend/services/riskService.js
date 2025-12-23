@@ -160,6 +160,17 @@ async function updateRiskScore(userId, context = {}) {
   // Only update if changed significantly (>5 points)
   if (Math.abs(newScore - oldScore) >= 5) {
     user.riskScore = newScore;
+    
+    // Record in history for trend analysis
+    const history = user.riskScoreHistory || [];
+    history.push({
+      score: newScore,
+      oldScore,
+      timestamp: new Date().toISOString(),
+      reason: context.reason || 'automatic_update'
+    });
+    user.riskScoreHistory = history;
+    
     await user.save();
     
     // Log significant changes

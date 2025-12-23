@@ -358,6 +358,27 @@ User.init(
         this.setDataValue('usernameHistory', JSON.stringify(value || []));
       }
     },
+    
+    // Risk score history (JSON array of {score, timestamp, reason})
+    // Stores last 10 risk score changes for trend analysis
+    riskScoreHistory: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('riskScoreHistory');
+        try {
+          return value ? JSON.parse(value) : [];
+        } catch {
+          return [];
+        }
+      },
+      set(value) {
+        // Keep only the last 10 entries
+        const arr = Array.isArray(value) ? value.slice(-10) : [];
+        this.setDataValue('riskScoreHistory', JSON.stringify(arr));
+      }
+    },
   },
   {
     sequelize,
