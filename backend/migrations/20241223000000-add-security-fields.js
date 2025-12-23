@@ -89,6 +89,23 @@ module.exports = {
       });
     }
     
+    // Session invalidation for forced logout
+    if (!tableInfo.sessionInvalidatedAt) {
+      await queryInterface.addColumn('Users', 'sessionInvalidatedAt', {
+        type: Sequelize.DATE,
+        allowNull: true
+      });
+    }
+    
+    // Username history for tracking changes
+    if (!tableInfo.usernameHistory) {
+      await queryInterface.addColumn('Users', 'usernameHistory', {
+        type: Sequelize.TEXT,
+        allowNull: true,
+        defaultValue: '[]'
+      });
+    }
+    
     console.log('[Migration] Security fields added to Users table');
   },
 
@@ -102,7 +119,9 @@ module.exports = {
       'deviceFingerprints',
       'linkedAccounts',
       'lastKnownIP',
-      'lastRestrictionChange'
+      'lastRestrictionChange',
+      'sessionInvalidatedAt',
+      'usernameHistory'
     ];
     
     for (const field of fieldsToRemove) {
