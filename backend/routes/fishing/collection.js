@@ -9,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
+const { deviceBindingMiddleware } = require('../../middleware/deviceBinding');
 const { User } = require('../../models');
 
 const { FISH_TYPES } = require('../../config/fishing');
@@ -157,8 +158,8 @@ router.get('/bonuses', [auth, enforcementMiddleware], async (req, res, next) => 
 });
 
 // POST /collection/claim-milestone - Claim a collection milestone reward
-// Security: enforcement checked (banned users cannot claim rewards), risk tracked
-router.post('/claim-milestone', [auth, enforcementMiddleware], async (req, res, next) => {
+// Security: enforcement checked, device binding verified, risk tracked
+router.post('/claim-milestone', [auth, enforcementMiddleware, deviceBindingMiddleware('reward_claim')], async (req, res, next) => {
   try {
     const { type, threshold } = req.body;
     

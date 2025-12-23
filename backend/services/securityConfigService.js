@@ -88,8 +88,13 @@ const DEFAULTS = {
   DEVICE_BINDING_ENABLED: true,                    // Master toggle for device binding
   DEVICE_BINDING_RECORD_ON_AUTH: true,             // Record device fingerprint on login/signup
   DEVICE_BINDING_MAX_DEVICES: 10,                  // Max devices per user
-  DEVICE_BINDING_REQUIRE_FOR_SENSITIVE: false,     // Require known device for sensitive actions
-  DEVICE_BINDING_SENSITIVE_ACTIONS: 'password_change,account_link,trade,coupon_redeem',  // Actions requiring known device
+  DEVICE_BINDING_REQUIRE_FOR_SENSITIVE: false,     // Require known device for sensitive actions (blocking mode)
+  // All actions that have deviceBindingMiddleware applied:
+  // Account: password_change, account_link, username_change, account_reset
+  // Economy: trade, coupon_redeem, gacha_roll, level_up
+  // Dojo: dojo, dojo_claim, dojo_upgrade
+  // Fishing: fishing, fishing_purchase, reward_claim
+  DEVICE_BINDING_SENSITIVE_ACTIONS: 'password_change,account_link,username_change,account_reset,trade,coupon_redeem,gacha_roll,level_up,dojo,dojo_claim,dojo_upgrade,fishing,fishing_purchase,reward_claim',
   DEVICE_BINDING_UNKNOWN_DEVICE_RISK: 15,          // Risk score addition for unknown device
   DEVICE_BINDING_NEW_DEVICE_NOTIFY: true           // Log/notify on new device detection
 };
@@ -256,7 +261,7 @@ async function getLockoutConfig() {
  * @returns {Promise<Object>}
  */
 async function getDeviceBindingConfig() {
-  const sensitiveActionsStr = await get('DEVICE_BINDING_SENSITIVE_ACTIONS', 'password_change,account_link,trade');
+  const sensitiveActionsStr = await get('DEVICE_BINDING_SENSITIVE_ACTIONS', DEFAULTS.DEVICE_BINDING_SENSITIVE_ACTIONS);
   return {
     enabled: await getBoolean('DEVICE_BINDING_ENABLED', true),
     recordOnAuth: await getBoolean('DEVICE_BINDING_RECORD_ON_AUTH', true),

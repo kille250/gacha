@@ -11,6 +11,7 @@ const auth = require('../../middleware/auth');
 const adminAuth = require('../../middleware/adminAuth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { lockoutMiddleware } = require('../../middleware/captcha');
+const { deviceBindingMiddleware } = require('../../middleware/deviceBinding');
 const { getShadowbanConfig } = require('../../services/securityConfigService');
 const { sequelize, User, FishInventory } = require('../../models');
 const { isValidId } = require('../../utils/validation');
@@ -57,8 +58,8 @@ const autofishCooldowns = new Map();
 const autofishInProgress = new Set();
 
 // POST /autofish - Perform an autofish catch
-// Security: lockout checked (fail-fast), enforcement checked (banned users cannot autofish), risk tracked
-router.post('/', [auth, lockoutMiddleware(), enforcementMiddleware], async (req, res, next) => {
+// Security: lockout checked (fail-fast), enforcement checked, device binding verified, risk tracked
+router.post('/', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('fishing')], async (req, res, next) => {
   const userId = req.user.id;
   
   try {

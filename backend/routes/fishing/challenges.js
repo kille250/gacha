@@ -9,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
+const { deviceBindingMiddleware } = require('../../middleware/deviceBinding');
 const { User } = require('../../models');
 
 // Config imports
@@ -86,8 +87,8 @@ router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
 });
 
 // POST /:id/claim - Claim a completed challenge reward
-// Security: enforcement checked (banned users cannot claim rewards)
-router.post('/:id/claim', [auth, enforcementMiddleware], async (req, res, next) => {
+// Security: enforcement checked, device binding verified
+router.post('/:id/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('reward_claim')], async (req, res, next) => {
   try {
     const { id: challengeId } = req.params;
     

@@ -11,6 +11,7 @@ const crypto = require('crypto');
 const auth = require('../../middleware/auth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { lockoutMiddleware } = require('../../middleware/captcha');
+const { deviceBindingMiddleware } = require('../../middleware/deviceBinding');
 const { getShadowbanConfig } = require('../../services/securityConfigService');
 const { sequelize, User, FishInventory } = require('../../models');
 
@@ -140,8 +141,8 @@ function setMode(userId, mode) {
 }
 
 // POST /cast - Start fishing (cast the line)
-// Security: lockout checked (fail-fast), enforcement checked (banned users cannot fish), risk tracked
-router.post('/cast', [auth, lockoutMiddleware(), enforcementMiddleware], async (req, res, next) => {
+// Security: lockout checked (fail-fast), enforcement checked (banned users cannot fish), device binding verified, risk tracked
+router.post('/cast', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('fishing')], async (req, res, next) => {
   const userId = req.user.id;
   
   try {

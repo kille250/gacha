@@ -9,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
+const { deviceBindingMiddleware } = require('../../middleware/deviceBinding');
 const { User } = require('../../models');
 
 // Config imports
@@ -55,8 +56,8 @@ router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
 });
 
 // POST /:id/unlock - Unlock a fishing area
-// Security: enforcement checked (banned users cannot unlock areas), risk tracked
-router.post('/:id/unlock', [auth, enforcementMiddleware], async (req, res, next) => {
+// Security: enforcement checked, device binding verified, risk tracked
+router.post('/:id/unlock', [auth, enforcementMiddleware, deviceBindingMiddleware('fishing_purchase')], async (req, res, next) => {
   try {
     const { id: areaId } = req.params;
     const area = FISHING_AREAS[areaId];

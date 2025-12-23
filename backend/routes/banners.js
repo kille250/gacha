@@ -36,6 +36,8 @@ const {
   acquireMultipleCharacters
 } = require('../utils/characterLeveling');
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
+const { lockoutMiddleware } = require('../middleware/captcha');
+const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 
 // ===========================================
@@ -527,9 +529,9 @@ router.delete('/:id', [auth, adminAuth], async (req, res) => {
 /**
  * Single roll on a banner
  * POST /api/banners/:id/roll
- * Security: enforcement checked, policy enforced, rate limited
+ * Security: lockout checked (fail-fast), enforcement checked, device binding verified, rate limited, policy enforced
  */
-router.post('/:id/roll', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
+router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('gacha_roll'), sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {
@@ -690,9 +692,9 @@ router.post('/:id/roll', [auth, enforcementMiddleware, sensitiveActionLimiter, e
 /**
  * Multi-roll on a banner
  * POST /api/banners/:id/roll-multi
- * Security: enforcement checked, policy enforced, rate limited
+ * Security: lockout checked (fail-fast), enforcement checked, device binding verified, rate limited, policy enforced
  */
-router.post('/:id/roll-multi', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
+router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('gacha_roll'), sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {

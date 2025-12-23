@@ -5,6 +5,7 @@ const { enforcementMiddleware } = require('../middleware/enforcement');
 const { enforcePolicy } = require('../middleware/policies');
 const { lockoutMiddleware } = require('../middleware/captcha');
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
+const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { User, Character, UserCharacter } = require('../models');
 const { 
   PRICING_CONFIG, 
@@ -39,9 +40,9 @@ const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 /**
  * Roll a single character
  * POST /api/characters/roll
- * Security: lockout checked (fail-fast), enforcement checked, rate limited, policy enforced
+ * Security: lockout checked (fail-fast), enforcement checked, device binding verified, rate limited, policy enforced
  */
-router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
+router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('gacha_roll'), sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {
@@ -125,9 +126,9 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiv
 /**
  * Multi-roll endpoint
  * POST /api/characters/roll-multi
- * Security: lockout checked (fail-fast), enforcement checked, rate limited, policy enforced
+ * Security: lockout checked (fail-fast), enforcement checked, device binding verified, rate limited, policy enforced
  */
-router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
+router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('gacha_roll'), sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {
@@ -351,11 +352,12 @@ router.get('/collection-data', auth, async (req, res) => {
 /**
  * Batch max level all upgradable characters
  * POST /api/characters/level-up-all
- * 
+ *
  * Upgrades all characters to their maximum possible level based on available shards.
  * Returns summary of upgraded characters with total levels gained.
+ * Security: enforcement checked, device binding verified, rate limited
  */
-router.post('/level-up-all', [auth, enforcementMiddleware], async (req, res) => {
+router.post('/level-up-all', [auth, enforcementMiddleware, deviceBindingMiddleware('level_up'), sensitiveActionLimiter], async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -456,8 +458,9 @@ router.post('/level-up-all', [auth, enforcementMiddleware], async (req, res) => 
 /**
  * Level up a character (manual action)
  * POST /api/characters/:id/level-up
+ * Security: enforcement checked, device binding verified
  */
-router.post('/:id/level-up', [auth, enforcementMiddleware], async (req, res) => {
+router.post('/:id/level-up', [auth, enforcementMiddleware, deviceBindingMiddleware('level_up')], async (req, res) => {
   try {
     const characterId = parseInt(req.params.id, 10);
     

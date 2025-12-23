@@ -7,7 +7,7 @@ const { User } = require('../models');
 const { validateUsername, validatePassword, validateEmail } = require('../utils/validation');
 const { checkSignupRisk, updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { recordDeviceFingerprint, recordIPHash } = require('../middleware/deviceSignals');
-const { deviceBindingMiddleware, getDeviceBindingStatus } = require('../middleware/deviceBinding');
+const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { logSecurityEvent, logEvent, AUDIT_EVENTS, SEVERITY } = require('../services/auditService');
 const { enforcementMiddleware, getRestrictionStatus } = require('../middleware/enforcement');
 const { enforcePolicy } = require('../middleware/policies');
@@ -1080,8 +1080,8 @@ router.put('/profile/password', [auth, lockoutMiddleware(), enforcementMiddlewar
 });
 
 // PUT /api/auth/profile/username - Change username (one time only)
-// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
-router.put('/profile/username', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, device binding verified, policy enforced, rate limited, CAPTCHA protected
+router.put('/profile/username', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('username_change'), sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
   const { username } = req.body;
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
@@ -1155,8 +1155,8 @@ router.put('/profile/username', [auth, lockoutMiddleware(), enforcementMiddlewar
 });
 
 // POST /api/auth/reset-account - Reset account progress (dangerous action)
-// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
-router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('password_change')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, device binding verified, policy enforced, rate limited, CAPTCHA protected
+router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('account_reset'), sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('password_change')], async (req, res) => {
   const { password, confirmationText } = req.body;
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
