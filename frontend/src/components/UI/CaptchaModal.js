@@ -323,11 +323,13 @@ const CaptchaModal = ({
     <>
       <Overlay onClick={onClose} />
       <Modal onClick={(e) => e.stopPropagation()}>
-        <Title>🔒 Verification Required</Title>
+        <Title>{submitError ? '⚠️ Request Failed' : '🔒 Verification Required'}</Title>
         <Description>
-          {captchaType === 'recaptcha' 
-            ? 'Please wait while we verify you\'re human...'
-            : 'Please solve this simple math problem to continue.'
+          {submitError
+            ? 'Your verification was successful, but the request failed.'
+            : captchaType === 'recaptcha' 
+              ? 'Please wait while we verify you\'re human...'
+              : 'Please solve this simple math problem to continue.'
           }
         </Description>
         
@@ -347,7 +349,7 @@ const CaptchaModal = ({
                   <span>{autoRetrying ? 'Loading verification...' : 'Verifying...'}</span>
                 </>
               ) : submitError ? (
-                <span>Verification failed</span>
+                <span>Request failed</span>
               ) : (
                 <span>Verification ready</span>
               )}
