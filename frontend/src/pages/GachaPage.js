@@ -216,12 +216,6 @@ const GachaPage = () => {
                     <NetflixImageContainer>
                       <NetflixBannerImage src={getBannerImage(banner.image)} alt={banner.name} />
                       <NetflixImageOverlay />
-                      <NetflixPlayIcon
-                        variants={{ hover: { opacity: 1, scale: 1 } }}
-                        initial={{ opacity: 0, scale: 0.8 }}
-                      >
-                        <FaPlay />
-                      </NetflixPlayIcon>
                     </NetflixImageContainer>
                     <NetflixCardInfo>
                       <NetflixCardTitle>{banner.name}</NetflixCardTitle>
@@ -683,24 +677,6 @@ const NetflixImageOverlay = styled.div`
   position: absolute;
   inset: 0;
   background: linear-gradient(to top, rgba(30, 30, 40, 1) 0%, transparent 50%);
-`;
-
-const NetflixPlayIcon = styled(motion.div)`
-  position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
-  width: 50px;
-  height: 50px;
-  background: rgba(255, 255, 255, 0.95);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: #1a1a2e;
-  font-size: 18px;
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
-  opacity: 0;
 `;
 
 const NetflixCardInfo = styled.div`
