@@ -3,6 +3,12 @@
  * 
  * Provides consistent error extraction, formatting, and handling patterns
  * across the application.
+ * 
+ * Key Concepts:
+ * - CAPTCHA errors: Security verification issues (require re-verification)
+ * - Business errors: Application logic errors (invalid input, insufficient funds, etc.)
+ * - Auth errors: Session/authentication issues (require re-login)
+ * - System errors: Server/network issues (retry later)
  */
 
 /**
@@ -16,8 +22,31 @@ export const ERROR_TYPES = {
   SERVER: 'SERVER',
   FORBIDDEN: 'FORBIDDEN',  // Policy denials, bans, etc. (403 but not auth failure)
   RATE_LIMITED: 'RATE_LIMITED',  // 429 errors
+  CAPTCHA: 'CAPTCHA',  // CAPTCHA verification required/failed
   UNKNOWN: 'UNKNOWN',
 };
+
+/**
+ * CAPTCHA-specific error codes
+ * These indicate the CAPTCHA verification process itself had an issue
+ */
+export const CAPTCHA_ERROR_CODES = [
+  'CAPTCHA_REQUIRED',   // Need to complete CAPTCHA
+  'CAPTCHA_FAILED',     // CAPTCHA verification failed
+  'CAPTCHA_EXPIRED',    // CAPTCHA token expired
+  'CAPTCHA_INVALID',    // Invalid CAPTCHA response
+];
+
+/**
+ * Terminal error codes - user cannot recover by retrying
+ * These should show "contact support" rather than "try again"
+ */
+export const TERMINAL_ERROR_CODES = [
+  'ACCOUNT_BANNED',
+  'ACCOUNT_LOCKED',
+  'IP_BANNED',
+  'DEVICE_BANNED',
+];
 
 // Error codes that indicate policy/enforcement blocks, NOT auth failures
 const NON_AUTH_403_CODES = [
@@ -167,6 +196,141 @@ export const isForbiddenError = (error) => {
  */
 export const isRateLimitError = (error) => {
   return getErrorType(error) === ERROR_TYPES.RATE_LIMITED;
+};
+
+/**
+ * Check if an error is a CAPTCHA-related error
+ * These errors require the user to complete a CAPTCHA verification
+ * @param {Error} error - The error object
+ * @returns {boolean} True if CAPTCHA error
+ */
+export const isCaptchaError = (error) => {
+  const code = error?.response?.data?.code;
+  return CAPTCHA_ERROR_CODES.includes(code);
+};
+
+/**
+ * Check if an error is a terminal error (user cannot recover)
+ * These should show "contact support" messaging instead of "try again"
+ * @param {Error} error - The error object
+ * @returns {boolean} True if terminal/unrecoverable error
+ */
+export const isTerminalError = (error) => {
+  const code = error?.response?.data?.code;
+  return TERMINAL_ERROR_CODES.includes(code);
+};
+
+/**
+ * Check if an error is a business logic error (not CAPTCHA-related)
+ * Business errors occur when CAPTCHA succeeds but the actual action fails
+ * Examples: invalid coupon, insufficient funds, item not found
+ * @param {Error} error - The error object
+ * @returns {boolean} True if business logic error
+ */
+export const isBusinessError = (error) => {
+  // Not a CAPTCHA error and not a terminal system error
+  return !isCaptchaError(error) && 
+         !isAuthError(error) && 
+         !isNetworkError(error) &&
+         error?.response?.status !== 500;
+};
+
+/**
+ * Get a user-friendly error message for CAPTCHA-related states
+ * @param {string} code - Error code from response
+ * @returns {string} User-friendly message
+ */
+export const getCaptchaFriendlyMessage = (code) => {
+  const messages = {
+    'CAPTCHA_REQUIRED': 'Please complete the security verification to continue.',
+    'CAPTCHA_FAILED': 'The security verification didn\'t pass. Please try again.',
+    'CAPTCHA_EXPIRED': 'The verification expired. Please complete a new one.',
+    'CAPTCHA_INVALID': 'There was an issue with the verification. Please try again.',
+  };
+  return messages[code] || 'Please complete the security verification.';
+};
+
+/**
+ * Get a user-friendly, actionable error message
+ * This function attempts to provide helpful context instead of technical errors
+ * @param {Error} error - The error object
+ * @param {Object} options - Options for message generation
+ * @param {string} options.context - Action context (e.g., 'coupon', 'trade', 'login')
+ * @returns {Object} { message: string, canRetry: boolean, suggestion?: string }
+ */
+export const getUserFriendlyError = (error, options = {}) => {
+  const { context = 'action' } = options;
+  const code = error?.response?.data?.code;
+  const status = error?.response?.status;
+  const rawMessage = error?.response?.data?.error || error?.response?.data?.message || error?.message;
+  
+  // CAPTCHA errors
+  if (isCaptchaError(error)) {
+    return {
+      message: getCaptchaFriendlyMessage(code),
+      canRetry: true,
+      suggestion: 'Complete the verification to proceed.',
+    };
+  }
+  
+  // Terminal errors
+  if (isTerminalError(error)) {
+    return {
+      message: rawMessage || 'Your account has been restricted.',
+      canRetry: false,
+      suggestion: 'Please contact support for assistance.',
+    };
+  }
+  
+  // Rate limiting
+  if (status === 429 || code === 'RATE_LIMITED') {
+    return {
+      message: 'Too many attempts. Please wait a moment.',
+      canRetry: true,
+      suggestion: 'Wait a few seconds before trying again.',
+    };
+  }
+  
+  // Validation errors - usually user can fix and retry
+  if (status === 400 || status === 422) {
+    return {
+      message: rawMessage || `Please check your ${context} and try again.`,
+      canRetry: true,
+      suggestion: 'Review your input and make corrections.',
+    };
+  }
+  
+  // Not found
+  if (status === 404) {
+    return {
+      message: rawMessage || 'The requested item could not be found.',
+      canRetry: false,
+    };
+  }
+  
+  // Server errors
+  if (status >= 500) {
+    return {
+      message: 'Something went wrong on our end.',
+      canRetry: true,
+      suggestion: 'Please try again in a few moments.',
+    };
+  }
+  
+  // Network errors
+  if (isNetworkError(error)) {
+    return {
+      message: 'Unable to connect. Please check your internet connection.',
+      canRetry: true,
+      suggestion: 'Check your connection and try again.',
+    };
+  }
+  
+  // Default fallback
+  return {
+    message: rawMessage || 'Something went wrong.',
+    canRetry: true,
+  };
 };
 
 /**

@@ -5,21 +5,38 @@
  * Automatically handles CAPTCHA_REQUIRED responses by showing a modal
  * and retrying the request with the verification token.
  * 
+ * Key UX Principles:
+ * - CAPTCHA is presented as a neutral security step, not an error
+ * - Business logic errors are clearly separated from CAPTCHA issues
+ * - Users always understand what succeeded and what failed
+ * - Clear next actions are provided in all scenarios
+ * 
  * Usage:
- *   const { execute, CaptchaModalComponent } = useCaptchaProtectedRequest();
+ *   const { execute, CaptchaModalComponent, isShowingCaptcha } = useCaptchaProtectedRequest();
  *   
- *   const result = await execute(
- *     () => api.post('/trade', data),
- *     'trade'  // action name for reCAPTCHA v3
- *   );
+ *   try {
+ *     const result = await execute(
+ *       () => api.post('/trade', data),
+ *       'trade'  // action name for reCAPTCHA v3
+ *     );
+ *     // Success!
+ *   } catch (err) {
+ *     // Handle non-CAPTCHA errors
+ *   }
  */
 
 import { useState, useCallback, useRef } from 'react';
 import CaptchaModal from '../components/UI/CaptchaModal';
 import api from '../utils/api';
+import { isCaptchaError, getUserFriendlyError } from '../utils/errorHandler';
 
 /**
  * Hook for executing CAPTCHA-protected requests
+ * 
+ * @returns {Object} Hook utilities
+ * @returns {Function} returns.execute - Execute a CAPTCHA-protected request
+ * @returns {Function} returns.CaptchaModalComponent - Modal component to render
+ * @returns {boolean} returns.isShowingCaptcha - Whether the modal is currently visible
  */
 export const useCaptchaProtectedRequest = () => {
   const [showModal, setShowModal] = useState(false);
@@ -27,6 +44,8 @@ export const useCaptchaProtectedRequest = () => {
   const [challenge, setChallenge] = useState(null);
   const [siteKey, setSiteKey] = useState(null);
   const [currentAction, setCurrentAction] = useState('verify');
+  const [isRetrying, setIsRetrying] = useState(false);
+  const [submitError, setSubmitError] = useState(null);
   
   // Store the pending request and resolve/reject functions
   const pendingRequest = useRef(null);
@@ -34,15 +53,18 @@ export const useCaptchaProtectedRequest = () => {
   const pendingReject = useRef(null);
   
   /**
-   * Handle CAPTCHA solution
+   * Handle CAPTCHA solution - retry the original request
    */
   const handleSolved = useCallback(async ({ token, answer, type }) => {
-    setShowModal(false);
-    
     if (!pendingRequest.current) {
       console.warn('[useCaptchaProtectedRequest] No pending request to retry');
+      setShowModal(false);
       return;
     }
+    
+    // Show "submitting" state
+    setIsRetrying(true);
+    setSubmitError(null);
     
     try {
       // Build headers based on CAPTCHA type
@@ -55,45 +77,73 @@ export const useCaptchaProtectedRequest = () => {
       }
       
       // Retry the request with CAPTCHA headers
-      const { requestFn, originalConfig } = pendingRequest.current;
+      const { originalConfig } = pendingRequest.current;
       
-      // If we have the original config, merge headers
+      // Merge headers into original config
       if (originalConfig) {
         originalConfig.headers = {
           ...originalConfig.headers,
           ...headers
         };
         const result = await api.request(originalConfig);
+        
+        // SUCCESS!
+        setShowModal(false);
+        setIsRetrying(false);
         pendingResolve.current?.(result.data);
       } else {
-        // Re-execute the function (less ideal but works)
+        // Fallback: re-execute the function (less ideal)
+        const { requestFn } = pendingRequest.current;
         const result = await requestFn(headers);
+        
+        setShowModal(false);
+        setIsRetrying(false);
         pendingResolve.current?.(result);
       }
     } catch (err) {
-      // Check if CAPTCHA failed again
-      if (err.response?.data?.code === 'CAPTCHA_FAILED') {
-        // Show error but don't reject - let user try again
-        setShowModal(true);
+      setIsRetrying(false);
+      
+      // Check if CAPTCHA itself failed - need to re-verify
+      if (isCaptchaError(err)) {
+        // Update with new challenge if provided
+        const responseData = err.response?.data;
+        setCaptchaType(responseData?.captchaType || 'fallback');
+        setChallenge(responseData?.challenge || null);
+        setSiteKey(responseData?.siteKey || null);
+        
+        // Clear previous error - modal shows new verification state
+        setSubmitError(null);
         return;
       }
       
-      pendingReject.current?.(err);
+      // Business logic error - CAPTCHA succeeded but request failed
+      const { message } = getUserFriendlyError(err, { context: currentAction });
+      setSubmitError(message);
+      
+      // Don't reject here - let user close modal and see the error
+      // The modal will show the error with clear messaging
     } finally {
       pendingRequest.current = null;
       pendingResolve.current = null;
       pendingReject.current = null;
     }
-  }, []);
+  }, [currentAction]);
   
   /**
-   * Handle modal close without solving
+   * Handle modal close without solving or after business error
    */
   const handleClose = useCallback(() => {
     setShowModal(false);
+    setSubmitError(null);
+    setIsRetrying(false);
     
-    // Reject the pending request
-    pendingReject.current?.(new Error('CAPTCHA verification cancelled'));
+    // If there's a pending request that was never completed, reject it
+    if (pendingRequest.current) {
+      const error = new Error('Verification cancelled');
+      error.code = 'CAPTCHA_CANCELLED';
+      error.userCancelled = true;
+      pendingReject.current?.(error);
+    }
     
     pendingRequest.current = null;
     pendingResolve.current = null;
@@ -103,8 +153,14 @@ export const useCaptchaProtectedRequest = () => {
   /**
    * Execute a request with CAPTCHA protection
    * 
+   * If the request triggers a CAPTCHA requirement, this will:
+   * 1. Show the CAPTCHA modal
+   * 2. Wait for user to complete verification
+   * 3. Retry the request with the CAPTCHA token
+   * 4. Resolve with the result or reject with error
+   * 
    * @param {Function} requestFn - The API request function to execute
-   * @param {string} action - The action name for reCAPTCHA v3
+   * @param {string} action - The action name for reCAPTCHA v3 (e.g., 'trade', 'login')
    * @param {Object} options - Additional options
    * @returns {Promise} - Resolves with the response data
    */
@@ -132,9 +188,11 @@ export const useCaptchaProtectedRequest = () => {
           setCaptchaType(responseData.captchaType || 'recaptcha');
           setChallenge(responseData.challenge || null);
           setSiteKey(responseData.siteKey || null);
+          setSubmitError(null);
+          setIsRetrying(false);
           setShowModal(true);
           
-          return; // Don't resolve/reject yet
+          return; // Don't resolve/reject yet - wait for CAPTCHA completion
         }
         
         // Not a CAPTCHA error, propagate it
@@ -144,7 +202,8 @@ export const useCaptchaProtectedRequest = () => {
   }, []);
   
   /**
-   * Modal component to render
+   * Modal component to render in your component tree
+   * This allows the hook to be used without the global handler
    */
   const CaptchaModalComponent = useCallback(() => (
     <CaptchaModal
@@ -155,8 +214,10 @@ export const useCaptchaProtectedRequest = () => {
       captchaType={captchaType}
       challenge={challenge}
       siteKey={siteKey}
+      isSubmitting={isRetrying}
+      submitError={submitError}
     />
-  ), [showModal, handleClose, handleSolved, currentAction, captchaType, challenge, siteKey]);
+  ), [showModal, handleClose, handleSolved, currentAction, captchaType, challenge, siteKey, isRetrying, submitError]);
   
   return {
     execute,
@@ -168,11 +229,24 @@ export const useCaptchaProtectedRequest = () => {
 /**
  * Create a CAPTCHA-protected version of an API function
  * 
+ * This is a utility for wrapping API functions that might require CAPTCHA.
+ * It dispatches the global CAPTCHA event when needed.
+ * 
  * Usage:
  *   const protectedTrade = createProtectedRequest(
  *     (data) => api.post('/trade', data),
  *     'trade'
  *   );
+ *   
+ *   try {
+ *     const result = await protectedTrade({ fishId: 123 });
+ *   } catch (err) {
+ *     if (err.code === 'CAPTCHA_REQUIRED') {
+ *       // Global handler will show modal
+ *     } else {
+ *       // Handle other errors
+ *     }
+ *   }
  */
 export const createProtectedRequest = (requestFn, action) => {
   return async (...args) => {
@@ -195,8 +269,8 @@ export const createProtectedRequest = (requestFn, action) => {
           }
         }));
         
-        // Throw a special error that can be caught by the global handler
-        const captchaError = new Error('CAPTCHA verification required');
+        // Throw a recognizable error for callers to handle
+        const captchaError = new Error('Security verification required');
         captchaError.code = 'CAPTCHA_REQUIRED';
         captchaError.captchaData = err.response.data;
         throw captchaError;
@@ -207,4 +281,3 @@ export const createProtectedRequest = (requestFn, action) => {
 };
 
 export default useCaptchaProtectedRequest;
-
