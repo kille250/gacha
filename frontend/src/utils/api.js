@@ -549,6 +549,85 @@ export const resetUserWarnings = async (userId) => {
 };
 
 // ===========================================
+// ENHANCED USER SECURITY ACTIONS
+// ===========================================
+
+export const clearUserDevices = async (userId) => {
+  const response = await api.post(`/admin/users/${userId}/clear-devices`);
+  return response.data;
+};
+
+export const recalculateUserRisk = async (userId) => {
+  const response = await api.post(`/admin/users/${userId}/recalculate-risk`);
+  return response.data;
+};
+
+export const resetUserRisk = async (userId, reason) => {
+  const response = await api.post(`/admin/users/${userId}/reset-risk`, { reason });
+  return response.data;
+};
+
+export const getUserLinkedAccounts = async (userId) => {
+  const response = await api.get(`/admin/users/${userId}/linked-accounts`);
+  return response.data;
+};
+
+// ===========================================
+// SECURITY CONFIGURATION API
+// ===========================================
+
+export const getSecurityConfig = async () => {
+  const response = await api.get('/admin/security/config');
+  return response.data;
+};
+
+export const updateSecurityConfig = async (updates) => {
+  const response = await api.put('/admin/security/config', { updates });
+  return response.data;
+};
+
+// ===========================================
+// BULK USER ACTIONS
+// ===========================================
+
+export const bulkRestrictUsers = async (userIds, restrictionType, duration, reason) => {
+  const response = await api.post('/admin/users/bulk-restrict', {
+    userIds, restrictionType, duration, reason
+  });
+  return response.data;
+};
+
+export const bulkUnrestrictUsers = async (userIds, reason) => {
+  const response = await api.post('/admin/users/bulk-unrestrict', { userIds, reason });
+  return response.data;
+};
+
+export const getRestrictedUsers = async (type) => {
+  const params = type ? { type } : {};
+  const response = await api.get('/admin/users/restricted', { params });
+  return response.data;
+};
+
+// ===========================================
+// AUDIT LOG EXPORT
+// ===========================================
+
+export const exportAuditLog = async (options = {}) => {
+  const { format = 'json', limit, userId, eventType, severity, startDate, endDate } = options;
+  const params = { format, limit, userId, eventType, severity, startDate, endDate };
+  
+  // Remove undefined params
+  Object.keys(params).forEach(key => params[key] === undefined && delete params[key]);
+  
+  const response = await api.get('/admin/security/audit/export', { 
+    params,
+    responseType: format === 'csv' ? 'blob' : 'json'
+  });
+  
+  return response.data;
+};
+
+// ===========================================
 // APPEALS ADMIN API
 // ===========================================
 

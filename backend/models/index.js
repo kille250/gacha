@@ -10,6 +10,7 @@ const FishInventory = require('./fishInventory');
 const Rarity = require('./rarity');
 const AuditEvent = require('./auditEvent');
 const Appeal = require('./appeal');
+const SecurityConfig = require('./securityConfig');
 
 // ===========================================
 // USER CHARACTERS JUNCTION TABLE (with leveling)
@@ -92,5 +93,6 @@ module.exports = {
   Rarity,
   UserCharacter,
   AuditEvent,
-  Appeal
+  Appeal,
+  SecurityConfig
 };

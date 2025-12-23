@@ -6,7 +6,7 @@
  */
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
-import { FaShieldAlt } from 'react-icons/fa';
+import { FaShieldAlt, FaCog, FaBan } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { getSecurityOverview, getAppealStats } from '../../utils/api';
@@ -15,14 +15,19 @@ import SecurityOverview from './SecurityOverview';
 import HighRiskUsersList from './HighRiskUsersList';
 import AuditLogViewer from './AuditLogViewer';
 import AppealsList from './AppealsList';
+import RestrictedUsersList from './RestrictedUsersList';
+import SecurityConfigPanel from './SecurityConfigPanel';
+import SecurityConfigEditor from './SecurityConfigEditor';
 import UserSecurityModal from './UserSecurityModal';
 import AppealReviewModal from './AppealReviewModal';
 
 const VIEWS = {
   OVERVIEW: 'overview',
   HIGH_RISK: 'highRisk',
+  RESTRICTED: 'restricted',
   AUDIT: 'audit',
-  APPEALS: 'appeals'
+  APPEALS: 'appeals',
+  CONFIG: 'config'
 };
 
 const AdminSecurity = ({ onSuccess }) => {
@@ -35,6 +40,7 @@ const AdminSecurity = ({ onSuccess }) => {
   // Modal states
   const [selectedUserId, setSelectedUserId] = useState(null);
   const [selectedAppeal, setSelectedAppeal] = useState(null);
+  const [showConfigEditor, setShowConfigEditor] = useState(false);
   
   const fetchSecurityData = useCallback(async () => {
     setLoading(true);
@@ -75,6 +81,11 @@ const AdminSecurity = ({ onSuccess }) => {
     fetchSecurityData();
   };
   
+  const handleConfigSuccess = (message) => {
+    if (onSuccess) onSuccess(message);
+    setShowConfigEditor(false);
+  };
+  
   return (
     <AdminContainer
       variants={motionVariants.staggerContainer}
@@ -100,6 +111,15 @@ const AdminSecurity = ({ onSuccess }) => {
             {t('admin.security.highRiskUsers')}
           </ViewTab>
           <ViewTab 
+            $active={currentView === VIEWS.RESTRICTED}
+            onClick={() => setCurrentView(VIEWS.RESTRICTED)}
+          >
+            <FaBan /> Restricted
+            {securityData?.totalRestricted > 0 && (
+              <CountBadge>{securityData.totalRestricted}</CountBadge>
+            )}
+          </ViewTab>
+          <ViewTab 
             $active={currentView === VIEWS.AUDIT}
             onClick={() => setCurrentView(VIEWS.AUDIT)}
           >
@@ -113,6 +133,12 @@ const AdminSecurity = ({ onSuccess }) => {
             {appealStats?.pending > 0 && (
               <PendingBadge>{appealStats.pending}</PendingBadge>
             )}
+          </ViewTab>
+          <ViewTab 
+            $active={currentView === VIEWS.CONFIG}
+            onClick={() => setCurrentView(VIEWS.CONFIG)}
+          >
+            <FaCog /> Config
           </ViewTab>
         </ViewTabs>
       </Header>
@@ -142,6 +168,17 @@ const AdminSecurity = ({ onSuccess }) => {
             {currentView === VIEWS.APPEALS && (
               <AppealsList onReviewAppeal={handleReviewAppeal} />
             )}
+            
+            {currentView === VIEWS.RESTRICTED && (
+              <RestrictedUsersList 
+                onViewUser={handleViewUser} 
+                onSuccess={handleModalSuccess}
+              />
+            )}
+            
+            {currentView === VIEWS.CONFIG && (
+              <SecurityConfigPanel onEdit={() => setShowConfigEditor(true)} />
+            )}
           </>
         )}
       </ContentArea>
@@ -152,6 +189,7 @@ const AdminSecurity = ({ onSuccess }) => {
         userId={selectedUserId}
         onClose={() => setSelectedUserId(null)}
         onSuccess={handleModalSuccess}
+        onViewUser={handleViewUser}
       />
       
       <AppealReviewModal 
@@ -159,6 +197,12 @@ const AdminSecurity = ({ onSuccess }) => {
         appeal={selectedAppeal}
         onClose={() => setSelectedAppeal(null)}
         onSuccess={handleAppealSuccess}
+      />
+      
+      <SecurityConfigEditor
+        show={showConfigEditor}
+        onClose={() => setShowConfigEditor(false)}
+        onSuccess={handleConfigSuccess}
       />
     </AdminContainer>
   );
@@ -214,6 +258,20 @@ const PendingBadge = styled.span`
   height: 20px;
   padding: 0 6px;
   background: #ff3b30;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  color: white;
+`;
+
+const CountBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  background: ${theme.colors.primary};
   border-radius: ${theme.radius.full};
   font-size: ${theme.fontSizes.xs};
   font-weight: ${theme.fontWeights.bold};

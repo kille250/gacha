@@ -53,7 +53,15 @@ const AUDIT_EVENTS = {
   // Appeals
   APPEAL_SUBMITTED: 'appeal.submitted',
   APPEAL_APPROVED: 'appeal.approved',
-  APPEAL_DENIED: 'appeal.denied'
+  APPEAL_DENIED: 'appeal.denied',
+  
+  // Admin security actions
+  ADMIN_CLEAR_DEVICES: 'admin.security.clear_devices',
+  ADMIN_RESET_RISK: 'admin.security.reset_risk',
+  ADMIN_RECALCULATE_RISK: 'admin.security.recalculate_risk',
+  ADMIN_CONFIG_CHANGE: 'admin.security.config_change',
+  ADMIN_BULK_ACTION: 'admin.security.bulk_action',
+  ADMIN_EXPORT_AUDIT: 'admin.security.export_audit'
 };
 
 // Severity levels

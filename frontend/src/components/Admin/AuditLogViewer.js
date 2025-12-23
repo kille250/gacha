@@ -6,10 +6,10 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaHistory, FaSync, FaFilter } from 'react-icons/fa';
+import { FaHistory, FaSync, FaFilter, FaDownload } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
-import { getAuditLog } from '../../utils/api';
+import { getAuditLog, exportAuditLog } from '../../utils/api';
 import {
   HeaderRow,
   SectionTitle,
@@ -46,6 +46,7 @@ const AuditLogViewer = () => {
     offset: 0
   });
   const [showFilters, setShowFilters] = useState(false);
+  const [exporting, setExporting] = useState(false);
   
   const fetchEvents = useCallback(async () => {
     setLoading(true);
@@ -79,6 +80,46 @@ const AuditLogViewer = () => {
   
   const handlePrevPage = () => {
     setFilters(prev => ({ ...prev, offset: Math.max(0, prev.offset - prev.limit) }));
+  };
+  
+  const handleExport = async (format) => {
+    setExporting(true);
+    try {
+      const params = {
+        format,
+        limit: 10000,
+        severity: filters.severity || undefined,
+        eventType: filters.eventType || undefined,
+        userId: filters.userId || undefined
+      };
+      
+      if (format === 'csv') {
+        const blob = await exportAuditLog(params);
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `audit-log-${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      } else {
+        const data = await exportAuditLog(params);
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `audit-log-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        document.body.removeChild(a);
+      }
+    } catch (err) {
+      console.error('Export failed:', err);
+    } finally {
+      setExporting(false);
+    }
   };
   
   const formatEventType = (eventType) => {
@@ -115,6 +156,15 @@ const AuditLogViewer = () => {
           <SecondaryButton onClick={() => setShowFilters(!showFilters)}>
             <FaFilter /> {t('admin.security.filters')}
           </SecondaryButton>
+          <ExportDropdown>
+            <SecondaryButton disabled={exporting}>
+              <FaDownload /> {exporting ? 'Exporting...' : 'Export'}
+            </SecondaryButton>
+            <ExportMenu>
+              <ExportOption onClick={() => handleExport('json')}>JSON</ExportOption>
+              <ExportOption onClick={() => handleExport('csv')}>CSV</ExportOption>
+            </ExportMenu>
+          </ExportDropdown>
           <SecondaryButton onClick={fetchEvents} disabled={loading}>
             <FaSync className={loading ? 'spin' : ''} />
           </SecondaryButton>
@@ -270,6 +320,45 @@ const HeaderActions = styled.div`
   
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+`;
+
+const ExportDropdown = styled.div`
+  position: relative;
+  
+  &:hover > div {
+    display: block;
+  }
+`;
+
+const ExportMenu = styled.div`
+  display: none;
+  position: absolute;
+  top: 100%;
+  right: 0;
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  overflow: hidden;
+  z-index: 100;
+  min-width: 100px;
+  margin-top: 4px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+`;
+
+const ExportOption = styled.button`
+  display: block;
+  width: 100%;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: none;
+  border: none;
+  text-align: left;
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.sm};
+  cursor: pointer;
+  
+  &:hover {
+    background: ${theme.colors.backgroundTertiary};
   }
 `;
 

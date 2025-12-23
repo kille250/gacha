@@ -8,14 +8,16 @@ import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
 import { 
   FaUserShield, FaBan, FaExclamationTriangle, FaHistory,
-  FaFingerprint, FaGlobe, FaClock, FaUndo
+  FaFingerprint, FaGlobe, FaClock, FaUndo, FaTrash, FaSync, FaLink
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../styles/DesignSystem';
 import { 
   getUserSecurity, restrictUser, unrestrictUser, 
-  warnUser, resetUserWarnings 
+  warnUser, resetUserWarnings, clearUserDevices,
+  recalculateUserRisk, resetUserRisk
 } from '../../utils/api';
+import LinkedAccountsModal from './LinkedAccountsModal';
 import {
   ModalOverlay,
   ModalContent,
@@ -48,7 +50,7 @@ const DURATION_OPTIONS = [
   { value: '30d', label: '30 Days' },
 ];
 
-const UserSecurityModal = ({ show, userId, onClose, onSuccess }) => {
+const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
@@ -65,6 +67,9 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess }) => {
   
   // Warning form
   const [warningReason, setWarningReason] = useState('');
+  
+  // Linked accounts modal
+  const [showLinkedAccounts, setShowLinkedAccounts] = useState(false);
   
   const fetchUserSecurity = useCallback(async () => {
     if (!userId) return;
@@ -142,6 +147,49 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess }) => {
       fetchUserSecurity();
     } catch (err) {
       console.error('Failed to reset warnings:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+  
+  const handleClearDevices = async () => {
+    if (!window.confirm('Clear all device fingerprints for this user? They will need to re-authenticate on their devices.')) return;
+    
+    setActionLoading(true);
+    try {
+      const result = await clearUserDevices(userId);
+      onSuccess(result.message || 'Device fingerprints cleared');
+      fetchUserSecurity();
+    } catch (err) {
+      console.error('Failed to clear devices:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+  
+  const handleRecalculateRisk = async () => {
+    setActionLoading(true);
+    try {
+      const result = await recalculateUserRisk(userId);
+      onSuccess(`Risk score recalculated: ${result.oldScore} → ${result.newScore}`);
+      fetchUserSecurity();
+    } catch (err) {
+      console.error('Failed to recalculate risk:', err);
+    } finally {
+      setActionLoading(false);
+    }
+  };
+  
+  const handleResetRisk = async () => {
+    if (!window.confirm('Reset risk score to 0? This is typically used after reviewing a false positive.')) return;
+    
+    setActionLoading(true);
+    try {
+      const result = await resetUserRisk(userId, 'Manual reset by admin');
+      onSuccess(result.message || 'Risk score reset to 0');
+      fetchUserSecurity();
+    } catch (err) {
+      console.error('Failed to reset risk:', err);
     } finally {
       setActionLoading(false);
     }
@@ -229,6 +277,14 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess }) => {
                         <RiskScore $score={userData.riskScore}>
                           {userData.riskScore || 0}
                         </RiskScore>
+                        <RiskActions>
+                          <MiniButton onClick={handleRecalculateRisk} disabled={actionLoading} title="Recalculate">
+                            <FaSync />
+                          </MiniButton>
+                          <MiniButton onClick={handleResetRisk} disabled={actionLoading} title="Reset to 0">
+                            <FaUndo />
+                          </MiniButton>
+                        </RiskActions>
                       </InfoCard>
                       
                       <InfoCard>
@@ -252,9 +308,21 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess }) => {
                     </InfoGrid>
                     
                     <DeviceSection>
-                      <SectionLabel>
-                        <FaFingerprint /> {t('admin.security.knownDevices')} ({userData.deviceFingerprints?.length || 0})
-                      </SectionLabel>
+                      <DeviceSectionHeader>
+                        <SectionLabel>
+                          <FaFingerprint /> {t('admin.security.knownDevices')} ({userData.deviceFingerprints?.length || 0})
+                        </SectionLabel>
+                        <DeviceActions>
+                          <MiniButton onClick={() => setShowLinkedAccounts(true)} title="View linked accounts">
+                            <FaLink />
+                          </MiniButton>
+                          {userData.deviceFingerprints?.length > 0 && (
+                            <MiniButton onClick={handleClearDevices} disabled={actionLoading} title="Clear all devices" $danger>
+                              <FaTrash />
+                            </MiniButton>
+                          )}
+                        </DeviceActions>
+                      </DeviceSectionHeader>
                       <DeviceList>
                         {userData.deviceFingerprints?.slice(0, 5).map((fp, i) => (
                           <DeviceItem key={i}>
@@ -388,6 +456,14 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess }) => {
           </ModalBody>
         </ModalContent>
       </ModalOverlay>
+      
+      <LinkedAccountsModal
+        show={showLinkedAccounts}
+        userId={userId}
+        username={userData?.username}
+        onClose={() => setShowLinkedAccounts(false)}
+        onViewUser={onViewUser}
+      />
     </AnimatePresence>
   );
 };
@@ -520,6 +596,46 @@ const DeviceSection = styled.div`
   background: ${theme.colors.backgroundTertiary};
   border-radius: ${theme.radius.lg};
   padding: ${theme.spacing.md};
+`;
+
+const DeviceSectionHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+`;
+
+const DeviceActions = styled.div`
+  display: flex;
+  gap: ${theme.spacing.xs};
+`;
+
+const RiskActions = styled.div`
+  display: flex;
+  gap: ${theme.spacing.xs};
+  margin-top: ${theme.spacing.sm};
+`;
+
+const MiniButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: ${props => props.$danger ? 'rgba(255, 59, 48, 0.15)' : 'rgba(0, 122, 255, 0.15)'};
+  border: none;
+  border-radius: ${theme.radius.md};
+  color: ${props => props.$danger ? '#ff3b30' : theme.colors.primary};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover:not(:disabled) {
+    background: ${props => props.$danger ? 'rgba(255, 59, 48, 0.25)' : 'rgba(0, 122, 255, 0.25)'};
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
 const SectionLabel = styled.div`

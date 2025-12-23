@@ -11,6 +11,7 @@ const auditService = require('./auditService');
 const riskService = require('./riskService');
 const enforcementService = require('./enforcementService');
 const economyService = require('./economyService');
+const securityConfigService = require('./securityConfigService');
 
 module.exports = {
   ...fishingService,
@@ -19,6 +20,7 @@ module.exports = {
   auditService,
   riskService,
   enforcementService,
-  economyService
+  economyService,
+  securityConfigService
 };
 

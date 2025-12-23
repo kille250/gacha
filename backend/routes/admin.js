@@ -10,7 +10,8 @@ const adminAuth = require('../middleware/adminAuth');
 const { User, Character, Banner, Coupon, CouponRedemption, FishInventory, AuditEvent } = require('../models');
 const { getUrlPath, UPLOAD_BASE } = require('../config/upload');
 const { logAdminAction, AUDIT_EVENTS, getSecurityEvents } = require('../services/auditService');
-const { getHighRiskUsers, RISK_THRESHOLDS } = require('../services/riskService');
+const { getHighRiskUsers, RISK_THRESHOLDS, calculateRiskScore } = require('../services/riskService');
+const { getAllSecurityConfig, updateSecurityConfig, DEFAULTS: CONFIG_DEFAULTS } = require('../services/securityConfigService');
 const { characterUpload: upload } = require('../config/multer');
 const { isValidId } = require('../utils/validation');
 const { safeUnlink, safeDeleteUpload, safeUnlinkMany, downloadImage, generateUniqueFilename, getExtensionFromUrl } = require('../utils/fileUtils');
@@ -1019,6 +1020,523 @@ router.get('/security/high-risk', auth, adminAuth, async (req, res) => {
   } catch (err) {
     console.error('High risk users error:', err);
     res.status(500).json({ error: 'Failed to fetch high risk users' });
+  }
+});
+
+// ===========================================
+// SECURITY CONFIGURATION ENDPOINTS
+// ===========================================
+
+// GET /api/admin/security/config - Get all security configuration
+router.get('/security/config', auth, adminAuth, async (req, res) => {
+  try {
+    const config = await getAllSecurityConfig();
+    res.json({
+      config,
+      defaults: CONFIG_DEFAULTS,
+      lastUpdated: new Date().toISOString()
+    });
+  } catch (err) {
+    console.error('Get security config error:', err);
+    res.status(500).json({ error: 'Failed to fetch security configuration' });
+  }
+});
+
+// PUT /api/admin/security/config - Update security configuration
+router.put('/security/config', auth, adminAuth, async (req, res) => {
+  try {
+    const { updates } = req.body;
+    
+    if (!updates || typeof updates !== 'object') {
+      return res.status(400).json({ error: 'Updates object is required' });
+    }
+    
+    // Validate all values are reasonable
+    for (const [key, value] of Object.entries(updates)) {
+      if (typeof value === 'number' && (isNaN(value) || value < 0)) {
+        return res.status(400).json({ error: `Invalid value for ${key}` });
+      }
+    }
+    
+    const result = await updateSecurityConfig(updates, req.user.id);
+    
+    res.json({
+      success: true,
+      message: `Updated ${Object.keys(result).length} configuration(s)`,
+      updated: result
+    });
+  } catch (err) {
+    console.error('Update security config error:', err);
+    res.status(500).json({ error: err.message || 'Failed to update configuration' });
+  }
+});
+
+// ===========================================
+// ENHANCED USER SECURITY ACTIONS
+// ===========================================
+
+// POST /api/admin/users/:id/clear-devices - Clear user's device fingerprints
+router.post('/users/:id/clear-devices', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const oldCount = (user.deviceFingerprints || []).length;
+    user.deviceFingerprints = [];
+    await user.save();
+    
+    await logAdminAction(AUDIT_EVENTS.ADMIN_CLEAR_DEVICES, req.user.id, userId, {
+      clearedCount: oldCount
+    }, req);
+    
+    console.log(`Admin (ID: ${req.user.id}) cleared ${oldCount} device fingerprints for user ${user.username}`);
+    
+    res.json({
+      success: true,
+      message: `Cleared ${oldCount} device fingerprint(s) for ${user.username}`,
+      clearedCount: oldCount
+    });
+  } catch (err) {
+    console.error('Clear devices error:', err);
+    res.status(500).json({ error: 'Failed to clear device fingerprints' });
+  }
+});
+
+// POST /api/admin/users/:id/recalculate-risk - Force risk score recalculation
+router.post('/users/:id/recalculate-risk', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const oldScore = user.riskScore || 0;
+    const newScore = await calculateRiskScore(userId, {});
+    
+    user.riskScore = newScore;
+    await user.save();
+    
+    await logAdminAction(AUDIT_EVENTS.ADMIN_RECALCULATE_RISK, req.user.id, userId, {
+      oldScore,
+      newScore
+    }, req);
+    
+    res.json({
+      success: true,
+      message: `Risk score recalculated for ${user.username}`,
+      oldScore,
+      newScore,
+      delta: newScore - oldScore
+    });
+  } catch (err) {
+    console.error('Recalculate risk error:', err);
+    res.status(500).json({ error: 'Failed to recalculate risk score' });
+  }
+});
+
+// POST /api/admin/users/:id/reset-risk - Reset risk score to 0
+router.post('/users/:id/reset-risk', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    const { reason } = req.body;
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const oldScore = user.riskScore || 0;
+    user.riskScore = 0;
+    await user.save();
+    
+    await logAdminAction(AUDIT_EVENTS.ADMIN_RESET_RISK, req.user.id, userId, {
+      oldScore,
+      reason: reason || 'Manual reset by admin'
+    }, req);
+    
+    console.log(`Admin (ID: ${req.user.id}) reset risk score for user ${user.username} (was ${oldScore})`);
+    
+    res.json({
+      success: true,
+      message: `Risk score reset to 0 for ${user.username}`,
+      oldScore,
+      newScore: 0
+    });
+  } catch (err) {
+    console.error('Reset risk error:', err);
+    res.status(500).json({ error: 'Failed to reset risk score' });
+  }
+});
+
+// GET /api/admin/users/:id/linked-accounts - Get potentially linked accounts
+router.get('/users/:id/linked-accounts', auth, adminAuth, async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+    
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+    
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'username', 'deviceFingerprints', 'lastKnownIP', 'linkedAccounts']
+    });
+    
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Find users with matching fingerprints
+    const fingerprints = user.deviceFingerprints || [];
+    const linkedByFingerprint = [];
+    
+    if (fingerprints.length > 0) {
+      const potentialMatches = await User.findAll({
+        where: {
+          id: { [Op.ne]: userId }
+        },
+        attributes: ['id', 'username', 'deviceFingerprints', 'restrictionType', 'riskScore']
+      });
+      
+      for (const other of potentialMatches) {
+        const otherFps = other.deviceFingerprints || [];
+        const shared = fingerprints.filter(fp => otherFps.includes(fp));
+        if (shared.length > 0) {
+          linkedByFingerprint.push({
+            id: other.id,
+            username: other.username,
+            sharedFingerprints: shared.length,
+            restrictionType: other.restrictionType,
+            riskScore: other.riskScore
+          });
+        }
+      }
+    }
+    
+    // Find users with same IP
+    const linkedByIP = [];
+    if (user.lastKnownIP) {
+      const sameIP = await User.findAll({
+        where: {
+          id: { [Op.ne]: userId },
+          lastKnownIP: user.lastKnownIP
+        },
+        attributes: ['id', 'username', 'restrictionType', 'riskScore']
+      });
+      
+      linkedByIP.push(...sameIP.map(u => ({
+        id: u.id,
+        username: u.username,
+        restrictionType: u.restrictionType,
+        riskScore: u.riskScore
+      })));
+    }
+    
+    res.json({
+      userId,
+      username: user.username,
+      linkedByFingerprint,
+      linkedByIP,
+      manuallyLinked: user.linkedAccounts || [],
+      totalLinked: new Set([
+        ...linkedByFingerprint.map(l => l.id),
+        ...linkedByIP.map(l => l.id),
+        ...(user.linkedAccounts || [])
+      ]).size
+    });
+  } catch (err) {
+    console.error('Get linked accounts error:', err);
+    res.status(500).json({ error: 'Failed to fetch linked accounts' });
+  }
+});
+
+// ===========================================
+// BULK USER ACTIONS
+// ===========================================
+
+// POST /api/admin/users/bulk-restrict - Apply restriction to multiple users
+router.post('/users/bulk-restrict', auth, adminAuth, async (req, res) => {
+  try {
+    const { userIds, restrictionType, duration, reason } = req.body;
+    
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: 'userIds array is required' });
+    }
+    
+    if (userIds.length > 100) {
+      return res.status(400).json({ error: 'Maximum 100 users per bulk action' });
+    }
+    
+    if (!restrictionType || !VALID_RESTRICTIONS.includes(restrictionType)) {
+      return res.status(400).json({ 
+        error: 'Invalid restriction type',
+        validTypes: VALID_RESTRICTIONS
+      });
+    }
+    
+    const results = { success: [], failed: [] };
+    
+    for (const userId of userIds) {
+      try {
+        const user = await User.findByPk(userId);
+        if (!user) {
+          results.failed.push({ userId, error: 'User not found' });
+          continue;
+        }
+        
+        // Skip admins and self
+        if (user.isAdmin || user.id === req.user.id) {
+          results.failed.push({ userId, error: 'Cannot restrict admin or self' });
+          continue;
+        }
+        
+        const oldRestriction = user.restrictionType;
+        user.restrictionType = restrictionType;
+        user.restrictionReason = reason || 'Bulk action';
+        user.lastRestrictionChange = new Date();
+        
+        if (['temp_ban', 'rate_limited'].includes(restrictionType) && duration) {
+          const durationMs = parseDuration(duration);
+          if (durationMs) {
+            user.restrictedUntil = new Date(Date.now() + durationMs);
+          }
+        } else if (restrictionType === 'none') {
+          user.restrictedUntil = null;
+          user.restrictionReason = null;
+        }
+        
+        if (restrictionType === 'warning') {
+          user.warningCount = (user.warningCount || 0) + 1;
+        }
+        
+        await user.save();
+        results.success.push({ userId, username: user.username, oldRestriction });
+      } catch (err) {
+        results.failed.push({ userId, error: err.message });
+      }
+    }
+    
+    // Log bulk action
+    await logAdminAction(AUDIT_EVENTS.ADMIN_BULK_ACTION, req.user.id, null, {
+      action: 'bulk_restrict',
+      restrictionType,
+      duration,
+      reason,
+      successCount: results.success.length,
+      failedCount: results.failed.length,
+      affectedUsers: results.success.map(r => r.userId)
+    }, req);
+    
+    console.log(`Admin (ID: ${req.user.id}) bulk restricted ${results.success.length} users with ${restrictionType}`);
+    
+    res.json({
+      success: true,
+      message: `Applied ${restrictionType} to ${results.success.length} user(s)`,
+      results
+    });
+  } catch (err) {
+    console.error('Bulk restrict error:', err);
+    res.status(500).json({ error: 'Failed to perform bulk restriction' });
+  }
+});
+
+// POST /api/admin/users/bulk-unrestrict - Remove restrictions from multiple users
+router.post('/users/bulk-unrestrict', auth, adminAuth, async (req, res) => {
+  try {
+    const { userIds, reason } = req.body;
+    
+    if (!Array.isArray(userIds) || userIds.length === 0) {
+      return res.status(400).json({ error: 'userIds array is required' });
+    }
+    
+    if (userIds.length > 100) {
+      return res.status(400).json({ error: 'Maximum 100 users per bulk action' });
+    }
+    
+    const results = { success: [], failed: [] };
+    
+    for (const userId of userIds) {
+      try {
+        const user = await User.findByPk(userId);
+        if (!user) {
+          results.failed.push({ userId, error: 'User not found' });
+          continue;
+        }
+        
+        const oldRestriction = user.restrictionType;
+        user.restrictionType = 'none';
+        user.restrictedUntil = null;
+        user.restrictionReason = null;
+        user.lastRestrictionChange = new Date();
+        
+        await user.save();
+        results.success.push({ userId, username: user.username, oldRestriction });
+      } catch (err) {
+        results.failed.push({ userId, error: err.message });
+      }
+    }
+    
+    await logAdminAction(AUDIT_EVENTS.ADMIN_BULK_ACTION, req.user.id, null, {
+      action: 'bulk_unrestrict',
+      reason: reason || 'Bulk unrestriction',
+      successCount: results.success.length,
+      failedCount: results.failed.length,
+      affectedUsers: results.success.map(r => r.userId)
+    }, req);
+    
+    res.json({
+      success: true,
+      message: `Removed restrictions from ${results.success.length} user(s)`,
+      results
+    });
+  } catch (err) {
+    console.error('Bulk unrestrict error:', err);
+    res.status(500).json({ error: 'Failed to perform bulk unrestriction' });
+  }
+});
+
+// ===========================================
+// AUDIT LOG EXPORT
+// ===========================================
+
+// GET /api/admin/security/audit/export - Export audit log as JSON/CSV
+router.get('/security/audit/export', auth, adminAuth, async (req, res) => {
+  try {
+    const { format = 'json', limit = 1000, userId, eventType, severity, startDate, endDate } = req.query;
+    
+    const where = {};
+    if (userId) where.userId = parseInt(userId, 10);
+    if (eventType) where.eventType = { [Op.like]: `${eventType}%` };
+    if (severity) where.severity = severity;
+    
+    if (startDate || endDate) {
+      where.createdAt = {};
+      if (startDate) where.createdAt[Op.gte] = new Date(startDate);
+      if (endDate) where.createdAt[Op.lte] = new Date(endDate);
+    }
+    
+    const events = await AuditEvent.findAll({
+      where,
+      order: [['createdAt', 'DESC']],
+      limit: Math.min(parseInt(limit, 10) || 1000, 10000)
+    });
+    
+    // Log the export
+    await logAdminAction(AUDIT_EVENTS.ADMIN_EXPORT_AUDIT, req.user.id, null, {
+      format,
+      filters: { userId, eventType, severity, startDate, endDate },
+      exportedCount: events.length
+    }, req);
+    
+    if (format === 'csv') {
+      // Convert to CSV
+      const headers = ['id', 'eventType', 'severity', 'userId', 'adminId', 'targetUserId', 'ipHash', 'createdAt', 'data'];
+      const rows = events.map(e => [
+        e.id,
+        e.eventType,
+        e.severity,
+        e.userId || '',
+        e.adminId || '',
+        e.targetUserId || '',
+        e.ipHash || '',
+        e.createdAt.toISOString(),
+        JSON.stringify(e.data || {})
+      ]);
+      
+      const csv = [
+        headers.join(','),
+        ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      ].join('\n');
+      
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', `attachment; filename=audit-log-${Date.now()}.csv`);
+      return res.send(csv);
+    }
+    
+    // Default to JSON
+    res.setHeader('Content-Type', 'application/json');
+    res.setHeader('Content-Disposition', `attachment; filename=audit-log-${Date.now()}.json`);
+    res.json({
+      exportedAt: new Date().toISOString(),
+      exportedBy: req.user.id,
+      totalEvents: events.length,
+      filters: { userId, eventType, severity, startDate, endDate },
+      events
+    });
+  } catch (err) {
+    console.error('Export audit log error:', err);
+    res.status(500).json({ error: 'Failed to export audit log' });
+  }
+});
+
+// ===========================================
+// RESTRICTED USERS LIST
+// ===========================================
+
+// GET /api/admin/users/restricted - Get all restricted users
+router.get('/users/restricted', auth, adminAuth, async (req, res) => {
+  try {
+    const { type } = req.query;
+    
+    const where = {
+      restrictionType: { [Op.and]: [{ [Op.ne]: 'none' }, { [Op.ne]: null }] }
+    };
+    
+    if (type && VALID_RESTRICTIONS.includes(type)) {
+      where.restrictionType = type;
+    }
+    
+    const users = await User.findAll({
+      where,
+      attributes: [
+        'id', 'username', 'email', 'restrictionType', 'restrictedUntil',
+        'restrictionReason', 'riskScore', 'warningCount', 'createdAt', 'lastRestrictionChange'
+      ],
+      order: [['lastRestrictionChange', 'DESC']]
+    });
+    
+    res.json({
+      users: users.map(u => ({
+        id: u.id,
+        username: u.username,
+        email: u.email,
+        restrictionType: u.restrictionType,
+        restrictedUntil: u.restrictedUntil,
+        restrictionReason: u.restrictionReason,
+        riskScore: u.riskScore,
+        warningCount: u.warningCount,
+        createdAt: u.createdAt,
+        lastRestrictionChange: u.lastRestrictionChange
+      })),
+      total: users.length,
+      byType: {
+        perm_ban: users.filter(u => u.restrictionType === 'perm_ban').length,
+        temp_ban: users.filter(u => u.restrictionType === 'temp_ban').length,
+        shadowban: users.filter(u => u.restrictionType === 'shadowban').length,
+        rate_limited: users.filter(u => u.restrictionType === 'rate_limited').length,
+        warning: users.filter(u => u.restrictionType === 'warning').length
+      }
+    });
+  } catch (err) {
+    console.error('Get restricted users error:', err);
+    res.status(500).json({ error: 'Failed to fetch restricted users' });
   }
 });
 
