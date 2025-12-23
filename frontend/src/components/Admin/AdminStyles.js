@@ -275,8 +275,17 @@ export const SecondaryButton = styled.button`
   font-size: ${theme.fontSizes.sm};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
-  
-  &:hover { background: ${theme.colors.surface}; }
+
+  &:hover:not(:disabled) { background: ${theme.colors.surface}; }
+  &:disabled { opacity: 0.5; cursor: not-allowed; }
+
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
 `;
 
 export const ActionButton = styled.button`
