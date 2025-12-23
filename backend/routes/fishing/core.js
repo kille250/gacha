@@ -10,6 +10,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const auth = require('../../middleware/auth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
+const { lockoutMiddleware } = require('../../middleware/captcha');
 const { getShadowbanConfig } = require('../../services/securityConfigService');
 const { sequelize, User, FishInventory } = require('../../models');
 
@@ -138,8 +139,8 @@ function setMode(userId, mode) {
 }
 
 // POST /cast - Start fishing (cast the line)
-// Security: enforcement checked (banned users cannot fish)
-router.post('/cast', [auth, enforcementMiddleware], async (req, res, next) => {
+// Security: lockout checked (fail-fast), enforcement checked (banned users cannot fish)
+router.post('/cast', [auth, lockoutMiddleware(), enforcementMiddleware], async (req, res, next) => {
   const userId = req.user.id;
   
   try {
@@ -278,8 +279,8 @@ router.post('/cast', [auth, enforcementMiddleware], async (req, res, next) => {
 });
 
 // POST /catch - Attempt to catch the fish
-// Security: enforcement checked (banned users cannot complete catches)
-router.post('/catch', [auth, enforcementMiddleware], async (req, res, next) => {
+// Security: lockout checked (fail-fast), enforcement checked (banned users cannot complete catches)
+router.post('/catch', [auth, lockoutMiddleware(), enforcementMiddleware], async (req, res, next) => {
   const userId = req.user.id;
   
   try {

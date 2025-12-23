@@ -11,7 +11,8 @@ const { User, Character, Banner, Coupon, CouponRedemption, FishInventory, AuditE
 const { getUrlPath, UPLOAD_BASE } = require('../config/upload');
 const { logAdminAction, AUDIT_EVENTS, getSecurityEvents } = require('../services/auditService');
 const { getHighRiskUsers, RISK_THRESHOLDS, calculateRiskScore } = require('../services/riskService');
-const { getAllSecurityConfig, updateSecurityConfig, DEFAULTS: CONFIG_DEFAULTS } = require('../services/securityConfigService');
+const securityConfigService = require('../services/securityConfigService');
+const { getAllSecurityConfig, updateSecurityConfig, DEFAULTS: CONFIG_DEFAULTS } = securityConfigService;
 const { characterUpload: upload } = require('../config/multer');
 const { isValidId } = require('../utils/validation');
 const { safeUnlink, safeDeleteUpload, safeUnlinkMany, downloadImage, generateUniqueFilename, getExtensionFromUrl } = require('../utils/fileUtils');
@@ -910,6 +911,7 @@ router.post('/users/:id/unrestrict', auth, adminAuth, async (req, res) => {
 });
 
 // POST /api/admin/users/:id/warn - Issue a warning
+// Auto-escalation configurable via: POLICY_WARNING_ESCALATION_THRESHOLD, POLICY_WARNING_ESCALATION_DURATION
 router.post('/users/:id/warn', auth, adminAuth, async (req, res) => {
   try {
     const userId = parseInt(req.params.id, 10);
@@ -932,14 +934,18 @@ router.post('/users/:id/warn', auth, adminAuth, async (req, res) => {
     const oldCount = user.warningCount || 0;
     user.warningCount = oldCount + 1;
     
-    // Auto-escalation: 3+ warnings = temp ban
+    // Auto-escalation: configurable threshold and duration
+    const escalationThreshold = await securityConfigService.getNumber('POLICY_WARNING_ESCALATION_THRESHOLD', 3);
+    const escalationDuration = await securityConfigService.get('POLICY_WARNING_ESCALATION_DURATION', '7d');
+    
     let autoAction = null;
-    if (user.warningCount >= 3 && user.restrictionType === 'none') {
+    if (user.warningCount >= escalationThreshold && user.restrictionType === 'none') {
+      const durationMs = parseDuration(escalationDuration);
       user.restrictionType = 'temp_ban';
-      user.restrictedUntil = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000); // 7 days
+      user.restrictedUntil = new Date(Date.now() + durationMs);
       user.restrictionReason = 'Multiple warnings';
       user.lastRestrictionChange = new Date();
-      autoAction = 'temp_ban (7 days)';
+      autoAction = `temp_ban (${escalationDuration})`;
     }
     
     await user.save();
@@ -948,7 +954,9 @@ router.post('/users/:id/warn', auth, adminAuth, async (req, res) => {
     await logAdminAction(AUDIT_EVENTS.ADMIN_WARNING, req.user.id, user.id, {
       warningNumber: user.warningCount,
       reason,
-      autoAction
+      autoAction,
+      escalationThreshold,
+      escalationDuration
     }, req);
     
     console.log(`Admin (ID: ${req.user.id}) warned user ${user.username} (warning #${user.warningCount})`);

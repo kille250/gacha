@@ -3,10 +3,13 @@
  * 
  * Provides reusable policy checks for common access control scenarios.
  * Separates authorization logic from route handlers for cleaner code.
+ * 
+ * Policy thresholds are configurable via SecurityConfig admin interface.
  */
 
 const { User } = require('../models');
 const { logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');
+const securityConfigService = require('../services/securityConfigService');
 
 /**
  * Policy definitions
@@ -15,7 +18,9 @@ const { logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');
 const policies = {
   /**
    * Check if user can trade
-   * Requirements: Not shadowbanned, not rate limited, account > 24 hours old
+   * Requirements: Not shadowbanned, not rate limited, account age meets threshold
+   * 
+   * Configurable via: POLICY_TRADE_ACCOUNT_AGE_HOURS (default: 24)
    */
   canTrade: async (req) => {
     // Shadowbanned users can't trade (but don't reveal why)
@@ -40,13 +45,16 @@ const policies = {
       return { allowed: false, reason: 'User not found' };
     }
     
-    // Check account age
-    const accountAgeDays = (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60 * 24);
-    if (accountAgeDays < 1) {
+    // Check account age against configurable threshold
+    const tradeAgeHours = await securityConfigService.getNumber('POLICY_TRADE_ACCOUNT_AGE_HOURS', 24);
+    const accountAgeHours = (Date.now() - new Date(user.createdAt).getTime()) / (1000 * 60 * 60);
+    
+    if (accountAgeHours < tradeAgeHours) {
+      const hoursRemaining = Math.ceil(tradeAgeHours - accountAgeHours);
       return { 
         allowed: false, 
-        reason: 'Your account must be at least 24 hours old to trade',
-        retryAfter: Math.ceil(1 - accountAgeDays) * 24 * 60 * 60
+        reason: `Your account must be at least ${tradeAgeHours} hours old to trade`,
+        retryAfter: hoursRemaining * 60 * 60
       };
     }
     
@@ -92,6 +100,8 @@ const policies = {
   /**
    * Check if user can perform high-value actions
    * Requirements: Low risk score, verified account
+   * 
+   * Configurable via: RISK_THRESHOLD_SOFT_RESTRICTION (default: 50)
    */
   canPerformHighValueAction: async (req) => {
     if (req.shadowbanned) {
@@ -110,8 +120,9 @@ const policies = {
       return { allowed: false, reason: 'User not found' };
     }
     
-    // High risk users need verification
-    if (user.riskScore >= 50) {
+    // High risk users need verification (threshold from config)
+    const riskThreshold = await securityConfigService.getNumber('RISK_THRESHOLD_SOFT_RESTRICTION', 50);
+    if (user.riskScore >= riskThreshold) {
       return { 
         allowed: false, 
         reason: 'Additional verification required',

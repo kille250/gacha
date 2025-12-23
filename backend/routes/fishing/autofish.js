@@ -10,6 +10,7 @@ const router = express.Router();
 const auth = require('../../middleware/auth');
 const adminAuth = require('../../middleware/adminAuth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
+const { lockoutMiddleware } = require('../../middleware/captcha');
 const { getShadowbanConfig } = require('../../services/securityConfigService');
 const { sequelize, User, FishInventory } = require('../../models');
 const { isValidId } = require('../../utils/validation');
@@ -55,8 +56,8 @@ const autofishCooldowns = new Map();
 const autofishInProgress = new Set();
 
 // POST /autofish - Perform an autofish catch
-// Security: enforcement checked (banned users cannot autofish)
-router.post('/', [auth, enforcementMiddleware], async (req, res, next) => {
+// Security: lockout checked (fail-fast), enforcement checked (banned users cannot autofish)
+router.post('/', [auth, lockoutMiddleware(), enforcementMiddleware], async (req, res, next) => {
   const userId = req.user.id;
   
   try {
@@ -388,8 +389,8 @@ router.get('/leaderboard', [auth, enforcementMiddleware], async (req, res, next)
 });
 
 // POST /toggle - Toggle autofishing
-// Security: enforcement checked (banned users cannot toggle autofish)
-router.post('/toggle', [auth, enforcementMiddleware], async (req, res, next) => {
+// Security: lockout checked (fail-fast), enforcement checked (banned users cannot toggle autofish)
+router.post('/toggle', [auth, lockoutMiddleware(), enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
