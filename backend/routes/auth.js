@@ -22,7 +22,8 @@ const {
   isRecaptchaEnabled,
   getAttemptKey,
   CAPTCHA_CONFIG,
-  getCaptchaConfig
+  getCaptchaConfig,
+  getLockoutConfig
 } = require('../middleware/captcha');
 const { sensitiveActionLimiter, generalRateLimiter, signupVelocityLimiter } = require('../middleware/rateLimiter');
 
@@ -31,8 +32,8 @@ const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // POST /api/auth/daily-reward - Claim hourly reward
 // Note: Route name is legacy ("daily") but actual interval is 1 hour for better engagement
-// Security: enforcement checked, rate limited
-router.post('/daily-reward', [auth, enforcementMiddleware, generalRateLimiter], async (req, res) => {
+// Security: lockout checked, enforcement checked, rate limited
+router.post('/daily-reward', [auth, lockoutMiddleware(), enforcementMiddleware, generalRateLimiter], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     
@@ -218,9 +219,10 @@ router.post('/login', async (req, res) => {
   // SECURITY: Require CAPTCHA after multiple failed attempts
   // Use dynamic config to allow runtime adjustments
   const captchaConfig = await getCaptchaConfig();
-  const remainingBeforeCaptcha = getRemainingAttempts(attemptKey);
+  const lockoutConfig = await getLockoutConfig();
+  const remainingBeforeCaptcha = getRemainingAttempts(attemptKey, lockoutConfig);
   const failedAttemptsThreshold = captchaConfig.failedAttemptsThreshold;
-  const totalAttempts = 10 - remainingBeforeCaptcha; // 10 is LOCKOUT_CONFIG.maxAttempts
+  const totalAttempts = lockoutConfig.maxAttempts - remainingBeforeCaptcha;
   
   if (totalAttempts >= failedAttemptsThreshold) {
     // CAPTCHA required - check for valid token
@@ -400,9 +402,10 @@ router.post('/google', async (req, res) => {
   // SECURITY: Require CAPTCHA after multiple failed attempts (matching login behavior)
   // Use dynamic config to allow runtime adjustments
   const captchaConfig = await getCaptchaConfig();
-  const remainingBeforeCaptcha = getRemainingAttempts(attemptKey);
+  const lockoutConfigGoogle = await getLockoutConfig();
+  const remainingBeforeCaptcha = getRemainingAttempts(attemptKey, lockoutConfigGoogle);
   const failedAttemptsThreshold = captchaConfig.failedAttemptsThreshold;
-  const totalAttempts = 10 - remainingBeforeCaptcha; // 10 is LOCKOUT_CONFIG.maxAttempts
+  const totalAttempts = lockoutConfigGoogle.maxAttempts - remainingBeforeCaptcha;
   
   if (totalAttempts >= failedAttemptsThreshold) {
     const recaptchaToken = req.header('x-recaptcha-token');
@@ -1143,8 +1146,8 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
 });
 
 // POST /api/auth/toggle-r18 - Toggle R18 content preference
-// Security: enforcement checked, rate limited
-router.post('/toggle-r18', [auth, enforcementMiddleware, generalRateLimiter], async (req, res) => {
+// Security: lockout checked, enforcement checked, rate limited
+router.post('/toggle-r18', [auth, lockoutMiddleware(), enforcementMiddleware, generalRateLimiter], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
       attributes: ['id', 'allowR18', 'showR18']

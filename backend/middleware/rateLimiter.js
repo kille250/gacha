@@ -11,6 +11,7 @@ const rateLimit = require('express-rate-limit');
 
 // Default values (used as fallback, should match SecurityConfig DEFAULTS)
 const DEFAULTS = {
+  // Middleware-level rate limits
   RATE_LIMIT_GENERAL_WINDOW: 60000,
   RATE_LIMIT_GENERAL_MAX: 100,
   RATE_LIMIT_SENSITIVE_WINDOW: 3600000,
@@ -20,7 +21,14 @@ const DEFAULTS = {
   RATE_LIMIT_COUPON_WINDOW: 900000,
   RATE_LIMIT_COUPON_MAX: 10,
   RATE_LIMIT_BURST_WINDOW: 1000,
-  RATE_LIMIT_BURST_MAX: 10
+  RATE_LIMIT_BURST_MAX: 10,
+  // Route-level rate limits (for app.js)
+  RATE_LIMIT_AUTH_WINDOW: 900000,    // 15 minutes
+  RATE_LIMIT_AUTH_MAX: 20,
+  RATE_LIMIT_ROLL_WINDOW: 60000,     // 1 minute
+  RATE_LIMIT_ROLL_MAX: 120,
+  RATE_LIMIT_FISHING_WINDOW: 60000,  // 1 minute
+  RATE_LIMIT_FISHING_MAX: 30
 };
 
 // Cached config values (updated periodically)
@@ -46,7 +54,10 @@ async function loadConfig() {
       sensitiveWindow, sensitiveMax,
       signupWindow, signupMax,
       couponWindow, couponMax,
-      burstWindow, burstMax
+      burstWindow, burstMax,
+      authWindow, authMax,
+      rollWindow, rollMax,
+      fishingWindow, fishingMax
     ] = await Promise.all([
       getConfig('RATE_LIMIT_GENERAL_WINDOW'),
       getConfig('RATE_LIMIT_GENERAL_MAX'),
@@ -57,7 +68,13 @@ async function loadConfig() {
       getConfig('RATE_LIMIT_COUPON_WINDOW'),
       getConfig('RATE_LIMIT_COUPON_MAX'),
       getConfig('RATE_LIMIT_BURST_WINDOW'),
-      getConfig('RATE_LIMIT_BURST_MAX')
+      getConfig('RATE_LIMIT_BURST_MAX'),
+      getConfig('RATE_LIMIT_AUTH_WINDOW'),
+      getConfig('RATE_LIMIT_AUTH_MAX'),
+      getConfig('RATE_LIMIT_ROLL_WINDOW'),
+      getConfig('RATE_LIMIT_ROLL_MAX'),
+      getConfig('RATE_LIMIT_FISHING_WINDOW'),
+      getConfig('RATE_LIMIT_FISHING_MAX')
     ]);
     
     configCache = {
@@ -70,7 +87,13 @@ async function loadConfig() {
       RATE_LIMIT_COUPON_WINDOW: couponWindow,
       RATE_LIMIT_COUPON_MAX: couponMax,
       RATE_LIMIT_BURST_WINDOW: burstWindow,
-      RATE_LIMIT_BURST_MAX: burstMax
+      RATE_LIMIT_BURST_MAX: burstMax,
+      RATE_LIMIT_AUTH_WINDOW: authWindow,
+      RATE_LIMIT_AUTH_MAX: authMax,
+      RATE_LIMIT_ROLL_WINDOW: rollWindow,
+      RATE_LIMIT_ROLL_MAX: rollMax,
+      RATE_LIMIT_FISHING_WINDOW: fishingWindow,
+      RATE_LIMIT_FISHING_MAX: fishingMax
     };
     
     lastConfigLoad = now;
@@ -155,11 +178,20 @@ const signupVelocityLimiter = rateLimit({
   }
 });
 
-// NOTE: couponAttemptLimiter is NOT defined here.
-// Coupon rate limiting is handled by the couponLimiter in app.js
-// which is applied globally to /api/coupons/redeem route.
-// The RATE_LIMIT_COUPON_* config values are kept for future use
-// if we want to make the app.js limiter configurable.
+/**
+ * Coupon redemption rate limiter
+ * Now configurable via admin interface
+ */
+const couponLimiter = rateLimit({
+  windowMs: DEFAULTS.RATE_LIMIT_COUPON_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_COUPON_MAX,
+  message: { error: 'Too many coupon redemption attempts, please try again later.', code: 'COUPON_RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `coupon:${req.user?.id || req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
 
 /**
  * API burst protection
@@ -173,6 +205,51 @@ const burstProtectionLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     return `burst:${req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
+
+/**
+ * Authentication rate limiter (login/signup)
+ * Configurable via admin interface
+ */
+const authLimiter = rateLimit({
+  windowMs: DEFAULTS.RATE_LIMIT_AUTH_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_AUTH_MAX,
+  message: { error: 'Too many authentication attempts, please try again later.', code: 'AUTH_RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `auth:${req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
+
+/**
+ * Gacha roll rate limiter
+ * Configurable via admin interface
+ */
+const rollLimiter = rateLimit({
+  windowMs: DEFAULTS.RATE_LIMIT_ROLL_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_ROLL_MAX,
+  message: { error: 'Too many rolls, please slow down.', code: 'ROLL_RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `roll:${req.user?.id || req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
+
+/**
+ * Fishing rate limiter
+ * Configurable via admin interface
+ */
+const fishingLimiter = rateLimit({
+  windowMs: DEFAULTS.RATE_LIMIT_FISHING_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_FISHING_MAX,
+  message: { error: 'Fishing too fast! Wait a moment.', code: 'FISHING_RATE_LIMITED' },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `fishing:${req.user?.id || req.deviceSignals?.ipHash || 'unknown'}`;
   }
 });
 
@@ -197,6 +274,10 @@ module.exports = {
   sensitiveActionLimiter,
   signupVelocityLimiter,
   burstProtectionLimiter,
+  couponLimiter,
+  authLimiter,
+  rollLimiter,
+  fishingLimiter,
   reloadConfig,
   getCurrentConfig
 };

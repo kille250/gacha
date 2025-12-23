@@ -732,6 +732,7 @@ module.exports = {
   // Lockout functions
   checkLockout,
   getRemainingAttempts,
+  getLockoutConfig,
   LOCKOUT_CONFIG,
   
   // Configuration (getCaptchaConfig for dynamic config, CAPTCHA_CONFIG for static defaults)

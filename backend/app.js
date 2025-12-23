@@ -3,7 +3,6 @@ const express = require('express');
 const http = require('http');
 const cors = require('cors');
 const helmet = require('helmet');
-const rateLimit = require('express-rate-limit');
 const sequelize = require('./config/db');
 const { initUploadDirs, UPLOAD_BASE, isProduction } = require('./config/upload');
 const schedule = require('node-schedule');
@@ -12,7 +11,11 @@ const { initMultiplayer } = require('./routes/fishingMultiplayer');
 const { collectDeviceSignals } = require('./middleware/deviceSignals');
 const { 
   signupVelocityLimiter, 
-  burstProtectionLimiter 
+  burstProtectionLimiter,
+  authLimiter,
+  rollLimiter,
+  fishingLimiter,
+  couponLimiter
 } = require('./middleware/rateLimiter');
 const { decayRiskScores } = require('./services/riskService');
 
@@ -191,43 +194,12 @@ app.use('/api/', burstProtectionLimiter);
 // ===========================================
 // RATE LIMITING (Only for specific sensitive routes)
 // ===========================================
-
-// Strict rate limit for authentication endpoints (login/signup only)
-const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 20, // 20 login/signup attempts per 15 minutes
-  message: { error: 'Too many authentication attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Rate limit for gacha rolls (prevent spam rolling)
-const rollLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 120, // 120 rolls per minute (very generous)
-  message: { error: 'Too many rolls, please slow down.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Rate limit for coupon redemption (prevent brute-force guessing)
-const couponLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 30, // 30 redemption attempts per 15 minutes
-  message: { error: 'Too many coupon redemption attempts, please try again later.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
-// Rate limit for fishing (prevent spam casting)
-const fishingLimiter = rateLimit({
-  windowMs: 1 * 60 * 1000, // 1 minute
-  max: 30, // 30 casts per minute
-  message: { error: 'Fishing too fast! Wait a moment.' },
-  standardHeaders: true,
-  legacyHeaders: false,
-});
-
+// NOTE: Rate limiters are now imported from middleware/rateLimiter.js
+// They use admin-configurable values from SecurityConfig service:
+//   - authLimiter: RATE_LIMIT_AUTH_WINDOW, RATE_LIMIT_AUTH_MAX
+//   - rollLimiter: RATE_LIMIT_ROLL_WINDOW, RATE_LIMIT_ROLL_MAX
+//   - couponLimiter: RATE_LIMIT_COUPON_WINDOW, RATE_LIMIT_COUPON_MAX
+//   - fishingLimiter: RATE_LIMIT_FISHING_WINDOW, RATE_LIMIT_FISHING_MAX
 // NO global rate limiter - only apply to specific sensitive routes
 
 // Serve static files from public folder
