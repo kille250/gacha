@@ -41,8 +41,8 @@ const Modal = styled.div`
   left: 50%;
   transform: translate(-50%, -50%);
   background: ${theme.colors.surface};
-  border: 1px solid ${theme.colors.border};
-  border-radius: ${theme.borderRadius.lg};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
   padding: 2rem;
   min-width: 320px;
   max-width: 420px;
@@ -57,7 +57,7 @@ const Modal = styled.div`
 `;
 
 const Title = styled.h2`
-  font-family: ${theme.fonts.heading};
+  font-family: ${theme.fonts.primary};
   font-size: ${theme.fontSizes.xl};
   color: ${theme.colors.text};
   margin-bottom: 0.5rem;
@@ -74,8 +74,8 @@ const Description = styled.p`
 
 const ChallengeBox = styled.div`
   background: ${theme.colors.backgroundSecondary};
-  border: 1px solid ${theme.colors.border};
-  border-radius: ${theme.borderRadius.md};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
   padding: 1.5rem;
   margin-bottom: 1.5rem;
   text-align: center;
@@ -93,8 +93,8 @@ const Input = styled.input`
   width: 100%;
   padding: 0.75rem 1rem;
   background: ${theme.colors.background};
-  border: 2px solid ${theme.colors.border};
-  border-radius: ${theme.borderRadius.md};
+  border: 2px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
   color: ${theme.colors.text};
   font-size: ${theme.fontSizes.lg};
   text-align: center;
@@ -118,7 +118,7 @@ const ButtonGroup = styled.div`
 const Button = styled.button`
   flex: 1;
   padding: 0.75rem 1rem;
-  border-radius: ${theme.borderRadius.md};
+  border-radius: ${theme.radius.md};
   font-weight: 600;
   font-size: ${theme.fontSizes.sm};
   transition: all 0.2s;
@@ -141,7 +141,7 @@ const PrimaryButton = styled(Button)`
 const SecondaryButton = styled(Button)`
   background: transparent;
   color: ${theme.colors.text};
-  border: 1px solid ${theme.colors.border};
+  border: 1px solid ${theme.colors.surfaceBorder};
   
   &:hover:not(:disabled) {
     background: ${theme.colors.backgroundSecondary};
@@ -151,10 +151,10 @@ const SecondaryButton = styled(Button)`
 const ErrorMessage = styled.div`
   background: rgba(239, 68, 68, 0.1);
   border: 1px solid rgba(239, 68, 68, 0.3);
-  border-radius: ${theme.borderRadius.md};
+  border-radius: ${theme.radius.md};
   padding: 0.75rem;
   margin-bottom: 1rem;
-  color: ${theme.colors.danger};
+  color: ${theme.colors.error};
   font-size: ${theme.fontSizes.sm};
   text-align: center;
 `;
@@ -172,7 +172,7 @@ const RecaptchaStatus = styled.div`
 const Spinner = styled.div`
   width: 16px;
   height: 16px;
-  border: 2px solid ${theme.colors.border};
+  border: 2px solid ${theme.colors.surfaceBorder};
   border-top-color: ${theme.colors.primary};
   border-radius: 50%;
   animation: spin 0.8s linear infinite;
