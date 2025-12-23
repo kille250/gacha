@@ -113,7 +113,13 @@ const corsOptions = {
   origin: validateCorsOrigin,
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'x-auth-token', 'Authorization']
+  allowedHeaders: [
+    'Content-Type', 
+    'x-auth-token', 
+    'Authorization',
+    'X-Device-Fingerprint',
+    'X-Device-Id'
+  ]
 };
 
 // ===========================================
