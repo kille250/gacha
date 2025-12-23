@@ -18,6 +18,7 @@ const {
   getAttemptKey
 } = require('../middleware/captcha');
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
+const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 
 // ADMIN: Get all coupons
 router.get('/admin', [auth, adminAuth], async (req, res) => {
@@ -199,8 +200,8 @@ router.delete('/admin/:id', [auth, adminAuth], async (req, res) => {
 });
 
 // USER: Redeem a coupon
-// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
-router.post('/redeem', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canRedeemCoupon'), captchaMiddleware('coupon_redeem')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, device binding verified, policy enforced, rate limited, CAPTCHA protected
+router.post('/redeem', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('coupon_redeem'), sensitiveActionLimiter, enforcePolicy('canRedeemCoupon'), captchaMiddleware('coupon_redeem')], async (req, res) => {
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
   

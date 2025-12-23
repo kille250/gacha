@@ -38,6 +38,8 @@ const AUDIT_EVENTS = {
   DEVICE_NEW: 'security.device.new',
   DEVICE_COLLISION: 'security.device.collision',
   DEVICE_MISMATCH: 'security.device.mismatch',
+  DEVICE_BINDING_BLOCKED: 'security.device.binding_blocked',
+  DEVICE_BINDING_CLEARED: 'security.device.binding_cleared',
   RISK_SCORE_CHANGE: 'security.risk.change',
   AUTO_RESTRICTION: 'security.auto_restriction',
   BAN_EVASION: 'security.ban_evasion',

@@ -7,6 +7,7 @@ const { User } = require('../models');
 const { validateUsername, validatePassword, validateEmail } = require('../utils/validation');
 const { checkSignupRisk, updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { recordDeviceFingerprint, recordIPHash } = require('../middleware/deviceSignals');
+const { deviceBindingMiddleware, getDeviceBindingStatus } = require('../middleware/deviceBinding');
 const { logSecurityEvent, logEvent, AUDIT_EVENTS, SEVERITY } = require('../services/auditService');
 const { enforcementMiddleware, getRestrictionStatus } = require('../middleware/enforcement');
 const { enforcePolicy } = require('../middleware/policies');
@@ -751,8 +752,8 @@ router.post('/google', async (req, res) => {
 });
 
 // POST /api/auth/google/relink - Link or relink Google account (authenticated users only)
-// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
-router.post('/google/relink', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, device binding verified, policy enforced, rate limited, CAPTCHA protected
+router.post('/google/relink', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('account_link'), sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
   const { credential } = req.body;
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
@@ -849,8 +850,8 @@ router.post('/google/relink', [auth, lockoutMiddleware(), enforcementMiddleware,
 });
 
 // POST /api/auth/google/unlink - Unlink Google account (authenticated users only)
-// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
-router.post('/google/unlink', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, device binding verified, policy enforced, rate limited, CAPTCHA protected
+router.post('/google/unlink', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('account_link'), sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
   
@@ -942,8 +943,8 @@ router.get('/me', auth, async (req, res) => {
 });
 
 // PUT /api/auth/profile/email - Add or update email
-// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
-router.put('/profile/email', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, device binding verified, policy enforced, rate limited, CAPTCHA protected
+router.put('/profile/email', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('account_link'), sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
   const { email } = req.body;
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);
@@ -1006,8 +1007,8 @@ router.put('/profile/email', [auth, lockoutMiddleware(), enforcementMiddleware, 
 });
 
 // PUT /api/auth/profile/password - Set or change password
-// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
-router.put('/profile/password', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('password_change')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, device binding verified, policy enforced, rate limited, CAPTCHA protected
+router.put('/profile/password', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('password_change'), sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('password_change')], async (req, res) => {
   const { currentPassword, newPassword } = req.body;
   // Attempt key is now set by lockoutMiddleware for convenience
   const attemptKey = req.attemptKey || getAttemptKey(req);

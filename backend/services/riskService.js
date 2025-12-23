@@ -59,6 +59,7 @@ const RISK_ACTIONS = {
 };
 const { Op } = require('sequelize');
 const { findFingerprintCollisions } = require('../middleware/deviceSignals');
+const { getDeviceBindingStatus } = require('../middleware/deviceBinding');
 const { logSecurityEvent, AUDIT_EVENTS } = require('./auditService');
 const { getRiskWeights } = require('./securityConfigService');
 
@@ -260,7 +261,20 @@ async function calculateRiskScore(userId, context = {}) {
   if (context.multiAccountSuspicion) {
     score += weights.multiAccountSuspicion;
   }
-  
+
+  // Device binding status (new/unknown device adds risk)
+  if (context.deviceFingerprint) {
+    try {
+      const deviceStatus = await getDeviceBindingStatus(userId, context.deviceFingerprint);
+      if (deviceStatus.riskContribution > 0) {
+        score += deviceStatus.riskContribution;
+      }
+    } catch (err) {
+      // Non-blocking: don't fail risk calculation if device binding check fails
+      console.error('[RiskService] Device binding status check failed:', err.message);
+    }
+  }
+
   // Clamp to 0-100
   return Math.max(0, Math.min(100, score));
 }

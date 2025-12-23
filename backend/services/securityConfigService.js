@@ -82,7 +82,16 @@ const DEFAULTS = {
   // Lockout Settings
   LOCKOUT_MAX_ATTEMPTS: 10,
   LOCKOUT_DURATION_MS: 900000,  // 15 minutes
-  LOCKOUT_WINDOW_MS: 900000     // 15 minutes
+  LOCKOUT_WINDOW_MS: 900000,    // 15 minutes
+
+  // Device Binding
+  DEVICE_BINDING_ENABLED: true,                    // Master toggle for device binding
+  DEVICE_BINDING_RECORD_ON_AUTH: true,             // Record device fingerprint on login/signup
+  DEVICE_BINDING_MAX_DEVICES: 10,                  // Max devices per user
+  DEVICE_BINDING_REQUIRE_FOR_SENSITIVE: false,     // Require known device for sensitive actions
+  DEVICE_BINDING_SENSITIVE_ACTIONS: 'password_change,account_link,trade,coupon_redeem',  // Actions requiring known device
+  DEVICE_BINDING_UNKNOWN_DEVICE_RISK: 15,          // Risk score addition for unknown device
+  DEVICE_BINDING_NEW_DEVICE_NOTIFY: true           // Log/notify on new device detection
 };
 
 /**
@@ -243,6 +252,23 @@ async function getLockoutConfig() {
 }
 
 /**
+ * Get device binding configuration
+ * @returns {Promise<Object>}
+ */
+async function getDeviceBindingConfig() {
+  const sensitiveActionsStr = await get('DEVICE_BINDING_SENSITIVE_ACTIONS', 'password_change,account_link,trade');
+  return {
+    enabled: await getBoolean('DEVICE_BINDING_ENABLED', true),
+    recordOnAuth: await getBoolean('DEVICE_BINDING_RECORD_ON_AUTH', true),
+    maxDevices: await getNumber('DEVICE_BINDING_MAX_DEVICES', 10),
+    requireForSensitive: await getBoolean('DEVICE_BINDING_REQUIRE_FOR_SENSITIVE', false),
+    sensitiveActions: sensitiveActionsStr.split(',').map(s => s.trim()).filter(Boolean),
+    unknownDeviceRisk: await getNumber('DEVICE_BINDING_UNKNOWN_DEVICE_RISK', 15),
+    newDeviceNotify: await getBoolean('DEVICE_BINDING_NEW_DEVICE_NOTIFY', true)
+  };
+}
+
+/**
  * Get risk score weights configuration
  * @returns {Promise<Object>}
  */
@@ -347,7 +373,7 @@ module.exports = {
   get,
   getNumber,
   getBoolean,
-  
+
   // Grouped getters
   getRiskThresholds,
   getRateLimitConfig,
@@ -355,13 +381,14 @@ module.exports = {
   getPolicyConfig,
   getShadowbanConfig,
   getLockoutConfig,
+  getDeviceBindingConfig,
   getRiskWeights,
   getAllSecurityConfig,
-  
+
   // Admin functions
   updateSecurityConfig,
   clearCache,
-  
+
   // Export defaults for reference
   DEFAULTS
 };
