@@ -1804,13 +1804,21 @@ router.post('/security/decay-risk-scores', auth, adminAuth, async (req, res) => 
 // GET /api/admin/security/risk-stats - Get risk score statistics
 router.get('/security/risk-stats', auth, adminAuth, async (req, res) => {
   try {
-    // First check if riskScore column exists
-    const tableInfo = await sequelize.getQueryInterface().describeTable('Users');
+    // Check if riskScore column exists (case-insensitive check for both SQLite and PostgreSQL)
+    let hasRiskScoreColumn = false;
+    try {
+      const tableInfo = await sequelize.getQueryInterface().describeTable('Users');
+      // Check for both camelCase and lowercase versions (PostgreSQL may lowercase)
+      hasRiskScoreColumn = !!(tableInfo.riskScore || tableInfo.riskscore);
+    } catch (describeErr) {
+      console.warn('Could not describe Users table:', describeErr.message);
+    }
     
-    if (!tableInfo.riskScore) {
+    if (!hasRiskScoreColumn) {
       // Column doesn't exist - return zeros with a note
+      const totalUsers = await User.count();
       return res.json({
-        total: await User.count(),
+        total: totalUsers,
         avgScore: 0,
         maxScore: 0,
         distribution: {
@@ -1819,19 +1827,24 @@ router.get('/security/risk-stats', auth, adminAuth, async (req, res) => {
           high: 0,
           critical: 0
         },
-        note: 'Risk scoring not yet enabled - run migrations'
+        note: 'Risk scoring not yet enabled - run migrations to add security fields'
       });
     }
+    
+    // Use dialect-aware quoting for the column name
+    const dialect = sequelize.getDialect();
+    const quote = dialect === 'postgres' ? '"' : '`';
+    const riskCol = `${quote}riskScore${quote}`;
     
     const stats = await User.findAll({
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'total'],
         [sequelize.fn('COALESCE', sequelize.fn('AVG', sequelize.col('riskScore')), 0), 'avgScore'],
         [sequelize.fn('COALESCE', sequelize.fn('MAX', sequelize.col('riskScore')), 0), 'maxScore'],
-        [sequelize.literal('SUM(CASE WHEN riskScore >= 30 THEN 1 ELSE 0 END)'), 'monitoring'],
-        [sequelize.literal('SUM(CASE WHEN riskScore >= 50 THEN 1 ELSE 0 END)'), 'elevated'],
-        [sequelize.literal('SUM(CASE WHEN riskScore >= 70 THEN 1 ELSE 0 END)'), 'high'],
-        [sequelize.literal('SUM(CASE WHEN riskScore >= 85 THEN 1 ELSE 0 END)'), 'critical']
+        [sequelize.literal(`SUM(CASE WHEN ${riskCol} >= 30 THEN 1 ELSE 0 END)`), 'monitoring'],
+        [sequelize.literal(`SUM(CASE WHEN ${riskCol} >= 50 THEN 1 ELSE 0 END)`), 'elevated'],
+        [sequelize.literal(`SUM(CASE WHEN ${riskCol} >= 70 THEN 1 ELSE 0 END)`), 'high'],
+        [sequelize.literal(`SUM(CASE WHEN ${riskCol} >= 85 THEN 1 ELSE 0 END)`), 'critical']
       ],
       raw: true
     });

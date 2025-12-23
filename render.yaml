@@ -16,7 +16,7 @@ services:
     region: frankfurt
     plan: free
     rootDir: backend
-    buildCommand: npm install
+    buildCommand: npm install && npx sequelize-cli db:migrate
     startCommand: node app.js
     envVars:
       - key: NODE_ENV
