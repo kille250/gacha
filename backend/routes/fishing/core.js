@@ -54,6 +54,7 @@ const CAST_COOLDOWN = FISHING_CONFIG.castCooldown;
 const CAST_COST = FISHING_CONFIG.castCost;
 const MIN_REACTION_TIME = FISHING_CONFIG.minReactionTime || 80;
 const LATENCY_BUFFER = FISHING_CONFIG.latencyBuffer || 200; // Compensate for network round-trip
+const CLIENT_ANIMATION_DELAY = 600; // Frontend casting animation duration (ms) - must match FishingPage.js setTimeout
 const MAX_ACTIVE_SESSIONS_PER_USER = FISHING_CONFIG.sessionLimits?.maxActiveSessionsPerUser || 3;
 
 // In-memory state (shared via module exports)
@@ -185,7 +186,9 @@ router.post('/cast', auth, async (req, res, next) => {
       waitTime,
       createdAt,
       pityTriggered,
-      fishAppearsAt: createdAt + waitTime,
+      // fishAppearsAt accounts for: server processing + client animation delay + wait time
+      // This matches the frontend's setTimeout(600ms) -> setTimeout(waitTime) sequence
+      fishAppearsAt: createdAt + CLIENT_ANIMATION_DELAY + waitTime,
       userId
     };
     
