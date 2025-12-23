@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { RarityProvider } from './context/RarityContext';
+import { RecaptchaProvider } from './context/RecaptchaContext';
 import styled, { createGlobalStyle } from 'styled-components';
 import { theme } from './styles/DesignSystem';
 import { initVisibilityHandler, enableCacheDebugging } from './cache';
@@ -40,6 +41,9 @@ if (process.env.NODE_ENV === 'development' || localStorage.getItem('CACHE_DEBUG'
 
 // Google OAuth Client ID from environment variable
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+
+// reCAPTCHA Site Key from environment variable
+const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
 
 // Smart redirect based on auth status
 const HomeRedirect = () => {
@@ -162,9 +166,10 @@ const GlobalStyle = createGlobalStyle`
 function App() {
   // Wrap with GoogleOAuthProvider only if client ID is configured
   const content = (
-    <AuthProvider>
-      <RarityProvider>
-      <Router>
+    <RecaptchaProvider siteKey={RECAPTCHA_SITE_KEY}>
+      <AuthProvider>
+        <RarityProvider>
+        <Router>
         <GlobalStyle />
         <AppContainer>
           <Routes>
@@ -256,9 +261,10 @@ function App() {
             <Route path="/" element={<HomeRedirect />} />
           </Routes>
         </AppContainer>
-      </Router>
-      </RarityProvider>
-    </AuthProvider>
+        </Router>
+        </RarityProvider>
+      </AuthProvider>
+    </RecaptchaProvider>
   );
 
   // Wrap with GoogleOAuthProvider if client ID is available

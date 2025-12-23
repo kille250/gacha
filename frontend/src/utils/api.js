@@ -135,6 +135,12 @@ api.interceptors.request.use(config => {
 // Auth error event for global handling (token expiry)
 export const AUTH_ERROR_EVENT = 'auth:error';
 
+// CAPTCHA required event for global handling
+export const CAPTCHA_REQUIRED_EVENT = 'captcha:required';
+export const CAPTCHA_HEADER = 'x-recaptcha-token';
+export const CAPTCHA_FALLBACK_TOKEN_HEADER = 'x-captcha-token';
+export const CAPTCHA_FALLBACK_ANSWER_HEADER = 'x-captcha-answer';
+
 // Response interceptor to cache successful responses and handle auth errors
 api.interceptors.response.use(
   (response) => {
@@ -159,11 +165,30 @@ api.interceptors.response.use(
       pendingRequests.delete(cacheKey);
     }
     
+    // Handle CAPTCHA requirements
+    if (error.response?.status === 403 && error.response?.data?.code === 'CAPTCHA_REQUIRED') {
+      // Dispatch event for global CAPTCHA handler
+      window.dispatchEvent(new CustomEvent(CAPTCHA_REQUIRED_EVENT, {
+        detail: {
+          ...error.response.data,
+          originalConfig: error.config,
+          retry: async (captchaHeaders) => {
+            const retryConfig = { ...error.config };
+            retryConfig.headers = { ...retryConfig.headers, ...captchaHeaders };
+            return api.request(retryConfig);
+          }
+        }
+      }));
+    }
+    
     // Handle auth errors globally (token expired, invalid, etc.)
     // Skip for auth endpoints to avoid redirect loops
     if (error.response?.status === 401 || error.response?.status === 403) {
       const isAuthEndpoint = error.config?.url?.includes('/auth/');
-      if (!isAuthEndpoint) {
+      const isCaptchaError = error.response?.data?.code === 'CAPTCHA_REQUIRED' || 
+                             error.response?.data?.code === 'CAPTCHA_FAILED';
+      
+      if (!isAuthEndpoint && !isCaptchaError) {
         // Dispatch custom event for AuthContext to handle
         window.dispatchEvent(new CustomEvent(AUTH_ERROR_EVENT, { 
           detail: { status: error.response.status, url: error.config?.url }
@@ -174,6 +199,40 @@ api.interceptors.response.use(
     return Promise.reject(error);
   }
 );
+
+/**
+ * Make a request with CAPTCHA token included
+ * Use this for sensitive actions that may require CAPTCHA
+ * 
+ * @param {Object} config - Axios request config
+ * @param {string} recaptchaToken - reCAPTCHA token from executeRecaptcha()
+ * @returns {Promise} - Axios response promise
+ */
+export const requestWithCaptcha = async (config, recaptchaToken) => {
+  const headers = { ...config.headers };
+  
+  if (recaptchaToken) {
+    headers[CAPTCHA_HEADER] = recaptchaToken;
+  }
+  
+  return api.request({ ...config, headers });
+};
+
+/**
+ * Make a request with fallback CAPTCHA (math challenge)
+ * 
+ * @param {Object} config - Axios request config
+ * @param {string} token - Challenge token ID
+ * @param {string} answer - User's answer to the challenge
+ * @returns {Promise} - Axios response promise
+ */
+export const requestWithFallbackCaptcha = async (config, token, answer) => {
+  const headers = { ...config.headers };
+  headers[CAPTCHA_FALLBACK_TOKEN_HEADER] = token;
+  headers[CAPTCHA_FALLBACK_ANSWER_HEADER] = answer;
+  
+  return api.request({ ...config, headers });
+};
 
 // ===========================================
 // CHARACTER API

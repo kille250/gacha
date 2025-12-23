@@ -65,6 +65,21 @@ The `render.yaml` blueprint automatically sets:
 - `JWT_SECRET` - Auto-generated secure secret
 - `REACT_APP_API_URL` - Backend URL for frontend
 
+### Optional Security Environment Variables
+
+These are optional but recommended for production:
+
+#### reCAPTCHA v3 (Bot Protection)
+Get your keys from [Google reCAPTCHA Admin](https://www.google.com/recaptcha/admin):
+- `RECAPTCHA_SECRET_KEY` - Backend secret key (required to enable reCAPTCHA)
+- `RECAPTCHA_SITE_KEY` - Frontend site key (backend env var, sent to frontend)
+- `REACT_APP_RECAPTCHA_SITE_KEY` - Frontend site key (build-time env var)
+
+After adding these, enable reCAPTCHA in Admin > Security > Configuration by setting `RECAPTCHA_ENABLED` to `true`.
+
+#### Google OAuth (Optional SSO)
+- `REACT_APP_GOOGLE_CLIENT_ID` - Google OAuth client ID for login
+
 ### Manual Deployment (Alternative)
 
 If you prefer manual setup:
@@ -99,6 +114,31 @@ If you prefer manual setup:
 - 🎟️ **Coupons** - Redeem codes for rewards
 - 👤 **User System** - Auth with JWT tokens
 - 🔧 **Admin Panel** - Manage banners, characters, coupons
+- 🔒 **Security System** - Risk scoring, CAPTCHA, rate limiting
+
+## Security Features
+
+The application includes a comprehensive security system:
+
+### Bot Protection (reCAPTCHA v3)
+- **Invisible verification** - No user interaction required for most requests
+- **Score-based detection** - Automatically blocks suspicious bots
+- **Action-specific thresholds** - Different sensitivity for trades vs. login
+- **Fallback challenges** - Math problems when reCAPTCHA unavailable
+
+### Risk Score System
+- **Automated scoring** - Detects suspicious patterns (multiple devices, banned account links)
+- **Configurable thresholds** - Admin-adjustable via Security Config panel
+- **Automatic enforcement** - Shadowbans, temporary bans at risk thresholds
+- **Manual override** - Admins can adjust or reset user risk scores
+
+### Admin Security Dashboard
+Access via Admin Panel > Security tab:
+- **Overview** - System-wide security metrics
+- **High-Risk Users** - Users flagged for suspicious activity
+- **Audit Log** - All security events with export
+- **Appeals** - Review user restriction appeals
+- **Configuration** - Adjust all security parameters at runtime
 
 ## Rarity Drop Rates
 
