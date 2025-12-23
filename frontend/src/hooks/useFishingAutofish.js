@@ -2,7 +2,7 @@
  * Fishing Autofish Hook
  * 
  * Handles the autofish loop with daily limits, in-flight protection,
- * and proper cleanup.
+ * and proper cleanup. Uses reducer pattern for state management.
  * 
  * USAGE:
  * const { isAutofishing, toggleAutofish, autofishLog, dailyStats } = useFishingAutofish({
@@ -13,10 +13,80 @@
  * });
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useReducer, useCallback, useRef, useEffect } from 'react';
 import { runAutofish, getFishingInfo, getFishingRank, getFishingChallenges } from '../actions/fishingActions';
 import { FISHING_TIMING, UI_CONSTANTS } from '../constants/fishingConstants';
 import { STALE_THRESHOLDS } from '../cache';
+
+// ===========================================
+// REDUCER STATE & ACTIONS
+// ===========================================
+
+const initialState = {
+  isAutofishing: false,
+  autofishLog: [],
+  dailyStats: null,
+  inFlight: false,
+};
+
+const AUTOFISH_ACTIONS = {
+  START: 'START',
+  STOP: 'STOP',
+  TOGGLE: 'TOGGLE',
+  SET_IN_FLIGHT: 'SET_IN_FLIGHT',
+  CLEAR_IN_FLIGHT: 'CLEAR_IN_FLIGHT',
+  ADD_LOG_ENTRY: 'ADD_LOG_ENTRY',
+  UPDATE_DAILY_STATS: 'UPDATE_DAILY_STATS',
+  CLEAR_LOG: 'CLEAR_LOG',
+};
+
+function autofishReducer(state, action) {
+  switch (action.type) {
+    case AUTOFISH_ACTIONS.START:
+      return { ...state, isAutofishing: true, autofishLog: [] };
+      
+    case AUTOFISH_ACTIONS.STOP:
+      return { ...state, isAutofishing: false };
+      
+    case AUTOFISH_ACTIONS.TOGGLE:
+      return { 
+        ...state, 
+        isAutofishing: !state.isAutofishing,
+        autofishLog: !state.isAutofishing ? [] : state.autofishLog,
+      };
+      
+    case AUTOFISH_ACTIONS.SET_IN_FLIGHT:
+      return { ...state, inFlight: true };
+      
+    case AUTOFISH_ACTIONS.CLEAR_IN_FLIGHT:
+      return { ...state, inFlight: false };
+      
+    case AUTOFISH_ACTIONS.ADD_LOG_ENTRY: {
+      const { entry, maxBubbles } = action;
+      const now = Date.now();
+      const filteredLog = state.autofishLog.filter(
+        e => now - e.timestamp < UI_CONSTANTS.autofishBubbleLifetime
+      );
+      return {
+        ...state,
+        autofishLog: [entry, ...filteredLog].slice(0, maxBubbles),
+      };
+    }
+      
+    case AUTOFISH_ACTIONS.UPDATE_DAILY_STATS:
+      return { ...state, dailyStats: action.stats };
+      
+    case AUTOFISH_ACTIONS.CLEAR_LOG:
+      return { ...state, autofishLog: [] };
+      
+    default:
+      return state;
+  }
+}
+
+// ===========================================
+// HOOK
+// ===========================================
 
 /**
  * Hook for managing autofish functionality
@@ -26,7 +96,7 @@ import { STALE_THRESHOLDS } from '../cache';
  * @param {Function} options.onChallengeComplete - Callback when challenge completes
  * @param {Function} options.onError - Error handler callback
  * @param {Function} options.onDailyLimitReached - Callback when daily limit reached
- * @param {Function} options.onDataRefresh - Callback with refreshed data (fishInfo, rankData, challenges)
+ * @param {Function} options.onDataRefresh - Callback with refreshed data
  * @returns {Object} Autofish state and controls
  */
 export function useFishingAutofish({
@@ -37,10 +107,7 @@ export function useFishingAutofish({
   onDailyLimitReached,
   onDataRefresh,
 }) {
-  const [isAutofishing, setIsAutofishing] = useState(false);
-  const [autofishLog, setAutofishLog] = useState([]);
-  const [dailyStats, setDailyStats] = useState(null);
-  const [inFlight, setInFlight] = useState(false);
+  const [state, dispatch] = useReducer(autofishReducer, initialState);
   
   // Refs for interval and timeout management
   const intervalRef = useRef(null);
@@ -54,19 +121,18 @@ export function useFishingAutofish({
   const processAutofish = useCallback(async () => {
     // Skip if previous request still in flight
     if (inFlightRef.current) {
-      console.debug('[Autofish] Skipping - previous request in flight');
       return;
     }
     
     inFlightRef.current = true;
-    setInFlight(true);
+    dispatch({ type: AUTOFISH_ACTIONS.SET_IN_FLIGHT });
     
     // Set failsafe timeout
     failsafeTimeoutRef.current = setTimeout(() => {
       if (inFlightRef.current) {
-        console.warn('[Autofish] Request timeout - resetting in-flight guard');
+        console.warn('[Autofish] Request timeout - resetting guard');
         inFlightRef.current = false;
-        setInFlight(false);
+        dispatch({ type: AUTOFISH_ACTIONS.CLEAR_IN_FLIGHT });
       }
     }, FISHING_TIMING.autofishFailsafeTimeout);
     
@@ -75,35 +141,35 @@ export function useFishingAutofish({
       
       // Update daily stats from response
       if (result.daily) {
-        setDailyStats({
-          used: result.daily.used,
-          limit: result.daily.limit,
-          remaining: result.daily.remaining,
+        dispatch({
+          type: AUTOFISH_ACTIONS.UPDATE_DAILY_STATS,
+          stats: {
+            used: result.daily.used,
+            limit: result.daily.limit,
+            remaining: result.daily.remaining,
+          },
         });
         
         // Auto-stop if limit reached
         if (result.daily.remaining <= 0) {
-          setIsAutofishing(false);
+          dispatch({ type: AUTOFISH_ACTIONS.STOP });
           onDailyLimitReached?.();
         }
       }
       
       // Add to log
-      const now = Date.now();
       const maxBubbles = window.innerWidth < 768 
         ? UI_CONSTANTS.maxAutofishBubblesMobile 
         : UI_CONSTANTS.maxAutofishBubblesDesktop;
       
-      setAutofishLog(prev => {
-        const newEntry = {
+      dispatch({
+        type: AUTOFISH_ACTIONS.ADD_LOG_ENTRY,
+        entry: {
           fish: result.fish,
           success: result.success,
-          timestamp: now,
-        };
-        return [
-          newEntry,
-          ...prev.filter(e => now - e.timestamp < UI_CONSTANTS.autofishBubbleLifetime)
-        ].slice(0, maxBubbles);
+          timestamp: Date.now(),
+        },
+        maxBubbles,
       });
       
       // Notify parent
@@ -133,10 +199,10 @@ export function useFishingAutofish({
       return result;
     } catch (err) {
       if (err.response?.status === 429 && err.response?.data?.error === 'Daily limit reached') {
-        setIsAutofishing(false);
+        dispatch({ type: AUTOFISH_ACTIONS.STOP });
         onDailyLimitReached?.();
       } else if (err.response?.status === 403) {
-        setIsAutofishing(false);
+        dispatch({ type: AUTOFISH_ACTIONS.STOP });
         onError?.(err.response?.data?.message || 'Autofish error');
       }
     } finally {
@@ -146,7 +212,7 @@ export function useFishingAutofish({
         failsafeTimeoutRef.current = null;
       }
       inFlightRef.current = false;
-      setInFlight(false);
+      dispatch({ type: AUTOFISH_ACTIONS.CLEAR_IN_FLIGHT });
     }
   }, [setUser, onResult, onChallengeComplete, onError, onDailyLimitReached, onDataRefresh]);
   
@@ -155,25 +221,31 @@ export function useFishingAutofish({
    */
   const toggleAutofish = useCallback(() => {
     // Check if daily limit already reached
-    if (dailyStats && dailyStats.remaining <= 0) {
+    if (state.dailyStats && state.dailyStats.remaining <= 0) {
       onDailyLimitReached?.();
       return;
     }
     
-    setIsAutofishing(prev => !prev);
-    setAutofishLog([]);
-  }, [dailyStats, onDailyLimitReached]);
+    dispatch({ type: AUTOFISH_ACTIONS.TOGGLE });
+  }, [state.dailyStats, onDailyLimitReached]);
   
   /**
    * Stop autofish
    */
   const stopAutofish = useCallback(() => {
-    setIsAutofishing(false);
+    dispatch({ type: AUTOFISH_ACTIONS.STOP });
+  }, []);
+  
+  /**
+   * Update daily stats (called from parent when data is fetched)
+   */
+  const updateDailyStats = useCallback((stats) => {
+    dispatch({ type: AUTOFISH_ACTIONS.UPDATE_DAILY_STATS, stats });
   }, []);
   
   // Autofish interval effect
   useEffect(() => {
-    if (!isAutofishing) {
+    if (!state.isAutofishing) {
       lastRefreshRef.current = Date.now();
       return;
     }
@@ -190,27 +262,18 @@ export function useFishingAutofish({
         failsafeTimeoutRef.current = null;
       }
       inFlightRef.current = false;
-      setInFlight(false);
     };
-  }, [isAutofishing, processAutofish]);
-  
-  /**
-   * Update daily stats (called from parent when data is fetched)
-   */
-  const updateDailyStats = useCallback((stats) => {
-    setDailyStats(stats);
-  }, []);
+  }, [state.isAutofishing, processAutofish]);
   
   return {
-    isAutofishing,
+    isAutofishing: state.isAutofishing,
     toggleAutofish,
     stopAutofish,
-    autofishLog,
-    dailyStats,
+    autofishLog: state.autofishLog,
+    dailyStats: state.dailyStats,
     updateDailyStats,
-    inFlight,
+    inFlight: state.inFlight,
   };
 }
 
 export default useFishingAutofish;
-

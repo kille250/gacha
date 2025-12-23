@@ -4,44 +4,121 @@
  * Centralizes all fishing game state transitions into an explicit state machine.
  * This replaces scattered setState calls with a single dispatch mechanism.
  * 
- * STATES:
- * - walking: Player can move and cast
- * - casting: Animation playing after cast
- * - waiting: Waiting for fish to bite
- * - fish_appeared: Fish is available to catch (time-limited)
- * - catching: API call in progress
- * - success: Showing successful catch result
- * - failure: Showing failed catch result
+ * STATE DIAGRAM:
  * 
- * USAGE:
- * const { state, dispatch, canCast, canCatch } = useFishingState();
- * dispatch({ type: 'CAST_STARTED', sessionId, waitTime, missTimeout });
+ *   ┌─────────────────────────────────────────────────────────────┐
+ *   │                                                             │
+ *   │  ┌─────────┐    CAST_STARTED    ┌─────────┐                │
+ *   │  │ WALKING │ ─────────────────► │ CASTING │                │
+ *   │  └─────────┘                    └────┬────┘                │
+ *   │       ▲                              │                      │
+ *   │       │                   CAST_ANIMATION_COMPLETE           │
+ *   │       │                              │                      │
+ *   │       │                              ▼                      │
+ *   │       │                        ┌─────────┐                  │
+ *   │  RESULT_DISMISSED              │ WAITING │                  │
+ *   │       │                        └────┬────┘                  │
+ *   │       │                             │                       │
+ *   │       │                      FISH_APPEARED                  │
+ *   │       │                             │                       │
+ *   │       │                             ▼                       │
+ *   │  ┌────┴────┐                ┌──────────────┐               │
+ *   │  │ SUCCESS │◄───────────────│ FISH_APPEARED │               │
+ *   │  └─────────┘  CATCH_SUCCESS └───────┬──────┘               │
+ *   │       ▲                             │                       │
+ *   │       │                    CATCH_STARTED /                  │
+ *   │       │                    MISS_TIMEOUT                     │
+ *   │       │                             │                       │
+ *   │       │                             ▼                       │
+ *   │       │                       ┌──────────┐                  │
+ *   │       └───────────────────────│ CATCHING │                  │
+ *   │                               └────┬─────┘                  │
+ *   │  ┌─────────┐                       │                       │
+ *   │  │ FAILURE │◄──────────────────────┘                       │
+ *   │  └────┬────┘    CATCH_FAILURE                              │
+ *   │       │                                                     │
+ *   │       └──────── RESULT_DISMISSED ───────────────────────────┘
+ *   │                                                             │
+ *   └─────────────────────────────────────────────────────────────┘
+ * 
+ * @module useFishingState
  */
 
 import { useReducer, useCallback, useMemo } from 'react';
 import { GAME_STATES } from '../constants/fishingConstants';
 
 // ===========================================
+// TYPE DEFINITIONS (JSDoc)
+// ===========================================
+
+/**
+ * @typedef {Object} FishResult
+ * @property {string} id - Fish identifier
+ * @property {string} name - Fish display name
+ * @property {string} emoji - Fish emoji
+ * @property {string} rarity - Rarity level
+ */
+
+/**
+ * @typedef {Object} CatchResult
+ * @property {boolean} success - Whether catch was successful
+ * @property {FishResult} fish - The fish that was caught/missed
+ * @property {string} [catchQuality] - Quality of catch (perfect, good, ok)
+ * @property {number} [fishQuantity] - Number of fish caught
+ * @property {number} [reactionTime] - Player reaction time in ms
+ * @property {number} [streak] - Current catch streak
+ * @property {Object} [streakBonus] - Streak bonus info
+ * @property {boolean} [pityTriggered] - Whether pity system triggered
+ * @property {Array} [challengesCompleted] - Completed challenges
+ * @property {number} [timingWindow] - Allowed timing window
+ * @property {number} [missStreak] - Current miss streak
+ * @property {number} [mercyBonus] - Mercy timer bonus
+ * @property {string} [message] - Result message
+ */
+
+/**
+ * @typedef {Object} FishingState
+ * @property {string} type - Current game state from GAME_STATES
+ * @property {string|null} sessionId - Active fishing session ID
+ * @property {number|null} waitTime - Wait time until fish appears
+ * @property {number|null} missTimeout - Time window to catch fish
+ * @property {number|null} castStartTime - Timestamp when cast started
+ * @property {number|null} fishAppearedTime - Timestamp when fish appeared
+ * @property {CatchResult|null} lastResult - Last catch/miss result
+ * @property {boolean} pityTriggered - Whether pity triggered on this cast
+ * @property {number|null} mercyBonus - Mercy bonus for next cast
+ */
+
+/**
+ * @typedef {Object} FishingStateHook
+ * @property {FishingState} state - Current state object
+ * @property {Function} dispatch - Raw dispatch function
+ * @property {Object} actions - Action creator functions
+ * @property {boolean} canCast - Whether player can start casting
+ * @property {boolean} canCatch - Whether player can attempt catch
+ * @property {boolean} isFishing - Whether fishing is active
+ * @property {boolean} isShowingResult - Whether result is displayed
+ * @property {boolean} showBiteAlert - Whether fish appeared alert shows
+ * @property {boolean} canMove - Whether player can move
+ * @property {Function} getReactionTime - Get current reaction time
+ * @property {string} gameState - Current game state type
+ * @property {string|null} sessionId - Current session ID
+ * @property {CatchResult|null} lastResult - Last result data
+ */
+
+// ===========================================
 // INITIAL STATE
 // ===========================================
 
+/** @type {FishingState} */
 const initialState = {
-  // Current game state
   type: GAME_STATES.WALKING,
-  
-  // Session data (set during fishing)
   sessionId: null,
   waitTime: null,
   missTimeout: null,
-  
-  // Timing data
   castStartTime: null,
   fishAppearedTime: null,
-  
-  // Result data
   lastResult: null,
-  
-  // Additional context
   pityTriggered: false,
   mercyBonus: null,
 };
@@ -50,25 +127,21 @@ const initialState = {
 // ACTION TYPES
 // ===========================================
 
+/**
+ * Action types for the fishing state machine
+ * @readonly
+ * @enum {string}
+ */
 export const FISHING_ACTIONS = {
-  // Cast flow
   CAST_STARTED: 'CAST_STARTED',
   CAST_ANIMATION_COMPLETE: 'CAST_ANIMATION_COMPLETE',
   FISH_APPEARED: 'FISH_APPEARED',
-  
-  // Catch flow
   CATCH_STARTED: 'CATCH_STARTED',
   CATCH_SUCCESS: 'CATCH_SUCCESS',
   CATCH_FAILURE: 'CATCH_FAILURE',
-  
-  // Miss flow
   MISS_TIMEOUT: 'MISS_TIMEOUT',
-  
-  // Reset
   RESULT_DISMISSED: 'RESULT_DISMISSED',
   RESET: 'RESET',
-  
-  // Error handling
   CAST_FAILED: 'CAST_FAILED',
 };
 
@@ -76,15 +149,16 @@ export const FISHING_ACTIONS = {
 // REDUCER
 // ===========================================
 
+/**
+ * State machine reducer for fishing game
+ * @param {FishingState} state - Current state
+ * @param {Object} action - Dispatched action
+ * @returns {FishingState} New state
+ */
 function fishingReducer(state, action) {
   switch (action.type) {
-    // ===== CAST FLOW =====
     case FISHING_ACTIONS.CAST_STARTED:
-      // Only valid from walking state
-      if (state.type !== GAME_STATES.WALKING) {
-        console.warn(`[FishingState] Invalid transition: ${state.type} -> CAST_STARTED`);
-        return state;
-      }
+      if (state.type !== GAME_STATES.WALKING) return state;
       return {
         ...state,
         type: GAME_STATES.CASTING,
@@ -98,42 +172,23 @@ function fishingReducer(state, action) {
       };
     
     case FISHING_ACTIONS.CAST_ANIMATION_COMPLETE:
-      // Only valid from casting state
-      if (state.type !== GAME_STATES.CASTING) {
-        return state;
-      }
-      return {
-        ...state,
-        type: GAME_STATES.WAITING,
-      };
+      if (state.type !== GAME_STATES.CASTING) return state;
+      return { ...state, type: GAME_STATES.WAITING };
     
     case FISHING_ACTIONS.FISH_APPEARED:
-      // Only valid from waiting state
-      if (state.type !== GAME_STATES.WAITING) {
-        return state;
-      }
+      if (state.type !== GAME_STATES.WAITING) return state;
       return {
         ...state,
         type: GAME_STATES.FISH_APPEARED,
         fishAppearedTime: Date.now(),
       };
     
-    // ===== CATCH FLOW =====
     case FISHING_ACTIONS.CATCH_STARTED:
-      // Only valid from fish_appeared state
-      if (state.type !== GAME_STATES.FISH_APPEARED) {
-        return state;
-      }
-      return {
-        ...state,
-        type: GAME_STATES.CATCHING,
-      };
+      if (state.type !== GAME_STATES.FISH_APPEARED) return state;
+      return { ...state, type: GAME_STATES.CATCHING };
     
     case FISHING_ACTIONS.CATCH_SUCCESS:
-      // Valid from catching state
-      if (state.type !== GAME_STATES.CATCHING) {
-        return state;
-      }
+      if (state.type !== GAME_STATES.CATCHING) return state;
       return {
         ...state,
         type: GAME_STATES.SUCCESS,
@@ -151,10 +206,7 @@ function fishingReducer(state, action) {
       };
     
     case FISHING_ACTIONS.CATCH_FAILURE:
-      // Valid from catching state
-      if (state.type !== GAME_STATES.CATCHING) {
-        return state;
-      }
+      if (state.type !== GAME_STATES.CATCHING) return state;
       return {
         ...state,
         type: GAME_STATES.FAILURE,
@@ -169,21 +221,11 @@ function fishingReducer(state, action) {
         },
       };
     
-    // ===== MISS FLOW =====
     case FISHING_ACTIONS.MISS_TIMEOUT:
-      // Only valid from fish_appeared state
-      if (state.type !== GAME_STATES.FISH_APPEARED) {
-        return state;
-      }
-      // Transition to catching (miss is processed by catch endpoint)
-      return {
-        ...state,
-        type: GAME_STATES.CATCHING,
-      };
+      if (state.type !== GAME_STATES.FISH_APPEARED) return state;
+      return { ...state, type: GAME_STATES.CATCHING };
     
-    // ===== RESET =====
     case FISHING_ACTIONS.RESULT_DISMISSED:
-      // Only valid from success or failure state
       if (state.type !== GAME_STATES.SUCCESS && state.type !== GAME_STATES.FAILURE) {
         return state;
       }
@@ -197,17 +239,12 @@ function fishingReducer(state, action) {
         fishAppearedTime: null,
         pityTriggered: false,
         mercyBonus: null,
-        // Keep lastResult for UI reference
       };
     
     case FISHING_ACTIONS.RESET:
-      return {
-        ...initialState,
-        lastResult: state.lastResult, // Preserve for display
-      };
+      return { ...initialState, lastResult: state.lastResult };
     
     case FISHING_ACTIONS.CAST_FAILED:
-      // Reset to walking on cast failure
       return {
         ...state,
         type: GAME_STATES.WALKING,
@@ -218,7 +255,6 @@ function fishingReducer(state, action) {
       };
     
     default:
-      console.warn(`[FishingState] Unknown action: ${action.type}`);
       return state;
   }
 }
@@ -229,32 +265,75 @@ function fishingReducer(state, action) {
 
 /**
  * Hook for managing fishing game state with explicit state machine
- * @returns {Object} State and dispatch functions
+ * @returns {FishingStateHook} State and dispatch functions
  */
 export function useFishingState() {
   const [state, dispatch] = useReducer(fishingReducer, initialState);
   
-  // Derived state: can player cast?
-  const canCast = useMemo(() => {
-    return state.type === GAME_STATES.WALKING;
-  }, [state.type]);
+  // ===========================================
+  // DERIVED STATE
+  // ===========================================
   
-  // Derived state: can player attempt catch?
-  const canCatch = useMemo(() => {
-    return state.type === GAME_STATES.FISH_APPEARED && state.sessionId;
-  }, [state.type, state.sessionId]);
+  const canCast = useMemo(() => state.type === GAME_STATES.WALKING, [state.type]);
+  const canCatch = useMemo(() => state.type === GAME_STATES.FISH_APPEARED && state.sessionId, [state.type, state.sessionId]);
+  const isFishing = useMemo(() => state.type !== GAME_STATES.WALKING, [state.type]);
+  const isShowingResult = useMemo(() => state.type === GAME_STATES.SUCCESS || state.type === GAME_STATES.FAILURE, [state.type]);
+  const showBiteAlert = useMemo(() => state.type === GAME_STATES.FISH_APPEARED, [state.type]);
+  const canMove = useMemo(() => state.type === GAME_STATES.WALKING, [state.type]);
   
-  // Derived state: is fishing active?
-  const isFishing = useMemo(() => {
-    return state.type !== GAME_STATES.WALKING;
-  }, [state.type]);
+  // ===========================================
+  // ACTION CREATORS
+  // ===========================================
   
-  // Derived state: is showing result?
-  const isShowingResult = useMemo(() => {
-    return state.type === GAME_STATES.SUCCESS || state.type === GAME_STATES.FAILURE;
-  }, [state.type]);
+  const actions = useMemo(() => ({
+    startCast: ({ sessionId, waitTime, missTimeout, pityTriggered, mercyBonus }) => 
+      dispatch({
+        type: FISHING_ACTIONS.CAST_STARTED,
+        sessionId,
+        waitTime,
+        missTimeout,
+        pityTriggered,
+        mercyBonus,
+      }),
+    
+    castAnimationComplete: () => dispatch({ type: FISHING_ACTIONS.CAST_ANIMATION_COMPLETE }),
+    fishAppeared: () => dispatch({ type: FISHING_ACTIONS.FISH_APPEARED }),
+    catchStarted: () => dispatch({ type: FISHING_ACTIONS.CATCH_STARTED }),
+    
+    catchSuccess: ({ fish, catchQuality, fishQuantity, reactionTime, streak, streakBonus, pityTriggered, challengesCompleted }) => 
+      dispatch({
+        type: FISHING_ACTIONS.CATCH_SUCCESS,
+        fish,
+        catchQuality,
+        fishQuantity,
+        reactionTime,
+        streak,
+        streakBonus,
+        pityTriggered,
+        challengesCompleted,
+      }),
+    
+    catchFailure: ({ fish, reactionTime, timingWindow, missStreak, mercyBonus, message }) => 
+      dispatch({
+        type: FISHING_ACTIONS.CATCH_FAILURE,
+        fish,
+        reactionTime,
+        timingWindow,
+        missStreak,
+        mercyBonus,
+        message,
+      }),
+    
+    missTimeout: () => dispatch({ type: FISHING_ACTIONS.MISS_TIMEOUT }),
+    resultDismissed: () => dispatch({ type: FISHING_ACTIONS.RESULT_DISMISSED }),
+    reset: () => dispatch({ type: FISHING_ACTIONS.RESET }),
+    castFailed: () => dispatch({ type: FISHING_ACTIONS.CAST_FAILED }),
+  }), []);
   
-  // Helper to get reaction time
+  // ===========================================
+  // HELPERS
+  // ===========================================
+  
   const getReactionTime = useCallback(() => {
     if (!state.fishAppearedTime) return 0;
     return Date.now() - state.fishAppearedTime;
@@ -263,13 +342,14 @@ export function useFishingState() {
   return {
     state,
     dispatch,
+    actions,
     canCast,
     canCatch,
     isFishing,
     isShowingResult,
+    showBiteAlert,
+    canMove,
     getReactionTime,
-    
-    // Expose state type for backward compatibility
     gameState: state.type,
     sessionId: state.sessionId,
     lastResult: state.lastResult,
@@ -277,4 +357,3 @@ export function useFishingState() {
 }
 
 export default useFishingState;
-

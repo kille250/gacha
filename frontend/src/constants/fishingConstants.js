@@ -2,36 +2,81 @@
  * Fishing Game Constants
  * 
  * Centralized constants for the fishing minigame.
- * These should match backend values in config/fishing.js
  * 
- * NOTE: Server sends timing values in API responses (waitTime, missTimeout).
- * These constants are for client-only timing that can't come from server.
+ * ARCHITECTURE NOTES:
+ * - Server sends dynamic timing values in API responses (waitTime, missTimeout)
+ * - These constants are for client-only timing that must be consistent
+ * - Backend config is in: config/fishing.js, routes/fishing/core.js
+ * 
+ * @see backend/config/fishing.js for server-side configuration
  */
 
 // ===========================================
-// TIMING CONSTANTS (client-side only)
+// TIMING CONSTANTS
 // ===========================================
 
 export const FISHING_TIMING = {
-  // Animation delay before transitioning from CASTING to WAITING
-  // Must match backend CLIENT_ANIMATION_DELAY in routes/fishing/core.js
+  /**
+   * Duration of cast animation before transitioning CASTING → WAITING
+   * This gives visual feedback that the line is being cast before waiting for fish.
+   * 
+   * MUST match backend CLIENT_ANIMATION_DELAY in routes/fishing/core.js
+   * If changed, update both frontend and backend simultaneously.
+   * @type {number} milliseconds
+   */
   castAnimationDelay: 600,
   
-  // How long to display success/failure result popup
+  /**
+   * How long to display success/failure result popup before auto-dismissing.
+   * UX tradeoff: Long enough to read fish name & stats, short enough to not block gameplay.
+   * 
+   * User can click to dismiss early. This is the auto-dismiss fallback.
+   * @type {number} milliseconds
+   */
   resultDisplayDuration: 2000,
   
-  // Autofish interval (slightly higher than backend to account for latency)
-  // Backend: 6000ms, Frontend: 6500ms
+  /**
+   * Interval between autofish attempts.
+   * Set slightly higher than backend minimum (6000ms) to account for network latency
+   * and prevent rate limiting issues.
+   * 
+   * Backend minimum: 6000ms (config/fishing.js)
+   * Frontend buffer: +500ms for safety
+   * @type {number} milliseconds
+   */
   autofishInterval: 6500,
   
-  // Failsafe timeout for stuck autofish requests
+  /**
+   * Failsafe timeout for stuck autofish requests.
+   * If a request takes longer than this, reset in-flight guard to prevent deadlock.
+   * This handles edge cases like network timeouts or server issues.
+   * @type {number} milliseconds
+   */
   autofishFailsafeTimeout: 30000,
   
-  // WebSocket heartbeat interval
+  /**
+   * WebSocket heartbeat interval for multiplayer connection.
+   * Keeps the connection alive and helps detect disconnections.
+   * Server timeout should be slightly longer than this value.
+   * @type {number} milliseconds
+   */
   heartbeatInterval: 30000,
   
-  // Mode conflict window (how long before mode is considered inactive)
+  /**
+   * Mode conflict detection window.
+   * How long before a fishing mode (manual/autofish) is considered inactive.
+   * Used to prevent conflicts between browser tabs or sessions.
+   * @type {number} milliseconds
+   */
   modeConflictWindow: 15000,
+  
+  /**
+   * Day/night cycle duration per period.
+   * Visual-only effect for ambiance. Each time period (dawn, day, dusk, night)
+   * lasts this long before transitioning to the next.
+   * @type {number} milliseconds (90 seconds = 1.5 minutes per period)
+   */
+  dayNightCycleDuration: 90000,
 };
 
 // ===========================================

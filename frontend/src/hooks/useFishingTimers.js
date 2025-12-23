@@ -5,9 +5,11 @@
  * All timers are automatically cleaned up on unmount.
  * 
  * USAGE:
+ * import { useFishingTimers, TIMER_IDS } from './useFishingTimers';
+ * 
  * const timers = useFishingTimers();
- * timers.setTimer('fishBite', () => dispatch({ type: 'FISH_APPEARED' }), waitTime);
- * timers.clearTimer('fishBite');
+ * timers.setTimer(TIMER_IDS.FISH_BITE, () => dispatch({ type: 'FISH_APPEARED' }), waitTime);
+ * timers.clearTimer(TIMER_IDS.FISH_BITE);
  * timers.clearAll();
  */
 

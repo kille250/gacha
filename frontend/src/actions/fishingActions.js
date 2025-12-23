@@ -41,17 +41,13 @@ export const executeFishTrade = async (tradeId, quantity, setUser) => {
  * Catch a fish with proper cache invalidation.
  * 
  * @param {string} sessionId - The fishing session ID
- * @param {number} [reactionTime] - Reaction time in ms (optional for miss)
+ * @param {number} reactionTime - Reaction time in ms
  * @param {Function} setUser - React state setter for user
  * @returns {Promise<Object>} Catch result from API
  * @throws {Error} If catch fails
  */
 export const catchFish = async (sessionId, reactionTime, setUser) => {
-  const payload = reactionTime !== undefined 
-    ? { sessionId, reactionTime } 
-    : { sessionId };
-  
-  const response = await api.post('/fishing/catch', payload);
+  const response = await api.post('/fishing/catch', { sessionId, reactionTime });
   const result = response.data;
   
   if (result.success) {
@@ -61,6 +57,25 @@ export const catchFish = async (sessionId, reactionTime, setUser) => {
     // Invalidate fishing caches
     invalidateFor(CACHE_ACTIONS.FISHING_CATCH);
   }
+  
+  return result;
+};
+
+/**
+ * Report a missed catch (player failed to react in time).
+ * Explicit endpoint for clear API contract instead of implicit undefined reactionTime.
+ * 
+ * @param {string} sessionId - The fishing session ID
+ * @param {Function} setUser - React state setter for user
+ * @returns {Promise<Object>} Miss result from API
+ * @throws {Error} If report fails
+ */
+export const reportMiss = async (sessionId, setUser) => {
+  const response = await api.post('/fishing/catch', { sessionId, missed: true });
+  const result = response.data;
+  
+  // Invalidate fishing caches (miss affects stats)
+  invalidateFor(CACHE_ACTIONS.FISHING_CATCH);
   
   return result;
 };
@@ -258,6 +273,15 @@ export const getFishingPrestige = async () => {
  */
 export const getFishingLeaderboard = async () => {
   const response = await api.get('/fishing/leaderboard');
+  return response.data;
+};
+
+/**
+ * Fetch fishing challenges
+ * @returns {Promise<Object>} Challenges data from API
+ */
+export const getFishingChallenges = async () => {
+  const response = await api.get('/fishing/challenges');
   return response.data;
 };
 

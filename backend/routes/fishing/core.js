@@ -62,6 +62,58 @@ const castCooldowns = new Map();
 const activeSessions = new Map();
 const userFishingMode = new Map();
 
+// ===========================================
+// SESSION CLEANUP
+// ===========================================
+
+/**
+ * Maximum session age before automatic cleanup.
+ * Sessions older than this are considered orphaned (network failure, tab closed, etc.)
+ */
+const SESSION_MAX_AGE_MS = 60000; // 1 minute
+
+/**
+ * Cleanup interval for orphaned sessions
+ */
+const SESSION_CLEANUP_INTERVAL_MS = 30000; // 30 seconds
+
+/**
+ * Periodic cleanup of orphaned sessions.
+ * Handles edge cases like:
+ * - Player closes browser tab without completing catch
+ * - Network disconnection during fishing
+ * - Server restart while sessions were active
+ */
+setInterval(() => {
+  const now = Date.now();
+  let cleanedCount = 0;
+  
+  for (const [sessionId, session] of activeSessions.entries()) {
+    if (now - session.createdAt > SESSION_MAX_AGE_MS) {
+      activeSessions.delete(sessionId);
+      cleanedCount++;
+    }
+  }
+  
+  // Also clean old cooldowns (older than 1 minute)
+  for (const [userId, timestamp] of castCooldowns.entries()) {
+    if (now - timestamp > SESSION_MAX_AGE_MS) {
+      castCooldowns.delete(userId);
+    }
+  }
+  
+  // Clean old mode entries (older than 30 seconds)
+  for (const [userId, modeData] of userFishingMode.entries()) {
+    if (now - modeData.lastActivity > 30000) {
+      userFishingMode.delete(userId);
+    }
+  }
+  
+  if (cleanedCount > 0) {
+    console.log(`[Fishing] Cleaned ${cleanedCount} orphaned sessions`);
+  }
+}, SESSION_CLEANUP_INTERVAL_MS);
+
 /**
  * Check for fishing mode conflict
  */
