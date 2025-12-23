@@ -27,6 +27,7 @@ import DojoPage from './pages/DojoPage';
 // Components
 import Navigation from './components/Navigation/Navigation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
+import GlobalCaptchaHandler from './components/UI/GlobalCaptchaHandler';
 
 // Initialize cache manager visibility handler (runs once on app load)
 initVisibilityHandler({
@@ -171,6 +172,8 @@ function App() {
         <RarityProvider>
         <Router>
         <GlobalStyle />
+        {/* Global CAPTCHA handler - listens for CAPTCHA_REQUIRED events from API */}
+        <GlobalCaptchaHandler />
         <AppContainer>
           <Routes>
             <Route path="/login" element={<LoginPage />} />
