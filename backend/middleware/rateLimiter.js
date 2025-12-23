@@ -155,25 +155,11 @@ const signupVelocityLimiter = rateLimit({
   }
 });
 
-/**
- * Coupon brute-force prevention
- * Strict limits on coupon redemption attempts
- */
-const couponAttemptLimiter = rateLimit({
-  windowMs: DEFAULTS.RATE_LIMIT_COUPON_WINDOW,
-  max: () => getConfigSync().RATE_LIMIT_COUPON_MAX,
-  message: { 
-    error: 'Too many coupon redemption attempts. Please wait before trying again.',
-    code: 'COUPON_RATE_LIMITED'
-  },
-  standardHeaders: true,
-  legacyHeaders: false,
-  keyGenerator: (req) => {
-    const userId = req.user?.id || 'anon';
-    const ipHash = req.deviceSignals?.ipHash || 'unknown';
-    return `coupon:${userId}:${ipHash}`;
-  }
-});
+// NOTE: couponAttemptLimiter is NOT defined here.
+// Coupon rate limiting is handled by the couponLimiter in app.js
+// which is applied globally to /api/coupons/redeem route.
+// The RATE_LIMIT_COUPON_* config values are kept for future use
+// if we want to make the app.js limiter configurable.
 
 /**
  * API burst protection
@@ -210,7 +196,6 @@ module.exports = {
   generalRateLimiter,
   sensitiveActionLimiter,
   signupVelocityLimiter,
-  couponAttemptLimiter,
   burstProtectionLimiter,
   reloadConfig,
   getCurrentConfig

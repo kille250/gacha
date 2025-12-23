@@ -67,7 +67,12 @@ const DEFAULTS = {
   SHADOWBAN_POINTS_MULTIPLIER: 0.1,
   SHADOWBAN_TIMING_PENALTY: -100,
   RATE_LIMIT_PENALTY_MULTIPLIER: 0.5,
-  RATE_LIMIT_COOLDOWN_MULTIPLIER: 2.0
+  RATE_LIMIT_COOLDOWN_MULTIPLIER: 2.0,
+  
+  // Lockout Settings
+  LOCKOUT_MAX_ATTEMPTS: 10,
+  LOCKOUT_DURATION_MS: 900000,  // 15 minutes
+  LOCKOUT_WINDOW_MS: 900000     // 15 minutes
 };
 
 /**
@@ -216,6 +221,18 @@ async function getShadowbanConfig() {
 }
 
 /**
+ * Get lockout configuration
+ * @returns {Promise<Object>}
+ */
+async function getLockoutConfig() {
+  return {
+    maxAttempts: await getNumber('LOCKOUT_MAX_ATTEMPTS', 10),
+    lockoutDurationMs: await getNumber('LOCKOUT_DURATION_MS', 900000),
+    windowMs: await getNumber('LOCKOUT_WINDOW_MS', 900000)
+  };
+}
+
+/**
  * Get risk score weights configuration
  * @returns {Promise<Object>}
  */
@@ -327,6 +344,7 @@ module.exports = {
   getCaptchaConfig,
   getPolicyConfig,
   getShadowbanConfig,
+  getLockoutConfig,
   getRiskWeights,
   getAllSecurityConfig,
   

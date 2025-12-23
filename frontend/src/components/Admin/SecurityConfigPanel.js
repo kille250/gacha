@@ -9,7 +9,7 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { 
   FaCog, FaSync, FaShieldAlt, FaClock, FaRobot, 
-  FaGavel, FaEyeSlash, FaEdit 
+  FaGavel, FaEyeSlash, FaEdit, FaBalanceScale, FaLock
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../styles/DesignSystem';
@@ -22,26 +22,32 @@ import {
 
 const CATEGORY_ICONS = {
   risk_thresholds: FaShieldAlt,
+  risk_weights: FaBalanceScale,
   rate_limits: FaClock,
   captcha: FaRobot,
   policies: FaGavel,
-  enforcement: FaEyeSlash
+  enforcement: FaEyeSlash,
+  lockout: FaLock
 };
 
 const CATEGORY_LABELS = {
   risk_thresholds: 'Risk Scoring',
+  risk_weights: 'Risk Weights',
   rate_limits: 'Rate Limits',
   captcha: 'CAPTCHA Settings',
   policies: 'Policy Settings',
-  enforcement: 'Enforcement Penalties'
+  enforcement: 'Enforcement Penalties',
+  lockout: 'Lockout Settings'
 };
 
 const CATEGORY_COLORS = {
   risk_thresholds: '#ff9500',
+  risk_weights: '#ff6b6b',
   rate_limits: '#007aff',
   captcha: '#5856d6',
   policies: '#34c759',
-  enforcement: '#ff3b30'
+  enforcement: '#ff3b30',
+  lockout: '#8e8e93'
 };
 
 const SecurityConfigPanel = ({ onEdit }) => {

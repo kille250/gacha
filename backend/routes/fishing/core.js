@@ -10,6 +10,7 @@ const router = express.Router();
 const crypto = require('crypto');
 const auth = require('../../middleware/auth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
+const { getShadowbanConfig } = require('../../services/securityConfigService');
 const { sequelize, User, FishInventory } = require('../../models');
 
 // Config imports
@@ -339,6 +340,18 @@ router.post('/catch', [auth, enforcementMiddleware], async (req, res, next) => {
           calculateCatchQuality(validatedReactionTime, fish, rod);
         
         let fishQuantity = calculateFishQuantity(bonusMultiplier);
+        
+        // Apply shadowban multiplier (reduces rewards for shadowbanned users)
+        if (req.shadowbanned) {
+          try {
+            const shadowbanConfig = await getShadowbanConfig();
+            const fishMultiplier = shadowbanConfig.fishMultiplier || 0.5;
+            fishQuantity = Math.max(1, Math.floor(fishQuantity * fishMultiplier));
+          } catch (_err) {
+            // Default to 50% if config unavailable
+            fishQuantity = Math.max(1, Math.floor(fishQuantity * 0.5));
+          }
+        }
         
         // Streak system
         const streakResult = updateStreakCounters(daily, true, achievements);

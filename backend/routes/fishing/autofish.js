@@ -10,6 +10,7 @@ const router = express.Router();
 const auth = require('../../middleware/auth');
 const adminAuth = require('../../middleware/adminAuth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
+const { getShadowbanConfig } = require('../../services/securityConfigService');
 const { sequelize, User, FishInventory } = require('../../models');
 const { isValidId } = require('../../utils/validation');
 
@@ -158,30 +159,62 @@ router.post('/', [auth, enforcementMiddleware], async (req, res, next) => {
       }
       
       if (success) {
-        const [item, created] = await FishInventory.findOrCreate({
-          where: { userId, fishId: fish.id },
-          defaults: {
-            userId,
-            fishId: fish.id,
-            fishName: fish.name,
-            fishEmoji: fish.emoji,
-            rarity: fish.rarity,
-            quantity: 1
-          },
-          transaction
-        });
+        // Determine quantity (normally 1, but shadowban can reduce to 0 chance)
+        let fishQuantity = 1;
         
-        if (!created) {
-          item.quantity += 1;
-          await item.save({ transaction });
+        // Apply shadowban multiplier (may reduce rewards for shadowbanned users)
+        if (req.shadowbanned) {
+          try {
+            const shadowbanConfig = await getShadowbanConfig();
+            const fishMultiplier = shadowbanConfig.fishMultiplier || 0.5;
+            // For autofish, we use multiplier as a chance to get fish at all
+            if (Math.random() > fishMultiplier) {
+              fishQuantity = 0; // Shadowbanned user misses this catch
+            }
+          } catch (_err) {
+            // Default to 50% chance if config unavailable
+            if (Math.random() > 0.5) {
+              fishQuantity = 0;
+            }
+          }
         }
         
-        inventoryItem = item;
-        stats.totalCatches = (stats.totalCatches || 0) + 1;
-        stats.fishCaught = stats.fishCaught || {};
-        stats.fishCaught[fish.id] = (stats.fishCaught[fish.id] || 0) + 1;
+        let inventoryItemResult = null;
+        if (fishQuantity > 0) {
+          const [item, created] = await FishInventory.findOrCreate({
+            where: { userId, fishId: fish.id },
+            defaults: {
+              userId,
+              fishId: fish.id,
+              fishName: fish.name,
+              fishEmoji: fish.emoji,
+              rarity: fish.rarity,
+              quantity: fishQuantity
+            },
+            transaction
+          });
+          
+          if (!created) {
+            item.quantity += fishQuantity;
+            await item.save({ transaction });
+          }
+          
+          inventoryItemResult = item;
+        }
         
-        daily.catches += 1;
+        inventoryItem = inventoryItemResult;
+        
+        // Only update stats if fish was actually caught
+        if (fishQuantity > 0) {
+          stats.totalCatches = (stats.totalCatches || 0) + fishQuantity;
+          stats.fishCaught = stats.fishCaught || {};
+          stats.fishCaught[fish.id] = (stats.fishCaught[fish.id] || 0) + fishQuantity;
+          
+          daily.catches += fishQuantity;
+        } else {
+          stats.totalCatches = (stats.totalCatches || 0);
+          daily.catches = daily.catches || 0;
+        }
         if (['rare', 'epic', 'legendary'].includes(fish.rarity)) {
           daily.rareCatches += 1;
         }

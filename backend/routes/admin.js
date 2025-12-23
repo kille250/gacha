@@ -211,8 +211,16 @@ router.post('/toggle-r18', auth, adminAuth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
     
+    const oldValue = user.allowR18;
     user.allowR18 = enabled !== undefined ? enabled : !user.allowR18;
     await user.save();
+    
+    // Audit log the action
+    await logAdminAction(AUDIT_EVENTS.ADMIN_POINTS_ADJUST || 'admin.r18_toggle', req.user.id, user.id, {
+      action: 'r18_toggle',
+      oldValue,
+      newValue: user.allowR18
+    }, req);
     
     console.log(`Admin (ID: ${req.user.id}) ${user.allowR18 ? 'enabled' : 'disabled'} R18 access for user ${user.username} (ID: ${userId})`);
     
@@ -318,6 +326,14 @@ router.post('/add-coins', auth, adminAuth, async (req, res) => {
     const oldBalance = user.points;
     await user.increment('points', { by: parsedAmount });
     await user.reload();
+    
+    // Audit log the operation
+    await logAdminAction(AUDIT_EVENTS.ADMIN_POINTS_ADJUST, req.user.id, user.id, {
+      action: 'add_coins',
+      amount: parsedAmount,
+      oldBalance,
+      newBalance: user.points
+    }, req);
     
     // Log the operation
     console.log(`Admin (ID: ${req.user.id}) added ${parsedAmount} coins to User ${user.username} (ID: ${userId}). Old balance: ${oldBalance}, New balance: ${user.points}`);

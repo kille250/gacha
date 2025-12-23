@@ -28,10 +28,12 @@ import {
 
 const CATEGORY_LABELS = {
   risk_thresholds: 'Risk Scoring',
+  risk_weights: 'Risk Weights',
   rate_limits: 'Rate Limits',
   captcha: 'CAPTCHA Settings',
   policies: 'Policy Settings',
-  enforcement: 'Enforcement Penalties'
+  enforcement: 'Enforcement Penalties',
+  lockout: 'Lockout Settings'
 };
 
 const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
@@ -228,6 +230,9 @@ const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
               <ConfirmText>
                 You are about to modify security settings. These changes will take effect immediately and may affect user experience.
               </ConfirmText>
+              <WarningNote>
+                ⚠️ Note: Rate limit and lockout changes may take up to 60 seconds to propagate across all servers.
+              </WarningNote>
               
               <ChangesList>
                 <ChangesTitle>Changes to be applied:</ChangesTitle>
@@ -362,6 +367,17 @@ const ChangeItem = styled.div`
     color: ${theme.colors.primary};
     font-weight: ${theme.fontWeights.bold};
   }
+`;
+
+const WarningNote = styled.div`
+  background: ${theme.colors.warning}15;
+  border: 1px solid ${theme.colors.warning}40;
+  border-radius: ${theme.radius.md};
+  padding: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.lg};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.warning};
+  text-align: left;
 `;
 
 const ConfirmButtons = styled.div`

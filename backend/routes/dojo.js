@@ -408,7 +408,7 @@ router.post('/unassign', [auth, enforcementMiddleware, sensitiveActionLimiter], 
  * Security: enforcement checked, policy enforced
  * Uses transaction to ensure atomicity and proper cooldown handling
  */
-router.post('/claim', [auth, enforcementMiddleware, enforcePolicy('canClaimRewards')], async (req, res) => {
+router.post('/claim', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canClaimRewards')], async (req, res) => {
   const userId = req.user.id;
   const transaction = await sequelize.transaction();
   

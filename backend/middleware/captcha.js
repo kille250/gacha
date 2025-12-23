@@ -132,12 +132,54 @@ const fallbackTokens = new Map();
 // In-memory store for failed attempt counts
 const failedAttempts = new Map();
 
-// Lockout configuration (hard-coded as these are security-critical)
-const LOCKOUT_CONFIG = {
+// Default lockout configuration (fallback if config unavailable)
+const DEFAULT_LOCKOUT_CONFIG = {
   maxAttempts: 10,           // Lock after 10 failed attempts
   lockoutDurationMs: 15 * 60 * 1000,  // 15 minute lockout
   windowMs: 15 * 60 * 1000   // 15 minute window for counting attempts
 };
+
+// Cached lockout config (updated periodically)
+let lockoutConfigCache = { ...DEFAULT_LOCKOUT_CONFIG };
+let lastLockoutConfigLoad = 0;
+const LOCKOUT_CONFIG_REFRESH_INTERVAL = 60000; // 1 minute
+
+/**
+ * Get dynamic lockout configuration from SecurityConfig
+ * This allows admins to adjust lockout settings without server restart
+ */
+async function getLockoutConfig() {
+  const now = Date.now();
+  if (now - lastLockoutConfigLoad < LOCKOUT_CONFIG_REFRESH_INTERVAL) {
+    return lockoutConfigCache;
+  }
+  
+  try {
+    const config = await securityConfigService.getLockoutConfig();
+    lockoutConfigCache = {
+      maxAttempts: config.maxAttempts || DEFAULT_LOCKOUT_CONFIG.maxAttempts,
+      lockoutDurationMs: config.lockoutDurationMs || DEFAULT_LOCKOUT_CONFIG.lockoutDurationMs,
+      windowMs: config.windowMs || DEFAULT_LOCKOUT_CONFIG.windowMs
+    };
+    lastLockoutConfigLoad = now;
+  } catch (err) {
+    console.error('[Lockout] Failed to load config, using defaults:', err.message);
+  }
+  
+  return lockoutConfigCache;
+}
+
+// Sync version for places that can't be async (uses cache)
+function getLockoutConfigSync() {
+  // Trigger async refresh in background if needed
+  if (Date.now() - lastLockoutConfigLoad > LOCKOUT_CONFIG_REFRESH_INTERVAL) {
+    getLockoutConfig().catch(() => {});
+  }
+  return lockoutConfigCache;
+}
+
+// Legacy export for backwards compatibility
+const LOCKOUT_CONFIG = DEFAULT_LOCKOUT_CONFIG;
 
 /**
  * Check if reCAPTCHA is configured and available
@@ -352,9 +394,11 @@ function getAttemptKey(req, prefix = null) {
 /**
  * Check if an account/IP is locked out due to too many failed attempts
  * @param {string} key - Attempt tracking key (e.g., 'login:ipHash')
+ * @param {Object} config - Optional lockout config (uses cached if not provided)
  * @returns {{locked: boolean, remainingMs?: number, attempts?: number}}
  */
-function checkLockout(key) {
+function checkLockout(key, config = null) {
+  const lockoutConfig = config || getLockoutConfigSync();
   const current = failedAttempts.get(key);
   if (!current) {
     return { locked: false };
@@ -363,13 +407,13 @@ function checkLockout(key) {
   const now = Date.now();
   
   // Check if window has expired - reset if so
-  if (now - current.firstAttempt > LOCKOUT_CONFIG.windowMs) {
+  if (now - current.firstAttempt > lockoutConfig.windowMs) {
     return { locked: false };
   }
   
   // Check if locked
-  if (current.count >= LOCKOUT_CONFIG.maxAttempts) {
-    const lockoutEndTime = current.firstAttempt + LOCKOUT_CONFIG.lockoutDurationMs;
+  if (current.count >= lockoutConfig.maxAttempts) {
+    const lockoutEndTime = current.firstAttempt + lockoutConfig.lockoutDurationMs;
     const remainingMs = lockoutEndTime - now;
     
     if (remainingMs > 0) {
@@ -391,22 +435,24 @@ function checkLockout(key) {
 /**
  * Get remaining attempts before lockout
  * @param {string} key - Attempt tracking key
+ * @param {Object} config - Optional lockout config (uses cached if not provided)
  * @returns {number} - Remaining attempts (0 if locked)
  */
-function getRemainingAttempts(key) {
+function getRemainingAttempts(key, config = null) {
+  const lockoutConfig = config || getLockoutConfigSync();
   const current = failedAttempts.get(key);
   if (!current) {
-    return LOCKOUT_CONFIG.maxAttempts;
+    return lockoutConfig.maxAttempts;
   }
   
   const now = Date.now();
   
   // Window expired
-  if (now - current.firstAttempt > LOCKOUT_CONFIG.windowMs) {
-    return LOCKOUT_CONFIG.maxAttempts;
+  if (now - current.firstAttempt > lockoutConfig.windowMs) {
+    return lockoutConfig.maxAttempts;
   }
   
-  return Math.max(0, LOCKOUT_CONFIG.maxAttempts - current.count);
+  return Math.max(0, lockoutConfig.maxAttempts - current.count);
 }
 
 /**
@@ -424,8 +470,11 @@ function getRemainingAttempts(key) {
  */
 const lockoutMiddleware = (prefix = null) => async (req, res, next) => {
   try {
+    // Get dynamic lockout config
+    const lockoutConfig = await getLockoutConfig();
+    
     const attemptKey = getAttemptKey(req, prefix);
-    const lockoutStatus = checkLockout(attemptKey);
+    const lockoutStatus = checkLockout(attemptKey, lockoutConfig);
     
     if (lockoutStatus.locked) {
       // Log lockout attempt for audit (don't await to avoid blocking)
