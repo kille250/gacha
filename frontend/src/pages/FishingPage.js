@@ -479,6 +479,17 @@ const FishingPage = () => {
     });
   }, []);
   
+  // Prestige modal fetch - refresh prestige data when opening
+  useEffect(() => {
+    if (showPrestigeModal) {
+      getFishingPrestige()
+        .then(freshPrestigeData => {
+          setPrestigeData(freshPrestigeData);
+        })
+        .catch(err => console.error('Failed to fetch prestige data:', err));
+    }
+  }, [showPrestigeModal]);
+  
   // Leaderboard fetch - also refresh rank data to keep it in sync
   useEffect(() => {
     if (showLeaderboard) {
