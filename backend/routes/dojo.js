@@ -19,6 +19,7 @@ const {
   getAvailableUpgrades,
   getLevelMultiplier
 } = require('../config/dojo');
+const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 
 // Rate limiting is now handled via dojoLastClaim in the database
 // This makes it multi-server safe (works behind load balancers)
@@ -26,8 +27,9 @@ const {
 /**
  * GET /api/dojo/status
  * Get current dojo status including slots, accumulated rewards, and upgrades
+ * Security: enforcement checked (banned users cannot access game features)
  */
-router.get('/status', auth, async (req, res) => {
+router.get('/status', [auth, enforcementMiddleware], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) {
@@ -181,8 +183,9 @@ router.get('/status', auth, async (req, res) => {
 /**
  * GET /api/dojo/available-characters
  * Get characters available for assignment (owned, not already in dojo)
+ * Security: enforcement checked (banned users cannot access game features)
  */
-router.get('/available-characters', auth, async (req, res) => {
+router.get('/available-characters', [auth, enforcementMiddleware], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) {
@@ -235,9 +238,10 @@ router.get('/available-characters', auth, async (req, res) => {
 /**
  * POST /api/dojo/assign
  * Assign a character to a training slot
+ * Security: enforcement checked, rate limited
  * Uses transaction with row locking to prevent race conditions
  */
-router.post('/assign', [auth, enforcementMiddleware], async (req, res) => {
+router.post('/assign', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
@@ -337,9 +341,10 @@ router.post('/assign', [auth, enforcementMiddleware], async (req, res) => {
 /**
  * POST /api/dojo/unassign
  * Remove a character from a training slot
+ * Security: enforcement checked, rate limited
  * Uses transaction to prevent race conditions
  */
-router.post('/unassign', [auth, enforcementMiddleware], async (req, res) => {
+router.post('/unassign', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
   const transaction = await sequelize.transaction();
   
   try {
@@ -400,9 +405,10 @@ router.post('/unassign', [auth, enforcementMiddleware], async (req, res) => {
 /**
  * POST /api/dojo/claim
  * Claim accumulated rewards
+ * Security: enforcement checked, policy enforced
  * Uses transaction to ensure atomicity and proper cooldown handling
  */
-router.post('/claim', auth, enforcementMiddleware, enforcePolicy('canClaimRewards'), async (req, res) => {
+router.post('/claim', [auth, enforcementMiddleware, enforcePolicy('canClaimRewards')], async (req, res) => {
   const userId = req.user.id;
   const transaction = await sequelize.transaction();
   
@@ -622,9 +628,10 @@ router.post('/claim', auth, enforcementMiddleware, enforcePolicy('canClaimReward
 /**
  * POST /api/dojo/upgrade
  * Purchase a dojo upgrade
+ * Security: enforcement checked, rate limited
  * Uses transaction with row locking to prevent double-spending
  */
-router.post('/upgrade', [auth, enforcementMiddleware], async (req, res) => {
+router.post('/upgrade', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
   const { upgradeType, rarity } = req.body; // rarity only for mastery upgrades
   
   // Validate input before starting transaction

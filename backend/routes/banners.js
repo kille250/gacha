@@ -35,6 +35,7 @@ const {
   acquireCharacter,
   acquireMultipleCharacters
 } = require('../utils/characterLeveling');
+const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 
 // ===========================================
 // HELPER FUNCTIONS
@@ -525,8 +526,9 @@ router.delete('/:id', [auth, adminAuth], async (req, res) => {
 /**
  * Single roll on a banner
  * POST /api/banners/:id/roll
+ * Security: enforcement checked, policy enforced, rate limited
  */
-router.post('/:id/roll', auth, enforcementMiddleware, enforcePolicy('canGachaPull'), async (req, res) => {
+router.post('/:id/roll', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {
@@ -679,8 +681,9 @@ router.post('/:id/roll', auth, enforcementMiddleware, enforcePolicy('canGachaPul
 /**
  * Multi-roll on a banner
  * POST /api/banners/:id/roll-multi
+ * Security: enforcement checked, policy enforced, rate limited
  */
-router.post('/:id/roll-multi', auth, enforcementMiddleware, enforcePolicy('canGachaPull'), async (req, res) => {
+router.post('/:id/roll-multi', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canGachaPull')], async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {

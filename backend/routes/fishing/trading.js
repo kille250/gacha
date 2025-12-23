@@ -31,7 +31,13 @@ const { logEconomyAction, AUDIT_EVENTS } = require('../../services/auditService'
 const { checkVelocityLimit, detectVelocityAnomaly } = require('../../services/economyService');
 const { updateRiskScore } = require('../../services/riskService');
 const { enforcePolicy } = require('../../middleware/policies');
-const { captchaMiddleware } = require('../../middleware/captcha');
+const { 
+  captchaMiddleware, 
+  lockoutMiddleware,
+  recordFailedAttempt,
+  clearFailedAttempts,
+  getAttemptKey
+} = require('../../middleware/captcha');
 const { sensitiveActionLimiter } = require('../../middleware/rateLimiter');
 
 // Error classes
@@ -49,7 +55,8 @@ const TRADE_TIMEOUT = FISHING_CONFIG.tradeTimeout || 30000;
 const tradeInProgress = new Map();
 
 // GET /inventory - Get user's fish inventory
-router.get('/inventory', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot view inventory)
+router.get('/inventory', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     const inventory = await FishInventory.findAll({
@@ -80,7 +87,8 @@ router.get('/inventory', auth, async (req, res, next) => {
 });
 
 // GET /trading-post - Get trading post options with availability
-router.get('/trading-post', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access trading)
+router.get('/trading-post', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     const inventory = await FishInventory.findAll({
@@ -184,11 +192,13 @@ router.get('/trading-post', auth, async (req, res, next) => {
 });
 
 // POST /trade - Execute a trade
-// Security: enforcement checked, policy enforced, rate limited, CAPTCHA protected
-router.post('/trade', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canTrade'), captchaMiddleware('trade')], async (req, res, next) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.post('/trade', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canTrade'), captchaMiddleware('trade')], async (req, res, next) => {
   const userId = req.user.id;
   const now = Date.now();
   const enforcement = getEnforcementContext(req);
+  // Attempt key is now set by lockoutMiddleware for convenience
+  const attemptKey = req.attemptKey || getAttemptKey(req);
   
   // Shadowban check - silently block trading
   if (!isTradingAllowed(req)) {
@@ -231,6 +241,8 @@ router.post('/trade', [auth, enforcementMiddleware, sensitiveActionLimiter, enfo
     const { tradeId, quantity = 1 } = req.body;
     
     if (!tradeId) {
+      // Record failed attempt for CAPTCHA escalation (potential probe)
+      recordFailedAttempt(attemptKey);
       throw new TradeError('not_found');
     }
     
@@ -238,6 +250,8 @@ router.post('/trade', [auth, enforcementMiddleware, sensitiveActionLimiter, enfo
     const tradeOption = TRADE_OPTIONS.find(t => t.id === tradeId);
     
     if (!tradeOption) {
+      // Record failed attempt for CAPTCHA escalation (invalid trade ID)
+      recordFailedAttempt(attemptKey);
       throw new TradeError('not_found');
     }
     
@@ -417,6 +431,9 @@ router.post('/trade', [auth, enforcementMiddleware, sensitiveActionLimiter, enfo
     
     await user.save({ transaction });
     await transaction.commit();
+    
+    // SECURITY: Clear failed attempts only AFTER successful transaction
+    clearFailedAttempts(attemptKey);
     
     // Log the trade for audit
     await logEconomyAction(AUDIT_EVENTS.TRADE_COMPLETED, userId, {

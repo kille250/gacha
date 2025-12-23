@@ -9,14 +9,22 @@ const { checkSignupRisk, updateRiskScore } = require('../services/riskService');
 const { recordDeviceFingerprint, recordIPHash } = require('../middleware/deviceSignals');
 const { logSecurityEvent, logEvent, AUDIT_EVENTS, SEVERITY } = require('../services/auditService');
 const { enforcementMiddleware, getRestrictionStatus } = require('../middleware/enforcement');
+const { enforcePolicy } = require('../middleware/policies');
 const { 
-  captchaMiddleware, 
+  captchaMiddleware,
+  lockoutMiddleware,  // Early lockout check for fail-fast behavior
   recordFailedAttempt, 
   clearFailedAttempts,
   checkLockout,
-  getRemainingAttempts
+  getRemainingAttempts,
+  verifyRecaptcha,
+  verifyFallbackTokenAsync,
+  isRecaptchaEnabled,
+  getAttemptKey,
+  CAPTCHA_CONFIG,
+  getCaptchaConfig
 } = require('../middleware/captcha');
-const { sensitiveActionLimiter, generalRateLimiter } = require('../middleware/rateLimiter');
+const { sensitiveActionLimiter, generalRateLimiter, signupVelocityLimiter } = require('../middleware/rateLimiter');
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
@@ -80,7 +88,8 @@ router.post('/daily-reward', [auth, enforcementMiddleware, generalRateLimiter], 
 });
 
 // POST /api/auth/signup - Register new user
-router.post('/signup', async (req, res) => {
+// Security: rate limited by IP to prevent mass account creation
+router.post('/signup', [signupVelocityLimiter], async (req, res) => {
   const { username, email, password } = req.body;
   
   // Validate username
@@ -187,9 +196,9 @@ router.post('/signup', async (req, res) => {
 router.post('/login', async (req, res) => {
   const { username, password } = req.body;
   
-  // Build key for failed attempt tracking
-  // Key must match format used in captchaMiddleware: `${userId || 'anon'}:${ipHash}`
-  const attemptKey = `anon:${req.deviceSignals?.ipHash || 'unknown'}`;
+  // Build key for failed attempt tracking using centralized helper
+  // Use 'login' prefix to namespace login attempts separately from other flows
+  const attemptKey = getAttemptKey(req, 'login');
   
   // SECURITY: Check if IP is locked out due to too many failed attempts
   const lockoutStatus = checkLockout(attemptKey);
@@ -206,8 +215,56 @@ router.post('/login', async (req, res) => {
     });
   }
   
+  // SECURITY: Require CAPTCHA after multiple failed attempts
+  // Use dynamic config to allow runtime adjustments
+  const captchaConfig = await getCaptchaConfig();
+  const remainingBeforeCaptcha = getRemainingAttempts(attemptKey);
+  const failedAttemptsThreshold = captchaConfig.failedAttemptsThreshold;
+  const totalAttempts = 10 - remainingBeforeCaptcha; // 10 is LOCKOUT_CONFIG.maxAttempts
+  
+  if (totalAttempts >= failedAttemptsThreshold) {
+    // CAPTCHA required - check for valid token
+    const recaptchaToken = req.header('x-recaptcha-token');
+    const fallbackToken = req.header('x-captcha-token');
+    const fallbackAnswer = req.header('x-captcha-answer');
+    const recaptchaEnabled = await isRecaptchaEnabled();
+    
+    let captchaVerified = false;
+    
+    // Try reCAPTCHA first
+    if (recaptchaToken && recaptchaEnabled) {
+      const result = await verifyRecaptcha(recaptchaToken, 'login', req);
+      captchaVerified = result.success;
+    }
+    // Try fallback CAPTCHA (use async version for dynamic config)
+    else if (fallbackToken && fallbackAnswer) {
+      captchaVerified = await verifyFallbackTokenAsync(fallbackToken, fallbackAnswer);
+    }
+    
+    if (!captchaVerified) {
+      // No valid CAPTCHA - return requirement
+      await logSecurityEvent(AUDIT_EVENTS.CAPTCHA_TRIGGERED || 'security.captcha.triggered', null, {
+        action: 'login',
+        reason: 'failed_attempts',
+        attemptedUsername: username?.trim(),
+        failedAttempts: totalAttempts
+      }, req);
+      
+      return res.status(403).json({
+        error: 'CAPTCHA verification required',
+        code: 'CAPTCHA_REQUIRED',
+        captchaRequired: true,
+        captchaType: recaptchaEnabled ? 'recaptcha' : 'fallback',
+        siteKey: recaptchaEnabled ? CAPTCHA_CONFIG.recaptchaSiteKey : undefined,
+        action: 'login'
+      });
+    }
+  }
+  
   // Basic validation (don't reveal which field is wrong)
+  // SECURITY: Record failed attempt even for empty credentials to prevent enumeration
   if (!username || !password) {
+    recordFailedAttempt(attemptKey);
     return res.status(401).json({ error: 'Invalid credentials' });
   }
   
@@ -322,7 +379,69 @@ router.post('/login', async (req, res) => {
 router.post('/google', async (req, res) => {
   const { credential } = req.body;
   
+  // Build key for failed attempt tracking using centralized helper with 'google' prefix
+  const attemptKey = getAttemptKey(req, 'google');
+  
+  // SECURITY: Check if IP is locked out due to too many failed attempts
+  const lockoutStatus = checkLockout(attemptKey);
+  if (lockoutStatus.locked) {
+    await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, null, {
+      reason: 'Account locked due to too many failed Google auth attempts',
+      method: 'google',
+      remainingSec: lockoutStatus.remainingSec
+    }, req);
+    return res.status(429).json({ 
+      error: 'Too many failed attempts. Please try again later.',
+      code: 'ACCOUNT_LOCKED',
+      retryAfter: lockoutStatus.remainingSec
+    });
+  }
+  
+  // SECURITY: Require CAPTCHA after multiple failed attempts (matching login behavior)
+  // Use dynamic config to allow runtime adjustments
+  const captchaConfig = await getCaptchaConfig();
+  const remainingBeforeCaptcha = getRemainingAttempts(attemptKey);
+  const failedAttemptsThreshold = captchaConfig.failedAttemptsThreshold;
+  const totalAttempts = 10 - remainingBeforeCaptcha; // 10 is LOCKOUT_CONFIG.maxAttempts
+  
+  if (totalAttempts >= failedAttemptsThreshold) {
+    const recaptchaToken = req.header('x-recaptcha-token');
+    const fallbackToken = req.header('x-captcha-token');
+    const fallbackAnswer = req.header('x-captcha-answer');
+    const recaptchaEnabled = await isRecaptchaEnabled();
+    
+    let captchaVerified = false;
+    
+    // Try reCAPTCHA first
+    if (recaptchaToken && recaptchaEnabled) {
+      const result = await verifyRecaptcha(recaptchaToken, 'login', req);
+      captchaVerified = result.success;
+    }
+    // Try fallback CAPTCHA (use async version for dynamic config)
+    else if (fallbackToken && fallbackAnswer) {
+      captchaVerified = await verifyFallbackTokenAsync(fallbackToken, fallbackAnswer);
+    }
+    
+    if (!captchaVerified) {
+      await logSecurityEvent(AUDIT_EVENTS.CAPTCHA_TRIGGERED || 'security.captcha.triggered', null, {
+        action: 'google_auth',
+        reason: 'failed_attempts',
+        failedAttempts: totalAttempts
+      }, req);
+      
+      return res.status(403).json({
+        error: 'CAPTCHA verification required',
+        code: 'CAPTCHA_REQUIRED',
+        captchaRequired: true,
+        captchaType: recaptchaEnabled ? 'recaptcha' : 'fallback',
+        siteKey: recaptchaEnabled ? CAPTCHA_CONFIG.recaptchaSiteKey : undefined,
+        action: 'login'
+      });
+    }
+  }
+  
   if (!credential) {
+    recordFailedAttempt(attemptKey);
     return res.status(400).json({ error: 'Google credential is required' });
   }
   
@@ -520,9 +639,22 @@ router.post('/google', async (req, res) => {
       });
     });
     
+    // Clear failed attempts on successful authentication
+    clearFailedAttempts(attemptKey);
+    
     res.json({ token });
   } catch (err) {
     console.error('Google SSO error:', err);
+    
+    // Record failed attempt for invalid/expired tokens
+    recordFailedAttempt(attemptKey);
+    
+    await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, null, {
+      reason: 'Google token verification failed',
+      method: 'google',
+      error: err.message?.substring(0, 50)
+    }, req);
+    
     if (err.message?.includes('Token used too late') || err.message?.includes('Invalid token')) {
       return res.status(401).json({ error: 'Invalid or expired Google token' });
     }
@@ -531,11 +663,14 @@ router.post('/google', async (req, res) => {
 });
 
 // POST /api/auth/google/relink - Link or relink Google account (authenticated users only)
-// Security: enforcement checked, rate limited, CAPTCHA protected
-router.post('/google/relink', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('account_link')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.post('/google/relink', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
   const { credential } = req.body;
+  // Attempt key is now set by lockoutMiddleware for convenience
+  const attemptKey = req.attemptKey || getAttemptKey(req);
   
   if (!credential) {
+    recordFailedAttempt(attemptKey);
     return res.status(400).json({ error: 'Google credential is required' });
   }
   
@@ -555,10 +690,12 @@ router.post('/google/relink', [auth, enforcementMiddleware, sensitiveActionLimit
     
     // Security: Require verified email from Google
     if (!email) {
+      recordFailedAttempt(attemptKey);
       return res.status(400).json({ error: 'Email is required from Google account' });
     }
     
     if (!email_verified) {
+      recordFailedAttempt(attemptKey);
       return res.status(400).json({ error: 'Please verify your Google email address first' });
     }
     
@@ -567,6 +704,7 @@ router.post('/google/relink', [auth, enforcementMiddleware, sensitiveActionLimit
     // Check if this Google account is already linked to another user
     const existingGoogleUser = await User.findOne({ where: { googleId } });
     if (existingGoogleUser && existingGoogleUser.id !== req.user.id) {
+      recordFailedAttempt(attemptKey);
       return res.status(400).json({ 
         error: 'This Google account is already linked to another user' 
       });
@@ -583,12 +721,30 @@ router.post('/google/relink', [auth, enforcementMiddleware, sensitiveActionLimit
     user.googleEmail = normalizedEmail;
     await user.save();
     
+    // SECURITY: Clear failed attempts only AFTER successful save
+    clearFailedAttempts(attemptKey);
+    
+    // Log successful link
+    await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
+      action: 'google_link',
+      linkedEmail: normalizedEmail.substring(0, 3) + '***'
+    }, req);
+    
     res.json({ 
       message: 'Google account linked successfully',
       linkedGoogleEmail: normalizedEmail
     });
   } catch (err) {
     console.error('Google relink error:', err);
+    
+    // Record failed attempt for invalid tokens
+    recordFailedAttempt(attemptKey);
+    
+    await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, req.user.id, {
+      reason: 'Google token verification failed during relink',
+      error: err.message?.substring(0, 50)
+    }, req);
+    
     if (err.message?.includes('Token used too late') || err.message?.includes('Invalid token')) {
       return res.status(401).json({ error: 'Invalid or expired Google token' });
     }
@@ -597,8 +753,11 @@ router.post('/google/relink', [auth, enforcementMiddleware, sensitiveActionLimit
 });
 
 // POST /api/auth/google/unlink - Unlink Google account (authenticated users only)
-// Security: enforcement checked, rate limited, CAPTCHA protected
-router.post('/google/unlink', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('account_link')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.post('/google/unlink', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
+  // Attempt key is now set by lockoutMiddleware for convenience
+  const attemptKey = req.attemptKey || getAttemptKey(req);
+  
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) {
@@ -624,6 +783,9 @@ router.post('/google/unlink', [auth, enforcementMiddleware, sensitiveActionLimit
     user.googleId = null;
     user.googleEmail = null;
     await user.save();
+    
+    // SECURITY: Clear failed attempts only AFTER successful save
+    clearFailedAttempts(attemptKey);
     
     // Log the unlink action
     await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
@@ -676,11 +838,11 @@ router.get('/me', auth, async (req, res) => {
 });
 
 // PUT /api/auth/profile/email - Add or update email
-// Security: enforcement checked, rate limited, CAPTCHA protected
-router.put('/profile/email', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('account_link')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.put('/profile/email', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
   const { email } = req.body;
-  // Key must match format used in captchaMiddleware: `${userId}:${ipHash}`
-  const attemptKey = `${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
+  // Attempt key is now set by lockoutMiddleware for convenience
+  const attemptKey = req.attemptKey || getAttemptKey(req);
   
   // Validate email
   const emailValidation = validateEmail(email);
@@ -732,11 +894,11 @@ router.put('/profile/email', [auth, enforcementMiddleware, sensitiveActionLimite
 });
 
 // PUT /api/auth/profile/password - Set or change password
-// Security: rate limited, CAPTCHA protected, enforcement checked
-router.put('/profile/password', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('password_change')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.put('/profile/password', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('password_change')], async (req, res) => {
   const { currentPassword, newPassword } = req.body;
-  // Key must match format used in captchaMiddleware: `${userId}:${ipHash}`
-  const attemptKey = `${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
+  // Attempt key is now set by lockoutMiddleware for convenience
+  const attemptKey = req.attemptKey || getAttemptKey(req);
   
   // Validate new password
   const passwordValidation = validatePassword(newPassword);
@@ -771,15 +933,15 @@ router.put('/profile/password', [auth, enforcementMiddleware, sensitiveActionLim
     // For Google-only users (no password), they can set one without verification
     // since they've already authenticated via Google/JWT
     
-    // Clear failed attempts on success
-    clearFailedAttempts(attemptKey);
-    
     // Track whether user had a password before this change (for audit log)
     const hadPreviousPassword = !!user.password;
     
     // Set the new password (the model's beforeCreate/beforeUpdate hook will hash it)
     user.password = newPassword;
     await user.save();
+    
+    // SECURITY: Clear failed attempts only AFTER successful save
+    clearFailedAttempts(attemptKey);
     
     // Log successful password change
     await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
@@ -788,7 +950,7 @@ router.put('/profile/password', [auth, enforcementMiddleware, sensitiveActionLim
     }, req);
     
     res.json({ 
-      message: user.password ? 'Password updated successfully' : 'Password set successfully'
+      message: 'Password updated successfully'
     });
   } catch (err) {
     console.error('Set password error:', err);
@@ -797,9 +959,11 @@ router.put('/profile/password', [auth, enforcementMiddleware, sensitiveActionLim
 });
 
 // PUT /api/auth/profile/username - Change username (one time only)
-// Security: enforcement checked, rate limited, CAPTCHA protected
-router.put('/profile/username', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('account_link')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.put('/profile/username', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('account_link')], async (req, res) => {
   const { username } = req.body;
+  // Attempt key is now set by lockoutMiddleware for convenience
+  const attemptKey = req.attemptKey || getAttemptKey(req);
   
   // Validate username
   const usernameValidation = validateUsername(username);
@@ -828,6 +992,8 @@ router.put('/profile/username', [auth, enforcementMiddleware, sensitiveActionLim
       where: { username: usernameValidation.value } 
     });
     if (existingUser) {
+      // Record failed attempt for CAPTCHA escalation (potential enumeration)
+      recordFailedAttempt(attemptKey);
       return res.status(400).json({ error: 'Username already taken' });
     }
     
@@ -838,6 +1004,9 @@ router.put('/profile/username', [auth, enforcementMiddleware, sensitiveActionLim
     user.username = usernameValidation.value;
     user.usernameChanged = true;
     await user.save();
+    
+    // SECURITY: Clear failed attempts only AFTER successful save
+    clearFailedAttempts(attemptKey);
     
     // Log the username change
     await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
@@ -857,15 +1026,17 @@ router.put('/profile/username', [auth, enforcementMiddleware, sensitiveActionLim
 });
 
 // POST /api/auth/reset-account - Reset account progress (dangerous action)
-// Security: rate limited, CAPTCHA protected, enforcement checked
-router.post('/reset-account', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('password_change')], async (req, res) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canChangeAccountSettings'), captchaMiddleware('password_change')], async (req, res) => {
   const { password, confirmationText } = req.body;
-  // Key must match format used in captchaMiddleware: `${userId}:${ipHash}`
-  const attemptKey = `${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
+  // Attempt key is now set by lockoutMiddleware for convenience
+  const attemptKey = req.attemptKey || getAttemptKey(req);
   
   // Security: Require exact confirmation text
+  // Record failed attempt for incorrect confirmation to prevent automated attacks
   const REQUIRED_CONFIRMATION = 'RESET MY ACCOUNT';
   if (confirmationText !== REQUIRED_CONFIRMATION) {
+    recordFailedAttempt(attemptKey);
     return res.status(400).json({ 
       error: `Please type "${REQUIRED_CONFIRMATION}" exactly to confirm` 
     });
@@ -897,9 +1068,6 @@ router.post('/reset-account', [auth, enforcementMiddleware, sensitiveActionLimit
     }
     // For Google-only accounts (no password), the confirmation text is sufficient
     // since they've already authenticated via Google to get here
-    
-    // Clear failed attempts on success
-    clearFailedAttempts(attemptKey);
     
     // Import required models for deletion
     const { UserCharacter, FishInventory, CouponRedemption } = require('../models');
@@ -952,6 +1120,9 @@ router.post('/reset-account', [auth, enforcementMiddleware, sensitiveActionLimit
     };
     
     await user.save();
+    
+    // SECURITY: Clear failed attempts only AFTER successful save
+    clearFailedAttempts(attemptKey);
     
     console.log(`[ACCOUNT RESET] User ${user.id} (${user.username}) account reset completed successfully`);
     

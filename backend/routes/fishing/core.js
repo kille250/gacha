@@ -137,7 +137,8 @@ function setMode(userId, mode) {
 }
 
 // POST /cast - Start fishing (cast the line)
-router.post('/cast', auth, enforcementMiddleware, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot fish)
+router.post('/cast', [auth, enforcementMiddleware], async (req, res, next) => {
   const userId = req.user.id;
   
   try {
@@ -276,7 +277,8 @@ router.post('/cast', auth, enforcementMiddleware, async (req, res, next) => {
 });
 
 // POST /catch - Attempt to catch the fish
-router.post('/catch', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot complete catches)
+router.post('/catch', [auth, enforcementMiddleware], async (req, res, next) => {
   const userId = req.user.id;
   
   try {
@@ -521,7 +523,8 @@ router.post('/catch', auth, async (req, res, next) => {
 });
 
 // GET /info - Get fishing game info
-router.get('/info', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/info', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     
@@ -600,7 +603,8 @@ router.get('/info', auth, async (req, res, next) => {
 });
 
 // GET /daily - Get daily stats and limits
-router.get('/daily', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/daily', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);

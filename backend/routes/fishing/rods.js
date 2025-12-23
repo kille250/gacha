@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
+const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { User } = require('../../models');
 
 // Config imports
@@ -21,7 +22,8 @@ const {
 } = require('../../errors/FishingErrors');
 
 // GET / - Get available fishing rods
-router.get('/', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
@@ -57,7 +59,8 @@ router.get('/', auth, async (req, res, next) => {
 });
 
 // POST /:id/buy - Buy a fishing rod
-router.post('/:id/buy', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot buy rods)
+router.post('/:id/buy', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { id: rodId } = req.params;
     const rod = FISHING_RODS[rodId];
@@ -107,7 +110,8 @@ router.post('/:id/buy', auth, async (req, res, next) => {
 });
 
 // POST /:id/equip - Equip an owned rod
-router.post('/:id/equip', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot change equipment)
+router.post('/:id/equip', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { id: rodId } = req.params;
     

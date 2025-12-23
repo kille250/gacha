@@ -336,7 +336,7 @@ router.get('/collection-data', auth, async (req, res) => {
  * Upgrades all characters to their maximum possible level based on available shards.
  * Returns summary of upgraded characters with total levels gained.
  */
-router.post('/level-up-all', auth, async (req, res) => {
+router.post('/level-up-all', [auth, enforcementMiddleware], async (req, res) => {
   try {
     const userId = req.user.id;
     
@@ -427,7 +427,7 @@ router.post('/level-up-all', auth, async (req, res) => {
  * Level up a character (manual action)
  * POST /api/characters/:id/level-up
  */
-router.post('/:id/level-up', auth, async (req, res) => {
+router.post('/:id/level-up', [auth, enforcementMiddleware], async (req, res) => {
   try {
     const characterId = parseInt(req.params.id, 10);
     

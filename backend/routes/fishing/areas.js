@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
+const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { User } = require('../../models');
 
 // Config imports
@@ -24,7 +25,8 @@ const {
 } = require('../../errors/FishingErrors');
 
 // GET / - Get available fishing areas
-router.get('/', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
@@ -52,7 +54,8 @@ router.get('/', auth, async (req, res, next) => {
 });
 
 // POST /:id/unlock - Unlock a fishing area
-router.post('/:id/unlock', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot unlock areas)
+router.post('/:id/unlock', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { id: areaId } = req.params;
     const area = FISHING_AREAS[areaId];
@@ -104,7 +107,8 @@ router.post('/:id/unlock', auth, async (req, res, next) => {
 });
 
 // POST /:id/select - Select a fishing area
-router.post('/:id/select', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot change areas)
+router.post('/:id/select', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { id: areaId } = req.params;
     

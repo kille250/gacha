@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
+const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { User } = require('../../models');
 
 // Config imports
@@ -23,7 +24,8 @@ const {
 } = require('../../errors/FishingErrors');
 
 // GET / - Get current daily challenges
-router.get('/', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
@@ -84,7 +86,8 @@ router.get('/', auth, async (req, res, next) => {
 });
 
 // POST /:id/claim - Claim a completed challenge reward
-router.post('/:id/claim', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot claim rewards)
+router.post('/:id/claim', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { id: challengeId } = req.params;
     

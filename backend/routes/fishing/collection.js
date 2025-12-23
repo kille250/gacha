@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
+const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { User } = require('../../models');
 
 const { FISH_TYPES } = require('../../config/fishing');
@@ -23,7 +24,8 @@ const {
 const { UserNotFoundError } = require('../../errors/FishingErrors');
 
 // GET /collection - Get full collection/codex data
-router.get('/', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
@@ -82,7 +84,8 @@ router.get('/', auth, async (req, res, next) => {
 });
 
 // GET /collection/fish/:fishId - Get details for a specific fish
-router.get('/fish/:fishId', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/fish/:fishId', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { fishId } = req.params;
     
@@ -114,7 +117,8 @@ router.get('/fish/:fishId', auth, async (req, res, next) => {
 });
 
 // GET /collection/bonuses - Get all active collection bonuses
-router.get('/bonuses', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/bonuses', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
@@ -150,7 +154,8 @@ router.get('/bonuses', auth, async (req, res, next) => {
 });
 
 // POST /collection/claim-milestone - Claim a collection milestone reward
-router.post('/claim-milestone', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot claim rewards)
+router.post('/claim-milestone', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const { type, threshold } = req.body;
     

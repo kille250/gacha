@@ -8,6 +8,52 @@
  *   RECAPTCHA_SECRET_KEY - Google reCAPTCHA v3 secret key (required for production)
  *   RECAPTCHA_SITE_KEY   - Google reCAPTCHA v3 site key (for frontend, optional here)
  *   RECAPTCHA_MIN_SCORE  - Minimum score to pass (0.0-1.0, default 0.5)
+ * 
+ * =============================================================================
+ * SECURITY MIDDLEWARE ORDER (for protected routes)
+ * =============================================================================
+ * The correct middleware order is critical for security. Follow this pattern:
+ * 
+ *   1. auth                    - Verify JWT token, attach req.user
+ *   2. lockoutMiddleware()     - EARLY lockout check (fail-fast, avoids wasted work)
+ *   3. enforcementMiddleware   - Check bans/restrictions (fails closed on error)
+ *   4. sensitiveActionLimiter  - Rate limiting for sensitive actions
+ *   5. enforcePolicy('...')    - Policy-based access control (optional)
+ *   6. captchaMiddleware('...')- CAPTCHA verification for high-risk actions
+ * 
+ * Examples:
+ *   // High-security route (password change, account linking):
+ *   router.post('/secure-action', [
+ *     auth, 
+ *     lockoutMiddleware(),      // Fail fast if locked out
+ *     enforcementMiddleware, 
+ *     sensitiveActionLimiter, 
+ *     enforcePolicy('canChangeAccountSettings'), 
+ *     captchaMiddleware('password_change')
+ *   ], handler);
+ * 
+ *   // Standard protected route (trade, coupon):
+ *   router.post('/trade', [
+ *     auth, 
+ *     lockoutMiddleware(),      // Fail fast if locked out
+ *     enforcementMiddleware, 
+ *     sensitiveActionLimiter, 
+ *     enforcePolicy('canTrade'), 
+ *     captchaMiddleware('trade')
+ *   ], handler);
+ * 
+ *   // Login (unauthenticated, uses prefix for attempt key):
+ *   // Note: Login handles CAPTCHA manually due to unauthenticated nature
+ *   router.post('/login', async handler);
+ * 
+ * IMPORTANT:
+ *   - lockoutMiddleware() should be EARLY to avoid wasted work (DB queries, CAPTCHA)
+ *   - enforcementMiddleware MUST come after auth (needs req.user)
+ *   - All middleware fails CLOSED on errors (security-first)
+ *   - captchaMiddleware should be LAST to avoid unnecessary CAPTCHA on policy denials
+ *   - Use getAttemptKey(req) helper for consistent attempt tracking keys
+ *   - lockoutMiddleware sets req.attemptKey for convenience in handlers
+ * =============================================================================
  */
 
 const { User } = require('../models');
@@ -43,7 +89,7 @@ async function getCaptchaConfig() {
     failedAttemptsThreshold: await securityConfigService.getNumber('CAPTCHA_FAILED_ATTEMPTS_THRESHOLD', 3),
     
     // Actions that can trigger CAPTCHA
-    sensitiveActions: (await securityConfigService.get('CAPTCHA_SENSITIVE_ACTIONS', 'trade,coupon_redeem,password_change,account_link')).split(',').map(s => s.trim()),
+    sensitiveActions: (await securityConfigService.get('CAPTCHA_SENSITIVE_ACTIONS', 'login,trade,coupon_redeem,password_change,account_link')).split(',').map(s => s.trim()),
     
     // Token validity period for fallback challenges (5 minutes)
     tokenValidityMs: await securityConfigService.getNumber('CAPTCHA_TOKEN_VALIDITY_MS', 5 * 60 * 1000),
@@ -54,6 +100,7 @@ async function getCaptchaConfig() {
     
     // Action-specific score thresholds (lower = stricter)
     actionScoreThresholds: {
+      login: await securityConfigService.getNumber('RECAPTCHA_SCORE_LOGIN', 0.5),
       trade: await securityConfigService.getNumber('RECAPTCHA_SCORE_TRADE', 0.6),
       coupon_redeem: await securityConfigService.getNumber('RECAPTCHA_SCORE_COUPON', 0.4),
       password_change: await securityConfigService.getNumber('RECAPTCHA_SCORE_PASSWORD_CHANGE', 0.7),
@@ -66,11 +113,12 @@ async function getCaptchaConfig() {
 const CAPTCHA_CONFIG = {
   riskScoreThreshold: RISK_THRESHOLDS.SOFT_RESTRICTION,
   failedAttemptsThreshold: 3,
-  sensitiveActions: ['trade', 'coupon_redeem', 'password_change', 'account_link'],
+  sensitiveActions: ['login', 'trade', 'coupon_redeem', 'password_change', 'account_link'],
   tokenValidityMs: 5 * 60 * 1000,
   ...CAPTCHA_STATIC_CONFIG,
   recaptchaMinScore: parseFloat(process.env.RECAPTCHA_MIN_SCORE) || 0.5,
   actionScoreThresholds: {
+    login: 0.5,
     trade: 0.6,
     coupon_redeem: 0.4,
     password_change: 0.7,
@@ -231,7 +279,9 @@ function generateFallbackChallenge() {
 }
 
 /**
- * Verify fallback CAPTCHA token
+ * Verify fallback CAPTCHA token (sync version)
+ * Uses static config for token validity - prefer verifyFallbackTokenAsync for dynamic config
+ * @deprecated Use verifyFallbackTokenAsync for dynamic config support
  */
 function verifyFallbackToken(token, answer) {
   if (!token) return false;
@@ -239,8 +289,37 @@ function verifyFallbackToken(token, answer) {
   const storedData = fallbackTokens.get(token);
   if (!storedData) return false;
   
-  // Check expiry
+  // Check expiry using static config (5 minutes default)
   if (Date.now() - storedData.createdAt > CAPTCHA_CONFIG.tokenValidityMs) {
+    fallbackTokens.delete(token);
+    return false;
+  }
+  
+  // Check answer
+  if (storedData.answer !== answer) {
+    return false;
+  }
+  
+  // One-time use
+  fallbackTokens.delete(token);
+  return true;
+}
+
+/**
+ * Verify fallback CAPTCHA token (async version)
+ * Uses dynamic config for token validity - allows runtime adjustments
+ */
+async function verifyFallbackTokenAsync(token, answer) {
+  if (!token) return false;
+  
+  const storedData = fallbackTokens.get(token);
+  if (!storedData) return false;
+  
+  // Get dynamic token validity from config
+  const config = await getCaptchaConfig();
+  
+  // Check expiry using dynamic config
+  if (Date.now() - storedData.createdAt > config.tokenValidityMs) {
     fallbackTokens.delete(token);
     return false;
   }
@@ -278,6 +357,23 @@ function recordFailedAttempt(key) {
  */
 function clearFailedAttempts(key) {
   failedAttempts.delete(key);
+}
+
+/**
+ * Generate a consistent attempt tracking key
+ * Use this helper in routes to ensure keys match middleware format
+ * @param {Object} req - Express request object
+ * @param {string} prefix - Optional prefix for action type (e.g., 'login', 'google')
+ * @returns {string} - Consistent attempt key
+ */
+function getAttemptKey(req, prefix = null) {
+  const userId = req.user?.id || 'anon';
+  const ipHash = req.deviceSignals?.ipHash || 'unknown';
+  
+  if (prefix) {
+    return `${prefix}:${ipHash}`;
+  }
+  return `${userId}:${ipHash}`;
 }
 
 /**
@@ -339,6 +435,54 @@ function getRemainingAttempts(key) {
   
   return Math.max(0, LOCKOUT_CONFIG.maxAttempts - current.count);
 }
+
+/**
+ * Create a lockout check middleware
+ * Use this EARLY in the middleware chain (after auth) to fail fast on locked accounts
+ * This prevents running expensive operations (CAPTCHA verification, DB queries) for locked users
+ * 
+ * @param {string|null} prefix - Optional prefix for attempt key (e.g., 'login', 'google')
+ *                               If null, uses the default user:ip key format
+ * @returns {Function} Express middleware
+ * 
+ * Example usage:
+ *   router.post('/sensitive-action', [auth, lockoutMiddleware(), enforcementMiddleware, ...], handler);
+ *   router.post('/login', [lockoutMiddleware('login')], handler);  // For unauthenticated routes
+ */
+const lockoutMiddleware = (prefix = null) => async (req, res, next) => {
+  try {
+    const attemptKey = getAttemptKey(req, prefix);
+    const lockoutStatus = checkLockout(attemptKey);
+    
+    if (lockoutStatus.locked) {
+      // Log lockout attempt for audit (don't await to avoid blocking)
+      const { logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');
+      logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED || 'security.lockout.blocked', req.user?.id || null, {
+        reason: 'Request blocked due to account lockout',
+        attemptKey: attemptKey.substring(0, 20) + '...',
+        remainingSec: lockoutStatus.remainingSec
+      }, req).catch(() => {}); // Don't fail on logging errors
+      
+      return res.status(429).json({ 
+        error: 'Too many failed attempts. Please try again later.',
+        code: 'ACCOUNT_LOCKED',
+        retryAfter: lockoutStatus.remainingSec
+      });
+    }
+    
+    // Store attempt key on request for use in handler (convenience)
+    req.attemptKey = attemptKey;
+    
+    next();
+  } catch (err) {
+    // SECURITY: Fail closed - errors should not bypass lockout check
+    console.error('[Lockout] Middleware error - failing closed:', err.message);
+    return res.status(503).json({
+      error: 'Security verification temporarily unavailable. Please try again.',
+      code: 'LOCKOUT_CHECK_ERROR'
+    });
+  }
+};
 
 /**
  * Check if CAPTCHA is required for the request
@@ -433,7 +577,8 @@ const captchaMiddleware = (action) => async (req, res, next) => {
     const fallbackAnswer = req.header(CAPTCHA_STATIC_CONFIG.fallbackAnswerHeader);
     
     if (fallbackToken && fallbackAnswer) {
-      if (verifyFallbackToken(fallbackToken, fallbackAnswer)) {
+      // Use async version for dynamic config support
+      if (await verifyFallbackTokenAsync(fallbackToken, fallbackAnswer)) {
         clearFailedAttempts(key);
         return next();
       }
@@ -496,8 +641,14 @@ const captchaMiddleware = (action) => async (req, res, next) => {
     
   } catch (err) {
     console.error('[CAPTCHA] Middleware error:', err.message);
-    // Fail open - don't block legitimate users due to errors
-    next();
+    // SECURITY: Fail closed - errors should not bypass CAPTCHA
+    // If CAPTCHA check itself fails, require CAPTCHA to be safe
+    return res.status(403).json({
+      error: 'Security verification temporarily unavailable. Please try again.',
+      code: 'CAPTCHA_ERROR',
+      captchaRequired: true,
+      captchaType: 'fallback'
+    });
   }
 };
 
@@ -542,23 +693,27 @@ setInterval(async () => {
 module.exports = {
   // Middleware
   captchaMiddleware,
+  lockoutMiddleware,  // Early lockout check middleware for fail-fast behavior
   
   // Verification functions
   verifyRecaptcha,
   verifyRecaptchaToken,
   verifyFallbackToken,
+  verifyFallbackTokenAsync,
   
   // Utility functions
   checkCaptchaRequired,
   recordFailedAttempt,
   clearFailedAttempts,
   isRecaptchaEnabled,
+  getAttemptKey,  // Helper for consistent key generation
   
   // Lockout functions
   checkLockout,
   getRemainingAttempts,
   LOCKOUT_CONFIG,
   
-  // Configuration
+  // Configuration (getCaptchaConfig for dynamic config, CAPTCHA_CONFIG for static defaults)
+  getCaptchaConfig,
   CAPTCHA_CONFIG
 };

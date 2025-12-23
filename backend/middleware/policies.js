@@ -252,7 +252,11 @@ const enforcePolicy = (policyName) => async (req, res, next) => {
   
   if (!policy) {
     console.error(`[Policy] Unknown policy: ${policyName}`);
-    return next();
+    // SECURITY: Unknown policy should fail closed, not open
+    return res.status(500).json({
+      error: 'Security verification temporarily unavailable. Please try again.',
+      code: 'POLICY_ERROR'
+    });
   }
   
   try {
@@ -294,8 +298,11 @@ const enforcePolicy = (policyName) => async (req, res, next) => {
     next();
   } catch (err) {
     console.error(`[Policy] Error in ${policyName}:`, err.message);
-    // Fail open for availability
-    next();
+    // SECURITY: Fail closed - errors should not bypass policy checks
+    return res.status(500).json({
+      error: 'Security verification temporarily unavailable. Please try again.',
+      code: 'POLICY_ERROR'
+    });
   }
 };
 
@@ -310,7 +317,11 @@ const enforcePolicies = (...policyNames) => async (req, res, next) => {
     
     if (!policy) {
       console.error(`[Policy] Unknown policy: ${policyName}`);
-      continue;
+      // SECURITY: Unknown policy should fail closed
+      return res.status(500).json({
+        error: 'Security verification temporarily unavailable. Please try again.',
+        code: 'POLICY_ERROR'
+      });
     }
     
     try {
@@ -324,7 +335,11 @@ const enforcePolicies = (...policyNames) => async (req, res, next) => {
       }
     } catch (err) {
       console.error(`[Policy] Error in ${policyName}:`, err.message);
-      // Continue to next policy
+      // SECURITY: Fail closed - errors should not bypass policy checks
+      return res.status(500).json({
+        error: 'Security verification temporarily unavailable. Please try again.',
+        code: 'POLICY_ERROR'
+      });
     }
   }
   

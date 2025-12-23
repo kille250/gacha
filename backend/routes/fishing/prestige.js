@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
+const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { User } = require('../../models');
 
 const {
@@ -27,7 +28,8 @@ const { FISH_TYPES } = require('../../config/fishing');
 const { UserNotFoundError } = require('../../errors/FishingErrors');
 
 // GET /prestige - Get prestige status and progress
-router.get('/', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
@@ -75,7 +77,8 @@ router.get('/', auth, async (req, res, next) => {
 });
 
 // POST /prestige/claim - Claim next prestige level
-router.post('/claim', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot prestige)
+router.post('/claim', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);
@@ -139,7 +142,8 @@ router.post('/claim', auth, async (req, res, next) => {
 });
 
 // GET /prestige/bonuses - Get current active bonuses from prestige + collection
-router.get('/bonuses', auth, async (req, res, next) => {
+// Security: enforcement checked (banned users cannot access game features)
+router.get('/bonuses', [auth, enforcementMiddleware], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);

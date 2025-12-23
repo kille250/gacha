@@ -93,9 +93,14 @@ const enforcementMiddleware = async (req, res, next) => {
     
     next();
   } catch (err) {
-    // Fail open for availability - log but don't block
-    console.error('[Enforcement] Middleware error:', err.message);
-    next();
+    // SECURITY: Fail CLOSED - errors should not bypass enforcement checks
+    // This is a security-critical middleware; if we can't verify the user's
+    // restriction status, we must not allow the request to proceed.
+    console.error('[Enforcement] Middleware error - failing closed:', err.message);
+    return res.status(503).json({
+      error: 'Security verification temporarily unavailable. Please try again.',
+      code: 'ENFORCEMENT_ERROR'
+    });
   }
 };
 

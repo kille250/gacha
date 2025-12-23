@@ -10,9 +10,11 @@ const { isValidUUID, parseDate } = require('../utils/validation');
 const { acquireCharacter } = require('../utils/characterLeveling');
 const { logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');
 const { 
-  captchaMiddleware, 
+  captchaMiddleware,
+  lockoutMiddleware,  // Early lockout check for fail-fast behavior
   recordFailedAttempt, 
-  clearFailedAttempts 
+  clearFailedAttempts,
+  getAttemptKey
 } = require('../middleware/captcha');
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 
@@ -196,10 +198,10 @@ router.delete('/admin/:id', [auth, adminAuth], async (req, res) => {
 });
 
 // USER: Redeem a coupon
-// Security: enforcement checked, policy enforced, rate limited, CAPTCHA protected
-router.post('/redeem', [auth, enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canRedeemCoupon'), captchaMiddleware('coupon_redeem')], async (req, res) => {
-  // Key must match format used in captchaMiddleware: `${userId}:${ipHash}`
-  const attemptKey = `${req.user.id}:${req.deviceSignals?.ipHash || 'unknown'}`;
+// Security: lockout checked FIRST (fail-fast), enforcement checked, policy enforced, rate limited, CAPTCHA protected
+router.post('/redeem', [auth, lockoutMiddleware(), enforcementMiddleware, sensitiveActionLimiter, enforcePolicy('canRedeemCoupon'), captchaMiddleware('coupon_redeem')], async (req, res) => {
+  // Attempt key is now set by lockoutMiddleware for convenience
+  const attemptKey = req.attemptKey || getAttemptKey(req);
   
   try {
     const { code } = req.body;
