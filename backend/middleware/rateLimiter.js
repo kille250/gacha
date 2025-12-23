@@ -3,18 +3,105 @@
  * 
  * Provides request-level rate limiting with enforcement integration.
  * Uses express-rate-limit with custom key generation and limits.
+ * 
+ * Rate limits are configurable via SecurityConfig service.
+ * Default values are used as fallbacks if config unavailable.
  */
 const rateLimit = require('express-rate-limit');
+
+// Default values (used as fallback, should match SecurityConfig DEFAULTS)
+const DEFAULTS = {
+  RATE_LIMIT_GENERAL_WINDOW: 60000,
+  RATE_LIMIT_GENERAL_MAX: 100,
+  RATE_LIMIT_SENSITIVE_WINDOW: 3600000,
+  RATE_LIMIT_SENSITIVE_MAX: 20,
+  RATE_LIMIT_SIGNUP_WINDOW: 86400000,
+  RATE_LIMIT_SIGNUP_MAX: 5,
+  RATE_LIMIT_COUPON_WINDOW: 900000,
+  RATE_LIMIT_COUPON_MAX: 10,
+  RATE_LIMIT_BURST_WINDOW: 1000,
+  RATE_LIMIT_BURST_MAX: 10
+};
+
+// Cached config values (updated periodically)
+let configCache = { ...DEFAULTS };
+let lastConfigLoad = 0;
+const CONFIG_REFRESH_INTERVAL = 60000; // 1 minute
+
+/**
+ * Load config from SecurityConfig service with caching
+ */
+async function loadConfig() {
+  const now = Date.now();
+  if (now - lastConfigLoad < CONFIG_REFRESH_INTERVAL) {
+    return configCache;
+  }
+  
+  try {
+    const { getConfig } = require('../services/securityConfigService');
+    
+    // Load all rate limit configs in parallel
+    const [
+      generalWindow, generalMax,
+      sensitiveWindow, sensitiveMax,
+      signupWindow, signupMax,
+      couponWindow, couponMax,
+      burstWindow, burstMax
+    ] = await Promise.all([
+      getConfig('RATE_LIMIT_GENERAL_WINDOW'),
+      getConfig('RATE_LIMIT_GENERAL_MAX'),
+      getConfig('RATE_LIMIT_SENSITIVE_WINDOW'),
+      getConfig('RATE_LIMIT_SENSITIVE_MAX'),
+      getConfig('RATE_LIMIT_SIGNUP_WINDOW'),
+      getConfig('RATE_LIMIT_SIGNUP_MAX'),
+      getConfig('RATE_LIMIT_COUPON_WINDOW'),
+      getConfig('RATE_LIMIT_COUPON_MAX'),
+      getConfig('RATE_LIMIT_BURST_WINDOW'),
+      getConfig('RATE_LIMIT_BURST_MAX')
+    ]);
+    
+    configCache = {
+      RATE_LIMIT_GENERAL_WINDOW: generalWindow,
+      RATE_LIMIT_GENERAL_MAX: generalMax,
+      RATE_LIMIT_SENSITIVE_WINDOW: sensitiveWindow,
+      RATE_LIMIT_SENSITIVE_MAX: sensitiveMax,
+      RATE_LIMIT_SIGNUP_WINDOW: signupWindow,
+      RATE_LIMIT_SIGNUP_MAX: signupMax,
+      RATE_LIMIT_COUPON_WINDOW: couponWindow,
+      RATE_LIMIT_COUPON_MAX: couponMax,
+      RATE_LIMIT_BURST_WINDOW: burstWindow,
+      RATE_LIMIT_BURST_MAX: burstMax
+    };
+    
+    lastConfigLoad = now;
+  } catch (err) {
+    console.error('[RateLimiter] Failed to load config, using defaults:', err.message);
+  }
+  
+  return configCache;
+}
+
+/**
+ * Get current config values (sync, uses cache)
+ */
+function getConfigSync() {
+  // Trigger async refresh in background if needed
+  if (Date.now() - lastConfigLoad > CONFIG_REFRESH_INTERVAL) {
+    loadConfig().catch(() => {});
+  }
+  return configCache;
+}
 
 /**
  * General API rate limiter
  * Applied to all API routes, with reduced limits for restricted users
  */
 const generalRateLimiter = rateLimit({
-  windowMs: 60 * 1000, // 1 minute
+  windowMs: DEFAULTS.RATE_LIMIT_GENERAL_WINDOW, // Initial value
   max: (req) => {
+    const config = getConfigSync();
     // Restricted users get lower limits
-    const baseLimit = 100;
+    const baseLimit = config.RATE_LIMIT_GENERAL_MAX;
     if (req.restrictedRateLimit) {
       return Math.floor(baseLimit * 0.5);
     }
@@ -40,8 +127,8 @@ const generalRateLimiter = rateLimit({
  * Applied to high-value operations like trades, password changes
  */
 const sensitiveActionLimiter = rateLimit({
-  windowMs: 60 * 60 * 1000, // 1 hour
-  max: 20,
+  windowMs: DEFAULTS.RATE_LIMIT_SENSITIVE_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_SENSITIVE_MAX,
   message: { error: 'Too many sensitive actions. Please wait before trying again.', code: 'SENSITIVE_RATE_LIMITED' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -55,8 +142,8 @@ const sensitiveActionLimiter = rateLimit({
  * Prevents rapid account creation from the same IP
  */
 const signupVelocityLimiter = rateLimit({
-  windowMs: 24 * 60 * 60 * 1000, // 24 hours
-  max: 5, // 5 accounts per IP per day
+  windowMs: DEFAULTS.RATE_LIMIT_SIGNUP_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_SIGNUP_MAX,
   message: { 
     error: 'Too many accounts created from this location. Please try again later.',
     code: 'SIGNUP_VELOCITY_EXCEEDED'
@@ -73,8 +160,8 @@ const signupVelocityLimiter = rateLimit({
  * Strict limits on coupon redemption attempts
  */
 const couponAttemptLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 10, // 10 attempts per 15 minutes
+  windowMs: DEFAULTS.RATE_LIMIT_COUPON_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_COUPON_MAX,
   message: { 
     error: 'Too many coupon redemption attempts. Please wait before trying again.',
     code: 'COUPON_RATE_LIMITED'
@@ -93,8 +180,8 @@ const couponAttemptLimiter = rateLimit({
  * Catches rapid-fire requests that might indicate automated abuse
  */
 const burstProtectionLimiter = rateLimit({
-  windowMs: 1000, // 1 second
-  max: 10, // 10 requests per second
+  windowMs: DEFAULTS.RATE_LIMIT_BURST_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_BURST_MAX,
   message: { error: 'Request rate too high', code: 'BURST_RATE_LIMITED' },
   standardHeaders: true,
   legacyHeaders: false,
@@ -103,11 +190,29 @@ const burstProtectionLimiter = rateLimit({
   }
 });
 
+/**
+ * Force reload config from database
+ * Call this when admin updates rate limit settings
+ */
+async function reloadConfig() {
+  lastConfigLoad = 0;
+  return loadConfig();
+}
+
+/**
+ * Get current config values for admin display
+ */
+function getCurrentConfig() {
+  return { ...configCache };
+}
+
 module.exports = {
   generalRateLimiter,
   sensitiveActionLimiter,
   signupVelocityLimiter,
   couponAttemptLimiter,
-  burstProtectionLimiter
+  burstProtectionLimiter,
+  reloadConfig,
+  getCurrentConfig
 };
 

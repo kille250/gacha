@@ -58,6 +58,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
   const [loading, setLoading] = useState(true);
   const [userData, setUserData] = useState(null);
   const [auditTrail, setAuditTrail] = useState([]);
+  const [ipCollisions, setIpCollisions] = useState([]);
   const [activeTab, setActiveTab] = useState('overview');
   const [actionLoading, setActionLoading] = useState(false);
   
@@ -74,6 +75,10 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
   // Linked accounts modal
   const [showLinkedAccounts, setShowLinkedAccounts] = useState(false);
   
+  // Perm ban confirmation
+  const [showPermBanConfirm, setShowPermBanConfirm] = useState(false);
+  const [permBanConfirmText, setPermBanConfirmText] = useState('');
+  
   const fetchUserSecurity = useCallback(async () => {
     if (!userId) return;
     setLoading(true);
@@ -81,6 +86,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
       const data = await getUserSecurity(userId);
       setUserData(data.user);
       setAuditTrail(data.auditTrail || []);
+      setIpCollisions(data.ipCollisions || []);
       setRestrictionForm(prev => ({
         ...prev,
         restrictionType: data.user?.restriction?.type || 'none'
@@ -103,6 +109,16 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
       return;
     }
     
+    // Require secondary confirmation for permanent bans
+    if (restrictionForm.restrictionType === 'perm_ban') {
+      setShowPermBanConfirm(true);
+      return;
+    }
+    
+    await executeRestriction();
+  };
+  
+  const executeRestriction = async () => {
     setActionLoading(true);
     try {
       if (restrictionForm.restrictionType === 'none') {
@@ -116,12 +132,26 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
         });
       }
       onSuccess(t('admin.security.restrictionApplied'));
+      setShowPermBanConfirm(false);
+      setPermBanConfirmText('');
       fetchUserSecurity();
     } catch (err) {
       console.error('Failed to apply restriction:', err);
     } finally {
       setActionLoading(false);
     }
+  };
+  
+  const handleConfirmPermBan = async () => {
+    if (permBanConfirmText !== 'PERMANENT BAN') {
+      return;
+    }
+    await executeRestriction();
+  };
+  
+  const handleCancelPermBan = () => {
+    setShowPermBanConfirm(false);
+    setPermBanConfirmText('');
   };
   
   const handleIssueWarning = async () => {
@@ -235,6 +265,17 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
               onClick={() => setActiveTab('overview')}
             >
               {t('admin.security.overview')}
+            </Tab>
+            <Tab 
+              $active={activeTab === 'ip'} 
+              onClick={() => setActiveTab('ip')}
+            >
+              <FaGlobe /> IP
+              {ipCollisions.length > 0 && (
+                <CollisionBadge $hasBanned={ipCollisions.some(u => u.isBanned)}>
+                  {ipCollisions.length}
+                </CollisionBadge>
+              )}
             </Tab>
             <Tab 
               $active={activeTab === 'devices'} 
@@ -362,6 +403,69 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                       )}
                     </DeviceSection>
                   </OverviewTab>
+                )}
+                
+                {activeTab === 'ip' && (
+                  <TabContent>
+                    <IPAnalysisSection>
+                      <SectionHeader>
+                        <FaGlobe /> IP Analysis
+                      </SectionHeader>
+                      
+                      <IPInfoCard>
+                        <IPLabel>Current IP Hash</IPLabel>
+                        <IPValue>{userData.lastKnownIP || 'Unknown'}</IPValue>
+                      </IPInfoCard>
+                      
+                      <CollisionSection>
+                        <CollisionHeader>
+                          IP Collisions ({ipCollisions.length} users)
+                          {ipCollisions.some(u => u.isBanned) && (
+                            <BanWarning>
+                              <FaExclamationTriangle /> Shares IP with banned users!
+                            </BanWarning>
+                          )}
+                        </CollisionHeader>
+                        
+                        {ipCollisions.length === 0 ? (
+                          <NoCollisions>
+                            ✓ No other users found with the same IP
+                          </NoCollisions>
+                        ) : (
+                          <CollisionList>
+                            {ipCollisions.map(user => (
+                              <CollisionItem key={user.id} $isBanned={user.isBanned}>
+                                <CollisionUser>
+                                  <Username 
+                                    as="button"
+                                    onClick={() => onViewUser?.(user.id)}
+                                    style={{ cursor: onViewUser ? 'pointer' : 'default' }}
+                                  >
+                                    {user.username}
+                                  </Username>
+                                  <CollisionRestriction $color={getRestrictionColor(user.restrictionType)}>
+                                    {user.restrictionType}
+                                  </CollisionRestriction>
+                                </CollisionUser>
+                                <CollisionMeta>
+                                  <span>Risk: {user.riskScore}</span>
+                                  <span>Joined: {new Date(user.createdAt).toLocaleDateString()}</span>
+                                </CollisionMeta>
+                              </CollisionItem>
+                            ))}
+                          </CollisionList>
+                        )}
+                      </CollisionSection>
+                      
+                      <RiskNote>
+                        <FaExclamationTriangle />
+                        <span>
+                          IP collisions may indicate ban evasion or shared networks (VPN, school, workplace).
+                          Review audit logs and account creation dates for suspicious patterns.
+                        </span>
+                      </RiskNote>
+                    </IPAnalysisSection>
+                  </TabContent>
                 )}
                 
                 {activeTab === 'devices' && (
@@ -503,6 +607,53 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
         onClose={() => setShowLinkedAccounts(false)}
         onViewUser={onViewUser}
       />
+      
+      {/* Permanent Ban Confirmation Modal */}
+      {showPermBanConfirm && (
+        <PermBanOverlay onClick={handleCancelPermBan}>
+          <PermBanModal onClick={e => e.stopPropagation()}>
+            <PermBanHeader>
+              <FaBan style={{ color: '#ff3b30' }} />
+              Confirm Permanent Ban
+            </PermBanHeader>
+            <PermBanBody>
+              <PermBanWarning>
+                <FaExclamationTriangle />
+                <span>
+                  You are about to <strong>permanently ban</strong> user <strong>{userData?.username}</strong>.
+                  This action is severe and should only be used for serious violations.
+                </span>
+              </PermBanWarning>
+              
+              <PermBanReason>
+                <strong>Reason:</strong> {restrictionForm.reason}
+              </PermBanReason>
+              
+              <PermBanConfirmInput>
+                <label>Type <strong>PERMANENT BAN</strong> to confirm:</label>
+                <Input 
+                  type="text"
+                  value={permBanConfirmText}
+                  onChange={(e) => setPermBanConfirmText(e.target.value)}
+                  placeholder="PERMANENT BAN"
+                  autoFocus
+                />
+              </PermBanConfirmInput>
+            </PermBanBody>
+            <PermBanFooter>
+              <SecondaryButton onClick={handleCancelPermBan}>
+                Cancel
+              </SecondaryButton>
+              <DangerButton 
+                onClick={handleConfirmPermBan}
+                disabled={permBanConfirmText !== 'PERMANENT BAN' || actionLoading}
+              >
+                {actionLoading ? 'Applying...' : 'Confirm Permanent Ban'}
+              </DangerButton>
+            </PermBanFooter>
+          </PermBanModal>
+        </PermBanOverlay>
+      )}
     </AnimatePresence>
   );
 };
@@ -787,6 +938,277 @@ const AuditSeverity = styled.span`
     props.$severity === 'warning' ? '#ff9500' :
     '#007aff'
   };
+`;
+
+// IP Analysis Tab Styles
+const CollisionBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-left: ${theme.spacing.xs};
+  min-width: 20px;
+  height: 20px;
+  padding: 0 6px;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  background: ${props => props.$hasBanned ? 'rgba(255, 59, 48, 0.15)' : 'rgba(255, 149, 0, 0.15)'};
+  color: ${props => props.$hasBanned ? '#ff3b30' : '#ff9500'};
+`;
+
+const IPAnalysisSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.lg};
+`;
+
+const SectionHeader = styled.h3`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  margin: 0;
+  
+  svg { color: ${theme.colors.primary}; }
+`;
+
+const IPInfoCard = styled.div`
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
+  padding: ${theme.spacing.md};
+`;
+
+const IPLabel = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.xs};
+`;
+
+const IPValue = styled.div`
+  font-family: monospace;
+  font-size: ${theme.fontSizes.md};
+  color: ${theme.colors.text};
+  word-break: break-all;
+`;
+
+const CollisionSection = styled.div`
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.lg};
+  padding: ${theme.spacing.md};
+`;
+
+const CollisionHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const BanWarning = styled.span`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.bold};
+  color: #ff3b30;
+  
+  svg { font-size: ${theme.fontSizes.xs}; }
+`;
+
+const NoCollisions = styled.div`
+  padding: ${theme.spacing.md};
+  text-align: center;
+  color: ${theme.colors.success};
+  font-size: ${theme.fontSizes.sm};
+`;
+
+const CollisionList = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  max-height: 300px;
+  overflow-y: auto;
+`;
+
+const CollisionItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${props => props.$isBanned ? 'rgba(255, 59, 48, 0.08)' : theme.colors.surface};
+  border: 1px solid ${props => props.$isBanned ? 'rgba(255, 59, 48, 0.3)' : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+`;
+
+const CollisionUser = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+const CollisionRestriction = styled.span`
+  padding: 2px 8px;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  text-transform: capitalize;
+  background: ${props => props.$color}20;
+  color: ${props => props.$color};
+`;
+
+const CollisionMeta = styled.div`
+  display: flex;
+  gap: ${theme.spacing.md};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+`;
+
+const RiskNote = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: rgba(255, 149, 0, 0.1);
+  border: 1px solid rgba(255, 149, 0, 0.2);
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  line-height: 1.5;
+  
+  svg {
+    flex-shrink: 0;
+    color: #ff9500;
+    margin-top: 2px;
+  }
+`;
+
+// Permanent Ban Confirmation Modal Styles
+const PermBanOverlay = styled.div`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 2000;
+`;
+
+const PermBanModal = styled.div`
+  background: ${theme.colors.surface};
+  border: 2px solid #ff3b30;
+  border-radius: ${theme.radius.xl};
+  width: 90%;
+  max-width: 500px;
+  box-shadow: 0 10px 40px rgba(255, 59, 48, 0.3);
+`;
+
+const PermBanHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.lg};
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.bold};
+  color: #ff3b30;
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+const PermBanBody = styled.div`
+  padding: ${theme.spacing.lg};
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.md};
+`;
+
+const PermBanWarning = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.text};
+  line-height: 1.5;
+  
+  svg {
+    flex-shrink: 0;
+    color: #ff3b30;
+    font-size: ${theme.fontSizes.lg};
+    margin-top: 2px;
+  }
+  
+  strong {
+    color: #ff3b30;
+  }
+`;
+
+const PermBanReason = styled.div`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  
+  strong {
+    color: ${theme.colors.text};
+  }
+`;
+
+const PermBanConfirmInput = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+  
+  label {
+    font-size: ${theme.fontSizes.sm};
+    color: ${theme.colors.textSecondary};
+    
+    strong {
+      color: ${theme.colors.text};
+      font-family: monospace;
+    }
+  }
+  
+  input {
+    font-size: ${theme.fontSizes.md};
+    text-align: center;
+  }
+`;
+
+const PermBanFooter = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.lg};
+  border-top: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+const DangerButton = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: #ff3b30;
+  border: none;
+  border-radius: ${theme.radius.lg};
+  color: white;
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  
+  &:hover:not(:disabled) {
+    background: #d63329;
+  }
+  
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
 export default UserSecurityModal;

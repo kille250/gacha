@@ -42,6 +42,8 @@ const AuditLogViewer = () => {
     severity: '',
     eventType: '',
     userId: '',
+    adminId: '',
+    adminActionsOnly: false,
     limit: 50,
     offset: 0
   });
@@ -55,6 +57,8 @@ const AuditLogViewer = () => {
       if (!params.severity) delete params.severity;
       if (!params.eventType) delete params.eventType;
       if (!params.userId) delete params.userId;
+      if (!params.adminId) delete params.adminId;
+      if (!params.adminActionsOnly) delete params.adminActionsOnly;
       
       const data = await getAuditLog(params);
       setEvents(data.events || []);
@@ -212,6 +216,28 @@ const AuditLogViewer = () => {
                 value={filters.userId}
                 onChange={(e) => handleFilterChange('userId', e.target.value)}
               />
+            </FilterGroup>
+            
+            <FilterGroup>
+              <FilterLabel>Admin ID</FilterLabel>
+              <Input 
+                type="number"
+                placeholder="Admin ID"
+                value={filters.adminId}
+                onChange={(e) => handleFilterChange('adminId', e.target.value)}
+              />
+            </FilterGroup>
+            
+            <FilterGroup>
+              <FilterLabel>Admin Actions</FilterLabel>
+              <CheckboxLabel>
+                <Checkbox 
+                  type="checkbox"
+                  checked={filters.adminActionsOnly}
+                  onChange={(e) => handleFilterChange('adminActionsOnly', e.target.checked)}
+                />
+                Show admin actions only
+              </CheckboxLabel>
             </FilterGroup>
           </FiltersPanel>
         )}
@@ -384,6 +410,23 @@ const FilterGroup = styled.div`
 const FilterLabel = styled.label`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
+`;
+
+const CheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.text};
+  cursor: pointer;
+  padding: ${theme.spacing.sm} 0;
+`;
+
+const Checkbox = styled.input`
+  width: 18px;
+  height: 18px;
+  cursor: pointer;
+  accent-color: ${theme.colors.primary};
 `;
 
 const EventsTable = styled.div`

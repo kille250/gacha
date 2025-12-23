@@ -686,7 +686,8 @@ router.get('/users/:id/security', auth, adminAuth, async (req, res) => {
       attributes: [
         'id', 'username', 'email', 'createdAt',
         'restrictionType', 'restrictedUntil', 'restrictionReason',
-        'riskScore', 'warningCount', 'deviceFingerprints', 'linkedAccounts', 'lastKnownIP'
+        'riskScore', 'warningCount', 'deviceFingerprints', 'linkedAccounts', 'lastKnownIP',
+        'riskScoreHistory'
       ]
     });
     
@@ -706,6 +707,27 @@ router.get('/users/:id/security', auth, adminAuth, async (req, res) => {
       limit: 50
     });
     
+    // Get IP collision data - users sharing the same IP hash
+    let ipCollisions = [];
+    if (user.lastKnownIP) {
+      const sameIPUsers = await User.findAll({
+        where: {
+          id: { [Op.ne]: userId },
+          lastKnownIP: user.lastKnownIP
+        },
+        attributes: ['id', 'username', 'restrictionType', 'riskScore', 'createdAt']
+      });
+      
+      ipCollisions = sameIPUsers.map(u => ({
+        id: u.id,
+        username: u.username,
+        restrictionType: u.restrictionType || 'none',
+        riskScore: u.riskScore || 0,
+        isBanned: ['perm_ban', 'temp_ban'].includes(u.restrictionType),
+        createdAt: u.createdAt
+      }));
+    }
+    
     res.json({
       user: {
         id: user.id,
@@ -721,9 +743,11 @@ router.get('/users/:id/security', auth, adminAuth, async (req, res) => {
         warningCount: user.warningCount || 0,
         deviceFingerprints: user.deviceFingerprints || [],
         linkedAccounts: user.linkedAccounts || [],
-        lastKnownIP: user.lastKnownIP
+        lastKnownIP: user.lastKnownIP,
+        riskScoreHistory: user.riskScoreHistory || []
       },
-      auditTrail
+      auditTrail,
+      ipCollisions
     });
   } catch (err) {
     console.error('Get user security error:', err);
@@ -968,12 +992,24 @@ router.post('/users/:id/reset-warnings', auth, adminAuth, async (req, res) => {
 // GET /api/admin/security/audit - Get audit log
 router.get('/security/audit', auth, adminAuth, async (req, res) => {
   try {
-    const { limit = 100, offset = 0, userId, eventType, severity } = req.query;
+    const { limit = 100, offset = 0, userId, eventType, severity, adminId, adminActionsOnly } = req.query;
     
     const where = {};
     if (userId) where.userId = parseInt(userId, 10);
-    if (eventType) where.eventType = eventType;
+    if (eventType) {
+      // Support event category prefix matching (e.g., 'admin' matches 'admin.restrict')
+      where.eventType = { [Op.like]: `${eventType}%` };
+    }
     if (severity) where.severity = severity;
+    
+    // Admin activity filters
+    if (adminId) {
+      where.adminId = parseInt(adminId, 10);
+    }
+    if (adminActionsOnly === 'true') {
+      // Filter for events where adminId is set (admin-initiated actions)
+      where.adminId = { [Op.ne]: null };
+    }
     
     const events = await AuditEvent.findAll({
       where,
