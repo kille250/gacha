@@ -59,24 +59,42 @@ module.exports = {
   async up(queryInterface) {
     const now = new Date();
     
-    // Use raw query to check and insert
-    for (const config of CONFIG_DEFINITIONS) {
-      // Check if config already exists
-      const [existing] = await queryInterface.sequelize.query(
-        'SELECT key FROM SecurityConfigs WHERE key = ?',
-        { replacements: [config.key], type: queryInterface.sequelize.QueryTypes.SELECT }
+    // Check if table exists first (handles case where create migration already ran but table was recreated)
+    try {
+      // Try to query the table - this will fail if it doesn't exist
+      await queryInterface.sequelize.query(
+        'SELECT 1 FROM "SecurityConfigs" LIMIT 1',
+        { type: queryInterface.sequelize.QueryTypes.SELECT }
       );
-      
-      if (!existing) {
-        await queryInterface.bulkInsert('SecurityConfigs', [{
-          key: config.key,
-          value: config.value,
-          description: config.description,
-          category: config.category,
-          updatedBy: null,
-          createdAt: now,
-          updatedAt: now
-        }]);
+    } catch (_err) {
+      // Table doesn't exist - the create-security-config migration should run first
+      // or sequelize.sync() should have created it. Skip seeding.
+      console.log('[Migration] SecurityConfigs table does not exist, skipping seed');
+      return;
+    }
+    
+    // Use raw query to check and insert (with proper PostgreSQL quoting)
+    for (const config of CONFIG_DEFINITIONS) {
+      try {
+        // Check if config already exists - use quoted table name for PostgreSQL
+        const [existing] = await queryInterface.sequelize.query(
+          'SELECT key FROM "SecurityConfigs" WHERE key = :key',
+          { replacements: { key: config.key }, type: queryInterface.sequelize.QueryTypes.SELECT }
+        );
+        
+        if (!existing) {
+          await queryInterface.bulkInsert('SecurityConfigs', [{
+            key: config.key,
+            value: config.value,
+            description: config.description,
+            category: config.category,
+            updatedBy: null,
+            createdAt: now,
+            updatedAt: now
+          }]);
+        }
+      } catch (insertErr) {
+        console.log(`[Migration] Could not insert ${config.key}:`, insertErr.message);
       }
     }
   },
