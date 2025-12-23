@@ -210,7 +210,9 @@ export function useFishingRenderer({
     app.ticker.add(onTick);
     
     return () => {
-      app.ticker.remove(onTick);
+      if (app?.ticker) {
+        app.ticker.remove(onTick);
+      }
     };
   }, [isReady, getApp]);
   
