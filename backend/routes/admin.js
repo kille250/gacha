@@ -1804,15 +1804,34 @@ router.post('/security/decay-risk-scores', auth, adminAuth, async (req, res) => 
 // GET /api/admin/security/risk-stats - Get risk score statistics
 router.get('/security/risk-stats', auth, adminAuth, async (req, res) => {
   try {
+    // First check if riskScore column exists
+    const tableInfo = await sequelize.getQueryInterface().describeTable('Users');
+    
+    if (!tableInfo.riskScore) {
+      // Column doesn't exist - return zeros with a note
+      return res.json({
+        total: await User.count(),
+        avgScore: 0,
+        maxScore: 0,
+        distribution: {
+          monitoring: 0,
+          elevated: 0,
+          high: 0,
+          critical: 0
+        },
+        note: 'Risk scoring not yet enabled - run migrations'
+      });
+    }
+    
     const stats = await User.findAll({
       attributes: [
         [sequelize.fn('COUNT', sequelize.col('id')), 'total'],
-        [sequelize.fn('AVG', sequelize.col('riskScore')), 'avgScore'],
-        [sequelize.fn('MAX', sequelize.col('riskScore')), 'maxScore'],
-        [sequelize.fn('SUM', sequelize.literal('CASE WHEN riskScore >= 30 THEN 1 ELSE 0 END')), 'monitoring'],
-        [sequelize.fn('SUM', sequelize.literal('CASE WHEN riskScore >= 50 THEN 1 ELSE 0 END')), 'elevated'],
-        [sequelize.fn('SUM', sequelize.literal('CASE WHEN riskScore >= 70 THEN 1 ELSE 0 END')), 'high'],
-        [sequelize.fn('SUM', sequelize.literal('CASE WHEN riskScore >= 85 THEN 1 ELSE 0 END')), 'critical']
+        [sequelize.fn('COALESCE', sequelize.fn('AVG', sequelize.col('riskScore')), 0), 'avgScore'],
+        [sequelize.fn('COALESCE', sequelize.fn('MAX', sequelize.col('riskScore')), 0), 'maxScore'],
+        [sequelize.literal('SUM(CASE WHEN riskScore >= 30 THEN 1 ELSE 0 END)'), 'monitoring'],
+        [sequelize.literal('SUM(CASE WHEN riskScore >= 50 THEN 1 ELSE 0 END)'), 'elevated'],
+        [sequelize.literal('SUM(CASE WHEN riskScore >= 70 THEN 1 ELSE 0 END)'), 'high'],
+        [sequelize.literal('SUM(CASE WHEN riskScore >= 85 THEN 1 ELSE 0 END)'), 'critical']
       ],
       raw: true
     });
@@ -1831,8 +1850,8 @@ router.get('/security/risk-stats', auth, adminAuth, async (req, res) => {
       }
     });
   } catch (err) {
-    console.error('Risk stats error:', err);
-    res.status(500).json({ error: 'Failed to fetch risk statistics' });
+    console.error('Risk stats error:', err.message, err.stack);
+    res.status(500).json({ error: 'Failed to fetch risk statistics', details: err.message });
   }
 });
 
