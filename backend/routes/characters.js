@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { enforcementMiddleware } = require('../middleware/enforcement');
 const { User, Character, UserCharacter } = require('../models');
 const { 
   PRICING_CONFIG, 
@@ -35,7 +36,7 @@ const {
  * Roll a single character
  * POST /api/characters/roll
  */
-router.post('/roll', auth, async (req, res) => {
+router.post('/roll', auth, enforcementMiddleware, async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {
@@ -112,7 +113,7 @@ router.post('/roll', auth, async (req, res) => {
  * Multi-roll endpoint
  * POST /api/characters/roll-multi
  */
-router.post('/roll-multi', auth, async (req, res) => {
+router.post('/roll-multi', auth, enforcementMiddleware, async (req, res) => {
   const userId = req.user.id;
   
   if (!acquireRollLock(userId)) {

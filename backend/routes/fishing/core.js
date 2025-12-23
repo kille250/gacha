@@ -9,6 +9,7 @@ const express = require('express');
 const router = express.Router();
 const crypto = require('crypto');
 const auth = require('../../middleware/auth');
+const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { sequelize, User, FishInventory } = require('../../models');
 
 // Config imports
@@ -136,7 +137,7 @@ function setMode(userId, mode) {
 }
 
 // POST /cast - Start fishing (cast the line)
-router.post('/cast', auth, async (req, res, next) => {
+router.post('/cast', auth, enforcementMiddleware, async (req, res, next) => {
   const userId = req.user.id;
   
   try {

@@ -10,7 +10,6 @@ const schedule = require('node-schedule');
 const { Server } = require('socket.io');
 const { initMultiplayer } = require('./routes/fishingMultiplayer');
 const { collectDeviceSignals } = require('./middleware/deviceSignals');
-const { enforcementMiddleware } = require('./middleware/enforcement');
 
 // ===========================================
 // SECURITY: Validate required environment variables at startup
@@ -226,15 +225,6 @@ app.use('/api/auth/login', authLimiter);
 app.use('/api/auth/signup', authLimiter);
 app.use('/api/auth/google', authLimiter); // Applies to /google, /google/relink, /google/unlink
 app.use('/api/auth', authRoutes);
-
-// Enforcement middleware for protected routes (checks bans, shadowbans, etc.)
-// Applied after auth to have user context
-const auth = require('./middleware/auth');
-app.use('/api/characters', auth, enforcementMiddleware);
-app.use('/api/fishing', auth, enforcementMiddleware);
-app.use('/api/dojo', auth, enforcementMiddleware);
-app.use('/api/banners', auth, enforcementMiddleware);
-app.use('/api/coupons', auth, enforcementMiddleware);
 
 // Character routes - rate limit only roll endpoints
 const characterRoutes = require('./routes/characters');

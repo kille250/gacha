@@ -8,6 +8,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../../middleware/auth');
+const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { sequelize, User, FishInventory } = require('../../models');
 
 // Config imports
@@ -178,7 +179,7 @@ router.get('/trading-post', auth, async (req, res, next) => {
 });
 
 // POST /trade - Execute a trade
-router.post('/trade', auth, async (req, res, next) => {
+router.post('/trade', auth, enforcementMiddleware, async (req, res, next) => {
   const userId = req.user.id;
   const now = Date.now();
   
