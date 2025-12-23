@@ -3,6 +3,19 @@
  * 
  * Binds sessions to devices for high-value actions.
  * Prevents session hijacking by requiring device verification.
+ * 
+ * STATUS: IMPLEMENTED BUT NOT INTEGRATED
+ * These middleware functions are ready to use but not yet applied to any routes.
+ * They can be added to sensitive routes when stricter device verification is needed.
+ * 
+ * Potential use cases:
+ *   - High-value trades
+ *   - Account deletion
+ *   - Admin actions
+ * 
+ * To integrate, add to route middleware chains:
+ *   router.post('/sensitive', [auth, verifyDeviceBinding, ...], handler);
+ *   router.post('/critical', [auth, requireDeviceVerification, ...], handler);
  */
 
 const { User } = require('../models');

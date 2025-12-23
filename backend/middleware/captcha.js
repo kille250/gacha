@@ -279,34 +279,7 @@ function generateFallbackChallenge() {
 }
 
 /**
- * Verify fallback CAPTCHA token (sync version)
- * Uses static config for token validity - prefer verifyFallbackTokenAsync for dynamic config
- * @deprecated Use verifyFallbackTokenAsync for dynamic config support
- */
-function verifyFallbackToken(token, answer) {
-  if (!token) return false;
-  
-  const storedData = fallbackTokens.get(token);
-  if (!storedData) return false;
-  
-  // Check expiry using static config (5 minutes default)
-  if (Date.now() - storedData.createdAt > CAPTCHA_CONFIG.tokenValidityMs) {
-    fallbackTokens.delete(token);
-    return false;
-  }
-  
-  // Check answer
-  if (storedData.answer !== answer) {
-    return false;
-  }
-  
-  // One-time use
-  fallbackTokens.delete(token);
-  return true;
-}
-
-/**
- * Verify fallback CAPTCHA token (async version)
+ * Verify fallback CAPTCHA token
  * Uses dynamic config for token validity - allows runtime adjustments
  */
 async function verifyFallbackTokenAsync(token, answer) {
@@ -698,7 +671,6 @@ module.exports = {
   // Verification functions
   verifyRecaptcha,
   verifyRecaptchaToken,
-  verifyFallbackToken,
   verifyFallbackTokenAsync,
   
   // Utility functions

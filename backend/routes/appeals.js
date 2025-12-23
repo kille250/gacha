@@ -8,6 +8,8 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
+// NOTE: enforcementMiddleware is intentionally NOT used here.
+// Appeals routes must be accessible by banned users so they can submit appeals.
 const { User } = require('../models');
 const Appeal = require('../models/appeal');
 const { logAdminAction, logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');

@@ -91,6 +91,14 @@ const enforcementMiddleware = async (req, res, next) => {
         break;
     }
     
+    // Auto-clear expired restrictions asynchronously (non-blocking)
+    // This ensures the database stays clean without slowing down requests
+    if (req.clearRestriction) {
+      clearExpiredRestriction(user.id).catch(err => {
+        console.error('[Enforcement] Background clear failed:', err.message);
+      });
+    }
+    
     next();
   } catch (err) {
     // SECURITY: Fail CLOSED - errors should not bypass enforcement checks
