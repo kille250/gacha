@@ -51,6 +51,8 @@ const FISHING_CONFIG = {
   },
   
   // Network latency buffer for reaction time validation (ms)
+  // Subtracts this amount from server-measured reaction time to compensate for
+  // network round-trip delay. Makes perfect catches achievable regardless of connection speed.
   latencyBuffer: 200,
   
   // Minimum human reaction time (anti-cheat, prevents instant catches)

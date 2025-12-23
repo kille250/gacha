@@ -53,6 +53,7 @@ const DAILY_LIMITS = FISHING_CONFIG.dailyLimits;
 const CAST_COOLDOWN = FISHING_CONFIG.castCooldown;
 const CAST_COST = FISHING_CONFIG.castCost;
 const MIN_REACTION_TIME = FISHING_CONFIG.minReactionTime || 80;
+const LATENCY_BUFFER = FISHING_CONFIG.latencyBuffer || 200; // Compensate for network round-trip
 const MAX_ACTIVE_SESSIONS_PER_USER = FISHING_CONFIG.sessionLimits?.maxActiveSessionsPerUser || 3;
 
 // In-memory state (shared via module exports)
@@ -245,9 +246,12 @@ router.post('/catch', auth, async (req, res, next) => {
     const fish = session.fish;
     const now = Date.now();
     
-    // Server-side timing validation
+    // Server-side timing validation with latency compensation
+    // The server reaction time includes network round-trip delay, so we subtract
+    // the latency buffer to give players fair credit for their actual reaction speed
     const serverReactionTime = now - session.fishAppearsAt;
-    const validatedReactionTime = Math.max(MIN_REACTION_TIME, serverReactionTime);
+    const latencyCompensatedTime = Math.max(0, serverReactionTime - LATENCY_BUFFER);
+    const validatedReactionTime = Math.max(MIN_REACTION_TIME, latencyCompensatedTime);
     const success = serverReactionTime >= 0 && validatedReactionTime <= fish.timingWindow;
     
     const result = await sequelize.transaction(async (transaction) => {
