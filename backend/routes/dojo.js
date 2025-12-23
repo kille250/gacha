@@ -506,32 +506,6 @@ router.post('/claim', auth, async (req, res) => {
       premiumTickets: Math.min(rewards.premiumTickets, remainingCaps.premiumTickets)
     };
     
-    // Track if any rewards were capped
-    const wasPointsCapped = cappedRewards.points < rewards.points;
-    const wasTicketsCapped = cappedRewards.rollTickets < rewards.rollTickets || 
-                              cappedRewards.premiumTickets < rewards.premiumTickets;
-    
-    // Update today's stats
-    dailyStats[today] = {
-      points: todayStats.points + cappedRewards.points,
-      rollTickets: todayStats.rollTickets + cappedRewards.rollTickets,
-      premiumTickets: todayStats.premiumTickets + cappedRewards.premiumTickets
-    };
-    
-    // Lazy cleanup: Only clean old daily stats when > 10 entries exist
-    // This reduces processing on every claim while still preventing unbounded growth
-    if (Object.keys(dailyStats).length > 10) {
-      const cutoffDate = new Date();
-      cutoffDate.setDate(cutoffDate.getDate() - 7);
-      for (const date of Object.keys(dailyStats)) {
-        if (new Date(date) < cutoffDate) {
-          delete dailyStats[date];
-        }
-      }
-    }
-    
-    user.dojoDailyStats = dailyStats;
-    
     // =============================================
     // TICKET PITY SYSTEM
     // =============================================
@@ -555,6 +529,34 @@ router.post('/claim', auth, async (req, res) => {
     // Use pity tickets instead of random tickets (more fair, deterministic)
     const finalRollTickets = Math.min(pityRollTickets, remainingCaps.rollTickets);
     const finalPremiumTickets = Math.min(pityPremiumTickets, remainingCaps.premiumTickets);
+    
+    // Track if any rewards were capped
+    const wasPointsCapped = cappedRewards.points < rewards.points;
+    const wasTicketsCapped = pityRollTickets > remainingCaps.rollTickets || 
+                              pityPremiumTickets > remainingCaps.premiumTickets;
+    
+    // Update today's stats with ACTUAL tickets given (not random reward values)
+    // FIX: Previously used cappedRewards.rollTickets which was from random calculation,
+    // but actual tickets come from pity system (finalRollTickets/finalPremiumTickets)
+    dailyStats[today] = {
+      points: todayStats.points + cappedRewards.points,
+      rollTickets: todayStats.rollTickets + finalRollTickets,
+      premiumTickets: todayStats.premiumTickets + finalPremiumTickets
+    };
+    
+    // Lazy cleanup: Only clean old daily stats when > 10 entries exist
+    // This reduces processing on every claim while still preventing unbounded growth
+    if (Object.keys(dailyStats).length > 10) {
+      const cutoffDate = new Date();
+      cutoffDate.setDate(cutoffDate.getDate() - 7);
+      for (const date of Object.keys(dailyStats)) {
+        if (new Date(date) < cutoffDate) {
+          delete dailyStats[date];
+        }
+      }
+    }
+    
+    user.dojoDailyStats = dailyStats;
     
     // Apply rewards
     user.points += cappedRewards.points;
