@@ -14,8 +14,22 @@ export const ERROR_TYPES = {
   VALIDATION: 'VALIDATION',
   NOT_FOUND: 'NOT_FOUND',
   SERVER: 'SERVER',
+  FORBIDDEN: 'FORBIDDEN',  // Policy denials, bans, etc. (403 but not auth failure)
+  RATE_LIMITED: 'RATE_LIMITED',  // 429 errors
   UNKNOWN: 'UNKNOWN',
 };
+
+// Error codes that indicate policy/enforcement blocks, NOT auth failures
+const NON_AUTH_403_CODES = [
+  'POLICY_DENIED',
+  'POLICY_ERROR', 
+  'ACCOUNT_BANNED',
+  'ACCOUNT_TEMP_BANNED',
+  'ENFORCEMENT_ERROR',
+  'ACCOUNT_LOCKED',
+  'CAPTCHA_REQUIRED',
+  'CAPTCHA_FAILED'
+];
 
 /**
  * Extract a user-friendly error message from an Axios error response
@@ -83,9 +97,25 @@ export const getErrorType = (error) => {
   }
   
   const status = error.response.status;
+  const errorCode = error.response?.data?.code;
   
-  if (status === 401 || status === 403) {
+  // 401 is always an auth error (token expired/invalid)
+  if (status === 401) {
     return ERROR_TYPES.AUTH;
+  }
+  
+  // 403 could be auth OR policy denial - check the error code
+  if (status === 403) {
+    // If it has a known non-auth code, it's a FORBIDDEN (policy) error, not AUTH
+    if (NON_AUTH_403_CODES.includes(errorCode)) {
+      return ERROR_TYPES.FORBIDDEN;
+    }
+    // Unknown 403 - treat as auth to be safe
+    return ERROR_TYPES.AUTH;
+  }
+  
+  if (status === 429) {
+    return ERROR_TYPES.RATE_LIMITED;
   }
   
   if (status === 400 || status === 422) {
@@ -119,6 +149,24 @@ export const isAuthError = (error) => {
  */
 export const isNetworkError = (error) => {
   return getErrorType(error) === ERROR_TYPES.NETWORK;
+};
+
+/**
+ * Check if an error is a forbidden/policy error (403 but NOT auth failure)
+ * @param {Error} error - The error object
+ * @returns {boolean} True if forbidden/policy error
+ */
+export const isForbiddenError = (error) => {
+  return getErrorType(error) === ERROR_TYPES.FORBIDDEN;
+};
+
+/**
+ * Check if an error is a rate limit error (429)
+ * @param {Error} error - The error object
+ * @returns {boolean} True if rate limited
+ */
+export const isRateLimitError = (error) => {
+  return getErrorType(error) === ERROR_TYPES.RATE_LIMITED;
 };
 
 /**

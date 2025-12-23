@@ -183,12 +183,30 @@ api.interceptors.response.use(
     
     // Handle auth errors globally (token expired, invalid, etc.)
     // Skip for auth endpoints to avoid redirect loops
+    // Skip for policy denials (403 with POLICY_DENIED) - user is authenticated but not authorized
+    // Skip for enforcement blocks (403 with ACCOUNT_BANNED, ACCOUNT_TEMP_BANNED)
     if (error.response?.status === 401 || error.response?.status === 403) {
       const isAuthEndpoint = error.config?.url?.includes('/auth/');
-      const isCaptchaError = error.response?.data?.code === 'CAPTCHA_REQUIRED' || 
-                             error.response?.data?.code === 'CAPTCHA_FAILED';
+      const errorCode = error.response?.data?.code;
       
-      if (!isAuthEndpoint && !isCaptchaError) {
+      // These codes indicate the user IS authenticated but blocked for other reasons
+      // Do NOT log them out - just show the error message
+      const isNonAuthError = [
+        'CAPTCHA_REQUIRED',
+        'CAPTCHA_FAILED', 
+        'POLICY_DENIED',           // Policy check failed (e.g., account too new)
+        'POLICY_ERROR',            // Policy check error
+        'ACCOUNT_BANNED',          // Permanent ban
+        'ACCOUNT_TEMP_BANNED',     // Temporary ban
+        'ENFORCEMENT_ERROR',       // Enforcement middleware error
+        'ACCOUNT_LOCKED',          // Too many failed attempts
+        'DAILY_LIMIT',             // Daily limit reached
+        'RATE_LIMITED',            // Rate limited
+        'SENSITIVE_RATE_LIMITED'   // Sensitive action rate limited
+      ].includes(errorCode);
+      
+      // Only trigger logout for actual auth failures (401 or 403 without known non-auth codes)
+      if (!isAuthEndpoint && !isNonAuthError && error.response?.status === 401) {
         // Dispatch custom event for AuthContext to handle
         window.dispatchEvent(new CustomEvent(AUTH_ERROR_EVENT, { 
           detail: { status: error.response.status, url: error.config?.url }
