@@ -12,17 +12,19 @@ const { enforcementMiddleware, getRestrictionStatus } = require('../middleware/e
 const { 
   captchaMiddleware, 
   recordFailedAttempt, 
-  clearFailedAttempts 
+  clearFailedAttempts,
+  checkLockout,
+  getRemainingAttempts
 } = require('../middleware/captcha');
-const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
+const { sensitiveActionLimiter, generalRateLimiter } = require('../middleware/rateLimiter');
 
 // Initialize Google OAuth client
 const googleClient = new OAuth2Client(process.env.GOOGLE_CLIENT_ID);
 
 // POST /api/auth/daily-reward - Claim hourly reward
 // Note: Route name is legacy ("daily") but actual interval is 1 hour for better engagement
-// Security: enforcement checked
-router.post('/daily-reward', [auth, enforcementMiddleware], async (req, res) => {
+// Security: enforcement checked, rate limited
+router.post('/daily-reward', [auth, enforcementMiddleware, generalRateLimiter], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     
@@ -188,6 +190,21 @@ router.post('/login', async (req, res) => {
   // Build key for failed attempt tracking (IP-based for login since user unknown)
   const attemptKey = `login:${req.deviceSignals?.ipHash || 'unknown'}`;
   
+  // SECURITY: Check if IP is locked out due to too many failed attempts
+  const lockoutStatus = checkLockout(attemptKey);
+  if (lockoutStatus.locked) {
+    await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, null, {
+      reason: 'Account locked due to too many failed attempts',
+      attemptedUsername: username?.trim(),
+      remainingSec: lockoutStatus.remainingSec
+    }, req);
+    return res.status(429).json({ 
+      error: 'Too many failed login attempts. Please try again later.',
+      code: 'ACCOUNT_LOCKED',
+      retryAfter: lockoutStatus.remainingSec
+    });
+  }
+  
   // Basic validation (don't reveal which field is wrong)
   if (!username || !password) {
     return res.status(401).json({ error: 'Invalid credentials' });
@@ -196,15 +213,33 @@ router.post('/login', async (req, res) => {
   try {
     const user = await User.findOne({ where: { username: username.trim() } });
     if (!user || !user.validPassword(password)) {
-      // Record failed attempt for CAPTCHA escalation
-      recordFailedAttempt(attemptKey);
+      // Record failed attempt for CAPTCHA escalation AND lockout
+      const failCount = recordFailedAttempt(attemptKey);
+      const remainingAttempts = getRemainingAttempts(attemptKey);
+      
+      // Update risk score if user exists (potential targeted attack)
+      if (user) {
+        await updateRiskScore(user.id, { 
+          reason: 'failed_login_attempt',
+          failedAttempts: failCount 
+        });
+      }
       
       // Log failed login
-      await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, null, {
+      await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, user?.id || null, {
         attemptedUsername: username.trim(),
-        ipHash: req.deviceSignals?.ipHash?.substring(0, 8)
+        ipHash: req.deviceSignals?.ipHash?.substring(0, 8),
+        failCount,
+        remainingAttempts
       }, req);
-      return res.status(401).json({ error: 'Invalid credentials' });
+      
+      // Include remaining attempts warning when getting close to lockout
+      const response = { error: 'Invalid credentials' };
+      if (remainingAttempts <= 3 && remainingAttempts > 0) {
+        response.warning = `${remainingAttempts} attempt(s) remaining before lockout`;
+      }
+      
+      return res.status(401).json(response);
     }
     
     // Check if user is banned BEFORE issuing token
@@ -321,6 +356,37 @@ router.post('/google', async (req, res) => {
     // If not found by googleId, check by email (for first-time Google linking)
     if (!user) {
       user = await User.findOne({ where: { email: normalizedEmail } });
+    }
+    
+    // SECURITY FIX: Check if existing user is banned BEFORE issuing token
+    if (user) {
+      const restriction = await getRestrictionStatus(user.id);
+      if (restriction) {
+        if (restriction.type === 'perm_ban') {
+          await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, user.id, {
+            reason: 'Account permanently banned',
+            method: 'google'
+          }, req);
+          return res.status(403).json({
+            error: 'Account permanently suspended',
+            reason: restriction.reason || 'Terms of Service violation',
+            canAppeal: true,
+            code: 'ACCOUNT_BANNED'
+          });
+        }
+        if (restriction.type === 'temp_ban') {
+          await logSecurityEvent(AUDIT_EVENTS.LOGIN_FAILED, user.id, {
+            reason: 'Account temporarily banned',
+            method: 'google'
+          }, req);
+          return res.status(403).json({
+            error: 'Account temporarily suspended',
+            reason: restriction.reason || 'Policy violation',
+            expiresAt: restriction.expiresAt,
+            code: 'ACCOUNT_TEMP_BANNED'
+          });
+        }
+      }
     }
     
     if (user) {
@@ -530,8 +596,8 @@ router.post('/google/relink', [auth, enforcementMiddleware, sensitiveActionLimit
 });
 
 // POST /api/auth/google/unlink - Unlink Google account (authenticated users only)
-// Security: enforcement checked, rate limited
-router.post('/google/unlink', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
+// Security: enforcement checked, rate limited, CAPTCHA protected
+router.post('/google/unlink', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('account_link')], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) {
@@ -550,10 +616,19 @@ router.post('/google/unlink', [auth, enforcementMiddleware, sensitiveActionLimit
       });
     }
     
+    // Track for audit
+    const unlinkedEmail = user.googleEmail;
+    
     // Clear Google link
     user.googleId = null;
     user.googleEmail = null;
     await user.save();
+    
+    // Log the unlink action
+    await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
+      action: 'google_unlink',
+      unlinkedEmail: unlinkedEmail ? unlinkedEmail.substring(0, 3) + '***' : null
+    }, req);
     
     res.json({ message: 'Google account unlinked successfully' });
   } catch (err) {
@@ -600,9 +675,10 @@ router.get('/me', auth, async (req, res) => {
 });
 
 // PUT /api/auth/profile/email - Add or update email
-// Security: enforcement checked, rate limited
-router.put('/profile/email', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
+// Security: enforcement checked, rate limited, CAPTCHA protected
+router.put('/profile/email', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('account_link')], async (req, res) => {
   const { email } = req.body;
+  const attemptKey = `email:${req.user.id}`;
   
   // Validate email
   const emailValidation = validateEmail(email);
@@ -621,12 +697,27 @@ router.put('/profile/email', [auth, enforcementMiddleware, sensitiveActionLimite
       where: { email: emailValidation.value } 
     });
     if (existingEmail && existingEmail.id !== user.id) {
+      // Record failed attempt for CAPTCHA escalation (potential enumeration)
+      recordFailedAttempt(attemptKey);
       return res.status(400).json({ error: 'Email already registered to another account' });
     }
+    
+    // Track old email for audit
+    const oldEmail = user.email;
     
     // Update email
     user.email = emailValidation.value;
     await user.save();
+    
+    // Clear failed attempts on success
+    clearFailedAttempts(attemptKey);
+    
+    // Log the email change
+    await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
+      action: 'email_change',
+      oldEmail: oldEmail ? oldEmail.substring(0, 3) + '***' : null,
+      newEmail: emailValidation.value.substring(0, 3) + '***'
+    }, req);
     
     res.json({ 
       message: 'Email updated successfully',
@@ -680,6 +771,9 @@ router.put('/profile/password', [auth, enforcementMiddleware, sensitiveActionLim
     // Clear failed attempts on success
     clearFailedAttempts(attemptKey);
     
+    // Track whether user had a password before this change (for audit log)
+    const hadPreviousPassword = !!user.password;
+    
     // Set the new password (the model's beforeCreate/beforeUpdate hook will hash it)
     user.password = newPassword;
     await user.save();
@@ -687,7 +781,7 @@ router.put('/profile/password', [auth, enforcementMiddleware, sensitiveActionLim
     // Log successful password change
     await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
       success: true,
-      hadPreviousPassword: !!user.password
+      hadPreviousPassword
     }, req);
     
     res.json({ 
@@ -700,8 +794,8 @@ router.put('/profile/password', [auth, enforcementMiddleware, sensitiveActionLim
 });
 
 // PUT /api/auth/profile/username - Change username (one time only)
-// Security: enforcement checked, rate limited
-router.put('/profile/username', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
+// Security: enforcement checked, rate limited, CAPTCHA protected
+router.put('/profile/username', [auth, enforcementMiddleware, sensitiveActionLimiter, captchaMiddleware('account_link')], async (req, res) => {
   const { username } = req.body;
   
   // Validate username
@@ -734,10 +828,20 @@ router.put('/profile/username', [auth, enforcementMiddleware, sensitiveActionLim
       return res.status(400).json({ error: 'Username already taken' });
     }
     
+    // Track old username for audit
+    const oldUsername = user.username;
+    
     // Update username and mark as changed
     user.username = usernameValidation.value;
     user.usernameChanged = true;
     await user.save();
+    
+    // Log the username change
+    await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
+      action: 'username_change',
+      oldUsername,
+      newUsername: usernameValidation.value
+    }, req);
     
     res.json({ 
       message: 'Username changed successfully',
@@ -864,8 +968,8 @@ router.post('/reset-account', [auth, enforcementMiddleware, sensitiveActionLimit
 });
 
 // POST /api/auth/toggle-r18 - Toggle R18 content preference
-// Security: enforcement checked
-router.post('/toggle-r18', [auth, enforcementMiddleware], async (req, res) => {
+// Security: enforcement checked, rate limited
+router.post('/toggle-r18', [auth, enforcementMiddleware, generalRateLimiter], async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
       attributes: ['id', 'allowR18', 'showR18']

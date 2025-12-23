@@ -84,6 +84,13 @@ const fallbackTokens = new Map();
 // In-memory store for failed attempt counts
 const failedAttempts = new Map();
 
+// Lockout configuration (hard-coded as these are security-critical)
+const LOCKOUT_CONFIG = {
+  maxAttempts: 10,           // Lock after 10 failed attempts
+  lockoutDurationMs: 15 * 60 * 1000,  // 15 minute lockout
+  windowMs: 15 * 60 * 1000   // 15 minute window for counting attempts
+};
+
 /**
  * Check if reCAPTCHA is configured and available
  * Note: Requires both env var AND config flag
@@ -271,6 +278,66 @@ function recordFailedAttempt(key) {
  */
 function clearFailedAttempts(key) {
   failedAttempts.delete(key);
+}
+
+/**
+ * Check if an account/IP is locked out due to too many failed attempts
+ * @param {string} key - Attempt tracking key (e.g., 'login:ipHash')
+ * @returns {{locked: boolean, remainingMs?: number, attempts?: number}}
+ */
+function checkLockout(key) {
+  const current = failedAttempts.get(key);
+  if (!current) {
+    return { locked: false };
+  }
+  
+  const now = Date.now();
+  
+  // Check if window has expired - reset if so
+  if (now - current.firstAttempt > LOCKOUT_CONFIG.windowMs) {
+    return { locked: false };
+  }
+  
+  // Check if locked
+  if (current.count >= LOCKOUT_CONFIG.maxAttempts) {
+    const lockoutEndTime = current.firstAttempt + LOCKOUT_CONFIG.lockoutDurationMs;
+    const remainingMs = lockoutEndTime - now;
+    
+    if (remainingMs > 0) {
+      return { 
+        locked: true, 
+        remainingMs, 
+        remainingSec: Math.ceil(remainingMs / 1000),
+        attempts: current.count 
+      };
+    }
+    // Lockout expired, reset counter
+    failedAttempts.delete(key);
+    return { locked: false };
+  }
+  
+  return { locked: false, attempts: current.count };
+}
+
+/**
+ * Get remaining attempts before lockout
+ * @param {string} key - Attempt tracking key
+ * @returns {number} - Remaining attempts (0 if locked)
+ */
+function getRemainingAttempts(key) {
+  const current = failedAttempts.get(key);
+  if (!current) {
+    return LOCKOUT_CONFIG.maxAttempts;
+  }
+  
+  const now = Date.now();
+  
+  // Window expired
+  if (now - current.firstAttempt > LOCKOUT_CONFIG.windowMs) {
+    return LOCKOUT_CONFIG.maxAttempts;
+  }
+  
+  return Math.max(0, LOCKOUT_CONFIG.maxAttempts - current.count);
 }
 
 /**
@@ -486,6 +553,11 @@ module.exports = {
   recordFailedAttempt,
   clearFailedAttempts,
   isRecaptchaEnabled,
+  
+  // Lockout functions
+  checkLockout,
+  getRemainingAttempts,
+  LOCKOUT_CONFIG,
   
   // Configuration
   CAPTCHA_CONFIG

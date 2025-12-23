@@ -10,7 +10,8 @@ const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { User } = require('../models');
 const Appeal = require('../models/appeal');
-const { logAdminAction, AUDIT_EVENTS } = require('../services/auditService');
+const { logAdminAction, logSecurityEvent, AUDIT_EVENTS } = require('../services/auditService');
+const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 
 // ===========================================
 // USER ENDPOINTS
@@ -66,7 +67,8 @@ router.get('/status', auth, async (req, res) => {
 });
 
 // POST /api/appeals/submit - Submit an appeal
-router.post('/submit', auth, async (req, res) => {
+// Security: rate limited to prevent spam
+router.post('/submit', [auth, sensitiveActionLimiter], async (req, res) => {
   try {
     const { appealText } = req.body;
     
@@ -131,6 +133,12 @@ router.post('/submit', auth, async (req, res) => {
       restrictionType: user.restrictionType,
       appealText: appealText.trim()
     });
+    
+    // Log the appeal submission
+    await logSecurityEvent(AUDIT_EVENTS.APPEAL_SUBMITTED, req.user.id, {
+      appealId: appeal.id,
+      restrictionType: user.restrictionType
+    }, req);
     
     res.status(201).json({
       success: true,
