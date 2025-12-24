@@ -17,7 +17,7 @@ import {
 } from '../design-system';
 
 // Icon Constants
-import { ICON_POINTS, ICON_GIFT, ICON_COUPON } from '../constants/icons';
+import { IconPoints, IconGift, IconCoupon } from '../constants/icons';
 
 const CouponPage = () => {
   const { t } = useTranslation();
@@ -91,7 +91,7 @@ const CouponPage = () => {
             <PageSubtitle>{t('coupon.subtitle')}</PageSubtitle>
           </HeaderContent>
           <PointsDisplay>
-            <span>{ICON_POINTS}</span>
+            <span><IconPoints /></span>
             <span>{user?.points || 0}</span>
           </PointsDisplay>
         </Header>
@@ -180,7 +180,7 @@ const CouponPage = () => {
           {/* Reward Display Section */}
           <RewardSection>
             <SectionHeader>
-              <SectionIcon>{ICON_GIFT}</SectionIcon>
+              <SectionIcon><IconGift /></SectionIcon>
               <Heading2>{t('coupon.rewardDetails')}</Heading2>
             </SectionHeader>
             
@@ -238,7 +238,7 @@ const CouponPage = () => {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <EmptyIcon>{ICON_COUPON}</EmptyIcon>
+                    <EmptyIcon><IconCoupon /></EmptyIcon>
                     <EmptyTitle>{t('coupon.noRewardYet')}</EmptyTitle>
                     <EmptyText>{t('coupon.redeemToSee')}</EmptyText>
                   </EmptyState>

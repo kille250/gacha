@@ -39,16 +39,16 @@ import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 // Icon Constants
 import {
-  ICON_DICE,
-  ICON_POINTS,
-  ICON_SEARCH,
-  ICON_SPARKLE,
-  ICON_MAGIC,
-  ICON_TICKET,
-  ICON_PREMIUM_TICKET,
-  ICON_WARNING,
-  ICON_STAR,
-  ICON_POOL_PITY,
+  IconDice,
+  IconPoints,
+  IconSearch,
+  IconSparkle,
+  IconMagic,
+  IconTicket,
+  IconPremiumTicket,
+  IconWarning,
+  IconStar,
+  IconPoolPity,
 } from '../constants/icons';
 
 // ==================== CONSTANTS ====================
@@ -806,11 +806,11 @@ const BannerPage = () => {
           </BackButton>
           <NavStats>
             <StatPill>
-              <span>{ICON_DICE}</span>
+              <span><IconDice /></span>
               <span>{rollCount} {t('common.pulls')}</span>
             </StatPill>
             <PointsPill>
-              <span>{ICON_POINTS}</span>
+              <span><IconPoints /></span>
               <span>{user?.points || 0}</span>
             </PointsPill>
             <IconButton onClick={() => setShowInfoPanel(true)} label="Show banner info">
@@ -942,7 +942,7 @@ const BannerPage = () => {
                       <CardImage src={getImagePath(currentChar?.image)} alt={currentChar?.name} />
                     )}
                     <CardOverlay>
-                      <span>{ICON_SEARCH} {t('common.view')}</span>
+                      <span><IconSearch /> {t('common.view')}</span>
                     </CardOverlay>
                     <CollectedBadge>✓ {t('common.collected')}</CollectedBadge>
                     {currentChar?.isBannerCharacter && <BannerCharBadge>★ {t('banner.bannerChar')}</BannerCharBadge>}
@@ -1031,7 +1031,7 @@ const BannerPage = () => {
                   animate="visible"
                   exit="exit"
                 >
-                  <EmptyIcon>{ICON_SPARKLE}</EmptyIcon>
+                  <EmptyIcon><IconSparkle /></EmptyIcon>
                   <EmptyTitle>{t('banner.rollOn')} {banner.name}</EmptyTitle>
                   <EmptyText>{banner.series} {t('banner.specialBanner')}</EmptyText>
                 </EmptyState>
@@ -1065,7 +1065,7 @@ const BannerPage = () => {
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <PullCardIcon>{ICON_MAGIC}</PullCardIcon>
+                  <PullCardIcon><IconMagic /></PullCardIcon>
                   <PullCardContent>
                     <PullCardTitle>{isRolling ? t('common.summoning') : t('common.single')}</PullCardTitle>
                     <PullCardCost>
@@ -1119,7 +1119,7 @@ const BannerPage = () => {
               {/* Ticket load warning */}
               {ticketLoadError && (
                 <TicketWarning>
-                  {ICON_WARNING} {t('banner.ticketLoadError') || 'Could not load ticket count. Ticket options may be unavailable.'}
+                  <IconWarning /> {t('banner.ticketLoadError') || 'Could not load ticket count. Ticket options may be unavailable.'}
                 </TicketWarning>
               )}
               
@@ -1127,17 +1127,17 @@ const BannerPage = () => {
               {(tickets.rollTickets > 0 || tickets.premiumTickets > 0) && (
                 <TicketSection>
                   <TicketSectionHeader>
-                    <TicketSectionTitle>{ICON_TICKET} {t('common.tickets') || 'Your Tickets'}</TicketSectionTitle>
+                    <TicketSectionTitle><IconTicket /> {t('common.tickets') || 'Your Tickets'}</TicketSectionTitle>
                     <TicketCounts>
                       {tickets.rollTickets > 0 && (
                         <TicketCount>
-                          <span>{ICON_TICKET}</span>
+                          <span><IconTicket /></span>
                           <strong>{tickets.rollTickets}</strong>
                         </TicketCount>
                       )}
                       {tickets.premiumTickets > 0 && (
                         <TicketCount $premium>
-                          <span>{ICON_PREMIUM_TICKET}</span>
+                          <span><IconPremiumTicket /></span>
                           <strong>{tickets.premiumTickets}</strong>
                         </TicketCount>
                       )}
@@ -1160,7 +1160,7 @@ const BannerPage = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <TicketButtonIcon>{ICON_TICKET}</TicketButtonIcon>
+                        <TicketButtonIcon><IconTicket /></TicketButtonIcon>
                         <TicketButtonText>
                           <span>{t('common.use') || 'Use'} 1×</span>
                           <small>{t('common.rollTicket') || 'Roll Ticket'}</small>
@@ -1182,7 +1182,7 @@ const BannerPage = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <TicketButtonIcon>{ICON_PREMIUM_TICKET}</TicketButtonIcon>
+                        <TicketButtonIcon><IconPremiumTicket /></TicketButtonIcon>
                         <TicketButtonText>
                           <span>{t('common.premium') || 'Premium'}</span>
                           <small>{t('common.guaranteedRare') || 'Rare+ Guaranteed!'}</small>
@@ -1204,7 +1204,7 @@ const BannerPage = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <TicketButtonIcon>{ICON_TICKET}</TicketButtonIcon>
+                        <TicketButtonIcon><IconTicket /></TicketButtonIcon>
                         <TicketButtonText>
                           <span>{t('common.use') || 'Use'} 10×</span>
                           <small>{t('common.rollTickets') || 'Roll Tickets'}</small>
@@ -1226,7 +1226,7 @@ const BannerPage = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <TicketButtonIcon>{ICON_PREMIUM_TICKET}</TicketButtonIcon>
+                        <TicketButtonIcon><IconPremiumTicket /></TicketButtonIcon>
                         <TicketButtonText>
                           <span>10× {t('common.premium') || 'Premium'}</span>
                           <small>{t('common.allRarePlus') || 'All Rare+!'}</small>
@@ -1240,7 +1240,7 @@ const BannerPage = () => {
               {/* Footer with points and fast mode */}
               <ControlsFooter>
                 <PointsDisplay>
-                  <PointsIcon>{ICON_POINTS}</PointsIcon>
+                  <PointsIcon><IconPoints /></PointsIcon>
                   <PointsValue>{user?.points || 0}</PointsValue>
                   <PointsLabel>{t('common.pointsAvailable')}</PointsLabel>
                 </PointsDisplay>
@@ -1336,7 +1336,7 @@ const BannerPage = () => {
                     <DropRatesContainer>
                       <DropRateSection>
                         <DropRateSectionTitle>
-                          {ICON_STAR} {t('banner.bannerRates') || 'Banner Pool'} ({pricing.dropRates.bannerPullChance}%)
+                          <IconStar /> {t('banner.bannerRates') || 'Banner Pool'} ({pricing.dropRates.bannerPullChance}%)
                         </DropRateSectionTitle>
                         <DropRateGrid>
                           {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
@@ -1366,7 +1366,7 @@ const BannerPage = () => {
                       
                       <DropRateSection $premium>
                         <DropRateSectionTitle>
-                          {ICON_PREMIUM_TICKET} {t('banner.premiumRates') || 'Premium Ticket'}
+                          <IconPremiumTicket /> {t('banner.premiumRates') || 'Premium Ticket'}
                         </DropRateSectionTitle>
                         <DropRateGrid>
                           {['legendary', 'epic', 'rare'].map(rarity => (
@@ -1377,11 +1377,11 @@ const BannerPage = () => {
                             </DropRateItem>
                           ))}
                         </DropRateGrid>
-                        <PremiumNote>{ICON_SPARKLE} {t('banner.guaranteedRare') || 'Guaranteed Rare or better!'}</PremiumNote>
+                        <PremiumNote><IconSparkle /> {t('banner.guaranteedRare') || 'Guaranteed Rare or better!'}</PremiumNote>
                       </DropRateSection>
                       
                       <PityInfoBox>
-                        <PityInfoTitle>{ICON_POOL_PITY} {t('banner.pitySystem') || '10-Pull Pity'}</PityInfoTitle>
+                        <PityInfoTitle><IconPoolPity /> {t('banner.pitySystem') || '10-Pull Pity'}</PityInfoTitle>
                         <PityInfoText>
                           {t('banner.pityDescription') || 'Every 10-pull guarantees at least one Rare or higher character!'}
                         </PityInfoText>

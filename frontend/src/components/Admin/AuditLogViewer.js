@@ -12,13 +12,13 @@ import { theme, motionVariants } from '../../design-system';
 import { getAuditLog, exportAuditLog } from '../../utils/api';
 import { AUDIT_CATEGORIES } from '../../constants/securityConstants';
 import {
-  ICON_ERROR,
-  ICON_AUTH,
-  ICON_ADMIN,
-  ICON_SECURITY,
-  ICON_ECONOMY,
-  ICON_APPEAL,
-  ICON_LOG,
+  IconError,
+  IconAuth,
+  IconAdmin,
+  IconSecurity,
+  IconEconomy,
+  IconAppeal,
+  IconLog,
 } from '../../constants/icons';
 import {
   HeaderRow,
@@ -163,13 +163,13 @@ const AuditLogViewer = () => {
   
   const getEventIcon = (eventType) => {
     // Returns icon for event type - rendered with aria-hidden in JSX
-    if (eventType.startsWith('auth.login.failed')) return ICON_ERROR;
-    if (eventType.startsWith('auth')) return ICON_AUTH;
-    if (eventType.startsWith('admin')) return ICON_ADMIN;
-    if (eventType.startsWith('security')) return ICON_SECURITY;
-    if (eventType.startsWith('economy')) return ICON_ECONOMY;
-    if (eventType.startsWith('appeal')) return ICON_APPEAL;
-    return ICON_LOG;
+    if (eventType.startsWith('auth.login.failed')) return <IconError />;
+    if (eventType.startsWith('auth')) return <IconAuth />;
+    if (eventType.startsWith('admin')) return <IconAdmin />;
+    if (eventType.startsWith('security')) return <IconSecurity />;
+    if (eventType.startsWith('economy')) return <IconEconomy />;
+    if (eventType.startsWith('appeal')) return <IconAppeal />;
+    return <IconLog />;
   };
   
   return (

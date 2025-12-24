@@ -34,7 +34,7 @@ import {
 import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
 
 // Icon Constants
-import { ICON_DICE, ICON_POINTS, ICON_SEARCH, ICON_SPARKLE, ICON_MAGIC } from '../constants/icons';
+import { IconDice, IconPoints, IconSearch, IconSparkle, IconMagic } from '../constants/icons';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 // ==================== CONSTANTS ====================
@@ -535,11 +535,11 @@ const RollPage = () => {
           </BackButton>
           <NavStats>
             <StatPill>
-              <span>{ICON_DICE}</span>
+              <span><IconDice /></span>
               <span>{rollCount} {t('common.pulls')}</span>
             </StatPill>
             <PointsPill>
-              <span>{ICON_POINTS}</span>
+              <span><IconPoints /></span>
               <span>{user?.points || 0}</span>
             </PointsPill>
           </NavStats>
@@ -605,7 +605,7 @@ const RollPage = () => {
                       <CardImage src={getImagePath(currentChar?.image)} alt={currentChar?.name} />
                     )}
                     <CardOverlay>
-                      <span>{ICON_SEARCH} {t('common.view')}</span>
+                      <span><IconSearch /> {t('common.view')}</span>
                     </CardOverlay>
                     <CollectedBadge>✓ {t('common.collected')}</CollectedBadge>
                   </CardImageWrapper>
@@ -691,7 +691,7 @@ const RollPage = () => {
                   animate="visible"
                   exit="exit"
                 >
-                  <EmptyIcon>{ICON_SPARKLE}</EmptyIcon>
+                  <EmptyIcon><IconSparkle /></EmptyIcon>
                   <EmptyTitle>{t('common.readyToRoll')}</EmptyTitle>
                   <EmptyText>{t('common.tryYourLuck')}</EmptyText>
                 </EmptyState>
@@ -725,7 +725,7 @@ const RollPage = () => {
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <PullCardIcon>{ICON_MAGIC}</PullCardIcon>
+                  <PullCardIcon><IconMagic /></PullCardIcon>
                   <PullCardContent>
                     <PullCardTitle>{isRolling ? t('common.summoning') : t('common.single')}</PullCardTitle>
                     <PullCardCost>
@@ -779,7 +779,7 @@ const RollPage = () => {
               {/* Footer with points and fast mode */}
               <ControlsFooter>
                 <PointsDisplay>
-                  <PointsIcon>{ICON_POINTS}</PointsIcon>
+                  <PointsIcon><IconPoints /></PointsIcon>
                   <PointsValue>{user?.points || 0}</PointsValue>
                   <PointsLabel>{t('common.pointsAvailable')}</PointsLabel>
                 </PointsDisplay>

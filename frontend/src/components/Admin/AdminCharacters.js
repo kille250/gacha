@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload, FaSpinner, FaTheaterMasks } from 'react-icons/fa';
 import { theme, motionVariants } from '../../design-system';
 import { useTranslation } from 'react-i18next';
-import { ICON_R18 } from '../../constants/icons';
+import { IconR18 } from '../../constants/icons';
 import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useRarity } from '../../context/RarityContext';
 import { isDuplicateError, getDuplicateInfo } from '../../utils/errorHandler';
@@ -206,7 +206,7 @@ const AdminCharacters = ({
                   ) : (
                     <img src={getImageUrl(char.image)} alt={char.name} onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }} />
                   )}
-                  {char.isR18 && <R18Badge>{ICON_R18}</R18Badge>}
+                  {char.isR18 && <R18Badge><IconR18 /></R18Badge>}
                   <RarityOverlay $color={getRarityColor(char.rarity)} />
                 </CardMedia>
                 <CardContent>
@@ -247,7 +247,7 @@ const AdminCharacters = ({
                   )}
                 </ListThumb>
                 <ListInfo>
-                  <ListName>{char.name} {char.isR18 && <span>{ICON_R18}</span>}</ListName>
+                  <ListName>{char.name} {char.isR18 && <span><IconR18 /></span>}</ListName>
                   <ListSeries>{char.series}</ListSeries>
                 </ListInfo>
                 <RarityTag $color={getRarityColor(char.rarity)}>{char.rarity}</RarityTag>
@@ -328,7 +328,7 @@ const AdminCharacters = ({
                           checked={newCharacter.isR18}
                           onChange={(e) => onCharacterChange({ target: { name: 'isR18', value: e.target.checked }})}
                         />
-                        <span>{ICON_R18} R18</span>
+                        <span><IconR18 /> R18</span>
                       </CheckboxLabel>
                     </FormGroup>
                   </FormRow>

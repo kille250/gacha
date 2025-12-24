@@ -8,7 +8,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { theme } from '../tokens';
-import { ICON_EMPTY } from '../../constants/icons';
+import { IconEmpty } from '../../constants/icons';
 import { Button } from '../primitives';
 
 const Container = styled(motion.div)`
@@ -51,7 +51,7 @@ const Description = styled.p`
  * @param {Function} onAction - Action button callback
  */
 const EmptyState = ({
-  icon = ICON_EMPTY,
+  icon = <IconEmpty />,
   title = 'Nothing here',
   description,
   actionLabel,

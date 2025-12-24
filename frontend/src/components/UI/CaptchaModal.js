@@ -19,15 +19,15 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { theme } from '../../design-system';
 import { useRecaptcha } from '../../context/RecaptchaContext';
-import { ICON_SEARCH, ICON_SUCCESS, ICON_INFO } from '../../constants/icons';
+import { IconSearch, IconSuccess, IconInfo } from '../../constants/icons';
 
-// State icons mapping (use unicode symbols for clean UI)
+// State icons mapping (use react-icons for consistent cross-platform display)
 const STATE_ICONS = {
-  verifying: ICON_SEARCH,
-  verified: ICON_SUCCESS,
-  business_error: ICON_INFO,
-  captcha_error: ICON_SEARCH, // Reuse search for "try again"
-  challenge: ICON_SEARCH,     // Calculator-like icon would be better, but search works
+  verifying: <IconSearch />,
+  verified: <IconSuccess />,
+  business_error: <IconInfo />,
+  captcha_error: <IconSearch />, // Reuse search for "try again"
+  challenge: <IconSearch />,     // Calculator-like icon would be better, but search works
 };
 
 // ==================== ANIMATIONS ====================

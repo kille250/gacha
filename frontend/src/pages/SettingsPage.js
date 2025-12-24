@@ -15,7 +15,7 @@ import {
 } from '../actions/settingsActions';
 
 // Icon Constants
-import { ICON_WARNING } from '../constants/icons';
+import { IconWarning } from '../constants/icons';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
@@ -385,7 +385,7 @@ const SettingsPage = () => {
               {t('settings.usernameDescription')}
             </SubSectionDescription>
             <WarningBox>
-              {ICON_WARNING} {t('settings.usernameWarning')}
+              <IconWarning /> {t('settings.usernameWarning')}
             </WarningBox>
             
             <Form onSubmit={handleUsernameSubmit}>
@@ -531,7 +531,7 @@ const SettingsPage = () => {
             </GoogleButtonGroup>
           ) : showUnlinkConfirm ? (
             <RelinkConfirmBox>
-              <p>{ICON_WARNING} {t('settings.unlinkConfirmMessage')}</p>
+              <p><IconWarning /> {t('settings.unlinkConfirmMessage')}</p>
               <GoogleButtonGroup>
                 <GoogleUnlinkButton
                   onClick={handleGoogleUnlink}
