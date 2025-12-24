@@ -178,7 +178,7 @@ const IconWrapper = styled.span`
 
   svg {
     font-size: 16px;
-    ${props => props.$animate && `animation: ${spin} 1s linear infinite;`}
+    animation: ${props => props.$animate ? `${spin} 1s linear infinite` : 'none'};
   }
 `;
 

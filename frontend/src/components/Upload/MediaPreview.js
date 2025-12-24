@@ -6,11 +6,14 @@
  * - Shows skeleton while loading
  * - Status overlay for checking/uploading states
  * - Optimized for performance (video preload="metadata")
+ * - Lazy video thumbnail generation
+ * - File size indicator for large files
  */
-import React, { useState, memo } from 'react';
+import React, { useState, memo, useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { FaVideo, FaImage } from 'react-icons/fa';
+import { FaVideo, FaImage, FaFilm } from 'react-icons/fa';
 import { theme } from '../../styles/DesignSystem';
+import { formatFileSize } from '../../services/uploadService';
 
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
@@ -30,9 +33,81 @@ const MediaPreview = memo(({
   aspectRatio = '4/3',
   showTypeIcon = true,
   onClick,
+  fileSize, // Optional: file size in bytes for large file indicator
+  lazyVideo = true, // Lazy load video thumbnails
 }) => {
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
+  const [videoThumbnail, setVideoThumbnail] = useState(null);
+  const [isInView, setIsInView] = useState(false);
+  const containerRef = useRef(null);
+
+  // Large file threshold (5MB)
+  const isLargeFile = fileSize && fileSize > 5 * 1024 * 1024;
+
+  // Intersection observer for lazy loading
+  useEffect(() => {
+    if (!lazyVideo || !isVideo) {
+      setIsInView(true);
+      return;
+    }
+
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry.isIntersecting) {
+          setIsInView(true);
+          observer.disconnect();
+        }
+      },
+      { rootMargin: '100px' }
+    );
+
+    if (containerRef.current) {
+      observer.observe(containerRef.current);
+    }
+
+    return () => observer.disconnect();
+  }, [lazyVideo, isVideo]);
+
+  // Generate video thumbnail
+  useEffect(() => {
+    if (!isVideo || !src || !isInView || videoThumbnail) return;
+
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.preload = 'metadata';
+    video.muted = true;
+
+    video.onloadeddata = () => {
+      video.currentTime = 0.1; // Seek to get a frame
+    };
+
+    video.onseeked = () => {
+      try {
+        const canvas = document.createElement('canvas');
+        canvas.width = video.videoWidth;
+        canvas.height = video.videoHeight;
+        const ctx = canvas.getContext('2d');
+        ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        const thumbnail = canvas.toDataURL('image/jpeg', 0.7);
+        setVideoThumbnail(thumbnail);
+        setLoaded(true);
+      } catch (e) {
+        console.error('Failed to generate video thumbnail:', e);
+        setLoaded(true);
+      }
+    };
+
+    video.onerror = () => {
+      setLoaded(true);
+    };
+
+    video.src = src;
+
+    return () => {
+      video.src = '';
+    };
+  }, [isVideo, src, isInView, videoThumbnail]);
 
   const handleLoad = () => {
     setLoaded(true);
@@ -46,6 +121,7 @@ const MediaPreview = memo(({
 
   return (
     <PreviewContainer
+      ref={containerRef}
       $aspectRatio={aspectRatio}
       onClick={onClick}
       $clickable={!!onClick}
@@ -63,17 +139,24 @@ const MediaPreview = memo(({
           <span>Failed to load</span>
         </ErrorPlaceholder>
       ) : isVideo ? (
-        <Video
-          src={src}
-          muted
-          loop
-          autoPlay
-          playsInline
-          preload="metadata"
-          onLoadedData={handleLoad}
-          onError={handleError}
-          $loaded={loaded}
-        />
+        isInView ? (
+          <Video
+            src={src}
+            muted
+            loop
+            autoPlay
+            playsInline
+            preload="metadata"
+            onLoadedData={handleLoad}
+            onError={handleError}
+            $loaded={loaded}
+            poster={videoThumbnail}
+          />
+        ) : (
+          <VideoPlaceholder>
+            <FaVideo />
+          </VideoPlaceholder>
+        )
       ) : (
         <Image
           src={src}
@@ -90,6 +173,14 @@ const MediaPreview = memo(({
         <TypeIcon aria-label={isVideo ? 'Video file' : 'Image file'}>
           {isVideo ? <FaVideo /> : <FaImage />}
         </TypeIcon>
+      )}
+
+      {/* Large file indicator */}
+      {isLargeFile && loaded && !error && (
+        <LargeFileIndicator>
+          <FaFilm />
+          <span>{formatFileSize(fileSize)}</span>
+        </LargeFileIndicator>
       )}
 
       {/* Status overlays */}
@@ -226,6 +317,36 @@ const TypeIcon = styled.div`
   justify-content: center;
   color: white;
   font-size: 12px;
+`;
+
+const VideoPlaceholder = styled.div`
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: ${theme.colors.backgroundTertiary};
+  color: ${theme.colors.textMuted};
+  font-size: 32px;
+`;
+
+const LargeFileIndicator = styled.div`
+  position: absolute;
+  bottom: ${theme.spacing.sm};
+  left: ${theme.spacing.sm};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: rgba(255, 159, 10, 0.9);
+  border-radius: ${theme.radius.sm};
+  color: white;
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.medium};
+
+  svg {
+    font-size: 10px;
+  }
 `;
 
 const StatusOverlay = styled.div`

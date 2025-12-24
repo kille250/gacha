@@ -1,40 +1,37 @@
 /**
  * MultiUploadModal - Batch character upload interface
  *
- * Enhanced with:
- * - useUploadController for centralized state management
- * - ValidationSummary for aggregate error display
- * - ProgressIndicator for enhanced upload feedback
- * - UndoToast for file removal undo
- * - AriaLiveRegion for accessibility announcements
+ * Refactored to use decomposed components:
+ * - UploadHeader: Modal header with title and close button
+ * - UploadContent: Main body content with file management
+ * - UploadFooter: Action buttons and keyboard hints
+ *
+ * Uses extracted services:
+ * - uploadService: Pure upload functions
+ * - useUploadService: Hook wrapper for upload operations
+ *
+ * Features:
+ * - Centralized state management via useUploadController
  * - Swipe-to-delete on mobile
  * - Reduced motion support
+ * - Keyboard shortcuts
+ * - Accessibility announcements
  */
 import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react';
-import styled, { keyframes } from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
-import { FaCloudUploadAlt, FaTimes, FaExclamationTriangle, FaKeyboard } from 'react-icons/fa';
+import styled from 'styled-components';
+import { motion } from 'framer-motion';
 import { theme } from '../../styles/DesignSystem';
-import { API_URL } from '../../utils/api';
 import { getToken } from '../../utils/authStorage';
 import { useRarity } from '../../context/RarityContext';
-import { DUPLICATE_STATUS } from '../../utils/errorHandler';
 import { prefersReducedMotion, isEnabled, FEATURES } from '../../utils/featureFlags';
 
-// Import upload components
-import {
-  DropZone,
-  FileCard,
-  BulkSettingsBar,
-  UploadSummary,
-  ValidationSummary,
-  UndoToast,
-  ProgressIndicator,
-  AriaLiveRegion,
-  UPLOAD_STEPS,
-} from '../Upload';
+// Import orchestration components
+import { UploadHeader, UploadFooter, UploadContent } from '../Upload';
+import { UndoToast, UPLOAD_STEPS } from '../Upload';
 import { useUploadController } from '../../hooks/useUploadController';
-import { FILE_STATUS, UPLOAD_FLOW_STATES } from '../../hooks/useUploadState';
+import { uploadBatch, processBatchResult, createBatches } from '../../services/uploadService';
+import { FILE_STATUS } from '../../hooks/useUploadState';
+import { DUPLICATE_STATUS } from '../../utils/errorHandler';
 
 const MultiUploadModal = ({ show, onClose, onSuccess }) => {
   const { getOrderedRarities } = useRarity();
@@ -43,7 +40,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
   const previousFocusRef = useRef(null);
   const reducedMotion = prefersReducedMotion();
 
-  // Validation error state
+  // Local UI state
   const [validationError, setValidationError] = useState(null);
   const [showUndoToast, setShowUndoToast] = useState(false);
   const [uploadStep, setUploadStep] = useState(UPLOAD_STEPS.PREPARING);
@@ -173,58 +170,8 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     clearUndoStack();
   }, [clearUndoStack]);
 
-  // Upload a single batch of files
-  const uploadBatch = async (batchFiles, token) => {
-    const formData = new FormData();
-
-    batchFiles.forEach((f) => {
-      formData.append('images', f.file);
-    });
-
-    const metadata = batchFiles.map((f) => ({
-      name: f.name,
-      series: f.series,
-      rarity: f.rarity,
-      isR18: f.isR18,
-    }));
-    formData.append('metadata', JSON.stringify(metadata));
-
-    const response = await fetch(`${API_URL}/admin/characters/multi-upload`, {
-      method: 'POST',
-      headers: {
-        'x-auth-token': token,
-      },
-      body: formData,
-    });
-
-    const text = await response.text();
-
-    if (!text) {
-      throw new Error('Server returned empty response');
-    }
-
-    const result = JSON.parse(text);
-
-    if (!response.ok) {
-      if (response.status === 409 && result.duplicateType) {
-        const uploadError = new Error(result.error || 'Duplicate detected');
-        uploadError.isDuplicate = true;
-        uploadError.duplicateInfo = {
-          status: DUPLICATE_STATUS.CONFIRMED_DUPLICATE,
-          explanation: result.error,
-          duplicateType: result.duplicateType,
-          existingMatch: result.existingCharacter,
-        };
-        throw uploadError;
-      }
-      throw new Error(result.error || 'Upload failed');
-    }
-
-    return result;
-  };
-
-  // Handle upload
-  const handleUpload = async () => {
+  // Handle upload using extracted service
+  const handleUpload = useCallback(async () => {
     if (files.length === 0) return;
 
     // Clear previous validation error
@@ -248,12 +195,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     setLiveAnnouncement(`Starting upload of ${files.length} files...`);
 
     const token = getToken();
-    const BATCH_SIZE = 10;
-    const batches = [];
-
-    for (let i = 0; i < files.length; i += BATCH_SIZE) {
-      batches.push(files.slice(i, i + BATCH_SIZE));
-    }
+    const batches = createBatches(files, 10);
 
     let totalCreated = 0;
     const allErrors = [];
@@ -269,15 +211,16 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
 
         try {
           const result = await uploadBatch(batch, token);
-          totalCreated += result.characters?.length || 0;
+          const processed = processBatchResult(result, batch);
 
-          // Process each character in the result
+          totalCreated += processed.created;
+
+          // Update file statuses
           if (result.characters) {
             result.characters.forEach((char, charIndex) => {
               const fileData = batch[charIndex];
               if (!fileData) return;
 
-              // Check for duplicate warnings
               if (result.warning || char.duplicateWarning) {
                 updateFileStatus(fileData.id, FILE_STATUS.WARNING, {
                   warning: {
@@ -287,41 +230,38 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
                     existingMatch: char.existingMatch,
                   },
                 });
-                allWarnings.push({
-                  fileId: fileData.id,
-                  filename: fileData.file.name,
-                  characterName: char.name,
-                  status: DUPLICATE_STATUS.POSSIBLE_DUPLICATE,
-                  explanation: result.warning,
-                });
               } else {
                 updateFileStatus(fileData.id, FILE_STATUS.ACCEPTED);
               }
             });
           }
 
-          // Collect any per-file errors
-          if (result.errors) {
-            result.errors.forEach((err) => {
-              const matchingFile = batch.find((f) => f.file.name === err.filename);
-              if (matchingFile) {
-                if (err.duplicateOf || err.error?.includes('duplicate')) {
-                  updateFileStatus(matchingFile.id, FILE_STATUS.BLOCKED, {
-                    duplicate: {
-                      status: DUPLICATE_STATUS.CONFIRMED_DUPLICATE,
-                      explanation: err.error,
-                      existingMatch: { name: err.duplicateOf },
-                    },
-                  });
-                } else {
-                  updateFileStatus(matchingFile.id, FILE_STATUS.ERROR, {
-                    error: err.error,
-                  });
-                }
+          // Process errors
+          processed.errors.forEach((err) => {
+            const matchingFile = batch.find((f) => f.file.name === err.filename);
+            if (matchingFile) {
+              if (err.isDuplicate) {
+                updateFileStatus(matchingFile.id, FILE_STATUS.BLOCKED, {
+                  duplicate: {
+                    status: DUPLICATE_STATUS.CONFIRMED_DUPLICATE,
+                    explanation: err.error,
+                    existingMatch: { name: err.duplicateOf },
+                  },
+                });
+              } else {
+                updateFileStatus(matchingFile.id, FILE_STATUS.ERROR, {
+                  error: err.error,
+                });
               }
-              allErrors.push(err);
-            });
-          }
+            }
+            allErrors.push(err);
+          });
+
+          // Collect warnings
+          processed.warnings.forEach((w) => {
+            addWarning(w);
+            allWarnings.push(w);
+          });
         } catch (batchErr) {
           batch.forEach((f) => {
             if (batchErr.isDuplicate) {
@@ -344,9 +284,6 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
 
       setUploadStep(UPLOAD_STEPS.FINALIZING);
       updateProgress(batches.length, batches.length);
-
-      // Add warnings to state
-      allWarnings.forEach((w) => addWarning(w));
 
       const finalResult = {
         message: `Successfully created ${totalCreated} characters`,
@@ -378,7 +315,18 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
       setUploadError(err.message);
       setLiveAnnouncement(`Upload failed: ${err.message}`);
     }
-  };
+  }, [
+    files,
+    touchAllFields,
+    startUpload,
+    updateProgress,
+    updateFileStatus,
+    addWarning,
+    completeUpload,
+    clearSuccessful,
+    setUploadError,
+    onSuccess,
+  ]);
 
   // Handle close
   const handleClose = useCallback(() => {
@@ -421,8 +369,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
       e.preventDefault();
       handleUndo();
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [canSubmit, isUploading, canUndo, handleClose, handleUndo]);
+  }, [canSubmit, isUploading, canUndo, handleClose, handleUndo, handleUpload]);
 
   // Handle paste to upload
   const handlePaste = useCallback((e) => {
@@ -474,9 +421,6 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     };
   }, [reducedMotion]);
 
-  const isMac = navigator.platform?.includes('Mac');
-  const modKey = isMac ? '⌘' : 'Ctrl';
-
   if (!show) return null;
 
   return (
@@ -496,185 +440,54 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
           {...modalVariants}
           transition={{ duration: reducedMotion ? 0.1 : 0.2 }}
         >
-          <ModalHeader>
-            <HeaderTitle id="upload-modal-title">
-              <FaCloudUploadAlt aria-hidden="true" />
-              <span>Multi-Upload Characters</span>
-            </HeaderTitle>
-            <CloseButton
-              onClick={handleClose}
-              aria-label="Close modal"
-              disabled={isUploading}
-              type="button"
-            >
-              <FaTimes />
-            </CloseButton>
-          </ModalHeader>
+          <UploadHeader
+            onClose={handleClose}
+            disabled={isUploading}
+          />
 
-          <ModalBody>
-            {/* Aria Live Region for announcements */}
-            <AriaLiveRegion message={liveAnnouncement} />
+          <UploadContent
+            flowState={flowState}
+            files={files}
+            fileStatus={fileStatus}
+            fileValidation={fileValidation}
+            uploadProgress={uploadProgress}
+            error={error}
+            bulkDefaults={bulkDefaults}
+            duplicateWarnings={duplicateWarnings}
+            uploadResult={uploadResult}
+            estimatedTime={estimatedTime}
+            uploadStep={uploadStep}
+            validationError={validationError}
+            liveAnnouncement={liveAnnouncement}
+            fileCount={fileCount}
+            isUploading={isUploading}
+            isComplete={isComplete}
+            hasWarnings={hasWarnings}
+            warningCount={warningCount}
+            onAddFiles={addFiles}
+            onRemoveFile={handleRemoveFile}
+            onUpdateMetadata={updateMetadata}
+            onCopyToAll={copyToAll}
+            onRegenerateName={handleRegenerateName}
+            onDismissWarning={dismissWarning}
+            onTouchField={touchField}
+            onSetBulkDefaults={setBulkDefaults}
+            onApplyBulkToAll={applyBulkToAll}
+            onGenerateAllNames={handleGenerateAllNames}
+            onClearWarnings={clearWarnings}
+            onDismissValidationError={() => setValidationError(null)}
+            orderedRarities={orderedRarities}
+          />
 
-            {/* Validation Error */}
-            <AnimatePresence>
-              {validationError && (
-                <ValidationError
-                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
-                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, height: 'auto' }}
-                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
-                  role="alert"
-                >
-                  <FaExclamationTriangle aria-hidden="true" />
-                  <span>{validationError}</span>
-                  <DismissButton
-                    onClick={() => setValidationError(null)}
-                    aria-label="Dismiss error"
-                    type="button"
-                  >
-                    ×
-                  </DismissButton>
-                </ValidationError>
-              )}
-            </AnimatePresence>
-
-            {/* Validation Summary - NEW */}
-            {isEnabled(FEATURES.NEW_VALIDATION_UI) && files.length > 0 && !isUploading && (
-              <ValidationSummary
-                files={files}
-                fileValidation={fileValidation}
-                fileStatus={fileStatus}
-              />
-            )}
-
-            {/* Progress Indicator - shown during upload */}
-            {isUploading && isEnabled(FEATURES.ENHANCED_PROGRESS) && (
-              <ProgressIndicator
-                step={uploadStep}
-                progress={uploadProgress.percentage}
-                filesCompleted={uploadProgress.current}
-                filesTotal={uploadProgress.total}
-                estimatedTime={estimatedTime}
-              />
-            )}
-
-            {/* Bulk Settings */}
-            {!isUploading && (
-              <BulkSettingsBar
-                bulkDefaults={bulkDefaults}
-                onBulkDefaultsChange={setBulkDefaults}
-                onApplyToAll={applyBulkToAll}
-                onGenerateNames={handleGenerateAllNames}
-                orderedRarities={orderedRarities}
-                fileCount={fileCount}
-                disabled={isUploading}
-              />
-            )}
-
-            {/* Drop Zone */}
-            {!isUploading && (
-              <DropZoneWrapper>
-                <DropZone
-                  onFilesSelected={addFiles}
-                  disabled={isUploading}
-                  maxFiles={50}
-                  currentFileCount={fileCount}
-                />
-              </DropZoneWrapper>
-            )}
-
-            {/* Files Grid */}
-            {files.length > 0 && !isUploading && (
-              <FilesSection>
-                <FilesSectionHeader>
-                  <SectionTitle>
-                    {fileCount} File{fileCount !== 1 ? 's' : ''} Ready
-                  </SectionTitle>
-                  {hasWarnings && (
-                    <WarningBadge>
-                      <FaExclamationTriangle />
-                      {warningCount} warning{warningCount !== 1 ? 's' : ''}
-                    </WarningBadge>
-                  )}
-                </FilesSectionHeader>
-
-                <FilesGrid>
-                  <AnimatePresence>
-                    {files.map((file, index) => (
-                      <FileCard
-                        key={file.id}
-                        file={file}
-                        index={index}
-                        fileStatus={fileStatus[file.id]}
-                        fileValidation={fileValidation[file.id]}
-                        orderedRarities={orderedRarities}
-                        onUpdateMetadata={updateMetadata}
-                        onRemove={handleRemoveFile}
-                        onCopyToAll={copyToAll}
-                        onRegenerateName={handleRegenerateName}
-                        onDismissWarning={dismissWarning}
-                        onTouchField={touchField}
-                      />
-                    ))}
-                  </AnimatePresence>
-                </FilesGrid>
-              </FilesSection>
-            )}
-
-            {/* Upload Result */}
-            {isComplete && uploadResult && (
-              <ResultSection>
-                <UploadSummary
-                  result={uploadResult}
-                  duplicateWarnings={duplicateWarnings}
-                  onDismissWarnings={clearWarnings}
-                />
-              </ResultSection>
-            )}
-
-            {/* Error State */}
-            {flowState === UPLOAD_FLOW_STATES.ERROR && error && (
-              <ErrorSection role="alert">
-                <FaExclamationTriangle />
-                <ErrorContent>
-                  <ErrorTitle>Upload failed</ErrorTitle>
-                  <ErrorMessage>{error}</ErrorMessage>
-                  <RetryHint>Please check your connection and try again.</RetryHint>
-                </ErrorContent>
-              </ErrorSection>
-            )}
-          </ModalBody>
-
-          <ModalFooter>
-            <FooterHint>
-              <FaKeyboard aria-hidden="true" />
-              <span>
-                Paste: {modKey}+V | Upload: {modKey}+Enter
-                {canUndo && ` | Undo: ${modKey}+Z`}
-              </span>
-            </FooterHint>
-            <FooterButtons>
-              <CancelButton onClick={handleClose} disabled={isUploading} type="button">
-                Cancel
-              </CancelButton>
-              <UploadButton
-                onClick={handleUpload}
-                disabled={!canSubmit || isUploading}
-                title={`Upload (${modKey}+Enter)`}
-                type="button"
-              >
-                {isUploading ? (
-                  <>
-                    <SpinnerIcon aria-hidden="true" />
-                    Uploading... {uploadProgress.percentage}%
-                  </>
-                ) : (
-                  <>
-                    Upload {fileCount} Character{fileCount !== 1 ? 's' : ''}
-                  </>
-                )}
-              </UploadButton>
-            </FooterButtons>
-          </ModalFooter>
+          <UploadFooter
+            fileCount={fileCount}
+            canSubmit={canSubmit}
+            isUploading={isUploading}
+            uploadProgress={uploadProgress}
+            canUndo={canUndo}
+            onCancel={handleClose}
+            onUpload={handleUpload}
+          />
         </ModalContent>
       </ModalOverlay>
 
@@ -690,11 +503,6 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     </>
   );
 };
-
-// Keyframes
-const spin = keyframes`
-  to { transform: rotate(360deg); }
-`;
 
 // Styled Components
 const ModalOverlay = styled.div`
@@ -734,338 +542,6 @@ const ModalContent = styled(motion.div)`
     max-height: 95vh;
     border-radius: ${theme.radius.xl} ${theme.radius.xl} 0 0;
   }
-`;
-
-const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: ${theme.spacing.lg};
-  border-bottom: 1px solid ${theme.colors.surfaceBorder};
-  flex-shrink: 0;
-
-  @media (max-width: ${theme.breakpoints.sm}) {
-    padding: ${theme.spacing.md};
-  }
-`;
-
-const HeaderTitle = styled.h2`
-  margin: 0;
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.text};
-
-  svg {
-    color: ${theme.colors.primary};
-  }
-
-  @media (max-width: ${theme.breakpoints.sm}) {
-    font-size: ${theme.fontSizes.lg};
-  }
-`;
-
-const CloseButton = styled.button`
-  width: 40px;
-  height: 40px;
-  background: ${theme.colors.glass};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.textSecondary};
-  cursor: pointer;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background: ${theme.colors.surfaceHover};
-    color: ${theme.colors.text};
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${theme.colors.primary};
-    outline-offset: 2px;
-  }
-`;
-
-const ModalBody = styled.div`
-  flex: 1;
-  overflow-y: auto;
-  padding: ${theme.spacing.lg};
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.lg};
-
-  @media (max-width: ${theme.breakpoints.sm}) {
-    padding: ${theme.spacing.md};
-    gap: ${theme.spacing.md};
-  }
-`;
-
-const ValidationError = styled(motion.div)`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md};
-  background: rgba(255, 59, 48, 0.15);
-  border: 1px solid rgba(255, 59, 48, 0.3);
-  border-radius: ${theme.radius.lg};
-
-  svg {
-    color: ${theme.colors.error};
-    flex-shrink: 0;
-  }
-
-  span {
-    flex: 1;
-    color: ${theme.colors.error};
-    font-size: ${theme.fontSizes.sm};
-  }
-`;
-
-const DismissButton = styled.button`
-  background: none;
-  border: none;
-  color: ${theme.colors.textMuted};
-  font-size: 20px;
-  cursor: pointer;
-  padding: 0;
-  width: 24px;
-  height: 24px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  border-radius: 50%;
-  transition: all 0.2s ease;
-
-  &:hover {
-    background: rgba(255, 255, 255, 0.1);
-    color: ${theme.colors.text};
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${theme.colors.primary};
-    outline-offset: 2px;
-  }
-`;
-
-const DropZoneWrapper = styled.div``;
-
-const FilesSection = styled.section``;
-
-const FilesSectionHeader = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  margin-bottom: ${theme.spacing.md};
-`;
-
-const SectionTitle = styled.h3`
-  margin: 0;
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.primary};
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-`;
-
-const WarningBadge = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.xs};
-  padding: ${theme.spacing.xs} ${theme.spacing.sm};
-  background: rgba(255, 159, 10, 0.15);
-  border-radius: ${theme.radius.full};
-  color: ${theme.colors.warning};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.medium};
-
-  svg {
-    font-size: 10px;
-  }
-`;
-
-const FilesGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: ${theme.spacing.md};
-
-  @media (min-width: 480px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (min-width: ${theme.breakpoints.lg}) {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  @media (min-width: ${theme.breakpoints.xl}) {
-    grid-template-columns: repeat(4, 1fr);
-  }
-`;
-
-const ResultSection = styled.div``;
-
-const ErrorSection = styled.div`
-  display: flex;
-  align-items: flex-start;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.lg};
-  background: rgba(255, 59, 48, 0.1);
-  border: 1px solid rgba(255, 59, 48, 0.3);
-  border-radius: ${theme.radius.lg};
-
-  > svg {
-    color: ${theme.colors.error};
-    font-size: 24px;
-    flex-shrink: 0;
-    margin-top: 2px;
-  }
-`;
-
-const ErrorContent = styled.div`
-  flex: 1;
-`;
-
-const ErrorTitle = styled.div`
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.error};
-  margin-bottom: ${theme.spacing.xs};
-`;
-
-const ErrorMessage = styled.div`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.text};
-  margin-bottom: ${theme.spacing.sm};
-`;
-
-const RetryHint = styled.div`
-  font-size: ${theme.fontSizes.xs};
-  color: ${theme.colors.textSecondary};
-`;
-
-const ModalFooter = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.lg};
-  border-top: 1px solid ${theme.colors.surfaceBorder};
-  flex-shrink: 0;
-
-  @media (max-width: ${theme.breakpoints.sm}) {
-    padding: ${theme.spacing.md};
-  }
-`;
-
-const FooterHint = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.xs};
-  font-size: ${theme.fontSizes.xs};
-  color: ${theme.colors.textMuted};
-
-  svg {
-    font-size: 12px;
-  }
-
-  @media (max-width: ${theme.breakpoints.sm}) {
-    display: none;
-  }
-`;
-
-const FooterButtons = styled.div`
-  display: flex;
-  justify-content: flex-end;
-  gap: ${theme.spacing.md};
-
-  @media (max-width: ${theme.breakpoints.sm}) {
-    flex-direction: column-reverse;
-  }
-`;
-
-const CancelButton = styled.button`
-  padding: ${theme.spacing.md} ${theme.spacing.xl};
-  background: ${theme.colors.glass};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.medium};
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    background: ${theme.colors.surfaceHover};
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-  }
-
-  &:focus-visible {
-    outline: 2px solid ${theme.colors.primary};
-    outline-offset: 2px;
-  }
-
-  @media (max-width: ${theme.breakpoints.sm}) {
-    width: 100%;
-  }
-`;
-
-const UploadButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md} ${theme.spacing.xl};
-  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
-  border: none;
-  border-radius: ${theme.radius.lg};
-  color: white;
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.semibold};
-  cursor: pointer;
-  transition: all 0.2s ease;
-
-  &:hover:not(:disabled) {
-    transform: translateY(-1px);
-    box-shadow: 0 4px 20px rgba(0, 113, 227, 0.4);
-  }
-
-  &:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none;
-  }
-
-  &:focus-visible {
-    outline: 2px solid white;
-    outline-offset: 2px;
-  }
-
-  @media (max-width: ${theme.breakpoints.sm}) {
-    width: 100%;
-  }
-`;
-
-const SpinnerIcon = styled.span`
-  display: inline-block;
-  width: 16px;
-  height: 16px;
-  border: 2px solid rgba(255, 255, 255, 0.3);
-  border-top-color: white;
-  border-radius: 50%;
-  animation: ${spin} 0.8s linear infinite;
 `;
 
 export default MultiUploadModal;
