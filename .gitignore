@@ -39,3 +39,6 @@ backend/public/uploads/videos/*
 # Test coverage
 coverage/
 
+# Claude Code
+.claude/
+
