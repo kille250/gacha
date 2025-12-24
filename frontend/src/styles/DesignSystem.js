@@ -1,17 +1,19 @@
 /**
- * Design System
- * 
- * A cohesive design language with clean, minimal aesthetics:
- * - Clean, minimal look
- * - Elegant typography
- * - Subtle shadows and blur effects
- * - Generous whitespace
- * - Soft, rounded corners
- * - Smooth animations
+ * Design System (Legacy Compatibility Layer)
+ *
+ * This file re-exports from the new modular design-system for backward compatibility.
+ * New code should import from '../design-system' directly.
+ *
+ * @deprecated Import from '../design-system' instead
  */
 
 import styled, { css, keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
+
+// Re-export everything from the new design system
+export * from '../design-system';
+
+// Additional exports that were in the original but might be referenced directly
 
 // ==================== THEME CONFIGURATION ====================
 
@@ -21,39 +23,39 @@ export const theme = {
     primary: '#0071e3',
     primaryHover: '#0077ed',
     primaryActive: '#006edb',
-    
+
     // Accent colors
     accent: '#5856d6',
     accentSecondary: '#af52de',
-    
+
     // Semantic colors
     success: '#34c759',
     warning: '#ff9f0a',
     error: '#ff3b30',
     info: '#5ac8fa',
-    
+
     // Neutral palette (dark mode)
     background: '#000000',
     backgroundSecondary: '#1c1c1e',
     backgroundTertiary: '#2c2c2e',
     backgroundElevated: '#1c1c1e',
-    
+
     // Surface colors (for cards, modals)
     surface: 'rgba(28, 28, 30, 0.8)',
     surfaceHover: 'rgba(44, 44, 46, 0.9)',
     surfaceBorder: 'rgba(255, 255, 255, 0.1)',
-    
+
     // Text colors
     text: '#ffffff',
     textSecondary: 'rgba(255, 255, 255, 0.7)',
-    textTertiary: 'rgba(255, 255, 255, 0.6)', // Improved contrast for WCAG AA
+    textTertiary: 'rgba(255, 255, 255, 0.6)',
     textMuted: 'rgba(255, 255, 255, 0.4)',
-    
+
     // Special
     glass: 'rgba(255, 255, 255, 0.05)',
     glassBorder: 'rgba(255, 255, 255, 0.08)',
     overlay: 'rgba(0, 0, 0, 0.5)',
-    
+
     // Rarity colors (refined)
     rarity: {
       common: '#8e8e93',
@@ -63,13 +65,13 @@ export const theme = {
       legendary: '#ff9f0a'
     }
   },
-  
+
   // Typography
   fonts: {
     primary: '-apple-system, BlinkMacSystemFont, "SF Pro Display", "SF Pro Text", "Helvetica Neue", Arial, sans-serif',
     mono: '"SF Mono", "Fira Code", "Monaco", monospace'
   },
-  
+
   fontSizes: {
     xs: '11px',
     sm: '13px',
@@ -83,21 +85,21 @@ export const theme = {
     '5xl': '48px',
     hero: '56px'
   },
-  
+
   fontWeights: {
     regular: 400,
     medium: 500,
     semibold: 600,
     bold: 700
   },
-  
+
   lineHeights: {
     tight: 1.1,
     snug: 1.25,
     normal: 1.5,
     relaxed: 1.625
   },
-  
+
   // Spacing
   spacing: {
     xs: '4px',
@@ -109,7 +111,7 @@ export const theme = {
     '3xl': '64px',
     '4xl': '96px'
   },
-  
+
   // Border radius
   radius: {
     sm: '8px',
@@ -119,7 +121,7 @@ export const theme = {
     '2xl': '28px',
     full: '9999px'
   },
-  
+
   // Shadows
   shadows: {
     sm: '0 2px 8px rgba(0, 0, 0, 0.15)',
@@ -129,7 +131,7 @@ export const theme = {
     glow: (color) => `0 0 24px ${color}40, 0 0 48px ${color}20`,
     inner: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)'
   },
-  
+
   // Transitions
   transitions: {
     fast: '0.15s cubic-bezier(0.4, 0, 0.2, 1)',
@@ -137,7 +139,7 @@ export const theme = {
     slow: '0.4s cubic-bezier(0.4, 0, 0.2, 1)',
     spring: '0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275)'
   },
-  
+
   // Blur values
   blur: {
     sm: '8px',
@@ -145,7 +147,7 @@ export const theme = {
     lg: '24px',
     xl: '40px'
   },
-  
+
   // Z-index layers
   zIndex: {
     base: 1,
@@ -155,7 +157,7 @@ export const theme = {
     toast: 1100,
     tooltip: 1200
   },
-  
+
   // Breakpoints
   breakpoints: {
     xs: '375px',
@@ -164,22 +166,21 @@ export const theme = {
     lg: '1024px',
     xl: '1280px',
     '2xl': '1536px',
-    // Semantic aliases for easier usage
     mobile: '640px',
     tablet: '1024px',
     desktop: '1280px',
   },
-  
+
   // Timing constants (in milliseconds)
   timing: {
-    notificationDismiss: 3000,    // Auto-dismiss notifications
-    successMessageDismiss: 4000,  // Auto-dismiss success messages
-    errorMessageDismiss: 6000,    // Auto-dismiss error messages (longer for reading)
-    tradeResultDismiss: 1500,     // Quick feedback animations
-    stateTransition: 2000,        // Game/UI state transitions
-    retryDelay: 3000,             // Delay before retrying failed operations
-    claimCooldown: 2000,          // Prevent double-claims on rewards
-    healthCheckInterval: 60000,   // Admin health check polling
+    notificationDismiss: 3000,
+    successMessageDismiss: 4000,
+    errorMessageDismiss: 6000,
+    tradeResultDismiss: 1500,
+    stateTransition: 2000,
+    retryDelay: 3000,
+    claimCooldown: 2000,
+    healthCheckInterval: 60000,
   }
 };
 
@@ -233,19 +234,19 @@ export const motionVariants = {
     visible: { opacity: 1, transition: { duration: 0.3 } },
     exit: { opacity: 0, transition: { duration: 0.2 } }
   },
-  
+
   slideUp: {
     hidden: { opacity: 0, y: 24 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] } },
     exit: { opacity: 0, y: -12, transition: { duration: 0.2 } }
   },
-  
+
   scaleIn: {
     hidden: { opacity: 0, scale: 0.95 },
     visible: { opacity: 1, scale: 1, transition: { duration: 0.3, ease: [0.4, 0, 0.2, 1] } },
     exit: { opacity: 0, scale: 0.95, transition: { duration: 0.2 } }
   },
-  
+
   staggerContainer: {
     hidden: { opacity: 0 },
     visible: {
@@ -253,50 +254,50 @@ export const motionVariants = {
       transition: { staggerChildren: 0.08, delayChildren: 0.1 }
     }
   },
-  
+
   staggerItem: {
     hidden: { opacity: 0, y: 16 },
     visible: { opacity: 1, y: 0, transition: { duration: 0.4, ease: [0.4, 0, 0.2, 1] } }
   },
-  
+
   card: {
     hidden: { opacity: 0, y: 24, scale: 0.96 },
-    visible: { 
-      opacity: 1, 
-      y: 0, 
-      scale: 1, 
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
       transition: { duration: 0.5, ease: [0.4, 0, 0.2, 1] }
     },
-    exit: { 
-      opacity: 0, 
-      scale: 0.96, 
-      transition: { duration: 0.2 } 
+    exit: {
+      opacity: 0,
+      scale: 0.96,
+      transition: { duration: 0.2 }
     },
-    hover: { 
-      y: -4, 
-      transition: { duration: 0.2 } 
+    hover: {
+      y: -4,
+      transition: { duration: 0.2 }
     }
   },
-  
+
   modal: {
     hidden: { opacity: 0, scale: 0.96, y: 20 },
-    visible: { 
-      opacity: 1, 
-      scale: 1, 
+    visible: {
+      opacity: 1,
+      scale: 1,
       y: 0,
-      transition: { 
-        duration: 0.35, 
+      transition: {
+        duration: 0.35,
         ease: [0.4, 0, 0.2, 1]
       }
     },
-    exit: { 
-      opacity: 0, 
-      scale: 0.96, 
+    exit: {
+      opacity: 0,
+      scale: 0.96,
       y: 20,
       transition: { duration: 0.2 }
     }
   },
-  
+
   overlay: {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { duration: 0.25 } },
@@ -306,7 +307,6 @@ export const motionVariants = {
 
 // ==================== BASE COMPONENTS ====================
 
-// Page wrapper with gradient background
 export const PageWrapper = styled.div`
   min-height: 100vh;
   background: ${theme.colors.background};
@@ -314,12 +314,12 @@ export const PageWrapper = styled.div`
   font-family: ${theme.fonts.primary};
   position: relative;
   overflow-x: hidden;
-  
+
   &::before {
     content: "";
     position: fixed;
     inset: 0;
-    background: 
+    background:
       radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
       radial-gradient(ellipse 60% 40% at 80% 100%, rgba(168, 85, 247, 0.1), transparent),
       radial-gradient(ellipse 50% 30% at 20% 80%, rgba(14, 165, 233, 0.08), transparent);
@@ -328,19 +328,17 @@ export const PageWrapper = styled.div`
   }
 `;
 
-// Container with max-width and padding
 export const Container = styled.div`
   max-width: 1400px;
   margin: 0 auto;
   padding: 0 ${theme.spacing.md};
   position: relative;
-  
+
   @media (min-width: ${theme.breakpoints.lg}) {
     padding: 0 ${theme.spacing.xl};
   }
 `;
 
-// Glass morphism card
 export const GlassCard = styled(motion.div)`
   background: ${theme.colors.surface};
   backdrop-filter: blur(${theme.blur.lg});
@@ -349,16 +347,15 @@ export const GlassCard = styled(motion.div)`
   border: 1px solid ${theme.colors.surfaceBorder};
   box-shadow: ${theme.shadows.md};
   transition: all ${theme.transitions.base};
-  
+
   &:hover {
     border-color: ${theme.colors.glassBorder};
   }
 `;
 
-// Section with glass effect
 export const Section = styled(GlassCard)`
   padding: ${theme.spacing.lg};
-  
+
   @media (min-width: ${theme.breakpoints.md}) {
     padding: ${theme.spacing.xl};
   }
@@ -374,7 +371,7 @@ export const Heading1 = styled.h1`
   color: ${theme.colors.text};
   letter-spacing: -0.02em;
   margin: 0;
-  
+
   @media (min-width: ${theme.breakpoints.md}) {
     font-size: ${theme.fontSizes['4xl']};
   }
@@ -388,7 +385,7 @@ export const Heading2 = styled.h2`
   color: ${theme.colors.text};
   letter-spacing: -0.01em;
   margin: 0;
-  
+
   @media (min-width: ${theme.breakpoints.md}) {
     font-size: ${theme.fontSizes['2xl']};
   }
@@ -433,13 +430,13 @@ const buttonBase = css`
   transition: all ${theme.transitions.fast};
   text-decoration: none;
   white-space: nowrap;
-  
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     transform: none !important;
   }
-  
+
   &:focus-visible {
     outline: 2px solid ${theme.colors.primary};
     outline-offset: 2px;
@@ -454,13 +451,13 @@ export const PrimaryButton = styled(motion.button)`
   padding: ${theme.spacing.md} ${theme.spacing.lg};
   border-radius: ${theme.radius.full};
   box-shadow: 0 4px 14px rgba(0, 113, 227, 0.4);
-  
+
   &:hover:not(:disabled) {
     background: ${theme.colors.primaryHover};
     transform: translateY(-1px);
     box-shadow: 0 6px 20px rgba(0, 113, 227, 0.5);
   }
-  
+
   &:active:not(:disabled) {
     background: ${theme.colors.primaryActive};
     transform: translateY(0);
@@ -475,12 +472,12 @@ export const SecondaryButton = styled(motion.button)`
   padding: ${theme.spacing.md} ${theme.spacing.lg};
   border-radius: ${theme.radius.full};
   border: 1px solid ${theme.colors.surfaceBorder};
-  
+
   &:hover:not(:disabled) {
     background: ${theme.colors.surfaceHover};
     transform: translateY(-1px);
   }
-  
+
   &:active:not(:disabled) {
     transform: translateY(0);
   }
@@ -493,7 +490,7 @@ export const GhostButton = styled(motion.button)`
   font-size: ${theme.fontSizes.base};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   border-radius: ${theme.radius.md};
-  
+
   &:hover:not(:disabled) {
     background: rgba(0, 113, 227, 0.1);
   }
@@ -509,12 +506,12 @@ export const IconButton = styled(motion.button)`
   border-radius: ${theme.radius.full};
   color: ${theme.colors.text};
   font-size: 20px;
-  
+
   &:hover:not(:disabled) {
     background: ${theme.colors.surfaceHover};
     transform: scale(1.05);
   }
-  
+
   &:active:not(:disabled) {
     transform: scale(0.95);
   }
@@ -568,15 +565,15 @@ export const Input = styled.input`
   font-size: ${theme.fontSizes.base};
   color: ${theme.colors.text};
   transition: all ${theme.transitions.fast};
-  
+
   &::placeholder {
     color: ${theme.colors.textMuted};
   }
-  
+
   &:hover {
     border-color: ${theme.colors.glassBorder};
   }
-  
+
   &:focus {
     outline: none;
     border-color: ${theme.colors.primary};
@@ -595,11 +592,11 @@ export const Select = styled.select`
   color: ${theme.colors.text};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
-  
+
   &:hover {
     border-color: ${theme.colors.glassBorder};
   }
-  
+
   &:focus {
     outline: none;
     border-color: ${theme.colors.primary};
@@ -618,11 +615,6 @@ export const Spinner = styled.div`
   animation: ${spin} 0.8s linear infinite;
 `;
 
-/**
- * Small inline loading spinner - use for buttons and inline loading states
- * @prop {string} $size - Size in pixels (default: 20)
- * @prop {string} $color - Spinner color (default: white)
- */
 export const LoadingSpinner = styled.div`
   width: ${props => props.$size || '20px'};
   height: ${props => props.$size || '20px'};
@@ -635,14 +627,14 @@ export const LoadingSpinner = styled.div`
 export const LoadingDots = styled.div`
   display: flex;
   gap: 6px;
-  
+
   span {
     width: 8px;
     height: 8px;
     background: ${theme.colors.primary};
     border-radius: 50%;
     animation: ${pulse} 1.4s infinite ease-in-out both;
-    
+
     &:nth-child(1) { animation-delay: -0.32s; }
     &:nth-child(2) { animation-delay: -0.16s; }
     &:nth-child(3) { animation-delay: 0; }
@@ -701,19 +693,19 @@ export const Alert = styled(motion.div)`
   border-radius: ${theme.radius.lg};
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.medium};
-  
+
   ${props => props.variant === 'error' && css`
     background: rgba(255, 59, 48, 0.15);
     border: 1px solid rgba(255, 59, 48, 0.3);
     color: ${theme.colors.error};
   `}
-  
+
   ${props => props.variant === 'success' && css`
     background: rgba(52, 199, 89, 0.15);
     border: 1px solid rgba(52, 199, 89, 0.3);
     color: ${theme.colors.success};
   `}
-  
+
   ${props => props.variant === 'warning' && css`
     background: rgba(255, 159, 10, 0.15);
     border: 1px solid rgba(255, 159, 10, 0.3);
@@ -721,9 +713,6 @@ export const Alert = styled(motion.div)`
   `}
 `;
 
-/**
- * Inline error message - for form validation and inline errors
- */
 export const ErrorMessage = styled.div`
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: rgba(255, 59, 48, 0.15);
@@ -733,9 +722,6 @@ export const ErrorMessage = styled.div`
   font-size: ${theme.fontSizes.sm};
 `;
 
-/**
- * Inline success message - for form success states
- */
 export const SuccessMessage = styled.div`
   display: flex;
   align-items: center;
@@ -780,12 +766,6 @@ export const Spacer = styled.div`
 
 // ==================== LAYOUT PRIMITIVES ====================
 
-/**
- * Stack - Vertical spacing layout primitive
- * Use for vertically stacked content with consistent spacing
- * @prop {string} gap - Spacing between items (default: theme.spacing.md)
- * @prop {string} align - Cross-axis alignment (default: stretch)
- */
 export const Stack = styled.div`
   display: flex;
   flex-direction: column;
@@ -793,12 +773,6 @@ export const Stack = styled.div`
   align-items: ${props => props.align || 'stretch'};
 `;
 
-/**
- * Cluster - Horizontal wrapping layout primitive
- * Use for groups of elements that should wrap naturally
- * @prop {string} gap - Spacing between items (default: theme.spacing.sm)
- * @prop {string} justify - Main-axis alignment (default: flex-start)
- */
 export const Cluster = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -807,12 +781,6 @@ export const Cluster = styled.div`
   justify-content: ${props => props.justify || 'flex-start'};
 `;
 
-/**
- * AutoGrid - Responsive auto-fit grid
- * Automatically adjusts columns based on available space
- * @prop {string} minWidth - Minimum item width (default: 280px)
- * @prop {string} gap - Spacing between items (default: theme.spacing.lg)
- */
 export const AutoGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(
@@ -822,11 +790,6 @@ export const AutoGrid = styled.div`
   gap: ${props => props.gap || theme.spacing.lg};
 `;
 
-/**
- * Center - Centers content both horizontally and vertically
- * @prop {string} maxWidth - Maximum width of centered content
- * @prop {boolean} intrinsic - If true, centers based on content width
- */
 export const Center = styled.div`
   display: flex;
   flex-direction: column;
@@ -837,13 +800,6 @@ export const Center = styled.div`
   margin-inline: auto;
 `;
 
-/**
- * Sidebar - Layout with fixed sidebar and fluid main content
- * Mobile: stacks vertically, Desktop: side-by-side
- * @prop {string} sideWidth - Width of sidebar (default: 280px)
- * @prop {string} gap - Gap between sidebar and content (default: theme.spacing.lg)
- * @prop {boolean} reversed - If true, sidebar on right
- */
 export const Sidebar = styled.div`
   display: flex;
   flex-direction: column;
@@ -859,16 +815,11 @@ export const Sidebar = styled.div`
 
     > :last-child {
       flex-grow: 1;
-      min-width: 0; /* Prevents overflow */
+      min-width: 0;
     }
   }
 `;
 
-/**
- * Switcher - Switches between horizontal and vertical based on available space
- * @prop {string} threshold - Width at which layout switches (default: 600px)
- * @prop {string} gap - Gap between items
- */
 export const Switcher = styled.div`
   display: flex;
   flex-wrap: wrap;
@@ -880,11 +831,6 @@ export const Switcher = styled.div`
   }
 `;
 
-/**
- * Cover - Full-height layout with centered principal element
- * Use for hero sections, centered content pages
- * @prop {string} minHeight - Minimum height (default: 100vh)
- */
 export const Cover = styled.div`
   display: flex;
   flex-direction: column;
@@ -908,12 +854,6 @@ export const Cover = styled.div`
   }
 `;
 
-/**
- * Reel - Horizontal scrolling container
- * Use for carousels, horizontal scrolling lists
- * @prop {string} gap - Gap between items (default: theme.spacing.md)
- * @prop {boolean} noBar - Hide scrollbar
- */
 export const Reel = styled.div`
   display: flex;
   gap: ${props => props.gap || theme.spacing.md};
@@ -952,16 +892,16 @@ export const scrollbarStyles = css`
     width: 8px;
     height: 8px;
   }
-  
+
   &::-webkit-scrollbar-track {
     background: ${theme.colors.backgroundTertiary};
     border-radius: 4px;
   }
-  
+
   &::-webkit-scrollbar-thumb {
     background: ${theme.colors.glassBorder};
     border-radius: 4px;
-    
+
     &:hover {
       background: rgba(255, 255, 255, 0.2);
     }
@@ -969,4 +909,3 @@ export const scrollbarStyles = css`
 `;
 
 export default theme;
-

@@ -8,7 +8,7 @@ import { ToastProvider } from './context/ToastContext';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { theme } from './styles/DesignSystem';
 import { initVisibilityHandler, enableCacheDebugging } from './cache';
-import { ErrorBoundary, MainLayout } from './components/ui';
+import { ErrorBoundary, MainLayout } from './components/UI';
 
 // i18n
 import './i18n';
