@@ -1,5 +1,5 @@
 import React, { useState, useCallback, useRef } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaCloudUploadAlt, FaTimes, FaImage, FaVideo, FaTrash, FaCopy, FaCheck, FaExclamationTriangle, FaMagic, FaSpinner, FaTimesCircle } from 'react-icons/fa';
 import { API_URL } from '../../utils/api';
@@ -1214,34 +1214,31 @@ const StatusBadge = styled.div`
   justify-content: center;
   font-size: 12px;
 
-  ${props => {
-    switch (props.$status) {
-      case 'checking':
-        return `
-          background: rgba(0, 217, 255, 0.9);
-          color: #000;
-          svg { animation: ${spin} 1s linear infinite; }
-        `;
-      case 'accepted':
-        return `
-          background: rgba(46, 204, 113, 0.9);
-          color: #fff;
-        `;
-      case 'warning':
-        return `
-          background: rgba(241, 196, 15, 0.9);
-          color: #000;
-        `;
-      case 'blocked':
-      case 'error':
-        return `
-          background: rgba(231, 76, 60, 0.9);
-          color: #fff;
-        `;
-      default:
-        return '';
-    }
-  }}
+  ${props => props.$status === 'checking' && `
+    background: rgba(0, 217, 255, 0.9);
+    color: #000;
+  `}
+
+  ${props => props.$status === 'accepted' && `
+    background: rgba(46, 204, 113, 0.9);
+    color: #fff;
+  `}
+
+  ${props => props.$status === 'warning' && `
+    background: rgba(241, 196, 15, 0.9);
+    color: #000;
+  `}
+
+  ${props => (props.$status === 'blocked' || props.$status === 'error') && `
+    background: rgba(231, 76, 60, 0.9);
+    color: #fff;
+  `}
+
+  svg {
+    ${props => props.$status === 'checking' && css`
+      animation: ${spin} 1s linear infinite;
+    `}
+  }
 `;
 
 const FileWarningBanner = styled.div`
