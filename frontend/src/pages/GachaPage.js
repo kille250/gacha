@@ -11,6 +11,9 @@ import { AuthContext } from '../context/AuthContext';
 // Hooks
 import { usePageError } from '../hooks';
 
+// Constants
+import { ICON_POINTS, ICON_SPARKLE, ICON_GACHA } from '../constants/icons';
+
 // Design System - consolidated imports
 import {
   Container,
@@ -198,7 +201,7 @@ const GachaPage = () => {
           </HeroContent>
           <HeaderControls>
             <PointsPill aria-label={`${user?.points || 0} points`}>
-              <span aria-hidden="true">🪙</span>
+              <span aria-hidden="true">{ICON_POINTS}</span>
               <span>{user?.points || 0}</span>
             </PointsPill>
             <IconButton
@@ -301,7 +304,7 @@ const GachaPage = () => {
           <BannerCarouselSection>
             <CarouselHeader>
               <CarouselTitle>
-                <span aria-hidden="true">🎬</span>
+                <FaPlay aria-hidden="true" style={{ fontSize: '0.8em' }} />
                 {t('gacha.allBanners')}
               </CarouselTitle>
               <CarouselNav>
@@ -358,7 +361,7 @@ const GachaPage = () => {
                       </NetflixCardMeta>
                       <NetflixCardFooter>
                         <NetflixCost>
-                          <span aria-hidden="true">🪙</span> {Math.floor(100 * (banner.costMultiplier || 1.5))} {t('common.points')}
+                          <span aria-hidden="true">{ICON_POINTS}</span> {Math.floor(100 * (banner.costMultiplier || 1.5))} {t('common.points')}
                         </NetflixCost>
                         {banner.rateBoost && (
                           <NetflixBoost>+{Math.round((banner.rateBoost - 1) * 100)}% {t('gacha.boost')}</NetflixBoost>
@@ -375,7 +378,7 @@ const GachaPage = () => {
         {/* Standard Gacha CTA */}
         <StandardGachaCTA>
           <CTAContent>
-            <CTAIcon aria-hidden="true">✨</CTAIcon>
+            <CTAIcon aria-hidden="true">{ICON_SPARKLE}</CTAIcon>
             <CTAText>
               <CTATitle>{t('gacha.standardGacha')}</CTATitle>
               <CTASubtitle>{t('gacha.standardGachaDesc')}</CTASubtitle>
@@ -395,7 +398,7 @@ const GachaPage = () => {
         {/* Empty State */}
         {banners.length === 0 && !loading && (
           <EmptyState
-            icon="🎰"
+            icon={ICON_GACHA}
             title={t('gacha.noActiveBanners')}
             description={t('gacha.checkBackSoon')}
             actionLabel={t('gacha.tryStandardGacha')}
@@ -412,15 +415,15 @@ const GachaPage = () => {
         maxWidth="500px"
       >
         <HelpSection>
-          <HelpSectionTitle>🎰 {t('nav.banners')}</HelpSectionTitle>
+          <HelpSectionTitle>{ICON_GACHA} {t('nav.banners')}</HelpSectionTitle>
           <Text secondary>{t('gacha.bannersHelp')}</Text>
         </HelpSection>
         <HelpSection>
-          <HelpSectionTitle>✨ {t('gacha.standardGacha')}</HelpSectionTitle>
+          <HelpSectionTitle>{ICON_SPARKLE} {t('gacha.standardGacha')}</HelpSectionTitle>
           <Text secondary>{t('gacha.standardGachaHelp')}</Text>
         </HelpSection>
         <HelpSection>
-          <HelpSectionTitle>💰 {t('gacha.pointsTitle')}</HelpSectionTitle>
+          <HelpSectionTitle>{ICON_POINTS} {t('gacha.pointsTitle')}</HelpSectionTitle>
           <Text secondary>{t('gacha.pointsHelp')}</Text>
         </HelpSection>
       </Modal>

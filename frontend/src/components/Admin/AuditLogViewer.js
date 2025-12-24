@@ -12,6 +12,15 @@ import { theme, motionVariants } from '../../design-system';
 import { getAuditLog, exportAuditLog } from '../../utils/api';
 import { AUDIT_CATEGORIES } from '../../constants/securityConstants';
 import {
+  ICON_ERROR,
+  ICON_AUTH,
+  ICON_ADMIN,
+  ICON_SECURITY,
+  ICON_ECONOMY,
+  ICON_APPEAL,
+  ICON_LOG,
+} from '../../constants/icons';
+import {
   HeaderRow,
   SectionTitle,
   ItemCount,
@@ -153,14 +162,14 @@ const AuditLogViewer = () => {
   };
   
   const getEventIcon = (eventType) => {
-    // Returns emoji icon for event type - rendered with aria-hidden in JSX
-    if (eventType.startsWith('auth.login.failed')) return '❌';
-    if (eventType.startsWith('auth')) return '🔐';
-    if (eventType.startsWith('admin')) return '👑';
-    if (eventType.startsWith('security')) return '🛡️';
-    if (eventType.startsWith('economy')) return '💰';
-    if (eventType.startsWith('appeal')) return '⚖️';
-    return '📝';
+    // Returns icon for event type - rendered with aria-hidden in JSX
+    if (eventType.startsWith('auth.login.failed')) return ICON_ERROR;
+    if (eventType.startsWith('auth')) return ICON_AUTH;
+    if (eventType.startsWith('admin')) return ICON_ADMIN;
+    if (eventType.startsWith('security')) return ICON_SECURITY;
+    if (eventType.startsWith('economy')) return ICON_ECONOMY;
+    if (eventType.startsWith('appeal')) return ICON_APPEAL;
+    return ICON_LOG;
   };
   
   return (

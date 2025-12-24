@@ -303,7 +303,7 @@ router.post('/', [auth, lockoutMiddleware(), fishingAutofishLimiter, enforcement
     
     if (success) {
       response.inventoryCount = inventoryItem?.quantity || 1;
-      response.message = pityTriggered ? `✨ Lucky! Autofished a ${fish.name}!` : `Autofished a ${fish.name}!`;
+      response.message = pityTriggered ? `Lucky! Autofished a ${fish.name}!` : `Autofished a ${fish.name}!`;
     } else {
       response.message = `The ${fish.name} got away during autofishing.`;
     }
@@ -368,7 +368,7 @@ router.get('/rank', [auth, enforcementMiddleware], async (req, res, next) => {
       rankTier,
       hasPremium,
       message: rankTier !== 'none'
-        ? `🎖️ ${rankTier.toUpperCase()} - ${autofishLimit} daily autofish (+${rankBonus} bonus)`
+        ? `${rankTier.toUpperCase()} - ${autofishLimit} daily autofish (+${rankBonus} bonus)`
         : `${autofishLimit} daily autofish available${hasPremium ? ' (+50% premium)' : ''}`
     });
   } catch (err) {

@@ -73,7 +73,7 @@ const LanguageSelector = ({
       >
         <TriggerIcon><MdLanguage /></TriggerIcon>
         <span>{currentLang?.nativeName || 'Language'}</span>
-        <TriggerFlag>{currentLang?.flag || '🌐'}</TriggerFlag>
+        <TriggerFlag>{currentLang?.flag || ''}</TriggerFlag>
       </DropdownTrigger>
 
       <AnimatePresence>

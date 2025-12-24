@@ -1,10 +1,17 @@
 import React, { useState, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaSearch, FaTimes, FaCheck, FaExclamationTriangle, FaDownload, FaStar, FaUsers, FaSpinner, FaImage, FaVideo, FaPlay } from 'react-icons/fa';
+import { FaSearch, FaTimes, FaCheck, FaExclamationTriangle, FaDownload, FaStar, FaUsers, FaSpinner, FaImage, FaVideo, FaPlay, FaUser, FaTv, FaTag } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import api from '../../utils/api';
 import { useRarity } from '../../context/RarityContext';
+
+// Category icons for tag display
+const CATEGORY_ICON_MAP = {
+  4: <FaUser />,  // Character
+  3: <FaTv />,    // Series
+};
+const getCategoryIconComponent = (category) => CATEGORY_ICON_MAP[category] || <FaTag />;
 
 const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   const { t } = useTranslation();
@@ -607,7 +614,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                           >
                             <span>{tag.displayName}</span>
                             <AltMediaTagMeta>
-                              <span>{tag.category === 4 ? '👤' : tag.category === 3 ? '📺' : '🏷️'}</span>
+                              <span>{getCategoryIconComponent(tag.category)}</span>
                               <span>{tag.count.toLocaleString()}</span>
                             </AltMediaTagMeta>
                           </AltMediaTagChip>
@@ -620,7 +627,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                       <>
                         <SelectedTagBar>
                           <SelectedTagName>
-                            {altMediaSelectedTag.category === 4 ? '👤' : altMediaSelectedTag.category === 3 ? '📺' : '🏷️'}
+                            {getCategoryIconComponent(altMediaSelectedTag.category)}
                             {altMediaSelectedTag.displayName}
                           </SelectedTagName>
                           <SmallButton onClick={() => {

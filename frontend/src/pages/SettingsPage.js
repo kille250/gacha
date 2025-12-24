@@ -14,6 +14,9 @@ import {
   resetAccount as resetAccountAction
 } from '../actions/settingsActions';
 
+// Icon Constants
+import { ICON_WARNING } from '../constants/icons';
+
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
 const TABS = [
@@ -382,7 +385,7 @@ const SettingsPage = () => {
               {t('settings.usernameDescription')}
             </SubSectionDescription>
             <WarningBox>
-              ⚠️ {t('settings.usernameWarning')}
+              {ICON_WARNING} {t('settings.usernameWarning')}
             </WarningBox>
             
             <Form onSubmit={handleUsernameSubmit}>
@@ -429,7 +432,7 @@ const SettingsPage = () => {
         
         {!user?.hasPassword && (
           <WarningBox style={{ background: 'rgba(0, 113, 227, 0.15)', borderColor: 'rgba(0, 113, 227, 0.3)', color: theme.colors.primary }}>
-            💡 {t('settings.setPasswordHint')}
+            <FaExclamationTriangle style={{ marginRight: '4px' }} /> {t('settings.setPasswordHint')}
           </WarningBox>
         )}
         
@@ -528,7 +531,7 @@ const SettingsPage = () => {
             </GoogleButtonGroup>
           ) : showUnlinkConfirm ? (
             <RelinkConfirmBox>
-              <p>⚠️ {t('settings.unlinkConfirmMessage')}</p>
+              <p>{ICON_WARNING} {t('settings.unlinkConfirmMessage')}</p>
               <GoogleButtonGroup>
                 <GoogleUnlinkButton
                   onClick={handleGoogleUnlink}

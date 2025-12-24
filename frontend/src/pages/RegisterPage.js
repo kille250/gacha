@@ -106,7 +106,7 @@ const RegisterPage = () => {
           whileTap={{ scale: 0.95 }}
         >
           <MdLanguage />
-          <span>{languages[i18n.language]?.flag || '🌐'}</span>
+          <span>{languages[i18n.language]?.flag || ''}</span>
         </LanguageButton>
         <AnimatePresence>
           {showLangMenu && (

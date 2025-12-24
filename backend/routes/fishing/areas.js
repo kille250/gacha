@@ -105,7 +105,7 @@ router.post('/:id/unlock', [auth, enforcementMiddleware, fishingPurchaseLimiter,
       success: true,
       area: area.name,
       newPoints: user.points,
-      message: `Unlocked ${area.name}! 🎉`
+      message: `Unlocked ${area.name}!`
     });
   } catch (err) {
     next(err);

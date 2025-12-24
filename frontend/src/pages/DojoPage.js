@@ -32,6 +32,18 @@ import {
 import { theme, Spinner } from '../design-system';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../utils/mediaUtils';
 
+// Icon Constants
+import {
+  ICON_DOJO,
+  ICON_STATS,
+  ICON_TICKET,
+  ICON_COMBAT,
+  ICON_BOOST,
+  ICON_BALANCE,
+  ICON_POWER,
+  ICON_LEVEL_UP,
+} from '../constants/icons';
+
 // ===========================================
 // ANIMATIONS
 // ===========================================
@@ -403,7 +415,7 @@ const DojoPage = () => {
             <MdArrowBack />
           </BackButton>
           <HeaderContent>
-            <HeaderIcon>🏯</HeaderIcon>
+            <HeaderIcon>{ICON_DOJO}</HeaderIcon>
             <HeaderTitle>{t('dojo.title')}</HeaderTitle>
           </HeaderContent>
           <HeaderStats>
@@ -442,7 +454,7 @@ const DojoPage = () => {
             exit={{ opacity: 0 }}
           >
             <ClaimPopupContent>
-              <ClaimPopupIcon>🎉</ClaimPopupIcon>
+              <ClaimPopupIcon><FaStar /></ClaimPopupIcon>
               <ClaimPopupTitle>{t('dojo.trainingComplete')}</ClaimPopupTitle>
               <ClaimPopupRewards>
                 {claimResult.rewards.points > 0 && (
@@ -469,8 +481,8 @@ const DojoPage = () => {
               )}
               {claimResult.catchUpBonus?.isActive && (
                 <CatchUpBonusTag>
-                  🚀 {t('dojo.catchUpBonusApplied', { 
-                    bonus: Math.round((claimResult.catchUpBonus.multiplier - 1) * 100) 
+                  {ICON_BOOST} {t('dojo.catchUpBonusApplied', {
+                    bonus: Math.round((claimResult.catchUpBonus.multiplier - 1) * 100)
                   })}
                 </CatchUpBonusTag>
               )}
@@ -543,7 +555,7 @@ const DojoPage = () => {
           <DailyCapsCard $isCapped={status.dailyCaps.isPointsCapped}>
             <DailyCapsHeader>
               <DailyCapsTitle>
-                📊 {t('dojo.dailyProgress')}
+                {ICON_STATS} {t('dojo.dailyProgress')}
               </DailyCapsTitle>
               <DailyCapsReset>
                 {t('dojo.resetsAtMidnight')}
@@ -606,7 +618,7 @@ const DojoPage = () => {
             {/* Ticket Progress (Pity System) */}
             {status.ticketProgress && (status.ticketProgress.roll > 0 || status.ticketProgress.premium > 0) && (
               <TicketProgressSection>
-                <TicketProgressLabel>🎫 {t('dojo.ticketProgress')}</TicketProgressLabel>
+                <TicketProgressLabel>{ICON_TICKET} {t('dojo.ticketProgress')}</TicketProgressLabel>
                 <TicketProgressBars>
                   {status.ticketProgress.roll > 0 && (
                     <TicketProgressItem>
@@ -655,7 +667,7 @@ const DojoPage = () => {
           {/* Level Bonuses */}
           {status?.slots?.filter(s => s?.character?.level > 1).length > 0 && (
             <LevelBonusSection>
-              <LevelBonusLabel>⚔️ {t('dojo.levelBonuses')}:</LevelBonusLabel>
+              <LevelBonusLabel>{ICON_COMBAT} {t('dojo.levelBonuses')}:</LevelBonusLabel>
               <LevelBonusBadges>
                 {status.slots
                   .filter(s => s?.character?.level > 1)
@@ -674,8 +686,8 @@ const DojoPage = () => {
           {/* Catch-Up Bonus for new players */}
           {status?.hourlyRate?.catchUpBonus?.isActive && (
             <CatchUpBonusBadge>
-              🚀 {t('dojo.catchUpBonus', { 
-                bonus: Math.round((status.hourlyRate.catchUpBonus.multiplier - 1) * 100) 
+              {ICON_BOOST} {t('dojo.catchUpBonus', {
+                bonus: Math.round((status.hourlyRate.catchUpBonus.multiplier - 1) * 100)
               })}
             </CatchUpBonusBadge>
           )}
@@ -692,7 +704,7 @@ const DojoPage = () => {
           {/* Diminishing Returns Indicator */}
           {status?.hourlyRate?.diminishingReturnsApplied && (
             <EfficiencyIndicator>
-              ⚖️ {t('dojo.efficiency', { percent: status.hourlyRate.efficiency || 100 })}
+              {ICON_BALANCE} {t('dojo.efficiency', { percent: status.hourlyRate.efficiency || 100 })}
             </EfficiencyIndicator>
           )}
         </HourlyRateCard>
@@ -913,7 +925,7 @@ const DojoPage = () => {
                                 )}
                               </CharBadges>
                               {char.levelMultiplier > 1 && (
-                                <CharPowerBonus>⚡ {t('dojo.powerBonus', { percent: Math.round(char.levelMultiplier * 100) })}</CharPowerBonus>
+                                <CharPowerBonus>{ICON_POWER} {t('dojo.powerBonus', { percent: Math.round(char.levelMultiplier * 100) })}</CharPowerBonus>
                               )}
                             </CharOverlay>
                           </CharacterCard>
@@ -1989,7 +2001,7 @@ const UpgradesTitle = styled.h2`
   margin: 0 0 ${theme.spacing.lg} 0;
   
   &::before {
-    content: '⬆️';
+    content: '${ICON_LEVEL_UP}';
   }
   
   @media (max-width: ${theme.breakpoints.sm}) {

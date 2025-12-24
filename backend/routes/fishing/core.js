@@ -264,7 +264,7 @@ router.post('/cast', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
     
-    let message = pityTriggered ? '✨ Lucky cast! A rare fish approaches...' : 'Line cast! Wait for a bite...';
+    let message = pityTriggered ? 'Lucky cast! A rare fish approaches...' : 'Line cast! Wait for a bite...';
     if (mercyBonus > 0) {
       message += ` (+${mercyBonus}ms mercy bonus!)`;
     }

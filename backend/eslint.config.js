@@ -1,5 +1,56 @@
 const js = require('@eslint/js');
 
+/**
+ * Custom rule to prevent emoji usage in code.
+ * Allows emojis in:
+ * - Files with documented EMOJI USAGE NOTICE headers (fishing config, etc.)
+ * - Comments
+ */
+const noEmojisRule = {
+  meta: {
+    type: 'suggestion',
+    docs: {
+      description: 'Disallow emoji characters in code (use icon constants instead)',
+      category: 'Stylistic Issues'
+    },
+    messages: {
+      noEmoji: 'Avoid using emojis directly. Import from constants/icons.js instead.'
+    }
+  },
+  create(context) {
+    // Emoji regex covering most common ranges
+    const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u;
+
+    // Files with documented intentional emoji usage (game data)
+    const allowedFiles = [
+      'config/fishing.js',
+      'config/fishing/prestige.js',
+      'config/fishing/validator.js',
+      'config/dojo.js',
+      'routes/fishingMultiplayer.js',
+      'routes/fishing/prestige.js'
+    ];
+
+    const filename = context.getFilename();
+    const isAllowed = allowedFiles.some(f => filename.includes(f.replace(/\//g, require('path').sep)));
+
+    if (isAllowed) return {};
+
+    return {
+      Literal(node) {
+        if (typeof node.value === 'string' && emojiRegex.test(node.value)) {
+          context.report({ node, messageId: 'noEmoji' });
+        }
+      },
+      TemplateElement(node) {
+        if (node.value && emojiRegex.test(node.value.raw)) {
+          context.report({ node, messageId: 'noEmoji' });
+        }
+      }
+    };
+  }
+};
+
 module.exports = [
   js.configs.recommended,
   {
@@ -37,9 +88,17 @@ module.exports = [
         it: 'readonly'
       }
     },
+    plugins: {
+      'custom': {
+        rules: {
+          'no-emojis': noEmojisRule
+        }
+      }
+    },
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
-      'no-console': 'off'
+      'no-console': 'off',
+      'custom/no-emojis': 'warn'
     }
   },
   {

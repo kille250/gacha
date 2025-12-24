@@ -142,7 +142,7 @@ router.post('/claim', [auth, enforcementMiddleware, rewardClaimLimiter, deviceBi
       rewards: rewards,
       newBonuses,
       newPoints: user.points,
-      message: `🎉 Congratulations! You've reached ${levelData.name}!`
+      message: `Congratulations! You've reached ${levelData.name}!`
     });
   } catch (err) {
     next(err);

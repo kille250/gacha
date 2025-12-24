@@ -1,6 +1,17 @@
 /**
  * Fishing Multiplayer WebSocket Handler
  * Handles real-time player synchronization for the fishing minigame
+ *
+ * ============================================================================
+ * EMOJI USAGE NOTICE
+ * ============================================================================
+ * This file contains INTENTIONAL emoji usage for the player emote system.
+ * VALID_EMOTES is a whitelist of emojis players can send to each other.
+ * These are displayed in the multiplayer fishing UI for player communication.
+ *
+ * These emojis are REQUIRED for game functionality and should NOT be removed.
+ * They are validated server-side and sent to connected clients.
+ * ============================================================================
  */
 
 const jwt = require('jsonwebtoken');

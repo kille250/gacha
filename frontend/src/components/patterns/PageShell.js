@@ -26,6 +26,7 @@ import {
   ErrorState,
   EmptyState,
 } from '../../design-system';
+import { ICON_EMPTY } from '../../constants/icons';
 
 const PageWrapper = styled.div`
   min-height: 100vh;
@@ -139,7 +140,7 @@ const PageShell = ({
   error = null,
   onRetry,
   empty = false,
-  emptyIcon = '📭',
+  emptyIcon = ICON_EMPTY,
   emptyTitle = 'Nothing here',
   emptyDescription = 'No items to display.',
   emptyActionLabel,

@@ -28,6 +28,9 @@ import MultiUploadModal from '../components/UI/MultiUploadModal';
 import AnimeImportModal from '../components/UI/AnimeImportModal';
 import EditCharacterModal from '../components/Admin/EditCharacterModal';
 import { AuthContext } from '../context/AuthContext';
+
+// Icon Constants
+import { ICON_SETTINGS } from '../constants/icons';
 import { useToast } from '../context/ToastContext';
 import { Navigate } from 'react-router-dom';
 import { arrayMove } from '@dnd-kit/sortable';
@@ -401,7 +404,7 @@ const AdminPage = () => {
         <Container>
           <HeaderContent>
             <HeaderTitle>
-              <TitleIcon>⚙️</TitleIcon>
+              <TitleIcon>{ICON_SETTINGS}</TitleIcon>
               {t('admin.title')}
             </HeaderTitle>
             <HeaderSubtitle>{t('admin.subtitle')}</HeaderSubtitle>

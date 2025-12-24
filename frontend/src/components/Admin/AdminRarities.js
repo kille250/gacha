@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
-  FaStar, FaEdit, FaTrash, FaPlus, FaUndo, FaPercent, FaPalette, FaMagic, 
+import {
+  FaStar, FaEdit, FaTrash, FaPlus, FaUndo, FaPercent, FaPalette, FaMagic,
   FaExclamationTriangle, FaInfoCircle, FaChevronDown, FaChevronUp, FaCopy,
-  FaDice, FaLightbulb, FaQuestionCircle, FaCog
+  FaDice, FaLightbulb, FaQuestionCircle, FaCog, FaChartBar, FaCrosshairs,
+  FaShieldAlt, FaHourglass, FaTimes
 } from 'react-icons/fa';
 import { theme, motionVariants } from '../../design-system';
 import { useTranslation } from 'react-i18next';
@@ -466,7 +467,7 @@ const AdminRarities = ({ onRefresh }) => {
     return (
       <AdminContainer>
         <EmptyState>
-          <EmptyIcon>⏳</EmptyIcon>
+          <EmptyIcon><FaHourglass /></EmptyIcon>
           <EmptyText>{t('admin.rarities.loading')}</EmptyText>
         </EmptyState>
       </AdminContainer>
@@ -477,7 +478,7 @@ const AdminRarities = ({ onRefresh }) => {
     return (
       <AdminContainer>
         <EmptyState>
-          <EmptyIcon>❌</EmptyIcon>
+          <EmptyIcon><FaTimes /></EmptyIcon>
           <EmptyText>{error}</EmptyText>
           <SecondaryButton onClick={fetchRarities} style={{ marginTop: '16px' }}>
             {t('admin.retry')}
@@ -522,28 +523,28 @@ const AdminRarities = ({ onRefresh }) => {
         <InfoContent>
           <QuickGuideGrid>
             <GuideItem>
-              <GuideIcon>📊</GuideIcon>
+              <GuideIcon><FaChartBar /></GuideIcon>
               <GuideText>
                 <strong>{t('admin.rarities.guideRelativeWeights')}</strong><br/>
                 {t('admin.rarities.guideRelativeWeightsDesc')}
               </GuideText>
             </GuideItem>
             <GuideItem>
-              <GuideIcon>🎯</GuideIcon>
+              <GuideIcon><FaCrosshairs /></GuideIcon>
               <GuideText>
                 <strong>{t('admin.rarities.guideSingleVsMulti')}</strong><br/>
                 {t('admin.rarities.guideSingleVsMultiDesc')}
               </GuideText>
             </GuideItem>
             <GuideItem>
-              <GuideIcon>⭐</GuideIcon>
+              <GuideIcon><FaStar /></GuideIcon>
               <GuideText>
                 <strong>{t('admin.rarities.guide100Percent')}</strong><br/>
                 {t('admin.rarities.guide100PercentDesc')}
               </GuideText>
             </GuideItem>
             <GuideItem>
-              <GuideIcon>🛡️</GuideIcon>
+              <GuideIcon><FaShieldAlt /></GuideIcon>
               <GuideText>
                 <strong>{t('admin.rarities.guideMinimumRate')}</strong><br/>
                 {t('admin.rarities.guideMinimumRateDesc')}
@@ -651,7 +652,7 @@ const AdminRarities = ({ onRefresh }) => {
 
       {rarities.length === 0 ? (
         <EmptyState>
-          <EmptyIcon>⭐</EmptyIcon>
+          <EmptyIcon><FaStar /></EmptyIcon>
           <EmptyText>{t('admin.rarities.noRarities')}</EmptyText>
           <EmptySubtext>{t('admin.rarities.noRaritiesDesc')}</EmptySubtext>
         </EmptyState>
@@ -1328,6 +1329,14 @@ const GuideItem = styled.div`
 const GuideIcon = styled.span`
   font-size: 20px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+  color: ${theme.colors.primary};
+
+  svg {
+    width: 20px;
+    height: 20px;
+  }
 `;
 
 const GuideText = styled.div`

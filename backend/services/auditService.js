@@ -113,8 +113,12 @@ async function logEvent(event) {
   }
   
   // Always log to console for immediate visibility
-  const logPrefix = severity === SEVERITY.CRITICAL ? '🚨' : 
-                    severity === SEVERITY.WARNING ? '⚠️' : 'ℹ️';
+  const LOG_PREFIXES = {
+    [SEVERITY.CRITICAL]: '[CRITICAL]',
+    [SEVERITY.WARNING]: '[WARN]',
+    [SEVERITY.INFO]: '[INFO]'
+  };
+  const logPrefix = LOG_PREFIXES[severity] || '[INFO]';
   console.log(`[AUDIT] ${logPrefix} ${eventType}`, JSON.stringify({
     userId,
     targetUserId,

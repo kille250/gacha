@@ -230,7 +230,7 @@ router.post('/claim-milestone', [auth, enforcementMiddleware, rewardClaimLimiter
         rollTickets: user.rollTickets || 0,
         premiumTickets: user.premiumTickets || 0
       },
-      message: `🏆 ${milestone.name || 'Milestone'} claimed!`
+      message: `${milestone.name || 'Milestone'} claimed!`
     });
   } catch (err) {
     next(err);

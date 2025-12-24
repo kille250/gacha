@@ -161,7 +161,7 @@ function validateLevelConfig() {
   
   // Validate total shards calculation
   const totalShards = getTotalShardsToLevel(LEVEL_CONFIG.maxLevel);
-  console.log(`✅ Leveling configuration validated (${totalShards} total shards to max level)`);
+  console.log(`[OK] Leveling configuration validated (${totalShards} total shards to max level)`);
 }
 
 // Run validation when module is loaded

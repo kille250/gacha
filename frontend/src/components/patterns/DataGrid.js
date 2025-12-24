@@ -17,6 +17,7 @@ import { motion } from 'framer-motion';
 import { theme, motionVariants } from '../../design-system';
 import { EmptyState, ErrorState } from '../UI/feedback';
 import { SkeletonGrid } from './SkeletonCard';
+import { ICON_EMPTY } from '../../constants/icons';
 
 const GridContainer = styled(motion.div)`
   display: grid;
@@ -129,7 +130,7 @@ const DataGrid = ({
   if (items.length === 0) {
     return (
       <EmptyState
-        icon={emptyState.icon || '📭'}
+        icon={emptyState.icon || ICON_EMPTY}
         title={emptyState.title || 'No items found'}
         description={emptyState.description}
         actionLabel={emptyState.actionLabel}

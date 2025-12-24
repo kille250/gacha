@@ -16,6 +16,9 @@ import {
   Heading2,
 } from '../design-system';
 
+// Icon Constants
+import { ICON_POINTS, ICON_GIFT, ICON_COUPON } from '../constants/icons';
+
 const CouponPage = () => {
   const { t } = useTranslation();
   const { user, setUser } = useContext(AuthContext);
@@ -88,7 +91,7 @@ const CouponPage = () => {
             <PageSubtitle>{t('coupon.subtitle')}</PageSubtitle>
           </HeaderContent>
           <PointsDisplay>
-            <span>🪙</span>
+            <span>{ICON_POINTS}</span>
             <span>{user?.points || 0}</span>
           </PointsDisplay>
         </Header>
@@ -177,7 +180,7 @@ const CouponPage = () => {
           {/* Reward Display Section */}
           <RewardSection>
             <SectionHeader>
-              <SectionIcon>🎁</SectionIcon>
+              <SectionIcon>{ICON_GIFT}</SectionIcon>
               <Heading2>{t('coupon.rewardDetails')}</Heading2>
             </SectionHeader>
             
@@ -235,7 +238,7 @@ const CouponPage = () => {
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
                   >
-                    <EmptyIcon>🎫</EmptyIcon>
+                    <EmptyIcon>{ICON_COUPON}</EmptyIcon>
                     <EmptyTitle>{t('coupon.noRewardYet')}</EmptyTitle>
                     <EmptyText>{t('coupon.redeemToSee')}</EmptyText>
                   </EmptyState>

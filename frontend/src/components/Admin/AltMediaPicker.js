@@ -2,7 +2,7 @@ import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { FaImage, FaTimes, FaSearch, FaStar, FaSpinner, FaCheck, FaPlay } from 'react-icons/fa';
+import { FaImage, FaTimes, FaSearch, FaStar, FaSpinner, FaCheck, FaPlay, FaUser, FaTv, FaTag } from 'react-icons/fa';
 import api from '../../utils/api';
 
 /**
@@ -189,9 +189,12 @@ const AltMediaPicker = ({
     setTypeFilter('all');
   }, []);
 
-  // Category icons for tag types (4 = character, 3 = copyright/series)
-  const CATEGORY_ICONS = { 4: '👤', 3: '📺' };
-  const getCategoryIcon = (category) => CATEGORY_ICONS[category] || '🏷️';
+  // Category icons mapping for react-icons rendering
+  const CATEGORY_ICON_COMPONENTS = {
+    4: <FaUser />,  // Person/character
+    3: <FaTv />,    // Series/show
+  };
+  const getCategoryIconComponent = (category) => CATEGORY_ICON_COMPONENTS[category] || <FaTag />;
 
   if (!show) return null;
 
@@ -253,7 +256,7 @@ const AltMediaPicker = ({
                 >
                   <span>{tag.displayName}</span>
                   <TagMeta>
-                    <span>{getCategoryIcon(tag.category)}</span>
+                    <span>{getCategoryIconComponent(tag.category)}</span>
                     <span>{tag.count.toLocaleString()}</span>
                   </TagMeta>
                 </TagChip>
@@ -266,7 +269,7 @@ const AltMediaPicker = ({
             <>
               <SelectedTagBar>
                 <SelectedTagName>
-                  {getCategoryIcon(selectedTag.category)}
+                  {getCategoryIconComponent(selectedTag.category)}
                   {selectedTag.displayName}
                 </SelectedTagName>
                 <SmallButton onClick={clearSelectedTag}>

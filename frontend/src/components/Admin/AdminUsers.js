@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUsers, FaCoins, FaSearch, FaCrown, FaShieldAlt } from 'react-icons/fa';
+import { FaUsers, FaCoins, FaSearch, FaCrown, FaShieldAlt, FaCheck, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
 import { theme, motionVariants } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import {
@@ -145,13 +145,13 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
                         );
                       }
                       if (user.riskScore >= 50) {
-                        return <RiskBadge>⚠️ {user.riskScore}</RiskBadge>;
+                        return <RiskBadge><FaExclamationTriangle /> {user.riskScore}</RiskBadge>;
                       }
-                      return <StatusOK>✓</StatusOK>;
+                      return <StatusOK><FaCheck /></StatusOK>;
                     })()}
                   </Cell>
                   <Cell $width="80px">
-                    <StatusIcon>{user.isAdmin ? '✅' : '❌'}</StatusIcon>
+                    <StatusIcon>{user.isAdmin ? <FaCheck style={{ color: '#30d158' }} /> : <FaTimes style={{ color: '#ff3b30' }} />}</StatusIcon>
                   </Cell>
                   <Cell $width="120px">
                     <ToggleButton 
@@ -350,6 +350,9 @@ const CoinDisplay = styled.div`
 
 const StatusIcon = styled.span`
   font-size: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const AutofishCell = styled.div`
@@ -381,6 +384,9 @@ const RestrictionBadge = styled.span`
 `;
 
 const RiskBadge = styled.span`
+  display: flex;
+  align-items: center;
+  gap: 4px;
   font-size: ${theme.fontSizes.xs};
   color: #ff9500;
 `;

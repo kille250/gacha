@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { FaUsers, FaImage, FaFlag, FaTicketAlt, FaCoins, FaFish, FaPlus, FaCloudUploadAlt, FaDownload, FaSync, FaDatabase, FaHdd, FaServer, FaMemory, FaClock } from 'react-icons/fa';
+import { FaUsers, FaImage, FaFlag, FaTicketAlt, FaCoins, FaFish, FaPlus, FaCloudUploadAlt, FaDownload, FaSync, FaDatabase, FaHdd, FaServer, FaMemory, FaClock, FaChartBar, FaBolt, FaDesktop, FaCheck, FaTimes } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
 import { getSystemHealth } from '../../utils/api';
@@ -136,7 +136,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
       animate="visible"
     >
       <SectionTitle>
-        <TitleIcon>📊</TitleIcon>
+        <TitleIcon><FaChartBar /></TitleIcon>
         {t('admin.overview')}
       </SectionTitle>
       
@@ -164,7 +164,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
       </StatsGrid>
       
       <SectionTitle style={{ marginTop: theme.spacing.xl }}>
-        <TitleIcon>⚡</TitleIcon>
+        <TitleIcon><FaBolt /></TitleIcon>
         {t('admin.quickActions')}
       </SectionTitle>
       
@@ -188,7 +188,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
       <SystemStatusSection>
         <SectionHeader>
           <SectionTitle>
-            <TitleIcon>🖥️</TitleIcon>
+            <TitleIcon><FaDesktop /></TitleIcon>
             {t('admin.systemStatus')}
           </SectionTitle>
           <RefreshButton onClick={fetchHealth} disabled={healthLoading}>
@@ -203,7 +203,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
 
         {healthError ? (
           <ErrorBox>
-            <span>⚠️ {healthError}</span>
+            <span>{healthError}</span>
             <RetryButton onClick={fetchHealth}>{t('admin.retry')}</RetryButton>
           </ErrorBox>
         ) : healthLoading && !healthData ? (
@@ -273,7 +273,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
               <StatusDetails>
                 <StatusRow>
                   <span>{t('admin.writable')}</span>
-                  <strong>{healthData.storage?.writable ? '✅' : '❌'}</strong>
+                  <strong>{healthData.storage?.writable ? <FaCheck style={{ color: '#30d158' }} /> : <FaTimes style={{ color: '#ff3b30' }} />}</strong>
                 </StatusRow>
                 {healthData.storage?.directories && Object.entries(healthData.storage.directories).map(([dir, info]) => (
                   <StatusRow key={dir}>
@@ -337,6 +337,14 @@ const SectionTitle = styled.h2`
 
 const TitleIcon = styled.span`
   font-size: 24px;
+  display: flex;
+  align-items: center;
+
+  svg {
+    width: 24px;
+    height: 24px;
+    color: ${theme.colors.primary};
+  }
 `;
 
 const StatsGrid = styled.div`

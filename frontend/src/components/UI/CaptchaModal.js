@@ -19,6 +19,16 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { theme } from '../../design-system';
 import { useRecaptcha } from '../../context/RecaptchaContext';
+import { ICON_SEARCH, ICON_SUCCESS, ICON_INFO } from '../../constants/icons';
+
+// State icons mapping (use unicode symbols for clean UI)
+const STATE_ICONS = {
+  verifying: ICON_SEARCH,
+  verified: ICON_SUCCESS,
+  business_error: ICON_INFO,
+  captcha_error: ICON_SEARCH, // Reuse search for "try again"
+  challenge: ICON_SEARCH,     // Calculator-like icon would be better, but search works
+};
 
 // ==================== ANIMATIONS ====================
 
@@ -417,7 +427,7 @@ const Checkmark = () => (
 
 const STATE_CONFIG = {
   verifying: {
-    icon: '🔍',
+    icon: STATE_ICONS.verifying,
     iconVariant: 'verifying',
     title: 'Security Check',
     description: 'Please wait while we verify your request...',
@@ -427,7 +437,7 @@ const STATE_CONFIG = {
     showSpinner: true,
   },
   verified: {
-    icon: '✓',
+    icon: STATE_ICONS.verified,
     iconVariant: 'verified',
     title: 'Verified',
     description: 'Security check passed. Processing your request...',
@@ -437,7 +447,7 @@ const STATE_CONFIG = {
     showSpinner: true,
   },
   business_error: {
-    icon: '💡',
+    icon: STATE_ICONS.business_error,
     iconVariant: 'error',
     title: 'Action Required',
     description: 'Your verification was successful, but there was an issue with your request.',
@@ -446,7 +456,7 @@ const STATE_CONFIG = {
     statusText: 'The verification step was successful',
   },
   captcha_error: {
-    icon: '🔄',
+    icon: STATE_ICONS.captcha_error,
     iconVariant: 'captcha_error',
     title: 'Verification Issue',
     description: 'We couldn\'t complete the security check. Please try again.',
@@ -455,7 +465,7 @@ const STATE_CONFIG = {
     statusText: 'Please retry the security check',
   },
   challenge: {
-    icon: '🧮',
+    icon: STATE_ICONS.challenge,
     iconVariant: 'challenge',
     title: 'Quick Verification',
     description: 'Please solve this simple math problem to continue.',

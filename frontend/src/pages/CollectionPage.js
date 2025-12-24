@@ -18,6 +18,9 @@ import { useRarity } from '../context/RarityContext';
 // Design System - consolidated imports
 import { Container, motionVariants, LoadingState, EmptyState } from '../design-system';
 
+// Icon Constants
+import { ICON_SEARCH, ICON_COMBAT } from '../constants/icons';
+
 // Extracted styles
 import {
   StyledPageWrapper,
@@ -315,7 +318,7 @@ const CollectionPage = () => {
 
         {filteredCharacters.length === 0 ? (
           <EmptyState
-            icon="🔍"
+            icon={ICON_SEARCH}
             title={t('collection.noCharactersFound')}
             description={t('collection.adjustFilters')}
             actionLabel={hasActiveFilters ? t('common.clearFilters') : undefined}
@@ -330,7 +333,7 @@ const CollectionPage = () => {
             <LevelingLegend role="region" aria-label={t('collection.cardLeveling') || 'Card leveling information'}>
               <LegendHeader>
                 <LegendTitle>
-                  <span aria-hidden="true">⚔️</span> {t('collection.cardLeveling') || 'Card Leveling'}
+                  <span aria-hidden="true">{ICON_COMBAT}</span> {t('collection.cardLeveling') || 'Card Leveling'}
                 </LegendTitle>
                 {stats.upgradableCount > 0 && (
                   <UpgradeAllButton

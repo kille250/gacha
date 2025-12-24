@@ -1,8 +1,22 @@
 /**
  * Fishing Minigame Configuration
- * 
+ *
  * Centralized configuration for fish types, trading options, and game settings.
  * Extracted from routes/fishing.js for better maintainability.
+ *
+ * ============================================================================
+ * EMOJI USAGE NOTICE
+ * ============================================================================
+ * This file contains INTENTIONAL emoji usage as game data. Emojis represent:
+ * - Fish species identifiers (displayed in UI as part of fish identity)
+ * - Fishing area icons (visual representation in area selection)
+ * - Fishing rod tier icons (displayed in equipment UI)
+ * - Trade option icons (displayed in trading post)
+ * - Streak bonus messages (shown to players as achievements)
+ *
+ * These emojis are REQUIRED for game functionality and should NOT be removed.
+ * They are stored in the database and sent to clients as part of game data.
+ * ============================================================================
  */
 
 // ===========================================

@@ -32,7 +32,7 @@ module.exports = {
       });
     }
     
-    console.log('✅ Added dojo daily stats and ticket pity fields to Users table');
+    console.log('[OK] Added dojo daily stats and ticket pity fields to Users table');
   },
 
   async down(queryInterface, _Sequelize) {
@@ -46,7 +46,7 @@ module.exports = {
       await queryInterface.removeColumn('Users', 'dojoTicketProgress');
     }
     
-    console.log('✅ Removed dojo daily stats and ticket pity fields from Users table');
+    console.log('[OK] Removed dojo daily stats and ticket pity fields from Users table');
   }
 };
 

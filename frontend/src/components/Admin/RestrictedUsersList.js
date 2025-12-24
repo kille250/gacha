@@ -175,7 +175,7 @@ const RestrictedUsersList = ({ onViewUser, onSuccess }) => {
                       </RiskBadge>
                     </Cell>
                     <Cell $width="80px">
-                      {user.warningCount > 0 ? `⚠️ ${user.warningCount}` : '—'}
+                      {user.warningCount > 0 ? `${user.warningCount}` : '—'}
                     </Cell>
                     <Cell $width="80px">
                       <ActionButton onClick={() => onViewUser(user.id)} aria-label={t('admin.security.viewUserDetails')}>

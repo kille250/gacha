@@ -1,8 +1,18 @@
 /**
  * Prestige System Configuration
- * 
+ *
  * Provides late-game progression through prestige levels.
  * Each prestige level requires achievements and offers permanent bonuses.
+ *
+ * ============================================================================
+ * EMOJI USAGE NOTICE
+ * ============================================================================
+ * This file contains INTENTIONAL emoji usage as game data. Emojis represent:
+ * - Prestige level tier icons (displayed in player profiles and UI)
+ *
+ * These emojis are REQUIRED for game functionality and should NOT be removed.
+ * They are stored in the database and sent to clients as part of game data.
+ * ============================================================================
  */
 
 // Import directly from parent to avoid circular dependency (index.js imports this file)

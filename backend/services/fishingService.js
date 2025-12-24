@@ -249,11 +249,11 @@ function calculateCatchQuality(reactionTime, fish, rod = null) {
   if (reactionRatio <= adjustedPerfectThreshold) {
     quality = 'perfect';
     multiplier = catchConfig.perfectMultiplier;
-    message = `⭐ PERFECT! You caught a ${fish.name}!`;
+    message = `PERFECT! You caught a ${fish.name}!`;
   } else if (reactionRatio <= adjustedGreatThreshold) {
     quality = 'great';
     multiplier = catchConfig.greatMultiplier;
-    message = `✨ Great catch! You caught a ${fish.name}!`;
+    message = `Great catch! You caught a ${fish.name}!`;
   }
   
   return { quality, multiplier, message };

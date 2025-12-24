@@ -37,6 +37,20 @@ import {
 import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
+// Icon Constants
+import {
+  ICON_DICE,
+  ICON_POINTS,
+  ICON_SEARCH,
+  ICON_SPARKLE,
+  ICON_MAGIC,
+  ICON_TICKET,
+  ICON_PREMIUM_TICKET,
+  ICON_WARNING,
+  ICON_STAR,
+  ICON_POOL_PITY,
+} from '../constants/icons';
+
 // ==================== CONSTANTS ====================
 
 const rarityIcons = {
@@ -792,11 +806,11 @@ const BannerPage = () => {
           </BackButton>
           <NavStats>
             <StatPill>
-              <span>🎲</span>
+              <span>{ICON_DICE}</span>
               <span>{rollCount} {t('common.pulls')}</span>
             </StatPill>
             <PointsPill>
-              <span>🪙</span>
+              <span>{ICON_POINTS}</span>
               <span>{user?.points || 0}</span>
             </PointsPill>
             <IconButton onClick={() => setShowInfoPanel(true)} label="Show banner info">
@@ -928,7 +942,7 @@ const BannerPage = () => {
                       <CardImage src={getImagePath(currentChar?.image)} alt={currentChar?.name} />
                     )}
                     <CardOverlay>
-                      <span>🔍 {t('common.view')}</span>
+                      <span>{ICON_SEARCH} {t('common.view')}</span>
                     </CardOverlay>
                     <CollectedBadge>✓ {t('common.collected')}</CollectedBadge>
                     {currentChar?.isBannerCharacter && <BannerCharBadge>★ {t('banner.bannerChar')}</BannerCharBadge>}
@@ -1010,14 +1024,14 @@ const BannerPage = () => {
                 </LoadingState>
                 
               ) : !isRolling ? (
-                <EmptyState 
+                <EmptyState
                   key="empty"
                   variants={motionVariants.slideUp}
                   initial="hidden"
                   animate="visible"
                   exit="exit"
                 >
-                  <EmptyIcon>✨</EmptyIcon>
+                  <EmptyIcon>{ICON_SPARKLE}</EmptyIcon>
                   <EmptyTitle>{t('banner.rollOn')} {banner.name}</EmptyTitle>
                   <EmptyText>{banner.series} {t('banner.specialBanner')}</EmptyText>
                 </EmptyState>
@@ -1051,7 +1065,7 @@ const BannerPage = () => {
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  <PullCardIcon>💫</PullCardIcon>
+                  <PullCardIcon>{ICON_MAGIC}</PullCardIcon>
                   <PullCardContent>
                     <PullCardTitle>{isRolling ? t('common.summoning') : t('common.single')}</PullCardTitle>
                     <PullCardCost>
@@ -1105,7 +1119,7 @@ const BannerPage = () => {
               {/* Ticket load warning */}
               {ticketLoadError && (
                 <TicketWarning>
-                  ⚠️ {t('banner.ticketLoadError') || 'Could not load ticket count. Ticket options may be unavailable.'}
+                  {ICON_WARNING} {t('banner.ticketLoadError') || 'Could not load ticket count. Ticket options may be unavailable.'}
                 </TicketWarning>
               )}
               
@@ -1113,17 +1127,17 @@ const BannerPage = () => {
               {(tickets.rollTickets > 0 || tickets.premiumTickets > 0) && (
                 <TicketSection>
                   <TicketSectionHeader>
-                    <TicketSectionTitle>🎟️ {t('common.tickets') || 'Your Tickets'}</TicketSectionTitle>
+                    <TicketSectionTitle>{ICON_TICKET} {t('common.tickets') || 'Your Tickets'}</TicketSectionTitle>
                     <TicketCounts>
                       {tickets.rollTickets > 0 && (
                         <TicketCount>
-                          <span>🎟️</span>
+                          <span>{ICON_TICKET}</span>
                           <strong>{tickets.rollTickets}</strong>
                         </TicketCount>
                       )}
                       {tickets.premiumTickets > 0 && (
                         <TicketCount $premium>
-                          <span>🌟</span>
+                          <span>{ICON_PREMIUM_TICKET}</span>
                           <strong>{tickets.premiumTickets}</strong>
                         </TicketCount>
                       )}
@@ -1146,7 +1160,7 @@ const BannerPage = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <TicketButtonIcon>🎟️</TicketButtonIcon>
+                        <TicketButtonIcon>{ICON_TICKET}</TicketButtonIcon>
                         <TicketButtonText>
                           <span>{t('common.use') || 'Use'} 1×</span>
                           <small>{t('common.rollTicket') || 'Roll Ticket'}</small>
@@ -1168,7 +1182,7 @@ const BannerPage = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <TicketButtonIcon>🌟</TicketButtonIcon>
+                        <TicketButtonIcon>{ICON_PREMIUM_TICKET}</TicketButtonIcon>
                         <TicketButtonText>
                           <span>{t('common.premium') || 'Premium'}</span>
                           <small>{t('common.guaranteedRare') || 'Rare+ Guaranteed!'}</small>
@@ -1190,7 +1204,7 @@ const BannerPage = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <TicketButtonIcon>🎟️</TicketButtonIcon>
+                        <TicketButtonIcon>{ICON_TICKET}</TicketButtonIcon>
                         <TicketButtonText>
                           <span>{t('common.use') || 'Use'} 10×</span>
                           <small>{t('common.rollTickets') || 'Roll Tickets'}</small>
@@ -1212,7 +1226,7 @@ const BannerPage = () => {
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
-                        <TicketButtonIcon>🌟</TicketButtonIcon>
+                        <TicketButtonIcon>{ICON_PREMIUM_TICKET}</TicketButtonIcon>
                         <TicketButtonText>
                           <span>10× {t('common.premium') || 'Premium'}</span>
                           <small>{t('common.allRarePlus') || 'All Rare+!'}</small>
@@ -1226,7 +1240,7 @@ const BannerPage = () => {
               {/* Footer with points and fast mode */}
               <ControlsFooter>
                 <PointsDisplay>
-                  <PointsIcon>🪙</PointsIcon>
+                  <PointsIcon>{ICON_POINTS}</PointsIcon>
                   <PointsValue>{user?.points || 0}</PointsValue>
                   <PointsLabel>{t('common.pointsAvailable')}</PointsLabel>
                 </PointsDisplay>
@@ -1322,7 +1336,7 @@ const BannerPage = () => {
                     <DropRatesContainer>
                       <DropRateSection>
                         <DropRateSectionTitle>
-                          ⭐ {t('banner.bannerRates') || 'Banner Pool'} ({pricing.dropRates.bannerPullChance}%)
+                          {ICON_STAR} {t('banner.bannerRates') || 'Banner Pool'} ({pricing.dropRates.bannerPullChance}%)
                         </DropRateSectionTitle>
                         <DropRateGrid>
                           {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
@@ -1337,7 +1351,7 @@ const BannerPage = () => {
                       
                       <DropRateSection>
                         <DropRateSectionTitle>
-                          📦 {t('banner.standardRates') || 'Standard Pool'} ({100 - pricing.dropRates.bannerPullChance}%)
+                          <FaDice aria-hidden="true" /> {t('banner.standardRates') || 'Standard Pool'} ({100 - pricing.dropRates.bannerPullChance}%)
                         </DropRateSectionTitle>
                         <DropRateGrid>
                           {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
@@ -1352,7 +1366,7 @@ const BannerPage = () => {
                       
                       <DropRateSection $premium>
                         <DropRateSectionTitle>
-                          🌟 {t('banner.premiumRates') || 'Premium Ticket'}
+                          {ICON_PREMIUM_TICKET} {t('banner.premiumRates') || 'Premium Ticket'}
                         </DropRateSectionTitle>
                         <DropRateGrid>
                           {['legendary', 'epic', 'rare'].map(rarity => (
@@ -1363,11 +1377,11 @@ const BannerPage = () => {
                             </DropRateItem>
                           ))}
                         </DropRateGrid>
-                        <PremiumNote>✨ {t('banner.guaranteedRare') || 'Guaranteed Rare or better!'}</PremiumNote>
+                        <PremiumNote>{ICON_SPARKLE} {t('banner.guaranteedRare') || 'Guaranteed Rare or better!'}</PremiumNote>
                       </DropRateSection>
                       
                       <PityInfoBox>
-                        <PityInfoTitle>🎯 {t('banner.pitySystem') || '10-Pull Pity'}</PityInfoTitle>
+                        <PityInfoTitle>{ICON_POOL_PITY} {t('banner.pitySystem') || '10-Pull Pity'}</PityInfoTitle>
                         <PityInfoText>
                           {t('banner.pityDescription') || 'Every 10-pull guarantees at least one Rare or higher character!'}
                         </PityInfoText>

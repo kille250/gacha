@@ -542,10 +542,10 @@ function validateDojoConfig() {
   const missingPremiumRarities = baseRarities.filter(r => !premiumTicketRarities.includes(r));
   
   if (missingRollRarities.length > 0) {
-    console.warn(`⚠️  Dojo Config: Missing roll ticket chances for: ${missingRollRarities.join(', ')}`);
+    console.warn(`[WARN] Dojo Config: Missing roll ticket chances for: ${missingRollRarities.join(', ')}`);
   }
   if (missingPremiumRarities.length > 0) {
-    console.warn(`⚠️  Dojo Config: Missing premium ticket chances for: ${missingPremiumRarities.join(', ')}`);
+    console.warn(`[WARN] Dojo Config: Missing premium ticket chances for: ${missingPremiumRarities.join(', ')}`);
   }
   
   // Validate income brackets are sorted ascending
@@ -564,12 +564,12 @@ function validateDojoConfig() {
   // Validate slot costs match expected slot count
   const expectedSlotUpgrades = DOJO_CONFIG.maxSlots - DOJO_CONFIG.defaultSlots;
   if (DOJO_UPGRADES.slotCosts.length !== expectedSlotUpgrades) {
-    console.warn(`⚠️  Dojo Config: slotCosts has ${DOJO_UPGRADES.slotCosts.length} entries but expected ${expectedSlotUpgrades} (maxSlots - defaultSlots)`);
+    console.warn(`[WARN] Dojo Config: slotCosts has ${DOJO_UPGRADES.slotCosts.length} entries but expected ${expectedSlotUpgrades} (maxSlots - defaultSlots)`);
   }
-  
+
   // Validate intensity costs match max intensity level
   if (DOJO_UPGRADES.intensityCosts.length !== DOJO_CONFIG.maxIntensityLevel) {
-    console.warn(`⚠️  Dojo Config: intensityCosts has ${DOJO_UPGRADES.intensityCosts.length} entries but maxIntensityLevel is ${DOJO_CONFIG.maxIntensityLevel}`);
+    console.warn(`[WARN] Dojo Config: intensityCosts has ${DOJO_UPGRADES.intensityCosts.length} entries but maxIntensityLevel is ${DOJO_CONFIG.maxIntensityLevel}`);
   }
   
   // Validate synergy thresholds are valid
@@ -578,7 +578,7 @@ function validateDojoConfig() {
     throw new Error('Dojo Config Error: Synergy thresholds must be >= 2 (minimum for series bonus)');
   }
   
-  console.log('✅ Dojo configuration validated successfully');
+  console.log('[OK] Dojo configuration validated successfully');
 }
 
 // Run validation when module is loaded

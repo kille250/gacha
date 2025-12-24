@@ -127,7 +127,7 @@ const ImagePreviewModal = ({
                       <LevelTitle>
                         <span>⚔️ Card Level</span>
                         <LevelValue $isMaxLevel={level >= 5}>
-                          Lv.{level}{level >= 5 ? ' ★ MAX' : ''}
+                          Lv.{level}{level >= 5 ? ' MAX' : ''}
                         </LevelValue>
                       </LevelTitle>
                     </LevelHeader>

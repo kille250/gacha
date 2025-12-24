@@ -40,7 +40,7 @@ module.exports = {
       });
     }
     
-    console.log('✅ Added dojo fields to Users table');
+    console.log('[OK] Added dojo fields to Users table');
   },
 
   async down(queryInterface, _Sequelize) {
@@ -48,7 +48,7 @@ module.exports = {
     await queryInterface.removeColumn('Users', 'dojoLastClaim');
     await queryInterface.removeColumn('Users', 'dojoUpgrades');
     
-    console.log('✅ Removed dojo fields from Users table');
+    console.log('[OK] Removed dojo fields from Users table');
   }
 };
 
