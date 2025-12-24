@@ -8,7 +8,7 @@ import { ToastProvider } from './context/ToastContext';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { theme } from './styles/DesignSystem';
 import { initVisibilityHandler, enableCacheDebugging } from './cache';
-import { ErrorBoundary } from './components/ui';
+import { ErrorBoundary, MainLayout } from './components/ui';
 
 // i18n
 import './i18n';
@@ -19,7 +19,6 @@ import RegisterPage from './pages/RegisterPage';
 import GachaPage from './pages/GachaPage';
 
 // Components
-import Navigation from './components/Navigation/Navigation';
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import GlobalCaptchaHandler from './components/UI/GlobalCaptchaHandler';
 
@@ -221,91 +220,54 @@ function App() {
                   </a>
                   <Suspense fallback={<PageLoader />}>
                     <Routes>
+                      {/* Public routes */}
                       <Route path="/login" element={<LoginPage />} />
                       <Route path="/register" element={<RegisterPage />} />
-                      <Route path="/coupons" element={
-                        <ProtectedRoute>
-                          <MainLayout>
-                            <Navigation />
-                            <PageContent>
-                              <CouponPage />
-                            </PageContent>
-                          </MainLayout>
-                        </ProtectedRoute>
-                      } />
-                      <Route
-                        path="/admin"
-                        element={
-                          <ProtectedRoute>
-                            <MainLayout>
-                              <Navigation />
-                              <PageContent>
-                                <AdminPage />
-                              </PageContent>
-                            </MainLayout>
-                          </ProtectedRoute>
-                        }
-                      />
+
+                      {/* Protected routes with main navigation layout */}
                       <Route path="/gacha" element={
                         <ProtectedRoute>
-                          <MainLayout>
-                            <Navigation />
-                            <PageContent>
-                              <GachaPage />
-                            </PageContent>
-                          </MainLayout>
+                          <MainLayout><GachaPage /></MainLayout>
                         </ProtectedRoute>
                       } />
                       <Route path="/collection" element={
                         <ProtectedRoute>
-                          <MainLayout>
-                            <Navigation />
-                            <PageContent>
-                              <CollectionPage />
-                            </PageContent>
-                          </MainLayout>
+                          <MainLayout><CollectionPage /></MainLayout>
                         </ProtectedRoute>
                       } />
-                      {/* Roll Page - Full screen without navigation */}
-                      <Route path="/roll" element={
-                        <ProtectedRoute>
-                          <RollPage />
-                        </ProtectedRoute>
-                      } />
-                      {/* Banner Page - Full screen without navigation */}
-                      <Route path="/banner/:bannerId" element={
-                        <ProtectedRoute>
-                          <BannerPage />
-                        </ProtectedRoute>
-                      } />
-                      {/* Fishing Minigame - Full screen immersive experience */}
-                      <Route path="/fishing" element={
-                        <ProtectedRoute>
-                          <FishingPage />
-                        </ProtectedRoute>
-                      } />
-                      {/* Dojo - Idle Training Game */}
                       <Route path="/dojo" element={
                         <ProtectedRoute>
-                          <MainLayout>
-                            <Navigation />
-                            <PageContent>
-                              <DojoPage />
-                            </PageContent>
-                          </MainLayout>
+                          <MainLayout><DojoPage /></MainLayout>
                         </ProtectedRoute>
                       } />
-                      {/* Settings Page */}
+                      <Route path="/coupons" element={
+                        <ProtectedRoute>
+                          <MainLayout><CouponPage /></MainLayout>
+                        </ProtectedRoute>
+                      } />
                       <Route path="/settings" element={
                         <ProtectedRoute>
-                          <MainLayout>
-                            <Navigation />
-                            <PageContent>
-                              <SettingsPage />
-                            </PageContent>
-                          </MainLayout>
+                          <MainLayout><SettingsPage /></MainLayout>
                         </ProtectedRoute>
                       } />
+                      <Route path="/admin" element={
+                        <ProtectedRoute>
+                          <MainLayout><AdminPage /></MainLayout>
+                        </ProtectedRoute>
+                      } />
+
+                      {/* Full-screen immersive routes (no navigation) */}
+                      <Route path="/roll" element={
+                        <ProtectedRoute><RollPage /></ProtectedRoute>
+                      } />
+                      <Route path="/banner/:bannerId" element={
+                        <ProtectedRoute><BannerPage /></ProtectedRoute>
+                      } />
+                      <Route path="/fishing" element={
+                        <ProtectedRoute><FishingPage /></ProtectedRoute>
+                      } />
+
+                      {/* Default redirect */}
                       <Route path="/" element={<HomeRedirect />} />
                     </Routes>
                   </Suspense>
@@ -334,26 +296,6 @@ const AppContainer = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
-`;
-
-const MainLayout = styled.div`
-  display: flex;
-  flex-direction: column;
-  min-height: 100vh;
-  background: ${theme.colors.background};
-`;
-
-const PageContent = styled.main.attrs({
-  id: 'main-content',
-  tabIndex: -1, // Allow programmatic focus for skip link
-})`
-  flex: 1;
-  display: flex;
-  flex-direction: column;
-
-  &:focus {
-    outline: none; /* Remove focus ring when skip-linked */
-  }
 `;
 
 // ==================== PAGE LOADER STYLES ====================

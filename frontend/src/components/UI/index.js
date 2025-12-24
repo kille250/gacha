@@ -12,7 +12,7 @@
 export { Button, ActionButton, IconButton } from './buttons';
 
 // Feedback
-export { Toast, ToastList, Alert, Spinner, InlineSpinner, PageLoader, EmptyState } from './feedback';
+export { Toast, ToastList, Alert, Spinner, InlineSpinner, PageLoader, EmptyState, LoadingState, ErrorState } from './feedback';
 
 // Forms
 export { Input, SearchInput, Select } from './forms';
@@ -24,4 +24,4 @@ export { Modal, Drawer, ConfirmDialog } from './overlay';
 export { Card, Badge, RarityBadge, ErrorBoundary } from './data';
 
 // Layout
-export { PageLayout, Container, Section, Grid, AutoGrid, Stack, HStack, VStack, Cluster } from './layout';
+export { PageLayout, MainLayout, Container, Section, Grid, AutoGrid, Stack, HStack, VStack, Cluster } from './layout';

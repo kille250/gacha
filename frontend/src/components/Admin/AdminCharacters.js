@@ -251,8 +251,8 @@ const AdminCharacters = ({
                 </ListInfo>
                 <RarityTag $color={getRarityColor(char.rarity)}>{char.rarity}</RarityTag>
                 <ListActions>
-                  <IconButton onClick={() => onEditCharacter(char)}><FaEdit /></IconButton>
-                  <IconButton $danger onClick={() => onDeleteCharacter(char.id)}><FaTrash /></IconButton>
+                  <IconButton onClick={() => onEditCharacter(char)} label="Edit character"><FaEdit /></IconButton>
+                  <IconButton $danger onClick={() => onDeleteCharacter(char.id)} label="Delete character"><FaTrash /></IconButton>
                 </ListActions>
               </ListItem>
             ))}

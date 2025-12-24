@@ -65,16 +65,25 @@ const buttonVariants = {
 
 const buttonSizes = {
   sm: css`
+    /* Ensure minimum 44px height for touch accessibility */
+    min-height: 44px;
     padding: ${theme.spacing.sm} ${theme.spacing.md};
     font-size: ${theme.fontSizes.sm};
     border-radius: ${theme.radius.md};
+
+    /* On devices with precise pointer (mouse), allow smaller */
+    @media (hover: hover) and (pointer: fine) {
+      min-height: 36px;
+    }
   `,
   md: css`
+    min-height: 44px;
     padding: ${theme.spacing.md} ${theme.spacing.lg};
     font-size: ${theme.fontSizes.base};
     border-radius: ${theme.radius.full};
   `,
   lg: css`
+    min-height: 52px;
     padding: ${theme.spacing.lg} ${theme.spacing.xl};
     font-size: ${theme.fontSizes.md};
     border-radius: ${theme.radius.full};

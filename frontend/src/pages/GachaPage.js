@@ -105,10 +105,11 @@ const GachaPage = () => {
               <span>🪙</span>
               <span>{user?.points || 0}</span>
             </PointsPill>
-            <IconButton 
+            <IconButton
               onClick={() => setShowHelpModal(true)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
+              label="Open help"
             >
               <MdHelpOutline />
             </IconButton>
@@ -290,7 +291,7 @@ const GachaPage = () => {
             >
               <ModalHeader>
                 <Heading2>{t('gacha.howToPlay')}</Heading2>
-                <IconButton onClick={() => setShowHelpModal(false)}>
+                <IconButton onClick={() => setShowHelpModal(false)} label="Close help">
                   <MdClose />
                 </IconButton>
               </ModalHeader>

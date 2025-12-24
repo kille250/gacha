@@ -39,3 +39,7 @@ export { useUploadState, FILE_STATUS, UPLOAD_FLOW_STATES } from './useUploadStat
 export { useUploadController } from './useUploadController';
 export { useSwipeToDelete } from './useSwipeToDelete';
 
+// Page-level hooks
+export { useCollectionPage } from './useCollectionPage';
+export { useGachaPage } from './useGachaPage';
+

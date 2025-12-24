@@ -637,7 +637,7 @@ const RollPage = () => {
                 >
                   <MultiResultsHeader>
                     <h2>{multiRollResults.length}× {t('common.pullResults')}</h2>
-                    <IconButton onClick={() => setShowMultiResults(false)}>
+                    <IconButton onClick={() => setShowMultiResults(false)} label="Close results">
                       <MdClose />
                     </IconButton>
                   </MultiResultsHeader>

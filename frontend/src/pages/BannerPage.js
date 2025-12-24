@@ -799,7 +799,7 @@ const BannerPage = () => {
               <span>🪙</span>
               <span>{user?.points || 0}</span>
             </PointsPill>
-            <IconButton onClick={() => setShowInfoPanel(true)}>
+            <IconButton onClick={() => setShowInfoPanel(true)} label="Show banner info">
               <MdInfo />
             </IconButton>
           </NavStats>
@@ -964,7 +964,7 @@ const BannerPage = () => {
                 >
                   <MultiResultsHeader>
                     <h2>{multiRollResults.length}× Pull • {banner.name}</h2>
-                    <IconButton onClick={() => setShowMultiResults(false)}>
+                    <IconButton onClick={() => setShowMultiResults(false)} label="Close results">
                       <MdClose />
                     </IconButton>
                   </MultiResultsHeader>
@@ -1301,7 +1301,7 @@ const BannerPage = () => {
             >
               <InfoPanelHeader>
                 <Heading2>{banner.name}</Heading2>
-                <IconButton onClick={() => setShowInfoPanel(false)}>
+                <IconButton onClick={() => setShowInfoPanel(false)} label="Close info panel">
                   <MdClose />
                 </IconButton>
               </InfoPanelHeader>

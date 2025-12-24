@@ -12,9 +12,16 @@ import { theme } from '../../../styles/DesignSystem';
 
 const sizeStyles = {
   sm: css`
-    width: 36px;
-    height: 36px;
+    /* Minimum 44px for touch accessibility, visual 36px with padding */
+    width: 44px;
+    height: 44px;
     font-size: 16px;
+
+    /* On devices with precise pointer (mouse), allow smaller */
+    @media (hover: hover) and (pointer: fine) {
+      width: 36px;
+      height: 36px;
+    }
   `,
   md: css`
     width: 44px;

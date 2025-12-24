@@ -741,11 +741,11 @@ const AdminRarities = ({ onRefresh }) => {
                 </RarityBody>
                 
                 <RarityActions>
-                  <IconButton onClick={() => handleEditClick(rarity)} title="Edit">
+                  <IconButton onClick={() => handleEditClick(rarity)} label="Edit rarity">
                     <FaEdit />
                   </IconButton>
                   {!rarity.isDefault && (
-                    <IconButton $danger onClick={() => handleDelete(rarity)} title="Delete">
+                    <IconButton $danger onClick={() => handleDelete(rarity)} label="Delete rarity">
                       <FaTrash />
                     </IconButton>
                   )}
