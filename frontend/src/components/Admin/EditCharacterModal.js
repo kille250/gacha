@@ -6,7 +6,9 @@ import { FaEdit, FaImage, FaSpinner, FaCheck } from 'react-icons/fa';
 import api from '../../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../../cache';
 import { isVideo } from '../../utils/mediaUtils';
+import { isDuplicateError, getDuplicateInfo, DUPLICATE_STATUS } from '../../utils/errorHandler';
 import AltMediaPicker from './AltMediaPicker';
+import DuplicateWarningBanner from '../UI/DuplicateWarningBanner';
 import {
   ModalOverlay,
   ModalContent,
@@ -58,6 +60,10 @@ const EditCharacterModal = ({
   const [selectedAltMedia, setSelectedAltMedia] = useState(null);
   const [saving, setSaving] = useState(false);
 
+  // Duplicate detection state
+  const [duplicateWarning, setDuplicateWarning] = useState(null);
+  const [duplicateError, setDuplicateError] = useState(null);
+
   // Initialize form when character changes
   useEffect(() => {
     if (character) {
@@ -70,6 +76,9 @@ const EditCharacterModal = ({
       setEditImagePreview(getImageUrl(character.image));
       setEditImageFile(null);
       setSelectedAltMedia(null);
+      // Reset duplicate state
+      setDuplicateWarning(null);
+      setDuplicateError(null);
     }
   }, [character, getImageUrl]);
 
@@ -83,6 +92,9 @@ const EditCharacterModal = ({
     const file = e.target.files[0];
     setEditImageFile(file);
     setSelectedAltMedia(null);
+    // Clear any previous duplicate errors when user selects new media
+    setDuplicateError(null);
+    setDuplicateWarning(null);
     if (file) {
       const reader = new FileReader();
       reader.onload = (event) => setEditImagePreview(event.target.result);
@@ -96,6 +108,9 @@ const EditCharacterModal = ({
     setEditImagePreview(media.isAnimated ? media.file : (media.preview || media.file));
     setEditImageFile(null);
     setShowAltMediaPicker(false);
+    // Clear any previous duplicate errors when user selects new media
+    setDuplicateError(null);
+    setDuplicateWarning(null);
   }, []);
 
   // Close and reset state
@@ -104,6 +119,8 @@ const EditCharacterModal = ({
     setEditImagePreview(null);
     setSelectedAltMedia(null);
     setShowAltMediaPicker(false);
+    setDuplicateWarning(null);
+    setDuplicateError(null);
     onClose();
   }, [onClose]);
 
@@ -113,22 +130,41 @@ const EditCharacterModal = ({
     if (!character) return;
 
     setSaving(true);
+    setDuplicateError(null);
+
     try {
       await api.put(`/admin/characters/${character.id}`, editForm);
-      
+
       if (editImageFile) {
         const formData = new FormData();
         formData.append('image', editImageFile);
-        await api.put(`/admin/characters/${character.id}/image`, formData, {
+        const imageResponse = await api.put(`/admin/characters/${character.id}/image`, formData, {
           headers: { 'Content-Type': 'multipart/form-data' },
         });
+
+        // Check for duplicate warning in successful response
+        if (imageResponse.data?.warning || imageResponse.data?.duplicateWarning) {
+          setDuplicateWarning({
+            status: DUPLICATE_STATUS.POSSIBLE_DUPLICATE,
+            explanation: imageResponse.data.warning || 'This image appears similar to an existing character',
+            existingMatch: imageResponse.data.similarCharacters?.[0] || imageResponse.data.duplicateWarning?.existingMatch,
+            similarity: imageResponse.data.duplicateWarning?.similarity
+          });
+        }
       }
-      
+
       invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_EDIT);
       onSuccess(t('admin.characterUpdated'));
       handleClose();
     } catch (err) {
-      onError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
+      // Check if this is a duplicate error
+      if (isDuplicateError(err)) {
+        const duplicateInfo = getDuplicateInfo(err);
+        setDuplicateError(duplicateInfo);
+        // Don't call onError for duplicates - show inline instead
+      } else {
+        onError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
+      }
     } finally {
       setSaving(false);
     }
@@ -139,17 +175,36 @@ const EditCharacterModal = ({
     if (!character || !selectedAltMedia) return;
 
     setSaving(true);
+    setDuplicateError(null);
+
     try {
       await api.put(`/admin/characters/${character.id}`, editForm);
-      await api.put(`/admin/characters/${character.id}/image-url`, {
+      const imageResponse = await api.put(`/admin/characters/${character.id}/image-url`, {
         imageUrl: selectedAltMedia.file,
       });
-      
+
+      // Check for duplicate warning in successful response
+      if (imageResponse.data?.warning || imageResponse.data?.duplicateWarning) {
+        setDuplicateWarning({
+          status: DUPLICATE_STATUS.POSSIBLE_DUPLICATE,
+          explanation: imageResponse.data.warning || 'This image appears similar to an existing character',
+          existingMatch: imageResponse.data.similarCharacters?.[0] || imageResponse.data.duplicateWarning?.existingMatch,
+          similarity: imageResponse.data.duplicateWarning?.similarity
+        });
+      }
+
       invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_EDIT);
       onSuccess(t('admin.characterUpdated'));
       handleClose();
     } catch (err) {
-      onError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
+      // Check if this is a duplicate error
+      if (isDuplicateError(err)) {
+        const duplicateInfo = getDuplicateInfo(err);
+        setDuplicateError(duplicateInfo);
+        // Don't call onError for duplicates - show inline instead
+      } else {
+        onError(err.response?.data?.error || t('admin.failedUpdateCharacter'));
+      }
     } finally {
       setSaving(false);
     }
@@ -264,6 +319,35 @@ const EditCharacterModal = ({
                     </SelectedAltInfo>
                   )}
                   {renderImagePreview()}
+
+                  {/* Duplicate Error - Blocking */}
+                  {duplicateError && (
+                    <DuplicateWarningBanner
+                      status={duplicateError.status}
+                      explanation={duplicateError.explanation}
+                      similarity={duplicateError.similarity}
+                      existingMatch={duplicateError.existingMatch}
+                      mediaType={editImageFile?.type?.startsWith('video/') || selectedAltMedia?.isAnimated ? 'video' : 'image'}
+                      onChangeMedia={() => {
+                        setEditImageFile(null);
+                        setSelectedAltMedia(null);
+                        setEditImagePreview(getImageUrl(character.image));
+                        setDuplicateError(null);
+                      }}
+                    />
+                  )}
+
+                  {/* Duplicate Warning - Non-blocking (info only) */}
+                  {duplicateWarning && !duplicateError && (
+                    <DuplicateWarningBanner
+                      status={duplicateWarning.status}
+                      explanation={duplicateWarning.explanation}
+                      similarity={duplicateWarning.similarity}
+                      existingMatch={duplicateWarning.existingMatch}
+                      mediaType={editImageFile?.type?.startsWith('video/') || selectedAltMedia?.isAnimated ? 'video' : 'image'}
+                      onDismiss={() => setDuplicateWarning(null)}
+                    />
+                  )}
                 </FormGroup>
                 <ButtonRow>
                   {selectedAltMedia ? (

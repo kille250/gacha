@@ -285,10 +285,26 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
 
     if (duplicateCheck.action === 'reject') {
       safeUnlink(req.file.path);
+      const existingMatch = duplicateCheck.exactMatch || duplicateCheck.similarMatches[0];
       return res.status(409).json({
         error: duplicateCheck.reason,
+        // Frontend-friendly fields
+        status: 'confirmed_duplicate',
+        explanation: duplicateCheck.reason,
+        similarity: existingMatch?.similarity || (duplicateCheck.isExactDuplicate ? 100 : null),
+        suggestedActions: ['change_media', 'cancel'],
+        existingMatch: existingMatch ? {
+          id: existingMatch.id,
+          name: existingMatch.name,
+          series: existingMatch.series,
+          image: existingMatch.image,
+          thumbnailUrl: existingMatch.image,
+          mediaType: existingMatch.mediaType || 'image',
+          similarity: existingMatch.similarity
+        } : null,
+        // Legacy fields for backwards compatibility
         duplicateType: duplicateCheck.isExactDuplicate ? 'exact' : 'similar',
-        existingCharacter: duplicateCheck.exactMatch || duplicateCheck.similarMatches[0]
+        existingCharacter: existingMatch
       });
     }
 
@@ -472,10 +488,26 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
 
     if (duplicateCheck.action === 'reject') {
       safeUnlink(req.file.path);
+      const existingMatch = duplicateCheck.exactMatch || duplicateCheck.similarMatches[0];
       return res.status(409).json({
         error: duplicateCheck.reason,
+        // Frontend-friendly fields
+        status: 'confirmed_duplicate',
+        explanation: duplicateCheck.reason,
+        similarity: existingMatch?.similarity || (duplicateCheck.isExactDuplicate ? 100 : null),
+        suggestedActions: ['change_media', 'cancel'],
+        existingMatch: existingMatch ? {
+          id: existingMatch.id,
+          name: existingMatch.name,
+          series: existingMatch.series,
+          image: existingMatch.image,
+          thumbnailUrl: existingMatch.image,
+          mediaType: existingMatch.mediaType || 'image',
+          similarity: existingMatch.similarity
+        } : null,
+        // Legacy fields for backwards compatibility
         duplicateType: duplicateCheck.isExactDuplicate ? 'exact' : 'similar',
-        existingCharacter: duplicateCheck.exactMatch || duplicateCheck.similarMatches[0]
+        existingCharacter: existingMatch
       });
     }
 
@@ -591,11 +623,22 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
         const duplicateCheck = await checkForDuplicates(file.path);
 
         if (duplicateCheck.action === 'reject') {
+          const existingMatch = duplicateCheck.exactMatch || duplicateCheck.similarMatches[0];
           errors.push({
             index: i,
             filename: file.originalname,
             error: duplicateCheck.reason,
-            duplicateOf: duplicateCheck.exactMatch?.name || duplicateCheck.similarMatches[0]?.name
+            duplicateOf: existingMatch?.name,
+            // Frontend-friendly fields
+            isDuplicate: true,
+            status: 'confirmed_duplicate',
+            similarity: existingMatch?.similarity || (duplicateCheck.isExactDuplicate ? 100 : null),
+            existingMatch: existingMatch ? {
+              id: existingMatch.id,
+              name: existingMatch.name,
+              series: existingMatch.series,
+              image: existingMatch.image
+            } : null
           });
           safeUnlink(file.path);
           continue;
@@ -704,10 +747,26 @@ router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
 
       if (duplicateCheck.action === 'reject') {
         safeUnlink(downloadedPath);
+        const existingMatch = duplicateCheck.exactMatch || duplicateCheck.similarMatches[0];
         return res.status(409).json({
           error: duplicateCheck.reason,
+          // Frontend-friendly fields
+          status: 'confirmed_duplicate',
+          explanation: duplicateCheck.reason,
+          similarity: existingMatch?.similarity || (duplicateCheck.isExactDuplicate ? 100 : null),
+          suggestedActions: ['change_media', 'cancel'],
+          existingMatch: existingMatch ? {
+            id: existingMatch.id,
+            name: existingMatch.name,
+            series: existingMatch.series,
+            image: existingMatch.image,
+            thumbnailUrl: existingMatch.image,
+            mediaType: existingMatch.mediaType || 'image',
+            similarity: existingMatch.similarity
+          } : null,
+          // Legacy fields for backwards compatibility
           duplicateType: duplicateCheck.isExactDuplicate ? 'exact' : 'similar',
-          existingCharacter: duplicateCheck.exactMatch || duplicateCheck.similarMatches[0]
+          existingCharacter: existingMatch
         });
       }
 

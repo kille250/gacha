@@ -23,7 +23,17 @@ export const ERROR_TYPES = {
   FORBIDDEN: 'FORBIDDEN',  // Policy denials, bans, etc. (403 but not auth failure)
   RATE_LIMITED: 'RATE_LIMITED',  // 429 errors
   CAPTCHA: 'CAPTCHA',  // CAPTCHA verification required/failed
+  DUPLICATE: 'DUPLICATE',  // Duplicate content detected (409 with duplicate info)
   UNKNOWN: 'UNKNOWN',
+};
+
+/**
+ * Duplicate detection status types from backend
+ */
+export const DUPLICATE_STATUS = {
+  ACCEPTED: 'accepted',
+  POSSIBLE_DUPLICATE: 'possible_duplicate',
+  CONFIRMED_DUPLICATE: 'confirmed_duplicate',
 };
 
 /**
@@ -229,10 +239,76 @@ export const isTerminalError = (error) => {
  */
 export const isBusinessError = (error) => {
   // Not a CAPTCHA error and not a terminal system error
-  return !isCaptchaError(error) && 
-         !isAuthError(error) && 
+  return !isCaptchaError(error) &&
+         !isAuthError(error) &&
          !isNetworkError(error) &&
+         !isDuplicateError(error) &&
          error?.response?.status !== 500;
+};
+
+/**
+ * Check if an error is a duplicate detection error (409 with duplicate info)
+ * These errors are recoverable - user can choose different media
+ * @param {Error} error - The error object
+ * @returns {boolean} True if duplicate error
+ */
+export const isDuplicateError = (error) => {
+  return error?.response?.status === 409 &&
+         (error?.response?.data?.duplicateType ||
+          error?.response?.data?.status === DUPLICATE_STATUS.CONFIRMED_DUPLICATE);
+};
+
+/**
+ * Extract duplicate detection info from an error response
+ * @param {Error} error - The error object
+ * @returns {Object|null} Duplicate info or null if not a duplicate error
+ */
+export const getDuplicateInfo = (error) => {
+  if (!isDuplicateError(error)) return null;
+
+  const data = error.response.data;
+  return {
+    status: data.status || DUPLICATE_STATUS.CONFIRMED_DUPLICATE,
+    explanation: data.error || data.explanation || 'Duplicate content detected',
+    similarity: data.similarity || data.existingCharacter?.similarity,
+    existingMatch: data.existingCharacter || data.existingMatch || null,
+    duplicateType: data.duplicateType || 'similar',
+    suggestedActions: data.suggestedActions || ['change_media', 'cancel'],
+  };
+};
+
+/**
+ * Parse duplicate warning from a successful response (200/201)
+ * Used when backend allows upload but flags as possible duplicate
+ * @param {Object} responseData - The API response data
+ * @returns {Object|null} Warning info or null if no warning
+ */
+export const parseDuplicateWarning = (responseData) => {
+  // Check for warning in response
+  if (responseData?.warning || responseData?.duplicateWarning) {
+    const warning = responseData.duplicateWarning || {};
+    return {
+      status: warning.status || DUPLICATE_STATUS.POSSIBLE_DUPLICATE,
+      explanation: responseData.warning || warning.explanation || 'Possible duplicate detected',
+      similarity: warning.similarity,
+      existingMatch: warning.existingMatch || responseData.similarCharacters?.[0] || null,
+      suggestedActions: warning.suggestedActions || ['continue', 'change_media'],
+    };
+  }
+
+  // Check for similarCharacters array (legacy format)
+  if (responseData?.similarCharacters?.length > 0) {
+    const match = responseData.similarCharacters[0];
+    return {
+      status: DUPLICATE_STATUS.POSSIBLE_DUPLICATE,
+      explanation: responseData.warning || `Similar to existing character "${match.name}"`,
+      similarity: match.similarity,
+      existingMatch: match,
+      suggestedActions: ['continue', 'change_media'],
+    };
+  }
+
+  return null;
 };
 
 /**
