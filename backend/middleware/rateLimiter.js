@@ -382,14 +382,15 @@ const rewardClaimLimiter = rateLimit({
  * Replaces sensitiveActionLimiter for trades with more gameplay-appropriate limits
  *
  * Game Design Rationale:
- * - Players accumulate fish over time, then trade in bursts
- * - 20 trades per 5 minutes allows clearing inventory efficiently
- * - Still prevents automated trade farming
- * - More forgiving than the 30/hour sensitiveActionLimiter
+ * - Players grind fish over extended sessions, then trade in rapid bursts
+ * - A player with 84 common fish needs ~17 trades to sell them all (5 fish per trade)
+ * - 60 trades per 5 minutes allows clearing large inventories quickly
+ * - Still prevents sustained automated farming (12/min is faster than humans can click)
+ * - Short window (5min) resets quickly if limit is hit
  */
 const tradeLimiter = rateLimit({
   windowMs: 300000,  // 5 minutes
-  max: 20,           // 20 trades per 5 minutes (4/min average, allows bursts)
+  max: 60,           // 60 trades per 5 minutes (12/min average - generous for burst clearing)
   message: {
     error: 'Trading too quickly! Take a moment before your next trade.',
     code: 'TRADE_RATE_LIMITED'
