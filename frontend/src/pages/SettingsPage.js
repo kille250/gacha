@@ -217,8 +217,8 @@ const SettingsPage = () => {
 
   const handleResetAccount = async () => {
     setResetError('');
-    
-    const REQUIRED_TEXT = 'RESET MY ACCOUNT';
+
+    const REQUIRED_TEXT = t('settings.resetAccountText');
     if (resetConfirmText !== REQUIRED_TEXT) {
       setResetError(t('settings.resetConfirmTextMismatch', { text: REQUIRED_TEXT }));
       return;
@@ -658,13 +658,13 @@ const SettingsPage = () => {
           
           <ResetForm>
             <ResetLabel>
-              {t('settings.resetTypeConfirm', { text: 'RESET MY ACCOUNT' })}
+              {t('settings.resetTypeConfirm', { text: t('settings.resetAccountText') })}
             </ResetLabel>
             <StyledInput
               type="text"
               value={resetConfirmText}
               onChange={(e) => setResetConfirmText(e.target.value)}
-              placeholder="RESET MY ACCOUNT"
+              placeholder={t('settings.resetAccountText')}
               style={{ textAlign: 'center', fontWeight: 600, letterSpacing: '1px', paddingLeft: '16px' }}
             />
             
@@ -689,9 +689,9 @@ const SettingsPage = () => {
           <DangerButtonGroup>
             <DangerButton
               onClick={handleResetAccount}
-              disabled={resetLoading || resetConfirmText !== 'RESET MY ACCOUNT'}
-              whileHover={{ scale: resetConfirmText === 'RESET MY ACCOUNT' ? 1.02 : 1 }}
-              whileTap={{ scale: resetConfirmText === 'RESET MY ACCOUNT' ? 0.98 : 1 }}
+              disabled={resetLoading || resetConfirmText !== t('settings.resetAccountText')}
+              whileHover={{ scale: resetConfirmText === t('settings.resetAccountText') ? 1.02 : 1 }}
+              whileTap={{ scale: resetConfirmText === t('settings.resetAccountText') ? 0.98 : 1 }}
             >
               {resetLoading ? <LoadingSpinner /> : (
                 <><FaTrash /> {t('settings.resetAccountFinal')}</>

@@ -969,6 +969,7 @@
     "resetKeep2": "Dein Admin-Status und R18-Einstellungen",
     "resetUnderstand": "Ich verstehe, fortfahren",
     "resetFinalConfirm": "Letzte Bestätigung",
+    "resetAccountText": "KONTO ZURÜCKSETZEN",
     "resetTypeConfirm": "Tippe \"{{text}}\" zur Bestätigung:",
     "resetEnterPassword": "Gib dein Passwort zur Bestätigung ein:",
     "resetConfirmTextMismatch": "Bitte tippe \"{{text}}\" genau so zur Bestätigung",

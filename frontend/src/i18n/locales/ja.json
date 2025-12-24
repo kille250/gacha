@@ -969,6 +969,7 @@
     "resetKeep2": "管理者ステータスとR18設定",
     "resetUnderstand": "理解しました、続行",
     "resetFinalConfirm": "最終確認",
+    "resetAccountText": "アカウントをリセット",
     "resetTypeConfirm": "\"{{text}}\" と入力して確認：",
     "resetEnterPassword": "パスワードを入力して確認：",
     "resetConfirmTextMismatch": "\"{{text}}\" を正確に入力してください",

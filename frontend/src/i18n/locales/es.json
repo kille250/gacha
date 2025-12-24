@@ -969,6 +969,7 @@
     "resetKeep2": "Tu estado de administrador y preferencias R18",
     "resetUnderstand": "Entiendo, continuar",
     "resetFinalConfirm": "Confirmación Final",
+    "resetAccountText": "RESTABLECER MI CUENTA",
     "resetTypeConfirm": "Escribe \"{{text}}\" para confirmar:",
     "resetEnterPassword": "Ingresa tu contraseña para confirmar:",
     "resetConfirmTextMismatch": "Por favor escribe \"{{text}}\" exactamente para confirmar",

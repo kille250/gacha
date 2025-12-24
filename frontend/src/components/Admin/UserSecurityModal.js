@@ -134,7 +134,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
   };
   
   const handleConfirmPermBan = async () => {
-    if (permBanConfirmText !== 'PERMANENT BAN') {
+    if (permBanConfirmText !== t('admin.security.permanentBanText')) {
       return;
     }
     await executeRestriction();
@@ -635,9 +635,9 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
               <SecondaryButton onClick={handleCancelPermBan}>
                 {t('common.cancel')}
               </SecondaryButton>
-              <DangerButton 
+              <DangerButton
                 onClick={handleConfirmPermBan}
-                disabled={permBanConfirmText !== 'PERMANENT BAN' || actionLoading}
+                disabled={permBanConfirmText !== t('admin.security.permanentBanText') || actionLoading}
               >
                 {actionLoading ? t('admin.security.applying') : t('admin.security.confirmPermanentBan')}
               </DangerButton>
