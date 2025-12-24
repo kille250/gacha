@@ -1,33 +1,55 @@
 /**
  * MultiUploadModal - Batch character upload interface
  *
- * Refactored to use:
- * - useUploadState hook for centralized state management
- * - Modular Upload components for better maintainability
- * - Mobile-first responsive design
- * - Accessibility enhancements
+ * Enhanced with:
+ * - useUploadController for centralized state management
+ * - ValidationSummary for aggregate error display
+ * - ProgressIndicator for enhanced upload feedback
+ * - UndoToast for file removal undo
+ * - AriaLiveRegion for accessibility announcements
+ * - Swipe-to-delete on mobile
+ * - Reduced motion support
  */
-import React, { useCallback, useRef, useEffect } from 'react';
+import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaCloudUploadAlt, FaTimes, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
+import { FaCloudUploadAlt, FaTimes, FaExclamationTriangle, FaKeyboard } from 'react-icons/fa';
 import { theme } from '../../styles/DesignSystem';
 import { API_URL } from '../../utils/api';
 import { getToken } from '../../utils/authStorage';
 import { useRarity } from '../../context/RarityContext';
 import { DUPLICATE_STATUS } from '../../utils/errorHandler';
+import { prefersReducedMotion, isEnabled, FEATURES } from '../../utils/featureFlags';
 
-// Import new modular components
-import { DropZone, FileCard, BulkSettingsBar, UploadSummary } from '../Upload';
-import { useUploadState, FILE_STATUS, UPLOAD_FLOW_STATES } from '../../hooks/useUploadState';
+// Import upload components
+import {
+  DropZone,
+  FileCard,
+  BulkSettingsBar,
+  UploadSummary,
+  ValidationSummary,
+  UndoToast,
+  ProgressIndicator,
+  AriaLiveRegion,
+  UPLOAD_STEPS,
+} from '../Upload';
+import { useUploadController } from '../../hooks/useUploadController';
+import { FILE_STATUS, UPLOAD_FLOW_STATES } from '../../hooks/useUploadState';
 
 const MultiUploadModal = ({ show, onClose, onSuccess }) => {
   const { getOrderedRarities } = useRarity();
   const orderedRarities = getOrderedRarities();
   const modalRef = useRef(null);
   const previousFocusRef = useRef(null);
+  const reducedMotion = prefersReducedMotion();
 
-  // Use the centralized upload state hook
+  // Validation error state
+  const [validationError, setValidationError] = useState(null);
+  const [showUndoToast, setShowUndoToast] = useState(false);
+  const [uploadStep, setUploadStep] = useState(UPLOAD_STEPS.PREPARING);
+  const [liveAnnouncement, setLiveAnnouncement] = useState('');
+
+  // Use the enhanced upload controller
   const {
     flowState,
     files,
@@ -45,8 +67,11 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     hasWarnings,
     warningCount,
     hasUnsavedChanges,
+    estimatedTime,
+    canUndo,
+    lastRemovedFile,
     addFiles,
-    removeFile,
+    removeFileWithUndo,
     updateMetadata,
     updateFileStatus,
     setBulkDefaults,
@@ -63,7 +88,9 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     copyToAll,
     touchField,
     touchAllFields,
-  } = useUploadState({
+    undoRemove,
+    clearUndoStack,
+  } = useUploadController({
     defaultBulk: {
       series: '',
       rarity: 'common',
@@ -71,14 +98,17 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     },
   });
 
-  // Validation error state
-  const [validationError, setValidationError] = React.useState(null);
+  // Show undo toast when file is removed
+  useEffect(() => {
+    if (canUndo && isEnabled(FEATURES.UNDO_REMOVAL)) {
+      setShowUndoToast(true);
+    }
+  }, [canUndo, lastRemovedFile?.id]);
 
   // Focus management
   useEffect(() => {
     if (show) {
       previousFocusRef.current = document.activeElement;
-      // Focus the modal after animation
       const timer = setTimeout(() => {
         modalRef.current?.focus();
       }, 100);
@@ -120,11 +150,28 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
   // Generate names for all files
   const handleGenerateAllNames = useCallback(async () => {
     if (files.length === 0) return;
+    setLiveAnnouncement('Generating random names for all files...');
     const names = await fetchRandomNames(files.length);
     files.forEach((file, index) => {
       updateMetadata(file.id, 'name', names[index] || `Character ${index + 1}`);
     });
+    setLiveAnnouncement('Random names generated for all files.');
   }, [files, updateMetadata]);
+
+  // Handle undo
+  const handleUndo = useCallback(() => {
+    const restored = undoRemove();
+    if (restored) {
+      setShowUndoToast(false);
+      setLiveAnnouncement(`File restored: ${restored.name || restored.file?.name || 'Unknown file'}`);
+    }
+  }, [undoRemove]);
+
+  // Handle undo dismiss
+  const handleUndoDismiss = useCallback(() => {
+    setShowUndoToast(false);
+    clearUndoStack();
+  }, [clearUndoStack]);
 
   // Upload a single batch of files
   const uploadBatch = async (batchFiles, token) => {
@@ -160,15 +207,15 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
 
     if (!response.ok) {
       if (response.status === 409 && result.duplicateType) {
-        const error = new Error(result.error || 'Duplicate detected');
-        error.isDuplicate = true;
-        error.duplicateInfo = {
+        const uploadError = new Error(result.error || 'Duplicate detected');
+        uploadError.isDuplicate = true;
+        uploadError.duplicateInfo = {
           status: DUPLICATE_STATUS.CONFIRMED_DUPLICATE,
           explanation: result.error,
           duplicateType: result.duplicateType,
           existingMatch: result.existingCharacter,
         };
-        throw error;
+        throw uploadError;
       }
       throw new Error(result.error || 'Upload failed');
     }
@@ -192,10 +239,13 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
       setValidationError(
         `Please fill in all required fields (Name, Series, Rarity) for ${invalidFiles.length} file(s)`
       );
+      setLiveAnnouncement(`Validation failed: ${invalidFiles.length} files have missing fields.`);
       return;
     }
 
     startUpload();
+    setUploadStep(UPLOAD_STEPS.PREPARING);
+    setLiveAnnouncement(`Starting upload of ${files.length} files...`);
 
     const token = getToken();
     const BATCH_SIZE = 10;
@@ -210,9 +260,12 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     const allWarnings = [];
 
     try {
+      setUploadStep(UPLOAD_STEPS.UPLOADING);
+
       for (let i = 0; i < batches.length; i++) {
         const batch = batches[i];
         updateProgress(i, batches.length);
+        setLiveAnnouncement(`Uploading batch ${i + 1} of ${batches.length}...`);
 
         try {
           const result = await uploadBatch(batch, token);
@@ -289,6 +342,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
         }
       }
 
+      setUploadStep(UPLOAD_STEPS.FINALIZING);
       updateProgress(batches.length, batches.length);
 
       // Add warnings to state
@@ -303,7 +357,15 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
         totalErrors: allErrors.length,
       };
 
+      setUploadStep(UPLOAD_STEPS.COMPLETE);
       completeUpload(finalResult);
+
+      // Announce completion
+      if (allErrors.length === 0) {
+        setLiveAnnouncement(`Upload complete! ${totalCreated} characters created successfully.`);
+      } else {
+        setLiveAnnouncement(`Upload complete with ${allErrors.length} errors. ${totalCreated} characters created.`);
+      }
 
       // Clear successfully uploaded files
       clearSuccessful();
@@ -314,11 +376,12 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     } catch (err) {
       console.error('Upload error:', err);
       setUploadError(err.message);
+      setLiveAnnouncement(`Upload failed: ${err.message}`);
     }
   };
 
   // Handle close
-  const handleClose = () => {
+  const handleClose = useCallback(() => {
     // Warn if there are unsaved changes or files selected
     if (hasUnsavedChanges && fileCount > 0) {
       const proceed = window.confirm(
@@ -334,11 +397,13 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
 
     reset();
     setValidationError(null);
+    setShowUndoToast(false);
+    setUploadStep(UPLOAD_STEPS.PREPARING);
     onClose();
-  };
+  }, [hasUnsavedChanges, fileCount, duplicateWarnings.length, reset, onClose]);
 
   // Handle keyboard shortcuts
-  const handleKeyDown = (e) => {
+  const handleKeyDown = useCallback((e) => {
     // Escape to close
     if (e.key === 'Escape') {
       handleClose();
@@ -350,7 +415,14 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
       e.preventDefault();
       handleUpload();
     }
-  };
+
+    // Cmd/Ctrl + Z to undo
+    if ((e.metaKey || e.ctrlKey) && e.key === 'z' && canUndo && !isUploading) {
+      e.preventDefault();
+      handleUndo();
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [canSubmit, isUploading, canUndo, handleClose, handleUndo]);
 
   // Handle paste to upload
   const handlePaste = useCallback((e) => {
@@ -359,186 +431,263 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     const items = e.clipboardData?.items;
     if (!items) return;
 
-    const files = [];
+    const pastedFiles = [];
     for (let i = 0; i < items.length; i++) {
       const item = items[i];
       if (item.type.startsWith('image/') || item.type.startsWith('video/')) {
         const file = item.getAsFile();
         if (file) {
-          files.push(file);
+          pastedFiles.push(file);
         }
       }
     }
 
-    if (files.length > 0) {
+    if (pastedFiles.length > 0) {
       e.preventDefault();
-      addFiles(files);
+      addFiles(pastedFiles);
+      setLiveAnnouncement(`${pastedFiles.length} file(s) added from clipboard.`);
     }
   }, [isUploading, addFiles]);
+
+  // Handle file removal with undo support
+  const handleRemoveFile = useCallback((id) => {
+    const file = files.find((f) => f.id === id);
+    removeFileWithUndo(id);
+    if (file) {
+      setLiveAnnouncement(`File removed: ${file.name || file.file?.name || 'Unknown file'}. Press Ctrl+Z to undo.`);
+    }
+  }, [files, removeFileWithUndo]);
+
+  // Motion variants based on reduced motion preference
+  const modalVariants = useMemo(() => {
+    if (reducedMotion) {
+      return {
+        initial: { opacity: 0 },
+        animate: { opacity: 1 },
+        exit: { opacity: 0 },
+      };
+    }
+    return {
+      initial: { opacity: 0, scale: 0.95, y: 20 },
+      animate: { opacity: 1, scale: 1, y: 0 },
+      exit: { opacity: 0, scale: 0.95, y: 20 },
+    };
+  }, [reducedMotion]);
+
+  const isMac = navigator.platform?.includes('Mac');
+  const modKey = isMac ? '⌘' : 'Ctrl';
 
   if (!show) return null;
 
   return (
-    <ModalOverlay
-      onClick={handleClose}
-      onKeyDown={handleKeyDown}
-      onPaste={handlePaste}
-      role="dialog"
-      aria-modal="true"
-      aria-labelledby="upload-modal-title"
-    >
-      <ModalContent
-        ref={modalRef}
-        onClick={(e) => e.stopPropagation()}
-        tabIndex={-1}
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
-        transition={{ duration: 0.2 }}
+    <>
+      <ModalOverlay
+        onClick={handleClose}
+        onKeyDown={handleKeyDown}
+        onPaste={handlePaste}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="upload-modal-title"
       >
-        <ModalHeader>
-          <HeaderTitle id="upload-modal-title">
-            <FaCloudUploadAlt aria-hidden="true" />
-            <span>Multi-Upload Characters</span>
-          </HeaderTitle>
-          <CloseButton
-            onClick={handleClose}
-            aria-label="Close modal"
-            disabled={isUploading}
-          >
-            <FaTimes />
-          </CloseButton>
-        </ModalHeader>
-
-        <ModalBody>
-          {/* Validation Error */}
-          <AnimatePresence>
-            {validationError && (
-              <ValidationError
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                role="alert"
-              >
-                <FaExclamationTriangle aria-hidden="true" />
-                <span>{validationError}</span>
-                <DismissButton
-                  onClick={() => setValidationError(null)}
-                  aria-label="Dismiss error"
-                >
-                  ×
-                </DismissButton>
-              </ValidationError>
-            )}
-          </AnimatePresence>
-
-          {/* Bulk Settings */}
-          <BulkSettingsBar
-            bulkDefaults={bulkDefaults}
-            onBulkDefaultsChange={setBulkDefaults}
-            onApplyToAll={applyBulkToAll}
-            onGenerateNames={handleGenerateAllNames}
-            orderedRarities={orderedRarities}
-            fileCount={fileCount}
-            disabled={isUploading}
-          />
-
-          {/* Drop Zone */}
-          <DropZoneWrapper>
-            <DropZone
-              onFilesSelected={addFiles}
+        <ModalContent
+          ref={modalRef}
+          onClick={(e) => e.stopPropagation()}
+          tabIndex={-1}
+          {...modalVariants}
+          transition={{ duration: reducedMotion ? 0.1 : 0.2 }}
+        >
+          <ModalHeader>
+            <HeaderTitle id="upload-modal-title">
+              <FaCloudUploadAlt aria-hidden="true" />
+              <span>Multi-Upload Characters</span>
+            </HeaderTitle>
+            <CloseButton
+              onClick={handleClose}
+              aria-label="Close modal"
               disabled={isUploading}
-              maxFiles={50}
-              currentFileCount={fileCount}
-            />
-          </DropZoneWrapper>
-
-          {/* Files Grid */}
-          {files.length > 0 && (
-            <FilesSection>
-              <FilesSectionHeader>
-                <SectionTitle>
-                  {fileCount} File{fileCount !== 1 ? 's' : ''} Ready
-                </SectionTitle>
-                {hasWarnings && (
-                  <WarningBadge>
-                    <FaExclamationTriangle />
-                    {warningCount} warning{warningCount !== 1 ? 's' : ''}
-                  </WarningBadge>
-                )}
-              </FilesSectionHeader>
-
-              <FilesGrid>
-                <AnimatePresence>
-                  {files.map((file, index) => (
-                    <FileCard
-                      key={file.id}
-                      file={file}
-                      index={index}
-                      fileStatus={fileStatus[file.id]}
-                      fileValidation={fileValidation[file.id]}
-                      orderedRarities={orderedRarities}
-                      onUpdateMetadata={updateMetadata}
-                      onRemove={removeFile}
-                      onCopyToAll={copyToAll}
-                      onRegenerateName={handleRegenerateName}
-                      onDismissWarning={dismissWarning}
-                      onTouchField={touchField}
-                    />
-                  ))}
-                </AnimatePresence>
-              </FilesGrid>
-            </FilesSection>
-          )}
-
-          {/* Upload Result */}
-          {isComplete && uploadResult && (
-            <ResultSection>
-              <UploadSummary
-                result={uploadResult}
-                duplicateWarnings={duplicateWarnings}
-                onDismissWarnings={clearWarnings}
-              />
-            </ResultSection>
-          )}
-
-          {/* Error State */}
-          {flowState === UPLOAD_FLOW_STATES.ERROR && error && (
-            <ErrorSection role="alert">
-              <FaExclamationTriangle />
-              <span>Error: {error}</span>
-            </ErrorSection>
-          )}
-        </ModalBody>
-
-        <ModalFooter>
-          <FooterHint>
-            Paste images from clipboard or press {navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'}+Enter to upload
-          </FooterHint>
-          <FooterButtons>
-            <CancelButton onClick={handleClose} disabled={isUploading}>
-              Cancel
-            </CancelButton>
-            <UploadButton
-              onClick={handleUpload}
-              disabled={!canSubmit || isUploading}
-              title={`Upload (${navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'}+Enter)`}
+              type="button"
             >
-              {isUploading ? (
-                <>
-                  <FaSpinner className="spin" aria-hidden="true" />
-                  Uploading... {uploadProgress.percentage}%
-                </>
-              ) : (
-                <>
-                  Upload {fileCount} Character{fileCount !== 1 ? 's' : ''}
-                </>
+              <FaTimes />
+            </CloseButton>
+          </ModalHeader>
+
+          <ModalBody>
+            {/* Aria Live Region for announcements */}
+            <AriaLiveRegion message={liveAnnouncement} />
+
+            {/* Validation Error */}
+            <AnimatePresence>
+              {validationError && (
+                <ValidationError
+                  initial={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                  animate={reducedMotion ? { opacity: 1 } : { opacity: 1, height: 'auto' }}
+                  exit={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
+                  role="alert"
+                >
+                  <FaExclamationTriangle aria-hidden="true" />
+                  <span>{validationError}</span>
+                  <DismissButton
+                    onClick={() => setValidationError(null)}
+                    aria-label="Dismiss error"
+                    type="button"
+                  >
+                    ×
+                  </DismissButton>
+                </ValidationError>
               )}
-            </UploadButton>
-          </FooterButtons>
-        </ModalFooter>
-      </ModalContent>
-    </ModalOverlay>
+            </AnimatePresence>
+
+            {/* Validation Summary - NEW */}
+            {isEnabled(FEATURES.NEW_VALIDATION_UI) && files.length > 0 && !isUploading && (
+              <ValidationSummary
+                files={files}
+                fileValidation={fileValidation}
+                fileStatus={fileStatus}
+              />
+            )}
+
+            {/* Progress Indicator - shown during upload */}
+            {isUploading && isEnabled(FEATURES.ENHANCED_PROGRESS) && (
+              <ProgressIndicator
+                step={uploadStep}
+                progress={uploadProgress.percentage}
+                filesCompleted={uploadProgress.current}
+                filesTotal={uploadProgress.total}
+                estimatedTime={estimatedTime}
+              />
+            )}
+
+            {/* Bulk Settings */}
+            {!isUploading && (
+              <BulkSettingsBar
+                bulkDefaults={bulkDefaults}
+                onBulkDefaultsChange={setBulkDefaults}
+                onApplyToAll={applyBulkToAll}
+                onGenerateNames={handleGenerateAllNames}
+                orderedRarities={orderedRarities}
+                fileCount={fileCount}
+                disabled={isUploading}
+              />
+            )}
+
+            {/* Drop Zone */}
+            {!isUploading && (
+              <DropZoneWrapper>
+                <DropZone
+                  onFilesSelected={addFiles}
+                  disabled={isUploading}
+                  maxFiles={50}
+                  currentFileCount={fileCount}
+                />
+              </DropZoneWrapper>
+            )}
+
+            {/* Files Grid */}
+            {files.length > 0 && !isUploading && (
+              <FilesSection>
+                <FilesSectionHeader>
+                  <SectionTitle>
+                    {fileCount} File{fileCount !== 1 ? 's' : ''} Ready
+                  </SectionTitle>
+                  {hasWarnings && (
+                    <WarningBadge>
+                      <FaExclamationTriangle />
+                      {warningCount} warning{warningCount !== 1 ? 's' : ''}
+                    </WarningBadge>
+                  )}
+                </FilesSectionHeader>
+
+                <FilesGrid>
+                  <AnimatePresence>
+                    {files.map((file, index) => (
+                      <FileCard
+                        key={file.id}
+                        file={file}
+                        index={index}
+                        fileStatus={fileStatus[file.id]}
+                        fileValidation={fileValidation[file.id]}
+                        orderedRarities={orderedRarities}
+                        onUpdateMetadata={updateMetadata}
+                        onRemove={handleRemoveFile}
+                        onCopyToAll={copyToAll}
+                        onRegenerateName={handleRegenerateName}
+                        onDismissWarning={dismissWarning}
+                        onTouchField={touchField}
+                      />
+                    ))}
+                  </AnimatePresence>
+                </FilesGrid>
+              </FilesSection>
+            )}
+
+            {/* Upload Result */}
+            {isComplete && uploadResult && (
+              <ResultSection>
+                <UploadSummary
+                  result={uploadResult}
+                  duplicateWarnings={duplicateWarnings}
+                  onDismissWarnings={clearWarnings}
+                />
+              </ResultSection>
+            )}
+
+            {/* Error State */}
+            {flowState === UPLOAD_FLOW_STATES.ERROR && error && (
+              <ErrorSection role="alert">
+                <FaExclamationTriangle />
+                <ErrorContent>
+                  <ErrorTitle>Upload failed</ErrorTitle>
+                  <ErrorMessage>{error}</ErrorMessage>
+                  <RetryHint>Please check your connection and try again.</RetryHint>
+                </ErrorContent>
+              </ErrorSection>
+            )}
+          </ModalBody>
+
+          <ModalFooter>
+            <FooterHint>
+              <FaKeyboard aria-hidden="true" />
+              <span>
+                Paste: {modKey}+V | Upload: {modKey}+Enter
+                {canUndo && ` | Undo: ${modKey}+Z`}
+              </span>
+            </FooterHint>
+            <FooterButtons>
+              <CancelButton onClick={handleClose} disabled={isUploading} type="button">
+                Cancel
+              </CancelButton>
+              <UploadButton
+                onClick={handleUpload}
+                disabled={!canSubmit || isUploading}
+                title={`Upload (${modKey}+Enter)`}
+                type="button"
+              >
+                {isUploading ? (
+                  <>
+                    <SpinnerIcon aria-hidden="true" />
+                    Uploading... {uploadProgress.percentage}%
+                  </>
+                ) : (
+                  <>
+                    Upload {fileCount} Character{fileCount !== 1 ? 's' : ''}
+                  </>
+                )}
+              </UploadButton>
+            </FooterButtons>
+          </ModalFooter>
+        </ModalContent>
+      </ModalOverlay>
+
+      {/* Undo Toast */}
+      {isEnabled(FEATURES.UNDO_REMOVAL) && (
+        <UndoToast
+          isVisible={showUndoToast && canUndo}
+          fileName={lastRemovedFile?.name || lastRemovedFile?.file?.name}
+          onUndo={handleUndo}
+          onDismiss={handleUndoDismiss}
+        />
+      )}
+    </>
   );
 };
 
@@ -701,6 +850,11 @@ const DismissButton = styled.button`
     background: rgba(255, 255, 255, 0.1);
     color: ${theme.colors.text};
   }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
+  }
 `;
 
 const DropZoneWrapper = styled.div``;
@@ -744,12 +898,16 @@ const FilesGrid = styled.div`
   grid-template-columns: 1fr;
   gap: ${theme.spacing.md};
 
-  @media (min-width: ${theme.breakpoints.sm}) {
+  @media (min-width: 480px) {
     grid-template-columns: repeat(2, 1fr);
   }
 
   @media (min-width: ${theme.breakpoints.lg}) {
     grid-template-columns: repeat(3, 1fr);
+  }
+
+  @media (min-width: ${theme.breakpoints.xl}) {
+    grid-template-columns: repeat(4, 1fr);
   }
 `;
 
@@ -757,18 +915,41 @@ const ResultSection = styled.div``;
 
 const ErrorSection = styled.div`
   display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md};
-  background: rgba(255, 59, 48, 0.15);
+  align-items: flex-start;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.lg};
+  background: rgba(255, 59, 48, 0.1);
   border: 1px solid rgba(255, 59, 48, 0.3);
   border-radius: ${theme.radius.lg};
-  color: ${theme.colors.error};
-  font-size: ${theme.fontSizes.sm};
 
-  svg {
+  > svg {
+    color: ${theme.colors.error};
+    font-size: 24px;
     flex-shrink: 0;
+    margin-top: 2px;
   }
+`;
+
+const ErrorContent = styled.div`
+  flex: 1;
+`;
+
+const ErrorTitle = styled.div`
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.error};
+  margin-bottom: ${theme.spacing.xs};
+`;
+
+const ErrorMessage = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.text};
+  margin-bottom: ${theme.spacing.sm};
+`;
+
+const RetryHint = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
 `;
 
 const ModalFooter = styled.div`
@@ -785,9 +966,16 @@ const ModalFooter = styled.div`
 `;
 
 const FooterHint = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.xs};
   font-size: ${theme.fontSizes.xs};
   color: ${theme.colors.textMuted};
-  text-align: center;
+
+  svg {
+    font-size: 12px;
+  }
 
   @media (max-width: ${theme.breakpoints.sm}) {
     display: none;
@@ -849,10 +1037,6 @@ const UploadButton = styled.button`
   cursor: pointer;
   transition: all 0.2s ease;
 
-  .spin {
-    animation: ${spin} 1s linear infinite;
-  }
-
   &:hover:not(:disabled) {
     transform: translateY(-1px);
     box-shadow: 0 4px 20px rgba(0, 113, 227, 0.4);
@@ -872,6 +1056,16 @@ const UploadButton = styled.button`
   @media (max-width: ${theme.breakpoints.sm}) {
     width: 100%;
   }
+`;
+
+const SpinnerIcon = styled.span`
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: ${spin} 0.8s linear infinite;
 `;
 
 export default MultiUploadModal;

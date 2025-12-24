@@ -35,4 +35,6 @@ export { useModalData, useMultiModalData } from './useModalData';
 
 // Upload hooks
 export { useUploadState, FILE_STATUS, UPLOAD_FLOW_STATES } from './useUploadState';
+export { useUploadController } from './useUploadController';
+export { useSwipeToDelete } from './useSwipeToDelete';
 
