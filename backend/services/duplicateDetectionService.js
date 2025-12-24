@@ -22,7 +22,7 @@ const {
 // 'disabled' - No checking
 // 'warn' - Log warnings but allow duplicates
 // 'block' - Reject duplicates
-const DETECTION_MODE = process.env.DUPLICATE_DETECTION_MODE || 'warn';
+const DETECTION_MODE = process.env.DUPLICATE_DETECTION_MODE || 'block';
 
 // Feature flag for video duplicate detection
 const ENABLE_VIDEO_DEDUP = process.env.ENABLE_VIDEO_DEDUP !== 'false';
