@@ -47,7 +47,17 @@ const DEFAULTS = {
   RATE_LIMIT_ROLL_WINDOW: 60000,     // 1 minute
   RATE_LIMIT_ROLL_MAX: 120,
   RATE_LIMIT_FISHING_WINDOW: 60000,  // 1 minute
-  RATE_LIMIT_FISHING_MAX: 30,
+  RATE_LIMIT_FISHING_MAX: 15,
+
+  // Fishing-specific rate limits (aligned with gameplay pacing)
+  RATE_LIMIT_FISHING_CAST_WINDOW: 60000,      // 1 minute
+  RATE_LIMIT_FISHING_CAST_MAX: 15,            // Max 12/min at 5s cooldown + burst
+  RATE_LIMIT_FISHING_AUTOFISH_WINDOW: 60000,  // 1 minute
+  RATE_LIMIT_FISHING_AUTOFISH_MAX: 12,        // Max 10/min at 6s cooldown + burst
+  RATE_LIMIT_FISHING_PURCHASE_WINDOW: 300000, // 5 minutes
+  RATE_LIMIT_FISHING_PURCHASE_MAX: 5,         // 5 purchases per 5 min
+  RATE_LIMIT_REWARD_CLAIM_WINDOW: 60000,      // 1 minute
+  RATE_LIMIT_REWARD_CLAIM_MAX: 10,            // 10 claims per minute
   
   // CAPTCHA
   CAPTCHA_FAILED_ATTEMPTS_THRESHOLD: 3,
