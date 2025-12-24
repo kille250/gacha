@@ -8,8 +8,14 @@
 
 export { useGachaRoll } from '../useGachaRoll';
 export { useGachaPage } from '../useGachaPage';
+export { useBannerPage } from '../useBannerPage';
+export { useRollPage } from '../useRollPage';
 export { useSkipAnimations } from '../useSkipAnimations';
 export { useDuplicateCheck } from '../useDuplicateCheck';
+
+// ==================== DOJO ====================
+
+export { useDojoPage } from '../useDojoPage';
 
 // ==================== COLLECTION ====================
 
