@@ -9,7 +9,7 @@
  */
 
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
-import { ToastList } from '../components/UI/feedback/Toast';
+import { ToastList } from '../components/UI';
 import { theme } from '../design-system';
 
 const ToastContext = createContext(null);

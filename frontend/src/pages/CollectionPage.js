@@ -9,15 +9,14 @@ import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 
 // Components
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
-import { LoadingState, EmptyState as EmptyStateComponent } from '../components/UI/feedback';
 import CharacterCard from '../components/patterns/CharacterCard';
 
 // Hooks & Context
 import { useCollection } from '../hooks';
 import { useRarity } from '../context/RarityContext';
 
-// Design System
-import { Container, motionVariants } from '../design-system';
+// Design System - consolidated imports
+import { Container, motionVariants, LoadingState, EmptyState } from '../design-system';
 
 // Extracted styles
 import {
@@ -315,7 +314,7 @@ const CollectionPage = () => {
         )}
 
         {filteredCharacters.length === 0 ? (
-          <EmptyStateComponent
+          <EmptyState
             icon="🔍"
             title={t('collection.noCharactersFound')}
             description={t('collection.adjustFilters')}

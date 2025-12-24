@@ -94,6 +94,7 @@ export {
   Modal,
   ConfirmDialog,
   Drawer,
+  BottomSheet,
   // Modal building blocks
   ModalOverlay,
   ModalContent,

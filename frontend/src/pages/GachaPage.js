@@ -11,16 +11,15 @@ import { AuthContext } from '../context/AuthContext';
 // Hooks
 import { usePageError } from '../hooks';
 
-// UI Components
-import { LoadingState, ErrorState } from '../components/UI/feedback';
-import { Modal } from '../components/UI/overlay';
-import { EmptyState as EmptyStateComponent } from '../components/UI/feedback';
-
-// Design System
+// Design System - consolidated imports
 import {
   Container,
   IconButton,
   Text,
+  LoadingState,
+  ErrorState,
+  EmptyState,
+  Modal,
 } from '../design-system';
 
 // Extracted styles
@@ -395,7 +394,7 @@ const GachaPage = () => {
 
         {/* Empty State */}
         {banners.length === 0 && !loading && (
-          <EmptyStateComponent
+          <EmptyState
             icon="🎰"
             title={t('gacha.noActiveBanners')}
             description={t('gacha.checkBackSoon')}

@@ -2,6 +2,7 @@
  * PageShell - Consistent page wrapper with standardized layout
  *
  * Provides a unified page structure with:
+ * - Loading, error, and empty state handling
  * - Optional hero section
  * - Page header with title/subtitle
  * - Stats section
@@ -15,8 +16,16 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, motionVariants, useReducedMotion, AriaLiveRegion } from '../../design-system';
-import { Container as BaseContainer } from '../UI/layout';
+import {
+  theme,
+  motionVariants,
+  useReducedMotion,
+  AriaLiveRegion,
+  Container as BaseContainer,
+  LoadingState,
+  ErrorState,
+  EmptyState,
+} from '../../design-system';
 
 const PageWrapper = styled.div`
   min-height: 100vh;
@@ -92,7 +101,7 @@ const MainContent = styled(motion.main)`
  * PageShell Component
  *
  * @param {Object} props
- * @param {string} props.title - Page title (required)
+ * @param {string} props.title - Page title (required, unless using loading/error states)
  * @param {string} props.subtitle - Page subtitle
  * @param {React.ReactNode} props.actions - Header action buttons
  * @param {React.ReactNode} props.hero - Hero section content
@@ -102,6 +111,16 @@ const MainContent = styled(motion.main)`
  * @param {string} props.className - Additional CSS class
  * @param {string} props.statusMessage - Aria-live status message for screen readers
  * @param {string} props.alertMessage - Aria-live alert message for screen readers
+ * @param {boolean} props.loading - Show loading state
+ * @param {string} props.loadingMessage - Loading state message
+ * @param {string} props.error - Error message (shows error state)
+ * @param {Function} props.onRetry - Retry handler for error state
+ * @param {boolean} props.empty - Show empty state
+ * @param {string} props.emptyIcon - Empty state icon
+ * @param {string} props.emptyTitle - Empty state title
+ * @param {string} props.emptyDescription - Empty state description
+ * @param {string} props.emptyActionLabel - Empty state action button label
+ * @param {Function} props.onEmptyAction - Empty state action handler
  */
 const PageShell = ({
   title,
@@ -114,12 +133,72 @@ const PageShell = ({
   className,
   statusMessage,
   alertMessage,
+  // State handling
+  loading = false,
+  loadingMessage = 'Loading...',
+  error = null,
+  onRetry,
+  empty = false,
+  emptyIcon = '📭',
+  emptyTitle = 'Nothing here',
+  emptyDescription = 'No items to display.',
+  emptyActionLabel,
+  onEmptyAction,
 }) => {
   // Respect user's reduced motion preference
   const prefersReducedMotion = useReducedMotion();
   const shouldAnimate = animate && !prefersReducedMotion;
 
   const contentVariants = shouldAnimate ? motionVariants.fadeIn : undefined;
+
+  // Loading state - full page
+  if (loading) {
+    return (
+      <PageWrapper className={className}>
+        <LoadingState message={loadingMessage} fullPage />
+      </PageWrapper>
+    );
+  }
+
+  // Error state - full page with retry
+  if (error) {
+    return (
+      <PageWrapper className={className}>
+        <ErrorState
+          title="Something went wrong"
+          message={error}
+          onRetry={onRetry}
+          retryLabel="Try Again"
+        />
+      </PageWrapper>
+    );
+  }
+
+  // Empty state
+  if (empty) {
+    return (
+      <PageWrapper className={className}>
+        <Container>
+          {title && (
+            <HeaderSection>
+              <HeaderContent>
+                <Title>{title}</Title>
+                {subtitle && <Subtitle>{subtitle}</Subtitle>}
+              </HeaderContent>
+              {actions && <HeaderActions>{actions}</HeaderActions>}
+            </HeaderSection>
+          )}
+          <EmptyState
+            icon={emptyIcon}
+            title={emptyTitle}
+            description={emptyDescription}
+            actionLabel={emptyActionLabel}
+            onAction={onEmptyAction}
+          />
+        </Container>
+      </PageWrapper>
+    );
+  }
 
   return (
     <PageWrapper className={className}>
@@ -148,13 +227,15 @@ const PageShell = ({
         )}
 
         {/* Header Section */}
-        <HeaderSection>
-          <HeaderContent>
-            <Title>{title}</Title>
-            {subtitle && <Subtitle>{subtitle}</Subtitle>}
-          </HeaderContent>
-          {actions && <HeaderActions>{actions}</HeaderActions>}
-        </HeaderSection>
+        {title && (
+          <HeaderSection>
+            <HeaderContent>
+              <Title>{title}</Title>
+              {subtitle && <Subtitle>{subtitle}</Subtitle>}
+            </HeaderContent>
+            {actions && <HeaderActions>{actions}</HeaderActions>}
+          </HeaderSection>
+        )}
 
         {/* Stats Section */}
         {stats && (

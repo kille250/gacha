@@ -4,29 +4,30 @@
  * Provides thumb-friendly navigation for mobile users.
  * Shows on mobile devices only (< 768px).
  * Highlights the active route.
+ *
+ * Uses centralized navigation config from constants/navigation.js
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { MdCasino, MdCollections } from 'react-icons/md';
-import { GiFishingPole, GiDoubleDragon } from 'react-icons/gi';
-import { FaDice } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
+import { getBottomNavItems } from '../../constants/navigation';
 
 const BottomNav = () => {
   const { t } = useTranslation();
   const location = useLocation();
 
-  const navItems = [
-    { path: '/gacha', label: t('nav.banners'), icon: <MdCasino /> },
-    { path: '/roll', label: t('nav.roll'), icon: <FaDice /> },
-    { path: '/fishing', label: t('nav.fishing'), icon: <GiFishingPole /> },
-    { path: '/dojo', label: t('nav.dojo'), icon: <GiDoubleDragon /> },
-    { path: '/collection', label: t('nav.collection'), icon: <MdCollections /> },
-  ];
+  // Get items from centralized config that are marked for bottom nav
+  const navItems = useMemo(() =>
+    getBottomNavItems().map(item => ({
+      path: item.path,
+      label: t(item.labelKey),
+      icon: <item.icon />,
+    })),
+  [t]);
 
   return (
     <NavContainer role="navigation" aria-label="Main navigation">

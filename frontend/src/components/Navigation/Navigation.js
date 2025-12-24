@@ -13,22 +13,15 @@
  * - useHourlyReward: Hourly reward state management
  */
 
-import React, { useEffect } from 'react';
+import React, { useEffect, useMemo } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import {
-  MdCasino,
-  MdCollections,
-  MdMenu,
-  MdLocalActivity,
-  MdAdminPanelSettings
-} from 'react-icons/md';
-import { GiFishingPole, GiDoubleDragon } from 'react-icons/gi';
-import { FaDice } from 'react-icons/fa';
+import { MdMenu, MdAdminPanelSettings } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { useHourlyReward } from '../../hooks';
+import { NAV_GROUPS } from '../../constants/navigation';
 
 // Extracted sub-components
 import HourlyReward from './HourlyReward';
@@ -60,33 +53,16 @@ const Navigation = () => {
     closeMobileMenu();
   }, [location, closeMobileMenu]);
 
-  // Navigation groups for the nav bar
-  const navGroups = [
-    {
-      id: 'play',
-      label: t('nav.play'),
-      items: [
-        { path: '/gacha', label: t('nav.banners'), icon: <MdCasino /> },
-        { path: '/roll', label: t('nav.roll'), icon: <FaDice /> },
-      ]
-    },
-    {
-      id: 'activities',
-      label: t('nav.activities'),
-      items: [
-        { path: '/fishing', label: t('nav.fishing'), icon: <GiFishingPole /> },
-        { path: '/dojo', label: t('nav.dojo'), icon: <GiDoubleDragon /> },
-      ]
-    },
-    {
-      id: 'profile',
-      label: t('nav.profile'),
-      items: [
-        { path: '/collection', label: t('nav.collection'), icon: <MdCollections /> },
-        { path: '/coupons', label: t('nav.coupons'), icon: <MdLocalActivity /> },
-      ]
-    }
-  ];
+  // Navigation groups from centralized config
+  const navGroups = useMemo(() => NAV_GROUPS.map(group => ({
+    id: group.id,
+    label: t(group.labelKey),
+    items: group.items.map(item => ({
+      path: item.path,
+      label: t(item.labelKey),
+      icon: <item.icon />,
+    })),
+  })), [t]);
 
   return (
     <>
