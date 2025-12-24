@@ -9,8 +9,7 @@ import styled, { css } from 'styled-components';
 import { motion } from 'framer-motion';
 import { MdArrowBack } from 'react-icons/md';
 import { useNavigate } from 'react-router-dom';
-import { theme, motionVariants } from '../../../design-system';
-import { IconButton } from '../buttons';
+import { theme, motionVariants, IconButton } from '../../../design-system';
 
 const PageWrapper = styled.div`
   min-height: 100vh;

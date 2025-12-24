@@ -1,6 +1,8 @@
+/**
+ * App-specific feedback components
+ *
+ * For LoadingState, ErrorState, EmptyState, Alert, import from design-system:
+ * import { LoadingState, ErrorState, EmptyState, Alert } from '../design-system';
+ */
 export { default as Toast, ToastList } from './Toast';
-export { default as Alert } from './Alert';
 export { default as Spinner, InlineSpinner, PageLoader } from './Spinner';
-export { default as EmptyState } from './EmptyState';
-export { default as LoadingState } from './LoadingState';
-export { default as ErrorState } from './ErrorState';

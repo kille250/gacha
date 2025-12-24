@@ -7,8 +7,7 @@
 import React, { Component } from 'react';
 import styled from 'styled-components';
 import { MdRefresh, MdError } from 'react-icons/md';
-import { theme } from '../../../design-system';
-import { Button } from '../buttons';
+import { theme, Button } from '../../../design-system';
 
 const ErrorContainer = styled.div`
   display: flex;
