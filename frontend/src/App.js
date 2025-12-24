@@ -162,6 +162,11 @@ const GlobalStyle = createGlobalStyle`
       scroll-behavior: smooth;
     }
   }
+
+  /* Hide reCAPTCHA badge */
+  .grecaptcha-badge {
+    visibility: hidden !important;
+  }
 `;
 
 function App() {
