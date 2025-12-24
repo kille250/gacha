@@ -32,6 +32,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     flowState,
     files,
     fileStatus,
+    fileValidation,
     uploadProgress,
     error,
     bulkDefaults,
@@ -43,6 +44,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     canSubmit,
     hasWarnings,
     warningCount,
+    hasUnsavedChanges,
     addFiles,
     removeFile,
     updateMetadata,
@@ -59,6 +61,8 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     clearWarnings,
     reset,
     copyToAll,
+    touchField,
+    touchAllFields,
   } = useUploadState({
     defaultBulk: {
       series: '',
@@ -178,6 +182,9 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
 
     // Clear previous validation error
     setValidationError(null);
+
+    // Touch all fields to show validation errors
+    touchAllFields();
 
     // Validate all files have required fields
     const invalidFiles = files.filter((f) => !f.name || !f.series || !f.rarity);
@@ -312,8 +319,15 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
 
   // Handle close
   const handleClose = () => {
+    // Warn if there are unsaved changes or files selected
+    if (hasUnsavedChanges && fileCount > 0) {
+      const proceed = window.confirm(
+        'You have unsaved changes. Are you sure you want to close? All files and metadata will be lost.'
+      );
+      if (!proceed) return;
+    }
     // Warn if there are unacknowledged warnings
-    if (duplicateWarnings.length > 0) {
+    else if (duplicateWarnings.length > 0) {
       const proceed = window.confirm('You have duplicate warnings. Close anyway?');
       if (!proceed) return;
     }
@@ -323,12 +337,44 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     onClose();
   };
 
-  // Handle keyboard
+  // Handle keyboard shortcuts
   const handleKeyDown = (e) => {
+    // Escape to close
     if (e.key === 'Escape') {
       handleClose();
+      return;
+    }
+
+    // Cmd/Ctrl + Enter to submit
+    if ((e.metaKey || e.ctrlKey) && e.key === 'Enter' && canSubmit && !isUploading) {
+      e.preventDefault();
+      handleUpload();
     }
   };
+
+  // Handle paste to upload
+  const handlePaste = useCallback((e) => {
+    if (isUploading) return;
+
+    const items = e.clipboardData?.items;
+    if (!items) return;
+
+    const files = [];
+    for (let i = 0; i < items.length; i++) {
+      const item = items[i];
+      if (item.type.startsWith('image/') || item.type.startsWith('video/')) {
+        const file = item.getAsFile();
+        if (file) {
+          files.push(file);
+        }
+      }
+    }
+
+    if (files.length > 0) {
+      e.preventDefault();
+      addFiles(files);
+    }
+  }, [isUploading, addFiles]);
 
   if (!show) return null;
 
@@ -336,6 +382,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     <ModalOverlay
       onClick={handleClose}
       onKeyDown={handleKeyDown}
+      onPaste={handlePaste}
       role="dialog"
       aria-modal="true"
       aria-labelledby="upload-modal-title"
@@ -429,12 +476,14 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
                       file={file}
                       index={index}
                       fileStatus={fileStatus[file.id]}
+                      fileValidation={fileValidation[file.id]}
                       orderedRarities={orderedRarities}
                       onUpdateMetadata={updateMetadata}
                       onRemove={removeFile}
                       onCopyToAll={copyToAll}
                       onRegenerateName={handleRegenerateName}
                       onDismissWarning={dismissWarning}
+                      onTouchField={touchField}
                     />
                   ))}
                 </AnimatePresence>
@@ -463,24 +512,30 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
         </ModalBody>
 
         <ModalFooter>
-          <CancelButton onClick={handleClose} disabled={isUploading}>
-            Cancel
-          </CancelButton>
-          <UploadButton
-            onClick={handleUpload}
-            disabled={!canSubmit || isUploading}
-          >
-            {isUploading ? (
-              <>
-                <FaSpinner className="spin" aria-hidden="true" />
-                Uploading... {uploadProgress.percentage}%
-              </>
-            ) : (
-              <>
-                Upload {fileCount} Character{fileCount !== 1 ? 's' : ''}
-              </>
-            )}
-          </UploadButton>
+          <FooterHint>
+            Paste images from clipboard or press {navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'}+Enter to upload
+          </FooterHint>
+          <FooterButtons>
+            <CancelButton onClick={handleClose} disabled={isUploading}>
+              Cancel
+            </CancelButton>
+            <UploadButton
+              onClick={handleUpload}
+              disabled={!canSubmit || isUploading}
+              title={`Upload (${navigator.platform?.includes('Mac') ? '⌘' : 'Ctrl'}+Enter)`}
+            >
+              {isUploading ? (
+                <>
+                  <FaSpinner className="spin" aria-hidden="true" />
+                  Uploading... {uploadProgress.percentage}%
+                </>
+              ) : (
+                <>
+                  Upload {fileCount} Character{fileCount !== 1 ? 's' : ''}
+                </>
+              )}
+            </UploadButton>
+          </FooterButtons>
         </ModalFooter>
       </ModalContent>
     </ModalOverlay>
@@ -718,14 +773,33 @@ const ErrorSection = styled.div`
 
 const ModalFooter = styled.div`
   display: flex;
-  justify-content: flex-end;
-  gap: ${theme.spacing.md};
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
   padding: ${theme.spacing.lg};
   border-top: 1px solid ${theme.colors.surfaceBorder};
   flex-shrink: 0;
 
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.md};
+  }
+`;
+
+const FooterHint = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textMuted};
+  text-align: center;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    display: none;
+  }
+`;
+
+const FooterButtons = styled.div`
+  display: flex;
+  justify-content: flex-end;
+  gap: ${theme.spacing.md};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
     flex-direction: column-reverse;
   }
 `;

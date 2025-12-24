@@ -64,17 +64,39 @@ const ACTIONS = {
   ADD_WARNING: 'ADD_WARNING',
   DISMISS_WARNING: 'DISMISS_WARNING',
   CLEAR_WARNINGS: 'CLEAR_WARNINGS',
+  TOUCH_FIELD: 'TOUCH_FIELD',
+  TOUCH_ALL_FIELDS: 'TOUCH_ALL_FIELDS',
 };
 
 // Generate unique ID for files
 const generateFileId = () =>
   `${Date.now()}-${Math.random().toString(36).substr(2, 9)}`;
 
+// Compute field-level validation for a file
+const computeFileValidation = (file) => ({
+  name: {
+    valid: Boolean(file.name?.trim()),
+    error: !file.name?.trim() ? 'Name is required' : null,
+    touched: false,
+  },
+  series: {
+    valid: Boolean(file.series?.trim()),
+    error: !file.series?.trim() ? 'Series is required' : null,
+    touched: false,
+  },
+  rarity: {
+    valid: Boolean(file.rarity),
+    error: !file.rarity ? 'Rarity is required' : null,
+    touched: false,
+  },
+});
+
 // Initial state
 const createInitialState = (defaultBulk = {}) => ({
   flowState: UPLOAD_FLOW_STATES.IDLE,
   files: [],
   fileStatus: {},
+  fileValidation: {}, // Field-level validation state per file
   uploadProgress: { current: 0, total: 0, percentage: 0 },
   error: null,
   bulkDefaults: {
@@ -84,13 +106,15 @@ const createInitialState = (defaultBulk = {}) => ({
   },
   duplicateWarnings: [],
   uploadResult: null,
+  hasUnsavedChanges: false, // Track if user has made changes
+  initialFileCount: 0, // Track initial file count for unsaved changes detection
 });
 
 // Reducer function
 function uploadReducer(state, action) {
   switch (action.type) {
     case ACTIONS.ADD_FILES: {
-      const newFiles = action.files.map((file, index) => ({
+      const newFiles = action.files.map((file) => ({
         id: generateFileId(),
         file,
         preview: URL.createObjectURL(file),
@@ -102,15 +126,21 @@ function uploadReducer(state, action) {
       }));
 
       const newFileStatus = {};
+      const newFileValidation = {};
       newFiles.forEach(f => {
         newFileStatus[f.id] = { status: FILE_STATUS.PENDING };
+        newFileValidation[f.id] = computeFileValidation(f);
       });
 
+      const updatedFiles = [...state.files, ...newFiles];
       return {
         ...state,
         flowState: UPLOAD_FLOW_STATES.SELECTING,
-        files: [...state.files, ...newFiles],
+        files: updatedFiles,
         fileStatus: { ...state.fileStatus, ...newFileStatus },
+        fileValidation: { ...state.fileValidation, ...newFileValidation },
+        hasUnsavedChanges: true,
+        initialFileCount: state.initialFileCount || updatedFiles.length,
       };
     }
 
@@ -122,24 +152,51 @@ function uploadReducer(state, action) {
 
       const newFiles = state.files.filter(f => f.id !== action.id);
       const newFileStatus = { ...state.fileStatus };
+      const newFileValidation = { ...state.fileValidation };
       delete newFileStatus[action.id];
+      delete newFileValidation[action.id];
 
       return {
         ...state,
         flowState: newFiles.length === 0 ? UPLOAD_FLOW_STATES.IDLE : state.flowState,
         files: newFiles,
         fileStatus: newFileStatus,
+        fileValidation: newFileValidation,
         duplicateWarnings: state.duplicateWarnings.filter(w => w.fileId !== action.id),
+        hasUnsavedChanges: newFiles.length > 0,
       };
     }
 
     case ACTIONS.UPDATE_METADATA: {
+      const updatedFiles = state.files.map(f =>
+        f.id === action.id ? { ...f, [action.field]: action.value } : f
+      );
+      const updatedFile = updatedFiles.find(f => f.id === action.id);
+
+      // Update validation for this file, marking the field as touched
+      const currentValidation = state.fileValidation[action.id] || {};
+      const newValidation = computeFileValidation(updatedFile);
+
+      // Mark the changed field as touched
+      if (newValidation[action.field]) {
+        newValidation[action.field].touched = true;
+      }
+      // Preserve touched state for other fields
+      Object.keys(currentValidation).forEach(field => {
+        if (field !== action.field && newValidation[field]) {
+          newValidation[field].touched = currentValidation[field]?.touched || false;
+        }
+      });
+
       return {
         ...state,
         flowState: UPLOAD_FLOW_STATES.SELECTING,
-        files: state.files.map(f =>
-          f.id === action.id ? { ...f, [action.field]: action.value } : f
-        ),
+        files: updatedFiles,
+        fileValidation: {
+          ...state.fileValidation,
+          [action.id]: newValidation,
+        },
+        hasUnsavedChanges: true,
       };
     }
 
@@ -168,14 +225,34 @@ function uploadReducer(state, action) {
     }
 
     case ACTIONS.APPLY_BULK_TO_ALL: {
+      const updatedFiles = state.files.map(f => ({
+        ...f,
+        series: state.bulkDefaults.series || f.series,
+        rarity: state.bulkDefaults.rarity,
+        isR18: state.bulkDefaults.isR18,
+      }));
+
+      // Recompute validation for all files
+      const newFileValidation = {};
+      updatedFiles.forEach(f => {
+        const currentValidation = state.fileValidation[f.id] || {};
+        const newValidation = computeFileValidation(f);
+        // Mark series as touched if bulk applied
+        if (state.bulkDefaults.series && newValidation.series) {
+          newValidation.series.touched = true;
+        }
+        // Preserve name touched state
+        if (newValidation.name) {
+          newValidation.name.touched = currentValidation.name?.touched || false;
+        }
+        newFileValidation[f.id] = newValidation;
+      });
+
       return {
         ...state,
-        files: state.files.map(f => ({
-          ...f,
-          series: state.bulkDefaults.series || f.series,
-          rarity: state.bulkDefaults.rarity,
-          isR18: state.bulkDefaults.isR18,
-        })),
+        files: updatedFiles,
+        fileValidation: newFileValidation,
+        hasUnsavedChanges: true,
       };
     }
 
@@ -250,15 +327,21 @@ function uploadReducer(state, action) {
 
       const remainingFiles = state.files.filter(f => !successfulIds.has(f.id));
       const newFileStatus = { ...state.fileStatus };
-      successfulIds.forEach(id => delete newFileStatus[id]);
+      const newFileValidation = { ...state.fileValidation };
+      successfulIds.forEach(id => {
+        delete newFileStatus[id];
+        delete newFileValidation[id];
+      });
 
       return {
         ...state,
         files: remainingFiles,
         fileStatus: newFileStatus,
+        fileValidation: newFileValidation,
         flowState: remainingFiles.length === 0
           ? UPLOAD_FLOW_STATES.IDLE
           : UPLOAD_FLOW_STATES.SELECTING,
+        hasUnsavedChanges: remainingFiles.length > 0,
       };
     }
 
@@ -296,6 +379,49 @@ function uploadReducer(state, action) {
       return {
         ...state,
         flowState: action.flowState,
+      };
+    }
+
+    case ACTIONS.TOUCH_FIELD: {
+      const currentValidation = state.fileValidation[action.id] || {};
+      const file = state.files.find(f => f.id === action.id);
+      if (!file) return state;
+
+      const newValidation = computeFileValidation(file);
+      // Mark the specific field as touched
+      if (newValidation[action.field]) {
+        newValidation[action.field].touched = true;
+      }
+      // Preserve touched state for other fields
+      Object.keys(currentValidation).forEach(field => {
+        if (field !== action.field && newValidation[field]) {
+          newValidation[field].touched = currentValidation[field]?.touched || false;
+        }
+      });
+
+      return {
+        ...state,
+        fileValidation: {
+          ...state.fileValidation,
+          [action.id]: newValidation,
+        },
+      };
+    }
+
+    case ACTIONS.TOUCH_ALL_FIELDS: {
+      const newFileValidation = {};
+      state.files.forEach(f => {
+        const validation = computeFileValidation(f);
+        // Mark all fields as touched
+        Object.keys(validation).forEach(field => {
+          validation[field].touched = true;
+        });
+        newFileValidation[f.id] = validation;
+      });
+
+      return {
+        ...state,
+        fileValidation: newFileValidation,
       };
     }
 
@@ -400,6 +526,16 @@ export const useUploadState = (options = {}) => {
     dispatch({ type: ACTIONS.RESET });
   }, []);
 
+  // Touch a specific field to show validation errors
+  const touchField = useCallback((id, field) => {
+    dispatch({ type: ACTIONS.TOUCH_FIELD, id, field });
+  }, []);
+
+  // Touch all fields for all files (used before submission)
+  const touchAllFields = useCallback(() => {
+    dispatch({ type: ACTIONS.TOUCH_ALL_FIELDS });
+  }, []);
+
   // Process upload response for a file
   const processFileResponse = useCallback((fileId, responseData, isError = false) => {
     if (isError) {
@@ -489,11 +625,13 @@ export const useUploadState = (options = {}) => {
     flowState: state.flowState,
     files: state.files,
     fileStatus: state.fileStatus,
+    fileValidation: state.fileValidation,
     uploadProgress: state.uploadProgress,
     error: state.error,
     bulkDefaults: state.bulkDefaults,
     duplicateWarnings: state.duplicateWarnings,
     uploadResult: state.uploadResult,
+    hasUnsavedChanges: state.hasUnsavedChanges,
 
     // Computed
     ...computed,
@@ -517,6 +655,8 @@ export const useUploadState = (options = {}) => {
     reset,
     processFileResponse,
     copyToAll,
+    touchField,
+    touchAllFields,
   };
 };
 

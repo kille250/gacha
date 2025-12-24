@@ -28,18 +28,25 @@ const FileCard = memo(({
   file,
   index,
   fileStatus,
+  fileValidation = {},
   orderedRarities = [],
   onUpdateMetadata,
   onRemove,
   onCopyToAll,
   onRegenerateName,
   onDismissWarning,
+  onTouchField,
 }) => {
   const [showMobileSheet, setShowMobileSheet] = useState(false);
+  const [confirmCopyField, setConfirmCopyField] = useState(null);
   const status = fileStatus?.status || FILE_STATUS.PENDING;
   const hasWarning = status === FILE_STATUS.WARNING;
   const isBlocked = status === FILE_STATUS.BLOCKED;
   const hasError = status === FILE_STATUS.ERROR;
+
+  // Get validation errors for display
+  const nameError = fileValidation.name?.touched && !fileValidation.name?.valid ? fileValidation.name.error : null;
+  const seriesError = fileValidation.series?.touched && !fileValidation.series?.valid ? fileValidation.series.error : null;
 
   const handleChange = useCallback((field, value) => {
     onUpdateMetadata(file.id, field, value);
@@ -51,8 +58,25 @@ const FileCard = memo(({
   }, [file.id, onRemove]);
 
   const handleCopyToAll = useCallback((field) => {
-    onCopyToAll(file.id, field);
-  }, [file.id, onCopyToAll]);
+    setConfirmCopyField(field);
+  }, []);
+
+  const confirmCopy = useCallback(() => {
+    if (confirmCopyField) {
+      onCopyToAll(file.id, confirmCopyField);
+      setConfirmCopyField(null);
+    }
+  }, [file.id, onCopyToAll, confirmCopyField]);
+
+  const cancelCopy = useCallback(() => {
+    setConfirmCopyField(null);
+  }, []);
+
+  const handleBlur = useCallback((field) => {
+    if (onTouchField) {
+      onTouchField(file.id, field);
+    }
+  }, [file.id, onTouchField]);
 
   const handleRegenerateName = useCallback(() => {
     onRegenerateName(file.id);
@@ -163,7 +187,7 @@ const FileCard = memo(({
 
           {/* Desktop: Inline form */}
           <DesktopMetaForm>
-            <MetaField>
+            <MetaField $hasError={!!nameError}>
               <MetaLabel>
                 Name *
                 <FieldActions>
@@ -180,13 +204,17 @@ const FileCard = memo(({
                 type="text"
                 value={file.name}
                 onChange={(e) => handleChange('name', e.target.value)}
+                onBlur={() => handleBlur('name')}
                 placeholder="Character name"
                 aria-label="Character name"
                 aria-required="true"
+                aria-invalid={!!nameError}
+                $hasError={!!nameError}
               />
+              {nameError && <FieldError role="alert">{nameError}</FieldError>}
             </MetaField>
 
-            <MetaField>
+            <MetaField $hasError={!!seriesError}>
               <MetaLabel>
                 Series *
                 <FieldActions>
@@ -203,10 +231,14 @@ const FileCard = memo(({
                 type="text"
                 value={file.series}
                 onChange={(e) => handleChange('series', e.target.value)}
+                onBlur={() => handleBlur('series')}
                 placeholder="Series name"
                 aria-label="Series name"
                 aria-required="true"
+                aria-invalid={!!seriesError}
+                $hasError={!!seriesError}
               />
+              {seriesError && <FieldError role="alert">{seriesError}</FieldError>}
             </MetaField>
 
             <MetaRow>
@@ -288,7 +320,7 @@ const FileCard = memo(({
               </SheetPreview>
 
               <SheetForm>
-                <SheetField>
+                <SheetField $hasError={!!nameError}>
                   <SheetLabel>
                     Name *
                     <SheetActionButton onClick={handleRegenerateName}>
@@ -299,11 +331,14 @@ const FileCard = memo(({
                     type="text"
                     value={file.name}
                     onChange={(e) => handleChange('name', e.target.value)}
+                    onBlur={() => handleBlur('name')}
                     placeholder="Character name"
+                    $hasError={!!nameError}
                   />
+                  {nameError && <SheetFieldError role="alert">{nameError}</SheetFieldError>}
                 </SheetField>
 
-                <SheetField>
+                <SheetField $hasError={!!seriesError}>
                   <SheetLabel>
                     Series *
                     <SheetActionButton onClick={() => handleCopyToAll('series')}>
@@ -314,8 +349,11 @@ const FileCard = memo(({
                     type="text"
                     value={file.series}
                     onChange={(e) => handleChange('series', e.target.value)}
+                    onBlur={() => handleBlur('series')}
                     placeholder="Series name"
+                    $hasError={!!seriesError}
                   />
+                  {seriesError && <SheetFieldError role="alert">{seriesError}</SheetFieldError>}
                 </SheetField>
 
                 <SheetRow>
@@ -339,7 +377,7 @@ const FileCard = memo(({
                       checked={file.isR18}
                       onChange={(e) => handleChange('isR18', e.target.checked)}
                     />
-                    <span>🔞 R18</span>
+                    <span>R18</span>
                   </SheetCheckbox>
                 </SheetRow>
               </SheetForm>
@@ -351,6 +389,42 @@ const FileCard = memo(({
               </SheetActions>
             </MobileSheet>
           </MobileSheetOverlay>
+        )}
+      </AnimatePresence>
+
+      {/* Confirmation Dialog for Copy to All */}
+      <AnimatePresence>
+        {confirmCopyField && (
+          <ConfirmOverlay
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={cancelCopy}
+          >
+            <ConfirmDialog
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+              role="alertdialog"
+              aria-labelledby="confirm-title"
+              aria-describedby="confirm-desc"
+            >
+              <ConfirmTitle id="confirm-title">Apply to All Files?</ConfirmTitle>
+              <ConfirmText id="confirm-desc">
+                This will overwrite the <strong>{confirmCopyField}</strong> field for all other files with:{' '}
+                <strong>"{file[confirmCopyField]}"</strong>
+              </ConfirmText>
+              <ConfirmButtons>
+                <ConfirmCancelButton onClick={cancelCopy}>
+                  Cancel
+                </ConfirmCancelButton>
+                <ConfirmApplyButton onClick={confirmCopy}>
+                  Apply to All
+                </ConfirmApplyButton>
+              </ConfirmButtons>
+            </ConfirmDialog>
+          </ConfirmOverlay>
         )}
       </AnimatePresence>
     </>
@@ -533,6 +607,18 @@ const MetaField = styled.div`
     flex: 0 0 auto;
     justify-content: flex-end;
   `}
+
+  ${props => props.$hasError && css`
+    label {
+      color: ${theme.colors.error};
+    }
+  `}
+`;
+
+const FieldError = styled.span`
+  color: ${theme.colors.error};
+  font-size: ${theme.fontSizes.xs};
+  margin-top: 2px;
 `;
 
 const MetaLabel = styled.label`
@@ -592,6 +678,15 @@ const inputStyles = css`
 
 const MetaInput = styled.input`
   ${inputStyles}
+
+  ${props => props.$hasError && css`
+    border-color: ${theme.colors.error};
+
+    &:focus {
+      border-color: ${theme.colors.error};
+      box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.2);
+    }
+  `}
 `;
 
 const MetaSelect = styled.select`
@@ -686,6 +781,19 @@ const SheetForm = styled.div`
 
 const SheetField = styled.div`
   flex: 1;
+
+  ${props => props.$hasError && css`
+    label {
+      color: ${theme.colors.error};
+    }
+  `}
+`;
+
+const SheetFieldError = styled.span`
+  display: block;
+  color: ${theme.colors.error};
+  font-size: ${theme.fontSizes.xs};
+  margin-top: ${theme.spacing.xs};
 `;
 
 const SheetLabel = styled.label`
@@ -729,6 +837,15 @@ const sheetInputStyles = css`
 
 const SheetInput = styled.input`
   ${sheetInputStyles}
+
+  ${props => props.$hasError && css`
+    border-color: ${theme.colors.error};
+
+    &:focus {
+      border-color: ${theme.colors.error};
+      box-shadow: 0 0 0 2px rgba(255, 59, 48, 0.2);
+    }
+  `}
 `;
 
 const SheetSelect = styled.select`
@@ -781,6 +898,97 @@ const RemoveFileButton = styled.button`
 
   &:hover {
     background: rgba(255, 59, 48, 0.25);
+  }
+`;
+
+// Confirmation Dialog
+const ConfirmOverlay = styled(motion.div)`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  z-index: ${theme.zIndex.modal + 10};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: ${theme.spacing.md};
+`;
+
+const ConfirmDialog = styled(motion.div)`
+  background: ${theme.colors.backgroundSecondary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.lg};
+  max-width: 400px;
+  width: 100%;
+  box-shadow: ${theme.shadows.xl};
+`;
+
+const ConfirmTitle = styled.h4`
+  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+`;
+
+const ConfirmText = styled.p`
+  margin: 0 0 ${theme.spacing.lg};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  line-height: 1.5;
+
+  strong {
+    color: ${theme.colors.text};
+  }
+`;
+
+const ConfirmButtons = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  justify-content: flex-end;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex-direction: column-reverse;
+  }
+`;
+
+const ConfirmCancelButton = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${theme.colors.surfaceHover};
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 100%;
+  }
+`;
+
+const ConfirmApplyButton = styled.button`
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
+  border: none;
+  border-radius: ${theme.radius.md};
+  color: white;
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 113, 227, 0.3);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 100%;
   }
 `;
 
