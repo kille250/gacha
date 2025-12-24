@@ -7,14 +7,21 @@
  * with the new mediaType field.
  *
  * Usage:
- *   node scripts/backfillVideoFingerprints.js [--batch-size=100] [--dry-run] [--force] [--videos-only]
+ *   node scripts/backfillVideoFingerprints.js [options]
  *
  * Options:
- *   --batch-size=N   Process N characters at a time (default: 50)
- *   --dry-run        Show what would be done without making changes
- *   --force          Regenerate fingerprints even for characters that have them
- *   --videos-only    Only process video files (skip images)
- *   --update-types   Only update mediaType field for existing characters
+ *   --batch-size=N    Process N characters at a time (default: 50)
+ *   --dry-run         Show what would be done without making changes
+ *   --force           Regenerate fingerprints for ALL characters
+ *   --videos-only     Only process video files (skip images)
+ *   --update-types    Only update mediaType field for existing characters
+ *   --detect-videos   Find and fix video files incorrectly labeled as images
+ *
+ * Examples:
+ *   npm run backfill:video:dry              # Preview what would be processed
+ *   npm run backfill:video                  # Process characters needing updates
+ *   npm run backfill:video -- --force       # Reprocess ALL characters
+ *   npm run backfill:video -- --detect-videos  # Fix misclassified videos
  */
 
 const path = require('path');
@@ -35,7 +42,8 @@ const options = {
   dryRun: false,
   force: false,
   videosOnly: false,
-  updateTypes: false
+  updateTypes: false,
+  detectVideos: false
 };
 
 for (const arg of args) {
@@ -49,6 +57,8 @@ for (const arg of args) {
     options.videosOnly = true;
   } else if (arg === '--update-types') {
     options.updateTypes = true;
+  } else if (arg === '--detect-videos') {
+    options.detectVideos = true;
   }
 }
 
@@ -78,7 +88,7 @@ async function backfillVideoFingerprints() {
   console.log('='.repeat(60));
   console.log('Video Fingerprint Backfill Script');
   console.log('='.repeat(60));
-  console.log(`Options: batchSize=${options.batchSize}, dryRun=${options.dryRun}, force=${options.force}, videosOnly=${options.videosOnly}, updateTypes=${options.updateTypes}`);
+  console.log(`Options: batchSize=${options.batchSize}, dryRun=${options.dryRun}, force=${options.force}, videosOnly=${options.videosOnly}, updateTypes=${options.updateTypes}, detectVideos=${options.detectVideos}`);
   console.log('');
 
   // Check if ffmpeg is available
@@ -101,8 +111,28 @@ async function backfillVideoFingerprints() {
 
   // Build query for characters needing processing
   let where = {};
+  const Op = require('sequelize').Op;
 
-  if (options.updateTypes) {
+  // Video file extension patterns for detecting misclassified videos
+  const videoExtensionPatterns = [
+    { [Op.like]: '%.mp4' },
+    { [Op.like]: '%.webm' },
+    { [Op.like]: '%.mov' },
+    { [Op.like]: '%.avi' },
+    { [Op.like]: '%.mkv' }
+  ];
+
+  if (options.detectVideos) {
+    // Only find video files that are incorrectly labeled as images
+    where = {
+      [Op.or]: [
+        { mediaType: 'image' },
+        { mediaType: null }
+      ],
+      image: { [Op.or]: videoExtensionPatterns }
+    };
+    console.log('Mode: Detecting misclassified video files...');
+  } else if (options.updateTypes) {
     // Only update mediaType for characters that don't have it
     where.mediaType = null;
   } else if (options.videosOnly) {
@@ -112,13 +142,24 @@ async function backfillVideoFingerprints() {
       mediaType: 'video'
     };
   } else if (!options.force) {
-    // Process characters without mediaType or videos without frame hashes
+    // Process characters that:
+    // 1. Have no mediaType set, OR
+    // 2. Are videos without frame hashes, OR
+    // 3. Have video file extensions but mediaType is 'image' (incorrectly classified)
     where = {
-      [require('sequelize').Op.or]: [
+      [Op.or]: [
         { mediaType: null },
         {
           mediaType: 'video',
           frameHashes: null
+        },
+        // Catch video files that were set to 'image' by the migration
+        {
+          [Op.or]: [
+            { mediaType: 'image' },
+            { mediaType: null }
+          ],
+          image: { [Op.or]: videoExtensionPatterns }
         }
       ]
     };
