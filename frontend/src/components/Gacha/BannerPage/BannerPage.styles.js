@@ -634,20 +634,17 @@ export const MiniRarityDot = styled.div`
 `;
 
 // ==================== LOADING & EMPTY STATES ====================
+// NOTE: Use LoadingState and EmptyState from design-system for standard states.
+// These custom styled versions kept for Banner-specific styling needs:
 
-export const LoadingState = styled(motion.div)`
+export const BannerLoadingContainer = styled(motion.div)`
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: ${theme.spacing.lg};
 `;
 
-export const LoadingStateText = styled.p`
-  font-size: ${theme.fontSizes.lg};
-  color: ${theme.colors.textSecondary};
-`;
-
-export const EmptyState = styled(motion.div)`
+export const BannerEmptyContainer = styled(motion.div)`
   text-align: center;
   padding: ${theme.spacing['2xl']};
   background: ${theme.colors.glass};
@@ -656,27 +653,18 @@ export const EmptyState = styled(motion.div)`
   max-width: 320px;
 `;
 
-export const EmptyIcon = styled.div`
+export const BannerEmptyIcon = styled.div`
   font-size: 56px;
   margin-bottom: ${theme.spacing.md};
-  animation: float 3s ease-in-out infinite;
 
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-8px); }
+  @media (prefers-reduced-motion: no-preference) {
+    animation: float 3s ease-in-out infinite;
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
   }
-`;
-
-export const EmptyTitle = styled.h3`
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.semibold};
-  margin: 0 0 ${theme.spacing.xs};
-`;
-
-export const EmptyText = styled.p`
-  font-size: ${theme.fontSizes.base};
-  color: ${theme.colors.textSecondary};
-  margin: 0;
 `;
 
 // ==================== CONTROLS SECTION ====================

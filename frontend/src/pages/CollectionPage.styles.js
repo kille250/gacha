@@ -413,7 +413,7 @@ export const LegendIcon = styled.span`
   `}
 `;
 
-// ==================== ERROR & LOADING ====================
+// ==================== ERROR MESSAGE ====================
 
 export const ErrorMessage = styled.div`
   background: rgba(255, 59, 48, 0.15);
@@ -425,39 +425,9 @@ export const ErrorMessage = styled.div`
   text-align: center;
 `;
 
-export const LoadingContainer = styled.div`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  padding: ${theme.spacing['3xl']};
-  gap: ${theme.spacing.lg};
-`;
-
-export const EmptyState = styled.div`
-  text-align: center;
-  padding: ${theme.spacing['3xl']};
-  background: ${theme.colors.surface};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
-`;
-
-export const EmptyIcon = styled.div`
-  font-size: 48px;
-  margin-bottom: ${theme.spacing.md};
-`;
-
-export const EmptyTitle = styled.h3`
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.semibold};
-  margin: 0 0 ${theme.spacing.xs};
-`;
-
-export const EmptyText = styled.p`
-  font-size: ${theme.fontSizes.base};
-  color: ${theme.colors.textSecondary};
-  margin: 0;
-`;
+// NOTE: LoadingContainer, EmptyState, EmptyIcon, EmptyTitle, EmptyText removed
+// Use LoadingState and EmptyState from design-system instead:
+// import { LoadingState, EmptyState } from '../design-system';
 
 // ==================== CHARACTER GRID ====================
 

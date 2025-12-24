@@ -378,9 +378,11 @@ export const ButtonRow = styled.div`
 
 // ============================================
 // EMPTY STATE COMPONENTS
+// NOTE: Prefer using EmptyState from design-system for standard states.
+// These are kept for backward compatibility with existing Admin components.
 // ============================================
 
-export const EmptyState = styled.div`
+export const AdminEmptyState = styled.div`
   text-align: center;
   padding: ${theme.spacing['3xl']};
   background: ${theme.colors.surface};
@@ -388,22 +390,32 @@ export const EmptyState = styled.div`
   border-radius: ${theme.radius.xl};
 `;
 
-export const EmptyIcon = styled.div`
+export const AdminEmptyIcon = styled.div`
   font-size: 64px;
   margin-bottom: ${theme.spacing.md};
 `;
 
-export const EmptyText = styled.div`
+export const AdminEmptyText = styled.div`
   font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
 `;
 
-export const EmptySubtext = styled.div`
+export const AdminEmptySubtext = styled.div`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
   margin-top: ${theme.spacing.xs};
 `;
+
+// Backward compatibility aliases - deprecated, use design-system EmptyState
+/** @deprecated Use EmptyState from design-system or AdminEmptyState */
+export const EmptyState = AdminEmptyState;
+/** @deprecated Use AdminEmptyIcon */
+export const EmptyIcon = AdminEmptyIcon;
+/** @deprecated Use AdminEmptyText */
+export const EmptyText = AdminEmptyText;
+/** @deprecated Use AdminEmptySubtext */
+export const EmptySubtext = AdminEmptySubtext;
 
 // ============================================
 // PAGINATION COMPONENTS

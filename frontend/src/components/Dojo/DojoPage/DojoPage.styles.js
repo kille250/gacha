@@ -41,7 +41,10 @@ export const PageContainer = styled.div`
   padding-bottom: env(safe-area-inset-bottom, 20px);
 `;
 
-export const LoadingContainer = styled.div`
+// NOTE: Prefer LoadingState from design-system for standard loading states.
+// These are kept for Dojo-specific styling needs:
+
+export const DojoLoadingContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -50,10 +53,9 @@ export const LoadingContainer = styled.div`
   gap: ${theme.spacing.lg};
 `;
 
-export const LoadingText = styled.p`
-  color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSizes.lg};
-`;
+// Backward compatibility alias
+/** @deprecated Use LoadingState from design-system */
+export const LoadingContainer = DojoLoadingContainer;
 
 export const MainContent = styled.main`
   max-width: 900px;

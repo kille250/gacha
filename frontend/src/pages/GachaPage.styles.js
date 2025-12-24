@@ -15,19 +15,7 @@ export const StyledPageWrapper = styled(PageWrapper)`
   padding-bottom: ${theme.spacing['3xl']};
 `;
 
-export const LoadingContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.lg};
-`;
-
-export const LoadingText = styled.p`
-  color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSizes.lg};
-`;
+// NOTE: LoadingContainer and LoadingText removed - use LoadingState from design-system instead
 
 // ==================== HERO SECTION ====================
 
@@ -551,40 +539,9 @@ export const CTAButton = styled(motion.button)`
   }
 `;
 
-// ==================== EMPTY STATE ====================
-
-export const EmptyState = styled.div`
-  text-align: center;
-  padding: ${theme.spacing['3xl']};
-`;
-
-export const EmptyIcon = styled.div`
-  font-size: 64px;
-  margin-bottom: ${theme.spacing.lg};
-`;
-
-export const EmptyTitle = styled.h3`
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0 0 ${theme.spacing.sm};
-`;
-
-export const EmptyText = styled.p`
-  font-size: 16px;
-  color: ${theme.colors.textSecondary};
-  margin: 0 0 ${theme.spacing.xl};
-`;
-
-export const EmptyButton = styled(motion.button)`
-  padding: 14px 28px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-`;
+// NOTE: EmptyState, EmptyIcon, EmptyTitle, EmptyText, EmptyButton removed
+// Use EmptyState from design-system instead:
+// import { EmptyState } from '../design-system';
 
 // ==================== HELP MODAL ====================
 
