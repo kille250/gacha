@@ -1,6 +1,40 @@
 /**
- * Barrel export for custom hooks
+ * Hooks Barrel Export
+ *
+ * Provides both flat exports (backward compatible) and domain-organized exports.
+ *
+ * Recommended import patterns:
+ *
+ * @example
+ * // Domain-specific imports (preferred for clarity)
+ * import { useModal, useSwipeGesture } from '../hooks/ui';
+ * import { useAsyncAction, useActionLock } from '../hooks/async';
+ * import { useGachaRoll, useFishingState } from '../hooks/features';
+ *
+ * @example
+ * // Flat imports (backward compatible)
+ * import { useModal, useAsyncAction, useGachaRoll } from '../hooks';
  */
+
+// ==================== DOMAIN EXPORTS ====================
+// These provide organized access to hooks by category
+
+// UI hooks - modals, focus, gestures, filters
+export * from './ui';
+
+// Async hooks - loading states, action locking, network
+export * from './async';
+
+// Feature hooks - gacha, collection, fishing, upload
+export * from './features';
+
+// Data hooks - modal data, error handling
+export * from './data';
+
+// ==================== FLAT EXPORTS (BACKWARD COMPATIBLE) ====================
+// These maintain backward compatibility with existing imports
+
+// Core UI
 export { useGachaRoll } from './useGachaRoll';
 export { useHourlyReward } from './useHourlyReward';
 export { useActionLock } from './useActionLock';
@@ -61,3 +95,15 @@ export {
   useFocusRestore,
   useModalFocus,
 } from './useFocusManagement';
+
+// Network status
+export { useNetworkStatus } from './useNetworkStatus';
+
+// Captcha
+export { useCaptchaProtectedRequest } from './useCaptchaProtectedRequest';
+
+// Swipe gesture
+export { useSwipeGesture } from './useSwipeGesture';
+
+// Duplicate check
+export { useDuplicateCheck } from './useDuplicateCheck';

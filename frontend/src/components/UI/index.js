@@ -5,7 +5,7 @@
  * Import from here instead of individual component files.
  *
  * @example
- * import { Button, Modal, Alert, Card } from '../components/ui';
+ * import { Button, Modal, Alert, Card } from '../components/UI';
  */
 
 // Buttons
