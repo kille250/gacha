@@ -9,7 +9,7 @@
  * - Accessible announcements
  */
 import React, { memo, useMemo } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { motion } from 'framer-motion';
 import {
   FaCheckCircle,
@@ -178,7 +178,7 @@ const IconWrapper = styled.span`
 
   svg {
     font-size: 16px;
-    animation: ${props => props.$animate ? `${spin} 1s linear infinite` : 'none'};
+    ${props => props.$animate && css`animation: ${spin} 1s linear infinite;`}
   }
 `;
 
@@ -225,7 +225,7 @@ const ProgressShimmer = styled.div`
     rgba(255, 255, 255, 0.3),
     transparent
   );
-  animation: ${shimmer} 1.5s infinite;
+  ${css`animation: ${shimmer} 1.5s infinite;`}
 `;
 
 const Footer = styled.div`
