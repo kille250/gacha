@@ -740,7 +740,16 @@
         "24h": "24 Stunden",
         "7d": "7 Tage",
         "30d": "30 Tage"
-      }
+      },
+      "deviceNew": "Neues Gerät erkannt",
+      "deviceCollision": "Gerätekollision erkannt",
+      "deviceMismatch": "Geräteabweichung erkannt",
+      "deviceBindingBlocked": "Gerätebindung blockiert",
+      "deviceBindingCleared": "Gerätebindung gelöscht",
+      "riskChange": "Risikobewertung geändert"
+    },
+    "economy": {
+      "trade": "Tausch abgeschlossen"
     },
     "joined": "Beigetreten",
     "r18Enabled": "🔞 Aktiviert",

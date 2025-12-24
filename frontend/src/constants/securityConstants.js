@@ -97,8 +97,8 @@ export const ACTION_STYLES = {
 export const AUDIT_CATEGORIES = {
   auth: ['auth.login.success', 'auth.login.failed', 'auth.signup', 'auth.google.login', 'auth.password.change'],
   admin: ['admin.restrict', 'admin.unrestrict', 'admin.warning', 'admin.points_adjust'],
-  security: ['security.device.new', 'security.risk.change', 'security.auto_restriction', 'security.ban_evasion'],
-  economy: ['economy.trade', 'economy.coupon.redeemed', 'economy.anomaly'],
+  security: ['admin.security.deviceNew', 'admin.security.riskChange', 'security.auto_restriction', 'security.ban_evasion'],
+  economy: ['admin.economy.trade', 'economy.coupon.redeemed', 'economy.anomaly'],
   appeal: ['appeal.submitted', 'appeal.approved', 'appeal.denied'],
 };
 

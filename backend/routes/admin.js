@@ -1986,7 +1986,7 @@ router.get('/users/:id/device-history', auth, adminAuth, async (req, res) => {
       where: {
         userId,
         eventType: {
-          [Op.in]: ['security.device.new', 'security.device.collision', 'security.device.mismatch']
+          [Op.in]: ['admin.security.deviceNew', 'admin.security.deviceCollision', 'admin.security.deviceMismatch']
         }
       },
       order: [['createdAt', 'DESC']],
@@ -2139,7 +2139,7 @@ router.get('/users/:id/risk-history', auth, adminAuth, async (req, res) => {
       where: {
         userId,
         eventType: {
-          [Op.in]: ['security.risk.change', 'admin.security.reset_risk', 'admin.security.recalculate_risk']
+          [Op.in]: ['admin.security.riskChange', 'admin.security.reset_risk', 'admin.security.recalculate_risk']
         }
       },
       order: [['createdAt', 'DESC']],

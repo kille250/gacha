@@ -740,7 +740,16 @@
         "24h": "24時間",
         "7d": "7日",
         "30d": "30日"
-      }
+      },
+      "deviceNew": "新しいデバイスを検出",
+      "deviceCollision": "デバイス衝突を検出",
+      "deviceMismatch": "デバイス不一致を検出",
+      "deviceBindingBlocked": "デバイスバインディングがブロックされました",
+      "deviceBindingCleared": "デバイスバインディングがクリアされました",
+      "riskChange": "リスクスコアが変更されました"
+    },
+    "economy": {
+      "trade": "取引が完了しました"
     },
     "joined": "登録日",
     "r18Enabled": "🔞 有効",

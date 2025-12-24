@@ -740,7 +740,16 @@
         "24h": "24 Hours",
         "7d": "7 Days",
         "30d": "30 Days"
-      }
+      },
+      "deviceNew": "New device detected",
+      "deviceCollision": "Device collision detected",
+      "deviceMismatch": "Device mismatch detected",
+      "deviceBindingBlocked": "Device binding blocked",
+      "deviceBindingCleared": "Device binding cleared",
+      "riskChange": "Risk score changed"
+    },
+    "economy": {
+      "trade": "Trade completed"
     },
     "joined": "Joined",
     "r18Enabled": "🔞 Enabled",

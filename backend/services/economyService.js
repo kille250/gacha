@@ -78,8 +78,8 @@ async function checkVelocityLimit(userId, type, amount = 1) {
   
   // Query audit events for today
   const eventTypeMap = {
-    pointsEarned: ['economy.trade', 'economy.daily_reward', 'fishing.catch'],
-    tradesCompleted: ['economy.trade'],
+    pointsEarned: ['admin.economy.trade', 'economy.daily_reward', 'fishing.catch'],
+    tradesCompleted: ['admin.economy.trade'],
     rollsPerformed: ['economy.gacha.roll'],
     fishCaught: ['fishing.catch']
   };
@@ -171,7 +171,7 @@ async function detectVelocityAnomaly(userId, actionType) {
   try {
     const eventTypeMap = {
       fishing: 'fishing.catch',
-      trading: 'economy.trade',
+      trading: 'admin.economy.trade',
       rolling: 'economy.gacha.roll'
     };
     

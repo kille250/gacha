@@ -16,7 +16,7 @@ const AUDIT_EVENTS = {
   PASSWORD_CHANGE: 'auth.password.change',
   
   // Economy actions
-  TRADE_COMPLETED: 'economy.trade',
+  TRADE_COMPLETED: 'admin.economy.trade',
   GACHA_ROLL: 'economy.gacha.roll',
   COUPON_REDEEMED: 'economy.coupon.redeemed',
   COUPON_FAILED: 'economy.coupon.failed',
@@ -35,12 +35,12 @@ const AUDIT_EVENTS = {
   ADMIN_POINTS_ADJUST: 'admin.points_adjust',
   
   // Security events
-  DEVICE_NEW: 'security.device.new',
-  DEVICE_COLLISION: 'security.device.collision',
-  DEVICE_MISMATCH: 'security.device.mismatch',
-  DEVICE_BINDING_BLOCKED: 'security.device.binding_blocked',
-  DEVICE_BINDING_CLEARED: 'security.device.binding_cleared',
-  RISK_SCORE_CHANGE: 'security.risk.change',
+  DEVICE_NEW: 'admin.security.deviceNew',
+  DEVICE_COLLISION: 'admin.security.deviceCollision',
+  DEVICE_MISMATCH: 'admin.security.deviceMismatch',
+  DEVICE_BINDING_BLOCKED: 'admin.security.deviceBindingBlocked',
+  DEVICE_BINDING_CLEARED: 'admin.security.deviceBindingCleared',
+  RISK_SCORE_CHANGE: 'admin.security.riskChange',
   AUTO_RESTRICTION: 'security.auto_restriction',
   BAN_EVASION: 'security.ban_evasion',
   CAPTCHA_TRIGGERED: 'security.captcha.triggered',

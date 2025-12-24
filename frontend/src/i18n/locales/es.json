@@ -740,7 +740,16 @@
         "24h": "24 Horas",
         "7d": "7 Días",
         "30d": "30 Días"
-      }
+      },
+      "deviceNew": "Nuevo dispositivo detectado",
+      "deviceCollision": "Colisión de dispositivo detectada",
+      "deviceMismatch": "Discrepancia de dispositivo detectada",
+      "deviceBindingBlocked": "Vinculación de dispositivo bloqueada",
+      "deviceBindingCleared": "Vinculación de dispositivo eliminada",
+      "riskChange": "Puntuación de riesgo cambiada"
+    },
+    "economy": {
+      "trade": "Intercambio completado"
     },
     "joined": "Unido",
     "r18Enabled": "🔞 Activado",
