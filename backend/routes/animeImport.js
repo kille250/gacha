@@ -4,8 +4,10 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
 const { Character } = require('../models');
-const { getUrlPath } = require('../config/upload');
-const { downloadImage, generateUniqueFilename, getExtensionFromUrl } = require('../utils/fileUtils');
+const { getUrlPath, getFilePath } = require('../config/upload');
+const { downloadImage, generateUniqueFilename, getExtensionFromUrl, safeUnlink } = require('../utils/fileUtils');
+const { checkForDuplicates, getDetectionMode } = require('../services/duplicateDetectionService');
+const { logAdminAction: logDuplicateEvent } = require('../services/auditService');
 
 // Jikan API base URL (free MyAnimeList API)
 const JIKAN_API = 'https://api.jikan.moe/v4';
@@ -130,59 +132,80 @@ router.get('/character/:mal_id', auth, adminAuth, async (req, res) => {
 router.post('/import', auth, adminAuth, async (req, res) => {
   try {
     const { characters, series, rarity = 'common' } = req.body;
-    
+
     if (!characters || !Array.isArray(characters) || characters.length === 0) {
       return res.status(400).json({ error: 'No characters selected for import' });
     }
-    
+
     if (!series || !series.trim()) {
       return res.status(400).json({ error: 'Series name is required' });
     }
-    
+
     // Validate rarity
     const validRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
     if (!validRarities.includes(rarity)) {
       return res.status(400).json({ error: 'Invalid rarity value' });
     }
-    
+
     const createdCharacters = [];
     const errors = [];
-    
+    const detectionMode = getDetectionMode();
+
     for (const char of characters) {
       try {
         if (!char.name || !char.image) {
           errors.push({ name: char.name || 'Unknown', error: 'Missing name or image' });
           continue;
         }
-        
-        // Check if character already exists (by name and series)
-        const existing = await Character.findOne({
-          where: { name: char.name, series: series.trim() }
-        });
-        
-        if (existing) {
-          errors.push({ name: char.name, error: 'Character already exists in this series' });
-          continue;
-        }
-        
-        // Download the image
+
+        // Download the image first (needed for fingerprinting)
         const ext = getExtensionFromUrl(char.image);
         const filename = generateUniqueFilename('imported', ext);
-        
+
         await downloadImage(char.image, filename, 'characters', { minFileSize: 1000 });
+        const filePath = getFilePath('characters', filename);
         const imagePath = getUrlPath('characters', filename);
-        
-        // Create the character
+
+        // Check for duplicates using image fingerprinting
+        const duplicateCheck = await checkForDuplicates(filePath);
+
+        if (duplicateCheck.action === 'reject') {
+          safeUnlink(filePath);
+          errors.push({
+            name: char.name,
+            error: duplicateCheck.reason,
+            duplicateOf: duplicateCheck.exactMatch?.name || duplicateCheck.similarMatches[0]?.name
+          });
+          continue;
+        }
+
+        // Log warnings for audit trail
+        if (duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag') {
+          await logDuplicateEvent('character.duplicate_warning', req.user.id, null, {
+            action: duplicateCheck.action,
+            reason: duplicateCheck.reason,
+            matches: duplicateCheck.similarMatches,
+            filename: filename,
+            detectionMode,
+            importSource: 'anime-import'
+          }, req);
+        }
+
+        // Create the character with fingerprints
         const newCharacter = await Character.create({
           name: char.name,
           image: imagePath,
           series: series.trim(),
           rarity: char.rarity || rarity,
-          isR18: false
+          isR18: false,
+          sha256Hash: duplicateCheck.fingerprints?.sha256 || null,
+          dHash: duplicateCheck.fingerprints?.dHash || null,
+          aHash: duplicateCheck.fingerprints?.aHash || null,
+          duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag'
         });
-        
+
         createdCharacters.push(newCharacter);
-        
+
         // Small delay to avoid overwhelming the image server
         await new Promise(resolve => setTimeout(resolve, 100));
       } catch (charErr) {
@@ -190,9 +213,9 @@ router.post('/import', auth, adminAuth, async (req, res) => {
         errors.push({ name: char.name, error: charErr.message });
       }
     }
-    
+
     console.log(`Admin (ID: ${req.user.id}) imported ${createdCharacters.length} characters from "${series}" (${errors.length} errors)`);
-    
+
     res.json({
       message: `Successfully imported ${createdCharacters.length} characters`,
       characters: createdCharacters,

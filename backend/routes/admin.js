@@ -18,6 +18,8 @@ const { characterUpload: upload } = require('../config/multer');
 const { isValidId } = require('../utils/validation');
 const { safeUnlink, safeDeleteUpload, safeUnlinkMany, downloadImage, generateUniqueFilename, getExtensionFromUrl } = require('../utils/fileUtils');
 const sequelize = require('../config/db');
+const { checkForDuplicates, getDetectionMode } = require('../services/duplicateDetectionService');
+const { logAdminAction: logDuplicateEvent } = require('../services/auditService');
 
 // ===========================================
 // ADMIN RATE LIMITING
@@ -276,6 +278,31 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
       safeUnlink(req.file.path);
       return res.status(400).json({ error: 'All fields are required' });
     }
+
+    // Check for duplicates
+    const duplicateCheck = await checkForDuplicates(req.file.path);
+    const detectionMode = getDetectionMode();
+
+    if (duplicateCheck.action === 'reject') {
+      safeUnlink(req.file.path);
+      return res.status(409).json({
+        error: duplicateCheck.reason,
+        duplicateType: duplicateCheck.isExactDuplicate ? 'exact' : 'similar',
+        existingCharacter: duplicateCheck.exactMatch || duplicateCheck.similarMatches[0]
+      });
+    }
+
+    // Log warnings for audit trail
+    if (duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag') {
+      await logDuplicateEvent('character.duplicate_warning', req.user.id, null, {
+        action: duplicateCheck.action,
+        reason: duplicateCheck.reason,
+        matches: duplicateCheck.similarMatches,
+        filename: req.file.filename,
+        detectionMode
+      }, req);
+    }
+
     // Save the relative path to the image or video file
     const imagePath = getUrlPath('characters', req.file.filename);
     const character = await Character.create({
@@ -283,12 +310,25 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
       image: imagePath,
       series,
       rarity,
-      isR18: isR18 === 'true' || isR18 === true
+      isR18: isR18 === 'true' || isR18 === true,
+      sha256Hash: duplicateCheck.fingerprints?.sha256 || null,
+      dHash: duplicateCheck.fingerprints?.dHash || null,
+      aHash: duplicateCheck.fingerprints?.aHash || null,
+      duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag'
     });
-    res.status(201).json({
+
+    const response = {
       message: 'Character added successfully',
       character
-    });
+    };
+
+    // Include warning in response if flagged
+    if (duplicateCheck.action === 'flag') {
+      response.warning = duplicateCheck.reason;
+      response.similarCharacters = duplicateCheck.similarMatches;
+    }
+
+    res.status(201).json(response);
   } catch (err) {
     console.error('Character upload error:', err);
     // Clean up uploaded file on error
@@ -402,12 +442,12 @@ router.put('/characters/:id', auth, adminAuth, async (req, res) => {
 router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), async (req, res) => {
   try {
     const characterId = req.params.id;
-    
+
     // Validate character ID
     if (!isValidId(characterId)) {
       return res.status(400).json({ error: 'Invalid character ID' });
     }
-    
+
     // Find the character
     const character = await Character.findByPk(characterId);
     if (!character) {
@@ -418,12 +458,43 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
       return res.status(400).json({ error: 'No image or video uploaded' });
     }
 
+    // Check for duplicates (exclude current character)
+    const duplicateCheck = await checkForDuplicates(req.file.path, character.id);
+    const detectionMode = getDetectionMode();
+
+    if (duplicateCheck.action === 'reject') {
+      safeUnlink(req.file.path);
+      return res.status(409).json({
+        error: duplicateCheck.reason,
+        duplicateType: duplicateCheck.isExactDuplicate ? 'exact' : 'similar',
+        existingCharacter: duplicateCheck.exactMatch || duplicateCheck.similarMatches[0]
+      });
+    }
+
+    // Log warnings for audit trail
+    if (duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag') {
+      await logDuplicateEvent('character.duplicate_warning', req.user.id, null, {
+        action: duplicateCheck.action,
+        reason: duplicateCheck.reason,
+        matches: duplicateCheck.similarMatches,
+        characterId: character.id,
+        detectionMode,
+        imageUpdate: true
+      }, req);
+    }
+
     // Save old image path to delete later if it was an uploaded file
     const oldImage = character.image;
-    
-    // Update image path
+
+    // Update image path and fingerprints
     const newImagePath = getUrlPath('characters', req.file.filename);
     character.image = newImagePath;
+    if (duplicateCheck.fingerprints) {
+      character.sha256Hash = duplicateCheck.fingerprints.sha256;
+      character.dHash = duplicateCheck.fingerprints.dHash;
+      character.aHash = duplicateCheck.fingerprints.aHash;
+      character.duplicateWarning = duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag';
+    }
     await character.save();
 
     // Delete old image if it was an uploaded file
@@ -431,10 +502,17 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
 
     console.log(`Admin (ID: ${req.user.id}) updated media for character ${character.id} (${character.name})`);
 
-    res.json({
+    const response = {
       message: 'Character media updated successfully',
       character
-    });
+    };
+
+    if (duplicateCheck.action === 'flag') {
+      response.warning = duplicateCheck.reason;
+      response.similarCharacters = duplicateCheck.similarMatches;
+    }
+
+    res.json(response);
   } catch (err) {
     console.error('Error updating character media:', err);
     res.status(500).json({ error: err.message || 'Server error' });
@@ -479,6 +557,7 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
 
     const createdCharacters = [];
     const errors = [];
+    const detectionMode = getDetectionMode();
 
     for (let i = 0; i < req.files.length; i++) {
       const file = req.files[i];
@@ -492,13 +571,43 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
       }
 
       try {
+        // Check for duplicates
+        const duplicateCheck = await checkForDuplicates(file.path);
+
+        if (duplicateCheck.action === 'reject') {
+          errors.push({
+            index: i,
+            filename: file.originalname,
+            error: duplicateCheck.reason,
+            duplicateOf: duplicateCheck.exactMatch?.name || duplicateCheck.similarMatches[0]?.name
+          });
+          safeUnlink(file.path);
+          continue;
+        }
+
+        // Log warnings for audit trail
+        if (duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag') {
+          await logDuplicateEvent('character.duplicate_warning', req.user.id, null, {
+            action: duplicateCheck.action,
+            reason: duplicateCheck.reason,
+            matches: duplicateCheck.similarMatches,
+            filename: file.originalname,
+            detectionMode,
+            bulkUpload: true
+          }, req);
+        }
+
         const imagePath = getUrlPath('characters', file.filename);
         const character = await Character.create({
           name: meta.name,
           image: imagePath,
           series: meta.series,
           rarity: meta.rarity || 'common',
-          isR18: meta.isR18 === true || meta.isR18 === 'true'
+          isR18: meta.isR18 === true || meta.isR18 === 'true',
+          sha256Hash: duplicateCheck.fingerprints?.sha256 || null,
+          dHash: duplicateCheck.fingerprints?.dHash || null,
+          aHash: duplicateCheck.fingerprints?.aHash || null,
+          duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag'
         });
         createdCharacters.push(character);
       } catch (err) {
@@ -526,64 +635,106 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
 router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
   try {
     const characterId = req.params.id;
-    const { imageUrl } = req.body;
-    
+    const { imageUrl, skipDuplicateCheck } = req.body;
+
     // Validate character ID
     if (!isValidId(characterId)) {
       return res.status(400).json({ error: 'Invalid character ID' });
     }
-    
+
     if (!imageUrl || typeof imageUrl !== 'string') {
       return res.status(400).json({ error: 'Image URL is required' });
     }
-    
+
     // Validate URL format
-    let parsedUrl;
     try {
-      parsedUrl = new URL(imageUrl);
+      const parsedUrl = new URL(imageUrl);
       if (!['http:', 'https:'].includes(parsedUrl.protocol)) {
         throw new Error('Invalid protocol');
       }
     } catch (_err) {
       return res.status(400).json({ error: 'Invalid image URL' });
     }
-    
+
     // Find the character
     const character = await Character.findByPk(characterId);
     if (!character) {
       return res.status(404).json({ error: 'Character not found' });
     }
-    
+
     // Determine file extension and generate unique filename
     const ext = getExtensionFromUrl(imageUrl);
     const filename = generateUniqueFilename('alt', ext);
-    
+
     // Download the image from URL
     console.log(`Downloading image from URL: ${imageUrl}`);
+    const { getFilePath } = require('../config/upload');
     await downloadImage(imageUrl, filename, 'characters');
-    
+    const downloadedPath = getFilePath('characters', filename);
+
+    // Check for duplicates (exclude current character)
+    let duplicateCheck = { action: 'accept', fingerprints: null };
+    if (!skipDuplicateCheck) {
+      duplicateCheck = await checkForDuplicates(downloadedPath, character.id);
+      const detectionMode = getDetectionMode();
+
+      if (duplicateCheck.action === 'reject') {
+        safeUnlink(downloadedPath);
+        return res.status(409).json({
+          error: duplicateCheck.reason,
+          duplicateType: duplicateCheck.isExactDuplicate ? 'exact' : 'similar',
+          existingCharacter: duplicateCheck.exactMatch || duplicateCheck.similarMatches[0]
+        });
+      }
+
+      // Log warnings for audit trail
+      if (duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag') {
+        await logDuplicateEvent('character.duplicate_warning', req.user.id, null, {
+          action: duplicateCheck.action,
+          reason: duplicateCheck.reason,
+          matches: duplicateCheck.similarMatches,
+          characterId: character.id,
+          detectionMode,
+          imageUpdate: true
+        }, req);
+      }
+    }
+
     // Save old image path to delete later
     const oldImage = character.image;
-    
-    // Update character with new image path
+
+    // Update character with new image path and fingerprints
     const newImagePath = getUrlPath('characters', filename);
     character.image = newImagePath;
+    if (duplicateCheck.fingerprints) {
+      character.sha256Hash = duplicateCheck.fingerprints.sha256;
+      character.dHash = duplicateCheck.fingerprints.dHash;
+      character.aHash = duplicateCheck.fingerprints.aHash;
+      character.duplicateWarning = duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag';
+    }
     await character.save();
-    
+
     // Reload to ensure we have the latest data
     await character.reload();
-    
+
     console.log(`Updated character ${character.id} image: ${oldImage} -> ${character.image}`);
-    
+
     // Delete old image if it was an uploaded file
     safeDeleteUpload(oldImage, 'characters');
-    
+
     console.log(`Admin (ID: ${req.user.id}) updated character ${character.id} (${character.name}) image from URL`);
-    
-    res.json({
+
+    const response = {
       message: 'Character image updated successfully',
       character
-    });
+    };
+
+    if (duplicateCheck.action === 'flag') {
+      response.warning = duplicateCheck.reason;
+      response.similarCharacters = duplicateCheck.similarMatches;
+    }
+
+    res.json(response);
   } catch (err) {
     console.error('Error updating character image from URL:', err);
     res.status(500).json({ error: err.message || 'Server error' });

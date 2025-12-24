@@ -21,6 +21,23 @@ const Character = sequelize.define('Character', {
   isR18: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  // Image fingerprinting fields for duplicate detection
+  sha256Hash: {
+    type: DataTypes.STRING(64),
+    allowNull: true
+  },
+  dHash: {
+    type: DataTypes.STRING(16),
+    allowNull: true
+  },
+  aHash: {
+    type: DataTypes.STRING(16),
+    allowNull: true
+  },
+  duplicateWarning: {
+    type: DataTypes.BOOLEAN,
+    defaultValue: false
   }
 });
 
