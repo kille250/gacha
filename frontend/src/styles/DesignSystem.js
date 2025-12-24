@@ -750,11 +750,11 @@ export const Grid = styled.div`
   display: grid;
   gap: ${props => props.gap || theme.spacing.lg};
   grid-template-columns: repeat(${props => props.columns || 1}, 1fr);
-  
+
   @media (min-width: ${theme.breakpoints.md}) {
     grid-template-columns: repeat(${props => props.columnsMd || props.columns || 2}, 1fr);
   }
-  
+
   @media (min-width: ${theme.breakpoints.lg}) {
     grid-template-columns: repeat(${props => props.columnsLg || props.columnsMd || props.columns || 3}, 1fr);
   }
@@ -772,6 +772,164 @@ export const Flex = styled.div`
 export const Spacer = styled.div`
   height: ${props => props.y || '0'};
   width: ${props => props.x || '0'};
+`;
+
+// ==================== LAYOUT PRIMITIVES ====================
+
+/**
+ * Stack - Vertical spacing layout primitive
+ * Use for vertically stacked content with consistent spacing
+ * @prop {string} gap - Spacing between items (default: theme.spacing.md)
+ * @prop {string} align - Cross-axis alignment (default: stretch)
+ */
+export const Stack = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${props => props.gap || theme.spacing.md};
+  align-items: ${props => props.align || 'stretch'};
+`;
+
+/**
+ * Cluster - Horizontal wrapping layout primitive
+ * Use for groups of elements that should wrap naturally
+ * @prop {string} gap - Spacing between items (default: theme.spacing.sm)
+ * @prop {string} justify - Main-axis alignment (default: flex-start)
+ */
+export const Cluster = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${props => props.gap || theme.spacing.sm};
+  align-items: center;
+  justify-content: ${props => props.justify || 'flex-start'};
+`;
+
+/**
+ * AutoGrid - Responsive auto-fit grid
+ * Automatically adjusts columns based on available space
+ * @prop {string} minWidth - Minimum item width (default: 280px)
+ * @prop {string} gap - Spacing between items (default: theme.spacing.lg)
+ */
+export const AutoGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(
+    auto-fit,
+    minmax(min(${props => props.minWidth || '280px'}, 100%), 1fr)
+  );
+  gap: ${props => props.gap || theme.spacing.lg};
+`;
+
+/**
+ * Center - Centers content both horizontally and vertically
+ * @prop {string} maxWidth - Maximum width of centered content
+ * @prop {boolean} intrinsic - If true, centers based on content width
+ */
+export const Center = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  ${props => props.maxWidth && `max-width: ${props.maxWidth};`}
+  ${props => props.intrinsic && 'width: fit-content;'}
+  margin-inline: auto;
+`;
+
+/**
+ * Sidebar - Layout with fixed sidebar and fluid main content
+ * Mobile: stacks vertically, Desktop: side-by-side
+ * @prop {string} sideWidth - Width of sidebar (default: 280px)
+ * @prop {string} gap - Gap between sidebar and content (default: theme.spacing.lg)
+ * @prop {boolean} reversed - If true, sidebar on right
+ */
+export const Sidebar = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${props => props.gap || theme.spacing.lg};
+
+  @media (min-width: ${theme.breakpoints.md}) {
+    flex-direction: ${props => props.reversed ? 'row-reverse' : 'row'};
+
+    > :first-child {
+      flex-basis: ${props => props.sideWidth || '280px'};
+      flex-shrink: 0;
+    }
+
+    > :last-child {
+      flex-grow: 1;
+      min-width: 0; /* Prevents overflow */
+    }
+  }
+`;
+
+/**
+ * Switcher - Switches between horizontal and vertical based on available space
+ * @prop {string} threshold - Width at which layout switches (default: 600px)
+ * @prop {string} gap - Gap between items
+ */
+export const Switcher = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${props => props.gap || theme.spacing.md};
+
+  > * {
+    flex-grow: 1;
+    flex-basis: calc((${props => props.threshold || '600px'} - 100%) * 999);
+  }
+`;
+
+/**
+ * Cover - Full-height layout with centered principal element
+ * Use for hero sections, centered content pages
+ * @prop {string} minHeight - Minimum height (default: 100vh)
+ */
+export const Cover = styled.div`
+  display: flex;
+  flex-direction: column;
+  min-height: ${props => props.minHeight || '100vh'};
+  padding: ${theme.spacing.lg};
+
+  > * {
+    margin-block: ${theme.spacing.lg};
+  }
+
+  > :first-child:not([data-cover-center]) {
+    margin-block-start: 0;
+  }
+
+  > :last-child:not([data-cover-center]) {
+    margin-block-end: 0;
+  }
+
+  > [data-cover-center] {
+    margin-block: auto;
+  }
+`;
+
+/**
+ * Reel - Horizontal scrolling container
+ * Use for carousels, horizontal scrolling lists
+ * @prop {string} gap - Gap between items (default: theme.spacing.md)
+ * @prop {boolean} noBar - Hide scrollbar
+ */
+export const Reel = styled.div`
+  display: flex;
+  gap: ${props => props.gap || theme.spacing.md};
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scroll-padding: ${theme.spacing.md};
+  -webkit-overflow-scrolling: touch;
+
+  ${props => props.noBar && `
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+  `}
+
+  > * {
+    scroll-snap-align: start;
+    flex-shrink: 0;
+  }
 `;
 
 // ==================== UTILITY FUNCTIONS ====================
