@@ -8,19 +8,19 @@
 import React, { memo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaExclamationTriangle } from 'react-icons/fa';
+import { FaExclamationTriangle, FaWifi } from 'react-icons/fa';
 import { theme } from '../../../styles/DesignSystem';
 import { UPLOAD_FLOW_STATES } from '../../../hooks/useUploadState';
 import { isEnabled, FEATURES, prefersReducedMotion } from '../../../utils/featureFlags';
 
 import {
   DropZone,
-  FileCard,
   BulkSettingsBar,
   UploadSummary,
   ValidationSummary,
   ProgressIndicator,
   AriaLiveRegion,
+  VirtualizedFilesGrid,
 } from '../index';
 
 const UploadContent = memo(({
@@ -38,6 +38,7 @@ const UploadContent = memo(({
   uploadStep,
   validationError,
   liveAnnouncement,
+  networkWarning,
   // Computed
   fileCount,
   isUploading,
@@ -66,6 +67,22 @@ const UploadContent = memo(({
     <Body>
       {/* Aria Live Region for announcements */}
       <AriaLiveRegion message={liveAnnouncement} />
+
+      {/* Network Warning Banner */}
+      <AnimatePresence>
+        {networkWarning && !isUploading && (
+          <NetworkWarning
+            initial={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
+            animate={reducedMotion ? { opacity: 1 } : { opacity: 1, height: 'auto' }}
+            exit={reducedMotion ? { opacity: 0 } : { opacity: 0, height: 0 }}
+            role="status"
+            aria-live="polite"
+          >
+            <FaWifi aria-hidden="true" />
+            <span>{networkWarning}</span>
+          </NetworkWarning>
+        )}
+      </AnimatePresence>
 
       {/* Validation Error */}
       <AnimatePresence>
@@ -134,7 +151,7 @@ const UploadContent = memo(({
         </DropZoneWrapper>
       )}
 
-      {/* Files Grid */}
+      {/* Files Grid - Uses virtualization for large batches */}
       {files.length > 0 && !isUploading && (
         <FilesSection>
           <FilesSectionHeader>
@@ -149,26 +166,18 @@ const UploadContent = memo(({
             )}
           </FilesSectionHeader>
 
-          <FilesGrid role="list" aria-label="Uploaded files">
-            <AnimatePresence>
-              {files.map((file, index) => (
-                <FileCard
-                  key={file.id}
-                  file={file}
-                  index={index}
-                  fileStatus={fileStatus[file.id]}
-                  fileValidation={fileValidation[file.id]}
-                  orderedRarities={orderedRarities}
-                  onUpdateMetadata={onUpdateMetadata}
-                  onRemove={onRemoveFile}
-                  onCopyToAll={onCopyToAll}
-                  onRegenerateName={onRegenerateName}
-                  onDismissWarning={onDismissWarning}
-                  onTouchField={onTouchField}
-                />
-              ))}
-            </AnimatePresence>
-          </FilesGrid>
+          <VirtualizedFilesGrid
+            files={files}
+            fileStatus={fileStatus}
+            fileValidation={fileValidation}
+            orderedRarities={orderedRarities}
+            onUpdateMetadata={onUpdateMetadata}
+            onRemoveFile={onRemoveFile}
+            onCopyToAll={onCopyToAll}
+            onRegenerateName={onRegenerateName}
+            onDismissWarning={onDismissWarning}
+            onTouchField={onTouchField}
+          />
         </FilesSection>
       )}
 
@@ -212,6 +221,27 @@ const Body = styled.div`
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.md};
     gap: ${theme.spacing.md};
+  }
+`;
+
+const NetworkWarning = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: rgba(255, 159, 10, 0.15);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  border-radius: ${theme.radius.lg};
+
+  svg {
+    color: ${theme.colors.warning};
+    flex-shrink: 0;
+  }
+
+  span {
+    flex: 1;
+    color: ${theme.colors.warning};
+    font-size: ${theme.fontSizes.sm};
   }
 `;
 
@@ -295,24 +325,6 @@ const WarningBadge = styled.div`
 
   svg {
     font-size: 10px;
-  }
-`;
-
-const FilesGrid = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: ${theme.spacing.md};
-
-  @media (min-width: 480px) {
-    grid-template-columns: repeat(2, 1fr);
-  }
-
-  @media (min-width: ${theme.breakpoints.lg}) {
-    grid-template-columns: repeat(3, 1fr);
-  }
-
-  @media (min-width: ${theme.breakpoints.xl}) {
-    grid-template-columns: repeat(4, 1fr);
   }
 `;
 

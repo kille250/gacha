@@ -6,9 +6,10 @@
  * - UploadContent: Main body content with file management
  * - UploadFooter: Action buttons and keyboard hints
  *
- * Uses extracted services:
- * - uploadService: Pure upload functions
- * - useUploadService: Hook wrapper for upload operations
+ * Uses extracted hooks:
+ * - useUploadController: Centralized state management
+ * - useUploadExecution: Upload execution logic
+ * - useNetworkStatus: Network connectivity monitoring
  *
  * Features:
  * - Centralized state management via useUploadController
@@ -16,12 +17,12 @@
  * - Reduced motion support
  * - Keyboard shortcuts
  * - Accessibility announcements
+ * - Network status awareness
  */
 import React, { useCallback, useRef, useEffect, useState, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { theme } from '../../styles/DesignSystem';
-import { getToken } from '../../utils/authStorage';
 import { useRarity } from '../../context/RarityContext';
 import { prefersReducedMotion, isEnabled, FEATURES } from '../../utils/featureFlags';
 
@@ -29,9 +30,8 @@ import { prefersReducedMotion, isEnabled, FEATURES } from '../../utils/featureFl
 import { UploadHeader, UploadFooter, UploadContent } from '../Upload';
 import { UndoToast, UPLOAD_STEPS } from '../Upload';
 import { useUploadController } from '../../hooks/useUploadController';
-import { uploadBatch, processBatchResult, createBatches } from '../../services/uploadService';
-import { FILE_STATUS } from '../../hooks/useUploadState';
-import { DUPLICATE_STATUS } from '../../utils/errorHandler';
+import { useUploadExecution } from '../../hooks/useUploadExecution';
+import { useNetworkStatus } from '../../hooks/useNetworkStatus';
 
 const MultiUploadModal = ({ show, onClose, onSuccess }) => {
   const { getOrderedRarities } = useRarity();
@@ -39,6 +39,10 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
   const modalRef = useRef(null);
   const previousFocusRef = useRef(null);
   const reducedMotion = prefersReducedMotion();
+
+  // Network status monitoring
+  const { isOnline, isSlowConnection, getStatusMessage } = useNetworkStatus();
+  const networkWarning = getStatusMessage();
 
   // Local UI state
   const [validationError, setValidationError] = useState(null);
@@ -170,9 +174,64 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
     clearUndoStack();
   }, [clearUndoStack]);
 
-  // Handle upload using extracted service
+  // Upload execution hook
+  const {
+    execute: executeUpload,
+    currentStep,
+  } = useUploadExecution({
+    onProgress: (current, total) => {
+      updateProgress(current, total);
+      setLiveAnnouncement(`Uploading batch ${current + 1} of ${total}...`);
+    },
+    onFileStatus: updateFileStatus,
+    onWarning: addWarning,
+    onComplete: (result) => {
+      setUploadStep(UPLOAD_STEPS.COMPLETE);
+      completeUpload(result);
+
+      if (result.totalErrors === 0) {
+        setLiveAnnouncement(`Upload complete! ${result.totalCreated} characters created successfully.`);
+      } else {
+        setLiveAnnouncement(`Upload complete with ${result.totalErrors} errors. ${result.totalCreated} characters created.`);
+      }
+
+      clearSuccessful();
+
+      if (onSuccess && result.totalCreated > 0) {
+        onSuccess(result);
+      }
+    },
+    onError: (errorMessage) => {
+      setUploadError(errorMessage);
+      setLiveAnnouncement(`Upload failed: ${errorMessage}`);
+    },
+  });
+
+  // Update upload step based on execution state
+  useEffect(() => {
+    if (currentStep) {
+      const stepMap = {
+        preparing: UPLOAD_STEPS.PREPARING,
+        uploading: UPLOAD_STEPS.UPLOADING,
+        finalizing: UPLOAD_STEPS.FINALIZING,
+        complete: UPLOAD_STEPS.COMPLETE,
+      };
+      if (stepMap[currentStep]) {
+        setUploadStep(stepMap[currentStep]);
+      }
+    }
+  }, [currentStep]);
+
+  // Handle upload using extracted hook
   const handleUpload = useCallback(async () => {
     if (files.length === 0) return;
+
+    // Check network status
+    if (!isOnline) {
+      setValidationError('You are offline. Please check your connection and try again.');
+      setLiveAnnouncement('Upload blocked: No network connection.');
+      return;
+    }
 
     // Clear previous validation error
     setValidationError(null);
@@ -190,142 +249,27 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
       return;
     }
 
+    // Warn about slow connection but allow upload
+    if (isSlowConnection) {
+      setLiveAnnouncement('Slow connection detected. Upload may take longer than usual.');
+    }
+
     startUpload();
     setUploadStep(UPLOAD_STEPS.PREPARING);
     setLiveAnnouncement(`Starting upload of ${files.length} files...`);
 
-    const token = getToken();
-    const batches = createBatches(files, 10);
-
-    let totalCreated = 0;
-    const allErrors = [];
-    const allWarnings = [];
-
     try {
-      setUploadStep(UPLOAD_STEPS.UPLOADING);
-
-      for (let i = 0; i < batches.length; i++) {
-        const batch = batches[i];
-        updateProgress(i, batches.length);
-        setLiveAnnouncement(`Uploading batch ${i + 1} of ${batches.length}...`);
-
-        try {
-          const result = await uploadBatch(batch, token);
-          const processed = processBatchResult(result, batch);
-
-          totalCreated += processed.created;
-
-          // Update file statuses
-          if (result.characters) {
-            result.characters.forEach((char, charIndex) => {
-              const fileData = batch[charIndex];
-              if (!fileData) return;
-
-              if (result.warning || char.duplicateWarning) {
-                updateFileStatus(fileData.id, FILE_STATUS.WARNING, {
-                  warning: {
-                    status: DUPLICATE_STATUS.POSSIBLE_DUPLICATE,
-                    explanation: result.warning || 'Possible duplicate detected',
-                    similarity: char.similarity,
-                    existingMatch: char.existingMatch,
-                  },
-                });
-              } else {
-                updateFileStatus(fileData.id, FILE_STATUS.ACCEPTED);
-              }
-            });
-          }
-
-          // Process errors
-          processed.errors.forEach((err) => {
-            const matchingFile = batch.find((f) => f.file.name === err.filename);
-            if (matchingFile) {
-              if (err.isDuplicate) {
-                updateFileStatus(matchingFile.id, FILE_STATUS.BLOCKED, {
-                  duplicate: {
-                    status: DUPLICATE_STATUS.CONFIRMED_DUPLICATE,
-                    explanation: err.error,
-                    existingMatch: { name: err.duplicateOf },
-                  },
-                });
-              } else {
-                updateFileStatus(matchingFile.id, FILE_STATUS.ERROR, {
-                  error: err.error,
-                });
-              }
-            }
-            allErrors.push(err);
-          });
-
-          // Collect warnings
-          processed.warnings.forEach((w) => {
-            addWarning(w);
-            allWarnings.push(w);
-          });
-        } catch (batchErr) {
-          batch.forEach((f) => {
-            if (batchErr.isDuplicate) {
-              updateFileStatus(f.id, FILE_STATUS.BLOCKED, {
-                duplicate: batchErr.duplicateInfo,
-              });
-            } else {
-              updateFileStatus(f.id, FILE_STATUS.ERROR, {
-                error: batchErr.message,
-              });
-            }
-            allErrors.push({
-              filename: f.file.name,
-              error: batchErr.message,
-              isDuplicate: batchErr.isDuplicate,
-            });
-          });
-        }
-      }
-
-      setUploadStep(UPLOAD_STEPS.FINALIZING);
-      updateProgress(batches.length, batches.length);
-
-      const finalResult = {
-        message: `Successfully created ${totalCreated} characters`,
-        errors: allErrors.length > 0 ? allErrors : undefined,
-        warnings: allWarnings.length > 0 ? allWarnings : undefined,
-        totalCreated,
-        totalWarnings: allWarnings.length,
-        totalErrors: allErrors.length,
-      };
-
-      setUploadStep(UPLOAD_STEPS.COMPLETE);
-      completeUpload(finalResult);
-
-      // Announce completion
-      if (allErrors.length === 0) {
-        setLiveAnnouncement(`Upload complete! ${totalCreated} characters created successfully.`);
-      } else {
-        setLiveAnnouncement(`Upload complete with ${allErrors.length} errors. ${totalCreated} characters created.`);
-      }
-
-      // Clear successfully uploaded files
-      clearSuccessful();
-
-      if (onSuccess && totalCreated > 0) {
-        onSuccess(finalResult);
-      }
+      await executeUpload(files);
     } catch (err) {
       console.error('Upload error:', err);
-      setUploadError(err.message);
-      setLiveAnnouncement(`Upload failed: ${err.message}`);
     }
   }, [
     files,
+    isOnline,
+    isSlowConnection,
     touchAllFields,
     startUpload,
-    updateProgress,
-    updateFileStatus,
-    addWarning,
-    completeUpload,
-    clearSuccessful,
-    setUploadError,
-    onSuccess,
+    executeUpload,
   ]);
 
   // Handle close
@@ -459,6 +403,7 @@ const MultiUploadModal = ({ show, onClose, onSuccess }) => {
             uploadStep={uploadStep}
             validationError={validationError}
             liveAnnouncement={liveAnnouncement}
+            networkWarning={networkWarning}
             fileCount={fileCount}
             isUploading={isUploading}
             isComplete={isComplete}

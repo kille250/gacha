@@ -258,23 +258,29 @@ const FieldActions = styled.div`
 const ActionButton = styled.button`
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   background: none;
   border: none;
   color: ${(props) => (props.$isMobile ? theme.colors.primary : theme.colors.textMuted)};
   cursor: pointer;
-  padding: 2px;
+  /* Minimum touch target 44x44 for WCAG compliance */
+  min-width: ${(props) => (props.$isMobile ? '44px' : '28px')};
+  min-height: ${(props) => (props.$isMobile ? '44px' : '28px')};
+  padding: ${(props) => (props.$isMobile ? theme.spacing.sm : '4px')};
   font-size: ${(props) => (props.$isMobile ? theme.fontSizes.xs : '10px')};
-  transition: color 0.2s ease;
+  transition: color 0.2s ease, background 0.2s ease;
+  border-radius: ${theme.radius.sm};
 
   &:hover:not(:disabled) {
     color: ${theme.colors.primary};
+    background: rgba(0, 113, 227, 0.1);
   }
 
   &:focus-visible {
     color: ${theme.colors.primary};
-    outline: 1px solid ${theme.colors.primary};
-    border-radius: 2px;
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
   }
 
   &:disabled {
@@ -283,7 +289,7 @@ const ActionButton = styled.button`
   }
 
   svg {
-    font-size: ${(props) => (props.$isMobile ? '12px' : '10px')};
+    font-size: ${(props) => (props.$isMobile ? '14px' : '12px')};
   }
 `;
 

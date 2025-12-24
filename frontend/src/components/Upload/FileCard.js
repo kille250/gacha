@@ -8,7 +8,7 @@
  * - Swipe to reveal actions on mobile
  * - Uses shared FileMetadata component
  */
-import React, { memo, useState, useCallback } from 'react';
+import React, { memo, useState, useCallback, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTrash, FaTimes, FaChevronDown } from 'react-icons/fa';
@@ -20,6 +20,7 @@ import DuplicateWarningBanner from '../UI/DuplicateWarningBanner';
 import { DUPLICATE_STATUS } from '../../utils/errorHandler';
 import { isEnabled, FEATURES, prefersReducedMotion } from '../../utils/featureFlags';
 import { useSwipeGesture } from '../../hooks/useSwipeGesture';
+import { useFocusTrap } from '../../hooks/useFocusManagement';
 import FileMetadata from './file-card/FileMetadata';
 import CopyConfirmDialog from './CopyConfirmDialog';
 
@@ -39,6 +40,20 @@ const FileCard = memo(({
   const [showMobileSheet, setShowMobileSheet] = useState(false);
   const [confirmCopyField, setConfirmCopyField] = useState(null);
   const [showSwipeActions, setShowSwipeActions] = useState(false);
+  const mobileSheetRef = useRef(null);
+
+  // Focus trap for mobile bottom sheet
+  const { containerRef: focusTrapRef, handleKeyDown: handleFocusTrapKeyDown } = useFocusTrap(showMobileSheet);
+
+  // Focus first element when sheet opens
+  useEffect(() => {
+    if (showMobileSheet && mobileSheetRef.current) {
+      const firstFocusable = mobileSheetRef.current.querySelector(
+        'button:not([disabled]), input:not([disabled]), select:not([disabled])'
+      );
+      setTimeout(() => firstFocusable?.focus(), 100);
+    }
+  }, [showMobileSheet]);
 
   const status = fileStatus?.status || FILE_STATUS.PENDING;
   const hasWarning = status === FILE_STATUS.WARNING;
@@ -244,14 +259,22 @@ const FileCard = memo(({
             onClick={handleCloseMobileSheet}
           >
             <MobileSheet
+              ref={(el) => {
+                mobileSheetRef.current = el;
+                if (focusTrapRef) focusTrapRef.current = el;
+              }}
               initial={{ y: '100%' }}
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 300 }}
               onClick={(e) => e.stopPropagation()}
+              onKeyDown={handleFocusTrapKeyDown}
+              role="dialog"
+              aria-modal="true"
+              aria-labelledby={`sheet-title-${file.id}`}
             >
               <SheetHeader>
-                <SheetTitle>Edit File {index + 1}</SheetTitle>
+                <SheetTitle id={`sheet-title-${file.id}`}>Edit File {index + 1}</SheetTitle>
                 <CloseSheetButton
                   onClick={handleCloseMobileSheet}
                   aria-label="Close"
@@ -407,18 +430,21 @@ const RemoveButton = styled.button`
   position: absolute;
   top: ${theme.spacing.sm};
   right: ${theme.spacing.sm};
-  width: 32px;
-  height: 32px;
+  width: 44px;
+  height: 44px;
   background: rgba(255, 59, 48, 0.9);
   border: none;
-  border-radius: ${theme.radius.sm};
+  border-radius: ${theme.radius.md};
   color: white;
   cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
   opacity: 0;
-  transition: opacity 0.2s ease;
+  transition: opacity 0.2s ease, background 0.2s ease;
+  /* Ensure minimum touch target size for WCAG compliance */
+  min-width: 44px;
+  min-height: 44px;
 
   ${CardContainer}:hover &,
   ${CardContainer}:focus-within & {
@@ -535,6 +561,8 @@ const MobileSheet = styled(motion.div)`
   width: 100%;
   max-height: 90vh;
   overflow-y: auto;
+  /* Safe area insets for iOS devices */
+  padding-bottom: env(safe-area-inset-bottom, 16px);
 `;
 
 const SheetHeader = styled.div`
