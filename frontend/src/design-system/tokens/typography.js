@@ -1,7 +1,8 @@
 /**
  * Typography Tokens
  *
- * Font families, sizes, weights, and line heights.
+ * Font families, sizes, weights, line heights, and letter-spacing.
+ * Follows Apple's typography guidelines for premium, readable text.
  */
 
 export const fonts = {
@@ -37,11 +38,29 @@ export const lineHeights = {
   relaxed: 1.625
 };
 
+/**
+ * Letter Spacing Scale
+ *
+ * - tight: Large display headings (48px+)
+ * - snug: Section headings (24-40px)
+ * - normal: Body text
+ * - wide: Small labels and captions
+ * - wider: All-caps text, badges
+ */
+export const letterSpacing = {
+  tight: '-0.03em',
+  snug: '-0.02em',
+  normal: '0',
+  wide: '0.01em',
+  wider: '0.02em'
+};
+
 export const typography = {
   fonts,
   fontSizes,
   fontWeights,
-  lineHeights
+  lineHeights,
+  letterSpacing
 };
 
 export default typography;

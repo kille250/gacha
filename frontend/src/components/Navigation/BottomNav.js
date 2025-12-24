@@ -40,15 +40,15 @@ const BottomNav = () => {
             $isActive={isActive}
             aria-current={isActive ? 'page' : undefined}
           >
+            {isActive && (
+              <ActiveBackground
+                layoutId="bottomNavActive"
+                initial={false}
+                transition={{ type: 'spring', stiffness: 500, damping: 35 }}
+              />
+            )}
             <NavIcon $isActive={isActive}>
               {item.icon}
-              {isActive && (
-                <ActiveIndicator
-                  layoutId="bottomNavIndicator"
-                  initial={false}
-                  transition={{ type: 'spring', stiffness: 500, damping: 30 }}
-                />
-              )}
             </NavIcon>
             <NavLabel $isActive={isActive}>{item.label}</NavLabel>
           </NavItem>
@@ -106,21 +106,23 @@ const NavIcon = styled.span`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 24px;
+  font-size: 22px;
   color: ${props => props.$isActive ? theme.colors.primary : theme.colors.textSecondary};
   position: relative;
-  transition: color ${theme.transitions.fast};
+  z-index: 1;
+  transition: color ${theme.transitions.fast}, transform ${theme.transitions.fast};
+
+  ${props => props.$isActive && `
+    transform: scale(1.1);
+  `}
 `;
 
-const ActiveIndicator = styled(motion.div)`
+const ActiveBackground = styled(motion.div)`
   position: absolute;
-  top: -4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: 4px;
-  height: 4px;
-  background: ${theme.colors.primary};
-  border-radius: 50%;
+  inset: 4px;
+  background: rgba(0, 113, 227, 0.12);
+  border-radius: ${theme.radius.lg};
+  z-index: 0;
 `;
 
 const NavLabel = styled.span`
@@ -133,6 +135,8 @@ const NavLabel = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   max-width: 72px;
+  position: relative;
+  z-index: 1;
 `;
 
 export default BottomNav;

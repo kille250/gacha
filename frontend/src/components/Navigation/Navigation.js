@@ -270,32 +270,25 @@ const NavLink = styled(Link)`
   color: ${props => props.$isActive ? theme.colors.text : theme.colors.textSecondary};
   text-decoration: none;
   font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  background: ${props => props.$isActive ? theme.colors.glass : 'transparent'};
+  font-weight: ${props => props.$isActive ? theme.fontWeights.semibold : theme.fontWeights.medium};
+  background: ${props => props.$isActive ? 'rgba(0, 113, 227, 0.12)' : 'transparent'};
   transition: all ${theme.transitions.fast};
   position: relative;
 
   ${props => props.$isActive && `
-    &::after {
-      content: '';
-      position: absolute;
-      bottom: -2px;
-      left: 50%;
-      transform: translateX(-50%);
-      width: 20px;
-      height: 2px;
-      background: ${theme.colors.primary};
-      border-radius: 1px;
-    }
+    color: ${theme.colors.primary};
   `}
 
   ${props => props.$isAdmin && `
     color: ${props.$isActive ? theme.colors.accent : theme.colors.accentSecondary};
+    background: ${props.$isActive ? 'rgba(88, 86, 214, 0.12)' : 'transparent'};
   `}
 
-  &:hover {
-    color: ${theme.colors.text};
-    background: ${theme.colors.glass};
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      color: ${theme.colors.text};
+      background: ${theme.colors.glass};
+    }
   }
 
   &:focus-visible {

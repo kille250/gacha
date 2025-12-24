@@ -91,7 +91,6 @@ const LoginPage = () => {
         <GradientOrb className="orb-1" />
         <GradientOrb className="orb-2" />
         <GradientOrb className="orb-3" />
-        <GridOverlay />
       </BackgroundEffects>
       
       <ContentWrapper
@@ -221,16 +220,10 @@ const LoginPage = () => {
   );
 };
 
-// Animations
+// Animations - calmer, more refined motion
 const float = keyframes`
   0%, 100% { transform: translate(0, 0) scale(1); }
-  33% { transform: translate(30px, -50px) scale(1.1); }
-  66% { transform: translate(-20px, 20px) scale(0.9); }
-`;
-
-const pulse = keyframes`
-  0%, 100% { opacity: 0.4; }
-  50% { opacity: 0.8; }
+  50% { transform: translate(15px, -25px) scale(1.02); }
 `;
 
 // Styled Components
@@ -256,46 +249,40 @@ const BackgroundEffects = styled.div`
 const GradientOrb = styled.div`
   position: absolute;
   border-radius: 50%;
-  filter: blur(80px);
-  animation: ${float} 20s infinite ease-in-out;
-  
+  filter: blur(60px);
+  animation: ${float} 40s infinite ease-in-out;
+
   &.orb-1 {
-    width: 600px;
-    height: 600px;
-    background: radial-gradient(circle, rgba(0, 113, 227, 0.3), transparent 70%);
-    top: -20%;
+    width: 500px;
+    height: 500px;
+    background: radial-gradient(circle, rgba(0, 113, 227, 0.25), transparent 70%);
+    top: -15%;
     left: -10%;
     animation-delay: 0s;
   }
-  
+
   &.orb-2 {
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(88, 86, 214, 0.25), transparent 70%);
-    bottom: -15%;
+    width: 450px;
+    height: 450px;
+    background: radial-gradient(circle, rgba(88, 86, 214, 0.2), transparent 70%);
+    bottom: -10%;
     right: -10%;
-    animation-delay: -7s;
+    animation-delay: -10s;
   }
-  
+
   &.orb-3 {
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(175, 82, 222, 0.2), transparent 70%);
+    width: 350px;
+    height: 350px;
+    background: radial-gradient(circle, rgba(175, 82, 222, 0.15), transparent 70%);
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    animation-delay: -14s;
+    animation-delay: -20s;
   }
-`;
 
-const GridOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  background-image: 
-    linear-gradient(rgba(255, 255, 255, 0.02) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(255, 255, 255, 0.02) 1px, transparent 1px);
-  background-size: 60px 60px;
-  animation: ${pulse} 8s infinite ease-in-out;
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 const ContentWrapper = styled(motion.div)`

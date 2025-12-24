@@ -236,8 +236,9 @@ const Button = memo(forwardRef(function Button({
       $fullWidth={fullWidth}
       $iconOnly={iconOnly}
       disabled={isDisabled}
-      whileHover={!isDisabled ? { translateY: -1 } : undefined}
-      whileTap={!isDisabled ? { scale: 0.98 } : undefined}
+      whileHover={!isDisabled ? { translateY: -2 } : undefined}
+      whileTap={!isDisabled ? { scale: 0.96, translateY: 0 } : undefined}
+      transition={{ type: 'spring', stiffness: 400, damping: 25 }}
       aria-busy={loading}
       {...props}
     >

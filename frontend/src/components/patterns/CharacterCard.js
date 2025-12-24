@@ -21,11 +21,13 @@ const Card = styled(motion.div)`
   border: 1px solid ${props => props.$isOwned
     ? theme.colors.surfaceBorder
     : 'rgba(255, 255, 255, 0.03)'};
-  transition: all ${theme.transitions.fast};
+  transition: border-color ${theme.transitions.fast}, box-shadow 0.3s ease;
 
-  &:hover {
-    border-color: ${props => props.$color};
-    box-shadow: ${props => props.$glow};
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      border-color: ${props => props.$color};
+      box-shadow: ${props => props.$glow}, 0 16px 32px -8px rgba(0, 0, 0, 0.4);
+    }
   }
 
   &:focus-visible {
@@ -46,11 +48,13 @@ const CardImage = styled.img`
   height: 100%;
   object-fit: cover;
   filter: ${props => props.$isOwned ? 'none' : 'grayscale(70%) brightness(0.6)'};
-  transition: all ${theme.transitions.slow};
+  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter ${theme.transitions.slow};
 
-  ${Card}:hover & {
-    transform: scale(1.05);
-    filter: ${props => props.$isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
+  @media (hover: hover) and (pointer: fine) {
+    ${Card}:hover & {
+      transform: scale(1.03);
+      filter: ${props => props.$isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
+    }
   }
 `;
 
@@ -234,8 +238,9 @@ const CharacterCard = memo(({
       onClick={onClick}
       onKeyDown={handleKeyDown}
       variants={motionVariants.staggerItem}
-      whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.02 }}
-      whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
+      whileHover={prefersReducedMotion ? undefined : { y: -8 }}
+      whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
+      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
       tabIndex={0}
       role="button"
       aria-label={accessibleLabel}

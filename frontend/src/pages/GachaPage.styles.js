@@ -71,13 +71,15 @@ export const BannersSection = styled.section`
 export const HeroBanner = styled(motion.div)`
   position: relative;
   width: 100%;
-  height: 400px;
-  border-radius: 24px;
+  aspect-ratio: 16 / 9;
+  max-height: 450px;
+  border-radius: ${theme.radius.xl};
   overflow: hidden;
   cursor: pointer;
 
   @media (max-width: ${theme.breakpoints.md}) {
-    height: 320px;
+    aspect-ratio: 4 / 3;
+    max-height: 360px;
   }
 `;
 
@@ -122,13 +124,13 @@ export const HeroBadge = styled.div`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, #ff3b5c, #ff1744);
+  background: linear-gradient(135deg, ${theme.colors.featured}, ${theme.colors.error});
   padding: 8px 14px;
   border-radius: 6px;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: ${theme.fontWeights.bold};
   text-transform: uppercase;
-  letter-spacing: 0.5px;
+  letter-spacing: ${theme.letterSpacing.wider};
   width: fit-content;
   margin-bottom: 16px;
 `;
@@ -151,23 +153,23 @@ export const HeroMeta = styled.div`
 `;
 
 export const HeroSeries = styled.span`
-  color: #ff6b6b;
-  font-weight: 600;
+  color: ${theme.colors.accent};
+  font-weight: ${theme.fontWeights.semibold};
 `;
 
 export const HeroDivider = styled.span`
-  color: rgba(255, 255, 255, 0.3);
+  color: ${theme.colors.textMuted};
 `;
 
 export const HeroStats = styled.span`
-  color: rgba(255, 255, 255, 0.7);
+  color: ${theme.colors.textSecondary};
 `;
 
 export const HeroDescription = styled.p`
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
   margin: 0 0 20px;
-  line-height: 1.5;
+  line-height: ${theme.lineHeights.normal};
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -177,22 +179,23 @@ export const HeroDescription = styled.p`
 export const HeroCTA = styled(motion.button)`
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: ${theme.spacing.sm};
   background: rgba(255, 255, 255, 0.95);
-  color: #1a1a2e;
+  color: ${theme.colors.background};
   border: none;
   padding: 14px 28px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
   width: fit-content;
-  transition: all 0.2s ease;
+  transition: all ${theme.transitions.fast};
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {
       background: white;
-      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+      box-shadow: ${theme.shadows.lg};
+      transform: translateY(-2px);
     }
   }
 
@@ -437,12 +440,12 @@ export const NetflixCardMeta = styled.div`
 `;
 
 export const NetflixSeries = styled.span`
-  color: #ff6b6b;
-  font-weight: 500;
+  color: ${theme.colors.accent};
+  font-weight: ${theme.fontWeights.medium};
 `;
 
 export const NetflixCharCount = styled.span`
-  color: rgba(255, 255, 255, 0.5);
+  color: ${theme.colors.textTertiary};
 `;
 
 export const NetflixCardFooter = styled.div`
@@ -452,18 +455,18 @@ export const NetflixCardFooter = styled.div`
 `;
 
 export const NetflixCost = styled.span`
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.textSecondary};
 `;
 
 export const NetflixBoost = styled.span`
-  font-size: 11px;
-  font-weight: 600;
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.15);
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.success};
+  background: rgba(52, 199, 89, 0.15);
   padding: 4px 8px;
-  border-radius: 4px;
+  border-radius: ${theme.radius.sm};
 `;
 
 // ==================== STANDARD GACHA CTA ====================
