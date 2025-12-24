@@ -8,11 +8,28 @@
  * - SHA-256: Exact byte-for-byte duplicate detection
  * - dHash (Difference Hash): Perceptual similarity detection
  * - aHash (Average Hash): Color-based similarity detection
+ *
+ * For video files, this service routes to videoFingerprintService.
  */
 
 const sharp = require('sharp');
 const crypto = require('crypto');
 const fs = require('fs').promises;
+const path = require('path');
+
+// Video extensions that should be routed to video fingerprint service
+const VIDEO_EXTENSIONS = ['.mp4', '.webm', '.mov', '.avi', '.mkv'];
+
+/**
+ * Check if a file is a video based on extension
+ * @param {string} filePath - Path to file
+ * @returns {boolean}
+ */
+function isVideoFile(filePath) {
+  if (!filePath || typeof filePath !== 'string') return false;
+  const ext = path.extname(filePath).toLowerCase();
+  return VIDEO_EXTENSIONS.includes(ext);
+}
 
 /**
  * Compute SHA-256 hash of image buffer
@@ -145,13 +162,32 @@ function distanceToSimilarity(distance) {
 }
 
 /**
- * Generate all fingerprints for an image
+ * Generate all fingerprints for an image or video
  *
  * @param {string|Buffer} input - File path or image buffer
- * @returns {Promise<{sha256: string, dHash: string, aHash: string}|null>}
+ * @returns {Promise<{sha256: string, dHash: string, aHash: string, mediaType?: string, frameHashes?: Array}|null>}
  */
 async function generateFingerprints(input) {
   try {
+    // Check if input is a video file path (not a buffer)
+    if (!Buffer.isBuffer(input) && isVideoFile(input)) {
+      // Route to video fingerprint service
+      try {
+        const { generateVideoFingerprints } = require('./videoFingerprintService');
+        const videoFingerprints = await generateVideoFingerprints(input);
+        if (videoFingerprints) {
+          return videoFingerprints;
+        }
+        // If video processing fails, log and return null
+        console.warn('Video fingerprint generation failed, file may be corrupted:', input);
+        return null;
+      } catch (videoErr) {
+        // If ffmpeg is not available or other error, log warning
+        console.warn('Video fingerprint service unavailable:', videoErr.message);
+        return null;
+      }
+    }
+
     // Load image buffer
     let buffer;
     if (Buffer.isBuffer(input)) {
@@ -160,11 +196,13 @@ async function generateFingerprints(input) {
       buffer = await fs.readFile(input);
     }
 
-    // For videos/GIFs, extract first frame
+    // For animated GIFs/WebP, extract first frame
     const metadata = await sharp(buffer).metadata();
+    let mediaType = 'image';
     if (metadata.pages && metadata.pages > 1) {
       // Animated image - extract first frame
       buffer = await sharp(buffer, { page: 0 }).toBuffer();
+      mediaType = 'animated_image';
     }
 
     // Compute all hashes in parallel
@@ -174,7 +212,7 @@ async function generateFingerprints(input) {
       computeAHash(buffer)
     ]);
 
-    return { sha256, dHash, aHash };
+    return { sha256, dHash, aHash, mediaType };
   } catch (err) {
     console.error('Fingerprint generation failed:', err.message);
     return null;
@@ -203,5 +241,7 @@ module.exports = {
   computeAHash,
   hammingDistance,
   distanceToSimilarity,
-  isProcessableImage
+  isProcessableImage,
+  isVideoFile,
+  VIDEO_EXTENSIONS
 };

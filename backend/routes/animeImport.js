@@ -192,16 +192,24 @@ router.post('/import', auth, adminAuth, async (req, res) => {
         }
 
         // Create the character with fingerprints
+        const fp = duplicateCheck.fingerprints;
         const newCharacter = await Character.create({
           name: char.name,
           image: imagePath,
           series: series.trim(),
           rarity: char.rarity || rarity,
           isR18: false,
-          sha256Hash: duplicateCheck.fingerprints?.sha256 || null,
-          dHash: duplicateCheck.fingerprints?.dHash || null,
-          aHash: duplicateCheck.fingerprints?.aHash || null,
-          duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag'
+          sha256Hash: fp?.sha256 || null,
+          dHash: fp?.dHash || null,
+          aHash: fp?.aHash || null,
+          duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag',
+          // Video fingerprint fields (for Danbooru animated content)
+          mediaType: fp?.mediaType || 'image',
+          frameHashes: fp?.frameHashes || null,
+          representativeDHash: fp?.representativeDHash || null,
+          representativeAHash: fp?.representativeAHash || null,
+          duration: fp?.duration || null,
+          frameCount: fp?.frameCount || null
         });
 
         createdCharacters.push(newCharacter);

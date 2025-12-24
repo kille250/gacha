@@ -38,6 +38,48 @@ const Character = sequelize.define('Character', {
   duplicateWarning: {
     type: DataTypes.BOOLEAN,
     defaultValue: false
+  },
+  // Video fingerprinting fields
+  mediaType: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    defaultValue: 'image'
+  },
+  frameHashes: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    get() {
+      const value = this.getDataValue('frameHashes');
+      if (!value) return null;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    },
+    set(value) {
+      if (value === null || value === undefined) {
+        this.setDataValue('frameHashes', null);
+      } else {
+        this.setDataValue('frameHashes', JSON.stringify(value));
+      }
+    }
+  },
+  representativeDHash: {
+    type: DataTypes.STRING(16),
+    allowNull: true
+  },
+  representativeAHash: {
+    type: DataTypes.STRING(16),
+    allowNull: true
+  },
+  duration: {
+    type: DataTypes.FLOAT,
+    allowNull: true
+  },
+  frameCount: {
+    type: DataTypes.INTEGER,
+    allowNull: true
   }
 });
 

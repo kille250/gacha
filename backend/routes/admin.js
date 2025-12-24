@@ -305,16 +305,24 @@ router.post('/characters/upload', auth, adminAuth, upload.single('image'), async
 
     // Save the relative path to the image or video file
     const imagePath = getUrlPath('characters', req.file.filename);
+    const fp = duplicateCheck.fingerprints;
     const character = await Character.create({
       name,
       image: imagePath,
       series,
       rarity,
       isR18: isR18 === 'true' || isR18 === true,
-      sha256Hash: duplicateCheck.fingerprints?.sha256 || null,
-      dHash: duplicateCheck.fingerprints?.dHash || null,
-      aHash: duplicateCheck.fingerprints?.aHash || null,
-      duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag'
+      sha256Hash: fp?.sha256 || null,
+      dHash: fp?.dHash || null,
+      aHash: fp?.aHash || null,
+      duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag',
+      // Video fingerprint fields
+      mediaType: fp?.mediaType || 'image',
+      frameHashes: fp?.frameHashes || null,
+      representativeDHash: fp?.representativeDHash || null,
+      representativeAHash: fp?.representativeAHash || null,
+      duration: fp?.duration || null,
+      frameCount: fp?.frameCount || null
     });
 
     const response = {
@@ -489,11 +497,19 @@ router.put('/characters/:id/image', auth, adminAuth, upload.single('image'), asy
     // Update image path and fingerprints
     const newImagePath = getUrlPath('characters', req.file.filename);
     character.image = newImagePath;
-    if (duplicateCheck.fingerprints) {
-      character.sha256Hash = duplicateCheck.fingerprints.sha256;
-      character.dHash = duplicateCheck.fingerprints.dHash;
-      character.aHash = duplicateCheck.fingerprints.aHash;
+    const fp = duplicateCheck.fingerprints;
+    if (fp) {
+      character.sha256Hash = fp.sha256;
+      character.dHash = fp.dHash;
+      character.aHash = fp.aHash;
       character.duplicateWarning = duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag';
+      // Video fingerprint fields
+      character.mediaType = fp.mediaType || 'image';
+      character.frameHashes = fp.frameHashes || null;
+      character.representativeDHash = fp.representativeDHash || null;
+      character.representativeAHash = fp.representativeAHash || null;
+      character.duration = fp.duration || null;
+      character.frameCount = fp.frameCount || null;
     }
     await character.save();
 
@@ -598,16 +614,24 @@ router.post('/characters/multi-upload', auth, adminAuth, (req, res, next) => {
         }
 
         const imagePath = getUrlPath('characters', file.filename);
+        const fp = duplicateCheck.fingerprints;
         const character = await Character.create({
           name: meta.name,
           image: imagePath,
           series: meta.series,
           rarity: meta.rarity || 'common',
           isR18: meta.isR18 === true || meta.isR18 === 'true',
-          sha256Hash: duplicateCheck.fingerprints?.sha256 || null,
-          dHash: duplicateCheck.fingerprints?.dHash || null,
-          aHash: duplicateCheck.fingerprints?.aHash || null,
-          duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag'
+          sha256Hash: fp?.sha256 || null,
+          dHash: fp?.dHash || null,
+          aHash: fp?.aHash || null,
+          duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag',
+          // Video fingerprint fields
+          mediaType: fp?.mediaType || 'image',
+          frameHashes: fp?.frameHashes || null,
+          representativeDHash: fp?.representativeDHash || null,
+          representativeAHash: fp?.representativeAHash || null,
+          duration: fp?.duration || null,
+          frameCount: fp?.frameCount || null
         });
         createdCharacters.push(character);
       } catch (err) {
@@ -706,11 +730,19 @@ router.put('/characters/:id/image-url', auth, adminAuth, async (req, res) => {
     // Update character with new image path and fingerprints
     const newImagePath = getUrlPath('characters', filename);
     character.image = newImagePath;
-    if (duplicateCheck.fingerprints) {
-      character.sha256Hash = duplicateCheck.fingerprints.sha256;
-      character.dHash = duplicateCheck.fingerprints.dHash;
-      character.aHash = duplicateCheck.fingerprints.aHash;
+    const fp = duplicateCheck.fingerprints;
+    if (fp) {
+      character.sha256Hash = fp.sha256;
+      character.dHash = fp.dHash;
+      character.aHash = fp.aHash;
       character.duplicateWarning = duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag';
+      // Video fingerprint fields
+      character.mediaType = fp.mediaType || 'image';
+      character.frameHashes = fp.frameHashes || null;
+      character.representativeDHash = fp.representativeDHash || null;
+      character.representativeAHash = fp.representativeAHash || null;
+      character.duration = fp.duration || null;
+      character.frameCount = fp.frameCount || null;
     }
     await character.save();
 
