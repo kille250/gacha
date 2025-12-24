@@ -4,9 +4,11 @@ import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { RarityProvider } from './context/RarityContext';
 import { RecaptchaProvider } from './context/RecaptchaContext';
+import { ToastProvider } from './context/ToastContext';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { theme } from './styles/DesignSystem';
 import { initVisibilityHandler, enableCacheDebugging } from './cache';
+import { ErrorBoundary } from './components/ui';
 
 // i18n
 import './i18n';
@@ -203,113 +205,117 @@ const GlobalStyle = createGlobalStyle`
 function App() {
   // Wrap with GoogleOAuthProvider only if client ID is configured
   const content = (
-    <RecaptchaProvider siteKey={RECAPTCHA_SITE_KEY}>
-      <AuthProvider>
-        <RarityProvider>
-        <Router>
-        <GlobalStyle />
-        {/* Global CAPTCHA handler - listens for CAPTCHA_REQUIRED events from API */}
-        <GlobalCaptchaHandler />
-        <AppContainer>
-          {/* Skip to content link for accessibility - allows keyboard users to skip navigation */}
-          <a href="#main-content" className="skip-to-content">
-            Skip to main content
-          </a>
-          <Suspense fallback={<PageLoader />}>
-            <Routes>
-              <Route path="/login" element={<LoginPage />} />
-              <Route path="/register" element={<RegisterPage />} />
-              <Route path="/coupons" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Navigation />
-                    <PageContent>
-                      <CouponPage />
-                    </PageContent>
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route
-                path="/admin"
-                element={
-                  <ProtectedRoute>
-                    <MainLayout>
-                      <Navigation />
-                      <PageContent>
-                        <AdminPage />
-                      </PageContent>
-                    </MainLayout>
-                  </ProtectedRoute>
-                }
-              />
-              <Route path="/gacha" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Navigation />
-                    <PageContent>
-                      <GachaPage />
-                    </PageContent>
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/collection" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Navigation />
-                    <PageContent>
-                      <CollectionPage />
-                    </PageContent>
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              {/* Roll Page - Full screen without navigation */}
-              <Route path="/roll" element={
-                <ProtectedRoute>
-                  <RollPage />
-                </ProtectedRoute>
-              } />
-              {/* Banner Page - Full screen without navigation */}
-              <Route path="/banner/:bannerId" element={
-                <ProtectedRoute>
-                  <BannerPage />
-                </ProtectedRoute>
-              } />
-              {/* Fishing Minigame - Full screen immersive experience */}
-              <Route path="/fishing" element={
-                <ProtectedRoute>
-                  <FishingPage />
-                </ProtectedRoute>
-              } />
-              {/* Dojo - Idle Training Game */}
-              <Route path="/dojo" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Navigation />
-                    <PageContent>
-                      <DojoPage />
-                    </PageContent>
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              {/* Settings Page */}
-              <Route path="/settings" element={
-                <ProtectedRoute>
-                  <MainLayout>
-                    <Navigation />
-                    <PageContent>
-                      <SettingsPage />
-                    </PageContent>
-                  </MainLayout>
-                </ProtectedRoute>
-              } />
-              <Route path="/" element={<HomeRedirect />} />
-            </Routes>
-          </Suspense>
-        </AppContainer>
-        </Router>
-        </RarityProvider>
-      </AuthProvider>
-    </RecaptchaProvider>
+    <ErrorBoundary fullScreen>
+      <RecaptchaProvider siteKey={RECAPTCHA_SITE_KEY}>
+        <AuthProvider>
+          <RarityProvider>
+            <ToastProvider>
+              <Router>
+                <GlobalStyle />
+                {/* Global CAPTCHA handler - listens for CAPTCHA_REQUIRED events from API */}
+                <GlobalCaptchaHandler />
+                <AppContainer>
+                  {/* Skip to content link for accessibility - allows keyboard users to skip navigation */}
+                  <a href="#main-content" className="skip-to-content">
+                    Skip to main content
+                  </a>
+                  <Suspense fallback={<PageLoader />}>
+                    <Routes>
+                      <Route path="/login" element={<LoginPage />} />
+                      <Route path="/register" element={<RegisterPage />} />
+                      <Route path="/coupons" element={
+                        <ProtectedRoute>
+                          <MainLayout>
+                            <Navigation />
+                            <PageContent>
+                              <CouponPage />
+                            </PageContent>
+                          </MainLayout>
+                        </ProtectedRoute>
+                      } />
+                      <Route
+                        path="/admin"
+                        element={
+                          <ProtectedRoute>
+                            <MainLayout>
+                              <Navigation />
+                              <PageContent>
+                                <AdminPage />
+                              </PageContent>
+                            </MainLayout>
+                          </ProtectedRoute>
+                        }
+                      />
+                      <Route path="/gacha" element={
+                        <ProtectedRoute>
+                          <MainLayout>
+                            <Navigation />
+                            <PageContent>
+                              <GachaPage />
+                            </PageContent>
+                          </MainLayout>
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/collection" element={
+                        <ProtectedRoute>
+                          <MainLayout>
+                            <Navigation />
+                            <PageContent>
+                              <CollectionPage />
+                            </PageContent>
+                          </MainLayout>
+                        </ProtectedRoute>
+                      } />
+                      {/* Roll Page - Full screen without navigation */}
+                      <Route path="/roll" element={
+                        <ProtectedRoute>
+                          <RollPage />
+                        </ProtectedRoute>
+                      } />
+                      {/* Banner Page - Full screen without navigation */}
+                      <Route path="/banner/:bannerId" element={
+                        <ProtectedRoute>
+                          <BannerPage />
+                        </ProtectedRoute>
+                      } />
+                      {/* Fishing Minigame - Full screen immersive experience */}
+                      <Route path="/fishing" element={
+                        <ProtectedRoute>
+                          <FishingPage />
+                        </ProtectedRoute>
+                      } />
+                      {/* Dojo - Idle Training Game */}
+                      <Route path="/dojo" element={
+                        <ProtectedRoute>
+                          <MainLayout>
+                            <Navigation />
+                            <PageContent>
+                              <DojoPage />
+                            </PageContent>
+                          </MainLayout>
+                        </ProtectedRoute>
+                      } />
+                      {/* Settings Page */}
+                      <Route path="/settings" element={
+                        <ProtectedRoute>
+                          <MainLayout>
+                            <Navigation />
+                            <PageContent>
+                              <SettingsPage />
+                            </PageContent>
+                          </MainLayout>
+                        </ProtectedRoute>
+                      } />
+                      <Route path="/" element={<HomeRedirect />} />
+                    </Routes>
+                  </Suspense>
+                </AppContainer>
+              </Router>
+            </ToastProvider>
+          </RarityProvider>
+        </AuthProvider>
+      </RecaptchaProvider>
+    </ErrorBoundary>
   );
 
   // Wrap with GoogleOAuthProvider if client ID is available
