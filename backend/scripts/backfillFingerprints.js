@@ -2,8 +2,8 @@
 /**
  * Backfill Fingerprints Script
  *
- * Generates image fingerprints (SHA-256, dHash, aHash) for existing characters
- * that don't have them yet.
+ * Generates media fingerprints (SHA-256, dHash, aHash, and video frame hashes)
+ * for existing characters that don't have them yet.
  *
  * Usage:
  *   node scripts/backfillFingerprints.js [--batch-size=100] [--dry-run]
@@ -12,6 +12,9 @@
  *   --batch-size=N  Process N characters at a time (default: 100)
  *   --dry-run       Show what would be done without making changes
  *   --force         Regenerate fingerprints even for characters that have them
+ *
+ * Note: This script handles both images and videos. For video-specific
+ * operations, use backfillVideoFingerprints.js instead.
  */
 
 const path = require('path');
@@ -22,7 +25,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 
 const { Character } = require('../models');
 const { getFilePath } = require('../config/upload');
-const { generateFingerprints, isProcessableImage } = require('../services/imageFingerprintService');
+const { generateFingerprints, isProcessableImage, isVideoFile } = require('../services/imageFingerprintService');
 
 // Parse command line arguments
 const args = process.argv.slice(2);
@@ -93,7 +96,11 @@ async function backfillFingerprints() {
       }
 
       const filename = path.basename(char.image);
-      const filePath = getFilePath('characters', filename);
+      // Try characters directory first, then videos directory
+      let filePath = getFilePath('characters', filename);
+      if (!fs.existsSync(filePath)) {
+        filePath = getFilePath('videos', filename);
+      }
 
       // Check if file exists
       if (!fs.existsSync(filePath)) {
@@ -102,12 +109,15 @@ async function backfillFingerprints() {
         continue;
       }
 
-      // Check if image is processable
-      const canProcess = await isProcessableImage(filePath);
-      if (!canProcess) {
-        console.log(`${progress} SKIP: ${char.id} "${char.name}" - Cannot process image`);
-        skipped++;
-        continue;
+      // Check if file is processable (images need sharp, videos need ffmpeg)
+      const isVideo = isVideoFile(filePath);
+      if (!isVideo) {
+        const canProcess = await isProcessableImage(filePath);
+        if (!canProcess) {
+          console.log(`${progress} SKIP: ${char.id} "${char.name}" - Cannot process image`);
+          skipped++;
+          continue;
+        }
       }
 
       try {
@@ -121,16 +131,35 @@ async function backfillFingerprints() {
         }
 
         if (options.dryRun) {
-          console.log(`${progress} DRY-RUN: ${char.id} "${char.name}" -> sha256=${fingerprints.sha256.substring(0, 8)}..., dHash=${fingerprints.dHash}`);
+          const mediaInfo = fingerprints.mediaType === 'video'
+            ? `[video] frames=${fingerprints.frameCount}, duration=${fingerprints.duration?.toFixed(1)}s`
+            : `[${fingerprints.mediaType || 'image'}] dHash=${fingerprints.dHash}`;
+          console.log(`${progress} DRY-RUN: ${char.id} "${char.name}" -> ${mediaInfo}`);
           succeeded++;
         } else {
-          // Update character
-          await char.update({
+          // Build update object with all fingerprint fields
+          const updateData = {
             sha256Hash: fingerprints.sha256,
             dHash: fingerprints.dHash,
-            aHash: fingerprints.aHash
-          });
-          console.log(`${progress} OK: ${char.id} "${char.name}" -> dHash=${fingerprints.dHash}`);
+            aHash: fingerprints.aHash,
+            mediaType: fingerprints.mediaType || 'image'
+          };
+
+          // Add video-specific fields if present
+          if (fingerprints.mediaType === 'video') {
+            updateData.frameHashes = fingerprints.frameHashes;
+            updateData.representativeDHash = fingerprints.representativeDHash;
+            updateData.representativeAHash = fingerprints.representativeAHash;
+            updateData.duration = fingerprints.duration;
+            updateData.frameCount = fingerprints.frameCount;
+          }
+
+          await char.update(updateData);
+
+          const mediaInfo = fingerprints.mediaType === 'video'
+            ? `[video] frames=${fingerprints.frameCount}`
+            : `[${fingerprints.mediaType || 'image'}] dHash=${fingerprints.dHash}`;
+          console.log(`${progress} OK: ${char.id} "${char.name}" -> ${mediaInfo}`);
           succeeded++;
         }
       } catch (err) {
