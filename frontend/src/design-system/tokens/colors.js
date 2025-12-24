@@ -36,7 +36,7 @@ export const colors = {
   text: '#ffffff',
   textSecondary: 'rgba(255, 255, 255, 0.7)',
   textTertiary: 'rgba(255, 255, 255, 0.6)',
-  textMuted: 'rgba(255, 255, 255, 0.4)',
+  textMuted: 'rgba(255, 255, 255, 0.5)', // Increased from 0.4 for better contrast (WCAG AA)
 
   // Special
   glass: 'rgba(255, 255, 255, 0.05)',

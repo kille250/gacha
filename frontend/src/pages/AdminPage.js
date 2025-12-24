@@ -28,6 +28,7 @@ import MultiUploadModal from '../components/UI/MultiUploadModal';
 import AnimeImportModal from '../components/UI/AnimeImportModal';
 import EditCharacterModal from '../components/Admin/EditCharacterModal';
 import { AuthContext } from '../context/AuthContext';
+import { useToast } from '../context/ToastContext';
 import { Navigate } from 'react-router-dom';
 import { arrayMove } from '@dnd-kit/sortable';
 import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons, AdminRarities, AdminSecurity } from '../components/Admin';
@@ -36,20 +37,28 @@ import { theme, PageWrapper, Container, Spinner } from '../design-system';
 const AdminPage = () => {
   const { t } = useTranslation();
   const { user, refreshUser } = useContext(AuthContext);
-  
+  const toast = useToast();
+
   // Tab state
   const [activeTab, setActiveTab] = useState('dashboard');
-  
+
   // Data states
   const [users, setUsers] = useState([]);
   const [characters, setCharacters] = useState([]);
   const [banners, setBanners] = useState([]);
   const [coupons, setCoupons] = useState([]);
-  
+
   // UI states
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [successMessage, setSuccessMessage] = useState(null);
+
+  // Toast helper functions for backwards compatibility
+  const showSuccess = useCallback((message) => {
+    toast.success(message);
+  }, [toast]);
+
+  const showError = useCallback((message) => {
+    toast.error(message);
+  }, [toast]);
   
   // Modal states
   const [isAddingBanner, setIsAddingBanner] = useState(false);
@@ -72,7 +81,6 @@ const AdminPage = () => {
   
   // Coin form
   const [coinForm, setCoinForm] = useState({ userId: '', amount: 100 });
-  const [coinMessage, setCoinMessage] = useState(null);
   
   // API stats
   const [apiStats, setApiStats] = useState({ totalFishCaught: 0 });
@@ -99,32 +107,17 @@ const AdminPage = () => {
       setApiStats(data.stats || { totalFishCaught: 0 });
     } catch (err) {
       console.error('Dashboard fetch error:', err);
-      setError(err.response?.data?.error || t('admin.failedLoadDashboard'));
+      showError(err.response?.data?.error || t('admin.failedLoadDashboard'));
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [t, showError]);
 
   useEffect(() => {
     if (user?.isAdmin) {
       fetchAllData();
     }
   }, [user?.isAdmin, fetchAllData]);
-
-  // Auto-clear messages
-  useEffect(() => {
-    if (successMessage) {
-      const timer = setTimeout(() => setSuccessMessage(null), theme.timing.successMessageDismiss);
-      return () => clearTimeout(timer);
-    }
-  }, [successMessage]);
-
-  useEffect(() => {
-    if (error) {
-      const timer = setTimeout(() => setError(null), theme.timing.errorMessageDismiss);
-      return () => clearTimeout(timer);
-    }
-  }, [error]);
 
   // Visibility change handler - refresh admin data when tab becomes visible after being hidden
   // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
@@ -165,7 +158,7 @@ const AdminPage = () => {
   const addCharacterWithImage = async (e) => {
     // Note: e.preventDefault() is now called by AdminCharacters
     if (!selectedFile) {
-      setError(t('admin.selectImage'));
+      showError(t('admin.selectImage'));
       throw new Error(t('admin.selectImage'));
     }
     try {
@@ -179,7 +172,7 @@ const AdminPage = () => {
       // Use centralized action helper for consistent cache invalidation
       await addCharacterAction(formData);
 
-      setSuccessMessage(t('admin.characterAdded'));
+      showSuccess(t('admin.characterAdded'));
       fetchAllData();
       setNewCharacter({ name: '', series: '', rarity: 'common', isR18: false });
       setSelectedFile(null);
@@ -190,7 +183,7 @@ const AdminPage = () => {
         throw err;
       }
       // Other errors - show generic message
-      setError(err.response?.data?.error || t('admin.failedAddCharacter'));
+      showError(err.response?.data?.error || t('admin.failedAddCharacter'));
       throw err;
     }
   };
@@ -208,9 +201,9 @@ const AdminPage = () => {
   const handleEditCharacterSuccess = useCallback((message) => {
     // Cache invalidation handled by adminActions
     invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_EDIT);
-    setSuccessMessage(message);
+    showSuccess(message);
     fetchAllData();
-  }, [fetchAllData]);
+  }, [fetchAllData, showSuccess]);
 
   const handleDeleteCharacter = async (characterId) => {
     if (!window.confirm(t('admin.confirmDeleteCharacter'))) return;
@@ -218,10 +211,10 @@ const AdminPage = () => {
     try {
       // Use centralized action helper for consistent cache invalidation
       await deleteCharacterAction(characterId);
-      setSuccessMessage(t('admin.characterDeleted'));
+      showSuccess(t('admin.characterDeleted'));
       fetchAllData();
     } catch (err) {
-      setError(err.response?.data?.error || t('admin.failedDeleteCharacter'));
+      showError(err.response?.data?.error || t('admin.failedDeleteCharacter'));
     }
   };
 
@@ -235,11 +228,11 @@ const AdminPage = () => {
     try {
       // Use centralized action helper for consistent cache invalidation
       const result = await addCoinsAction(coinForm, refreshUser, user?.id);
-      setCoinMessage(result.message);
+      showSuccess(result.message);
       fetchAllData();
       setCoinForm({ userId: '', amount: 100 });
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to add coins');
+      showError(err.response?.data?.error || 'Failed to add coins');
     }
   };
 
@@ -248,10 +241,10 @@ const AdminPage = () => {
     try {
       // Use centralized action helper for consistent cache invalidation
       const result = await toggleAutofishAction(userId, enabled);
-      setSuccessMessage(result.message);
+      showSuccess(result.message);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, autofishEnabled: enabled } : u));
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to toggle autofishing');
+      showError(err.response?.data?.error || 'Failed to toggle autofishing');
     }
   };
 
@@ -259,10 +252,10 @@ const AdminPage = () => {
     try {
       // Use centralized action helper for consistent cache invalidation
       const result = await toggleR18Action(userId, enabled);
-      setSuccessMessage(result.message);
+      showSuccess(result.message);
       setUsers(prev => prev.map(u => u.id === userId ? { ...u, allowR18: enabled } : u));
     } catch (err) {
-      setError(err.response?.data?.error || 'Failed to toggle R18 access');
+      showError(err.response?.data?.error || 'Failed to toggle R18 access');
     }
   };
 
@@ -272,10 +265,10 @@ const AdminPage = () => {
       // Use centralized action helper for consistent cache invalidation
       await addBannerAction(formData);
       fetchAllData();
-      setSuccessMessage(t('admin.bannerAdded'));
+      showSuccess(t('admin.bannerAdded'));
       setIsAddingBanner(false);
     } catch (err) {
-      setError(err.response?.data?.error || t('admin.failedAddBanner'));
+      showError(err.response?.data?.error || t('admin.failedAddBanner'));
     }
   };
 
@@ -284,10 +277,10 @@ const AdminPage = () => {
       // Use centralized action helper for consistent cache invalidation
       await editBannerAction(editingBanner.id, formData);
       fetchAllData();
-      setSuccessMessage(t('admin.bannerUpdated'));
+      showSuccess(t('admin.bannerUpdated'));
       setIsEditingBanner(false);
     } catch (err) {
-      setError(err.response?.data?.error || t('admin.failedUpdateBanner'));
+      showError(err.response?.data?.error || t('admin.failedUpdateBanner'));
     }
   };
 
@@ -297,9 +290,9 @@ const AdminPage = () => {
       // Use centralized action helper for consistent cache invalidation
       await removeBannerAction(bannerId);
       fetchAllData();
-      setSuccessMessage(t('admin.bannerDeleted'));
+      showSuccess(t('admin.bannerDeleted'));
     } catch (err) {
-      setError(err.response?.data?.error || t('admin.failedDeleteBanner'));
+      showError(err.response?.data?.error || t('admin.failedDeleteBanner'));
     }
   };
 
@@ -310,10 +303,10 @@ const AdminPage = () => {
     try {
       // Use centralized action helper for consistent cache invalidation
       await toggleBannerFeaturedAction(banner.id, newFeaturedStatus);
-      setSuccessMessage(`${banner.name} ${newFeaturedStatus ? t('admin.markedAsFeatured') : t('admin.unmarkedAsFeatured')}`);
+      showSuccess(`${banner.name} ${newFeaturedStatus ? t('admin.markedAsFeatured') : t('admin.unmarkedAsFeatured')}`);
     } catch (err) {
       setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, featured: !newFeaturedStatus } : b));
-      setError(err.response?.data?.error || t('admin.failedUpdateBanner'));
+      showError(err.response?.data?.error || t('admin.failedUpdateBanner'));
     }
   };
 
@@ -328,10 +321,10 @@ const AdminPage = () => {
       try {
         // Use centralized action helper for consistent cache invalidation
         await updateBannerOrderAction(newBanners.map(b => b.id));
-        setSuccessMessage(t('admin.bannerOrderUpdated'));
+        showSuccess(t('admin.bannerOrderUpdated'));
       } catch (err) {
         setBanners(banners);
-        setError(err.response?.data?.error || t('admin.failedUpdateBannerOrder'));
+        showError(err.response?.data?.error || t('admin.failedUpdateBannerOrder'));
       }
     }
   };
@@ -342,10 +335,10 @@ const AdminPage = () => {
       // Use centralized action helper for consistent cache invalidation
       await addCouponAction(formData);
       fetchAllData();
-      setSuccessMessage(t('admin.couponCreated'));
+      showSuccess(t('admin.couponCreated'));
       setIsAddingCoupon(false);
     } catch (err) {
-      setError(err.response?.data?.error || t('admin.failedCreateCoupon'));
+      showError(err.response?.data?.error || t('admin.failedCreateCoupon'));
     }
   };
 
@@ -354,10 +347,10 @@ const AdminPage = () => {
       // Use centralized action helper for consistent cache invalidation
       await editCouponAction(editingCoupon.id, formData);
       fetchAllData();
-      setSuccessMessage(t('admin.couponUpdated'));
+      showSuccess(t('admin.couponUpdated'));
       setIsEditingCoupon(false);
     } catch (err) {
-      setError(err.response?.data?.error || t('admin.failedUpdateCoupon'));
+      showError(err.response?.data?.error || t('admin.failedUpdateCoupon'));
     }
   };
 
@@ -367,9 +360,9 @@ const AdminPage = () => {
       // Use centralized action helper for consistent cache invalidation
       await removeCouponAction(couponId);
       fetchAllData();
-      setSuccessMessage(t('admin.couponDeleted'));
+      showSuccess(t('admin.couponDeleted'));
     } catch (err) {
-      setError(err.response?.data?.error || t('admin.failedDeleteCoupon'));
+      showError(err.response?.data?.error || t('admin.failedDeleteCoupon'));
     }
   };
 
@@ -419,32 +412,6 @@ const AdminPage = () => {
       <AdminTabs activeTab={activeTab} onTabChange={setActiveTab} />
       
       <Container>
-        {/* Notifications */}
-        <AnimatePresence>
-          {error && (
-            <Notification 
-              $variant="error" 
-              initial={{ opacity: 0, y: -20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <span>{error}</span>
-              <NotificationClose onClick={() => setError(null)}>×</NotificationClose>
-            </Notification>
-          )}
-          {successMessage && (
-            <Notification 
-              $variant="success" 
-              initial={{ opacity: 0, y: -20 }} 
-              animate={{ opacity: 1, y: 0 }} 
-              exit={{ opacity: 0, y: -20 }}
-            >
-              <span>{successMessage}</span>
-              <NotificationClose onClick={() => setSuccessMessage(null)}>×</NotificationClose>
-            </Notification>
-          )}
-        </AnimatePresence>
-        
         {/* Loading State */}
         {loading ? (
           <LoadingContainer>
@@ -469,8 +436,7 @@ const AdminPage = () => {
                     onAddCoins={handleAddCoins}
                     onToggleAutofish={handleToggleAutofish}
                     onToggleR18={handleToggleR18}
-                    coinMessage={coinMessage}
-                    onSecurityAction={setSuccessMessage}
+                    onSecurityAction={showSuccess}
                   />
                 </TabPanel>
               )}
@@ -527,7 +493,7 @@ const AdminPage = () => {
               
               {activeTab === 'security' && (
                 <TabPanel key="security">
-                  <AdminSecurity onSuccess={setSuccessMessage} />
+                  <AdminSecurity onSuccess={showSuccess} />
                 </TabPanel>
               )}
             </AnimatePresence>
@@ -565,12 +531,12 @@ const AdminPage = () => {
       <MultiUploadModal 
         show={isMultiUploadOpen} 
         onClose={() => setIsMultiUploadOpen(false)} 
-        onSuccess={(result) => { handleBulkUploadSuccess(() => { setSuccessMessage(result.message); fetchAllData(); }, result); }} 
+        onSuccess={(result) => { handleBulkUploadSuccess(() => { showSuccess(result.message); fetchAllData(); }, result); }} 
       />
       <AnimeImportModal 
         show={isAnimeImportOpen} 
         onClose={() => setIsAnimeImportOpen(false)} 
-        onSuccess={(result) => { handleAnimeImportSuccess(() => { setSuccessMessage(result.message); fetchAllData(); }, result); }} 
+        onSuccess={(result) => { handleAnimeImportSuccess(() => { showSuccess(result.message); fetchAllData(); }, result); }} 
       />
 
       {/* Edit Character Modal */}
@@ -579,7 +545,7 @@ const AdminPage = () => {
         character={editingCharacter}
         onClose={handleEditCharacterClose}
         onSuccess={handleEditCharacterSuccess}
-        onError={setError}
+        onError={showError}
         getImageUrl={getImageUrl}
       />
     </StyledPageWrapper>
@@ -628,32 +594,6 @@ const HeaderSubtitle = styled.p`
   color: ${theme.colors.textSecondary};
   margin: ${theme.spacing.sm} 0 0;
   font-size: ${theme.fontSizes.base};
-`;
-
-const Notification = styled(motion.div)`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  border-radius: ${theme.radius.lg};
-  margin-bottom: ${theme.spacing.lg};
-  background: ${props => props.$variant === 'error' ? 'rgba(255, 59, 48, 0.15)' : 'rgba(52, 199, 89, 0.15)'};
-  border: 1px solid ${props => props.$variant === 'error' ? 'rgba(255, 59, 48, 0.3)' : 'rgba(52, 199, 89, 0.3)'};
-  color: ${props => props.$variant === 'error' ? theme.colors.error : theme.colors.success};
-  font-weight: ${theme.fontWeights.medium};
-`;
-
-const NotificationClose = styled.button`
-  background: none;
-  border: none;
-  color: inherit;
-  font-size: 24px;
-  cursor: pointer;
-  padding: 0;
-  line-height: 1;
-  opacity: 0.7;
-  
-  &:hover { opacity: 1; }
 `;
 
 const LoadingContainer = styled.div`

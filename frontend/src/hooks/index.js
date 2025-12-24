@@ -114,3 +114,12 @@ export { useDuplicateCheck } from './useDuplicateCheck';
 
 // Video visibility (performance optimization)
 export { useVideoVisibility, useLazyVideo } from './useVideoVisibility';
+
+// Form handling
+export { useForm } from './useForm';
+
+// Toast feedback
+export { useToastFeedback } from './useToastFeedback';
+
+// User mutations (centralized user state updates)
+export { useUserMutations } from './useUserMutations';

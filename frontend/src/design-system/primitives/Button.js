@@ -24,9 +24,12 @@ const buttonVariants = {
     color: white;
     box-shadow: 0 4px 14px rgba(0, 113, 227, 0.4);
 
-    &:hover:not(:disabled) {
-      background: ${theme.colors.primaryHover};
-      box-shadow: 0 6px 20px rgba(0, 113, 227, 0.5);
+    /* Only apply hover effects on devices that support hover */
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        background: ${theme.colors.primaryHover};
+        box-shadow: 0 6px 20px rgba(0, 113, 227, 0.5);
+      }
     }
 
     &:active:not(:disabled) {
@@ -38,16 +41,20 @@ const buttonVariants = {
     color: ${theme.colors.text};
     border: 1px solid ${theme.colors.surfaceBorder};
 
-    &:hover:not(:disabled) {
-      background: ${theme.colors.surfaceHover};
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        background: ${theme.colors.surfaceHover};
+      }
     }
   `,
   ghost: css`
     background: transparent;
     color: ${theme.colors.primary};
 
-    &:hover:not(:disabled) {
-      background: rgba(0, 113, 227, 0.1);
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        background: rgba(0, 113, 227, 0.1);
+      }
     }
   `,
   danger: css`
@@ -55,9 +62,11 @@ const buttonVariants = {
     color: white;
     box-shadow: 0 4px 14px rgba(255, 59, 48, 0.4);
 
-    &:hover:not(:disabled) {
-      background: #ff453a;
-      box-shadow: 0 6px 20px rgba(255, 59, 48, 0.5);
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        background: #ff453a;
+        box-shadow: 0 6px 20px rgba(255, 59, 48, 0.5);
+      }
     }
   `,
   success: css`
@@ -65,8 +74,10 @@ const buttonVariants = {
     color: white;
     box-shadow: 0 4px 14px rgba(52, 199, 89, 0.4);
 
-    &:hover:not(:disabled) {
-      background: #30d158;
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        background: #30d158;
+      }
     }
   `,
   warning: css`
@@ -74,8 +85,10 @@ const buttonVariants = {
     color: white;
     box-shadow: 0 4px 14px rgba(255, 159, 10, 0.4);
 
-    &:hover:not(:disabled) {
-      background: #ffb340;
+    @media (hover: hover) and (pointer: fine) {
+      &:hover:not(:disabled) {
+        background: #ffb340;
+      }
     }
   `
 };

@@ -86,7 +86,18 @@ export {
   LoadingState,
   ErrorState,
   EmptyState,
-  Alert
+  Alert,
+  // Skeleton loaders
+  Skeleton,
+  SkeletonBase,
+  SkeletonAvatar,
+  SkeletonText,
+  SkeletonCard,
+  SkeletonBanner,
+  SkeletonHero,
+  SkeletonRow,
+  SkeletonGrid,
+  SkeletonStats,
 } from './feedback';
 
 // Overlays

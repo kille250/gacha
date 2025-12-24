@@ -201,9 +201,16 @@ export const HeroCTA = styled(motion.button)`
   width: fit-content;
   transition: all 0.2s ease;
 
-  &:hover {
-    background: white;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: white;
+      box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
   }
 `;
 
@@ -237,9 +244,16 @@ export const FeaturedNavArrow = styled.button`
   font-size: 28px;
   transition: all 0.2s ease;
 
-  &:hover {
-    background: rgba(0, 0, 0, 0.8);
-    transform: translateY(-50%) scale(1.1);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: rgba(0, 0, 0, 0.8);
+      transform: translateY(-50%) scale(1.1);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
   }
 
   @media (max-width: ${theme.breakpoints.md}) {
@@ -266,9 +280,28 @@ export const FeaturedDot = styled.button`
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
+  /* Ensure minimum touch target size */
+  min-width: 44px;
+  min-height: 44px;
+  padding: 17px 0;
+  margin: -17px 0;
+  background-clip: content-box;
 
-  &:hover {
-    background: ${props => props.$active ? 'white' : 'rgba(255, 255, 255, 0.6)'};
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: ${props => props.$active ? 'white' : 'rgba(255, 255, 255, 0.6)'};
+    }
+    /* Reset padding on desktop where hover is available */
+    min-width: unset;
+    min-height: unset;
+    padding: 0;
+    margin: 0;
+    background-clip: border-box;
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
   }
 `;
 
@@ -300,8 +333,8 @@ export const CarouselNav = styled.div`
 `;
 
 export const NavButton = styled.button`
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -313,9 +346,16 @@ export const NavButton = styled.button`
   transition: all 0.2s ease;
   font-size: 24px;
 
-  &:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.2);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: rgba(255, 255, 255, 0.15);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
   }
 `;
 
@@ -349,8 +389,16 @@ export const NetflixCardInner = styled(motion.div)`
   border: 1px solid rgba(255, 255, 255, 0.08);
   transition: box-shadow 0.3s ease;
 
-  ${NetflixBannerCard}:hover & {
+  @media (hover: hover) and (pointer: fine) {
+    ${NetflixBannerCard}:hover & {
+      box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6);
+    }
+  }
+
+  ${NetflixBannerCard}:focus-visible & {
     box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6);
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
   }
 `;
 
@@ -366,8 +414,10 @@ export const NetflixBannerImage = styled.img`
   object-fit: cover;
   transition: transform 0.4s ease;
 
-  ${NetflixBannerCard}:hover & {
-    transform: scale(1.05);
+  @media (hover: hover) and (pointer: fine) {
+    ${NetflixBannerCard}:hover & {
+      transform: scale(1.05);
+    }
   }
 `;
 
@@ -489,8 +539,15 @@ export const CTAButton = styled(motion.button)`
   cursor: pointer;
   white-space: nowrap;
 
-  &:hover {
-    box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
   }
 `;
 

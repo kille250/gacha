@@ -5,6 +5,7 @@
  * Use for all authenticated pages that need navigation.
  *
  * Features:
+ * - Skip link for keyboard accessibility
  * - Top navigation bar (desktop + hamburger menu for mobile)
  * - Bottom navigation bar (mobile only, thumb-friendly)
  * - Safe area padding for notched devices
@@ -12,7 +13,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import { theme } from '../../../design-system';
+import { theme, SkipLink } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
 
@@ -51,6 +52,7 @@ const PageContent = styled.main.attrs({
 const MainLayout = ({ children, hideBottomNav = false }) => {
   return (
     <LayoutContainer>
+      <SkipLink href="#main-content">Skip to main content</SkipLink>
       <Navigation />
       <PageContent>
         {children}

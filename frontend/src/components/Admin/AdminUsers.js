@@ -25,11 +25,10 @@ import {
   Input,
   Select,
   PrimaryButton,
-  SuccessMessage,
 } from './AdminStyles';
 import UserSecurityModal from './UserSecurityModal';
 
-const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAutofish, onToggleR18, coinMessage, onSecurityAction }) => {
+const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAutofish, onToggleR18, onSecurityAction }) => {
   const { t } = useTranslation();
   const [searchQuery, setSearchQuery] = useState('');
   const [showCoinModal, setShowCoinModal] = useState(false);
@@ -231,7 +230,6 @@ const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAut
                     <FaCoins /> {t('admin.addCoins')}
                   </CoinSubmitButton>
                 </form>
-                {coinMessage && <SuccessMessage>{coinMessage}</SuccessMessage>}
               </ModalBody>
             </ModalContent>
           </ModalOverlay>

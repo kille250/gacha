@@ -81,16 +81,20 @@ const Navigation = () => {
         <DesktopNav>
           {navGroups.map((group, groupIndex) => (
             <NavGroup key={group.id}>
-              {group.items.map(item => (
-                <NavLink
-                  key={item.path}
-                  to={item.path}
-                  $isActive={location.pathname === item.path}
-                >
-                  <NavIcon>{item.icon}</NavIcon>
-                  <span>{item.label}</span>
-                </NavLink>
-              ))}
+              {group.items.map(item => {
+                const isActive = location.pathname === item.path;
+                return (
+                  <NavLink
+                    key={item.path}
+                    to={item.path}
+                    $isActive={isActive}
+                    aria-current={isActive ? 'page' : undefined}
+                  >
+                    <NavIcon>{item.icon}</NavIcon>
+                    <span>{item.label}</span>
+                  </NavLink>
+                );
+              })}
               {groupIndex < navGroups.length - 1 && <NavDivider />}
             </NavGroup>
           ))}
@@ -103,6 +107,7 @@ const Navigation = () => {
                 to="/admin"
                 $isActive={location.pathname === '/admin'}
                 $isAdmin
+                aria-current={location.pathname === '/admin' ? 'page' : undefined}
               >
                 <NavIcon><MdAdminPanelSettings /></NavIcon>
                 <span>{t('nav.admin')}</span>

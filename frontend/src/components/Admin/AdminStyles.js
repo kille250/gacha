@@ -1,10 +1,21 @@
 /**
  * Shared styled components for Admin pages
  * Centralizes common UI patterns to reduce duplication
+ *
+ * NOTE: This file is being migrated to use the design system.
+ * Modal components are now re-exported from the design system.
+ * Admin-specific customizations are kept here.
  */
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme } from '../../design-system';
+import {
+  theme,
+  ModalOverlay as DSModalOverlay,
+  ModalContent as DSModalContent,
+  ModalHeader as DSModalHeader,
+  ModalBody as DSModalBody,
+  ModalFooter as DSModalFooter,
+} from '../../design-system';
 
 // ============================================
 // CONTAINER COMPONENTS
@@ -23,7 +34,7 @@ export const HeaderRow = styled.div`
   flex-direction: column;
   gap: ${theme.spacing.md};
   margin-bottom: ${theme.spacing.lg};
-  
+
   @media (min-width: ${theme.breakpoints.md}) {
     flex-direction: row;
     justify-content: space-between;
@@ -39,7 +50,7 @@ export const SectionTitle = styled.h2`
   font-weight: ${theme.fontWeights.bold};
   margin: 0;
   color: ${theme.colors.text};
-  
+
   svg { color: ${props => props.$iconColor || theme.colors.primary}; }
 `;
 
@@ -72,7 +83,7 @@ export const SearchWrapper = styled.div`
   border-radius: ${theme.radius.lg};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   min-width: 200px;
-  
+
   svg { color: ${theme.colors.textMuted}; font-size: 14px; }
 `;
 
@@ -83,7 +94,7 @@ export const SearchInput = styled.input`
   font-size: ${theme.fontSizes.sm};
   flex: 1;
   outline: none;
-  
+
   &::placeholder { color: ${theme.colors.textMuted}; }
 `;
 
@@ -99,62 +110,59 @@ export const ItemsPerPageSelect = styled.select`
 
 // ============================================
 // MODAL COMPONENTS
+// Re-exported from design system with Admin customizations
 // ============================================
 
-export const ModalOverlay = styled(motion.div)`
-  position: fixed;
-  inset: 0;
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(8px);
-  display: flex;
-  align-items: center;
-  justify-content: center;
+// Re-export design system modal components for backwards compatibility
+export const ModalOverlay = styled(DSModalOverlay)`
   z-index: 10000;
-  padding: ${theme.spacing.md};
 `;
 
-export const ModalContent = styled(motion.div)`
-  background: ${theme.colors.backgroundSecondary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.xl};
+export const ModalContent = styled(DSModalContent)`
   width: 100%;
   max-width: ${props => props.$maxWidth || '500px'};
-  max-height: 90vh;
-  overflow-y: auto;
 `;
 
-export const ModalHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: ${theme.spacing.lg};
-  border-bottom: 1px solid ${theme.colors.surfaceBorder};
-`;
+export const ModalHeader = DSModalHeader;
+export const ModalBody = DSModalBody;
+export const ModalFooter = DSModalFooter;
 
+// Admin-specific: Title with icon color support
 export const ModalTitle = styled.h3`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
   margin: 0;
   font-size: ${theme.fontSizes.lg};
-  
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+
   svg { color: ${props => props.$iconColor || theme.colors.primary}; }
 `;
 
-export const ModalBody = styled.div`
-  padding: ${theme.spacing.lg};
-`;
-
+// Admin-specific: Simple close button (design system uses IconButton)
 export const CloseButton = styled.button`
   background: none;
   border: none;
   color: ${theme.colors.textSecondary};
   font-size: 24px;
   cursor: pointer;
-  padding: 0;
+  padding: ${theme.spacing.xs};
   line-height: 1;
-  
-  &:hover { color: ${theme.colors.text}; }
+  border-radius: ${theme.radius.sm};
+  transition: all ${theme.transitions.fast};
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      color: ${theme.colors.text};
+      background: ${theme.colors.glass};
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
+  }
 `;
 
 // ============================================
