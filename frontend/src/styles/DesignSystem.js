@@ -46,8 +46,8 @@ export const theme = {
     // Text colors
     text: '#ffffff',
     textSecondary: 'rgba(255, 255, 255, 0.7)',
-    textTertiary: 'rgba(255, 255, 255, 0.5)',
-    textMuted: 'rgba(255, 255, 255, 0.3)',
+    textTertiary: 'rgba(255, 255, 255, 0.6)', // Improved contrast for WCAG AA
+    textMuted: 'rgba(255, 255, 255, 0.4)',
     
     // Special
     glass: 'rgba(255, 255, 255, 0.05)',
@@ -163,7 +163,11 @@ export const theme = {
     md: '768px',
     lg: '1024px',
     xl: '1280px',
-    '2xl': '1536px'
+    '2xl': '1536px',
+    // Semantic aliases for easier usage
+    mobile: '640px',
+    tablet: '1024px',
+    desktop: '1280px',
   },
   
   // Timing constants (in milliseconds)

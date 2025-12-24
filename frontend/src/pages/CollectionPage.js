@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaSearch, FaFilter, FaTimes, FaArrowUp } from 'react-icons/fa';
@@ -9,13 +9,14 @@ import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 
 // Components
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
+import { LoadingState, EmptyState as EmptyStateComponent } from '../components/UI/feedback';
 
 // Hooks & Context
 import { useCollection } from '../hooks';
 import { useRarity } from '../context/RarityContext';
 
 // Design System
-import { Container, Text, Spinner, motionVariants } from '../styles/DesignSystem';
+import { Container, motionVariants } from '../styles/DesignSystem';
 
 // Extracted styles
 import {
@@ -57,11 +58,6 @@ import {
   LegendItem,
   LegendIcon,
   ErrorMessage,
-  LoadingContainer,
-  EmptyState,
-  EmptyIcon,
-  EmptyTitle,
-  EmptyText,
   CharacterGrid,
   CharacterCard,
   CardImageWrapper,
@@ -112,18 +108,46 @@ const CollectionPage = () => {
     isUpgradingAll,
   } = useCollection();
 
-  const getImagePath = (imageSrc) => {
+  const getImagePath = useCallback((imageSrc) => {
     if (!imageSrc) return PLACEHOLDER_IMAGE;
     return getAssetUrl(imageSrc);
-  };
+  }, []);
 
-  const handleSearchChange = (e) => {
+  const handleSearchChange = useCallback((e) => {
     setSearch(e.target.value);
-  };
+  }, [setSearch]);
 
-  const handleItemsPerPageChange = (e) => {
+  const handleItemsPerPageChange = useCallback((e) => {
     setPerPage(Number(e.target.value));
-  };
+  }, [setPerPage]);
+
+  const handleClearSearch = useCallback(() => {
+    setSearch('');
+  }, [setSearch]);
+
+  const handleToggleFilters = useCallback(() => {
+    setShowFilters(prev => !prev);
+  }, []);
+
+  const handleImageError = useCallback((e) => {
+    if (!e.target.src.includes('placeholder.com')) {
+      e.target.src = 'https://via.placeholder.com/200?text=No+Image';
+    }
+  }, []);
+
+  // Loading state using shared component
+  if (isLoading) {
+    return (
+      <StyledPageWrapper>
+        <Container>
+          <LoadingState
+            message={t('collection.loadingCollection')}
+            fullPage
+          />
+        </Container>
+      </StyledPageWrapper>
+    );
+  }
 
   return (
     <StyledPageWrapper>
@@ -136,33 +160,39 @@ const CollectionPage = () => {
           </HeaderContent>
 
           {/* Progress Stats */}
-          <StatsCard>
+          <StatsCard role="region" aria-label={t('collection.stats') || 'Collection statistics'}>
             <StatsRow>
               <StatItem>
                 <StatValue>{stats.owned}</StatValue>
                 <StatLabel>{t('collection.owned')}</StatLabel>
               </StatItem>
-              <StatDivider />
+              <StatDivider aria-hidden="true" />
               <StatItem>
                 <StatValue>{stats.total}</StatValue>
                 <StatLabel>{t('collection.total')}</StatLabel>
               </StatItem>
-              <StatDivider />
+              <StatDivider aria-hidden="true" />
               <StatItem>
                 <StatValue>{stats.completionPercentage}%</StatValue>
                 <StatLabel>{t('collection.complete')}</StatLabel>
               </StatItem>
             </StatsRow>
-            <ProgressBar>
+            <ProgressBar
+              role="progressbar"
+              aria-valuenow={stats.completionPercentage}
+              aria-valuemin={0}
+              aria-valuemax={100}
+              aria-label={`${stats.completionPercentage}% complete`}
+            >
               <ProgressFill style={{ width: `${stats.completionPercentage}%` }} />
             </ProgressBar>
           </StatsCard>
         </HeaderSection>
 
         {/* Search & Filter Bar */}
-        <ControlsBar>
+        <ControlsBar role="search">
           <SearchWrapper>
-            <SearchIcon><FaSearch /></SearchIcon>
+            <SearchIcon aria-hidden="true"><FaSearch /></SearchIcon>
             <SearchInput
               type="text"
               placeholder={t('collection.searchPlaceholder')}
@@ -172,24 +202,24 @@ const CollectionPage = () => {
             />
             {filters.search && (
               <ClearSearch
-                onClick={() => setSearch('')}
+                onClick={handleClearSearch}
                 aria-label={t('common.clearSearch') || 'Clear search'}
               >
-                <FaTimes />
+                <FaTimes aria-hidden="true" />
               </ClearSearch>
             )}
           </SearchWrapper>
 
           <ControlsRight>
             <FilterToggle
-              onClick={() => setShowFilters(!showFilters)}
+              onClick={handleToggleFilters}
               $active={showFilters || hasActiveFilters}
               aria-expanded={showFilters}
               aria-controls="filter-panel"
             >
-              <FaFilter />
+              <FaFilter aria-hidden="true" />
               <span>{t('common.filters')}</span>
-              {hasActiveFilters && <FilterBadge />}
+              {hasActiveFilters && <FilterBadge aria-label="Active filters" />}
             </FilterToggle>
 
             <ItemsSelect
@@ -212,10 +242,12 @@ const CollectionPage = () => {
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
+              role="region"
+              aria-label={t('common.filterOptions') || 'Filter options'}
             >
               <FilterGroup>
-                <FilterLabel>{t('collection.ownership')}</FilterLabel>
-                <FilterOptions>
+                <FilterLabel id="ownership-label">{t('collection.ownership')}</FilterLabel>
+                <FilterOptions role="group" aria-labelledby="ownership-label">
                   {['all', 'owned', 'not-owned'].map(option => (
                     <FilterChip
                       key={option}
@@ -230,8 +262,8 @@ const CollectionPage = () => {
               </FilterGroup>
 
               <FilterGroup>
-                <FilterLabel>{t('collection.rarity')}</FilterLabel>
-                <FilterOptions>
+                <FilterLabel id="rarity-label">{t('collection.rarity')}</FilterLabel>
+                <FilterOptions role="group" aria-labelledby="rarity-label">
                   <FilterChip
                     $active={filters.rarity === 'all'}
                     onClick={() => setFilter('rarity', 'all')}
@@ -255,8 +287,9 @@ const CollectionPage = () => {
 
               {uniqueSeries.length > 0 && (
                 <FilterGroup>
-                  <FilterLabel>{t('collection.series')}</FilterLabel>
+                  <FilterLabel htmlFor="series-select">{t('collection.series')}</FilterLabel>
                   <SeriesSelect
+                    id="series-select"
                     value={filters.series}
                     onChange={(e) => setFilter('series', e.target.value)}
                     aria-label={t('collection.series')}
@@ -271,7 +304,7 @@ const CollectionPage = () => {
 
               {hasActiveFilters && (
                 <ClearFiltersBtn onClick={clearFilters}>
-                  <FaTimes /> {t('common.clearFilters')}
+                  <FaTimes aria-hidden="true" /> {t('common.clearFilters')}
                 </ClearFiltersBtn>
               )}
             </FiltersPanel>
@@ -279,41 +312,43 @@ const CollectionPage = () => {
         </AnimatePresence>
 
         {/* Results */}
-        {error && <ErrorMessage>{error}</ErrorMessage>}
+        {error && (
+          <ErrorMessage role="alert">
+            {error}
+          </ErrorMessage>
+        )}
 
-        {isLoading ? (
-          <LoadingContainer>
-            <Spinner size="56px" />
-            <Text secondary>{t('collection.loadingCollection')}</Text>
-          </LoadingContainer>
-        ) : filteredCharacters.length === 0 ? (
-          <EmptyState>
-            <EmptyIcon>🔍</EmptyIcon>
-            <EmptyTitle>{t('collection.noCharactersFound')}</EmptyTitle>
-            <EmptyText>{t('collection.adjustFilters')}</EmptyText>
-            {hasActiveFilters && (
-              <ClearFiltersBtn onClick={clearFilters} style={{ marginTop: '16px' }}>
-                <FaTimes /> {t('common.clearFilters')}
-              </ClearFiltersBtn>
-            )}
-          </EmptyState>
+        {filteredCharacters.length === 0 ? (
+          <EmptyStateComponent
+            icon="🔍"
+            title={t('collection.noCharactersFound')}
+            description={t('collection.adjustFilters')}
+            actionLabel={hasActiveFilters ? t('common.clearFilters') : undefined}
+            onAction={hasActiveFilters ? clearFilters : undefined}
+          />
         ) : (
           <>
-            <ResultsInfo>
+            <ResultsInfo aria-live="polite">
               {t('common.showing')} {currentCharacters.length} {t('common.of')} {filteredCharacters.length} {t('common.characters')}
             </ResultsInfo>
 
-            <LevelingLegend>
+            <LevelingLegend role="region" aria-label={t('collection.cardLeveling') || 'Card leveling information'}>
               <LegendHeader>
-                <LegendTitle>⚔️ {t('collection.cardLeveling') || 'Card Leveling'}</LegendTitle>
+                <LegendTitle>
+                  <span aria-hidden="true">⚔️</span> {t('collection.cardLeveling') || 'Card Leveling'}
+                </LegendTitle>
                 {stats.upgradableCount > 0 && (
                   <UpgradeAllButton
                     onClick={handleUpgradeAll}
                     disabled={isUpgradingAll}
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    aria-label={isUpgradingAll
+                      ? t('collection.upgrading') || 'Upgrading...'
+                      : `${t('collection.upgradeAll') || 'Upgrade All'} (${stats.upgradableCount})`
+                    }
                   >
-                    <FaArrowUp />
+                    <FaArrowUp aria-hidden="true" />
                     {isUpgradingAll
                       ? (t('collection.upgrading') || 'Upgrading...')
                       : `${t('collection.upgradeAll') || 'Upgrade All'} (${stats.upgradableCount})`
@@ -323,15 +358,15 @@ const CollectionPage = () => {
               </LegendHeader>
               <LegendItems>
                 <LegendItem>
-                  <LegendIcon $type="shard">◆</LegendIcon>
+                  <LegendIcon $type="shard" aria-hidden="true">◆</LegendIcon>
                   <span>{t('collection.shardsFromDuplicates') || 'Shards from duplicates'}</span>
                 </LegendItem>
                 <LegendItem>
-                  <LegendIcon $type="levelup">⬆</LegendIcon>
+                  <LegendIcon $type="levelup" aria-hidden="true">⬆</LegendIcon>
                   <span>{t('collection.readyToLevelUp') || 'Ready to level up!'}</span>
                 </LegendItem>
                 <LegendItem>
-                  <LegendIcon $type="max">★</LegendIcon>
+                  <LegendIcon $type="max" aria-hidden="true">★</LegendIcon>
                   <span>{t('collection.maxLevel') || 'Max level (Lv.5)'}</span>
                 </LegendItem>
               </LegendItems>
@@ -341,6 +376,8 @@ const CollectionPage = () => {
               variants={motionVariants.staggerContainer}
               initial="hidden"
               animate="visible"
+              role="grid"
+              aria-label={t('collection.characterGrid') || 'Character collection'}
             >
               {currentCharacters.map((char) => {
                 const isOwned = ownedCharIds.has(char.id);
@@ -363,6 +400,15 @@ const CollectionPage = () => {
                     onClick={() => openPreview({ ...char, isOwned, isVideo: isVideoMedia, level, shards, shardsToNextLevel, canLevelUp })}
                     whileHover={{ y: -6, scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
+                    role="gridcell"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        openPreview({ ...char, isOwned, isVideo: isVideoMedia, level, shards, shardsToNextLevel, canLevelUp });
+                      }
+                    }}
+                    aria-label={`${char.name} - ${char.series} - ${char.rarity}${isOwned ? ` - Level ${level}` : ' - Not owned'}`}
                   >
                     <CardImageWrapper>
                       {isVideoMedia ? (
@@ -373,18 +419,15 @@ const CollectionPage = () => {
                           muted
                           playsInline
                           $isOwned={isOwned}
+                          aria-hidden="true"
                         />
                       ) : (
                         <CardImage
                           src={imagePath}
-                          alt={char.name}
+                          alt=""
                           $isOwned={isOwned}
                           loading="lazy"
-                          onError={(e) => {
-                            if (!e.target.src.includes('placeholder.com')) {
-                              e.target.src = 'https://via.placeholder.com/200?text=No+Image';
-                            }
-                          }}
+                          onError={handleImageError}
                         />
                       )}
                       {!isOwned && (
@@ -404,7 +447,7 @@ const CollectionPage = () => {
                           )}
                         </>
                       )}
-                      <RarityIndicator $color={getRarityColor(char.rarity)} />
+                      <RarityIndicator $color={getRarityColor(char.rarity)} aria-hidden="true" />
                     </CardImageWrapper>
                     <CardContent>
                       <CharName $isOwned={isOwned}>{char.name}</CharName>
@@ -417,7 +460,7 @@ const CollectionPage = () => {
 
             {/* Pagination */}
             {totalPages > 1 && (
-              <PaginationContainer>
+              <PaginationContainer role="navigation" aria-label={t('common.pagination') || 'Pagination'}>
                 <PageButton
                   onClick={() => setPage(currentPage - 1)}
                   disabled={currentPage === 1}
@@ -425,7 +468,7 @@ const CollectionPage = () => {
                 >
                   {t('common.previous')}
                 </PageButton>
-                <PageInfo>
+                <PageInfo aria-current="page">
                   {t('common.page')} {currentPage} {t('common.of')} {totalPages}
                 </PageInfo>
                 <PageButton
