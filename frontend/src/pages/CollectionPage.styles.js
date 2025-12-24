@@ -470,6 +470,11 @@ export const CharacterGrid = styled(motion.div)`
   }
 `;
 
+// ==================== DEPRECATED: CHARACTER CARD COMPONENTS ====================
+// These components are deprecated. Use CharacterCard from components/patterns/CharacterCard.js
+// Kept for backwards compatibility - will be removed in a future release.
+
+/** @deprecated Use CharacterCard from components/patterns/CharacterCard.js */
 export const CharacterCard = styled(motion.div)`
   background: ${theme.colors.surface};
   border-radius: ${theme.radius.xl};

@@ -8,8 +8,11 @@ import { useTranslation } from 'react-i18next';
 import { getActiveBanners, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 
+// Hooks
+import { usePageError } from '../hooks';
+
 // UI Components
-import { LoadingState } from '../components/UI/feedback';
+import { LoadingState, ErrorState } from '../components/UI/feedback';
 import { Modal } from '../components/UI/overlay';
 import { EmptyState as EmptyStateComponent } from '../components/UI/feedback';
 
@@ -90,20 +93,26 @@ const GachaPage = () => {
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [featuredIndex, setFeaturedIndex] = useState(0);
 
+  // Error handling
+  const { error, handleError, clearError } = usePageError({
+    defaultMessage: t('gacha.loadingError') || 'Failed to load banners. Please try again.'
+  });
+
   useEffect(() => {
     const fetchBanners = async () => {
       try {
         setLoading(true);
+        clearError();
         const data = await getActiveBanners();
         setBanners(data);
       } catch (err) {
-        console.error("Error fetching banners:", err);
+        handleError(err, { inline: true, toast: true });
       } finally {
         setLoading(false);
       }
     };
     fetchBanners();
-  }, []);
+  }, [clearError, handleError]);
 
   const getBannerImage = useCallback((src) => {
     return src ? getAssetUrl(src) : 'https://via.placeholder.com/300x150?text=Banner';
@@ -161,6 +170,18 @@ const GachaPage = () => {
       <LoadingState
         message={t('gacha.loadingBanners')}
         fullPage
+      />
+    );
+  }
+
+  // Show error state if loading failed and no banners
+  if (error && banners.length === 0) {
+    return (
+      <ErrorState
+        title={t('gacha.loadingErrorTitle') || 'Failed to Load Banners'}
+        message={error}
+        onRetry={() => window.location.reload()}
+        retryLabel={t('common.retry') || 'Retry'}
       />
     );
   }

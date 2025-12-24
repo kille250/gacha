@@ -10,6 +10,7 @@ import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 // Components
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import { LoadingState, EmptyState as EmptyStateComponent } from '../components/UI/feedback';
+import CharacterCard from '../components/patterns/CharacterCard';
 
 // Hooks & Context
 import { useCollection } from '../hooks';
@@ -59,18 +60,6 @@ import {
   LegendIcon,
   ErrorMessage,
   CharacterGrid,
-  CharacterCard,
-  CardImageWrapper,
-  CardImage,
-  CardVideo,
-  NotOwnedOverlay,
-  NotOwnedLabel,
-  RarityIndicator,
-  LevelBadge,
-  ShardBadge,
-  CardContent,
-  CharName,
-  CharSeries,
   PaginationContainer,
   PageButton,
   PageInfo,
@@ -129,11 +118,18 @@ const CollectionPage = () => {
     setShowFilters(prev => !prev);
   }, []);
 
-  const handleImageError = useCallback((e) => {
-    if (!e.target.src.includes('placeholder.com')) {
-      e.target.src = 'https://via.placeholder.com/200?text=No+Image';
-    }
-  }, []);
+  // Handler for card click to open preview
+  const handleCardClick = useCallback((char, isOwned, isVideoMedia, levelInfo) => {
+    openPreview({
+      ...char,
+      isOwned,
+      isVideo: isVideoMedia,
+      level: levelInfo?.level || 1,
+      shards: levelInfo?.shards || 0,
+      shardsToNextLevel: levelInfo?.shardsToNextLevel,
+      canLevelUp: levelInfo?.canLevelUp || false
+    });
+  }, [openPreview]);
 
   // Loading state using shared component
   if (isLoading) {
@@ -384,76 +380,21 @@ const CollectionPage = () => {
                 const imagePath = getImagePath(char.image);
                 const isVideoMedia = isVideo(char.image);
                 const levelInfo = charLevels.get(char.id);
-                const level = levelInfo?.level || 1;
-                const isMaxLevel = levelInfo?.isMaxLevel || false;
-                const shards = levelInfo?.shards || 0;
-                const shardsToNextLevel = levelInfo?.shardsToNextLevel;
-                const canLevelUp = levelInfo?.canLevelUp || false;
 
                 return (
                   <CharacterCard
                     key={char.id}
-                    variants={motionVariants.staggerItem}
-                    $color={getRarityColor(char.rarity)}
-                    $glow={getRarityGlow(char.rarity)}
-                    $isOwned={isOwned}
-                    onClick={() => openPreview({ ...char, isOwned, isVideo: isVideoMedia, level, shards, shardsToNextLevel, canLevelUp })}
-                    whileHover={{ y: -6, scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
+                    character={char}
+                    isOwned={isOwned}
+                    isVideo={isVideoMedia}
+                    imageSrc={imagePath}
+                    rarityColor={getRarityColor(char.rarity)}
+                    rarityGlow={getRarityGlow(char.rarity)}
+                    levelInfo={levelInfo}
+                    notOwnedLabel={t('common.notOwned')}
+                    onClick={() => handleCardClick(char, isOwned, isVideoMedia, levelInfo)}
                     role="gridcell"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        openPreview({ ...char, isOwned, isVideo: isVideoMedia, level, shards, shardsToNextLevel, canLevelUp });
-                      }
-                    }}
-                    aria-label={`${char.name} - ${char.series} - ${char.rarity}${isOwned ? ` - Level ${level}` : ' - Not owned'}`}
-                  >
-                    <CardImageWrapper>
-                      {isVideoMedia ? (
-                        <CardVideo
-                          src={imagePath}
-                          autoPlay
-                          loop
-                          muted
-                          playsInline
-                          $isOwned={isOwned}
-                          aria-hidden="true"
-                        />
-                      ) : (
-                        <CardImage
-                          src={imagePath}
-                          alt=""
-                          $isOwned={isOwned}
-                          loading="lazy"
-                          onError={handleImageError}
-                        />
-                      )}
-                      {!isOwned && (
-                        <NotOwnedOverlay>
-                          <NotOwnedLabel>{t('common.notOwned')}</NotOwnedLabel>
-                        </NotOwnedOverlay>
-                      )}
-                      {isOwned && (
-                        <>
-                          <LevelBadge $isMaxLevel={isMaxLevel} $canLevelUp={canLevelUp}>
-                            Lv.{level}{isMaxLevel ? '★' : ''}{canLevelUp && ' ⬆'}
-                          </LevelBadge>
-                          {!isMaxLevel && shards > 0 && (
-                            <ShardBadge $canLevelUp={canLevelUp}>
-                              ◆{shards}/{shardsToNextLevel}
-                            </ShardBadge>
-                          )}
-                        </>
-                      )}
-                      <RarityIndicator $color={getRarityColor(char.rarity)} aria-hidden="true" />
-                    </CardImageWrapper>
-                    <CardContent>
-                      <CharName $isOwned={isOwned}>{char.name}</CharName>
-                      <CharSeries $isOwned={isOwned}>{char.series}</CharSeries>
-                    </CardContent>
-                  </CharacterCard>
+                  />
                 );
               })}
             </CharacterGrid>

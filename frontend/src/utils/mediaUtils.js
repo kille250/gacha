@@ -51,3 +51,40 @@ export const PLACEHOLDER_IMAGE = 'https://via.placeholder.com/150?text=No+Image'
  * Default placeholder for banner images
  */
 export const PLACEHOLDER_BANNER = 'https://via.placeholder.com/300x150?text=Banner';
+
+/**
+ * Creates an image error handler that falls back to a placeholder
+ * Prevents infinite loops by checking if already showing placeholder
+ *
+ * @param {string} placeholderUrl - URL of the placeholder image (defaults to PLACEHOLDER_IMAGE)
+ * @returns {Function} - Event handler for img onError
+ *
+ * @example
+ * <img
+ *   src={character.imageUrl}
+ *   onError={createImageErrorHandler()}
+ *   alt={character.name}
+ * />
+ */
+export const createImageErrorHandler = (placeholderUrl = PLACEHOLDER_IMAGE) => (e) => {
+  // Prevent infinite loop if placeholder also fails
+  if (!e.target.src.includes('placeholder')) {
+    e.target.src = placeholderUrl;
+  }
+};
+
+/**
+ * Handles image load errors with optional callback
+ *
+ * @param {Event} e - Image error event
+ * @param {string} placeholderUrl - Fallback URL
+ * @param {Function} onError - Optional callback after handling
+ */
+export const handleImageError = (e, placeholderUrl = PLACEHOLDER_IMAGE, onError = null) => {
+  if (!e.target.src.includes('placeholder')) {
+    e.target.src = placeholderUrl;
+  }
+  if (onError) {
+    onError(e);
+  }
+};

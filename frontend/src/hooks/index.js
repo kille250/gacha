@@ -50,3 +50,14 @@ export { useModal, useModalWithData, useConfirmModal } from './useModal';
 // Filter hooks
 export { useFilterState, useFilteredData } from './useFilterState';
 
+// Page error handling
+export { usePageError, extractErrorMessage } from './usePageError';
+
+// Focus management hooks
+export {
+  useFocusTrap,
+  useFocusFirstError,
+  useRovingTabindex,
+  useFocusRestore,
+  useModalFocus,
+} from './useFocusManagement';

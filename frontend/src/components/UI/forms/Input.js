@@ -4,7 +4,7 @@
  * Provides consistent form input styling with accessibility.
  */
 
-import React, { forwardRef } from 'react';
+import React, { forwardRef, memo } from 'react';
 import styled, { css } from 'styled-components';
 import { theme } from '../../../styles/DesignSystem';
 
@@ -116,7 +116,7 @@ const ErrorText = styled.span`
  * @param {boolean} props.required - Whether input is required
  * @param {string} props.id - Input ID (auto-generated if not provided)
  */
-const Input = forwardRef(({
+const Input = memo(forwardRef(({
   label,
   error,
   helpText,
@@ -157,7 +157,7 @@ const Input = forwardRef(({
       {helpText && !error && <HelpText id={helpId}>{helpText}</HelpText>}
     </InputWrapper>
   );
-});
+}));
 
 Input.displayName = 'Input';
 

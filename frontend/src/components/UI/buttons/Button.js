@@ -5,7 +5,7 @@
  * Use ActionButton for buttons that trigger async operations.
  */
 
-import React, { forwardRef } from 'react';
+import React, { forwardRef, memo } from 'react';
 import styled, { css } from 'styled-components';
 import { motion } from 'framer-motion';
 import { theme } from '../../../styles/DesignSystem';
@@ -133,7 +133,7 @@ const StyledButton = styled(motion.button)`
  * @param {React.ReactNode} props.children - Button content
  * @param {Function} props.onClick - Click handler
  */
-const Button = forwardRef(({
+const Button = memo(forwardRef(({
   children,
   variant = 'primary',
   size = 'md',
@@ -157,7 +157,7 @@ const Button = forwardRef(({
       {children}
     </StyledButton>
   );
-});
+}));
 
 Button.displayName = 'Button';
 
