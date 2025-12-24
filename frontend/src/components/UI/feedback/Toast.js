@@ -191,7 +191,12 @@ const ToastListWrapper = styled.div`
 `;
 
 export const ToastList = ({ toasts, onDismiss }) => (
-  <ToastListWrapper>
+  <ToastListWrapper
+    role="region"
+    aria-label="Notifications"
+    aria-live="polite"
+    aria-atomic="false"
+  >
     <AnimatePresence mode="popLayout">
       {toasts.map(toast => (
         <Toast
