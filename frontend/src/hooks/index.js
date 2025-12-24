@@ -42,4 +42,5 @@ export { useSwipeToDelete } from './useSwipeToDelete';
 // Page-level hooks
 export { useCollectionPage } from './useCollectionPage';
 export { useGachaPage } from './useGachaPage';
+export { useCollection } from './useCollection';
 

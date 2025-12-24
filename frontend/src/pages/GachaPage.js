@@ -1,6 +1,5 @@
 import React, { useState, useContext, useEffect } from 'react';
-import styled from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
+import { AnimatePresence } from 'framer-motion';
 import { MdClose, MdHelpOutline, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import { FaStar, FaPlay } from 'react-icons/fa';
 import { useNavigate } from 'react-router-dom';
@@ -12,19 +11,80 @@ import { AuthContext } from '../context/AuthContext';
 
 // Design System
 import {
-  theme,
-  PageWrapper,
   Container,
   Heading2,
   Text,
   IconButton,
   ModalOverlay,
-  ModalContent,
   ModalHeader,
   ModalBody,
   Spinner,
   motionVariants
 } from '../styles/DesignSystem';
+
+// Extracted styles
+import {
+  StyledPageWrapper,
+  LoadingContainer,
+  LoadingText,
+  HeroSection,
+  HeroContent,
+  LogoText,
+  HeroSubtitle,
+  HeaderControls,
+  PointsPill,
+  BannersSection,
+  HeroBanner,
+  HeroBannerImage,
+  HeroBannerOverlay,
+  HeroBannerContent,
+  HeroBadge,
+  HeroTitle,
+  HeroMeta,
+  HeroSeries,
+  HeroDivider,
+  HeroStats,
+  HeroDescription,
+  HeroCTA,
+  HeroGradient,
+  FeaturedNavArrow,
+  FeaturedIndicators,
+  FeaturedDot,
+  BannerCarouselSection,
+  CarouselHeader,
+  CarouselTitle,
+  CarouselNav,
+  NavButton,
+  BannerCarousel,
+  NetflixBannerCard,
+  NetflixCardInner,
+  NetflixImageContainer,
+  NetflixBannerImage,
+  NetflixImageOverlay,
+  NetflixCardInfo,
+  NetflixCardTitle,
+  NetflixCardMeta,
+  NetflixSeries,
+  NetflixCharCount,
+  NetflixCardFooter,
+  NetflixCost,
+  NetflixBoost,
+  StandardGachaCTA,
+  CTAContent,
+  CTAIcon,
+  CTAText,
+  CTATitle,
+  CTASubtitle,
+  CTAButton,
+  EmptyState,
+  EmptyIcon,
+  EmptyTitle,
+  EmptyText,
+  EmptyButton,
+  HelpModalContent,
+  HelpSection,
+  HelpSectionTitle,
+} from './GachaPage.styles';
 
 // ==================== MAIN COMPONENT ====================
 
@@ -32,16 +92,13 @@ const GachaPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { user } = useContext(AuthContext);
-  
+
   // State
   const [banners, setBanners] = useState([]);
   const [loading, setLoading] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [featuredIndex, setFeaturedIndex] = useState(0);
-  
-  // NOTE: refreshUser on mount removed - AuthContext already fetches fresh data on initial load.
-  // User data is refreshed via visibility handler or after actions that change currency.
-  
+
   useEffect(() => {
     const fetchBanners = async () => {
       try {
@@ -56,30 +113,38 @@ const GachaPage = () => {
     };
     fetchBanners();
   }, []);
-  
+
   const getBannerImage = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300x150?text=Banner';
-  
+
   // Get featured banners for hero carousel
   const featuredBanners = banners.filter(b => b.featured);
   const otherBanners = banners.filter(b => !b.featured);
-  
+
   // Ensure index stays in bounds
-  const safeFeaturedIndex = featuredBanners.length > 0 
-    ? Math.min(featuredIndex, featuredBanners.length - 1) 
+  const safeFeaturedIndex = featuredBanners.length > 0
+    ? Math.min(featuredIndex, featuredBanners.length - 1)
     : 0;
   const currentFeaturedBanner = featuredBanners[safeFeaturedIndex];
-  
+
   // Featured banner navigation
   const handlePrevFeatured = (e) => {
     e.stopPropagation();
     setFeaturedIndex(prev => (prev > 0 ? prev - 1 : featuredBanners.length - 1));
   };
-  
+
   const handleNextFeatured = (e) => {
     e.stopPropagation();
     setFeaturedIndex(prev => (prev < featuredBanners.length - 1 ? prev + 1 : 0));
   };
-  
+
+  // Carousel scroll handlers
+  const handleCarouselScroll = (direction) => {
+    const el = document.getElementById('banner-carousel');
+    if (el) {
+      el.scrollBy({ left: direction * 340, behavior: 'smooth' });
+    }
+  };
+
   if (loading) {
     return (
       <LoadingContainer>
@@ -88,7 +153,7 @@ const GachaPage = () => {
       </LoadingContainer>
     );
   }
-  
+
   return (
     <StyledPageWrapper>
       <Container>
@@ -109,13 +174,13 @@ const GachaPage = () => {
               onClick={() => setShowHelpModal(true)}
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
-              label="Open help"
+              aria-label={t('common.openHelp') || 'Open help'}
             >
               <MdHelpOutline />
             </IconButton>
           </HeaderControls>
         </HeroSection>
-        
+
         {/* Featured Banner Hero */}
         {currentFeaturedBanner && (
           <BannersSection>
@@ -154,22 +219,30 @@ const GachaPage = () => {
                 </HeroCTA>
               </HeroBannerContent>
               <HeroGradient />
-              
+
               {/* Navigation Arrows for multiple featured banners */}
               {featuredBanners.length > 1 && (
                 <>
-                  <FeaturedNavArrow $left onClick={handlePrevFeatured}>
+                  <FeaturedNavArrow
+                    $left
+                    onClick={handlePrevFeatured}
+                    aria-label={t('common.previous') || 'Previous banner'}
+                  >
                     <MdChevronLeft />
                   </FeaturedNavArrow>
-                  <FeaturedNavArrow onClick={handleNextFeatured}>
+                  <FeaturedNavArrow
+                    onClick={handleNextFeatured}
+                    aria-label={t('common.next') || 'Next banner'}
+                  >
                     <MdChevronRight />
                   </FeaturedNavArrow>
                   <FeaturedIndicators>
-                    {featuredBanners.map((_, idx) => (
-                      <FeaturedDot 
-                        key={idx} 
+                    {featuredBanners.map((banner, idx) => (
+                      <FeaturedDot
+                        key={banner.id}
                         $active={idx === safeFeaturedIndex}
                         onClick={(e) => { e.stopPropagation(); setFeaturedIndex(idx); }}
+                        aria-label={`Go to banner ${idx + 1}`}
                       />
                     ))}
                   </FeaturedIndicators>
@@ -178,31 +251,31 @@ const GachaPage = () => {
             </HeroBanner>
           </BannersSection>
         )}
-        
+
         {/* All Banners Carousel */}
         {otherBanners.length > 0 && (
           <BannerCarouselSection>
             <CarouselHeader>
-            <CarouselTitle>
-              <span>🎬</span>
-              {t('gacha.allBanners')}
-            </CarouselTitle>
+              <CarouselTitle>
+                <span>🎬</span>
+                {t('gacha.allBanners')}
+              </CarouselTitle>
               <CarouselNav>
-                <NavButton onClick={() => {
-                  const el = document.getElementById('banner-carousel');
-                  if (el) el.scrollBy({ left: -340, behavior: 'smooth' });
-                }}>
+                <NavButton
+                  onClick={() => handleCarouselScroll(-1)}
+                  aria-label={t('common.scrollLeft') || 'Scroll left'}
+                >
                   <MdChevronLeft />
                 </NavButton>
-                <NavButton onClick={() => {
-                  const el = document.getElementById('banner-carousel');
-                  if (el) el.scrollBy({ left: 340, behavior: 'smooth' });
-                }}>
+                <NavButton
+                  onClick={() => handleCarouselScroll(1)}
+                  aria-label={t('common.scrollRight') || 'Scroll right'}
+                >
                   <MdChevronRight />
                 </NavButton>
               </CarouselNav>
             </CarouselHeader>
-            
+
             <BannerCarousel id="banner-carousel">
               {otherBanners.map((banner, index) => (
                 <NetflixBannerCard
@@ -239,7 +312,7 @@ const GachaPage = () => {
             </BannerCarousel>
           </BannerCarouselSection>
         )}
-        
+
         {/* Standard Gacha CTA */}
         <StandardGachaCTA>
           <CTAContent>
@@ -258,7 +331,7 @@ const GachaPage = () => {
             <span style={{ opacity: 0.7 }}>100 {t('common.points')}</span>
           </CTAButton>
         </StandardGachaCTA>
-        
+
         {/* Empty State */}
         {banners.length === 0 && !loading && (
           <EmptyState>
@@ -275,11 +348,11 @@ const GachaPage = () => {
           </EmptyState>
         )}
       </Container>
-      
+
       {/* Help Modal */}
       <AnimatePresence>
         {showHelpModal && (
-          <ModalOverlay 
+          <ModalOverlay
             variants={motionVariants.overlay}
             initial="hidden"
             animate="visible"
@@ -291,7 +364,10 @@ const GachaPage = () => {
             >
               <ModalHeader>
                 <Heading2>{t('gacha.howToPlay')}</Heading2>
-                <IconButton onClick={() => setShowHelpModal(false)} label="Close help">
+                <IconButton
+                  onClick={() => setShowHelpModal(false)}
+                  aria-label={t('common.close') || 'Close'}
+                >
                   <MdClose />
                 </IconButton>
               </ModalHeader>
@@ -316,537 +392,5 @@ const GachaPage = () => {
     </StyledPageWrapper>
   );
 };
-
-// ==================== STYLED COMPONENTS ====================
-
-const StyledPageWrapper = styled(PageWrapper)`
-  padding-bottom: ${theme.spacing['3xl']};
-`;
-
-const LoadingContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.lg};
-`;
-
-const LoadingText = styled.p`
-  color: ${theme.colors.textSecondary};
-  font-size: ${theme.fontSizes.lg};
-`;
-
-// Hero Section
-const HeroSection = styled.section`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: ${theme.spacing.xl} 0;
-  flex-wrap: wrap;
-  gap: ${theme.spacing.lg};
-`;
-
-const HeroContent = styled.div``;
-
-const LogoText = styled.h1`
-  font-size: clamp(28px, 5vw, 36px);
-  font-weight: 700;
-  margin: 0;
-  letter-spacing: -0.03em;
-`;
-
-const HeroSubtitle = styled.p`
-  font-size: 15px;
-  color: ${theme.colors.textTertiary};
-  margin: 6px 0 0;
-`;
-
-const HeaderControls = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-`;
-
-const PointsPill = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 10px 16px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  border-radius: 100px;
-  font-weight: 600;
-  font-size: 14px;
-`;
-
-// Banners Section
-const BannersSection = styled.section`
-  margin-bottom: ${theme.spacing['2xl']};
-`;
-
-// Hero Banner
-const HeroBanner = styled(motion.div)`
-  position: relative;
-  width: 100%;
-  height: 400px;
-  border-radius: 24px;
-  overflow: hidden;
-  cursor: pointer;
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    height: 320px;
-  }
-`;
-
-const HeroBannerImage = styled.img`
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-`;
-
-const HeroBannerOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(
-    90deg,
-    rgba(0, 0, 0, 0.85) 0%,
-    rgba(0, 0, 0, 0.6) 40%,
-    rgba(0, 0, 0, 0.2) 100%
-  );
-`;
-
-const HeroBannerContent = styled.div`
-  position: absolute;
-  left: 0;
-  bottom: 0;
-  top: 0;
-  padding: 40px;
-  display: flex;
-  flex-direction: column;
-  justify-content: flex-end;
-  max-width: 500px;
-  z-index: 2;
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    padding: 24px;
-    max-width: 100%;
-  }
-`;
-
-const HeroBadge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  background: linear-gradient(135deg, #ff3b5c, #ff1744);
-  padding: 8px 14px;
-  border-radius: 6px;
-  font-size: 12px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-  width: fit-content;
-  margin-bottom: 16px;
-`;
-
-const HeroTitle = styled.h2`
-  font-size: clamp(28px, 5vw, 42px);
-  font-weight: 700;
-  margin: 0 0 12px;
-  letter-spacing: -0.02em;
-  line-height: 1.1;
-`;
-
-const HeroMeta = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 14px;
-  margin-bottom: 16px;
-  flex-wrap: wrap;
-`;
-
-const HeroSeries = styled.span`
-  color: #ff6b6b;
-  font-weight: 600;
-`;
-
-const HeroDivider = styled.span`
-  color: rgba(255, 255, 255, 0.3);
-`;
-
-const HeroStats = styled.span`
-  color: rgba(255, 255, 255, 0.7);
-`;
-
-const HeroDescription = styled.p`
-  font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
-  margin: 0 0 20px;
-  line-height: 1.5;
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-`;
-
-const HeroCTA = styled(motion.button)`
-  display: inline-flex;
-  align-items: center;
-  gap: 10px;
-  background: rgba(255, 255, 255, 0.95);
-  color: #1a1a2e;
-  border: none;
-  padding: 14px 28px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  width: fit-content;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: white;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
-  }
-`;
-
-const HeroGradient = styled.div`
-  position: absolute;
-  bottom: 0;
-  left: 0;
-  right: 0;
-  height: 120px;
-  background: linear-gradient(to top, rgba(0, 0, 0, 0.8), transparent);
-  pointer-events: none;
-`;
-
-const FeaturedNavArrow = styled.button`
-  position: absolute;
-  top: 50%;
-  transform: translateY(-50%);
-  ${props => props.$left ? 'left: 16px;' : 'right: 16px;'}
-  width: 48px;
-  height: 48px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
-  border: 1px solid rgba(255, 255, 255, 0.2);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 10;
-  font-size: 28px;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: rgba(0, 0, 0, 0.8);
-    transform: translateY(-50%) scale(1.1);
-  }
-  
-  @media (max-width: ${theme.breakpoints.md}) {
-    width: 40px;
-    height: 40px;
-    font-size: 24px;
-  }
-`;
-
-const FeaturedIndicators = styled.div`
-  position: absolute;
-  bottom: 20px;
-  right: 20px;
-  display: flex;
-  gap: 8px;
-  z-index: 10;
-`;
-
-const FeaturedDot = styled.button`
-  width: ${props => props.$active ? '24px' : '10px'};
-  height: 10px;
-  border-radius: 5px;
-  background: ${props => props.$active ? 'white' : 'rgba(255, 255, 255, 0.4)'};
-  border: none;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  
-  &:hover {
-    background: ${props => props.$active ? 'white' : 'rgba(255, 255, 255, 0.6)'};
-  }
-`;
-
-// Carousel Section
-const BannerCarouselSection = styled.div`
-  margin-bottom: ${theme.spacing['2xl']};
-`;
-
-const CarouselHeader = styled.div`
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: 20px;
-`;
-
-const CarouselTitle = styled.h3`
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0;
-`;
-
-const CarouselNav = styled.div`
-  display: flex;
-  gap: 8px;
-`;
-
-const NavButton = styled.button`
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: rgba(255, 255, 255, 0.08);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  color: white;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  transition: all 0.2s ease;
-  font-size: 24px;
-  
-  &:hover {
-    background: rgba(255, 255, 255, 0.15);
-    border-color: rgba(255, 255, 255, 0.2);
-  }
-`;
-
-const BannerCarousel = styled.div`
-  display: flex;
-  gap: 20px;
-  overflow-x: auto;
-  scroll-snap-type: x mandatory;
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  padding: 10px 0 20px;
-  
-  &::-webkit-scrollbar {
-    display: none;
-  }
-`;
-
-// Netflix-style Banner Card
-const NetflixBannerCard = styled(motion.div)`
-  flex-shrink: 0;
-  width: 300px;
-  scroll-snap-align: start;
-  cursor: pointer;
-`;
-
-const NetflixCardInner = styled(motion.div)`
-  background: rgba(30, 30, 40, 0.8);
-  border-radius: 12px;
-  overflow: hidden;
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  transition: box-shadow 0.3s ease;
-  
-  ${NetflixBannerCard}:hover & {
-    box-shadow: 0 16px 40px -8px rgba(0, 0, 0, 0.6);
-  }
-`;
-
-const NetflixImageContainer = styled.div`
-  position: relative;
-  height: 180px;
-  overflow: hidden;
-`;
-
-const NetflixBannerImage = styled.img`
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  transition: transform 0.4s ease;
-  
-  ${NetflixBannerCard}:hover & {
-    transform: scale(1.05);
-  }
-`;
-
-const NetflixImageOverlay = styled.div`
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(to top, rgba(30, 30, 40, 1) 0%, transparent 50%);
-`;
-
-const NetflixCardInfo = styled.div`
-  padding: 16px;
-`;
-
-const NetflixCardTitle = styled.h4`
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 8px;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-`;
-
-const NetflixCardMeta = styled.div`
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  font-size: 13px;
-  margin-bottom: 12px;
-`;
-
-const NetflixSeries = styled.span`
-  color: #ff6b6b;
-  font-weight: 500;
-`;
-
-const NetflixCharCount = styled.span`
-  color: rgba(255, 255, 255, 0.5);
-`;
-
-const NetflixCardFooter = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const NetflixCost = styled.span`
-  font-size: 13px;
-  font-weight: 600;
-  color: rgba(255, 255, 255, 0.8);
-`;
-
-const NetflixBoost = styled.span`
-  font-size: 11px;
-  font-weight: 600;
-  color: #4ade80;
-  background: rgba(74, 222, 128, 0.15);
-  padding: 4px 8px;
-  border-radius: 4px;
-`;
-
-// Standard Gacha CTA
-const StandardGachaCTA = styled.div`
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: ${theme.spacing.lg};
-  padding: ${theme.spacing.xl};
-  background: rgba(255, 255, 255, 0.03);
-  border: 1px solid rgba(255, 255, 255, 0.08);
-  border-radius: 16px;
-  margin-top: ${theme.spacing.xl};
-  
-  @media (max-width: ${theme.breakpoints.sm}) {
-    flex-direction: column;
-    text-align: center;
-  }
-`;
-
-const CTAContent = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.lg};
-  
-  @media (max-width: ${theme.breakpoints.sm}) {
-    flex-direction: column;
-  }
-`;
-
-const CTAIcon = styled.div`
-  font-size: 40px;
-`;
-
-const CTAText = styled.div``;
-
-const CTATitle = styled.h3`
-  font-size: 20px;
-  font-weight: 600;
-  margin: 0 0 4px;
-`;
-
-const CTASubtitle = styled.p`
-  font-size: 14px;
-  color: ${theme.colors.textSecondary};
-  margin: 0;
-`;
-
-const CTAButton = styled(motion.button)`
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 28px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-  white-space: nowrap;
-  
-  &:hover {
-    box-shadow: 0 4px 20px rgba(88, 86, 214, 0.4);
-  }
-`;
-
-// Empty State
-const EmptyState = styled.div`
-  text-align: center;
-  padding: ${theme.spacing['3xl']};
-`;
-
-const EmptyIcon = styled.div`
-  font-size: 64px;
-  margin-bottom: ${theme.spacing.lg};
-`;
-
-const EmptyTitle = styled.h3`
-  font-size: 24px;
-  font-weight: 600;
-  margin: 0 0 ${theme.spacing.sm};
-`;
-
-const EmptyText = styled.p`
-  font-size: 16px;
-  color: ${theme.colors.textSecondary};
-  margin: 0 0 ${theme.spacing.xl};
-`;
-
-const EmptyButton = styled(motion.button)`
-  padding: 14px 28px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
-  color: white;
-  border: none;
-  border-radius: 12px;
-  font-size: 15px;
-  font-weight: 600;
-  cursor: pointer;
-`;
-
-// Help Modal
-const HelpModalContent = styled(ModalContent)`
-  max-width: 500px;
-`;
-
-const HelpSection = styled.div`
-  margin-bottom: ${theme.spacing.lg};
-  
-  &:last-child {
-    margin-bottom: 0;
-  }
-`;
-
-const HelpSectionTitle = styled.h3`
-  font-size: 16px;
-  font-weight: 600;
-  margin: 0 0 ${theme.spacing.sm};
-`;
 
 export default GachaPage;

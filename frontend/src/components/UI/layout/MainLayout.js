@@ -3,12 +3,18 @@
  *
  * Wraps pages with the main navigation bar and consistent layout structure.
  * Use for all authenticated pages that need navigation.
+ *
+ * Features:
+ * - Top navigation bar (desktop + hamburger menu for mobile)
+ * - Bottom navigation bar (mobile only, thumb-friendly)
+ * - Safe area padding for notched devices
  */
 
 import React from 'react';
 import styled from 'styled-components';
 import { theme } from '../../../styles/DesignSystem';
 import Navigation from '../../Navigation/Navigation';
+import { BottomNav } from '../../Navigation';
 
 const LayoutContainer = styled.div`
   display: flex;
@@ -25,6 +31,11 @@ const PageContent = styled.main.attrs({
   display: flex;
   flex-direction: column;
 
+  /* Add bottom padding on mobile to account for bottom nav */
+  @media (max-width: ${theme.breakpoints.md}) {
+    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+  }
+
   &:focus {
     outline: none; /* Remove focus ring when skip-linked */
   }
@@ -35,14 +46,16 @@ const PageContent = styled.main.attrs({
  *
  * @param {Object} props
  * @param {React.ReactNode} props.children - Page content
+ * @param {boolean} props.hideBottomNav - Hide bottom nav for specific pages
  */
-const MainLayout = ({ children }) => {
+const MainLayout = ({ children, hideBottomNav = false }) => {
   return (
     <LayoutContainer>
       <Navigation />
       <PageContent>
         {children}
       </PageContent>
+      {!hideBottomNav && <BottomNav />}
     </LayoutContainer>
   );
 };
