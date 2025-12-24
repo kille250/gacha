@@ -10,7 +10,7 @@
 
 import { useState, useCallback } from 'react';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../styles/DesignSystem';
+import { theme } from '../design-system';
 
 /**
  * Format challenge reward for display

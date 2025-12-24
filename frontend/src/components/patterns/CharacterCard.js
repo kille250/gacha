@@ -3,12 +3,13 @@
  *
  * Used in Collection, Gacha results, and other character displays.
  * Supports owned/not-owned states, level display, and shard progress.
+ * Includes accessibility features and reduced motion support.
  */
 
-import React, { memo } from 'react';
+import React, { memo, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants, useReducedMotion, VisuallyHidden } from '../../design-system';
 import { PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 
 const Card = styled(motion.div)`
@@ -156,6 +157,15 @@ const CharSeries = styled.p`
   text-overflow: ellipsis;
 `;
 
+// Rarity symbols for accessibility (visible alongside color indicator)
+const RARITY_SYMBOLS = {
+  common: '●',
+  uncommon: '◆',
+  rare: '★',
+  epic: '✦',
+  legendary: '✧',
+};
+
 /**
  * CharacterCard Component
  *
@@ -183,12 +193,33 @@ const CharacterCard = memo(({
   ...props
 }) => {
   const { level = 1, isMaxLevel = false, shards = 0, shardsToNextLevel, canLevelUp = false } = levelInfo;
+  const prefersReducedMotion = useReducedMotion();
 
-  const handleImageError = (e) => {
+  const handleImageError = useCallback((e) => {
     if (!e.target.src.includes('placeholder')) {
       e.target.src = PLACEHOLDER_IMAGE;
     }
-  };
+  }, []);
+
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onClick?.(e);
+    }
+  }, [onClick]);
+
+  // Get rarity symbol for accessibility
+  const raritySymbol = RARITY_SYMBOLS[character.rarity] || RARITY_SYMBOLS.common;
+
+  // Build accessible label
+  const accessibleLabel = [
+    character.name,
+    character.series,
+    `${character.rarity} rarity`,
+    isOwned ? `Level ${level}` : 'Not owned',
+    isOwned && canLevelUp ? 'Ready to level up' : '',
+    isOwned && isMaxLevel ? 'Max level' : '',
+  ].filter(Boolean).join(', ');
 
   return (
     <Card
@@ -196,12 +227,13 @@ const CharacterCard = memo(({
       $glow={rarityGlow}
       $isOwned={isOwned}
       onClick={onClick}
+      onKeyDown={handleKeyDown}
       variants={motionVariants.staggerItem}
-      whileHover={{ y: -6, scale: 1.02 }}
-      whileTap={{ scale: 0.98 }}
+      whileHover={prefersReducedMotion ? undefined : { y: -6, scale: 1.02 }}
+      whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
       tabIndex={0}
       role="button"
-      aria-label={`${character.name} - ${character.series}${isOwned ? '' : ' (Not owned)'}`}
+      aria-label={accessibleLabel}
       {...props}
     >
       <ImageWrapper>
@@ -213,11 +245,12 @@ const CharacterCard = memo(({
             muted
             playsInline
             $isOwned={isOwned}
+            aria-hidden="true"
           />
         ) : (
           <CardImage
             src={imageSrc}
-            alt={character.name}
+            alt="" // Decorative, name is in aria-label
             $isOwned={isOwned}
             onError={handleImageError}
             loading="lazy"
@@ -226,26 +259,30 @@ const CharacterCard = memo(({
         )}
         {!isOwned && (
           <NotOwnedOverlay>
-            <NotOwnedLabel>{notOwnedLabel}</NotOwnedLabel>
+            <NotOwnedLabel aria-hidden="true">{notOwnedLabel}</NotOwnedLabel>
           </NotOwnedOverlay>
         )}
         {isOwned && (
           <>
-            <LevelBadge $isMaxLevel={isMaxLevel} $canLevelUp={canLevelUp}>
+            <LevelBadge $isMaxLevel={isMaxLevel} $canLevelUp={canLevelUp} aria-hidden="true">
               Lv.{level}{isMaxLevel ? '★' : ''}{canLevelUp && ' ⬆'}
             </LevelBadge>
             {!isMaxLevel && shards > 0 && (
-              <ShardBadge $canLevelUp={canLevelUp}>
+              <ShardBadge $canLevelUp={canLevelUp} aria-hidden="true">
                 ◆{shards}/{shardsToNextLevel}
               </ShardBadge>
             )}
           </>
         )}
-        <RarityIndicator $color={rarityColor} />
+        <RarityIndicator $color={rarityColor} aria-hidden="true" />
       </ImageWrapper>
       <CardContent>
-        <CharName $isOwned={isOwned}>{character.name}</CharName>
+        <CharName $isOwned={isOwned}>
+          <span aria-hidden="true">{raritySymbol}</span> {character.name}
+        </CharName>
         <CharSeries $isOwned={isOwned}>{character.series}</CharSeries>
+        {/* Screen reader only: rarity text */}
+        <VisuallyHidden>{character.rarity} rarity</VisuallyHidden>
       </CardContent>
     </Card>
   );

@@ -7,6 +7,7 @@
  * - Stats section
  * - Actions slot
  * - Main content area
+ * - Accessibility support (aria-live regions, reduced motion)
  *
  * Use this for all standard pages to ensure consistent layout.
  */
@@ -14,7 +15,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants, useReducedMotion, AriaLiveRegion } from '../../design-system';
 import { Container as BaseContainer } from '../UI/layout';
 
 const PageWrapper = styled.div`
@@ -99,6 +100,8 @@ const MainContent = styled(motion.main)`
  * @param {React.ReactNode} props.children - Main page content
  * @param {boolean} props.animate - Whether to animate content entrance
  * @param {string} props.className - Additional CSS class
+ * @param {string} props.statusMessage - Aria-live status message for screen readers
+ * @param {string} props.alertMessage - Aria-live alert message for screen readers
  */
 const PageShell = ({
   title,
@@ -109,17 +112,35 @@ const PageShell = ({
   children,
   animate = true,
   className,
+  statusMessage,
+  alertMessage,
 }) => {
-  const contentVariants = animate ? motionVariants.fadeIn : undefined;
+  // Respect user's reduced motion preference
+  const prefersReducedMotion = useReducedMotion();
+  const shouldAnimate = animate && !prefersReducedMotion;
+
+  const contentVariants = shouldAnimate ? motionVariants.fadeIn : undefined;
 
   return (
     <PageWrapper className={className}>
+      {/* Aria live regions for dynamic updates */}
+      {statusMessage && (
+        <AriaLiveRegion politeness="polite">
+          {statusMessage}
+        </AriaLiveRegion>
+      )}
+      {alertMessage && (
+        <AriaLiveRegion politeness="assertive">
+          {alertMessage}
+        </AriaLiveRegion>
+      )}
+
       <Container>
         {/* Hero Section */}
         {hero && (
           <HeroSection
-            initial={animate ? { opacity: 0, y: 20 } : false}
-            animate={animate ? { opacity: 1, y: 0 } : false}
+            initial={shouldAnimate ? { opacity: 0, y: 20 } : false}
+            animate={shouldAnimate ? { opacity: 1, y: 0 } : false}
             transition={{ duration: 0.4 }}
           >
             {hero}
@@ -138,8 +159,8 @@ const PageShell = ({
         {/* Stats Section */}
         {stats && (
           <StatsSection
-            initial={animate ? { opacity: 0, y: 10 } : false}
-            animate={animate ? { opacity: 1, y: 0 } : false}
+            initial={shouldAnimate ? { opacity: 0, y: 10 } : false}
+            animate={shouldAnimate ? { opacity: 1, y: 0 } : false}
             transition={{ duration: 0.3, delay: 0.1 }}
           >
             {stats}
@@ -148,9 +169,10 @@ const PageShell = ({
 
         {/* Main Content */}
         <MainContent
+          id="main-content"
           variants={contentVariants}
-          initial={animate ? "hidden" : false}
-          animate={animate ? "visible" : false}
+          initial={shouldAnimate ? "hidden" : false}
+          animate={shouldAnimate ? "visible" : false}
         >
           {children}
         </MainContent>

@@ -2,11 +2,12 @@
  * CollectionPage Styled Components
  *
  * Extracted from CollectionPage.js for better maintainability.
+ * Uses design-system tokens for consistency.
  */
 
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, PageWrapper, Section } from '../styles/DesignSystem';
+import { theme, PageWrapper, Section } from '../design-system';
 
 // ==================== PAGE WRAPPER ====================
 

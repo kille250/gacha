@@ -31,7 +31,7 @@ import { AuthContext } from '../context/AuthContext';
 import { Navigate } from 'react-router-dom';
 import { arrayMove } from '@dnd-kit/sortable';
 import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons, AdminRarities, AdminSecurity } from '../components/Admin';
-import { theme, PageWrapper, Container, Spinner } from '../styles/DesignSystem';
+import { theme, PageWrapper, Container, Spinner } from '../design-system';
 
 const AdminPage = () => {
   const { t } = useTranslation();

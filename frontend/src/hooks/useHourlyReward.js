@@ -11,7 +11,7 @@ import { useState, useCallback, useEffect, useContext, useRef } from 'react';
 import { AuthContext } from '../context/AuthContext';
 import api from '../utils/api';
 import { hasToken } from '../utils/authStorage';
-import { theme } from '../styles/DesignSystem';
+import { theme } from '../design-system';
 
 // ==================== CONSTANTS ====================
 

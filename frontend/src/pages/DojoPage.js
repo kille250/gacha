@@ -29,7 +29,7 @@ import {
   claimRewards as dojoClaimRewards,
   purchaseUpgrade as dojoPurchaseUpgrade
 } from '../actions/dojoActions';
-import { theme, Spinner } from '../styles/DesignSystem';
+import { theme, Spinner } from '../design-system';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../utils/mediaUtils';
 
 // ===========================================

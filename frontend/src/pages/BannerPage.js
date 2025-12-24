@@ -22,17 +22,12 @@ import {
   PageWrapper,
   Container,
   Section,
-  Heading2,
-  Text,
   IconButton,
-  Chip,
-  RarityBadge,
   Spinner,
-  ModalOverlay,
   Alert,
   motionVariants,
-  scrollbarStyles
-} from '../styles/DesignSystem';
+} from '../design-system';
+import { Heading2, Text, Chip, RarityBadge, ModalOverlay, scrollbarStyles } from '../styles/DesignSystem';
 
 import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';

@@ -19,9 +19,9 @@ import { EmptyState as EmptyStateComponent } from '../components/UI/feedback';
 // Design System
 import {
   Container,
-  Text,
   IconButton,
-} from '../styles/DesignSystem';
+} from '../design-system';
+import { Text } from '../styles/DesignSystem';
 
 // Extracted styles
 import {

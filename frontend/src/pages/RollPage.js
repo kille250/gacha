@@ -23,13 +23,11 @@ import {
   Container,
   Section,
   IconButton,
-  Chip,
-  RarityBadge,
   Spinner,
   Alert,
   motionVariants,
-  scrollbarStyles
-} from '../styles/DesignSystem';
+} from '../design-system';
+import { Chip, RarityBadge, scrollbarStyles } from '../styles/DesignSystem';
 
 import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';

@@ -10,7 +10,7 @@
 
 import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
 import { ToastList } from '../components/UI/feedback/Toast';
-import { theme } from '../styles/DesignSystem';
+import { theme } from '../design-system';
 
 const ToastContext = createContext(null);
 

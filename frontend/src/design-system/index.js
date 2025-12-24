@@ -79,5 +79,19 @@ export {
   Drawer
 } from './overlays';
 
+// Utilities
+export {
+  srOnly,
+  srOnlyFocusable,
+  VisuallyHidden,
+  SkipLink,
+  AriaLiveRegion,
+  AriaAlert,
+  useAriaLive,
+  useFocusReturn,
+  useRovingTabIndex,
+  useReducedMotion
+} from './utilities';
+
 // Re-export theme as default for backward compatibility
 export { theme as default } from './tokens';

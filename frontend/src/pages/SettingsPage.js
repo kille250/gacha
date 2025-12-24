@@ -6,7 +6,8 @@ import { FaUser, FaEnvelope, FaCheck, FaArrowLeft, FaGoogle, FaLock, FaUnlink, F
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { theme, LoadingSpinner, ErrorMessage as SharedErrorMessage, SuccessMessage as SharedSuccessMessage } from '../styles/DesignSystem';
+import { theme } from '../design-system';
+import { LoadingSpinner, ErrorMessage as SharedErrorMessage, SuccessMessage as SharedSuccessMessage } from '../styles/DesignSystem';
 import {
   updateEmail as updateEmailAction,
   updateUsername as updateUsernameAction,

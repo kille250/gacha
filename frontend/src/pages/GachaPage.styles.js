@@ -2,11 +2,12 @@
  * GachaPage Styled Components
  *
  * Extracted from GachaPage.js for better maintainability and reusability.
+ * Uses design-system tokens for consistency.
  */
 
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, PageWrapper, ModalContent } from '../styles/DesignSystem';
+import { theme, PageWrapper } from '../design-system';
 
 // ==================== PAGE WRAPPER ====================
 
@@ -529,10 +530,6 @@ export const EmptyButton = styled(motion.button)`
 `;
 
 // ==================== HELP MODAL ====================
-
-export const HelpModalContent = styled(ModalContent)`
-  max-width: 500px;
-`;
 
 export const HelpSection = styled.div`
   margin-bottom: ${theme.spacing.lg};

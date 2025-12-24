@@ -14,7 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { useActionLock } from './useActionLock';
 import { executeFishTrade } from '../actions/fishingActions';
 import { getTradingPostOptions } from '../utils/api';
-import { theme } from '../styles/DesignSystem';
+import { theme } from '../design-system';
 
 /**
  * Trade timeout duration in milliseconds

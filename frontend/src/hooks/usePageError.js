@@ -19,7 +19,7 @@
 
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from '../context/ToastContext';
-import { theme } from '../styles/DesignSystem';
+import { theme } from '../design-system';
 
 /**
  * Extracts a user-friendly error message from various error formats

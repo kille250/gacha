@@ -17,7 +17,7 @@ import { useCollection } from '../hooks';
 import { useRarity } from '../context/RarityContext';
 
 // Design System
-import { Container, motionVariants } from '../styles/DesignSystem';
+import { Container, motionVariants } from '../design-system';
 
 // Extracted styles
 import {
