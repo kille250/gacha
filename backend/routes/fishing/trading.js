@@ -38,7 +38,7 @@ const {
   clearFailedAttempts,
   getAttemptKey
 } = require('../../middleware/captcha');
-const { sensitiveActionLimiter } = require('../../middleware/rateLimiter');
+const { tradeLimiter } = require('../../middleware/rateLimiter');
 const { deviceBindingMiddleware } = require('../../middleware/deviceBinding');
 
 // Error classes
@@ -193,8 +193,8 @@ router.get('/trading-post', [auth, enforcementMiddleware], async (req, res, next
 });
 
 // POST /trade - Execute a trade
-// Security: lockout checked FIRST (fail-fast), enforcement checked, device binding verified, policy enforced, rate limited, CAPTCHA protected
-router.post('/trade', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('trade'), sensitiveActionLimiter, enforcePolicy('canTrade'), captchaMiddleware('trade')], async (req, res, next) => {
+// Security: lockout checked FIRST (fail-fast), enforcement checked, device binding verified, policy enforced, rate limited (20 per 5min), CAPTCHA protected
+router.post('/trade', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBindingMiddleware('trade'), tradeLimiter, enforcePolicy('canTrade'), captchaMiddleware('trade')], async (req, res, next) => {
   const userId = req.user.id;
   const now = Date.now();
   const enforcement = getEnforcementContext(req);

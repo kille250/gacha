@@ -15,7 +15,7 @@ const DEFAULTS = {
   RATE_LIMIT_GENERAL_WINDOW: 60000,
   RATE_LIMIT_GENERAL_MAX: 100,
   RATE_LIMIT_SENSITIVE_WINDOW: 3600000,
-  RATE_LIMIT_SENSITIVE_MAX: 20,
+  RATE_LIMIT_SENSITIVE_MAX: 30,           // Increased from 20 for better trading UX
   RATE_LIMIT_SIGNUP_WINDOW: 86400000,
   RATE_LIMIT_SIGNUP_MAX: 5,
   RATE_LIMIT_COUPON_WINDOW: 900000,
@@ -23,12 +23,23 @@ const DEFAULTS = {
   RATE_LIMIT_BURST_WINDOW: 1000,
   RATE_LIMIT_BURST_MAX: 10,
   // Route-level rate limits (for app.js)
-  RATE_LIMIT_AUTH_WINDOW: 900000,    // 15 minutes
+  RATE_LIMIT_AUTH_WINDOW: 900000,         // 15 minutes
   RATE_LIMIT_AUTH_MAX: 20,
-  RATE_LIMIT_ROLL_WINDOW: 60000,     // 1 minute
+  RATE_LIMIT_ROLL_WINDOW: 60000,          // 1 minute
   RATE_LIMIT_ROLL_MAX: 120,
-  RATE_LIMIT_FISHING_WINDOW: 60000,  // 1 minute
-  RATE_LIMIT_FISHING_MAX: 30
+  // === FISHING RATE LIMITS ===
+  // Aligned with gameplay pacing: cast cooldown is 5s (max 12/min), autofish is 6s (max 10/min)
+  // We allow ~25% burst above theoretical max to accommodate network variance and excited players
+  RATE_LIMIT_FISHING_WINDOW: 60000,       // 1 minute
+  RATE_LIMIT_FISHING_MAX: 15,             // Reduced from 30 - aligns with 5s cast cooldown (12/min + burst)
+  RATE_LIMIT_FISHING_CAST_WINDOW: 60000,  // 1 minute
+  RATE_LIMIT_FISHING_CAST_MAX: 15,        // Max 12/min possible at 5s cooldown, allow 15 for burst
+  RATE_LIMIT_FISHING_AUTOFISH_WINDOW: 60000, // 1 minute
+  RATE_LIMIT_FISHING_AUTOFISH_MAX: 12,    // Max 10/min possible at 6s cooldown, allow 12 for burst
+  RATE_LIMIT_FISHING_PURCHASE_WINDOW: 300000, // 5 minutes
+  RATE_LIMIT_FISHING_PURCHASE_MAX: 5,     // 5 purchases per 5 min (areas, rods are rare purchases)
+  RATE_LIMIT_REWARD_CLAIM_WINDOW: 60000,  // 1 minute
+  RATE_LIMIT_REWARD_CLAIM_MAX: 10         // 10 claims per minute (challenges, milestones, prestige)
 };
 
 // Cached config values (updated periodically)
@@ -57,7 +68,11 @@ async function loadConfig() {
       burstWindow, burstMax,
       authWindow, authMax,
       rollWindow, rollMax,
-      fishingWindow, fishingMax
+      fishingWindow, fishingMax,
+      fishingCastWindow, fishingCastMax,
+      fishingAutofishWindow, fishingAutofishMax,
+      fishingPurchaseWindow, fishingPurchaseMax,
+      rewardClaimWindow, rewardClaimMax
     ] = await Promise.all([
       getConfig('RATE_LIMIT_GENERAL_WINDOW'),
       getConfig('RATE_LIMIT_GENERAL_MAX'),
@@ -74,9 +89,17 @@ async function loadConfig() {
       getConfig('RATE_LIMIT_ROLL_WINDOW'),
       getConfig('RATE_LIMIT_ROLL_MAX'),
       getConfig('RATE_LIMIT_FISHING_WINDOW'),
-      getConfig('RATE_LIMIT_FISHING_MAX')
+      getConfig('RATE_LIMIT_FISHING_MAX'),
+      getConfig('RATE_LIMIT_FISHING_CAST_WINDOW'),
+      getConfig('RATE_LIMIT_FISHING_CAST_MAX'),
+      getConfig('RATE_LIMIT_FISHING_AUTOFISH_WINDOW'),
+      getConfig('RATE_LIMIT_FISHING_AUTOFISH_MAX'),
+      getConfig('RATE_LIMIT_FISHING_PURCHASE_WINDOW'),
+      getConfig('RATE_LIMIT_FISHING_PURCHASE_MAX'),
+      getConfig('RATE_LIMIT_REWARD_CLAIM_WINDOW'),
+      getConfig('RATE_LIMIT_REWARD_CLAIM_MAX')
     ]);
-    
+
     configCache = {
       RATE_LIMIT_GENERAL_WINDOW: generalWindow,
       RATE_LIMIT_GENERAL_MAX: generalMax,
@@ -93,7 +116,15 @@ async function loadConfig() {
       RATE_LIMIT_ROLL_WINDOW: rollWindow,
       RATE_LIMIT_ROLL_MAX: rollMax,
       RATE_LIMIT_FISHING_WINDOW: fishingWindow,
-      RATE_LIMIT_FISHING_MAX: fishingMax
+      RATE_LIMIT_FISHING_MAX: fishingMax,
+      RATE_LIMIT_FISHING_CAST_WINDOW: fishingCastWindow,
+      RATE_LIMIT_FISHING_CAST_MAX: fishingCastMax,
+      RATE_LIMIT_FISHING_AUTOFISH_WINDOW: fishingAutofishWindow,
+      RATE_LIMIT_FISHING_AUTOFISH_MAX: fishingAutofishMax,
+      RATE_LIMIT_FISHING_PURCHASE_WINDOW: fishingPurchaseWindow,
+      RATE_LIMIT_FISHING_PURCHASE_MAX: fishingPurchaseMax,
+      RATE_LIMIT_REWARD_CLAIM_WINDOW: rewardClaimWindow,
+      RATE_LIMIT_REWARD_CLAIM_MAX: rewardClaimMax
     };
     
     lastConfigLoad = now;
@@ -239,7 +270,8 @@ const rollLimiter = rateLimit({
 });
 
 /**
- * Fishing rate limiter
+ * Fishing rate limiter (general - for backwards compatibility)
+ * Applied to /api/fishing/cast in app.js
  * Configurable via admin interface
  */
 const fishingLimiter = rateLimit({
@@ -250,6 +282,122 @@ const fishingLimiter = rateLimit({
   legacyHeaders: false,
   keyGenerator: (req) => {
     return `fishing:${req.user?.id || req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
+
+/**
+ * Cast-specific rate limiter
+ * Aligned with 5s game cooldown (max 12/min theoretical, allow 15 for burst)
+ *
+ * Game Design Rationale:
+ * - Cast cooldown in game: 5000ms (12 casts/min max)
+ * - Allow 25% burst for excited players and network variance
+ * - Prevents automation attempting >15 casts/min
+ */
+const fishingCastLimiter = rateLimit({
+  windowMs: DEFAULTS.RATE_LIMIT_FISHING_CAST_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_FISHING_CAST_MAX,
+  message: {
+    error: 'Casting too quickly! Take a breath between casts.',
+    code: 'FISHING_CAST_RATE_LIMITED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `fishing_cast:${req.user?.id || req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
+
+/**
+ * Autofish-specific rate limiter
+ * Aligned with 6s game cooldown (max 10/min theoretical, allow 12 for burst)
+ *
+ * Game Design Rationale:
+ * - Autofish cooldown in game: 6000ms (10 autofishes/min max)
+ * - Allow 20% burst for network timing variance
+ * - Separate from manual cast to prevent action type confusion
+ */
+const fishingAutofishLimiter = rateLimit({
+  windowMs: DEFAULTS.RATE_LIMIT_FISHING_AUTOFISH_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_FISHING_AUTOFISH_MAX,
+  message: {
+    error: 'Autofishing too quickly! The fish need time to respawn.',
+    code: 'FISHING_AUTOFISH_RATE_LIMITED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `fishing_autofish:${req.user?.id || req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
+
+/**
+ * Fishing purchase rate limiter
+ * Applied to area unlocks and rod purchases
+ *
+ * Game Design Rationale:
+ * - Area/rod purchases are infrequent (6 rods, 4 areas total in game)
+ * - 5 purchases per 5 minutes is generous for legitimate play
+ * - Prevents rapid purchase probing attacks
+ */
+const fishingPurchaseLimiter = rateLimit({
+  windowMs: DEFAULTS.RATE_LIMIT_FISHING_PURCHASE_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_FISHING_PURCHASE_MAX,
+  message: {
+    error: 'Too many purchases. Please wait before buying more.',
+    code: 'FISHING_PURCHASE_RATE_LIMITED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `fishing_purchase:${req.user?.id || req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
+
+/**
+ * Reward claim rate limiter
+ * Applied to challenge claims, prestige claims, and milestone claims
+ *
+ * Game Design Rationale:
+ * - Max 3 daily challenges + occasional milestones/prestige
+ * - 10 claims per minute is very generous
+ * - Prevents reward farming automation
+ */
+const rewardClaimLimiter = rateLimit({
+  windowMs: DEFAULTS.RATE_LIMIT_REWARD_CLAIM_WINDOW,
+  max: () => getConfigSync().RATE_LIMIT_REWARD_CLAIM_MAX,
+  message: {
+    error: 'Too many reward claims. Please slow down.',
+    code: 'REWARD_CLAIM_RATE_LIMITED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `reward_claim:${req.user?.id || req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
+
+/**
+ * Trade-specific rate limiter
+ * Replaces sensitiveActionLimiter for trades with more gameplay-appropriate limits
+ *
+ * Game Design Rationale:
+ * - Players accumulate fish over time, then trade in bursts
+ * - 20 trades per 5 minutes allows clearing inventory efficiently
+ * - Still prevents automated trade farming
+ * - More forgiving than the 30/hour sensitiveActionLimiter
+ */
+const tradeLimiter = rateLimit({
+  windowMs: 300000,  // 5 minutes
+  max: 20,           // 20 trades per 5 minutes (4/min average, allows bursts)
+  message: {
+    error: 'Trading too quickly! Take a moment before your next trade.',
+    code: 'TRADE_RATE_LIMITED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `trade:${req.user?.id || req.deviceSignals?.ipHash || 'unknown'}`;
   }
 });
 
@@ -278,6 +426,12 @@ module.exports = {
   authLimiter,
   rollLimiter,
   fishingLimiter,
+  // Fishing-specific rate limiters (aligned with gameplay pacing)
+  fishingCastLimiter,
+  fishingAutofishLimiter,
+  fishingPurchaseLimiter,
+  rewardClaimLimiter,
+  tradeLimiter,
   reloadConfig,
   getCurrentConfig
 };

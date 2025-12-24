@@ -10,6 +10,7 @@ const router = express.Router();
 const auth = require('../../middleware/auth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { deviceBindingMiddleware } = require('../../middleware/deviceBinding');
+const { fishingPurchaseLimiter } = require('../../middleware/rateLimiter');
 const { User } = require('../../models');
 
 // Config imports
@@ -63,8 +64,8 @@ router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
 });
 
 // POST /:id/buy - Buy a fishing rod
-// Security: enforcement checked, device binding verified, risk tracked
-router.post('/:id/buy', [auth, enforcementMiddleware, deviceBindingMiddleware('fishing_purchase')], async (req, res, next) => {
+// Security: enforcement checked, rate limited (5 per 5min), device binding verified, risk tracked
+router.post('/:id/buy', [auth, enforcementMiddleware, fishingPurchaseLimiter, deviceBindingMiddleware('fishing_purchase')], async (req, res, next) => {
   try {
     const { id: rodId } = req.params;
     const rod = FISHING_RODS[rodId];

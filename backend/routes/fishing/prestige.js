@@ -10,6 +10,7 @@ const router = express.Router();
 const auth = require('../../middleware/auth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { deviceBindingMiddleware } = require('../../middleware/deviceBinding');
+const { rewardClaimLimiter } = require('../../middleware/rateLimiter');
 const { User } = require('../../models');
 
 const {
@@ -81,8 +82,8 @@ router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
 });
 
 // POST /prestige/claim - Claim next prestige level
-// Security: enforcement checked, device binding verified, risk tracked
-router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('reward_claim')], async (req, res, next) => {
+// Security: enforcement checked, rate limited (10/min), device binding verified, risk tracked
+router.post('/claim', [auth, enforcementMiddleware, rewardClaimLimiter, deviceBindingMiddleware('reward_claim')], async (req, res, next) => {
   try {
     const user = await User.findByPk(req.user.id);
     if (!user) throw new UserNotFoundError(req.user.id);

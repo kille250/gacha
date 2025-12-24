@@ -10,6 +10,7 @@ const router = express.Router();
 const auth = require('../../middleware/auth');
 const { enforcementMiddleware } = require('../../middleware/enforcement');
 const { deviceBindingMiddleware } = require('../../middleware/deviceBinding');
+const { rewardClaimLimiter } = require('../../middleware/rateLimiter');
 const { User } = require('../../models');
 
 // Config imports
@@ -87,8 +88,8 @@ router.get('/', [auth, enforcementMiddleware], async (req, res, next) => {
 });
 
 // POST /:id/claim - Claim a completed challenge reward
-// Security: enforcement checked, device binding verified
-router.post('/:id/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('reward_claim')], async (req, res, next) => {
+// Security: enforcement checked, rate limited (10/min), device binding verified
+router.post('/:id/claim', [auth, enforcementMiddleware, rewardClaimLimiter, deviceBindingMiddleware('reward_claim')], async (req, res, next) => {
   try {
     const { id: challengeId } = req.params;
     
