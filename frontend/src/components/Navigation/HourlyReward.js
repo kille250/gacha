@@ -11,7 +11,7 @@ import { motion } from 'framer-motion';
 import { FaGift } from 'react-icons/fa';
 import { MdAccessTimeFilled } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
-import { theme, LoadingSpinner as SharedLoadingSpinner } from '../../styles/DesignSystem';
+import { theme, LoadingSpinner as SharedLoadingSpinner } from '../../design-system';
 
 /**
  * HourlyReward Button Component

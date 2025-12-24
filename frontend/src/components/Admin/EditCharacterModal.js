@@ -26,7 +26,7 @@ import {
   SecondaryButton,
   ButtonRow,
 } from './AdminStyles';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { useRarity } from '../../context/RarityContext';
 
 /**

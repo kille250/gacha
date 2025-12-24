@@ -10,7 +10,7 @@
  */
 import React, { memo } from 'react';
 import styled from 'styled-components';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 import DuplicateWarningBanner from '../../UI/DuplicateWarningBanner';
 import { FILE_STATUS } from '../../../hooks/useUploadState';
 import { DUPLICATE_STATUS } from '../../../utils/errorHandler';

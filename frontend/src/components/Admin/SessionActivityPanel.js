@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignInAlt, FaSync, FaGoogle, FaKey, FaTimes, FaCheckCircle } from 'react-icons/fa';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { getUserSessions } from '../../utils/api';
 
 const SessionActivityPanel = ({ userId }) => {

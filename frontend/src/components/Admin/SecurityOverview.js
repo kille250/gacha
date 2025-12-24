@@ -11,7 +11,7 @@ import {
   FaShieldAlt, FaUserShield, FaGavel 
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 
 const SecurityOverview = ({ data, appealStats, onViewHighRisk, onViewAppeals }) => {
   const { t } = useTranslation();

@@ -8,7 +8,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaHistory, FaSync, FaFilter, FaDownload } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { getAuditLog, exportAuditLog } from '../../utils/api';
 import { AUDIT_CATEGORIES } from '../../constants/securityConstants';
 import {

@@ -5,7 +5,7 @@ import { FaFlag, FaPlus, FaEdit, FaTrash, FaGripVertical, FaStar, FaRegStar } fr
 import { DndContext, closestCenter, KeyboardSensor, PointerSensor, TouchSensor, useSensor, useSensors } from '@dnd-kit/core';
 import { SortableContext, sortableKeyboardCoordinates, useSortable, verticalListSortingStrategy } from '@dnd-kit/sortable';
 import { CSS } from '@dnd-kit/utilities';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import { PLACEHOLDER_BANNER } from '../../utils/mediaUtils';
 import {

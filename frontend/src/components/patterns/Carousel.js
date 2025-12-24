@@ -8,7 +8,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
-import { theme } from '../../styles/DesignSystem';
+import { theme, AriaLiveRegion } from '../../design-system';
 
 const CarouselSection = styled.div`
   margin-bottom: ${theme.spacing['2xl']};
@@ -123,6 +123,7 @@ const IndicatorDot = styled.div`
  * @param {number} props.scrollAmount - Pixels to scroll per button click
  * @param {boolean} props.showIndicators - Whether to show scroll indicators on mobile
  * @param {number} props.itemCount - Total number of items (for indicators)
+ * @param {Function} props.getItemLabel - Function to get label for current item (for aria-live)
  */
 const Carousel = ({
   title,
@@ -131,11 +132,13 @@ const Carousel = ({
   scrollAmount = 340,
   showIndicators = true,
   itemCount = 0,
+  getItemLabel,
 }) => {
   const trackRef = useRef(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
   const [activeIndex, setActiveIndex] = useState(0);
+  const [announcement, setAnnouncement] = useState('');
 
   const updateScrollState = useCallback(() => {
     const track = trackRef.current;
@@ -150,9 +153,19 @@ const Carousel = ({
     if (itemCount > 0) {
       const itemWidth = scrollAmount;
       const newIndex = Math.round(track.scrollLeft / itemWidth);
-      setActiveIndex(Math.min(newIndex, itemCount - 1));
+      const clampedIndex = Math.min(newIndex, itemCount - 1);
+
+      if (clampedIndex !== activeIndex) {
+        setActiveIndex(clampedIndex);
+        // Announce current item for screen readers
+        if (getItemLabel) {
+          setAnnouncement(`Item ${clampedIndex + 1} of ${itemCount}: ${getItemLabel(clampedIndex)}`);
+        } else {
+          setAnnouncement(`Item ${clampedIndex + 1} of ${itemCount}`);
+        }
+      }
     }
-  }, [itemCount, scrollAmount]);
+  }, [itemCount, scrollAmount, activeIndex, getItemLabel]);
 
   useEffect(() => {
     const track = trackRef.current;
@@ -223,12 +236,17 @@ const Carousel = ({
       </CarouselTrack>
 
       {showIndicators && itemCount > 1 && (
-        <ScrollIndicator>
+        <ScrollIndicator aria-hidden="true">
           {Array.from({ length: Math.min(itemCount, 5) }).map((_, idx) => (
             <IndicatorDot key={idx} $active={idx === activeIndex % 5} />
           ))}
         </ScrollIndicator>
       )}
+
+      {/* Screen reader announcement for current item */}
+      <AriaLiveRegion aria-live="polite" aria-atomic="true">
+        {announcement}
+      </AriaLiveRegion>
     </CarouselSection>
   );
 };

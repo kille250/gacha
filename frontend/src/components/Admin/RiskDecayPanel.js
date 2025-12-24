@@ -8,7 +8,7 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { FaChartLine, FaSync, FaExclamationTriangle, FaCheckCircle } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { triggerRiskScoreDecay, getRiskStats } from '../../utils/api';
 import { PrimaryButton, SecondaryButton, Select } from './AdminStyles';
 

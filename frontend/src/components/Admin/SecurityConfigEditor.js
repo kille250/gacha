@@ -11,7 +11,7 @@ import {
   FaCog, FaSave, FaUndo, FaExclamationTriangle 
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { getSecurityConfig, updateSecurityConfig } from '../../utils/api';
 import {
   ModalOverlay,

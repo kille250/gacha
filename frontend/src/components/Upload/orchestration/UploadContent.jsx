@@ -9,7 +9,7 @@ import React, { memo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaExclamationTriangle, FaWifi } from 'react-icons/fa';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 import { UPLOAD_FLOW_STATES } from '../../../hooks/useUploadState';
 import { isEnabled, FEATURES, prefersReducedMotion } from '../../../utils/featureFlags';
 

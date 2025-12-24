@@ -7,7 +7,7 @@
 import React from 'react';
 import styled, { css } from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, motionVariants } from '../../../styles/DesignSystem';
+import { theme, motionVariants } from '../../../design-system';
 
 const SectionWrapper = styled(motion.section)`
   display: flex;

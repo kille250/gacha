@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUsers, FaCoins, FaSearch, FaCrown, FaShieldAlt } from 'react-icons/fa';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import {
   AdminContainer,

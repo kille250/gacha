@@ -12,7 +12,7 @@ import {
   FaGavel, FaEyeSlash, FaEdit, FaBalanceScale, FaLock
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { getSecurityConfig } from '../../utils/api';
 import {
   HeaderRow,

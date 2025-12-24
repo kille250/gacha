@@ -7,7 +7,7 @@
 import React, { forwardRef } from 'react';
 import styled, { css } from 'styled-components';
 import { MdExpandMore } from 'react-icons/md';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const SelectWrapper = styled.div`
   display: flex;

@@ -9,7 +9,7 @@ import React from 'react';
 import styled, { css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheck, MdError, MdWarning, MdInfo, MdClose } from 'react-icons/md';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const toastVariants = {
   success: {

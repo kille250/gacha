@@ -9,7 +9,7 @@ import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 
 const ControlsBar = styled.div`
   display: flex;

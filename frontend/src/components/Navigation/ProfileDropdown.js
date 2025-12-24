@@ -16,7 +16,7 @@ import {
   MdSettings,
   MdExitToApp
 } from 'react-icons/md';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import LanguageSelector from './LanguageSelector';
 
 /**

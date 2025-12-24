@@ -27,7 +27,7 @@ import {
 import { GiFishingPole, GiDoubleDragon } from 'react-icons/gi';
 import { FaDice } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { useHourlyReward } from '../../hooks';
 
 // Extracted sub-components

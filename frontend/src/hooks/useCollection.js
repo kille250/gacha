@@ -3,19 +3,20 @@
  *
  * Consolidates:
  * - Data fetching (collection + all characters)
- * - Filter state (rarity, series, ownership, search)
+ * - Filter state (rarity, series, ownership, search) with URL persistence
  * - Pagination
  * - Level up actions
  * - Preview modal state
  *
  * Reduces CollectionPage from 15+ useState calls to a single hook.
+ * Filter state is synced to URL for shareable links and back/forward navigation.
  */
 
 import { useState, useEffect, useCallback, useMemo, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCollectionData } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
-import { useActionLock, useAutoDismissError } from './index';
+import { useActionLock, useAutoDismissError, useFilterParams } from './index';
 import { executeLevelUp, executeUpgradeAll } from '../actions/gachaActions';
 
 /**
@@ -58,8 +59,16 @@ export function useCollection() {
   });
   const [isLoading, setIsLoading] = useState(true);
 
-  // Filter state
-  const [filters, setFilters] = useState(DEFAULT_FILTERS);
+  // Filter state with URL persistence
+  const {
+    filters,
+    setFilter: setUrlFilter,
+    setFilters: setUrlFilters,
+    clearFilters: clearUrlFilters,
+    hasActiveFilters,
+  } = useFilterParams(DEFAULT_FILTERS, {
+    paramMapping: { search: 'q' }, // Use 'q' for search in URL
+  });
 
   // Preview state
   const [preview, setPreview] = useState({
@@ -181,39 +190,26 @@ export function useCollection() {
     upgradableCount: data.collection.filter(char => char.canLevelUp).length,
   }), [data.collection, data.allCharacters]);
 
-  // Check if any filters are active
-  const hasActiveFilters = useMemo(() => (
-    filters.rarity !== 'all' ||
-    filters.series !== 'all' ||
-    filters.ownership !== 'all' ||
-    filters.search.trim() !== ''
-  ), [filters]);
-
-  // Filter setters
+  // Filter setters (using URL-based state)
   const setFilter = useCallback((key, value) => {
-    setFilters(prev => ({
-      ...prev,
-      [key]: value,
-      // Reset page when filter changes
-      page: key === 'page' || key === 'perPage' ? (key === 'page' ? value : 1) : 1,
-    }));
-  }, []);
+    setUrlFilter(key, value);
+  }, [setUrlFilter]);
 
   const setSearch = useCallback((value) => {
-    setFilters(prev => ({ ...prev, search: value, page: 1 }));
-  }, []);
+    setUrlFilter('search', value);
+  }, [setUrlFilter]);
 
   const setPage = useCallback((page) => {
-    setFilters(prev => ({ ...prev, page: Math.max(1, Math.min(page, totalPages)) }));
-  }, [totalPages]);
+    setUrlFilter('page', Math.max(1, Math.min(page, totalPages)));
+  }, [setUrlFilter, totalPages]);
 
   const setPerPage = useCallback((perPage) => {
-    setFilters(prev => ({ ...prev, perPage, page: 1 }));
-  }, []);
+    setUrlFilters({ perPage, page: 1 });
+  }, [setUrlFilters]);
 
   const clearFilters = useCallback(() => {
-    setFilters(DEFAULT_FILTERS);
-  }, []);
+    clearUrlFilters();
+  }, [clearUrlFilters]);
 
   // Preview handlers
   const openPreview = useCallback((character) => {

@@ -12,7 +12,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
 

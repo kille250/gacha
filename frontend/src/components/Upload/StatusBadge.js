@@ -17,7 +17,7 @@ import {
   FaClock,
   FaCloudUploadAlt,
 } from 'react-icons/fa';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { FILE_STATUS } from '../../hooks/useUploadState';
 
 const spin = keyframes`

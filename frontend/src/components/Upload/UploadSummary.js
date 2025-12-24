@@ -17,7 +17,7 @@ import {
   FaChevronDown,
   FaChevronUp,
 } from 'react-icons/fa';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 
 const UploadSummary = memo(({
   result,

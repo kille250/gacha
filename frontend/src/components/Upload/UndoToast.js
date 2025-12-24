@@ -12,7 +12,7 @@ import React, { memo, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUndo, FaTimes } from 'react-icons/fa';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { prefersReducedMotion } from '../../utils/featureFlags';
 
 const TOAST_DURATION = 8000; // 8 seconds

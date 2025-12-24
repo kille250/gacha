@@ -6,7 +6,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 import Modal from './Modal';
 import { Button, ActionButton } from '../buttons';
 

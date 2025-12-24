@@ -108,3 +108,6 @@ export { useSwipeGesture } from './useSwipeGesture';
 
 // Duplicate check
 export { useDuplicateCheck } from './useDuplicateCheck';
+
+// Video visibility (performance optimization)
+export { useVideoVisibility, useLazyVideo } from './useVideoVisibility';

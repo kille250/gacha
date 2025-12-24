@@ -14,7 +14,7 @@ import { MdCasino, MdCollections } from 'react-icons/md';
 import { GiFishingPole, GiDoubleDragon } from 'react-icons/gi';
 import { FaDice } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 
 const BottomNav = () => {
   const { t } = useTranslation();

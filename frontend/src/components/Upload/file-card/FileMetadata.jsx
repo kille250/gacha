@@ -15,7 +15,7 @@
 import React, { memo, useCallback } from 'react';
 import styled, { css } from 'styled-components';
 import { FaMagic, FaCopy } from 'react-icons/fa';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const FileMetadata = memo(({
   file,

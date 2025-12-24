@@ -17,7 +17,7 @@ import {
   MdExitToApp,
   MdAdminPanelSettings
 } from 'react-icons/md';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import HourlyReward from './HourlyReward';
 import LanguageSelector from './LanguageSelector';
 

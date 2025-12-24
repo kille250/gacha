@@ -8,7 +8,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUserShield, FaSync, FaEye } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { getHighRiskUsers } from '../../utils/api';
 import { getRiskColor } from '../../constants/securityConstants';
 import {

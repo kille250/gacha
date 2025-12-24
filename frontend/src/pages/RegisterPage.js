@@ -7,8 +7,7 @@ import { MdLanguage } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { theme, motionVariants } from '../design-system';
-import { LoadingSpinner } from '../styles/DesignSystem';
+import { theme, motionVariants, LoadingSpinner } from '../design-system';
 import { languages } from '../i18n';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;

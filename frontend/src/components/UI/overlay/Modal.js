@@ -10,7 +10,7 @@ import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdClose } from 'react-icons/md';
-import { theme, motionVariants } from '../../../styles/DesignSystem';
+import { theme, motionVariants } from '../../../design-system';
 import { IconButton } from '../buttons';
 
 const Overlay = styled(motion.div)`

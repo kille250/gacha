@@ -9,7 +9,7 @@ import { createPortal } from 'react-dom';
 import styled, { css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdClose } from 'react-icons/md';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 import { IconButton } from '../buttons';
 
 const positionStyles = {

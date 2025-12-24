@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaChartLine, FaSync, FaArrowUp, FaArrowDown, FaMinus, FaShieldAlt } from 'react-icons/fa';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { getUserRiskHistory } from '../../utils/api';
 
 const RiskScoreHistoryPanel = ({ userId }) => {

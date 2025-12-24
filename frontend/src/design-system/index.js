@@ -42,7 +42,24 @@ export {
   Input,
   Select,
   Badge,
-  Spinner
+  Spinner,
+  // Typography
+  Heading1,
+  Heading2,
+  Heading3,
+  Text,
+  Caption,
+  // Chips
+  Chip,
+  PrimaryChip,
+  RarityBadge,
+  // Loading
+  LoadingSpinner,
+  LoadingDots,
+  // Messages
+  ErrorMessage,
+  SuccessMessage,
+  WarningMessage
 } from './primitives';
 
 // Layout
@@ -76,7 +93,14 @@ export {
 export {
   Modal,
   ConfirmDialog,
-  Drawer
+  Drawer,
+  // Modal building blocks
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  scrollbarStyles
 } from './overlays';
 
 // Utilities
@@ -90,7 +114,10 @@ export {
   useAriaLive,
   useFocusReturn,
   useRovingTabIndex,
-  useReducedMotion
+  useReducedMotion,
+  // Rarity
+  getRarityColor,
+  getRarityGlow
 } from './utilities';
 
 // Re-export theme as default for backward compatibility

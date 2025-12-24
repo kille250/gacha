@@ -7,7 +7,7 @@
 import React, { memo } from 'react';
 import styled from 'styled-components';
 import { FaCloudUploadAlt, FaTimes } from 'react-icons/fa';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const UploadHeader = memo(({ onClose, disabled = false }) => {
   return (

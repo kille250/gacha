@@ -4,7 +4,7 @@ import { MdClose } from 'react-icons/md';
 import { FaFish } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { useRarity } from '../../../context/RarityContext';
-import { ModalOverlay, motionVariants } from '../../../styles/DesignSystem';
+import { ModalOverlay, motionVariants } from '../../../design-system';
 import {
   TradingPostModal as TradingPostModalStyled, ShopHeader, ShopTitleRow, ShopIcon, ShopTitle, ShopBody,
   CloseButton, WalletStrip, WalletItem, WalletDivider, WalletValue,

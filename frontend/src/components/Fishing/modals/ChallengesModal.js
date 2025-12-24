@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { MdClose, MdEmojiEvents, MdAutorenew, MdCheckCircle } from 'react-icons/md';
 import { FaFish } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../styles/DesignSystem';
+import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../design-system';
 import {
   CozyModal, ModalTitle, CloseButton, TradingLoadingState,
   ChallengesList, ChallengeCard, ChallengeHeader, ChallengeName, DifficultyBadge,

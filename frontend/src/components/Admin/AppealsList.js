@@ -8,7 +8,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaGavel, FaSync, FaCheck, FaEye } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { getPendingAppeals, getAppealStats } from '../../utils/api';
 import {
   HeaderRow,

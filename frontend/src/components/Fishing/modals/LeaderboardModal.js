@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { MdClose, MdAutorenew } from 'react-icons/md';
 import { FaTrophy, FaCrown } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../styles/DesignSystem';
+import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../design-system';
 import {
   CozyModal, ModalTitle, CloseButton, CoinDot,
   YourRankSection, RankBanner, YourRankValue, RankSubtext,

@@ -11,7 +11,7 @@ import {
   FaFingerprint, FaGlobe, FaClock, FaUndo, FaTrash, FaSync, FaLink
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { 
   getUserSecurity, restrictUser, unrestrictUser, 
   warnUser, resetUserWarnings, clearUserDevices,

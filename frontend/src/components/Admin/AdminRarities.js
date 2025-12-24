@@ -6,7 +6,7 @@ import {
   FaExclamationTriangle, FaInfoCircle, FaChevronDown, FaChevronUp, FaCopy,
   FaDice, FaLightbulb, FaQuestionCircle, FaCog
 } from 'react-icons/fa';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../../cache';

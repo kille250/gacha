@@ -3,7 +3,7 @@ import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaStar, FaGem, FaTrophy, FaDice } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { isVideo } from '../../utils/mediaUtils';
 import { useRarity } from '../../context/RarityContext';
 

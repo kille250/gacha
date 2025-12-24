@@ -7,7 +7,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaFingerprint, FaSync, FaDesktop, FaGlobe, FaExclamationTriangle } from 'react-icons/fa';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { getUserDeviceHistory } from '../../utils/api';
 
 const DeviceHistoryPanel = ({ userId, username }) => {

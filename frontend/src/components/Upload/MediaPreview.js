@@ -12,7 +12,7 @@
 import React, { useState, memo, useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaVideo, FaImage, FaFilm } from 'react-icons/fa';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { formatFileSize } from '../../services/uploadService';
 
 const shimmer = keyframes`

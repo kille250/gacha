@@ -12,7 +12,7 @@ import React, { useState, useRef, useCallback, memo } from 'react';
 import styled, { css } from 'styled-components';
 import { motion } from 'framer-motion';
 import { FaCloudUploadAlt, FaImage, FaVideo } from 'react-icons/fa';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 
 const DropZone = memo(({
   onFilesSelected,

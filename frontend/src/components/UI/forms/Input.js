@@ -6,7 +6,7 @@
 
 import React, { forwardRef, memo } from 'react';
 import styled, { css } from 'styled-components';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const InputWrapper = styled.div`
   display: flex;

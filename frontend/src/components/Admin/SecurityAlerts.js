@@ -12,7 +12,7 @@ import {
   FaLock, FaSync, FaClock, FaChevronDown, FaChevronUp
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { getSecurityAlerts } from '../../utils/api';
 import { SEVERITY_COLORS } from '../../constants/securityConstants';
 

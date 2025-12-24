@@ -17,7 +17,7 @@
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import styled, { keyframes, css } from 'styled-components';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { useRecaptcha } from '../../context/RecaptchaContext';
 
 // ==================== ANIMATIONS ====================

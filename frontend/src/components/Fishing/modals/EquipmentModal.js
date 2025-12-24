@@ -2,7 +2,7 @@ import React from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { MdClose, MdSettings } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
-import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../styles/DesignSystem';
+import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../design-system';
 import {
   CozyModal, ModalTitle, CloseButton,
   EquipmentTabs, EquipmentTab, EquipmentList, EquipmentCard,

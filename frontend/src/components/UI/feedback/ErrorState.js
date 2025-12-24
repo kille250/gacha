@@ -9,7 +9,7 @@ import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { MdError, MdRefresh } from 'react-icons/md';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 import { Button } from '../buttons';
 
 const Container = styled(motion.div)`

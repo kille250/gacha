@@ -10,7 +10,7 @@
 import React, { memo, useState } from 'react';
 import styled from 'styled-components';
 import { FaMagic, FaCheck } from 'react-icons/fa';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 
 const BulkSettingsBar = memo(({
   bulkDefaults,

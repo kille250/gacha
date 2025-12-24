@@ -6,11 +6,12 @@
  * Includes accessibility features and reduced motion support.
  */
 
-import React, { memo, useCallback } from 'react';
+import React, { memo, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { theme, motionVariants, useReducedMotion, VisuallyHidden } from '../../design-system';
 import { PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
+import { useVideoVisibility } from '../../hooks';
 
 const Card = styled(motion.div)`
   background: ${theme.colors.surface};
@@ -194,6 +195,10 @@ const CharacterCard = memo(({
 }) => {
   const { level = 1, isMaxLevel = false, shards = 0, shardsToNextLevel, canLevelUp = false } = levelInfo;
   const prefersReducedMotion = useReducedMotion();
+  const videoRef = useRef(null);
+
+  // Use intersection observer to pause/play video based on visibility
+  useVideoVisibility(videoRef, { disabled: !isVideo });
 
   const handleImageError = useCallback((e) => {
     if (!e.target.src.includes('placeholder')) {
@@ -239,6 +244,7 @@ const CharacterCard = memo(({
       <ImageWrapper>
         {isVideo ? (
           <CardVideo
+            ref={videoRef}
             src={imageSrc}
             autoPlay
             loop

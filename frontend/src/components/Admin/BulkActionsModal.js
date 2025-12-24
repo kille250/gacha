@@ -7,7 +7,7 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
 import { FaUsers, FaBan, FaUndo, FaExclamationTriangle } from 'react-icons/fa';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { bulkRestrictUsers, bulkUnrestrictUsers } from '../../utils/api';
 import {
   ModalOverlay,

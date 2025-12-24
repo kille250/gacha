@@ -26,8 +26,10 @@ import {
   Spinner,
   Alert,
   motionVariants,
+  Chip,
+  RarityBadge,
+  scrollbarStyles,
 } from '../design-system';
-import { Chip, RarityBadge, scrollbarStyles } from '../styles/DesignSystem';
 
 import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';

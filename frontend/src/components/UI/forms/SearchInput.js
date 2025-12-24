@@ -7,7 +7,7 @@
 import React, { forwardRef } from 'react';
 import styled from 'styled-components';
 import { MdSearch, MdClose } from 'react-icons/md';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const SearchWrapper = styled.div`
   position: relative;

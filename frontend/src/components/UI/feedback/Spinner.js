@@ -6,7 +6,7 @@
 
 import React from 'react';
 import styled, { keyframes } from 'styled-components';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const spin = keyframes`
   to { transform: rotate(360deg); }

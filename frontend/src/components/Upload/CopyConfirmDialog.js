@@ -10,7 +10,7 @@
 import React, { memo, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { prefersReducedMotion } from '../../utils/featureFlags';
 
 const CopyConfirmDialog = memo(({

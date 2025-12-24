@@ -13,7 +13,7 @@
 import React, { memo, useMemo, useRef, useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import FileCard from './FileCard';
 
 // Threshold for enabling virtualization

@@ -3,7 +3,7 @@ import { AnimatePresence } from 'framer-motion';
 import { MdClose } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { useRarity } from '../../../context/RarityContext';
-import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../styles/DesignSystem';
+import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../design-system';
 import {
   CozyModal, ModalTitle, CloseButton,
   HelpSection, HelpNumber, HelpContent, HelpTitle, HelpText,

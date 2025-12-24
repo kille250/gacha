@@ -17,7 +17,7 @@ import {
   FaChevronDown,
   FaCheckCircle,
 } from 'react-icons/fa';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { prefersReducedMotion } from '../../utils/featureFlags';
 import { FILE_STATUS } from '../../hooks/useUploadState';
 

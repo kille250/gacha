@@ -8,7 +8,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 import Spinner from './Spinner';
 
 const Container = styled(motion.div)`

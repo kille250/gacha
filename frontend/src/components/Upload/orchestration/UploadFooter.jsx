@@ -11,7 +11,7 @@
 import React, { memo, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaKeyboard } from 'react-icons/fa';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const UploadFooter = memo(({
   fileCount,

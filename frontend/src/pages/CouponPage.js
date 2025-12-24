@@ -12,9 +12,9 @@ import {
   PageWrapper,
   Container,
   Section,
-  Alert
+  Alert,
+  Heading2,
 } from '../design-system';
-import { Heading2 } from '../styles/DesignSystem';
 
 const CouponPage = () => {
   const { t } = useTranslation();

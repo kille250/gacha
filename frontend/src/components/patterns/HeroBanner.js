@@ -10,7 +10,7 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { FaStar, FaPlay } from 'react-icons/fa';
 import { MdChevronLeft, MdChevronRight } from 'react-icons/md';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 
 const BannerContainer = styled(motion.div)`
   position: relative;

@@ -8,7 +8,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { FaShieldAlt, FaCog, FaBan } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme, motionVariants } from '../../styles/DesignSystem';
+import { theme, motionVariants } from '../../design-system';
 import { getSecurityOverview, getAppealStats } from '../../utils/api';
 import { onVisibilityChange, REFRESH_INTERVALS } from '../../cache';
 import { AdminContainer, SectionTitle } from './AdminStyles';

@@ -7,7 +7,7 @@
 
 import styled, { keyframes, css } from 'styled-components';
 import { motion } from 'framer-motion';
-import { ModalContent, IconButton } from '../../styles/DesignSystem';
+import { ModalContent, IconButton } from '../../design-system';
 
 // ===========================================
 // ANIMATIONS
@@ -3118,4 +3118,4 @@ export const PrestigeLevelCardLock = styled.div`
 `;
 
 // Re-export for convenience
-export { ModalOverlay, ModalHeader, ModalBody } from '../../styles/DesignSystem';
+export { ModalOverlay, ModalHeader, ModalBody } from '../../design-system';

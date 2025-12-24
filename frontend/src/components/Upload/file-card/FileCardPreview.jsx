@@ -12,7 +12,7 @@
 import React, { memo } from 'react';
 import styled from 'styled-components';
 import { FaTrash } from 'react-icons/fa';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 import MediaPreview from '../MediaPreview';
 import StatusBadge from '../StatusBadge';
 import { FILE_STATUS } from '../../../hooks/useUploadState';

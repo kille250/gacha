@@ -8,7 +8,7 @@
 import React, { forwardRef } from 'react';
 import styled, { css } from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const sizeStyles = {
   sm: css`

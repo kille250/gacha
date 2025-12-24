@@ -16,3 +16,6 @@ export {
   useRovingTabIndex,
   useReducedMotion
 } from './accessibility';
+
+// Rarity utilities
+export { getRarityColor, getRarityGlow } from './rarity';

@@ -8,7 +8,7 @@ import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
 import { FaGavel, FaCheck, FaTimes, FaUser, FaClock, FaShieldAlt } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../../styles/DesignSystem';
+import { theme } from '../../design-system';
 import { approveAppeal, denyAppeal } from '../../utils/api';
 import {
   ModalOverlay,

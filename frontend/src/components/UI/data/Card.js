@@ -7,7 +7,7 @@
 import React from 'react';
 import styled, { css } from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme } from '../../../styles/DesignSystem';
+import { theme } from '../../../design-system';
 
 const StyledCard = styled(motion.div)`
   background: ${theme.colors.surface};

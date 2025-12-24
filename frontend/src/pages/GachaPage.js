@@ -20,8 +20,8 @@ import { EmptyState as EmptyStateComponent } from '../components/UI/feedback';
 import {
   Container,
   IconButton,
+  Text,
 } from '../design-system';
-import { Text } from '../styles/DesignSystem';
 
 // Extracted styles
 import {

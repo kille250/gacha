@@ -6,7 +6,7 @@ import { RarityProvider } from './context/RarityContext';
 import { RecaptchaProvider } from './context/RecaptchaContext';
 import { ToastProvider } from './context/ToastContext';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
-import { theme } from './styles/DesignSystem';
+import { theme } from './design-system';
 import { initVisibilityHandler, enableCacheDebugging } from './cache';
 import { ErrorBoundary, MainLayout } from './components/UI';
 
