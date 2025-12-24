@@ -38,11 +38,6 @@ const slideUp = keyframes`
   }
 `;
 
-const pulse = keyframes`
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.6; }
-`;
-
 const checkmark = keyframes`
   0% { 
     stroke-dashoffset: 50;
@@ -686,7 +681,7 @@ const CaptchaModal = ({
               <StatusIcon $variant={config.statusVariant}>
                 {config.showSpinner && (loading || isSubmitting) ? (
                   <Spinner />
-                ) : currentState === 'verified' || currentState === 'verifying' && verified ? (
+                ) : currentState === 'verified' || (currentState === 'verifying' && verified) ? (
                   <Checkmark />
                 ) : currentState === 'captcha_error' ? (
                   '✕'
