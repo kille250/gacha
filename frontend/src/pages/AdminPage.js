@@ -163,10 +163,10 @@ const AdminPage = () => {
   };
 
   const addCharacterWithImage = async (e) => {
-    e.preventDefault();
+    // Note: e.preventDefault() is now called by AdminCharacters
     if (!selectedFile) {
       setError(t('admin.selectImage'));
-      return;
+      throw new Error(t('admin.selectImage'));
     }
     try {
       const formData = new FormData();
@@ -175,17 +175,23 @@ const AdminPage = () => {
       formData.append('series', newCharacter.series);
       formData.append('rarity', newCharacter.rarity);
       formData.append('isR18', newCharacter.isR18);
-      
+
       // Use centralized action helper for consistent cache invalidation
       await addCharacterAction(formData);
-      
+
       setSuccessMessage(t('admin.characterAdded'));
       fetchAllData();
       setNewCharacter({ name: '', series: '', rarity: 'common', isR18: false });
       setSelectedFile(null);
       setUploadedImage(null);
     } catch (err) {
+      // Check if this is a duplicate error - re-throw for AdminCharacters to handle
+      if (err.response?.status === 409 && err.response?.data?.duplicateType) {
+        throw err;
+      }
+      // Other errors - show generic message
       setError(err.response?.data?.error || t('admin.failedAddCharacter'));
+      throw err;
     }
   };
 

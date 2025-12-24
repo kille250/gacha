@@ -1,11 +1,13 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload } from 'react-icons/fa';
+import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload, FaSpinner } from 'react-icons/fa';
 import { theme, motionVariants } from '../../styles/DesignSystem';
 import { useTranslation } from 'react-i18next';
 import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useRarity } from '../../context/RarityContext';
+import { isDuplicateError, getDuplicateInfo } from '../../utils/errorHandler';
+import DuplicateWarningBanner from '../UI/DuplicateWarningBanner';
 import {
   AdminContainer,
   HeaderRow,
@@ -45,11 +47,11 @@ import {
   IconButton,
 } from './AdminStyles';
 
-const AdminCharacters = ({ 
-  characters, 
-  getImageUrl, 
-  onAddCharacter, 
-  onEditCharacter, 
+const AdminCharacters = ({
+  characters,
+  getImageUrl,
+  onAddCharacter,
+  onEditCharacter,
   onDeleteCharacter,
   onMultiUpload,
   onAnimeImport,
@@ -66,7 +68,11 @@ const AdminCharacters = ({
   const [itemsPerPage, setItemsPerPage] = useState(20);
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
-  
+
+  // Duplicate detection state for add modal
+  const [duplicateError, setDuplicateError] = useState(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
   // Get ordered rarities for dropdown
   const orderedRarities = getOrderedRarities();
   
@@ -89,9 +95,37 @@ const AdminCharacters = ({
     setCurrentPage(1);
   };
 
-  const handleAddSubmit = (e) => {
-    onAddCharacter(e);
+  const handleAddSubmit = async (e) => {
+    e.preventDefault();
+    setIsSubmitting(true);
+    setDuplicateError(null);
+
+    try {
+      await onAddCharacter(e);
+      setShowAddModal(false);
+    } catch (err) {
+      // Check if this is a duplicate error
+      if (isDuplicateError(err)) {
+        const duplicateInfo = getDuplicateInfo(err);
+        setDuplicateError(duplicateInfo);
+      } else {
+        // Re-throw for parent to handle
+        throw err;
+      }
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleCloseAddModal = () => {
     setShowAddModal(false);
+    setDuplicateError(null);
+  };
+
+  const handleClearDuplicateAndFile = () => {
+    setDuplicateError(null);
+    // Trigger file input clear by calling onFileChange with empty
+    onFileChange({ target: { files: [] } });
   };
 
   return (
@@ -253,7 +287,7 @@ const AdminCharacters = ({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            onMouseDown={(e) => { if (e.target === e.currentTarget) setShowAddModal(false); }}
+            onMouseDown={(e) => { if (e.target === e.currentTarget) handleCloseAddModal(); }}
           >
             <ModalContent
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -262,7 +296,7 @@ const AdminCharacters = ({
             >
               <ModalHeader>
                 <ModalTitle $iconColor={theme.colors.success}><FaPlus /> {t('admin.addCharacter')}</ModalTitle>
-                <CloseButton onClick={() => setShowAddModal(false)}>×</CloseButton>
+                <CloseButton onClick={handleCloseAddModal}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
                 <form onSubmit={handleAddSubmit}>
@@ -288,10 +322,10 @@ const AdminCharacters = ({
                     <FormGroup>
                       <Label>&nbsp;</Label>
                       <CheckboxLabel $padded $highlight>
-                        <input 
-                          type="checkbox" 
-                          checked={newCharacter.isR18} 
-                          onChange={(e) => onCharacterChange({ target: { name: 'isR18', value: e.target.checked }})} 
+                        <input
+                          type="checkbox"
+                          checked={newCharacter.isR18}
+                          onChange={(e) => onCharacterChange({ target: { name: 'isR18', value: e.target.checked }})}
                         />
                         <span>🔞 R18</span>
                       </CheckboxLabel>
@@ -299,11 +333,14 @@ const AdminCharacters = ({
                   </FormRow>
                   <FormGroup>
                     <Label>{t('admin.imageVideo')}</Label>
-                    <FileInput 
-                      type="file" 
-                      accept="image/*,video/mp4,video/webm" 
-                      onChange={onFileChange} 
-                      required 
+                    <FileInput
+                      type="file"
+                      accept="image/*,video/mp4,video/webm"
+                      onChange={(e) => {
+                        setDuplicateError(null); // Clear duplicate error when selecting new file
+                        onFileChange(e);
+                      }}
+                      required
                     />
                     {uploadedImage && (
                       <ImagePreview>
@@ -314,9 +351,25 @@ const AdminCharacters = ({
                         )}
                       </ImagePreview>
                     )}
+
+                    {/* Duplicate Error - Blocking */}
+                    {duplicateError && (
+                      <DuplicateWarningBanner
+                        status={duplicateError.status}
+                        explanation={duplicateError.explanation}
+                        similarity={duplicateError.similarity}
+                        existingMatch={duplicateError.existingMatch}
+                        mediaType={selectedFile?.type?.startsWith('video/') ? 'video' : 'image'}
+                        onChangeMedia={handleClearDuplicateAndFile}
+                      />
+                    )}
                   </FormGroup>
-                  <PrimaryButton type="submit" style={{ width: '100%' }}>
-                    <FaPlus /> {t('admin.addCharacter')}
+                  <PrimaryButton type="submit" style={{ width: '100%' }} disabled={isSubmitting || duplicateError}>
+                    {isSubmitting ? (
+                      <><FaSpinner className="spin" /> Adding...</>
+                    ) : (
+                      <><FaPlus /> {t('admin.addCharacter')}</>
+                    )}
                   </PrimaryButton>
                 </form>
               </ModalBody>
