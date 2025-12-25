@@ -18,8 +18,12 @@ export { default as Toast, ToastList } from './feedback/Toast';
 // Additional spinner variants
 export { InlineSpinner, PageLoader } from './feedback/Spinner';
 
-// Error boundary (class component for catching React errors)
+// Network status banner for offline/online indication
+export { default as NetworkStatusBanner } from './feedback/NetworkStatusBanner';
+
+// Error boundaries (class components for catching React errors)
 export { default as ErrorBoundary } from './data/ErrorBoundary';
+export { default as PageErrorBoundary, RECOVERY_STRATEGIES } from './data/PageErrorBoundary';
 
 // Card component (with Header, Body, Footer compound components)
 export { default as Card } from './data/Card';

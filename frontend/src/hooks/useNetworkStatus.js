@@ -6,8 +6,16 @@
  * - Detects slow connections (2G, save-data mode)
  * - Provides connection quality information
  * - Listens for network changes
+ * - Callbacks for online/offline events
+ * - Tracks reconnection state for showing "back online" banners
+ *
+ * @example
+ * const { isOnline, wasRecentlyOffline } = useNetworkStatus({
+ *   onOnline: () => refetchData(),
+ *   onOffline: () => showOfflineBanner(),
+ * });
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 
 /**
  * Connection quality levels
@@ -56,14 +64,36 @@ const getConnectionQuality = () => {
 
 /**
  * Hook for monitoring network status
+ * @param {Object} options - Configuration options
+ * @param {Function} options.onOnline - Callback when connection is restored
+ * @param {Function} options.onOffline - Callback when connection is lost
+ * @param {number} options.reconnectGracePeriod - Time in ms to show "back online" state (default: 5000)
  * @returns {Object} Network status information
  */
-export const useNetworkStatus = () => {
+export const useNetworkStatus = (options = {}) => {
+  const {
+    onOnline,
+    onOffline,
+    reconnectGracePeriod = 5000,
+  } = options;
+
   const [isOnline, setIsOnline] = useState(
     typeof navigator !== 'undefined' ? navigator.onLine : true
   );
   const [connectionQuality, setConnectionQuality] = useState(CONNECTION_QUALITY.UNKNOWN);
   const [lastOnlineAt, setLastOnlineAt] = useState(Date.now());
+  const [wasRecentlyOffline, setWasRecentlyOffline] = useState(false);
+
+  // Refs for stable callbacks
+  const onOnlineRef = useRef(onOnline);
+  const onOfflineRef = useRef(onOffline);
+  const reconnectTimerRef = useRef(null);
+
+  // Keep refs updated
+  useEffect(() => {
+    onOnlineRef.current = onOnline;
+    onOfflineRef.current = onOffline;
+  }, [onOnline, onOffline]);
 
   // Update connection quality
   const updateConnectionQuality = useCallback(() => {
@@ -75,13 +105,37 @@ export const useNetworkStatus = () => {
   const handleOnline = useCallback(() => {
     setIsOnline(true);
     setLastOnlineAt(Date.now());
+    setWasRecentlyOffline(true);
     updateConnectionQuality();
-  }, [updateConnectionQuality]);
+
+    // Call user callback
+    if (onOnlineRef.current) {
+      onOnlineRef.current();
+    }
+
+    // Clear "recently offline" state after grace period
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+    }
+    reconnectTimerRef.current = setTimeout(() => {
+      setWasRecentlyOffline(false);
+    }, reconnectGracePeriod);
+  }, [updateConnectionQuality, reconnectGracePeriod]);
 
   // Handle offline event
   const handleOffline = useCallback(() => {
     setIsOnline(false);
     setConnectionQuality(CONNECTION_QUALITY.OFFLINE);
+
+    // Clear any pending reconnect timer
+    if (reconnectTimerRef.current) {
+      clearTimeout(reconnectTimerRef.current);
+    }
+
+    // Call user callback
+    if (onOfflineRef.current) {
+      onOfflineRef.current();
+    }
   }, []);
 
   // Handle connection change
@@ -109,6 +163,9 @@ export const useNetworkStatus = () => {
       if (connection) {
         connection.removeEventListener('change', handleConnectionChange);
       }
+      if (reconnectTimerRef.current) {
+        clearTimeout(reconnectTimerRef.current);
+      }
     };
   }, [handleOnline, handleOffline, handleConnectionChange, updateConnectionQuality]);
 
@@ -121,11 +178,14 @@ export const useNetworkStatus = () => {
     if (!isOnline) {
       return 'You are offline. Please check your connection.';
     }
+    if (wasRecentlyOffline) {
+      return 'You are back online!';
+    }
     if (isSlowConnection) {
       return 'Slow connection detected. Large uploads may take longer.';
     }
     return null;
-  }, [isOnline, isSlowConnection]);
+  }, [isOnline, isSlowConnection, wasRecentlyOffline]);
 
   return {
     isOnline,
@@ -134,6 +194,7 @@ export const useNetworkStatus = () => {
     isSlowConnection,
     shouldWarnAboutUpload,
     lastOnlineAt,
+    wasRecentlyOffline,
     getStatusMessage,
     refresh: updateConnectionQuality,
   };
