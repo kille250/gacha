@@ -204,6 +204,10 @@ const CreateFromDanbooru = ({
   // Ref for form first input
   const nameInputRef = useRef(null);
 
+  // Ref for modal body to track scroll position
+  const bodyRef = useRef(null);
+  const savedScrollPosition = useRef(0);
+
   // Focus name input when entering details step
   useEffect(() => {
     if (step === 'details' && nameInputRef.current) {
@@ -342,6 +346,12 @@ const CreateFromDanbooru = ({
       longPressTriggered.current = false;
       return;
     }
+
+    // Save scroll position before switching to details step
+    if (bodyRef.current) {
+      savedScrollPosition.current = bodyRef.current.scrollTop;
+    }
+
     setSelectedMedia(media);
     setStep('details');
     setDuplicateError(null);
@@ -373,6 +383,13 @@ const CreateFromDanbooru = ({
     setSelectedMedia(null);
     setDuplicateError(null);
     setError(null);
+
+    // Restore scroll position after step transition
+    requestAnimationFrame(() => {
+      if (bodyRef.current) {
+        bodyRef.current.scrollTop = savedScrollPosition.current;
+      }
+    });
   }, []);
 
   // Handle character form changes
@@ -416,6 +433,13 @@ const CreateFromDanbooru = ({
         setCharacterData({ name: '', series: '', rarity: 'common', isR18: false });
         setDuplicateError(null);
         setError(null);
+
+        // Restore scroll position after step transition
+        requestAnimationFrame(() => {
+          if (bodyRef.current) {
+            bodyRef.current.scrollTop = savedScrollPosition.current;
+          }
+        });
       } else {
         onClose();
       }
@@ -478,7 +502,7 @@ const CreateFromDanbooru = ({
           </CloseButton>
         </Header>
 
-        <Body>
+        <Body ref={bodyRef}>
           {step === 'search' ? (
             <>
               {/* Search Step */}
