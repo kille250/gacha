@@ -85,9 +85,11 @@ const AdminCharacters = ({
 }) => {
   const { t } = useTranslation();
   const { getRarityColor, getOrderedRarities } = useRarity();
-  const [searchQuery, setSearchQuery] = useState('');
 
-  // Persist pagination in sessionStorage to survive re-renders/remounts
+  // Persist search, pagination in sessionStorage to survive re-renders/remounts
+  const [searchQuery, setSearchQuery] = useState(() => {
+    return sessionStorage.getItem('adminCharactersSearch') || '';
+  });
   const [currentPage, setCurrentPage] = useState(() => {
     const saved = sessionStorage.getItem('adminCharactersPage');
     return saved ? parseInt(saved, 10) : 1;
@@ -97,7 +99,11 @@ const AdminCharacters = ({
     return saved ? parseInt(saved, 10) : 20;
   });
 
-  // Sync pagination to sessionStorage
+  // Sync search and pagination to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('adminCharactersSearch', searchQuery);
+  }, [searchQuery]);
+
   useEffect(() => {
     sessionStorage.setItem('adminCharactersPage', String(currentPage));
   }, [currentPage]);

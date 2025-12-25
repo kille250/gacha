@@ -558,6 +558,12 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                 <AutoRarityHint>
                   {t('animeImport.autoRarityHint', 'Uses character favorites count to determine rarity (50k+ = Legendary, 10k+ = Epic, etc.)')}
                 </AutoRarityHint>
+                {autoRarity && selectedCharacters.length > 50 && (
+                  <AutoRarityWarning>
+                    <FaExclamationTriangle />
+                    {t('animeImport.autoRaritySlowWarning', `Warning: Auto-rarity for ${selectedCharacters.length} characters will take ~${Math.ceil(selectedCharacters.length * 0.4 / 60)} minutes due to MAL API rate limits.`)}
+                  </AutoRarityWarning>
+                )}
               </AutoRarityToggle>
             </ImportSettingsSection>
           )}
@@ -1369,6 +1375,23 @@ const AutoRarityHint = styled.p`
   color: #aaa;
   font-size: 0.8rem;
   line-height: 1.4;
+`;
+
+const AutoRarityWarning = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: 10px;
+  padding: 10px 12px;
+  background: rgba(243, 156, 18, 0.15);
+  border: 1px solid rgba(243, 156, 18, 0.3);
+  border-radius: 8px;
+  color: #f39c12;
+  font-size: 0.85rem;
+
+  svg {
+    flex-shrink: 0;
+  }
 `;
 
 const ResultSection = styled.div`

@@ -187,8 +187,9 @@ app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
 // 3. Body parsing with size limits
-app.use(express.json({ limit: '50kb' }));
-app.use(express.urlencoded({ extended: true, limit: '50kb' }));
+// Note: anime-import needs larger limit for bulk character imports (1000+ characters)
+app.use(express.json({ limit: '5mb' }));
+app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
 // 4. Device signal collection (for fingerprinting)
 app.use(collectDeviceSignals);
