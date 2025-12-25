@@ -1169,13 +1169,18 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
     deviceFingerprint: req.deviceSignals?.fingerprint
   });
   
-  // Security: Require exact confirmation text
+  // Security: Require exact confirmation text (supports all translated versions)
   // Record failed attempt for incorrect confirmation to prevent automated attacks
-  const REQUIRED_CONFIRMATION = 'RESET MY ACCOUNT';
-  if (confirmationText !== REQUIRED_CONFIRMATION) {
+  const VALID_CONFIRMATION_TEXTS = [
+    'RESET MY ACCOUNT',           // English
+    'アカウントをリセット',         // Japanese
+    'KONTO ZURÜCKSETZEN',         // German
+    'RESTABLECER MI CUENTA',      // Spanish
+  ];
+  if (!VALID_CONFIRMATION_TEXTS.includes(confirmationText)) {
     recordFailedAttempt(attemptKey);
-    return res.status(400).json({ 
-      error: `Please type "${REQUIRED_CONFIRMATION}" exactly to confirm` 
+    return res.status(400).json({
+      error: 'Invalid confirmation text'
     });
   }
   
