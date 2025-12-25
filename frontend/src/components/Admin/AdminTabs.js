@@ -315,7 +315,12 @@ const TabsList = styled.div`
   display: flex;
   gap: ${theme.spacing.xs};
   overflow-x: auto;
+  /* Allow tooltips to overflow vertically while scrolling horizontally */
+  overflow-y: visible;
   padding: 0 ${theme.spacing.sm};
+  /* Add vertical padding to prevent indicator clipping during animation */
+  padding-top: 4px;
+  padding-bottom: 4px;
   scrollbar-width: none;
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
@@ -411,6 +416,8 @@ const TabButton = styled(motion.button)`
   -webkit-tap-highlight-color: transparent;
   /* Improve touch responsiveness */
   touch-action: manipulation;
+  /* Allow tooltip to overflow but clip horizontal content during scroll */
+  overflow: visible;
 
   svg {
     font-size: 16px;
@@ -451,6 +458,8 @@ const TabButton = styled(motion.button)`
     min-width: 56px;
     min-height: 56px;
     padding: ${theme.spacing.sm};
+    /* Center content with space for indicator at bottom */
+    padding-bottom: ${theme.spacing.md};
     justify-content: center;
     border-radius: ${theme.radius.xl};
 
@@ -477,6 +486,7 @@ const TabButton = styled(motion.button)`
   @media (max-width: 380px) {
     min-width: 48px;
     min-height: 48px;
+    padding-bottom: ${theme.spacing.sm};
 
     svg {
       font-size: 20px;
@@ -518,25 +528,54 @@ const TabIconWrapper = styled.span`
 
 const ActiveIndicator = styled(motion.div)`
   position: absolute;
-  bottom: -1px;
+  /* Use percentage-based positioning for consistent alignment across screen sizes */
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
-  width: 40px;
+  /* Responsive width: percentage of parent for consistent proportions */
+  width: min(40px, 70%);
   height: 3px;
   background: ${theme.colors.primary};
   border-radius: ${theme.radius.full};
+  /* Ensure indicator stays within rounded button bounds */
+  pointer-events: none;
+
+  @media (max-width: ${theme.breakpoints.md}) {
+    /* On mobile icon-only mode, use smaller indicator */
+    width: min(32px, 60%);
+    height: 2px;
+    bottom: 6px;
+  }
+
+  @media (max-width: 380px) {
+    /* Extra small screens - even more compact */
+    width: min(24px, 55%);
+    bottom: 4px;
+  }
 `;
 
 // Static version for reduced motion preference
 const ActiveIndicatorStatic = styled.div`
   position: absolute;
-  bottom: -1px;
+  bottom: 4px;
   left: 50%;
   transform: translateX(-50%);
-  width: 40px;
+  width: min(40px, 70%);
   height: 3px;
   background: ${theme.colors.primary};
   border-radius: ${theme.radius.full};
+  pointer-events: none;
+
+  @media (max-width: ${theme.breakpoints.md}) {
+    width: min(32px, 60%);
+    height: 2px;
+    bottom: 6px;
+  }
+
+  @media (max-width: 380px) {
+    width: min(24px, 55%);
+    bottom: 4px;
+  }
 `;
 
 // PropTypes
