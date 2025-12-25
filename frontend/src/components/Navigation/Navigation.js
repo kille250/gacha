@@ -251,9 +251,24 @@ const DesktopNav = styled.div`
   gap: ${theme.spacing.xs};
   flex: 1;
   justify-content: center;
+  /* Prevent horizontal overflow - allow shrinking and scrolling if needed */
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  /* Hide scrollbar but keep functionality */
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+  &::-webkit-scrollbar {
+    display: none;
+  }
 
   @media (min-width: ${theme.breakpoints.md}) {
     display: flex;
+  }
+
+  /* At narrower desktop widths, reduce spacing */
+  @media (min-width: ${theme.breakpoints.md}) and (max-width: ${theme.breakpoints.lg}) {
+    gap: 2px;
   }
 `;
 
@@ -268,6 +283,13 @@ const NavDivider = styled.div`
   height: 24px;
   background: ${theme.colors.surfaceBorder};
   margin: 0 ${theme.spacing.sm};
+  flex-shrink: 0;
+
+  /* Compact mode for narrower desktop screens */
+  @media (min-width: ${theme.breakpoints.md}) and (max-width: ${theme.breakpoints.lg}) {
+    height: 20px;
+    margin: 0 ${theme.spacing.xs};
+  }
 `;
 
 const NavLink = styled(Link)`
@@ -285,6 +307,9 @@ const NavLink = styled(Link)`
     color ${theme.timing.fast} ${theme.easing.easeOut},
     background ${theme.timing.fast} ${theme.easing.easeOut};
   position: relative;
+  /* Prevent text wrapping and ensure links don't shrink */
+  white-space: nowrap;
+  flex-shrink: 0;
 
   ${props => props.$isActive && `
     color: ${theme.colors.primary};
@@ -294,6 +319,13 @@ const NavLink = styled(Link)`
     color: ${props.$isActive ? theme.colors.accent : theme.colors.accentSecondary};
     background: ${props.$isActive ? 'rgba(88, 86, 214, 0.10)' : 'transparent'};
   `}
+
+  /* Compact mode for narrower desktop screens */
+  @media (min-width: ${theme.breakpoints.md}) and (max-width: ${theme.breakpoints.lg}) {
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    gap: ${theme.spacing.xs};
+    font-size: ${theme.fontSizes.xs};
+  }
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {
@@ -313,12 +345,24 @@ const NavIcon = styled.span`
   align-items: center;
   justify-content: center;
   font-size: 18px;
+
+  /* Compact mode for narrower desktop screens */
+  @media (min-width: ${theme.breakpoints.md}) and (max-width: ${theme.breakpoints.lg}) {
+    font-size: 16px;
+  }
 `;
 
 const UserControls = styled.div`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
+  /* Prevent user controls from shrinking */
+  flex-shrink: 0;
+
+  /* Compact mode for narrower desktop screens */
+  @media (min-width: ${theme.breakpoints.md}) and (max-width: ${theme.breakpoints.lg}) {
+    gap: ${theme.spacing.xs};
+  }
 `;
 
 export default Navigation;
