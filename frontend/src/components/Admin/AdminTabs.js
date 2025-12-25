@@ -320,15 +320,23 @@ const TabsList = styled.div`
   -webkit-overflow-scrolling: touch;
   scroll-behavior: smooth;
   flex: 1;
+  /* Ensure proper snap scrolling on mobile */
+  scroll-snap-type: x proximity;
 
   &::-webkit-scrollbar {
     display: none;
+  }
+
+  /* Snap individual tabs into view */
+  > * {
+    scroll-snap-align: center;
   }
 
   @media (min-width: ${theme.breakpoints.lg}) {
     justify-content: center;
     gap: ${theme.spacing.sm};
     padding: 0 ${theme.spacing.md};
+    scroll-snap-type: none;
   }
 `;
 
@@ -401,6 +409,8 @@ const TabButton = styled(motion.button)`
   transition: all ${theme.transitions.fast};
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
+  /* Improve touch responsiveness */
+  touch-action: manipulation;
 
   svg {
     font-size: 16px;
@@ -427,7 +437,7 @@ const TabButton = styled(motion.button)`
   }
 
   &:active:not(:disabled) {
-    transform: scale(0.97);
+    transform: scale(0.95);
   }
 
   /* Focus ring for keyboard navigation */
@@ -436,15 +446,16 @@ const TabButton = styled(motion.button)`
     outline-offset: 2px;
   }
 
-  /* Mobile styles */
+  /* Mobile styles - larger touch targets */
   @media (max-width: ${theme.breakpoints.md}) {
-    min-width: 52px;
-    min-height: 52px;
+    min-width: 56px;
+    min-height: 56px;
     padding: ${theme.spacing.sm};
     justify-content: center;
+    border-radius: ${theme.radius.xl};
 
     svg {
-      font-size: 22px;
+      font-size: 24px;
     }
 
     /* Show tooltip on focus (for touch devices holding press) */
@@ -453,12 +464,31 @@ const TabButton = styled(motion.button)`
       display: block;
       opacity: 1;
     }
+
+    /* Active state visual feedback on touch */
+    &:active {
+      background: ${props => props.$isActive
+        ? 'linear-gradient(135deg, rgba(0, 113, 227, 0.20) 0%, rgba(88, 86, 214, 0.14) 100%)'
+        : 'rgba(255, 255, 255, 0.08)'};
+    }
+  }
+
+  /* Extra small screens - even more compact */
+  @media (max-width: 380px) {
+    min-width: 48px;
+    min-height: 48px;
+
+    svg {
+      font-size: 20px;
+    }
   }
 
   @media (prefers-reduced-motion: reduce) {
     transition: color 0.1s, background 0.1s;
     &:active:not(:disabled) {
       transform: none;
+      /* Use background change instead */
+      background: ${theme.colors.hoverOverlay};
     }
     svg {
       transition: none;

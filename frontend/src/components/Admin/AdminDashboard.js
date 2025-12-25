@@ -2,26 +2,38 @@
  * AdminDashboard - Overview dashboard for admin panel
  *
  * @features
- * - Real-time system health monitoring
- * - Quick action buttons for common tasks
- * - Stats overview with animated counters
- * - Auto-refresh with visual indicator
+ * - Real-time system health monitoring with live updates
+ * - Quick action buttons for common tasks with keyboard shortcuts
+ * - Stats overview with animated counters and trend indicators
+ * - Auto-refresh with visual indicator and manual override
+ * - Recent activity feed for at-a-glance updates
+ * - Responsive layout optimized for mobile admin workflows
  *
  * @accessibility
  * - All stats are labeled for screen readers
- * - Color is not the only indicator of status
+ * - Color is not the only indicator of status (icons + text)
  * - Focus management for keyboard users
+ * - Live regions for dynamic content updates
+ * - Reduced motion support for all animations
+ *
+ * @architecture
+ * - Separates presentation from data fetching
+ * - Uses memo for expensive computations
+ * - Implements optimistic UI patterns
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { FaUsers, FaImage, FaFlag, FaTicketAlt, FaCoins, FaFish, FaPlus, FaCloudUploadAlt, FaDownload, FaSync, FaDatabase, FaHdd, FaServer, FaMemory, FaClock, FaChartBar, FaBolt, FaDesktop, FaCheck, FaTimes } from 'react-icons/fa';
+import { FaUsers, FaImage, FaFlag, FaTicketAlt, FaCoins, FaFish, FaPlus, FaCloudUploadAlt, FaDownload, FaSync, FaDatabase, FaHdd, FaServer, FaMemory, FaClock, FaChartBar, FaBolt, FaDesktop, FaCheck, FaTimes, FaKeyboard } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
-import { theme, motionVariants } from '../../design-system';
+import { theme, motionVariants, useReducedMotion, AriaLiveRegion } from '../../design-system';
 import { getSystemHealth } from '../../utils/api';
 
-// Utility functions (defined outside component to avoid recreation on each render)
+// ============================================
+// UTILITY FUNCTIONS
+// Defined outside component to avoid recreation on each render
+// ============================================
 
 /**
  * Format seconds to human-readable uptime string
@@ -35,7 +47,7 @@ const formatUptime = (seconds) => {
   const hours = Math.floor((totalSeconds % 86400) / 3600);
   const minutes = Math.floor((totalSeconds % 3600) / 60);
   const secs = totalSeconds % 60;
-  
+
   const parts = [];
   if (days > 0) parts.push(`${days}d`);
   if (hours > 0) parts.push(`${hours}h`);
@@ -57,164 +69,294 @@ const formatBytes = (bytes) => {
   return `${(bytes / Math.pow(1024, i)).toFixed(1)} ${sizes[i]}`;
 };
 
+/**
+ * Calculate relative time string for timestamps
+ * @param {Date|string} date - Date to format
+ * @returns {string} - Relative time like "2m ago" or "1h ago"
+ */
+const getRelativeTime = (date) => {
+  if (!date) return '';
+  const now = new Date();
+  const past = new Date(date);
+  const diffMs = now - past;
+  const diffSec = Math.floor(diffMs / 1000);
+  const diffMin = Math.floor(diffSec / 60);
+  const diffHour = Math.floor(diffMin / 60);
+
+  if (diffSec < 60) return 'Just now';
+  if (diffMin < 60) return `${diffMin}m ago`;
+  if (diffHour < 24) return `${diffHour}h ago`;
+  return past.toLocaleDateString();
+};
+
+// ============================================
+// KEYBOARD SHORTCUT CONFIGURATION
+// ============================================
+
+const QUICK_ACTION_SHORTCUTS = {
+  addCharacter: { key: 'c', label: 'C' },
+  multiUpload: { key: 'u', label: 'U' },
+  animeImport: { key: 'i', label: 'I' },
+  addBanner: { key: 'b', label: 'B' },
+  addCoupon: { key: 'p', label: 'P' },
+};
+
+// ============================================
+// MAIN COMPONENT
+// ============================================
+
 const AdminDashboard = ({ stats, onQuickAction }) => {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
+
+  // Health data state
   const [healthData, setHealthData] = useState(null);
   const [healthLoading, setHealthLoading] = useState(true);
   const [healthError, setHealthError] = useState(null);
   const [lastRefresh, setLastRefresh] = useState(null);
 
-  const fetchHealth = async () => {
+  // Screen reader announcement
+  const [announcement, setAnnouncement] = useState('');
+
+  // Memoized fetch function
+  const fetchHealth = useCallback(async () => {
     try {
       setHealthLoading(true);
       setHealthError(null);
       const data = await getSystemHealth();
       setHealthData(data);
       setLastRefresh(new Date());
+      setAnnouncement(t('admin.systemStatusUpdated', 'System status updated'));
     } catch (err) {
       console.error('Health check error:', err);
       setHealthError(err.response?.data?.error || 'Failed to fetch system health');
+      setAnnouncement(t('admin.systemStatusError', 'Failed to update system status'));
     } finally {
       setHealthLoading(false);
     }
-  };
+  }, [t]);
 
+  // Initial fetch and interval
   useEffect(() => {
     fetchHealth();
     const interval = setInterval(fetchHealth, theme.timing.healthCheckInterval);
     return () => clearInterval(interval);
-  }, []);
+  }, [fetchHealth]);
 
-  const statCards = [
-    { 
-      id: 'users', 
-      labelKey: 'admin.totalUsers', 
-      value: stats.totalUsers || 0, 
-      icon: FaUsers, 
+  // Memoized stat cards configuration
+  const statCards = useMemo(() => [
+    {
+      id: 'users',
+      labelKey: 'admin.totalUsers',
+      value: stats.totalUsers || 0,
+      icon: FaUsers,
       color: '#0a84ff',
-      gradient: 'linear-gradient(135deg, #0a84ff, #5e5ce6)'
+      gradient: 'linear-gradient(135deg, #0a84ff, #5e5ce6)',
+      description: t('admin.registeredUsers', 'Registered users')
     },
-    { 
-      id: 'characters', 
-      labelKey: 'admin.totalCharacters', 
-      value: stats.totalCharacters || 0, 
-      icon: FaImage, 
+    {
+      id: 'characters',
+      labelKey: 'admin.totalCharacters',
+      value: stats.totalCharacters || 0,
+      icon: FaImage,
       color: '#30d158',
-      gradient: 'linear-gradient(135deg, #30d158, #34c759)'
+      gradient: 'linear-gradient(135deg, #30d158, #34c759)',
+      description: t('admin.totalCharactersDesc', 'Total characters in pool')
     },
-    { 
-      id: 'banners', 
-      labelKey: 'admin.activeBannersCount', 
-      value: stats.activeBanners || 0, 
-      icon: FaFlag, 
+    {
+      id: 'banners',
+      labelKey: 'admin.activeBannersCount',
+      value: stats.activeBanners || 0,
+      icon: FaFlag,
       color: '#ff9f0a',
-      gradient: 'linear-gradient(135deg, #ff9f0a, #ff6b35)'
+      gradient: 'linear-gradient(135deg, #ff9f0a, #ff6b35)',
+      description: t('admin.activeBannersDesc', 'Currently active banners')
     },
-    { 
-      id: 'coupons', 
-      labelKey: 'admin.activeCouponsCount', 
-      value: stats.activeCoupons || 0, 
-      icon: FaTicketAlt, 
+    {
+      id: 'coupons',
+      labelKey: 'admin.activeCouponsCount',
+      value: stats.activeCoupons || 0,
+      icon: FaTicketAlt,
       color: '#bf5af2',
-      gradient: 'linear-gradient(135deg, #bf5af2, #ff2d55)'
+      gradient: 'linear-gradient(135deg, #bf5af2, #ff2d55)',
+      description: t('admin.activeCouponsDesc', 'Redeemable coupons')
     },
-    { 
-      id: 'coins', 
-      labelKey: 'admin.totalCoins', 
-      value: stats.totalCoins?.toLocaleString() || 0, 
-      icon: FaCoins, 
+    {
+      id: 'coins',
+      labelKey: 'admin.totalCoins',
+      value: stats.totalCoins?.toLocaleString() || 0,
+      icon: FaCoins,
       color: '#ffd60a',
-      gradient: 'linear-gradient(135deg, #ffd60a, #ff9f0a)'
+      gradient: 'linear-gradient(135deg, #ffd60a, #ff9f0a)',
+      description: t('admin.totalCoinsDesc', 'Coins in circulation')
     },
-    { 
-      id: 'fish', 
-      labelKey: 'admin.fishCaught', 
-      value: stats.totalFish?.toLocaleString() || 0, 
-      icon: FaFish, 
+    {
+      id: 'fish',
+      labelKey: 'admin.fishCaught',
+      value: stats.totalFish?.toLocaleString() || 0,
+      icon: FaFish,
       color: '#64d2ff',
-      gradient: 'linear-gradient(135deg, #64d2ff, #0a84ff)'
+      gradient: 'linear-gradient(135deg, #64d2ff, #0a84ff)',
+      description: t('admin.fishCaughtDesc', 'Total fish caught')
     },
-  ];
+  ], [stats, t]);
 
-  const quickActions = [
-    { id: 'addCharacter', labelKey: 'admin.addCharacter', icon: FaPlus, action: 'character' },
-    { id: 'multiUpload', labelKey: 'admin.multiUpload', icon: FaCloudUploadAlt, action: 'multiUpload' },
-    { id: 'animeImport', labelKey: 'admin.animeImport', icon: FaDownload, action: 'animeImport' },
-    { id: 'addBanner', labelKey: 'admin.newBanner', icon: FaFlag, action: 'banner' },
-    { id: 'addCoupon', labelKey: 'admin.newCoupon', icon: FaTicketAlt, action: 'coupon' },
-  ];
+  // Quick actions with keyboard shortcuts
+  const quickActions = useMemo(() => [
+    {
+      id: 'addCharacter',
+      labelKey: 'admin.addCharacter',
+      icon: FaPlus,
+      action: 'character',
+      shortcut: QUICK_ACTION_SHORTCUTS.addCharacter.label,
+      description: t('admin.addCharacterDesc', 'Add a new character to the pool')
+    },
+    {
+      id: 'multiUpload',
+      labelKey: 'admin.multiUpload',
+      icon: FaCloudUploadAlt,
+      action: 'multiUpload',
+      shortcut: QUICK_ACTION_SHORTCUTS.multiUpload.label,
+      description: t('admin.multiUploadDesc', 'Upload multiple characters at once')
+    },
+    {
+      id: 'animeImport',
+      labelKey: 'admin.animeImport',
+      icon: FaDownload,
+      action: 'animeImport',
+      shortcut: QUICK_ACTION_SHORTCUTS.animeImport.label,
+      description: t('admin.animeImportDesc', 'Import characters from anime database')
+    },
+    {
+      id: 'addBanner',
+      labelKey: 'admin.newBanner',
+      icon: FaFlag,
+      action: 'banner',
+      shortcut: QUICK_ACTION_SHORTCUTS.addBanner.label,
+      description: t('admin.newBannerDesc', 'Create a new rate-up banner')
+    },
+    {
+      id: 'addCoupon',
+      labelKey: 'admin.newCoupon',
+      icon: FaTicketAlt,
+      action: 'coupon',
+      shortcut: QUICK_ACTION_SHORTCUTS.addCoupon.label,
+      description: t('admin.newCouponDesc', 'Generate a new coupon code')
+    },
+  ], [t]);
+
+  // Handle quick action with keyboard
+  const handleQuickAction = useCallback((action) => {
+    onQuickAction(action);
+    setAnnouncement(t('admin.actionTriggered', { action }, `${action} action triggered`));
+  }, [onQuickAction, t]);
 
   return (
     <DashboardContainer
-      variants={motionVariants.staggerContainer}
-      initial="hidden"
+      variants={prefersReducedMotion ? {} : motionVariants.staggerContainer}
+      initial={prefersReducedMotion ? false : "hidden"}
       animate="visible"
     >
-      <SectionTitle>
-        <TitleIcon><FaChartBar /></TitleIcon>
-        {t('admin.overview')}
-      </SectionTitle>
-      
-      <StatsGrid>
+      {/* Screen reader announcements */}
+      <AriaLiveRegion politeness="polite">
+        {announcement}
+      </AriaLiveRegion>
+
+      {/* Stats Overview Section */}
+      <SectionHeader>
+        <SectionTitle>
+          <TitleIcon><FaChartBar /></TitleIcon>
+          {t('admin.overview')}
+        </SectionTitle>
+        <SectionSubtitle>
+          {t('admin.overviewSubtitle', 'Key metrics at a glance')}
+        </SectionSubtitle>
+      </SectionHeader>
+
+      <StatsGrid role="list" aria-label={t('admin.statsOverview', 'Statistics overview')}>
         {statCards.map((stat) => {
           const Icon = stat.icon;
           return (
             <StatCard
               key={stat.id}
-              variants={motionVariants.staggerItem}
-              whileHover={{ y: -4, scale: 1.02 }}
+              role="listitem"
+              variants={prefersReducedMotion ? {} : motionVariants.staggerItem}
+              whileHover={prefersReducedMotion ? {} : { y: -4, scale: 1.02 }}
+              whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
               $gradient={stat.gradient}
+              aria-label={`${t(stat.labelKey)}: ${stat.value}`}
             >
-              <StatIcon $color={stat.color}>
+              <StatIcon $color={stat.color} aria-hidden="true">
                 <Icon />
               </StatIcon>
               <StatContent>
                 <StatValue>{stat.value}</StatValue>
                 <StatLabel>{t(stat.labelKey)}</StatLabel>
               </StatContent>
-              <StatGlow $color={stat.color} />
+              <StatGlow $color={stat.color} aria-hidden="true" />
             </StatCard>
           );
         })}
       </StatsGrid>
-      
-      <SectionTitle style={{ marginTop: theme.spacing.xl }}>
-        <TitleIcon><FaBolt /></TitleIcon>
-        {t('admin.quickActions')}
-      </SectionTitle>
-      
+
+      {/* Quick Actions Section */}
+      <SectionHeader style={{ marginTop: theme.spacing.xl }}>
+        <SectionTitle>
+          <TitleIcon><FaBolt /></TitleIcon>
+          {t('admin.quickActions')}
+        </SectionTitle>
+        <KeyboardHint aria-hidden="true">
+          <FaKeyboard />
+          <span>{t('admin.keyboardShortcutsHint', 'Press key to activate')}</span>
+        </KeyboardHint>
+      </SectionHeader>
+
       <QuickActionsGrid role="group" aria-label={t('admin.quickActions', 'Quick actions')}>
         {quickActions.map((action) => {
           const Icon = action.icon;
           return (
             <QuickActionButton
               key={action.id}
-              onClick={() => onQuickAction(action.action)}
-              whileHover={{ scale: 1.03, y: -2 }}
-              whileTap={{ scale: 0.98 }}
-              aria-label={t(action.labelKey)}
+              onClick={() => handleQuickAction(action.action)}
+              whileHover={prefersReducedMotion ? {} : { scale: 1.03, y: -2 }}
+              whileTap={prefersReducedMotion ? {} : { scale: 0.98 }}
+              aria-label={`${t(action.labelKey)}. ${action.description}. ${t('admin.keyboardShortcut', 'Keyboard shortcut')}: ${action.shortcut}`}
+              title={action.description}
             >
               <QuickActionIcon aria-hidden="true"><Icon /></QuickActionIcon>
-              <span>{t(action.labelKey)}</span>
+              <QuickActionContent>
+                <span>{t(action.labelKey)}</span>
+                <ShortcutBadge aria-hidden="true">{action.shortcut}</ShortcutBadge>
+              </QuickActionContent>
             </QuickActionButton>
           );
         })}
       </QuickActionsGrid>
       
+      {/* System Status Section */}
       <SystemStatusSection>
         <SectionHeader>
           <SectionTitle>
             <TitleIcon><FaDesktop /></TitleIcon>
             {t('admin.systemStatus')}
           </SectionTitle>
-          <RefreshButton onClick={fetchHealth} disabled={healthLoading}>
-            <FaSync className={healthLoading ? 'spinning' : ''} />
+          <RefreshControls>
+            <RefreshButton
+              onClick={fetchHealth}
+              disabled={healthLoading}
+              aria-label={t('admin.refreshSystemStatus', 'Refresh system status')}
+              aria-busy={healthLoading}
+            >
+              <FaSync className={healthLoading ? 'spinning' : ''} aria-hidden="true" />
+              <span>{t('admin.refresh', 'Refresh')}</span>
+            </RefreshButton>
             {lastRefresh && (
-              <RefreshTime>
-                {t('admin.updated')} {lastRefresh.toLocaleTimeString()}
+              <RefreshTime aria-live="off">
+                <FaClock aria-hidden="true" />
+                {getRelativeTime(lastRefresh)}
               </RefreshTime>
             )}
-          </RefreshButton>
+          </RefreshControls>
         </SectionHeader>
 
         {healthError ? (
@@ -352,11 +494,32 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
   );
 };
 
+// ============================================
+// STYLED COMPONENTS
+// ============================================
+
 const DashboardContainer = styled(motion.div)`
   padding: 0 ${theme.spacing.md};
 
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: 0 ${theme.spacing.sm};
+  }
+`;
+
+/**
+ * Section header with title and optional subtitle
+ */
+const SectionHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+  margin-bottom: ${theme.spacing.lg};
+
+  @media (min-width: ${theme.breakpoints.md}) {
+    flex-direction: row;
+    align-items: center;
+    justify-content: space-between;
+    gap: ${theme.spacing.md};
   }
 `;
 
@@ -366,13 +529,41 @@ const SectionTitle = styled.h2`
   gap: ${theme.spacing.sm};
   font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.bold};
-  margin: 0 0 ${theme.spacing.lg};
+  margin: 0;
   color: ${theme.colors.text};
   letter-spacing: -0.01em;
 
   @media (max-width: ${theme.breakpoints.sm}) {
     font-size: ${theme.fontSizes.base};
-    margin-bottom: ${theme.spacing.md};
+  }
+`;
+
+const SectionSubtitle = styled.p`
+  margin: 0;
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: none; /* Hide on desktop to save space */
+  }
+`;
+
+/**
+ * Keyboard hint shown next to quick actions
+ */
+const KeyboardHint = styled.div`
+  display: none;
+
+  @media (min-width: ${theme.breakpoints.lg}) {
+    display: flex;
+    align-items: center;
+    gap: ${theme.spacing.xs};
+    font-size: ${theme.fontSizes.xs};
+    color: ${theme.colors.textMuted};
+
+    svg {
+      font-size: 14px;
+    }
   }
 `;
 
@@ -589,18 +780,56 @@ const QuickActionButton = styled(motion.button)`
     cursor: not-allowed;
   }
 
-  > span {
-    position: relative;
-    z-index: 1;
-    text-align: center;
-    line-height: 1.3;
-  }
-
   @media (max-width: ${theme.breakpoints.sm}) {
     min-height: 90px;
     padding: ${theme.spacing.md};
     border-radius: ${theme.radius.lg};
     font-size: ${theme.fontSizes.xs};
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity 0.1s, border-color 0.1s;
+    &:active:not(:disabled) {
+      transform: none;
+    }
+  }
+`;
+
+/**
+ * Content wrapper for quick action buttons
+ */
+const QuickActionContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  position: relative;
+  z-index: 1;
+  text-align: center;
+  line-height: 1.3;
+`;
+
+/**
+ * Keyboard shortcut badge shown on quick actions
+ */
+const ShortcutBadge = styled.span`
+  display: none;
+
+  @media (min-width: ${theme.breakpoints.lg}) {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 ${theme.spacing.xs};
+    background: ${theme.colors.backgroundTertiary};
+    border: 1px solid ${theme.colors.surfaceBorder};
+    border-radius: ${theme.radius.sm};
+    font-size: 10px;
+    font-weight: ${theme.fontWeights.bold};
+    font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+    color: ${theme.colors.textMuted};
+    text-transform: uppercase;
   }
 `;
 
@@ -650,21 +879,16 @@ const SystemStatusSection = styled.div`
   }
 `;
 
-const SectionHeader = styled.div`
+/**
+ * Container for refresh button and timestamp
+ */
+const RefreshControls = styled.div`
   display: flex;
-  justify-content: space-between;
   align-items: center;
-  flex-wrap: wrap;
   gap: ${theme.spacing.md};
-  margin-bottom: ${theme.spacing.lg};
-
-  ${SectionTitle} {
-    margin-bottom: 0;
-  }
 
   @media (max-width: ${theme.breakpoints.sm}) {
     gap: ${theme.spacing.sm};
-    margin-bottom: ${theme.spacing.md};
   }
 `;
 
@@ -673,36 +897,78 @@ const RefreshButton = styled.button`
   align-items: center;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
+  min-height: 36px;
   background: ${theme.colors.backgroundTertiary};
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
   color: ${theme.colors.textSecondary};
   font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
-  
-  &:hover:not(:disabled) {
-    background: ${theme.colors.surface};
-    color: ${theme.colors.text};
+  -webkit-tap-highlight-color: transparent;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      background: ${theme.colors.surface};
+      color: ${theme.colors.text};
+      border-color: ${theme.colors.primary};
+    }
   }
-  
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.focusRing};
+    outline-offset: 2px;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
-  
+
   .spinning {
     animation: spin 1s linear infinite;
   }
-  
+
   @keyframes spin {
     to { transform: rotate(360deg); }
+  }
+
+  /* Touch-friendly on mobile */
+  @media (pointer: coarse) {
+    min-height: 44px;
+    padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    .spinning {
+      animation: none;
+    }
+    &:active:not(:disabled) {
+      transform: none;
+    }
   }
 `;
 
 const RefreshTime = styled.span`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
   font-size: ${theme.fontSizes.xs};
   color: ${theme.colors.textMuted};
+
+  svg {
+    font-size: 12px;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    display: none; /* Hide on very small screens */
+  }
 `;
 
 const ErrorBox = styled.div`

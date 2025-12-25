@@ -68,6 +68,20 @@ export const HeaderActions = styled.div`
   display: flex;
   gap: ${theme.spacing.md};
   flex-wrap: wrap;
+  align-items: center;
+
+  /* On mobile, stack actions and allow full width for search */
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 100%;
+    flex-direction: column;
+    gap: ${theme.spacing.sm};
+
+    /* Make buttons full width on mobile */
+    > button {
+      width: 100%;
+      justify-content: center;
+    }
+  }
 `;
 
 // ============================================
@@ -83,8 +97,23 @@ export const SearchWrapper = styled.div`
   border-radius: ${theme.radius.lg};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   min-width: 200px;
+  min-height: 44px;
+  transition: border-color 0.15s ease, box-shadow 0.15s ease;
 
-  svg { color: ${theme.colors.textMuted}; font-size: 14px; }
+  svg { color: ${theme.colors.textMuted}; font-size: 14px; flex-shrink: 0; }
+
+  /* Focus-within state for better visual feedback */
+  &:focus-within {
+    border-color: ${theme.colors.primary};
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+  }
+
+  /* On mobile, expand to full width */
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 100%;
+    min-width: unset;
+    order: 2; /* Move search below other actions on mobile */
+  }
 `;
 
 export const SearchInput = styled.input`

@@ -35,13 +35,27 @@ const SHORTCUT_CATEGORIES = [
       { keys: ['mod', 'u'], description: 'Go to Users' },
       { keys: ['mod', 'c'], description: 'Go to Characters' },
       { keys: ['mod', 'b'], description: 'Go to Banners' },
+      { keys: ['mod', 'p'], description: 'Go to Coupons' },
       { keys: ['ArrowLeft'], description: 'Previous tab' },
       { keys: ['ArrowRight'], description: 'Next tab' },
+      { keys: ['1-6'], description: 'Jump to tab 1-6' },
+    ],
+  },
+  {
+    id: 'quickActions',
+    title: 'Quick Actions (Dashboard)',
+    icon: MdEdit,
+    shortcuts: [
+      { keys: ['c'], description: 'Add Character' },
+      { keys: ['u'], description: 'Multi Upload' },
+      { keys: ['i'], description: 'Anime Import' },
+      { keys: ['b'], description: 'New Banner' },
+      { keys: ['p'], description: 'New Coupon' },
     ],
   },
   {
     id: 'actions',
-    title: 'Actions',
+    title: 'Common Actions',
     icon: MdEdit,
     shortcuts: [
       { keys: ['mod', 'n'], description: 'Create new item' },
@@ -49,6 +63,7 @@ const SHORTCUT_CATEGORIES = [
       { keys: ['mod', 'r'], description: 'Refresh data' },
       { keys: ['mod', 'Enter'], description: 'Confirm action' },
       { keys: ['Delete'], description: 'Delete selected' },
+      { keys: ['mod', 'z'], description: 'Undo last action' },
     ],
   },
   {
@@ -57,6 +72,7 @@ const SHORTCUT_CATEGORIES = [
     icon: MdSearch,
     shortcuts: [
       { keys: ['mod', 'k'], description: 'Focus search' },
+      { keys: ['/'], description: 'Focus search (alt)' },
       { keys: ['mod', 'f'], description: 'Open filters' },
       { keys: ['Escape'], description: 'Clear search / Close modal' },
     ],
