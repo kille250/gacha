@@ -40,6 +40,7 @@ const AuditLogViewer = () => {
   const [events, setEvents] = useState([]);
   const [loading, setLoading] = useState(true);
   const [total, setTotal] = useState(0);
+  const [error, setError] = useState(null);
   const [filters, setFilters] = useState({
     severity: '',
     eventType: '',
@@ -51,9 +52,11 @@ const AuditLogViewer = () => {
   });
   const [showFilters, setShowFilters] = useState(false);
   const [exporting, setExporting] = useState(false);
-  
+  const [exportError, setExportError] = useState(null);
+
   const fetchEvents = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const params = { ...filters };
       if (!params.severity) delete params.severity;
@@ -61,16 +64,16 @@ const AuditLogViewer = () => {
       if (!params.userId) delete params.userId;
       if (!params.adminId) delete params.adminId;
       if (!params.adminActionsOnly) delete params.adminActionsOnly;
-      
+
       const data = await getAuditLog(params);
       setEvents(data.events || []);
       setTotal(data.total || 0);
     } catch (err) {
-      console.error('Failed to fetch audit log:', err);
+      setError(err.response?.data?.error || t('admin.security.fetchAuditError', 'Failed to load audit log'));
     } finally {
       setLoading(false);
     }
-  }, [filters]);
+  }, [filters, t]);
   
   useEffect(() => {
     fetchEvents();
@@ -146,7 +149,8 @@ const AuditLogViewer = () => {
         document.body.removeChild(a);
       }
     } catch (err) {
-      console.error('Export failed:', err);
+      setExportError(err.response?.data?.error || t('admin.security.exportError', 'Export failed'));
+      setTimeout(() => setExportError(null), 5000);
     } finally {
       setExporting(false);
     }
@@ -201,7 +205,13 @@ const AuditLogViewer = () => {
           </SecondaryButton>
         </HeaderActions>
       </HeaderRow>
-      
+
+      {exportError && (
+        <ExportErrorBanner>
+          {exportError}
+        </ExportErrorBanner>
+      )}
+
       <AnimatePresence>
         {showFilters && (
           <FiltersPanel
@@ -289,6 +299,10 @@ const AuditLogViewer = () => {
             <LoadingRow>
               <FaSync className="spin" /> {t('common.loading')}
             </LoadingRow>
+          ) : error ? (
+            <ErrorRow>
+              {error}
+            </ErrorRow>
           ) : events.length === 0 ? (
             <EmptyRow>
               {t('admin.security.noEvents')}
@@ -534,6 +548,26 @@ const EmptyRow = styled.div`
   padding: ${theme.spacing.xl};
   text-align: center;
   color: ${theme.colors.textSecondary};
+`;
+
+const ErrorRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.xl};
+  color: ${theme.colors.error};
+`;
+
+const ExportErrorBanner = styled.div`
+  padding: ${theme.spacing.md};
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.error};
+  font-size: ${theme.fontSizes.sm};
+  margin-bottom: ${theme.spacing.md};
+  text-align: center;
 `;
 
 const EventIcon = styled.span`

@@ -22,9 +22,11 @@ const AppealsList = ({ onReviewAppeal }) => {
   const [appeals, setAppeals] = useState([]);
   const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
-  
+  const [error, setError] = useState(null);
+
   const fetchAppeals = useCallback(async () => {
     setLoading(true);
+    setError(null);
     try {
       const [appealsData, statsData] = await Promise.all([
         getPendingAppeals({ limit: 50 }),
@@ -33,11 +35,11 @@ const AppealsList = ({ onReviewAppeal }) => {
       setAppeals(appealsData.appeals || []);
       setStats(statsData);
     } catch (err) {
-      console.error('Failed to fetch appeals:', err);
+      setError(err.response?.data?.error || t('admin.security.fetchAppealsError', 'Failed to load appeals'));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
   
   useEffect(() => {
     fetchAppeals();
@@ -118,6 +120,10 @@ const AppealsList = ({ onReviewAppeal }) => {
             <LoadingRow>
               <FaSync className="spin" /> {t('common.loading')}
             </LoadingRow>
+          ) : error ? (
+            <ErrorRow>
+              {error}
+            </ErrorRow>
           ) : appeals.length === 0 ? (
             <EmptyRow>
               <FaCheck /> {t('admin.security.noAppeals')}
@@ -290,6 +296,15 @@ const EmptyRow = styled.div`
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.xl};
   color: ${theme.colors.success};
+`;
+
+const ErrorRow = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.xl};
+  color: ${theme.colors.error};
 `;
 
 const UserInfo = styled.div`

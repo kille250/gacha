@@ -26,33 +26,36 @@ const AppealReviewModal = ({ show, appeal, onClose, onSuccess }) => {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(false);
   const [notes, setNotes] = useState('');
-  
+  const [error, setError] = useState(null);
+
   if (!show || !appeal) return null;
-  
+
   const handleApprove = async () => {
     setLoading(true);
+    setError(null);
     try {
       await approveAppeal(appeal.id, notes || 'Appeal approved');
       onSuccess(t('admin.security.appealApproved'));
       onClose();
     } catch (err) {
-      console.error('Failed to approve appeal:', err);
+      setError(err.response?.data?.error || t('admin.security.appealApproveError', 'Failed to approve appeal'));
     } finally {
       setLoading(false);
     }
   };
-  
+
   const handleDeny = async () => {
     if (!notes || notes.length < 10) {
       return;
     }
     setLoading(true);
+    setError(null);
     try {
       await denyAppeal(appeal.id, notes);
       onSuccess(t('admin.security.appealDenied'));
       onClose();
     } catch (err) {
-      console.error('Failed to deny appeal:', err);
+      setError(err.response?.data?.error || t('admin.security.appealDenyError', 'Failed to deny appeal'));
     } finally {
       setLoading(false);
     }
@@ -92,6 +95,12 @@ const AppealReviewModal = ({ show, appeal, onClose, onSuccess }) => {
           </ModalHeader>
           
           <ModalBody>
+            {error && (
+              <ErrorMessage>
+                {error}
+              </ErrorMessage>
+            )}
+
             {/* User Info */}
             <InfoSection>
               <InfoRow>
@@ -170,6 +179,16 @@ const AppealReviewModal = ({ show, appeal, onClose, onSuccess }) => {
     </AnimatePresence>
   );
 };
+
+const ErrorMessage = styled.div`
+  padding: ${theme.spacing.md};
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.error};
+  font-size: ${theme.fontSizes.sm};
+  margin-bottom: ${theme.spacing.md};
+`;
 
 const InfoSection = styled.div`
   background: ${theme.colors.backgroundTertiary};
