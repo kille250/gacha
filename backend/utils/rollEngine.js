@@ -29,6 +29,10 @@ const {
   isRarePlus
 } = require('./rollHelpers');
 
+const {
+  getStandardBannerCharacters
+} = require('../services/standardBannerService');
+
 // ===========================================
 // TYPES (documented for clarity)
 // ===========================================
@@ -70,19 +74,21 @@ const {
 
 /**
  * Build standard roll context
- * Pure function - prepares all data needed for rolling
- * 
- * @param {Array} allCharacters - All characters from DB
+ * Uses ONLY characters explicitly assigned to the Standard Banner
+ *
+ * @param {Array} _allCharacters - Deprecated: no longer used, kept for backward compatibility
  * @param {boolean} allowR18 - Whether R18 content is allowed
  * @returns {Promise<RollContext>}
  */
-const buildStandardRollContext = async (allCharacters, allowR18) => {
+const buildStandardRollContext = async (_allCharacters, allowR18) => {
   const raritiesData = await getRarities();
   const orderedRarities = raritiesData.map(r => r.name);
-  
-  const filteredCharacters = filterR18Characters(allCharacters, allowR18);
+
+  // Get only characters from the Standard Banner (explicit assignment)
+  const standardBannerCharacters = await getStandardBannerCharacters();
+  const filteredCharacters = filterR18Characters(standardBannerCharacters, allowR18);
   const charactersByRarity = groupCharactersByRarity(filteredCharacters, orderedRarities);
-  
+
   return {
     allCharacters: filteredCharacters,
     raritiesData,
@@ -93,23 +99,24 @@ const buildStandardRollContext = async (allCharacters, allowR18) => {
 
 /**
  * Build banner roll context
- * Extends standard context with banner-specific data
- * 
- * @param {Array} allCharacters - All characters from DB
+ * Uses banner characters as primary pool, Standard Banner as fallback
+ *
+ * @param {Array} _allCharacters - Deprecated: no longer used, kept for backward compatibility
  * @param {Array} bannerCharacters - Characters associated with the banner
  * @param {number} rateMultiplier - Banner's rate multiplier
  * @param {boolean} allowR18 - Whether R18 content is allowed
  * @returns {Promise<BannerRollContext>}
  */
-const buildBannerRollContext = async (allCharacters, bannerCharacters, rateMultiplier, allowR18) => {
-  const standardContext = await buildStandardRollContext(allCharacters, allowR18);
-  
+const buildBannerRollContext = async (_allCharacters, bannerCharacters, rateMultiplier, allowR18) => {
+  // Standard context now uses only Standard Banner characters as fallback
+  const standardContext = await buildStandardRollContext(null, allowR18);
+
   const filteredBannerCharacters = filterR18Characters(bannerCharacters, allowR18);
   const bannerCharactersByRarity = groupCharactersByRarity(
-    filteredBannerCharacters, 
+    filteredBannerCharacters,
     standardContext.orderedRarities
   );
-  
+
   return {
     ...standardContext,
     bannerCharacters: filteredBannerCharacters,

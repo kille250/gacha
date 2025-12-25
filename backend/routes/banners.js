@@ -56,7 +56,12 @@ const validateBannerForRoll = (banner) => {
   if (!banner.active) {
     return { valid: false, error: 'This banner is no longer active', status: 400 };
   }
-  
+  // Prevent rolling on Standard Banner via this endpoint
+  // Users should use /api/characters/roll for standard pulls
+  if (banner.isStandard) {
+    return { valid: false, error: 'Use standard roll endpoint for standard pulls', status: 400 };
+  }
+
   const now = new Date();
   if (banner.startDate && new Date(banner.startDate) > now) {
     return { valid: false, error: 'This banner has not started yet', status: 400 };
@@ -64,7 +69,7 @@ const validateBannerForRoll = (banner) => {
   if (banner.endDate && new Date(banner.endDate) < now) {
     return { valid: false, error: 'This banner has already ended', status: 400 };
   }
-  
+
   return { valid: true };
 };
 
@@ -155,12 +160,16 @@ router.get('/:id/pricing', async (req, res) => {
 /**
  * Get all active banners (filters R18 based on user preference)
  * GET /api/banners
+ * Note: Standard Banner is hidden from this list (used for standard rolls, not direct rolling)
  */
 router.get('/', async (req, res) => {
   try {
     const showAll = req.query.showAll === 'true';
-    const query = showAll ? {} : { where: { active: true } };
-    
+    // Hide Standard Banner from user-facing list (still accessible for admins via showAll)
+    const query = showAll
+      ? {}
+      : { where: { active: true, isStandard: false } };
+
     const banners = await Banner.findAll({
       ...query,
       include: [{ model: Character }],
@@ -607,12 +616,14 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
     await user.save();
     
     // Build context and execute roll
+    // Note: allCharacters is passed for backward compatibility but ignored
+    // The fallback pool is now the Standard Banner characters only
     const allowR18 = await getUserAllowR18(userId);
     const allCharacters = await Character.findAll();
     const context = await buildBannerRollContext(
-      allCharacters, 
-      banner.Characters, 
-      banner.rateMultiplier, 
+      allCharacters,
+      banner.Characters,
+      banner.rateMultiplier,
       allowR18
     );
     
@@ -803,12 +814,14 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
     await user.save();
     
     // Build context and execute multi-roll
+    // Note: allCharacters is passed for backward compatibility but ignored
+    // The fallback pool is now the Standard Banner characters only
     const allowR18 = await getUserAllowR18(userId);
     const allCharacters = await Character.findAll();
     const context = await buildBannerRollContext(
-      allCharacters, 
-      banner.Characters, 
-      banner.rateMultiplier, 
+      allCharacters,
+      banner.Characters,
+      banner.rateMultiplier,
       allowR18
     );
     

@@ -65,10 +65,12 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
     await user.save();
     
     // Build roll context
+    // Note: allCharacters is passed for backward compatibility but ignored
+    // The pool is now the Standard Banner characters only
     const allowR18 = await getUserAllowR18(userId);
     const allCharacters = await Character.findAll();
     const context = await buildStandardRollContext(allCharacters, allowR18);
-    
+
     // Execute roll
     const result = await executeSingleStandardRoll(context, false);
     
@@ -158,10 +160,12 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
     await user.save();
     
     // Build roll context
+    // Note: allCharacters is passed for backward compatibility but ignored
+    // The pool is now the Standard Banner characters only
     const allowR18 = await getUserAllowR18(userId);
     const allCharacters = await Character.findAll();
     const context = await buildStandardRollContext(allCharacters, allowR18);
-    
+
     // Execute multi-roll
     const results = await executeStandardMultiRoll(context, count);
     
