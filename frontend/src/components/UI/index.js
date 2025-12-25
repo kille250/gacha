@@ -36,3 +36,9 @@ export { default as ActionButton } from './buttons/ActionButton';
 
 // Pull-to-refresh (Apple-inspired pull-down refresh)
 export { PullToRefresh, PullIndicator, PullToRefreshPage, PULL_STATES } from './PullToRefresh';
+
+// ScrollToTop - floating button for quick scroll navigation
+export { default as ScrollToTop } from './ScrollToTop';
+
+// UI Effects - ripples, animations
+export { useRipple, RippleButton } from './effects';

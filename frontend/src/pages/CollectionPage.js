@@ -10,6 +10,7 @@ import { isVideo, PLACEHOLDER_IMAGE } from '../utils/mediaUtils';
 // Components
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 import CharacterCard from '../components/patterns/CharacterCard';
+import { ScrollToTop } from '../components/UI';
 
 // Hooks & Context
 import { useCollection } from '../hooks';
@@ -443,6 +444,9 @@ const CollectionPage = () => {
         characterId={preview.character?.id}
         onLevelUp={handleLevelUp}
       />
+
+      {/* Floating scroll-to-top button for long collections */}
+      <ScrollToTop threshold={600} />
     </StyledPageWrapper>
   );
 };

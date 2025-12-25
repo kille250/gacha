@@ -9,7 +9,7 @@ import { getActiveBanners, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 
 // Hooks
-import { usePageError } from '../hooks';
+import { usePageError, useAnimatedCounter, useSwipeGesture } from '../hooks';
 
 // Components
 import { OnboardingModal, hasCompletedOnboarding } from '../components/Onboarding';
@@ -22,10 +22,12 @@ import {
   Container,
   IconButton,
   Text,
-  LoadingState,
   ErrorState,
   EmptyState,
   Modal,
+  SkeletonHero,
+  SkeletonBannerCarousel,
+  Skeleton,
 } from '../design-system';
 
 // Extracted styles
@@ -113,6 +115,9 @@ const GachaPage = () => {
     defaultMessage: t('gacha.loadingError') || 'Failed to load banners. Please try again.'
   });
 
+  // Animated points counter - smooth counting animation when points change
+  const animatedPoints = useAnimatedCounter(user?.points || 0, { duration: 600 });
+
   useEffect(() => {
     const fetchBanners = async () => {
       try {
@@ -143,16 +148,38 @@ const GachaPage = () => {
     : 0;
   const currentFeaturedBanner = featuredBanners[safeFeaturedIndex];
 
-  // Featured banner navigation
-  const handlePrevFeatured = useCallback((e) => {
-    e.stopPropagation();
+  // Featured banner navigation (works with both button clicks and swipe gestures)
+  const goToPrevFeatured = useCallback(() => {
     setFeaturedIndex(prev => (prev > 0 ? prev - 1 : featuredBanners.length - 1));
+    // Haptic feedback on mobile
+    if (window.navigator?.vibrate) window.navigator.vibrate(10);
   }, [featuredBanners.length]);
 
-  const handleNextFeatured = useCallback((e) => {
-    e.stopPropagation();
+  const goToNextFeatured = useCallback(() => {
     setFeaturedIndex(prev => (prev < featuredBanners.length - 1 ? prev + 1 : 0));
+    // Haptic feedback on mobile
+    if (window.navigator?.vibrate) window.navigator.vibrate(10);
   }, [featuredBanners.length]);
+
+  // Button handlers that stop propagation
+  const handlePrevFeatured = useCallback((e) => {
+    e?.stopPropagation?.();
+    goToPrevFeatured();
+  }, [goToPrevFeatured]);
+
+  const handleNextFeatured = useCallback((e) => {
+    e?.stopPropagation?.();
+    goToNextFeatured();
+  }, [goToNextFeatured]);
+
+  // Swipe gesture for featured banner carousel (mobile touch navigation)
+  const featuredSwipe = useSwipeGesture({
+    onSwipeLeft: goToNextFeatured,
+    onSwipeRight: goToPrevFeatured,
+    direction: 'horizontal',
+    threshold: 50,
+    velocityThreshold: 0.3,
+  });
 
   // Carousel scroll handlers using ref instead of getElementById
   const handleCarouselScroll = useCallback((direction) => {
@@ -180,12 +207,44 @@ const GachaPage = () => {
     setShowHelpModal(true);
   }, []);
 
+  // Skeleton loading state - shows layout structure while data loads
+  // This improves perceived performance vs a spinner
   if (loading) {
     return (
-      <LoadingState
-        message={t('gacha.loadingBanners')}
-        fullPage
-      />
+      <StyledPageWrapper>
+        <Container>
+          {/* Header skeleton */}
+          <HeroSection>
+            <HeroContent>
+              <Skeleton $height="40px" $width="200px" $radius="12px" />
+              <Skeleton $height="20px" $width="280px" $delay="50ms" />
+            </HeroContent>
+            <HeaderControls>
+              <Skeleton $height="36px" $width="100px" $radius="20px" $delay="100ms" />
+              <Skeleton $height="40px" $width="40px" $radius="12px" $delay="150ms" />
+            </HeaderControls>
+          </HeroSection>
+
+          {/* Featured hero skeleton */}
+          <BannersSection>
+            <SkeletonHero />
+          </BannersSection>
+
+          {/* Carousel skeleton */}
+          <BannerCarouselSection>
+            <CarouselHeader>
+              <Skeleton $height="24px" $width="150px" $delay="200ms" />
+              <Skeleton $height="32px" $width="80px" $delay="250ms" />
+            </CarouselHeader>
+            <SkeletonBannerCarousel count={4} />
+          </BannerCarouselSection>
+
+          {/* CTA skeleton */}
+          <StandardGachaCTA style={{ opacity: 0.6 }}>
+            <Skeleton $height="80px" $width="100%" $radius="16px" $delay="300ms" />
+          </StandardGachaCTA>
+        </Container>
+      </StyledPageWrapper>
     );
   }
 
@@ -215,7 +274,7 @@ const GachaPage = () => {
           <HeaderControls>
             <PointsPill aria-label={`${user?.points || 0} points`}>
               <IconPoints aria-hidden="true" />
-              <span>{user?.points || 0}</span>
+              <span>{animatedPoints.toLocaleString()}</span>
             </PointsPill>
             <IconButton
               onClick={handleOpenHelp}
@@ -228,14 +287,15 @@ const GachaPage = () => {
           </HeaderControls>
         </HeroSection>
 
-        {/* Featured Banner Hero */}
+        {/* Featured Banner Hero - supports swipe gestures on mobile */}
         {currentFeaturedBanner && (
           <BannersSection aria-label={t('gacha.featuredBanners') || 'Featured banners'}>
             <HeroBanner
               key={currentFeaturedBanner.id}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.4 }}
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: -20 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 30 }}
               onClick={() => navigate(`/banner/${currentFeaturedBanner.id}`)}
               role="button"
               tabIndex={0}
@@ -243,9 +303,17 @@ const GachaPage = () => {
                 if (e.key === 'Enter' || e.key === ' ') {
                   e.preventDefault();
                   navigate(`/banner/${currentFeaturedBanner.id}`);
+                } else if (e.key === 'ArrowLeft') {
+                  e.preventDefault();
+                  goToPrevFeatured();
+                } else if (e.key === 'ArrowRight') {
+                  e.preventDefault();
+                  goToNextFeatured();
                 }
               }}
-              aria-label={`${currentFeaturedBanner.name} - ${t('gacha.featuredEvent')}`}
+              aria-label={`${currentFeaturedBanner.name} - ${t('gacha.featuredEvent')}. ${featuredBanners.length > 1 ? 'Swipe or use arrow keys to navigate between banners.' : ''}`}
+              {...(featuredBanners.length > 1 ? featuredSwipe.handlers : {})}
+              style={featuredBanners.length > 1 ? { touchAction: 'pan-y' } : undefined}
             >
               <HeroBannerImage src={getBannerImage(currentFeaturedBanner.image)} alt="" />
               <HeroBannerOverlay />

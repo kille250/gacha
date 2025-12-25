@@ -66,7 +66,8 @@ export const ToastProvider = ({ children }) => {
       variant,
       title,
       description,
-      dismissible
+      dismissible,
+      duration // Pass duration to Toast for progress bar
     };
 
     setToasts(prev => [...prev, newToast]);
