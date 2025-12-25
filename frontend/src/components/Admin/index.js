@@ -17,6 +17,7 @@
 // ==================== CORE COMPONENTS ====================
 
 export { default as AdminTabs } from './AdminTabs';
+export { default as AdminErrorBoundary } from './AdminErrorBoundary';
 
 // ==================== FLAT EXPORTS (BACKWARD COMPATIBLE) ====================
 

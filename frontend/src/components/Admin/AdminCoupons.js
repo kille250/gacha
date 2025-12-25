@@ -141,7 +141,11 @@ const AdminCoupons = ({
                   <CouponActionButton onClick={() => onEditCoupon(coupon)}>
                     <FaEdit /> {t('common.edit')}
                   </CouponActionButton>
-                  <CouponActionButton $danger onClick={() => onDeleteCoupon(coupon.id)}>
+                  <CouponActionButton
+                    $danger
+                    onClick={() => onDeleteCoupon(coupon.id, coupon.code)}
+                    aria-label={`Delete coupon ${coupon.code}`}
+                  >
                     <FaTrash /> {t('common.delete')}
                   </CouponActionButton>
                 </CardActions>

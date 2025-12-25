@@ -1,562 +1,418 @@
-import React, { useState, useEffect, useContext, useCallback } from 'react';
+/**
+ * AdminPage - Administrative dashboard for managing the gacha application
+ *
+ * @architecture
+ * - Uses useAdminState for all data and handlers
+ * - Uses useAdminModals for modal state management
+ * - Separated into tabs for different admin functions
+ * - Character form state kept local as it's tab-specific
+ *
+ * @accessibility
+ * - Skip link for keyboard users
+ * - Proper heading hierarchy
+ * - Tab navigation with ARIA
+ * - Focus management on modals
+ */
+
+import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { getAssetUrl, getAdminDashboard } from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, REFRESH_INTERVALS, VISIBILITY_CALLBACK_IDS } from '../cache';
-import {
-  addCharacter as addCharacterAction,
-  deleteCharacter as deleteCharacterAction,
-  addCoins as addCoinsAction,
-  toggleAutofish as toggleAutofishAction,
-  toggleR18 as toggleR18Action,
-  addBanner as addBannerAction,
-  editBanner as editBannerAction,
-  removeBanner as removeBannerAction,
-  toggleBannerFeatured as toggleBannerFeaturedAction,
-  updateBannerOrder as updateBannerOrderAction,
-  addCoupon as addCouponAction,
-  editCoupon as editCouponAction,
-  removeCoupon as removeCouponAction,
-  handleBulkUploadSuccess,
-  handleAnimeImportSuccess
-} from '../actions/adminActions';
+import { Navigate } from 'react-router-dom';
+
+// Hooks
+import { useAdminState, useAdminModals } from '../hooks';
+
+// Utils
+import { getAssetUrl } from '../utils/api';
 import { PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
+
+// Components
 import BannerFormModal from '../components/UI/BannerFormModal';
 import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
 import AnimeImportModal from '../components/UI/AnimeImportModal';
 import EditCharacterModal from '../components/Admin/EditCharacterModal';
-import { AuthContext } from '../context/AuthContext';
+import {
+  AdminTabs,
+  AdminDashboard,
+  AdminUsers,
+  AdminCharacters,
+  AdminBanners,
+  AdminCoupons,
+  AdminRarities,
+  AdminSecurity,
+  AdminErrorBoundary
+} from '../components/Admin';
 
-// Icon Constants
+// Design System
 import { IconSettings } from '../constants/icons';
-import { useToast } from '../context/ToastContext';
-import { Navigate } from 'react-router-dom';
-import { arrayMove } from '@dnd-kit/sortable';
-import { AdminTabs, AdminDashboard, AdminUsers, AdminCharacters, AdminBanners, AdminCoupons, AdminRarities, AdminSecurity } from '../components/Admin';
-import { theme, PageWrapper, Container, Spinner } from '../design-system';
+import {
+  theme,
+  PageWrapper,
+  Container,
+  Spinner,
+  ConfirmDialog,
+  SkipLink,
+  AriaLiveRegion,
+} from '../design-system';
+
+// ============================================
+// ADMIN PAGE COMPONENT
+// ============================================
 
 const AdminPage = () => {
   const { t } = useTranslation();
-  const { user, refreshUser } = useContext(AuthContext);
-  const toast = useToast();
 
-  // Tab state
+  // Centralized state management via custom hooks
+  const adminState = useAdminState();
+  const modals = useAdminModals();
+
+  // Tab state (local as it's purely UI)
   const [activeTab, setActiveTab] = useState('dashboard');
 
-  // Data states
-  const [users, setUsers] = useState([]);
-  const [characters, setCharacters] = useState([]);
-  const [banners, setBanners] = useState([]);
-  const [coupons, setCoupons] = useState([]);
-
-  // UI states
-  const [loading, setLoading] = useState(true);
-
-  // Toast helper functions for backwards compatibility
-  const showSuccess = useCallback((message) => {
-    toast.success(message);
-  }, [toast]);
-
-  const showError = useCallback((message) => {
-    toast.error(message);
-  }, [toast]);
-  
-  // Modal states
-  const [isAddingBanner, setIsAddingBanner] = useState(false);
-  const [isEditingBanner, setIsEditingBanner] = useState(false);
-  const [editingBanner, setEditingBanner] = useState(null);
-  const [isAddingCoupon, setIsAddingCoupon] = useState(false);
-  const [isEditingCoupon, setIsEditingCoupon] = useState(false);
-  const [editingCoupon, setEditingCoupon] = useState(null);
-  const [isMultiUploadOpen, setIsMultiUploadOpen] = useState(false);
-  const [isAnimeImportOpen, setIsAnimeImportOpen] = useState(false);
-  
-  // Character form states
-  const [newCharacter, setNewCharacter] = useState({ name: '', series: '', rarity: 'common', isR18: false });
+  // Character form states (local as they're tab-specific)
+  const [newCharacter, setNewCharacter] = useState({
+    name: '',
+    series: '',
+    rarity: 'common',
+    isR18: false
+  });
   const [selectedFile, setSelectedFile] = useState(null);
   const [uploadedImage, setUploadedImage] = useState(null);
-  
-  // Edit character state (modal is now a separate component)
-  const [isEditingCharacter, setIsEditingCharacter] = useState(false);
-  const [editingCharacter, setEditingCharacter] = useState(null);
-  
-  // Coin form
+
+  // Coin form (local as it's modal-specific)
   const [coinForm, setCoinForm] = useState({ userId: '', amount: 100 });
-  
-  // API stats
-  const [apiStats, setApiStats] = useState({ totalFishCaught: 0 });
-
-  // Computed stats for dashboard
-  const stats = {
-    totalUsers: users.length,
-    totalCharacters: characters.length,
-    activeBanners: banners.filter(b => b.active).length,
-    activeCoupons: coupons.filter(c => c.isActive).length,
-    totalCoins: users.reduce((sum, u) => sum + (u.points || 0), 0),
-    totalFish: apiStats.totalFishCaught || 0,
-  };
-
-  // Fetch all data
-  const fetchAllData = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await getAdminDashboard();
-      setUsers(data.users || []);
-      setCharacters(data.characters || []);
-      setBanners(data.banners || []);
-      setCoupons(data.coupons || []);
-      setApiStats(data.stats || { totalFishCaught: 0 });
-    } catch (err) {
-      console.error('Dashboard fetch error:', err);
-      showError(err.response?.data?.error || t('admin.failedLoadDashboard'));
-    } finally {
-      setLoading(false);
-    }
-  }, [t, showError]);
-
-  useEffect(() => {
-    if (user?.isAdmin) {
-      fetchAllData();
-    }
-  }, [user?.isAdmin, fetchAllData]);
-
-  // Visibility change handler - refresh admin data when tab becomes visible after being hidden
-  // Uses centralized cacheManager.onVisibilityChange() instead of scattered event listeners
-  useEffect(() => {
-    if (!user?.isAdmin) return;
-    
-    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.ADMIN_DASHBOARD, (staleLevel, elapsed) => {
-      // Refresh if tab was hidden longer than admin staleness threshold
-      if (elapsed > REFRESH_INTERVALS.adminStaleThresholdMs) {
-        invalidateFor(CACHE_ACTIONS.ADMIN_VISIBILITY_CHANGE);
-        fetchAllData();
-      }
-    });
-  }, [user?.isAdmin, fetchAllData]);
 
   // Helper functions
-  const getImageUrl = (imagePath) => imagePath ? getAssetUrl(imagePath) : PLACEHOLDER_IMAGE;
-  const getBannerImageUrl = (imagePath) => imagePath ? getAssetUrl(imagePath) : PLACEHOLDER_BANNER;
+  const getImageUrl = useCallback((imagePath) =>
+    imagePath ? getAssetUrl(imagePath) : PLACEHOLDER_IMAGE,
+  []);
 
-  // Character handlers
-  const handleCharacterChange = (e) => {
+  const getBannerImageUrl = useCallback((imagePath) =>
+    imagePath ? getAssetUrl(imagePath) : PLACEHOLDER_BANNER,
+  []);
+
+  // Character form handlers
+  const handleCharacterChange = useCallback((e) => {
     const { name, value } = e.target;
     setNewCharacter(prev => ({ ...prev, [name]: value }));
-  };
+  }, []);
 
-  const handleFileChange = (e) => {
+  const handleFileChange = useCallback((e) => {
     const file = e.target.files[0];
     setSelectedFile(file);
     if (file) {
       const reader = new FileReader();
-      reader.onload = (e) => setUploadedImage(e.target.result);
+      reader.onload = (ev) => setUploadedImage(ev.target.result);
       reader.readAsDataURL(file);
     } else {
       setUploadedImage(null);
     }
-  };
-
-  const addCharacterWithImage = async (e) => {
-    // Note: e.preventDefault() is now called by AdminCharacters
-    if (!selectedFile) {
-      showError(t('admin.selectImage'));
-      throw new Error(t('admin.selectImage'));
-    }
-    try {
-      const formData = new FormData();
-      formData.append('image', selectedFile);
-      formData.append('name', newCharacter.name);
-      formData.append('series', newCharacter.series);
-      formData.append('rarity', newCharacter.rarity);
-      formData.append('isR18', newCharacter.isR18);
-
-      // Use centralized action helper for consistent cache invalidation
-      await addCharacterAction(formData);
-
-      showSuccess(t('admin.characterAdded'));
-      fetchAllData();
-      setNewCharacter({ name: '', series: '', rarity: 'common', isR18: false });
-      setSelectedFile(null);
-      setUploadedImage(null);
-    } catch (err) {
-      // Check if this is a duplicate error - re-throw for AdminCharacters to handle
-      if (err.response?.status === 409 && err.response?.data?.duplicateType) {
-        throw err;
-      }
-      // Other errors - show generic message
-      showError(err.response?.data?.error || t('admin.failedAddCharacter'));
-      throw err;
-    }
-  };
-
-  const handleEditCharacter = (character) => {
-    setEditingCharacter(character);
-    setIsEditingCharacter(true);
-  };
-
-  const handleEditCharacterClose = useCallback(() => {
-    setIsEditingCharacter(false);
-    setEditingCharacter(null);
   }, []);
 
-  const handleEditCharacterSuccess = useCallback((message) => {
-    // Cache invalidation handled by adminActions
-    invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_EDIT);
-    showSuccess(message);
-    fetchAllData();
-  }, [fetchAllData, showSuccess]);
+  const resetCharacterForm = useCallback(() => {
+    setNewCharacter({ name: '', series: '', rarity: 'common', isR18: false });
+    setSelectedFile(null);
+    setUploadedImage(null);
+  }, []);
 
-  const handleDeleteCharacter = async (characterId) => {
-    if (!window.confirm(t('admin.confirmDeleteCharacter'))) return;
-    
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      await deleteCharacterAction(characterId);
-      showSuccess(t('admin.characterDeleted'));
-      fetchAllData();
-    } catch (err) {
-      showError(err.response?.data?.error || t('admin.failedDeleteCharacter'));
+  const addCharacterWithImage = useCallback(async () => {
+    if (!selectedFile) {
+      adminState.showError(t('admin.selectImage'));
+      throw new Error(t('admin.selectImage'));
     }
-  };
 
-  // Coin handlers
-  const handleCoinFormChange = (e) => {
+    const formData = new FormData();
+    formData.append('image', selectedFile);
+    formData.append('name', newCharacter.name);
+    formData.append('series', newCharacter.series);
+    formData.append('rarity', newCharacter.rarity);
+    formData.append('isR18', newCharacter.isR18);
+
+    const result = await adminState.handleAddCharacter(formData);
+    if (result.success) {
+      resetCharacterForm();
+    }
+    return result;
+  }, [selectedFile, newCharacter, adminState, resetCharacterForm, t]);
+
+  // Coin form handlers
+  const handleCoinFormChange = useCallback((e) => {
     setCoinForm(prev => ({ ...prev, [e.target.name]: e.target.value }));
-  };
+  }, []);
 
-  const handleAddCoins = async (e) => {
+  const handleAddCoins = useCallback(async (e) => {
     e.preventDefault();
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      const result = await addCoinsAction(coinForm, refreshUser, user?.id);
-      showSuccess(result.message);
-      fetchAllData();
+    const result = await adminState.handleAddCoins(coinForm);
+    if (result.success) {
       setCoinForm({ userId: '', amount: 100 });
-    } catch (err) {
-      showError(err.response?.data?.error || 'Failed to add coins');
     }
-  };
-
-  // User toggle handlers
-  const handleToggleAutofish = async (userId, enabled) => {
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      const result = await toggleAutofishAction(userId, enabled);
-      showSuccess(result.message);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, autofishEnabled: enabled } : u));
-    } catch (err) {
-      showError(err.response?.data?.error || 'Failed to toggle autofishing');
-    }
-  };
-
-  const handleToggleR18 = async (userId, enabled) => {
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      const result = await toggleR18Action(userId, enabled);
-      showSuccess(result.message);
-      setUsers(prev => prev.map(u => u.id === userId ? { ...u, allowR18: enabled } : u));
-    } catch (err) {
-      showError(err.response?.data?.error || 'Failed to toggle R18 access');
-    }
-  };
-
-  // Banner handlers
-  const handleAddBanner = async (formData) => {
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      await addBannerAction(formData);
-      fetchAllData();
-      showSuccess(t('admin.bannerAdded'));
-      setIsAddingBanner(false);
-    } catch (err) {
-      showError(err.response?.data?.error || t('admin.failedAddBanner'));
-    }
-  };
-
-  const handleUpdateBanner = async (formData) => {
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      await editBannerAction(editingBanner.id, formData);
-      fetchAllData();
-      showSuccess(t('admin.bannerUpdated'));
-      setIsEditingBanner(false);
-    } catch (err) {
-      showError(err.response?.data?.error || t('admin.failedUpdateBanner'));
-    }
-  };
-
-  const handleDeleteBanner = async (bannerId) => {
-    if (!window.confirm(t('admin.confirmDeleteBanner'))) return;
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      await removeBannerAction(bannerId);
-      fetchAllData();
-      showSuccess(t('admin.bannerDeleted'));
-    } catch (err) {
-      showError(err.response?.data?.error || t('admin.failedDeleteBanner'));
-    }
-  };
-
-  const handleToggleFeatured = async (banner) => {
-    const newFeaturedStatus = !banner.featured;
-    setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, featured: newFeaturedStatus } : b));
-    
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      await toggleBannerFeaturedAction(banner.id, newFeaturedStatus);
-      showSuccess(`${banner.name} ${newFeaturedStatus ? t('admin.markedAsFeatured') : t('admin.unmarkedAsFeatured')}`);
-    } catch (err) {
-      setBanners(prev => prev.map(b => b.id === banner.id ? { ...b, featured: !newFeaturedStatus } : b));
-      showError(err.response?.data?.error || t('admin.failedUpdateBanner'));
-    }
-  };
-
-  const handleDragEnd = async (event) => {
-    const { active, over } = event;
-    if (active.id !== over?.id) {
-      const oldIndex = banners.findIndex(b => b.id === active.id);
-      const newIndex = banners.findIndex(b => b.id === over.id);
-      const newBanners = arrayMove(banners, oldIndex, newIndex);
-      setBanners(newBanners);
-      
-      try {
-        // Use centralized action helper for consistent cache invalidation
-        await updateBannerOrderAction(newBanners.map(b => b.id));
-        showSuccess(t('admin.bannerOrderUpdated'));
-      } catch (err) {
-        setBanners(banners);
-        showError(err.response?.data?.error || t('admin.failedUpdateBannerOrder'));
-      }
-    }
-  };
-
-  // Coupon handlers
-  const handleAddCoupon = async (formData) => {
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      await addCouponAction(formData);
-      fetchAllData();
-      showSuccess(t('admin.couponCreated'));
-      setIsAddingCoupon(false);
-    } catch (err) {
-      showError(err.response?.data?.error || t('admin.failedCreateCoupon'));
-    }
-  };
-
-  const handleUpdateCoupon = async (formData) => {
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      await editCouponAction(editingCoupon.id, formData);
-      fetchAllData();
-      showSuccess(t('admin.couponUpdated'));
-      setIsEditingCoupon(false);
-    } catch (err) {
-      showError(err.response?.data?.error || t('admin.failedUpdateCoupon'));
-    }
-  };
-
-  const handleDeleteCoupon = async (couponId) => {
-    if (!window.confirm(t('admin.confirmDeleteCoupon'))) return;
-    try {
-      // Use centralized action helper for consistent cache invalidation
-      await removeCouponAction(couponId);
-      fetchAllData();
-      showSuccess(t('admin.couponDeleted'));
-    } catch (err) {
-      showError(err.response?.data?.error || t('admin.failedDeleteCoupon'));
-    }
-  };
+  }, [adminState, coinForm]);
 
   // Quick action handler from dashboard
-  const handleQuickAction = (action) => {
-    switch (action) {
-      case 'character':
-        setActiveTab('characters');
-        break;
-      case 'multiUpload':
-        setIsMultiUploadOpen(true);
-        break;
-      case 'animeImport':
-        setIsAnimeImportOpen(true);
-        break;
-      case 'banner':
-        setActiveTab('banners');
-        setTimeout(() => setIsAddingBanner(true), 100);
-        break;
-      case 'coupon':
-        setActiveTab('coupons');
-        setTimeout(() => setIsAddingCoupon(true), 100);
-        break;
-      default:
-        break;
-    }
-  };
+  const handleQuickAction = useCallback((action) => {
+    modals.handleQuickAction(action, setActiveTab);
+  }, [modals]);
 
-  if (!user?.isAdmin) {
-    return <Navigate to="/gacha" />;
+  // Confirmation dialog handlers for destructive actions
+  const handleDeleteCharacterWithConfirm = useCallback((characterId, characterName) => {
+    modals.openConfirmDialog({
+      title: t('admin.confirmDeleteCharacter'),
+      message: t('admin.deleteCharacterMessage', { name: characterName }),
+      variant: 'danger',
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
+      onConfirm: () => adminState.handleDeleteCharacter(characterId),
+    });
+  }, [modals, adminState, t]);
+
+  const handleDeleteBannerWithConfirm = useCallback((bannerId, bannerName) => {
+    modals.openConfirmDialog({
+      title: t('admin.confirmDeleteBanner'),
+      message: t('admin.deleteBannerMessage', { name: bannerName }),
+      variant: 'danger',
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
+      onConfirm: () => adminState.handleDeleteBanner(bannerId),
+    });
+  }, [modals, adminState, t]);
+
+  const handleDeleteCouponWithConfirm = useCallback((couponId, couponCode) => {
+    modals.openConfirmDialog({
+      title: t('admin.confirmDeleteCoupon'),
+      message: t('admin.deleteCouponMessage', { code: couponCode }),
+      variant: 'danger',
+      confirmLabel: t('common.delete'),
+      cancelLabel: t('common.cancel'),
+      onConfirm: () => adminState.handleDeleteCoupon(couponId),
+    });
+  }, [modals, adminState, t]);
+
+  // Banner update handler (needs banner ID from modal state)
+  const handleUpdateBanner = useCallback(async (formData) => {
+    const result = await adminState.handleUpdateBanner(modals.editingBanner.id, formData);
+    if (result.success) {
+      modals.closeEditBannerModal();
+    }
+  }, [adminState, modals]);
+
+  // Coupon update handler
+  const handleUpdateCoupon = useCallback(async (formData) => {
+    const result = await adminState.handleUpdateCoupon(modals.editingCoupon.id, formData);
+    if (result.success) {
+      modals.closeEditCouponModal();
+    }
+  }, [adminState, modals]);
+
+  // Redirect non-admin users
+  if (!adminState.isAdmin) {
+    return <Navigate to="/gacha" replace />;
   }
 
   return (
     <StyledPageWrapper>
+      {/* Skip link for keyboard navigation */}
+      <SkipLink href="#admin-content">
+        {t('accessibility.skipToContent', 'Skip to main content')}
+      </SkipLink>
+
+      {/* Live region for screen reader announcements */}
+      <AriaLiveRegion />
+
+      {/* Header */}
       <AdminHeader>
         <Container>
           <HeaderContent>
             <HeaderTitle>
-              <TitleIcon><IconSettings /></TitleIcon>
+              <TitleIcon aria-hidden="true"><IconSettings /></TitleIcon>
               {t('admin.title')}
             </HeaderTitle>
             <HeaderSubtitle>{t('admin.subtitle')}</HeaderSubtitle>
           </HeaderContent>
         </Container>
       </AdminHeader>
-      
-      <AdminTabs activeTab={activeTab} onTabChange={setActiveTab} />
-      
-      <Container>
-        {/* Loading State */}
-        {loading ? (
-          <LoadingContainer>
-            <LoadingSpinner />
-            <LoadingText>Loading admin data...</LoadingText>
-          </LoadingContainer>
-        ) : (
-          <TabContent>
-            <AnimatePresence mode="wait">
-              {activeTab === 'dashboard' && (
-                <TabPanel key="dashboard">
-                  <AdminDashboard stats={stats} onQuickAction={handleQuickAction} />
-                </TabPanel>
-              )}
-              
-              {activeTab === 'users' && (
-                <TabPanel key="users">
-                  <AdminUsers 
-                    users={users}
-                    coinForm={coinForm}
-                    onCoinFormChange={handleCoinFormChange}
-                    onAddCoins={handleAddCoins}
-                    onToggleAutofish={handleToggleAutofish}
-                    onToggleR18={handleToggleR18}
-                    onSecurityAction={showSuccess}
-                  />
-                </TabPanel>
-              )}
-              
-              {activeTab === 'characters' && (
-                <TabPanel key="characters">
-                  <AdminCharacters 
-                    characters={characters}
-                    getImageUrl={getImageUrl}
-                    onAddCharacter={addCharacterWithImage}
-                    onEditCharacter={handleEditCharacter}
-                    onDeleteCharacter={handleDeleteCharacter}
-                    onMultiUpload={() => setIsMultiUploadOpen(true)}
-                    onAnimeImport={() => setIsAnimeImportOpen(true)}
-                    newCharacter={newCharacter}
-                    onCharacterChange={handleCharacterChange}
-                    selectedFile={selectedFile}
-                    onFileChange={handleFileChange}
-                    uploadedImage={uploadedImage}
-                  />
-                </TabPanel>
-              )}
-              
-              {activeTab === 'banners' && (
-                <TabPanel key="banners">
-                  <AdminBanners 
-                    banners={banners}
-                    getBannerImageUrl={getBannerImageUrl}
-                    onAddBanner={() => setIsAddingBanner(true)}
-                    onEditBanner={(banner) => { setEditingBanner(banner); setIsEditingBanner(true); }}
-                    onDeleteBanner={handleDeleteBanner}
-                    onToggleFeatured={handleToggleFeatured}
-                    onDragEnd={handleDragEnd}
-                  />
-                </TabPanel>
-              )}
-              
-              {activeTab === 'coupons' && (
-                <TabPanel key="coupons">
-                  <AdminCoupons 
-                    coupons={coupons}
-                    onAddCoupon={() => setIsAddingCoupon(true)}
-                    onEditCoupon={(coupon) => { setEditingCoupon(coupon); setIsEditingCoupon(true); }}
-                    onDeleteCoupon={handleDeleteCoupon}
-                  />
-                </TabPanel>
-              )}
-              
-              {activeTab === 'rarities' && (
-                <TabPanel key="rarities">
-                  <AdminRarities onRefresh={fetchAllData} />
-                </TabPanel>
-              )}
-              
-              {activeTab === 'security' && (
-                <TabPanel key="security">
-                  <AdminSecurity onSuccess={showSuccess} />
-                </TabPanel>
-              )}
-            </AnimatePresence>
-          </TabContent>
-        )}
-      </Container>
-      
-      {/* Modals */}
-      <BannerFormModal 
-        show={isAddingBanner} 
-        onClose={() => setIsAddingBanner(false)} 
-        onSubmit={handleAddBanner} 
-        characters={characters} 
-      />
-      <BannerFormModal 
-        show={isEditingBanner} 
-        onClose={() => setIsEditingBanner(false)} 
-        onSubmit={handleUpdateBanner} 
-        banner={editingBanner} 
-        characters={characters} 
-      />
-      <CouponFormModal 
-        show={isAddingCoupon} 
-        onClose={() => setIsAddingCoupon(false)} 
-        onSubmit={handleAddCoupon} 
-        characters={characters} 
-      />
-      <CouponFormModal 
-        show={isEditingCoupon} 
-        onClose={() => setIsEditingCoupon(false)} 
-        onSubmit={handleUpdateCoupon} 
-        coupon={editingCoupon} 
-        characters={characters} 
-      />
-      <MultiUploadModal 
-        show={isMultiUploadOpen} 
-        onClose={() => setIsMultiUploadOpen(false)} 
-        onSuccess={(result) => { handleBulkUploadSuccess(() => { showSuccess(result.message); fetchAllData(); }, result); }} 
-      />
-      <AnimeImportModal 
-        show={isAnimeImportOpen} 
-        onClose={() => setIsAnimeImportOpen(false)} 
-        onSuccess={(result) => { handleAnimeImportSuccess(() => { showSuccess(result.message); fetchAllData(); }, result); }} 
+
+      {/* Tab Navigation */}
+      <AdminTabs
+        activeTab={activeTab}
+        onTabChange={setActiveTab}
+        aria-label={t('admin.navigation', 'Admin navigation')}
       />
 
-      {/* Edit Character Modal */}
+      {/* Main Content - Wrapped in Error Boundary */}
+      <AdminErrorBoundary onReset={adminState.refreshData}>
+        <Container>
+          <main id="admin-content" role="main">
+            {adminState.loading ? (
+              <LoadingContainer aria-label={t('common.loading')}>
+                <LoadingSpinner />
+                <LoadingText>{t('admin.loadingData', 'Loading admin data...')}</LoadingText>
+              </LoadingContainer>
+            ) : (
+              <TabContent>
+                <AnimatePresence mode="wait">
+                  {activeTab === 'dashboard' && (
+                    <TabPanel key="dashboard" role="tabpanel" aria-labelledby="tab-dashboard">
+                      <AdminDashboard
+                        stats={adminState.stats}
+                        onQuickAction={handleQuickAction}
+                      />
+                    </TabPanel>
+                  )}
+
+                {activeTab === 'users' && (
+                  <TabPanel key="users" role="tabpanel" aria-labelledby="tab-users">
+                    <AdminUsers
+                      users={adminState.users}
+                      coinForm={coinForm}
+                      onCoinFormChange={handleCoinFormChange}
+                      onAddCoins={handleAddCoins}
+                      onToggleAutofish={adminState.handleToggleAutofish}
+                      onToggleR18={adminState.handleToggleR18}
+                      onSecurityAction={adminState.showSuccess}
+                    />
+                  </TabPanel>
+                )}
+
+                {activeTab === 'characters' && (
+                  <TabPanel key="characters" role="tabpanel" aria-labelledby="tab-characters">
+                    <AdminCharacters
+                      characters={adminState.characters}
+                      getImageUrl={getImageUrl}
+                      onAddCharacter={addCharacterWithImage}
+                      onEditCharacter={modals.openEditCharacterModal}
+                      onDeleteCharacter={handleDeleteCharacterWithConfirm}
+                      onMultiUpload={modals.openMultiUploadModal}
+                      onAnimeImport={modals.openAnimeImportModal}
+                      newCharacter={newCharacter}
+                      onCharacterChange={handleCharacterChange}
+                      selectedFile={selectedFile}
+                      onFileChange={handleFileChange}
+                      uploadedImage={uploadedImage}
+                    />
+                  </TabPanel>
+                )}
+
+                {activeTab === 'banners' && (
+                  <TabPanel key="banners" role="tabpanel" aria-labelledby="tab-banners">
+                    <AdminBanners
+                      banners={adminState.banners}
+                      getBannerImageUrl={getBannerImageUrl}
+                      onAddBanner={modals.openAddBannerModal}
+                      onEditBanner={modals.openEditBannerModal}
+                      onDeleteBanner={handleDeleteBannerWithConfirm}
+                      onToggleFeatured={adminState.handleToggleFeatured}
+                      onDragEnd={adminState.handleDragEnd}
+                    />
+                  </TabPanel>
+                )}
+
+                {activeTab === 'coupons' && (
+                  <TabPanel key="coupons" role="tabpanel" aria-labelledby="tab-coupons">
+                    <AdminCoupons
+                      coupons={adminState.coupons}
+                      onAddCoupon={modals.openAddCouponModal}
+                      onEditCoupon={modals.openEditCouponModal}
+                      onDeleteCoupon={handleDeleteCouponWithConfirm}
+                    />
+                  </TabPanel>
+                )}
+
+                {activeTab === 'rarities' && (
+                  <TabPanel key="rarities" role="tabpanel" aria-labelledby="tab-rarities">
+                    <AdminRarities onRefresh={adminState.refreshData} />
+                  </TabPanel>
+                )}
+
+                {activeTab === 'security' && (
+                  <TabPanel key="security" role="tabpanel" aria-labelledby="tab-security">
+                    <AdminSecurity onSuccess={adminState.showSuccess} />
+                  </TabPanel>
+                )}
+              </AnimatePresence>
+            </TabContent>
+          )}
+          </main>
+        </Container>
+      </AdminErrorBoundary>
+
+      {/* Modals */}
+      <BannerFormModal
+        show={modals.isAddingBanner}
+        onClose={modals.closeAddBannerModal}
+        onSubmit={async (formData) => {
+          const result = await adminState.handleAddBanner(formData);
+          if (result.success) modals.closeAddBannerModal();
+        }}
+        characters={adminState.characters}
+      />
+
+      <BannerFormModal
+        show={modals.isEditingBanner}
+        onClose={modals.closeEditBannerModal}
+        onSubmit={handleUpdateBanner}
+        banner={modals.editingBanner}
+        characters={adminState.characters}
+      />
+
+      <CouponFormModal
+        show={modals.isAddingCoupon}
+        onClose={modals.closeAddCouponModal}
+        onSubmit={async (formData) => {
+          const result = await adminState.handleAddCoupon(formData);
+          if (result.success) modals.closeAddCouponModal();
+        }}
+        characters={adminState.characters}
+      />
+
+      <CouponFormModal
+        show={modals.isEditingCoupon}
+        onClose={modals.closeEditCouponModal}
+        onSubmit={handleUpdateCoupon}
+        coupon={modals.editingCoupon}
+        characters={adminState.characters}
+      />
+
+      <MultiUploadModal
+        show={modals.isMultiUploadOpen}
+        onClose={modals.closeMultiUploadModal}
+        onSuccess={adminState.handleBulkUpload}
+      />
+
+      <AnimeImportModal
+        show={modals.isAnimeImportOpen}
+        onClose={modals.closeAnimeImportModal}
+        onSuccess={adminState.handleAnimeImport}
+      />
+
       <EditCharacterModal
-        show={isEditingCharacter}
-        character={editingCharacter}
-        onClose={handleEditCharacterClose}
-        onSuccess={handleEditCharacterSuccess}
-        onError={showError}
+        show={modals.isEditingCharacter}
+        character={modals.editingCharacter}
+        onClose={modals.closeEditCharacterModal}
+        onSuccess={adminState.handleEditCharacterSuccess}
+        onError={adminState.showError}
         getImageUrl={getImageUrl}
+      />
+
+      {/* Confirmation Dialog for destructive actions */}
+      <ConfirmDialog
+        isOpen={modals.confirmDialog.isOpen}
+        onClose={modals.closeConfirmDialog}
+        onConfirm={modals.executeConfirmAction}
+        title={modals.confirmDialog.title}
+        message={modals.confirmDialog.message}
+        variant={modals.confirmDialog.variant}
+        confirmLabel={modals.confirmDialog.confirmLabel}
+        cancelLabel={modals.confirmDialog.cancelLabel}
+        loading={modals.confirmDialog.loading}
       />
     </StyledPageWrapper>
   );
 };
 
 // ============================================
-// PAGE-SPECIFIC STYLED COMPONENTS
+// STYLED COMPONENTS
 // ============================================
 
 const StyledPageWrapper = styled(PageWrapper)`
@@ -607,7 +463,6 @@ const LoadingContainer = styled.div`
   padding: ${theme.spacing['4xl']};
 `;
 
-// Use shared Spinner from DesignSystem (48px default)
 const LoadingSpinner = Spinner;
 
 const LoadingText = styled.p`

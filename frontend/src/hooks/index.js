@@ -152,3 +152,7 @@ export {
   useOptimisticList,
   useOptimisticToggle
 } from './useOptimisticUI';
+
+// Admin page hooks
+export { useAdminState } from './useAdminState';
+export { useAdminModals, ADMIN_MODAL_TYPES } from './useAdminModals';

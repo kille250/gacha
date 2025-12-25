@@ -73,7 +73,11 @@ const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured
         <BannerIconButton onClick={() => onEdit(banner)}>
           <FaEdit />
         </BannerIconButton>
-        <BannerIconButton $danger onClick={() => onDelete(banner.id)}>
+        <BannerIconButton
+          $danger
+          onClick={() => onDelete(banner.id, banner.name)}
+          aria-label={`Delete ${banner.name}`}
+        >
           <FaTrash />
         </BannerIconButton>
       </BannerActions>

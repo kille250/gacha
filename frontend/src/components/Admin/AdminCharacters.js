@@ -217,7 +217,12 @@ const AdminCharacters = ({
                     <CardIconButton onClick={() => onEditCharacter(char)} title="Edit">
                       <FaEdit />
                     </CardIconButton>
-                    <CardIconButton $danger onClick={() => onDeleteCharacter(char.id)} title="Delete">
+                    <CardIconButton
+                      $danger
+                      onClick={() => onDeleteCharacter(char.id, char.name)}
+                      title="Delete"
+                      aria-label={`Delete ${char.name}`}
+                    >
                       <FaTrash />
                     </CardIconButton>
                   </CardActions>
@@ -253,7 +258,7 @@ const AdminCharacters = ({
                 <RarityTag $color={getRarityColor(char.rarity)}>{char.rarity}</RarityTag>
                 <ListActions>
                   <IconButton onClick={() => onEditCharacter(char)} label="Edit character"><FaEdit /></IconButton>
-                  <IconButton $danger onClick={() => onDeleteCharacter(char.id)} label="Delete character"><FaTrash /></IconButton>
+                  <IconButton $danger onClick={() => onDeleteCharacter(char.id, char.name)} label={`Delete ${char.name}`}><FaTrash /></IconButton>
                 </ListActions>
               </ListItem>
             ))}
