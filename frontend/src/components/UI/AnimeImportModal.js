@@ -57,6 +57,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   // Import settings
   const [seriesName, setSeriesName] = useState('');
   const [defaultRarity, setDefaultRarity] = useState('common');
+  const [autoRarity, setAutoRarity] = useState(true); // Auto-calculate rarity from MAL favorites
   
   // Import state
   const [importing, setImporting] = useState(false);
@@ -295,29 +296,34 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   // Import selected characters
   const handleImport = async () => {
     if (selectedCharacters.length === 0 || !seriesName.trim()) return;
-    
+
     setImporting(true);
     setImportResult(null);
-    
+
     try {
+      // Include mal_id, role, and favorites for auto-rarity calculation
       const charactersToImport = selectedCharacters.map(c => ({
         name: c.name,
         image: c.image,
-        rarity: c.rarity || defaultRarity
+        mal_id: c.mal_id,
+        role: c.role,
+        favorites: c.favorites,
+        rarity: autoRarity ? undefined : (c.rarity || defaultRarity) // Only send rarity if not using auto
       }));
-      
+
       const response = await api.post('/anime-import/import', {
         characters: charactersToImport,
         series: seriesName.trim(),
-        rarity: defaultRarity
+        rarity: defaultRarity,
+        autoRarity: autoRarity
       });
-      
+
       setImportResult(response.data);
-      
+
       if (onSuccess && response.data.characters?.length > 0) {
         onSuccess(response.data);
       }
-      
+
       // Clear selections on success
       setSelectedCharacters([]);
       setAnimeCharacters([]);
@@ -482,17 +488,19 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                                 >
                                   <FaImage /> {hasAltMedia ? t('animeImport.changeAltImage') : t('animeImport.findAltImage')}
                                 </FindVideoButton>
-                                <RaritySelect 
-                                  onClick={e => e.stopPropagation()}
-                                  value={isSelected.rarity || defaultRarity}
-                                  onChange={e => setCharacterRarity(char.mal_id, e.target.value)}
-                                >
-                                  {orderedRarities.map(r => (
-                                    <option key={r.id} value={r.name.toLowerCase()}>
-                                      {t(`gacha.${r.name.toLowerCase()}`, r.name)}
-                                    </option>
-                                  ))}
-                                </RaritySelect>
+                                {!autoRarity && (
+                                  <RaritySelect
+                                    onClick={e => e.stopPropagation()}
+                                    value={isSelected.rarity || defaultRarity}
+                                    onChange={e => setCharacterRarity(char.mal_id, e.target.value)}
+                                  >
+                                    {orderedRarities.map(r => (
+                                      <option key={r.id} value={r.name.toLowerCase()}>
+                                        {t(`gacha.${r.name.toLowerCase()}`, r.name)}
+                                      </option>
+                                    ))}
+                                  </RaritySelect>
+                                )}
                               </>
                             )}
                           </CharacterInfo>
@@ -522,7 +530,12 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                 </SettingsField>
                 <SettingsField>
                   <label>{t('animeImport.defaultRarity')}</label>
-                  <select value={defaultRarity} onChange={e => setDefaultRarity(e.target.value)}>
+                  <select
+                    value={defaultRarity}
+                    onChange={e => setDefaultRarity(e.target.value)}
+                    disabled={autoRarity}
+                    style={{ opacity: autoRarity ? 0.5 : 1 }}
+                  >
                     {orderedRarities.map(r => (
                       <option key={r.id} value={r.name.toLowerCase()}>
                         {t(`gacha.${r.name.toLowerCase()}`, r.name)}
@@ -531,6 +544,21 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                   </select>
                 </SettingsField>
               </SettingsGrid>
+              <AutoRarityToggle>
+                <AutoRarityCheckbox
+                  type="checkbox"
+                  id="autoRarity"
+                  checked={autoRarity}
+                  onChange={e => setAutoRarity(e.target.checked)}
+                />
+                <AutoRarityLabel htmlFor="autoRarity">
+                  <FaStar style={{ color: '#ffc107' }} />
+                  {t('animeImport.autoRarity', 'Auto-calculate rarity from MAL popularity')}
+                </AutoRarityLabel>
+                <AutoRarityHint>
+                  {t('animeImport.autoRarityHint', 'Uses character favorites count to determine rarity (50k+ = Legendary, 10k+ = Epic, etc.)')}
+                </AutoRarityHint>
+              </AutoRarityToggle>
             </ImportSettingsSection>
           )}
 
@@ -1307,6 +1335,42 @@ const SettingsField = styled.div`
   }
 `;
 
+const AutoRarityToggle = styled.div`
+  margin-top: 15px;
+  padding: 12px 16px;
+  background: rgba(255, 193, 7, 0.1);
+  border: 1px solid rgba(255, 193, 7, 0.25);
+  border-radius: 10px;
+`;
+
+const AutoRarityCheckbox = styled.input`
+  width: 18px;
+  height: 18px;
+  accent-color: #ffc107;
+  cursor: pointer;
+`;
+
+const AutoRarityLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 500;
+  cursor: pointer;
+
+  svg {
+    font-size: 1rem;
+  }
+`;
+
+const AutoRarityHint = styled.p`
+  margin: 8px 0 0 26px;
+  color: #aaa;
+  font-size: 0.8rem;
+  line-height: 1.4;
+`;
+
 const ResultSection = styled.div`
   display: flex;
   flex-direction: column;
@@ -1316,7 +1380,7 @@ const ResultSection = styled.div`
   margin-top: 20px;
   background: ${props => props.$error ? 'rgba(231, 76, 60, 0.15)' : 'rgba(46, 204, 113, 0.15)'};
   border: 1px solid ${props => props.$error ? 'rgba(231, 76, 60, 0.3)' : 'rgba(46, 204, 113, 0.3)'};
-  
+
   > div:first-child {
     display: flex;
     align-items: center;
