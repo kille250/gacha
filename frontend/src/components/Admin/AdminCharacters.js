@@ -86,8 +86,26 @@ const AdminCharacters = ({
   const { t } = useTranslation();
   const { getRarityColor, getOrderedRarities } = useRarity();
   const [searchQuery, setSearchQuery] = useState('');
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage, setItemsPerPage] = useState(20);
+
+  // Persist pagination in sessionStorage to survive re-renders/remounts
+  const [currentPage, setCurrentPage] = useState(() => {
+    const saved = sessionStorage.getItem('adminCharactersPage');
+    return saved ? parseInt(saved, 10) : 1;
+  });
+  const [itemsPerPage, setItemsPerPage] = useState(() => {
+    const saved = sessionStorage.getItem('adminCharactersPerPage');
+    return saved ? parseInt(saved, 10) : 20;
+  });
+
+  // Sync pagination to sessionStorage
+  useEffect(() => {
+    sessionStorage.setItem('adminCharactersPage', String(currentPage));
+  }, [currentPage]);
+
+  useEffect(() => {
+    sessionStorage.setItem('adminCharactersPerPage', String(itemsPerPage));
+  }, [itemsPerPage]);
+
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
 
