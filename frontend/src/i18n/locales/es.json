@@ -1102,5 +1102,9 @@
     "results": "resultados",
     "moreAvailable": "más disponibles",
     "loadingMore": "Cargando..."
+  },
+  "createFromDanbooru": {
+    "addAndContinue": "Agregar y Continuar",
+    "addAndClose": "Agregar y Cerrar"
   }
 }

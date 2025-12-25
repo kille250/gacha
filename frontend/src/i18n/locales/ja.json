@@ -1249,6 +1249,10 @@
     "moreAvailable": "さらに読み込み可能",
     "loadingMore": "読み込み中..."
   },
+  "createFromDanbooru": {
+    "addAndContinue": "追加して続行",
+    "addAndClose": "追加して閉じる"
+  },
   "upload": {
     "fileRemoved": "ファイルを削除しました:",
     "unknownFile": "不明なファイル",

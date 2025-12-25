@@ -1282,6 +1282,10 @@
     "moreAvailable": "more available",
     "loadingMore": "Loading..."
   },
+  "createFromDanbooru": {
+    "addAndContinue": "Add & Continue",
+    "addAndClose": "Add & Close"
+  },
   "upload": {
     "fileRemoved": "File removed:",
     "unknownFile": "Unknown file",

@@ -385,7 +385,7 @@ const CreateFromDanbooru = ({
   }, []);
 
   // Submit character creation
-  const handleSubmit = useCallback(async (e) => {
+  const handleSubmit = useCallback(async (e, addAnother = false) => {
     e.preventDefault();
     if (!selectedMedia) return;
 
@@ -402,11 +402,23 @@ const CreateFromDanbooru = ({
         danbooruMedia: selectedMedia
       });
 
-      // Success - notify parent and close
+      // Success - notify parent
       if (onCharacterCreated) {
         onCharacterCreated(response.data.character);
       }
-      onClose();
+
+      if (addAnother) {
+        // Go back to search step, keep search state (selectedTag, results, page, etc.)
+        // Remove the just-added media from results so user doesn't accidentally add it again
+        setResults(prev => prev.filter(m => m.id !== selectedMedia.id));
+        setSelectedMedia(null);
+        setStep('search');
+        setCharacterData({ name: '', series: '', rarity: 'common', isR18: false });
+        setDuplicateError(null);
+        setError(null);
+      } else {
+        onClose();
+      }
     } catch (err) {
       console.error('Character creation failed:', err);
 
@@ -761,17 +773,32 @@ const CreateFromDanbooru = ({
                   />
                 )}
 
-                <SubmitButton
-                  type="submit"
-                  disabled={submitting || duplicateError}
-                  aria-busy={submitting}
-                >
-                  {submitting ? (
-                    <><FaSpinner className="spin" /> {t('admin.creating', 'Creating...')}</>
-                  ) : (
-                    <><FaPlus /> {t('admin.createCharacter', 'Create Character')}</>
-                  )}
-                </SubmitButton>
+                <ButtonRow>
+                  <SubmitButton
+                    type="button"
+                    onClick={(e) => handleSubmit(e, true)}
+                    disabled={submitting || duplicateError}
+                    aria-busy={submitting}
+                    $variant="secondary"
+                  >
+                    {submitting ? (
+                      <><FaSpinner className="spin" /> {t('admin.creating', 'Creating...')}</>
+                    ) : (
+                      <><FaPlus /> {t('createFromDanbooru.addAndContinue', 'Add & Continue')}</>
+                    )}
+                  </SubmitButton>
+                  <SubmitButton
+                    type="submit"
+                    disabled={submitting || duplicateError}
+                    aria-busy={submitting}
+                  >
+                    {submitting ? (
+                      <><FaSpinner className="spin" /> {t('admin.creating', 'Creating...')}</>
+                    ) : (
+                      <><FaCheck /> {t('createFromDanbooru.addAndClose', 'Add & Close')}</>
+                    )}
+                  </SubmitButton>
+                </ButtonRow>
               </Form>
             </>
           )}
@@ -1434,13 +1461,22 @@ const ErrorMessage = styled.div`
   font-size: 0.9rem;
 `;
 
+const ButtonRow = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+`;
+
 const SubmitButton = styled.button`
-  background: linear-gradient(135deg, ${theme.colors.success} 0%, #27ae60 100%);
+  flex: 1;
+  background: ${props => props.$variant === 'secondary'
+    ? 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)'
+    : `linear-gradient(135deg, ${theme.colors.success} 0%, #27ae60 100%)`};
   border: none;
   color: #fff;
   padding: 14px 20px;
   border-radius: 10px;
-  font-size: 1rem;
+  font-size: 0.95rem;
   font-weight: 600;
   cursor: pointer;
   display: flex;
@@ -1448,11 +1484,12 @@ const SubmitButton = styled.button`
   justify-content: center;
   gap: 8px;
   transition: all 0.2s;
-  margin-top: 10px;
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
-    box-shadow: 0 5px 20px rgba(46, 204, 113, 0.3);
+    box-shadow: ${props => props.$variant === 'secondary'
+      ? '0 5px 20px rgba(155, 89, 182, 0.3)'
+      : '0 5px 20px rgba(46, 204, 113, 0.3)'};
   }
 
   &:disabled {

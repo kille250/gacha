@@ -115,12 +115,20 @@ const AdminCharacters = ({
     }
   }, [showAddModal]);
   
-  const filteredCharacters = characters.filter(char => 
+  const filteredCharacters = characters.filter(char =>
     char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     char.series.toLowerCase().includes(searchQuery.toLowerCase())
   );
-  
+
   const totalPages = Math.ceil(filteredCharacters.length / itemsPerPage);
+
+  // Auto-adjust page if current page is now empty (e.g., after deletion)
+  useEffect(() => {
+    if (currentPage > 1 && totalPages > 0 && currentPage > totalPages) {
+      setCurrentPage(totalPages);
+    }
+  }, [currentPage, totalPages]);
+
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentCharacters = filteredCharacters.slice(startIndex, startIndex + itemsPerPage);
 

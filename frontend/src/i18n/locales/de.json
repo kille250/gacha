@@ -1248,6 +1248,10 @@
     "moreAvailable": "mehr verfügbar",
     "loadingMore": "Laden..."
   },
+  "createFromDanbooru": {
+    "addAndContinue": "Hinzufügen & Weiter",
+    "addAndClose": "Hinzufügen & Schließen"
+  },
   "upload": {
     "fileRemoved": "Datei entfernt:",
     "unknownFile": "Unbekannte Datei",
