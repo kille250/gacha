@@ -21,7 +21,15 @@ import {
   StatusBadge,
 } from './AdminStyles';
 
-// Sortable Banner Item
+/**
+ * Sortable Banner Item
+ *
+ * @accessibility
+ * - Drag handle has proper aria-label for screen readers
+ * - Keyboard navigation via arrow keys when drag handle is focused
+ * - Focus visible indicators on all interactive elements
+ * - Status announced via aria-live when featured status changes
+ */
 const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured, onEdit, onDelete, t }) => {
   const {
     attributes,
@@ -40,62 +48,109 @@ const SortableBannerCard = ({ banner, index, getBannerImageUrl, onToggleFeatured
     touchAction: 'none',
   };
 
+  // Keyboard handler for banner card actions
+  const handleKeyDown = (e) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      onEdit(banner);
+    } else if (e.key === 'Delete' || e.key === 'Backspace') {
+      e.preventDefault();
+      onDelete(banner.id, banner.name);
+    }
+  };
+
   return (
-    <BannerCard ref={setNodeRef} style={style} $isDragging={isDragging}>
-      <DragHandle {...attributes} {...listeners}>
-        <FaGripVertical />
+    <BannerCard
+      ref={setNodeRef}
+      style={style}
+      $isDragging={isDragging}
+      role="listitem"
+      aria-label={`${banner.name} - ${banner.series}, ${banner.featured ? 'Featured' : 'Not featured'}, ${banner.active ? 'Active' : 'Inactive'}`}
+      onKeyDown={handleKeyDown}
+    >
+      <DragHandle
+        {...attributes}
+        {...listeners}
+        aria-label={t('admin.dragToReorder', 'Drag to reorder')}
+        aria-describedby={`banner-${banner.id}-order`}
+      >
+        <FaGripVertical aria-hidden="true" />
       </DragHandle>
-      <OrderBadge>{index + 1}</OrderBadge>
+      <OrderBadge id={`banner-${banner.id}-order`} aria-label={`Position ${index + 1}`}>
+        {index + 1}
+      </OrderBadge>
       <BannerThumb>
-        <img src={getBannerImageUrl(banner.image)} alt={banner.name} onError={(e) => { e.target.src = PLACEHOLDER_BANNER; }} />
+        <img
+          src={getBannerImageUrl(banner.image)}
+          alt=""
+          aria-hidden="true"
+          onError={(e) => { e.target.src = PLACEHOLDER_BANNER; }}
+        />
       </BannerThumb>
       <BannerInfo>
         <BannerName>{banner.name}</BannerName>
         <BannerMeta>
-          {banner.series} • {banner.Characters?.length || 0} characters
+          {banner.series} • {banner.Characters?.length || 0} {t('gacha.characters', 'characters')}
         </BannerMeta>
       </BannerInfo>
       <BannerTags>
-        <FeaturedButton 
+        <FeaturedButton
           $featured={banner.featured}
           onClick={() => onToggleFeatured(banner)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          aria-pressed={banner.featured}
+          aria-label={banner.featured
+            ? t('admin.removeFeatured', 'Remove from featured')
+            : t('admin.addFeatured', 'Add to featured')
+          }
         >
-          {banner.featured ? <FaStar /> : <FaRegStar />}
-          {banner.featured ? t('admin.featured') : t('admin.feature')}
+          {banner.featured ? <FaStar aria-hidden="true" /> : <FaRegStar aria-hidden="true" />}
+          <span>{banner.featured ? t('admin.featured') : t('admin.feature')}</span>
         </FeaturedButton>
-        <StatusBadge $active={banner.active}>
+        <StatusBadge $active={banner.active} role="status">
           {banner.active ? t('admin.active') : t('admin.inactive')}
         </StatusBadge>
       </BannerTags>
       <BannerActions>
-        <BannerIconButton onClick={() => onEdit(banner)}>
-          <FaEdit />
+        <BannerIconButton
+          onClick={() => onEdit(banner)}
+          aria-label={t('admin.editBanner', 'Edit {{name}}').replace('{{name}}', banner.name)}
+        >
+          <FaEdit aria-hidden="true" />
         </BannerIconButton>
         <BannerIconButton
           $danger
           onClick={() => onDelete(banner.id, banner.name)}
-          aria-label={`Delete ${banner.name}`}
+          aria-label={t('admin.deleteBanner', 'Delete {{name}}').replace('{{name}}', banner.name)}
         >
-          <FaTrash />
+          <FaTrash aria-hidden="true" />
         </BannerIconButton>
       </BannerActions>
     </BannerCard>
   );
 };
 
-const AdminBanners = ({ 
-  banners, 
-  getBannerImageUrl, 
-  onAddBanner, 
-  onEditBanner, 
-  onDeleteBanner, 
+/**
+ * AdminBanners - Banner management with drag-and-drop reordering
+ *
+ * @accessibility
+ * - Uses aria-live to announce drag operations
+ * - Keyboard accessible via @dnd-kit keyboard sensor
+ * - All buttons have proper labels
+ * - Empty state has clear call-to-action
+ */
+const AdminBanners = ({
+  banners,
+  getBannerImageUrl,
+  onAddBanner,
+  onEditBanner,
+  onDeleteBanner,
   onToggleFeatured,
-  onDragEnd 
+  onDragEnd
 }) => {
   const { t } = useTranslation();
-  
+
   const sensors = useSensors(
     useSensor(PointerSensor, {
       activationConstraint: { distance: 8 },
@@ -108,39 +163,84 @@ const AdminBanners = ({
     })
   );
 
+  // Announce drag operation for screen readers
+  const announcements = {
+    onDragStart: ({ active }) => {
+      const banner = banners.find(b => b.id === active.id);
+      return `Picked up banner ${banner?.name}. Use arrow keys to move.`;
+    },
+    onDragOver: ({ over }) => {
+      if (over) {
+        const overIndex = banners.findIndex(b => b.id === over.id);
+        return `Banner is now at position ${overIndex + 1} of ${banners.length}.`;
+      }
+      return '';
+    },
+    onDragEnd: ({ active, over }) => {
+      if (over) {
+        const overIndex = banners.findIndex(b => b.id === over.id);
+        const banner = banners.find(b => b.id === active.id);
+        return `Dropped ${banner?.name} at position ${overIndex + 1}.`;
+      }
+      return `Drag cancelled.`;
+    },
+    onDragCancel: () => `Drag cancelled.`,
+  };
+
   return (
     <AdminContainer
       variants={motionVariants.staggerContainer}
       initial="hidden"
       animate="visible"
+      role="region"
+      aria-label={t('admin.bannerManagement', 'Banner Management')}
     >
       <HeaderRow>
         <SectionTitle $iconColor={theme.colors.warning}>
-          <FaFlag /> {t('admin.bannerManagement')}
-          <ItemCount>{banners.length} banners</ItemCount>
+          <FaFlag aria-hidden="true" /> {t('admin.bannerManagement')}
+          <ItemCount aria-label={`${banners.length} total banners`}>{banners.length} banners</ItemCount>
         </SectionTitle>
-        <AddBannerButton onClick={onAddBanner} whileHover={{ scale: 1.02 }} whileTap={{ scale: 0.98 }}>
-          <FaPlus /> {t('admin.addBanner')}
+        <AddBannerButton
+          onClick={onAddBanner}
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          aria-label={t('admin.addBanner', 'Add new banner')}
+        >
+          <FaPlus aria-hidden="true" /> {t('admin.addBanner')}
         </AddBannerButton>
       </HeaderRow>
-      
-      <DragHint>
-        <span>💡</span> {t('admin.dragToReorder')}
+
+      <DragHint role="note" aria-live="polite">
+        <span aria-hidden="true">💡</span> {t('admin.dragToReorder', 'Drag banners to change their display order. Use keyboard arrow keys when focused on the drag handle.')}
       </DragHint>
-      
+
       {banners.length === 0 ? (
-        <EmptyState>
-          <EmptyIcon>🏳️</EmptyIcon>
-          <EmptyText>{t('admin.noBannersYet')}</EmptyText>
-          <EmptySubtext>{t('admin.createFirstBanner')}</EmptySubtext>
-          <AddBannerButton onClick={onAddBanner} style={{ marginTop: theme.spacing.lg }}>
-            <FaPlus /> {t('admin.createBanner')}
+        <EmptyState role="status">
+          <EmptyIcon aria-hidden="true">🏳️</EmptyIcon>
+          <EmptyText>{t('admin.noBannersYet', 'No banners yet')}</EmptyText>
+          <EmptySubtext>{t('admin.createFirstBanner', 'Create your first banner to get started')}</EmptySubtext>
+          <AddBannerButton
+            onClick={onAddBanner}
+            style={{ marginTop: theme.spacing.lg }}
+            aria-label={t('admin.createBanner', 'Create banner')}
+          >
+            <FaPlus aria-hidden="true" /> {t('admin.createBanner')}
           </AddBannerButton>
         </EmptyState>
       ) : (
-        <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={onDragEnd}>
+        <DndContext
+          sensors={sensors}
+          collisionDetection={closestCenter}
+          onDragEnd={onDragEnd}
+          accessibility={{
+            announcements,
+            screenReaderInstructions: {
+              draggable: `To pick up a banner, press space or enter. While dragging, use the arrow keys to move the banner. Press space or enter again to drop the banner, or press escape to cancel.`,
+            },
+          }}
+        >
           <SortableContext items={banners.map(b => b.id)} strategy={verticalListSortingStrategy}>
-            <BannerList>
+            <BannerList role="list" aria-label={t('admin.bannerList', 'Banner list')}>
               {banners.map((banner, index) => (
                 <SortableBannerCard
                   key={banner.id}
@@ -157,19 +257,19 @@ const AdminBanners = ({
           </SortableContext>
         </DndContext>
       )}
-      
-      <StatsRow>
+
+      <StatsRow role="group" aria-label={t('admin.bannerStats', 'Banner statistics')}>
         <StatItem>
-          <StatLabel>{t('admin.featuredCount')}</StatLabel>
-          <StatValue>{banners.filter(b => b.featured).length}</StatValue>
+          <StatLabel id="featured-label">{t('admin.featuredCount', 'Featured')}</StatLabel>
+          <StatValue aria-labelledby="featured-label">{banners.filter(b => b.featured).length}</StatValue>
         </StatItem>
         <StatItem>
-          <StatLabel>{t('admin.activeCount')}</StatLabel>
-          <StatValue>{banners.filter(b => b.active).length}</StatValue>
+          <StatLabel id="active-label">{t('admin.activeCount', 'Active')}</StatLabel>
+          <StatValue aria-labelledby="active-label">{banners.filter(b => b.active).length}</StatValue>
         </StatItem>
         <StatItem>
-          <StatLabel>{t('admin.totalCharactersCount')}</StatLabel>
-          <StatValue>{banners.reduce((sum, b) => sum + (b.Characters?.length || 0), 0)}</StatValue>
+          <StatLabel id="chars-label">{t('admin.totalCharactersCount', 'Total Characters')}</StatLabel>
+          <StatValue aria-labelledby="chars-label">{banners.reduce((sum, b) => sum + (b.Characters?.length || 0), 0)}</StatValue>
         </StatItem>
       </StatsRow>
     </AdminContainer>
@@ -246,13 +346,33 @@ const DragHandle = styled.div`
   min-width: 44px;
   min-height: 44px;
   border-radius: ${theme.radius.md};
-  
-  &:hover {
-    color: ${theme.colors.text};
-    background: rgba(255, 255, 255, 0.05);
+  transition: all ${theme.transitions.fast};
+  -webkit-tap-highlight-color: transparent;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      color: ${theme.colors.text};
+      background: rgba(255, 255, 255, 0.05);
+    }
   }
-  
-  &:active { cursor: grabbing; }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.focusRing};
+    outline-offset: 2px;
+    color: ${theme.colors.primary};
+    background: ${theme.colors.primarySubtle};
+  }
+
+  &:active {
+    cursor: grabbing;
+    transform: scale(0.95);
+  }
+
+  /* Visual feedback during drag */
+  &[aria-pressed="true"] {
+    color: ${theme.colors.primary};
+    background: ${theme.colors.primaryMuted};
+  }
 `;
 
 const OrderBadge = styled.div`
@@ -329,8 +449,9 @@ const FeaturedButton = styled(motion.button)`
   align-items: center;
   gap: ${theme.spacing.xs};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: ${props => props.$featured 
-    ? 'linear-gradient(135deg, #ffd60a, #ffb300)' 
+  min-height: 40px;
+  background: ${props => props.$featured
+    ? 'linear-gradient(135deg, #ffd60a, #ffb300)'
     : theme.colors.backgroundTertiary};
   border: 1px solid ${props => props.$featured ? 'transparent' : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.full};
@@ -339,6 +460,24 @@ const FeaturedButton = styled(motion.button)`
   font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
   box-shadow: ${props => props.$featured ? '0 4px 12px rgba(255, 215, 0, 0.3)' : 'none'};
+  transition: box-shadow ${theme.transitions.fast};
+  -webkit-tap-highlight-color: transparent;
+
+  /* Touch-friendly on mobile */
+  @media (pointer: coarse) {
+    min-height: 44px;
+    padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.focusRing};
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
 `;
 
 const BannerActions = styled.div`
@@ -348,8 +487,18 @@ const BannerActions = styled.div`
 `;
 
 const BannerIconButton = styled(IconButton)`
-  width: 40px;
-  height: 40px;
+  width: 44px;
+  height: 44px;
+
+  @media (hover: hover) and (pointer: fine) {
+    width: 40px;
+    height: 40px;
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.focusRing};
+    outline-offset: 2px;
+  }
 `;
 
 const StatsRow = styled.div`

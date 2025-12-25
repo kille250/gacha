@@ -1,10 +1,23 @@
 /**
  * ConfirmDialog - Confirmation modal for destructive actions
+ *
+ * @accessibility
+ * - Uses proper ARIA dialog role via Modal
+ * - Focus trap prevents tabbing out of dialog
+ * - Escape key closes dialog (unless loading)
+ * - Confirm button is focused by default for keyboard users
+ * - Screen reader announcements for state changes
+ *
+ * @features
+ * - Optional preview section to show what will be affected
+ * - Optional countdown timer for extra safety on critical actions
+ * - Loading state with spinner
+ * - Multiple variants (danger, warning, info)
  */
 
-import React from 'react';
-import styled from 'styled-components';
-import { MdWarning } from 'react-icons/md';
+import React, { useRef, useEffect, useState, useCallback } from 'react';
+import styled, { keyframes } from 'styled-components';
+import { MdWarning, MdInfo, MdErrorOutline } from 'react-icons/md';
 import { theme } from '../tokens';
 import { Button } from '../primitives';
 import Modal from './Modal';
@@ -22,15 +35,25 @@ const IconWrapper = styled.div`
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  background: ${props => props.$variant === 'danger'
-    ? 'rgba(255, 59, 48, 0.15)'
-    : 'rgba(255, 159, 10, 0.15)'};
+  background: ${props => {
+    switch (props.$variant) {
+      case 'danger': return 'rgba(255, 59, 48, 0.15)';
+      case 'warning': return 'rgba(255, 159, 10, 0.15)';
+      case 'info': return 'rgba(90, 200, 250, 0.15)';
+      default: return 'rgba(255, 59, 48, 0.15)';
+    }
+  }};
   display: flex;
   align-items: center;
   justify-content: center;
-  color: ${props => props.$variant === 'danger'
-    ? theme.colors.error
-    : theme.colors.warning};
+  color: ${props => {
+    switch (props.$variant) {
+      case 'danger': return theme.colors.error;
+      case 'warning': return theme.colors.warning;
+      case 'info': return theme.colors.info;
+      default: return theme.colors.error;
+    }
+  }};
   font-size: 28px;
 `;
 
@@ -46,6 +69,79 @@ const Message = styled.p`
   color: ${theme.colors.textSecondary};
   margin: 0;
   max-width: 320px;
+  line-height: 1.5;
+`;
+
+const PreviewSection = styled.div`
+  width: 100%;
+  margin-top: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px dashed ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  text-align: left;
+`;
+
+const PreviewLabel = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: ${theme.colors.textMuted};
+  margin-bottom: ${theme.spacing.sm};
+`;
+
+const PreviewContent = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.text};
+
+  /* Style for preview items */
+  .preview-item {
+    display: flex;
+    align-items: center;
+    gap: ${theme.spacing.sm};
+    padding: ${theme.spacing.xs} 0;
+    border-bottom: 1px solid ${theme.colors.surfaceBorder};
+
+    &:last-child {
+      border-bottom: none;
+    }
+
+    img {
+      width: 32px;
+      height: 32px;
+      object-fit: cover;
+      border-radius: ${theme.radius.sm};
+    }
+  }
+`;
+
+const countdown = keyframes`
+  from { width: 100%; }
+  to { width: 0%; }
+`;
+
+const CountdownBar = styled.div`
+  width: 100%;
+  height: 4px;
+  background: ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  margin-top: ${theme.spacing.sm};
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    display: block;
+    height: 100%;
+    background: ${theme.colors.error};
+    animation: ${countdown} ${props => props.$duration}s linear forwards;
+  }
+`;
+
+const CountdownText = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textMuted};
+  margin-top: ${theme.spacing.xs};
 `;
 
 const Actions = styled.div`
@@ -57,7 +153,24 @@ const Actions = styled.div`
   > * {
     flex: 1;
   }
+
+  /* Stack buttons on very small screens */
+  @media (max-width: 360px) {
+    flex-direction: column-reverse;
+  }
 `;
+
+/**
+ * Get the appropriate icon for each variant
+ */
+const getVariantIcon = (variant) => {
+  switch (variant) {
+    case 'danger': return <MdErrorOutline />;
+    case 'warning': return <MdWarning />;
+    case 'info': return <MdInfo />;
+    default: return <MdWarning />;
+  }
+};
 
 /**
  * ConfirmDialog Component
@@ -69,9 +182,14 @@ const Actions = styled.div`
  * @param {string} message - Dialog message
  * @param {string} confirmLabel - Confirm button label
  * @param {string} cancelLabel - Cancel button label
- * @param {'danger' | 'warning'} variant - Dialog variant
+ * @param {'danger' | 'warning' | 'info'} variant - Dialog variant
  * @param {boolean} loading - Show loading state on confirm
- * @param {React.ReactNode} icon - Custom icon
+ * @param {React.ReactNode} icon - Custom icon (overrides variant icon)
+ * @param {React.ReactNode} preview - Optional preview content
+ * @param {string} previewLabel - Label for preview section
+ * @param {number} countdown - Optional countdown in seconds before confirm is enabled
+ * @param {boolean} requireConfirmType - Require typing to confirm (for extra safety)
+ * @param {string} confirmTypeText - Text user must type to confirm
  */
 const ConfirmDialog = ({
   isOpen,
@@ -83,23 +201,126 @@ const ConfirmDialog = ({
   cancelLabel = 'Cancel',
   variant = 'danger',
   loading = false,
-  icon
+  icon,
+  preview,
+  previewLabel = 'This will affect:',
+  countdownSeconds = 0,
+  requireConfirmType = false,
+  confirmTypeText = 'DELETE',
 }) => {
+  const confirmButtonRef = useRef(null);
+  const [countdownActive, setCountdownActive] = useState(countdownSeconds > 0);
+  const [secondsRemaining, setSecondsRemaining] = useState(countdownSeconds);
+  const [typedText, setTypedText] = useState('');
+
+  // Reset state when dialog opens
+  useEffect(() => {
+    if (isOpen) {
+      setCountdownActive(countdownSeconds > 0);
+      setSecondsRemaining(countdownSeconds);
+      setTypedText('');
+    }
+  }, [isOpen, countdownSeconds]);
+
+  // Countdown timer
+  useEffect(() => {
+    if (!isOpen || !countdownActive || secondsRemaining <= 0) return;
+
+    const timer = setInterval(() => {
+      setSecondsRemaining(prev => {
+        if (prev <= 1) {
+          setCountdownActive(false);
+          return 0;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    return () => clearInterval(timer);
+  }, [isOpen, countdownActive, secondsRemaining]);
+
+  // Focus confirm button when dialog opens (after countdown if applicable)
+  useEffect(() => {
+    if (isOpen && !countdownActive && confirmButtonRef.current) {
+      // Small delay to ensure modal animation completes
+      const timer = setTimeout(() => {
+        confirmButtonRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [isOpen, countdownActive]);
+
+  // Check if confirm is enabled
+  const isConfirmDisabled = loading ||
+    countdownActive ||
+    (requireConfirmType && typedText !== confirmTypeText);
+
+  // Handle confirm with keyboard
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Enter' && !isConfirmDisabled) {
+      e.preventDefault();
+      onConfirm();
+    }
+  }, [isConfirmDisabled, onConfirm]);
+
   return (
     <Modal
       isOpen={isOpen}
       onClose={onClose}
-      maxWidth="400px"
+      maxWidth="420px"
       closeOnBackdrop={!loading}
       closeOnEscape={!loading}
       showCloseButton={false}
+      aria-labelledby="confirm-dialog-title"
+      aria-describedby="confirm-dialog-message"
     >
-      <Content>
-        <IconWrapper $variant={variant}>
-          {icon || <MdWarning />}
+      <Content onKeyDown={handleKeyDown}>
+        <IconWrapper $variant={variant} aria-hidden="true">
+          {icon || getVariantIcon(variant)}
         </IconWrapper>
-        <Title>{title}</Title>
-        {message && <Message>{message}</Message>}
+
+        <Title id="confirm-dialog-title">{title}</Title>
+
+        {message && (
+          <Message id="confirm-dialog-message">{message}</Message>
+        )}
+
+        {/* Preview section for showing what will be affected */}
+        {preview && (
+          <PreviewSection>
+            <PreviewLabel>{previewLabel}</PreviewLabel>
+            <PreviewContent>{preview}</PreviewContent>
+          </PreviewSection>
+        )}
+
+        {/* Countdown timer for extra safety */}
+        {countdownSeconds > 0 && countdownActive && (
+          <>
+            <CountdownBar $duration={countdownSeconds} />
+            <CountdownText aria-live="polite">
+              Please wait {secondsRemaining} second{secondsRemaining !== 1 ? 's' : ''}...
+            </CountdownText>
+          </>
+        )}
+
+        {/* Type-to-confirm for critical actions */}
+        {requireConfirmType && (
+          <TypeConfirmWrapper>
+            <TypeConfirmLabel>
+              Type <strong>{confirmTypeText}</strong> to confirm:
+            </TypeConfirmLabel>
+            <TypeConfirmInput
+              type="text"
+              value={typedText}
+              onChange={(e) => setTypedText(e.target.value.toUpperCase())}
+              placeholder={confirmTypeText}
+              aria-label={`Type ${confirmTypeText} to confirm`}
+              autoComplete="off"
+              spellCheck="false"
+            />
+          </TypeConfirmWrapper>
+        )}
+
         <Actions>
           <Button
             variant="secondary"
@@ -109,16 +330,62 @@ const ConfirmDialog = ({
             {cancelLabel}
           </Button>
           <Button
+            ref={confirmButtonRef}
             variant={variant}
             onClick={onConfirm}
             loading={loading}
+            disabled={isConfirmDisabled}
           >
-            {confirmLabel}
+            {countdownActive ? `Wait (${secondsRemaining}s)` : confirmLabel}
           </Button>
         </Actions>
       </Content>
     </Modal>
   );
 };
+
+// Additional styled components for type-to-confirm feature
+const TypeConfirmWrapper = styled.div`
+  width: 100%;
+  margin-top: ${theme.spacing.sm};
+  text-align: left;
+`;
+
+const TypeConfirmLabel = styled.label`
+  display: block;
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.xs};
+
+  strong {
+    color: ${theme.colors.error};
+    font-family: monospace;
+  }
+`;
+
+const TypeConfirmInput = styled.input`
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.base};
+  font-family: monospace;
+  text-transform: uppercase;
+  letter-spacing: 2px;
+  text-align: center;
+
+  &:focus {
+    outline: none;
+    border-color: ${theme.colors.error};
+    box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.2);
+  }
+
+  &::placeholder {
+    color: ${theme.colors.textMuted};
+    text-transform: uppercase;
+  }
+`;
 
 export default ConfirmDialog;

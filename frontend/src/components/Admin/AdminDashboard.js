@@ -1,3 +1,18 @@
+/**
+ * AdminDashboard - Overview dashboard for admin panel
+ *
+ * @features
+ * - Real-time system health monitoring
+ * - Quick action buttons for common tasks
+ * - Stats overview with animated counters
+ * - Auto-refresh with visual indicator
+ *
+ * @accessibility
+ * - All stats are labeled for screen readers
+ * - Color is not the only indicator of status
+ * - Focus management for keyboard users
+ */
+
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
@@ -168,7 +183,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
         {t('admin.quickActions')}
       </SectionTitle>
       
-      <QuickActionsGrid>
+      <QuickActionsGrid role="group" aria-label={t('admin.quickActions', 'Quick actions')}>
         {quickActions.map((action) => {
           const Icon = action.icon;
           return (
@@ -177,8 +192,9 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
               onClick={() => onQuickAction(action.action)}
               whileHover={{ scale: 1.03, y: -2 }}
               whileTap={{ scale: 0.98 }}
+              aria-label={t(action.labelKey)}
             >
-              <QuickActionIcon><Icon /></QuickActionIcon>
+              <QuickActionIcon aria-hidden="true"><Icon /></QuickActionIcon>
               <span>{t(action.labelKey)}</span>
             </QuickActionButton>
           );
@@ -443,6 +459,7 @@ const QuickActionButton = styled(motion.button)`
   align-items: center;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.lg};
+  min-height: 100px;
   background: ${theme.colors.backgroundTertiary};
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
@@ -451,10 +468,33 @@ const QuickActionButton = styled(motion.button)`
   font-weight: ${theme.fontWeights.medium};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
-  
-  &:hover {
-    background: ${theme.colors.surface};
-    border-color: ${theme.colors.primary};
+  -webkit-tap-highlight-color: transparent;
+
+  /* Touch-friendly on mobile */
+  @media (pointer: coarse) {
+    min-height: 110px;
+    padding: ${theme.spacing.lg} ${theme.spacing.md};
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      background: ${theme.colors.surface};
+      border-color: ${theme.colors.primary};
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.focusRing};
+    outline-offset: 2px;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 

@@ -156,3 +156,9 @@ export {
 // Admin page hooks
 export { useAdminState } from './useAdminState';
 export { useAdminModals, ADMIN_MODAL_TYPES } from './useAdminModals';
+
+// Batch selection for list management
+export { useBatchSelection } from './useBatchSelection';
+
+// Virtualized list for performance with large lists
+export { useVirtualizedList } from './useVirtualizedList';
