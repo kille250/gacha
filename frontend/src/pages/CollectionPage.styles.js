@@ -569,15 +569,30 @@ export const ErrorMessage = styled.div`
 
 export const CharacterGrid = styled(motion.div)`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-  gap: ${theme.spacing.md};
+  /* Mobile: 2 columns with minimum card size for readability */
+  grid-template-columns: repeat(2, 1fr);
+  gap: ${theme.spacing.sm};
 
-  @media (min-width: ${theme.breakpoints.md}) {
-    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+  /* Small screens: 3 columns */
+  @media (min-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: ${theme.spacing.md};
   }
 
+  /* Tablet: 4 columns */
+  @media (min-width: ${theme.breakpoints.md}) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  /* Desktop: responsive with max column width */
   @media (min-width: ${theme.breakpoints.lg}) {
     grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    gap: ${theme.spacing.lg};
+  }
+
+  /* Large desktop: max 6 columns for readability */
+  @media (min-width: ${theme.breakpoints.xl}) {
+    grid-template-columns: repeat(6, 1fr);
   }
 `;
 
@@ -747,6 +762,12 @@ export const PaginationContainer = styled.div`
   gap: ${theme.spacing.md};
   margin-top: ${theme.spacing.xl};
   flex-wrap: wrap;
+  /* Add padding for mobile bottom nav */
+  padding-bottom: ${theme.spacing.md};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
+  }
 `;
 
 export const PageButton = styled.button`
@@ -762,15 +783,22 @@ export const PageButton = styled.button`
     border-color ${theme.timing.fast} ${theme.easing.easeOut},
     transform ${theme.timing.fast} ${theme.easing.appleSpring};
   min-height: 44px;
+  min-width: 44px;
+  touch-action: manipulation;
 
-  &:hover:not(:disabled) {
-    background: ${theme.colors.glassHover};
-    border-color: ${theme.colors.glassBorder};
-    transform: translateY(-1px);
+  /* Desktop hover */
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      background: ${theme.colors.glassHover};
+      border-color: ${theme.colors.glassBorder};
+      transform: translateY(-1px);
+    }
   }
 
+  /* Touch active state */
   &:active:not(:disabled) {
-    transform: translateY(0);
+    transform: scale(0.96);
+    background: ${theme.colors.glassHover};
   }
 
   &:disabled {
@@ -784,11 +812,30 @@ export const PageButton = styled.button`
       0 0 0 2px ${theme.colors.background},
       0 0 0 4px ${theme.colors.focusRing};
   }
+
+  /* Mobile: icon-only or shorter text */
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    transition: background ${theme.timing.fast} ${theme.easing.easeOut};
+    &:hover, &:active {
+      transform: none;
+    }
+  }
 `;
 
 export const PageInfo = styled.span`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
-  min-width: 120px;
+  min-width: 100px;
   text-align: center;
+  white-space: nowrap;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.xs};
+    min-width: 80px;
+  }
 `;

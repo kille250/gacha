@@ -239,16 +239,37 @@ const StyledButton = styled(motion.button)`
     box-shadow: none;
   }
 
+  /* High-visibility focus ring for keyboard navigation */
   &:focus-visible {
     outline: none;
     box-shadow:
       0 0 0 2px ${theme.colors.background},
       0 0 0 4px ${theme.colors.focusRing};
+    /* Ensure focus ring is visible on all backgrounds */
+    position: relative;
+    z-index: 1;
   }
 
-  /* Reduced motion */
+  /* Touch feedback for mobile - subtle background flash */
+  @media (pointer: coarse) {
+    &:active:not(:disabled) {
+      background-color: ${props => {
+        if (props.$variant === 'primary') return theme.colors.primaryActive;
+        if (props.$variant === 'secondary') return theme.colors.glassStrong;
+        if (props.$variant === 'ghost') return theme.colors.primaryMuted;
+        if (props.$variant === 'danger') return theme.colors.errorHover;
+        if (props.$variant === 'success') return theme.colors.successHover;
+        return theme.colors.primaryActive;
+      }};
+    }
+  }
+
+  /* Reduced motion - instant feedback instead of animations */
   @media (prefers-reduced-motion: reduce) {
-    transition: none;
+    transition: background-color 0.01ms, box-shadow 0.01ms;
+    &:hover, &:active {
+      transform: none;
+    }
   }
 `;
 

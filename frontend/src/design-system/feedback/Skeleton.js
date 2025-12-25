@@ -498,4 +498,108 @@ export const SkeletonBadge = styled.div`
   border-radius: ${theme.radius.full};
 `;
 
+/**
+ * Page skeleton - full page loading state
+ * Combines hero, controls, and grid for a complete page skeleton
+ */
+const SkeletonPageWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xl};
+  padding: ${theme.spacing.lg} 0;
+`;
+
+const SkeletonPageHeader = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+export const SkeletonPage = ({ hasHero = false, hasStats = false, gridCount = 8 }) => (
+  <SkeletonPageWrapper>
+    <SkeletonPageHeader>
+      <Skeleton $height="32px" $width="200px" />
+      <Skeleton $height="16px" $width="280px" $delay="50ms" />
+    </SkeletonPageHeader>
+    {hasHero && <SkeletonHero />}
+    {hasStats && <SkeletonStats />}
+    <SkeletonControls />
+    <SkeletonCharacterGrid count={gridCount} />
+  </SkeletonPageWrapper>
+);
+
+/**
+ * Profile card skeleton
+ */
+const SkeletonProfileWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.lg};
+  padding: ${theme.spacing.lg};
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorderSubtle};
+  border-radius: ${theme.radius.xl};
+`;
+
+const SkeletonProfileInfo = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  flex: 1;
+`;
+
+export const SkeletonProfile = () => (
+  <SkeletonProfileWrapper>
+    <SkeletonAvatar $size="xl" />
+    <SkeletonProfileInfo>
+      <Skeleton $height="24px" $width="150px" />
+      <Skeleton $height="14px" $width="100px" $delay="50ms" />
+      <Skeleton $height="14px" $width="200px" $delay="100ms" />
+    </SkeletonProfileInfo>
+  </SkeletonProfileWrapper>
+);
+
+/**
+ * Form skeleton
+ */
+const SkeletonFormWrapper = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.lg};
+`;
+
+const SkeletonFormField = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+`;
+
+export const SkeletonForm = ({ fields = 3 }) => (
+  <SkeletonFormWrapper>
+    {Array.from({ length: fields }).map((_, index) => (
+      <SkeletonFormField key={index}>
+        <Skeleton $height="14px" $width="100px" $delay={`${index * 80}ms`} />
+        <SkeletonInput style={{ animationDelay: `${index * 80 + 40}ms` }} />
+      </SkeletonFormField>
+    ))}
+    <SkeletonButton $width="100%" style={{ marginTop: theme.spacing.sm }} />
+  </SkeletonFormWrapper>
+);
+
+/**
+ * Inline skeleton - for loading text within paragraphs
+ */
+export const SkeletonInline = styled.span`
+  ${skeletonBase}
+  display: inline-block;
+  vertical-align: middle;
+  width: ${props => props.$width || '80px'};
+  height: 1em;
+  border-radius: ${theme.radius.sm};
+`;
+
+// Export base CSS for custom components
+export { skeletonBase as SkeletonBase };
+
 export default Skeleton;
+

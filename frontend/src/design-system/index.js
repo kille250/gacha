@@ -90,17 +90,29 @@ export {
   ErrorState,
   EmptyState,
   Alert,
-  // Skeleton loaders
+  // Skeleton loaders - comprehensive set for all UI patterns
   Skeleton,
   SkeletonBase,
   SkeletonAvatar,
   SkeletonText,
   SkeletonCard,
+  SkeletonCharacterCard,
   SkeletonBanner,
   SkeletonHero,
   SkeletonRow,
   SkeletonGrid,
+  SkeletonCharacterGrid,
+  SkeletonBannerCarousel,
   SkeletonStats,
+  SkeletonControls,
+  SkeletonButton,
+  SkeletonInput,
+  SkeletonBadge,
+  SkeletonPage,
+  SkeletonProfile,
+  SkeletonForm,
+  SkeletonInline,
+  SkeletonProgress,
 } from './feedback';
 
 // Overlays

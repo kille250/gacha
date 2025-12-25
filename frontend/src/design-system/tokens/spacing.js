@@ -99,7 +99,12 @@ export const shadows = {
   buttonPrimaryHover: '0 4px 14px rgba(0, 113, 227, 0.3), 0 2px 6px rgba(0, 0, 0, 0.08)',
 
   // Dropdown/popover shadows
-  dropdown: '0 4px 12px rgba(0, 0, 0, 0.1), 0 16px 48px rgba(0, 0, 0, 0.15)'
+  dropdown: '0 4px 12px rgba(0, 0, 0, 0.1), 0 16px 48px rgba(0, 0, 0, 0.15)',
+
+  // Focus ring shadows - high visibility for accessibility
+  focusRing: '0 0 0 2px #000000, 0 0 0 4px rgba(0, 113, 227, 0.7)',
+  focusRingInset: 'inset 0 0 0 2px rgba(0, 113, 227, 0.7)',
+  focusRingLight: '0 0 0 2px rgba(0, 113, 227, 0.5)'
 };
 
 /**
