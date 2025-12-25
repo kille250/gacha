@@ -807,6 +807,47 @@ router.post('/create-from-danbooru-batch', auth, adminAuth, async (req, res) => 
   }
 });
 
+// Check which Danbooru posts have already been added as characters
+// Used to show "already added" indicators in the UI
+router.post('/check-danbooru-posts', auth, adminAuth, async (req, res) => {
+  try {
+    const { postIds } = req.body;
+
+    if (!postIds || !Array.isArray(postIds) || postIds.length === 0) {
+      return res.status(400).json({ error: 'Post IDs array is required' });
+    }
+
+    // Limit to prevent abuse
+    if (postIds.length > 100) {
+      return res.status(400).json({ error: 'Maximum 100 post IDs per request' });
+    }
+
+    // Find all characters that were created from these Danbooru posts
+    const existingCharacters = await Character.findAll({
+      where: {
+        danbooruPostId: postIds
+      },
+      attributes: ['id', 'name', 'series', 'image', 'danbooruPostId']
+    });
+
+    // Create a map of postId -> character info for quick lookup
+    const addedPosts = {};
+    for (const char of existingCharacters) {
+      addedPosts[char.danbooruPostId] = {
+        id: char.id,
+        name: char.name,
+        series: char.series,
+        image: char.image
+      };
+    }
+
+    res.json({ addedPosts });
+  } catch (err) {
+    console.error('Error checking Danbooru posts:', err);
+    res.status(500).json({ error: err.message || 'Failed to check Danbooru posts' });
+  }
+});
+
 // Search Danbooru with exact tag and sorting options
 router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
   try {

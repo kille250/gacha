@@ -18,7 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import {
   FaImage, FaTimes, FaSearch, FaStar, FaSpinner, FaCheck,
-  FaPlay, FaUser, FaTv, FaTag, FaPlus, FaArrowLeft
+  FaPlay, FaUser, FaTv, FaTag, FaPlus, FaArrowLeft, FaCheckCircle
 } from 'react-icons/fa';
 import api from '../../utils/api';
 import { theme } from '../../design-system';
@@ -251,6 +251,12 @@ const CreateFromDanbooru = ({
   const [hoveredMedia, setHoveredMedia] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
 
+  // Mobile preview modal state
+  const [previewMedia, setPreviewMedia] = useState(null);
+
+  // Already added posts tracking
+  const [addedPosts, setAddedPosts] = useState({});
+
   // Long press handling for mobile
   const longPressTimer = useRef(null);
   const longPressTriggered = useRef(false);
@@ -289,6 +295,19 @@ const CreateFromDanbooru = ({
       setError(null);
     }
   }, [show]);
+
+  // Check which posts are already added to the database
+  const checkAddedPosts = useCallback(async (mediaResults) => {
+    if (!mediaResults || mediaResults.length === 0) return;
+
+    try {
+      const postIds = mediaResults.map(m => m.id);
+      const response = await api.post('/anime-import/check-danbooru-posts', { postIds });
+      setAddedPosts(prev => ({ ...prev, ...response.data.addedPosts }));
+    } catch (err) {
+      console.error('Failed to check added posts:', err);
+    }
+  }, []);
 
   // Search for tags matching query
   const searchTags = useCallback(async (query) => {
@@ -338,13 +357,16 @@ const CreateFromDanbooru = ({
       }
       setHasMore(response.data.hasMore || false);
       setPage(currentPage);
+
+      // Check which posts are already added
+      checkAddedPosts(newResults);
     } catch (err) {
       console.error('Image search failed:', err);
     } finally {
       setLoading(false);
       setLoadingMore(false);
     }
-  }, [sort]);
+  }, [sort, checkAddedPosts]);
 
   // Change sort order and refresh results
   const changeSort = useCallback(async (newSort) => {
@@ -362,15 +384,17 @@ const CreateFromDanbooru = ({
           url += `&typeFilter=${typeFilter}`;
         }
         const response = await api.get(url);
-        setResults(response.data.results || []);
+        const newResults = response.data.results || [];
+        setResults(newResults);
         setHasMore(response.data.hasMore || false);
+        checkAddedPosts(newResults);
       } catch (err) {
         console.error('Image search failed:', err);
       } finally {
         setLoading(false);
       }
     }
-  }, [selectedTag, extraTags, typeFilter]);
+  }, [selectedTag, extraTags, typeFilter, checkAddedPosts]);
 
   // Load more results
   const loadMore = useCallback(() => {
@@ -478,10 +502,21 @@ const CreateFromDanbooru = ({
         onCharacterCreated(response.data.character);
       }
 
+      // Mark this post as added in our tracking state
+      const createdChar = response.data.character;
+      setAddedPosts(prev => ({
+        ...prev,
+        [selectedMedia.id]: {
+          id: createdChar.id,
+          name: createdChar.name,
+          series: createdChar.series,
+          image: createdChar.image
+        }
+      }));
+
       if (addAnother) {
         // Go back to search step, keep search state (selectedTag, results, page, etc.)
-        // Remove the just-added media from results so user doesn't accidentally add it again
-        setResults(prev => prev.filter(m => m.id !== selectedMedia.id));
+        // The media now shows "Added" badge instead of being removed
         setSelectedMedia(null);
         setStep('search');
         setCharacterData({ name: '', series: '', rarity: 'common', isR18: false });
@@ -653,57 +688,65 @@ const CreateFromDanbooru = ({
                     {hasMore && ` (${t('animeImport.moreAvailable', 'more available')})`}
                   </ResultsInfo>
                   <MediaGrid>
-                    {results.map(media => (
-                      <MediaCard
-                        key={media.id}
-                        onClick={() => handleSelectMedia(media)}
-                        onMouseEnter={(e) => {
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          setHoverPosition({ x: rect.left + rect.width / 2, y: rect.top });
-                          setHoveredMedia(media);
-                        }}
-                        onMouseLeave={() => setHoveredMedia(null)}
-                        onTouchStart={(e) => {
-                          longPressTriggered.current = false;
-                          const rect = e.currentTarget.getBoundingClientRect();
-                          longPressTimer.current = setTimeout(() => {
-                            longPressTriggered.current = true;
+                    {results.map(media => {
+                      const isAdded = !!addedPosts[media.id];
+                      const addedChar = addedPosts[media.id];
+                      return (
+                        <MediaCard
+                          key={media.id}
+                          onClick={() => handleSelectMedia(media)}
+                          onMouseEnter={(e) => {
+                            const rect = e.currentTarget.getBoundingClientRect();
                             setHoverPosition({ x: rect.left + rect.width / 2, y: rect.top });
                             setHoveredMedia(media);
-                          }, 500);
-                        }}
-                        onTouchEnd={() => {
-                          if (longPressTimer.current) {
-                            clearTimeout(longPressTimer.current);
-                            longPressTimer.current = null;
-                          }
-                          if (longPressTriggered.current) {
-                            setTimeout(() => setHoveredMedia(null), 100);
-                          }
-                        }}
-                        onTouchMove={() => {
-                          if (longPressTimer.current) {
-                            clearTimeout(longPressTimer.current);
-                            longPressTimer.current = null;
-                          }
-                          setHoveredMedia(null);
-                        }}
-                        whileHover={{ scale: 1.05 }}
-                        whileTap={{ scale: 0.95 }}
-                        $isAnimated={media.isAnimated}
-                      >
-                        <img src={media.preview} alt="Danbooru media option" />
-                        <MediaFormat $isAnimated={media.isAnimated}>
-                          {media.isAnimated ? <><FaPlay /> {media.fileExt?.toUpperCase()}</> : media.fileExt?.toUpperCase()}
-                        </MediaFormat>
-                        <MediaScore>
-                          <FaStar /> {media.score}
-                        </MediaScore>
-                        <SelectOverlay>
-                          <FaCheck /> {t('animeImport.selectThis', 'Select')}
-                        </SelectOverlay>
-                      </MediaCard>
-                    ))}
+                          }}
+                          onMouseLeave={() => setHoveredMedia(null)}
+                          onTouchStart={(e) => {
+                            longPressTriggered.current = false;
+                            longPressTimer.current = setTimeout(() => {
+                              longPressTriggered.current = true;
+                              setPreviewMedia(media);
+                            }, 400);
+                          }}
+                          onTouchEnd={() => {
+                            if (longPressTimer.current) {
+                              clearTimeout(longPressTimer.current);
+                              longPressTimer.current = null;
+                            }
+                          }}
+                          onTouchMove={() => {
+                            if (longPressTimer.current) {
+                              clearTimeout(longPressTimer.current);
+                              longPressTimer.current = null;
+                            }
+                          }}
+                          whileHover={{ scale: 1.05 }}
+                          whileTap={{ scale: 0.95 }}
+                          $isAnimated={media.isAnimated}
+                          $isAdded={isAdded}
+                        >
+                          <img src={media.preview} alt="Danbooru media option" />
+                          <MediaFormat $isAnimated={media.isAnimated}>
+                            {media.isAnimated ? <><FaPlay /> {media.fileExt?.toUpperCase()}</> : media.fileExt?.toUpperCase()}
+                          </MediaFormat>
+                          <MediaScore>
+                            <FaStar /> {media.score}
+                          </MediaScore>
+                          {isAdded && (
+                            <AddedBadge title={`Added as: ${addedChar.name}`}>
+                              <FaCheckCircle /> {t('animeImport.added', 'Added')}
+                            </AddedBadge>
+                          )}
+                          <SelectOverlay $isAdded={isAdded}>
+                            {isAdded ? (
+                              <>{t('animeImport.alreadyAdded', 'Already Added')}</>
+                            ) : (
+                              <><FaCheck /> {t('animeImport.selectThis', 'Select')}</>
+                            )}
+                          </SelectOverlay>
+                        </MediaCard>
+                      );
+                    })}
                   </MediaGrid>
 
                   {/* Hover Preview */}
@@ -741,6 +784,55 @@ const CreateFromDanbooru = ({
                       )}
                     </LoadMoreButton>
                   )}
+
+                  {/* Mobile Preview Modal - fullscreen overlay for better mobile experience */}
+                  <AnimatePresence>
+                    {previewMedia && (
+                      <MobilePreviewOverlay
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        exit={{ opacity: 0 }}
+                        onClick={() => setPreviewMedia(null)}
+                      >
+                        <MobilePreviewContent
+                          initial={{ scale: 0.9 }}
+                          animate={{ scale: 1 }}
+                          exit={{ scale: 0.9 }}
+                          onClick={(e) => e.stopPropagation()}
+                        >
+                          {previewMedia.isAnimated ? (
+                            <MobilePreviewVideo src={previewMedia.file} autoPlay loop muted playsInline controls />
+                          ) : (
+                            <MobilePreviewImage src={previewMedia.file || previewMedia.sample} alt="Preview" />
+                          )}
+                          <MobilePreviewInfo>
+                            <span><FaStar /> {previewMedia.score}</span>
+                            <span>{previewMedia.fileExt?.toUpperCase()}</span>
+                            <span>ID: {previewMedia.id}</span>
+                            {addedPosts[previewMedia.id] && (
+                              <MobilePreviewAdded>
+                                <FaCheckCircle /> {t('animeImport.addedAs', 'Added as')}: {addedPosts[previewMedia.id].name}
+                              </MobilePreviewAdded>
+                            )}
+                          </MobilePreviewInfo>
+                          <MobilePreviewActions>
+                            <MobilePreviewButton onClick={() => setPreviewMedia(null)}>
+                              <FaTimes /> {t('common.close', 'Close')}
+                            </MobilePreviewButton>
+                            <MobilePreviewButton
+                              $primary
+                              onClick={() => {
+                                setPreviewMedia(null);
+                                handleSelectMedia(previewMedia);
+                              }}
+                            >
+                              <FaCheck /> {t('animeImport.selectThis', 'Select')}
+                            </MobilePreviewButton>
+                          </MobilePreviewActions>
+                        </MobilePreviewContent>
+                      </MobilePreviewOverlay>
+                    )}
+                  </AnimatePresence>
                 </>
               ) : !selectedTag && tags.length === 0 && !loading ? (
                 <EmptyText>{t('animeImport.typeToSearch', 'Type to search for character/series tags')}</EmptyText>
@@ -1210,11 +1302,15 @@ const MediaCard = styled(motion.div)`
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
-  border: 2px solid ${props => props.$isAnimated ? 'rgba(155, 89, 182, 0.5)' : 'transparent'};
+  border: 2px solid ${props =>
+    props.$isAdded ? 'rgba(46, 204, 113, 0.7)' :
+    props.$isAnimated ? 'rgba(155, 89, 182, 0.5)' : 'transparent'};
   transition: border-color 0.2s;
+  opacity: ${props => props.$isAdded ? 0.7 : 1};
 
   &:hover {
-    border-color: #9b59b6;
+    border-color: ${props => props.$isAdded ? 'rgba(46, 204, 113, 0.9)' : '#9b59b6'};
+    opacity: 1;
   }
 
   img {
@@ -1262,7 +1358,9 @@ const SelectOverlay = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(transparent, rgba(155, 89, 182, 0.9));
+  background: ${props => props.$isAdded
+    ? 'linear-gradient(transparent, rgba(46, 204, 113, 0.9))'
+    : 'linear-gradient(transparent, rgba(155, 89, 182, 0.9))'};
   color: #fff;
   padding: 20px 8px 8px;
   font-size: 0.7rem;
@@ -1277,6 +1375,22 @@ const SelectOverlay = styled.div`
   ${MediaCard}:hover & {
     opacity: 1;
   }
+`;
+
+const AddedBadge = styled.div`
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  background: linear-gradient(135deg, #2ecc71 0%, #27ae60 100%);
+  color: #fff;
+  padding: 2px 6px;
+  border-radius: 4px;
+  font-size: 0.6rem;
+  font-weight: 600;
+  display: flex;
+  align-items: center;
+  gap: 3px;
+  z-index: 2;
 `;
 
 const LoadMoreButton = styled.button`
@@ -1589,6 +1703,119 @@ const SourceNote = styled.span`
   display: inline-block;
   color: #888;
   font-size: 0.75rem;
+`;
+
+// Mobile Preview Components
+const MobilePreviewOverlay = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10003;
+  padding: 20px;
+`;
+
+const MobilePreviewContent = styled(motion.div)`
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px;
+  padding: 16px;
+  max-width: 95vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+`;
+
+const MobilePreviewImage = styled.img`
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain;
+  margin: 0 auto;
+`;
+
+const MobilePreviewVideo = styled.video`
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain;
+  margin: 0 auto;
+`;
+
+const MobilePreviewInfo = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 4px;
+  color: #aaa;
+  font-size: 0.85rem;
+  justify-content: center;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    svg {
+      color: #ffc107;
+      font-size: 12px;
+    }
+  }
+`;
+
+const MobilePreviewAdded = styled.span`
+  width: 100%;
+  justify-content: center !important;
+  color: #2ecc71 !important;
+  font-weight: 600;
+  margin-top: 4px;
+
+  svg {
+    color: #2ecc71 !important;
+  }
+`;
+
+const MobilePreviewActions = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+`;
+
+const MobilePreviewButton = styled.button`
+  flex: 1;
+  background: ${props => props.$primary
+    ? 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)'
+    : 'rgba(255, 255, 255, 0.1)'};
+  border: ${props => props.$primary ? 'none' : '1px solid rgba(255, 255, 255, 0.2)'};
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+
+  &:hover {
+    background: ${props => props.$primary
+      ? 'linear-gradient(135deg, #a569bd 0%, #9b59b6 100%)'
+      : 'rgba(255, 255, 255, 0.15)'};
+  }
 `;
 
 export default CreateFromDanbooru;
