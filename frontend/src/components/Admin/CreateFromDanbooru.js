@@ -28,6 +28,52 @@ import { isDuplicateError, getDuplicateInfo } from '../../utils/errorHandler';
 import DuplicateWarningBanner from '../UI/DuplicateWarningBanner';
 
 /**
+ * Parse character name from Danbooru character tag
+ * Format: character_name_(series) -> Character Name
+ *
+ * @param {string} characterTag - Raw character tag from Danbooru (e.g., "2b_(nier:automata)")
+ * @returns {string} - Formatted character name
+ */
+const parseCharacterName = (characterTag) => {
+  if (!characterTag) return '';
+
+  // Get first tag if multiple (space-separated)
+  const firstTag = characterTag.split(' ')[0];
+
+  // Extract name before _(series) suffix
+  const nameMatch = firstTag.match(/^(.+?)_\([^)]+\)$/);
+  const rawName = nameMatch ? nameMatch[1] : firstTag;
+
+  // Format: replace underscores with spaces and title case
+  return rawName
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+/**
+ * Parse series name from Danbooru copyright tag
+ * Format: series_name -> Series Name
+ *
+ * @param {string} copyrightTag - Raw copyright tag from Danbooru (e.g., "nier:automata")
+ * @returns {string} - Formatted series name
+ */
+const parseSeriesName = (copyrightTag) => {
+  if (!copyrightTag) return '';
+
+  // Get first tag if multiple (space-separated)
+  const firstTag = copyrightTag.split(' ')[0];
+
+  // Format: replace underscores with spaces and title case
+  return firstTag
+    .replace(/_/g, ' ')
+    .split(' ')
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1).toLowerCase())
+    .join(' ');
+};
+
+/**
  * CreateFromDanbooru Modal Component
  */
 const CreateFromDanbooru = ({
@@ -227,13 +273,16 @@ const CreateFromDanbooru = ({
     setDuplicateError(null);
     setError(null);
 
-    // Pre-fill series from character tags if available
-    if (selectedTag) {
-      setCharacterData(prev => ({
-        ...prev,
-        series: selectedTag.displayName || selectedTag.name.replace(/_/g, ' ')
-      }));
-    }
+    // Auto-fill character name and series from Danbooru tags
+    // Priority: media's tags (from the specific post) > selectedTag (from search)
+    const characterName = parseCharacterName(media.characterTags);
+    const seriesName = parseSeriesName(media.copyrightTags);
+
+    setCharacterData(prev => ({
+      ...prev,
+      name: characterName || prev.name,
+      series: seriesName || (selectedTag?.displayName || selectedTag?.name.replace(/_/g, ' ') || prev.series)
+    }));
   }, [selectedTag]);
 
   // Go back to search step
