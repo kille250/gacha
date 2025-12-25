@@ -28,13 +28,13 @@ const buttonVariants = {
   primary: css`
     background: ${theme.colors.primary};
     color: white;
-    box-shadow: ${theme.shadows.button}, inset 0 1px 0 rgba(255, 255, 255, 0.1);
+    box-shadow: ${theme.shadows.button};
 
     /* Only apply hover effects on devices that support hover */
     @media (hover: hover) and (pointer: fine) {
       &:hover:not(:disabled) {
         background: ${theme.colors.primaryHover};
-        box-shadow: ${theme.shadows.buttonHover}, inset 0 1px 0 rgba(255, 255, 255, 0.15);
+        box-shadow: ${theme.shadows.buttonHover};
       }
     }
 
@@ -125,13 +125,14 @@ const buttonVariants = {
     }
   `,
   accent: css`
-    background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+    background: ${theme.colors.accent};
     color: white;
     box-shadow: ${theme.shadows.button};
 
     @media (hover: hover) and (pointer: fine) {
       &:hover:not(:disabled) {
-        box-shadow: ${theme.shadows.buttonHover}, ${theme.shadows.glowSubtle(theme.colors.accent)};
+        background: ${theme.colors.accentHover};
+        box-shadow: ${theme.shadows.buttonHover};
       }
     }
 
@@ -198,9 +199,9 @@ const StyledButton = styled(motion.button)`
   justify-content: center;
   gap: ${theme.spacing.sm};
   font-family: ${theme.fonts.primary};
-  font-weight: ${theme.fontWeights.semibold};
+  font-weight: ${theme.fontWeights.medium};
   line-height: ${theme.lineHeights.ui};
-  letter-spacing: ${theme.letterSpacing.wide};
+  letter-spacing: ${theme.letterSpacing.normal};
   border: none;
   cursor: pointer;
   transition:

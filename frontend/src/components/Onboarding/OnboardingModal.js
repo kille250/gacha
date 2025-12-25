@@ -213,12 +213,12 @@ const Overlay = styled(motion.div)`
 const Modal = styled(motion.div)`
   position: relative;
   width: 100%;
-  max-width: 420px;
+  max-width: 380px;
   background: ${theme.colors.surfaceSolid};
   border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius['2xl']};
-  padding: ${theme.spacing['2xl']};
-  box-shadow: ${theme.shadows.xl};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.xl};
+  box-shadow: ${theme.shadows.lg};
   text-align: center;
 `;
 
@@ -255,27 +255,27 @@ const StepContent = styled(motion.div)`
 `;
 
 const IconWrapper = styled.div`
-  margin-bottom: ${theme.spacing.xl};
-  filter: drop-shadow(0 0 24px var(--glow-color, ${theme.colors.primary}));
+  margin-bottom: ${theme.spacing.lg};
+  filter: drop-shadow(0 0 16px var(--glow-color, ${theme.colors.primary}));
 `;
 
 const IconCircle = styled.div`
-  width: 80px;
-  height: 80px;
+  width: 64px;
+  height: 64px;
   border-radius: ${theme.radius.full};
   background: ${props => props.$color || theme.colors.primary};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
+  font-size: 26px;
   color: white;
 `;
 
 const Title = styled.h2`
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.bold};
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
-  margin: 0 0 ${theme.spacing.md};
+  margin: 0 0 ${theme.spacing.sm};
   letter-spacing: ${theme.letterSpacing.snug};
 `;
 
@@ -373,28 +373,31 @@ const NextButton = styled(motion.button)`
   align-items: center;
   justify-content: center;
   gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md} ${theme.spacing.xl};
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
   background: ${theme.colors.primary};
   color: white;
   border: none;
   border-radius: ${theme.radius.lg};
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
   cursor: pointer;
   box-shadow: ${theme.shadows.buttonPrimary};
   transition:
     background ${theme.timing.fast} ${theme.easing.easeOut},
     box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
-  min-width: 140px;
+  min-width: 120px;
+  min-height: 44px;
 
   ${props => props.$isLast && `
     background: ${theme.colors.success};
-    box-shadow: 0 4px 12px rgba(52, 199, 89, 0.3), 0 2px 4px rgba(0, 0, 0, 0.08);
+    box-shadow: ${theme.shadows.button};
   `}
 
-  &:hover {
-    background: ${props => props.$isLast ? theme.colors.successHover : theme.colors.primaryHover};
-    box-shadow: ${theme.shadows.buttonPrimaryHover};
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: ${props => props.$isLast ? theme.colors.successHover : theme.colors.primaryHover};
+      box-shadow: ${theme.shadows.buttonPrimaryHover};
+    }
   }
 
   &:focus-visible {
@@ -405,7 +408,7 @@ const NextButton = styled(motion.button)`
   }
 
   svg {
-    font-size: 14px;
+    font-size: 12px;
   }
 `;
 

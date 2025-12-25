@@ -199,7 +199,7 @@ const NavContainer = styled.nav`
   position: sticky;
   top: 0;
   z-index: ${theme.zIndex.sticky};
-  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
+  box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
 `;
 
 const LogoSection = styled.div`
@@ -249,10 +249,10 @@ const LogoTextWrapper = styled.div`
 `;
 
 const LogoText = styled.span`
-  font-size: ${theme.fontSizes.lg};
-  font-weight: ${theme.fontWeights.bold};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
-  letter-spacing: -0.02em;
+  letter-spacing: -0.01em;
 `;
 
 const LogoAccent = styled.span`
@@ -289,11 +289,11 @@ const NavLink = styled(Link)`
   align-items: center;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
-  border-radius: ${theme.radius.lg};
+  border-radius: ${theme.radius.md};
   color: ${props => props.$isActive ? theme.colors.text : theme.colors.textSecondary};
   text-decoration: none;
   font-size: ${theme.fontSizes.sm};
-  font-weight: ${props => props.$isActive ? theme.fontWeights.semibold : theme.fontWeights.medium};
+  font-weight: ${props => props.$isActive ? theme.fontWeights.medium : theme.fontWeights.regular};
   background: ${props => props.$isActive ? theme.colors.primarySubtle : 'transparent'};
   transition:
     color ${theme.timing.fast} ${theme.easing.easeOut},
@@ -306,7 +306,7 @@ const NavLink = styled(Link)`
 
   ${props => props.$isAdmin && `
     color: ${props.$isActive ? theme.colors.accent : theme.colors.accentSecondary};
-    background: ${props.$isActive ? 'rgba(88, 86, 214, 0.12)' : 'transparent'};
+    background: ${props.$isActive ? 'rgba(88, 86, 214, 0.10)' : 'transparent'};
   `}
 
   @media (hover: hover) and (pointer: fine) {

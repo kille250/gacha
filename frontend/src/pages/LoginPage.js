@@ -260,7 +260,7 @@ const LoginPage = () => {
 // Animations - calmer, more refined motion
 const float = keyframes`
   0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(15px, -25px) scale(1.02); }
+  50% { transform: translate(10px, -15px) scale(1.01); }
 `;
 
 // Styled Components
@@ -286,35 +286,35 @@ const BackgroundEffects = styled.div`
 const GradientOrb = styled.div`
   position: absolute;
   border-radius: 50%;
-  filter: blur(60px);
-  animation: ${float} 40s infinite ease-in-out;
+  filter: blur(80px);
+  animation: ${float} 50s infinite ease-in-out;
 
   &.orb-1 {
-    width: 500px;
-    height: 500px;
-    background: radial-gradient(circle, rgba(0, 113, 227, 0.25), transparent 70%);
+    width: 400px;
+    height: 400px;
+    background: radial-gradient(circle, rgba(0, 113, 227, 0.18), transparent 70%);
     top: -15%;
     left: -10%;
     animation-delay: 0s;
   }
 
   &.orb-2 {
-    width: 450px;
-    height: 450px;
-    background: radial-gradient(circle, rgba(88, 86, 214, 0.2), transparent 70%);
+    width: 350px;
+    height: 350px;
+    background: radial-gradient(circle, rgba(88, 86, 214, 0.14), transparent 70%);
     bottom: -10%;
     right: -10%;
-    animation-delay: -10s;
+    animation-delay: -12s;
   }
 
   &.orb-3 {
-    width: 350px;
-    height: 350px;
-    background: radial-gradient(circle, rgba(175, 82, 222, 0.15), transparent 70%);
+    width: 280px;
+    height: 280px;
+    background: radial-gradient(circle, rgba(175, 82, 222, 0.10), transparent 70%);
     top: 50%;
     left: 50%;
     transform: translate(-50%, -50%);
-    animation-delay: -20s;
+    animation-delay: -25s;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -341,23 +341,23 @@ const BrandSection = styled(motion.div)`
 `;
 
 const LogoWrapper = styled.div`
-  width: 80px;
-  height: 80px;
+  width: 72px;
+  height: 72px;
   background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
-  border-radius: ${theme.radius['2xl']};
+  border-radius: ${theme.radius.xl};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 36px;
+  font-size: 32px;
   color: white;
   margin-bottom: ${theme.spacing.md};
-  box-shadow: ${theme.shadows.glow(theme.colors.primary)};
+  box-shadow: ${theme.shadows.glowSubtle(theme.colors.primary)};
   cursor: pointer;
 `;
 
 const BrandTitle = styled.h1`
-  font-size: ${theme.fontSizes['3xl']};
-  font-weight: ${theme.fontWeights.bold};
+  font-size: ${theme.fontSizes['2xl']};
+  font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
   margin: 0;
   letter-spacing: -0.02em;
@@ -414,8 +414,8 @@ const CardHeader = styled.div`
 `;
 
 const WelcomeText = styled.h2`
-  font-size: ${theme.fontSizes.xl};
-  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.medium};
   color: ${theme.colors.text};
   margin: 0;
 `;
@@ -528,10 +528,12 @@ const SubmitButton = styled(motion.button)`
   box-shadow: ${theme.shadows.buttonPrimary};
   margin-top: ${theme.spacing.sm};
 
-  &:hover:not(:disabled) {
-    background: ${theme.colors.primaryHover};
-    box-shadow: ${theme.shadows.buttonPrimaryHover};
-    transform: translateY(-1px);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      background: ${theme.colors.primaryHover};
+      box-shadow: ${theme.shadows.buttonPrimaryHover};
+      transform: translateY(-1px);
+    }
   }
 
   &:active:not(:disabled) {
@@ -586,15 +588,17 @@ const RegisterPrompt = styled.p`
 const RegisterLink = styled(Link)`
   color: ${theme.colors.primary};
   text-decoration: none;
-  font-weight: ${theme.fontWeights.semibold};
+  font-weight: ${theme.fontWeights.medium};
   transition: color ${theme.timing.fast} ${theme.easing.easeOut};
   border-radius: ${theme.radius.sm};
   padding: 2px 4px;
   margin: -2px -4px;
 
-  &:hover {
-    color: ${theme.colors.primaryHover};
-    text-decoration: underline;
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      color: ${theme.colors.primaryHover};
+      text-decoration: underline;
+    }
   }
 
   &:focus-visible {

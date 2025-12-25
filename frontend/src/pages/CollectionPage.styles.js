@@ -32,8 +32,8 @@ export const HeaderContent = styled.div`
 `;
 
 export const PageTitle = styled.h1`
-  font-size: ${theme.fontSizes['3xl']};
-  font-weight: ${theme.fontWeights.bold};
+  font-size: ${theme.fontSizes['2xl']};
+  font-weight: ${theme.fontWeights.semibold};
   letter-spacing: ${theme.letterSpacing.snug};
   line-height: ${theme.lineHeights.tight};
   margin: 0 0 ${theme.spacing.xs};
@@ -71,8 +71,8 @@ export const StatItem = styled.div`
 `;
 
 export const StatValue = styled.div`
-  font-size: ${theme.fontSizes['2xl']};
-  font-weight: ${theme.fontWeights.bold};
+  font-size: ${theme.fontSizes.xl};
+  font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
   line-height: ${theme.lineHeights.tight};
 `;
@@ -447,8 +447,11 @@ export const LegendHeader = styled.div`
 `;
 
 export const LegendTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
   font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.semibold};
+  font-weight: ${theme.fontWeights.medium};
   color: ${theme.colors.text};
 `;
 
@@ -456,26 +459,30 @@ export const UpgradeAllButton = styled(motion.button)`
   display: flex;
   align-items: center;
   gap: 6px;
-  padding: 8px 16px;
-  background: linear-gradient(135deg, ${theme.colors.success}, ${theme.colors.successHover});
+  padding: 8px 14px;
+  background: ${theme.colors.success};
   border: none;
   border-radius: ${theme.radius.full};
   color: white;
   font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
+  font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
   box-shadow: ${theme.shadows.button};
   transition:
     box-shadow ${theme.timing.normal} ${theme.easing.easeOut},
+    background ${theme.timing.fast} ${theme.easing.easeOut},
     transform ${theme.timing.fast} ${theme.easing.appleSpring};
 
   svg {
-    font-size: 12px;
+    font-size: 11px;
   }
 
-  &:hover:not(:disabled) {
-    box-shadow: ${theme.shadows.buttonHover}, ${theme.shadows.glowSubtle(theme.colors.success)};
-    transform: translateY(-1px);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      background: ${theme.colors.successHover};
+      box-shadow: ${theme.shadows.buttonHover};
+      transform: translateY(-1px);
+    }
   }
 
   &:active:not(:disabled) {
@@ -496,7 +503,7 @@ export const UpgradeAllButton = styled(motion.button)`
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {
-    padding: 6px 14px;
+    padding: 6px 12px;
     font-size: 11px;
   }
 `;
@@ -672,19 +679,19 @@ export const LevelBadge = styled.div`
   position: absolute;
   top: 8px;
   right: 8px;
-  padding: 5px 10px;
+  padding: 4px 8px;
   background: ${props => {
-    if (props.$isMaxLevel) return 'linear-gradient(135deg, #ffd700, #ff8c00)';
-    if (props.$canLevelUp) return 'linear-gradient(135deg, #34C759, #30B350)';
-    return 'rgba(0, 0, 0, 0.8)';
+    if (props.$isMaxLevel) return '#ffd700';
+    if (props.$canLevelUp) return theme.colors.success;
+    return 'rgba(0, 0, 0, 0.75)';
   }};
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: ${theme.radius.full};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
+  font-size: 11px;
+  font-weight: ${theme.fontWeights.semibold};
   color: white;
-  box-shadow: ${theme.shadows.sm};
+  box-shadow: ${theme.shadows.xs};
   z-index: 2;
 `;
 
@@ -694,13 +701,13 @@ export const ShardBadge = styled.div`
   left: 8px;
   padding: 4px 8px;
   background: ${props => props.$canLevelUp
-    ? 'linear-gradient(135deg, rgba(52, 199, 89, 0.95), rgba(45, 175, 75, 0.95))'
-    : 'rgba(175, 82, 222, 0.92)'};
+    ? theme.colors.success
+    : 'rgba(175, 82, 222, 0.88)'};
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
   border-radius: ${theme.radius.full};
-  font-size: 11px;
-  font-weight: ${theme.fontWeights.bold};
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.semibold};
   color: white;
   z-index: 2;
   box-shadow: ${theme.shadows.xs};
@@ -712,7 +719,7 @@ export const CardContent = styled.div`
 
 export const CharName = styled.h3`
   font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.semibold};
+  font-weight: ${theme.fontWeights.medium};
   line-height: ${theme.lineHeights.snug};
   color: ${props => props.$isOwned ? theme.colors.text : theme.colors.textSecondary};
   margin: 0 0 4px;

@@ -11,20 +11,9 @@
  * - Enhanced transitions
  */
 
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { theme, PageWrapper } from '../design-system';
-
-// ==================== ANIMATIONS ====================
-
-const shimmer = keyframes`
-  0% {
-    background-position: -200% 0;
-  }
-  100% {
-    background-position: 200% 0;
-  }
-`;
 
 // ==================== PAGE WRAPPER ====================
 
@@ -168,21 +157,21 @@ export const HeroBadge = styled.div`
   display: inline-flex;
   align-items: center;
   gap: 6px;
-  background: linear-gradient(135deg, ${theme.colors.featured}, ${theme.colors.error});
-  padding: 8px 14px;
+  background: ${theme.colors.featured};
+  padding: 6px 12px;
   border-radius: ${theme.radius.sm};
   font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
+  font-weight: ${theme.fontWeights.semibold};
   text-transform: uppercase;
-  letter-spacing: ${theme.letterSpacing.widest};
+  letter-spacing: ${theme.letterSpacing.wider};
   width: fit-content;
   margin-bottom: ${theme.spacing.md};
-  box-shadow: ${theme.shadows.sm};
+  box-shadow: ${theme.shadows.xs};
 `;
 
 export const HeroTitle = styled.h2`
-  font-size: clamp(${theme.fontSizes.xl}, 5vw, ${theme.fontSizes['3xl']});
-  font-weight: ${theme.fontWeights.bold};
+  font-size: clamp(${theme.fontSizes.xl}, 5vw, ${theme.fontSizes['2xl']});
+  font-weight: ${theme.fontWeights.semibold};
   margin: 0 0 ${theme.spacing.sm};
   letter-spacing: ${theme.letterSpacing.snug};
   line-height: ${theme.lineHeights.tight};
@@ -387,9 +376,9 @@ export const CarouselTitle = styled.h3`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.lg};
-  font-weight: ${theme.fontWeights.semibold};
-  letter-spacing: ${theme.letterSpacing.snug};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.medium};
+  letter-spacing: ${theme.letterSpacing.normal};
   margin: 0;
   color: ${theme.colors.text};
 `;
@@ -485,8 +474,8 @@ export const NetflixCardInner = styled(motion.div)`
     ${NetflixBannerCard}:hover & {
       box-shadow: ${theme.shadows.cardHover};
       border-color: ${theme.colors.surfaceBorder};
-      /* Lift effect only - removed scale to fix double-scaling */
-      transform: translateY(-6px);
+      /* Subtle lift - Apple aesthetic */
+      transform: translateY(-3px);
     }
   }
 
@@ -527,10 +516,10 @@ export const NetflixCardInfo = styled.div`
 `;
 
 export const NetflixCardTitle = styled.h4`
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
   line-height: ${theme.lineHeights.snug};
-  margin: 0 0 ${theme.spacing.sm};
+  margin: 0 0 ${theme.spacing.xs};
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -568,48 +557,31 @@ export const NetflixCost = styled.span`
 
 export const NetflixBoost = styled.span`
   font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
+  font-weight: ${theme.fontWeights.medium};
   color: ${theme.colors.success};
   background: ${theme.colors.successMuted};
-  padding: 4px 10px;
+  padding: 4px 8px;
   border-radius: ${theme.radius.full};
-  letter-spacing: ${theme.letterSpacing.wide};
+  letter-spacing: ${theme.letterSpacing.normal};
 `;
 
-// Shimmer effect for featured cards
+// Featured badge - cleaner, less flashy for Apple aesthetic
 export const NetflixFeaturedBadge = styled.span`
   position: absolute;
   top: ${theme.spacing.sm};
   left: ${theme.spacing.sm};
-  padding: 4px 10px;
-  background: linear-gradient(135deg, ${theme.colors.featured}, ${theme.colors.warning});
+  padding: 4px 8px;
+  background: ${theme.colors.featured};
   border-radius: ${theme.radius.sm};
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.bold};
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.semibold};
   text-transform: uppercase;
-  letter-spacing: ${theme.letterSpacing.wider};
+  letter-spacing: ${theme.letterSpacing.wide};
   color: white;
   z-index: 2;
-  box-shadow: ${theme.shadows.sm};
+  box-shadow: ${theme.shadows.xs};
 
-  &::after {
-    content: '';
-    position: absolute;
-    inset: 0;
-    background: linear-gradient(
-      110deg,
-      transparent 30%,
-      rgba(255, 255, 255, 0.3) 50%,
-      transparent 70%
-    );
-    background-size: 200% 100%;
-    animation: ${shimmer} 2.5s ease-in-out infinite;
-    border-radius: inherit;
-
-    @media (prefers-reduced-motion: reduce) {
-      animation: none;
-    }
-  }
+  /* Removed shimmer - too flashy for Apple aesthetic */
 `;
 
 // ==================== STANDARD GACHA CTA ====================
@@ -651,8 +623,8 @@ export const CTAIcon = styled.div`
 export const CTAText = styled.div``;
 
 export const CTATitle = styled.h3`
-  font-size: ${theme.fontSizes.lg};
-  font-weight: ${theme.fontWeights.semibold};
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.medium};
   margin: 0 0 4px;
   color: ${theme.colors.text};
 `;
@@ -687,7 +659,7 @@ export const CTAButton = styled(motion.button)`
     &:hover {
       background: ${theme.colors.primaryHover};
       box-shadow: ${theme.shadows.buttonPrimaryHover};
-      transform: translateY(-2px);
+      transform: translateY(-1px);
     }
   }
 
@@ -717,10 +689,13 @@ export const HelpSection = styled.div`
 `;
 
 export const HelpSectionTitle = styled.h3`
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.semibold};
-  margin: 0 0 ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  margin: 0 0 ${theme.spacing.xs};
   color: ${theme.colors.text};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
 `;
 
 export const HelpText = styled.p`

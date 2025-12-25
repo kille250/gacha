@@ -66,13 +66,13 @@ export const colors = {
   textLink: '#0a84ff',
   textLinkHover: '#409cff',
 
-  // Special - Glass effects with improved visibility
-  glass: 'rgba(255, 255, 255, 0.08)',          // Enhanced visibility
-  glassHover: 'rgba(255, 255, 255, 0.12)',     // More noticeable hover
-  glassBorder: 'rgba(255, 255, 255, 0.12)',    // Clearer borders
-  glassStrong: 'rgba(255, 255, 255, 0.15)',    // For emphasized glass elements
-  overlay: 'rgba(0, 0, 0, 0.65)',              // Slightly darker for better modal focus
-  overlayLight: 'rgba(0, 0, 0, 0.45)',
+  // Special - Glass effects with improved visibility (Apple-like)
+  glass: 'rgba(255, 255, 255, 0.10)',          // Slightly more visible
+  glassHover: 'rgba(255, 255, 255, 0.14)',     // Clear hover feedback
+  glassBorder: 'rgba(255, 255, 255, 0.14)',    // Cleaner borders
+  glassStrong: 'rgba(255, 255, 255, 0.18)',    // For emphasized glass elements
+  overlay: 'rgba(0, 0, 0, 0.60)',              // Slightly lighter for less heavy feel
+  overlayLight: 'rgba(0, 0, 0, 0.40)',
 
   // Rarity colors - slightly adjusted for better visibility
   rarity: {
@@ -83,13 +83,13 @@ export const colors = {
     legendary: '#ffa726'     // Warmer gold
   },
 
-  // Rarity glow colors for special effects
+  // Rarity glow colors - reduced intensity for premium Apple aesthetic
   rarityGlow: {
-    common: 'rgba(142, 142, 147, 0.3)',
-    uncommon: 'rgba(50, 215, 75, 0.35)',
-    rare: 'rgba(10, 132, 255, 0.4)',
-    epic: 'rgba(191, 90, 242, 0.45)',
-    legendary: 'rgba(255, 167, 38, 0.5)'
+    common: 'rgba(142, 142, 147, 0.18)',
+    uncommon: 'rgba(50, 215, 75, 0.22)',
+    rare: 'rgba(10, 132, 255, 0.25)',
+    epic: 'rgba(191, 90, 242, 0.28)',
+    legendary: 'rgba(255, 167, 38, 0.32)'
   },
 
   // Featured/promotional colors

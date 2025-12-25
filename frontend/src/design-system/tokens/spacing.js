@@ -70,14 +70,14 @@ export const shadows = {
   // 2XL - hero elements, feature cards
   '2xl': '0 12px 24px rgba(0, 0, 0, 0.1), 0 32px 64px rgba(0, 0, 0, 0.2)',
 
-  // Glow effects for interactive elements
-  glow: (color) => `0 0 20px ${color}30, 0 0 40px ${color}15`,
+  // Glow effects for interactive elements - reduced intensity for Apple aesthetic
+  glow: (color) => `0 0 16px ${color}20, 0 0 32px ${color}10`,
 
-  // Subtle glow for rarity/special items
-  glowSubtle: (color) => `0 0 12px ${color}20, 0 0 24px ${color}10`,
+  // Subtle glow for rarity/special items - softer for premium feel
+  glowSubtle: (color) => `0 0 10px ${color}15, 0 0 20px ${color}08`,
 
-  // Strong glow for emphasis
-  glowStrong: (color) => `0 0 24px ${color}50, 0 0 48px ${color}25, 0 0 72px ${color}15`,
+  // Strong glow for emphasis - toned down for restraint
+  glowStrong: (color) => `0 0 20px ${color}35, 0 0 40px ${color}18, 0 0 60px ${color}10`,
 
   // Inner shadow for pressed states and inputs
   inner: 'inset 0 1px 2px rgba(0, 0, 0, 0.1)',
@@ -85,18 +85,18 @@ export const shadows = {
   // Inner highlight for glass effects
   innerHighlight: 'inset 0 1px 0 rgba(255, 255, 255, 0.05)',
 
-  // Combined for depth
-  card: '0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.06), inset 0 1px 0 rgba(255, 255, 255, 0.02)',
-  cardHover: '0 4px 8px rgba(0, 0, 0, 0.06), 0 16px 32px rgba(0, 0, 0, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.04)',
+  // Combined for depth - softened for Apple-like appearance
+  card: '0 1px 2px rgba(0, 0, 0, 0.03), 0 4px 8px rgba(0, 0, 0, 0.04), inset 0 1px 0 rgba(255, 255, 255, 0.02)',
+  cardHover: '0 2px 6px rgba(0, 0, 0, 0.05), 0 12px 24px rgba(0, 0, 0, 0.08), inset 0 1px 0 rgba(255, 255, 255, 0.03)',
 
-  // Button shadows
-  button: '0 2px 4px rgba(0, 0, 0, 0.08), 0 4px 12px rgba(0, 0, 0, 0.12)',
-  buttonHover: '0 4px 8px rgba(0, 0, 0, 0.1), 0 8px 20px rgba(0, 0, 0, 0.15)',
-  buttonPressed: '0 1px 2px rgba(0, 0, 0, 0.08)',
+  // Button shadows - refined for subtlety
+  button: '0 1px 3px rgba(0, 0, 0, 0.06), 0 3px 8px rgba(0, 0, 0, 0.08)',
+  buttonHover: '0 2px 6px rgba(0, 0, 0, 0.08), 0 6px 16px rgba(0, 0, 0, 0.1)',
+  buttonPressed: '0 1px 2px rgba(0, 0, 0, 0.06)',
 
-  // Primary button shadows (with color tint)
-  buttonPrimary: '0 4px 12px rgba(0, 113, 227, 0.3), 0 2px 4px rgba(0, 0, 0, 0.08)',
-  buttonPrimaryHover: '0 6px 20px rgba(0, 113, 227, 0.4), 0 4px 8px rgba(0, 0, 0, 0.1)',
+  // Primary button shadows (with color tint) - reduced intensity
+  buttonPrimary: '0 2px 8px rgba(0, 113, 227, 0.25), 0 1px 3px rgba(0, 0, 0, 0.06)',
+  buttonPrimaryHover: '0 4px 14px rgba(0, 113, 227, 0.3), 0 2px 6px rgba(0, 0, 0, 0.08)',
 
   // Dropdown/popover shadows
   dropdown: '0 4px 12px rgba(0, 0, 0, 0.1), 0 16px 48px rgba(0, 0, 0, 0.15)'

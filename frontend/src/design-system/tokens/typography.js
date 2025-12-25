@@ -58,8 +58,8 @@ export const letterSpacing = {
   snug: '-0.02em',
   normal: '0',
   wide: '0.01em',
-  wider: '0.02em',
-  widest: '0.04em'  // For uppercase small text
+  wider: '0.015em',   // Reduced for more Apple-like feel
+  widest: '0.025em'   // Reduced from 0.04em - less stretched appearance
 };
 
 /**
@@ -160,9 +160,9 @@ export const textStyles = {
   // Overline - All-caps labels, badges
   overline: {
     fontSize: '11px',
-    fontWeight: 700,
+    fontWeight: 600,        // Reduced from 700 for softer appearance
     lineHeight: 1.4,
-    letterSpacing: '0.04em',
+    letterSpacing: '0.025em', // Reduced from 0.04em - less stretched
     textTransform: 'uppercase'
   }
 };

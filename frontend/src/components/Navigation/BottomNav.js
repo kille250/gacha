@@ -71,7 +71,7 @@ const NavContainer = styled.nav`
   padding: ${theme.spacing.xs} ${theme.spacing.sm};
   padding-bottom: env(safe-area-inset-bottom, ${theme.spacing.xs});
   z-index: ${theme.zIndex.sticky};
-  box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.08);
+  box-shadow: 0 -2px 12px rgba(0, 0, 0, 0.05);
 
   @media (max-width: ${theme.breakpoints.md}) {
     display: flex;
@@ -108,7 +108,7 @@ const NavIcon = styled.span`
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 22px;
+  font-size: 20px;
   color: ${props => props.$isActive ? theme.colors.primary : theme.colors.textSecondary};
   position: relative;
   z-index: 1;
@@ -117,7 +117,7 @@ const NavIcon = styled.span`
     transform ${theme.timing.fast} ${theme.easing.appleSpring};
 
   ${props => props.$isActive && `
-    transform: scale(1.1);
+    transform: scale(1.05);
   `}
 `;
 
@@ -130,8 +130,8 @@ const ActiveBackground = styled(motion.div)`
 `;
 
 const NavLabel = styled.span`
-  font-size: ${theme.fontSizes.xs};
-  font-weight: ${props => props.$isActive ? theme.fontWeights.semibold : theme.fontWeights.medium};
+  font-size: 11px;
+  font-weight: ${props => props.$isActive ? theme.fontWeights.medium : theme.fontWeights.regular};
   color: ${props => props.$isActive ? theme.colors.primary : theme.colors.textTertiary};
   margin-top: 2px;
   transition: color ${theme.timing.fast} ${theme.easing.easeOut};

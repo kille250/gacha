@@ -77,17 +77,17 @@ export const fadeIn = keyframes`
 `;
 
 export const slideUp = keyframes`
-  from { opacity: 0; transform: translateY(16px); }
+  from { opacity: 0; transform: translateY(10px); }
   to { opacity: 1; transform: translateY(0); }
 `;
 
 export const slideDown = keyframes`
-  from { opacity: 0; transform: translateY(-16px); }
+  from { opacity: 0; transform: translateY(-10px); }
   to { opacity: 1; transform: translateY(0); }
 `;
 
 export const slideIn = keyframes`
-  from { opacity: 0; transform: translateX(-16px); }
+  from { opacity: 0; transform: translateX(-10px); }
   to { opacity: 1; transform: translateX(0); }
 `;
 
@@ -129,32 +129,32 @@ export const pulseSoft = keyframes`
 
 export const float = keyframes`
   0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-6px); }
+  50% { transform: translateY(-4px); }
 `;
 
 export const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
-// Glow animation for legendary items
+// Glow animation for legendary items - reduced for Apple aesthetic
 export const glow = keyframes`
   0%, 100% {
-    box-shadow: 0 0 20px var(--glow-color, rgba(255, 167, 38, 0.4)),
-                0 0 40px var(--glow-color, rgba(255, 167, 38, 0.2));
+    box-shadow: 0 0 14px var(--glow-color, rgba(255, 167, 38, 0.25)),
+                0 0 28px var(--glow-color, rgba(255, 167, 38, 0.12));
   }
   50% {
-    box-shadow: 0 0 30px var(--glow-color, rgba(255, 167, 38, 0.6)),
-                0 0 60px var(--glow-color, rgba(255, 167, 38, 0.3));
+    box-shadow: 0 0 20px var(--glow-color, rgba(255, 167, 38, 0.35)),
+                0 0 40px var(--glow-color, rgba(255, 167, 38, 0.18));
   }
 `;
 
-// Subtle glow for epic items
+// Subtle glow for epic items - softer
 export const glowSubtle = keyframes`
   0%, 100% {
-    box-shadow: 0 0 12px var(--glow-color, rgba(191, 90, 242, 0.3));
+    box-shadow: 0 0 10px var(--glow-color, rgba(191, 90, 242, 0.2));
   }
   50% {
-    box-shadow: 0 0 20px var(--glow-color, rgba(191, 90, 242, 0.5));
+    box-shadow: 0 0 16px var(--glow-color, rgba(191, 90, 242, 0.32));
   }
 `;
 
@@ -222,16 +222,16 @@ export const animationMixins = {
     animation: ${shimmerPremium} 3s ease-in-out infinite;
   `,
 
-  // Legendary glow
+  // Legendary glow - refined for premium feel
   legendaryGlow: css`
-    --glow-color: rgba(255, 167, 38, 0.4);
-    animation: ${glow} 2s ease-in-out infinite;
+    --glow-color: rgba(255, 167, 38, 0.28);
+    animation: ${glow} 2.5s ease-in-out infinite;
   `,
 
-  // Epic glow
+  // Epic glow - softer for Apple aesthetic
   epicGlow: css`
-    --glow-color: rgba(191, 90, 242, 0.4);
-    animation: ${glowSubtle} 2.5s ease-in-out infinite;
+    --glow-color: rgba(191, 90, 242, 0.25);
+    animation: ${glowSubtle} 3s ease-in-out infinite;
   `
 };
 
@@ -244,23 +244,23 @@ export const motionVariants = {
   },
 
   slideUp: {
-    hidden: { opacity: 0, y: 16 },
+    hidden: { opacity: 0, y: 10 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { ...springs.gentle, duration: 0.35 }
+      transition: { ...springs.gentle, duration: 0.3 }
     },
-    exit: { opacity: 0, y: -8, transition: { duration: 0.15 } }
+    exit: { opacity: 0, y: -6, transition: { duration: 0.15 } }
   },
 
   slideDown: {
-    hidden: { opacity: 0, y: -16 },
+    hidden: { opacity: 0, y: -10 },
     visible: {
       opacity: 1,
       y: 0,
-      transition: { ...springs.gentle, duration: 0.35 }
+      transition: { ...springs.gentle, duration: 0.3 }
     },
-    exit: { opacity: 0, y: 8, transition: { duration: 0.15 } }
+    exit: { opacity: 0, y: 6, transition: { duration: 0.15 } }
   },
 
   scaleIn: {
@@ -290,7 +290,7 @@ export const motionVariants = {
   },
 
   staggerItem: {
-    hidden: { opacity: 0, y: 12 },
+    hidden: { opacity: 0, y: 8 },
     visible: {
       opacity: 1,
       y: 0,
@@ -299,7 +299,7 @@ export const motionVariants = {
   },
 
   card: {
-    hidden: { opacity: 0, y: 16, scale: 0.97 },
+    hidden: { opacity: 0, y: 10, scale: 0.98 },
     visible: {
       opacity: 1,
       y: 0,
@@ -308,11 +308,11 @@ export const motionVariants = {
     },
     exit: {
       opacity: 0,
-      scale: 0.97,
+      scale: 0.98,
       transition: { duration: 0.15 }
     },
     hover: {
-      y: -6,
+      y: -3,  // Reduced from -6 for subtler lift
       transition: { ...springs.snappy }
     },
     tap: {
@@ -321,9 +321,9 @@ export const motionVariants = {
     }
   },
 
-  // Improved modal with spring bounce - smoother exit timing
+  // Improved modal with spring bounce - Apple-like motion
   modal: {
-    hidden: { opacity: 0, scale: 0.95, y: 24 },
+    hidden: { opacity: 0, scale: 0.96, y: 16 },
     visible: {
       opacity: 1,
       scale: 1,
@@ -336,8 +336,8 @@ export const motionVariants = {
     exit: {
       opacity: 0,
       scale: 0.97,
-      y: 16,
-      transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] }  // Increased from 0.15s to 0.25s for smoother feel
+      y: 10,
+      transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
     }
   },
 
