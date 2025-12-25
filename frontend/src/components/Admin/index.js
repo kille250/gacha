@@ -17,9 +17,17 @@
 // ==================== CORE COMPONENTS ====================
 
 export { default as AdminTabs } from './AdminTabs';
+export { default as AdminHeader } from './AdminHeader';
 export { default as AdminBreadcrumb } from './AdminBreadcrumb';
 export { default as AdminErrorBoundary } from './AdminErrorBoundary';
 export { default as AdminSearch } from './AdminSearch';
+
+// ==================== UI COMPONENTS ====================
+
+export { default as FormField } from './FormField';
+export { default as ActionPreview } from './ActionPreview';
+export { default as AdminMobileControls } from './AdminMobileControls';
+export { default as ConfirmActionModal } from './ConfirmActionModal';
 
 // ==================== FLAT EXPORTS (BACKWARD COMPATIBLE) ====================
 

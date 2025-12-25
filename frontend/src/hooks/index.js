@@ -178,3 +178,6 @@ export {
 
 // Undo stack for reversible actions
 export { default as useUndoStack, createUndoToast } from './useUndoStack';
+
+// Undoable action hook for delayed execution with undo
+export { useUndoableAction } from './useUndoableAction';
