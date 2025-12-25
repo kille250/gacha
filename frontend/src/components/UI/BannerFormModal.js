@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes } from 'react-icons/fa';
 import { getAssetUrl } from '../../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
@@ -12,6 +13,7 @@ const getImageUrl = (imagePath) => {
 };
   
 const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
+  const { t } = useTranslation();
   const { getRarityColor } = useRarity();
   const [formData, setFormData] = useState({
     name: '',
@@ -207,46 +209,46 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     <ModalOverlay onMouseDown={onClose}>
       <ModalContent onMouseDown={e => e.stopPropagation()}>
         <ModalHeader>
-          <ModalTitle>{banner ? 'Edit Banner' : 'Create New Banner'}</ModalTitle>
+          <ModalTitle>{banner ? t('admin.bannerForm.editBanner') : t('admin.bannerForm.createNewBanner')}</ModalTitle>
           <CloseButton onClick={onClose}><FaTimes /></CloseButton>
         </ModalHeader>
         <ModalBody>
           <form onSubmit={handleSubmit}>
             <FormGroup>
-              <Label>Banner Name*</Label>
+              <Label>{t('admin.bannerForm.bannerName')}</Label>
               <Input
                 type="text"
                 name="name"
                 value={formData.name}
                 onChange={handleChange}
-                placeholder="Enter banner name"
+                placeholder={t('admin.bannerForm.enterBannerName')}
                 required
               />
             </FormGroup>
             <FormGroup>
-              <Label>Series*</Label>
+              <Label>{t('admin.bannerForm.seriesName')}</Label>
               <Input
                 type="text"
                 name="series"
                 value={formData.series}
                 onChange={handleChange}
-                placeholder="Enter series name"
+                placeholder={t('admin.bannerForm.enterSeriesName')}
                 required
               />
             </FormGroup>
             <FormGroup>
-              <Label>Description</Label>
+              <Label>{t('admin.bannerForm.description')}</Label>
               <TextArea
                 name="description"
                 value={formData.description}
                 onChange={handleChange}
                 rows={3}
-                placeholder="Optional description..."
+                placeholder={t('admin.bannerForm.optionalDescription')}
               />
             </FormGroup>
             <FormRow>
               <FormGroup>
-                <Label>Start Date*</Label>
+                <Label>{t('admin.bannerForm.startDate')}</Label>
                 <DateInputWrapper>
                   <FaCalendar />
                   <Input
@@ -259,7 +261,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                 </DateInputWrapper>
               </FormGroup>
               <FormGroup>
-                <Label>End Date (optional)</Label>
+                <Label>{t('admin.bannerForm.endDate')}</Label>
                 <DateInputWrapper>
                   <FaCalendar />
                   <Input
@@ -273,7 +275,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
             </FormRow>
             <FormRow>
               <FormGroup>
-                <Label>Cost Multiplier</Label>
+                <Label>{t('admin.bannerForm.costMultiplier')}</Label>
                 <Input
                   type="number"
                   name="costMultiplier"
@@ -284,11 +286,11 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   max="10"
                 />
                 <FormHint>
-                  Standard pull = 100 points, this banner = {Math.floor(100 * formData.costMultiplier)} points
+                  {t('admin.bannerForm.costHint', { cost: Math.floor(100 * formData.costMultiplier) })}
                 </FormHint>
               </FormGroup>
               <FormGroup>
-                <Label>Rate Multiplier</Label>
+                <Label>{t('admin.bannerForm.rateMultiplier')}</Label>
                 <Input
                   type="number"
                   name="rateMultiplier"
@@ -299,7 +301,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   max="10"
                 />
                 <FormHint>
-                  Higher value increases the chance of getting banner characters
+                  {t('admin.bannerForm.rateHint')}
                 </FormHint>
               </FormGroup>
             </FormRow>
@@ -312,7 +314,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   checked={formData.featured}
                   onChange={handleChange}
                 />
-                <CheckboxLabel htmlFor="featured">Featured Banner</CheckboxLabel>
+                <CheckboxLabel htmlFor="featured">{t('admin.bannerForm.featuredBanner')}</CheckboxLabel>
               </CheckboxControl>
               <CheckboxControl>
                 <Checkbox
@@ -322,7 +324,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   checked={formData.active}
                   onChange={handleChange}
                 />
-                <CheckboxLabel htmlFor="active">Active</CheckboxLabel>
+                <CheckboxLabel htmlFor="active">{t('admin.active')}</CheckboxLabel>
               </CheckboxControl>
               <CheckboxControl $r18>
                 <Checkbox
@@ -332,11 +334,11 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   checked={formData.isR18}
                   onChange={handleChange}
                 />
-                <CheckboxLabel htmlFor="isR18" $r18>🔞 R18 Content</CheckboxLabel>
+                <CheckboxLabel htmlFor="isR18" $r18>{t('admin.r18Content')}</CheckboxLabel>
               </CheckboxControl>
             </CheckboxGroup>
             <FormGroup>
-              <Label>Banner Image</Label>
+              <Label>{t('admin.bannerForm.bannerImage')}</Label>
               <FileInputWrapper>
                 <FaImage />
                 <FileInput
@@ -345,7 +347,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   onChange={handleImageChange}
                   required={!banner}
                 />
-                <FileInputText>Choose image file...</FileInputText>
+                <FileInputText>{t('admin.bannerForm.chooseImageFile')}</FileInputText>
               </FileInputWrapper>
               {imagePreview && (
                 <MediaPreview>
@@ -354,7 +356,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
               )}
             </FormGroup>
             <FormGroup>
-              <Label>Promotional Video (optional)</Label>
+              <Label>{t('admin.bannerForm.promotionalVideo')}</Label>
               <FileInputWrapper>
                 <FaVideo />
                 <FileInput
@@ -362,7 +364,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   accept="video/*"
                   onChange={handleVideoChange}
                 />
-                <FileInputText>Choose video file...</FileInputText>
+                <FileInputText>{t('admin.bannerForm.chooseVideoFile')}</FileInputText>
               </FileInputWrapper>
               {videoPreview && (
                 <MediaPreview>
@@ -371,18 +373,18 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
               )}
             </FormGroup>
             <FormGroup>
-              <Label>Banner Characters</Label>
-              <FormHint style={{ marginBottom: '12px' }}>Select characters that are featured in this banner</FormHint>
+              <Label>{t('admin.bannerForm.bannerCharacters')}</Label>
+              <FormHint style={{ marginBottom: '12px' }}>{t('admin.bannerForm.bannerCharactersHint')}</FormHint>
               <CharacterSelector>
                 <SelectorHeader>
                   <SelectedCount>
-                    {formData.selectedCharacters.length} characters selected
+                    {t('admin.bannerForm.charactersSelected', { count: formData.selectedCharacters.length })}
                   </SelectedCount>
                   <SearchWrapper>
                     <SearchIcon><FaSearch /></SearchIcon>
                     <SearchInput
                       type="text"
-                      placeholder="Search by name or series..."
+                      placeholder={t('admin.bannerForm.searchByNameSeries')}
                       value={characterSearch}
                       onChange={(e) => setCharacterSearch(e.target.value)}
                     />
@@ -406,7 +408,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                           <CharOptionSeries>{char.series}</CharOptionSeries>
                           <CharOptionBadges>
                             <CharOptionRarity $color={getRarityColor(char.rarity)}>{char.rarity}</CharOptionRarity>
-                            {char.isR18 && <R18Badge>🔞 R18</R18Badge>}
+                            {char.isR18 && <R18Badge>{t('admin.r18Content')}</R18Badge>}
                           </CharOptionBadges>
                         </CharOptionInfo>
                         <CharOptionCheck $selected={formData.selectedCharacters.includes(char.id)}>
@@ -415,15 +417,15 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                       </CharacterOption>
                     ))
                   ) : (
-                    <NoResults>No characters found matching "{characterSearch}"</NoResults>
+                    <NoResults>{t('admin.bannerForm.noCharactersMatching', { search: characterSearch })}</NoResults>
                   )}
                 </CharacterGrid>
               </CharacterSelector>
             </FormGroup>
             <ButtonGroup>
-              <CancelButton type="button" onClick={onClose}>Cancel</CancelButton>
+              <CancelButton type="button" onClick={onClose}>{t('common.cancel')}</CancelButton>
               <SubmitButton type="submit">
-                {banner ? 'Update Banner' : 'Create Banner'}
+                {banner ? t('admin.bannerForm.updateBanner') : t('admin.bannerForm.createBanner')}
               </SubmitButton>
             </ButtonGroup>
           </form>

@@ -9,6 +9,7 @@ import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaFilter, FaTimes } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 
 const ControlsBar = styled.div`
@@ -226,17 +227,22 @@ const ClearFiltersBtn = styled.button`
 const FilterBar = ({
   searchValue = '',
   onSearchChange,
-  searchPlaceholder = 'Search...',
+  searchPlaceholder,
   filterGroups = [],
   hasActiveFilters = false,
   onClearFilters,
   itemsPerPage,
   onItemsPerPageChange,
   itemsPerPageOptions = [24, 48, 96],
-  filterLabel = 'Filters',
-  clearLabel = 'Clear Filters',
+  filterLabel,
+  clearLabel,
 }) => {
+  const { t } = useTranslation();
   const [showFilters, setShowFilters] = useState(false);
+
+  const effectiveSearchPlaceholder = searchPlaceholder || t('patterns.searchPlaceholder');
+  const effectiveFilterLabel = filterLabel || t('patterns.filters');
+  const effectiveClearLabel = clearLabel || t('patterns.clearFilters');
 
   const handleSearchChange = useCallback((e) => {
     onSearchChange?.(e.target.value);
@@ -253,13 +259,13 @@ const FilterBar = ({
           <SearchIcon><FaSearch /></SearchIcon>
           <SearchInput
             type="text"
-            placeholder={searchPlaceholder}
+            placeholder={effectiveSearchPlaceholder}
             value={searchValue}
             onChange={handleSearchChange}
-            aria-label={searchPlaceholder}
+            aria-label={effectiveSearchPlaceholder}
           />
           {searchValue && (
-            <ClearSearch onClick={clearSearch} aria-label="Clear search">
+            <ClearSearch onClick={clearSearch} aria-label={t('patterns.clearSearch')}>
               <FaTimes />
             </ClearSearch>
           )}
@@ -274,7 +280,7 @@ const FilterBar = ({
               aria-controls="filter-panel"
             >
               <FaFilter />
-              <span>{filterLabel}</span>
+              <span>{effectiveFilterLabel}</span>
               {hasActiveFilters && <FilterBadge />}
             </FilterToggle>
           )}
@@ -283,7 +289,7 @@ const FilterBar = ({
             <ItemsSelect
               value={itemsPerPage}
               onChange={(e) => onItemsPerPageChange(Number(e.target.value))}
-              aria-label="Items per page"
+              aria-label={t('patterns.itemsPerPage')}
             >
               {itemsPerPageOptions.map(count => (
                 <option key={count} value={count}>{count} per page</option>
@@ -322,7 +328,7 @@ const FilterBar = ({
 
             {hasActiveFilters && onClearFilters && (
               <ClearFiltersBtn onClick={onClearFilters}>
-                <FaTimes /> {clearLabel}
+                <FaTimes /> {effectiveClearLabel}
               </ClearFiltersBtn>
             )}
           </FiltersPanel>

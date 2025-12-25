@@ -12,6 +12,7 @@ import React, { useState, useRef, useCallback, memo } from 'react';
 import styled, { css } from 'styled-components';
 import { motion } from 'framer-motion';
 import { FaCloudUploadAlt, FaImage, FaVideo } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 
 const DropZone = memo(({
@@ -21,6 +22,7 @@ const DropZone = memo(({
   currentFileCount = 0,
   compact = false,
 }) => {
+  const { t } = useTranslation();
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef(null);
 
@@ -85,7 +87,7 @@ const DropZone = memo(({
         $disabled={!canAddFiles}
         role="button"
         tabIndex={canAddFiles ? 0 : -1}
-        aria-label="Add more files"
+        aria-label={t('upload.addFiles')}
         aria-disabled={!canAddFiles}
       >
         <input
@@ -98,7 +100,7 @@ const DropZone = memo(({
           aria-hidden="true"
         />
         <FaCloudUploadAlt />
-        <span>Add Files</span>
+        <span>{t('upload.addFiles')}</span>
       </CompactDropZone>
     );
   }
@@ -115,7 +117,7 @@ const DropZone = memo(({
       $disabled={!canAddFiles}
       role="button"
       tabIndex={canAddFiles ? 0 : -1}
-      aria-label="Upload area. Click or drag files here to upload"
+      aria-label={t('upload.uploadArea')}
       aria-describedby="dropzone-instructions"
       aria-disabled={!canAddFiles}
       as={motion.div}
@@ -138,32 +140,32 @@ const DropZone = memo(({
 
       <MainText>
         {dragActive ? (
-          'Drop files here'
+          t('upload.dropFilesHere')
         ) : (
           <>
-            <DesktopText>Drag & drop files here or click to browse</DesktopText>
-            <MobileText>Tap to select files</MobileText>
+            <DesktopText>{t('upload.dragDropOrBrowse')}</DesktopText>
+            <MobileText>{t('upload.tapToSelect')}</MobileText>
           </>
         )}
       </MainText>
 
       <SupportedFormats id="dropzone-instructions">
         <FormatItem>
-          <FaImage /> Images (JPG, PNG, GIF, WEBP)
+          <FaImage /> {t('upload.imagesFormat')}
         </FormatItem>
         <FormatItem>
-          <FaVideo /> Videos (MP4, WEBM)
+          <FaVideo /> {t('upload.videosFormat')}
         </FormatItem>
       </SupportedFormats>
 
       {remainingSlots < maxFiles && (
         <FileCount>
-          {remainingSlots} of {maxFiles} slots remaining
+          {t('upload.slotsRemaining', { remaining: remainingSlots, max: maxFiles })}
         </FileCount>
       )}
 
       {!canAddFiles && currentFileCount >= maxFiles && (
-        <LimitReached>Maximum files reached</LimitReached>
+        <LimitReached>{t('upload.maximumFilesReached')}</LimitReached>
       )}
     </DropZoneContainer>
   );

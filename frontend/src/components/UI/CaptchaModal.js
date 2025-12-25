@@ -15,8 +15,9 @@
  * - fallback_input: User is entering math challenge answer
  */
 
-import React, { useState, useEffect, useCallback, useRef } from 'react';
+import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styled, { keyframes, css } from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { useRecaptcha } from '../../context/RecaptchaContext';
 import { IconSearch, IconSuccess, IconInfo } from '../../constants/icons';
@@ -425,55 +426,56 @@ const Checkmark = () => (
 
 // ==================== STATE CONFIGURATION ====================
 
-const STATE_CONFIG = {
+// State config factory - returns translated state config
+const getStateConfig = (t) => ({
   verifying: {
     icon: STATE_ICONS.verifying,
     iconVariant: 'verifying',
-    title: 'Security Check',
-    description: 'Please wait while we verify your request...',
+    title: t('captcha.securityCheck'),
+    description: t('captcha.verifyingRequest'),
     statusVariant: 'info',
-    statusTitle: 'Verifying',
-    statusText: 'This usually takes just a moment',
+    statusTitle: t('captcha.verifying'),
+    statusText: t('captcha.verifyingMoment'),
     showSpinner: true,
   },
   verified: {
     icon: STATE_ICONS.verified,
     iconVariant: 'verified',
-    title: 'Verified',
-    description: 'Security check passed. Processing your request...',
+    title: t('captcha.verified'),
+    description: t('captcha.verifiedProcessing'),
     statusVariant: 'success',
-    statusTitle: 'Verification Complete',
-    statusText: 'Submitting your request',
+    statusTitle: t('captcha.verificationComplete'),
+    statusText: t('captcha.submittingRequest'),
     showSpinner: true,
   },
   business_error: {
     icon: STATE_ICONS.business_error,
     iconVariant: 'error',
-    title: 'Action Required',
-    description: 'Your verification was successful, but there was an issue with your request.',
+    title: t('captcha.actionRequired'),
+    description: t('captcha.verificationSuccessBut'),
     statusVariant: 'success',
-    statusTitle: 'Security Check Passed',
-    statusText: 'The verification step was successful',
+    statusTitle: t('captcha.securityCheckPassed'),
+    statusText: t('captcha.verificationStepSuccess'),
   },
   captcha_error: {
     icon: STATE_ICONS.captcha_error,
     iconVariant: 'captcha_error',
-    title: 'Verification Issue',
-    description: 'We couldn\'t complete the security check. Please try again.',
+    title: t('captcha.verificationIssue'),
+    description: t('captcha.couldntComplete'),
     statusVariant: 'error',
-    statusTitle: 'Verification Failed',
-    statusText: 'Please retry the security check',
+    statusTitle: t('captcha.verificationFailed'),
+    statusText: t('captcha.retrySecurityCheck'),
   },
   challenge: {
     icon: STATE_ICONS.challenge,
     iconVariant: 'challenge',
-    title: 'Quick Verification',
-    description: 'Please solve this simple math problem to continue.',
+    title: t('captcha.quickVerification'),
+    description: t('captcha.solveMathProblem'),
     statusVariant: 'info',
-    statusTitle: 'Answer Required',
-    statusText: 'This helps us verify you\'re human',
+    statusTitle: t('captcha.answerRequired'),
+    statusText: t('captcha.helpsVerify'),
   },
-};
+});
 
 // ==================== MAIN COMPONENT ====================
 
@@ -491,10 +493,10 @@ const STATE_CONFIG = {
  * @param {boolean} props.isSubmitting - Whether the parent is retrying the request
  * @param {string} props.submitError - Business error from the parent's retry attempt
  */
-const CaptchaModal = ({ 
-  isOpen, 
-  onClose, 
-  onSolved, 
+const CaptchaModal = ({
+  isOpen,
+  onClose,
+  onSolved,
   action = 'verify',
   challenge = null,
   captchaType = 'recaptcha',
@@ -502,12 +504,16 @@ const CaptchaModal = ({
   isSubmitting = false,
   submitError = null
 }) => {
+  const { t } = useTranslation();
   const { executeRecaptcha, isReady, updateSiteKey, siteKey: contextSiteKey } = useRecaptcha();
   const [answer, setAnswer] = useState('');
   const [internalError, setInternalError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [verified, setVerified] = useState(false);
   const inputRef = useRef(null);
+
+  // Get translated state config
+  const STATE_CONFIG = useMemo(() => getStateConfig(t), [t]);
   
   // Determine current state
   const getState = useCallback(() => {
@@ -575,40 +581,40 @@ const CaptchaModal = ({
           setVerified(true);
           onSolved({ token, type: 'recaptcha' });
         } else {
-          setInternalError('Unable to complete verification. Please try again.');
+          setInternalError(t('captcha.unableToComplete'));
         }
       } catch (err) {
         console.error('[CaptchaModal] reCAPTCHA error:', err);
-        setInternalError('Verification service unavailable. Please try again in a moment.');
+        setInternalError(t('captcha.verificationUnavailable'));
       } finally {
         setLoading(false);
       }
     };
     
     attemptRecaptcha();
-  }, [isOpen, captchaType, isReady, action, executeRecaptcha, onSolved, submitError]);
+  }, [isOpen, captchaType, isReady, action, executeRecaptcha, onSolved, submitError, t]);
   
   // Handle fallback challenge submission
   const handleSubmit = useCallback((e) => {
     e?.preventDefault();
-    
+
     if (!answer.trim()) {
-      setInternalError('Please enter your answer');
+      setInternalError(t('captcha.pleaseEnterAnswer'));
       return;
     }
-    
+
     if (!challenge?.id) {
-      setInternalError('Challenge expired. Please close and try again.');
+      setInternalError(t('captcha.challengeExpired'));
       return;
     }
     
     setVerified(true);
-    onSolved({ 
-      token: challenge.id, 
+    onSolved({
+      token: challenge.id,
       answer: answer.trim(),
-      type: 'fallback' 
+      type: 'fallback'
     });
-  }, [answer, challenge, onSolved]);
+  }, [answer, challenge, onSolved, t]);
   
   // Retry reCAPTCHA
   const handleRetry = useCallback(async () => {
@@ -625,44 +631,44 @@ const CaptchaModal = ({
         setVerified(true);
         onSolved({ token, type: 'recaptcha' });
       } else {
-        setInternalError('Verification failed. Please try again or contact support.');
+        setInternalError(t('captcha.verificationFailed2'));
       }
     } catch (err) {
       console.error('[CaptchaModal] Retry error:', err);
-      setInternalError('Verification service is temporarily unavailable. Please try again in a moment.');
+      setInternalError(t('captcha.verificationUnavailable'));
     } finally {
       setLoading(false);
     }
-  }, [captchaType, action, executeRecaptcha, onSolved]);
+  }, [captchaType, action, executeRecaptcha, onSolved, t]);
   
   // Get user-friendly error message
-  const getFriendlyErrorMessage = (error) => {
+  const getFriendlyErrorMessage = useCallback((error) => {
     if (!error) return null;
-    
-    // Map common error patterns to friendly messages
+
+    // Map common error patterns to translation keys
     const errorMappings = [
-      { pattern: /invalid.*coupon/i, message: 'The coupon code you entered is invalid or has expired.' },
-      { pattern: /coupon.*expired/i, message: 'This coupon code has expired and can no longer be used.' },
-      { pattern: /coupon.*used/i, message: 'This coupon has already been redeemed.' },
-      { pattern: /incorrect.*password/i, message: 'The password you entered is incorrect.' },
-      { pattern: /password.*incorrect/i, message: 'The password you entered is incorrect.' },
-      { pattern: /rate.*limit/i, message: 'You\'ve made too many attempts. Please wait a moment before trying again.' },
-      { pattern: /too.*many.*requests/i, message: 'Please slow down and try again in a few seconds.' },
-      { pattern: /not.*found/i, message: 'The requested item could not be found.' },
-      { pattern: /insufficient/i, message: 'You don\'t have enough resources to complete this action.' },
-      { pattern: /already.*exists/i, message: 'This item already exists.' },
-      { pattern: /not.*authorized/i, message: 'You don\'t have permission to perform this action.' },
+      { pattern: /invalid.*coupon/i, key: 'captcha.errorInvalidCoupon' },
+      { pattern: /coupon.*expired/i, key: 'captcha.errorCouponExpired' },
+      { pattern: /coupon.*used/i, key: 'captcha.errorCouponUsed' },
+      { pattern: /incorrect.*password/i, key: 'captcha.errorIncorrectPassword' },
+      { pattern: /password.*incorrect/i, key: 'captcha.errorIncorrectPassword' },
+      { pattern: /rate.*limit/i, key: 'captcha.errorRateLimit' },
+      { pattern: /too.*many.*requests/i, key: 'captcha.errorTooManyRequests' },
+      { pattern: /not.*found/i, key: 'captcha.errorNotFound' },
+      { pattern: /insufficient/i, key: 'captcha.errorInsufficient' },
+      { pattern: /already.*exists/i, key: 'captcha.errorAlreadyExists' },
+      { pattern: /not.*authorized/i, key: 'captcha.errorNotAuthorized' },
     ];
-    
-    for (const { pattern, message } of errorMappings) {
+
+    for (const { pattern, key } of errorMappings) {
       if (pattern.test(error)) {
-        return message;
+        return t(key);
       }
     }
-    
+
     // Return the original error if no mapping found
     return error;
-  };
+  }, [t]);
   
   if (!isOpen) return null;
   
@@ -701,10 +707,10 @@ const CaptchaModal = ({
               </StatusIcon>
               <StatusContent>
                 <StatusTitle>
-                  {isSubmitting ? 'Submitting Request' : config.statusTitle}
+                  {isSubmitting ? t('captcha.submittingRequestWait') : config.statusTitle}
                 </StatusTitle>
                 <StatusText>
-                  {isSubmitting ? 'Please wait...' : config.statusText}
+                  {isSubmitting ? t('captcha.pleaseWait') : config.statusText}
                 </StatusText>
               </StatusContent>
             </StatusCard>
@@ -716,13 +722,13 @@ const CaptchaModal = ({
           <ErrorDetails>
             <ErrorTitle>
               <span>⚠️</span>
-              Request Could Not Be Completed
+              {t('captcha.requestCouldNotComplete')}
             </ErrorTitle>
             <ErrorMessage>
               {getFriendlyErrorMessage(submitError)}
             </ErrorMessage>
             <HelpText>
-              The security verification was successful. Please check the information above and try your action again.
+              {t('captcha.verificationSuccessCheck')}
             </HelpText>
           </ErrorDetails>
         )}
@@ -733,7 +739,7 @@ const CaptchaModal = ({
             <StatusCard $variant="error">
               <StatusIcon $variant="error">⚠</StatusIcon>
               <StatusContent>
-                <StatusTitle>Unable to Verify</StatusTitle>
+                <StatusTitle>{t('captcha.unableToVerify')}</StatusTitle>
                 <StatusText>{internalError}</StatusText>
               </StatusContent>
             </StatusCard>
@@ -754,54 +760,54 @@ const CaptchaModal = ({
                 pattern="[0-9]*"
                 value={answer}
                 onChange={(e) => setAnswer(e.target.value)}
-                placeholder="Enter your answer"
+                placeholder={t('captcha.enterAnswer')}
                 autoComplete="off"
-                aria-label="Your answer to the math problem"
+                aria-label={t('captcha.enterAnswer')}
               />
             </ChallengeBox>
             
             <ButtonGroup>
               <SecondaryButton type="button" onClick={onClose}>
-                Cancel
+                {t('captcha.cancel')}
               </SecondaryButton>
               <PrimaryButton type="submit" disabled={!answer.trim()}>
-                Submit
+                {t('captcha.submit')}
               </PrimaryButton>
             </ButtonGroup>
           </form>
         )}
-        
+
         {/* reCAPTCHA Buttons */}
         {captchaType === 'recaptcha' && (
           <ButtonGroup>
             <SecondaryButton onClick={onClose} disabled={isSubmitting}>
-              {submitError ? 'Close' : 'Cancel'}
+              {submitError ? t('captcha.close') : t('captcha.cancel')}
             </SecondaryButton>
             {(internalError || submitError) && (
-              <PrimaryButton 
-                onClick={submitError ? onClose : handleRetry} 
+              <PrimaryButton
+                onClick={submitError ? onClose : handleRetry}
                 disabled={loading || isSubmitting}
               >
-                {submitError ? 'Try Again' : 'Retry Verification'}
+                {submitError ? t('captcha.tryAgain') : t('captcha.retryVerification')}
               </PrimaryButton>
             )}
           </ButtonGroup>
         )}
-        
+
         <Footer>
           {captchaType === 'recaptcha' ? (
             <>
-              Protected by reCAPTCHA.{' '}
+              {t('captcha.protectedByRecaptcha')}{' '}
               <a href="https://policies.google.com/privacy" target="_blank" rel="noopener noreferrer">
-                Privacy
+                {t('captcha.privacy')}
               </a>
               {' '}·{' '}
               <a href="https://policies.google.com/terms" target="_blank" rel="noopener noreferrer">
-                Terms
+                {t('captcha.terms')}
               </a>
             </>
           ) : (
-            'This helps protect our service from automated abuse.'
+            t('captcha.protectsFromAbuse')
           )}
         </Footer>
       </Modal>

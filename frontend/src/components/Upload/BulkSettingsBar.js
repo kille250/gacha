@@ -9,6 +9,7 @@
  */
 import React, { memo, useState } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { FaMagic, FaCheck } from 'react-icons/fa';
 import { theme } from '../../design-system';
 
@@ -21,6 +22,7 @@ const BulkSettingsBar = memo(({
   fileCount = 0,
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const [generatingNames, setGeneratingNames] = useState(false);
 
   const handleChange = (field, value) => {
@@ -38,27 +40,27 @@ const BulkSettingsBar = memo(({
   };
 
   return (
-    <Container role="group" aria-label="Bulk settings">
+    <Container role="group" aria-label={t('admin.upload.defaultSettings')}>
       <Header>
-        <Title>Default Settings</Title>
-        <Subtitle>Applied to new files automatically</Subtitle>
+        <Title>{t('admin.upload.defaultSettings')}</Title>
+        <Subtitle>{t('admin.upload.appliedToNewFiles')}</Subtitle>
       </Header>
 
       <SettingsGrid>
         <SettingField>
-          <Label htmlFor="bulk-series">Series</Label>
+          <Label htmlFor="bulk-series">{t('admin.series')}</Label>
           <Input
             id="bulk-series"
             type="text"
             value={bulkDefaults.series}
             onChange={(e) => handleChange('series', e.target.value)}
-            placeholder="e.g., Anime Name"
+            placeholder={t('admin.bannerForm.enterSeriesName')}
             disabled={disabled}
           />
         </SettingField>
 
         <SettingField>
-          <Label htmlFor="bulk-rarity">Rarity</Label>
+          <Label htmlFor="bulk-rarity">{t('admin.rarity')}</Label>
           <Select
             id="bulk-rarity"
             value={bulkDefaults.rarity}
@@ -91,20 +93,20 @@ const BulkSettingsBar = memo(({
         <ActionButton
           onClick={onApplyToAll}
           disabled={disabled || fileCount === 0}
-          aria-label={`Apply settings to all ${fileCount} files`}
+          aria-label={t('admin.upload.applyToAll', { count: fileCount })}
         >
           <FaCheck />
-          <span>Apply to All ({fileCount})</span>
+          <span>{t('admin.upload.applyToAll', { count: fileCount })}</span>
         </ActionButton>
 
         <ActionButton
           $variant="secondary"
           onClick={handleGenerateNames}
           disabled={disabled || fileCount === 0 || generatingNames}
-          aria-label="Generate random names for all files"
+          aria-label={t('admin.upload.generateNames')}
         >
           <FaMagic className={generatingNames ? 'spinning' : ''} />
-          <span>{generatingNames ? 'Generating...' : 'Generate Names'}</span>
+          <span>{generatingNames ? t('admin.upload.generating') : t('admin.upload.generateNames')}</span>
         </ActionButton>
       </ActionsBar>
     </Container>

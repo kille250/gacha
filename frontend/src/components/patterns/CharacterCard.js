@@ -15,6 +15,7 @@
 import React, { memo, useCallback, useRef } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { theme, springs, useReducedMotion, VisuallyHidden } from '../../design-system';
 import { PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useVideoVisibility } from '../../hooks';
@@ -307,10 +308,11 @@ const CharacterCard = memo(({
   rarityColor,
   rarityGlow,
   levelInfo = {},
-  notOwnedLabel = 'Not Owned',
+  notOwnedLabel,
   onClick,
   ...props
 }) => {
+  const { t } = useTranslation();
   const { level = 1, isMaxLevel = false, shards = 0, shardsToNextLevel, canLevelUp = false } = levelInfo;
   const prefersReducedMotion = useReducedMotion();
   const videoRef = useRef(null);
@@ -338,10 +340,10 @@ const CharacterCard = memo(({
   const accessibleLabel = [
     character.name,
     character.series,
-    `${character.rarity} rarity`,
-    isOwned ? `Level ${level}` : 'Not owned',
-    isOwned && canLevelUp ? 'Ready to level up' : '',
-    isOwned && isMaxLevel ? 'Max level' : '',
+    t('patterns.rarityLabel', { rarity: character.rarity }),
+    isOwned ? t('patterns.levelNumber', { level }) : t('patterns.notOwned'),
+    isOwned && canLevelUp ? t('patterns.readyToLevelUp') : '',
+    isOwned && isMaxLevel ? t('patterns.maxLevel') : '',
   ].filter(Boolean).join(', ');
 
   return (
@@ -384,7 +386,7 @@ const CharacterCard = memo(({
         )}
         {!isOwned && (
           <NotOwnedOverlay>
-            <NotOwnedLabel aria-hidden="true">{notOwnedLabel}</NotOwnedLabel>
+            <NotOwnedLabel aria-hidden="true">{notOwnedLabel || t('patterns.notOwned')}</NotOwnedLabel>
           </NotOwnedOverlay>
         )}
         {isOwned && (

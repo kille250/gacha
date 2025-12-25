@@ -7,6 +7,7 @@
 
 import React from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 
 const PaginationContainer = styled.nav`
@@ -68,11 +69,15 @@ const Pagination = ({
   currentPage,
   totalPages,
   onPageChange,
-  previousLabel = 'Previous',
-  nextLabel = 'Next',
-  pageLabel = 'Page {current} of {total}',
+  previousLabel,
+  nextLabel,
 }) => {
+  const { t } = useTranslation();
+
   if (totalPages <= 1) return null;
+
+  const effectivePreviousLabel = previousLabel || t('patterns.previous');
+  const effectiveNextLabel = nextLabel || t('patterns.next');
 
   const handlePrevious = () => {
     if (currentPage > 1) {
@@ -86,26 +91,24 @@ const Pagination = ({
     }
   };
 
-  const pageInfoText = pageLabel
-    .replace('{current}', currentPage)
-    .replace('{total}', totalPages);
+  const pageInfoText = t('patterns.pageOfTotal', { current: currentPage, total: totalPages });
 
   return (
-    <PaginationContainer aria-label="Pagination">
+    <PaginationContainer aria-label={t('patterns.pagination')}>
       <PageButton
         onClick={handlePrevious}
         disabled={currentPage === 1}
-        aria-label={previousLabel}
+        aria-label={effectivePreviousLabel}
       >
-        {previousLabel}
+        {effectivePreviousLabel}
       </PageButton>
       <PageInfo aria-current="page">{pageInfoText}</PageInfo>
       <PageButton
         onClick={handleNext}
         disabled={currentPage === totalPages}
-        aria-label={nextLabel}
+        aria-label={effectiveNextLabel}
       >
-        {nextLabel}
+        {effectiveNextLabel}
       </PageButton>
     </PaginationContainer>
   );

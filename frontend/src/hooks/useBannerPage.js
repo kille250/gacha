@@ -207,11 +207,11 @@ export const useBannerPage = (bannerId) => {
         // Validate inside lock
         if (useTicket) {
           if (ticketType === 'premium' && tickets.premiumTickets < 1) {
-            setError('No premium tickets available');
+            setError(t('banner.noPremiumTickets'));
             return;
           }
           if (ticketType === 'roll' && tickets.rollTickets < 1) {
-            setError('No roll tickets available');
+            setError(t('banner.noRollTickets'));
             return;
           }
         } else if (user?.points < singlePullCost) {
@@ -313,11 +313,11 @@ export const useBannerPage = (bannerId) => {
         // Validate inside lock
         if (useTickets) {
           if (ticketType === 'premium' && tickets.premiumTickets < count) {
-            setError(`Not enough premium tickets. Need ${count}, have ${tickets.premiumTickets}`);
+            setError(t('banner.notEnoughTicketsMulti', { required: count, have: tickets.premiumTickets }));
             return;
           }
           if (ticketType === 'roll' && tickets.rollTickets < count) {
-            setError(`Not enough roll tickets. Need ${count}, have ${tickets.rollTickets}`);
+            setError(t('banner.notEnoughRollTicketsMulti', { required: count, have: tickets.rollTickets }));
             return;
           }
         } else {

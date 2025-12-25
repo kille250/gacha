@@ -242,7 +242,7 @@ const ProfilePage = () => {
         </LogoutButton>
 
         {/* App Version */}
-        <VersionText>GachaMaster v1.0</VersionText>
+        <VersionText>{t('profile.version', { version: '1.0' })}</VersionText>
       </Container>
     </PageWrapper>
   );

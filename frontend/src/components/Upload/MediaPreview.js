@@ -12,6 +12,7 @@
 import React, { useState, memo, useEffect, useRef } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { FaVideo, FaImage, FaFilm } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { formatFileSize } from '../../services/uploadService';
 
@@ -36,6 +37,7 @@ const MediaPreview = memo(({
   fileSize, // Optional: file size in bytes for large file indicator
   lazyVideo = true, // Lazy load video thumbnails
 }) => {
+  const { t } = useTranslation();
   const [loaded, setLoaded] = useState(false);
   const [error, setError] = useState(false);
   const [videoThumbnail, setVideoThumbnail] = useState(null);
@@ -136,7 +138,7 @@ const MediaPreview = memo(({
       {error ? (
         <ErrorPlaceholder>
           <FaImage />
-          <span>Failed to load</span>
+          <span>{t('upload.failedToLoad')}</span>
         </ErrorPlaceholder>
       ) : isVideo ? (
         isInView ? (
@@ -170,7 +172,7 @@ const MediaPreview = memo(({
 
       {/* Type indicator */}
       {showTypeIcon && loaded && !error && (
-        <TypeIcon aria-label={isVideo ? 'Video file' : 'Image file'}>
+        <TypeIcon aria-label={isVideo ? t('upload.videoFile') : t('upload.imageFile')}>
           {isVideo ? <FaVideo /> : <FaImage />}
         </TypeIcon>
       )}
@@ -185,9 +187,9 @@ const MediaPreview = memo(({
 
       {/* Status overlays */}
       {status === 'checking' && (
-        <StatusOverlay aria-label="Analyzing file">
+        <StatusOverlay aria-label={t('upload.analyzing')}>
           <Spinner />
-          <StatusText>Analyzing...</StatusText>
+          <StatusText>{t('upload.analyzing')}</StatusText>
         </StatusOverlay>
       )}
 

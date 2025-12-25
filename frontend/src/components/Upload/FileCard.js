@@ -12,6 +12,7 @@ import React, { memo, useState, useCallback, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTrash, FaTimes, FaChevronDown } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import MediaPreview from './MediaPreview';
 import StatusBadge from './StatusBadge';
@@ -37,6 +38,7 @@ const FileCard = memo(({
   onDismissWarning,
   onTouchField,
 }) => {
+  const { t } = useTranslation();
   const [showMobileSheet, setShowMobileSheet] = useState(false);
   const [confirmCopyField, setConfirmCopyField] = useState(null);
   const [showSwipeActions, setShowSwipeActions] = useState(false);
@@ -123,7 +125,7 @@ const FileCard = memo(({
           <SwipeActionBackground $visible={showSwipeActions || isDragging}>
             <SwipeDeleteButton
               onClick={handleRemove}
-              aria-label="Delete file"
+              aria-label={t('upload.deleteFile')}
               $visible={showSwipeActions}
             >
               <FaTrash />
@@ -171,8 +173,8 @@ const FileCard = memo(({
             {/* Remove button - visible on hover/focus */}
             <RemoveButton
               onClick={handleRemove}
-              aria-label="Remove file"
-              title="Remove file"
+              aria-label={t('upload.removeFile')}
+              title={t('upload.removeFile')}
               type="button"
             >
               <FaTrash />
@@ -220,14 +222,14 @@ const FileCard = memo(({
             {/* Mobile: Tap to expand */}
             <MobileMetaTrigger
               onClick={handleOpenMobileSheet}
-              aria-label="Edit metadata"
+              aria-label={t('upload.editMetadata')}
               type="button"
             >
               <MetaSummary>
                 <MetaName $hasError={!file.name}>
-                  {file.name || 'Tap to edit...'}
+                  {file.name || t('upload.tapToEdit')}
                 </MetaName>
-                <MetaSeries>{file.series || 'No series'}</MetaSeries>
+                <MetaSeries>{file.series || t('upload.noSeries')}</MetaSeries>
               </MetaSummary>
               <FaChevronDown />
             </MobileMetaTrigger>
@@ -274,10 +276,10 @@ const FileCard = memo(({
               aria-labelledby={`sheet-title-${file.id}`}
             >
               <SheetHeader>
-                <SheetTitle id={`sheet-title-${file.id}`}>Edit File {index + 1}</SheetTitle>
+                <SheetTitle id={`sheet-title-${file.id}`}>{t('upload.editFile', { number: index + 1 })}</SheetTitle>
                 <CloseSheetButton
                   onClick={handleCloseMobileSheet}
-                  aria-label="Close"
+                  aria-label={t('upload.close')}
                   type="button"
                 >
                   <FaTimes />
@@ -308,7 +310,7 @@ const FileCard = memo(({
 
               <SheetActions>
                 <RemoveFileButton onClick={handleRemove} type="button">
-                  <FaTrash /> Remove File
+                  <FaTrash /> {t('upload.removeFile')}
                 </RemoveFileButton>
               </SheetActions>
             </MobileSheet>

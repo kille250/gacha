@@ -17,6 +17,7 @@ import {
   FaChevronDown,
   FaCheckCircle,
 } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { prefersReducedMotion } from '../../utils/featureFlags';
 import { FILE_STATUS } from '../../hooks/useUploadState';
@@ -27,6 +28,7 @@ const ValidationSummary = memo(({
   fileStatus,
   compact = false,
 }) => {
+  const { t } = useTranslation();
   const [expanded, setExpanded] = useState(false);
   const reducedMotion = prefersReducedMotion();
 
@@ -91,7 +93,7 @@ const ValidationSummary = memo(({
     return (
       <SuccessBanner role="status" aria-live="polite">
         <FaCheckCircle aria-hidden="true" />
-        <span>All {files.length} files ready to upload</span>
+        <span>{t('upload.allFilesReady', { count: files.length })}</span>
       </SuccessBanner>
     );
   }
@@ -112,7 +114,7 @@ const ValidationSummary = memo(({
   return (
     <SummaryContainer
       role="region"
-      aria-label="Validation summary"
+      aria-label={t('upload.validationSummary')}
       aria-live="polite"
     >
       <SummaryHeader
@@ -124,25 +126,25 @@ const ValidationSummary = memo(({
           {issues.errors.length > 0 && (
             <IssueCount $variant="error">
               <FaExclamationTriangle aria-hidden="true" />
-              <span>{issues.errors.length} error{issues.errors.length !== 1 ? 's' : ''}</span>
+              <span>{issues.errors.length === 1 ? t('upload.errorCount', { count: issues.errors.length }) : t('upload.errorsCount', { count: issues.errors.length })}</span>
             </IssueCount>
           )}
           {issues.missingFields.length > 0 && (
             <IssueCount $variant="info">
               <FaInfoCircle aria-hidden="true" />
-              <span>{issues.missingFields.length} incomplete</span>
+              <span>{t('upload.incompleteCount', { count: issues.missingFields.length })}</span>
             </IssueCount>
           )}
           {issues.warnings.length > 0 && (
             <IssueCount $variant="warning">
               <FaExclamationCircle aria-hidden="true" />
-              <span>{issues.warnings.length} warning{issues.warnings.length !== 1 ? 's' : ''}</span>
+              <span>{issues.warnings.length === 1 ? t('upload.warningCount', { count: issues.warnings.length }) : t('upload.warningsCount', { count: issues.warnings.length })}</span>
             </IssueCount>
           )}
           {issues.ready > 0 && (
             <IssueCount $variant="success">
               <FaCheckCircle aria-hidden="true" />
-              <span>{issues.ready} ready</span>
+              <span>{t('upload.readyCount', { count: issues.ready })}</span>
             </IssueCount>
           )}
         </HeaderContent>
@@ -158,12 +160,12 @@ const ValidationSummary = memo(({
               <IssueGroup>
                 <GroupTitle $variant="error">
                   <FaExclamationTriangle aria-hidden="true" />
-                  Cannot Upload ({issues.errors.length})
+                  {t('upload.cannotUpload')} ({issues.errors.length})
                 </GroupTitle>
                 <IssueList>
                   {issues.errors.map((issue) => (
                     <IssueItem key={issue.file.id} $variant="error">
-                      <strong>File {issue.index}:</strong> {issue.message}
+                      <strong>{t('upload.fileNumber', { number: issue.index })}:</strong> {issue.message}
                     </IssueItem>
                   ))}
                 </IssueList>
@@ -174,12 +176,12 @@ const ValidationSummary = memo(({
               <IssueGroup>
                 <GroupTitle $variant="info">
                   <FaInfoCircle aria-hidden="true" />
-                  Missing Required Fields ({issues.missingFields.length})
+                  {t('upload.missingRequiredFields')} ({issues.missingFields.length})
                 </GroupTitle>
                 <IssueList>
                   {issues.missingFields.map((issue) => (
                     <IssueItem key={issue.file.id} $variant="info">
-                      <strong>File {issue.index}:</strong> needs {issue.fields.join(', ')}
+                      <strong>{t('upload.fileNumber', { number: issue.index })}:</strong> {t('upload.needsFields', { fields: issue.fields.join(', ') })}
                     </IssueItem>
                   ))}
                 </IssueList>
@@ -190,13 +192,13 @@ const ValidationSummary = memo(({
               <IssueGroup>
                 <GroupTitle $variant="warning">
                   <FaExclamationCircle aria-hidden="true" />
-                  Possible Duplicates ({issues.warnings.length})
+                  {t('upload.possibleDuplicates')} ({issues.warnings.length})
                 </GroupTitle>
                 <IssueList>
                   {issues.warnings.map((issue) => (
                     <IssueItem key={issue.file.id} $variant="warning">
-                      <strong>File {issue.index}:</strong> {issue.message}
-                      {issue.similarity && ` (${Math.round(issue.similarity * 100)}% similar)`}
+                      <strong>{t('upload.fileNumber', { number: issue.index })}:</strong> {issue.message}
+                      {issue.similarity && ` (${t('upload.similarPercent', { percent: Math.round(issue.similarity * 100) })})`}
                     </IssueItem>
                   ))}
                 </IssueList>

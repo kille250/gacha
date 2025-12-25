@@ -15,6 +15,7 @@
 import React, { memo, useCallback } from 'react';
 import styled, { css } from 'styled-components';
 import { FaMagic, FaCopy } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../../design-system';
 
 const FileMetadata = memo(({
@@ -28,6 +29,7 @@ const FileMetadata = memo(({
   variant = 'desktop', // 'desktop' | 'mobile'
   disabled = false,
 }) => {
+  const { t } = useTranslation();
   const isMobile = variant === 'mobile';
 
   // Get validation errors for display
@@ -61,18 +63,18 @@ const FileMetadata = memo(({
       {/* Name Field */}
       <Field $hasError={!!nameError}>
         <Label htmlFor={`name-${file.id}`}>
-          <LabelText>Name *</LabelText>
+          <LabelText>{t('upload.nameLabel')} *</LabelText>
           <FieldActions>
             <ActionButton
               type="button"
               onClick={handleRegenerateName}
-              title="Generate random name"
-              aria-label="Generate random name"
+              title={t('upload.generateRandomName')}
+              aria-label={t('upload.generateRandomName')}
               disabled={disabled}
               $isMobile={isMobile}
             >
               <FaMagic />
-              {isMobile && <span>Generate</span>}
+              {isMobile && <span>{t('upload.generate')}</span>}
             </ActionButton>
           </FieldActions>
         </Label>
@@ -82,8 +84,8 @@ const FileMetadata = memo(({
           value={file.name}
           onChange={(e) => handleChange('name', e.target.value)}
           onBlur={() => handleBlur('name')}
-          placeholder="Character name"
-          aria-label="Character name"
+          placeholder={t('upload.characterNamePlaceholder')}
+          aria-label={t('upload.characterNamePlaceholder')}
           aria-required="true"
           aria-invalid={!!nameError}
           aria-describedby={nameError ? `name-error-${file.id}` : undefined}
@@ -101,18 +103,18 @@ const FileMetadata = memo(({
       {/* Series Field */}
       <Field $hasError={!!seriesError}>
         <Label htmlFor={`series-${file.id}`}>
-          <LabelText>Series *</LabelText>
+          <LabelText>{t('upload.seriesLabel')} *</LabelText>
           <FieldActions>
             <ActionButton
               type="button"
               onClick={() => handleCopyToAll('series')}
-              title="Apply to all files"
-              aria-label="Apply series to all files"
+              title={t('upload.applyToAllFiles')}
+              aria-label={t('upload.applySeriesAll')}
               disabled={disabled}
               $isMobile={isMobile}
             >
               <FaCopy />
-              {isMobile && <span>Apply to All</span>}
+              {isMobile && <span>{t('upload.applyToAll')}</span>}
             </ActionButton>
           </FieldActions>
         </Label>
@@ -122,8 +124,8 @@ const FileMetadata = memo(({
           value={file.series}
           onChange={(e) => handleChange('series', e.target.value)}
           onBlur={() => handleBlur('series')}
-          placeholder="Series name"
-          aria-label="Series name"
+          placeholder={t('upload.seriesNamePlaceholder')}
+          aria-label={t('upload.seriesNamePlaceholder')}
           aria-required="true"
           aria-invalid={!!seriesError}
           aria-describedby={seriesError ? `series-error-${file.id}` : undefined}
@@ -142,18 +144,18 @@ const FileMetadata = memo(({
       <FieldRow>
         <Field $flex>
           <Label htmlFor={`rarity-${file.id}`}>
-            <LabelText>Rarity</LabelText>
+            <LabelText>{t('upload.rarityLabel')}</LabelText>
             <FieldActions>
               <ActionButton
                 type="button"
                 onClick={() => handleCopyToAll('rarity')}
-                title="Apply to all files"
-                aria-label="Apply rarity to all files"
+                title={t('upload.applyToAllFiles')}
+                aria-label={t('upload.applyRarityAll')}
                 disabled={disabled}
                 $isMobile={isMobile}
               >
                 <FaCopy />
-                {isMobile && <span>Apply to All</span>}
+                {isMobile && <span>{t('upload.applyToAll')}</span>}
               </ActionButton>
             </FieldActions>
           </Label>
@@ -161,7 +163,7 @@ const FileMetadata = memo(({
             id={`rarity-${file.id}`}
             value={file.rarity}
             onChange={(e) => handleChange('rarity', e.target.value)}
-            aria-label="Rarity"
+            aria-label={t('upload.rarityLabel')}
             $isMobile={isMobile}
             disabled={disabled}
           >
@@ -179,10 +181,10 @@ const FileMetadata = memo(({
               type="checkbox"
               checked={file.isR18}
               onChange={(e) => handleChange('isR18', e.target.checked)}
-              aria-label="Mark as R18 content"
+              aria-label={t('upload.markAsR18')}
               disabled={disabled}
             />
-            <span>R18</span>
+            <span>{t('upload.r18Label')}</span>
           </CheckboxLabel>
         </Field>
       </FieldRow>

@@ -193,7 +193,7 @@ export const useAdminModals = () => {
       // Keep dialog open on error, let handler show error toast
       setConfirmDialog(prev => ({ ...prev, loading: false }));
     }
-  }, [confirmDialog.onConfirm, closeConfirmDialog]);
+  }, [confirmDialog, closeConfirmDialog]);
 
   // ==================== QUICK ACTIONS (from Dashboard) ====================
 

@@ -10,9 +10,11 @@
  */
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
+import { useTranslation } from 'react-i18next';
 import { FaTicketAlt, FaCoins, FaUsers, FaCalendarAlt, FaTimes, FaGem } from 'react-icons/fa';
 
 const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
+  const { t } = useTranslation();
   const [formData, setFormData] = useState({
     code: '',
     description: '',
@@ -91,58 +93,58 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
         <ModalHeader>
           <ModalTitle>
             <FaTicketAlt />
-            {coupon ? 'Edit Coupon' : 'Create New Coupon'}
+            {coupon ? t('admin.couponForm.editCoupon') : t('admin.couponForm.createNewCoupon')}
           </ModalTitle>
           <CloseButton onClick={onClose}><FaTimes /></CloseButton>
         </ModalHeader>
-        
+
         <ModalBody>
           <form onSubmit={handleSubmit}>
             <FormGroup>
-              <Label>Coupon Code</Label>
-              <Input 
-                type="text" 
-                name="code" 
+              <Label>{t('admin.couponForm.couponCode')}</Label>
+              <Input
+                type="text"
+                name="code"
                 value={formData.code}
                 onChange={handleChange}
-                placeholder="SUMMER2023"
+                placeholder={t('admin.couponForm.couponCodePlaceholder')}
                 required
                 pattern="^[a-zA-Z0-9\-]+$"
-                title="Use only letters, numbers, and hyphens"
+                title={t('admin.couponForm.couponCodeTitle')}
                 maxLength="20"
               />
-              <FormHint>No spaces, only letters, numbers, and hyphens</FormHint>
+              <FormHint>{t('admin.couponForm.couponCodeHint')}</FormHint>
             </FormGroup>
-            
+
             <FormGroup>
-              <Label>Description</Label>
-              <Input 
-                type="text" 
-                name="description" 
+              <Label>{t('admin.bannerForm.description')}</Label>
+              <Input
+                type="text"
+                name="description"
                 value={formData.description}
                 onChange={handleChange}
-                placeholder="Summer 2023 promotional coupon"
+                placeholder={t('admin.couponForm.descriptionPlaceholder')}
               />
             </FormGroup>
-            
+
             <FormRow>
               <FormGroup>
-                <Label>Coupon Type</Label>
+                <Label>{t('admin.couponForm.couponType')}</Label>
                 <Select
                   name="type"
                   value={formData.type}
                   onChange={handleChange}
                 >
-                  <option value="coins">Coins Reward</option>
-                  <option value="character">Character Reward</option>
-                  <option value="ticket">Ticket Reward</option>
-                  <option value="premium_ticket">Premium Ticket Reward</option>
+                  <option value="coins">{t('admin.couponForm.coinsReward')}</option>
+                  <option value="character">{t('admin.couponForm.characterReward')}</option>
+                  <option value="ticket">{t('admin.couponForm.ticketReward')}</option>
+                  <option value="premium_ticket">{t('admin.couponForm.premiumTicketReward')}</option>
                 </Select>
               </FormGroup>
 
               {formData.type === 'coins' ? (
                 <FormGroup>
-                  <Label><FaCoins /> Coin Value</Label>
+                  <Label><FaCoins /> {t('admin.couponForm.coinValue')}</Label>
                   <Input
                     type="number"
                     name="value"
@@ -155,14 +157,14 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                 </FormGroup>
               ) : formData.type === 'character' ? (
                 <FormGroup>
-                  <Label><FaUsers /> Character</Label>
+                  <Label><FaUsers /> {t('admin.character')}</Label>
                   <Select
                     name="characterId"
                     value={formData.characterId}
                     onChange={handleChange}
                     required
                   >
-                    <option value="">-- Select Character --</option>
+                    <option value="">{t('admin.couponForm.selectCharacter')}</option>
                     {characters.map(char => (
                       <option key={char.id} value={char.id}>
                         {char.name} ({char.series}) - {char.rarity}
@@ -172,7 +174,7 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                 </FormGroup>
               ) : formData.type === 'ticket' ? (
                 <FormGroup>
-                  <Label><FaTicketAlt /> Ticket Quantity</Label>
+                  <Label><FaTicketAlt /> {t('admin.couponForm.ticketQuantity')}</Label>
                   <Input
                     type="number"
                     name="value"
@@ -182,11 +184,11 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                     max="100"
                     required
                   />
-                  <FormHint>Number of regular gacha tickets to award</FormHint>
+                  <FormHint>{t('admin.couponForm.ticketQuantityHint')}</FormHint>
                 </FormGroup>
               ) : formData.type === 'premium_ticket' ? (
                 <FormGroup>
-                  <Label><FaGem /> Premium Ticket Quantity</Label>
+                  <Label><FaGem /> {t('admin.couponForm.premiumTicketQuantity')}</Label>
                   <Input
                     type="number"
                     name="value"
@@ -196,30 +198,30 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                     max="100"
                     required
                   />
-                  <FormHint>Number of premium gacha tickets to award</FormHint>
+                  <FormHint>{t('admin.couponForm.premiumTicketHint')}</FormHint>
                 </FormGroup>
               ) : null}
             </FormRow>
-            
+
             <FormRow>
               <FormGroup>
-                <Label>Maximum Total Uses</Label>
-                <Input 
-                  type="number" 
-                  name="maxUses" 
+                <Label>{t('admin.couponForm.maxTotalUses')}</Label>
+                <Input
+                  type="number"
+                  name="maxUses"
                   value={formData.maxUses}
                   onChange={handleChange}
                   min="-1"
-                  title="Use -1 for unlimited"
+                  title={t('admin.couponForm.unlimitedTitle')}
                 />
-                <FormHint>-1 for unlimited</FormHint>
+                <FormHint>{t('admin.couponForm.maxUsesHint')}</FormHint>
               </FormGroup>
-              
+
               <FormGroup>
-                <Label>Uses Per User</Label>
-                <Input 
-                  type="number" 
-                  name="usesPerUser" 
+                <Label>{t('admin.couponForm.usesPerUser')}</Label>
+                <Input
+                  type="number"
+                  name="usesPerUser"
                   value={formData.usesPerUser}
                   onChange={handleChange}
                   min="1"
@@ -227,36 +229,36 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                 />
               </FormGroup>
             </FormRow>
-            
+
             <FormRow>
               <FormGroup>
-                <Label><FaCalendarAlt /> Start Date</Label>
-                <Input 
-                  type="date" 
-                  name="startDate" 
+                <Label><FaCalendarAlt /> {t('admin.bannerForm.startDate')}</Label>
+                <Input
+                  type="date"
+                  name="startDate"
                   value={formData.startDate}
                   onChange={handleChange}
                 />
-                <FormHint>Leave empty for immediate start</FormHint>
+                <FormHint>{t('admin.couponForm.leaveEmptyImmediate')}</FormHint>
               </FormGroup>
-              
+
               <FormGroup>
-                <Label><FaCalendarAlt /> End Date</Label>
-                <Input 
-                  type="date" 
-                  name="endDate" 
+                <Label><FaCalendarAlt /> {t('admin.bannerForm.endDate')}</Label>
+                <Input
+                  type="date"
+                  name="endDate"
                   value={formData.endDate}
                   onChange={handleChange}
                 />
-                <FormHint>Leave empty for no expiration</FormHint>
+                <FormHint>{t('admin.couponForm.leaveEmptyNoExpiration')}</FormHint>
               </FormGroup>
             </FormRow>
-            
+
             <FormGroup>
               <CheckboxWrapper>
-                <Checkbox 
-                  type="checkbox" 
-                  name="isActive" 
+                <Checkbox
+                  type="checkbox"
+                  name="isActive"
                   id="isActive"
                   checked={formData.isActive}
                   onChange={handleChange}
@@ -265,15 +267,15 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                   <CheckboxIndicator $checked={formData.isActive}>
                     {formData.isActive && '✓'}
                   </CheckboxIndicator>
-                  Active
+                  {t('admin.active')}
                 </CheckboxLabel>
               </CheckboxWrapper>
             </FormGroup>
-            
+
             <ButtonGroup>
-              <CancelButton type="button" onClick={onClose}>Cancel</CancelButton>
+              <CancelButton type="button" onClick={onClose}>{t('common.cancel')}</CancelButton>
               <SubmitButton type="submit">
-                {coupon ? 'Update Coupon' : 'Create Coupon'}
+                {coupon ? t('admin.couponForm.updateCoupon') : t('admin.couponForm.createCoupon')}
               </SubmitButton>
             </ButtonGroup>
           </form>

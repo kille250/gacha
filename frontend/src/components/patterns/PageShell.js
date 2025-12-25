@@ -16,6 +16,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import {
   theme,
   motionVariants,
@@ -136,16 +137,17 @@ const PageShell = ({
   alertMessage,
   // State handling
   loading = false,
-  loadingMessage = 'Loading...',
+  loadingMessage,
   error = null,
   onRetry,
   empty = false,
   emptyIcon = <IconEmpty />,
-  emptyTitle = 'Nothing here',
-  emptyDescription = 'No items to display.',
+  emptyTitle,
+  emptyDescription,
   emptyActionLabel,
   onEmptyAction,
 }) => {
+  const { t } = useTranslation();
   // Respect user's reduced motion preference
   const prefersReducedMotion = useReducedMotion();
   const shouldAnimate = animate && !prefersReducedMotion;
@@ -156,7 +158,7 @@ const PageShell = ({
   if (loading) {
     return (
       <PageWrapper className={className}>
-        <LoadingState message={loadingMessage} fullPage />
+        <LoadingState message={loadingMessage || t('patterns.loading')} fullPage />
       </PageWrapper>
     );
   }
@@ -166,10 +168,10 @@ const PageShell = ({
     return (
       <PageWrapper className={className}>
         <ErrorState
-          title="Something went wrong"
+          title={t('patterns.somethingWentWrong')}
           message={error}
           onRetry={onRetry}
-          retryLabel="Try Again"
+          retryLabel={t('patterns.tryAgain')}
         />
       </PageWrapper>
     );
@@ -191,8 +193,8 @@ const PageShell = ({
           )}
           <EmptyState
             icon={emptyIcon}
-            title={emptyTitle}
-            description={emptyDescription}
+            title={emptyTitle || t('patterns.nothingHere')}
+            description={emptyDescription || t('patterns.noItemsToDisplay')}
             actionLabel={emptyActionLabel}
             onAction={onEmptyAction}
           />

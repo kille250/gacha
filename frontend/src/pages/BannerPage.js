@@ -541,11 +541,11 @@ const BannerPage = () => {
         // Validate INSIDE the lock to prevent race conditions from rapid clicks
         if (useTicket) {
           if (ticketType === 'premium' && tickets.premiumTickets < 1) {
-            setError('No premium tickets available');
+            setError(t('banner.noPremiumTickets'));
             return;
           }
           if (ticketType === 'roll' && tickets.rollTickets < 1) {
-            setError('No roll tickets available');
+            setError(t('banner.noRollTickets'));
             return;
           }
         } else if (user?.points < singlePullCost) {

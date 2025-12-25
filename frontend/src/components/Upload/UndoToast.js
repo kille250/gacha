@@ -12,6 +12,7 @@ import React, { memo, useEffect, useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUndo, FaTimes } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { prefersReducedMotion } from '../../utils/featureFlags';
 
@@ -23,6 +24,7 @@ const UndoToast = memo(({
   onUndo,
   onDismiss,
 }) => {
+  const { t } = useTranslation();
   const [timeLeft, setTimeLeft] = useState(TOAST_DURATION);
   const reducedMotion = prefersReducedMotion();
 
@@ -75,16 +77,16 @@ const UndoToast = memo(({
           <ProgressBar style={{ width: `${progress}%` }} />
           <ToastContent>
             <ToastMessage>
-              <strong>File removed:</strong> {fileName || 'Unknown file'}
+              <strong>{t('upload.fileRemoved')}</strong> {fileName || t('upload.unknownFile')}
             </ToastMessage>
             <ToastActions>
               <UndoButton onClick={onUndo} type="button">
                 <FaUndo aria-hidden="true" />
-                <span>Undo</span>
+                <span>{t('upload.undo')}</span>
               </UndoButton>
               <DismissButton
                 onClick={onDismiss}
-                aria-label="Dismiss"
+                aria-label={t('upload.dismiss')}
                 type="button"
               >
                 <FaTimes aria-hidden="true" />
