@@ -57,8 +57,8 @@ const RollPage = () => {
   const navigate = useNavigate();
   const { user, refreshUser, setUser } = useContext(AuthContext);
   
-  // Action lock to prevent rapid double-clicks
-  const { withLock, locked } = useActionLock(300);
+  // Action lock to prevent rapid double-clicks (reduced from 300ms for snappier feel)
+  const { withLock, locked } = useActionLock(200);
   
   // Auto-dismissing error state
   const [error, setError] = useAutoDismissError();
@@ -1004,18 +1004,18 @@ const ResultsArea = styled.div`
   margin-bottom: ${theme.spacing.xl};
 `;
 
-// Character Card
+// Character Card - refined shadows for premium feel
 const CharacterCard = styled(motion.div)`
   background: rgba(255, 255, 255, 0.04);
   border-radius: 20px;
   overflow: hidden;
   width: 100%;
   max-width: 320px;
-  border: 1px solid ${props => props.$color}60;
-  box-shadow: 
+  border: 1px solid ${props => props.$color}50;
+  box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.05) inset,
-    0 25px 50px -12px rgba(0, 0, 0, 0.5),
-    0 0 40px ${props => props.$color}20;
+    0 20px 40px -12px rgba(0, 0, 0, 0.45),
+    0 0 24px ${props => props.$color}18;
 `;
 
 const CardImageWrapper = styled.div`
@@ -1272,17 +1272,51 @@ const EmptyState = styled(motion.div)`
   border-radius: 20px;
   border: 1px dashed rgba(255, 255, 255, 0.1);
   max-width: 300px;
+  position: relative;
+  overflow: hidden;
+
+  /* Subtle ambient animation */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(
+      circle at 50% 30%,
+      rgba(88, 86, 214, 0.08) 0%,
+      transparent 60%
+    );
+    opacity: 0;
+    animation: ambientPulse 4s ease-in-out infinite;
+  }
+
+  @keyframes ambientPulse {
+    0%, 100% { opacity: 0; }
+    50% { opacity: 1; }
+  }
+
+  /* Respect reduced motion preference */
+  @media (prefers-reduced-motion: reduce) {
+    &::before {
+      animation: none;
+      opacity: 0.5;
+    }
+  }
 `;
 
 const EmptyIcon = styled.div`
   font-size: 48px;
   margin-bottom: 16px;
   opacity: 0.9;
-  animation: float 4s ease-in-out infinite;
-  
-  @keyframes float {
-    0%, 100% { transform: translateY(0); }
-    50% { transform: translateY(-6px); }
+  position: relative;
+  z-index: 1;
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: float 4s ease-in-out infinite;
+
+    @keyframes float {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-6px); }
+    }
   }
 `;
 
@@ -1291,6 +1325,8 @@ const EmptyTitle = styled.h3`
   font-weight: 600;
   margin: 0 0 8px;
   letter-spacing: -0.02em;
+  position: relative;
+  z-index: 1;
 `;
 
 const EmptyText = styled.p`
@@ -1298,6 +1334,8 @@ const EmptyText = styled.p`
   color: ${theme.colors.textTertiary};
   margin: 0;
   line-height: 1.5;
+  position: relative;
+  z-index: 1;
 `;
 
 // Controls Section - Redesigned for better UX
@@ -1320,7 +1358,7 @@ const PullActionsContainer = styled.div`
   gap: 16px;
 `;
 
-// Primary Pull Card - The main CTA
+// Primary Pull Card - The main CTA with enhanced feedback
 const PrimaryPullCard = styled(motion.button)`
   display: flex;
   align-items: center;
@@ -1331,17 +1369,35 @@ const PrimaryPullCard = styled(motion.button)`
   border: none;
   border-radius: 16px;
   cursor: pointer;
-  box-shadow: 
-    0 8px 32px rgba(88, 86, 214, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-  transition: all 0.2s ease;
-  
+  box-shadow:
+    0 6px 24px rgba(88, 86, 214, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
+
+  /* Immediate visual feedback on press */
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+    box-shadow:
+      0 4px 16px rgba(88, 86, 214, 0.25),
+      0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  }
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     box-shadow: none;
   }
-  
+
+  /* Focus state for accessibility */
+  &:focus-visible {
+    outline: none;
+    box-shadow:
+      0 6px 24px rgba(88, 86, 214, 0.3),
+      0 0 0 3px rgba(88, 86, 214, 0.4);
+  }
+
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: 16px 20px;
     gap: 12px;
@@ -1420,25 +1476,36 @@ const MultiPullCard = styled(motion.button)`
   justify-content: center;
   padding: 16px 12px;
   min-height: 90px;
-  background: ${props => props.$canAfford 
-    ? props.$isRecommended 
-      ? 'linear-gradient(135deg, rgba(255, 159, 10, 0.2), rgba(255, 120, 0, 0.15))'
+  background: ${props => props.$canAfford
+    ? props.$isRecommended
+      ? 'linear-gradient(135deg, rgba(245, 166, 35, 0.18), rgba(245, 130, 20, 0.12))'
       : 'rgba(255, 255, 255, 0.06)'
     : 'rgba(255, 255, 255, 0.02)'};
-  border: 1px solid ${props => props.$canAfford 
-    ? props.$isRecommended 
-      ? 'rgba(255, 159, 10, 0.5)'
+  border: 1px solid ${props => props.$canAfford
+    ? props.$isRecommended
+      ? 'rgba(245, 166, 35, 0.45)'
       : 'rgba(255, 255, 255, 0.12)'
     : 'rgba(255, 255, 255, 0.05)'};
   border-radius: 14px;
   cursor: ${props => props.$canAfford ? 'pointer' : 'not-allowed'};
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   overflow: hidden;
-  
+
+  /* Immediate visual feedback on press */
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
+
   &:disabled {
     opacity: ${props => props.$canAfford ? 1 : 0.4};
   }
-  
+
+  /* Focus state for accessibility */
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(88, 86, 214, 0.4);
+  }
+
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: 12px 8px;
     min-height: 80px;
@@ -1450,12 +1517,12 @@ const RecommendedTag = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(90deg, #ff9f0a, #ff6b00);
+  background: linear-gradient(90deg, #f5a623, #e8940c);
   color: white;
   font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   padding: 3px 0;
   text-align: center;
 `;

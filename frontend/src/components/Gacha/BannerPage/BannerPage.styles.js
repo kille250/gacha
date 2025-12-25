@@ -376,8 +376,10 @@ export const CharacterCard = styled(motion.div)`
   overflow: hidden;
   width: 100%;
   max-width: 340px;
-  border: 2px solid ${props => props.$color};
-  box-shadow: ${props => props.$glow}, ${theme.shadows.lg};
+  border: 2px solid ${props => props.$color}90;
+  box-shadow:
+    0 20px 40px -12px rgba(0, 0, 0, 0.45),
+    0 0 20px ${props => props.$color}15;
 `;
 
 export const CardImageWrapper = styled.div`
@@ -699,14 +701,32 @@ export const PrimaryPullCard = styled(motion.button)`
   border-radius: 16px;
   cursor: pointer;
   box-shadow:
-    0 8px 32px rgba(88, 86, 214, 0.35),
-    0 0 0 1px rgba(255, 255, 255, 0.1) inset;
-  transition: all 0.2s ease;
+    0 6px 24px rgba(88, 86, 214, 0.3),
+    0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  transition: all 0.15s ease;
+  position: relative;
+  overflow: hidden;
+
+  /* Immediate visual feedback on press */
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+    box-shadow:
+      0 4px 16px rgba(88, 86, 214, 0.25),
+      0 0 0 1px rgba(255, 255, 255, 0.08) inset;
+  }
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
     box-shadow: none;
+  }
+
+  /* Focus state for accessibility */
+  &:focus-visible {
+    outline: none;
+    box-shadow:
+      0 6px 24px rgba(88, 86, 214, 0.3),
+      0 0 0 3px rgba(88, 86, 214, 0.4);
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {
@@ -790,21 +810,32 @@ export const MultiPullCard = styled(motion.button)`
   min-height: 90px;
   background: ${props => props.$canAfford
     ? props.$isRecommended
-      ? 'linear-gradient(135deg, rgba(255, 159, 10, 0.2), rgba(255, 120, 0, 0.15))'
+      ? 'linear-gradient(135deg, rgba(245, 166, 35, 0.18), rgba(245, 130, 20, 0.12))'
       : 'rgba(255, 255, 255, 0.06)'
     : 'rgba(255, 255, 255, 0.02)'};
   border: 1px solid ${props => props.$canAfford
     ? props.$isRecommended
-      ? 'rgba(255, 159, 10, 0.5)'
+      ? 'rgba(245, 166, 35, 0.45)'
       : 'rgba(255, 255, 255, 0.12)'
     : 'rgba(255, 255, 255, 0.05)'};
   border-radius: 14px;
   cursor: ${props => props.$canAfford ? 'pointer' : 'not-allowed'};
-  transition: all 0.2s ease;
+  transition: all 0.15s ease;
   overflow: hidden;
+
+  /* Immediate visual feedback on press */
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
 
   &:disabled {
     opacity: ${props => props.$canAfford ? 1 : 0.4};
+  }
+
+  /* Focus state for accessibility */
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(88, 86, 214, 0.4);
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {
@@ -818,12 +849,12 @@ export const RecommendedTag = styled.div`
   top: 0;
   left: 0;
   right: 0;
-  background: linear-gradient(90deg, #ff9f0a, #ff6b00);
+  background: linear-gradient(90deg, #f5a623, #e8940c);
   color: white;
   font-size: 9px;
   font-weight: 800;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 0.8px;
   padding: 3px 0;
   text-align: center;
 `;

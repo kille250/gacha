@@ -52,6 +52,7 @@ export const easing = {
  * Spring Configurations (Framer Motion)
  *
  * Natural spring physics for interactive elements.
+ * Tuned for Apple-like weight and intentionality.
  */
 export const springs = {
   // Snappy - buttons, toggles
@@ -60,14 +61,20 @@ export const springs = {
   // Gentle - cards, panels
   gentle: { type: 'spring', stiffness: 300, damping: 25, mass: 1 },
 
-  // Bouncy - celebratory elements
-  bouncy: { type: 'spring', stiffness: 350, damping: 15, mass: 0.8 },
+  // Bouncy - celebratory elements (slightly damped for premium feel)
+  bouncy: { type: 'spring', stiffness: 320, damping: 18, mass: 0.9 },
 
   // Smooth - modals, overlays
   smooth: { type: 'spring', stiffness: 200, damping: 25, mass: 1 },
 
   // Quick - micro interactions
-  quick: { type: 'spring', stiffness: 500, damping: 30, mass: 0.5 }
+  quick: { type: 'spring', stiffness: 500, damping: 30, mass: 0.5 },
+
+  // Reveal - gacha card reveals (heavier, more confident)
+  reveal: { type: 'spring', stiffness: 280, damping: 22, mass: 1.2 },
+
+  // Anticipation - building tension before reveal
+  anticipation: { type: 'spring', stiffness: 150, damping: 20, mass: 1.5 }
 };
 
 // CSS Keyframes
@@ -136,25 +143,46 @@ export const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
-// Glow animation for legendary items - reduced for Apple aesthetic
+// Glow animation for legendary items - refined for premium feel
 export const glow = keyframes`
   0%, 100% {
-    box-shadow: 0 0 14px var(--glow-color, rgba(255, 167, 38, 0.25)),
-                0 0 28px var(--glow-color, rgba(255, 167, 38, 0.12));
+    box-shadow: 0 0 12px var(--glow-color, rgba(245, 166, 35, 0.2)),
+                0 0 24px var(--glow-color, rgba(245, 166, 35, 0.1));
   }
   50% {
-    box-shadow: 0 0 20px var(--glow-color, rgba(255, 167, 38, 0.35)),
-                0 0 40px var(--glow-color, rgba(255, 167, 38, 0.18));
+    box-shadow: 0 0 18px var(--glow-color, rgba(245, 166, 35, 0.28)),
+                0 0 36px var(--glow-color, rgba(245, 166, 35, 0.14));
   }
 `;
 
-// Subtle glow for epic items - softer
+// Subtle glow for epic items - softer, more elegant
 export const glowSubtle = keyframes`
   0%, 100% {
-    box-shadow: 0 0 10px var(--glow-color, rgba(191, 90, 242, 0.2));
+    box-shadow: 0 0 8px var(--glow-color, rgba(168, 85, 247, 0.18));
   }
   50% {
-    box-shadow: 0 0 16px var(--glow-color, rgba(191, 90, 242, 0.32));
+    box-shadow: 0 0 14px var(--glow-color, rgba(168, 85, 247, 0.26));
+  }
+`;
+
+// Card reveal blur-to-sharp transition
+export const revealBlur = keyframes`
+  0% { filter: blur(8px); opacity: 0; }
+  100% { filter: blur(0px); opacity: 1; }
+`;
+
+// Subtle dust particles for legendary reveals
+export const dustFloat = keyframes`
+  0% {
+    transform: translateY(0) translateX(0) scale(1);
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(-20px) translateX(10px) scale(0.5);
+    opacity: 0;
   }
 `;
 
@@ -442,6 +470,8 @@ const animations = {
   glowSubtle,
   sparkle,
   focusRing,
+  revealBlur,
+  dustFloat,
 
   // Timing & easing
   timing,

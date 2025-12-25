@@ -12,67 +12,68 @@ import { onVisibilityChange, STALE_THRESHOLDS } from '../cache';
 const RarityContext = createContext(null);
 
 // Default fallback values (matches the backend defaults)
+// Colors refined for Apple-like premium aesthetic - slightly desaturated, warmer
 const DEFAULT_RARITY_CONFIG = {
   colors: {
-    common: '#8e8e93',
-    uncommon: '#30d158',
-    rare: '#0a84ff',
-    epic: '#bf5af2',
-    legendary: '#ff9f0a'
+    common: '#8e8e93',      // System gray - unchanged
+    uncommon: '#34c759',    // Slightly warmer green
+    rare: '#3b82f6',        // Softer blue
+    epic: '#a855f7',        // Elegant violet
+    legendary: '#f5a623'    // Warm gold (not orange)
   },
   animation: {
     common: {
       color: '#8e8e93',
       accentColor: '#a8a8ad',
-      glowIntensity: 0.3,
-      buildupTime: 800,
-      confettiCount: 0,
-      orbCount: 3,
+      glowIntensity: 0.2,
+      buildupTime: 500,      // Reduced - respect user time
+      confettiCount: 12,     // Small celebration even for commons
+      orbCount: 2,           // Simplified
       ringCount: 1
     },
     uncommon: {
-      color: '#30d158',
+      color: '#34c759',
       accentColor: '#5fe07a',
-      glowIntensity: 0.5,
-      buildupTime: 1000,
-      confettiCount: 30,
-      orbCount: 4,
+      glowIntensity: 0.35,
+      buildupTime: 700,      // Reduced from 1000
+      confettiCount: 35,
+      orbCount: 3,
       ringCount: 1
     },
     rare: {
-      color: '#0a84ff',
-      accentColor: '#409cff',
-      glowIntensity: 0.7,
-      buildupTime: 1400,
-      confettiCount: 80,
-      orbCount: 5,
+      color: '#3b82f6',
+      accentColor: '#60a5fa',
+      glowIntensity: 0.5,
+      buildupTime: 1100,     // Reduced from 1400
+      confettiCount: 70,
+      orbCount: 4,
       ringCount: 2
     },
     epic: {
-      color: '#bf5af2',
-      accentColor: '#d183f5',
-      glowIntensity: 0.85,
-      buildupTime: 1800,
-      confettiCount: 120,
-      orbCount: 6,
+      color: '#a855f7',
+      accentColor: '#c084fc',
+      glowIntensity: 0.65,
+      buildupTime: 1400,     // Reduced from 1800
+      confettiCount: 100,
+      orbCount: 5,           // Reduced from 6
       ringCount: 2
     },
     legendary: {
-      color: '#ff9f0a',
-      accentColor: '#ffc040',
-      glowIntensity: 1.0,
-      buildupTime: 2200,
-      confettiCount: 200,
-      orbCount: 8,
-      ringCount: 3
+      color: '#f5a623',
+      accentColor: '#fbbf24',
+      glowIntensity: 0.8,    // Reduced from 1.0 - more elegant
+      buildupTime: 1700,     // Reduced from 2200
+      confettiCount: 150,    // Reduced from 200
+      orbCount: 5,           // Reduced from 8 - less clutter
+      ringCount: 2           // Reduced from 3
     }
   },
   ordered: [
     { name: 'common', displayName: 'Common', color: '#8e8e93', order: 1, isPityEligible: false },
-    { name: 'uncommon', displayName: 'Uncommon', color: '#30d158', order: 2, isPityEligible: false },
-    { name: 'rare', displayName: 'Rare', color: '#0a84ff', order: 3, isPityEligible: true },
-    { name: 'epic', displayName: 'Epic', color: '#bf5af2', order: 4, isPityEligible: true },
-    { name: 'legendary', displayName: 'Legendary', color: '#ff9f0a', order: 5, isPityEligible: true }
+    { name: 'uncommon', displayName: 'Uncommon', color: '#34c759', order: 2, isPityEligible: false },
+    { name: 'rare', displayName: 'Rare', color: '#3b82f6', order: 3, isPityEligible: true },
+    { name: 'epic', displayName: 'Epic', color: '#a855f7', order: 4, isPityEligible: true },
+    { name: 'legendary', displayName: 'Legendary', color: '#f5a623', order: 5, isPityEligible: true }
   ],
   dropRates: {
     standard: { single: {}, multi: {} },

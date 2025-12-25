@@ -21,11 +21,20 @@ const getIconByOrder = (order) => {
 const DEFAULT_ANIMATION_CONFIG = {
   color: '#8e8e93',
   accentColor: '#a8a8ad',
-  glowIntensity: 0.3,
-  buildupTime: 800,
-  confettiCount: 0,
-  orbCount: 3,
+  glowIntensity: 0.2,
+  buildupTime: 500,
+  confettiCount: 12,
+  orbCount: 2,
   ringCount: 1
+};
+
+// Phase timing constants for better control
+const PHASE_TIMINGS = {
+  SKIP_HINT_DELAY: 400,      // Show skip hint earlier
+  FLASH_DURATION: 150,       // Quicker, more impactful flash
+  REVEAL_OFFSET: 80,         // Overlap flash and reveal slightly
+  COMPLETE_OFFSET: 500,      // Faster to continue button
+  LINGER_DURATION: 200       // Brief pause for appreciation
 };
 
 // ==================== ANIMATION PHASES ====================
@@ -51,7 +60,8 @@ export const SummonAnimation = ({
   currentPull = 1,
   totalPulls = 1,
   onSkipAll,
-  ambientRarity = null
+  ambientRarity = null,
+  timingMultiplier = 1.0  // For accelerating multi-pull animations
 }) => {
   const [phase, setPhase] = useState(PHASES.IDLE);
   const [showSkipHint, setShowSkipHint] = useState(false);
@@ -85,91 +95,133 @@ export const SummonAnimation = ({
     return {
       ...DEFAULT_ANIMATION_CONFIG,
       ...animConfig,
+      // Apply timing multiplier for accelerating multi-pulls
+      buildupTime: Math.round((animConfig?.buildupTime || DEFAULT_ANIMATION_CONFIG.buildupTime) * timingMultiplier),
       icon: getIconByOrder(rarityInfo?.order || 1)
     };
-  }, [effectRarity, getRarityAnimation, ordered]);
+  }, [effectRarity, getRarityAnimation, ordered, timingMultiplier]);
 
   const clearAllTimers = useCallback(() => {
     timersRef.current.forEach(timer => clearTimeout(timer));
     timersRef.current = [];
   }, []);
 
-  // Fire confetti celebration
+  // Fire confetti celebration - refined for premium feel
   const fireConfetti = useCallback(() => {
     if (ambientConfig.confettiCount === 0) return;
-    
+
     const colors = [ambientConfig.color, ambientConfig.accentColor, '#ffffff'];
-    
-    // Main burst
+
+    // Check for reduced motion preference
+    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (prefersReducedMotion) {
+      // Minimal confetti for accessibility
+      confetti({
+        particleCount: Math.min(20, ambientConfig.confettiCount),
+        spread: 60,
+        origin: { y: 0.5, x: 0.5 },
+        colors,
+        startVelocity: 20,
+        gravity: 1.2,
+        ticks: 50,
+        disableForReducedMotion: false // We handle it ourselves
+      });
+      return;
+    }
+
+    // Main burst - refined physics
     confetti({
       particleCount: ambientConfig.confettiCount,
-      spread: 80,
+      spread: 70,
       origin: { y: 0.45, x: 0.5 },
       colors,
-      startVelocity: 35,
-      gravity: 0.9,
+      startVelocity: 30,
+      gravity: 1.0,
       shapes: ['circle', 'square'],
-      scalar: 1.1,
-      ticks: 100
+      scalar: 1.0,
+      ticks: 80,
+      drift: 0
     });
 
-    // Side bursts for legendary/epic
+    // Side bursts for legendary/epic - more elegant timing
     if (effectRarity === 'legendary' || effectRarity === 'epic') {
       setTimeout(() => {
         confetti({
-          particleCount: 40,
+          particleCount: 30,
           angle: 60,
-          spread: 45,
-          origin: { x: 0, y: 0.5 },
-          colors
+          spread: 40,
+          origin: { x: 0.1, y: 0.5 },
+          colors,
+          startVelocity: 25,
+          gravity: 1.0
         });
         confetti({
-          particleCount: 40,
+          particleCount: 30,
           angle: 120,
-          spread: 45,
-          origin: { x: 1, y: 0.5 },
-          colors
+          spread: 40,
+          origin: { x: 0.9, y: 0.5 },
+          colors,
+          startVelocity: 25,
+          gravity: 1.0
         });
-      }, 150);
+      }, 100);
     }
   }, [ambientConfig, effectRarity]);
 
-  // Start animation sequence
+  // Check for reduced motion preference
+  const prefersReducedMotion = useMemo(() => {
+    if (typeof window === 'undefined') return false;
+    return window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+  }, []);
+
+  // Start animation sequence - refined timing for better flow
   useEffect(() => {
     if (isActive && !hasStartedRef.current) {
       hasStartedRef.current = true;
+
+      // For reduced motion, skip directly to reveal
+      if (prefersReducedMotion) {
+        setPhase(PHASES.REVEAL);
+        fireConfetti();
+        const completeTimer = setTimeout(() => {
+          setPhase(PHASES.COMPLETE);
+        }, 300);
+        timersRef.current.push(completeTimer);
+        return;
+      }
+
       setPhase(PHASES.BUILDUP);
       setShowSkipHint(false);
 
-      // Show skip hint after brief delay
-      const skipTimer = setTimeout(() => setShowSkipHint(true), 600);
+      // Show skip hint earlier for better UX
+      const skipTimer = setTimeout(() => setShowSkipHint(true), PHASE_TIMINGS.SKIP_HINT_DELAY);
       timersRef.current.push(skipTimer);
 
-      // Flash phase - the climax
+      // Flash phase - quick and impactful
       const flashTimer = setTimeout(() => {
         setPhase(PHASES.FLASH);
         fireConfetti();
       }, ambientConfig.buildupTime);
       timersRef.current.push(flashTimer);
 
-      // Reveal phase
+      // Reveal phase - slight overlap with flash for seamless transition
       const revealTimer = setTimeout(() => {
         setPhase(PHASES.REVEAL);
-      }, ambientConfig.buildupTime + 300);
+      }, ambientConfig.buildupTime + PHASE_TIMINGS.REVEAL_OFFSET);
       timersRef.current.push(revealTimer);
 
-      // Complete - ready for dismiss
+      // Complete - ready for dismiss (faster for snappier feel)
       const completeTimer = setTimeout(() => {
         setPhase(PHASES.COMPLETE);
         setShowSkipHint(false);
-      }, ambientConfig.buildupTime + 900);
+      }, ambientConfig.buildupTime + PHASE_TIMINGS.COMPLETE_OFFSET);
       timersRef.current.push(completeTimer);
     }
-    
+
     return () => {
       if (!isActive) clearAllTimers();
     };
-  }, [isActive, ambientConfig.buildupTime, fireConfetti, clearAllTimers]);
+  }, [isActive, ambientConfig.buildupTime, fireConfetti, clearAllTimers, prefersReducedMotion]);
 
   // Reset when inactive
   useEffect(() => {
@@ -280,37 +332,46 @@ export const SummonAnimation = ({
           )}
         </AnimatePresence>
 
-        {/* Flash Effect */}
+        {/* Flash Effect - Quick and impactful */}
         <AnimatePresence>
           {phase === PHASES.FLASH && (
             <FlashOverlay
-              initial={{ opacity: 1 }}
+              initial={{ opacity: 0.9 }}
               animate={{ opacity: 0 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.4, ease: "easeOut" }}
+              transition={{
+                duration: PHASE_TIMINGS.FLASH_DURATION / 1000,
+                ease: [0.4, 0, 0.2, 1] // Material decelerate
+              }}
               $color={effectRarityColor}
             />
           )}
         </AnimatePresence>
 
-        {/* Character Reveal */}
+        {/* Character Reveal - Refined entrance with blur-to-sharp */}
         <AnimatePresence>
           {isRevealed && character && (
             <CardContainer
-              initial={{ scale: 0.5, opacity: 0, y: 60, rotateX: 20 }}
-              animate={{ 
-                scale: 1, 
-                opacity: 1, 
+              initial={{
+                scale: 0.92,
+                opacity: 0,
+                y: 24,
+                filter: 'blur(8px)'
+              }}
+              animate={{
+                scale: 1,
+                opacity: 1,
                 y: 0,
-                rotateX: 0,
+                filter: 'blur(0px)',
                 transition: {
                   type: "spring",
-                  damping: 20,
-                  stiffness: 200,
-                  mass: 0.8
+                  damping: 22,
+                  stiffness: 280,
+                  mass: 1.2,
+                  filter: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }
                 }
               }}
-              exit={{ scale: 0.9, opacity: 0, y: -30 }}
+              exit={{ scale: 0.95, opacity: 0, y: -16 }}
             >
               <CharacterCard>
                 <CardShine />
@@ -338,7 +399,7 @@ export const SummonAnimation = ({
                   <CharacterSeries>{character.series}</CharacterSeries>
                 </CardInfo>
                 
-                <CardGlowBorder $color={rarityColor} />
+                <CardGlowBorder $color={rarityColor} $rarity={rarity} />
               </CharacterCard>
             </CardContainer>
           )}
@@ -656,10 +717,27 @@ const CardGlowBorder = styled.div`
   inset: 0;
   border-radius: 20px;
   border: 2px solid ${props => props.$color};
-  box-shadow: 
-    0 0 30px ${props => props.$color}50,
-    inset 0 0 30px ${props => props.$color}15;
+  box-shadow:
+    0 0 18px ${props => props.$color}35,
+    inset 0 0 20px ${props => props.$color}10;
   pointer-events: none;
+
+  /* Subtle glow animation for rare+ */
+  ${props => props.$rarity === 'legendary' && `
+    animation: legendaryGlow 2.5s ease-in-out infinite;
+    @keyframes legendaryGlow {
+      0%, 100% { box-shadow: 0 0 18px ${props.$color}35, inset 0 0 20px ${props.$color}10; }
+      50% { box-shadow: 0 0 24px ${props.$color}45, inset 0 0 24px ${props.$color}15; }
+    }
+  `}
+
+  ${props => props.$rarity === 'epic' && `
+    animation: epicGlow 3s ease-in-out infinite;
+    @keyframes epicGlow {
+      0%, 100% { box-shadow: 0 0 16px ${props.$color}30, inset 0 0 18px ${props.$color}08; }
+      50% { box-shadow: 0 0 22px ${props.$color}40, inset 0 0 22px ${props.$color}12; }
+    }
+  `}
 `;
 
 const CardImageContainer = styled.div`
@@ -723,22 +801,24 @@ const RarityBadge = styled.div`
 `;
 
 const CharacterName = styled.h2`
-  margin: 0 0 6px;
-  font-size: 22px;
+  margin: 0 0 8px;
+  font-size: 26px;
   font-weight: 700;
   color: white;
   letter-spacing: -0.02em;
-  
+  line-height: 1.2;
+
   @media (max-width: 768px) {
-    font-size: 20px;
+    font-size: 22px;
   }
 `;
 
 const CharacterSeries = styled.p`
   margin: 0;
-  font-size: 13px;
+  font-size: 12px;
   color: ${theme.colors.textSecondary};
   letter-spacing: 0.02em;
+  opacity: 0.85;
 `;
 
 // Bottom Controls
@@ -852,14 +932,25 @@ const RARITY_ORDER = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
 
 const getHighestRarity = (characters) => {
   if (!characters || characters.length === 0) return 'common';
-  
+
   let highestIndex = 0;
   characters.forEach(char => {
     const index = RARITY_ORDER.indexOf(char.rarity);
     if (index > highestIndex) highestIndex = index;
   });
-  
+
   return RARITY_ORDER[highestIndex];
+};
+
+// Accelerating timing for multi-pulls - faster as you go
+const getMultiPullTimingMultiplier = (index, total) => {
+  if (total <= 3) return 1.0; // Short pulls stay normal
+  // First 2 cards: full animation
+  if (index < 2) return 1.0;
+  // Next 3 cards: 75% speed
+  if (index < 5) return 0.75;
+  // Remaining: 60% speed
+  return 0.6;
 };
 
 export const MultiSummonAnimation = ({
@@ -872,11 +963,17 @@ export const MultiSummonAnimation = ({
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSkippedResults, setShowSkippedResults] = useState(false);
   const hasCompletedRef = useRef(false); // Guard against double-click
-  
+
   // Get dynamic rarity colors from context
   const { getRarityColor } = useRarity();
-  
+
   const highestRarity = getHighestRarity(characters);
+
+  // Calculate timing multiplier for current pull (used for accelerating animation)
+  const timingMultiplier = useMemo(() =>
+    getMultiPullTimingMultiplier(currentIndex, characters.length),
+    [currentIndex, characters.length]
+  );
 
   useEffect(() => {
     if (!isActive) {
@@ -931,9 +1028,14 @@ export const MultiSummonAnimation = ({
               <ResultCard
                 key={index}
                 $color={getRarityColor(char.rarity)}
-                initial={{ opacity: 0, scale: 0.8, y: 20 }}
+                initial={{ opacity: 0, scale: 0.85, y: 16 }}
                 animate={{ opacity: 1, scale: 1, y: 0 }}
-                transition={{ delay: index * 0.02, type: "spring", damping: 15 }}
+                transition={{
+                  delay: index * 0.035,  // Slightly slower cascade for elegance
+                  type: "spring",
+                  damping: 20,
+                  stiffness: 300
+                }}
               >
                 <ResultImageWrapper>
                   {isVideo(char.image) ? (
@@ -975,6 +1077,7 @@ export const MultiSummonAnimation = ({
       totalPulls={characters.length}
       onSkipAll={handleSkipAll}
       ambientRarity={highestRarity}
+      timingMultiplier={timingMultiplier}
     />
   );
 };
