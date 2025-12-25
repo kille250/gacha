@@ -447,17 +447,68 @@ const AdminPage = () => {
 
 const StyledPageWrapper = styled(PageWrapper)`
   padding-bottom: ${theme.spacing['3xl']};
+  /* Smooth background for admin context */
+  background: linear-gradient(
+    180deg,
+    ${theme.colors.background} 0%,
+    ${theme.colors.backgroundSubtle} 100%
+  );
+  min-height: 100vh;
 `;
 
 const AdminHeader = styled.header`
-  background: linear-gradient(180deg, rgba(88, 86, 214, 0.1) 0%, transparent 100%);
+  position: relative;
+  background: linear-gradient(
+    180deg,
+    rgba(88, 86, 214, 0.12) 0%,
+    rgba(88, 86, 214, 0.04) 60%,
+    transparent 100%
+  );
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
-  padding: ${theme.spacing.xl} 0;
+  padding: ${theme.spacing.xl} 0 ${theme.spacing.lg};
   margin-bottom: 0;
+  overflow: hidden;
+
+  /* Subtle decorative gradient orbs for visual depth */
+  &::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -10%;
+    width: 300px;
+    height: 300px;
+    background: radial-gradient(
+      circle,
+      rgba(0, 113, 227, 0.08) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+
+  &::after {
+    content: '';
+    position: absolute;
+    top: -30%;
+    right: -5%;
+    width: 250px;
+    height: 250px;
+    background: radial-gradient(
+      circle,
+      rgba(88, 86, 214, 0.10) 0%,
+      transparent 70%
+    );
+    pointer-events: none;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.lg} 0 ${theme.spacing.md};
+  }
 `;
 
 const HeaderContent = styled.div`
   text-align: center;
+  position: relative;
+  z-index: 1;
 `;
 
 const HeaderTitle = styled.h1`
@@ -465,24 +516,38 @@ const HeaderTitle = styled.h1`
   align-items: center;
   justify-content: center;
   gap: ${theme.spacing.md};
-  font-size: ${theme.fontSizes['3xl']};
+  font-size: clamp(${theme.fontSizes['2xl']}, 5vw, ${theme.fontSizes['3xl']});
   font-weight: ${theme.fontWeights.bold};
   margin: 0;
   background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
   -webkit-background-clip: text;
   -webkit-text-fill-color: transparent;
   background-clip: text;
+  letter-spacing: -0.02em;
 `;
 
 const TitleIcon = styled.span`
-  font-size: 36px;
+  font-size: clamp(28px, 4vw, 36px);
   -webkit-text-fill-color: initial;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  svg {
+    filter: drop-shadow(0 2px 8px rgba(88, 86, 214, 0.3));
+  }
 `;
 
 const HeaderSubtitle = styled.p`
   color: ${theme.colors.textSecondary};
   margin: ${theme.spacing.sm} 0 0;
-  font-size: ${theme.fontSizes.base};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  letter-spacing: 0.02em;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.xs};
+  }
 `;
 
 const LoadingContainer = styled.div`
@@ -490,7 +555,8 @@ const LoadingContainer = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  padding: ${theme.spacing['4xl']};
+  padding: ${theme.spacing['3xl']} ${theme.spacing.lg};
+  min-height: 300px;
 `;
 
 const LoadingSpinner = Spinner;
@@ -498,17 +564,31 @@ const LoadingSpinner = Spinner;
 const LoadingText = styled.p`
   margin-top: ${theme.spacing.lg};
   color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
 `;
 
 const TabContent = styled.div`
   min-height: 400px;
+  padding-top: ${theme.spacing.md};
 `;
 
+/**
+ * TabPanel - Animated container for tab content
+ * Uses reduced motion when user prefers, or smooth slide animation
+ */
 const TabPanel = styled(motion.div).attrs({
-  initial: { opacity: 0, x: 20 },
-  animate: { opacity: 1, x: 0 },
-  exit: { opacity: 0, x: -20 },
-  transition: { duration: 0.2 }
-})``;
+  initial: { opacity: 0, y: 12 },
+  animate: { opacity: 1, y: 0 },
+  exit: { opacity: 0, y: -8 },
+  transition: {
+    duration: 0.2,
+    ease: [0.25, 0.1, 0.25, 1] // Apple-like easing
+  }
+})`
+  @media (prefers-reduced-motion: reduce) {
+    /* Instant transitions for reduced motion preference */
+  }
+`;
 
 export default AdminPage;

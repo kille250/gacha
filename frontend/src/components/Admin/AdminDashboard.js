@@ -354,27 +354,53 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
 
 const DashboardContainer = styled(motion.div)`
   padding: 0 ${theme.spacing.md};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 0 ${theme.spacing.sm};
+  }
 `;
 
 const SectionTitle = styled.h2`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
-  font-size: ${theme.fontSizes.xl};
+  font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.bold};
   margin: 0 0 ${theme.spacing.lg};
   color: ${theme.colors.text};
+  letter-spacing: -0.01em;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.base};
+    margin-bottom: ${theme.spacing.md};
+  }
 `;
 
 const TitleIcon = styled.span`
-  font-size: 24px;
+  font-size: 22px;
   display: flex;
   align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: ${theme.radius.md};
+  background: linear-gradient(135deg, rgba(0, 113, 227, 0.12) 0%, rgba(88, 86, 214, 0.08) 100%);
 
   svg {
-    width: 24px;
-    height: 24px;
+    width: 18px;
+    height: 18px;
     color: ${theme.colors.primary};
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 28px;
+    height: 28px;
+    font-size: 18px;
+
+    svg {
+      width: 16px;
+      height: 16px;
+    }
   }
 `;
 
@@ -382,13 +408,17 @@ const StatsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: ${theme.spacing.md};
-  
+
   @media (min-width: ${theme.breakpoints.md}) {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   @media (min-width: ${theme.breakpoints.lg}) {
     grid-template-columns: repeat(6, 1fr);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
   }
 `;
 
@@ -400,7 +430,9 @@ const StatCard = styled(motion.div)`
   padding: ${theme.spacing.lg};
   overflow: hidden;
   cursor: default;
-  
+  /* Smooth hover transition */
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
   &::before {
     content: '';
     position: absolute;
@@ -409,6 +441,23 @@ const StatCard = styled(motion.div)`
     right: 0;
     height: 3px;
     background: ${props => props.$gradient};
+    transition: height 0.2s ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.15);
+      box-shadow: 0 8px 32px -8px rgba(0, 0, 0, 0.3);
+
+      &::before {
+        height: 4px;
+      }
+    }
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.md};
+    border-radius: ${theme.radius.lg};
   }
 `;
 
@@ -458,13 +507,17 @@ const QuickActionsGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: ${theme.spacing.md};
-  
+
   @media (min-width: ${theme.breakpoints.md}) {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   @media (min-width: ${theme.breakpoints.lg}) {
     grid-template-columns: repeat(5, 1fr);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
   }
 `;
 
@@ -472,18 +525,34 @@ const QuickActionButton = styled(motion.button)`
   display: flex;
   flex-direction: column;
   align-items: center;
+  justify-content: center;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.lg};
   min-height: 100px;
-  background: ${theme.colors.backgroundTertiary};
+  background: ${theme.colors.surface};
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
   color: ${theme.colors.text};
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.medium};
   cursor: pointer;
-  transition: all ${theme.transitions.fast};
+  transition: all 0.2s ease;
   -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+
+  /* Subtle gradient overlay on hover */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(135deg,
+      rgba(0, 113, 227, 0) 0%,
+      rgba(88, 86, 214, 0) 100%
+    );
+    opacity: 0;
+    transition: opacity 0.2s ease;
+  }
 
   /* Touch-friendly on mobile */
   @media (pointer: coarse) {
@@ -493,8 +562,16 @@ const QuickActionButton = styled(motion.button)`
 
   @media (hover: hover) and (pointer: fine) {
     &:hover:not(:disabled) {
-      background: ${theme.colors.surface};
-      border-color: ${theme.colors.primary};
+      border-color: rgba(0, 113, 227, 0.4);
+      box-shadow: 0 8px 24px -8px rgba(0, 113, 227, 0.2);
+
+      &::before {
+        background: linear-gradient(135deg,
+          rgba(0, 113, 227, 0.04) 0%,
+          rgba(88, 86, 214, 0.02) 100%
+        );
+        opacity: 1;
+      }
     }
   }
 
@@ -504,12 +581,26 @@ const QuickActionButton = styled(motion.button)`
   }
 
   &:active:not(:disabled) {
-    transform: scale(0.98);
+    transform: scale(0.97);
   }
 
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
+  }
+
+  > span {
+    position: relative;
+    z-index: 1;
+    text-align: center;
+    line-height: 1.3;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-height: 90px;
+    padding: ${theme.spacing.md};
+    border-radius: ${theme.radius.lg};
+    font-size: ${theme.fontSizes.xs};
   }
 `;
 
@@ -523,10 +614,40 @@ const QuickActionIcon = styled.div`
   border-radius: ${theme.radius.lg};
   color: white;
   font-size: 20px;
+  position: relative;
+  z-index: 1;
+  box-shadow: 0 4px 12px -4px rgba(0, 113, 227, 0.4);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+
+  ${QuickActionButton}:hover & {
+    transform: translateY(-2px);
+    box-shadow: 0 6px 16px -4px rgba(0, 113, 227, 0.5);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 40px;
+    height: 40px;
+    font-size: 18px;
+    border-radius: ${theme.radius.md};
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
+    ${QuickActionButton}:hover & {
+      transform: none;
+    }
+  }
 `;
 
 const SystemStatusSection = styled.div`
-  margin-top: ${theme.spacing.xl};
+  margin-top: ${theme.spacing['2xl']};
+  padding-top: ${theme.spacing.xl};
+  border-top: 1px solid ${theme.colors.surfaceBorder};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin-top: ${theme.spacing.xl};
+    padding-top: ${theme.spacing.lg};
+  }
 `;
 
 const SectionHeader = styled.div`
@@ -536,9 +657,14 @@ const SectionHeader = styled.div`
   flex-wrap: wrap;
   gap: ${theme.spacing.md};
   margin-bottom: ${theme.spacing.lg};
-  
+
   ${SectionTitle} {
     margin-bottom: 0;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
+    margin-bottom: ${theme.spacing.md};
   }
 `;
 
@@ -704,6 +830,19 @@ const StatusCard = styled.div`
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
   padding: ${theme.spacing.lg};
+  transition: border-color 0.2s ease, box-shadow 0.2s ease;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      border-color: rgba(255, 255, 255, 0.12);
+      box-shadow: 0 4px 16px -4px rgba(0, 0, 0, 0.2);
+    }
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.md};
+    border-radius: ${theme.radius.lg};
+  }
 `;
 
 const StatusHeader = styled.div`

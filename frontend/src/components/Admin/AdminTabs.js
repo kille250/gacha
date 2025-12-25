@@ -238,21 +238,28 @@ const AdminTabs = ({ activeTab, onTabChange }) => {
 
 const TabsContainer = styled.nav`
   position: sticky;
-  top: 70px;
+  top: 56px; /* Match navigation height */
   z-index: ${theme.zIndex?.sticky || 50};
-  background: rgba(0, 0, 0, 0.95);
-  backdrop-filter: blur(10px);
-  -webkit-backdrop-filter: blur(10px);
+  background: rgba(0, 0, 0, 0.92);
+  backdrop-filter: blur(16px) saturate(180%);
+  -webkit-backdrop-filter: blur(16px) saturate(180%);
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   padding: ${theme.spacing.sm} 0;
-  margin-bottom: ${theme.spacing.xl};
+  margin-bottom: ${theme.spacing.lg};
   display: flex;
   align-items: center;
+  /* Subtle top shadow for depth separation */
+  box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.03) inset;
 
   /* Safe area for notched devices */
   @supports (padding: max(0px)) {
     padding-left: max(${theme.spacing.sm}, env(safe-area-inset-left));
     padding-right: max(${theme.spacing.sm}, env(safe-area-inset-right));
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    top: 56px;
+    padding: ${theme.spacing.xs} 0;
   }
 `;
 
@@ -380,9 +387,11 @@ const TabButton = styled(motion.button)`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  background: ${props => props.$isActive ? theme.colors.surface : 'transparent'};
-  border: 1px solid ${props => props.$isActive ? theme.colors.primary : 'transparent'};
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: ${props => props.$isActive
+    ? 'linear-gradient(135deg, rgba(0, 113, 227, 0.12) 0%, rgba(88, 86, 214, 0.08) 100%)'
+    : 'transparent'};
+  border: 1px solid ${props => props.$isActive ? 'rgba(0, 113, 227, 0.3)' : 'transparent'};
   border-radius: ${theme.radius.lg};
   color: ${props => props.$isActive ? theme.colors.primary : theme.colors.textSecondary};
   font-size: ${theme.fontSizes.sm};
@@ -391,15 +400,34 @@ const TabButton = styled(motion.button)`
   white-space: nowrap;
   transition: all ${theme.transitions.fast};
   flex-shrink: 0;
+  -webkit-tap-highlight-color: transparent;
 
   svg {
     font-size: 16px;
     flex-shrink: 0;
+    transition: transform 0.2s ease;
   }
 
-  &:hover {
-    color: ${theme.colors.text};
-    background: ${props => props.$isActive ? theme.colors.surface : theme.colors.hoverOverlay};
+  /* Subtle glow on active tab */
+  ${props => props.$isActive && `
+    box-shadow: 0 0 20px -4px rgba(0, 113, 227, 0.25);
+  `}
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      color: ${theme.colors.text};
+      background: ${props => props.$isActive
+        ? 'linear-gradient(135deg, rgba(0, 113, 227, 0.15) 0%, rgba(88, 86, 214, 0.10) 100%)'
+        : theme.colors.hoverOverlay};
+
+      svg {
+        transform: scale(1.05);
+      }
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
   }
 
   /* Focus ring for keyboard navigation */
@@ -410,13 +438,13 @@ const TabButton = styled(motion.button)`
 
   /* Mobile styles */
   @media (max-width: ${theme.breakpoints.md}) {
-    min-width: 48px;
-    min-height: 48px;
-    padding: ${theme.spacing.sm} ${theme.spacing.md};
+    min-width: 52px;
+    min-height: 52px;
+    padding: ${theme.spacing.sm};
     justify-content: center;
 
     svg {
-      font-size: 20px;
+      font-size: 22px;
     }
 
     /* Show tooltip on focus (for touch devices holding press) */
@@ -424,6 +452,16 @@ const TabButton = styled(motion.button)`
     &:hover ${MobileTooltip} {
       display: block;
       opacity: 1;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: color 0.1s, background 0.1s;
+    &:active:not(:disabled) {
+      transform: none;
+    }
+    svg {
+      transition: none;
     }
   }
 `;

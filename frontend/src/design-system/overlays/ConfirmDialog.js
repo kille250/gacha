@@ -34,16 +34,33 @@ const Content = styled.div`
   padding: ${theme.spacing.md} 0;
 `;
 
+const pulseGlow = keyframes`
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 59, 48, 0.3);
+  }
+  50% {
+    box-shadow: 0 0 0 8px rgba(255, 59, 48, 0);
+  }
+`;
+
 const IconWrapper = styled.div`
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   background: ${props => {
     switch (props.$variant) {
-      case 'danger': return 'rgba(255, 59, 48, 0.15)';
-      case 'warning': return 'rgba(255, 159, 10, 0.15)';
-      case 'info': return 'rgba(90, 200, 250, 0.15)';
-      default: return 'rgba(255, 59, 48, 0.15)';
+      case 'danger': return 'linear-gradient(135deg, rgba(255, 59, 48, 0.18) 0%, rgba(255, 59, 48, 0.08) 100%)';
+      case 'warning': return 'linear-gradient(135deg, rgba(255, 159, 10, 0.18) 0%, rgba(255, 159, 10, 0.08) 100%)';
+      case 'info': return 'linear-gradient(135deg, rgba(90, 200, 250, 0.18) 0%, rgba(90, 200, 250, 0.08) 100%)';
+      default: return 'linear-gradient(135deg, rgba(255, 59, 48, 0.18) 0%, rgba(255, 59, 48, 0.08) 100%)';
+    }
+  }};
+  border: 1px solid ${props => {
+    switch (props.$variant) {
+      case 'danger': return 'rgba(255, 59, 48, 0.25)';
+      case 'warning': return 'rgba(255, 159, 10, 0.25)';
+      case 'info': return 'rgba(90, 200, 250, 0.25)';
+      default: return 'rgba(255, 59, 48, 0.25)';
     }
   }};
   display: flex;
@@ -57,7 +74,16 @@ const IconWrapper = styled.div`
       default: return theme.colors.error;
     }
   }};
-  font-size: 28px;
+  font-size: 30px;
+  animation: ${props => props.$variant === 'danger' ? pulseGlow : 'none'} 2s ease-in-out infinite;
+
+  svg {
+    filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.2));
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
 `;
 
 const Title = styled.h3`

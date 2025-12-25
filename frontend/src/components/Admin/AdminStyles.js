@@ -201,20 +201,28 @@ export const Input = styled.input`
   border-radius: ${theme.radius.md};
   color: ${theme.colors.text};
   font-size: ${theme.fontSizes.base};
-  transition: border-color ${theme.transitions.fast}, box-shadow ${theme.transitions.fast};
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
 
   &::placeholder {
     color: ${theme.colors.textMuted};
   }
 
-  &:hover:not(:focus):not(:disabled) {
-    border-color: ${theme.colors.glassBorder};
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:focus):not(:disabled) {
+      border-color: ${theme.colors.glassBorder};
+      background: rgba(44, 44, 46, 0.6);
+    }
   }
 
   &:focus {
     outline: none;
     border-color: ${theme.colors.primary};
-    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+    background: rgba(44, 44, 46, 0.8);
   }
 
   &:disabled {
@@ -226,22 +234,34 @@ export const Input = styled.input`
   /* Error state - use aria-invalid for semantic styling */
   &[aria-invalid="true"] {
     border-color: ${theme.colors.error};
+    background: rgba(255, 59, 48, 0.03);
 
     &:focus {
-      box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.2);
+      box-shadow: 0 0 0 3px rgba(255, 59, 48, 0.15);
     }
   }
 
   /* Success state */
   &[data-valid="true"] {
     border-color: ${theme.colors.success};
+    background: rgba(48, 209, 88, 0.03);
+
+    &:focus {
+      box-shadow: 0 0 0 3px rgba(48, 209, 88, 0.15);
+    }
+  }
+
+  /* Ensure touch targets on mobile */
+  @media (pointer: coarse) {
+    min-height: 52px;
+    font-size: 16px; /* Prevent iOS zoom on focus */
   }
 `;
 
 export const Select = styled.select`
   width: 100%;
   padding: ${theme.spacing.md};
-  padding-right: ${theme.spacing.xl};
+  padding-right: ${theme.spacing['2xl']};
   min-height: 48px;
   background: ${theme.colors.backgroundTertiary};
   border: 1px solid ${theme.colors.surfaceBorder};
@@ -249,21 +269,29 @@ export const Select = styled.select`
   color: ${theme.colors.text};
   font-size: ${theme.fontSizes.base};
   cursor: pointer;
-  transition: border-color ${theme.transitions.fast}, box-shadow ${theme.transitions.fast};
-  /* Custom dropdown arrow */
+  transition:
+    border-color 0.15s ease,
+    box-shadow 0.15s ease,
+    background-color 0.15s ease;
+  -webkit-tap-highlight-color: transparent;
+  /* Custom dropdown arrow with smooth transition */
   appearance: none;
   background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='rgba(255,255,255,0.6)' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10l-5 5z'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
   background-position: right ${theme.spacing.md} center;
 
-  &:hover:not(:focus):not(:disabled) {
-    border-color: ${theme.colors.glassBorder};
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:focus):not(:disabled) {
+      border-color: ${theme.colors.glassBorder};
+      background-color: rgba(44, 44, 46, 0.6);
+    }
   }
 
   &:focus {
     outline: none;
     border-color: ${theme.colors.primary};
-    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
+    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.15);
+    background-color: rgba(44, 44, 46, 0.8);
   }
 
   &:disabled {
@@ -275,6 +303,12 @@ export const Select = styled.select`
     background: ${theme.colors.surfaceSolid};
     color: ${theme.colors.text};
     padding: ${theme.spacing.sm};
+  }
+
+  /* Ensure touch targets on mobile */
+  @media (pointer: coarse) {
+    min-height: 52px;
+    font-size: 16px; /* Prevent iOS zoom on focus */
   }
 `;
 
@@ -321,7 +355,8 @@ export const PrimaryButton = styled.button`
   align-items: center;
   justify-content: center;
   gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
+  min-height: 48px;
   background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
   border: none;
   border-radius: ${theme.radius.lg};
@@ -329,10 +364,75 @@ export const PrimaryButton = styled.button`
   font-weight: ${theme.fontWeights.bold};
   font-size: ${theme.fontSizes.base};
   cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  
-  &:hover { opacity: 0.9; }
-  &:disabled { opacity: 0.5; cursor: not-allowed; }
+  transition: all 0.2s ease;
+  -webkit-tap-highlight-color: transparent;
+  position: relative;
+  overflow: hidden;
+  box-shadow: 0 4px 12px -4px rgba(0, 113, 227, 0.4);
+
+  /* Shine effect on hover */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 50%,
+      transparent 100%
+    );
+    transition: left 0.4s ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 16px -4px rgba(0, 113, 227, 0.5);
+
+      &::before {
+        left: 100%;
+      }
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+  }
+
+  /* Loading state animation for spinner icon */
+  .spin {
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (pointer: coarse) {
+    min-height: 52px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity 0.1s;
+    &::before { display: none; }
+    &:hover:not(:disabled) { transform: none; }
+    &:active:not(:disabled) { transform: none; }
+    .spin { animation: none; }
+  }
 `;
 
 export const SecondaryButton = styled.button`
