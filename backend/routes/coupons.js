@@ -83,6 +83,13 @@ router.post('/admin', [auth, adminAuth], async (req, res) => {
       }
     }
 
+    // Validate ticket types require a positive value (quantity)
+    if ((type === 'ticket' || type === 'premium_ticket') && (!value || value < 1)) {
+      return res.status(400).json({
+        error: 'Ticket coupons require a positive quantity value'
+      });
+    }
+
     // Create the coupon
     const coupon = await Coupon.create({
       code: code.toUpperCase(),
@@ -150,6 +157,17 @@ router.put('/admin/:id', [auth, adminAuth], async (req, res) => {
       if (existingCoupon) {
         return res.status(400).json({ error: 'Coupon code already exists' });
       }
+    }
+
+    // Determine the effective type and value for validation
+    const effectiveType = type || coupon.type;
+    const effectiveValue = value !== undefined ? value : coupon.value;
+
+    // Validate ticket types require a positive value (quantity)
+    if ((effectiveType === 'ticket' || effectiveType === 'premium_ticket') && (!effectiveValue || effectiveValue < 1)) {
+      return res.status(400).json({
+        error: 'Ticket coupons require a positive quantity value'
+      });
     }
 
     // Update the coupon
@@ -285,26 +303,26 @@ router.post('/redeem', [auth, lockoutMiddleware(), enforcementMiddleware, device
 
     // Process the redemption based on coupon type
     let rewardDetails = {};
-    
+
     if (coupon.type === 'coins') {
       // Add coins to user
       user.points += coupon.value;
       await user.save();
       rewardDetails = { coins: coupon.value };
-    } 
+    }
     else if (coupon.type === 'character') {
       // Add character to user's collection (shards on duplicates)
       if (!coupon.characterId) {
         return res.status(400).json({ error: 'Invalid character coupon' });
       }
-      
+
       const character = await Character.findByPk(coupon.characterId);
       if (!character) {
         return res.status(404).json({ error: 'Character not found' });
       }
-      
+
       const acquisition = await acquireCharacter(user.id, character.id, user);
-      rewardDetails = { 
+      rewardDetails = {
         character,
         acquisition: {
           isNew: acquisition.isNew,
@@ -314,6 +332,36 @@ router.post('/redeem', [auth, lockoutMiddleware(), enforcementMiddleware, device
           isMaxLevel: acquisition.isMaxLevel,
           bonusPoints: acquisition.bonusPoints
         }
+      };
+    }
+    else if (coupon.type === 'ticket') {
+      // Award regular gacha tickets
+      // Tickets are stored in user.rollTickets field
+      if (!coupon.value || coupon.value < 1) {
+        return res.status(400).json({ error: 'Invalid ticket coupon: no ticket quantity specified' });
+      }
+
+      user.rollTickets = (user.rollTickets || 0) + coupon.value;
+      await user.save();
+      rewardDetails = {
+        tickets: coupon.value,
+        ticketType: 'regular',
+        newTotal: user.rollTickets
+      };
+    }
+    else if (coupon.type === 'premium_ticket') {
+      // Award premium gacha tickets
+      // Premium tickets provide enhanced gacha benefits (higher rates, etc.)
+      if (!coupon.value || coupon.value < 1) {
+        return res.status(400).json({ error: 'Invalid premium ticket coupon: no ticket quantity specified' });
+      }
+
+      user.premiumTickets = (user.premiumTickets || 0) + coupon.value;
+      await user.save();
+      rewardDetails = {
+        tickets: coupon.value,
+        ticketType: 'premium',
+        newTotal: user.premiumTickets
       };
     }
     // Could add more types in the future (items, etc)
@@ -346,12 +394,24 @@ router.post('/redeem', [auth, lockoutMiddleware(), enforcementMiddleware, device
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    return res.json({
+    // Build response with updated user state
+    // Include ticket counts when ticket-related coupons are redeemed
+    const response = {
       message: 'Coupon redeemed successfully',
       type: coupon.type,
       reward: rewardDetails,
       updatedPoints: user.points
-    });
+    };
+
+    // Include ticket counts for ticket redemptions (for frontend state updates)
+    if (coupon.type === 'ticket' || coupon.type === 'premium_ticket') {
+      response.updatedTickets = {
+        rollTickets: user.rollTickets || 0,
+        premiumTickets: user.premiumTickets || 0
+      };
+    }
+
+    return res.json(response);
   } catch (err) {
     console.error('Error redeeming coupon:', err);
     return res.status(500).json({ error: 'Server error' });

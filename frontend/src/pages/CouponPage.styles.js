@@ -264,6 +264,44 @@ export const CoinIcon = styled.div`
   color: ${theme.colors.warning};
 `;
 
+// ==================== TICKET REWARD ====================
+
+export const TicketReward = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.lg};
+`;
+
+export const TicketIcon = styled.div`
+  width: 64px;
+  height: 64px;
+  background: ${props => props.$premium
+    ? 'linear-gradient(135deg, rgba(175, 82, 222, 0.2), rgba(191, 90, 242, 0.2))'
+    : 'linear-gradient(135deg, rgba(52, 199, 89, 0.2), rgba(48, 176, 80, 0.2))'
+  };
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  color: ${props => props.$premium ? '#AF52DE' : '#34C759'};
+`;
+
+export const TicketBadge = styled.span`
+  display: inline-block;
+  background: ${props => props.$premium
+    ? 'linear-gradient(135deg, #AF52DE, #BF5AF2)'
+    : 'linear-gradient(135deg, #34C759, #30B050)'
+  };
+  color: white;
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  text-transform: uppercase;
+  margin-top: ${theme.spacing.xs};
+`;
+
 export const RewardDetails = styled.div``;
 
 export const RewardAmount = styled.h3`

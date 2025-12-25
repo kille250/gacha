@@ -1,7 +1,16 @@
 // components/UI/CouponFormModal.js
+/**
+ * CouponFormModal - Admin form for creating/editing coupons
+ *
+ * Supports coupon types:
+ * - coins: Currency reward (uses value field)
+ * - character: Character reward (uses characterId field)
+ * - ticket: Regular gacha tickets (uses value field for quantity)
+ * - premium_ticket: Premium gacha tickets (uses value field for quantity)
+ */
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
-import { FaTicketAlt, FaCoins, FaUsers, FaCalendarAlt, FaTimes } from 'react-icons/fa';
+import { FaTicketAlt, FaCoins, FaUsers, FaCalendarAlt, FaTimes, FaGem } from 'react-icons/fa';
 
 const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
   const [formData, setFormData] = useState({
@@ -119,22 +128,24 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
             <FormRow>
               <FormGroup>
                 <Label>Coupon Type</Label>
-                <Select 
-                  name="type" 
+                <Select
+                  name="type"
                   value={formData.type}
                   onChange={handleChange}
                 >
                   <option value="coins">Coins Reward</option>
                   <option value="character">Character Reward</option>
+                  <option value="ticket">Ticket Reward</option>
+                  <option value="premium_ticket">Premium Ticket Reward</option>
                 </Select>
               </FormGroup>
-              
+
               {formData.type === 'coins' ? (
                 <FormGroup>
                   <Label><FaCoins /> Coin Value</Label>
-                  <Input 
-                    type="number" 
-                    name="value" 
+                  <Input
+                    type="number"
+                    name="value"
                     value={formData.value}
                     onChange={handleChange}
                     min="1"
@@ -145,8 +156,8 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
               ) : formData.type === 'character' ? (
                 <FormGroup>
                   <Label><FaUsers /> Character</Label>
-                  <Select 
-                    name="characterId" 
+                  <Select
+                    name="characterId"
                     value={formData.characterId}
                     onChange={handleChange}
                     required
@@ -158,6 +169,34 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                       </option>
                     ))}
                   </Select>
+                </FormGroup>
+              ) : formData.type === 'ticket' ? (
+                <FormGroup>
+                  <Label><FaTicketAlt /> Ticket Quantity</Label>
+                  <Input
+                    type="number"
+                    name="value"
+                    value={formData.value}
+                    onChange={handleChange}
+                    min="1"
+                    max="100"
+                    required
+                  />
+                  <FormHint>Number of regular gacha tickets to award</FormHint>
+                </FormGroup>
+              ) : formData.type === 'premium_ticket' ? (
+                <FormGroup>
+                  <Label><FaGem /> Premium Ticket Quantity</Label>
+                  <Input
+                    type="number"
+                    name="value"
+                    value={formData.value}
+                    onChange={handleChange}
+                    min="1"
+                    max="100"
+                    required
+                  />
+                  <FormHint>Number of premium gacha tickets to award</FormHint>
                 </FormGroup>
               ) : null}
             </FormRow>

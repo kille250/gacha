@@ -19,7 +19,7 @@ import React, { useState, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTicketAlt, FaPlus, FaEdit, FaTrash, FaCoins, FaUsers, FaCalendarAlt, FaCopy, FaCheck } from 'react-icons/fa';
+import { FaTicketAlt, FaPlus, FaEdit, FaTrash, FaCoins, FaUsers, FaCalendarAlt, FaCopy, FaCheck, FaGem } from 'react-icons/fa';
 import { theme, motionVariants, AriaLiveRegion } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import {
@@ -160,10 +160,25 @@ const AdminCoupons = ({
                         <FaCoins aria-hidden="true" />
                         <span>{coupon.value} {t('common.coins', 'Coins')}</span>
                       </>
-                    ) : (
+                    ) : coupon.type === 'character' ? (
                       <>
                         <FaUsers aria-hidden="true" />
                         <span>{coupon.Character?.name || t('common.character', 'Character')}</span>
+                      </>
+                    ) : coupon.type === 'ticket' ? (
+                      <>
+                        <FaTicketAlt aria-hidden="true" />
+                        <span>{coupon.value} {t('common.tickets', 'Tickets')}</span>
+                      </>
+                    ) : coupon.type === 'premium_ticket' ? (
+                      <>
+                        <FaGem aria-hidden="true" />
+                        <span>{coupon.value} {t('common.premiumTickets', 'Premium Tickets')}</span>
+                      </>
+                    ) : (
+                      <>
+                        <FaTicketAlt aria-hidden="true" />
+                        <span>{t('common.unknown', 'Unknown')}</span>
                       </>
                     )}
                   </RewardTag>
@@ -384,22 +399,49 @@ const Description = styled.p`
   line-height: 1.5;
 `;
 
+// Helper to get gradient background based on coupon type
+const getRewardTagBackground = (type) => {
+  switch (type) {
+    case 'coins':
+      return 'linear-gradient(135deg, rgba(255, 214, 10, 0.2), rgba(255, 159, 10, 0.2))';
+    case 'ticket':
+      return 'linear-gradient(135deg, rgba(52, 199, 89, 0.2), rgba(48, 176, 80, 0.2))';
+    case 'premium_ticket':
+      return 'linear-gradient(135deg, rgba(175, 82, 222, 0.2), rgba(191, 90, 242, 0.2))';
+    case 'character':
+    default:
+      return 'linear-gradient(135deg, rgba(0, 113, 227, 0.2), rgba(88, 86, 214, 0.2))';
+  }
+};
+
+// Helper to get icon color based on coupon type
+const getRewardTagIconColor = (type) => {
+  switch (type) {
+    case 'coins':
+      return '#ffd60a';
+    case 'ticket':
+      return '#34C759';
+    case 'premium_ticket':
+      return '#AF52DE';
+    case 'character':
+    default:
+      return '#007AFF';
+  }
+};
+
 const RewardTag = styled.div`
   display: inline-flex;
   align-items: center;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: ${props => props.$type === 'coins' 
-    ? 'linear-gradient(135deg, rgba(255, 214, 10, 0.2), rgba(255, 159, 10, 0.2))'
-    : 'linear-gradient(135deg, rgba(0, 113, 227, 0.2), rgba(88, 86, 214, 0.2))'
-  };
+  background: ${props => getRewardTagBackground(props.$type)};
   border-radius: ${theme.radius.full};
   margin-bottom: ${theme.spacing.md};
-  
+
   svg {
-    color: ${props => props.$type === 'coins' ? '#ffd60a' : theme.colors.primary};
+    color: ${props => getRewardTagIconColor(props.$type)};
   }
-  
+
   span {
     font-size: ${theme.fontSizes.sm};
     font-weight: ${theme.fontWeights.semibold};
@@ -485,7 +527,8 @@ AdminCoupons.propTypes = {
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     code: PropTypes.string.isRequired,
     description: PropTypes.string,
-    type: PropTypes.oneOf(['coins', 'character']).isRequired,
+    // Extended to support ticket reward types
+    type: PropTypes.oneOf(['coins', 'character', 'ticket', 'premium_ticket']).isRequired,
     value: PropTypes.number,
     isActive: PropTypes.bool.isRequired,
     currentUses: PropTypes.number.isRequired,

@@ -1,6 +1,19 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
 
+/**
+ * Coupon Model
+ *
+ * Supports multiple reward types:
+ * - coins: Awards currency points (uses 'value' field)
+ * - character: Awards a specific character (uses 'characterId' field)
+ * - ticket: Awards regular gacha tickets (uses 'value' field for quantity)
+ * - premium_ticket: Awards premium gacha tickets (uses 'value' field for quantity)
+ * - item: Reserved for future item rewards
+ *
+ * Ticket types use the same 'value' field as coins to specify quantity.
+ * This maintains consistency with existing patterns and avoids schema changes.
+ */
 const Coupon = sequelize.define('Coupon', {
   id: {
     type: DataTypes.UUID,
@@ -17,10 +30,14 @@ const Coupon = sequelize.define('Coupon', {
     allowNull: true,
   },
   type: {
-    type: DataTypes.ENUM('coins', 'character', 'item'),
+    // Extended to support ticket rewards via the existing coupon system
+    // 'ticket' = regular roll tickets, 'premium_ticket' = premium tickets
+    type: DataTypes.ENUM('coins', 'character', 'item', 'ticket', 'premium_ticket'),
     defaultValue: 'coins',
   },
   value: {
+    // For coins: amount of currency
+    // For tickets/premium_tickets: number of tickets to award
     type: DataTypes.INTEGER,
     allowNull: false,
     defaultValue: 0,

@@ -1,3 +1,12 @@
+/**
+ * CouponPage - User coupon redemption page
+ *
+ * Supports displaying rewards for all coupon types:
+ * - coins: Currency reward display
+ * - character: Character card with rarity badge
+ * - ticket: Regular gacha ticket reward display
+ * - premium_ticket: Premium gacha ticket reward display
+ */
 import React, { useState, useContext, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -42,6 +51,9 @@ import {
   RewardContent,
   CoinReward,
   CoinIcon,
+  TicketReward,
+  TicketIcon,
+  TicketBadge,
   RewardDetails,
   RewardAmount,
   RewardDesc,
@@ -264,6 +276,32 @@ const CouponPage = () => {
                             </RarityBadge>
                           </CharacterDetails>
                         </CharacterReward>
+                      ) : rewardInfo.type === 'ticket' ? (
+                        <TicketReward>
+                          <TicketIcon $premium={false}>
+                            <FaTicketAlt />
+                          </TicketIcon>
+                          <RewardDetails>
+                            <RewardAmount>
+                              {rewardInfo.reward.tickets} {t('coupon.tickets', 'Tickets')}
+                            </RewardAmount>
+                            <RewardDesc>{t('coupon.ticketsAddedToAccount', 'Gacha tickets added to your account')}</RewardDesc>
+                            <TicketBadge $premium={false}>{t('coupon.regularTicket', 'Regular')}</TicketBadge>
+                          </RewardDetails>
+                        </TicketReward>
+                      ) : rewardInfo.type === 'premium_ticket' ? (
+                        <TicketReward>
+                          <TicketIcon $premium={true}>
+                            <FaGem />
+                          </TicketIcon>
+                          <RewardDetails>
+                            <RewardAmount>
+                              {rewardInfo.reward.tickets} {t('coupon.premiumTickets', 'Premium Tickets')}
+                            </RewardAmount>
+                            <RewardDesc>{t('coupon.premiumTicketsAddedToAccount', 'Premium gacha tickets added to your account')}</RewardDesc>
+                            <TicketBadge $premium={true}>{t('coupon.premiumTicket', 'Premium')}</TicketBadge>
+                          </RewardDetails>
+                        </TicketReward>
                       ) : (
                         <div>{t('coupon.unknownReward')}</div>
                       )}
