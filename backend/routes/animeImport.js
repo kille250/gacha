@@ -13,21 +13,34 @@ const { calculateRarity, getRarityDetails } = require('../utils/rarityCalculator
 // Jikan API base URL (free MyAnimeList API)
 const JIKAN_API = 'https://api.jikan.moe/v4';
 
-// Rate limiting helper - Jikan has a 3 req/sec limit
+// Rate limiting helper - Jikan has a 3 req/sec limit but is stricter during high load
 let lastRequestTime = 0;
-const MIN_REQUEST_INTERVAL = 350; // 350ms between requests
+const MIN_REQUEST_INTERVAL = 500; // 500ms between requests (safer than 350ms)
+const MAX_RETRIES = 3;
 
-const rateLimitedFetch = async (url) => {
+const rateLimitedFetch = async (url, retryCount = 0) => {
   const now = Date.now();
   const timeSinceLastRequest = now - lastRequestTime;
-  
+
   if (timeSinceLastRequest < MIN_REQUEST_INTERVAL) {
     await new Promise(resolve => setTimeout(resolve, MIN_REQUEST_INTERVAL - timeSinceLastRequest));
   }
-  
+
   lastRequestTime = Date.now();
-  
+
   const response = await fetch(url);
+
+  // Handle rate limiting with exponential backoff
+  if (response.status === 429) {
+    if (retryCount < MAX_RETRIES) {
+      const backoffTime = Math.pow(2, retryCount + 1) * 1000; // 2s, 4s, 8s
+      console.log(`Rate limited, waiting ${backoffTime}ms before retry ${retryCount + 1}/${MAX_RETRIES}`);
+      await new Promise(resolve => setTimeout(resolve, backoffTime));
+      return rateLimitedFetch(url, retryCount + 1);
+    }
+    throw new Error('Rate limited by MAL API after multiple retries');
+  }
+
   if (!response.ok) {
     const errorText = await response.text();
     throw new Error(`API request failed: ${response.status} - ${errorText}`);
@@ -76,24 +89,42 @@ router.get('/search-anime', auth, adminAuth, async (req, res) => {
 router.get('/anime/:mal_id/characters', auth, adminAuth, async (req, res) => {
   try {
     const { mal_id } = req.params;
-    
+    const { includeFavorites = 'false' } = req.query;
+
     if (!mal_id || isNaN(mal_id)) {
       return res.status(400).json({ error: 'Valid anime ID required' });
     }
-    
+
     const charactersUrl = `${JIKAN_API}/anime/${mal_id}/characters`;
     const data = await rateLimitedFetch(charactersUrl);
-    
+
     // Map to simpler format and filter to main/supporting characters only
-    const characters = data.data
+    // Note: favorites is inside char.character, not char directly
+    let characters = data.data
       .filter(char => char.role === 'Main' || char.role === 'Supporting')
       .map(char => ({
         mal_id: char.character.mal_id,
         name: char.character.name,
         image: char.character.images?.jpg?.image_url || char.character.images?.webp?.image_url,
-        role: char.role
+        role: char.role,
+        favorites: char.character?.favorites || 0 // favorites is in character object
       }));
-    
+
+    // If favorites not included in list response (older API), fetch individually for Main characters only
+    if (includeFavorites === 'true') {
+      const mainChars = characters.filter(c => c.role === 'Main');
+      for (const char of mainChars) {
+        if (!char.favorites) {
+          try {
+            const charData = await rateLimitedFetch(`${JIKAN_API}/characters/${char.mal_id}`);
+            char.favorites = charData.data?.favorites || 0;
+          } catch {
+            char.favorites = 0;
+          }
+        }
+      }
+    }
+
     res.json({ characters });
   } catch (err) {
     console.error('Fetch characters error:', err);

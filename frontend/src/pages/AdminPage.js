@@ -318,6 +318,7 @@ const AdminPage = () => {
                       onAddCharacter={addCharacterWithImage}
                       onEditCharacter={modals.openEditCharacterModal}
                       onDeleteCharacter={handleDeleteCharacterWithConfirm}
+                      onBatchDeleteCharacters={adminState.handleBatchDeleteCharacters}
                       onMultiUpload={modals.openMultiUploadModal}
                       onAnimeImport={modals.openAnimeImportModal}
                       onCreateFromDanbooru={modals.openCreateFromDanbooruModal}

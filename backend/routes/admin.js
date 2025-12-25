@@ -878,6 +878,68 @@ router.delete('/characters/:id', auth, adminAuth, async (req, res) => {
   }
 });
 
+// Batch delete characters (admin only)
+router.post('/characters/batch-delete', [auth, adminAuth, sensitiveActionLimiter], async (req, res) => {
+  try {
+    const { characterIds } = req.body;
+
+    // Validate input
+    if (!Array.isArray(characterIds) || characterIds.length === 0) {
+      return res.status(400).json({ error: 'characterIds must be a non-empty array' });
+    }
+
+    if (characterIds.length > 100) {
+      return res.status(400).json({ error: 'Maximum 100 characters per batch delete' });
+    }
+
+    // Validate all IDs
+    const invalidIds = characterIds.filter(id => !isValidId(id));
+    if (invalidIds.length > 0) {
+      return res.status(400).json({ error: `Invalid character IDs: ${invalidIds.join(', ')}` });
+    }
+
+    // Find all characters
+    const characters = await Character.findAll({
+      where: { id: characterIds }
+    });
+
+    if (characters.length === 0) {
+      return res.status(404).json({ error: 'No characters found' });
+    }
+
+    const results = { success: [], failed: [] };
+
+    // Delete each character
+    for (const character of characters) {
+      try {
+        const charData = { id: character.id, name: character.name };
+
+        // Delete associated image
+        safeDeleteUpload(character.image, 'characters');
+
+        // Delete the character
+        await character.destroy();
+
+        results.success.push(charData);
+      } catch (err) {
+        results.failed.push({ id: character.id, name: character.name, error: err.message });
+      }
+    }
+
+    // Log the batch deletion
+    console.log(`Admin (ID: ${req.user.id}) batch deleted ${results.success.length} characters (${results.failed.length} failed)`);
+
+    res.json({
+      message: `Deleted ${results.success.length} characters`,
+      deleted: results.success,
+      failed: results.failed
+    });
+  } catch (err) {
+    console.error('Error batch deleting characters:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // ===========================================
 // SECURITY & ABUSE PREVENTION ENDPOINTS
 // ===========================================

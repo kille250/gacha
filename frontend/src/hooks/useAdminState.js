@@ -24,6 +24,7 @@ import {
 import {
   addCharacter as addCharacterAction,
   deleteCharacter as deleteCharacterAction,
+  batchDeleteCharacters as batchDeleteCharactersAction,
   addCoins as addCoinsAction,
   toggleAutofish as toggleAutofishAction,
   toggleR18 as toggleR18Action,
@@ -288,6 +289,29 @@ export const useAdminState = () => {
     }
   }, [t, showSuccess, showError, fetchAllData, startOperation, endOperation]);
 
+  const handleBatchDeleteCharacters = useCallback(async (characterIds) => {
+    const opId = 'batch-delete-characters';
+    startOperation(opId);
+    try {
+      const result = await batchDeleteCharactersAction(characterIds);
+      const deletedCount = result.deleted?.length || 0;
+      const failedCount = result.failed?.length || 0;
+
+      if (failedCount > 0) {
+        showSuccess(t('admin.batchDeletePartial', { deleted: deletedCount, failed: failedCount }));
+      } else {
+        showSuccess(t('admin.batchDeleteSuccess', { count: deletedCount }));
+      }
+      await fetchAllData();
+      return { success: true, deleted: deletedCount, failed: failedCount };
+    } catch (err) {
+      showError(err.response?.data?.error || t('admin.failedBatchDelete'));
+      return { success: false };
+    } finally {
+      endOperation(opId);
+    }
+  }, [t, showSuccess, showError, fetchAllData, startOperation, endOperation]);
+
   const handleEditCharacterSuccess = useCallback((message) => {
     invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_EDIT);
     showSuccess(message);
@@ -492,6 +516,7 @@ export const useAdminState = () => {
     // Character handlers
     handleAddCharacter,
     handleDeleteCharacter,
+    handleBatchDeleteCharacters,
     handleEditCharacterSuccess,
 
     // Banner handlers

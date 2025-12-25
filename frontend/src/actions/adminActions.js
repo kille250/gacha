@@ -52,16 +52,31 @@ export const handleCharacterEditSuccess = (onSuccessCallback, message) => {
 
 /**
  * Delete a character.
- * 
+ *
  * @param {string} characterId - The character ID to delete
  * @returns {Promise<Object>} Delete result from API
  * @throws {Error} If delete fails
  */
 export const deleteCharacter = async (characterId) => {
   const response = await api.delete(`/admin/characters/${characterId}`);
-  
+
   invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_DELETE);
-  
+
+  return response.data;
+};
+
+/**
+ * Batch delete multiple characters.
+ *
+ * @param {string[]} characterIds - Array of character IDs to delete
+ * @returns {Promise<Object>} Batch delete result { deleted, failed }
+ * @throws {Error} If batch delete fails
+ */
+export const batchDeleteCharacters = async (characterIds) => {
+  const response = await api.post('/admin/characters/batch-delete', { characterIds });
+
+  invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_DELETE);
+
   return response.data;
 };
 

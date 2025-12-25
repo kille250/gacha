@@ -21,7 +21,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload, FaSpinner, FaTheaterMasks } from 'react-icons/fa';
+import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload, FaSpinner, FaTheaterMasks, FaCheckSquare, FaSquare, FaTimes } from 'react-icons/fa';
 import { theme, motionVariants, AriaLiveRegion } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import { IconR18 } from '../../constants/icons';
@@ -74,6 +74,7 @@ const AdminCharacters = ({
   onAddCharacter,
   onEditCharacter,
   onDeleteCharacter,
+  onBatchDeleteCharacters,
   onMultiUpload,
   onAnimeImport,
   onCreateFromDanbooru,
@@ -114,6 +115,10 @@ const AdminCharacters = ({
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
+
+  // Multi-select state
+  const [selectedIds, setSelectedIds] = useState(new Set());
+  const [isDeleting, setIsDeleting] = useState(false);
 
   // Duplicate detection state for add modal
   const [duplicateError, setDuplicateError] = useState(null);
@@ -208,6 +213,52 @@ const AdminCharacters = ({
     onFileChange({ target: { files: [] } });
   };
 
+  // Multi-select handlers
+  const toggleSelect = useCallback((id) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  }, []);
+
+  const selectAllOnPage = useCallback(() => {
+    const pageIds = currentCharacters.map(c => c.id);
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      pageIds.forEach(id => next.add(id));
+      return next;
+    });
+    announce(t('admin.selectedCount', { count: currentCharacters.length }));
+  }, [currentCharacters, announce, t]);
+
+  const clearSelection = useCallback(() => {
+    setSelectedIds(new Set());
+    announce(t('admin.selectionCleared', 'Selection cleared'));
+  }, [announce, t]);
+
+  const handleBatchDelete = useCallback(async () => {
+    if (selectedIds.size === 0) return;
+
+    setIsDeleting(true);
+    try {
+      const ids = Array.from(selectedIds);
+      await onBatchDeleteCharacters(ids);
+      setSelectedIds(new Set());
+      announce(t('admin.batchDeleteSuccess', { count: ids.length }));
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedIds, onBatchDeleteCharacters, announce, t]);
+
+  // Check if all on current page are selected
+  const allOnPageSelected = currentCharacters.length > 0 &&
+    currentCharacters.every(c => selectedIds.has(c.id));
+
   return (
     <AdminContainer
       variants={motionVariants.staggerContainer}
@@ -285,6 +336,42 @@ const AdminCharacters = ({
           </ViewButton>
         </ViewToggle>
       </ActionBar>
+
+      {/* Selection controls bar */}
+      <SelectionBar>
+        <SelectionLeft>
+          <SelectAllButton
+            onClick={allOnPageSelected ? clearSelection : selectAllOnPage}
+            aria-label={allOnPageSelected ? t('admin.deselectAll', 'Deselect all') : t('admin.selectAll', 'Select all on page')}
+          >
+            {allOnPageSelected ? <FaCheckSquare aria-hidden="true" /> : <FaSquare aria-hidden="true" />}
+            {allOnPageSelected
+              ? t('admin.deselectAll', 'Deselect all')
+              : t('admin.selectAllOnPage', 'Select all on page')}
+          </SelectAllButton>
+          {selectedIds.size > 0 && (
+            <SelectedCount aria-live="polite">
+              {t('admin.selectedCount', { count: selectedIds.size, defaultValue: '{{count}} selected' })}
+            </SelectedCount>
+          )}
+        </SelectionLeft>
+        {selectedIds.size > 0 && (
+          <SelectionActions>
+            <ActionButton
+              $variant="danger"
+              onClick={handleBatchDelete}
+              disabled={isDeleting}
+              aria-label={t('admin.deleteSelected', 'Delete selected')}
+            >
+              {isDeleting ? <FaSpinner className="spin" aria-hidden="true" /> : <FaTrash aria-hidden="true" />}
+              {t('admin.deleteSelected', 'Delete selected')} ({selectedIds.size})
+            </ActionButton>
+            <ActionButton $variant="secondary" onClick={clearSelection} aria-label={t('admin.clearSelection', 'Clear selection')}>
+              <FaTimes aria-hidden="true" /> {t('admin.clearSelection', 'Clear')}
+            </ActionButton>
+          </SelectionActions>
+        )}
+      </SelectionBar>
       
       {currentCharacters.length === 0 ? (
         <EmptyState role="status">
@@ -305,7 +392,17 @@ const AdminCharacters = ({
                 whileHover="hover"
                 layout
                 role="listitem"
+                $selected={selectedIds.has(char.id)}
               >
+                <CardCheckbox
+                  onClick={() => toggleSelect(char.id)}
+                  aria-label={selectedIds.has(char.id)
+                    ? t('admin.deselectCharacter', { name: char.name }, `Deselect ${char.name}`)
+                    : t('admin.selectCharacter', { name: char.name }, `Select ${char.name}`)}
+                  aria-pressed={selectedIds.has(char.id)}
+                >
+                  {selectedIds.has(char.id) ? <FaCheckSquare /> : <FaSquare />}
+                </CardCheckbox>
                 <CardMedia>
                   {isVideo(char.image) ? (
                     <video autoPlay loop muted playsInline aria-hidden="true">
@@ -358,7 +455,17 @@ const AdminCharacters = ({
                 animate="visible"
                 exit={{ opacity: 0, x: -20 }}
                 role="listitem"
+                $selected={selectedIds.has(char.id)}
               >
+                <ListCheckbox
+                  onClick={() => toggleSelect(char.id)}
+                  aria-label={selectedIds.has(char.id)
+                    ? t('admin.deselectCharacter', { name: char.name }, `Deselect ${char.name}`)
+                    : t('admin.selectCharacter', { name: char.name }, `Select ${char.name}`)}
+                  aria-pressed={selectedIds.has(char.id)}
+                >
+                  {selectedIds.has(char.id) ? <FaCheckSquare /> : <FaSquare />}
+                </ListCheckbox>
                 <ListThumb>
                   {isVideo(char.image) ? (
                     <video autoPlay loop muted playsInline aria-hidden="true">
@@ -576,29 +683,110 @@ const AdminCharacters = ({
 // CHARACTER-SPECIFIC STYLED COMPONENTS
 // ============================================
 
+// Selection bar styled components
+const SelectionBar = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} 0;
+  margin-bottom: ${theme.spacing.sm};
+`;
+
+const SelectionLeft = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+`;
+
+const SelectAllButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: transparent;
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.text};
+  cursor: pointer;
+  font-size: ${theme.fontSizes.sm};
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${theme.colors.backgroundTertiary};
+    border-color: ${theme.colors.primary};
+  }
+
+  svg {
+    color: ${theme.colors.primary};
+  }
+`;
+
+const SelectedCount = styled.span`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  font-weight: ${theme.fontWeights.medium};
+`;
+
+const SelectionActions = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+`;
+
 const CharacterGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
   gap: ${theme.spacing.md};
-  
+
   @media (min-width: ${theme.breakpoints.sm}) {
     grid-template-columns: repeat(3, 1fr);
   }
-  
+
   @media (min-width: ${theme.breakpoints.md}) {
     grid-template-columns: repeat(4, 1fr);
   }
-  
+
   @media (min-width: ${theme.breakpoints.lg}) {
     grid-template-columns: repeat(5, 1fr);
   }
 `;
 
 const CharacterCard = styled(motion.div)`
+  position: relative;
   background: ${theme.colors.surface};
-  border: 1px solid ${theme.colors.surfaceBorder};
+  border: 2px solid ${props => props.$selected ? theme.colors.primary : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
   overflow: hidden;
+  transition: border-color 0.2s ease;
+
+  ${props => props.$selected && `
+    box-shadow: 0 0 0 2px ${theme.colors.primary}33;
+  `}
+`;
+
+const CardCheckbox = styled.button`
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  background: rgba(0, 0, 0, 0.6);
+  border: none;
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.primary};
+  cursor: pointer;
+  font-size: 16px;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(0, 0, 0, 0.8);
+    transform: scale(1.1);
+  }
 `;
 
 const CardMedia = styled.div`
@@ -689,10 +877,36 @@ const ListItem = styled(motion.div)`
   gap: ${theme.spacing.md};
   padding: ${theme.spacing.md};
   background: ${theme.colors.surface};
-  border: 1px solid ${theme.colors.surfaceBorder};
+  border: 2px solid ${props => props.$selected ? theme.colors.primary : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
-  
+  transition: border-color 0.2s ease;
+
+  ${props => props.$selected && `
+    box-shadow: 0 0 0 2px ${theme.colors.primary}33;
+  `}
+
   &:hover { background: ${theme.colors.backgroundTertiary}; }
+`;
+
+const ListCheckbox = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  background: transparent;
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.primary};
+  cursor: pointer;
+  font-size: 18px;
+  flex-shrink: 0;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${theme.colors.backgroundTertiary};
+    border-color: ${theme.colors.primary};
+  }
 `;
 
 const ListThumb = styled.div`
@@ -751,6 +965,8 @@ AdminCharacters.propTypes = {
   onEditCharacter: PropTypes.func.isRequired,
   /** Handler for deleting a character (id, name) */
   onDeleteCharacter: PropTypes.func.isRequired,
+  /** Handler for batch deleting characters (array of ids) */
+  onBatchDeleteCharacters: PropTypes.func.isRequired,
   /** Handler for opening multi-upload modal */
   onMultiUpload: PropTypes.func.isRequired,
   /** Handler for opening anime import modal */
