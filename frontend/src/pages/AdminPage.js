@@ -34,6 +34,7 @@ import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
 import AnimeImportModal from '../components/UI/AnimeImportModal';
 import EditCharacterModal from '../components/Admin/EditCharacterModal';
+import CreateFromDanbooru from '../components/Admin/CreateFromDanbooru';
 import KeyboardShortcutsModal from '../components/Admin/KeyboardShortcutsModal';
 import {
   AdminTabs,
@@ -309,6 +310,7 @@ const AdminPage = () => {
                       onDeleteCharacter={handleDeleteCharacterWithConfirm}
                       onMultiUpload={modals.openMultiUploadModal}
                       onAnimeImport={modals.openAnimeImportModal}
+                      onCreateFromDanbooru={modals.openCreateFromDanbooruModal}
                       newCharacter={newCharacter}
                       onCharacterChange={handleCharacterChange}
                       selectedFile={selectedFile}
@@ -408,6 +410,14 @@ const AdminPage = () => {
         show={modals.isAnimeImportOpen}
         onClose={modals.closeAnimeImportModal}
         onSuccess={adminState.handleAnimeImport}
+      />
+
+      <CreateFromDanbooru
+        show={modals.isCreateFromDanbooruOpen}
+        onClose={modals.closeCreateFromDanbooruModal}
+        onCharacterCreated={(character) => {
+          adminState.handleAnimeImport([character]);
+        }}
       />
 
       <EditCharacterModal

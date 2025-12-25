@@ -80,6 +80,35 @@ const Character = sequelize.define('Character', {
   frameCount: {
     type: DataTypes.INTEGER,
     allowNull: true
+  },
+  // Danbooru source metadata (optional - only set for characters created from Danbooru)
+  danbooruPostId: {
+    type: DataTypes.INTEGER,
+    allowNull: true
+  },
+  danbooruSourceUrl: {
+    type: DataTypes.STRING(512),
+    allowNull: true
+  },
+  danbooruTags: {
+    type: DataTypes.TEXT,
+    allowNull: true,
+    get() {
+      const value = this.getDataValue('danbooruTags');
+      if (!value) return null;
+      try {
+        return JSON.parse(value);
+      } catch {
+        return null;
+      }
+    },
+    set(value) {
+      if (value === null || value === undefined) {
+        this.setDataValue('danbooruTags', null);
+      } else {
+        this.setDataValue('danbooruTags', JSON.stringify(value));
+      }
+    }
   }
 });
 

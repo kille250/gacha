@@ -23,6 +23,7 @@ export const ADMIN_MODAL_TYPES = {
   EDIT_CHARACTER: 'editCharacter',
   MULTI_UPLOAD: 'multiUpload',
   ANIME_IMPORT: 'animeImport',
+  CREATE_FROM_DANBOORU: 'createFromDanbooru',
   CONFIRM_DELETE: 'confirmDelete',
 };
 
@@ -49,6 +50,7 @@ export const useAdminModals = () => {
   // Upload modals
   const [isMultiUploadOpen, setIsMultiUploadOpen] = useState(false);
   const [isAnimeImportOpen, setIsAnimeImportOpen] = useState(false);
+  const [isCreateFromDanbooruOpen, setIsCreateFromDanbooruOpen] = useState(false);
 
   // Confirmation dialog state
   const [confirmDialog, setConfirmDialog] = useState({
@@ -131,6 +133,14 @@ export const useAdminModals = () => {
     setIsAnimeImportOpen(false);
   }, []);
 
+  const openCreateFromDanbooruModal = useCallback(() => {
+    setIsCreateFromDanbooruOpen(true);
+  }, []);
+
+  const closeCreateFromDanbooruModal = useCallback(() => {
+    setIsCreateFromDanbooruOpen(false);
+  }, []);
+
   // ==================== CONFIRMATION DIALOG HANDLERS ====================
 
   /**
@@ -206,6 +216,9 @@ export const useAdminModals = () => {
       case 'animeImport':
         openAnimeImportModal();
         break;
+      case 'createFromDanbooru':
+        openCreateFromDanbooruModal();
+        break;
       case 'banner':
         setActiveTab('banners');
         // Delay to allow tab change animation
@@ -218,7 +231,7 @@ export const useAdminModals = () => {
       default:
         break;
     }
-  }, [openAddBannerModal, openAddCouponModal, openMultiUploadModal, openAnimeImportModal]);
+  }, [openAddBannerModal, openAddCouponModal, openMultiUploadModal, openAnimeImportModal, openCreateFromDanbooruModal]);
 
   // ==================== CLOSE ALL MODALS ====================
 
@@ -233,6 +246,7 @@ export const useAdminModals = () => {
     closeEditCharacterModal();
     closeMultiUploadModal();
     closeAnimeImportModal();
+    closeCreateFromDanbooruModal();
     closeConfirmDialog();
   }, [
     closeAddBannerModal,
@@ -242,6 +256,7 @@ export const useAdminModals = () => {
     closeEditCharacterModal,
     closeMultiUploadModal,
     closeAnimeImportModal,
+    closeCreateFromDanbooruModal,
     closeConfirmDialog,
   ]);
 
@@ -255,6 +270,7 @@ export const useAdminModals = () => {
     isEditingCharacter ||
     isMultiUploadOpen ||
     isAnimeImportOpen ||
+    isCreateFromDanbooruOpen ||
     confirmDialog.isOpen;
 
   return {
@@ -285,10 +301,13 @@ export const useAdminModals = () => {
     // Upload modal state
     isMultiUploadOpen,
     isAnimeImportOpen,
+    isCreateFromDanbooruOpen,
     openMultiUploadModal,
     closeMultiUploadModal,
     openAnimeImportModal,
     closeAnimeImportModal,
+    openCreateFromDanbooruModal,
+    closeCreateFromDanbooruModal,
 
     // Confirmation dialog
     confirmDialog,

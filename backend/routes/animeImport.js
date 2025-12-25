@@ -503,6 +503,307 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
   }
 });
 
+// ==========================================
+// CREATE CHARACTER FROM DANBOORU IMAGE
+// ==========================================
+
+/**
+ * Create a new character from a Danbooru image
+ * Reuses existing Danbooru search results - expects the Danbooru media object
+ * as input rather than re-fetching from Danbooru.
+ */
+router.post('/create-from-danbooru', auth, adminAuth, async (req, res) => {
+  try {
+    const { name, series, rarity = 'common', isR18 = false, danbooruMedia } = req.body;
+
+    // Validate required character fields
+    if (!name || !name.trim()) {
+      return res.status(400).json({ error: 'Character name is required' });
+    }
+    if (!series || !series.trim()) {
+      return res.status(400).json({ error: 'Series name is required' });
+    }
+
+    // Validate rarity
+    const validRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    if (!validRarities.includes(rarity)) {
+      return res.status(400).json({ error: 'Invalid rarity value' });
+    }
+
+    // Validate Danbooru media object
+    if (!danbooruMedia || !danbooruMedia.id) {
+      return res.status(400).json({ error: 'Danbooru media data is required' });
+    }
+
+    // Get the best available image URL (prefer sample/large over full for faster loading)
+    const imageUrl = danbooruMedia.sample || danbooruMedia.file || danbooruMedia.preview;
+    if (!imageUrl) {
+      return res.status(400).json({ error: 'No valid image URL in Danbooru media data' });
+    }
+
+    // Check if character already exists from this Danbooru post
+    const existingFromDanbooru = await Character.findOne({
+      where: { danbooruPostId: danbooruMedia.id }
+    });
+    if (existingFromDanbooru) {
+      return res.status(409).json({
+        error: 'A character already exists from this Danbooru post',
+        existingCharacter: {
+          id: existingFromDanbooru.id,
+          name: existingFromDanbooru.name,
+          series: existingFromDanbooru.series,
+          image: existingFromDanbooru.image
+        }
+      });
+    }
+
+    // Download the image
+    const ext = getExtensionFromUrl(imageUrl);
+    const filename = generateUniqueFilename('danbooru', ext);
+
+    await downloadImage(imageUrl, filename, 'characters', { minFileSize: 1000 });
+    const filePath = getFilePath('characters', filename);
+    const imagePath = getUrlPath('characters', filename);
+
+    // Check for duplicates using image fingerprinting
+    const duplicateCheck = await checkForDuplicates(filePath);
+    const detectionMode = getDetectionMode();
+
+    if (duplicateCheck.action === 'reject') {
+      safeUnlink(filePath);
+      const existingMatch = duplicateCheck.exactMatch || duplicateCheck.similarMatches[0];
+      return res.status(409).json({
+        error: duplicateCheck.reason,
+        status: 'confirmed_duplicate',
+        explanation: duplicateCheck.reason,
+        similarity: existingMatch?.similarity || (duplicateCheck.isExactDuplicate ? 100 : null),
+        suggestedActions: ['change_media', 'cancel'],
+        existingMatch: existingMatch ? {
+          id: existingMatch.id,
+          name: existingMatch.name,
+          series: existingMatch.series,
+          image: existingMatch.image,
+          thumbnailUrl: existingMatch.image,
+          mediaType: existingMatch.mediaType || 'image',
+          similarity: existingMatch.similarity
+        } : null
+      });
+    }
+
+    // Log warnings for audit trail
+    if (duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag') {
+      await logDuplicateEvent('character.duplicate_warning', req.user.id, null, {
+        action: duplicateCheck.action,
+        reason: duplicateCheck.reason,
+        matches: duplicateCheck.similarMatches,
+        filename: filename,
+        detectionMode,
+        importSource: 'danbooru-create'
+      }, req);
+    }
+
+    // Prepare Danbooru tags for storage
+    const danbooruTags = {
+      all: danbooruMedia.tags || null,
+      character: danbooruMedia.characterTags || null
+    };
+
+    // Create the character with fingerprints and Danbooru metadata
+    const fp = duplicateCheck.fingerprints;
+    const newCharacter = await Character.create({
+      name: name.trim(),
+      image: imagePath,
+      series: series.trim(),
+      rarity,
+      isR18: isR18 === true || isR18 === 'true',
+      // Fingerprints
+      sha256Hash: fp?.sha256 || null,
+      dHash: fp?.dHash || null,
+      aHash: fp?.aHash || null,
+      duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag',
+      // Video fingerprint fields
+      mediaType: fp?.mediaType || 'image',
+      frameHashes: fp?.frameHashes || null,
+      representativeDHash: fp?.representativeDHash || null,
+      representativeAHash: fp?.representativeAHash || null,
+      duration: fp?.duration || null,
+      frameCount: fp?.frameCount || null,
+      // Danbooru metadata
+      danbooruPostId: danbooruMedia.id,
+      danbooruSourceUrl: danbooruMedia.source || null,
+      danbooruTags: danbooruTags
+    });
+
+    console.log(`Admin (ID: ${req.user.id}) created character "${name}" from Danbooru post ${danbooruMedia.id}`);
+
+    const response = {
+      message: 'Character created successfully from Danbooru',
+      character: newCharacter
+    };
+
+    // Include warning in response if flagged
+    if (duplicateCheck.action === 'flag') {
+      response.warning = duplicateCheck.reason;
+      response.similarCharacters = duplicateCheck.similarMatches;
+    }
+
+    res.status(201).json(response);
+  } catch (err) {
+    console.error('Error creating character from Danbooru:', err);
+    res.status(500).json({ error: err.message || 'Failed to create character from Danbooru' });
+  }
+});
+
+/**
+ * Batch create characters from multiple Danbooru images
+ * For efficient bulk imports from Danbooru search results
+ */
+router.post('/create-from-danbooru-batch', auth, adminAuth, async (req, res) => {
+  try {
+    const { characters } = req.body;
+
+    if (!characters || !Array.isArray(characters) || characters.length === 0) {
+      return res.status(400).json({ error: 'No characters provided for creation' });
+    }
+
+    if (characters.length > 20) {
+      return res.status(400).json({ error: 'Maximum 20 characters per batch' });
+    }
+
+    const validRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    const createdCharacters = [];
+    const errors = [];
+    const detectionMode = getDetectionMode();
+
+    for (let i = 0; i < characters.length; i++) {
+      const charData = characters[i];
+
+      try {
+        // Validate required fields
+        if (!charData.name?.trim()) {
+          errors.push({ index: i, error: 'Character name is required' });
+          continue;
+        }
+        if (!charData.series?.trim()) {
+          errors.push({ index: i, error: 'Series name is required' });
+          continue;
+        }
+        if (!charData.danbooruMedia?.id) {
+          errors.push({ index: i, error: 'Danbooru media data is required' });
+          continue;
+        }
+
+        const rarity = validRarities.includes(charData.rarity) ? charData.rarity : 'common';
+        const danbooruMedia = charData.danbooruMedia;
+
+        // Check if already exists from this Danbooru post
+        const existingFromDanbooru = await Character.findOne({
+          where: { danbooruPostId: danbooruMedia.id }
+        });
+        if (existingFromDanbooru) {
+          errors.push({
+            index: i,
+            name: charData.name,
+            error: 'Character already exists from this Danbooru post',
+            existingId: existingFromDanbooru.id
+          });
+          continue;
+        }
+
+        // Get image URL
+        const imageUrl = danbooruMedia.sample || danbooruMedia.file || danbooruMedia.preview;
+        if (!imageUrl) {
+          errors.push({ index: i, name: charData.name, error: 'No valid image URL' });
+          continue;
+        }
+
+        // Download and fingerprint
+        const ext = getExtensionFromUrl(imageUrl);
+        const filename = generateUniqueFilename('danbooru', ext);
+
+        await downloadImage(imageUrl, filename, 'characters', { minFileSize: 1000 });
+        const filePath = getFilePath('characters', filename);
+        const imagePath = getUrlPath('characters', filename);
+
+        // Check for duplicates
+        const duplicateCheck = await checkForDuplicates(filePath);
+
+        if (duplicateCheck.action === 'reject') {
+          safeUnlink(filePath);
+          const existingMatch = duplicateCheck.exactMatch || duplicateCheck.similarMatches[0];
+          errors.push({
+            index: i,
+            name: charData.name,
+            error: duplicateCheck.reason,
+            duplicateOf: existingMatch?.name
+          });
+          continue;
+        }
+
+        // Log warnings
+        if (duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag') {
+          await logDuplicateEvent('character.duplicate_warning', req.user.id, null, {
+            action: duplicateCheck.action,
+            reason: duplicateCheck.reason,
+            matches: duplicateCheck.similarMatches,
+            filename,
+            detectionMode,
+            importSource: 'danbooru-batch'
+          }, req);
+        }
+
+        // Prepare tags
+        const danbooruTags = {
+          all: danbooruMedia.tags || null,
+          character: danbooruMedia.characterTags || null
+        };
+
+        // Create character
+        const fp = duplicateCheck.fingerprints;
+        const newCharacter = await Character.create({
+          name: charData.name.trim(),
+          image: imagePath,
+          series: charData.series.trim(),
+          rarity,
+          isR18: charData.isR18 === true || charData.isR18 === 'true',
+          sha256Hash: fp?.sha256 || null,
+          dHash: fp?.dHash || null,
+          aHash: fp?.aHash || null,
+          duplicateWarning: duplicateCheck.action === 'warn' || duplicateCheck.action === 'flag',
+          mediaType: fp?.mediaType || 'image',
+          frameHashes: fp?.frameHashes || null,
+          representativeDHash: fp?.representativeDHash || null,
+          representativeAHash: fp?.representativeAHash || null,
+          duration: fp?.duration || null,
+          frameCount: fp?.frameCount || null,
+          danbooruPostId: danbooruMedia.id,
+          danbooruSourceUrl: danbooruMedia.source || null,
+          danbooruTags: danbooruTags
+        });
+
+        createdCharacters.push(newCharacter);
+
+        // Small delay to avoid overwhelming external servers
+        await new Promise(resolve => setTimeout(resolve, 100));
+      } catch (charErr) {
+        console.error(`Error creating character at index ${i}:`, charErr);
+        errors.push({ index: i, name: charData.name, error: charErr.message });
+      }
+    }
+
+    console.log(`Admin (ID: ${req.user.id}) batch created ${createdCharacters.length} characters from Danbooru (${errors.length} errors)`);
+
+    res.status(201).json({
+      message: `Successfully created ${createdCharacters.length} characters from Danbooru`,
+      characters: createdCharacters,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    console.error('Batch create from Danbooru error:', err);
+    res.status(500).json({ error: err.message || 'Failed to batch create characters from Danbooru' });
+  }
+});
+
 // Search Danbooru with exact tag and sorting options
 router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
   try {

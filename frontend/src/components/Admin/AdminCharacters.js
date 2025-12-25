@@ -76,6 +76,7 @@ const AdminCharacters = ({
   onDeleteCharacter,
   onMultiUpload,
   onAnimeImport,
+  onCreateFromDanbooru,
   newCharacter,
   onCharacterChange,
   selectedFile,
@@ -229,6 +230,11 @@ const AdminCharacters = ({
           <ActionButton $variant="accent" onClick={onAnimeImport} aria-label={t('admin.animeImport')}>
             <FaDownload aria-hidden="true" /> {t('admin.animeImport')}
           </ActionButton>
+          {onCreateFromDanbooru && (
+            <ActionButton $variant="secondary" onClick={onCreateFromDanbooru} aria-label={t('admin.createFromDanbooru', 'Create from Danbooru')}>
+              <FaImage aria-hidden="true" /> {t('admin.createFromDanbooru', 'Danbooru')}
+            </ActionButton>
+          )}
         </ActionGroup>
         <ViewToggle role="group" aria-label={t('admin.viewMode', 'View mode')}>
           <ViewButton
@@ -717,6 +723,8 @@ AdminCharacters.propTypes = {
   onMultiUpload: PropTypes.func.isRequired,
   /** Handler for opening anime import modal */
   onAnimeImport: PropTypes.func.isRequired,
+  /** Handler for opening create from Danbooru modal */
+  onCreateFromDanbooru: PropTypes.func,
   /** Current new character form data */
   newCharacter: PropTypes.shape({
     name: PropTypes.string,
@@ -737,6 +745,7 @@ AdminCharacters.propTypes = {
 AdminCharacters.defaultProps = {
   selectedFile: null,
   uploadedImage: null,
+  onCreateFromDanbooru: null,
 };
 
 export default AdminCharacters;
