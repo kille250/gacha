@@ -528,28 +528,32 @@ const TabIconWrapper = styled.span`
 
 const ActiveIndicator = styled(motion.div)`
   position: absolute;
-  /* Use percentage-based positioning for consistent alignment across screen sizes */
+  /*
+   * IMPORTANT: Do NOT use transform: translateX(-50%) with framer-motion layoutId!
+   * It causes position conflicts after the first animation.
+   * Instead, use left/right with calc() or inset for centering.
+   */
   bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  /* Responsive width: percentage of parent for consistent proportions */
-  width: min(40px, 70%);
+  /* Center using left/right instead of transform */
+  left: 15%;
+  right: 15%;
   height: 3px;
   background: ${theme.colors.primary};
   border-radius: ${theme.radius.full};
-  /* Ensure indicator stays within rounded button bounds */
   pointer-events: none;
 
   @media (max-width: ${theme.breakpoints.md}) {
     /* On mobile icon-only mode, use smaller indicator */
-    width: min(32px, 60%);
+    left: 20%;
+    right: 20%;
     height: 2px;
     bottom: 6px;
   }
 
   @media (max-width: 380px) {
     /* Extra small screens - even more compact */
-    width: min(24px, 55%);
+    left: 22%;
+    right: 22%;
     bottom: 4px;
   }
 `;
@@ -558,22 +562,23 @@ const ActiveIndicator = styled(motion.div)`
 const ActiveIndicatorStatic = styled.div`
   position: absolute;
   bottom: 4px;
-  left: 50%;
-  transform: translateX(-50%);
-  width: min(40px, 70%);
+  left: 15%;
+  right: 15%;
   height: 3px;
   background: ${theme.colors.primary};
   border-radius: ${theme.radius.full};
   pointer-events: none;
 
   @media (max-width: ${theme.breakpoints.md}) {
-    width: min(32px, 60%);
+    left: 20%;
+    right: 20%;
     height: 2px;
     bottom: 6px;
   }
 
   @media (max-width: 380px) {
-    width: min(24px, 55%);
+    left: 22%;
+    right: 22%;
     bottom: 4px;
   }
 `;
