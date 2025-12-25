@@ -391,6 +391,4 @@ export const AnimatedPercentage = memo(function AnimatedPercentage({
   );
 });
 
-// Named and default export
-export { AnimatedValue };
 export default AnimatedValue;

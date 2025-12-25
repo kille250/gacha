@@ -5,10 +5,11 @@ import {
   FaStar, FaEdit, FaTrash, FaPlus, FaUndo, FaPercent, FaPalette, FaMagic,
   FaExclamationTriangle, FaInfoCircle, FaChevronDown, FaChevronUp, FaCopy,
   FaDice, FaLightbulb, FaQuestionCircle, FaCog, FaChartBar, FaCrosshairs,
-  FaShieldAlt, FaHourglass, FaTimes
+  FaShieldAlt, FaHourglass, FaTimes, FaCheck
 } from 'react-icons/fa';
-import { theme, motionVariants } from '../../design-system';
+import { theme, motionVariants, ConfirmDialog } from '../../design-system';
 import { useTranslation } from 'react-i18next';
+import { useToast } from '../../context/ToastContext';
 import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../../cache';
 import { useRarity } from '../../context/RarityContext';
@@ -174,6 +175,7 @@ const FIELD_TOOLTIP_KEYS = {
 
 const AdminRarities = ({ onRefresh }) => {
   const { t } = useTranslation();
+  const toast = useToast();
   const { refetch: refetchRarityContext } = useRarity();
   const [rarities, setRarities] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -181,7 +183,19 @@ const AdminRarities = ({ onRefresh }) => {
   const [showModal, setShowModal] = useState(false);
   const [editingRarity, setEditingRarity] = useState(null);
   const [formData, setFormData] = useState(getEmptyFormData());
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+
+  // Confirmation dialog state
+  const [confirmDialog, setConfirmDialog] = useState({
+    isOpen: false,
+    title: '',
+    message: '',
+    variant: 'danger',
+    onConfirm: null,
+    loading: false,
+  });
+
+
   // Collapsible sections state
   const [expandedSections, setExpandedSections] = useState({
     basic: true,
@@ -190,7 +204,7 @@ const AdminRarities = ({ onRefresh }) => {
     visual: false,
     animation: false
   });
-  
+
   // Simulator state
   const [showSimulator, setShowSimulator] = useState(false);
   const [simulatorPulls, setSimulatorPulls] = useState(100);
@@ -222,7 +236,7 @@ const AdminRarities = ({ onRefresh }) => {
     };
   }
 
-  const fetchRarities = async () => {
+  const fetchRarities = useCallback(async () => {
     try {
       setLoading(true);
       const data = await getRarities();
@@ -234,11 +248,11 @@ const AdminRarities = ({ onRefresh }) => {
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
   useEffect(() => {
     fetchRarities();
-  }, []);
+  }, [fetchRarities]);
 
   // Calculate rate totals for each pool type
   const rateTotals = useMemo(() => {
@@ -317,12 +331,20 @@ const AdminRarities = ({ onRefresh }) => {
     }));
   };
 
-  const toggleSection = (section) => {
+  const toggleSection = useCallback((section) => {
     setExpandedSections(prev => ({
       ...prev,
       [section]: !prev[section]
     }));
-  };
+  }, []);
+
+  // Keyboard handler for collapsible sections
+  const handleSectionKeyDown = useCallback((e, section) => {
+    if (e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      toggleSection(section);
+    }
+  }, [toggleSection]);
 
   // Apply a preset to the form
   const applyPreset = useCallback((presetKey) => {
@@ -398,9 +420,23 @@ const AdminRarities = ({ onRefresh }) => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+
+    // Form validation
+    if (!formData.name.trim()) {
+      toast.error(t('admin.rarities.errorNameRequired', 'Internal name is required'));
+      return;
+    }
+    if (!formData.displayName.trim()) {
+      toast.error(t('admin.rarities.errorDisplayNameRequired', 'Display name is required'));
+      return;
+    }
+
+    setIsSubmitting(true);
     try {
       const submitData = {
         ...formData,
+        name: formData.name.trim().toLowerCase(),
+        displayName: formData.displayName.trim(),
         capSingle: formData.capSingle === '' ? null : parseFloat(formData.capSingle),
         capMulti: formData.capMulti === '' ? null : parseFloat(formData.capMulti),
         accentColor: formData.accentColor || null,
@@ -409,59 +445,92 @@ const AdminRarities = ({ onRefresh }) => {
       if (editingRarity) {
         await updateRarity(editingRarity.id, submitData);
         invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_EDIT);
+        toast.success(t('admin.rarities.updated', 'Rarity updated successfully'));
       } else {
         await createRarity(submitData);
         invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_ADD);
+        toast.success(t('admin.rarities.created', 'Rarity created successfully'));
       }
-      
+
       await fetchRarities();
-      await refetchRarityContext(); // Refresh the global rarity context with new colors
+      await refetchRarityContext();
       setShowModal(false);
       if (onRefresh) onRefresh();
     } catch (err) {
       console.error('Error saving rarity:', err);
-      alert(err.response?.data?.error || 'Failed to save rarity');
+      toast.error(err.response?.data?.error || t('admin.rarities.errorSaving', 'Failed to save rarity'));
+    } finally {
+      setIsSubmitting(false);
     }
   };
 
-  const handleDelete = async (rarity) => {
+  // Open delete confirmation dialog
+  const handleDeleteClick = useCallback((rarity) => {
     if (rarity.isDefault) {
-      alert(t('admin.rarities.cannotDeleteDefault'));
+      toast.error(t('admin.rarities.cannotDeleteDefault', 'Cannot delete default rarities'));
       return;
     }
-    
-    if (!window.confirm(`${t('admin.rarities.confirmDelete')} "${rarity.displayName}"?`)) {
-      return;
-    }
-    
-    try {
-      await deleteRarity(rarity.id);
-      invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_DELETE);
-      await fetchRarities();
-      await refetchRarityContext(); // Refresh the global rarity context
-      if (onRefresh) onRefresh();
-    } catch (err) {
-      console.error('Error deleting rarity:', err);
-      alert(err.response?.data?.error || 'Failed to delete rarity');
-    }
-  };
 
-  const handleResetDefaults = async () => {
-    if (!window.confirm(t('admin.rarities.confirmReset'))) {
-      return;
-    }
-    
-    try {
-      await resetDefaultRarities();
-      invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_RESET);
-      await fetchRarities();
-      await refetchRarityContext(); // Refresh the global rarity context
-      if (onRefresh) onRefresh();
-    } catch (err) {
-      console.error('Error resetting rarities:', err);
-      alert(err.response?.data?.error || 'Failed to reset rarities');
-    }
-  };
+    setConfirmDialog({
+      isOpen: true,
+      title: t('admin.rarities.confirmDeleteTitle', 'Delete Rarity'),
+      message: t('admin.rarities.confirmDeleteMessage', 'Are you sure you want to delete "{{name}}"? This action cannot be undone.').replace('{{name}}', rarity.displayName),
+      variant: 'danger',
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, loading: true }));
+        try {
+          await deleteRarity(rarity.id);
+          invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_DELETE);
+          await fetchRarities();
+          await refetchRarityContext();
+          toast.success(t('admin.rarities.deleted', 'Rarity deleted successfully'));
+          if (onRefresh) onRefresh();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+        } catch (err) {
+          console.error('Error deleting rarity:', err);
+          toast.error(err.response?.data?.error || t('admin.rarities.errorDeleting', 'Failed to delete rarity'));
+          setConfirmDialog(prev => ({ ...prev, loading: false }));
+        }
+      },
+      loading: false,
+    });
+  }, [t, toast, fetchRarities, refetchRarityContext, onRefresh]);
+
+  // Open reset confirmation dialog
+  const handleResetClick = useCallback(() => {
+    setConfirmDialog({
+      isOpen: true,
+      title: t('admin.rarities.confirmResetTitle', 'Reset to Defaults'),
+      message: t('admin.rarities.confirmResetMessage', 'This will restore all rarities to their default settings. Any custom rarities you have created will be removed. This action cannot be undone.'),
+      variant: 'warning',
+      confirmLabel: t('admin.rarities.resetConfirm', 'Reset Defaults'),
+      cancelLabel: t('common.cancel', 'Cancel'),
+      onConfirm: async () => {
+        setConfirmDialog(prev => ({ ...prev, loading: true }));
+        try {
+          await resetDefaultRarities();
+          invalidateFor(CACHE_ACTIONS.ADMIN_RARITY_RESET);
+          await fetchRarities();
+          await refetchRarityContext();
+          toast.success(t('admin.rarities.resetSuccess', 'Rarities reset to defaults'));
+          if (onRefresh) onRefresh();
+          setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+        } catch (err) {
+          console.error('Error resetting rarities:', err);
+          toast.error(err.response?.data?.error || t('admin.rarities.errorResetting', 'Failed to reset rarities'));
+          setConfirmDialog(prev => ({ ...prev, loading: false }));
+        }
+      },
+      loading: false,
+    });
+  }, [t, toast, fetchRarities, refetchRarityContext, onRefresh]);
+
+  // Close confirmation dialog
+  const closeConfirmDialog = useCallback(() => {
+    setConfirmDialog(prev => ({ ...prev, isOpen: false, loading: false }));
+  }, []);
 
   if (loading) {
     return (
@@ -509,7 +578,7 @@ const AdminRarities = ({ onRefresh }) => {
           <ActionButton $variant="secondary" onClick={() => setShowSimulator(!showSimulator)}>
             <FaDice /> {showSimulator ? t('admin.rarities.hideSimulator') : t('admin.rarities.showSimulator')}
           </ActionButton>
-          <ActionButton $variant="warning" onClick={handleResetDefaults}>
+          <ActionButton $variant="warning" onClick={handleResetClick}>
             <FaUndo /> {t('admin.rarities.resetDefaults')}
           </ActionButton>
         </ActionGroup>
@@ -746,7 +815,7 @@ const AdminRarities = ({ onRefresh }) => {
                     <FaEdit />
                   </IconButton>
                   {!rarity.isDefault && (
-                    <IconButton $danger onClick={() => handleDelete(rarity)} label="Delete rarity">
+                    <IconButton $danger onClick={() => handleDeleteClick(rarity)} aria-label={t('admin.rarities.deleteRarity', 'Delete rarity')}>
                       <FaTrash />
                     </IconButton>
                   )}
@@ -804,15 +873,23 @@ const AdminRarities = ({ onRefresh }) => {
                 <form onSubmit={handleSubmit}>
                   {/* Basic Info - Always visible */}
                   <CollapsibleSection $expanded={expandedSections.basic}>
-                    <SectionHeader onClick={() => toggleSection('basic')}>
+                    <SectionHeader
+                      onClick={() => toggleSection('basic')}
+                      onKeyDown={(e) => handleSectionKeyDown(e, 'basic')}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={expandedSections.basic}
+                      aria-controls="section-basic"
+                    >
                       <SectionHeaderTitle>
-                        <FaInfoCircle /> {t('admin.rarities.basicInfo')}
+                        <FaInfoCircle aria-hidden="true" /> {t('admin.rarities.basicInfo')}
                       </SectionHeaderTitle>
-                      {expandedSections.basic ? <FaChevronUp /> : <FaChevronDown />}
+                      {expandedSections.basic ? <FaChevronUp aria-hidden="true" /> : <FaChevronDown aria-hidden="true" />}
                     </SectionHeader>
                     <AnimatePresence>
                       {expandedSections.basic && (
                         <SectionContent
+                          id="section-basic"
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
@@ -869,16 +946,24 @@ const AdminRarities = ({ onRefresh }) => {
 
                   {/* Drop Rates - Main section */}
                   <CollapsibleSection $expanded={expandedSections.rates}>
-                    <SectionHeader onClick={() => toggleSection('rates')}>
+                    <SectionHeader
+                      onClick={() => toggleSection('rates')}
+                      onKeyDown={(e) => handleSectionKeyDown(e, 'rates')}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={expandedSections.rates}
+                      aria-controls="section-rates"
+                    >
                       <SectionHeaderTitle>
-                        <FaPercent /> {t('admin.rarities.dropRatesPercent')}
+                        <FaPercent aria-hidden="true" /> {t('admin.rarities.dropRatesPercent')}
                         <SectionBadge>{t('admin.rarities.coreSettings')}</SectionBadge>
                       </SectionHeaderTitle>
-                      {expandedSections.rates ? <FaChevronUp /> : <FaChevronDown />}
+                      {expandedSections.rates ? <FaChevronUp aria-hidden="true" /> : <FaChevronDown aria-hidden="true" />}
                     </SectionHeader>
                     <AnimatePresence>
                       {expandedSections.rates && (
                         <SectionContent
+                          id="section-rates"
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
@@ -1027,16 +1112,24 @@ const AdminRarities = ({ onRefresh }) => {
 
                   {/* Advanced Settings - Collapsed by default */}
                   <CollapsibleSection $expanded={expandedSections.advanced}>
-                    <SectionHeader onClick={() => toggleSection('advanced')}>
+                    <SectionHeader
+                      onClick={() => toggleSection('advanced')}
+                      onKeyDown={(e) => handleSectionKeyDown(e, 'advanced')}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={expandedSections.advanced}
+                      aria-controls="section-advanced"
+                    >
                       <SectionHeaderTitle>
-                        <FaCog /> {t('admin.rarities.advancedBannerSettings')}
+                        <FaCog aria-hidden="true" /> {t('admin.rarities.advancedBannerSettings')}
                         <SectionBadge $muted>{t('admin.rarities.optional')}</SectionBadge>
                       </SectionHeaderTitle>
-                      {expandedSections.advanced ? <FaChevronUp /> : <FaChevronDown />}
+                      {expandedSections.advanced ? <FaChevronUp aria-hidden="true" /> : <FaChevronDown aria-hidden="true" />}
                     </SectionHeader>
                     <AnimatePresence>
                       {expandedSections.advanced && (
                         <SectionContent
+                          id="section-advanced"
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
@@ -1122,16 +1215,24 @@ const AdminRarities = ({ onRefresh }) => {
 
                   {/* Visual Settings - Collapsed by default */}
                   <CollapsibleSection $expanded={expandedSections.visual}>
-                    <SectionHeader onClick={() => toggleSection('visual')}>
+                    <SectionHeader
+                      onClick={() => toggleSection('visual')}
+                      onKeyDown={(e) => handleSectionKeyDown(e, 'visual')}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={expandedSections.visual}
+                      aria-controls="section-visual"
+                    >
                       <SectionHeaderTitle>
-                        <FaPalette /> {t('admin.rarities.visualSettings')}
+                        <FaPalette aria-hidden="true" /> {t('admin.rarities.visualSettings')}
                         <SectionBadge $muted>{t('admin.rarities.optional')}</SectionBadge>
                       </SectionHeaderTitle>
-                      {expandedSections.visual ? <FaChevronUp /> : <FaChevronDown />}
+                      {expandedSections.visual ? <FaChevronUp aria-hidden="true" /> : <FaChevronDown aria-hidden="true" />}
                     </SectionHeader>
                     <AnimatePresence>
                       {expandedSections.visual && (
                         <SectionContent
+                          id="section-visual"
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
@@ -1184,16 +1285,24 @@ const AdminRarities = ({ onRefresh }) => {
 
                   {/* Animation Settings - Collapsed by default */}
                   <CollapsibleSection $expanded={expandedSections.animation}>
-                    <SectionHeader onClick={() => toggleSection('animation')}>
+                    <SectionHeader
+                      onClick={() => toggleSection('animation')}
+                      onKeyDown={(e) => handleSectionKeyDown(e, 'animation')}
+                      role="button"
+                      tabIndex={0}
+                      aria-expanded={expandedSections.animation}
+                      aria-controls="section-animation"
+                    >
                       <SectionHeaderTitle>
-                        <FaMagic /> {t('admin.rarities.animationSettings')}
+                        <FaMagic aria-hidden="true" /> {t('admin.rarities.animationSettings')}
                         <SectionBadge $muted>{t('admin.rarities.optional')}</SectionBadge>
                       </SectionHeaderTitle>
-                      {expandedSections.animation ? <FaChevronUp /> : <FaChevronDown />}
+                      {expandedSections.animation ? <FaChevronUp aria-hidden="true" /> : <FaChevronDown aria-hidden="true" />}
                     </SectionHeader>
                     <AnimatePresence>
                       {expandedSections.animation && (
                         <SectionContent
+                          id="section-animation"
                           initial={{ height: 0, opacity: 0 }}
                           animate={{ height: 'auto', opacity: 1 }}
                           exit={{ height: 0, opacity: 0 }}
@@ -1262,11 +1371,21 @@ const AdminRarities = ({ onRefresh }) => {
                   </CollapsibleSection>
 
                   <FormRow style={{ marginTop: theme.spacing.lg }}>
-                    <SecondaryButton type="button" onClick={() => setShowModal(false)} style={{ flex: 1 }}>
+                    <SecondaryButton type="button" onClick={() => setShowModal(false)} style={{ flex: 1 }} disabled={isSubmitting}>
                       {t('common.cancel')}
                     </SecondaryButton>
-                    <PrimaryButton type="submit" style={{ flex: 2 }}>
-                      {editingRarity ? t('admin.rarities.saveChanges') : t('admin.rarities.createRarity')}
+                    <PrimaryButton type="submit" style={{ flex: 2 }} disabled={isSubmitting}>
+                      {isSubmitting ? (
+                        <>
+                          <FaHourglass style={{ animation: 'spin 1s linear infinite' }} />
+                          {t('common.saving', 'Saving...')}
+                        </>
+                      ) : (
+                        <>
+                          <FaCheck />
+                          {editingRarity ? t('admin.rarities.saveChanges') : t('admin.rarities.createRarity')}
+                        </>
+                      )}
                     </PrimaryButton>
                   </FormRow>
                 </form>
@@ -1275,6 +1394,19 @@ const AdminRarities = ({ onRefresh }) => {
           </ModalOverlay>
         )}
       </AnimatePresence>
+
+      {/* Confirmation Dialog for destructive actions */}
+      <ConfirmDialog
+        isOpen={confirmDialog.isOpen}
+        onClose={closeConfirmDialog}
+        onConfirm={confirmDialog.onConfirm}
+        title={confirmDialog.title}
+        message={confirmDialog.message}
+        variant={confirmDialog.variant}
+        confirmLabel={confirmDialog.confirmLabel}
+        cancelLabel={confirmDialog.cancelLabel}
+        loading={confirmDialog.loading}
+      />
     </AdminContainer>
   );
 };
@@ -1773,11 +1905,18 @@ const SectionHeader = styled.div`
   cursor: pointer;
   user-select: none;
   transition: background 0.2s ease;
-  
+  border-radius: ${theme.radius.md};
+
   &:hover {
     background: rgba(255, 255, 255, 0.03);
   }
-  
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.focusRing || theme.colors.primary};
+    outline-offset: -2px;
+    background: rgba(10, 132, 255, 0.08);
+  }
+
   svg:last-child {
     color: ${theme.colors.textMuted};
     font-size: 12px;

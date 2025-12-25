@@ -176,6 +176,12 @@ export const FormGroup = styled.div`
 export const FormRow = styled.div`
   display: flex;
   gap: ${theme.spacing.md};
+
+  /* Stack on mobile for better touch targets */
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex-direction: column;
+    gap: ${theme.spacing.sm};
+  }
 `;
 
 export const Label = styled.label`
@@ -534,13 +540,30 @@ export const Pagination = styled.div`
   align-items: center;
   gap: ${theme.spacing.md};
   margin-top: ${theme.spacing.xl};
+  flex-wrap: wrap;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
+  }
 `;
 
 export const PageButton = styled.button`
   padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  min-height: 44px;
+  min-width: 44px;
   background: ${theme.colors.primary};
   border: none;
   border-radius: ${theme.radius.lg};
+  -webkit-tap-highlight-color: transparent;
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.focusRing || theme.colors.primary};
+    outline-offset: 2px;
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.97);
+  }
   color: white;
   font-weight: ${theme.fontWeights.medium};
   cursor: pointer;
@@ -598,12 +621,28 @@ export const ActionBar = styled.div`
   flex-wrap: wrap;
   gap: ${theme.spacing.md};
   margin-bottom: ${theme.spacing.lg};
+
+  /* Stack on smaller screens */
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex-direction: column;
+    align-items: stretch;
+  }
 `;
 
 export const ActionGroup = styled.div`
   display: flex;
   gap: ${theme.spacing.sm};
   flex-wrap: wrap;
+
+  /* Full width buttons on mobile */
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 100%;
+
+    > button {
+      flex: 1;
+      justify-content: center;
+    }
+  }
 `;
 
 // ============================================

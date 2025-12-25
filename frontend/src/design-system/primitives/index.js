@@ -24,10 +24,4 @@ export { LoadingSpinner, LoadingDots } from './Loading';
 export { ErrorMessage, SuccessMessage, WarningMessage } from './Messages';
 
 // Animated value displays
-export {
-  AnimatedValue,
-  AnimatedCurrency,
-  AnimatedPoints,
-  AnimatedScore,
-  AnimatedPercentage
-} from './AnimatedValue';
+export { default as AnimatedValue, AnimatedCurrency, AnimatedPoints, AnimatedScore, AnimatedPercentage } from './AnimatedValue';
