@@ -1,13 +1,14 @@
 /**
  * RewardPopup - Celebration popup for claimed rewards
  *
- * Shows a brief animated popup when user claims hourly reward.
+ * Shows an animated popup when user claims hourly reward.
+ * User must click to dismiss, ensuring they can read the notification.
  */
 
 import React from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdCelebration } from 'react-icons/md';
+import { MdCelebration, MdClose } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 
@@ -17,28 +18,40 @@ import { theme } from '../../design-system';
  * @param {Object} props
  * @param {boolean} props.show - Whether popup is visible
  * @param {number} props.amount - Reward amount to display
+ * @param {Function} props.onDismiss - Callback to dismiss the popup
  */
-const RewardPopup = ({ show, amount }) => {
+const RewardPopup = ({ show, amount, onDismiss }) => {
   const { t } = useTranslation();
 
   return (
     <AnimatePresence>
       {show && (
-        <PopupContainer>
+        <PopupContainer onClick={onDismiss}>
           <Popup
             initial={{ opacity: 0, y: -50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -50, scale: 0.9 }}
             transition={{ type: 'spring', damping: 20 }}
-            role="alert"
+            role="alertdialog"
             aria-live="polite"
+            aria-label={t('nav.hourlyReward')}
+            onClick={(e) => e.stopPropagation()}
           >
             <CelebrationIcon />
             <Content>
               <Title>{t('nav.hourlyReward')}</Title>
               <Amount>+{amount} 🪙</Amount>
             </Content>
+            <DismissButton
+              onClick={onDismiss}
+              aria-label={t('common.close', 'Close')}
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.95 }}
+            >
+              <MdClose />
+            </DismissButton>
           </Popup>
+          <DismissHint>{t('common.clickToDismiss', 'Click anywhere to dismiss')}</DismissHint>
         </PopupContainer>
       )}
     </AnimatePresence>
@@ -49,13 +62,15 @@ const RewardPopup = ({ show, amount }) => {
 
 const PopupContainer = styled.div`
   position: fixed;
-  top: 100px;
-  left: 0;
-  right: 0;
+  inset: 0;
   display: flex;
-  justify-content: center;
-  z-index: ${theme.zIndex.toast};
-  pointer-events: none;
+  flex-direction: column;
+  align-items: center;
+  padding-top: 100px;
+  z-index: ${theme.zIndex.modal};
+  background: rgba(0, 0, 0, 0.3);
+  backdrop-filter: blur(2px);
+  cursor: pointer;
 `;
 
 const Popup = styled(motion.div)`
@@ -63,11 +78,43 @@ const Popup = styled(motion.div)`
   align-items: center;
   gap: ${theme.spacing.md};
   padding: ${theme.spacing.md} ${theme.spacing.xl};
+  padding-right: ${theme.spacing.md};
   background: ${theme.colors.backgroundSecondary};
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.xl};
   box-shadow: ${theme.shadows.lg};
-  pointer-events: auto;
+  cursor: default;
+`;
+
+const DismissButton = styled(motion.button)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  margin-left: ${theme.spacing.sm};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  color: ${theme.colors.textSecondary};
+  cursor: pointer;
+  transition: color ${theme.transitions.fast}, background ${theme.transitions.fast};
+
+  &:hover {
+    background: ${theme.colors.surfaceBorder};
+    color: ${theme.colors.text};
+  }
+
+  svg {
+    font-size: 16px;
+  }
+`;
+
+const DismissHint = styled(motion.div)`
+  margin-top: ${theme.spacing.md};
+  font-size: ${theme.fontSizes.sm};
+  color: rgba(255, 255, 255, 0.7);
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.3);
 `;
 
 const CelebrationIcon = styled(MdCelebration)`

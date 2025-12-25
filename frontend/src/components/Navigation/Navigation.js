@@ -139,6 +139,7 @@ const Navigation = () => {
       <RewardPopup
         show={hourlyReward.showPopup}
         amount={hourlyReward.popupAmount}
+        onDismiss={hourlyReward.dismissPopup}
       />
     </>
   );

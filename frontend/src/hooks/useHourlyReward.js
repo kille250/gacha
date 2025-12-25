@@ -18,7 +18,6 @@ import { theme } from '../design-system';
 const REWARD_INTERVAL_MS = 60 * 60 * 1000; // 1 hour in milliseconds
 // Use theme timing constants for consistent behavior across the app
 const CLAIM_COOLDOWN_MS = theme.timing.claimCooldown;
-const POPUP_DURATION_MS = theme.timing.notificationDismiss;
 const RETRY_DELAY_MS = theme.timing.retryDelay;
 
 // ==================== HOOK ====================
@@ -54,15 +53,13 @@ export const useHourlyReward = ({ onClaimSuccess } = {}) => {
   
   // Track timers for cleanup on unmount
   const cooldownTimerRef = useRef(null);
-  const popupTimerRef = useRef(null);
   const retryTimerRef = useRef(null);
-  
+
   // Cleanup on unmount to prevent memory leaks and state updates after unmount
   useEffect(() => {
     return () => {
       claimingRef.current = false;
       if (cooldownTimerRef.current) clearTimeout(cooldownTimerRef.current);
-      if (popupTimerRef.current) clearTimeout(popupTimerRef.current);
       if (retryTimerRef.current) clearTimeout(retryTimerRef.current);
     };
   }, []);
@@ -241,10 +238,7 @@ export const useHourlyReward = ({ onClaimSuccess } = {}) => {
         setJustClaimed(false);
       }, CLAIM_COOLDOWN_MS);
 
-      // Hide popup after duration (use ref for cleanup)
-      popupTimerRef.current = setTimeout(() => {
-        setPopup({ show: false, amount: 0 });
-      }, POPUP_DURATION_MS);
+      // Popup is now user-dismissed, no auto-dismiss timer needed
 
       // Call success callback
       onClaimSuccess?.(rewardAmount);
