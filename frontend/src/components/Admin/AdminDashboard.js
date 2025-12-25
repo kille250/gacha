@@ -118,7 +118,7 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
   // Screen reader announcement
   const [announcement, setAnnouncement] = useState('');
 
-  // Memoized fetch function
+  // Memoized fetch function - no dependencies to prevent re-creation
   const fetchHealth = useCallback(async () => {
     try {
       setHealthLoading(true);
@@ -126,17 +126,15 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
       const data = await getSystemHealth();
       setHealthData(data);
       setLastRefresh(new Date());
-      setAnnouncement(t('admin.systemStatusUpdated', 'System status updated'));
     } catch (err) {
       console.error('Health check error:', err);
       setHealthError(err.response?.data?.error || 'Failed to fetch system health');
-      setAnnouncement(t('admin.systemStatusError', 'Failed to update system status'));
     } finally {
       setHealthLoading(false);
     }
-  }, [t]);
+  }, []);
 
-  // Initial fetch and interval
+  // Initial fetch and interval - runs once on mount
   useEffect(() => {
     fetchHealth();
     const interval = setInterval(fetchHealth, theme.timing.healthCheckInterval);

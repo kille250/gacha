@@ -171,8 +171,8 @@ const generalRateLimiter = rateLimit({
     return `general:${ipHash}:${userId}`;
   },
   skip: (req) => {
-    // Skip rate limiting for health checks
-    return req.path === '/api/health';
+    // Skip rate limiting for health checks (both public and admin)
+    return req.path === '/api/health' || req.path === '/health';
   }
 });
 
