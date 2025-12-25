@@ -385,7 +385,7 @@ const AdminCharacters = ({
             {t('common.previous', 'Previous')}
           </PageButton>
           <PageInfo aria-live="polite" aria-atomic="true">
-            {t('common.pageOfTotal', { current: currentPage, total: totalPages }, `Page ${currentPage} of ${totalPages}`)}
+            {t('common.pageOfTotal', `Page {{current}} of {{total}}`, { current: currentPage, total: totalPages })}
           </PageInfo>
           <PageButton
             onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
