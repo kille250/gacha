@@ -107,6 +107,8 @@ const DesktopRewardButton = styled(motion.button)`
   font-weight: ${theme.fontWeights.medium};
   cursor: ${props => props.$available ? 'pointer' : 'default'};
   transition: all ${theme.transitions.fast};
+  /* Ensure minimum touch target on mobile */
+  min-height: 36px;
 
   svg {
     font-size: 14px;
@@ -117,9 +119,7 @@ const DesktopRewardButton = styled(motion.button)`
     cursor: ${props => props.$available ? 'not-allowed' : 'default'};
   }
 
-  @media (max-width: ${theme.breakpoints.md}) {
-    display: none;
-  }
+  /* Always visible - hourly reward is key engagement feature */
 `;
 
 const RewardText = styled.span`

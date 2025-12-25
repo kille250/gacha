@@ -983,9 +983,9 @@ const Header = styled.header`
   -webkit-backdrop-filter: blur(${theme.blur.lg});
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   position: sticky;
-  top: 49px; /* Account for main navigation bar height */
+  top: 56px; /* Account for main navigation bar height (min-height: 56px) */
   z-index: 100;
-  
+
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.md};
     gap: ${theme.spacing.sm};

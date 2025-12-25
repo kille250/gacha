@@ -160,6 +160,12 @@ const NavContainer = styled.nav`
   top: 0;
   z-index: ${theme.zIndex.sticky};
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
+  /* Consistent height across all screen sizes */
+  min-height: 56px;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+  }
 `;
 
 const LogoSection = styled.div`
