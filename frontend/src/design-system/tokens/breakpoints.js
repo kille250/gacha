@@ -24,6 +24,7 @@ export const zIndex = {
   base: 1,
   dropdown: 100,
   sticky: 200,
+  stickySecondary: 190, // For secondary sticky elements (e.g., admin tabs below main nav)
   stickyDropdown: 250, // For dropdowns inside sticky elements
   modal: 1000,
   toast: 1100,

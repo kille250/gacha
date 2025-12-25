@@ -240,7 +240,7 @@ const TabsContainer = styled.nav`
   position: sticky;
   /* Use CSS variable for nav height - automatically adapts to orientation/viewport */
   top: var(--nav-top-height, 56px);
-  z-index: ${theme.zIndex?.sticky || 50};
+  z-index: ${theme.zIndex?.stickySecondary || 190};
   background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(16px) saturate(180%);
   -webkit-backdrop-filter: blur(16px) saturate(180%);
