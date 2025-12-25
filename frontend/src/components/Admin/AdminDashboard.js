@@ -218,12 +218,27 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
         </SectionHeader>
 
         {healthError ? (
-          <ErrorBox>
+          <ErrorBox role="alert">
             <span>{healthError}</span>
             <RetryButton onClick={fetchHealth}>{t('admin.retry')}</RetryButton>
           </ErrorBox>
         ) : healthLoading && !healthData ? (
-          <LoadingBox>{t('admin.loadingSystemStatus')}</LoadingBox>
+          <StatusSkeletonGrid aria-busy="true" aria-label={t('admin.loadingSystemStatus')}>
+            {[1, 2, 3, 4].map((i) => (
+              <StatusCardSkeleton key={i}>
+                <SkeletonHeader>
+                  <SkeletonCircle />
+                  <SkeletonLine $width="60%" />
+                  <SkeletonBadge />
+                </SkeletonHeader>
+                <SkeletonDetails>
+                  <SkeletonRow><SkeletonLine $width="40%" /><SkeletonLine $width="30%" /></SkeletonRow>
+                  <SkeletonRow><SkeletonLine $width="50%" /><SkeletonLine $width="25%" /></SkeletonRow>
+                  <SkeletonRow><SkeletonLine $width="35%" /><SkeletonLine $width="35%" /></SkeletonRow>
+                </SkeletonDetails>
+              </StatusCardSkeleton>
+            ))}
+          </StatusSkeletonGrid>
         ) : healthData && (
           <StatusGrid>
             {/* Server Status */}
@@ -585,10 +600,89 @@ const RetryButton = styled.button`
   cursor: pointer;
 `;
 
-const LoadingBox = styled.div`
-  text-align: center;
-  padding: ${theme.spacing.xl};
-  color: ${theme.colors.textSecondary};
+// Skeleton animation keyframes
+const shimmer = `
+  @keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
+  }
+`;
+
+const skeletonBase = `
+  background: linear-gradient(
+    90deg,
+    ${theme.colors.backgroundTertiary} 25%,
+    ${theme.colors.surfaceBorder} 50%,
+    ${theme.colors.backgroundTertiary} 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.5s ease-in-out infinite;
+  border-radius: ${theme.radius.md};
+`;
+
+const StatusSkeletonGrid = styled.div`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: ${theme.spacing.md};
+
+  @media (min-width: ${theme.breakpoints.md}) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (min-width: ${theme.breakpoints.lg}) {
+    grid-template-columns: repeat(4, 1fr);
+  }
+
+  ${shimmer}
+`;
+
+const StatusCardSkeleton = styled.div`
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.lg};
+`;
+
+const SkeletonHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.md};
+  padding-bottom: ${theme.spacing.md};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+const SkeletonCircle = styled.div`
+  width: 36px;
+  height: 36px;
+  border-radius: ${theme.radius.md};
+  ${skeletonBase}
+`;
+
+const SkeletonLine = styled.div`
+  height: 14px;
+  width: ${props => props.$width || '100%'};
+  ${skeletonBase}
+`;
+
+const SkeletonBadge = styled.div`
+  width: 60px;
+  height: 24px;
+  border-radius: ${theme.radius.full};
+  margin-left: auto;
+  ${skeletonBase}
+`;
+
+const SkeletonDetails = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+const SkeletonRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  gap: ${theme.spacing.md};
 `;
 
 const StatusGrid = styled.div`

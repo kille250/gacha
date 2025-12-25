@@ -1,8 +1,28 @@
-import React, { useState } from 'react';
+/**
+ * AdminCharacters - Character management component for the admin interface
+ *
+ * Features:
+ * - Grid and list view modes for character browsing
+ * - Search by name or series
+ * - Pagination with configurable items per page
+ * - Character creation with image/video upload
+ * - Duplicate detection with blocking on similar uploads
+ * - Edit and delete functionality with confirmation
+ * - Bulk upload and anime import actions
+ *
+ * @accessibility
+ * - All interactive elements are keyboard accessible
+ * - Proper ARIA labels on buttons and controls
+ * - Focus management on modal open/close
+ * - Screen reader announcements for actions
+ */
+
+import React, { useState, useRef, useEffect, useCallback } from 'react';
+import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload, FaSpinner, FaTheaterMasks } from 'react-icons/fa';
-import { theme, motionVariants } from '../../design-system';
+import { theme, motionVariants, AriaLiveRegion } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import { IconR18 } from '../../constants/icons';
 import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
@@ -74,8 +94,25 @@ const AdminCharacters = ({
   const [duplicateError, setDuplicateError] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Screen reader announcement state
+  const [announcement, setAnnouncement] = useState('');
+
+  // Ref for modal first focusable element
+  const modalFirstInputRef = useRef(null);
+
   // Get ordered rarities for dropdown
   const orderedRarities = getOrderedRarities();
+
+  // Focus first input when modal opens
+  useEffect(() => {
+    if (showAddModal && modalFirstInputRef.current) {
+      // Small delay to ensure modal animation completes
+      const timer = setTimeout(() => {
+        modalFirstInputRef.current?.focus();
+      }, 100);
+      return () => clearTimeout(timer);
+    }
+  }, [showAddModal]);
   
   const filteredCharacters = characters.filter(char => 
     char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -85,6 +122,13 @@ const AdminCharacters = ({
   const totalPages = Math.ceil(filteredCharacters.length / itemsPerPage);
   const startIndex = (currentPage - 1) * itemsPerPage;
   const currentCharacters = filteredCharacters.slice(startIndex, startIndex + itemsPerPage);
+
+  // Announce function for screen readers
+  const announce = useCallback((message) => {
+    setAnnouncement(message);
+    // Clear after a delay to allow repeated announcements
+    setTimeout(() => setAnnouncement(''), 1000);
+  }, []);
 
   const handleSearchChange = (e) => {
     setSearchQuery(e.target.value);
@@ -104,11 +148,13 @@ const AdminCharacters = ({
     try {
       await onAddCharacter(e);
       setShowAddModal(false);
+      announce(t('admin.characterAdded', 'Character added successfully'));
     } catch (err) {
       // Check if this is a duplicate error
       if (isDuplicateError(err)) {
         const duplicateInfo = getDuplicateInfo(err);
         setDuplicateError(duplicateInfo);
+        announce(t('admin.duplicateDetected', 'Duplicate image detected'));
       } else {
         // Re-throw for parent to handle
         throw err;
@@ -134,25 +180,36 @@ const AdminCharacters = ({
       variants={motionVariants.staggerContainer}
       initial="hidden"
       animate="visible"
+      role="region"
+      aria-label={t('admin.characterManagement')}
     >
+      {/* Screen reader announcements */}
+      <AriaLiveRegion politeness="polite">
+        {announcement}
+      </AriaLiveRegion>
+
       <HeaderRow>
         <SectionTitle $iconColor={theme.colors.success}>
-          <FaImage /> {t('admin.characterManagement')}
-          <ItemCount>{filteredCharacters.length} characters</ItemCount>
+          <FaImage aria-hidden="true" /> {t('admin.characterManagement')}
+          <ItemCount aria-label={t('admin.characterCount', { count: filteredCharacters.length })}>
+            {filteredCharacters.length} {t('gacha.characters', 'characters')}
+          </ItemCount>
         </SectionTitle>
         <HeaderActions>
           <SearchWrapper>
-            <FaSearch />
-            <SearchInput 
-              type="text" 
-              placeholder="Search name or series..." 
+            <FaSearch aria-hidden="true" />
+            <SearchInput
+              type="search"
+              placeholder={t('admin.searchCharacters', 'Search name or series...')}
               value={searchQuery}
               onChange={handleSearchChange}
+              aria-label={t('admin.searchCharacters', 'Search characters by name or series')}
             />
           </SearchWrapper>
-          <ItemsPerPageSelect 
-            value={itemsPerPage} 
+          <ItemsPerPageSelect
+            value={itemsPerPage}
             onChange={handleItemsPerPageChange}
+            aria-label={t('admin.itemsPerPage', 'Items per page')}
           >
             <option value={10}>10</option>
             <option value={20}>20</option>
@@ -160,33 +217,45 @@ const AdminCharacters = ({
           </ItemsPerPageSelect>
         </HeaderActions>
       </HeaderRow>
-      
+
       <ActionBar>
-        <ActionGroup>
-          <ActionButton onClick={() => setShowAddModal(true)}>
-            <FaPlus /> Add Character
+        <ActionGroup role="group" aria-label={t('admin.characterActions', 'Character actions')}>
+          <ActionButton onClick={() => setShowAddModal(true)} aria-label={t('admin.addCharacter')}>
+            <FaPlus aria-hidden="true" /> {t('admin.addCharacter')}
           </ActionButton>
-          <ActionButton $variant="secondary" onClick={onMultiUpload}>
-            <FaCloudUploadAlt /> Multi Upload
+          <ActionButton $variant="secondary" onClick={onMultiUpload} aria-label={t('admin.multiUpload')}>
+            <FaCloudUploadAlt aria-hidden="true" /> {t('admin.multiUpload')}
           </ActionButton>
-          <ActionButton $variant="accent" onClick={onAnimeImport}>
-            <FaDownload /> Anime Import
+          <ActionButton $variant="accent" onClick={onAnimeImport} aria-label={t('admin.animeImport')}>
+            <FaDownload aria-hidden="true" /> {t('admin.animeImport')}
           </ActionButton>
         </ActionGroup>
-        <ViewToggle>
-          <ViewButton $active={viewMode === 'grid'} onClick={() => setViewMode('grid')}>Grid</ViewButton>
-          <ViewButton $active={viewMode === 'list'} onClick={() => setViewMode('list')}>List</ViewButton>
+        <ViewToggle role="group" aria-label={t('admin.viewMode', 'View mode')}>
+          <ViewButton
+            $active={viewMode === 'grid'}
+            onClick={() => setViewMode('grid')}
+            aria-pressed={viewMode === 'grid'}
+          >
+            {t('admin.gridView', 'Grid')}
+          </ViewButton>
+          <ViewButton
+            $active={viewMode === 'list'}
+            onClick={() => setViewMode('list')}
+            aria-pressed={viewMode === 'list'}
+          >
+            {t('admin.listView', 'List')}
+          </ViewButton>
         </ViewToggle>
       </ActionBar>
       
       {currentCharacters.length === 0 ? (
-        <EmptyState>
-          <EmptyIcon><FaTheaterMasks /></EmptyIcon>
-          <EmptyText>No characters found</EmptyText>
-          <EmptySubtext>Try adjusting your search or add new characters</EmptySubtext>
+        <EmptyState role="status">
+          <EmptyIcon aria-hidden="true"><FaTheaterMasks /></EmptyIcon>
+          <EmptyText>{t('admin.noCharactersFound', 'No characters found')}</EmptyText>
+          <EmptySubtext>{t('admin.noCharactersHint', 'Try adjusting your search or add new characters')}</EmptySubtext>
         </EmptyState>
       ) : viewMode === 'grid' ? (
-        <CharacterGrid>
+        <CharacterGrid role="list" aria-label={t('admin.characterGrid', 'Character grid')}>
           <AnimatePresence mode="popLayout">
             {currentCharacters.map(char => (
               <CharacterCard
@@ -197,33 +266,42 @@ const AdminCharacters = ({
                 exit="exit"
                 whileHover="hover"
                 layout
+                role="listitem"
               >
                 <CardMedia>
                   {isVideo(char.image) ? (
-                    <video autoPlay loop muted playsInline>
+                    <video autoPlay loop muted playsInline aria-hidden="true">
                       <source src={getImageUrl(char.image)} type={getVideoMimeType(char.image)} />
                     </video>
                   ) : (
-                    <img src={getImageUrl(char.image)} alt={char.name} onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }} />
+                    <img
+                      src={getImageUrl(char.image)}
+                      alt={`${char.name} from ${char.series}`}
+                      onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
+                    />
                   )}
-                  {char.isR18 && <R18Badge><IconR18 /></R18Badge>}
-                  <RarityOverlay $color={getRarityColor(char.rarity)} />
+                  {char.isR18 && <R18Badge aria-label={t('admin.r18Content', 'R18 content')}><IconR18 /></R18Badge>}
+                  <RarityOverlay $color={getRarityColor(char.rarity)} aria-hidden="true" />
                 </CardMedia>
                 <CardContent>
                   <CardName>{char.name}</CardName>
                   <CardSeries>{char.series}</CardSeries>
-                  <RarityTag $color={getRarityColor(char.rarity)}>{char.rarity}</RarityTag>
+                  <RarityTag $color={getRarityColor(char.rarity)} aria-label={`${t('admin.rarity')}: ${char.rarity}`}>
+                    {char.rarity}
+                  </RarityTag>
                   <CardActions>
-                    <CardIconButton onClick={() => onEditCharacter(char)} title="Edit">
-                      <FaEdit />
+                    <CardIconButton
+                      onClick={() => onEditCharacter(char)}
+                      aria-label={t('admin.editCharacterLabel', { name: char.name }, `Edit ${char.name}`)}
+                    >
+                      <FaEdit aria-hidden="true" />
                     </CardIconButton>
                     <CardIconButton
                       $danger
                       onClick={() => onDeleteCharacter(char.id, char.name)}
-                      title="Delete"
-                      aria-label={`Delete ${char.name}`}
+                      aria-label={t('admin.deleteCharacterLabel', { name: char.name }, `Delete ${char.name}`)}
                     >
-                      <FaTrash />
+                      <FaTrash aria-hidden="true" />
                     </CardIconButton>
                   </CardActions>
                 </CardContent>
@@ -232,7 +310,7 @@ const AdminCharacters = ({
           </AnimatePresence>
         </CharacterGrid>
       ) : (
-        <CharacterList>
+        <CharacterList role="list" aria-label={t('admin.characterList', 'Character list')}>
           <AnimatePresence>
             {currentCharacters.map(char => (
               <ListItem
@@ -241,24 +319,49 @@ const AdminCharacters = ({
                 initial="hidden"
                 animate="visible"
                 exit={{ opacity: 0, x: -20 }}
+                role="listitem"
               >
                 <ListThumb>
                   {isVideo(char.image) ? (
-                    <video autoPlay loop muted playsInline>
+                    <video autoPlay loop muted playsInline aria-hidden="true">
                       <source src={getImageUrl(char.image)} type={getVideoMimeType(char.image)} />
                     </video>
                   ) : (
-                    <img src={getImageUrl(char.image)} alt={char.name} onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }} />
+                    <img
+                      src={getImageUrl(char.image)}
+                      alt={`${char.name} from ${char.series}`}
+                      onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
+                    />
                   )}
                 </ListThumb>
                 <ListInfo>
-                  <ListName>{char.name} {char.isR18 && <span><IconR18 /></span>}</ListName>
+                  <ListName>
+                    {char.name}
+                    {char.isR18 && (
+                      <span aria-label={t('admin.r18Content', 'R18 content')}>
+                        <IconR18 aria-hidden="true" />
+                      </span>
+                    )}
+                  </ListName>
                   <ListSeries>{char.series}</ListSeries>
                 </ListInfo>
-                <RarityTag $color={getRarityColor(char.rarity)}>{char.rarity}</RarityTag>
+                <RarityTag $color={getRarityColor(char.rarity)} aria-label={`${t('admin.rarity')}: ${char.rarity}`}>
+                  {char.rarity}
+                </RarityTag>
                 <ListActions>
-                  <IconButton onClick={() => onEditCharacter(char)} label="Edit character"><FaEdit /></IconButton>
-                  <IconButton $danger onClick={() => onDeleteCharacter(char.id, char.name)} label={`Delete ${char.name}`}><FaTrash /></IconButton>
+                  <IconButton
+                    onClick={() => onEditCharacter(char)}
+                    aria-label={t('admin.editCharacterLabel', { name: char.name }, `Edit ${char.name}`)}
+                  >
+                    <FaEdit aria-hidden="true" />
+                  </IconButton>
+                  <IconButton
+                    $danger
+                    onClick={() => onDeleteCharacter(char.id, char.name)}
+                    aria-label={t('admin.deleteCharacterLabel', { name: char.name }, `Delete ${char.name}`)}
+                  >
+                    <FaTrash aria-hidden="true" />
+                  </IconButton>
                 </ListActions>
               </ListItem>
             ))}
@@ -267,21 +370,23 @@ const AdminCharacters = ({
       )}
       
       {totalPages > 1 && (
-        <Pagination>
-          <PageButton 
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))} 
+        <Pagination role="navigation" aria-label={t('common.pagination', 'Pagination')}>
+          <PageButton
+            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
             disabled={currentPage === 1}
+            aria-label={t('common.previousPage', 'Previous page')}
           >
-            Previous
+            {t('common.previous', 'Previous')}
           </PageButton>
-          <PageInfo>
-            Page {currentPage} of {totalPages}
+          <PageInfo aria-live="polite" aria-atomic="true">
+            {t('common.pageOfTotal', { current: currentPage, total: totalPages }, `Page ${currentPage} of ${totalPages}`)}
           </PageInfo>
-          <PageButton 
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))} 
+          <PageButton
+            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
             disabled={currentPage === totalPages}
+            aria-label={t('common.nextPage', 'Next page')}
           >
-            Next
+            {t('common.next', 'Next')}
           </PageButton>
         </Pagination>
       )}
@@ -294,6 +399,9 @@ const AdminCharacters = ({
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             onMouseDown={(e) => { if (e.target === e.currentTarget) handleCloseAddModal(); }}
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="add-character-title"
           >
             <ModalContent
               initial={{ opacity: 0, scale: 0.95, y: 20 }}
@@ -301,23 +409,47 @@ const AdminCharacters = ({
               exit={{ opacity: 0, scale: 0.95, y: 20 }}
             >
               <ModalHeader>
-                <ModalTitle $iconColor={theme.colors.success}><FaPlus /> {t('admin.addCharacter')}</ModalTitle>
-                <CloseButton onClick={handleCloseAddModal}>×</CloseButton>
+                <ModalTitle id="add-character-title" $iconColor={theme.colors.success}>
+                  <FaPlus aria-hidden="true" /> {t('admin.addCharacter')}
+                </ModalTitle>
+                <CloseButton onClick={handleCloseAddModal} aria-label={t('common.close', 'Close')}>×</CloseButton>
               </ModalHeader>
               <ModalBody>
                 <form onSubmit={handleAddSubmit}>
                   <FormGroup>
-                    <Label>{t('admin.name')}</Label>
-                    <Input type="text" name="name" value={newCharacter.name} onChange={onCharacterChange} required />
+                    <Label htmlFor="character-name">{t('admin.name')}</Label>
+                    <Input
+                      ref={modalFirstInputRef}
+                      id="character-name"
+                      type="text"
+                      name="name"
+                      value={newCharacter.name}
+                      onChange={onCharacterChange}
+                      required
+                      autoComplete="off"
+                    />
                   </FormGroup>
                   <FormGroup>
-                    <Label>{t('admin.series')}</Label>
-                    <Input type="text" name="series" value={newCharacter.series} onChange={onCharacterChange} required />
+                    <Label htmlFor="character-series">{t('admin.series')}</Label>
+                    <Input
+                      id="character-series"
+                      type="text"
+                      name="series"
+                      value={newCharacter.series}
+                      onChange={onCharacterChange}
+                      required
+                      autoComplete="off"
+                    />
                   </FormGroup>
                   <FormRow>
                     <FormGroup style={{ flex: 1 }}>
-                      <Label>{t('admin.rarity')}</Label>
-                      <Select name="rarity" value={newCharacter.rarity} onChange={onCharacterChange}>
+                      <Label htmlFor="character-rarity">{t('admin.rarity')}</Label>
+                      <Select
+                        id="character-rarity"
+                        name="rarity"
+                        value={newCharacter.rarity}
+                        onChange={onCharacterChange}
+                      >
                         {orderedRarities.map(rarity => (
                           <option key={rarity.name} value={rarity.name}>
                             {rarity.displayName}
@@ -329,17 +461,20 @@ const AdminCharacters = ({
                       <Label>&nbsp;</Label>
                       <CheckboxLabel $padded $highlight>
                         <input
+                          id="character-r18"
                           type="checkbox"
                           checked={newCharacter.isR18}
                           onChange={(e) => onCharacterChange({ target: { name: 'isR18', value: e.target.checked }})}
+                          aria-describedby="r18-hint"
                         />
-                        <span><IconR18 /> R18</span>
+                        <span><IconR18 aria-hidden="true" /> {t('admin.r18', 'R18')}</span>
                       </CheckboxLabel>
                     </FormGroup>
                   </FormRow>
                   <FormGroup>
-                    <Label>{t('admin.imageVideo')}</Label>
+                    <Label htmlFor="character-file">{t('admin.imageVideo')}</Label>
                     <FileInput
+                      id="character-file"
                       type="file"
                       accept="image/*,video/mp4,video/webm"
                       onChange={(e) => {
@@ -347,13 +482,14 @@ const AdminCharacters = ({
                         onFileChange(e);
                       }}
                       required
+                      aria-describedby={duplicateError ? 'duplicate-error' : undefined}
                     />
                     {uploadedImage && (
                       <ImagePreview>
                         {isVideo(selectedFile) ? (
-                          <video controls src={uploadedImage} />
+                          <video controls src={uploadedImage} aria-label={t('admin.videoPreview', 'Video preview')} />
                         ) : (
-                          <img src={uploadedImage} alt="Preview" />
+                          <img src={uploadedImage} alt={t('admin.imagePreview', 'Image preview')} />
                         )}
                       </ImagePreview>
                     )}
@@ -361,6 +497,7 @@ const AdminCharacters = ({
                     {/* Duplicate Error - Blocking */}
                     {duplicateError && (
                       <DuplicateWarningBanner
+                        id="duplicate-error"
                         status={duplicateError.status}
                         explanation={duplicateError.explanation}
                         similarity={duplicateError.similarity}
@@ -370,11 +507,21 @@ const AdminCharacters = ({
                       />
                     )}
                   </FormGroup>
-                  <PrimaryButton type="submit" style={{ width: '100%' }} disabled={isSubmitting || duplicateError}>
+                  <PrimaryButton
+                    type="submit"
+                    style={{ width: '100%' }}
+                    disabled={isSubmitting || duplicateError}
+                    aria-busy={isSubmitting}
+                  >
                     {isSubmitting ? (
-                      <><FaSpinner className="spin" /> Adding...</>
+                      <>
+                        <FaSpinner className="spin" aria-hidden="true" />
+                        {t('admin.adding', 'Adding...')}
+                      </>
                     ) : (
-                      <><FaPlus /> {t('admin.addCharacter')}</>
+                      <>
+                        <FaPlus aria-hidden="true" /> {t('admin.addCharacter')}
+                      </>
                     )}
                   </PrimaryButton>
                 </form>
@@ -546,5 +693,50 @@ const ListActions = styled.div`
   display: flex;
   gap: ${theme.spacing.sm};
 `;
+
+// PropTypes for type checking and documentation
+AdminCharacters.propTypes = {
+  /** Array of character objects to display */
+  characters: PropTypes.arrayOf(PropTypes.shape({
+    id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
+    name: PropTypes.string.isRequired,
+    series: PropTypes.string.isRequired,
+    rarity: PropTypes.string.isRequired,
+    image: PropTypes.string,
+    isR18: PropTypes.bool,
+  })).isRequired,
+  /** Function to get full image URL from path */
+  getImageUrl: PropTypes.func.isRequired,
+  /** Handler for adding a new character */
+  onAddCharacter: PropTypes.func.isRequired,
+  /** Handler for editing a character */
+  onEditCharacter: PropTypes.func.isRequired,
+  /** Handler for deleting a character (id, name) */
+  onDeleteCharacter: PropTypes.func.isRequired,
+  /** Handler for opening multi-upload modal */
+  onMultiUpload: PropTypes.func.isRequired,
+  /** Handler for opening anime import modal */
+  onAnimeImport: PropTypes.func.isRequired,
+  /** Current new character form data */
+  newCharacter: PropTypes.shape({
+    name: PropTypes.string,
+    series: PropTypes.string,
+    rarity: PropTypes.string,
+    isR18: PropTypes.bool,
+  }).isRequired,
+  /** Handler for character form field changes */
+  onCharacterChange: PropTypes.func.isRequired,
+  /** Currently selected file for upload */
+  selectedFile: PropTypes.object,
+  /** Handler for file input changes */
+  onFileChange: PropTypes.func.isRequired,
+  /** Data URL of uploaded image for preview */
+  uploadedImage: PropTypes.string,
+};
+
+AdminCharacters.defaultProps = {
+  selectedFile: null,
+  uploadedImage: null,
+};
 
 export default AdminCharacters;
