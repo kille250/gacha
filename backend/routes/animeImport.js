@@ -327,7 +327,8 @@ const mapDanbooruPost = (post, includeAnimatedFlag = true) => {
     score: post.score,
     characterTags: post.tag_string_character,
     copyrightTags: post.tag_string_copyright,
-    artistTags: post.tag_string_artist
+    artistTags: post.tag_string_artist,
+    generalTags: post.tag_string_general
   };
   
   if (includeAnimatedFlag) {

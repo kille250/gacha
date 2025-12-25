@@ -74,6 +74,80 @@ const parseSeriesName = (copyrightTag) => {
 };
 
 /**
+ * Outfit/variant keyword mappings for auto-detection
+ * Priority order: seasonal > special outfits > common outfits
+ * First match wins, so order matters
+ */
+const OUTFIT_VARIANTS = [
+  // Seasonal (high priority - limited editions)
+  { tags: ['christmas', 'santa_costume', 'santa_hat', 'santa_dress'], label: 'Christmas' },
+  { tags: ['halloween', 'jack-o\'-lantern', 'halloween_costume'], label: 'Halloween' },
+  { tags: ['valentine', 'valentines_day', 'heart_background'], label: 'Valentine' },
+  { tags: ['new_year', 'new_years', 'kadomatsu', 'ema_(object)'], label: 'New Year' },
+  { tags: ['easter', 'easter_egg', 'easter_bunny'], label: 'Easter' },
+
+  // Wedding/Formal
+  { tags: ['wedding_dress', 'bridal_veil', 'bride'], label: 'Wedding' },
+  { tags: ['formal', 'evening_gown', 'ball_gown'], label: 'Formal' },
+
+  // Swimwear
+  { tags: ['swimsuit', 'bikini', 'one-piece_swimsuit', 'competition_swimsuit'], label: 'Swimsuit' },
+  { tags: ['beach', 'ocean', 'poolside'], label: 'Summer' },
+
+  // Traditional
+  { tags: ['kimono', 'furisode', 'uchikake'], label: 'Kimono' },
+  { tags: ['yukata'], label: 'Yukata' },
+  { tags: ['chinese_clothes', 'china_dress', 'qipao'], label: 'Chinese Dress' },
+  { tags: ['hanbok'], label: 'Hanbok' },
+
+  // Costumes/Uniforms
+  { tags: ['school_uniform', 'serafuku', 'sailor_collar'], label: 'School' },
+  { tags: ['maid', 'maid_headdress', 'maid_apron'], label: 'Maid' },
+  { tags: ['bunny_girl', 'playboy_bunny', 'bunnysuit', 'rabbit_ears'], label: 'Bunny' },
+  { tags: ['nurse', 'nurse_cap'], label: 'Nurse' },
+  { tags: ['cheerleader', 'cheerleader_uniform', 'pom_poms'], label: 'Cheerleader' },
+  { tags: ['police', 'police_uniform', 'policewoman'], label: 'Police' },
+  { tags: ['military', 'military_uniform', 'soldier'], label: 'Military' },
+  { tags: ['idol', 'idol_clothes', 'stage'], label: 'Idol' },
+  { tags: ['witch', 'witch_hat'], label: 'Witch' },
+  { tags: ['vampire', 'vampire_costume'], label: 'Vampire' },
+  { tags: ['angel', 'angel_wings', 'halo'], label: 'Angel' },
+  { tags: ['demon', 'demon_girl', 'demon_horns', 'devil'], label: 'Demon' },
+  { tags: ['catgirl', 'cat_ears', 'cat_tail', 'nekomimi'], label: 'Cat' },
+
+  // Casual/Sportswear
+  { tags: ['sportswear', 'sports_bra', 'gym_uniform'], label: 'Sportswear' },
+  { tags: ['pajamas', 'sleepwear', 'nightgown'], label: 'Pajamas' },
+  { tags: ['casual', 'casual_clothes'], label: 'Casual' },
+
+  // Fantasy/Armor
+  { tags: ['armor', 'full_armor', 'knight'], label: 'Armor' },
+  { tags: ['fantasy', 'cape', 'cloak'], label: 'Fantasy' },
+];
+
+/**
+ * Detect outfit variant from Danbooru general tags
+ *
+ * @param {string} generalTags - Space-separated general tags from Danbooru
+ * @returns {string|null} - Detected variant label or null
+ */
+const detectOutfitVariant = (generalTags) => {
+  if (!generalTags) return null;
+
+  const tagSet = new Set(generalTags.toLowerCase().split(' '));
+
+  for (const variant of OUTFIT_VARIANTS) {
+    for (const tag of variant.tags) {
+      if (tagSet.has(tag)) {
+        return variant.label;
+      }
+    }
+  }
+
+  return null;
+};
+
+/**
  * CreateFromDanbooru Modal Component
  */
 const CreateFromDanbooru = ({
@@ -278,9 +352,17 @@ const CreateFromDanbooru = ({
     const characterName = parseCharacterName(media.characterTags);
     const seriesName = parseSeriesName(media.copyrightTags);
 
+    // Detect outfit variant from general tags
+    const variant = detectOutfitVariant(media.generalTags);
+
+    // Build final name with variant suffix if detected
+    const finalName = characterName
+      ? (variant ? `${characterName} (${variant})` : characterName)
+      : '';
+
     setCharacterData(prev => ({
       ...prev,
-      name: characterName || prev.name,
+      name: finalName || prev.name,
       series: seriesName || (selectedTag?.displayName || selectedTag?.name.replace(/_/g, ' ') || prev.series)
     }));
   }, [selectedTag]);
