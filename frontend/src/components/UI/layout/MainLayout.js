@@ -9,10 +9,11 @@
  * - Top navigation bar (desktop + hamburger menu for mobile)
  * - Bottom navigation bar (mobile only, thumb-friendly)
  * - Safe area padding for notched devices
+ * - Suspense boundary for lazy-loaded pages (navigation stays visible during load)
  */
 
-import React from 'react';
-import styled from 'styled-components';
+import React, { Suspense } from 'react';
+import styled, { keyframes } from 'styled-components';
 import { theme, SkipLink } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
@@ -42,6 +43,55 @@ const PageContent = styled.main.attrs({
   }
 `;
 
+// ==================== PAGE LOADER ====================
+// Inline loader that appears within the layout while lazy pages load
+// Navigation remains visible, providing continuity and context
+
+const spin = keyframes`
+  to { transform: rotate(360deg); }
+`;
+
+const PageLoaderContainer = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 300px;
+  gap: ${theme.spacing.md};
+`;
+
+const PageLoaderSpinner = styled.div`
+  width: 40px;
+  height: 40px;
+  border: 3px solid ${theme.colors.surfaceBorder};
+  border-top-color: ${theme.colors.primary};
+  border-radius: 50%;
+  animation: ${spin} 0.8s linear infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    border-top-color: ${theme.colors.primary};
+    border-right-color: ${theme.colors.primary};
+  }
+`;
+
+const PageLoaderText = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+`;
+
+/**
+ * Fallback component shown while lazy-loaded pages are loading.
+ * Keeps navigation visible for better UX continuity.
+ */
+const PageLoader = () => (
+  <PageLoaderContainer>
+    <PageLoaderSpinner />
+    <PageLoaderText>Loading...</PageLoaderText>
+  </PageLoaderContainer>
+);
+
 /**
  * MainLayout Component
  *
@@ -55,7 +105,10 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
       <SkipLink href="#main-content">Skip to main content</SkipLink>
       <Navigation />
       <PageContent>
-        {children}
+        {/* Suspense boundary inside layout keeps navigation visible during lazy page loads */}
+        <Suspense fallback={<PageLoader />}>
+          {children}
+        </Suspense>
       </PageContent>
       {!hideBottomNav && <BottomNav />}
     </LayoutContainer>
