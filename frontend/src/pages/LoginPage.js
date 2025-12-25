@@ -2,12 +2,12 @@ import React, { useState, useContext, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUser, FaLock, FaDice, FaArrowRight } from 'react-icons/fa';
-import { MdLanguage } from 'react-icons/md';
+import { FaUser, FaLock, FaDice, FaArrowRight, FaGem } from 'react-icons/fa';
+import { MdLanguage, MdCollections, MdAutoAwesome } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { theme, motionVariants, LoadingSpinner } from '../design-system';
+import { theme, motionVariants, springs, LoadingSpinner } from '../design-system';
 import { languages } from '../i18n';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
@@ -53,6 +53,13 @@ const LoginPage = () => {
     console.error('Google login failed');
   };
 
+  // Feature highlights for value proposition
+  const features = [
+    { icon: MdAutoAwesome, label: t('auth.feature.collect', 'Collect rare characters') },
+    { icon: MdCollections, label: t('auth.feature.build', 'Build your collection') },
+    { icon: FaGem, label: t('auth.feature.unlock', 'Unlock legendary rewards') },
+  ];
+
   return (
     <PageContainer>
       {/* Language Selector */}
@@ -61,6 +68,7 @@ const LoginPage = () => {
           onClick={() => setShowLangMenu(!showLangMenu)}
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
+          transition={springs.snappy}
         >
           <MdLanguage />
           <span>{languages[i18n.language]?.flag || ''}</span>
@@ -71,6 +79,7 @@ const LoginPage = () => {
               initial={{ opacity: 0, y: -10, scale: 0.95 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, y: -10, scale: 0.95 }}
+              transition={springs.snappy}
             >
               {Object.entries(languages).map(([code, lang]) => (
                 <LanguageOption
@@ -86,34 +95,57 @@ const LoginPage = () => {
           )}
         </AnimatePresence>
       </LanguageSelectorContainer>
-      
+
       <BackgroundEffects>
         <GradientOrb className="orb-1" />
         <GradientOrb className="orb-2" />
         <GradientOrb className="orb-3" />
       </BackgroundEffects>
-      
+
       <ContentWrapper
         initial="hidden"
         animate="visible"
         variants={motionVariants.fadeIn}
       >
         <BrandSection
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ delay: 0.2, duration: 0.6 }}
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={springs.gentle}
         >
-          <LogoWrapper>
+          <LogoWrapper
+            as={motion.div}
+            whileHover={{ scale: 1.05, rotate: 5 }}
+            transition={springs.bouncy}
+          >
             <FaDice />
           </LogoWrapper>
           <BrandTitle>{t('auth.gachaGame')}</BrandTitle>
           <BrandSubtitle>{t('auth.rollYourDestiny')}</BrandSubtitle>
+
+          {/* Value Proposition Features */}
+          <FeatureList
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ delay: 0.3 }}
+          >
+            {features.map((feature, index) => (
+              <FeatureItem
+                key={index}
+                initial={{ opacity: 0, x: -10 }}
+                animate={{ opacity: 1, x: 0 }}
+                transition={{ delay: 0.4 + index * 0.1 }}
+              >
+                <feature.icon />
+                <span>{feature.label}</span>
+              </FeatureItem>
+            ))}
+          </FeatureList>
         </BrandSection>
 
         <LoginCard
-          initial={{ opacity: 0, y: 30 }}
+          initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.3, duration: 0.5 }}
+          transition={springs.gentle}
         >
           <CardHeader>
             <WelcomeText>{t('auth.welcomeBack')}</WelcomeText>
@@ -160,11 +192,12 @@ const LoginPage = () => {
               </InputWrapper>
             </InputGroup>
 
-            <SubmitButton 
+            <SubmitButton
               type="submit"
               disabled={isLoading}
-              whileHover={{ scale: 1.02 }}
+              whileHover={{ scale: 1.02, y: -1 }}
               whileTap={{ scale: 0.98 }}
+              transition={springs.snappy}
             >
               {isLoading ? (
                 <LoadingSpinner />
@@ -304,17 +337,18 @@ const BrandSection = styled(motion.div)`
 `;
 
 const LogoWrapper = styled.div`
-  width: 72px;
-  height: 72px;
+  width: 80px;
+  height: 80px;
   background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
-  border-radius: ${theme.radius.xl};
+  border-radius: ${theme.radius['2xl']};
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 32px;
+  font-size: 36px;
   color: white;
   margin-bottom: ${theme.spacing.md};
-  box-shadow: 0 8px 32px rgba(0, 113, 227, 0.4);
+  box-shadow: ${theme.shadows.glow(theme.colors.primary)};
+  cursor: pointer;
 `;
 
 const BrandTitle = styled.h1`
@@ -326,9 +360,37 @@ const BrandTitle = styled.h1`
 `;
 
 const BrandSubtitle = styled.p`
-  font-size: ${theme.fontSizes.base};
-  color: ${theme.colors.textTertiary};
+  font-size: ${theme.fontSizes.md};
+  color: ${theme.colors.textSecondary};
   margin: ${theme.spacing.xs} 0 0;
+`;
+
+// Value Proposition Feature List
+const FeatureList = styled(motion.div)`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: ${theme.spacing.md};
+  margin-top: ${theme.spacing.lg};
+`;
+
+const FeatureItem = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: ${theme.colors.glass};
+  border: 1px solid ${theme.colors.surfaceBorderSubtle};
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+
+  svg {
+    font-size: 14px;
+    color: ${theme.colors.primary};
+  }
 `;
 
 const LoginCard = styled(motion.div)`
@@ -336,10 +398,10 @@ const LoginCard = styled(motion.div)`
   background: ${theme.colors.surface};
   backdrop-filter: blur(${theme.blur.xl});
   -webkit-backdrop-filter: blur(${theme.blur.xl});
-  border-radius: ${theme.radius.xl};
+  border-radius: ${theme.radius['2xl']};
   border: 1px solid ${theme.colors.surfaceBorder};
-  padding: ${theme.spacing.xl};
-  box-shadow: ${theme.shadows.lg};
+  padding: ${theme.spacing['2xl']};
+  box-shadow: ${theme.shadows.card};
 `;
 
 const CardHeader = styled.div`
@@ -393,6 +455,10 @@ const InputWrapper = styled.div`
   position: relative;
   display: flex;
   align-items: center;
+
+  &:focus-within > div {
+    color: ${theme.colors.primary};
+  }
 `;
 
 const InputIcon = styled.div`
@@ -401,7 +467,7 @@ const InputIcon = styled.div`
   color: ${theme.colors.textMuted};
   font-size: 14px;
   pointer-events: none;
-  transition: color ${theme.transitions.fast};
+  transition: color ${theme.timing.fast} ${theme.easing.easeOut};
 `;
 
 const StyledInput = styled.input`
@@ -414,25 +480,25 @@ const StyledInput = styled.input`
   font-family: ${theme.fonts.primary};
   font-size: ${theme.fontSizes.base};
   color: ${theme.colors.text};
-  transition: all ${theme.transitions.fast};
-  
+  transition:
+    border-color ${theme.timing.fast} ${theme.easing.easeOut},
+    box-shadow ${theme.timing.fast} ${theme.easing.easeOut};
+
   &::placeholder {
     color: ${theme.colors.textMuted};
   }
-  
+
   &:hover {
     border-color: ${theme.colors.glassBorder};
   }
-  
+
   &:focus {
     outline: none;
     border-color: ${theme.colors.primary};
-    box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.2);
-    
-    & + ${InputIcon}, ~ ${InputIcon} {
-      color: ${theme.colors.primary};
-    }
+    box-shadow: 0 0 0 3px ${theme.colors.focusRing};
   }
+
+  /* Focus icon color handled by InputWrapper */
 `;
 
 const SubmitButton = styled(motion.button)`
@@ -441,7 +507,7 @@ const SubmitButton = styled(motion.button)`
   justify-content: center;
   gap: ${theme.spacing.sm};
   width: 100%;
-  padding: ${theme.spacing.md};
+  padding: ${theme.spacing.md} ${theme.spacing.lg};
   background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
   border: none;
   border-radius: ${theme.radius.lg};
@@ -450,19 +516,26 @@ const SubmitButton = styled(motion.button)`
   font-weight: ${theme.fontWeights.semibold};
   color: white;
   cursor: pointer;
-  transition: all ${theme.transitions.fast};
-  box-shadow: 0 4px 16px rgba(0, 113, 227, 0.4);
+  transition: box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
+  box-shadow: ${theme.shadows.buttonPrimary};
   margin-top: ${theme.spacing.sm};
-  
+
   &:hover:not(:disabled) {
-    box-shadow: 0 6px 24px rgba(0, 113, 227, 0.5);
+    box-shadow: ${theme.shadows.buttonPrimaryHover};
   }
-  
+
+  &:focus-visible {
+    outline: none;
+    box-shadow:
+      ${theme.shadows.buttonPrimaryHover},
+      0 0 0 3px ${theme.colors.focusRing};
+  }
+
   &:disabled {
     opacity: 0.7;
     cursor: not-allowed;
   }
-  
+
   svg {
     font-size: 14px;
   }
@@ -499,11 +572,19 @@ const RegisterLink = styled(Link)`
   color: ${theme.colors.primary};
   text-decoration: none;
   font-weight: ${theme.fontWeights.semibold};
-  transition: color ${theme.transitions.fast};
-  
+  transition: color ${theme.timing.fast} ${theme.easing.easeOut};
+  border-radius: ${theme.radius.sm};
+  padding: 2px 4px;
+  margin: -2px -4px;
+
   &:hover {
     color: ${theme.colors.primaryHover};
     text-decoration: underline;
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
   }
 `;
 
@@ -546,7 +627,7 @@ const LanguageSelectorContainer = styled.div`
 const LanguageButton = styled(motion.button)`
   display: flex;
   align-items: center;
-  gap: 4px;
+  gap: 6px;
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: ${theme.colors.glass};
   border: 1px solid ${theme.colors.surfaceBorder};
@@ -554,7 +635,19 @@ const LanguageButton = styled(motion.button)`
   color: ${theme.colors.text};
   cursor: pointer;
   font-size: 16px;
-  
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  transition: border-color ${theme.timing.fast} ${theme.easing.easeOut};
+
+  &:hover {
+    border-color: ${theme.colors.glassBorder};
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
+  }
+
   svg {
     font-size: 18px;
   }
@@ -564,12 +657,14 @@ const LanguageDropdown = styled(motion.div)`
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  background: ${theme.colors.backgroundSecondary};
+  background: ${theme.colors.surface};
+  backdrop-filter: blur(${theme.blur.xl});
+  -webkit-backdrop-filter: blur(${theme.blur.xl});
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
-  box-shadow: ${theme.shadows.lg};
+  box-shadow: ${theme.shadows.dropdown};
   overflow: hidden;
-  min-width: 150px;
+  min-width: 160px;
 `;
 
 const LanguageOption = styled.div`
@@ -580,9 +675,11 @@ const LanguageOption = styled.div`
   cursor: pointer;
   font-size: ${theme.fontSizes.sm};
   color: ${props => props.$active ? theme.colors.primary : theme.colors.text};
-  background: ${props => props.$active ? 'rgba(0, 113, 227, 0.1)' : 'transparent'};
-  transition: all ${theme.transitions.fast};
-  
+  background: ${props => props.$active ? theme.colors.primarySubtle : 'transparent'};
+  transition:
+    background ${theme.timing.fast} ${theme.easing.easeOut},
+    color ${theme.timing.fast} ${theme.easing.easeOut};
+
   &:hover {
     background: ${theme.colors.glass};
   }

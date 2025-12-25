@@ -24,6 +24,8 @@ export {
   zIndex,
   transitions,
   timing,
+  easing,
+  springs,
   fadeIn,
   slideUp,
   slideDown,

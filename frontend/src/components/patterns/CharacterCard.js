@@ -4,35 +4,138 @@
  * Used in Collection, Gacha results, and other character displays.
  * Supports owned/not-owned states, level display, and shard progress.
  * Includes accessibility features and reduced motion support.
+ *
+ * Enhanced with:
+ * - Premium rarity effects (shimmer, glow)
+ * - Improved spring physics
+ * - Better focus states
+ * - Subtle depth with layered shadows
  */
 
 import React, { memo, useCallback, useRef } from 'react';
-import styled from 'styled-components';
+import styled, { css, keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, motionVariants, useReducedMotion, VisuallyHidden } from '../../design-system';
+import { theme, springs, useReducedMotion, VisuallyHidden } from '../../design-system';
 import { PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useVideoVisibility } from '../../hooks';
 
+// Premium shimmer animation for legendary/epic cards
+const shimmer = keyframes`
+  0% {
+    background-position: -200% 0;
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    background-position: 200% 0;
+    opacity: 0;
+  }
+`;
+
+// Subtle glow pulse for legendary items
+const glowPulse = keyframes`
+  0%, 100% {
+    opacity: 0.6;
+  }
+  50% {
+    opacity: 1;
+  }
+`;
+
+// Rarity-specific styles
+const rarityStyles = {
+  legendary: css`
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        110deg,
+        transparent 20%,
+        rgba(255, 167, 38, 0.15) 40%,
+        rgba(255, 215, 0, 0.2) 50%,
+        rgba(255, 167, 38, 0.15) 60%,
+        transparent 80%
+      );
+      background-size: 200% 100%;
+      animation: ${shimmer} 3s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 3;
+      border-radius: inherit;
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+        opacity: 0;
+      }
+    }
+  `,
+  epic: css`
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        110deg,
+        transparent 25%,
+        rgba(191, 90, 242, 0.1) 45%,
+        rgba(191, 90, 242, 0.15) 50%,
+        rgba(191, 90, 242, 0.1) 55%,
+        transparent 75%
+      );
+      background-size: 200% 100%;
+      animation: ${shimmer} 4s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 3;
+      border-radius: inherit;
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+        opacity: 0;
+      }
+    }
+  `
+};
+
 const Card = styled(motion.div)`
+  position: relative;
   background: ${theme.colors.surface};
   border-radius: ${theme.radius.xl};
   overflow: hidden;
   cursor: pointer;
   border: 1px solid ${props => props.$isOwned
     ? theme.colors.surfaceBorder
-    : 'rgba(255, 255, 255, 0.03)'};
-  transition: border-color ${theme.transitions.fast}, box-shadow 0.3s ease;
+    : theme.colors.surfaceBorderSubtle};
+  box-shadow: ${theme.shadows.card};
+  transition:
+    border-color ${theme.timing.fast} ${theme.easing.easeOut},
+    box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
+
+  /* Apply rarity-specific shimmer for owned legendary/epic cards */
+  ${props => props.$isOwned && props.$rarity === 'legendary' && rarityStyles.legendary}
+  ${props => props.$isOwned && props.$rarity === 'epic' && rarityStyles.epic}
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {
       border-color: ${props => props.$color};
-      box-shadow: ${props => props.$glow}, 0 16px 32px -8px rgba(0, 0, 0, 0.4);
+      box-shadow:
+        ${theme.shadows.cardHover},
+        ${props => props.$glow || 'none'};
     }
   }
 
   &:focus-visible {
-    outline: 2px solid ${theme.colors.primary};
-    outline-offset: 2px;
+    outline: none;
+    box-shadow:
+      0 0 0 2px ${theme.colors.background},
+      0 0 0 4px ${theme.colors.focusRing},
+      ${props => props.$glow || theme.shadows.md};
+  }
+
+  /* Reduced motion */
+  @media (prefers-reduced-motion: reduce) {
+    transition: none;
   }
 `;
 
@@ -47,13 +150,22 @@ const CardImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: ${props => props.$isOwned ? 'none' : 'grayscale(70%) brightness(0.6)'};
-  transition: transform 0.4s cubic-bezier(0.25, 0.46, 0.45, 0.94), filter ${theme.transitions.slow};
+  filter: ${props => props.$isOwned ? 'none' : 'grayscale(70%) brightness(0.55)'};
+  transition:
+    transform ${theme.timing.slow} ${theme.easing.appleSpring},
+    filter ${theme.timing.slow} ${theme.easing.easeOut};
 
   @media (hover: hover) and (pointer: fine) {
     ${Card}:hover & {
-      transform: scale(1.03);
-      filter: ${props => props.$isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
+      transform: scale(1.05);
+      filter: ${props => props.$isOwned ? 'none' : 'grayscale(40%) brightness(0.7)'};
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: filter ${theme.timing.normal} ${theme.easing.easeOut};
+    ${Card}:hover & {
+      transform: none;
     }
   }
 `;
@@ -62,11 +174,13 @@ const CardVideo = styled.video`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  filter: ${props => props.$isOwned ? 'none' : 'grayscale(70%) brightness(0.6)'};
-  transition: filter ${theme.transitions.slow};
+  filter: ${props => props.$isOwned ? 'none' : 'grayscale(70%) brightness(0.55)'};
+  transition: filter ${theme.timing.slow} ${theme.easing.easeOut};
 
-  ${Card}:hover & {
-    filter: ${props => props.$isOwned ? 'none' : 'grayscale(30%) brightness(0.8)'};
+  @media (hover: hover) and (pointer: fine) {
+    ${Card}:hover & {
+      filter: ${props => props.$isOwned ? 'none' : 'grayscale(40%) brightness(0.7)'};
+    }
   }
 `;
 
@@ -76,16 +190,19 @@ const NotOwnedOverlay = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
+  background: rgba(0, 0, 0, 0.15);
 `;
 
 const NotOwnedLabel = styled.div`
-  background: rgba(0, 0, 0, 0.7);
-  backdrop-filter: blur(4px);
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: rgba(0, 0, 0, 0.75);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  padding: 6px 14px;
   border-radius: ${theme.radius.full};
   font-size: ${theme.fontSizes.xs};
   font-weight: ${theme.fontWeights.medium};
-  color: white;
+  color: rgba(255, 255, 255, 0.9);
+  letter-spacing: ${theme.letterSpacing.wide};
 `;
 
 const RarityIndicator = styled.div`
@@ -95,48 +212,68 @@ const RarityIndicator = styled.div`
   right: 0;
   height: 3px;
   background: ${props => props.$color};
+  box-shadow: ${props => props.$isOwned ? `0 0 8px ${props.$color}60` : 'none'};
+  transition: box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
+
+  @media (hover: hover) and (pointer: fine) {
+    ${Card}:hover & {
+      box-shadow: 0 0 12px ${props => props.$color}80;
+    }
+  }
 `;
 
 const LevelBadge = styled.div`
   position: absolute;
   top: 8px;
   right: 8px;
-  padding: 4px 8px;
+  padding: 5px 10px;
   background: ${props => {
     if (props.$isMaxLevel) return 'linear-gradient(135deg, #ffd700, #ff8c00)';
-    if (props.$canLevelUp) return 'linear-gradient(135deg, #34C759, #30B350)';
-    return 'rgba(0, 0, 0, 0.75)';
+    if (props.$canLevelUp) return 'linear-gradient(135deg, #34C759, #2FB64E)';
+    return 'rgba(0, 0, 0, 0.8)';
   }};
-  backdrop-filter: blur(4px);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: ${theme.radius.full};
   font-size: ${theme.fontSizes.xs};
   font-weight: ${theme.fontWeights.bold};
-  color: ${props => (props.$isMaxLevel || props.$canLevelUp) ? '#fff' : 'rgba(255,255,255,0.9)'};
+  color: white;
+  letter-spacing: ${theme.letterSpacing.wide};
   box-shadow: ${props => {
-    if (props.$isMaxLevel) return '0 0 10px rgba(255, 215, 0, 0.5)';
-    if (props.$canLevelUp) return '0 0 10px rgba(52, 199, 89, 0.5)';
-    return '0 2px 4px rgba(0, 0, 0, 0.3)';
+    if (props.$isMaxLevel) return `0 2px 8px rgba(255, 215, 0, 0.4), ${theme.shadows.sm}`;
+    if (props.$canLevelUp) return `0 2px 8px rgba(52, 199, 89, 0.4), ${theme.shadows.sm}`;
+    return theme.shadows.sm;
   }};
   z-index: 2;
+
+  ${props => props.$isMaxLevel && css`
+    animation: ${glowPulse} 2s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  `}
 `;
 
 const ShardBadge = styled.div`
   position: absolute;
   top: 8px;
   left: 8px;
-  padding: 3px 6px;
+  padding: 4px 8px;
   background: ${props => props.$canLevelUp
-    ? 'linear-gradient(135deg, rgba(52, 199, 89, 0.95), rgba(48, 179, 80, 0.95))'
-    : 'rgba(175, 82, 222, 0.9)'};
-  backdrop-filter: blur(4px);
+    ? 'linear-gradient(135deg, rgba(52, 199, 89, 0.95), rgba(45, 175, 75, 0.95))'
+    : 'rgba(175, 82, 222, 0.92)'};
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
   border-radius: ${theme.radius.full};
-  font-size: 10px;
+  font-size: 11px;
   font-weight: ${theme.fontWeights.bold};
   color: white;
+  letter-spacing: ${theme.letterSpacing.wide};
   z-index: 2;
-  ${props => props.$canLevelUp && `
-    box-shadow: 0 0 8px rgba(52, 199, 89, 0.5);
-  `}
+  box-shadow: ${props => props.$canLevelUp
+    ? `0 2px 8px rgba(52, 199, 89, 0.4), ${theme.shadows.xs}`
+    : theme.shadows.xs};
 `;
 
 const CardContent = styled.div`
@@ -146,8 +283,9 @@ const CardContent = styled.div`
 const CharName = styled.h3`
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.semibold};
+  line-height: ${theme.lineHeights.snug};
   color: ${props => props.$isOwned ? theme.colors.text : theme.colors.textSecondary};
-  margin: 0 0 2px;
+  margin: 0 0 4px;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -155,7 +293,8 @@ const CharName = styled.h3`
 
 const CharSeries = styled.p`
   font-size: ${theme.fontSizes.xs};
-  color: ${props => props.$isOwned ? theme.colors.textSecondary : theme.colors.textMuted};
+  line-height: ${theme.lineHeights.snug};
+  color: ${props => props.$isOwned ? theme.colors.textTertiary : theme.colors.textMuted};
   margin: 0;
   white-space: nowrap;
   overflow: hidden;
@@ -235,12 +374,12 @@ const CharacterCard = memo(({
       $color={rarityColor}
       $glow={rarityGlow}
       $isOwned={isOwned}
+      $rarity={character.rarity}
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      variants={motionVariants.staggerItem}
-      whileHover={prefersReducedMotion ? undefined : { y: -8 }}
-      whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
-      transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+      whileHover={prefersReducedMotion ? undefined : { y: -6 }}
+      whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
+      transition={springs.gentle}
       tabIndex={0}
       role="button"
       aria-label={accessibleLabel}
@@ -276,20 +415,21 @@ const CharacterCard = memo(({
         {isOwned && (
           <>
             <LevelBadge $isMaxLevel={isMaxLevel} $canLevelUp={canLevelUp} aria-hidden="true">
-              Lv.{level}{isMaxLevel ? '★' : ''}{canLevelUp && ' ⬆'}
+              Lv.{level}{isMaxLevel ? ' ★' : ''}{canLevelUp && ' ⬆'}
             </LevelBadge>
             {!isMaxLevel && shards > 0 && (
               <ShardBadge $canLevelUp={canLevelUp} aria-hidden="true">
-                ◆{shards}/{shardsToNextLevel}
+                ◆ {shards}/{shardsToNextLevel}
               </ShardBadge>
             )}
           </>
         )}
-        <RarityIndicator $color={rarityColor} aria-hidden="true" />
+        <RarityIndicator $color={rarityColor} $isOwned={isOwned} aria-hidden="true" />
       </ImageWrapper>
       <CardContent>
         <CharName $isOwned={isOwned}>
-          <span aria-hidden="true">{raritySymbol}</span> {character.name}
+          <span aria-hidden="true" style={{ marginRight: '4px', opacity: 0.7 }}>{raritySymbol}</span>
+          {character.name}
         </CharName>
         <CharSeries $isOwned={isOwned}>{character.series}</CharSeries>
         {/* Screen reader only: rarity text */}

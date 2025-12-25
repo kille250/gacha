@@ -19,7 +19,7 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { MdMenu, MdAdminPanelSettings } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../../design-system';
+import { theme, springs } from '../../design-system';
 import { useHourlyReward } from '../../hooks';
 import { NAV_GROUPS } from '../../constants/navigation';
 
@@ -143,6 +143,7 @@ const Navigation = () => {
             onClick={openMobileMenu}
             whileHover={{ scale: 1.05 }}
             whileTap={{ scale: 0.95 }}
+            transition={springs.snappy}
             aria-label="Open menu"
             type="button"
           >
@@ -180,13 +181,14 @@ const NavContainer = styled.nav`
   justify-content: space-between;
   gap: ${theme.spacing.lg};
   background: ${theme.colors.surface};
-  backdrop-filter: blur(${theme.blur.lg});
-  -webkit-backdrop-filter: blur(${theme.blur.lg});
+  backdrop-filter: blur(${theme.blur.xl});
+  -webkit-backdrop-filter: blur(${theme.blur.xl});
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   padding: ${theme.spacing.sm} ${theme.spacing.lg};
   position: sticky;
   top: 0;
   z-index: ${theme.zIndex.sticky};
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.06);
 `;
 
 const LogoSection = styled.div`
@@ -199,15 +201,16 @@ const Logo = styled(Link)`
   align-items: center;
   gap: ${theme.spacing.sm};
   text-decoration: none;
+  border-radius: ${theme.radius.md};
+  transition: opacity ${theme.timing.fast} ${theme.easing.easeOut};
 
   &:hover {
-    opacity: 0.9;
+    opacity: 0.85;
   }
 
   &:focus-visible {
-    outline: 2px solid ${theme.colors.primary};
-    outline-offset: 2px;
-    border-radius: ${theme.radius.md};
+    outline: none;
+    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
   }
 `;
 
@@ -271,8 +274,10 @@ const NavLink = styled(Link)`
   text-decoration: none;
   font-size: ${theme.fontSizes.sm};
   font-weight: ${props => props.$isActive ? theme.fontWeights.semibold : theme.fontWeights.medium};
-  background: ${props => props.$isActive ? 'rgba(0, 113, 227, 0.12)' : 'transparent'};
-  transition: all ${theme.transitions.fast};
+  background: ${props => props.$isActive ? theme.colors.primarySubtle : 'transparent'};
+  transition:
+    color ${theme.timing.fast} ${theme.easing.easeOut},
+    background ${theme.timing.fast} ${theme.easing.easeOut};
   position: relative;
 
   ${props => props.$isActive && `
@@ -292,8 +297,8 @@ const NavLink = styled(Link)`
   }
 
   &:focus-visible {
-    outline: 2px solid ${theme.colors.primary};
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
   }
 `;
 
@@ -323,14 +328,19 @@ const HamburgerButton = styled(motion.button)`
   color: ${theme.colors.text};
   cursor: pointer;
   font-size: 22px;
+  transition: border-color ${theme.timing.fast} ${theme.easing.easeOut};
 
   @media (min-width: ${theme.breakpoints.md}) {
     display: none;
   }
 
+  &:hover {
+    border-color: ${theme.colors.glassBorder};
+  }
+
   &:focus-visible {
-    outline: 2px solid ${theme.colors.primary};
-    outline-offset: 2px;
+    outline: none;
+    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
   }
 `;
 
