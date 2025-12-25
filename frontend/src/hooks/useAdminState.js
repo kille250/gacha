@@ -102,9 +102,12 @@ export const useAdminState = () => {
   };
 
   // Fetch all data
-  const fetchAllData = useCallback(async () => {
+  // showLoading: only true for initial load, false for refreshes after CRUD operations
+  const fetchAllData = useCallback(async (showLoading = false) => {
     try {
-      setLoading(true);
+      if (showLoading) {
+        setLoading(true);
+      }
       const data = await getAdminDashboard();
       setUsers(data.users || []);
       setCharacters(data.characters || []);
@@ -115,14 +118,16 @@ export const useAdminState = () => {
       console.error('Dashboard fetch error:', err);
       showError(err.response?.data?.error || t('admin.failedLoadDashboard'));
     } finally {
-      setLoading(false);
+      if (showLoading) {
+        setLoading(false);
+      }
     }
   }, [t, showError]);
 
-  // Initial data fetch
+  // Initial data fetch - show loading spinner on first load
   useEffect(() => {
     if (user?.isAdmin) {
-      fetchAllData();
+      fetchAllData(true);
     }
   }, [user?.isAdmin, fetchAllData]);
 
