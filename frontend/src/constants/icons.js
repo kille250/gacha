@@ -311,36 +311,3 @@ export const getCategoryIcon = (categoryId) => {
   }
 };
 
-// ==================== LEGACY STRING EXPORTS (for gradual migration) ====================
-// These are kept temporarily for components that haven't been updated yet.
-// TODO: Remove these once all components use the Icon components above.
-
-/** @deprecated Use IconPoints component instead */
-export const ICON_POINTS = null; // Removed - use <IconPoints />
-
-/** @deprecated Use IconTicket component instead */
-export const ICON_TICKET = null;
-
-/** @deprecated Use IconPremiumTicket component instead */
-export const ICON_PREMIUM_TICKET = null;
-
-/** @deprecated Use IconSuccess component instead */
-export const ICON_SUCCESS = null;
-
-/** @deprecated Use IconWarning component instead */
-export const ICON_WARNING = null;
-
-/** @deprecated Use IconError component instead */
-export const ICON_ERROR = null;
-
-/** @deprecated Use IconEmpty component instead */
-export const ICON_EMPTY = null;
-
-/** @deprecated Use IconR18 component instead */
-export const ICON_R18 = null;
-
-/** @deprecated Use IconSearch component instead */
-export const ICON_SEARCH = null;
-
-/** @deprecated Use IconInfo component instead */
-export const ICON_INFO = null;

@@ -1,14 +1,50 @@
 import React, { useState, useContext, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
+import { AnimatePresence } from 'framer-motion';
 import { FaUser, FaLock, FaDice, FaArrowRight, FaGem } from 'react-icons/fa';
 import { MdLanguage, MdCollections, MdAutoAwesome } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { theme, motionVariants, springs, LoadingSpinner } from '../design-system';
+import { motionVariants, springs, LoadingSpinner } from '../design-system';
 import { languages } from '../i18n';
+
+// Styled Components
+import {
+  PageContainer,
+  BackgroundEffects,
+  GradientOrb,
+  ContentWrapper,
+  BrandSection,
+  LogoWrapper,
+  BrandTitle,
+  BrandSubtitle,
+  FeatureList,
+  FeatureItem,
+  AuthCard,
+  CardHeader,
+  WelcomeText,
+  SubText,
+  ErrorMessage,
+  AuthForm,
+  InputGroup,
+  InputLabel,
+  InputWrapper,
+  InputIcon,
+  StyledInput,
+  SubmitButton,
+  Divider,
+  DividerLine,
+  DividerText,
+  NavigationPrompt,
+  NavigationLink,
+  GoogleButtonWrapper,
+  GoogleLoadingButton,
+  LanguageSelectorContainer,
+  LanguageButton,
+  LanguageDropdown,
+  LanguageOption,
+} from './AuthPage.styles';
 
 const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 
@@ -21,14 +57,14 @@ const LoginPage = () => {
   const [showLangMenu, setShowLangMenu] = useState(false);
   const { login, googleLogin, error, user, loading } = useContext(AuthContext);
   const navigate = useNavigate();
-  
+
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && user) {
       navigate('/gacha', { replace: true });
     }
   }, [user, loading, navigate]);
-  
+
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
     setShowLangMenu(false);
@@ -113,7 +149,7 @@ const LoginPage = () => {
           transition={springs.gentle}
         >
           <LogoWrapper
-            as={motion.div}
+            as="div"
             whileHover={{ scale: 1.05, rotate: 5 }}
             transition={springs.bouncy}
           >
@@ -142,7 +178,7 @@ const LoginPage = () => {
           </FeatureList>
         </BrandSection>
 
-        <LoginCard
+        <AuthCard
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={springs.gentle}
@@ -165,14 +201,14 @@ const LoginPage = () => {
             )}
           </AnimatePresence>
 
-          <LoginForm onSubmit={handleSubmit}>
+          <AuthForm onSubmit={handleSubmit}>
             <InputGroup>
               <InputLabel>{t('auth.username')}</InputLabel>
               <InputWrapper>
                 <InputIcon><FaUser /></InputIcon>
-                <StyledInput 
-                  type="text" 
-                  value={username} 
+                <StyledInput
+                  type="text"
+                  value={username}
                   onChange={(e) => setUsername(e.target.value)}
                   placeholder={t('auth.enterUsername')}
                   required
@@ -185,9 +221,9 @@ const LoginPage = () => {
               <InputLabel>{t('auth.password')}</InputLabel>
               <InputWrapper>
                 <InputIcon><FaLock /></InputIcon>
-                <StyledInput 
-                  type="password" 
-                  value={password} 
+                <StyledInput
+                  type="password"
+                  value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   placeholder={t('auth.enterPassword')}
                   required
@@ -212,7 +248,7 @@ const LoginPage = () => {
                 </>
               )}
             </SubmitButton>
-          </LoginForm>
+          </AuthForm>
 
           {GOOGLE_CLIENT_ID && (
             <>
@@ -248,460 +284,13 @@ const LoginPage = () => {
             <DividerLine />
           </Divider>
 
-          <RegisterPrompt>
-            <RegisterLink to="/register">{t('auth.createAccount')}</RegisterLink>
-          </RegisterPrompt>
-        </LoginCard>
+          <NavigationPrompt>
+            <NavigationLink to="/register">{t('auth.createAccount')}</NavigationLink>
+          </NavigationPrompt>
+        </AuthCard>
       </ContentWrapper>
     </PageContainer>
   );
 };
-
-// Animations - calmer, more refined motion
-const float = keyframes`
-  0%, 100% { transform: translate(0, 0) scale(1); }
-  50% { transform: translate(10px, -15px) scale(1.01); }
-`;
-
-// Styled Components
-const PageContainer = styled.div`
-  min-height: 100vh;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  background: ${theme.colors.background};
-  font-family: ${theme.fonts.primary};
-  position: relative;
-  overflow: hidden;
-  padding: ${theme.spacing.lg};
-`;
-
-const BackgroundEffects = styled.div`
-  position: absolute;
-  inset: 0;
-  overflow: hidden;
-  pointer-events: none;
-`;
-
-const GradientOrb = styled.div`
-  position: absolute;
-  border-radius: 50%;
-  filter: blur(80px);
-  animation: ${float} 50s infinite ease-in-out;
-
-  &.orb-1 {
-    width: 400px;
-    height: 400px;
-    background: radial-gradient(circle, rgba(0, 113, 227, 0.18), transparent 70%);
-    top: -15%;
-    left: -10%;
-    animation-delay: 0s;
-  }
-
-  &.orb-2 {
-    width: 350px;
-    height: 350px;
-    background: radial-gradient(circle, rgba(88, 86, 214, 0.14), transparent 70%);
-    bottom: -10%;
-    right: -10%;
-    animation-delay: -12s;
-  }
-
-  &.orb-3 {
-    width: 280px;
-    height: 280px;
-    background: radial-gradient(circle, rgba(175, 82, 222, 0.10), transparent 70%);
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    animation-delay: -25s;
-  }
-
-  @media (prefers-reduced-motion: reduce) {
-    animation: none;
-  }
-`;
-
-const ContentWrapper = styled(motion.div)`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: ${theme.spacing.xl};
-  position: relative;
-  z-index: 1;
-  width: 100%;
-  max-width: 440px;
-`;
-
-const BrandSection = styled(motion.div)`
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-`;
-
-const LogoWrapper = styled.div`
-  width: 72px;
-  height: 72px;
-  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
-  border-radius: ${theme.radius.xl};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 32px;
-  color: white;
-  margin-bottom: ${theme.spacing.md};
-  box-shadow: ${theme.shadows.glowSubtle(theme.colors.primary)};
-  cursor: pointer;
-`;
-
-const BrandTitle = styled.h1`
-  font-size: ${theme.fontSizes['2xl']};
-  font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.text};
-  margin: 0;
-  letter-spacing: -0.02em;
-`;
-
-const BrandSubtitle = styled.p`
-  font-size: ${theme.fontSizes.md};
-  color: ${theme.colors.textSecondary};
-  margin: ${theme.spacing.xs} 0 0;
-`;
-
-// Value Proposition Feature List
-const FeatureList = styled(motion.div)`
-  display: flex;
-  flex-wrap: wrap;
-  justify-content: center;
-  gap: ${theme.spacing.md};
-  margin-top: ${theme.spacing.lg};
-`;
-
-const FeatureItem = styled(motion.div)`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.xs};
-  padding: ${theme.spacing.xs} ${theme.spacing.md};
-  background: ${theme.colors.glass};
-  border: 1px solid ${theme.colors.surfaceBorderSubtle};
-  border-radius: ${theme.radius.full};
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-
-  svg {
-    font-size: 14px;
-    color: ${theme.colors.primary};
-  }
-`;
-
-const LoginCard = styled(motion.div)`
-  width: 100%;
-  background: ${theme.colors.surface};
-  backdrop-filter: blur(${theme.blur.xl});
-  -webkit-backdrop-filter: blur(${theme.blur.xl});
-  border-radius: ${theme.radius['2xl']};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  padding: ${theme.spacing['2xl']};
-  box-shadow: ${theme.shadows.card};
-`;
-
-const CardHeader = styled.div`
-  text-align: center;
-  margin-bottom: ${theme.spacing.lg};
-`;
-
-const WelcomeText = styled.h2`
-  font-size: ${theme.fontSizes.lg};
-  font-weight: ${theme.fontWeights.medium};
-  color: ${theme.colors.text};
-  margin: 0;
-`;
-
-const SubText = styled.p`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textTertiary};
-  margin: ${theme.spacing.xs} 0 0;
-`;
-
-const ErrorMessage = styled(motion.div)`
-  background: ${theme.colors.errorMuted};
-  border: 1px solid rgba(255, 59, 48, 0.25);
-  color: ${theme.colors.error};
-  padding: ${theme.spacing.md};
-  border-radius: ${theme.radius.lg};
-  margin-bottom: ${theme.spacing.lg};
-  font-size: ${theme.fontSizes.sm};
-  text-align: center;
-  overflow: hidden;
-`;
-
-const LoginForm = styled.form`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.lg};
-`;
-
-const InputGroup = styled.div`
-  display: flex;
-  flex-direction: column;
-  gap: ${theme.spacing.sm};
-`;
-
-const InputLabel = styled.label`
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.medium};
-  color: ${theme.colors.textSecondary};
-`;
-
-const InputWrapper = styled.div`
-  position: relative;
-  display: flex;
-  align-items: center;
-
-  &:focus-within > div {
-    color: ${theme.colors.primary};
-  }
-`;
-
-const InputIcon = styled.div`
-  position: absolute;
-  left: ${theme.spacing.md};
-  color: ${theme.colors.textMuted};
-  font-size: 14px;
-  pointer-events: none;
-  transition: color ${theme.timing.fast} ${theme.easing.easeOut};
-`;
-
-const StyledInput = styled.input`
-  width: 100%;
-  padding: ${theme.spacing.md};
-  padding-left: 44px;
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  font-family: ${theme.fonts.primary};
-  font-size: ${theme.fontSizes.base};
-  color: ${theme.colors.text};
-  transition:
-    border-color ${theme.timing.fast} ${theme.easing.easeOut},
-    box-shadow ${theme.timing.fast} ${theme.easing.easeOut};
-
-  &::placeholder {
-    color: ${theme.colors.textMuted};
-  }
-
-  &:hover {
-    border-color: ${theme.colors.glassBorder};
-  }
-
-  &:focus {
-    outline: none;
-    border-color: ${theme.colors.primary};
-    box-shadow: 0 0 0 3px ${theme.colors.focusRing};
-  }
-
-  /* Focus icon color handled by InputWrapper */
-`;
-
-const SubmitButton = styled(motion.button)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.sm};
-  width: 100%;
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  background: ${theme.colors.primary};
-  border: none;
-  border-radius: ${theme.radius.lg};
-  font-family: ${theme.fonts.primary};
-  font-size: ${theme.fontSizes.base};
-  font-weight: ${theme.fontWeights.semibold};
-  color: white;
-  cursor: pointer;
-  transition:
-    background ${theme.timing.fast} ${theme.easing.easeOut},
-    box-shadow ${theme.timing.normal} ${theme.easing.easeOut},
-    transform ${theme.timing.fast} ${theme.easing.appleSpring};
-  box-shadow: ${theme.shadows.buttonPrimary};
-  margin-top: ${theme.spacing.sm};
-
-  @media (hover: hover) and (pointer: fine) {
-    &:hover:not(:disabled) {
-      background: ${theme.colors.primaryHover};
-      box-shadow: ${theme.shadows.buttonPrimaryHover};
-      transform: translateY(-1px);
-    }
-  }
-
-  &:active:not(:disabled) {
-    background: ${theme.colors.primaryActive};
-    transform: translateY(0);
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow:
-      ${theme.shadows.buttonPrimaryHover},
-      0 0 0 3px ${theme.colors.focusRing};
-  }
-
-  &:disabled {
-    opacity: 0.7;
-    cursor: not-allowed;
-  }
-
-  svg {
-    font-size: 14px;
-  }
-`;
-
-// Using shared LoadingSpinner from DesignSystem
-
-const Divider = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.md};
-  margin: ${theme.spacing.lg} 0;
-`;
-
-const DividerLine = styled.div`
-  flex: 1;
-  height: 1px;
-  background: ${theme.colors.surfaceBorder};
-`;
-
-const DividerText = styled.span`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textMuted};
-`;
-
-const RegisterPrompt = styled.p`
-  text-align: center;
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
-  margin: 0;
-`;
-
-const RegisterLink = styled(Link)`
-  color: ${theme.colors.primary};
-  text-decoration: none;
-  font-weight: ${theme.fontWeights.medium};
-  transition: color ${theme.timing.fast} ${theme.easing.easeOut};
-  border-radius: ${theme.radius.sm};
-  padding: 2px 4px;
-  margin: -2px -4px;
-
-  @media (hover: hover) and (pointer: fine) {
-    &:hover {
-      color: ${theme.colors.primaryHover};
-      text-decoration: underline;
-    }
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
-  }
-`;
-
-const GoogleButtonWrapper = styled.div`
-  width: 100%;
-  display: flex;
-  justify-content: center;
-  
-  > div {
-    width: 100% !important;
-  }
-  
-  iframe {
-    width: 100% !important;
-  }
-`;
-
-const GoogleLoadingButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 100%;
-  padding: ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  color: ${theme.colors.text};
-  cursor: not-allowed;
-  opacity: 0.7;
-`;
-
-// Language Selector
-const LanguageSelectorContainer = styled.div`
-  position: absolute;
-  top: ${theme.spacing.lg};
-  right: ${theme.spacing.lg};
-  z-index: 100;
-`;
-
-const LanguageButton = styled(motion.button)`
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: ${theme.colors.glass};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.full};
-  color: ${theme.colors.text};
-  cursor: pointer;
-  font-size: 16px;
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
-  transition: border-color ${theme.timing.fast} ${theme.easing.easeOut};
-
-  &:hover {
-    border-color: ${theme.colors.glassBorder};
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
-  }
-
-  svg {
-    font-size: 18px;
-  }
-`;
-
-const LanguageDropdown = styled(motion.div)`
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
-  background: ${theme.colors.surface};
-  backdrop-filter: blur(${theme.blur.xl});
-  -webkit-backdrop-filter: blur(${theme.blur.xl});
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  box-shadow: ${theme.shadows.dropdown};
-  overflow: hidden;
-  min-width: 160px;
-`;
-
-const LanguageOption = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  cursor: pointer;
-  font-size: ${theme.fontSizes.sm};
-  color: ${props => props.$active ? theme.colors.primary : theme.colors.text};
-  background: ${props => props.$active ? theme.colors.primarySubtle : 'transparent'};
-  transition:
-    background ${theme.timing.fast} ${theme.easing.easeOut},
-    color ${theme.timing.fast} ${theme.easing.easeOut};
-
-  &:hover {
-    background: ${theme.colors.glass};
-  }
-`;
 
 export default LoginPage;
