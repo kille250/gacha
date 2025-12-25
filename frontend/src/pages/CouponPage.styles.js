@@ -284,14 +284,14 @@ export const TicketIcon = styled.div`
   align-items: center;
   justify-content: center;
   font-size: 28px;
-  color: ${props => props.$premium ? '#AF52DE' : '#34C759'};
+  color: ${props => props.$premium ? theme.colors.accentSecondary : theme.colors.success};
 `;
 
 export const TicketBadge = styled.span`
   display: inline-block;
   background: ${props => props.$premium
-    ? 'linear-gradient(135deg, #AF52DE, #BF5AF2)'
-    : 'linear-gradient(135deg, #34C759, #30B050)'
+    ? `linear-gradient(135deg, ${theme.colors.accentSecondary}, ${theme.colors.rarity.epic})`
+    : `linear-gradient(135deg, ${theme.colors.success}, ${theme.colors.successHover})`
   };
   color: white;
   padding: ${theme.spacing.xs} ${theme.spacing.sm};

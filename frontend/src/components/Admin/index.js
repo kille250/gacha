@@ -13,7 +13,6 @@ export { default as AdminErrorBoundary } from './AdminErrorBoundary';
 
 // ==================== UI COMPONENTS ====================
 
-export { default as FormField } from './FormField';
 export { default as ActionPreview } from './ActionPreview';
 export { default as AdminMobileControls } from './AdminMobileControls';
 export { default as KeyboardShortcutsModal } from './KeyboardShortcutsModal';
