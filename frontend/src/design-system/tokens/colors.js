@@ -58,7 +58,7 @@ export const colors = {
   textPrimary: 'rgba(255, 255, 255, 0.95)',    // Alias for clarity
   textSecondary: 'rgba(255, 255, 255, 0.75)',  // Enhanced for better readability
   textTertiary: 'rgba(255, 255, 255, 0.55)',   // Enhanced for better visibility
-  textMuted: 'rgba(255, 255, 255, 0.40)',      // Slightly more visible
+  textMuted: 'rgba(255, 255, 255, 0.45)',      // Increased from 0.40 for better visibility
   textDisabled: 'rgba(255, 255, 255, 0.28)',   // For disabled states
   textInverse: '#000000',                       // For light backgrounds
 

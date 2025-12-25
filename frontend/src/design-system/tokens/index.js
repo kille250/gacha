@@ -6,7 +6,7 @@
  */
 
 export { colors } from './colors';
-export { fonts, fontSizes, fontWeights, lineHeights, letterSpacing, typography } from './typography';
+export { fonts, fontSizes, fontWeights, lineHeights, letterSpacing, textStyles, typography } from './typography';
 export { spacing, radius, shadows, elevation, blur } from './spacing';
 export { breakpoints, zIndex, transitions as breakpointTransitions, timing as breakpointTiming } from './breakpoints';
 export {
@@ -45,6 +45,7 @@ export const theme = {
   fontWeights: require('./typography').fontWeights,
   lineHeights: require('./typography').lineHeights,
   letterSpacing: require('./typography').letterSpacing,
+  textStyles: require('./typography').textStyles,
   spacing: require('./spacing').spacing,
   radius: require('./spacing').radius,
   shadows: require('./spacing').shadows,

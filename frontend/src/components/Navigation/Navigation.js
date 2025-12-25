@@ -70,7 +70,18 @@ const Navigation = () => {
         {/* Logo */}
         <LogoSection>
           <Logo to="/gacha">
-            <LogoIcon>🎰</LogoIcon>
+            <LogoIconWrapper>
+              <LogoSvg viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                <circle cx="12" cy="12" r="10" fill="url(#logoGradient)" />
+                <path d="M8 12L11 15L16 9" stroke="white" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" />
+                <defs>
+                  <linearGradient id="logoGradient" x1="2" y1="2" x2="22" y2="22">
+                    <stop stopColor="#0071e3" />
+                    <stop offset="1" stopColor="#5856d6" />
+                  </linearGradient>
+                </defs>
+              </LogoSvg>
+            </LogoIconWrapper>
             <LogoTextWrapper>
               <LogoText>Gacha<LogoAccent>Master</LogoAccent></LogoText>
             </LogoTextWrapper>
@@ -214,11 +225,20 @@ const Logo = styled(Link)`
   }
 `;
 
-const LogoIcon = styled.span`
-  font-size: 24px;
+const LogoIconWrapper = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const LogoSvg = styled.svg`
+  width: 28px;
+  height: 28px;
+  flex-shrink: 0;
 
   @media (max-width: ${theme.breakpoints.sm}) {
-    font-size: 20px;
+    width: 24px;
+    height: 24px;
   }
 `;
 

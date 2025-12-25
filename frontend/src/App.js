@@ -1,6 +1,7 @@
 import React, { useContext, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
+import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { RarityProvider } from './context/RarityContext';
 import { RecaptchaProvider } from './context/RecaptchaContext';
@@ -71,6 +72,87 @@ const HomeRedirect = () => {
   }
 
   return <Navigate to={user ? "/gacha" : "/login"} replace />;
+};
+
+// Page transition variants - subtle fade for premium feel
+const pageTransitionVariants = {
+  initial: { opacity: 0 },
+  animate: { opacity: 1, transition: { duration: 0.15, ease: [0.25, 0.1, 0.25, 1] } },
+  exit: { opacity: 0, transition: { duration: 0.1 } }
+};
+
+// Animated page wrapper component
+const PageTransition = ({ children }) => (
+  <motion.div
+    variants={pageTransitionVariants}
+    initial="initial"
+    animate="animate"
+    exit="exit"
+    style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
+  >
+    {children}
+  </motion.div>
+);
+
+// Animated Routes wrapper - handles page transitions
+const AnimatedRoutes = () => {
+  const location = useLocation();
+
+  return (
+    <AnimatePresence mode="wait">
+      <Routes location={location} key={location.pathname}>
+        {/* Public routes */}
+        <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
+        <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+
+        {/* Protected routes with main navigation layout */}
+        <Route path="/gacha" element={
+          <ProtectedRoute>
+            <MainLayout><PageTransition><GachaPage /></PageTransition></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/collection" element={
+          <ProtectedRoute>
+            <MainLayout><PageTransition><CollectionPage /></PageTransition></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/dojo" element={
+          <ProtectedRoute>
+            <MainLayout><PageTransition><DojoPage /></PageTransition></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/coupons" element={
+          <ProtectedRoute>
+            <MainLayout><PageTransition><CouponPage /></PageTransition></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/settings" element={
+          <ProtectedRoute>
+            <MainLayout><PageTransition><SettingsPage /></PageTransition></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/admin" element={
+          <ProtectedRoute>
+            <MainLayout><PageTransition><AdminPage /></PageTransition></MainLayout>
+          </ProtectedRoute>
+        } />
+
+        {/* Full-screen immersive routes (no navigation) */}
+        <Route path="/roll" element={
+          <ProtectedRoute><PageTransition><RollPage /></PageTransition></ProtectedRoute>
+        } />
+        <Route path="/banner/:bannerId" element={
+          <ProtectedRoute><PageTransition><BannerPage /></PageTransition></ProtectedRoute>
+        } />
+        <Route path="/fishing" element={
+          <ProtectedRoute><PageTransition><FishingPage /></PageTransition></ProtectedRoute>
+        } />
+
+        {/* Default redirect */}
+        <Route path="/" element={<HomeRedirect />} />
+      </Routes>
+    </AnimatePresence>
+  );
 };
 
 const GlobalStyle = createGlobalStyle`
@@ -231,57 +313,7 @@ function App() {
                     Skip to main content
                   </a>
                   <Suspense fallback={<PageLoader />}>
-                    <Routes>
-                      {/* Public routes */}
-                      <Route path="/login" element={<LoginPage />} />
-                      <Route path="/register" element={<RegisterPage />} />
-
-                      {/* Protected routes with main navigation layout */}
-                      <Route path="/gacha" element={
-                        <ProtectedRoute>
-                          <MainLayout><GachaPage /></MainLayout>
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/collection" element={
-                        <ProtectedRoute>
-                          <MainLayout><CollectionPage /></MainLayout>
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/dojo" element={
-                        <ProtectedRoute>
-                          <MainLayout><DojoPage /></MainLayout>
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/coupons" element={
-                        <ProtectedRoute>
-                          <MainLayout><CouponPage /></MainLayout>
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/settings" element={
-                        <ProtectedRoute>
-                          <MainLayout><SettingsPage /></MainLayout>
-                        </ProtectedRoute>
-                      } />
-                      <Route path="/admin" element={
-                        <ProtectedRoute>
-                          <MainLayout><AdminPage /></MainLayout>
-                        </ProtectedRoute>
-                      } />
-
-                      {/* Full-screen immersive routes (no navigation) */}
-                      <Route path="/roll" element={
-                        <ProtectedRoute><RollPage /></ProtectedRoute>
-                      } />
-                      <Route path="/banner/:bannerId" element={
-                        <ProtectedRoute><BannerPage /></ProtectedRoute>
-                      } />
-                      <Route path="/fishing" element={
-                        <ProtectedRoute><FishingPage /></ProtectedRoute>
-                      } />
-
-                      {/* Default redirect */}
-                      <Route path="/" element={<HomeRedirect />} />
-                    </Routes>
+                    <AnimatedRoutes />
                   </Suspense>
                 </AppContainer>
               </Router>

@@ -44,7 +44,7 @@ const glowPulse = keyframes`
   }
 `;
 
-// Rarity-specific styles
+// Rarity-specific styles - only legendary gets shimmer (reduced intensity)
 const rarityStyles = {
   legendary: css`
     &::before {
@@ -53,35 +53,10 @@ const rarityStyles = {
       inset: 0;
       background: linear-gradient(
         110deg,
-        transparent 20%,
-        rgba(255, 167, 38, 0.15) 40%,
-        rgba(255, 215, 0, 0.2) 50%,
-        rgba(255, 167, 38, 0.15) 60%,
-        transparent 80%
-      );
-      background-size: 200% 100%;
-      animation: ${shimmer} 3s ease-in-out infinite;
-      pointer-events: none;
-      z-index: 3;
-      border-radius: inherit;
-
-      @media (prefers-reduced-motion: reduce) {
-        animation: none;
-        opacity: 0;
-      }
-    }
-  `,
-  epic: css`
-    &::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      background: linear-gradient(
-        110deg,
         transparent 25%,
-        rgba(191, 90, 242, 0.1) 45%,
-        rgba(191, 90, 242, 0.15) 50%,
-        rgba(191, 90, 242, 0.1) 55%,
+        rgba(255, 167, 38, 0.08) 45%,
+        rgba(255, 215, 0, 0.12) 50%,
+        rgba(255, 167, 38, 0.08) 55%,
         transparent 75%
       );
       background-size: 200% 100%;
@@ -96,12 +71,13 @@ const rarityStyles = {
       }
     }
   `
+  // Epic shimmer removed - too many competing effects on screen
 };
 
 const Card = styled(motion.div)`
   position: relative;
   background: ${theme.colors.surface};
-  border-radius: ${theme.radius.xl};
+  border-radius: ${theme.radius.xl};  /* Standardized to xl (20px) */
   overflow: hidden;
   cursor: pointer;
   border: 1px solid ${props => props.$isOwned
@@ -112,9 +88,8 @@ const Card = styled(motion.div)`
     border-color ${theme.timing.fast} ${theme.easing.easeOut},
     box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
 
-  /* Apply rarity-specific shimmer for owned legendary/epic cards */
+  /* Apply rarity-specific shimmer for owned legendary cards only */
   ${props => props.$isOwned && props.$rarity === 'legendary' && rarityStyles.legendary}
-  ${props => props.$isOwned && props.$rarity === 'epic' && rarityStyles.epic}
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {
@@ -449,5 +424,78 @@ const CharacterCard = memo(({
 });
 
 CharacterCard.displayName = 'CharacterCard';
+
+/**
+ * CharacterCardSkeleton - Loading placeholder for CharacterCard
+ *
+ * Shows a shimmer loading state while character data is loading.
+ */
+const SkeletonShimmer = keyframes`
+  0% {
+    background-position: -200% 0;
+  }
+  100% {
+    background-position: 200% 0;
+  }
+`;
+
+const SkeletonCard = styled.div`
+  position: relative;
+  background: ${theme.colors.surface};
+  border-radius: ${theme.radius.xl};
+  overflow: hidden;
+  border: 1px solid ${theme.colors.surfaceBorderSubtle};
+`;
+
+const SkeletonImage = styled.div`
+  aspect-ratio: 1;
+  background: linear-gradient(
+    90deg,
+    ${theme.colors.backgroundTertiary} 0%,
+    ${theme.colors.backgroundSecondary} 50%,
+    ${theme.colors.backgroundTertiary} 100%
+  );
+  background-size: 200% 100%;
+  animation: ${SkeletonShimmer} 1.5s ease-in-out infinite;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    background: ${theme.colors.backgroundTertiary};
+  }
+`;
+
+const SkeletonContent = styled.div`
+  padding: ${theme.spacing.md};
+`;
+
+const SkeletonLine = styled.div`
+  height: ${props => props.$height || '14px'};
+  width: ${props => props.$width || '100%'};
+  background: linear-gradient(
+    90deg,
+    ${theme.colors.backgroundTertiary} 0%,
+    ${theme.colors.backgroundSecondary} 50%,
+    ${theme.colors.backgroundTertiary} 100%
+  );
+  background-size: 200% 100%;
+  animation: ${SkeletonShimmer} 1.5s ease-in-out infinite;
+  border-radius: ${theme.radius.sm};
+  margin-bottom: ${props => props.$mb || '0'};
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    background: ${theme.colors.backgroundTertiary};
+  }
+`;
+
+export const CharacterCardSkeleton = () => (
+  <SkeletonCard aria-hidden="true">
+    <SkeletonImage />
+    <SkeletonContent>
+      <SkeletonLine $height="16px" $width="80%" $mb="8px" />
+      <SkeletonLine $height="12px" $width="60%" />
+    </SkeletonContent>
+  </SkeletonCard>
+);
 
 export default CharacterCard;

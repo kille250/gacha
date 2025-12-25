@@ -350,7 +350,6 @@ const GachaPage = () => {
                   initial={{ opacity: 0, y: 20 }}
                   animate={{ opacity: 1, y: 0 }}
                   transition={{ delay: index * 0.05 }}
-                  whileHover="hover"
                   role="button"
                   tabIndex={0}
                   onKeyDown={(e) => {
@@ -361,7 +360,7 @@ const GachaPage = () => {
                   }}
                   aria-label={`${banner.name} - ${banner.series}`}
                 >
-                  <NetflixCardInner variants={{ hover: { scale: 1.05, y: -8 } }}>
+                  <NetflixCardInner>
                     <NetflixImageContainer>
                       <NetflixBannerImage src={getBannerImage(banner.image)} alt="" />
                       <NetflixImageOverlay />

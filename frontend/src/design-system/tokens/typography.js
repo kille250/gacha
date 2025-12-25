@@ -62,12 +62,118 @@ export const letterSpacing = {
   widest: '0.04em'  // For uppercase small text
 };
 
+/**
+ * Semantic Typography Presets
+ *
+ * Pre-defined typography combinations for consistent hierarchy.
+ * Use these instead of manually combining size/weight/tracking.
+ */
+export const textStyles = {
+  // Display - Large hero/splash headlines
+  displayLarge: {
+    fontSize: '42px',
+    fontWeight: 700,
+    lineHeight: 1.15,
+    letterSpacing: '-0.02em'
+  },
+  displayMedium: {
+    fontSize: '34px',
+    fontWeight: 700,
+    lineHeight: 1.15,
+    letterSpacing: '-0.02em'
+  },
+  displaySmall: {
+    fontSize: '28px',
+    fontWeight: 600,
+    lineHeight: 1.2,
+    letterSpacing: '-0.015em'
+  },
+
+  // Titles - Page and section headers
+  titleLarge: {
+    fontSize: '22px',
+    fontWeight: 600,
+    lineHeight: 1.25,
+    letterSpacing: '-0.01em'
+  },
+  titleMedium: {
+    fontSize: '18px',
+    fontWeight: 600,
+    lineHeight: 1.3,
+    letterSpacing: '-0.01em'
+  },
+  titleSmall: {
+    fontSize: '16px',
+    fontWeight: 600,
+    lineHeight: 1.35,
+    letterSpacing: '0'
+  },
+
+  // Body - Primary content text
+  bodyLarge: {
+    fontSize: '18px',
+    fontWeight: 400,
+    lineHeight: 1.5,
+    letterSpacing: '0'
+  },
+  bodyMedium: {
+    fontSize: '16px',
+    fontWeight: 400,
+    lineHeight: 1.5,
+    letterSpacing: '0'
+  },
+  bodySmall: {
+    fontSize: '14px',
+    fontWeight: 400,
+    lineHeight: 1.5,
+    letterSpacing: '0'
+  },
+
+  // Labels - UI elements, buttons, form labels
+  labelLarge: {
+    fontSize: '16px',
+    fontWeight: 500,
+    lineHeight: 1.4,
+    letterSpacing: '0'
+  },
+  labelMedium: {
+    fontSize: '14px',
+    fontWeight: 500,
+    lineHeight: 1.4,
+    letterSpacing: '0.01em'
+  },
+  labelSmall: {
+    fontSize: '12px',
+    fontWeight: 500,
+    lineHeight: 1.4,
+    letterSpacing: '0.01em'
+  },
+
+  // Caption - Secondary/supporting text
+  caption: {
+    fontSize: '12px',
+    fontWeight: 400,
+    lineHeight: 1.4,
+    letterSpacing: '0.01em'
+  },
+
+  // Overline - All-caps labels, badges
+  overline: {
+    fontSize: '11px',
+    fontWeight: 700,
+    lineHeight: 1.4,
+    letterSpacing: '0.04em',
+    textTransform: 'uppercase'
+  }
+};
+
 export const typography = {
   fonts,
   fontSizes,
   fontWeights,
   lineHeights,
-  letterSpacing
+  letterSpacing,
+  textStyles
 };
 
 export default typography;

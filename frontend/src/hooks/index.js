@@ -123,3 +123,6 @@ export { useToastFeedback } from './useToastFeedback';
 
 // User mutations (centralized user state updates)
 export { useUserMutations } from './useUserMutations';
+
+// Animated counter for points/currency display
+export { default as useAnimatedCounter } from './useAnimatedCounter';

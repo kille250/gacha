@@ -472,18 +472,21 @@ export const NetflixBannerCard = styled(motion.div)`
 
 export const NetflixCardInner = styled(motion.div)`
   background: ${theme.colors.surface};
-  border-radius: ${theme.radius.lg};
+  border-radius: ${theme.radius.xl};  /* Standardized to xl (20px) */
   overflow: hidden;
   border: 1px solid ${theme.colors.surfaceBorderSubtle};
   box-shadow: ${theme.shadows.card};
   transition:
     box-shadow ${theme.timing.normal} ${theme.easing.easeOut},
-    border-color ${theme.timing.fast} ${theme.easing.easeOut};
+    border-color ${theme.timing.fast} ${theme.easing.easeOut},
+    transform ${theme.timing.normal} ${theme.easing.appleSpring};
 
   @media (hover: hover) and (pointer: fine) {
     ${NetflixBannerCard}:hover & {
       box-shadow: ${theme.shadows.cardHover};
       border-color: ${theme.colors.surfaceBorder};
+      /* Lift effect only - removed scale to fix double-scaling */
+      transform: translateY(-6px);
     }
   }
 
@@ -506,13 +509,7 @@ export const NetflixBannerImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
-  transition: transform ${theme.timing.slow} ${theme.easing.easeOut};
-
-  @media (hover: hover) and (pointer: fine) {
-    ${NetflixBannerCard}:hover & {
-      transform: scale(1.06);
-    }
-  }
+  /* Image scale removed - using card lift only to avoid double-scaling */
 `;
 
 export const NetflixImageOverlay = styled.div`

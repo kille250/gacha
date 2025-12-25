@@ -321,7 +321,7 @@ export const motionVariants = {
     }
   },
 
-  // Improved modal with spring bounce
+  // Improved modal with spring bounce - smoother exit timing
   modal: {
     hidden: { opacity: 0, scale: 0.95, y: 24 },
     visible: {
@@ -337,14 +337,14 @@ export const motionVariants = {
       opacity: 0,
       scale: 0.97,
       y: 16,
-      transition: { duration: 0.15, ease: [0.4, 0, 1, 1] }
+      transition: { duration: 0.25, ease: [0.4, 0, 0.2, 1] }  // Increased from 0.15s to 0.25s for smoother feel
     }
   },
 
   overlay: {
     hidden: { opacity: 0 },
     visible: { opacity: 1, transition: { duration: 0.2 } },
-    exit: { opacity: 0, transition: { duration: 0.15 } }
+    exit: { opacity: 0, transition: { duration: 0.2 } }  // Slightly longer for smoother feel
   },
 
   // Button hover/tap

@@ -16,6 +16,7 @@ export {
   fontSizes,
   fontWeights,
   lineHeights,
+  textStyles,
   spacing,
   radius,
   shadows,

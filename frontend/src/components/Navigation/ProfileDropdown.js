@@ -17,6 +17,7 @@ import {
   MdExitToApp
 } from 'react-icons/md';
 import { theme } from '../../design-system';
+import { useAnimatedCounter } from '../../hooks';
 import LanguageSelector from './LanguageSelector';
 
 /**
@@ -40,6 +41,9 @@ const ProfileDropdown = ({
 
   const [isOpen, setIsOpen] = useState(false);
   const [showLanguageSubmenu, setShowLanguageSubmenu] = useState(false);
+
+  // Animate points counter for a premium feel
+  const animatedPoints = useAnimatedCounter(user?.points || 0, { duration: 500 });
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -84,7 +88,7 @@ const ProfileDropdown = ({
       >
         <PointsBadge>
           <span>🪙</span>
-          <span>{user?.points || 0}</span>
+          <span>{animatedPoints}</span>
         </PointsBadge>
         <Avatar>
           <MdPerson />
