@@ -384,14 +384,23 @@ router.post('/', [auth, adminAuth], upload.fields([
       }
     }
     
+    // Parse and validate dates
+    const parseDate = (dateValue, defaultValue = null) => {
+      if (!dateValue || dateValue === '' || dateValue === 'Invalid date' || dateValue === 'null') {
+        return defaultValue;
+      }
+      const parsed = new Date(dateValue);
+      return isNaN(parsed.getTime()) ? defaultValue : parsed;
+    };
+
     const banner = await Banner.create({
       name,
       description,
       series,
       image: imagePath,
       videoUrl: videoPath,
-      startDate: startDate || new Date(),
-      endDate: endDate || null,
+      startDate: parseDate(startDate, new Date()),
+      endDate: parseDate(endDate, null),
       featured: featured === 'true',
       costMultiplier: parseFloat(costMultiplier || 1.5),
       rateMultiplier: parseFloat(rateMultiplier || 5.0),
@@ -440,7 +449,7 @@ router.put('/:id', [auth, adminAuth], upload.fields([
       'name', 'description', 'series', 'startDate', 'endDate',
       'featured', 'costMultiplier', 'rateMultiplier', 'active', 'isR18'
     ];
-    
+
     fields.forEach(field => {
       if (req.body[field] !== undefined) {
         if (field === 'featured' || field === 'isR18') {
@@ -449,6 +458,20 @@ router.put('/:id', [auth, adminAuth], upload.fields([
           banner[field] = req.body[field] !== 'false';
         } else if (field === 'costMultiplier' || field === 'rateMultiplier') {
           banner[field] = parseFloat(req.body[field]);
+        } else if (field === 'startDate' || field === 'endDate') {
+          // Validate date fields - set to null if invalid or empty
+          const dateValue = req.body[field];
+          if (!dateValue || dateValue === '' || dateValue === 'Invalid date' || dateValue === 'null') {
+            banner[field] = null;
+          } else {
+            const parsedDate = new Date(dateValue);
+            if (isNaN(parsedDate.getTime())) {
+              // Invalid date - set to null instead of crashing
+              banner[field] = null;
+            } else {
+              banner[field] = parsedDate;
+            }
+          }
         } else {
           banner[field] = req.body[field];
         }
