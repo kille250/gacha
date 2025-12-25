@@ -118,6 +118,48 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
   // Screen reader announcement
   const [announcement, setAnnouncement] = useState('');
 
+  // Keyboard shortcuts for quick actions
+  useEffect(() => {
+    const handleKeyDown = (event) => {
+      // Ignore if user is typing in an input, textarea, or contenteditable
+      const activeElement = document.activeElement;
+      if (
+        activeElement.tagName === 'INPUT' ||
+        activeElement.tagName === 'TEXTAREA' ||
+        activeElement.tagName === 'SELECT' ||
+        activeElement.isContentEditable
+      ) {
+        return;
+      }
+
+      // Ignore if modifier keys are pressed (these are for other shortcuts)
+      if (event.ctrlKey || event.metaKey || event.altKey) {
+        return;
+      }
+
+      const key = event.key.toLowerCase();
+
+      // Map keys to quick actions
+      const keyActionMap = {
+        [QUICK_ACTION_SHORTCUTS.addCharacter.key]: 'character',
+        [QUICK_ACTION_SHORTCUTS.multiUpload.key]: 'multiUpload',
+        [QUICK_ACTION_SHORTCUTS.animeImport.key]: 'animeImport',
+        [QUICK_ACTION_SHORTCUTS.addBanner.key]: 'banner',
+        [QUICK_ACTION_SHORTCUTS.addCoupon.key]: 'coupon',
+      };
+
+      const action = keyActionMap[key];
+      if (action) {
+        event.preventDefault();
+        onQuickAction(action);
+        setAnnouncement(t('admin.actionTriggered', { action }, `${action} action triggered`));
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onQuickAction, t]);
+
   // Memoized fetch function - no dependencies to prevent re-creation
   const fetchHealth = useCallback(async () => {
     try {
