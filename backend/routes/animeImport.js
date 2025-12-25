@@ -8,6 +8,7 @@ const { getUrlPath, getFilePath } = require('../config/upload');
 const { downloadImage, generateUniqueFilename, getExtensionFromUrl, safeUnlink } = require('../utils/fileUtils');
 const { checkForDuplicates, getDetectionMode } = require('../services/duplicateDetectionService');
 const { logAdminAction: logDuplicateEvent } = require('../services/auditService');
+const { calculateRarity, getRarityDetails } = require('../utils/rarityCalculator');
 
 // Jikan API base URL (free MyAnimeList API)
 const JIKAN_API = 'https://api.jikan.moe/v4';
@@ -131,7 +132,7 @@ router.get('/character/:mal_id', auth, adminAuth, async (req, res) => {
 // Import selected characters
 router.post('/import', auth, adminAuth, async (req, res) => {
   try {
-    const { characters, series, rarity = 'common' } = req.body;
+    const { characters, series, rarity = 'common', autoRarity = false } = req.body;
 
     if (!characters || !Array.isArray(characters) || characters.length === 0) {
       return res.status(400).json({ error: 'No characters selected for import' });
@@ -141,9 +142,9 @@ router.post('/import', auth, adminAuth, async (req, res) => {
       return res.status(400).json({ error: 'Series name is required' });
     }
 
-    // Validate rarity
+    // Validate rarity (only if not using auto-rarity)
     const validRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
-    if (!validRarities.includes(rarity)) {
+    if (!autoRarity && !validRarities.includes(rarity)) {
       return res.status(400).json({ error: 'Invalid rarity value' });
     }
 
@@ -156,6 +157,33 @@ router.post('/import', auth, adminAuth, async (req, res) => {
         if (!char.name || !char.image) {
           errors.push({ name: char.name || 'Unknown', error: 'Missing name or image' });
           continue;
+        }
+
+        // Determine rarity - auto-calculate or use provided/default
+        let characterRarity = char.rarity || rarity;
+        let rarityDetails = null;
+
+        if (autoRarity && char.mal_id) {
+          // Fetch full character details to get favorites count
+          try {
+            const characterUrl = `${JIKAN_API}/characters/${char.mal_id}/full`;
+            const charData = await rateLimitedFetch(characterUrl);
+            const favorites = charData.data?.favorites || 0;
+            const role = char.role || null;
+
+            characterRarity = calculateRarity(favorites, role);
+            rarityDetails = getRarityDetails(favorites, role);
+
+            console.log(`Auto-rarity for "${char.name}": ${favorites} favorites, role=${role} -> ${characterRarity}`);
+          } catch (fetchErr) {
+            console.warn(`Could not fetch favorites for ${char.name}, using default rarity:`, fetchErr.message);
+            // Fall back to provided rarity or default
+          }
+        } else if (autoRarity && char.favorites !== undefined) {
+          // If favorites already provided in character data (e.g., from search results)
+          characterRarity = calculateRarity(char.favorites, char.role);
+          rarityDetails = getRarityDetails(char.favorites, char.role);
+          console.log(`Auto-rarity for "${char.name}": ${char.favorites} favorites, role=${char.role} -> ${characterRarity}`);
         }
 
         // Download the image first (needed for fingerprinting)
@@ -197,7 +225,7 @@ router.post('/import', auth, adminAuth, async (req, res) => {
           name: char.name,
           image: imagePath,
           series: series.trim(),
-          rarity: char.rarity || rarity,
+          rarity: characterRarity,
           isR18: false,
           sha256Hash: fp?.sha256 || null,
           dHash: fp?.dHash || null,
@@ -212,7 +240,13 @@ router.post('/import', auth, adminAuth, async (req, res) => {
           frameCount: fp?.frameCount || null
         });
 
-        createdCharacters.push(newCharacter);
+        // Include rarity calculation details in response
+        const charResponse = newCharacter.toJSON();
+        if (rarityDetails) {
+          charResponse.rarityCalculation = rarityDetails;
+        }
+
+        createdCharacters.push(charResponse);
 
         // Small delay to avoid overwhelming the image server
         await new Promise(resolve => setTimeout(resolve, 100));
@@ -222,11 +256,12 @@ router.post('/import', auth, adminAuth, async (req, res) => {
       }
     }
 
-    console.log(`Admin (ID: ${req.user.id}) imported ${createdCharacters.length} characters from "${series}" (${errors.length} errors)`);
+    console.log(`Admin (ID: ${req.user.id}) imported ${createdCharacters.length} characters from "${series}" (autoRarity=${autoRarity}, ${errors.length} errors)`);
 
     res.json({
       message: `Successfully imported ${createdCharacters.length} characters`,
       characters: createdCharacters,
+      autoRarityUsed: autoRarity,
       errors: errors.length > 0 ? errors : undefined
     });
   } catch (err) {
@@ -922,6 +957,143 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
   } catch (err) {
     console.error('Danbooru tag search error:', err);
     res.status(500).json({ error: err.message || 'Failed to search Danbooru' });
+  }
+});
+
+// ==========================================
+// AUTO-RARITY CALCULATION ENDPOINTS
+// ==========================================
+
+/**
+ * Preview rarity calculation for a character by MAL ID
+ * Fetches favorites from MAL and calculates suggested rarity
+ */
+router.get('/calculate-rarity/:mal_id', auth, adminAuth, async (req, res) => {
+  try {
+    const { mal_id } = req.params;
+    const { role } = req.query; // Optional role override
+
+    if (!mal_id || isNaN(mal_id)) {
+      return res.status(400).json({ error: 'Valid character MAL ID required' });
+    }
+
+    // Fetch character details from Jikan
+    const characterUrl = `${JIKAN_API}/characters/${mal_id}/full`;
+    const data = await rateLimitedFetch(characterUrl);
+
+    const char = data.data;
+    const favorites = char.favorites || 0;
+    const characterRole = role || null;
+
+    // Calculate rarity
+    const rarityDetails = getRarityDetails(favorites, characterRole);
+
+    res.json({
+      mal_id: char.mal_id,
+      name: char.name,
+      image: char.images?.jpg?.image_url || char.images?.webp?.image_url,
+      favorites,
+      ...rarityDetails
+    });
+  } catch (err) {
+    console.error('Calculate rarity error:', err);
+    res.status(500).json({ error: err.message || 'Failed to calculate rarity' });
+  }
+});
+
+/**
+ * Batch preview rarity calculation for multiple characters
+ * Accepts array of {mal_id, role} and returns calculated rarities
+ */
+router.post('/calculate-rarity-batch', auth, adminAuth, async (req, res) => {
+  try {
+    const { characters } = req.body;
+
+    if (!characters || !Array.isArray(characters) || characters.length === 0) {
+      return res.status(400).json({ error: 'Characters array is required' });
+    }
+
+    if (characters.length > 25) {
+      return res.status(400).json({ error: 'Maximum 25 characters per batch' });
+    }
+
+    const results = [];
+    const errors = [];
+
+    for (const char of characters) {
+      try {
+        if (!char.mal_id || isNaN(char.mal_id)) {
+          errors.push({ mal_id: char.mal_id, error: 'Invalid MAL ID' });
+          continue;
+        }
+
+        // Check if favorites is already provided
+        if (char.favorites !== undefined) {
+          const rarityDetails = getRarityDetails(char.favorites, char.role);
+          results.push({
+            mal_id: char.mal_id,
+            name: char.name,
+            favorites: char.favorites,
+            ...rarityDetails
+          });
+        } else {
+          // Fetch from API
+          const characterUrl = `${JIKAN_API}/characters/${char.mal_id}/full`;
+          const data = await rateLimitedFetch(characterUrl);
+
+          const charData = data.data;
+          const favorites = charData.favorites || 0;
+          const rarityDetails = getRarityDetails(favorites, char.role);
+
+          results.push({
+            mal_id: charData.mal_id,
+            name: charData.name,
+            image: charData.images?.jpg?.image_url,
+            favorites,
+            ...rarityDetails
+          });
+        }
+      } catch (charErr) {
+        errors.push({ mal_id: char.mal_id, error: charErr.message });
+      }
+    }
+
+    res.json({
+      results,
+      errors: errors.length > 0 ? errors : undefined
+    });
+  } catch (err) {
+    console.error('Batch calculate rarity error:', err);
+    res.status(500).json({ error: err.message || 'Failed to calculate rarities' });
+  }
+});
+
+/**
+ * Get rarity thresholds and calculation info
+ * Returns the current configuration for client-side preview
+ */
+router.get('/rarity-thresholds', auth, adminAuth, async (req, res) => {
+  try {
+    const { FAVORITES_THRESHOLDS, ROLE_BONUSES } = require('../utils/rarityCalculator');
+
+    res.json({
+      thresholds: FAVORITES_THRESHOLDS,
+      roleBonuses: ROLE_BONUSES,
+      description: {
+        legendary: `${FAVORITES_THRESHOLDS.legendary.toLocaleString()}+ favorites - Top tier iconic characters`,
+        epic: `${FAVORITES_THRESHOLDS.epic.toLocaleString()}-${(FAVORITES_THRESHOLDS.legendary - 1).toLocaleString()} favorites - Very popular characters`,
+        rare: `${FAVORITES_THRESHOLDS.rare.toLocaleString()}-${(FAVORITES_THRESHOLDS.epic - 1).toLocaleString()} favorites - Notable fan favorites`,
+        uncommon: `${FAVORITES_THRESHOLDS.uncommon.toLocaleString()}-${(FAVORITES_THRESHOLDS.rare - 1).toLocaleString()} favorites - Recognized characters`,
+        common: `<${FAVORITES_THRESHOLDS.uncommon} favorites - Minor/side characters`
+      },
+      roleDescription: {
+        Main: `+${ROLE_BONUSES.Main} score bonus for main characters`,
+        Supporting: `+${ROLE_BONUSES.Supporting} score bonus for supporting characters`
+      }
+    });
+  } catch (err) {
+    console.error('Get rarity thresholds error:', err);
+    res.status(500).json({ error: err.message || 'Failed to get rarity thresholds' });
   }
 });
 
