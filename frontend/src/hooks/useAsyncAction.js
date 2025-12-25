@@ -67,7 +67,6 @@ export const useAsyncAction = (actionFn, options = {}) => {
   const execute = useCallback(async (...args) => {
     // Check if already locked
     if (lockRef.current) {
-      console.debug('[useAsyncAction] Action blocked - already locked');
       return undefined;
     }
 

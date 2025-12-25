@@ -204,7 +204,7 @@ const ActionPreview = ({
                   transition={{ duration: 0.15 }}
                 >
                   {item.image && (
-                    <ItemImage src={item.image} alt="" />
+                    <ItemImage src={item.image} alt={item.name || 'Item preview'} />
                   )}
                   <ItemInfo>
                     <ItemName>{item.name}</ItemName>

@@ -88,9 +88,7 @@ const GlobalCaptchaHandler = () => {
   useEffect(() => {
     const handleCaptchaRequired = (event) => {
       const { detail } = event;
-      
-      console.log('[GlobalCaptcha] CAPTCHA required for action:', detail.action);
-      
+
       // Store the retry function and original config
       pendingRetry.current = {
         retry: detail.retry,
@@ -151,7 +149,6 @@ const GlobalCaptchaHandler = () => {
       }
       
       // SUCCESS - Close modal and clean up
-      console.log('[GlobalCaptcha] Request succeeded after CAPTCHA');
       setShowModal(false);
       setIsRetrying(false);
       pendingRetry.current = null;
@@ -167,8 +164,6 @@ const GlobalCaptchaHandler = () => {
       
       // Check if CAPTCHA verification itself failed (need to re-verify)
       if (isCaptchaError(err)) {
-        console.log('[GlobalCaptcha] CAPTCHA needs to be re-verified');
-        
         // Update with new challenge data if provided
         setCaptchaData({
           captchaType: err.response?.data?.captchaType || 'fallback',

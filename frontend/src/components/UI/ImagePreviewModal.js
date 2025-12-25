@@ -56,30 +56,31 @@ const ImagePreviewModal = ({
             $color={rarityColor}
           >
             {/* Close Button */}
-            <CloseButton onClick={onClose}>
-              <MdClose />
+            <CloseButton onClick={onClose} aria-label="Close preview">
+              <MdClose aria-hidden="true" />
             </CloseButton>
             
             {/* Image/Video - Natural aspect ratio */}
             <MediaWrapper>
               {isVideo ? (
-                <Media 
+                <Media
                   as="video"
-                  src={image} 
-                  autoPlay 
+                  src={image}
+                  autoPlay
                   loop
                   playsInline
                   muted
+                  aria-label={`Video of ${name}`}
                   onError={(e) => {
                     if (!e.target.src.includes('placeholder.com')) {
                       e.target.src = 'https://via.placeholder.com/400x600?text=No+Media';
                     }
-                  }} 
+                  }}
                 />
               ) : (
-                <Media 
+                <Media
                   as="img"
-                  src={image} 
+                  src={image}
                   alt={name}
                   onError={(e) => {
                     if (!e.target.src.includes('placeholder.com')) {

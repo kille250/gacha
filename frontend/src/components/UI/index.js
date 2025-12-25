@@ -46,3 +46,15 @@ export { default as ScrollToTop } from './ScrollToTop';
 
 // UI Effects - ripples, animations
 export { useRipple, RippleButton } from './effects';
+
+// Modal components
+export { default as CaptchaModal } from './CaptchaModal';
+export { default as GlobalCaptchaHandler } from './GlobalCaptchaHandler';
+export { default as ImagePreviewModal } from './ImagePreviewModal';
+export { default as BannerFormModal } from './BannerFormModal';
+export { default as CouponFormModal } from './CouponFormModal';
+export { default as MultiUploadModal } from './MultiUploadModal';
+export { default as AnimeImportModal } from './AnimeImportModal';
+
+// Utility components
+export { default as DuplicateWarningBanner } from './DuplicateWarningBanner';

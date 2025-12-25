@@ -74,58 +74,42 @@ export function useFishingMultiplayer({
     
     // Connection handlers
     socket.on('connect', () => {
-      console.log('[Multiplayer] Connected to fishing server');
       setIsConnected(true);
     });
-    
+
     socket.on('disconnect', () => {
-      console.log('[Multiplayer] Disconnected from fishing server');
       setIsConnected(false);
       setOtherPlayers([]);
       onDisconnectRef.current?.();
     });
-    
-    socket.on('connect_error', (err) => {
-      console.log('[Multiplayer] Connection error:', err.message);
+
+    socket.on('connect_error', () => {
       setIsConnected(false);
     });
-    
+
     // Duplicate session handling
     socket.on('duplicate_session', (data) => {
-      console.log('[Multiplayer] Duplicate session detected:', data.message);
       onDuplicateSessionRef.current?.(data.message);
     });
-    
+
     // Initialize with existing players
     socket.on('init', (data) => {
-      console.log('[Multiplayer] Initialized with', data.players.length, 'players');
       const filteredPlayers = data.players.filter(p => p.id !== currentUserIdRef.current);
       setOtherPlayers(filteredPlayers);
     });
-    
+
     // Player joined
     socket.on('player_joined', (player) => {
-      if (player.id === currentUserIdRef.current) {
-        console.log('[Multiplayer] Ignoring self-join event');
-        return;
-      }
-      console.log('[Multiplayer] Player joined:', player.username);
+      if (player.id === currentUserIdRef.current) return;
       setOtherPlayers(prev => {
-        if (prev.find(p => p.id === player.id)) {
-          console.log('[Multiplayer] Player already in list, skipping');
-          return prev;
-        }
+        if (prev.find(p => p.id === player.id)) return prev;
         return [...prev, player];
       });
     });
-    
+
     // Player left
     socket.on('player_left', (data) => {
-      if (data.id === currentUserIdRef.current) {
-        console.log('[Multiplayer] Ignoring self-leave event');
-        return;
-      }
-      console.log('[Multiplayer] Player left:', data.id);
+      if (data.id === currentUserIdRef.current) return;
       setOtherPlayers(prev => prev.filter(p => p.id !== data.id));
     });
     

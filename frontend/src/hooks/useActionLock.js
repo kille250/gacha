@@ -71,7 +71,6 @@ export const useActionLock = (cooldownMs = 0) => {
    */
   const withLock = useCallback(async (action) => {
     if (lockRef.current) {
-      console.debug('[useActionLock] Action blocked - already locked');
       return undefined;
     }
 

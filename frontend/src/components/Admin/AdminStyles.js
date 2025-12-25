@@ -200,11 +200,14 @@ export const CloseButton = styled.button`
 
 export const FormGroup = styled.div`
   margin-bottom: ${theme.spacing.md};
+  ${props => props.$flex && 'flex: 1;'}
+  ${props => props.$width && `width: ${props.$width};`}
 `;
 
 export const FormRow = styled.div`
   display: flex;
   gap: ${theme.spacing.md};
+  ${props => props.$marginTop && `margin-top: ${theme.spacing[props.$marginTop] || props.$marginTop};`}
 
   /* Stack on mobile for better touch targets */
   @media (max-width: ${theme.breakpoints.sm}) {
