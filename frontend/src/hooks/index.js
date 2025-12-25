@@ -75,11 +75,13 @@ export { useSwipeToDelete } from './useSwipeToDelete';
 
 // Page-level hooks
 export { useCollectionPage } from './useCollectionPage';
-export { useGachaPage } from './useGachaPage';
 export { useBannerPage } from './useBannerPage';
 export { useRollPage } from './useRollPage';
 export { useDojoPage } from './useDojoPage';
 export { useCollection } from './useCollection';
+
+// Alt media search (for anime import modal)
+export { useAltMediaSearch } from './useAltMediaSearch';
 
 // Modal hooks
 export { useModal, useModalWithData, useConfirmModal } from './useModal';

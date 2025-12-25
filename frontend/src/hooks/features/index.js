@@ -7,11 +7,14 @@
 // ==================== GACHA ====================
 
 export { useGachaRoll } from '../useGachaRoll';
-export { useGachaPage } from '../useGachaPage';
 export { useBannerPage } from '../useBannerPage';
 export { useRollPage } from '../useRollPage';
 export { useSkipAnimations } from '../useSkipAnimations';
 export { useDuplicateCheck } from '../useDuplicateCheck';
+
+// ==================== ADMIN ====================
+
+export { useAltMediaSearch } from '../useAltMediaSearch';
 
 // ==================== DOJO ====================
 
