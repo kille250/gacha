@@ -13,11 +13,14 @@
  * - Optional countdown timer for extra safety on critical actions
  * - Loading state with spinner
  * - Multiple variants (danger, warning, info)
+ * - Undo capability for reversible actions
+ * - Consequence preview to show before/after changes
+ * - Impact summary for batch operations
  */
 
 import React, { useRef, useEffect, useState, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
-import { MdWarning, MdInfo, MdErrorOutline } from 'react-icons/md';
+import { MdWarning, MdInfo, MdErrorOutline, MdUndo, MdArrowForward } from 'react-icons/md';
 import { theme } from '../tokens';
 import { Button } from '../primitives';
 import Modal from './Modal';
@@ -116,6 +119,142 @@ const PreviewContent = styled.div`
   }
 `;
 
+// Consequence preview - shows before/after
+const ConsequenceSection = styled.div`
+  width: 100%;
+  margin-top: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+`;
+
+const ConsequenceTitle = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  color: ${theme.colors.textMuted};
+  margin-bottom: ${theme.spacing.sm};
+
+  svg {
+    font-size: 14px;
+    color: ${theme.colors.warning};
+  }
+`;
+
+const ConsequenceRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.xs} 0;
+  font-size: ${theme.fontSizes.sm};
+
+  &:not(:last-child) {
+    border-bottom: 1px solid ${theme.colors.surfaceBorder};
+    padding-bottom: ${theme.spacing.sm};
+    margin-bottom: ${theme.spacing.sm};
+  }
+`;
+
+const ConsequenceLabel = styled.span`
+  color: ${theme.colors.textSecondary};
+  flex-shrink: 0;
+  min-width: 80px;
+`;
+
+const ConsequenceValue = styled.span`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  flex: 1;
+`;
+
+const OldValue = styled.span`
+  color: ${theme.colors.textMuted};
+  text-decoration: line-through;
+`;
+
+const Arrow = styled(MdArrowForward)`
+  color: ${theme.colors.warning};
+  font-size: 16px;
+  flex-shrink: 0;
+`;
+
+const NewValue = styled.span`
+  color: ${props => props.$destructive ? theme.colors.error : theme.colors.success};
+  font-weight: ${theme.fontWeights.medium};
+`;
+
+// Impact summary for batch operations
+const ImpactSummary = styled.div`
+  width: 100%;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(100px, 1fr));
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.sm};
+`;
+
+const ImpactItem = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: ${theme.spacing.md};
+  background: ${props => props.$highlight ? 'rgba(255, 59, 48, 0.1)' : theme.colors.backgroundTertiary};
+  border: 1px solid ${props => props.$highlight ? 'rgba(255, 59, 48, 0.3)' : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+`;
+
+const ImpactValue = styled.span`
+  font-size: ${theme.fontSizes.xl};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${props => props.$highlight ? theme.colors.error : theme.colors.text};
+`;
+
+const ImpactLabel = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  margin-top: ${theme.spacing.xs};
+`;
+
+// Undo capability indicator
+const UndoIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: rgba(48, 209, 88, 0.1);
+  border: 1px solid rgba(48, 209, 88, 0.3);
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.success};
+  margin-top: ${theme.spacing.sm};
+
+  svg {
+    font-size: 14px;
+  }
+`;
+
+const NoUndoWarning = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: rgba(255, 59, 48, 0.1);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.error};
+  margin-top: ${theme.spacing.sm};
+
+  svg {
+    font-size: 14px;
+  }
+`;
+
 const countdown = keyframes`
   from { width: 100%; }
   to { width: 0%; }
@@ -190,6 +329,10 @@ const getVariantIcon = (variant) => {
  * @param {number} countdown - Optional countdown in seconds before confirm is enabled
  * @param {boolean} requireConfirmType - Require typing to confirm (for extra safety)
  * @param {string} confirmTypeText - Text user must type to confirm
+ * @param {Array} consequences - Array of { label, oldValue, newValue, destructive } for before/after preview
+ * @param {Array} impact - Array of { value, label, highlight } for batch operation summary
+ * @param {boolean} canUndo - Whether this action can be undone
+ * @param {string} undoMessage - Message explaining undo capability
  */
 const ConfirmDialog = ({
   isOpen,
@@ -207,6 +350,11 @@ const ConfirmDialog = ({
   countdownSeconds = 0,
   requireConfirmType = false,
   confirmTypeText = 'DELETE',
+  consequences,
+  impact,
+  canUndo,
+  undoMessage = 'This action can be undone',
+  noUndoMessage = 'This action cannot be undone',
 }) => {
   const confirmButtonRef = useRef(null);
   const [countdownActive, setCountdownActive] = useState(countdownSeconds > 0);
@@ -291,6 +439,54 @@ const ConfirmDialog = ({
             <PreviewLabel>{previewLabel}</PreviewLabel>
             <PreviewContent>{preview}</PreviewContent>
           </PreviewSection>
+        )}
+
+        {/* Consequence preview - shows before/after changes */}
+        {consequences && consequences.length > 0 && (
+          <ConsequenceSection>
+            <ConsequenceTitle>
+              <MdWarning aria-hidden="true" />
+              What will change:
+            </ConsequenceTitle>
+            {consequences.map((item, index) => (
+              <ConsequenceRow key={index}>
+                <ConsequenceLabel>{item.label}:</ConsequenceLabel>
+                <ConsequenceValue>
+                  {item.oldValue && <OldValue>{item.oldValue}</OldValue>}
+                  <Arrow aria-hidden="true" />
+                  <NewValue $destructive={item.destructive}>{item.newValue}</NewValue>
+                </ConsequenceValue>
+              </ConsequenceRow>
+            ))}
+          </ConsequenceSection>
+        )}
+
+        {/* Impact summary for batch operations */}
+        {impact && impact.length > 0 && (
+          <ImpactSummary role="list" aria-label="Impact summary">
+            {impact.map((item, index) => (
+              <ImpactItem key={index} $highlight={item.highlight} role="listitem">
+                <ImpactValue $highlight={item.highlight}>{item.value}</ImpactValue>
+                <ImpactLabel>{item.label}</ImpactLabel>
+              </ImpactItem>
+            ))}
+          </ImpactSummary>
+        )}
+
+        {/* Undo capability indicator */}
+        {canUndo === true && (
+          <UndoIndicator>
+            <MdUndo aria-hidden="true" />
+            {undoMessage}
+          </UndoIndicator>
+        )}
+
+        {/* No undo warning for permanent actions */}
+        {canUndo === false && (
+          <NoUndoWarning>
+            <MdErrorOutline aria-hidden="true" />
+            {noUndoMessage}
+          </NoUndoWarning>
         )}
 
         {/* Countdown timer for extra safety */}

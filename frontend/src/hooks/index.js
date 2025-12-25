@@ -162,3 +162,19 @@ export { useBatchSelection } from './useBatchSelection';
 
 // Virtualized list for performance with large lists
 export { useVirtualizedList } from './useVirtualizedList';
+
+// Form validation with real-time feedback
+export { default as useFormValidation, validationPatterns } from './useFormValidation';
+
+// Keyboard shortcuts
+export {
+  default as useKeyboardShortcuts,
+  useAdminKeyboardShortcuts,
+  KeyboardShortcutsProvider,
+  useKeyboardShortcutsContext,
+  formatShortcut,
+  ADMIN_SHORTCUTS,
+} from './useKeyboardShortcuts';
+
+// Undo stack for reversible actions
+export { default as useUndoStack, createUndoToast } from './useUndoStack';
