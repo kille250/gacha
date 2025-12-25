@@ -452,10 +452,12 @@ export const useAdminState = () => {
 
   const handleAnimeImport = useCallback((result) => {
     handleAnimeImportSuccess(() => {
-      showSuccess(result.message);
+      // Support both: { message: '...' } from AnimeImportModal and [character] array from CreateFromDanbooru
+      const message = result?.message || t('admin.characterAdded');
+      showSuccess(message);
       fetchAllData();
     }, result);
-  }, [showSuccess, fetchAllData]);
+  }, [t, showSuccess, fetchAllData]);
 
   return {
     // Data
