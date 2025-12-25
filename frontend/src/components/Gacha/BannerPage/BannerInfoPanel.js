@@ -4,7 +4,7 @@
  * Displays banner details, drop rates, and featured characters.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { MdClose } from 'react-icons/md';
@@ -57,6 +57,15 @@ const RARITY_ICONS = {
   legendary: <FaTrophy />,
 };
 
+// Rarity order for sorting (highest first)
+const RARITY_ORDER_MAP = {
+  legendary: 0,
+  epic: 1,
+  rare: 2,
+  uncommon: 3,
+  common: 4,
+};
+
 const RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
 
 const BannerInfoPanel = ({
@@ -75,6 +84,16 @@ const BannerInfoPanel = ({
   canAfford,
 }) => {
   const { t } = useTranslation();
+
+  // Sort characters by rarity (highest first)
+  const sortedCharacters = useMemo(() => {
+    if (!banner?.Characters) return [];
+    return [...banner.Characters].sort((a, b) => {
+      const aOrder = RARITY_ORDER_MAP[a.rarity?.toLowerCase()] ?? 99;
+      const bOrder = RARITY_ORDER_MAP[b.rarity?.toLowerCase()] ?? 99;
+      return aOrder - bOrder;
+    });
+  }, [banner?.Characters]);
 
   if (!banner) return null;
 
@@ -211,13 +230,7 @@ const BannerInfoPanel = ({
               <InfoBlock>
                 <InfoBlockTitle>{t('banner.featuredCharacters')}</InfoBlockTitle>
                 <FeaturedList role="list">
-                  {[...(banner.Characters || [])]
-                    .sort((a, b) => {
-                      const aIndex = RARITY_ORDER.indexOf(a.rarity?.toLowerCase());
-                      const bIndex = RARITY_ORDER.indexOf(b.rarity?.toLowerCase());
-                      return aIndex - bIndex; // Lower index = higher rarity
-                    })
-                    .map((char) => {
+                  {sortedCharacters.map((char) => {
                     const owned = isInCollection(char);
                     return (
                       <FeaturedItem
