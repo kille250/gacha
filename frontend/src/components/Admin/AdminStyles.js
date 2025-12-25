@@ -1016,3 +1016,408 @@ export const TooltipWrapper = styled.div`
   }
 `;
 
+// ============================================
+// MOBILE-OPTIMIZED COMPONENTS
+// ============================================
+
+/**
+ * Mobile-friendly data card for displaying list items on small screens
+ * Use this instead of tables on mobile devices
+ */
+export const MobileDataCard = styled(motion.div)`
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.lg};
+  margin-bottom: ${theme.spacing.md};
+
+  /* Only show on mobile */
+  display: none;
+  @media (max-width: ${theme.breakpoints.md}) {
+    display: block;
+  }
+`;
+
+export const MobileDataRow = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: ${theme.spacing.sm} 0;
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+
+  &:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+  }
+
+  &:first-child {
+    padding-top: 0;
+  }
+`;
+
+export const MobileDataLabel = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.medium};
+  color: ${theme.colors.textMuted};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+export const MobileDataValue = styled.span`
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.medium};
+  color: ${theme.colors.text};
+  text-align: right;
+  word-break: break-word;
+`;
+
+export const MobileCardHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.md};
+  padding-bottom: ${theme.spacing.md};
+  border-bottom: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+export const MobileCardAvatar = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: ${theme.radius.lg};
+  background: ${theme.colors.backgroundTertiary};
+  overflow: hidden;
+  flex-shrink: 0;
+
+  img, video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
+`;
+
+export const MobileCardTitle = styled.div`
+  flex: 1;
+  min-width: 0;
+
+  h3 {
+    font-size: ${theme.fontSizes.base};
+    font-weight: ${theme.fontWeights.semibold};
+    color: ${theme.colors.text};
+    margin: 0 0 4px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  p {
+    font-size: ${theme.fontSizes.sm};
+    color: ${theme.colors.textSecondary};
+    margin: 0;
+  }
+`;
+
+export const MobileCardActions = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  margin-top: ${theme.spacing.md};
+  padding-top: ${theme.spacing.md};
+  border-top: 1px solid ${theme.colors.surfaceBorder};
+  flex-wrap: wrap;
+
+  > button {
+    flex: 1;
+    min-width: 120px;
+  }
+`;
+
+/**
+ * Swipeable action container for mobile lists
+ * Reveals action buttons on swipe
+ */
+export const SwipeableContainer = styled.div`
+  position: relative;
+  overflow: hidden;
+  touch-action: pan-y;
+`;
+
+export const SwipeableContent = styled(motion.div)`
+  position: relative;
+  z-index: 1;
+  background: ${theme.colors.surface};
+`;
+
+export const SwipeActions = styled.div`
+  position: absolute;
+  right: 0;
+  top: 0;
+  bottom: 0;
+  display: flex;
+  align-items: stretch;
+`;
+
+export const SwipeActionButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 72px;
+  background: ${props => props.$danger ? theme.colors.error : theme.colors.primary};
+  border: none;
+  color: white;
+  cursor: pointer;
+
+  svg {
+    font-size: 20px;
+  }
+`;
+
+/**
+ * Mobile-optimized modal that slides up from bottom
+ */
+export const MobileModal = styled(motion.div)`
+  position: fixed;
+  inset: 0;
+  z-index: 10000;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(4px);
+  -webkit-backdrop-filter: blur(4px);
+`;
+
+export const MobileModalContent = styled(motion.div)`
+  width: 100%;
+  max-height: 90vh;
+  background: ${theme.colors.surfaceSolid};
+  border-radius: ${theme.radius.xl} ${theme.radius.xl} 0 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+
+  /* Handle at top for drag indication */
+  &::before {
+    content: '';
+    width: 36px;
+    height: 4px;
+    background: ${theme.colors.surfaceBorder};
+    border-radius: 2px;
+    margin: ${theme.spacing.sm} auto ${theme.spacing.md};
+    flex-shrink: 0;
+  }
+`;
+
+export const MobileModalHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 ${theme.spacing.lg} ${theme.spacing.md};
+  flex-shrink: 0;
+`;
+
+export const MobileModalBody = styled.div`
+  flex: 1;
+  overflow-y: auto;
+  padding: ${theme.spacing.lg};
+  padding-bottom: calc(${theme.spacing.lg} + env(safe-area-inset-bottom, 0px));
+  -webkit-overflow-scrolling: touch;
+`;
+
+/**
+ * Floating action button for mobile
+ */
+export const FloatingActionButton = styled(motion.button)`
+  position: fixed;
+  bottom: calc(80px + env(safe-area-inset-bottom, 0px));
+  right: ${theme.spacing.lg};
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
+  border: none;
+  color: white;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 4px 16px rgba(0, 113, 227, 0.4);
+  z-index: 1000;
+  -webkit-tap-highlight-color: transparent;
+
+  svg {
+    font-size: 24px;
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  /* Hide on desktop */
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: none;
+  }
+`;
+
+/**
+ * Pull-to-refresh indicator
+ */
+export const PullToRefresh = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: ${theme.spacing.md};
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+
+  svg {
+    margin-right: ${theme.spacing.sm};
+  }
+`;
+
+/**
+ * Bottom sheet for mobile filtering/sorting
+ */
+export const FilterSheet = styled(motion.div)`
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  background: ${theme.colors.surfaceSolid};
+  border-radius: ${theme.radius.xl} ${theme.radius.xl} 0 0;
+  padding: ${theme.spacing.lg};
+  padding-bottom: calc(${theme.spacing.lg} + env(safe-area-inset-bottom, 0px));
+  z-index: 10000;
+  max-height: 70vh;
+  overflow-y: auto;
+
+  /* Handle */
+  &::before {
+    content: '';
+    display: block;
+    width: 36px;
+    height: 4px;
+    background: ${theme.colors.surfaceBorder};
+    border-radius: 2px;
+    margin: 0 auto ${theme.spacing.lg};
+  }
+`;
+
+export const FilterSheetHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: ${theme.spacing.lg};
+
+  h3 {
+    font-size: ${theme.fontSizes.lg};
+    font-weight: ${theme.fontWeights.semibold};
+    color: ${theme.colors.text};
+    margin: 0;
+  }
+`;
+
+export const FilterOption = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: ${theme.spacing.md};
+  background: ${props => props.$active ? 'rgba(10, 132, 255, 0.15)' : theme.colors.backgroundTertiary};
+  border: 1px solid ${props => props.$active ? theme.colors.primary : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  color: ${props => props.$active ? theme.colors.primary : theme.colors.text};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.medium};
+  margin-bottom: ${theme.spacing.sm};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  -webkit-tap-highlight-color: transparent;
+
+  &:last-child {
+    margin-bottom: 0;
+  }
+
+  svg {
+    color: ${props => props.$active ? theme.colors.primary : theme.colors.textMuted};
+  }
+`;
+
+/**
+ * Responsive stats grid for dashboard
+ */
+export const StatsGrid = styled.div`
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: ${theme.spacing.md};
+
+  @media (max-width: ${theme.breakpoints.lg}) {
+    grid-template-columns: repeat(2, 1fr);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: 1fr;
+    gap: ${theme.spacing.sm};
+  }
+`;
+
+export const StatCard = styled(motion.div)`
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.lg};
+  text-align: center;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    display: flex;
+    align-items: center;
+    text-align: left;
+    padding: ${theme.spacing.md};
+  }
+`;
+
+export const StatIcon = styled.div`
+  width: 48px;
+  height: 48px;
+  border-radius: ${theme.radius.lg};
+  background: ${props => props.$color || 'rgba(10, 132, 255, 0.15)'};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin: 0 auto ${theme.spacing.md};
+
+  svg {
+    font-size: 24px;
+    color: ${props => props.$iconColor || theme.colors.primary};
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin: 0 ${theme.spacing.md} 0 0;
+    width: 40px;
+    height: 40px;
+
+    svg {
+      font-size: 20px;
+    }
+  }
+`;
+
+export const StatContent = styled.div`
+  flex: 1;
+`;
+
+export const StatValue = styled.div`
+  font-size: ${theme.fontSizes['2xl']};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${theme.colors.text};
+  line-height: 1.2;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.xl};
+  }
+`;
+
+export const StatLabel = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  margin-top: ${theme.spacing.xs};
+`;
+

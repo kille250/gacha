@@ -228,7 +228,7 @@ const EditCharacterModal = ({
         {isVideoContent ? (
           <video controls src={editImagePreview} autoPlay loop muted />
         ) : (
-          <img src={editImagePreview} alt="Preview" />
+          <img src={editImagePreview} alt={`Preview of ${editForm?.name || character?.name || 'character'}`} />
         )}
       </ImagePreview>
     );

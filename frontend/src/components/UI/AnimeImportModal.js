@@ -732,7 +732,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                               whileTap={{ scale: 0.95 }}
                               $isAnimated={media.isAnimated}
                             >
-                              <img src={media.preview} alt={`Option ${media.id}`} />
+                              <img src={media.preview} alt={`Media option ${media.id} - ${media.isAnimated ? 'animated' : 'static'} ${media.fileExt?.toUpperCase() || ''}`} />
                               <AltMediaFormat $isAnimated={media.isAnimated}>
                                 {media.isAnimated ? <><FaPlay /> {media.fileExt?.toUpperCase()}</> : media.fileExt?.toUpperCase()}
                               </AltMediaFormat>

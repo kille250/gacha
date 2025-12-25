@@ -19,6 +19,7 @@
 export { default as AdminTabs } from './AdminTabs';
 export { default as AdminBreadcrumb } from './AdminBreadcrumb';
 export { default as AdminErrorBoundary } from './AdminErrorBoundary';
+export { default as AdminSearch } from './AdminSearch';
 
 // ==================== FLAT EXPORTS (BACKWARD COMPATIBLE) ====================
 
@@ -27,7 +28,7 @@ export { default as AdminUsers } from './AdminUsers';
 export { default as AdminCharacters } from './AdminCharacters';
 export { default as AdminBanners } from './AdminBanners';
 export { default as AdminCoupons } from './AdminCoupons';
-export { default as AdminRarities } from './AdminRarities';
+export { default as AdminRarities } from './Rarities';
 export { default as AdminSecurity } from './AdminSecurity';
 export { default as SecurityAlerts } from './SecurityAlerts';
 export { default as SecurityOverview } from './SecurityOverview';

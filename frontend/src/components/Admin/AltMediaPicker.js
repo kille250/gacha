@@ -354,7 +354,7 @@ const AltMediaPicker = ({
                     whileTap={{ scale: 0.95 }}
                     $isAnimated={media.isAnimated}
                   >
-                    <img src={media.preview} alt={`Option ${media.id}`} />
+                    <img src={media.preview} alt={`${characterName || 'Character'} media option - ${media.isAnimated ? 'animated' : 'static'} ${media.fileExt?.toUpperCase() || ''} format`} />
                     <MediaFormat $isAnimated={media.isAnimated}>
                       {media.isAnimated ? <><FaPlay /> {media.fileExt?.toUpperCase()}</> : media.fileExt?.toUpperCase()}
                     </MediaFormat>
