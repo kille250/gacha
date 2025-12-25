@@ -207,11 +207,17 @@ const BannerInfoPanel = ({
                 </InfoBlock>
               )}
 
-              {/* Featured Characters */}
+              {/* Featured Characters - sorted by rarity (highest first) */}
               <InfoBlock>
                 <InfoBlockTitle>{t('banner.featuredCharacters')}</InfoBlockTitle>
                 <FeaturedList role="list">
-                  {banner.Characters?.map((char) => {
+                  {[...(banner.Characters || [])]
+                    .sort((a, b) => {
+                      const aIndex = RARITY_ORDER.indexOf(a.rarity?.toLowerCase());
+                      const bIndex = RARITY_ORDER.indexOf(b.rarity?.toLowerCase());
+                      return aIndex - bIndex; // Lower index = higher rarity
+                    })
+                    .map((char) => {
                     const owned = isInCollection(char);
                     return (
                       <FeaturedItem

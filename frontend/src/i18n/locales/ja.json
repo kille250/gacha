@@ -987,6 +987,15 @@
     "resetSuccess": "アカウントが正常にリセットされました。進行がクリアされました。",
     "resetFailed": "アカウントのリセットに失敗しました"
   },
+  "profile": {
+    "viewCards": "カードを見る",
+    "redeemCodes": "コードを入力",
+    "r18Content": "R18コンテンツ",
+    "language": "言語",
+    "accountSettings": "アカウント設定",
+    "manageAccount": "メール、パスワード、セキュリティ",
+    "adminPanel": "コンテンツ管理"
+  },
   "dojo": {
     "title": "キャラクター道場",
     "loading": "道場を読み込み中...",

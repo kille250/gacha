@@ -1,19 +1,19 @@
 /**
  * Navigation Components Index
  *
- * Exports all navigation-related components and hooks
+ * Exports all navigation-related components and hooks.
+ *
+ * Mobile navigation uses unified bottom tab bar pattern:
+ * - BottomNav: 5 primary tabs including Profile
+ * - No hamburger menu needed
  */
 
 // Main Navigation component
 export { default as Navigation } from './Navigation';
 
-// Extracted sub-components
+// Sub-components
 export { default as HourlyReward } from './HourlyReward';
 export { default as ProfileDropdown } from './ProfileDropdown';
 export { default as LanguageSelector } from './LanguageSelector';
-export { default as MobileMenu } from './MobileMenu';
 export { default as RewardPopup } from './RewardPopup';
 export { default as BottomNav } from './BottomNav';
-
-// Hooks
-export { default as useNavigation } from './useNavigation';

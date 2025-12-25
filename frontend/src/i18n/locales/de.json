@@ -987,6 +987,15 @@
     "resetSuccess": "Konto erfolgreich zurückgesetzt. Dein Fortschritt wurde gelöscht.",
     "resetFailed": "Konto konnte nicht zurückgesetzt werden"
   },
+  "profile": {
+    "viewCards": "Deine Karten ansehen",
+    "redeemCodes": "Codes einlösen",
+    "r18Content": "R18-Inhalte",
+    "language": "Sprache",
+    "accountSettings": "Kontoeinstellungen",
+    "manageAccount": "E-Mail, Passwort, Sicherheit",
+    "adminPanel": "Inhalte verwalten"
+  },
   "dojo": {
     "title": "Charakter-Dojo",
     "loading": "Lade Dojo...",

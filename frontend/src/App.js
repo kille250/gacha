@@ -29,6 +29,7 @@ import GlobalCaptchaHandler from './components/UI/GlobalCaptchaHandler';
 
 // Pages - Lazy loaded (large or less frequently visited)
 const CollectionPage = lazy(() => import('./pages/CollectionPage'));
+const ProfilePage = lazy(() => import('./pages/ProfilePage'));
 const AdminPage = lazy(() => import('./pages/AdminPage'));
 const BannerPage = lazy(() => import('./pages/BannerPage'));
 const CouponPage = lazy(() => import('./pages/CouponPage'));
@@ -114,6 +115,11 @@ const AnimatedRoutes = () => {
         <Route path="/collection" element={
           <ProtectedRoute>
             <MainLayout><PageTransition><CollectionPage /></PageTransition></MainLayout>
+          </ProtectedRoute>
+        } />
+        <Route path="/profile" element={
+          <ProtectedRoute>
+            <MainLayout><PageTransition><ProfilePage /></PageTransition></MainLayout>
           </ProtectedRoute>
         } />
         <Route path="/dojo" element={

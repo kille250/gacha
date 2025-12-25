@@ -987,6 +987,15 @@
     "resetSuccess": "Account reset successfully. Your progress has been cleared.",
     "resetFailed": "Failed to reset account"
   },
+  "profile": {
+    "viewCards": "View your cards",
+    "redeemCodes": "Redeem codes",
+    "r18Content": "R18 Content",
+    "language": "Language",
+    "accountSettings": "Account Settings",
+    "manageAccount": "Email, password, security",
+    "adminPanel": "Manage content"
+  },
   "dojo": {
     "title": "Character Dojo",
     "loading": "Loading Dojo...",

@@ -3,9 +3,10 @@
  *
  * Displays user info, points, and quick settings.
  * Includes R18 toggle and language selector.
+ * Desktop only - mobile users access profile via ProfilePage.
  */
 
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -19,21 +20,20 @@ import {
 import { theme } from '../../design-system';
 import { useAnimatedCounter } from '../../hooks';
 import LanguageSelector from './LanguageSelector';
+import api from '../../utils/api';
 
 /**
  * ProfileDropdown Component
  *
  * @param {Object} props
  * @param {Object} props.user - User object with username, points, allowR18, showR18
+ * @param {Function} props.setUser - Function to update user state
  * @param {Function} props.onLogout - Callback when logout is clicked
- * @param {Function} props.onToggleR18 - Callback when R18 toggle is clicked
- * @param {boolean} props.isTogglingR18 - Whether R18 toggle is in progress
  */
 const ProfileDropdown = ({
   user,
+  setUser,
   onLogout,
-  onToggleR18,
-  isTogglingR18 = false,
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -41,6 +41,7 @@ const ProfileDropdown = ({
 
   const [isOpen, setIsOpen] = useState(false);
   const [showLanguageSubmenu, setShowLanguageSubmenu] = useState(false);
+  const [isTogglingR18, setIsTogglingR18] = useState(false);
 
   // Animate points counter for a premium feel
   const animatedPoints = useAnimatedCounter(user?.points || 0, { duration: 500 });
@@ -64,16 +65,31 @@ const ProfileDropdown = ({
     setIsOpen(false);
   };
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsOpen(false);
-    onLogout();
-  };
-
-  const handleToggleR18 = () => {
-    if (!isTogglingR18) {
-      onToggleR18();
+    try {
+      await onLogout();
+      navigate('/login');
+    } catch (error) {
+      console.error('Logout failed:', error);
+      navigate('/login');
     }
   };
+
+  const handleToggleR18 = useCallback(async () => {
+    if (isTogglingR18 || !user?.allowR18) return;
+
+    setIsTogglingR18(true);
+    try {
+      const newValue = !user.showR18;
+      await api.post('/auth/toggle-r18', { showR18: newValue });
+      setUser(prev => ({ ...prev, showR18: newValue }));
+    } catch (error) {
+      console.error('Failed to toggle R18:', error);
+    } finally {
+      setIsTogglingR18(false);
+    }
+  }, [isTogglingR18, user, setUser]);
 
   return (
     <Container ref={dropdownRef}>

@@ -1,57 +1,42 @@
 /**
  * Navigation - Main navigation component
  *
- * REFACTORED: This component now orchestrates extracted sub-components:
- * - HourlyReward: Reward button with timer
- * - ProfileDropdown: User profile menu
- * - MobileMenu: Slide-in mobile navigation
+ * Desktop: Full navigation bar with links and profile dropdown
+ * Mobile: Minimal top bar with logo and hourly reward button
+ *        (Navigation handled by BottomNav component)
+ *
+ * Sub-components:
+ * - HourlyReward: Reward button with timer (visible on both desktop & mobile)
+ * - ProfileDropdown: User profile menu (desktop only)
  * - RewardPopup: Celebration popup for claimed rewards
- * - LanguageSelector: Language switching UI
  *
  * Hooks:
  * - useNavigation: Shared navigation state and logic
  * - useHourlyReward: Hourly reward state management
  */
 
-import React, { useEffect, useMemo } from 'react';
+import React, { useMemo, useContext } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
-import { motion } from 'framer-motion';
-import { MdMenu, MdAdminPanelSettings } from 'react-icons/md';
+import { MdAdminPanelSettings } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
-import { theme, springs } from '../../design-system';
+import { theme } from '../../design-system';
 import { useHourlyReward } from '../../hooks';
 import { NAV_GROUPS } from '../../constants/navigation';
+import { AuthContext } from '../../context/AuthContext';
 
 // Extracted sub-components
 import HourlyReward from './HourlyReward';
 import ProfileDropdown from './ProfileDropdown';
-import MobileMenu from './MobileMenu';
 import RewardPopup from './RewardPopup';
-import useNavigation from './useNavigation';
 
 const Navigation = () => {
   const { t } = useTranslation();
   const location = useLocation();
-
-  // Navigation state and handlers
-  const {
-    user,
-    isMobileMenuOpen,
-    openMobileMenu,
-    closeMobileMenu,
-    isTogglingR18,
-    toggleR18,
-    handleLogout,
-  } = useNavigation();
+  const { user, setUser, logout } = useContext(AuthContext);
 
   // Hourly reward state
   const hourlyReward = useHourlyReward();
-
-  // Close mobile menu on navigation
-  useEffect(() => {
-    closeMobileMenu();
-  }, [location, closeMobileMenu]);
 
   // Navigation groups from centralized config
   const navGroups = useMemo(() => NAV_GROUPS.map(group => ({
@@ -129,7 +114,7 @@ const Navigation = () => {
 
         {/* User Controls */}
         <UserControls>
-          {/* Hourly Reward Button - Desktop */}
+          {/* Hourly Reward Button - Always visible */}
           {user && (
             <HourlyReward
               available={hourlyReward.available}
@@ -141,39 +126,14 @@ const Navigation = () => {
             />
           )}
 
-          {/* Profile Dropdown - Desktop */}
+          {/* Profile Dropdown - Desktop only */}
           <ProfileDropdown
             user={user}
-            onLogout={handleLogout}
-            onToggleR18={toggleR18}
-            isTogglingR18={isTogglingR18}
+            setUser={setUser}
+            onLogout={logout}
           />
-
-          {/* Mobile Hamburger */}
-          <HamburgerButton
-            onClick={openMobileMenu}
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
-            transition={springs.snappy}
-            aria-label="Open menu"
-            type="button"
-          >
-            <MdMenu />
-          </HamburgerButton>
         </UserControls>
       </NavContainer>
-
-      {/* Mobile Menu */}
-      <MobileMenu
-        isOpen={isMobileMenuOpen}
-        onClose={closeMobileMenu}
-        user={user}
-        navGroups={navGroups}
-        hourlyReward={hourlyReward}
-        onLogout={handleLogout}
-        onToggleR18={toggleR18}
-        isTogglingR18={isTogglingR18}
-      />
 
       {/* Reward Popup */}
       <RewardPopup
@@ -333,35 +293,6 @@ const UserControls = styled.div`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
-`;
-
-const HamburgerButton = styled(motion.button)`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  /* Ensure minimum touch target size (44x44) */
-  width: 44px;
-  height: 44px;
-  background: ${theme.colors.glass};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.lg};
-  color: ${theme.colors.text};
-  cursor: pointer;
-  font-size: 22px;
-  transition: border-color ${theme.timing.fast} ${theme.easing.easeOut};
-
-  @media (min-width: ${theme.breakpoints.md}) {
-    display: none;
-  }
-
-  &:hover {
-    border-color: ${theme.colors.glassBorder};
-  }
-
-  &:focus-visible {
-    outline: none;
-    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
-  }
 `;
 
 export default Navigation;

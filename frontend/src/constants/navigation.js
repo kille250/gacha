@@ -2,10 +2,15 @@
  * Navigation Constants
  *
  * Single source of truth for navigation items.
- * Used by Navigation, MobileMenu, and BottomNav components.
+ * Used by Navigation and BottomNav components.
+ *
+ * Mobile navigation uses a unified bottom tab bar pattern:
+ * - 5 primary tabs always visible
+ * - Profile tab consolidates user actions (settings, logout, etc.)
+ * - No hamburger menu needed
  */
 
-import { MdCasino, MdCollections, MdLocalActivity, MdAdminPanelSettings, MdSettings } from 'react-icons/md';
+import { MdCasino, MdCollections, MdLocalActivity, MdAdminPanelSettings, MdSettings, MdPerson } from 'react-icons/md';
 import { GiFishingPole, GiDoubleDragon } from 'react-icons/gi';
 import { FaDice } from 'react-icons/fa';
 
@@ -21,6 +26,7 @@ import { FaDice } from 'react-icons/fa';
 
 /**
  * Main navigation items grouped by category
+ * Used primarily for desktop navigation display
  */
 export const NAV_GROUPS = [
   {
@@ -28,7 +34,7 @@ export const NAV_GROUPS = [
     labelKey: 'nav.play',
     items: [
       { path: '/gacha', labelKey: 'nav.banners', icon: MdCasino, bottomNav: true },
-      { path: '/roll', labelKey: 'nav.roll', icon: FaDice, bottomNav: true },
+      { path: '/roll', labelKey: 'nav.roll', icon: FaDice, bottomNav: false },
     ],
   },
   {
@@ -48,6 +54,17 @@ export const NAV_GROUPS = [
     ],
   },
 ];
+
+/**
+ * Profile navigation item for bottom nav
+ * This is the unified user hub that replaces the hamburger menu
+ */
+export const PROFILE_NAV_ITEM = {
+  path: '/profile',
+  labelKey: 'nav.profile',
+  icon: MdPerson,
+  bottomNav: true,
+};
 
 /**
  * Admin navigation item (shown separately)
@@ -95,10 +112,14 @@ export function getAllNavItems(options = {}) {
 
 /**
  * Get navigation items for bottom nav (mobile)
+ * Returns 5 primary tabs: Gacha, Fishing, Dojo, Collection, Profile
  * @returns {NavItem[]}
  */
 export function getBottomNavItems() {
-  return NAV_GROUPS.flatMap(group => group.items).filter(item => item.bottomNav);
+  const items = NAV_GROUPS.flatMap(group => group.items).filter(item => item.bottomNav);
+  // Add Profile tab at the end
+  items.push(PROFILE_NAV_ITEM);
+  return items;
 }
 
 /**

@@ -987,6 +987,15 @@
     "resetSuccess": "Cuenta restablecida exitosamente. Tu progreso ha sido eliminado.",
     "resetFailed": "Error al restablecer la cuenta"
   },
+  "profile": {
+    "viewCards": "Ver tus cartas",
+    "redeemCodes": "Canjear códigos",
+    "r18Content": "Contenido R18",
+    "language": "Idioma",
+    "accountSettings": "Configuración de cuenta",
+    "manageAccount": "Email, contraseña, seguridad",
+    "adminPanel": "Gestionar contenido"
+  },
   "dojo": {
     "title": "Dojo de Personajes",
     "loading": "Cargando Dojo...",
