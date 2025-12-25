@@ -28,7 +28,6 @@ import { motion } from 'framer-motion';
 import { FaUsers, FaImage, FaFlag, FaTicketAlt, FaCoins, FaFish, FaPlus, FaCloudUploadAlt, FaDownload, FaSync, FaDatabase, FaHdd, FaServer, FaMemory, FaClock, FaChartBar, FaBolt, FaDesktop, FaCheck, FaTimes, FaKeyboard } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants, useReducedMotion, AriaLiveRegion } from '../../design-system';
-import { getSystemHealth } from '../../utils/api';
 
 // ============================================
 // UTILITY FUNCTIONS
@@ -105,15 +104,18 @@ const QUICK_ACTION_SHORTCUTS = {
 // MAIN COMPONENT
 // ============================================
 
-const AdminDashboard = ({ stats, onQuickAction }) => {
+const AdminDashboard = ({ stats, onQuickAction, health }) => {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
 
-  // Health data state
-  const [healthData, setHealthData] = useState(null);
-  const [healthLoading, setHealthLoading] = useState(true);
-  const [healthError, setHealthError] = useState(null);
-  const [lastRefresh, setLastRefresh] = useState(null);
+  // Destructure health props (lifted to useAdminState to prevent re-fetch on remounts)
+  const {
+    data: healthData,
+    loading: healthLoading,
+    error: healthError,
+    lastRefresh,
+    refresh: fetchHealth,
+  } = health;
 
   // Screen reader announcement
   const [announcement, setAnnouncement] = useState('');
@@ -159,29 +161,6 @@ const AdminDashboard = ({ stats, onQuickAction }) => {
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
   }, [onQuickAction, t]);
-
-  // Memoized fetch function - no dependencies to prevent re-creation
-  const fetchHealth = useCallback(async () => {
-    try {
-      setHealthLoading(true);
-      setHealthError(null);
-      const data = await getSystemHealth();
-      setHealthData(data);
-      setLastRefresh(new Date());
-    } catch (err) {
-      console.error('Health check error:', err);
-      setHealthError(err.response?.data?.error || 'Failed to fetch system health');
-    } finally {
-      setHealthLoading(false);
-    }
-  }, []);
-
-  // Initial fetch and interval - runs once on mount
-  useEffect(() => {
-    fetchHealth();
-    const interval = setInterval(fetchHealth, theme.timing.healthCheckInterval);
-    return () => clearInterval(interval);
-  }, [fetchHealth]);
 
   // Memoized stat cards configuration
   const statCards = useMemo(() => [

@@ -291,6 +291,7 @@ const AdminPage = () => {
                       <AdminDashboard
                         stats={adminState.stats}
                         onQuickAction={handleQuickAction}
+                        health={adminState.health}
                       />
                     </TabPanel>
                   )}

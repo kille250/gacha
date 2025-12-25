@@ -11,9 +11,9 @@
  * - Handlers: CRUD operations for all entities
  */
 
-import { useState, useEffect, useCallback, useContext } from 'react';
+import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAdminDashboard } from '../utils/api';
+import { getAdminDashboard, getSystemHealth } from '../utils/api';
 import {
   invalidateFor,
   CACHE_ACTIONS,
@@ -58,6 +58,13 @@ export const useAdminState = () => {
   const [banners, setBanners] = useState([]);
   const [coupons, setCoupons] = useState([]);
   const [apiStats, setApiStats] = useState({ totalFishCaught: 0 });
+
+  // Health data state (lifted from AdminDashboard to prevent re-fetch on remounts)
+  const [healthData, setHealthData] = useState(null);
+  const [healthLoading, setHealthLoading] = useState(true);
+  const [healthError, setHealthError] = useState(null);
+  const [lastHealthRefresh, setLastHealthRefresh] = useState(null);
+  const healthIntervalRef = useRef(null);
 
   // UI states
   const [loading, setLoading] = useState(true);
@@ -142,6 +149,45 @@ export const useAdminState = () => {
       }
     });
   }, [user?.isAdmin, fetchAllData]);
+
+  // ==================== HEALTH DATA MANAGEMENT ====================
+  // Lifted from AdminDashboard to prevent re-fetch on component remounts.
+  // Health fetching is managed here at a stable point in the component tree.
+
+  const fetchHealth = useCallback(async () => {
+    try {
+      setHealthLoading(true);
+      setHealthError(null);
+      const data = await getSystemHealth();
+      setHealthData(data);
+      setLastHealthRefresh(new Date());
+    } catch (err) {
+      console.error('Health check error:', err);
+      setHealthError(err.response?.data?.error || 'Failed to fetch system health');
+    } finally {
+      setHealthLoading(false);
+    }
+  }, []);
+
+  // Initial health fetch and interval setup
+  // Uses ref to manage interval so it doesn't restart on re-renders
+  useEffect(() => {
+    if (!user?.isAdmin) return;
+
+    // Initial fetch
+    fetchHealth();
+
+    // Set up interval (60 seconds)
+    const HEALTH_CHECK_INTERVAL = 60000;
+    healthIntervalRef.current = setInterval(fetchHealth, HEALTH_CHECK_INTERVAL);
+
+    return () => {
+      if (healthIntervalRef.current) {
+        clearInterval(healthIntervalRef.current);
+        healthIntervalRef.current = null;
+      }
+    };
+  }, [user?.isAdmin, fetchHealth]);
 
   // ==================== USER HANDLERS ====================
 
@@ -418,6 +464,15 @@ export const useAdminState = () => {
     banners,
     coupons,
     stats,
+
+    // Health data (lifted from AdminDashboard)
+    health: {
+      data: healthData,
+      loading: healthLoading,
+      error: healthError,
+      lastRefresh: lastHealthRefresh,
+      refresh: fetchHealth,
+    },
 
     // State
     loading,
