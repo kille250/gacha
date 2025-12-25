@@ -8,7 +8,7 @@
 export { colors } from './colors';
 export { fonts, fontSizes, fontWeights, lineHeights, letterSpacing, textStyles, typography } from './typography';
 export { spacing, radius, shadows, elevation, blur } from './spacing';
-export { breakpoints, zIndex, transitions as breakpointTransitions, timing as breakpointTiming } from './breakpoints';
+export { breakpoints, zIndex, transitions as breakpointTransitions, timing as breakpointTiming, navHeights } from './breakpoints';
 export {
   // Keyframes
   fadeIn,
@@ -53,6 +53,7 @@ export const theme = {
   blur: require('./spacing').blur,
   breakpoints: require('./breakpoints').breakpoints,
   zIndex: require('./breakpoints').zIndex,
+  navHeights: require('./breakpoints').navHeights,
   transitions: require('./breakpoints').transitions,
   timing: require('./animations').timing,
   easing: require('./animations').easing,

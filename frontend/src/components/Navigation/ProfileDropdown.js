@@ -251,13 +251,28 @@ const Dropdown = styled(motion.div)`
   position: absolute;
   top: calc(100% + 8px);
   right: 0;
-  width: 260px;
+  /* Respect viewport bounds - don't overflow on narrow screens */
+  width: min(260px, calc(100vw - 32px));
+  /* Prevent vertical overflow on short viewports */
+  max-height: calc(100vh - var(--nav-top-height, 56px) - 24px);
+  overflow-y: auto;
   background: ${theme.colors.backgroundSecondary};
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
   box-shadow: ${theme.shadows.lg};
-  overflow: hidden;
-  z-index: ${theme.zIndex.dropdown};
+  /* Use stickyDropdown to appear above other sticky elements */
+  z-index: ${theme.zIndex.stickyDropdown};
+
+  /* Very narrow screens - adjust position */
+  @media (max-width: 320px) {
+    right: -8px;
+    width: calc(100vw - 16px);
+  }
+
+  /* Very short viewports - more compact */
+  @media (max-height: 500px) {
+    max-height: calc(100vh - var(--nav-top-height, 56px) - 16px);
+  }
 `;
 
 const Header = styled.div`

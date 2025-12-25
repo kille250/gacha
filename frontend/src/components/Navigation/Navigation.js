@@ -160,11 +160,25 @@ const NavContainer = styled.nav`
   top: 0;
   z-index: ${theme.zIndex.sticky};
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
-  /* Consistent height across all screen sizes */
-  min-height: 56px;
+  /* Use CSS variable for height synchronization with dependent components */
+  min-height: var(--nav-top-height, ${theme.navHeights.top.default});
 
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.sm} ${theme.spacing.md};
+  }
+
+  /* Landscape mode on mobile/tablet - more compact */
+  @media (max-width: ${theme.breakpoints.md}) and (orientation: landscape) {
+    min-height: var(--nav-top-height, ${theme.navHeights.top.landscape});
+    padding: ${theme.spacing.xs} ${theme.spacing.md};
+    gap: ${theme.spacing.md};
+  }
+
+  /* Very short viewports - ultra compact */
+  @media (max-height: 400px) {
+    min-height: var(--nav-top-height, ${theme.navHeights.top.compact});
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    gap: ${theme.spacing.sm};
   }
 `;
 
@@ -205,6 +219,12 @@ const LogoSvg = styled.svg`
   @media (max-width: ${theme.breakpoints.sm}) {
     width: 24px;
     height: 24px;
+  }
+
+  /* Very short viewports - smaller logo */
+  @media (max-height: 400px) {
+    width: 22px;
+    height: 22px;
   }
 `;
 

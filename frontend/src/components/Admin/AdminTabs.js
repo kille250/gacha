@@ -238,7 +238,8 @@ const AdminTabs = ({ activeTab, onTabChange }) => {
 
 const TabsContainer = styled.nav`
   position: sticky;
-  top: 56px; /* Match navigation height */
+  /* Use CSS variable for nav height - automatically adapts to orientation/viewport */
+  top: var(--nav-top-height, 56px);
   z-index: ${theme.zIndex?.sticky || 50};
   background: rgba(0, 0, 0, 0.92);
   backdrop-filter: blur(16px) saturate(180%);
@@ -258,7 +259,6 @@ const TabsContainer = styled.nav`
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {
-    top: 56px;
     padding: ${theme.spacing.xs} 0;
   }
 `;

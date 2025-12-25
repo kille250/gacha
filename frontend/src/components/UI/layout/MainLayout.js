@@ -13,15 +13,41 @@
  */
 
 import React, { Suspense } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import { theme, SkipLink } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
+
+/**
+ * Global CSS custom properties for navigation heights.
+ * These update dynamically based on orientation and viewport size,
+ * allowing dependent components to stay in sync.
+ */
+const NavHeightVariables = createGlobalStyle`
+  :root {
+    /* Default (portrait) values */
+    --nav-top-height: ${theme.navHeights.top.default};
+    --nav-bottom-height: ${theme.navHeights.bottom.default};
+
+    /* Landscape mode - more compact */
+    @media (max-width: ${theme.breakpoints.md}) and (orientation: landscape) {
+      --nav-top-height: ${theme.navHeights.top.landscape};
+      --nav-bottom-height: ${theme.navHeights.bottom.landscape};
+    }
+
+    /* Very short viewports - ultra compact */
+    @media (max-height: 400px) {
+      --nav-top-height: ${theme.navHeights.top.compact};
+      --nav-bottom-height: ${theme.navHeights.bottom.compact};
+    }
+  }
+`;
 
 const LayoutContainer = styled.div`
   display: flex;
   flex-direction: column;
   min-height: 100vh;
+  min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
   background: ${theme.colors.background};
 `;
 
@@ -35,7 +61,7 @@ const PageContent = styled.main.attrs({
 
   /* Add bottom padding on mobile to account for bottom nav */
   @media (max-width: ${theme.breakpoints.md}) {
-    padding-bottom: calc(72px + env(safe-area-inset-bottom, 0px));
+    padding-bottom: calc(var(--nav-bottom-height, ${theme.navHeights.bottom.default}) + env(safe-area-inset-bottom, 0px));
   }
 
   &:focus {
@@ -101,17 +127,20 @@ const PageLoader = () => (
  */
 const MainLayout = ({ children, hideBottomNav = false }) => {
   return (
-    <LayoutContainer>
-      <SkipLink href="#main-content">Skip to main content</SkipLink>
-      <Navigation />
-      <PageContent>
-        {/* Suspense boundary inside layout keeps navigation visible during lazy page loads */}
-        <Suspense fallback={<PageLoader />}>
-          {children}
-        </Suspense>
-      </PageContent>
-      {!hideBottomNav && <BottomNav />}
-    </LayoutContainer>
+    <>
+      <NavHeightVariables />
+      <LayoutContainer>
+        <SkipLink href="#main-content">Skip to main content</SkipLink>
+        <Navigation />
+        <PageContent>
+          {/* Suspense boundary inside layout keeps navigation visible during lazy page loads */}
+          <Suspense fallback={<PageLoader />}>
+            {children}
+          </Suspense>
+        </PageContent>
+        {!hideBottomNav && <BottomNav />}
+      </LayoutContainer>
+    </>
   );
 };
 

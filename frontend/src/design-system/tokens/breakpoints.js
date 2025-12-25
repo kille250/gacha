@@ -24,9 +24,32 @@ export const zIndex = {
   base: 1,
   dropdown: 100,
   sticky: 200,
+  stickyDropdown: 250, // For dropdowns inside sticky elements
   modal: 1000,
   toast: 1100,
   tooltip: 1200
+};
+
+/**
+ * Navigation Height Tokens
+ *
+ * Consistent nav heights across the app. Use CSS custom properties
+ * in components to enable dynamic updates based on orientation.
+ *
+ * Usage in styled-components:
+ *   top: var(--nav-top-height, ${navHeights.top.default});
+ */
+export const navHeights = {
+  top: {
+    default: '56px',
+    landscape: '48px',
+    compact: '44px' // For very short viewports (< 400px height)
+  },
+  bottom: {
+    default: '72px',
+    landscape: '52px',
+    compact: '48px'
+  }
 };
 
 export const transitions = {
@@ -47,5 +70,5 @@ export const timing = {
   healthCheckInterval: 60000
 };
 
-const breakpointTokens = { breakpoints, zIndex, transitions, timing };
+const breakpointTokens = { breakpoints, zIndex, transitions, timing, navHeights };
 export default breakpointTokens;

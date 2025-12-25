@@ -23,6 +23,7 @@ export {
   blur,
   breakpoints,
   zIndex,
+  navHeights,
   transitions,
   timing,
   easing,

@@ -92,6 +92,8 @@ const NavContainer = styled.nav`
   padding-bottom: max(${theme.spacing.sm}, env(safe-area-inset-bottom, ${theme.spacing.sm}));
   z-index: ${theme.zIndex.sticky};
   box-shadow: 0 -2px 16px rgba(0, 0, 0, 0.08);
+  /* Use CSS variable for height synchronization */
+  min-height: var(--nav-bottom-height, ${theme.navHeights.bottom.default});
 
   @media (max-width: ${theme.breakpoints.md}) {
     display: flex;
@@ -107,6 +109,19 @@ const NavContainer = styled.nav`
     /* Account for side notches in landscape */
     padding-left: max(${theme.spacing.lg}, env(safe-area-inset-left, ${theme.spacing.lg}));
     padding-right: max(${theme.spacing.lg}, env(safe-area-inset-right, ${theme.spacing.lg}));
+    /* Constrain height in landscape */
+    min-height: var(--nav-bottom-height, ${theme.navHeights.bottom.landscape});
+    max-height: 60px;
+  }
+
+  /* Very short viewports (landscape on small phones) - ultra compact */
+  @media (max-height: 400px) {
+    padding: ${theme.spacing.xs};
+    padding-bottom: max(${theme.spacing.xs}, env(safe-area-inset-bottom, 0px));
+    padding-left: max(${theme.spacing.sm}, env(safe-area-inset-left, ${theme.spacing.sm}));
+    padding-right: max(${theme.spacing.sm}, env(safe-area-inset-right, ${theme.spacing.sm}));
+    min-height: var(--nav-bottom-height, ${theme.navHeights.bottom.compact});
+    max-height: 52px;
   }
 `;
 
@@ -146,6 +161,15 @@ const NavItem = styled(Link)`
     min-height: 44px;
   }
 
+  /* Very short viewports - ultra compact */
+  @media (max-height: 400px) {
+    flex-direction: row;
+    gap: ${theme.spacing.xs};
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    min-height: 36px;
+    min-width: 48px;
+  }
+
   /* Reduced motion */
   @media (prefers-reduced-motion: reduce) {
     transition: none;
@@ -177,6 +201,14 @@ const NavIcon = styled.span`
     font-size: 20px;
     ${props => props.$isActive && `
       transform: scale(1.05);
+    `}
+  }
+
+  /* Very short viewports - smaller icons */
+  @media (max-height: 400px) {
+    font-size: 18px;
+    ${props => props.$isActive && `
+      transform: scale(1.03);
     `}
   }
 
@@ -213,16 +245,22 @@ const NavLabel = styled.span`
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 72px;
+  /* Use percentage-based width for better responsiveness across screen sizes */
+  max-width: min(72px, 18vw);
   position: relative;
   z-index: 1;
   letter-spacing: ${theme.letterSpacing.wide};
 
-  /* Landscape mode */
+  /* Landscape mode - labels have more horizontal room */
   @media (max-width: ${theme.breakpoints.md}) and (orientation: landscape) {
     font-size: 12px;
     margin-top: 0;
     max-width: none;
+  }
+
+  /* Very short viewports - hide labels to maximize space */
+  @media (max-height: 350px) {
+    display: none;
   }
 
   /* Reduced motion */

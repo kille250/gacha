@@ -983,7 +983,8 @@ const Header = styled.header`
   -webkit-backdrop-filter: blur(${theme.blur.lg});
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   position: sticky;
-  top: 56px; /* Account for main navigation bar height (min-height: 56px) */
+  /* Use CSS variable for nav height - automatically adapts to orientation/viewport */
+  top: var(--nav-top-height, 56px);
   z-index: 100;
 
   @media (max-width: ${theme.breakpoints.sm}) {
