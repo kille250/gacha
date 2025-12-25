@@ -22,3 +22,12 @@ export { LoadingSpinner, LoadingDots } from './Loading';
 
 // Messages
 export { ErrorMessage, SuccessMessage, WarningMessage } from './Messages';
+
+// Animated value displays
+export {
+  AnimatedValue,
+  AnimatedCurrency,
+  AnimatedPoints,
+  AnimatedScore,
+  AnimatedPercentage
+} from './AnimatedValue';

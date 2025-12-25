@@ -16,3 +16,17 @@ export { default as Carousel } from './Carousel';
 export { default as DataGrid } from './DataGrid';
 export { default as StatsCard } from './StatsCard';
 export { default as SkeletonCard, SkeletonGrid } from './SkeletonCard';
+
+// Interactive card with premium micro-interactions
+export {
+  default as InteractiveCard,
+  GlassInteractiveCard,
+  SolidInteractiveCard,
+  ElevatedInteractiveCard,
+  CardHeader,
+  CardBody,
+  CardFooter,
+  CardMedia,
+  CardTitle,
+  CardDescription
+} from './InteractiveCard';

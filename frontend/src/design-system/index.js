@@ -62,7 +62,13 @@ export {
   // Messages
   ErrorMessage,
   SuccessMessage,
-  WarningMessage
+  WarningMessage,
+  // Animated values
+  AnimatedValue,
+  AnimatedCurrency,
+  AnimatedPoints,
+  AnimatedScore,
+  AnimatedPercentage
 } from './primitives';
 
 // Layout
@@ -144,7 +150,15 @@ export {
   useReducedMotion,
   // Rarity
   getRarityColor,
-  getRarityGlow
+  getRarityGlow,
+  // Micro-interactions
+  haptic,
+  touchFeedback,
+  rippleContainer,
+  hoverLift,
+  interactiveScale,
+  enhancedFocus,
+  microMotionVariants
 } from './utilities';
 
 // Re-export theme as default for backward compatibility

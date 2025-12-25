@@ -129,3 +129,26 @@ export { useUserMutations } from './useUserMutations';
 
 // Animated counter for points/currency display
 export { default as useAnimatedCounter } from './useAnimatedCounter';
+
+// Scroll reveal animations
+export {
+  useScrollReveal,
+  useStaggeredReveal,
+  useParallax,
+  useScrollProgress
+} from './useScrollReveal';
+
+// Press state management
+export {
+  usePressState,
+  useMotionPress,
+  useHover,
+  useFocus
+} from './usePressState';
+
+// Optimistic UI state management
+export {
+  useOptimisticUI,
+  useOptimisticList,
+  useOptimisticToggle
+} from './useOptimisticUI';
