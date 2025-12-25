@@ -193,8 +193,7 @@ export const useAdminModals = () => {
       // Keep dialog open on error, let handler show error toast
       setConfirmDialog(prev => ({ ...prev, loading: false }));
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [closeConfirmDialog]);
+  }, [confirmDialog.onConfirm, closeConfirmDialog]);
 
   // ==================== QUICK ACTIONS (from Dashboard) ====================
 

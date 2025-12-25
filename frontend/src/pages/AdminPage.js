@@ -183,33 +183,42 @@ const AdminPage = () => {
   // Confirmation dialog handlers for destructive actions
   const handleDeleteCharacterWithConfirm = useCallback((characterId, characterName) => {
     modals.openConfirmDialog({
-      title: t('admin.confirmDeleteCharacter'),
-      message: t('admin.deleteCharacterMessage', { name: characterName }),
+      title: t('admin.confirmDeleteCharacter', 'Delete Character'),
+      message: t('admin.deleteCharacterMessage', {
+        defaultValue: 'This will permanently delete "{{name}}". This action cannot be undone.',
+        name: characterName
+      }),
       variant: 'danger',
-      confirmLabel: t('common.delete'),
-      cancelLabel: t('common.cancel'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('common.cancel', 'Cancel'),
       onConfirm: () => adminState.handleDeleteCharacter(characterId),
     });
   }, [modals, adminState, t]);
 
   const handleDeleteBannerWithConfirm = useCallback((bannerId, bannerName) => {
     modals.openConfirmDialog({
-      title: t('admin.confirmDeleteBanner'),
-      message: t('admin.deleteBannerMessage', { name: bannerName }),
+      title: t('admin.confirmDeleteBanner', 'Delete Banner'),
+      message: t('admin.deleteBannerMessage', {
+        defaultValue: 'This will permanently delete "{{name}}". This action cannot be undone.',
+        name: bannerName
+      }),
       variant: 'danger',
-      confirmLabel: t('common.delete'),
-      cancelLabel: t('common.cancel'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('common.cancel', 'Cancel'),
       onConfirm: () => adminState.handleDeleteBanner(bannerId),
     });
   }, [modals, adminState, t]);
 
   const handleDeleteCouponWithConfirm = useCallback((couponId, couponCode) => {
     modals.openConfirmDialog({
-      title: t('admin.confirmDeleteCoupon'),
-      message: t('admin.deleteCouponMessage', { code: couponCode }),
+      title: t('admin.confirmDeleteCoupon', 'Delete Coupon'),
+      message: t('admin.deleteCouponMessage', {
+        defaultValue: 'This will permanently delete coupon "{{code}}". This action cannot be undone.',
+        code: couponCode
+      }),
       variant: 'danger',
-      confirmLabel: t('common.delete'),
-      cancelLabel: t('common.cancel'),
+      confirmLabel: t('common.delete', 'Delete'),
+      cancelLabel: t('common.cancel', 'Cancel'),
       onConfirm: () => adminState.handleDeleteCoupon(couponId),
     });
   }, [modals, adminState, t]);
