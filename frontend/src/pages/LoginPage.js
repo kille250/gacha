@@ -53,11 +53,11 @@ const LoginPage = () => {
     console.error('Google login failed');
   };
 
-  // Feature highlights for value proposition
+  // Feature highlights for value proposition - enhanced descriptions
   const features = [
-    { icon: MdAutoAwesome, label: t('auth.feature.collect', 'Collect rare characters') },
-    { icon: MdCollections, label: t('auth.feature.build', 'Build your collection') },
-    { icon: FaGem, label: t('auth.feature.unlock', 'Unlock legendary rewards') },
+    { icon: MdAutoAwesome, label: t('auth.feature.collect', '500+ anime characters') },
+    { icon: MdCollections, label: t('auth.feature.build', 'Free daily rewards') },
+    { icon: FaGem, label: t('auth.feature.unlock', 'Legendary drop rates') },
   ];
 
   return (
@@ -119,8 +119,8 @@ const LoginPage = () => {
           >
             <FaDice />
           </LogoWrapper>
-          <BrandTitle>{t('auth.gachaGame')}</BrandTitle>
-          <BrandSubtitle>{t('auth.rollYourDestiny')}</BrandSubtitle>
+          <BrandTitle>{t('auth.gachaGame', 'GachaMaster')}</BrandTitle>
+          <BrandSubtitle>{t('auth.rollYourDestiny', 'Collect characters from your favorite anime')}</BrandSubtitle>
 
           {/* Value Proposition Features */}
           <FeatureList
@@ -152,14 +152,18 @@ const LoginPage = () => {
             <SubText>{t('auth.signInToContinue')}</SubText>
           </CardHeader>
 
-          {error && (
-            <ErrorMessage
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-            >
-              {error}
-            </ErrorMessage>
-          )}
+          <AnimatePresence mode="wait">
+            {error && (
+              <ErrorMessage
+                initial={{ opacity: 0, y: -8, height: 0 }}
+                animate={{ opacity: 1, y: 0, height: 'auto' }}
+                exit={{ opacity: 0, y: -8, height: 0 }}
+                transition={{ duration: 0.2, ease: [0.25, 0.1, 0.25, 1] }}
+              >
+                {error}
+              </ErrorMessage>
+            )}
+          </AnimatePresence>
 
           <LoginForm onSubmit={handleSubmit}>
             <InputGroup>
@@ -423,14 +427,15 @@ const SubText = styled.p`
 `;
 
 const ErrorMessage = styled(motion.div)`
-  background: rgba(255, 59, 48, 0.15);
-  border: 1px solid rgba(255, 59, 48, 0.3);
+  background: ${theme.colors.errorMuted};
+  border: 1px solid rgba(255, 59, 48, 0.25);
   color: ${theme.colors.error};
   padding: ${theme.spacing.md};
   border-radius: ${theme.radius.lg};
   margin-bottom: ${theme.spacing.lg};
   font-size: ${theme.fontSizes.sm};
   text-align: center;
+  overflow: hidden;
 `;
 
 const LoginForm = styled.form`
@@ -508,7 +513,7 @@ const SubmitButton = styled(motion.button)`
   gap: ${theme.spacing.sm};
   width: 100%;
   padding: ${theme.spacing.md} ${theme.spacing.lg};
-  background: linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent});
+  background: ${theme.colors.primary};
   border: none;
   border-radius: ${theme.radius.lg};
   font-family: ${theme.fonts.primary};
@@ -516,12 +521,22 @@ const SubmitButton = styled(motion.button)`
   font-weight: ${theme.fontWeights.semibold};
   color: white;
   cursor: pointer;
-  transition: box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
+  transition:
+    background ${theme.timing.fast} ${theme.easing.easeOut},
+    box-shadow ${theme.timing.normal} ${theme.easing.easeOut},
+    transform ${theme.timing.fast} ${theme.easing.appleSpring};
   box-shadow: ${theme.shadows.buttonPrimary};
   margin-top: ${theme.spacing.sm};
 
   &:hover:not(:disabled) {
+    background: ${theme.colors.primaryHover};
     box-shadow: ${theme.shadows.buttonPrimaryHover};
+    transform: translateY(-1px);
+  }
+
+  &:active:not(:disabled) {
+    background: ${theme.colors.primaryActive};
+    transform: translateY(0);
   }
 
   &:focus-visible {

@@ -791,15 +791,27 @@ const ProgressFill = styled.div`
 
 const ContinueButton = styled(motion.button)`
   padding: 16px 40px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  background: ${theme.colors.primary};
   color: white;
   border: none;
   border-radius: 100px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(88, 86, 214, 0.4);
+  box-shadow: ${theme.shadows.buttonPrimary};
   letter-spacing: 0.02em;
+  transition:
+    background ${theme.timing.fast} ${theme.easing.easeOut},
+    box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
+
+  &:hover {
+    background: ${theme.colors.primaryHover};
+    box-shadow: ${theme.shadows.buttonPrimaryHover};
+  }
+
+  &:active {
+    background: ${theme.colors.primaryActive};
+  }
 `;
 
 const SkipAllBtn = styled(motion.button)`
@@ -1085,14 +1097,26 @@ const CloseButton = styled(motion.button)`
   max-width: 280px;
   margin: 0 auto;
   padding: 16px 32px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  background: ${theme.colors.primary};
   color: white;
   border: none;
   border-radius: 100px;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
-  box-shadow: 0 8px 24px rgba(88, 86, 214, 0.4);
+  box-shadow: ${theme.shadows.buttonPrimary};
+  transition:
+    background ${theme.timing.fast} ${theme.easing.easeOut},
+    box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
+
+  &:hover {
+    background: ${theme.colors.primaryHover};
+    box-shadow: ${theme.shadows.buttonPrimaryHover};
+  }
+
+  &:active {
+    background: ${theme.colors.primaryActive};
+  }
 `;
 
 export default SummonAnimation;

@@ -2,6 +2,12 @@
  * LoadingState - Consistent loading state component
  *
  * Use for displaying loading states in pages and sections.
+ *
+ * Accessibility:
+ * - Uses role="status" for ARIA live region
+ * - aria-live="polite" ensures screen readers announce without interrupting
+ * - aria-busy="true" indicates content is loading
+ * - Visually hidden text provides context for screen readers
  */
 
 import React from 'react';
@@ -27,6 +33,19 @@ const Message = styled.p`
   text-align: center;
 `;
 
+// Visually hidden text for screen readers
+const ScreenReaderOnly = styled.span`
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+`;
+
 /**
  * LoadingState Component
  *
@@ -35,6 +54,7 @@ const Message = styled.p`
  * @param {string} padding - Container padding
  * @param {string} minHeight - Minimum container height
  * @param {boolean} fullPage - Whether this is a full-page loader
+ * @param {string} srAnnouncement - Custom screen reader announcement
  */
 const LoadingState = ({
   message = 'Loading...',
@@ -42,6 +62,7 @@ const LoadingState = ({
   padding,
   minHeight,
   fullPage = false,
+  srAnnouncement,
   ...props
 }) => {
   return (
@@ -56,8 +77,9 @@ const LoadingState = ({
       aria-busy="true"
       {...props}
     >
-      <Spinner size={size} />
-      {message && <Message>{message}</Message>}
+      <Spinner size={size} aria-hidden="true" />
+      {message && <Message aria-hidden={!!srAnnouncement}>{message}</Message>}
+      {srAnnouncement && <ScreenReaderOnly>{srAnnouncement}</ScreenReaderOnly>}
     </Container>
   );
 };

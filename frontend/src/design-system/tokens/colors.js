@@ -56,22 +56,23 @@ export const colors = {
   // Using slightly off-white for primary to reduce eye strain
   text: 'rgba(255, 255, 255, 0.95)',           // Softer than pure white
   textPrimary: 'rgba(255, 255, 255, 0.95)',    // Alias for clarity
-  textSecondary: 'rgba(255, 255, 255, 0.70)',  // Improved from 0.65
-  textTertiary: 'rgba(255, 255, 255, 0.50)',   // Improved from 0.40
-  textMuted: 'rgba(255, 255, 255, 0.35)',      // Improved from 0.30
-  textDisabled: 'rgba(255, 255, 255, 0.25)',   // For disabled states
+  textSecondary: 'rgba(255, 255, 255, 0.75)',  // Enhanced for better readability
+  textTertiary: 'rgba(255, 255, 255, 0.55)',   // Enhanced for better visibility
+  textMuted: 'rgba(255, 255, 255, 0.40)',      // Slightly more visible
+  textDisabled: 'rgba(255, 255, 255, 0.28)',   // For disabled states
   textInverse: '#000000',                       // For light backgrounds
 
   // Interactive text
   textLink: '#0a84ff',
   textLinkHover: '#409cff',
 
-  // Special
-  glass: 'rgba(255, 255, 255, 0.06)',
-  glassHover: 'rgba(255, 255, 255, 0.1)',
-  glassBorder: 'rgba(255, 255, 255, 0.1)',
-  overlay: 'rgba(0, 0, 0, 0.6)',               // Slightly darker for better modal focus
-  overlayLight: 'rgba(0, 0, 0, 0.4)',
+  // Special - Glass effects with improved visibility
+  glass: 'rgba(255, 255, 255, 0.08)',          // Enhanced visibility
+  glassHover: 'rgba(255, 255, 255, 0.12)',     // More noticeable hover
+  glassBorder: 'rgba(255, 255, 255, 0.12)',    // Clearer borders
+  glassStrong: 'rgba(255, 255, 255, 0.15)',    // For emphasized glass elements
+  overlay: 'rgba(0, 0, 0, 0.65)',              // Slightly darker for better modal focus
+  overlayLight: 'rgba(0, 0, 0, 0.45)',
 
   // Rarity colors - slightly adjusted for better visibility
   rarity: {

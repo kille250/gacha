@@ -11,6 +11,9 @@ import { AuthContext } from '../context/AuthContext';
 // Hooks
 import { usePageError } from '../hooks';
 
+// Components
+import { OnboardingModal, hasCompletedOnboarding } from '../components/Onboarding';
+
 // Constants
 import { IconPoints, IconSparkle, IconGacha } from '../constants/icons';
 
@@ -94,6 +97,16 @@ const GachaPage = () => {
   const [loading, setLoading] = useState(true);
   const [showHelpModal, setShowHelpModal] = useState(false);
   const [featuredIndex, setFeaturedIndex] = useState(0);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+
+  // Show onboarding for first-time users after initial load
+  useEffect(() => {
+    if (!loading && !hasCompletedOnboarding()) {
+      // Small delay to let the page render first
+      const timer = setTimeout(() => setShowOnboarding(true), 500);
+      return () => clearTimeout(timer);
+    }
+  }, [loading]);
 
   // Error handling
   const { error, handleError, clearError } = usePageError({
@@ -427,6 +440,12 @@ const GachaPage = () => {
           <Text secondary>{t('gacha.pointsHelp')}</Text>
         </HelpSection>
       </Modal>
+
+      {/* Onboarding Modal for first-time users */}
+      <OnboardingModal
+        isOpen={showOnboarding}
+        onClose={() => setShowOnboarding(false)}
+      />
     </StyledPageWrapper>
   );
 };

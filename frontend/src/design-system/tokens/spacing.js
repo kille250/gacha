@@ -19,15 +19,27 @@ export const spacing = {
   '4xl': '96px'
 };
 
+/**
+ * Border Radius System
+ *
+ * Standardized radius values with semantic usage guidelines:
+ * - xs/sm: Small interactive elements (badges, chips, buttons)
+ * - md: Form inputs, small cards
+ * - lg: Buttons, nav items, standard cards
+ * - xl: Large cards, panels
+ * - 2xl: Modals, dialogs
+ * - 3xl: Hero sections, featured elements
+ * - full: Pills, avatars, circular elements
+ */
 export const radius = {
-  xs: '4px',       // Small elements like badges
-  sm: '8px',       // Buttons, chips
-  md: '12px',      // Cards, inputs
-  lg: '16px',      // Panels
-  xl: '20px',      // Modals
-  '2xl': '28px',   // Large cards
-  '3xl': '36px',   // Hero elements
-  full: '9999px'   // Pills, avatars
+  xs: '4px',       // Badges, tiny elements
+  sm: '8px',       // Chips, small buttons
+  md: '12px',      // Inputs, small cards
+  lg: '16px',      // Standard buttons, nav items, cards
+  xl: '20px',      // Large cards, panels
+  '2xl': '24px',   // Modals, dialogs (was 28px - slightly reduced for consistency)
+  '3xl': '32px',   // Hero sections, featured elements (was 36px)
+  full: '9999px'   // Pills, avatars, circular elements
 };
 
 /**

@@ -72,17 +72,25 @@ export const PointsPill = styled(motion.div)`
   align-items: center;
   gap: ${theme.spacing.sm};
   padding: 10px 18px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.full};
   font-weight: ${theme.fontWeights.semibold};
   font-size: ${theme.fontSizes.sm};
-  color: white;
-  box-shadow: ${theme.shadows.button};
-  transition: box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
+  color: ${theme.colors.text};
+  box-shadow: ${theme.shadows.sm};
+  transition:
+    background ${theme.timing.fast} ${theme.easing.easeOut},
+    border-color ${theme.timing.fast} ${theme.easing.easeOut};
+
+  svg {
+    color: ${theme.colors.featured};
+  }
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {
-      box-shadow: ${theme.shadows.buttonHover};
+      background: ${theme.colors.glassHover};
+      border-color: ${theme.colors.glassBorder};
     }
   }
 `;
@@ -664,7 +672,7 @@ export const CTAButton = styled(motion.button)`
   align-items: center;
   gap: ${theme.spacing.sm};
   padding: 14px 28px;
-  background: linear-gradient(135deg, ${theme.colors.accent}, ${theme.colors.accentSecondary});
+  background: ${theme.colors.primary};
   color: white;
   border: none;
   border-radius: ${theme.radius.lg};
@@ -672,20 +680,23 @@ export const CTAButton = styled(motion.button)`
   font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
   white-space: nowrap;
-  box-shadow: ${theme.shadows.button};
+  box-shadow: ${theme.shadows.buttonPrimary};
   transition:
+    background ${theme.timing.fast} ${theme.easing.easeOut},
     box-shadow ${theme.timing.normal} ${theme.easing.easeOut},
     transform ${theme.timing.fast} ${theme.easing.appleSpring};
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {
-      box-shadow: ${theme.shadows.buttonHover}, ${theme.shadows.glowSubtle(theme.colors.accent)};
+      background: ${theme.colors.primaryHover};
+      box-shadow: ${theme.shadows.buttonPrimaryHover};
       transform: translateY(-2px);
     }
   }
 
   &:active {
     transform: translateY(0);
+    background: ${theme.colors.primaryActive};
     box-shadow: ${theme.shadows.buttonPressed};
   }
 
@@ -694,7 +705,7 @@ export const CTAButton = styled(motion.button)`
     box-shadow:
       0 0 0 2px ${theme.colors.background},
       0 0 0 4px ${theme.colors.focusRing},
-      ${theme.shadows.buttonHover};
+      ${theme.shadows.buttonPrimaryHover};
   }
 `;
 
