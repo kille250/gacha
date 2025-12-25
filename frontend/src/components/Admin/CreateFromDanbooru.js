@@ -77,6 +77,8 @@ const parseSeriesName = (copyrightTag) => {
  * Outfit/variant keyword mappings for auto-detection
  * Priority order: seasonal > special outfits > common outfits
  * First match wins, so order matters
+ *
+ * Based on Danbooru tag popularity and common costume variants
  */
 const OUTFIT_VARIANTS = [
   // Seasonal (high priority - limited editions)
@@ -88,41 +90,93 @@ const OUTFIT_VARIANTS = [
 
   // Wedding/Formal
   { tags: ['wedding_dress', 'bridal_veil', 'bride'], label: 'Wedding' },
-  { tags: ['formal', 'evening_gown', 'ball_gown'], label: 'Formal' },
+  { tags: ['formal', 'evening_gown', 'ball_gown', 'formal_clothes'], label: 'Formal' },
+  { tags: ['tuxedo', 'suit', 'business_suit'], label: 'Suit' },
 
   // Swimwear
   { tags: ['swimsuit', 'bikini', 'one-piece_swimsuit', 'competition_swimsuit'], label: 'Swimsuit' },
+  { tags: ['school_swimsuit', 'sukumizu'], label: 'School Swimsuit' },
   { tags: ['beach', 'ocean', 'poolside'], label: 'Summer' },
 
-  // Traditional
+  // Traditional Japanese
   { tags: ['kimono', 'furisode', 'uchikake'], label: 'Kimono' },
   { tags: ['yukata'], label: 'Yukata' },
-  { tags: ['chinese_clothes', 'china_dress', 'qipao'], label: 'Chinese Dress' },
+  { tags: ['miko', 'nontraditional_miko', 'hakama'], label: 'Miko' },
+  { tags: ['fundoshi', 'sarashi'], label: 'Fundoshi' },
+
+  // Traditional Other
+  { tags: ['chinese_clothes', 'china_dress', 'qipao', 'changpao'], label: 'Chinese Dress' },
   { tags: ['hanbok'], label: 'Hanbok' },
+  { tags: ['ao_dai'], label: 'Ao Dai' },
+  { tags: ['dirndl'], label: 'Dirndl' },
 
   // Costumes/Uniforms
-  { tags: ['school_uniform', 'serafuku', 'sailor_collar'], label: 'School' },
-  { tags: ['maid', 'maid_headdress', 'maid_apron'], label: 'Maid' },
+  { tags: ['school_uniform', 'serafuku', 'sailor_collar', 'gakuran'], label: 'School' },
+  { tags: ['gym_uniform', 'buruma', 'bloomers'], label: 'Gym' },
+  { tags: ['maid', 'maid_headdress', 'maid_apron', 'wa_maid', 'victorian_maid'], label: 'Maid' },
   { tags: ['bunny_girl', 'playboy_bunny', 'bunnysuit', 'rabbit_ears'], label: 'Bunny' },
-  { tags: ['nurse', 'nurse_cap'], label: 'Nurse' },
+  { tags: ['nurse', 'nurse_cap', 'nurse_dress'], label: 'Nurse' },
   { tags: ['cheerleader', 'cheerleader_uniform', 'pom_poms'], label: 'Cheerleader' },
   { tags: ['police', 'police_uniform', 'policewoman'], label: 'Police' },
-  { tags: ['military', 'military_uniform', 'soldier'], label: 'Military' },
-  { tags: ['idol', 'idol_clothes', 'stage'], label: 'Idol' },
+  { tags: ['military', 'military_uniform', 'soldier', 'naval_uniform'], label: 'Military' },
+  { tags: ['idol', 'idol_clothes'], label: 'Idol' },
+  { tags: ['race_queen', 'racing_suit'], label: 'Race Queen' },
+  { tags: ['office_lady', 'pencil_skirt', 'business_suit'], label: 'Office Lady' },
+  { tags: ['waitress'], label: 'Waitress' },
+
+  // Fantasy/Magical
   { tags: ['witch', 'witch_hat'], label: 'Witch' },
   { tags: ['vampire', 'vampire_costume'], label: 'Vampire' },
   { tags: ['angel', 'angel_wings', 'halo'], label: 'Angel' },
   { tags: ['demon', 'demon_girl', 'demon_horns', 'devil'], label: 'Demon' },
+  { tags: ['magical_girl', 'mahou_shoujo'], label: 'Magical Girl' },
+  { tags: ['fairy', 'fairy_wings'], label: 'Fairy' },
+  { tags: ['elf', 'pointy_ears'], label: 'Elf' },
+  { tags: ['princess', 'tiara', 'crown'], label: 'Princess' },
+  { tags: ['mermaid', 'mermaid_tail'], label: 'Mermaid' },
+
+  // Animal/Kemonomimi
   { tags: ['catgirl', 'cat_ears', 'cat_tail', 'nekomimi'], label: 'Cat' },
+  { tags: ['fox_girl', 'fox_ears', 'fox_tail', 'kitsune'], label: 'Fox' },
+  { tags: ['wolf_girl', 'wolf_ears', 'wolf_tail'], label: 'Wolf' },
+  { tags: ['dog_girl', 'dog_ears', 'dog_tail', 'inumimi'], label: 'Dog' },
+  { tags: ['rabbit_girl', 'rabbit_ears', 'rabbit_tail', 'usagimimi'], label: 'Rabbit' },
+
+  // Historical/Themed
+  { tags: ['pirate', 'pirate_costume', 'pirate_hat'], label: 'Pirate' },
+  { tags: ['ninja', 'kunoichi'], label: 'Ninja' },
+  { tags: ['samurai', 'katana', 'ronin'], label: 'Samurai' },
+  { tags: ['cowboy', 'cowgirl', 'cowboy_western', 'cowboy_hat'], label: 'Cowgirl' },
+  { tags: ['sailor', 'sailor_dress', 'sailor_hat'], label: 'Sailor' },
+
+  // Fashion Styles
+  { tags: ['gothic_lolita', 'gothic'], label: 'Gothic' },
+  { tags: ['lolita_fashion', 'sweet_lolita', 'classic_lolita'], label: 'Lolita' },
+  { tags: ['steampunk'], label: 'Steampunk' },
+  { tags: ['cyberpunk'], label: 'Cyberpunk' },
+  { tags: ['punk', 'punk_fashion'], label: 'Punk' },
 
   // Casual/Sportswear
   { tags: ['sportswear', 'sports_bra', 'gym_uniform'], label: 'Sportswear' },
+  { tags: ['track_suit', 'tracksuit'], label: 'Tracksuit' },
   { tags: ['pajamas', 'sleepwear', 'nightgown'], label: 'Pajamas' },
   { tags: ['casual', 'casual_clothes'], label: 'Casual' },
+  { tags: ['naked_apron', 'apron'], label: 'Apron' },
+  { tags: ['hoodie', 'hooded'], label: 'Hoodie' },
 
   // Fantasy/Armor
-  { tags: ['armor', 'full_armor', 'knight'], label: 'Armor' },
-  { tags: ['fantasy', 'cape', 'cloak'], label: 'Fantasy' },
+  { tags: ['armor', 'full_armor', 'knight', 'bikini_armor'], label: 'Armor' },
+  { tags: ['cape', 'cloak'], label: 'Cape' },
+
+  // Other Costumes
+  { tags: ['nun', 'habit'], label: 'Nun' },
+  { tags: ['priest', 'cassock'], label: 'Priest' },
+  { tags: ['kigurumi', 'animal_costume'], label: 'Kigurumi' },
+  { tags: ['ghost_costume', 'jiangshi_costume'], label: 'Ghost' },
+  { tags: ['reindeer_costume'], label: 'Reindeer' },
+  { tags: ['superhero', 'superhero_costume'], label: 'Superhero' },
+  { tags: ['plugsuit', 'bodysuit'], label: 'Plugsuit' },
+  { tags: ['leotard', 'unitard'], label: 'Leotard' },
 ];
 
 /**
