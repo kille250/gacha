@@ -22,6 +22,7 @@ import { Navigate } from 'react-router-dom';
 
 // Hooks
 import { useAdminState, useAdminModals } from '../hooks';
+import { useAdminKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 
 // Utils
 import { getAssetUrl } from '../utils/api';
@@ -33,6 +34,7 @@ import CouponFormModal from '../components/UI/CouponFormModal';
 import MultiUploadModal from '../components/UI/MultiUploadModal';
 import AnimeImportModal from '../components/UI/AnimeImportModal';
 import EditCharacterModal from '../components/Admin/EditCharacterModal';
+import KeyboardShortcutsModal from '../components/Admin/KeyboardShortcutsModal';
 import {
   AdminTabs,
   AdminDashboard,
@@ -83,6 +85,28 @@ const AdminPage = () => {
 
   // Coin form (local as it's modal-specific)
   const [coinForm, setCoinForm] = useState({ userId: '', amount: 100 });
+
+  // Keyboard shortcuts modal state
+  const [showKeyboardShortcuts, setShowKeyboardShortcuts] = useState(false);
+
+  // Keyboard shortcuts integration
+  useAdminKeyboardShortcuts({
+    onNavigate: (tab) => {
+      const tabMap = {
+        dashboard: 'dashboard',
+        users: 'users',
+        characters: 'characters',
+        banners: 'banners',
+        security: 'security',
+      };
+      if (tabMap[tab]) {
+        setActiveTab(tabMap[tab]);
+      }
+    },
+    onRefresh: () => adminState.refreshData(),
+    onShowShortcuts: () => setShowKeyboardShortcuts(true),
+    enabled: adminState.isAdmin,
+  });
 
   // Helper functions
   const getImageUrl = useCallback((imagePath) =>
@@ -406,6 +430,12 @@ const AdminPage = () => {
         confirmLabel={modals.confirmDialog.confirmLabel}
         cancelLabel={modals.confirmDialog.cancelLabel}
         loading={modals.confirmDialog.loading}
+      />
+
+      {/* Keyboard Shortcuts Modal - Press Shift+? to show */}
+      <KeyboardShortcutsModal
+        isOpen={showKeyboardShortcuts}
+        onClose={() => setShowKeyboardShortcuts(false)}
       />
     </StyledPageWrapper>
   );
