@@ -83,9 +83,11 @@ function applySpecialization(userCharacter, specializationId) {
 function calculateSpecializationBonuses(characters) {
   const bonuses = {
     pointsMultiplier: 1.0,
-    xpMultiplier: 1.0,
+    ticketChanceMultiplier: 1.0,
     synergyBonus: 0,
-    premiumCurrencyChance: 0
+    premiumCurrencyChance: 0,
+    fishingPowerBonus: 0,
+    gachaLuckBonus: 0
   };
 
   characters.forEach(char => {
@@ -93,8 +95,10 @@ function calculateSpecializationBonuses(characters) {
       const spec = DOJO_SPECIALIZATIONS[char.specialization];
       if (spec) {
         bonuses.pointsMultiplier *= spec.bonuses.dojoPointsMultiplier || 1.0;
-        bonuses.xpMultiplier *= spec.bonuses.xpMultiplier || 1.0;
+        bonuses.ticketChanceMultiplier *= 1 + (spec.bonuses.ticketChanceBonus || 0);
         bonuses.synergyBonus += spec.bonuses.synergyBonus || 0;
+        bonuses.fishingPowerBonus += spec.bonuses.fishingPowerBonus || 0;
+        bonuses.gachaLuckBonus += spec.bonuses.gachaLuckBonus || 0;
         // Premium currency chance is additive
         if (spec.bonuses.currencyBonus) {
           bonuses.premiumCurrencyChance += 0.01; // 1% per spirit-path character
@@ -447,12 +451,12 @@ function calculateEnhancedRewards(characters, hours, upgrades, facilityTier, opt
 
     totalPointsPerHour += charPoints;
 
-    // Ticket chances (boosted by level and specialization)
+    // Ticket chances (boosted by level and specialization ticketChanceMultiplier)
     const baseRollChance = DOJO_RATES.ticketChances.rollTicket[char.rarity] || 0;
     const basePremiumChance = DOJO_RATES.ticketChances.premiumTicket[char.rarity] || 0;
 
-    totalExpectedRollTickets += baseRollChance * levelMult * hours;
-    totalExpectedPremiumTickets += basePremiumChance * levelMult * hours;
+    totalExpectedRollTickets += baseRollChance * levelMult * specBonuses.ticketChanceMultiplier * hours;
+    totalExpectedPremiumTickets += basePremiumChance * levelMult * specBonuses.ticketChanceMultiplier * hours;
 
     breakdown.push({
       characterId: char.id,
@@ -521,6 +525,36 @@ function calculateEnhancedRewards(characters, hours, upgrades, facilityTier, opt
 }
 
 // ===========================================
+// USER BONUSES HELPER
+// ===========================================
+
+/**
+ * Get aggregated specialization bonuses for a user's dojo characters
+ * Used by other services (fishing, gacha) to apply cross-system bonuses
+ * @param {number} userId - User ID
+ * @returns {Promise<Object>} - Aggregated bonuses from all specialized characters
+ */
+async function getUserSpecializationBonuses(userId) {
+  const { UserCharacter } = require('../models');
+
+  // Get all characters with specializations in the dojo
+  const userChars = await UserCharacter.findAll({
+    where: {
+      UserId: userId,
+      inDojo: true
+    },
+    attributes: ['specialization']
+  });
+
+  // Calculate bonuses from characters in dojo
+  const bonuses = calculateSpecializationBonuses(
+    userChars.map(uc => ({ specialization: uc.specialization }))
+  );
+
+  return bonuses;
+}
+
+// ===========================================
 // EXPORTS
 // ===========================================
 
@@ -529,6 +563,7 @@ module.exports = {
   getAvailableSpecializations,
   applySpecialization,
   calculateSpecializationBonuses,
+  getUserSpecializationBonuses,
 
   // Facility
   getFacilityTier,

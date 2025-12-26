@@ -404,6 +404,55 @@ const rollRarity = (rates, orderedRarities = null) => {
 };
 
 /**
+ * Apply luck bonus to rates (increases rare+ chances)
+ * Takes percentage from common/uncommon and adds to rare/epic/legendary
+ *
+ * @param {Object} rates - Original rates object
+ * @param {number} luckBonus - Luck bonus as decimal (0.05 = 5%)
+ * @returns {Object} - Modified rates with luck bonus applied
+ */
+const applyLuckBonus = (rates, luckBonus = 0) => {
+  if (!luckBonus || luckBonus <= 0) {
+    return rates;
+  }
+
+  const modifiedRates = { ...rates };
+
+  // Calculate total of rare+ rates
+  const rareRarities = ['rare', 'epic', 'legendary'];
+  const commonRarities = ['common', 'uncommon'];
+
+  // Take from common pool
+  let availableToMove = 0;
+  for (const rarity of commonRarities) {
+    if (modifiedRates[rarity]) {
+      const toMove = modifiedRates[rarity] * luckBonus;
+      availableToMove += toMove;
+      modifiedRates[rarity] -= toMove;
+    }
+  }
+
+  // Distribute to rare+ proportionally based on original rates
+  let totalRarePlus = 0;
+  for (const rarity of rareRarities) {
+    if (modifiedRates[rarity]) {
+      totalRarePlus += modifiedRates[rarity];
+    }
+  }
+
+  if (totalRarePlus > 0) {
+    for (const rarity of rareRarities) {
+      if (modifiedRates[rarity]) {
+        const proportion = modifiedRates[rarity] / totalRarePlus;
+        modifiedRates[rarity] += availableToMove * proportion;
+      }
+    }
+  }
+
+  return modifiedRates;
+};
+
+/**
  * Check if a rarity is "pity eligible" (rare or better)
  * @param {string} rarityName
  * @param {Array} raritiesData - Optional pre-loaded rarities
@@ -454,6 +503,7 @@ module.exports = {
   invalidateRaritiesCache,
   isRarePlus,
   isRarePlusSync,
+  applyLuckBonus,
   // Export pure functions for testing
   normalizeRates,
   validateRatesSum,

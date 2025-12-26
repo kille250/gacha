@@ -42,6 +42,7 @@ const {
 
 const { getUserRank } = require('../../services/rankService');
 const { updateRiskScore, RISK_ACTIONS } = require('../../services/riskService');
+const { getUserSpecializationBonuses } = require('../../services/dojoEnhancedService');
 
 // Error classes
 const {
@@ -197,22 +198,33 @@ router.post('/cast', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
       
       // Mercy timer bonus
       const mercyBonus = calculateMercyBonus(daily.missStreak || 0);
-      
+
       // Get area and rod
       const areas = user.fishingAreas || { current: 'pond' };
       const rodId = user.fishingRod || 'basic';
       const rod = FISHING_RODS[rodId] || FISHING_RODS.basic;
       const pityData = user.fishingPity || { legendary: 0, epic: 0 };
-      
+
+      // Get specialization bonuses (fishing power bonus from strength path)
+      let specBonuses = { fishingPowerBonus: 0 };
+      try {
+        specBonuses = await getUserSpecializationBonuses(userId);
+      } catch (_err) {
+        // Ignore errors - use default bonuses
+      }
+
       // Select fish with bonuses
       const { fish: baseFish, pityTriggered, resetPity } = selectRandomFishWithBonuses(
         pityData, areas.current, rodId
       );
-      
+
+      // Calculate fishing power timing bonus (15% bonus = +150ms on a 1000ms window)
+      const fishingPowerTimingBonus = Math.floor(baseFish.timingWindow * specBonuses.fishingPowerBonus);
+
       // Apply timing bonuses
       const fish = {
         ...baseFish,
-        timingWindow: baseFish.timingWindow + (rod.timingBonus || 0) + mercyBonus
+        timingWindow: baseFish.timingWindow + (rod.timingBonus || 0) + mercyBonus + fishingPowerTimingBonus
       };
       
       // Update pity counters

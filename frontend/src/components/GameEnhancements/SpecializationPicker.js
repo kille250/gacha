@@ -9,7 +9,8 @@ import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser } from 'react-icons/fa';
-import { GiCrossedSwords, GiBookCover, GiTwoCoins, GiFishingPole, GiClover, GiShield } from 'react-icons/gi';
+import { GiCrossedSwords, GiBookCover, GiSparkles } from 'react-icons/gi';
+import { useTranslation } from 'react-i18next';
 import { useCharacterSpecialization } from '../../hooks/useGameEnhancements';
 
 const Container = styled(motion.div)`
@@ -196,52 +197,33 @@ const CancelButton = styled(Button)`
   border: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
+// Backend specialization IDs: strength, wisdom, spirit
 const SPECIALIZATION_DATA = {
-  warrior: {
+  strength: {
     Icon: GiCrossedSwords,
-    name: 'Warrior',
-    bonus: '+25% Dojo Power',
-    description: 'Boosts training and combat effectiveness',
+    nameKey: 'specialization.strength.name',
+    bonusKey: 'specialization.strength.bonus',
+    descKey: 'specialization.strength.description',
     unlockLevel: 1
   },
-  scholar: {
+  wisdom: {
     Icon: GiBookCover,
-    name: 'Scholar',
-    bonus: '+20% XP Gain',
-    description: 'Faster mastery progression',
+    nameKey: 'specialization.wisdom.name',
+    bonusKey: 'specialization.wisdom.bonus',
+    descKey: 'specialization.wisdom.description',
     unlockLevel: 1
   },
-  merchant: {
-    Icon: GiTwoCoins,
-    name: 'Merchant',
-    bonus: '+15% Point Earnings',
-    description: 'Increased rewards from all activities',
-    unlockLevel: 5
-  },
-  angler: {
-    Icon: GiFishingPole,
-    name: 'Angler',
-    bonus: '+30% Rare Fish Chance',
-    description: 'Specialized in fishing activities',
-    unlockLevel: 5
-  },
-  lucky: {
-    Icon: GiClover,
-    name: 'Lucky',
-    bonus: '+10% Crit Chance',
-    description: 'Improved odds on random events',
-    unlockLevel: 10
-  },
-  guardian: {
-    Icon: GiShield,
-    name: 'Guardian',
-    bonus: 'Streak Insurance',
-    description: 'Protects streaks from being lost',
-    unlockLevel: 10
+  spirit: {
+    Icon: GiSparkles,
+    nameKey: 'specialization.spirit.name',
+    bonusKey: 'specialization.spirit.bonus',
+    descKey: 'specialization.spirit.description',
+    unlockLevel: 1
   }
 };
 
 export function SpecializationPicker({ character, userLevel = 1, onClose }) {
+  const { t } = useTranslation();
   const { specialization, loading, applySpecialization } = useCharacterSpecialization(character?.id);
   const [selected, setSelected] = useState(null);
   const [confirming, setConfirming] = useState(false);
@@ -276,7 +258,7 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
   if (loading) {
     return (
       <Container>
-        <Title>Loading specialization...</Title>
+        <Title>{t('specialization.loading')}</Title>
       </Container>
     );
   }
@@ -287,7 +269,7 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
       animate={{ opacity: 1, y: 0 }}
     >
       <Header>
-        <Title>Character Specialization</Title>
+        <Title>{t('specialization.title')}</Title>
       </Header>
 
       <CharacterInfo>
@@ -303,19 +285,19 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
           <CharacterSeries>{character?.series || 'Unknown Series'}</CharacterSeries>
           <CurrentSpec $hasSpec={hasExistingSpec}>
             {hasExistingSpec
-              ? `Specialization: ${SPECIALIZATION_DATA[specialization.current]?.name || specialization.current}`
-              : 'No specialization yet'}
+              ? t('specialization.current', { name: t(SPECIALIZATION_DATA[specialization.current]?.nameKey) || specialization.current })
+              : t('specialization.none')}
           </CurrentSpec>
         </CharacterDetails>
       </CharacterInfo>
 
       {hasExistingSpec ? (
         <WarningBanner>
-          This character already has a specialization. Specializations are permanent.
+          {t('specialization.alreadyHasWarning')}
         </WarningBanner>
       ) : (
         <WarningBanner>
-          Choose carefully! Specialization is permanent and cannot be changed.
+          {t('specialization.permanentWarning')}
         </WarningBanner>
       )}
 
@@ -335,15 +317,15 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
               whileTap={!isLocked && !hasExistingSpec ? { scale: 0.98 } : {}}
             >
               <SpecIcon><spec.Icon size={40} /></SpecIcon>
-              <SpecName>{spec.name}</SpecName>
-              <SpecBonus>{spec.bonus}</SpecBonus>
-              <SpecDesc>{spec.description}</SpecDesc>
+              <SpecName>{t(spec.nameKey)}</SpecName>
+              <SpecBonus>{t(spec.bonusKey)}</SpecBonus>
+              <SpecDesc>{t(spec.descKey)}</SpecDesc>
               {isLocked && (
-                <LockedBadge>Unlocks at Level {spec.unlockLevel}</LockedBadge>
+                <LockedBadge>{t('specialization.unlocksAt', { level: spec.unlockLevel })}</LockedBadge>
               )}
               {isCurrentSpec && (
                 <LockedBadge style={{ background: 'rgba(76, 175, 80, 0.2)', color: '#4caf50' }}>
-                  Current
+                  {t('specialization.currentBadge')}
                 </LockedBadge>
               )}
             </SpecCard>
@@ -359,9 +341,9 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
             exit={{ opacity: 0, height: 0 }}
           >
             <ConfirmText>
-              Apply <strong>{SPECIALIZATION_DATA[selected].name}</strong> specialization?
+              {t('specialization.confirmApply', { name: t(SPECIALIZATION_DATA[selected].nameKey) })}
               <br />
-              <span style={{ color: '#ff9800' }}>This action is permanent!</span>
+              <span style={{ color: '#ff9800' }}>{t('specialization.permanentAction')}</span>
             </ConfirmText>
             <ButtonGroup>
               <CancelButton
@@ -369,14 +351,14 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Cancel
+                {t('common.cancel')}
               </CancelButton>
               <ConfirmButton
                 onClick={handleConfirm}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Confirm
+                {t('common.confirm')}
               </ConfirmButton>
             </ButtonGroup>
           </ConfirmSection>

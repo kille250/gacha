@@ -1433,5 +1433,32 @@
     "onboardingSteps": "Onboarding steps",
     "impactSummary": "Impact summary",
     "shortcutCategories": "Shortcut categories"
+  },
+  "specialization": {
+    "title": "Character Specialization",
+    "loading": "Loading specialization...",
+    "none": "No specialization yet",
+    "current": "Specialization: {{name}}",
+    "currentBadge": "Current",
+    "alreadyHasWarning": "This character already has a specialization. Specializations are permanent.",
+    "permanentWarning": "Choose carefully! Specialization is permanent and cannot be changed.",
+    "unlocksAt": "Unlocks at Level {{level}}",
+    "confirmApply": "Apply {{name}} specialization?",
+    "permanentAction": "This action is permanent!",
+    "strength": {
+      "name": "Path of Strength",
+      "bonus": "+15% Fishing Power",
+      "description": "Boosts fishing power against large fish"
+    },
+    "wisdom": {
+      "name": "Path of Wisdom",
+      "bonus": "+5% Gacha Luck, -50% Dojo Income",
+      "description": "Better gacha odds but reduced dojo earnings"
+    },
+    "spirit": {
+      "name": "Path of Spirit",
+      "bonus": "+25% Dojo Income, +10% Synergy",
+      "description": "Enhanced dojo rewards and team harmony"
+    }
   }
 }

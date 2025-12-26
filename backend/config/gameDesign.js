@@ -31,10 +31,10 @@ const DOJO_SPECIALIZATIONS = {
     description: 'Enhanced learning and gacha fortune',
     icon: 'book',
     bonuses: {
-      dojoPointsMultiplier: 0.5,    // -50% dojo income
+      dojoPointsMultiplier: 0.5,    // -50% dojo income (trade-off)
       fishingPowerBonus: 0,
       gachaLuckBonus: 0.05,         // +5% gacha luck
-      xpMultiplier: 1.5,            // +50% XP gains
+      ticketChanceBonus: 0.25,      // +25% ticket drop chance from dojo
       currencyBonus: 0,
       synergyBonus: 0
     }

@@ -19,6 +19,7 @@ const {
   getPityRates,
   calculateBannerRates,
   getBannerPullChance,
+  applyLuckBonus,
   PRICING_CONFIG
 } = require('../config/pricing');
 
@@ -105,9 +106,10 @@ const buildStandardRollContext = async (_allCharacters, allowR18) => {
  * @param {Array} bannerCharacters - Characters associated with the banner
  * @param {number} rateMultiplier - Banner's rate multiplier
  * @param {boolean} allowR18 - Whether R18 content is allowed
+ * @param {number} luckBonus - Luck bonus from specializations (optional)
  * @returns {Promise<BannerRollContext>}
  */
-const buildBannerRollContext = async (_allCharacters, bannerCharacters, rateMultiplier, allowR18) => {
+const buildBannerRollContext = async (_allCharacters, bannerCharacters, rateMultiplier, allowR18, luckBonus = 0) => {
   // Standard context now uses only Standard Banner characters as fallback
   const standardContext = await buildStandardRollContext(null, allowR18);
 
@@ -121,7 +123,8 @@ const buildBannerRollContext = async (_allCharacters, bannerCharacters, rateMult
     ...standardContext,
     bannerCharacters: filteredBannerCharacters,
     bannerCharactersByRarity,
-    rateMultiplier
+    rateMultiplier,
+    luckBonus
   };
 };
 
@@ -132,7 +135,7 @@ const buildBannerRollContext = async (_allCharacters, bannerCharacters, rateMult
 /**
  * Select appropriate rates for a roll
  * Handles priority: premium > pity > banner/standard
- * 
+ *
  * @param {Object} options
  * @param {boolean} options.isPremium - Whether this is a premium roll
  * @param {boolean} options.needsPity - Whether pity is triggered
@@ -140,6 +143,7 @@ const buildBannerRollContext = async (_allCharacters, bannerCharacters, rateMult
  * @param {boolean} options.isBanner - Whether this is a banner roll
  * @param {number} options.rateMultiplier - Banner rate multiplier (if banner)
  * @param {Array} options.raritiesData - Pre-loaded rarities
+ * @param {number} options.luckBonus - Luck bonus from specializations (0-1)
  * @returns {Promise<Object>} - Rates object
  */
 const selectRates = async ({
@@ -148,21 +152,27 @@ const selectRates = async ({
   isMulti = false,
   isBanner = false,
   rateMultiplier = 1,
-  raritiesData
+  raritiesData,
+  luckBonus = 0
 }) => {
+  let rates;
+
   if (isPremium) {
-    return getPremiumRates(isMulti, raritiesData);
+    rates = await getPremiumRates(isMulti, raritiesData);
+  } else if (needsPity) {
+    rates = await getPityRates(raritiesData);
+  } else if (isBanner) {
+    rates = await calculateBannerRates(rateMultiplier, isMulti, raritiesData);
+  } else {
+    rates = await getStandardRates(isMulti, raritiesData);
   }
-  
-  if (needsPity) {
-    return getPityRates(raritiesData);
+
+  // Apply luck bonus from specializations (wisdom path)
+  if (luckBonus > 0) {
+    rates = applyLuckBonus(rates, luckBonus);
   }
-  
-  if (isBanner) {
-    return calculateBannerRates(rateMultiplier, isMulti, raritiesData);
-  }
-  
-  return getStandardRates(isMulti, raritiesData);
+
+  return rates;
 };
 
 // ===========================================
@@ -210,23 +220,25 @@ const executeSingleStandardRoll = async (context, isMulti = false) => {
  * @returns {Promise<RollResult>}
  */
 const executeSingleBannerRoll = async (context, { isPremium = false, needsPity = false, isMulti = false, isLast3 = false } = {}) => {
-  const { 
-    allCharacters, 
-    raritiesData, 
-    orderedRarities, 
+  const {
+    allCharacters,
+    raritiesData,
+    orderedRarities,
     charactersByRarity,
     bannerCharactersByRarity,
-    rateMultiplier 
+    rateMultiplier,
+    luckBonus = 0
   } = context;
-  
-  // Select rates based on roll type
+
+  // Select rates based on roll type (with luck bonus from specializations)
   const rates = await selectRates({
     isPremium,
     needsPity,
     isMulti,
     isBanner: true,
     rateMultiplier,
-    raritiesData
+    raritiesData,
+    luckBonus
   });
   
   // Roll for rarity
@@ -317,20 +329,28 @@ const executeStandardMultiRoll = async (context, count) => {
  * @returns {Promise<Array<RollResult & { isBannerCharacter: boolean }>>}
  */
 const executeBannerMultiRoll = async (context, count, premiumCount = 0) => {
-  const { 
-    raritiesData, 
-    orderedRarities, 
-    charactersByRarity, 
+  const {
+    raritiesData,
+    orderedRarities,
+    charactersByRarity,
     allCharacters,
     bannerCharacters,
     bannerCharactersByRarity,
-    rateMultiplier 
+    rateMultiplier,
+    luckBonus = 0
   } = context;
-  
-  // Pre-fetch all rate tables
-  const bannerRates = await calculateBannerRates(rateMultiplier, true, raritiesData);
-  const premiumRates = await getPremiumRates(true, raritiesData);
-  const pityRates = await getPityRates(raritiesData);
+
+  // Pre-fetch all rate tables and apply luck bonus
+  let bannerRates = await calculateBannerRates(rateMultiplier, true, raritiesData);
+  let premiumRates = await getPremiumRates(true, raritiesData);
+  let pityRates = await getPityRates(raritiesData);
+
+  // Apply luck bonus from specializations
+  if (luckBonus > 0) {
+    bannerRates = applyLuckBonus(bannerRates, luckBonus);
+    premiumRates = applyLuckBonus(premiumRates, luckBonus);
+    pityRates = applyLuckBonus(pityRates, luckBonus);
+  }
   
   const guaranteedRare = count >= PRICING_CONFIG.pityThreshold;
   

@@ -39,6 +39,7 @@ const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 const { lockoutMiddleware } = require('../middleware/captcha');
 const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
+const { getUserSpecializationBonuses } = require('../services/dojoEnhancedService');
 
 // ===========================================
 // HELPER FUNCTIONS
@@ -643,13 +644,24 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
     // The fallback pool is now the Standard Banner characters only
     const allowR18 = await getUserAllowR18(userId);
     const allCharacters = await Character.findAll();
+
+    // Get luck bonus from specializations (wisdom path)
+    let luckBonus = 0;
+    try {
+      const specBonuses = await getUserSpecializationBonuses(userId);
+      luckBonus = specBonuses.gachaLuckBonus || 0;
+    } catch (_err) {
+      // Ignore errors - use default
+    }
+
     const context = await buildBannerRollContext(
       allCharacters,
       banner.Characters,
       banner.rateMultiplier,
-      allowR18
+      allowR18,
+      luckBonus
     );
-    
+
     const result = await executeSingleBannerRoll(context, {
       isPremium,
       needsPity: false,
@@ -841,13 +853,24 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
     // The fallback pool is now the Standard Banner characters only
     const allowR18 = await getUserAllowR18(userId);
     const allCharacters = await Character.findAll();
+
+    // Get luck bonus from specializations (wisdom path)
+    let luckBonus = 0;
+    try {
+      const specBonuses = await getUserSpecializationBonuses(userId);
+      luckBonus = specBonuses.gachaLuckBonus || 0;
+    } catch (_err) {
+      // Ignore errors - use default
+    }
+
     const context = await buildBannerRollContext(
       allCharacters,
       banner.Characters,
       banner.rateMultiplier,
-      allowR18
+      allowR18,
+      luckBonus
     );
-    
+
     const results = await executeBannerMultiRoll(context, count, premiumCount);
     
     // Add all characters (shards on duplicates, bonus points if max)
