@@ -194,7 +194,7 @@ const DojoPage = () => {
         {/* Facility Upgrade Card */}
         <DojoFacilityCard
           facility={facility}
-          userLevel={user?.level || 1}
+          userLevel={user?.accountLevel || 1}
           userPoints={user?.points || 0}
           upgrading={facilityUpgrading}
           onUpgrade={upgradeFacility}

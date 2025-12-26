@@ -33,6 +33,7 @@ const {
 } = require('../utils/characterLeveling');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { updateVoyageProgress } = require('../services/retentionService');
+const { addGachaPullXP, addNewCharacterXP, addCharacterLevelXP } = require('../services/accountLevelService');
 
 // ===========================================
 // ROLL ENDPOINTS
@@ -101,13 +102,31 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    // Update voyage progress for gacha pulls
+    // Update voyage progress and account XP for gacha pulls
     const freshUser = await User.findByPk(userId);
+    let levelUpInfo = null;
     if (freshUser) {
       updateVoyageProgress(freshUser, 'gacha_pulls', 1);
       if (acquisition.isNew) {
         updateVoyageProgress(freshUser, 'new_character', 1);
       }
+
+      // Add account XP for the pull
+      const pullXPResult = addGachaPullXP(freshUser, 1);
+
+      // Add bonus XP if new character acquired
+      if (acquisition.isNew) {
+        const newCharXPResult = addNewCharacterXP(freshUser, result.character.rarity);
+        // Merge level up info (prefer the one that shows level up)
+        if (newCharXPResult.levelUp) {
+          levelUpInfo = newCharXPResult.levelUp;
+        } else if (pullXPResult.levelUp) {
+          levelUpInfo = pullXPResult.levelUp;
+        }
+      } else if (pullXPResult.levelUp) {
+        levelUpInfo = pullXPResult.levelUp;
+      }
+
       await freshUser.save();
     }
 
@@ -115,7 +134,7 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
 
     // Refetch user points if bonus was awarded
     const finalPoints = acquisition.bonusPoints > 0 ? user.points : user.points;
-    
+
     res.json({
       ...result.character.toJSON(),
       updatedPoints: finalPoints,
@@ -127,7 +146,12 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
         isMaxLevel: acquisition.isMaxLevel,
         bonusPoints: acquisition.bonusPoints,
         canLevelUp: acquisition.canLevelUp
-      }
+      },
+      accountLevel: freshUser ? {
+        level: freshUser.accountLevel,
+        xp: freshUser.accountXP,
+        levelUp: levelUpInfo
+      } : null
     });
   } catch (err) {
     releaseRollLock(userId);
@@ -215,13 +239,36 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    // Update voyage progress for gacha pulls
+    // Update voyage progress and account XP for gacha pulls
     const freshUser = await User.findByPk(userId);
+    let levelUpInfo = null;
     if (freshUser) {
       updateVoyageProgress(freshUser, 'gacha_pulls', count);
       if (newCards > 0) {
         updateVoyageProgress(freshUser, 'new_character', newCards);
       }
+
+      // Add account XP for the pulls
+      const pullXPResult = addGachaPullXP(freshUser, count);
+      if (pullXPResult.levelUp) {
+        levelUpInfo = pullXPResult.levelUp;
+      }
+
+      // Add XP for each new character acquired
+      const newAcquisitions = acquisitions.filter(a => a.isNew);
+      for (const acq of newAcquisitions) {
+        const char = characters.find(c => c.id === acq.characterId);
+        if (char) {
+          const newCharXPResult = addNewCharacterXP(freshUser, char.rarity);
+          if (newCharXPResult.levelUp && !levelUpInfo) {
+            levelUpInfo = newCharXPResult.levelUp;
+          } else if (newCharXPResult.levelUp) {
+            // Multiple level ups - update to show final level
+            levelUpInfo = newCharXPResult.levelUp;
+          }
+        }
+      }
+
       await freshUser.save();
     }
 
@@ -235,7 +282,12 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
         shardsGained,
         bonusPoints: bonusPointsTotal,
         duplicates: acquisitions.filter(a => a.isDuplicate).length
-      }
+      },
+      accountLevel: freshUser ? {
+        level: freshUser.accountLevel,
+        xp: freshUser.accountXP,
+        levelUp: levelUpInfo
+      } : null
     });
   } catch (err) {
     releaseRollLock(userId);
@@ -499,20 +551,36 @@ router.post('/:id/level-up', [auth, enforcementMiddleware, deviceBindingMiddlewa
     }
     
     const result = await levelUpCharacter(req.user.id, characterId);
-    
+
     if (!result.success) {
       return res.status(400).json(result);
     }
-    
+
     console.log(`User ${req.user.id} leveled up ${character.name}: Lv.${result.previousLevel} → Lv.${result.newLevel}`);
-    
+
+    // Add account XP for leveling up a character
+    let levelUpInfo = null;
+    const user = await User.findByPk(req.user.id);
+    if (user) {
+      const xpResult = addCharacterLevelXP(user);
+      if (xpResult.levelUp) {
+        levelUpInfo = xpResult.levelUp;
+      }
+      await user.save();
+    }
+
     res.json({
       ...result,
       character: {
         id: character.id,
         name: character.name,
         rarity: character.rarity
-      }
+      },
+      accountLevel: user ? {
+        level: user.accountLevel,
+        xp: user.accountXP,
+        levelUp: levelUpInfo
+      } : null
     });
   } catch (err) {
     console.error('Level up error:', err);

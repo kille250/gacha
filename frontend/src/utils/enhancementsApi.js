@@ -233,6 +233,39 @@ export const retentionSystems = {
 };
 
 // ===========================================
+// ACCOUNT LEVEL SYSTEM
+// ===========================================
+
+export const accountLevelApi = {
+  /**
+   * Get current account level status
+   */
+  getStatus: async () => {
+    const response = await api.get('/enhancements/account-level');
+    return response.data;
+  },
+
+  /**
+   * Recalculate account XP from progression data
+   * Useful for fixing inconsistencies or initializing existing users
+   */
+  recalculate: async () => {
+    const response = await api.post('/enhancements/account-level/recalculate');
+    return response.data;
+  },
+
+  /**
+   * Check if user meets a specific level requirement
+   */
+  checkRequirement: async (level) => {
+    const response = await api.get('/enhancements/account-level/check-requirement', {
+      params: { level }
+    });
+    return response.data;
+  }
+};
+
+// ===========================================
 // COMBINED EXPORT
 // ===========================================
 
@@ -240,7 +273,8 @@ const enhancementsApi = {
   dojo: dojoEnhancements,
   fishing: fishingEnhancements,
   gacha: gachaEnhancements,
-  retention: retentionSystems
+  retention: retentionSystems,
+  accountLevel: accountLevelApi
 };
 
 export default enhancementsApi;

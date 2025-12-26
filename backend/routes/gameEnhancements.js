@@ -21,6 +21,7 @@ const dojoEnhanced = require('../services/dojoEnhancedService');
 const fishingEnhanced = require('../services/fishingEnhancedService');
 const gachaEnhanced = require('../services/gachaEnhancedService');
 const retention = require('../services/retentionService');
+const accountLevel = require('../services/accountLevelService');
 
 // ===========================================
 // DOJO ENHANCEMENTS
@@ -728,6 +729,103 @@ router.post('/return-bonus/claim', [auth, enforcementMiddleware, sensitiveAction
   } catch (err) {
     await transaction.rollback();
     console.error('Return bonus claim error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+// ===========================================
+// ACCOUNT LEVEL SYSTEM
+// ===========================================
+
+/**
+ * GET /api/enhancements/account-level
+ * Get current account level status
+ */
+router.get('/account-level', [auth, enforcementMiddleware], async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const status = accountLevel.getAccountLevelStatus(user);
+
+    res.json(status);
+  } catch (err) {
+    console.error('Account level status error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * POST /api/enhancements/account-level/recalculate
+ * Recalculate account XP from user progression data
+ * Useful for fixing inconsistencies or initializing existing users
+ */
+router.post('/account-level/recalculate', [auth, enforcementMiddleware], async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const user = await User.findByPk(req.user.id, {
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
+
+    if (!user) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Fetch user's collection with character rarity data
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: req.user.id },
+      include: [{ model: Character, attributes: ['id', 'rarity'] }],
+      transaction
+    });
+
+    const collection = userCharacters.map(uc => ({
+      id: uc.CharacterId,
+      rarity: uc.Character?.rarity || 'common',
+      level: uc.level || 1
+    }));
+
+    // Recalculate XP
+    const result = accountLevel.recalculateXP(user, collection);
+
+    await user.save({ transaction });
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      ...result,
+      status: accountLevel.getAccountLevelStatus(user)
+    });
+  } catch (err) {
+    await transaction.rollback();
+    console.error('Account level recalculate error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * GET /api/enhancements/account-level/check-requirement
+ * Check if user meets a specific level requirement
+ */
+router.get('/account-level/check-requirement', [auth, enforcementMiddleware], async (req, res) => {
+  try {
+    const { level } = req.query;
+    const requiredLevel = parseInt(level) || 1;
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const result = accountLevel.checkFacilityRequirement(user, requiredLevel);
+
+    res.json(result);
+  } catch (err) {
+    console.error('Account level check error:', err);
     res.status(500).json({ error: 'Server error' });
   }
 });

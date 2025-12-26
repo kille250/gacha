@@ -41,6 +41,7 @@ const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { getUserSpecializationBonuses } = require('../services/dojoEnhancedService');
 const { updateVoyageProgress } = require('../services/retentionService');
+const { addGachaPullXP, addNewCharacterXP } = require('../services/accountLevelService');
 
 // ===========================================
 // HELPER FUNCTIONS
@@ -705,13 +706,30 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    // Update voyage progress for gacha pulls
+    // Update voyage progress and account XP for gacha pulls
     const freshUser = await User.findByPk(userId);
+    let levelUpInfo = null;
     if (freshUser) {
       updateVoyageProgress(freshUser, 'gacha_pulls', 1);
       if (acquisition.isNew) {
         updateVoyageProgress(freshUser, 'new_character', 1);
       }
+
+      // Add account XP for the pull
+      const pullXPResult = addGachaPullXP(freshUser, 1);
+
+      // Add bonus XP if new character acquired
+      if (acquisition.isNew) {
+        const newCharXPResult = addNewCharacterXP(freshUser, result.character.rarity);
+        if (newCharXPResult.levelUp) {
+          levelUpInfo = newCharXPResult.levelUp;
+        } else if (pullXPResult.levelUp) {
+          levelUpInfo = pullXPResult.levelUp;
+        }
+      } else if (pullXPResult.levelUp) {
+        levelUpInfo = pullXPResult.levelUp;
+      }
+
       await freshUser.save();
     }
 
@@ -737,7 +755,12 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
         isMaxLevel: acquisition.isMaxLevel,
         bonusPoints: acquisition.bonusPoints,
         canLevelUp: acquisition.canLevelUp
-      }
+      },
+      accountLevel: freshUser ? {
+        level: freshUser.accountLevel,
+        xp: freshUser.accountXP,
+        levelUp: levelUpInfo
+      } : null
     });
   } catch (err) {
     releaseRollLock(userId);
@@ -921,13 +944,35 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    // Update voyage progress for gacha pulls
+    // Update voyage progress and account XP for gacha pulls
     const freshUser = await User.findByPk(userId);
+    let levelUpInfo = null;
     if (freshUser) {
       updateVoyageProgress(freshUser, 'gacha_pulls', count);
       if (newCards > 0) {
         updateVoyageProgress(freshUser, 'new_character', newCards);
       }
+
+      // Add account XP for the pulls
+      const pullXPResult = addGachaPullXP(freshUser, count);
+      if (pullXPResult.levelUp) {
+        levelUpInfo = pullXPResult.levelUp;
+      }
+
+      // Add XP for each new character acquired
+      const newAcquisitions = acquisitions.filter(a => a.isNew);
+      for (const acq of newAcquisitions) {
+        const char = characters.find(c => c.id === acq.characterId);
+        if (char) {
+          const newCharXPResult = addNewCharacterXP(freshUser, char.rarity);
+          if (newCharXPResult.levelUp && !levelUpInfo) {
+            levelUpInfo = newCharXPResult.levelUp;
+          } else if (newCharXPResult.levelUp) {
+            levelUpInfo = newCharXPResult.levelUp;
+          }
+        }
+      }
+
       await freshUser.save();
     }
 
@@ -949,7 +994,12 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
         shardsGained,
         bonusPoints: bonusPointsTotal,
         duplicates: acquisitions.filter(a => a.isDuplicate).length
-      }
+      },
+      accountLevel: freshUser ? {
+        level: freshUser.accountLevel,
+        xp: freshUser.accountXP,
+        levelUp: levelUpInfo
+      } : null
     });
   } catch (err) {
     releaseRollLock(userId);

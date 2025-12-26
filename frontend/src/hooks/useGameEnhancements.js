@@ -514,6 +514,69 @@ export function useCharacterSpecialization(characterId) {
 }
 
 // ===========================================
+// ACCOUNT LEVEL HOOK
+// ===========================================
+
+export function useAccountLevel() {
+  const [accountLevel, setAccountLevel] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [recalculating, setRecalculating] = useState(false);
+
+  const fetchAccountLevel = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await enhancementsApi.accountLevel.getStatus();
+      setAccountLevel(data);
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to load account level');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAccountLevel();
+  }, [fetchAccountLevel]);
+
+  const recalculate = useCallback(async () => {
+    try {
+      setRecalculating(true);
+      const result = await enhancementsApi.accountLevel.recalculate();
+      if (result.status) {
+        setAccountLevel(result.status);
+      }
+      return result;
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to recalculate account level');
+      throw err;
+    } finally {
+      setRecalculating(false);
+    }
+  }, []);
+
+  const checkRequirement = useCallback(async (level) => {
+    try {
+      return await enhancementsApi.accountLevel.checkRequirement(level);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to check requirement');
+      throw err;
+    }
+  }, []);
+
+  return {
+    accountLevel,
+    loading,
+    error,
+    recalculating,
+    recalculate,
+    checkRequirement,
+    refresh: fetchAccountLevel
+  };
+}
+
+// ===========================================
 // COMBINED HOOK
 // ===========================================
 
@@ -528,7 +591,8 @@ export function useGameEnhancements() {
     useFishCodex,
     useBaitInventory,
     useDojoFacility,
-    useCharacterSpecialization
+    useCharacterSpecialization,
+    useAccountLevel
   };
 }
 

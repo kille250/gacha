@@ -391,6 +391,20 @@ User.init(
       defaultValue: 1
     },
 
+    // Account XP for level progression
+    accountXP: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
+    },
+
+    // Total dojo claims counter (for XP calculation)
+    dojoClaimsTotal: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
+    },
+
     // Dojo facility tiers unlocked (JSON array)
     dojoFacilityTiers: {
       type: DataTypes.TEXT,

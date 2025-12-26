@@ -23,6 +23,7 @@ const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { updateVoyageProgress, completeDailyActivity } = require('../services/retentionService');
+const { addDojoClaimXP } = require('../services/accountLevelService');
 
 // Rate limiting is now handled via dojoLastClaim in the database
 // This makes it multi-server safe (works behind load balancers)
@@ -594,16 +595,24 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
     // Update voyage progress for dojo claims (claim_dojo_rewards objective)
     // Refetch user to avoid stale data after transaction
     const freshUser = await User.findByPk(userId);
+    let levelUpInfo = null;
     if (freshUser) {
       updateVoyageProgress(freshUser, 'claim_dojo_rewards', 1);
       completeDailyActivity(freshUser, 'collect_dojo');
       completeDailyActivity(freshUser, 'complete_training');
+
+      // Add account XP for dojo claim
+      const xpResult = addDojoClaimXP(freshUser);
+      if (xpResult.levelUp) {
+        levelUpInfo = xpResult.levelUp;
+      }
+
       await freshUser.save();
     }
 
     // Cooldown is now enforced via dojoLastClaim (set above)
     // No need for in-memory tracking
-    
+
     res.json({
       success: true,
       rewards: {
@@ -641,7 +650,13 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
         points: user.points,
         rollTickets: user.rollTickets,
         premiumTickets: user.premiumTickets
-      }
+      },
+      // Account level info
+      accountLevel: freshUser ? {
+        level: freshUser.accountLevel,
+        xp: freshUser.accountXP,
+        levelUp: levelUpInfo
+      } : null
     });
     
   } catch (err) {

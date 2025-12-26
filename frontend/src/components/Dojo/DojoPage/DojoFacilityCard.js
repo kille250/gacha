@@ -2,12 +2,14 @@
  * DojoFacilityCard - Dojo facility upgrade section
  *
  * Shows current facility tier and allows upgrading to next tier.
+ * Displays clear progression hints for locked facilities.
  */
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { motion } from 'framer-motion';
-import { FaBuilding, FaLock, FaCheck, FaCoins } from 'react-icons/fa';
+import styled from 'styled-components';
+import { FaBuilding, FaLock, FaCheck, FaCoins, FaStar } from 'react-icons/fa';
 import { MdAutorenew } from 'react-icons/md';
 
 import {
@@ -25,9 +27,62 @@ import {
   FacilityFeatureTag,
   FacilityUpgradeCost,
   FacilityUpgradeButton,
-  FacilityRequirement,
   FacilityMaxed,
 } from './DojoPage.styles';
+
+// Enhanced requirement display with progression hints
+const RequirementBox = styled.div`
+  margin-top: 12px;
+  padding: 12px;
+  background: rgba(88, 86, 214, 0.1);
+  border: 1px solid rgba(88, 86, 214, 0.3);
+  border-radius: 10px;
+`;
+
+const RequirementHeader = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+  color: #5856d6;
+  font-weight: 600;
+  font-size: 14px;
+`;
+
+const RequirementProgress = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+`;
+
+const ProgressBar = styled.div`
+  flex: 1;
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+`;
+
+const ProgressFill = styled(motion.div)`
+  height: 100%;
+  background: linear-gradient(90deg, #5856d6 0%, #af52de 100%);
+  border-radius: 3px;
+`;
+
+const ProgressText = styled.span`
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.7);
+  min-width: 70px;
+  text-align: right;
+`;
+
+const HintText = styled.p`
+  margin: 8px 0 0 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.6);
+  line-height: 1.4;
+`;
 
 const DojoFacilityCard = ({
   facility,
@@ -46,6 +101,10 @@ const DojoFacilityCard = ({
   const meetsLevel = nextTier ? userLevel >= nextTier.requiredLevel : false;
   const canUpgrade = nextTier && canAfford && meetsLevel && !upgrading;
 
+  // Calculate level progress toward requirement
+  const levelProgress = nextTier ? Math.min(userLevel / nextTier.requiredLevel, 1) : 1;
+  const levelsNeeded = nextTier ? Math.max(0, nextTier.requiredLevel - userLevel) : 0;
+
   const handleUpgrade = async () => {
     if (!canUpgrade) {
       if (!meetsLevel) {
@@ -58,7 +117,7 @@ const DojoFacilityCard = ({
 
     try {
       await onUpgrade(nextTier.id);
-    } catch (err) {
+    } catch (_err) {
       // Error handled by hook
     }
   };
@@ -112,10 +171,33 @@ const DojoFacilityCard = ({
             )}
 
             {!meetsLevel && (
-              <FacilityRequirement>
-                <FaLock aria-hidden="true" />
-                <span>{t('dojo.facility.requiresLevel', { level: nextTier.requiredLevel })}</span>
-              </FacilityRequirement>
+              <RequirementBox>
+                <RequirementHeader>
+                  <FaLock aria-hidden="true" />
+                  <span>{t('dojo.facility.requiresLevel', { level: nextTier.requiredLevel })}</span>
+                </RequirementHeader>
+
+                <RequirementProgress>
+                  <FaStar style={{ color: '#5856d6', fontSize: 14 }} aria-hidden="true" />
+                  <ProgressBar>
+                    <ProgressFill
+                      initial={{ width: 0 }}
+                      animate={{ width: `${levelProgress * 100}%` }}
+                      transition={{ duration: 0.5 }}
+                    />
+                  </ProgressBar>
+                  <ProgressText>
+                    Lv. {userLevel} / {nextTier.requiredLevel}
+                  </ProgressText>
+                </RequirementProgress>
+
+                <HintText>
+                  {t('dojo.facility.progressHint', {
+                    levels: levelsNeeded,
+                    defaultValue: `${levelsNeeded} more level${levelsNeeded !== 1 ? 's' : ''} needed. Earn XP by summoning warriors, collecting new characters, and training in the Dojo.`
+                  })}
+                </HintText>
+              </RequirementBox>
             )}
           </FacilityUpgradeInfo>
 
