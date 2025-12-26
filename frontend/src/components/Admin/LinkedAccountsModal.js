@@ -6,6 +6,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { FaLink, FaFingerprint, FaGlobe, FaSync, FaEye, FaBan, FaExclamationTriangle, FaCheck } from 'react-icons/fa';
 import { theme } from '../../design-system';
 import { getUserLinkedAccounts, bulkRestrictUsers } from '../../utils/api';
@@ -32,14 +33,15 @@ const RESTRICTION_COLORS = {
 };
 
 const RESTRICTION_TYPES = [
-  { value: 'warning', label: 'Warning' },
-  { value: 'rate_limited', label: 'Rate Limited' },
-  { value: 'shadowban', label: 'Shadowban' },
-  { value: 'temp_ban', label: 'Temporary Ban' },
-  { value: 'perm_ban', label: 'Permanent Ban' },
+  { value: 'warning', labelKey: 'admin.security.restrictionTypes.warning' },
+  { value: 'rate_limited', labelKey: 'admin.security.restrictionTypes.rateLimited' },
+  { value: 'shadowban', labelKey: 'admin.security.restrictionTypes.shadowban' },
+  { value: 'temp_ban', labelKey: 'admin.security.restrictionTypes.tempBan' },
+  { value: 'perm_ban', labelKey: 'admin.security.restrictionTypes.permBan' },
 ];
 
 const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSuccess }) => {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [selectedAccounts, setSelectedAccounts] = useState([]);
@@ -112,7 +114,7 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSu
         bulkAction.reason
       );
       if (onSuccess) {
-        onSuccess(`Restricted ${selectedAccounts.length} linked account(s)`);
+        onSuccess(t('admin.security.restrictedLinked', { count: selectedAccounts.length }));
       }
       setShowBulkAction(false);
       setSelectedAccounts([]);
@@ -142,51 +144,51 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSu
         >
           <ModalHeader>
             <ModalTitle>
-              <FaLink /> Linked Accounts — {username || `User ${userId}`}
+              <FaLink /> {t('admin.security.linkedAccountsTitle', { username: username || `User ${userId}` })}
             </ModalTitle>
             <CloseButton onClick={onClose}>×</CloseButton>
           </ModalHeader>
-          
+
           <ModalBody>
             {loading ? (
               <LoadingState>
-                <FaSync className="spin" /> Loading linked accounts...
+                <FaSync className="spin" /> {t('admin.security.loadingLinkedAccounts')}
               </LoadingState>
             ) : !data ? (
-              <EmptyState>Failed to load linked accounts</EmptyState>
+              <EmptyState>{t('admin.security.failedLoadLinkedAccounts')}</EmptyState>
             ) : (
               <>
                 <SummaryCard>
                   <SummaryItem>
-                    <SummaryLabel>Total Linked</SummaryLabel>
+                    <SummaryLabel>{t('admin.security.totalLinked')}</SummaryLabel>
                     <SummaryValue>{data.totalLinked || 0}</SummaryValue>
                   </SummaryItem>
                   <SummaryItem>
-                    <SummaryLabel>By Fingerprint</SummaryLabel>
+                    <SummaryLabel>{t('admin.security.byFingerprint')}</SummaryLabel>
                     <SummaryValue>{data.linkedByFingerprint?.length || 0}</SummaryValue>
                   </SummaryItem>
                   <SummaryItem>
-                    <SummaryLabel>By IP</SummaryLabel>
+                    <SummaryLabel>{t('admin.security.byIP')}</SummaryLabel>
                     <SummaryValue>{data.linkedByIP?.length || 0}</SummaryValue>
                   </SummaryItem>
                 </SummaryCard>
-                
+
                 {/* Bulk Action Bar */}
                 {data.totalLinked > 0 && (
                   <ActionBar>
                     <SelectionControls>
                       <SmallButton onClick={selectAllLinked}>
-                        <FaCheck /> Select All
+                        <FaCheck /> {t('admin.security.selectAll')}
                       </SmallButton>
                       {selectedAccounts.length > 0 && (
                         <SmallButton onClick={clearSelection}>
-                          Clear ({selectedAccounts.length})
+                          {t('admin.security.clear')} ({selectedAccounts.length})
                         </SmallButton>
                       )}
                     </SelectionControls>
                     {selectedAccounts.length > 0 && (
                       <DangerButton onClick={() => setShowBulkAction(true)}>
-                        <FaBan /> Restrict {selectedAccounts.length} Account(s)
+                        <FaBan /> {t('admin.security.restrictAccounts', { count: selectedAccounts.length })}
                       </DangerButton>
                     )}
                   </ActionBar>
@@ -196,51 +198,51 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSu
                 {showBulkAction && (
                   <BulkActionPanel>
                     <BulkActionHeader>
-                      <FaExclamationTriangle /> Bulk Restrict {selectedAccounts.length} Account(s)
+                      <FaExclamationTriangle /> {t('admin.security.bulkRestrictTitle', { count: selectedAccounts.length })}
                     </BulkActionHeader>
                     <BulkActionForm>
                       <FormRow>
-                        <FormLabel>Type:</FormLabel>
-                        <Select 
+                        <FormLabel>{t('admin.security.type')}:</FormLabel>
+                        <Select
                           value={bulkAction.type}
                           onChange={(e) => setBulkAction(prev => ({ ...prev, type: e.target.value }))}
                         >
-                          {RESTRICTION_TYPES.map(t => (
-                            <option key={t.value} value={t.value}>{t.label}</option>
+                          {RESTRICTION_TYPES.map(rt => (
+                            <option key={rt.value} value={rt.value}>{t(rt.labelKey)}</option>
                           ))}
                         </Select>
                       </FormRow>
                       {(bulkAction.type === 'temp_ban' || bulkAction.type === 'rate_limited') && (
                         <FormRow>
-                          <FormLabel>Duration:</FormLabel>
-                          <Select 
+                          <FormLabel>{t('admin.security.duration')}:</FormLabel>
+                          <Select
                             value={bulkAction.duration}
                             onChange={(e) => setBulkAction(prev => ({ ...prev, duration: e.target.value }))}
                           >
-                            <option value="1h">1 Hour</option>
-                            <option value="24h">24 Hours</option>
-                            <option value="7d">7 Days</option>
-                            <option value="30d">30 Days</option>
+                            <option value="1h">{t('admin.security.durations.1h')}</option>
+                            <option value="24h">{t('admin.security.durations.24h')}</option>
+                            <option value="7d">{t('admin.security.durations.7d')}</option>
+                            <option value="30d">{t('admin.security.durations.30d')}</option>
                           </Select>
                         </FormRow>
                       )}
                       <FormRow>
-                        <FormLabel>Reason:</FormLabel>
+                        <FormLabel>{t('admin.security.reason')}:</FormLabel>
                         <Input
-                          placeholder="Enter reason for bulk restriction..."
+                          placeholder={t('admin.security.reasonPlaceholderBulk')}
                           value={bulkAction.reason}
                           onChange={(e) => setBulkAction(prev => ({ ...prev, reason: e.target.value }))}
                         />
                       </FormRow>
                       <BulkActionButtons>
                         <SecondaryButton onClick={() => setShowBulkAction(false)}>
-                          Cancel
+                          {t('common.cancel')}
                         </SecondaryButton>
-                        <PrimaryButton 
+                        <PrimaryButton
                           onClick={handleBulkRestrict}
                           disabled={!bulkAction.reason || actionLoading}
                         >
-                          {actionLoading ? 'Applying...' : 'Apply Restrictions'}
+                          {actionLoading ? t('admin.security.applying') : t('admin.security.applyRestrictions')}
                         </PrimaryButton>
                       </BulkActionButtons>
                     </BulkActionForm>
@@ -250,11 +252,11 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSu
                 {data.linkedByFingerprint?.length > 0 && (
                   <Section>
                     <SectionHeader>
-                      <FaFingerprint /> Same Device Fingerprint
+                      <FaFingerprint /> {t('admin.security.sameDeviceFingerprint')}
                     </SectionHeader>
                     <AccountList>
                       {data.linkedByFingerprint.map(account => (
-                        <AccountItem 
+                        <AccountItem
                           key={account.id}
                           $selected={selectedAccounts.includes(account.id)}
                         >
@@ -266,16 +268,16 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSu
                           <AccountInfo>
                             <AccountName>{account.username}</AccountName>
                             <AccountMeta>
-                              <RestrictionBadge 
+                              <RestrictionBadge
                                 $color={RESTRICTION_COLORS[account.restrictionType] || RESTRICTION_COLORS.none}
                               >
-                                {account.restrictionType || 'none'}
+                                {account.restrictionType || t('admin.security.restrictionTypes.none')}
                               </RestrictionBadge>
                               <RiskBadge $score={account.riskScore}>
-                                Risk: {account.riskScore || 0}
+                                {t('admin.security.risk')}: {account.riskScore || 0}
                               </RiskBadge>
                               <SharedCount>
-                                {account.sharedFingerprints} shared
+                                {account.sharedFingerprints} {t('admin.security.shared')}
                               </SharedCount>
                             </AccountMeta>
                           </AccountInfo>
@@ -287,15 +289,15 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSu
                     </AccountList>
                   </Section>
                 )}
-                
+
                 {data.linkedByIP?.length > 0 && (
                   <Section>
                     <SectionHeader>
-                      <FaGlobe /> Same IP Address
+                      <FaGlobe /> {t('admin.security.sameIPAddress')}
                     </SectionHeader>
                     <AccountList>
                       {data.linkedByIP.map(account => (
-                        <AccountItem 
+                        <AccountItem
                           key={account.id}
                           $selected={selectedAccounts.includes(account.id)}
                         >
@@ -307,13 +309,13 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSu
                           <AccountInfo>
                             <AccountName>{account.username}</AccountName>
                             <AccountMeta>
-                              <RestrictionBadge 
+                              <RestrictionBadge
                                 $color={RESTRICTION_COLORS[account.restrictionType] || RESTRICTION_COLORS.none}
                               >
-                                {account.restrictionType || 'none'}
+                                {account.restrictionType || t('admin.security.restrictionTypes.none')}
                               </RestrictionBadge>
                               <RiskBadge $score={account.riskScore}>
-                                Risk: {account.riskScore || 0}
+                                {t('admin.security.risk')}: {account.riskScore || 0}
                               </RiskBadge>
                             </AccountMeta>
                           </AccountInfo>
@@ -325,10 +327,10 @@ const LinkedAccountsModal = ({ show, userId, username, onClose, onViewUser, onSu
                     </AccountList>
                   </Section>
                 )}
-                
+
                 {data.totalLinked === 0 && (
                   <EmptyState>
-                    No linked accounts detected
+                    {t('admin.security.noLinkedAccounts')}
                   </EmptyState>
                 )}
               </>

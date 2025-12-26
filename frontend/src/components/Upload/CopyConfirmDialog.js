@@ -10,6 +10,7 @@
 import React, { memo, useEffect, useRef } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { prefersReducedMotion } from '../../utils/featureFlags';
 
@@ -20,6 +21,7 @@ const CopyConfirmDialog = memo(({
   onConfirm,
   onCancel,
 }) => {
+  const { t } = useTranslation();
   const dialogRef = useRef(null);
   const reducedMotion = prefersReducedMotion();
 
@@ -78,17 +80,16 @@ const CopyConfirmDialog = memo(({
             tabIndex={-1}
             {...dialogMotionProps}
           >
-            <Title id="confirm-title">Apply to All Files?</Title>
+            <Title id="confirm-title">{t('upload.copyToAllConfirm', { field })}</Title>
             <Description id="confirm-desc">
-              This will overwrite the <strong>{field}</strong> field for all other files with:{' '}
-              <ValueHighlight>"{value}"</ValueHighlight>
+              {t('upload.copyValue', { field, value })}
             </Description>
             <ButtonGroup>
               <CancelButton onClick={onCancel} type="button">
-                Cancel
+                {t('common.cancel')}
               </CancelButton>
               <ConfirmButton onClick={onConfirm} type="button">
-                Apply to All
+                {t('upload.copy')}
               </ConfirmButton>
             </ButtonGroup>
           </Dialog>
@@ -143,10 +144,6 @@ const Description = styled.p`
   }
 `;
 
-const ValueHighlight = styled.span`
-  color: ${theme.colors.primary};
-  font-weight: ${theme.fontWeights.medium};
-`;
 
 const ButtonGroup = styled.div`
   display: flex;

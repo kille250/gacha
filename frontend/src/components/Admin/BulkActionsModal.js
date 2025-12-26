@@ -6,6 +6,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { FaUsers, FaBan, FaUndo, FaExclamationTriangle } from 'react-icons/fa';
 import { theme } from '../../design-system';
 import { bulkRestrictUsers, bulkUnrestrictUsers } from '../../utils/api';
@@ -25,22 +26,23 @@ import {
 } from './Admin.styles';
 
 const RESTRICTION_TYPES = [
-  { value: 'warning', label: 'Warning', color: '#ffcc00' },
-  { value: 'rate_limited', label: 'Rate Limited', color: '#af52de' },
-  { value: 'shadowban', label: 'Shadowban', color: '#8e8e93' },
-  { value: 'temp_ban', label: 'Temporary Ban', color: '#ff9500' },
-  { value: 'perm_ban', label: 'Permanent Ban', color: '#ff3b30' },
+  { value: 'warning', labelKey: 'admin.security.restrictionTypes.warning', color: '#ffcc00' },
+  { value: 'rate_limited', labelKey: 'admin.security.restrictionTypes.rateLimited', color: '#af52de' },
+  { value: 'shadowban', labelKey: 'admin.security.restrictionTypes.shadowban', color: '#8e8e93' },
+  { value: 'temp_ban', labelKey: 'admin.security.restrictionTypes.tempBan', color: '#ff9500' },
+  { value: 'perm_ban', labelKey: 'admin.security.restrictionTypes.permBan', color: '#ff3b30' },
 ];
 
 const DURATION_OPTIONS = [
-  { value: '1h', label: '1 Hour' },
-  { value: '6h', label: '6 Hours' },
-  { value: '24h', label: '24 Hours' },
-  { value: '7d', label: '7 Days' },
-  { value: '30d', label: '30 Days' },
+  { value: '1h', labelKey: 'admin.security.durations.1h' },
+  { value: '6h', labelKey: 'admin.security.durations.6h' },
+  { value: '24h', labelKey: 'admin.security.durations.24h' },
+  { value: '7d', labelKey: 'admin.security.durations.7d' },
+  { value: '30d', labelKey: 'admin.security.durations.30d' },
 ];
 
 const BulkActionsModal = ({ show, selectedUsers, onClose, onSuccess }) => {
+  const { t } = useTranslation();
   const [action, setAction] = useState('restrict'); // 'restrict' or 'unrestrict'
   const [restrictionType, setRestrictionType] = useState('warning');
   const [duration, setDuration] = useState('24h');
@@ -57,10 +59,10 @@ const BulkActionsModal = ({ show, selectedUsers, onClose, onSuccess }) => {
       
       if (action === 'restrict') {
         await bulkRestrictUsers(userIds, restrictionType, duration, reason);
-        onSuccess(`Applied ${restrictionType} to ${userIds.length} user(s)`);
+        onSuccess(t('admin.security.bulkActionApplied', { type: restrictionType, count: userIds.length }));
       } else {
         await bulkUnrestrictUsers(userIds, reason);
-        onSuccess(`Removed restrictions from ${userIds.length} user(s)`);
+        onSuccess(t('admin.security.bulkActionRemoved', { count: userIds.length }));
       }
       
       setShowConfirm(false);
@@ -90,7 +92,7 @@ const BulkActionsModal = ({ show, selectedUsers, onClose, onSuccess }) => {
         >
           <ModalHeader>
             <ModalTitle>
-              <FaUsers /> Bulk Action ({selectedUsers.length} users)
+              <FaUsers /> {t('admin.security.bulkActionTitle', { count: selectedUsers.length })}
             </ModalTitle>
             <CloseButton onClick={onClose}>×</CloseButton>
           </ModalHeader>
@@ -107,46 +109,46 @@ const BulkActionsModal = ({ show, selectedUsers, onClose, onSuccess }) => {
               </SelectedUsers>
               
               <ActionTabs>
-                <ActionTab 
+                <ActionTab
                   $active={action === 'restrict'}
                   onClick={() => setAction('restrict')}
                 >
-                  <FaBan /> Restrict
+                  <FaBan /> {t('admin.security.bulkActionRestrict')}
                 </ActionTab>
-                <ActionTab 
+                <ActionTab
                   $active={action === 'unrestrict'}
                   onClick={() => setAction('unrestrict')}
                 >
-                  <FaUndo /> Unrestrict
+                  <FaUndo /> {t('admin.security.bulkActionUnrestrict')}
                 </ActionTab>
               </ActionTabs>
               
               {action === 'restrict' && (
                 <>
                   <FormGroup>
-                    <Label>Restriction Type</Label>
-                    <Select 
+                    <Label>{t('admin.security.restrictionType')}</Label>
+                    <Select
                       value={restrictionType}
                       onChange={(e) => setRestrictionType(e.target.value)}
                     >
                       {RESTRICTION_TYPES.map(type => (
                         <option key={type.value} value={type.value}>
-                          {type.label}
+                          {t(type.labelKey)}
                         </option>
                       ))}
                     </Select>
                   </FormGroup>
-                  
+
                   {['temp_ban', 'rate_limited'].includes(restrictionType) && (
                     <FormGroup>
-                      <Label>Duration</Label>
-                      <Select 
+                      <Label>{t('admin.security.duration')}</Label>
+                      <Select
                         value={duration}
                         onChange={(e) => setDuration(e.target.value)}
                       >
                         {DURATION_OPTIONS.map(opt => (
                           <option key={opt.value} value={opt.value}>
-                            {opt.label}
+                            {t(opt.labelKey)}
                           </option>
                         ))}
                       </Select>
@@ -156,22 +158,22 @@ const BulkActionsModal = ({ show, selectedUsers, onClose, onSuccess }) => {
               )}
               
               <FormGroup>
-                <Label>Reason</Label>
+                <Label>{t('admin.security.reason')}</Label>
                 <Input
                   type="text"
-                  placeholder="Enter reason for this action..."
+                  placeholder={t('admin.security.reasonPlaceholderBulk')}
                   value={reason}
                   onChange={(e) => setReason(e.target.value)}
                 />
               </FormGroup>
-              
+
               <ButtonRow>
-                <SecondaryButton onClick={onClose}>Cancel</SecondaryButton>
-                <PrimaryButton 
+                <SecondaryButton onClick={onClose}>{t('common.cancel')}</SecondaryButton>
+                <PrimaryButton
                   onClick={() => setShowConfirm(true)}
                   disabled={!reason.trim()}
                 >
-                  Continue
+                  {t('admin.security.continue')}
                 </PrimaryButton>
               </ButtonRow>
             </ModalBody>
@@ -180,20 +182,20 @@ const BulkActionsModal = ({ show, selectedUsers, onClose, onSuccess }) => {
               <WarningIcon>
                 <FaExclamationTriangle />
               </WarningIcon>
-              <ConfirmTitle>Confirm Bulk Action</ConfirmTitle>
+              <ConfirmTitle>{t('admin.security.bulkActionConfirm')}</ConfirmTitle>
               <ConfirmText>
-                {action === 'restrict' 
-                  ? `Apply "${restrictionType}" to ${selectedUsers.length} user(s)?`
-                  : `Remove restrictions from ${selectedUsers.length} user(s)?`
+                {action === 'restrict'
+                  ? t('admin.security.bulkActionApplyRestrict', { type: restrictionType, count: selectedUsers.length })
+                  : t('admin.security.bulkActionApplyUnrestrict', { count: selectedUsers.length })
                 }
               </ConfirmText>
-              
+
               <ConfirmButtons>
                 <SecondaryButton onClick={() => setShowConfirm(false)}>
-                  Back
+                  {t('common.back')}
                 </SecondaryButton>
                 <DangerButton onClick={handleSubmit} disabled={loading}>
-                  {loading ? 'Processing...' : 'Confirm'}
+                  {loading ? t('admin.security.processing') : t('common.confirm')}
                 </DangerButton>
               </ConfirmButtons>
             </ConfirmPanel>
