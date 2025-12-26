@@ -1019,7 +1019,7 @@ export const RemoveButton = styled.button`
   }
 `;
 
-export const EmptySlot = styled(motion.div)`
+export const EmptySlot = styled(motion.button)`
   aspect-ratio: 3/4;
   border-radius: ${theme.radius.xl};
   border: 2px dashed ${theme.colors.surfaceBorder};
@@ -1033,6 +1033,8 @@ export const EmptySlot = styled(motion.div)`
   color: ${theme.colors.textSecondary};
   transition: all ${theme.transitions.fast};
   min-height: 120px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   svg {
     font-size: 28px;
