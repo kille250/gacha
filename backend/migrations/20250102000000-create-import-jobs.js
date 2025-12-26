@@ -3,6 +3,27 @@
 /** @type {import('sequelize-cli').Migration} */
 module.exports = {
   async up(queryInterface, Sequelize) {
+    // Check if table already exists
+    const tables = await queryInterface.showAllTables();
+    if (tables.includes('ImportJobs')) {
+      console.log('ImportJobs table already exists, skipping creation');
+      return;
+    }
+
+    // Check if ENUM type exists and create if not
+    try {
+      await queryInterface.sequelize.query(`
+        DO $$ BEGIN
+          CREATE TYPE "enum_ImportJobs_status" AS ENUM ('pending', 'processing', 'completed', 'failed', 'cancelled');
+        EXCEPTION
+          WHEN duplicate_object THEN null;
+        END $$;
+      `);
+    } catch (err) {
+      // ENUM might already exist, that's fine
+      console.log('ENUM type may already exist, continuing...');
+    }
+
     await queryInterface.createTable('ImportJobs', {
       id: {
         type: Sequelize.UUID,
@@ -101,5 +122,11 @@ module.exports = {
 
   async down(queryInterface) {
     await queryInterface.dropTable('ImportJobs');
+    // Also drop the ENUM type
+    try {
+      await queryInterface.sequelize.query('DROP TYPE IF EXISTS "enum_ImportJobs_status";');
+    } catch (err) {
+      console.log('Could not drop ENUM type, may not exist');
+    }
   }
 };
