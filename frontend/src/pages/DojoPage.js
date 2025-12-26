@@ -11,7 +11,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Spinner } from '../design-system';
 import { useDojoPage } from '../hooks/useDojoPage';
-import { useDojoFacility } from '../hooks/useGameEnhancements';
+import { useDojoFacility, useAccountLevel } from '../hooks/useGameEnhancements';
 
 // Extracted components
 import {
@@ -107,6 +107,9 @@ const DojoPage = () => {
     upgrade: upgradeFacility,
   } = useDojoFacility();
 
+  // Account level for facility requirements
+  const { accountLevel } = useAccountLevel();
+
   // Specialization picker state
   const [specializingCharacter, setSpecializingCharacter] = useState(null);
 
@@ -194,7 +197,7 @@ const DojoPage = () => {
         {/* Facility Upgrade Card */}
         <DojoFacilityCard
           facility={facility}
-          userLevel={user?.accountLevel || 1}
+          userLevel={accountLevel?.level || 1}
           userPoints={user?.points || 0}
           upgrading={facilityUpgrading}
           onUpgrade={upgradeFacility}
