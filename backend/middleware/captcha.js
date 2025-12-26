@@ -64,6 +64,27 @@ const securityConfigService = require('../services/securityConfigService');
 // reCAPTCHA verification endpoint
 const RECAPTCHA_VERIFY_URL = 'https://www.google.com/recaptcha/api/siteverify';
 
+// Timeout for reCAPTCHA API calls (5 seconds)
+const RECAPTCHA_TIMEOUT = 5000;
+
+/**
+ * Fetch with timeout using AbortController
+ */
+const fetchWithTimeout = async (url, options = {}, timeout = RECAPTCHA_TIMEOUT) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
+
 // Static configuration (headers, etc.)
 const CAPTCHA_STATIC_CONFIG = {
   // Header names
@@ -224,15 +245,24 @@ async function verifyRecaptchaToken(token, action, remoteIp = null) {
       params.append('remoteip', remoteIp);
     }
     
-    // Call Google's verification API
-    const response = await fetch(RECAPTCHA_VERIFY_URL, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded'
-      },
-      body: params.toString()
-    });
-    
+    // Call Google's verification API with timeout
+    let response;
+    try {
+      response = await fetchWithTimeout(RECAPTCHA_VERIFY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded'
+        },
+        body: params.toString()
+      });
+    } catch (err) {
+      if (err.name === 'AbortError') {
+        console.error('[reCAPTCHA] API request timeout');
+        return { success: false, error: 'Verification timeout' };
+      }
+      throw err;
+    }
+
     if (!response.ok) {
       console.error('[reCAPTCHA] API request failed:', response.status);
       return { success: false, error: 'Verification API error' };

@@ -18,12 +18,31 @@ const { addCharacterToStandardBanner } = require('./standardBannerService');
 const JIKAN_API = 'https://api.jikan.moe/v4';
 const MIN_REQUEST_INTERVAL = 500;
 const MAX_RETRIES = 3;
+const FETCH_TIMEOUT = 10000; // 10 second timeout
 
 // Track last request time for rate limiting
 let lastRequestTime = 0;
 
 // Processing lock to prevent concurrent job processing
 let isProcessing = false;
+
+// Maximum pending jobs per admin
+const MAX_PENDING_JOBS_PER_ADMIN = 3;
+
+/**
+ * Fetch with timeout using AbortController
+ */
+const fetchWithTimeout = async (url, timeout = FETCH_TIMEOUT) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, { signal: controller.signal });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
 
 /**
  * Rate-limited fetch for Jikan API
@@ -38,7 +57,15 @@ const rateLimitedFetch = async (url, retryCount = 0) => {
 
   lastRequestTime = Date.now();
 
-  const response = await fetch(url);
+  let response;
+  try {
+    response = await fetchWithTimeout(url);
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`API request timeout after ${FETCH_TIMEOUT}ms`);
+    }
+    throw err;
+  }
 
   if (response.status === 429) {
     if (retryCount < MAX_RETRIES) {
@@ -243,8 +270,21 @@ async function processPendingJobs() {
 
 /**
  * Create a new import job
+ * Enforces per-admin job queue limits to prevent queue flooding
  */
 async function createImportJob(adminId, { characters, series, defaultRarity, autoRarity }) {
+  // Check pending job count for this admin to prevent queue flooding
+  const pendingCount = await ImportJob.count({
+    where: {
+      createdBy: adminId,
+      status: 'pending'
+    }
+  });
+
+  if (pendingCount >= MAX_PENDING_JOBS_PER_ADMIN) {
+    throw new Error(`Maximum pending jobs (${MAX_PENDING_JOBS_PER_ADMIN}) reached. Wait for current jobs to complete.`);
+  }
+
   const job = await ImportJob.createJob(adminId, {
     characters,
     series,

@@ -76,6 +76,7 @@ module.exports = [
         URL: 'readonly',
         URLSearchParams: 'readonly',
         fetch: 'readonly',
+        AbortController: 'readonly',
         // Jest globals
         describe: 'readonly',
         test: 'readonly',

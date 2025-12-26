@@ -22,6 +22,9 @@ const POSITION_BROADCAST_THROTTLE = 50; // ms between position broadcasts
 const FISHING_AREA_ID = 'main_pond'; // Single fishing area for now
 const MAX_PLAYERS_PER_AREA = 50;
 const INACTIVE_TIMEOUT = 60000; // 1 minute before removing inactive player
+const MAX_CONNECTIONS_PER_IP = 3; // Prevent connection flooding from single IP
+const CHAT_COOLDOWN_MS = 500; // 2 messages per second max
+const EMOTE_COOLDOWN_MS = 200; // 5 emotes per second max
 
 // Constants for validation (defined once, not on every event)
 const VALID_STATES = ['walking', 'casting', 'waiting', 'fish_appeared', 'catching', 'success', 'failure'];
@@ -29,6 +32,13 @@ const VALID_EMOTES = ['👋', '🎉', '😊', '🐟', '🎣', '👍', '💪', '�
 
 // Store connected players by area
 const areas = new Map();
+
+// Track connections per IP for rate limiting
+const connectionsByIP = new Map();
+
+// Track chat/emote cooldowns per user
+const chatCooldowns = new Map();
+const emoteCooldowns = new Map();
 
 // Get or create an area
 function getArea(areaId) {
@@ -77,17 +87,34 @@ function initMultiplayer(io) {
 
   fishingNamespace.use(async (socket, next) => {
     try {
+      // Check per-IP connection limit first
+      const clientIP = socket.handshake.headers['x-forwarded-for']?.split(',')[0]?.trim()
+        || socket.handshake.address
+        || 'unknown';
+      const currentIPConnections = connectionsByIP.get(clientIP) || 0;
+
+      if (currentIPConnections >= MAX_CONNECTIONS_PER_IP) {
+        console.log(`[Fishing MP] Rejecting connection from ${clientIP}: too many connections (${currentIPConnections})`);
+        return next(new Error('Too many connections from this IP'));
+      }
+
       const token = socket.handshake.auth.token;
       if (!token) {
         return next(new Error('Authentication required'));
       }
-      
+
       const user = await verifyToken(token);
       if (!user) {
         return next(new Error('Invalid token'));
       }
-      
+
+      // Store IP on socket for cleanup later
+      socket.clientIP = clientIP;
       socket.user = user;
+
+      // Increment connection count for this IP
+      connectionsByIP.set(clientIP, currentIPConnections + 1);
+
       next();
     } catch (_err) {
       next(new Error('Authentication failed'));
@@ -235,24 +262,41 @@ function initMultiplayer(io) {
       socket.to(areaId).emit('player_state', eventData);
     });
     
-    // Handle chat messages (optional - for future)
+    // Handle chat messages with rate limiting
     socket.on('chat', (data) => {
       if (!data.message || typeof data.message !== 'string') return;
-      
+
+      // Check chat cooldown
+      const lastChat = chatCooldowns.get(userId) || 0;
+      const now = Date.now();
+      if (now - lastChat < CHAT_COOLDOWN_MS) {
+        return; // Silently drop spammed messages
+      }
+      chatCooldowns.set(userId, now);
+
       // Sanitize and limit message length
       const message = data.message.trim().slice(0, 100);
       if (!message) return;
-      
+
       socket.to(areaId).emit('chat', {
         id: userId,
         username: username,
         message: message
       });
     });
-    
-    // Handle reactions/emotes
+
+    // Handle reactions/emotes with rate limiting
     socket.on('emote', (data) => {
       if (!data.emote || !VALID_EMOTES.includes(data.emote)) return;
+
+      // Check emote cooldown
+      const lastEmote = emoteCooldowns.get(userId) || 0;
+      const now = Date.now();
+      if (now - lastEmote < EMOTE_COOLDOWN_MS) {
+        return; // Silently drop spammed emotes
+      }
+      emoteCooldowns.set(userId, now);
+
       socket.to(areaId).emit('player_emote', { id: userId, emote: data.emote });
     });
     
@@ -267,7 +311,21 @@ function initMultiplayer(io) {
     // Handle disconnect
     socket.on('disconnect', () => {
       console.log(`[Fishing MP] Player "${username}" disconnected`);
-      
+
+      // Decrement IP connection count
+      if (socket.clientIP) {
+        const currentCount = connectionsByIP.get(socket.clientIP) || 1;
+        if (currentCount <= 1) {
+          connectionsByIP.delete(socket.clientIP);
+        } else {
+          connectionsByIP.set(socket.clientIP, currentCount - 1);
+        }
+      }
+
+      // Clean up user cooldowns
+      chatCooldowns.delete(userId);
+      emoteCooldowns.delete(userId);
+
       const area = areas.get(areaId);
       if (area) {
         // Only broadcast player_left if this socket is still the active one for this user
@@ -276,13 +334,13 @@ function initMultiplayer(io) {
         if (currentPlayer && currentPlayer.socketId === socket.id) {
           area.players.delete(userId);
           area.lastBroadcast.delete(userId);
-          
+
           // Notify others
           socket.to(areaId).emit('player_left', {
             id: userId
           });
         }
-        
+
         // Clean up empty areas
         if (area.players.size === 0) {
           areas.delete(areaId);

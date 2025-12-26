@@ -77,26 +77,28 @@ const mediaFilter = (req, file, cb) => {
 // ===========================================
 
 /**
- * Character upload instance (100 MB limit)
+ * Character upload instance (25 MB limit)
  * Used in admin.js for character management
+ * Reduced from 100MB to prevent disk exhaustion attacks
  */
 const characterUpload = multer({
   storage: characterStorage,
   fileFilter: imageVideoFilter,
   limits: {
-    fileSize: 100 * 1024 * 1024 // 100 MB
+    fileSize: 25 * 1024 * 1024 // 25 MB (reduced from 100 MB)
   }
 });
 
 /**
- * Banner upload instance (50 MB limit)
+ * Banner upload instance (25 MB limit)
  * Used in banners.js for banner management
+ * Reduced from 50MB for consistency
  */
 const bannerUpload = multer({
   storage: bannerStorage,
   fileFilter: mediaFilter,
   limits: {
-    fileSize: 50 * 1024 * 1024 // 50 MB
+    fileSize: 25 * 1024 * 1024 // 25 MB (reduced from 50 MB)
   }
 });
 

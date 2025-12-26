@@ -3,6 +3,7 @@ const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
+const { adminImportLimiter } = require('../middleware/rateLimiter');
 const { Character } = require('../models');
 const { getUrlPath, getFilePath } = require('../config/upload');
 const { downloadImage, generateUniqueFilename, getExtensionFromUrl, safeUnlink } = require('../utils/fileUtils');
@@ -18,6 +19,29 @@ const JIKAN_API = 'https://api.jikan.moe/v4';
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 500; // 500ms between requests (safer than 350ms)
 const MAX_RETRIES = 3;
+const FETCH_TIMEOUT = 10000; // 10 second timeout for API requests
+
+/**
+ * Fetch with timeout using AbortController
+ * @param {string} url - URL to fetch
+ * @param {object} options - Fetch options
+ * @param {number} timeout - Timeout in milliseconds
+ * @returns {Promise<Response>}
+ */
+const fetchWithTimeout = async (url, options = {}, timeout = FETCH_TIMEOUT) => {
+  const controller = new AbortController();
+  const timeoutId = setTimeout(() => controller.abort(), timeout);
+
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    return response;
+  } finally {
+    clearTimeout(timeoutId);
+  }
+};
 
 const rateLimitedFetch = async (url, retryCount = 0) => {
   const now = Date.now();
@@ -29,7 +53,15 @@ const rateLimitedFetch = async (url, retryCount = 0) => {
 
   lastRequestTime = Date.now();
 
-  const response = await fetch(url);
+  let response;
+  try {
+    response = await fetchWithTimeout(url);
+  } catch (err) {
+    if (err.name === 'AbortError') {
+      throw new Error(`API request timeout after ${FETCH_TIMEOUT}ms`);
+    }
+    throw err;
+  }
 
   // Handle rate limiting with exponential backoff
   if (response.status === 429) {
@@ -162,7 +194,7 @@ router.get('/character/:mal_id', auth, adminAuth, async (req, res) => {
 });
 
 // Import selected characters
-router.post('/import', auth, adminAuth, async (req, res) => {
+router.post('/import', auth, adminAuth, adminImportLimiter, async (req, res) => {
   try {
     const { characters, series, rarity = 'common', autoRarity = false } = req.body;
 
@@ -445,18 +477,18 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
     const animatedTags = `${tag} animated -rating:explicit -rating:questionable`;
     let searchUrl = addDanbooruAuth(`${DANBOORU_API}/posts.json?tags=${encodeURIComponent(animatedTags)}&limit=${limit}&page=${page}`);
     
-    let response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
+    let response = await fetchWithTimeout(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
       throw new Error(`Danbooru API error: ${response.status}`);
     }
-    
+
     let posts = await response.json();
-    
+
     // If no animated results, fallback to regular images
     if (posts.length === 0 && animated !== 'false') {
       const fallbackTags = `${tag} -rating:explicit -rating:questionable`;
       searchUrl = addDanbooruAuth(`${DANBOORU_API}/posts.json?tags=${encodeURIComponent(fallbackTags)}&limit=${limit}&page=${page}`);
-      response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
+      response = await fetchWithTimeout(searchUrl, { headers: DANBOORU_HEADERS });
       if (response.ok) {
         posts = await response.json();
       }
@@ -501,13 +533,13 @@ router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
     const tagsQuery = `${tag} animated -rating:explicit -rating:questionable`;
     const searchUrl = addDanbooruAuth(`${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tagsQuery)}&limit=${limit}&page=${page}`);
     
-    const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
+    const response = await fetchWithTimeout(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
       throw new Error(`Danbooru API error: ${response.status}`);
     }
-    
+
     const posts = await response.json();
-    
+
     // Filter to video/gif files only and map
     const results = posts
       .filter(post => isAnimatedExtension(post.file_ext) && post.file_url)
@@ -547,11 +579,11 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
     // Add auth
     searchUrl = addDanbooruAuth(searchUrl);
     
-    const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
+    const response = await fetchWithTimeout(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
       throw new Error(`Danbooru tag API error: ${response.status}`);
     }
-    
+
     const tags = await response.json();
     
     // Map and sort: character tags (4) first, then by post count
@@ -589,7 +621,7 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
  * Reuses existing Danbooru search results - expects the Danbooru media object
  * as input rather than re-fetching from Danbooru.
  */
-router.post('/create-from-danbooru', auth, adminAuth, async (req, res) => {
+router.post('/create-from-danbooru', auth, adminAuth, adminImportLimiter, async (req, res) => {
   try {
     const { name, series, rarity = 'common', isR18 = false, danbooruMedia } = req.body;
 
@@ -735,7 +767,7 @@ router.post('/create-from-danbooru', auth, adminAuth, async (req, res) => {
  * Batch create characters from multiple Danbooru images
  * For efficient bulk imports from Danbooru search results
  */
-router.post('/create-from-danbooru-batch', auth, adminAuth, async (req, res) => {
+router.post('/create-from-danbooru-batch', auth, adminAuth, adminImportLimiter, async (req, res) => {
   try {
     const { characters } = req.body;
 
@@ -966,15 +998,15 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
     // Add authentication if configured
     searchUrl = addDanbooruAuth(searchUrl);
     
-    const response = await fetch(searchUrl, { headers: DANBOORU_HEADERS });
+    const response = await fetchWithTimeout(searchUrl, { headers: DANBOORU_HEADERS });
     if (!response.ok) {
       const errorText = await response.text();
       console.error('Danbooru API error:', response.status, errorText);
       throw new Error(`Danbooru API error: ${response.status}`);
     }
-    
+
     const posts = await response.json();
-    
+
     let results = posts
       .filter(post => post.file_url || post.large_file_url)
       .map(post => ({
@@ -1151,7 +1183,7 @@ const {
  * Start an async character import (background job)
  * Returns immediately with job ID for polling
  */
-router.post('/import-async', auth, adminAuth, async (req, res) => {
+router.post('/import-async', auth, adminAuth, adminImportLimiter, async (req, res) => {
   try {
     const { characters, series, rarity = 'common', autoRarity = false } = req.body;
 

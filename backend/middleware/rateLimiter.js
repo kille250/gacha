@@ -403,6 +403,48 @@ const tradeLimiter = rateLimit({
 });
 
 /**
+ * Admin import rate limiter
+ * Restricts expensive import operations to prevent resource exhaustion
+ *
+ * Security Rationale:
+ * - Import operations involve external API calls, image downloads, and fingerprinting
+ * - Each import can process up to 20 characters with 100MB files each
+ * - Limit to 5 imports per minute to prevent DoS via resource exhaustion
+ */
+const adminImportLimiter = rateLimit({
+  windowMs: 60000,  // 1 minute
+  max: 5,           // 5 import requests per minute
+  message: {
+    error: 'Import rate limit exceeded. Please wait before starting another import.',
+    code: 'IMPORT_RATE_LIMITED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `admin_import:${req.user?.id || 'unknown'}`;
+  }
+});
+
+/**
+ * Public read rate limiter
+ * Prevents scraping of public endpoints (characters, banners, rarities)
+ * More permissive than general limiter but still prevents abuse
+ */
+const publicReadLimiter = rateLimit({
+  windowMs: 60000,  // 1 minute
+  max: 60,          // 60 requests per minute (1/sec sustained)
+  message: {
+    error: 'Too many requests. Please slow down.',
+    code: 'PUBLIC_RATE_LIMITED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `public:${req.deviceSignals?.ipHash || 'unknown'}`;
+  }
+});
+
+/**
  * Force reload config from database
  * Call this when admin updates rate limit settings
  */
@@ -433,6 +475,9 @@ module.exports = {
   fishingPurchaseLimiter,
   rewardClaimLimiter,
   tradeLimiter,
+  // Admin/security rate limiters
+  adminImportLimiter,
+  publicReadLimiter,
   reloadConfig,
   getCurrentConfig
 };

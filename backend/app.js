@@ -1,6 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const http = require('http');
+const crypto = require('crypto');
 const cors = require('cors');
 const helmet = require('helmet');
 const sequelize = require('./config/db');
@@ -9,13 +10,14 @@ const schedule = require('node-schedule');
 const { Server } = require('socket.io');
 const { initMultiplayer } = require('./routes/fishingMultiplayer');
 const { collectDeviceSignals } = require('./middleware/deviceSignals');
-const { 
-  signupVelocityLimiter, 
+const {
+  signupVelocityLimiter,
   burstProtectionLimiter,
   authLimiter,
   rollLimiter,
   fishingLimiter,
-  couponLimiter
+  couponLimiter,
+  publicReadLimiter
 } = require('./middleware/rateLimiter');
 const { decayRiskScores } = require('./services/riskService');
 
@@ -140,17 +142,52 @@ const corsOptions = {
 
 // Daily bonus: Automatically gives 500 points to ALL users at midnight (UTC)
 // This is separate from the manual hourly reward in /api/auth/daily-reward
+// Uses batch processing for reliability on large user counts
 schedule.scheduleJob('0 0 * * *', async function() {
   console.log('[Scheduled Job] Running daily bonus distribution');
+  const bonusAmount = 500;
+  const BATCH_SIZE = 100;
+  let processedCount = 0;
+  let failedCount = 0;
+
   try {
-    const users = await User.findAll();
-    const bonusAmount = 500;
-    
-    for (const user of users) {
-      await user.increment('points', { by: bonusAmount });
+    // Get total user count first
+    const totalUsers = await User.count();
+    console.log(`[Scheduled Job] Processing ${totalUsers} users in batches of ${BATCH_SIZE}`);
+
+    // Process users in batches to prevent memory issues and allow partial success
+    let offset = 0;
+    while (offset < totalUsers) {
+      try {
+        const users = await User.findAll({
+          attributes: ['id'],
+          limit: BATCH_SIZE,
+          offset: offset
+        });
+
+        // Use Promise.allSettled to continue even if some updates fail
+        const results = await Promise.allSettled(
+          users.map(user => user.increment('points', { by: bonusAmount }))
+        );
+
+        results.forEach(result => {
+          if (result.status === 'fulfilled') {
+            processedCount++;
+          } else {
+            failedCount++;
+            console.error('[Scheduled Job] Failed to give bonus to user:', result.reason?.message);
+          }
+        });
+
+        offset += BATCH_SIZE;
+      } catch (batchErr) {
+        console.error(`[Scheduled Job] Batch error at offset ${offset}:`, batchErr.message);
+        offset += BATCH_SIZE; // Skip failed batch and continue
+        failedCount += BATCH_SIZE;
+      }
     }
-    
-    console.log(`[Scheduled Job] Daily bonus of ${bonusAmount} points given to ${users.length} users`);
+
+    console.log(`[Scheduled Job] Daily bonus complete: ${processedCount} succeeded, ${failedCount} failed`);
   } catch (err) {
     console.error('[Scheduled Job] Error distributing daily bonus:', err);
   }
@@ -197,25 +234,32 @@ schedule.scheduleJob('0 3 * * *', async function() {
 // MIDDLEWARE (Order matters!)
 // ===========================================
 
-// 1. Security headers first
+// 1. Request ID tracing (for correlating logs across requests)
+app.use((req, res, next) => {
+  req.requestId = crypto.randomUUID();
+  res.setHeader('X-Request-ID', req.requestId);
+  next();
+});
+
+// 2. Security headers
 app.use(helmet({
   crossOriginResourcePolicy: { policy: "cross-origin" },
   contentSecurityPolicy: false,
 }));
 
-// 2. CORS - MUST come before rate limiting to handle preflight
+// 3. CORS - MUST come before rate limiting to handle preflight
 app.use(cors(corsOptions));
 app.options('*', cors(corsOptions));
 
-// 3. Body parsing with size limits
+// 4. Body parsing with size limits
 // Note: anime-import needs larger limit for bulk character imports (1000+ characters)
 app.use(express.json({ limit: '5mb' }));
 app.use(express.urlencoded({ extended: true, limit: '5mb' }));
 
-// 4. Device signal collection (for fingerprinting)
+// 5. Device signal collection (for fingerprinting)
 app.use(collectDeviceSignals);
 
-// 5. Burst protection (early rejection of obvious spam)
+// 6. Burst protection (early rejection of obvious spam)
 app.use('/api/', burstProtectionLimiter);
 
 // ===========================================
@@ -257,20 +301,22 @@ app.use('/api/auth', authRoutes);
 // Appeals routes
 app.use('/api/appeals', require('./routes/appeals'));
 
-// Character routes - rate limit only roll endpoints
+// Character routes - rate limit roll endpoints + public read protection
 const characterRoutes = require('./routes/characters');
 app.use('/api/characters/roll', rollLimiter);
 app.use('/api/characters/roll-multi', rollLimiter);
+app.use('/api/characters/pricing', publicReadLimiter); // Public endpoint protection
 app.use('/api/characters', characterRoutes);
 
 // Admin routes
-app.use('/api/admin', require('./routes/admin')); 
+app.use('/api/admin', require('./routes/admin'));
 
 // Anime import routes (admin only)
 app.use('/api/anime-import', require('./routes/animeImport'));
 
-// Banner routes - rate limit only roll endpoints
+// Banner routes - rate limit roll endpoints + public read protection
 const bannerRoutes = require('./routes/banners');
+app.use('/api/banners/pricing', publicReadLimiter); // Public endpoint protection
 app.use('/api/banners', bannerRoutes);
 
 // Coupon routes - rate limit redemption endpoint
@@ -282,8 +328,8 @@ app.use('/api/coupons', require('./routes/coupons'));
 app.use('/api/fishing/cast', fishingLimiter);
 app.use('/api/fishing', require('./routes/fishing/index'));
 
-// Rarity configuration routes
-app.use('/api/rarities', require('./routes/rarities'));
+// Rarity configuration routes - add public read rate limiting
+app.use('/api/rarities', publicReadLimiter, require('./routes/rarities'));
 
 // Dojo (idle game) routes
 app.use('/api/dojo', require('./routes/dojo'));

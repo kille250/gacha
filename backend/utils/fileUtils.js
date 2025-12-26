@@ -1,6 +1,6 @@
 /**
  * File Utility Functions
- * 
+ *
  * Centralized file operations for safe deletion and image downloading
  */
 const fs = require('fs');
@@ -8,6 +8,9 @@ const path = require('path');
 const http = require('http');
 const https = require('https');
 const { UPLOAD_DIRS, getFilePath } = require('../config/upload');
+
+// Default timeout for HTTP requests (30 seconds)
+const DEFAULT_DOWNLOAD_TIMEOUT = 30000;
 
 /**
  * Safely delete a file, ignoring errors if file doesn't exist
@@ -74,24 +77,26 @@ const buildRequestOptions = (targetUrl) => ({
  * @param {object} options - Optional configuration
  * @param {number} options.maxRedirects - Maximum redirects to follow (default: 5)
  * @param {number} options.minFileSize - Minimum file size in bytes (default: 500)
+ * @param {number} options.timeout - Request timeout in ms (default: 30000)
  * @returns {Promise<string>} - Resolves with filepath on success
  */
 const downloadImage = (url, filename, uploadType = 'characters', options = {}) => {
-  const { maxRedirects = 5, minFileSize = 500 } = options;
-  
+  const { maxRedirects = 5, minFileSize = 500, timeout = DEFAULT_DOWNLOAD_TIMEOUT } = options;
+
   return new Promise((resolve, reject) => {
     const filepath = path.join(UPLOAD_DIRS[uploadType] || UPLOAD_DIRS.characters, filename);
-    
+    let aborted = false;
+
     const makeRequest = (currentUrl, redirectCount = 0) => {
       if (redirectCount > maxRedirects) {
         reject(new Error('Too many redirects'));
         return;
       }
-      
+
       const targetUrl = new URL(currentUrl);
       const protocol = targetUrl.protocol === 'https:' ? https : http;
       const requestOptions = buildRequestOptions(targetUrl);
-      
+
       const req = protocol.request(requestOptions, (response) => {
         // Handle redirects (301, 302, 303, 307, 308)
         if (response.statusCode >= 300 && response.statusCode < 400 && response.headers.location) {
@@ -100,25 +105,26 @@ const downloadImage = (url, filename, uploadType = 'characters', options = {}) =
           makeRequest(redirectUrl.href, redirectCount + 1);
           return;
         }
-        
+
         // Check for successful response
         if (response.statusCode !== 200) {
           reject(new Error(`Download failed with status ${response.statusCode}`));
           return;
         }
-        
+
         // Create write stream only after we have a successful response
         const file = fs.createWriteStream(filepath);
-        
+
         file.on('error', (err) => {
           fs.unlink(filepath, () => {});
           reject(err);
         });
-        
+
         response.pipe(file);
-        
+
         file.on('finish', () => {
           file.close(() => {
+            if (aborted) return; // Don't resolve if we already aborted
             // Verify the file was actually downloaded
             fs.stat(filepath, (err, stats) => {
               if (err || stats.size < minFileSize) {
@@ -132,15 +138,24 @@ const downloadImage = (url, filename, uploadType = 'characters', options = {}) =
           });
         });
       });
-      
+
+      // Set socket timeout to prevent hanging connections
+      req.setTimeout(timeout, () => {
+        aborted = true;
+        req.destroy();
+        fs.unlink(filepath, () => {});
+        reject(new Error(`Download timeout after ${timeout}ms`));
+      });
+
       req.on('error', (err) => {
+        if (aborted) return; // Already handled by timeout
         fs.unlink(filepath, () => {});
         reject(err);
       });
-      
+
       req.end();
     };
-    
+
     makeRequest(url);
   });
 };

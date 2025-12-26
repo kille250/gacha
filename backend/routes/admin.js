@@ -161,15 +161,25 @@ router.get('/health', auth, adminAuth, async (req, res) => {
 });
 
 // Combined dashboard endpoint - reduces multiple API calls to one
+// Uses pagination/limits to prevent memory exhaustion on large datasets
 router.get('/dashboard', auth, adminAuth, async (req, res) => {
   try {
-    // Fetch all data in parallel
-    const [users, characters, banners, coupons, fishStats] = await Promise.all([
+    // Pagination limits to prevent memory exhaustion
+    const MAX_USERS = 500;
+    const MAX_CHARACTERS = 1000;
+    const MAX_COUPONS = 100;
+
+    // Fetch all data in parallel with limits
+    const [users, characters, banners, coupons, fishStats, totalCounts] = await Promise.all([
       User.findAll({
         attributes: ['id', 'username', 'points', 'isAdmin', 'allowR18', 'showR18', 'autofishEnabled', 'autofishUnlockedByRank', 'createdAt'],
-        order: [['points', 'DESC']]
+        order: [['points', 'DESC']],
+        limit: MAX_USERS
       }),
-      Character.findAll(),
+      Character.findAll({
+        attributes: ['id', 'name', 'series', 'rarity', 'image', 'isR18', 'createdAt'],
+        limit: MAX_CHARACTERS
+      }),
       Banner.findAll({
         include: [{ model: Character }],
         order: [['featured', 'DESC'], ['displayOrder', 'ASC'], ['createdAt', 'DESC']]
@@ -179,19 +189,31 @@ router.get('/dashboard', auth, adminAuth, async (req, res) => {
           { model: Character, attributes: ['id', 'name', 'rarity', 'image'], required: false },
           { model: CouponRedemption, attributes: ['id', 'userId', 'redeemedAt'], required: false }
         ],
-        order: [['createdAt', 'DESC']]
+        order: [['createdAt', 'DESC']],
+        limit: MAX_COUPONS
       }),
       // Get total fish caught (sum of all quantities in FishInventory)
-      FishInventory.sum('quantity').catch(() => 0)
+      FishInventory.sum('quantity').catch(() => 0),
+      // Get total counts for pagination info
+      Promise.all([
+        User.count(),
+        Character.count(),
+        Coupon.count()
+      ])
     ]);
-    
-    res.json({ 
-      users, 
-      characters, 
-      banners, 
+
+    res.json({
+      users,
+      characters,
+      banners,
       coupons,
       stats: {
         totalFishCaught: fishStats || 0
+      },
+      pagination: {
+        users: { returned: users.length, total: totalCounts[0], limit: MAX_USERS },
+        characters: { returned: characters.length, total: totalCounts[1], limit: MAX_CHARACTERS },
+        coupons: { returned: coupons.length, total: totalCounts[2], limit: MAX_COUPONS }
       }
     });
   } catch (err) {
