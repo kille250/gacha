@@ -1641,3 +1641,207 @@ export const CharSpecBadge = styled.div`
   color: white;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 `;
+
+// ===========================================
+// FACILITY UPGRADE STYLES
+// ===========================================
+
+export const FacilitySection = styled.section`
+  background: ${theme.colors.surface};
+  border-radius: ${theme.radius.xl};
+  padding: ${theme.spacing.lg};
+  border: 1px solid ${theme.colors.surfaceBorder};
+`;
+
+export const FacilityHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: ${theme.spacing.md};
+`;
+
+export const FacilityTitle = styled.h3`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  margin: 0;
+
+  svg {
+    color: ${theme.colors.primary};
+  }
+`;
+
+export const FacilityCurrentTier = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.3);
+  border-radius: ${theme.radius.lg};
+  margin-bottom: ${theme.spacing.md};
+`;
+
+export const FacilityTierBadge = styled.div`
+  width: 28px;
+  height: 28px;
+  border-radius: ${theme.radius.full};
+  background: linear-gradient(135deg, #4caf50, #388e3c);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 14px;
+`;
+
+export const FacilityTierName = styled.span`
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
+  color: #4caf50;
+`;
+
+export const FacilityUpgradeCard = styled.div`
+  display: flex;
+  align-items: stretch;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  background: ${props => props.$locked
+    ? 'rgba(255, 255, 255, 0.02)'
+    : props.$canUpgrade
+      ? 'linear-gradient(135deg, rgba(33, 150, 243, 0.1), rgba(33, 150, 243, 0.05))'
+      : 'rgba(255, 255, 255, 0.03)'};
+  border: 1px solid ${props => props.$locked
+    ? 'rgba(255, 255, 255, 0.05)'
+    : props.$canUpgrade
+      ? 'rgba(33, 150, 243, 0.3)'
+      : 'rgba(255, 255, 255, 0.1)'};
+  border-radius: ${theme.radius.lg};
+  opacity: ${props => props.$locked ? 0.7 : 1};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex-direction: column;
+  }
+`;
+
+export const FacilityUpgradeInfo = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+`;
+
+export const FacilityUpgradeName = styled.div`
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+`;
+
+export const FacilityUpgradeDesc = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+`;
+
+export const FacilityUpgradeFeatures = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.xs};
+  margin-top: ${theme.spacing.xs};
+`;
+
+export const FacilityFeatureTag = styled.span`
+  padding: 2px 8px;
+  background: rgba(156, 39, 176, 0.15);
+  border: 1px solid rgba(156, 39, 176, 0.3);
+  border-radius: ${theme.radius.sm};
+  font-size: ${theme.fontSizes.xs};
+  color: #ba68c8;
+  font-weight: ${theme.fontWeights.medium};
+`;
+
+export const FacilityRequirement = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  margin-top: ${theme.spacing.xs};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.warning};
+
+  svg {
+    font-size: 12px;
+  }
+`;
+
+export const FacilityUpgradeCost = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    justify-content: flex-start;
+  }
+`;
+
+export const FacilityUpgradeButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  border-radius: ${theme.radius.lg};
+  border: none;
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all ${theme.transitions.fast};
+
+  background: ${props => {
+    if (props.disabled) {
+      if (!props.$meetsLevel) return 'rgba(255, 255, 255, 0.1)';
+      if (!props.$canAfford) return 'rgba(244, 67, 54, 0.2)';
+      return 'rgba(255, 255, 255, 0.1)';
+    }
+    return 'linear-gradient(135deg, #2196f3, #1976d2)';
+  }};
+
+  color: ${props => {
+    if (props.disabled) {
+      if (!props.$meetsLevel) return theme.colors.textSecondary;
+      if (!props.$canAfford) return '#f44336';
+      return theme.colors.textSecondary;
+    }
+    return 'white';
+  }};
+
+  &:hover:not(:disabled) {
+    transform: scale(1.02);
+    box-shadow: 0 4px 12px rgba(33, 150, 243, 0.3);
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
+export const FacilityMaxed = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: rgba(76, 175, 80, 0.1);
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  border-radius: ${theme.radius.lg};
+  color: #4caf50;
+  font-weight: ${theme.fontWeights.medium};
+`;

@@ -32,6 +32,7 @@ const {
   getShardsToLevel
 } = require('../utils/characterLeveling');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
+const { updateVoyageProgress } = require('../services/retentionService');
 
 // ===========================================
 // ROLL ENDPOINTS
@@ -99,9 +100,19 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
       ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
-    
+
+    // Update voyage progress for gacha pulls
+    const freshUser = await User.findByPk(userId);
+    if (freshUser) {
+      updateVoyageProgress(freshUser, 'gacha_pulls', 1);
+      if (acquisition.isNew) {
+        updateVoyageProgress(freshUser, 'new_character', 1);
+      }
+      await freshUser.save();
+    }
+
     releaseRollLock(userId);
-    
+
     // Refetch user points if bonus was awarded
     const finalPoints = acquisition.bonusPoints > 0 ? user.points : user.points;
     
@@ -203,9 +214,19 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
       ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
-    
+
+    // Update voyage progress for gacha pulls
+    const freshUser = await User.findByPk(userId);
+    if (freshUser) {
+      updateVoyageProgress(freshUser, 'gacha_pulls', count);
+      if (newCards > 0) {
+        updateVoyageProgress(freshUser, 'new_character', newCards);
+      }
+      await freshUser.save();
+    }
+
     releaseRollLock(userId);
-    
+
     res.json({
       characters: charactersWithLevels,
       updatedPoints: user.points,

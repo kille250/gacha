@@ -11,6 +11,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Spinner } from '../design-system';
 import { useDojoPage } from '../hooks/useDojoPage';
+import { useDojoFacility } from '../hooks/useGameEnhancements';
 
 // Extracted components
 import {
@@ -23,6 +24,7 @@ import {
   DojoTrainingSlots,
   DojoUpgradesSection,
   DojoCharacterPicker,
+  DojoFacilityCard,
   PageContainer,
   LoadingContainer,
   MainContent,
@@ -97,6 +99,13 @@ const DojoPage = () => {
     // Refresh function
     refreshStatus,
   } = useDojoPage();
+
+  // Facility upgrade state
+  const {
+    facility,
+    upgrading: facilityUpgrading,
+    upgrade: upgradeFacility,
+  } = useDojoFacility();
 
   // Specialization picker state
   const [specializingCharacter, setSpecializingCharacter] = useState(null);
@@ -180,6 +189,16 @@ const DojoPage = () => {
           onOpenPicker={openCharacterPicker}
           onUnassign={handleUnassign}
           onOpenSpecialization={handleOpenSpecialization}
+        />
+
+        {/* Facility Upgrade Card */}
+        <DojoFacilityCard
+          facility={facility}
+          userLevel={user?.level || 1}
+          userPoints={user?.points || 0}
+          upgrading={facilityUpgrading}
+          onUpgrade={upgradeFacility}
+          setError={setError}
         />
 
         {/* Upgrades Section */}

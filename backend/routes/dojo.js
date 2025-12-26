@@ -22,6 +22,7 @@ const {
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
+const { updateVoyageProgress, completeDailyActivity } = require('../services/retentionService');
 
 // Rate limiting is now handled via dojoLastClaim in the database
 // This makes it multi-server safe (works behind load balancers)
@@ -589,7 +590,17 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
       ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
-    
+
+    // Update voyage progress for dojo claims (claim_dojo_rewards objective)
+    // Refetch user to avoid stale data after transaction
+    const freshUser = await User.findByPk(userId);
+    if (freshUser) {
+      updateVoyageProgress(freshUser, 'claim_dojo_rewards', 1);
+      completeDailyActivity(freshUser, 'collect_dojo');
+      completeDailyActivity(freshUser, 'complete_training');
+      await freshUser.save();
+    }
+
     // Cooldown is now enforced via dojoLastClaim (set above)
     // No need for in-memory tracking
     
@@ -737,7 +748,14 @@ router.post('/upgrade', [auth, enforcementMiddleware, deviceBindingMiddleware('d
       ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
-    
+
+    // Update daily activity progress
+    const freshUser = await User.findByPk(userId);
+    if (freshUser) {
+      completeDailyActivity(freshUser, 'upgrade_facility');
+      await freshUser.save();
+    }
+
     // Get updated available upgrades
     const availableUpgrades = getAvailableUpgrades(upgrades);
     

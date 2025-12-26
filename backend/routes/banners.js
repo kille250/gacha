@@ -40,6 +40,7 @@ const { lockoutMiddleware } = require('../middleware/captcha');
 const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { getUserSpecializationBonuses } = require('../services/dojoEnhancedService');
+const { updateVoyageProgress } = require('../services/retentionService');
 
 // ===========================================
 // HELPER FUNCTIONS
@@ -703,9 +704,19 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
       ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
-    
+
+    // Update voyage progress for gacha pulls
+    const freshUser = await User.findByPk(userId);
+    if (freshUser) {
+      updateVoyageProgress(freshUser, 'gacha_pulls', 1);
+      if (acquisition.isNew) {
+        updateVoyageProgress(freshUser, 'new_character', 1);
+      }
+      await freshUser.save();
+    }
+
     releaseRollLock(userId);
-    
+
     res.json({
       character: result.character,
       isBannerCharacter: isBannerPull,
@@ -909,9 +920,19 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
       ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
-    
+
+    // Update voyage progress for gacha pulls
+    const freshUser = await User.findByPk(userId);
+    if (freshUser) {
+      updateVoyageProgress(freshUser, 'gacha_pulls', count);
+      if (newCards > 0) {
+        updateVoyageProgress(freshUser, 'new_character', newCards);
+      }
+      await freshUser.save();
+    }
+
     releaseRollLock(userId);
-    
+
     res.json({
       characters: charactersWithLevels,
       bannerName: banner.name,

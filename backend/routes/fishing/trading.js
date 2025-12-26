@@ -30,6 +30,7 @@ const { isTradingAllowed, applyShadowbanPenalty, getEnforcementContext } = requi
 const { logEconomyAction, AUDIT_EVENTS } = require('../../services/auditService');
 const { checkVelocityLimit, detectVelocityAnomaly } = require('../../services/economyService');
 const { updateRiskScore, RISK_ACTIONS } = require('../../services/riskService');
+const { completeDailyActivity } = require('../../services/retentionService');
 const { enforcePolicy } = require('../../middleware/policies');
 const { 
   captchaMiddleware, 
@@ -450,7 +451,14 @@ router.post('/trade', [auth, lockoutMiddleware(), enforcementMiddleware, deviceB
       ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
-    
+
+    // Update daily activity progress
+    const freshUser = await User.findByPk(userId);
+    if (freshUser) {
+      completeDailyActivity(freshUser, 'trade_fish');
+      await freshUser.save();
+    }
+
     // Log the trade for audit
     await logEconomyAction(AUDIT_EVENTS.TRADE_COMPLETED, userId, {
       tradeId,

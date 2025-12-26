@@ -14,4 +14,5 @@ export { default as DojoHourlyRateCard } from './DojoHourlyRateCard';
 export { default as DojoTrainingSlots } from './DojoTrainingSlots';
 export { default as DojoUpgradesSection } from './DojoUpgradesSection';
 export { default as DojoCharacterPicker } from './DojoCharacterPicker';
+export { default as DojoFacilityCard } from './DojoFacilityCard';
 export * from './DojoPage.styles';

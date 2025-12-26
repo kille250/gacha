@@ -43,6 +43,7 @@ const {
 const { getUserRank } = require('../../services/rankService');
 const { updateRiskScore, RISK_ACTIONS } = require('../../services/riskService');
 const { getUserSpecializationBonuses } = require('../../services/dojoEnhancedService');
+const { updateVoyageProgress, completeDailyActivity } = require('../../services/retentionService');
 
 // Error classes
 const {
@@ -461,9 +462,10 @@ router.post('/catch', [auth, lockoutMiddleware(), enforcementMiddleware], async 
         user.fishingChallenges = challenges;
         await user.save({ transaction });
         
-        return { 
+        return {
           user, catchQuality, bonusMultiplier, fishQuantity, catchMessage, inventoryItem,
-          streakBonus, currentStreak: daily.currentStreak, challengeRewards, success: true
+          streakBonus, currentStreak: daily.currentStreak, challengeRewards, success: true,
+          isNewSpecies: created
         };
       } else {
         // Miss
@@ -495,7 +497,38 @@ router.post('/catch', [auth, lockoutMiddleware(), enforcementMiddleware], async 
       ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
-    
+
+    // Update voyage progress and daily activities for successful catches
+    if (result.success) {
+      const freshUser = await User.findByPk(userId);
+      if (freshUser) {
+        // Track voyage progress based on fish rarity/type
+        if (['rare', 'epic', 'legendary'].includes(fish.rarity)) {
+          updateVoyageProgress(freshUser, 'catch_deep_water', result.fishQuantity);
+        }
+        if (fish.rarity === 'legendary') {
+          updateVoyageProgress(freshUser, 'catch_weekly_legendary', 1);
+        }
+
+        // Track daily activities
+        const dailyData = freshUser.fishingDaily || {};
+        const catches = dailyData.catches || 0;
+        // Complete catch_10_fish if threshold is reached
+        if (catches >= 10) {
+          completeDailyActivity(freshUser, 'catch_10_fish');
+        }
+        // Complete perfect_catch if it was a perfect catch
+        if (result.catchQuality === 'perfect') {
+          completeDailyActivity(freshUser, 'perfect_catch');
+        }
+        // Complete discover_species if this was a new species
+        if (result.isNewSpecies) {
+          completeDailyActivity(freshUser, 'discover_species');
+        }
+        await freshUser.save();
+      }
+    }
+
     if (result.success) {
       const { 
         user, catchQuality, bonusMultiplier, fishQuantity, catchMessage, inventoryItem,
