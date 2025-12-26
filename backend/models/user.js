@@ -379,6 +379,304 @@ User.init(
         this.setDataValue('riskScoreHistory', JSON.stringify(arr));
       }
     },
+
+    // ===========================================
+    // GAME ENHANCEMENT FIELDS
+    // ===========================================
+
+    // Account level for facility tier unlocks
+    accountLevel: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 1
+    },
+
+    // Dojo facility tiers unlocked (JSON array)
+    dojoFacilityTiers: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '["basic"]',
+      get() {
+        const value = this.getDataValue('dojoFacilityTiers');
+        try {
+          return value ? JSON.parse(value) : ['basic'];
+        } catch {
+          return ['basic'];
+        }
+      },
+      set(value) {
+        this.setDataValue('dojoFacilityTiers', JSON.stringify(value || ['basic']));
+      }
+    },
+
+    // Bait inventory (JSON object: {baitId: quantity})
+    baitInventory: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{}',
+      get() {
+        const value = this.getDataValue('baitInventory');
+        try {
+          return value ? JSON.parse(value) : {};
+        } catch {
+          return {};
+        }
+      },
+      set(value) {
+        this.setDataValue('baitInventory', JSON.stringify(value || {}));
+      }
+    },
+
+    // Gacha pity tracking (JSON object)
+    gachaPity: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"pullsSinceRare":0,"pullsSinceEpic":0,"pullsSinceLegendary":0,"totalPulls":0}',
+      get() {
+        const value = this.getDataValue('gachaPity');
+        try {
+          return value ? JSON.parse(value) : {
+            pullsSinceRare: 0,
+            pullsSinceEpic: 0,
+            pullsSinceLegendary: 0,
+            totalPulls: 0
+          };
+        } catch {
+          return { pullsSinceRare: 0, pullsSinceEpic: 0, pullsSinceLegendary: 0, totalPulls: 0 };
+        }
+      },
+      set(value) {
+        this.setDataValue('gachaPity', JSON.stringify(value || {}));
+      }
+    },
+
+    // Banner-specific pity (JSON object: {bannerId: pityData})
+    bannerPity: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{}',
+      get() {
+        const value = this.getDataValue('bannerPity');
+        try {
+          return value ? JSON.parse(value) : {};
+        } catch {
+          return {};
+        }
+      },
+      set(value) {
+        this.setDataValue('bannerPity', JSON.stringify(value || {}));
+      }
+    },
+
+    // Pull history for milestones (JSON object: {bannerId: {total, claimed[]}})
+    pullHistory: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{}',
+      get() {
+        const value = this.getDataValue('pullHistory');
+        try {
+          return value ? JSON.parse(value) : {};
+        } catch {
+          return {};
+        }
+      },
+      set(value) {
+        this.setDataValue('pullHistory', JSON.stringify(value || {}));
+      }
+    },
+
+    // Fate points per banner (JSON object: {bannerId: {points, lastUpdate}})
+    fatePoints: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{}',
+      get() {
+        const value = this.getDataValue('fatePoints');
+        try {
+          return value ? JSON.parse(value) : {};
+        } catch {
+          return {};
+        }
+      },
+      set(value) {
+        this.setDataValue('fatePoints', JSON.stringify(value || {}));
+      }
+    },
+
+    // Character selectors earned (JSON array)
+    characterSelectors: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('characterSelectors');
+        try {
+          return value ? JSON.parse(value) : [];
+        } catch {
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('characterSelectors', JSON.stringify(value || []));
+      }
+    },
+
+    // Weekly voyage progress (JSON object: {weekNumber: voyageData})
+    weeklyVoyages: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{}',
+      get() {
+        const value = this.getDataValue('weeklyVoyages');
+        try {
+          return value ? JSON.parse(value) : {};
+        } catch {
+          return {};
+        }
+      },
+      set(value) {
+        this.setDataValue('weeklyVoyages', JSON.stringify(value || {}));
+      }
+    },
+
+    // Daily activities (JSON object: {date: activityData})
+    dailyActivities: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{}',
+      get() {
+        const value = this.getDataValue('dailyActivities');
+        try {
+          return value ? JSON.parse(value) : {};
+        } catch {
+          return {};
+        }
+      },
+      set(value) {
+        this.setDataValue('dailyActivities', JSON.stringify(value || {}));
+      }
+    },
+
+    // Character mastery progress (JSON object: {characterId: masteryData})
+    characterMastery: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{}',
+      get() {
+        const value = this.getDataValue('characterMastery');
+        try {
+          return value ? JSON.parse(value) : {};
+        } catch {
+          return {};
+        }
+      },
+      set(value) {
+        this.setDataValue('characterMastery', JSON.stringify(value || {}));
+      }
+    },
+
+    // Fish codex (collection tracking)
+    fishCodex: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"discovered":[],"biomeProgress":{},"claimedMilestones":[],"recentDiscoveries":[]}',
+      get() {
+        const value = this.getDataValue('fishCodex');
+        try {
+          return value ? JSON.parse(value) : {
+            discovered: [],
+            biomeProgress: {},
+            claimedMilestones: [],
+            recentDiscoveries: []
+          };
+        } catch {
+          return { discovered: [], biomeProgress: {}, claimedMilestones: [], recentDiscoveries: [] };
+        }
+      },
+      set(value) {
+        this.setDataValue('fishCodex', JSON.stringify(value || {}));
+      }
+    },
+
+    // Luck meter for anti-frustration (JSON object: {fishing, gacha, lastUpdate})
+    luckMeter: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"fishing":0,"gacha":0,"lastUpdate":null}',
+      get() {
+        const value = this.getDataValue('luckMeter');
+        try {
+          return value ? JSON.parse(value) : { fishing: 0, gacha: 0, lastUpdate: null };
+        } catch {
+          return { fishing: 0, gacha: 0, lastUpdate: null };
+        }
+      },
+      set(value) {
+        this.setDataValue('luckMeter', JSON.stringify(value || {}));
+      }
+    },
+
+    // Last login for return bonus calculation
+    lastLogin: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+
+    // Return bonus claimed timestamp
+    returnBonusClaimed: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+
+    // Weekly banner tickets (from voyages)
+    weeklyBannerTickets: {
+      type: DataTypes.INTEGER,
+      allowNull: true,
+      defaultValue: 0
+    },
+
+    // Items inventory (JSON array)
+    items: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('items');
+        try {
+          return value ? JSON.parse(value) : [];
+        } catch {
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('items', JSON.stringify(value || []));
+      }
+    },
+
+    // Rod skins unlocked (JSON array)
+    rodSkins: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('rodSkins');
+        try {
+          return value ? JSON.parse(value) : [];
+        } catch {
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('rodSkins', JSON.stringify(value || []));
+      }
+    },
+
+    // Last wandering warrior visit (for dojo alternative path)
+    lastWanderingWarrior: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
   },
   {
     sequelize,

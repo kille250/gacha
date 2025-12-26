@@ -31,6 +31,29 @@ const UserCharacter = sequelize.define('UserCharacter', {
     type: DataTypes.INTEGER,
     defaultValue: 0,
     allowNull: false
+  },
+  // Specialization path (strength, wisdom, spirit) - permanent choice
+  specialization: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    defaultValue: null
+  },
+  // Mastery XP for this character
+  masteryXp: {
+    type: DataTypes.INTEGER,
+    defaultValue: 0,
+    allowNull: false
+  },
+  // Training method currently assigned (standard, intense, meditation, sparring)
+  trainingMethod: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    defaultValue: 'standard'
+  },
+  // If in intense training, when it ends
+  intenseTrainingEnd: {
+    type: DataTypes.DATE,
+    allowNull: true
   }
 }, {
   tableName: 'UserCharacters',

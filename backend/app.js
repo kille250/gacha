@@ -334,6 +334,9 @@ app.use('/api/rarities', publicReadLimiter, require('./routes/rarities'));
 // Dojo (idle game) routes
 app.use('/api/dojo', require('./routes/dojo'));
 
+// Game enhancements routes (specializations, breakthroughs, voyages, mastery, etc.)
+app.use('/api/enhancements', require('./routes/gameEnhancements'));
+
 const PORT = process.env.PORT || 5000;
 
 // Create HTTP server for Express + Socket.IO
