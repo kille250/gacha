@@ -5,7 +5,6 @@
  */
 
 import React from 'react';
-import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { MdClose, MdSearch } from 'react-icons/md';
 
@@ -39,22 +38,19 @@ import {
 } from './DojoPage.styles';
 
 const DojoCharacterPicker = ({
-  isOpen,
   onClose,
   charactersLoading,
   filteredCharacters,
   charactersBySeries,
   searchQuery,
   onSearchChange,
-  onAssign,
+  onSelect,
   getRarityColor,
 }) => {
   const { t } = useTranslation();
 
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <ModalOverlay
+    <ModalOverlay
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
@@ -112,7 +108,7 @@ const DojoCharacterPicker = ({
                           <CharacterCard
                             key={char.id}
                             $color={getRarityColor(char.rarity)}
-                            onClick={() => onAssign(char.id)}
+                            onClick={() => onSelect(char.id)}
                             whileHover={{ scale: 1.05 }}
                             whileTap={{ scale: 0.95 }}
                             role="listitem"
@@ -161,8 +157,6 @@ const DojoCharacterPicker = ({
             </ModalBody>
           </ModalContent>
         </ModalOverlay>
-      )}
-    </AnimatePresence>
   );
 };
 
