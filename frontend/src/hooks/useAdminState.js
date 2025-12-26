@@ -378,6 +378,8 @@ export const useAdminState = () => {
 
     try {
       await toggleBannerFeaturedAction(banner.id, newFeaturedStatus);
+      // Fetch updated data to get correct sort order from backend
+      await fetchAllData();
       showSuccess(`${banner.name} ${newFeaturedStatus ? t('admin.markedAsFeatured') : t('admin.unmarkedAsFeatured')}`);
       return { success: true };
     } catch (err) {
@@ -388,7 +390,7 @@ export const useAdminState = () => {
     } finally {
       endOperation(opId);
     }
-  }, [t, showSuccess, showError, startOperation, endOperation]);
+  }, [t, showSuccess, showError, fetchAllData, startOperation, endOperation]);
 
   const handleDragEnd = useCallback(async (event) => {
     const { active, over } = event;
@@ -403,6 +405,8 @@ export const useAdminState = () => {
 
       try {
         await updateBannerOrderAction(newBanners.map(b => b.id));
+        // Fetch updated data to ensure UI matches backend state
+        await fetchAllData();
         showSuccess(t('admin.bannerOrderUpdated'));
         return { success: true };
       } catch (err) {
@@ -413,7 +417,7 @@ export const useAdminState = () => {
       }
     }
     return { success: true };
-  }, [banners, t, showSuccess, showError]);
+  }, [banners, t, showSuccess, showError, fetchAllData]);
 
   // ==================== COUPON HANDLERS ====================
 
