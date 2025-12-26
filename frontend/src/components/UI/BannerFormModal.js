@@ -178,14 +178,14 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     });
   }, []);
 
-  // Bulk action: Select all visible characters
+  // Bulk action: Select all visible characters (only the paginated ones)
   const handleSelectAllVisible = useCallback(() => {
-    const visibleIds = filteredCharacters.map(c => c.id);
+    const visibleIds = visibleCharacters.map(c => c.id);
     setFormData(prev => ({
       ...prev,
       selectedCharacters: [...new Set([...prev.selectedCharacters, ...visibleIds])]
     }));
-  }, [filteredCharacters]);
+  }, [visibleCharacters]);
 
   // Bulk action: Clear all selections
   const handleClearAll = useCallback(() => {
@@ -511,7 +511,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   {/* Bulk Actions Row */}
                   <BulkActionsRow>
                     <BulkActionBtn onClick={handleSelectAllVisible}>
-                      {t('admin.bannerForm.selectAllVisible', 'Select all visible')} ({filteredCharacters.length})
+                      {t('admin.bannerForm.selectAllVisible', 'Select all visible')} ({visibleCharacters.length})
                     </BulkActionBtn>
                     {formData.series && (
                       <BulkActionBtn onClick={handleAddAllFromSeries}>
