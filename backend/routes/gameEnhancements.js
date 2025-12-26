@@ -139,9 +139,9 @@ router.post('/dojo/character/:id/specialize', [auth, enforcementMiddleware, devi
     const characterId = parseInt(req.params.id);
     const { specializationId } = req.body;
 
+    // Don't use include with lock - PostgreSQL doesn't allow FOR UPDATE on outer joins
     const userCharacter = await UserCharacter.findOne({
       where: { UserId: req.user.id, CharacterId: characterId },
-      include: [{ model: Character }],
       lock: transaction.LOCK.UPDATE,
       transaction
     });
