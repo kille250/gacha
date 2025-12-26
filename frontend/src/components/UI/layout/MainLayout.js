@@ -12,11 +12,13 @@
  * - Suspense boundary for lazy-loaded pages (navigation stays visible during load)
  */
 
-import React, { Suspense } from 'react';
+import React, { Suspense, useState, useEffect } from 'react';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
+import { AnimatePresence } from 'framer-motion';
 import { theme, SkipLink } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
+import { ReturnBonusModal } from '../../GameEnhancements';
 
 /**
  * Global CSS custom properties for navigation heights.
@@ -126,6 +128,25 @@ const PageLoader = () => (
  * @param {boolean} props.hideBottomNav - Hide bottom nav for specific pages
  */
 const MainLayout = ({ children, hideBottomNav = false }) => {
+  const [showReturnBonus, setShowReturnBonus] = useState(false);
+
+  // Check for return bonus on initial mount (once per session)
+  useEffect(() => {
+    const hasCheckedReturnBonus = sessionStorage.getItem('returnBonusChecked');
+    if (!hasCheckedReturnBonus) {
+      // Small delay to let the app settle before showing modal
+      const timer = setTimeout(() => {
+        setShowReturnBonus(true);
+        sessionStorage.setItem('returnBonusChecked', 'true');
+      }, 1000);
+      return () => clearTimeout(timer);
+    }
+  }, []);
+
+  const handleCloseReturnBonus = () => {
+    setShowReturnBonus(false);
+  };
+
   return (
     <>
       <NavHeightVariables />
@@ -140,6 +161,13 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
         </PageContent>
         {!hideBottomNav && <BottomNav />}
       </LayoutContainer>
+
+      {/* Return Bonus Modal - shows welcome back rewards for returning players */}
+      <AnimatePresence>
+        {showReturnBonus && (
+          <ReturnBonusModal onClose={handleCloseReturnBonus} />
+        )}
+      </AnimatePresence>
     </>
   );
 };

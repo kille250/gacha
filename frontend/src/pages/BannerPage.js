@@ -162,6 +162,9 @@ import {
 import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
+// Game Enhancement Components
+import { PityDisplay, MilestoneRewards, FatePointsDisplay } from '../components/GameEnhancements';
+
 // Icon Constants
 import {
   IconDice,
@@ -1514,7 +1517,16 @@ const BannerPage = () => {
                     </DropRatesContainer>
                   </InfoBlock>
                 )}
-                
+
+                {/* Pity Progress Display */}
+                <PityDisplay bannerId={bannerId} compact={false} />
+
+                {/* Pull Milestones */}
+                <MilestoneRewards bannerId={bannerId} />
+
+                {/* Fate Points (for banner pulls) */}
+                <FatePointsDisplay bannerId={bannerId} />
+
                 <InfoBlock>
                   <InfoBlockTitle>{t('banner.featuredCharacters')}</InfoBlockTitle>
                   <FeaturedList>

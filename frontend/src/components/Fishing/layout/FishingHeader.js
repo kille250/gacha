@@ -158,6 +158,10 @@ export const FishingHeader = ({
                   <MdStorefront />
                   <span>{t('fishing.tradingPost') || 'Trading Post'}</span>
                 </MoreMenuItem>
+                <MoreMenuItem onClick={() => { modals.baitShop.open(); modals.moreMenu.close(); }}>
+                  <span role="img" aria-hidden="true">🪱</span>
+                  <span>{t('fishing.baitShop') || 'Bait Shop'}</span>
+                </MoreMenuItem>
               </MoreMenuDropdown>
             )}
           </AnimatePresence>

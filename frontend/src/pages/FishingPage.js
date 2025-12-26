@@ -46,14 +46,15 @@ import {
 } from '../hooks';
 
 // Fishing components
-import { 
-  useFishingEngine, 
-  HelpModal, 
-  LeaderboardModal, 
-  TradingPostModal, 
-  ChallengesModal, 
-  EquipmentModal, 
+import {
+  useFishingEngine,
+  HelpModal,
+  LeaderboardModal,
+  TradingPostModal,
+  ChallengesModal,
+  EquipmentModal,
   PrestigeModal,
+  BaitShopModal,
   FishingHeader,
   FishingStatsBar,
   FishingGameCanvas,
@@ -469,12 +470,17 @@ const FishingPage = () => {
         onEquipRod={modals.equipment.onEquipRod}
         onBuyRod={modals.equipment.onBuyRod}
       />
-      <PrestigeModal 
-        show={modals.prestige.isOpen} 
-        onClose={modals.prestige.close} 
+      <PrestigeModal
+        show={modals.prestige.isOpen}
+        onClose={modals.prestige.close}
         prestigeData={modals.prestige.data}
         claimingPrestige={modals.prestige.claiming}
         onClaimPrestige={modals.prestige.onClaim}
+      />
+      <BaitShopModal
+        show={modals.baitShop.isOpen}
+        onClose={modals.baitShop.close}
+        userPoints={user?.points || 0}
       />
     </PageContainer>
   );

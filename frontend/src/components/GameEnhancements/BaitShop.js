@@ -8,7 +8,8 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { GiWorm, GiFishingLure, GiSquid } from 'react-icons/gi';
+import { GiFishingHook } from 'react-icons/gi';
+import { FaCircle, FaStar } from 'react-icons/fa';
 import { useBaitInventory } from '../../hooks/useGameEnhancements';
 
 const Container = styled(motion.div)`
@@ -181,7 +182,7 @@ const SuccessMessage = styled(motion.div)`
 
 const BAIT_DATA = {
   basic: {
-    Icon: GiWorm,
+    Icon: FaCircle,
     name: 'Basic Bait',
     tier: 'basic',
     price: 50,
@@ -190,7 +191,7 @@ const BAIT_DATA = {
     description: 'Standard worm bait'
   },
   standard: {
-    Icon: GiFishingLure,
+    Icon: GiFishingHook,
     name: 'Quality Bait',
     tier: 'standard',
     price: 200,
@@ -199,7 +200,7 @@ const BAIT_DATA = {
     description: 'Attracts better fish'
   },
   premium: {
-    Icon: GiSquid,
+    Icon: FaStar,
     name: 'Premium Bait',
     tier: 'premium',
     price: 500,

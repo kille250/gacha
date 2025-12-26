@@ -1019,6 +1019,47 @@ export const RemoveButton = styled.button`
   }
 `;
 
+export const SpecializeButton = styled.button`
+  position: absolute;
+  top: ${theme.spacing.xs};
+  left: ${theme.spacing.xs};
+  padding: 4px 8px;
+  border-radius: ${theme.radius.sm};
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.9), rgba(103, 58, 183, 0.9));
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  opacity: 0.9;
+  transition: all ${theme.transitions.fast};
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.semibold};
+
+  @media (hover: none) {
+    opacity: 1;
+  }
+
+  @media (hover: hover) {
+    opacity: 0;
+
+    ${FilledSlot}:hover & {
+      opacity: 1;
+    }
+  }
+
+  &:hover, &:active {
+    background: linear-gradient(135deg, rgba(186, 104, 200, 1), rgba(126, 87, 194, 1));
+    transform: scale(1.05);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 3px 6px;
+    font-size: 9px;
+  }
+`;
+
 export const EmptySlot = styled(motion.div)`
   aspect-ratio: 3/4;
   border-radius: ${theme.radius.xl};

@@ -28,6 +28,7 @@ import {
   SlotRarityBadge,
   SlotLevelBadge,
   RemoveButton,
+  SpecializeButton,
   EmptySlot,
   LockedSlot,
 } from './DojoPage.styles';
@@ -38,6 +39,7 @@ const DojoTrainingSlots = ({
   getRarityGlow,
   onOpenPicker,
   onUnassign,
+  onOpenSpecialization,
 }) => {
   const { t } = useTranslation();
 
@@ -107,6 +109,15 @@ const DojoTrainingSlots = ({
                 >
                   <FaTimes aria-hidden="true" />
                 </RemoveButton>
+                {onOpenSpecialization && (
+                  <SpecializeButton
+                    onClick={() => onOpenSpecialization(char)}
+                    aria-label={`${t('dojo.specialize') || 'Specialize'} ${char.name}`}
+                  >
+                    <span role="img" aria-hidden="true">⚔️</span>
+                    <span>{t('dojo.specialize') || 'Specialize'}</span>
+                  </SpecializeButton>
+                )}
               </FilledSlot>
             );
           }

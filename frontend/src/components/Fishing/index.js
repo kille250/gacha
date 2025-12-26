@@ -8,13 +8,14 @@
 export { useFishingEngine, TILE_SIZE, MAP_WIDTH, MAP_HEIGHT } from './engine';
 
 // Modal components
-export { 
-  HelpModal, 
-  LeaderboardModal, 
-  TradingPostModal, 
-  ChallengesModal, 
-  EquipmentModal, 
-  PrestigeModal 
+export {
+  HelpModal,
+  LeaderboardModal,
+  TradingPostModal,
+  ChallengesModal,
+  EquipmentModal,
+  PrestigeModal,
+  BaitShopModal,
 } from './modals';
 
 // Layout components

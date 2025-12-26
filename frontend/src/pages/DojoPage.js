@@ -5,9 +5,10 @@
  * All state management is handled by useDojoPage hook.
  */
 
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { AnimatePresence } from 'framer-motion';
+import styled from 'styled-components';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Spinner } from '../design-system';
 import { useDojoPage } from '../hooks/useDojoPage';
 
@@ -26,6 +27,28 @@ import {
   LoadingContainer,
   MainContent,
 } from '../components/Dojo/DojoPage';
+
+// Game Enhancement Components
+import { SpecializationPicker } from '../components/GameEnhancements';
+
+// Modal overlay for SpecializationPicker
+const SpecializationOverlay = styled(motion.div)`
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  padding: 20px;
+`;
+
+const SpecializationModalContent = styled(motion.div)`
+  max-width: 500px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+`;
 
 const DojoPage = () => {
   const navigate = useNavigate();
@@ -71,6 +94,17 @@ const DojoPage = () => {
     // Computed values
     progressPercent,
   } = useDojoPage();
+
+  // Specialization picker state
+  const [specializingCharacter, setSpecializingCharacter] = useState(null);
+
+  const handleOpenSpecialization = (character) => {
+    setSpecializingCharacter(character);
+  };
+
+  const handleCloseSpecialization = () => {
+    setSpecializingCharacter(null);
+  };
 
   if (loading) {
     return (
@@ -139,6 +173,7 @@ const DojoPage = () => {
           getAssetUrl={getAssetUrl}
           onOpenPicker={openCharacterPicker}
           onUnassign={handleUnassign}
+          onOpenSpecialization={handleOpenSpecialization}
         />
 
         {/* Upgrades Section */}
@@ -167,6 +202,31 @@ const DojoPage = () => {
             getRarityColor={getRarityColor}
             getAssetUrl={getAssetUrl}
           />
+        )}
+      </AnimatePresence>
+
+      {/* Specialization Picker Modal */}
+      <AnimatePresence>
+        {specializingCharacter && (
+          <SpecializationOverlay
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={handleCloseSpecialization}
+          >
+            <SpecializationModalContent
+              initial={{ scale: 0.9, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.9, opacity: 0 }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <SpecializationPicker
+                character={specializingCharacter}
+                userLevel={user?.level || 1}
+                onClose={handleCloseSpecialization}
+              />
+            </SpecializationModalContent>
+          </SpecializationOverlay>
         )}
       </AnimatePresence>
     </PageContainer>
