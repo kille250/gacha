@@ -493,16 +493,25 @@ export const SecondaryButton = styled.button`
   }
 `;
 
+/**
+ * ActionButton - Multi-variant action button for admin panels
+ *
+ * Supports variants: primary (default), secondary, accent, warning, gold, danger
+ * Enhanced with proper mobile touch targets and accessibility
+ */
 export const ActionButton = styled.button`
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  min-height: 44px;
   background: ${props => {
     if (props.$variant === 'secondary') return 'linear-gradient(135deg, #5856d6, #af52de)';
     if (props.$variant === 'accent') return 'linear-gradient(135deg, #ff6b9d, #c44569)';
     if (props.$variant === 'warning') return `linear-gradient(135deg, ${theme.colors.warning}, #ff6b35)`;
     if (props.$variant === 'gold') return 'linear-gradient(135deg, #ffd60a, #ff9f0a)';
+    if (props.$variant === 'danger') return `linear-gradient(135deg, ${theme.colors.error}, #d32f2f)`;
     return `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.accent})`;
   }};
   border: none;
@@ -512,8 +521,79 @@ export const ActionButton = styled.button`
   font-size: ${theme.fontSizes.sm};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
-  
-  &:hover { opacity: 0.9; transform: translateY(-1px); }
+  -webkit-tap-highlight-color: transparent;
+  white-space: nowrap;
+  position: relative;
+  overflow: hidden;
+
+  /* Shine effect on hover for non-danger variants */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent 0%,
+      rgba(255, 255, 255, 0.15) 50%,
+      transparent 100%
+    );
+    transition: left 0.4s ease;
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover:not(:disabled) {
+      opacity: 0.95;
+      transform: translateY(-1px);
+      box-shadow: ${props => props.$variant === 'danger'
+        ? '0 4px 12px -2px rgba(255, 59, 48, 0.4)'
+        : '0 4px 12px -2px rgba(0, 113, 227, 0.3)'};
+
+      &::before {
+        left: 100%;
+      }
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.98);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.focusRing};
+    outline-offset: 2px;
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    transform: none;
+  }
+
+  /* Touch-friendly on mobile */
+  @media (pointer: coarse) {
+    min-height: 48px;
+    padding: ${theme.spacing.sm} ${theme.spacing.xl};
+  }
+
+  /* Loading spinner animation */
+  .spin {
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin {
+    to { transform: rotate(360deg); }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    transition: opacity 0.1s;
+    &::before { display: none; }
+    &:hover:not(:disabled) { transform: none; }
+    &:active:not(:disabled) { transform: none; }
+    .spin { animation: none; }
+  }
 `;
 
 export const IconButton = styled.button`
