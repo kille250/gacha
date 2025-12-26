@@ -8,7 +8,7 @@
  * - Retention systems (voyages, mastery, daily menu)
  */
 
-import api from './api';
+import api, { clearCache } from './api';
 
 // ===========================================
 // DOJO ENHANCEMENTS
@@ -46,6 +46,8 @@ export const dojoEnhancements = {
     const response = await api.post(`/enhancements/dojo/character/${characterId}/specialize`, {
       specializationId
     });
+    // Clear cache for this character's specialization endpoint so next GET gets fresh data
+    clearCache(`/enhancements/dojo/character/${characterId}/specialization`);
     return response.data;
   }
 };

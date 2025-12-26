@@ -105,10 +105,10 @@ const DojoPage = () => {
     setSpecializingCharacter(character);
   };
 
-  const handleCloseSpecialization = (shouldRefresh = false) => {
+  const handleCloseSpecialization = async (shouldRefresh = false) => {
     setSpecializingCharacter(null);
     if (shouldRefresh) {
-      refreshStatus();
+      await refreshStatus();
     }
   };
 
