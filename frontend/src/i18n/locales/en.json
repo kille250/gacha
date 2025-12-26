@@ -1447,7 +1447,8 @@
     "permanentAction": "This action is permanent!",
     "applying": "Applying...",
     "applyError": "Failed to apply specialization. Please try again.",
-    "requiresFacility": "Requires Warrior's Hall facility",
+    "requiresFacility": "Upgrade to Warrior's Hall (Level 10) to unlock specializations",
+    "requiresFacilityShort": "Requires Warrior's Hall (Lv. 10)",
     "strength": {
       "name": "Path of Strength",
       "bonus": "+15% Fishing Power",

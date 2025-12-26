@@ -377,7 +377,7 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
               <SpecBonus>{t(spec.bonusKey)}</SpecBonus>
               <SpecDesc>{t(spec.descKey)}</SpecDesc>
               {isLocked && !isCurrentSpec && (
-                <LockedBadge>{t('specialization.requiresFacility')}</LockedBadge>
+                <LockedBadge>{t('specialization.requiresFacilityShort')}</LockedBadge>
               )}
               {isCurrentSpec && (
                 <LockedBadge style={{ background: 'rgba(76, 175, 80, 0.2)', color: '#4caf50' }}>
