@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes } from 'react-icons/fa';
@@ -12,6 +12,10 @@ const getImageUrl = (imagePath) => {
   return getAssetUrl(imagePath);
 };
   
+// Rarity order for sorting (highest first)
+const RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
+const ITEMS_PER_PAGE = 48;
+
 const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const { t } = useTranslation();
   const { getRarityColor } = useRarity();
@@ -33,12 +37,36 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [imagePreview, setImagePreview] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
   const [characterSearch, setCharacterSearch] = useState('');
-  
-  // Filter characters based on search term (match name OR series)
-  const filteredCharacters = characters.filter(char =>
-    char.name.toLowerCase().includes(characterSearch.toLowerCase()) ||
-    (char.series && char.series.toLowerCase().includes(characterSearch.toLowerCase()))
-  );
+  const [rarityFilter, setRarityFilter] = useState('all');
+  const [seriesFilter, setSeriesFilter] = useState('all');
+  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const [showSelected, setShowSelected] = useState(false);
+
+  // Get unique series from characters for filter dropdown
+  const uniqueSeries = useMemo(() => {
+    const series = [...new Set(characters.map(c => c.series).filter(Boolean))];
+    return series.sort();
+  }, [characters]);
+
+  // Filter characters based on search, rarity, and series
+  const filteredCharacters = useMemo(() => {
+    return characters.filter(char => {
+      const matchesSearch = char.name.toLowerCase().includes(characterSearch.toLowerCase()) ||
+                            (char.series && char.series.toLowerCase().includes(characterSearch.toLowerCase()));
+      const matchesRarity = rarityFilter === 'all' || char.rarity === rarityFilter;
+      const matchesSeries = seriesFilter === 'all' || char.series === seriesFilter;
+      return matchesSearch && matchesRarity && matchesSeries;
+    });
+  }, [characters, characterSearch, rarityFilter, seriesFilter]);
+
+  // Paginated characters for display
+  const visibleCharacters = filteredCharacters.slice(0, visibleCount);
+  const hasMore = visibleCount < filteredCharacters.length;
+
+  // Selected characters for summary display
+  const selectedCharactersList = useMemo(() => {
+    return characters.filter(c => formData.selectedCharacters.includes(c.id));
+  }, [characters, formData.selectedCharacters]);
   
   // Reset and populate form when banner changes
   useEffect(() => {
@@ -94,7 +122,11 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     }
     setImageFile(null);
     setVideoFile(null);
-    setCharacterSearch(''); // Reset search when modal opens/changes
+    setCharacterSearch('');
+    setRarityFilter('all');
+    setSeriesFilter('all');
+    setVisibleCount(ITEMS_PER_PAGE);
+    setShowSelected(false);
   }, [banner, show]);
   
   const handleChange = (e) => {
@@ -129,7 +161,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     }
   };
   
-  const handleCharacterToggle = (charId) => {
+  const handleCharacterToggle = useCallback((charId) => {
     setFormData(prev => {
       const selectedCharacters = [...prev.selectedCharacters];
       if (selectedCharacters.includes(charId)) {
@@ -144,7 +176,38 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
         };
       }
     });
-  };
+  }, []);
+
+  // Bulk action: Select all visible characters
+  const handleSelectAllVisible = useCallback(() => {
+    const visibleIds = filteredCharacters.map(c => c.id);
+    setFormData(prev => ({
+      ...prev,
+      selectedCharacters: [...new Set([...prev.selectedCharacters, ...visibleIds])]
+    }));
+  }, [filteredCharacters]);
+
+  // Bulk action: Clear all selections
+  const handleClearAll = useCallback(() => {
+    setFormData(prev => ({ ...prev, selectedCharacters: [] }));
+  }, []);
+
+  // Bulk action: Add all from banner's series
+  const handleAddAllFromSeries = useCallback(() => {
+    if (!formData.series) return;
+    const matchingIds = characters
+      .filter(c => c.series?.toLowerCase() === formData.series.toLowerCase())
+      .map(c => c.id);
+    setFormData(prev => ({
+      ...prev,
+      selectedCharacters: [...new Set([...prev.selectedCharacters, ...matchingIds])]
+    }));
+  }, [characters, formData.series]);
+
+  // Load more characters
+  const handleLoadMore = useCallback(() => {
+    setVisibleCount(prev => prev + ITEMS_PER_PAGE);
+  }, []);
   
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -375,11 +438,63 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
             <FormGroup>
               <Label>{t('admin.bannerForm.bannerCharacters')}</Label>
               <FormHint style={{ marginBottom: '12px' }}>{t('admin.bannerForm.bannerCharactersHint')}</FormHint>
+
+              {/* Selection Summary */}
+              <SelectionSummary>
+                <SummaryHeader>
+                  <SelectedCount>
+                    {formData.selectedCharacters.length} {t('admin.bannerForm.inPool', 'in pool')}
+                  </SelectedCount>
+                  {formData.selectedCharacters.length > 0 && (
+                    <SummaryActions>
+                      <SummaryToggle onClick={() => setShowSelected(!showSelected)}>
+                        {showSelected ? t('common.hide', 'Hide') : t('common.view', 'View')}
+                      </SummaryToggle>
+                      <ClearAllBtn onClick={handleClearAll}>
+                        {t('common.clearAll', 'Clear all')}
+                      </ClearAllBtn>
+                    </SummaryActions>
+                  )}
+                </SummaryHeader>
+                {showSelected && selectedCharactersList.length > 0 && (
+                  <SelectedList>
+                    {selectedCharactersList.map(char => (
+                      <SelectedPill key={char.id} $color={getRarityColor(char.rarity)}>
+                        <span>{char.name}</span>
+                        <RemovePillBtn onClick={() => handleCharacterToggle(char.id)}>×</RemovePillBtn>
+                      </SelectedPill>
+                    ))}
+                  </SelectedList>
+                )}
+              </SelectionSummary>
+
               <CharacterSelector>
                 <SelectorHeader>
-                  <SelectedCount>
-                    {t('admin.bannerForm.charactersSelected', { count: formData.selectedCharacters.length })}
-                  </SelectedCount>
+                  {/* Filter Row */}
+                  <FilterRow>
+                    <FilterSelect
+                      value={rarityFilter}
+                      onChange={(e) => setRarityFilter(e.target.value)}
+                    >
+                      <option value="all">{t('admin.bannerForm.allRarities', 'All Rarities')}</option>
+                      {RARITY_ORDER.map(rarity => (
+                        <option key={rarity} value={rarity}>
+                          {rarity.charAt(0).toUpperCase() + rarity.slice(1)}
+                        </option>
+                      ))}
+                    </FilterSelect>
+                    <FilterSelect
+                      value={seriesFilter}
+                      onChange={(e) => setSeriesFilter(e.target.value)}
+                    >
+                      <option value="all">{t('admin.bannerForm.allSeries', 'All Series')}</option>
+                      {uniqueSeries.map(series => (
+                        <option key={series} value={series}>{series}</option>
+                      ))}
+                    </FilterSelect>
+                  </FilterRow>
+
+                  {/* Search Row */}
                   <SearchWrapper>
                     <SearchIcon><FaSearch /></SearchIcon>
                     <SearchInput
@@ -392,10 +507,31 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                       <ClearSearchBtn onClick={() => setCharacterSearch('')}>×</ClearSearchBtn>
                     )}
                   </SearchWrapper>
+
+                  {/* Bulk Actions Row */}
+                  <BulkActionsRow>
+                    <BulkActionBtn onClick={handleSelectAllVisible}>
+                      {t('admin.bannerForm.selectAllVisible', 'Select all visible')} ({filteredCharacters.length})
+                    </BulkActionBtn>
+                    {formData.series && (
+                      <BulkActionBtn onClick={handleAddAllFromSeries}>
+                        {t('admin.bannerForm.addAllFromSeries', 'Add all from')} "{formData.series}"
+                      </BulkActionBtn>
+                    )}
+                  </BulkActionsRow>
+
+                  {/* Results count */}
+                  <ResultsCount>
+                    {t('admin.bannerForm.showingOf', 'Showing {{visible}} of {{total}}', {
+                      visible: visibleCharacters.length,
+                      total: filteredCharacters.length
+                    })}
+                  </ResultsCount>
                 </SelectorHeader>
+
                 <CharacterGrid>
-                  {filteredCharacters.length > 0 ? (
-                    filteredCharacters.map(char => (
+                  {visibleCharacters.length > 0 ? (
+                    visibleCharacters.map(char => (
                       <CharacterOption
                         key={char.id}
                         $selected={formData.selectedCharacters.includes(char.id)}
@@ -420,6 +556,15 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                     <NoResults>{t('admin.bannerForm.noCharactersMatching', { search: characterSearch })}</NoResults>
                   )}
                 </CharacterGrid>
+
+                {/* Load More Button */}
+                {hasMore && (
+                  <LoadMoreSection>
+                    <LoadMoreBtn onClick={handleLoadMore}>
+                      {t('admin.bannerForm.loadMore', 'Load more')} ({filteredCharacters.length - visibleCount} {t('admin.bannerForm.remaining', 'remaining')})
+                    </LoadMoreBtn>
+                  </LoadMoreSection>
+                )}
               </CharacterSelector>
             </FormGroup>
             <ButtonGroup>
@@ -940,5 +1085,177 @@ const CharOptionCheck = styled.div`
   margin-right: 10px;
   transition: all 0.2s;
 `;
-  
+
+// New styled components for filters, pagination, and selection summary
+
+const SelectionSummary = styled.div`
+  background: rgba(0, 0, 0, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  padding: 12px;
+  margin-bottom: 12px;
+`;
+
+const SummaryHeader = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+`;
+
+const SummaryActions = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const SummaryToggle = styled.button`
+  background: rgba(255, 255, 255, 0.1);
+  border: none;
+  color: #007AFF;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(0, 122, 255, 0.15);
+  }
+`;
+
+const ClearAllBtn = styled.button`
+  background: rgba(255, 69, 58, 0.15);
+  border: none;
+  color: #FF453A;
+  font-size: 13px;
+  padding: 4px 10px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(255, 69, 58, 0.25);
+  }
+`;
+
+const SelectedList = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 10px;
+  max-height: 120px;
+  overflow-y: auto;
+`;
+
+const SelectedPill = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background: ${props => `${props.$color}20`};
+  border: 1px solid ${props => `${props.$color}40`};
+  color: ${props => props.$color};
+  font-size: 12px;
+  padding: 4px 8px;
+  border-radius: 16px;
+
+  span {
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+`;
+
+const RemovePillBtn = styled.button`
+  background: none;
+  border: none;
+  color: inherit;
+  font-size: 14px;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+  opacity: 0.7;
+
+  &:hover {
+    opacity: 1;
+  }
+`;
+
+const FilterRow = styled.div`
+  display: flex;
+  gap: 8px;
+`;
+
+const FilterSelect = styled.select`
+  flex: 1;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 8px;
+  padding: 8px 12px;
+  font-size: 13px;
+  color: #fff;
+  cursor: pointer;
+
+  &:focus {
+    outline: none;
+    border-color: #007AFF;
+  }
+
+  option {
+    background: #1c1c1e;
+    color: #fff;
+  }
+`;
+
+const BulkActionsRow = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+`;
+
+const BulkActionBtn = styled.button`
+  background: rgba(0, 122, 255, 0.15);
+  border: 1px solid rgba(0, 122, 255, 0.3);
+  color: #007AFF;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s;
+
+  &:hover {
+    background: rgba(0, 122, 255, 0.25);
+    border-color: rgba(0, 122, 255, 0.5);
+  }
+`;
+
+const ResultsCount = styled.div`
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+  text-align: right;
+`;
+
+const LoadMoreSection = styled.div`
+  padding: 12px;
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  display: flex;
+  justify-content: center;
+`;
+
+const LoadMoreBtn = styled.button`
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  color: rgba(255, 255, 255, 0.8);
+  font-size: 13px;
+  padding: 10px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  width: 100%;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.12);
+    border-color: rgba(255, 255, 255, 0.25);
+  }
+`;
+
 export default BannerFormModal;
