@@ -134,23 +134,19 @@ function getFacilityTier(user) {
     }
   }
 
-  // Find next available upgrade
+  // Find next available upgrade (always show next tier so users know what's coming)
   const tierOrder = ['basic', 'warriors_hall', 'masters_temple', 'grandmasters_sanctum'];
   const currentIndex = tierOrder.indexOf(currentTier.id);
   let nextTier = null;
 
   if (currentIndex < tierOrder.length - 1) {
     const nextTierId = tierOrder[currentIndex + 1];
-    const potentialNext = DOJO_FACILITY_TIERS[nextTierId];
-
-    if (accountLevel >= potentialNext.requiredLevel) {
-      nextTier = potentialNext;
-    }
+    nextTier = DOJO_FACILITY_TIERS[nextTierId];
   }
 
   return {
     current: currentTier,
-    next: nextTier,
+    nextTier: nextTier,
     features: currentTier.features,
     maxSlots: currentTier.maxSlots
   };
