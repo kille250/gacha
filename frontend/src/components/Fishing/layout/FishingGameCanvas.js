@@ -11,7 +11,7 @@ import {
   CanvasFrame,
   CanvasWrapper,
   CanvasCorner,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * FishingGameCanvas component

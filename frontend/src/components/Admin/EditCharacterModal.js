@@ -25,7 +25,7 @@ import {
   PrimaryButton,
   SecondaryButton,
   ButtonRow,
-} from './AdminStyles';
+} from './Admin.styles';
 import { theme } from '../../design-system';
 import { useRarity } from '../../context/RarityContext';
 

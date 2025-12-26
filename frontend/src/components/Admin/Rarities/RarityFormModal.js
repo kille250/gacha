@@ -39,7 +39,7 @@ import {
   SecondaryButton,
   CheckboxLabel,
   FieldError,
-} from '../AdminStyles';
+} from '../Admin.styles';
 import { RARITY_PRESETS, FIELD_TOOLTIP_KEYS } from './RarityPresets';
 import {
   PresetSection,
@@ -63,7 +63,7 @@ import {
   ColorPreview,
   ColorPreviewSwatch,
   ColorPreviewText,
-} from './RarityStyles';
+} from './Rarity.styles';
 
 const RarityFormModal = ({
   isOpen,

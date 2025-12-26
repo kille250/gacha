@@ -77,7 +77,7 @@ import {
 } from '../constants/fishingConstants';
 
 // Styled components
-import { PageContainer, StarsOverlay } from '../components/Fishing/FishingStyles';
+import { PageContainer, StarsOverlay } from '../components/Fishing/Fishing.styles';
 
 // ===========================================
 // MAIN COMPONENT

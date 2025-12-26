@@ -19,7 +19,7 @@ import {
   LockedTradeEmoji, LockedTradeText, LockedTradeName, LockedTradeReward,
   EmptyTradeState, TradeSuccessOverlay, TradeSuccessIcon, TradeSuccessText,
   TradingLoadingState, ProgressBarContainer, ProgressBarFill,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 const getRarityEmoji = (rarity) => {
   switch (rarity) {

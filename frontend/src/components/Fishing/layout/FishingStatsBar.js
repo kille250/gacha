@@ -16,7 +16,7 @@ import {
   StatDivider,
   PityBar,
   PityFill,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * FishingStatsBar component

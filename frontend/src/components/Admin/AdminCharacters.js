@@ -66,7 +66,7 @@ import {
   ImagePreview,
   PrimaryButton,
   IconButton,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const AdminCharacters = ({
   characters,

@@ -15,7 +15,7 @@ import {
   BubbleContent,
   BubbleFishName,
   BubbleReward,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * FishingAutofishBubbles component

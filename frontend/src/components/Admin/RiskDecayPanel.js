@@ -10,7 +10,7 @@ import { FaChartLine, FaSync, FaExclamationTriangle, FaCheckCircle } from 'react
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { triggerRiskScoreDecay, getRiskStats } from '../../utils/api';
-import { PrimaryButton, SecondaryButton, Select } from './AdminStyles';
+import { PrimaryButton, SecondaryButton, Select } from './Admin.styles';
 
 const DECAY_OPTIONS = [
   { value: 0.05, label: '5% decay' },

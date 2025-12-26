@@ -17,7 +17,7 @@ import PropTypes from 'prop-types';
 import { FaPercent, FaPalette, FaEdit, FaTrash } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { motionVariants } from '../../../design-system';
-import { IconButton } from '../AdminStyles';
+import { IconButton } from '../Admin.styles';
 import {
   RarityCard as StyledRarityCard,
   RarityHeader,
@@ -37,7 +37,7 @@ import {
   RarityMeta,
   MetaItem,
   RarityActions,
-} from './RarityStyles';
+} from './Rarity.styles';
 
 const RarityCard = ({
   rarity,

@@ -41,7 +41,7 @@ import {
   MoreMenuInfo,
   MoreMenuDivider,
   MoreMenuBadge,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * FishingHeader component

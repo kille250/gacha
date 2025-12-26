@@ -22,7 +22,7 @@ import {
   Select,
   PrimaryButton,
   SecondaryButton,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const RESTRICTION_TYPES = [
   { value: 'warning', label: 'Warning', color: '#ffcc00' },

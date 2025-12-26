@@ -20,7 +20,7 @@ import {
   SecondaryButton,
   Select,
   Input
-} from './AdminStyles';
+} from './Admin.styles';
 
 const RESTRICTION_COLORS = {
   perm_ban: '#ff3b30',

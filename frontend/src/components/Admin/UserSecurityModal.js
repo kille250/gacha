@@ -40,7 +40,7 @@ import {
   Select,
   PrimaryButton,
   SecondaryButton,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => {
   const { t } = useTranslation();

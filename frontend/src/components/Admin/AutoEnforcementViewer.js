@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
 import { getAutoEnforcements } from '../../utils/api';
 import { RESTRICTION_COLORS } from '../../constants/securityConstants';
-import { SecondaryButton } from './AdminStyles';
+import { SecondaryButton } from './Admin.styles';
 
 const ACTION_ICONS = {
   perm_ban: FaBan,

@@ -20,7 +20,7 @@ import {
   FormGroup,
   Label,
   PrimaryButton,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const AppealReviewModal = ({ show, appeal, onClose, onSuccess }) => {
   const { t } = useTranslation();

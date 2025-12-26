@@ -25,7 +25,7 @@ import {
   Input,
   PrimaryButton,
   SecondaryButton,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const CATEGORY_KEYS = {
   risk_thresholds: 'riskThresholds',

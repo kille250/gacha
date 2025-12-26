@@ -9,7 +9,7 @@ import {
   YourRankSection, RankBanner, YourRankValue, RankSubtext,
   AutofishUnlockStatus, LeaderboardList, LeaderboardItem,
   LeaderboardRank, LeaderboardName, LeaderboardPoints, AutofishBadge,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * Leaderboard Modal - Shows player rankings

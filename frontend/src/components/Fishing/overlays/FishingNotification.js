@@ -7,7 +7,7 @@
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
 
-import { Notification } from '../FishingStyles';
+import { Notification } from '../Fishing.styles';
 
 /**
  * FishingNotification component

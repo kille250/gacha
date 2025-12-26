@@ -8,7 +8,7 @@ import {
   CozyModal, ModalTitle, CloseButton,
   HelpSection, HelpNumber, HelpContent, HelpTitle, HelpText,
   FishList, FishItem, FishEmoji, FishRarity, FishDifficulty,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * Help Modal - Shows fishing instructions and fish rarities

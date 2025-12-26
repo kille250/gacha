@@ -39,7 +39,7 @@ import {
   SecondaryButton,
   IconButton,
   CheckboxLabel,
-} from './AdminStyles';
+} from './Admin.styles';
 
 // ============================================
 // PRESETS - Common rarity configurations

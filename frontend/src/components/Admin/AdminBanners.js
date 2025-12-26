@@ -19,7 +19,7 @@ import {
   EmptyText,
   EmptySubtext,
   StatusBadge,
-} from './AdminStyles';
+} from './Admin.styles';
 
 /**
  * Sortable Banner Item

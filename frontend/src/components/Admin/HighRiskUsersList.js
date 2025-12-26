@@ -17,7 +17,7 @@ import {
   ItemCount,
   SecondaryButton,
   Select,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const HighRiskUsersList = ({ onViewUser }) => {
   const { t } = useTranslation();

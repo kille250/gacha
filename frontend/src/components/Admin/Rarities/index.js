@@ -47,7 +47,7 @@ import {
   EmptyText,
   EmptySubtext,
   SecondaryButton,
-} from '../AdminStyles';
+} from '../Admin.styles';
 
 // Subcomponents
 import RarityCard from './RarityCard';
@@ -71,7 +71,7 @@ import {
   RateTotalLabel,
   RateTotalValue,
   RarityGrid,
-} from './RarityStyles';
+} from './Rarity.styles';
 
 const AdminRarities = ({ onRefresh }) => {
   const { t } = useTranslation();

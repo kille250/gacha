@@ -31,7 +31,7 @@ import {
   EmptyIcon,
   EmptyText,
   EmptySubtext,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const AdminCoupons = ({
   coupons,

@@ -8,7 +8,7 @@ import {
   EquipmentTabs, EquipmentTab, EquipmentList, EquipmentCard,
   EquipmentIcon, EquipmentInfo, EquipmentName, EquipmentDesc, EquipmentBonus,
   RodBonuses, CurrentBadge, SelectButton, BuyButton, UnlockButton, LockedBadge,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * Equipment Modal - Areas and Rods management

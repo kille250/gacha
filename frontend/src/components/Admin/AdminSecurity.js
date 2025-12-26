@@ -24,7 +24,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, motionVariants, AriaLiveRegion } from '../../design-system';
 import { getSecurityOverview, getAppealStats } from '../../utils/api';
 import { onVisibilityChange, REFRESH_INTERVALS } from '../../cache';
-import { AdminContainer, SectionTitle, SkeletonBox } from './AdminStyles';
+import { AdminContainer, SectionTitle, SkeletonBox } from './Admin.styles';
 import SecurityOverview from './SecurityOverview';
 import SecurityAlerts from './SecurityAlerts';
 import HighRiskUsersList from './HighRiskUsersList';

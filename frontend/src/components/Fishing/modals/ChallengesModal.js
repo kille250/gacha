@@ -9,7 +9,7 @@ import {
   ChallengesList, ChallengeCard, ChallengeHeader, ChallengeName, DifficultyBadge,
   ChallengeDescription, ChallengeProgress, ProgressText, ChallengeReward,
   ClaimButton, CompletedBadge, ProgressBarContainer, ProgressBarFill,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * Challenges Modal - Daily fishing challenges

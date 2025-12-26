@@ -16,7 +16,7 @@ import {
   DPadCenter,
   DPadButton,
   ActionButton,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * FishingMobileControls component

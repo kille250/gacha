@@ -27,7 +27,7 @@ import {
   SecondaryButton,
   Select,
   Input,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const SEVERITY_COLORS = {
   info: '#0a84ff',

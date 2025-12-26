@@ -54,4 +54,4 @@ export { default as AppealReviewModal } from './AppealReviewModal';
 export { default as AppealsList } from './AppealsList';
 
 // Shared styles
-export * from './AdminStyles';
+export * from './Admin.styles';

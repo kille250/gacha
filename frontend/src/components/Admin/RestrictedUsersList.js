@@ -17,7 +17,7 @@ import {
   ItemCount,
   SecondaryButton,
   Select,
-} from './AdminStyles';
+} from './Admin.styles';
 import BulkActionsModal from './BulkActionsModal';
 
 const RestrictedUsersList = ({ onViewUser, onSuccess }) => {

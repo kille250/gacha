@@ -15,7 +15,7 @@ import {
   SectionTitle,
   ItemCount,
   SecondaryButton,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const AppealsList = ({ onReviewAppeal }) => {
   const { t } = useTranslation();

@@ -42,7 +42,7 @@ import {
   Input,
   Select,
   PrimaryButton,
-} from './AdminStyles';
+} from './Admin.styles';
 import UserSecurityModal from './UserSecurityModal';
 
 const AdminUsers = ({ users, coinForm, onCoinFormChange, onAddCoins, onToggleAutofish, onToggleR18, onSecurityAction }) => {

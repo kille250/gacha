@@ -30,7 +30,7 @@ import {
   ResultTitle,
   ResultFishName,
   ResultReward,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * FishPromptOverlay - "Press SPACE to fish" prompt

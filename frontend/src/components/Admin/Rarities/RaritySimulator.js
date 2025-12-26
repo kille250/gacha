@@ -34,7 +34,7 @@ import {
   SimulatorValue,
   SimulatorPercent,
   SimulatorMainRate,
-} from './RarityStyles';
+} from './Rarity.styles';
 
 const RaritySimulator = ({
   isVisible,

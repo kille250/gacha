@@ -17,7 +17,7 @@ import {
   PrestigeLevelsOverview, PrestigeLevelsList, PrestigeLevelCard,
   PrestigeLevelCardEmoji, PrestigeLevelCardInfo, PrestigeLevelCardName,
   PrestigeLevelCardBadge, PrestigeLevelCardCheck, PrestigeLevelCardLock,
-} from '../FishingStyles';
+} from '../Fishing.styles';
 
 /**
  * Prestige Modal - Prestige system progression

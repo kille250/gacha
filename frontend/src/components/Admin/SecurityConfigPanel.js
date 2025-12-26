@@ -18,7 +18,7 @@ import {
   HeaderRow,
   SectionTitle,
   SecondaryButton,
-} from './AdminStyles';
+} from './Admin.styles';
 
 const CATEGORY_ICONS = {
   risk_thresholds: FaShieldAlt,
