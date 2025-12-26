@@ -80,12 +80,6 @@ const SEVERITY = {
   CRITICAL: 'critical'
 };
 
-// In-memory buffer for batch writes (optional optimization)
-// TODO: Implement batch write functionality
-// const eventBuffer = [];
-// const BUFFER_SIZE = 10;
-// const FLUSH_INTERVAL = 30000; // 30 seconds
-
 /**
  * Log an audit event
  * @param {Object} event - Event details

@@ -1,6 +1,6 @@
 /**
  * Roll Helper Functions
- * 
+ *
  * Centralized helpers for gacha roll operations
  * - Race condition protection via per-user locking
  * - Character pool selection with fallback logic
@@ -9,6 +9,7 @@
  */
 
 const { isRarePlusSync, PRICING_CONFIG } = require('../config/pricing');
+const { createLockManager } = require('./concurrencyControl');
 
 // ===========================================
 // CONSTANTS
@@ -25,33 +26,25 @@ const DEFAULT_RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common']
 // ===========================================
 
 /**
- * In-memory lock set to prevent concurrent roll requests per user
+ * Roll lock manager to prevent concurrent roll requests per user
  * Prevents double-spending attacks where multiple requests could
  * deduct points/tickets before the first completes
  */
-const rollInProgress = new Set();
+const rollLock = createLockManager('roll');
 
 /**
  * Acquire roll lock for a user
  * @param {number} userId - The user's ID
  * @returns {boolean} - True if lock acquired, false if already in progress
  */
-const acquireRollLock = (userId) => {
-  if (rollInProgress.has(userId)) {
-    return false;
-  }
-  rollInProgress.add(userId);
-  return true;
-};
+const acquireRollLock = (userId) => rollLock.acquire(userId);
 
 /**
  * Release roll lock for a user
  * Must be called in finally blocks to prevent deadlocks
  * @param {number} userId - The user's ID
  */
-const releaseRollLock = (userId) => {
-  rollInProgress.delete(userId);
-};
+const releaseRollLock = (userId) => rollLock.release(userId);
 
 // ===========================================
 // PURE FUNCTIONS: Character Grouping & Selection

@@ -50,7 +50,7 @@ function getAvailableBaits(user) {
     ...bait,
     owned: inventory[bait.id] || 0,
     canAfford: canAffordBait(user, bait.id),
-    isAvailable: !bait.eventOnly || isEventBaitActive(bait.id)
+    isAvailable: !bait.eventOnly // Event baits disabled until event system is implemented
   }));
 }
 
@@ -74,16 +74,6 @@ function canAffordBait(user, baitId) {
     default:
       return true;
   }
-}
-
-/**
- * Check if event bait is currently active
- * @param {string} baitId - Bait ID
- * @returns {boolean}
- */
-function isEventBaitActive(_baitId) {
-  // TODO: Integrate with event system
-  return false;
 }
 
 /**
