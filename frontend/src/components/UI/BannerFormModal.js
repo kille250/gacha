@@ -510,11 +510,11 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
 
                   {/* Bulk Actions Row */}
                   <BulkActionsRow>
-                    <BulkActionBtn onClick={handleSelectAllVisible}>
+                    <BulkActionBtn type="button" onClick={handleSelectAllVisible}>
                       {t('admin.bannerForm.selectAllVisible', 'Select all visible')} ({visibleCharacters.length})
                     </BulkActionBtn>
                     {formData.series && (
-                      <BulkActionBtn onClick={handleAddAllFromSeries}>
+                      <BulkActionBtn type="button" onClick={handleAddAllFromSeries}>
                         {t('admin.bannerForm.addAllFromSeries', 'Add all from')} "{formData.series}"
                       </BulkActionBtn>
                     )}
@@ -560,7 +560,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                 {/* Load More Button */}
                 {hasMore && (
                   <LoadMoreSection>
-                    <LoadMoreBtn onClick={handleLoadMore}>
+                    <LoadMoreBtn type="button" onClick={handleLoadMore}>
                       {t('admin.bannerForm.loadMore', 'Load more')} ({filteredCharacters.length - visibleCount} {t('admin.bannerForm.remaining', 'remaining')})
                     </LoadMoreBtn>
                   </LoadMoreSection>
