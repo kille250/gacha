@@ -164,11 +164,32 @@ schedule.scheduleJob('0 */6 * * *', async function() {
     // Get configurable decay percentage (default 10%)
     const { getNumber } = require('./services/securityConfigService');
     const decayPercentage = await getNumber('RISK_SCORE_DECAY_PERCENTAGE', 0.1);
-    
+
     const decayedCount = await decayRiskScores(decayPercentage);
     console.log(`[Scheduled Job] Decayed risk scores by ${decayPercentage * 100}% for ${decayedCount} users`);
   } catch (err) {
     console.error('[Scheduled Job] Error decaying risk scores:', err);
+  }
+});
+
+// Import job processor: Check for pending import jobs every 5 seconds
+const { processPendingJobs, cleanupOldJobs } = require('./services/importJobService');
+setInterval(async () => {
+  try {
+    await processPendingJobs();
+  } catch (err) {
+    console.error('[ImportJob] Error in job processor:', err);
+  }
+}, 5000);
+
+// Import job cleanup: Remove old completed jobs daily at 3 AM
+schedule.scheduleJob('0 3 * * *', async function() {
+  console.log('[Scheduled Job] Running import job cleanup');
+  try {
+    const deleted = await cleanupOldJobs();
+    console.log(`[Scheduled Job] Cleaned up ${deleted} old import jobs`);
+  } catch (err) {
+    console.error('[Scheduled Job] Error cleaning up import jobs:', err);
   }
 });
 

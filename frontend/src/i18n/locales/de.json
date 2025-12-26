@@ -1214,6 +1214,7 @@
     "defaultRarity": "Standard-Seltenheit",
     "importing": "Importiere...",
     "importCount": "{{count}} Charakter(e) importieren",
+    "importProgress": "Importiere {{processed}}/{{total}} ({{percentage}}%)",
     "failedSearch": "Anime-Suche fehlgeschlagen",
     "importFailed": "Import fehlgeschlagen",
     "episodes": "Folgen",

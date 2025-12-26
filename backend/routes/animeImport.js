@@ -1128,4 +1128,128 @@ router.get('/rarity-thresholds', auth, adminAuth, async (req, res) => {
   }
 });
 
+// ==========================================
+// ASYNC IMPORT ENDPOINTS (Background Jobs)
+// ==========================================
+
+const {
+  createImportJob,
+  getJobStatus,
+  cancelJob,
+  getRecentJobs
+} = require('../services/importJobService');
+
+/**
+ * Start an async character import (background job)
+ * Returns immediately with job ID for polling
+ */
+router.post('/import-async', auth, adminAuth, async (req, res) => {
+  try {
+    const { characters, series, rarity = 'common', autoRarity = false } = req.body;
+
+    if (!characters || !Array.isArray(characters) || characters.length === 0) {
+      return res.status(400).json({ error: 'No characters selected for import' });
+    }
+
+    if (!series || !series.trim()) {
+      return res.status(400).json({ error: 'Series name is required' });
+    }
+
+    // Validate rarity
+    const validRarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
+    if (!autoRarity && !validRarities.includes(rarity)) {
+      return res.status(400).json({ error: 'Invalid rarity value' });
+    }
+
+    // Prepare characters data
+    const charactersToImport = characters.map(c => ({
+      name: c.name,
+      image: c.image,
+      mal_id: c.mal_id,
+      role: c.role,
+      favorites: c.favorites,
+      rarity: autoRarity ? undefined : (c.rarity || rarity)
+    }));
+
+    // Create background job
+    const job = await createImportJob(req.user.id, {
+      characters: charactersToImport,
+      series: series.trim(),
+      defaultRarity: rarity,
+      autoRarity
+    });
+
+    console.log(`Admin (ID: ${req.user.id}) started async import job ${job.id} for "${series}" (${characters.length} characters, autoRarity=${autoRarity})`);
+
+    res.status(202).json({
+      message: 'Import job started',
+      jobId: job.id,
+      status: 'pending',
+      totalCharacters: characters.length,
+      estimatedTime: autoRarity
+        ? `~${Math.ceil(characters.length * 0.6)} seconds`
+        : `~${Math.ceil(characters.length * 0.3)} seconds`
+    });
+  } catch (err) {
+    console.error('Start async import error:', err);
+    res.status(500).json({ error: err.message || 'Failed to start import job' });
+  }
+});
+
+/**
+ * Get import job status
+ */
+router.get('/job/:jobId', auth, adminAuth, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const status = await getJobStatus(jobId, req.user.id);
+
+    if (!status) {
+      return res.status(404).json({ error: 'Job not found' });
+    }
+
+    res.json(status);
+  } catch (err) {
+    console.error('Get job status error:', err);
+    res.status(500).json({ error: err.message || 'Failed to get job status' });
+  }
+});
+
+/**
+ * Cancel a pending import job
+ */
+router.post('/job/:jobId/cancel', auth, adminAuth, async (req, res) => {
+  try {
+    const { jobId } = req.params;
+
+    const result = await cancelJob(jobId, req.user.id);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    res.json({ message: 'Job cancelled' });
+  } catch (err) {
+    console.error('Cancel job error:', err);
+    res.status(500).json({ error: err.message || 'Failed to cancel job' });
+  }
+});
+
+/**
+ * Get recent import jobs for current admin
+ */
+router.get('/jobs', auth, adminAuth, async (req, res) => {
+  try {
+    const { limit = 10 } = req.query;
+
+    const jobs = await getRecentJobs(req.user.id, Math.min(parseInt(limit) || 10, 50));
+
+    res.json({ jobs });
+  } catch (err) {
+    console.error('Get jobs error:', err);
+    res.status(500).json({ error: err.message || 'Failed to get jobs' });
+  }
+});
+
 module.exports = router;

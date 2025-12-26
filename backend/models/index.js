@@ -11,6 +11,7 @@ const Rarity = require('./rarity');
 const AuditEvent = require('./auditEvent');
 const Appeal = require('./appeal');
 const SecurityConfig = require('./securityConfig');
+const ImportJob = require('./importJob');
 
 // ===========================================
 // USER CHARACTERS JUNCTION TABLE (with leveling)
@@ -94,5 +95,6 @@ module.exports = {
   UserCharacter,
   AuditEvent,
   Appeal,
-  SecurityConfig
+  SecurityConfig,
+  ImportJob
 };

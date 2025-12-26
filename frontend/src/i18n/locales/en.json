@@ -1248,6 +1248,7 @@
     "defaultRarity": "Default Rarity",
     "importing": "Importing...",
     "importCount": "Import {{count}} Character(s)",
+    "importProgress": "Importing {{processed}}/{{total}} ({{percentage}}%)",
     "failedSearch": "Failed to search anime",
     "importFailed": "Import failed",
     "episodes": "eps",

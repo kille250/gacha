@@ -1,4 +1,4 @@
-import React, { useState, useCallback, useRef } from 'react';
+import React, { useState, useCallback, useRef, useEffect } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSearch, FaTimes, FaCheck, FaExclamationTriangle, FaDownload, FaStar, FaUsers, FaSpinner, FaImage, FaVideo, FaPlay, FaUser, FaTv, FaTag } from 'react-icons/fa';
@@ -62,6 +62,20 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
   // Import state
   const [importing, setImporting] = useState(false);
   const [importResult, setImportResult] = useState(null);
+
+  // Async import job state
+  const [importJobId, setImportJobId] = useState(null);
+  const [importProgress, setImportProgress] = useState(null);
+  const pollIntervalRef = useRef(null);
+
+  // Cleanup polling interval on unmount
+  useEffect(() => {
+    return () => {
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+      }
+    };
+  }, []);
 
   // Search for matching Danbooru tags
   const searchAltMediaTags = useCallback(async (query) => {
@@ -293,12 +307,64 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     );
   }, []);
 
-  // Import selected characters
+  // Poll for import job status
+  const pollJobStatus = useCallback(async (jobId) => {
+    try {
+      const response = await api.get(`/anime-import/job/${jobId}`);
+      const status = response.data;
+
+      setImportProgress(status.progress);
+
+      if (status.status === 'completed') {
+        // Job completed - stop polling
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+
+        setImportResult({
+          message: `Successfully imported ${status.progress.success} characters`,
+          characters: status.createdCharacters,
+          autoRarityUsed: status.autoRarity,
+          errors: status.errors
+        });
+
+        if (onSuccess && status.createdCharacters?.length > 0) {
+          onSuccess({ characters: status.createdCharacters });
+        }
+
+        // Clear selections on success
+        setSelectedCharacters([]);
+        setAnimeCharacters([]);
+        setSelectedAnime(null);
+        setImporting(false);
+        setImportJobId(null);
+
+      } else if (status.status === 'failed') {
+        // Job failed - stop polling
+        if (pollIntervalRef.current) {
+          clearInterval(pollIntervalRef.current);
+          pollIntervalRef.current = null;
+        }
+
+        setImportResult({ error: status.errorMessage || t('animeImport.importFailed') });
+        setImporting(false);
+        setImportJobId(null);
+      }
+      // If still processing, keep polling
+    } catch (err) {
+      console.error('Error polling job status:', err);
+      // Don't stop polling on transient errors
+    }
+  }, [onSuccess, t]);
+
+  // Import selected characters (async with background job)
   const handleImport = async () => {
     if (selectedCharacters.length === 0 || !seriesName.trim()) return;
 
     setImporting(true);
     setImportResult(null);
+    setImportProgress(null);
 
     try {
       // Include mal_id, role, and favorites for auto-rarity calculation
@@ -308,35 +374,64 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
         mal_id: c.mal_id,
         role: c.role,
         favorites: c.favorites,
-        rarity: autoRarity ? undefined : (c.rarity || defaultRarity) // Only send rarity if not using auto
+        rarity: autoRarity ? undefined : (c.rarity || defaultRarity)
       }));
 
-      const response = await api.post('/anime-import/import', {
+      // Start async import job
+      const response = await api.post('/anime-import/import-async', {
         characters: charactersToImport,
         series: seriesName.trim(),
         rarity: defaultRarity,
         autoRarity: autoRarity
       });
 
-      setImportResult(response.data);
+      const { jobId } = response.data;
+      setImportJobId(jobId);
+      setImportProgress({ total: selectedCharacters.length, processed: 0, success: 0, errors: 0, percentage: 0 });
 
-      if (onSuccess && response.data.characters?.length > 0) {
-        onSuccess(response.data);
-      }
+      // Start polling for job status
+      pollIntervalRef.current = setInterval(() => {
+        pollJobStatus(jobId);
+      }, 1500); // Poll every 1.5 seconds
 
-      // Clear selections on success
-      setSelectedCharacters([]);
-      setAnimeCharacters([]);
-      setSelectedAnime(null);
+      // Initial poll
+      pollJobStatus(jobId);
+
     } catch (err) {
       setImportResult({ error: err.response?.data?.error || t('animeImport.importFailed') });
-    } finally {
       setImporting(false);
+    }
+  };
+
+  // Cancel import job
+  const handleCancelImport = async () => {
+    if (!importJobId) return;
+
+    try {
+      await api.post(`/anime-import/job/${importJobId}/cancel`);
+
+      if (pollIntervalRef.current) {
+        clearInterval(pollIntervalRef.current);
+        pollIntervalRef.current = null;
+      }
+
+      setImporting(false);
+      setImportJobId(null);
+      setImportProgress(null);
+      setImportResult({ error: 'Import cancelled' });
+    } catch (err) {
+      console.error('Error cancelling import:', err);
     }
   };
 
   // Handle close
   const handleClose = () => {
+    // Clean up polling if active
+    if (pollIntervalRef.current) {
+      clearInterval(pollIntervalRef.current);
+      pollIntervalRef.current = null;
+    }
+
     setSearchQuery('');
     setSearchResults([]);
     setSelectedAnime(null);
@@ -344,6 +439,8 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
     setSelectedCharacters([]);
     setSeriesName('');
     setImportResult(null);
+    setImportProgress(null);
+    setImportJobId(null);
     setAltMediaCharacter(null);
     setAltMediaResults([]);
     onClose();
@@ -837,19 +934,41 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
         </ModalBody>
 
         <ModalFooter>
-          <CancelButton onClick={handleClose} disabled={importing}>
-            {t('common.cancel')}
-          </CancelButton>
-          <ImportButton 
-            onClick={handleImport} 
-            disabled={importing || selectedCharacters.length === 0 || !seriesName.trim()}
-          >
-            {importing ? (
-              <><FaSpinner className="spin" /> {t('animeImport.importing')}</>
-            ) : (
-              <><FaDownload /> {t('animeImport.importCount', { count: selectedCharacters.length })}</>
-            )}
-          </ImportButton>
+          {importing && importProgress ? (
+            <>
+              <ImportProgressContainer>
+                <ImportProgressBar>
+                  <ImportProgressFill style={{ width: `${importProgress.percentage}%` }} />
+                </ImportProgressBar>
+                <ImportProgressText>
+                  {t('animeImport.importProgress', {
+                    processed: importProgress.processed,
+                    total: importProgress.total,
+                    percentage: importProgress.percentage
+                  })}
+                </ImportProgressText>
+              </ImportProgressContainer>
+              <CancelButton onClick={handleCancelImport} disabled={importProgress.percentage > 0}>
+                {t('common.cancel')}
+              </CancelButton>
+            </>
+          ) : (
+            <>
+              <CancelButton onClick={handleClose} disabled={importing}>
+                {t('common.cancel')}
+              </CancelButton>
+              <ImportButton
+                onClick={handleImport}
+                disabled={importing || selectedCharacters.length === 0 || !seriesName.trim()}
+              >
+                {importing ? (
+                  <><FaSpinner className="spin" /> {t('animeImport.importing')}</>
+                ) : (
+                  <><FaDownload /> {t('animeImport.importCount', { count: selectedCharacters.length })}</>
+                )}
+              </ImportButton>
+            </>
+          )}
         </ModalFooter>
       </ModalContent>
     </ModalOverlay>
@@ -1491,6 +1610,35 @@ const SourceNote = styled.span`
   color: #888;
   font-size: 0.75rem;
   margin-top: 4px;
+`;
+
+const ImportProgressContainer = styled.div`
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-right: 15px;
+`;
+
+const ImportProgressBar = styled.div`
+  width: 100%;
+  height: 8px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 4px;
+  overflow: hidden;
+`;
+
+const ImportProgressFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #ff6b9d 0%, #c44569 100%);
+  border-radius: 4px;
+  transition: width 0.3s ease;
+`;
+
+const ImportProgressText = styled.span`
+  font-size: 0.85rem;
+  color: #aaa;
+  text-align: center;
 `;
 
 // Alt Media Picker Modal

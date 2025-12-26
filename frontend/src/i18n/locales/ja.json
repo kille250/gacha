@@ -1215,6 +1215,7 @@
     "defaultRarity": "デフォルトレアリティ",
     "importing": "インポート中...",
     "importCount": "{{count}}キャラクターをインポート",
+    "importProgress": "インポート中 {{processed}}/{{total}} ({{percentage}}%)",
     "failedSearch": "アニメの検索に失敗しました",
     "importFailed": "インポートに失敗しました",
     "episodes": "話",
