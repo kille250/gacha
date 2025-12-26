@@ -25,8 +25,3 @@ export * from './userStateUpdates';
 // Feature flags
 export * from './featureFlags';
 
-// Responsive utilities
-export * from './responsive';
-
-// Accessibility utilities
-export * from './accessibility';
