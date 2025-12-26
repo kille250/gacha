@@ -968,7 +968,7 @@ const BannerPage = () => {
             <FeaturedSection>
               <FeaturedLabel>{t('banner.featuredCharacters')}</FeaturedLabel>
               <CharacterAvatars>
-                {[...banner.Characters].sort((a, b) => {
+                {(banner.Characters || []).slice().sort((a, b) => {
                   const rarityOrder = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
                   return (rarityOrder[a.rarity] ?? 5) - (rarityOrder[b.rarity] ?? 5);
                 }).slice(0, 6).map(char => (
@@ -1462,51 +1462,57 @@ const BannerPage = () => {
                   <InfoBlock>
                     <InfoBlockTitle>{t('banner.dropRates') || 'Drop Rates'}</InfoBlockTitle>
                     <DropRatesContainer>
-                      <DropRateSection>
-                        <DropRateSectionTitle>
-                          <IconStar /> {t('banner.bannerRates') || 'Banner Pool'} ({pricing.dropRates.bannerPullChance}%)
-                        </DropRateSectionTitle>
-                        <DropRateGrid>
-                          {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
-                            <DropRateItem key={rarity} $color={getRarityColor(rarity)}>
-                              <RarityIcon $color={getRarityColor(rarity)}>{rarityIcons[rarity]}</RarityIcon>
-                              <DropRateLabel>{rarity}</DropRateLabel>
-                              <DropRateValue $color={getRarityColor(rarity)}>{pricing.dropRates.banner[rarity]}%</DropRateValue>
-                            </DropRateItem>
-                          ))}
-                        </DropRateGrid>
-                      </DropRateSection>
-                      
-                      <DropRateSection>
-                        <DropRateSectionTitle>
-                          <FaDice aria-hidden="true" /> {t('banner.standardRates') || 'Standard Pool'} ({100 - pricing.dropRates.bannerPullChance}%)
-                        </DropRateSectionTitle>
-                        <DropRateGrid>
-                          {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
-                            <DropRateItem key={rarity} $color={getRarityColor(rarity)}>
-                              <RarityIcon $color={getRarityColor(rarity)}>{rarityIcons[rarity]}</RarityIcon>
-                              <DropRateLabel>{rarity}</DropRateLabel>
-                              <DropRateValue $color={getRarityColor(rarity)}>{pricing.dropRates.standard[rarity]}%</DropRateValue>
-                            </DropRateItem>
-                          ))}
-                        </DropRateGrid>
-                      </DropRateSection>
-                      
-                      <DropRateSection $premium>
-                        <DropRateSectionTitle>
-                          <IconPremiumTicket /> {t('banner.premiumRates') || 'Premium Ticket'}
-                        </DropRateSectionTitle>
-                        <DropRateGrid>
-                          {['legendary', 'epic', 'rare'].map(rarity => (
-                            <DropRateItem key={rarity} $color={getRarityColor(rarity)}>
-                              <RarityIcon $color={getRarityColor(rarity)}>{rarityIcons[rarity]}</RarityIcon>
-                              <DropRateLabel>{rarity}</DropRateLabel>
-                              <DropRateValue $color={getRarityColor(rarity)}>{pricing.dropRates.premium[rarity]}%</DropRateValue>
-                            </DropRateItem>
-                          ))}
-                        </DropRateGrid>
-                        <PremiumNote><IconSparkle /> {t('banner.guaranteedRare') || 'Guaranteed Rare or better!'}</PremiumNote>
-                      </DropRateSection>
+                      {pricing.dropRates.banner && (
+                        <DropRateSection>
+                          <DropRateSectionTitle>
+                            <IconStar /> {t('banner.bannerRates') || 'Banner Pool'} ({pricing.dropRates.bannerPullChance}%)
+                          </DropRateSectionTitle>
+                          <DropRateGrid>
+                            {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
+                              <DropRateItem key={rarity} $color={getRarityColor(rarity)}>
+                                <RarityIcon $color={getRarityColor(rarity)}>{rarityIcons[rarity]}</RarityIcon>
+                                <DropRateLabel>{rarity}</DropRateLabel>
+                                <DropRateValue $color={getRarityColor(rarity)}>{pricing.dropRates.banner[rarity] ?? 0}%</DropRateValue>
+                              </DropRateItem>
+                            ))}
+                          </DropRateGrid>
+                        </DropRateSection>
+                      )}
+
+                      {pricing.dropRates.standard && (
+                        <DropRateSection>
+                          <DropRateSectionTitle>
+                            <FaDice aria-hidden="true" /> {t('banner.standardRates') || 'Standard Pool'} ({100 - pricing.dropRates.bannerPullChance}%)
+                          </DropRateSectionTitle>
+                          <DropRateGrid>
+                            {['legendary', 'epic', 'rare', 'uncommon', 'common'].map(rarity => (
+                              <DropRateItem key={rarity} $color={getRarityColor(rarity)}>
+                                <RarityIcon $color={getRarityColor(rarity)}>{rarityIcons[rarity]}</RarityIcon>
+                                <DropRateLabel>{rarity}</DropRateLabel>
+                                <DropRateValue $color={getRarityColor(rarity)}>{pricing.dropRates.standard[rarity] ?? 0}%</DropRateValue>
+                              </DropRateItem>
+                            ))}
+                          </DropRateGrid>
+                        </DropRateSection>
+                      )}
+
+                      {pricing.dropRates.premium && (
+                        <DropRateSection $premium>
+                          <DropRateSectionTitle>
+                            <IconPremiumTicket /> {t('banner.premiumRates') || 'Premium Ticket'}
+                          </DropRateSectionTitle>
+                          <DropRateGrid>
+                            {['legendary', 'epic', 'rare'].map(rarity => (
+                              <DropRateItem key={rarity} $color={getRarityColor(rarity)}>
+                                <RarityIcon $color={getRarityColor(rarity)}>{rarityIcons[rarity]}</RarityIcon>
+                                <DropRateLabel>{rarity}</DropRateLabel>
+                                <DropRateValue $color={getRarityColor(rarity)}>{pricing.dropRates.premium[rarity] ?? 0}%</DropRateValue>
+                              </DropRateItem>
+                            ))}
+                          </DropRateGrid>
+                          <PremiumNote><IconSparkle /> {t('banner.guaranteedRare') || 'Guaranteed Rare or better!'}</PremiumNote>
+                        </DropRateSection>
+                      )}
                       
                       <PityInfoBox>
                         <PityInfoTitle><IconPoolPity /> {t('banner.pitySystem') || '10-Pull Pity'}</PityInfoTitle>

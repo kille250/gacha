@@ -223,7 +223,7 @@ export function MilestoneRewards({ bannerId = null }) {
     return null;
   }
 
-  const { totalPulls, rewards, nextMilestone } = milestones;
+  const { totalPulls, rewards = [], nextMilestone } = milestones;
 
   const handleClaim = async (milestone) => {
     const reward = rewards.find(r => r.threshold === milestone);
@@ -241,7 +241,7 @@ export function MilestoneRewards({ bannerId = null }) {
 
   // Calculate progress percentage toward next milestone
   const milestoneThresholds = rewards.map(r => r.threshold);
-  const maxMilestone = Math.max(...milestoneThresholds);
+  const maxMilestone = milestoneThresholds.length > 0 ? Math.max(...milestoneThresholds) : 1;
   const progressPercent = Math.min((totalPulls / maxMilestone) * 100, 100);
 
   return (
