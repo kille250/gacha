@@ -36,7 +36,7 @@ const DojoTrainingSlots = ({
   status,
   getRarityColor,
   getRarityGlow,
-  onSlotClick,
+  onOpenPicker,
   onUnassign,
 }) => {
   const { t } = useTranslation();
@@ -114,7 +114,7 @@ const DojoTrainingSlots = ({
           return (
             <EmptySlot
               key={idx}
-              onClick={() => onSlotClick(idx)}
+              onClick={() => onOpenPicker(idx)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               role="listitem"
