@@ -34,13 +34,20 @@ const AltMediaPicker = ({
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(false);
   
-  // Hover preview state
+  // Hover preview state (desktop only)
   const [hoveredMedia, setHoveredMedia] = useState(null);
   const [hoverPosition, setHoverPosition] = useState({ x: 0, y: 0 });
-  
+
+  // Mobile preview modal state
+  const [previewMedia, setPreviewMedia] = useState(null);
+
   // Long press handling for mobile
   const longPressTimer = useRef(null);
   const longPressTriggered = useRef(false);
+
+  // Track if device uses touch to prevent hover on touch devices
+  const isTouchDevice = useRef(false);
+  const touchStartPos = useRef({ x: 0, y: 0 });
 
   // Search for tags matching query
   const searchTags = useCallback(async (query) => {
@@ -168,6 +175,7 @@ const AltMediaPicker = ({
       longPressTimer.current = null;
     }
     setHoveredMedia(null);
+    setPreviewMedia(null);
     onClose(clearSelection);
   }, [onClose]);
 
@@ -320,38 +328,58 @@ const AltMediaPicker = ({
                     key={media.id}
                     onClick={() => handleSelectMedia(media)}
                     onMouseEnter={(e) => {
+                      // Only show hover preview on non-touch devices
+                      if (isTouchDevice.current) return;
                       const rect = e.currentTarget.getBoundingClientRect();
                       setHoverPosition({ x: rect.left + rect.width / 2, y: rect.top });
                       setHoveredMedia(media);
                     }}
-                    onMouseLeave={() => setHoveredMedia(null)}
+                    onMouseLeave={() => {
+                      // Only handle if not touch device
+                      if (!isTouchDevice.current) {
+                        setHoveredMedia(null);
+                      }
+                    }}
                     onTouchStart={(e) => {
+                      // Mark as touch device to disable hover behavior
+                      isTouchDevice.current = true;
+                      // Clear any hover state from previous mouse interaction
+                      setHoveredMedia(null);
+
+                      // Store touch position for move detection
+                      const touch = e.touches[0];
+                      touchStartPos.current = { x: touch.clientX, y: touch.clientY };
+
                       longPressTriggered.current = false;
-                      const rect = e.currentTarget.getBoundingClientRect();
                       longPressTimer.current = setTimeout(() => {
                         longPressTriggered.current = true;
-                        setHoverPosition({ x: rect.left + rect.width / 2, y: rect.top });
-                        setHoveredMedia(media);
-                      }, 500);
+                        setPreviewMedia(media);
+                      }, 400);
                     }}
                     onTouchEnd={() => {
                       if (longPressTimer.current) {
                         clearTimeout(longPressTimer.current);
                         longPressTimer.current = null;
                       }
-                      if (longPressTriggered.current) {
-                        setTimeout(() => setHoveredMedia(null), 100);
-                      }
                     }}
-                    onTouchMove={() => {
+                    onTouchMove={(e) => {
+                      // Cancel long press if user moves finger more than 10px
                       if (longPressTimer.current) {
-                        clearTimeout(longPressTimer.current);
-                        longPressTimer.current = null;
+                        const touch = e.touches[0];
+                        const dx = touch.clientX - touchStartPos.current.x;
+                        const dy = touch.clientY - touchStartPos.current.y;
+                        const distance = Math.sqrt(dx * dx + dy * dy);
+
+                        if (distance > 10) {
+                          clearTimeout(longPressTimer.current);
+                          longPressTimer.current = null;
+                        }
                       }
-                      setHoveredMedia(null);
                     }}
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    onContextMenu={(e) => {
+                      // Prevent native context menu on long-press (iOS image preview)
+                      e.preventDefault();
+                    }}
                     $isAnimated={media.isAnimated}
                   >
                     <img src={media.preview} alt={`${characterName || 'Character'} media option - ${media.isAnimated ? 'animated' : 'static'} ${media.fileExt?.toUpperCase() || ''} format`} />
@@ -368,7 +396,7 @@ const AltMediaPicker = ({
                 ))}
               </MediaGrid>
               
-              {/* Hover Preview */}
+              {/* Hover Preview (desktop only) */}
               <AnimatePresence>
                 {hoveredMedia && (
                   <HoverPreviewContainer
@@ -393,7 +421,51 @@ const AltMediaPicker = ({
                   </HoverPreviewContainer>
                 )}
               </AnimatePresence>
-              
+
+              {/* Mobile Preview Modal */}
+              <AnimatePresence>
+                {previewMedia && (
+                  <MobilePreviewOverlay
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    onClick={() => setPreviewMedia(null)}
+                  >
+                    <MobilePreviewContent
+                      initial={{ scale: 0.9 }}
+                      animate={{ scale: 1 }}
+                      exit={{ scale: 0.9 }}
+                      onClick={(e) => e.stopPropagation()}
+                    >
+                      {previewMedia.isAnimated ? (
+                        <MobilePreviewVideo src={previewMedia.file} autoPlay loop muted playsInline controls />
+                      ) : (
+                        <MobilePreviewImage src={previewMedia.file || previewMedia.sample} alt="Preview" />
+                      )}
+                      <MobilePreviewInfo>
+                        <span><FaStar /> {previewMedia.score}</span>
+                        <span>{previewMedia.fileExt?.toUpperCase()}</span>
+                        <span>ID: {previewMedia.id}</span>
+                      </MobilePreviewInfo>
+                      <MobilePreviewActions>
+                        <MobilePreviewButton onClick={() => setPreviewMedia(null)}>
+                          <FaTimes /> {t('common.close') || 'Close'}
+                        </MobilePreviewButton>
+                        <MobilePreviewButton
+                          $primary
+                          onClick={() => {
+                            setPreviewMedia(null);
+                            handleSelectMedia(previewMedia);
+                          }}
+                        >
+                          <FaCheck /> {t('animeImport.selectThis') || 'Select'}
+                        </MobilePreviewButton>
+                      </MobilePreviewActions>
+                    </MobilePreviewContent>
+                  </MobilePreviewOverlay>
+                )}
+              </AnimatePresence>
+
               {hasMore && (
                 <LoadMoreButton onClick={loadMore} disabled={loadingMore}>
                   {loadingMore ? (
@@ -722,23 +794,42 @@ const MediaGrid = styled.div`
   gap: 12px;
 `;
 
-const MediaCard = styled(motion.div)`
+const MediaCard = styled.div`
   position: relative;
   border-radius: 10px;
   overflow: hidden;
   cursor: pointer;
   border: 2px solid ${props => props.$isAnimated ? 'rgba(155, 89, 182, 0.5)' : 'transparent'};
-  transition: border-color 0.2s;
-  
-  &:hover {
-    border-color: #9b59b6;
+  transition: border-color 0.2s, transform 0.2s;
+
+  /* iOS-specific touch handling */
+  touch-action: manipulation;
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  -webkit-tap-highlight-color: transparent;
+
+  /* Only apply hover effects on devices that support hover */
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      border-color: #9b59b6;
+      transform: scale(1.05);
+    }
   }
-  
+
+  /* Active/pressed state for touch */
+  &:active {
+    transform: scale(0.95);
+  }
+
   img {
     width: 100%;
     height: 100px;
     object-fit: cover;
     display: block;
+    /* Prevent iOS image save dialog on long press */
+    -webkit-touch-callout: none;
+    pointer-events: none;
   }
 `;
 
@@ -790,8 +881,16 @@ const SelectOverlay = styled.div`
   gap: 4px;
   opacity: 0;
   transition: opacity 0.2s;
-  
-  ${MediaCard}:hover & {
+
+  /* Only show on hover for devices that support it */
+  @media (hover: hover) and (pointer: fine) {
+    ${MediaCard}:hover & {
+      opacity: 1;
+    }
+  }
+
+  /* Show on active/pressed for touch devices */
+  ${MediaCard}:active & {
     opacity: 1;
   }
 `;
@@ -835,6 +934,11 @@ const HoverPreviewContainer = styled(motion.div)`
   pointer-events: none;
   max-width: 320px;
   max-height: 280px;
+
+  /* Hide on touch devices - they use the mobile preview modal instead */
+  @media (hover: none), (pointer: coarse) {
+    display: none;
+  }
 `;
 
 const HoverPreviewImage = styled.img`
@@ -889,6 +993,146 @@ const SourceNote = styled.span`
   display: inline-block;
   color: #888;
   font-size: 0.75rem;
+`;
+
+// Mobile Preview Components
+const MobilePreviewOverlay = styled(motion.div)`
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 10003;
+  padding: 20px;
+
+  /* iOS safe area handling */
+  padding-top: max(20px, env(safe-area-inset-top));
+  padding-bottom: max(20px, env(safe-area-inset-bottom));
+  padding-left: max(20px, env(safe-area-inset-left));
+  padding-right: max(20px, env(safe-area-inset-right));
+
+  /* Prevent any touch issues */
+  touch-action: none;
+  -webkit-touch-callout: none;
+`;
+
+const MobilePreviewContent = styled(motion.div)`
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px;
+  padding: 16px;
+  max-width: 95vw;
+  max-height: 85vh;
+  display: flex;
+  flex-direction: column;
+  box-shadow: 0 25px 80px rgba(0, 0, 0, 0.5);
+  border: 1px solid rgba(155, 89, 182, 0.3);
+
+  /* Enable scrolling within content if needed */
+  touch-action: pan-y;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+`;
+
+const MobilePreviewImage = styled.img`
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain;
+  margin: 0 auto;
+
+  /* Prevent iOS image save on long press */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+  pointer-events: none;
+`;
+
+const MobilePreviewVideo = styled.video`
+  display: block;
+  max-width: 100%;
+  max-height: 60vh;
+  width: auto;
+  height: auto;
+  border-radius: 8px;
+  object-fit: contain;
+  margin: 0 auto;
+
+  /* Prevent unwanted touch behaviors but allow video controls */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  user-select: none;
+`;
+
+const MobilePreviewInfo = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  padding: 12px 4px;
+  color: #aaa;
+  font-size: 0.85rem;
+  justify-content: center;
+
+  span {
+    display: flex;
+    align-items: center;
+    gap: 4px;
+
+    svg {
+      color: #ffc107;
+      font-size: 12px;
+    }
+  }
+`;
+
+const MobilePreviewActions = styled.div`
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+`;
+
+const MobilePreviewButton = styled.button`
+  flex: 1;
+  background: ${props => props.$primary
+    ? 'linear-gradient(135deg, #9b59b6 0%, #8e44ad 100%)'
+    : 'rgba(255, 255, 255, 0.1)'};
+  border: ${props => props.$primary ? 'none' : '1px solid rgba(255, 255, 255, 0.2)'};
+  color: #fff;
+  padding: 12px 16px;
+  border-radius: 8px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  transition: all 0.2s;
+
+  /* Touch handling */
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: ${props => props.$primary
+        ? 'linear-gradient(135deg, #a569bd 0%, #9b59b6 100%)'
+        : 'rgba(255, 255, 255, 0.15)'};
+    }
+  }
+
+  &:active {
+    transform: scale(0.97);
+    background: ${props => props.$primary
+      ? 'linear-gradient(135deg, #a569bd 0%, #9b59b6 100%)'
+      : 'rgba(255, 255, 255, 0.15)'};
+  }
 `;
 
 export default AltMediaPicker;
