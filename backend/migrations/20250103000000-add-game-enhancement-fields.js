@@ -219,7 +219,7 @@ module.exports = {
     }
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     const transaction = await queryInterface.sequelize.transaction();
 
     try {
@@ -249,7 +249,7 @@ module.exports = {
         try {
           await queryInterface.removeColumn('Users', column, { transaction });
           console.log(`Removed column: ${column}`);
-        } catch (err) {
+        } catch (_err) {
           console.log(`Column ${column} may not exist, skipping`);
         }
       }

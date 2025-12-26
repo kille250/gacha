@@ -19,7 +19,7 @@ module.exports = {
           WHEN duplicate_object THEN null;
         END $$;
       `);
-    } catch (err) {
+    } catch (_err) {
       // ENUM might already exist, that's fine
       console.log('ENUM type may already exist, continuing...');
     }
@@ -125,7 +125,7 @@ module.exports = {
     // Also drop the ENUM type
     try {
       await queryInterface.sequelize.query('DROP TYPE IF EXISTS "enum_ImportJobs_status";');
-    } catch (err) {
+    } catch (_err) {
       console.log('Could not drop ENUM type, may not exist');
     }
   }
