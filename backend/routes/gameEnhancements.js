@@ -107,19 +107,14 @@ router.get('/dojo/character/:id/specialization', [auth, enforcementMiddleware], 
   try {
     const characterId = parseInt(req.params.id);
 
-    // Force fresh read from database (no caching)
     const userCharacter = await UserCharacter.findOne({
       where: { UserId: req.user.id, CharacterId: characterId },
-      include: [{ model: Character }],
-      rejectOnEmpty: false
+      include: [{ model: Character }]
     });
 
     if (!userCharacter) {
       return res.status(404).json({ error: 'Character not found in collection' });
     }
-
-    // Reload to ensure we have fresh data
-    await userCharacter.reload();
 
     const specInfo = dojoEnhanced.getAvailableSpecializations(
       userCharacter.Character,
