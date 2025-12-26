@@ -383,6 +383,9 @@ export const useDojoPage = () => {
 
     // Computed values
     progressPercent,
+
+    // Refresh function for external components
+    refreshStatus: fetchStatus,
   };
 };
 

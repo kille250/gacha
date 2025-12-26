@@ -93,6 +93,9 @@ const DojoPage = () => {
 
     // Computed values
     progressPercent,
+
+    // Refresh function
+    refreshStatus,
   } = useDojoPage();
 
   // Specialization picker state
@@ -102,8 +105,11 @@ const DojoPage = () => {
     setSpecializingCharacter(character);
   };
 
-  const handleCloseSpecialization = () => {
+  const handleCloseSpecialization = (shouldRefresh = false) => {
     setSpecializingCharacter(null);
+    if (shouldRefresh) {
+      refreshStatus();
+    }
   };
 
   if (loading) {

@@ -244,7 +244,8 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
 
     try {
       await applySpecialization(selected);
-      onClose?.();
+      // Pass true to trigger a refresh of the parent's status
+      onClose?.(true);
     } catch (err) {
       console.error('Failed to apply specialization:', err);
     }

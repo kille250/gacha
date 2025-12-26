@@ -30,9 +30,11 @@ function getAvailableSpecializations(character, userCharacter) {
 
   if (currentSpec) {
     // Already specialized - show current only
+    // Return the spec ID in `current` for frontend compatibility
     return {
       hasSpecialization: true,
-      current: DOJO_SPECIALIZATIONS[currentSpec],
+      current: currentSpec, // Return ID string, not full object
+      currentDetails: DOJO_SPECIALIZATIONS[currentSpec], // Full object if needed
       available: [],
       canChange: false // Specializations are permanent
     };
