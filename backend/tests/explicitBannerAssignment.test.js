@@ -50,7 +50,7 @@ const unassignedCharacters = [
 ];
 
 // All characters (this should NOT be used as fallback anymore)
-const allCharacters = [
+const _allCharacters = [
   ...standardBannerCharacters,
   ...limitedBannerCharacters,
   ...unassignedCharacters

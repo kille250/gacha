@@ -12,6 +12,7 @@ const { downloadImage, generateUniqueFilename, getExtensionFromUrl, safeUnlink }
 const { checkForDuplicates, getDetectionMode } = require('./duplicateDetectionService');
 const { logAdminAction } = require('./auditService');
 const { calculateRarity, getRarityDetails } = require('../utils/rarityCalculator');
+const { addCharacterToStandardBanner } = require('./standardBannerService');
 
 // Jikan API configuration (same as animeImport.js)
 const JIKAN_API = 'https://api.jikan.moe/v4';
@@ -141,6 +142,15 @@ async function processCharacter(char, series, defaultRarity, autoRarity, detecti
     duration: fp?.duration || null,
     frameCount: fp?.frameCount || null
   });
+
+  // Add character to standard banner pool
+  try {
+    await addCharacterToStandardBanner(newCharacter.id);
+    console.log(`[ImportJob] Added "${char.name}" to standard banner pool`);
+  } catch (bannerErr) {
+    console.warn(`[ImportJob] Could not add "${char.name}" to standard banner:`, bannerErr.message);
+    // Don't fail the import if adding to banner fails
+  }
 
   const charResponse = newCharacter.toJSON();
   if (rarityDetails) {

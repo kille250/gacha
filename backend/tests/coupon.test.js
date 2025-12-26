@@ -9,7 +9,7 @@
  */
 
 // Mock the database and models for testing
-const mockUser = {
+const _mockUser = {
   id: 1,
   points: 1000,
   rollTickets: 5,
@@ -17,7 +17,7 @@ const mockUser = {
   save: jest.fn().mockResolvedValue(true)
 };
 
-const mockCoupon = {
+const _mockCoupon = {
   id: 'test-uuid',
   code: 'TEST-TICKET',
   type: 'ticket',

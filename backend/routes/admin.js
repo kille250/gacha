@@ -12,7 +12,6 @@ const { User, Character, Banner, Coupon, CouponRedemption, FishInventory, AuditE
 const {
   getStandardBanner,
   getStandardBannerCharacters,
-  addCharacterToStandardBanner,
   removeCharacterFromStandardBanner,
   bulkAddToStandardBanner,
   getUnassignedCharacters,

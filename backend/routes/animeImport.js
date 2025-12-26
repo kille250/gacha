@@ -9,6 +9,7 @@ const { downloadImage, generateUniqueFilename, getExtensionFromUrl, safeUnlink }
 const { checkForDuplicates, getDetectionMode } = require('../services/duplicateDetectionService');
 const { logAdminAction: logDuplicateEvent } = require('../services/auditService');
 const { calculateRarity, getRarityDetails } = require('../utils/rarityCalculator');
+const { addCharacterToStandardBanner } = require('../services/standardBannerService');
 
 // Jikan API base URL (free MyAnimeList API)
 const JIKAN_API = 'https://api.jikan.moe/v4';
@@ -270,6 +271,13 @@ router.post('/import', auth, adminAuth, async (req, res) => {
           duration: fp?.duration || null,
           frameCount: fp?.frameCount || null
         });
+
+        // Add character to standard banner pool
+        try {
+          await addCharacterToStandardBanner(newCharacter.id);
+        } catch (bannerErr) {
+          console.warn(`Could not add "${char.name}" to standard banner:`, bannerErr.message);
+        }
 
         // Include rarity calculation details in response
         const charResponse = newCharacter.toJSON();
