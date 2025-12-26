@@ -33,6 +33,7 @@ const {
 } = require('../utils/characterLeveling');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { addGachaPullXP, addNewCharacterXP, addCharacterLevelXP } = require('../services/accountLevelService');
+const gachaEnhanced = require('../services/gachaEnhancedService');
 
 // ===========================================
 // ROLL ENDPOINTS
@@ -85,14 +86,20 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
     
     // Add character to user's collection (shards on duplicates, bonus points if max level)
     const acquisition = await acquireCharacter(userId, result.character.id, user);
-    
-    const shardInfo = acquisition.isDuplicate 
-      ? acquisition.isMaxLevel 
-        ? `(max level → +${acquisition.bonusPoints} pts)` 
+
+    const shardInfo = acquisition.isDuplicate
+      ? acquisition.isMaxLevel
+        ? `(max level → +${acquisition.bonusPoints} pts)`
         : `(+1 shard, total: ${acquisition.shards})`
       : '(new)';
     console.log(`User ${user.username} (ID: ${user.id}) rolled ${result.character.name} (${result.actualRarity}) ${shardInfo}`);
-    
+
+    // Update pity counters and milestone progress for standard banner
+    gachaEnhanced.updatePityCounters(user, result.actualRarity, null, false);
+    gachaEnhanced.recordPull(user, 'standard', 1);
+    gachaEnhanced.awardFatePoints(user, 'standard', 'standard', false);
+    await user.save();
+
     // SECURITY: Update risk score AFTER successful roll
     await updateRiskScore(userId, {
       action: RISK_ACTIONS.GACHA_ROLL,
@@ -145,7 +152,11 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
         level: freshUser.accountLevel,
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
-      } : null
+      } : null,
+      // Gacha enhancement state
+      pityState: gachaEnhanced.getPityState(user, null),
+      milestones: gachaEnhanced.getMilestoneStatus(user, 'standard'),
+      fatePoints: gachaEnhanced.getFatePointsStatus(user, 'standard')
     });
   } catch (err) {
     releaseRollLock(userId);
@@ -222,9 +233,19 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
     const newCards = acquisitions.filter(a => a.isNew).length;
     const shardsGained = acquisitions.filter(a => a.isDuplicate && !a.isMaxLevel).length;
     const bonusPointsTotal = acquisitions.reduce((sum, a) => sum + (a.bonusPoints || 0), 0);
-    
+
+    // Update pity counters and milestone progress for each pull
+    for (const r of results) {
+      if (!r.character) continue;
+      gachaEnhanced.updatePityCounters(user, r.actualRarity, null, false);
+    }
+    // Record total pulls for milestones
+    gachaEnhanced.recordPull(user, 'standard', count);
+    gachaEnhanced.awardFatePoints(user, 'standard', 'standard', false);
+    await user.save();
+
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);
-    
+
     // SECURITY: Update risk score AFTER successful multi-roll
     await updateRiskScore(userId, {
       action: RISK_ACTIONS.GACHA_MULTI_ROLL,
@@ -276,7 +297,11 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
         level: freshUser.accountLevel,
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
-      } : null
+      } : null,
+      // Gacha enhancement state
+      pityState: gachaEnhanced.getPityState(user, null),
+      milestones: gachaEnhanced.getMilestoneStatus(user, 'standard'),
+      fatePoints: gachaEnhanced.getFatePointsStatus(user, 'standard')
     });
   } catch (err) {
     releaseRollLock(userId);

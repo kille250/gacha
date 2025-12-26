@@ -41,6 +41,7 @@ const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { getUserSpecializationBonuses } = require('../services/dojoEnhancedService');
 const { addGachaPullXP, addNewCharacterXP } = require('../services/accountLevelService');
+const gachaEnhanced = require('../services/gachaEnhancedService');
 
 // ===========================================
 // HELPER FUNCTIONS
@@ -688,15 +689,24 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
     
     // Add character (shards on duplicates, bonus points if max level)
     const acquisition = await acquireCharacter(userId, result.character.id, user);
-    
+
     const isBannerPull = context.bannerCharacters.some(c => c.id === result.character.id);
-    const shardInfo = acquisition.isDuplicate 
-      ? acquisition.isMaxLevel 
-        ? `(max level → +${acquisition.bonusPoints} pts)` 
+    const shardInfo = acquisition.isDuplicate
+      ? acquisition.isMaxLevel
+        ? `(max level → +${acquisition.bonusPoints} pts)`
         : `(+1 shard, total: ${acquisition.shards})`
       : '(new)';
     console.log(`User ${user.username} (ID: ${user.id}) pulled from '${banner.name}' banner: ${result.character.name} (${result.actualRarity}) from ${isBannerPull ? 'banner' : 'standard'} pool ${shardInfo}. Cost: ${cost} points`);
-    
+
+    // Update pity counters, milestone progress, and fate points
+    const isFeatured = isBannerPull && result.actualRarity === 'legendary';
+    gachaEnhanced.updatePityCounters(user, result.actualRarity, banner, isFeatured);
+    gachaEnhanced.recordPull(user, banner.id, 1);
+    const pullType = isPremium ? 'premium' : 'banner';
+    const gotNonFeaturedLegendary = result.actualRarity === 'legendary' && !isFeatured;
+    gachaEnhanced.awardFatePoints(user, banner.id, pullType, gotNonFeaturedLegendary);
+    await user.save();
+
     // SECURITY: Update risk score AFTER successful banner roll
     await updateRiskScore(userId, {
       action: RISK_ACTIONS.GACHA_ROLL,
@@ -754,7 +764,11 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
         level: freshUser.accountLevel,
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
-      } : null
+      } : null,
+      // Gacha enhancement state
+      pityState: gachaEnhanced.getPityState(user, banner),
+      milestones: gachaEnhanced.getMilestoneStatus(user, banner.id),
+      fatePoints: gachaEnhanced.getFatePointsStatus(user, banner.id)
     });
   } catch (err) {
     releaseRollLock(userId);
@@ -927,9 +941,27 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
     const newCards = acquisitions.filter(a => a.isNew).length;
     const shardsGained = acquisitions.filter(a => a.isDuplicate && !a.isMaxLevel).length;
     const bonusPointsTotal = acquisitions.reduce((sum, a) => sum + (a.bonusPoints || 0), 0);
-    
+
+    // Update pity counters, milestone progress, and fate points for each pull
+    let gotNonFeaturedLegendary = false;
+    for (let i = 0; i < results.length; i++) {
+      const r = results[i];
+      if (!r.character) continue;
+      const isFeatured = r.isBannerCharacter && r.actualRarity === 'legendary';
+      gachaEnhanced.updatePityCounters(user, r.actualRarity, banner, isFeatured);
+      if (r.actualRarity === 'legendary' && !isFeatured) {
+        gotNonFeaturedLegendary = true;
+      }
+    }
+    // Record total pulls for milestones
+    gachaEnhanced.recordPull(user, banner.id, count);
+    // Award fate points (use highest tier for multi - premium if any premium rolls)
+    const pullType = premiumCount > 0 ? 'premium' : 'banner';
+    gachaEnhanced.awardFatePoints(user, banner.id, pullType, gotNonFeaturedLegendary);
+    await user.save();
+
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);
-    
+
     // SECURITY: Update risk score AFTER successful banner multi-roll
     await updateRiskScore(userId, {
       action: RISK_ACTIONS.GACHA_MULTI_ROLL,
@@ -988,7 +1020,11 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
         level: freshUser.accountLevel,
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
-      } : null
+      } : null,
+      // Gacha enhancement state
+      pityState: gachaEnhanced.getPityState(user, banner),
+      milestones: gachaEnhanced.getMilestoneStatus(user, banner.id),
+      fatePoints: gachaEnhanced.getFatePointsStatus(user, banner.id)
     });
   } catch (err) {
     releaseRollLock(userId);

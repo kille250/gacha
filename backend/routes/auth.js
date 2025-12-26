@@ -1264,11 +1264,27 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
     // Reset Game Enhancement fields
     user.accountLevel = 1;
     user.accountXP = 0;
+    user.dojoClaimsTotal = 0;
     user.dojoFacilityTiers = ['basic'];
     user.baitInventory = {};
-    user.gachaPity = {};
+
+    // Reset Gacha pity, milestone, and fate points systems
+    user.gachaPity = { pullsSinceRare: 0, pullsSinceEpic: 0, pullsSinceLegendary: 0, totalPulls: 0 };
     user.bannerPity = {};
     user.pullHistory = {};
+    user.fatePoints = {};
+    user.characterSelectors = [];
+    user.weeklyBannerTickets = 0;
+
+    // Reset retention/mastery fields
+    user.characterMastery = {};
+    user.fishCodex = { discovered: [], biomeProgress: {}, claimedMilestones: [], recentDiscoveries: [] };
+    user.luckMeter = { fishing: 0, gacha: 0, lastUpdate: null };
+    user.lastLogin = null;
+    user.returnBonusClaimed = null;
+    user.items = [];
+    user.rodSkins = [];
+    user.lastWanderingWarrior = null;
 
     await user.save();
     

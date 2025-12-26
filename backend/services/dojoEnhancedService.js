@@ -123,7 +123,7 @@ function calculateSpecializationBonuses(characters) {
  */
 function getFacilityTier(user) {
   const unlockedTiers = user.dojoFacilityTiers || ['basic'];
-  const accountLevel = user.accountLevel || 1;
+  const _accountLevel = user.accountLevel || 1;
 
   // Find highest unlocked tier
   let currentTier = DOJO_FACILITY_TIERS.basic;
