@@ -6,12 +6,17 @@
  */
 
 import React, { useState } from 'react';
-import styled from 'styled-components';
+import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaUser } from 'react-icons/fa';
+import { FaUser, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
 import { GiCrossedSwords, GiBookCover, GiSparkles } from 'react-icons/gi';
 import { useTranslation } from 'react-i18next';
-import { useCharacterSpecialization } from '../../hooks/useGameEnhancements';
+import { useCharacterSpecialization, useDojoFacility } from '../../hooks/useGameEnhancements';
+
+const spin = keyframes`
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+`;
 
 const Container = styled(motion.div)`
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -197,6 +202,34 @@ const CancelButton = styled(Button)`
   border: 1px solid rgba(255, 255, 255, 0.1);
 `;
 
+const LoadingSpinner = styled(FaSpinner)`
+  animation: ${spin} 1s linear infinite;
+  margin-right: 8px;
+`;
+
+const ErrorBanner = styled.div`
+  background: rgba(244, 67, 54, 0.1);
+  border: 1px solid rgba(244, 67, 54, 0.3);
+  border-radius: 8px;
+  padding: 12px;
+  margin-bottom: 20px;
+  color: #f44336;
+  font-size: 0.85rem;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const LoadingContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  gap: 16px;
+  color: #888;
+`;
+
 // Backend specialization IDs: strength, wisdom, spirit
 const SPECIALIZATION_DATA = {
   strength: {
@@ -224,42 +257,53 @@ const SPECIALIZATION_DATA = {
 
 export function SpecializationPicker({ character, userLevel = 1, onClose }) {
   const { t } = useTranslation();
-  const { specialization, loading, applySpecialization } = useCharacterSpecialization(character?.id);
+  const { specialization, loading, error, applying, applySpecialization } = useCharacterSpecialization(character?.id);
+  const { facility, loading: facilityLoading } = useDojoFacility();
   const [selected, setSelected] = useState(null);
   const [confirming, setConfirming] = useState(false);
+  const [applyError, setApplyError] = useState(null);
 
   const hasExistingSpec = !!specialization?.current;
 
+  // Check if specializations feature is unlocked (requires warriors_hall or higher)
+  const hasSpecializationsFeature = facility?.current?.features?.includes('specializations') ?? false;
+
   const handleSelect = (specId) => {
-    if (hasExistingSpec) return; // Cannot change once set
-    const spec = SPECIALIZATION_DATA[specId];
-    if (spec.unlockLevel > userLevel) return; // Locked
+    if (hasExistingSpec || applying || !hasSpecializationsFeature) return;
 
     setSelected(specId);
     setConfirming(true);
+    setApplyError(null);
   };
 
   const handleConfirm = async () => {
-    if (!selected) return;
+    if (!selected || applying) return;
 
     try {
+      setApplyError(null);
       await applySpecialization(selected);
       // Pass true to trigger a refresh of the parent's status
       onClose?.(true);
     } catch (err) {
       console.error('Failed to apply specialization:', err);
+      setApplyError(err.response?.data?.error || err.message || t('specialization.applyError'));
     }
   };
 
   const handleCancel = () => {
+    if (applying) return;
     setSelected(null);
     setConfirming(false);
+    setApplyError(null);
   };
 
-  if (loading) {
+  if (loading || facilityLoading) {
     return (
       <Container>
-        <Title>{t('specialization.loading')}</Title>
+        <LoadingContainer>
+          <LoadingSpinner size={24} />
+          <span>{t('specialization.loading')}</span>
+        </LoadingContainer>
       </Container>
     );
   }
@@ -292,7 +336,18 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
         </CharacterDetails>
       </CharacterInfo>
 
-      {hasExistingSpec ? (
+      {(error || applyError) && (
+        <ErrorBanner>
+          <FaExclamationTriangle />
+          <span>{applyError || error}</span>
+        </ErrorBanner>
+      )}
+
+      {!hasSpecializationsFeature ? (
+        <WarningBanner>
+          {t('specialization.requiresFacility')}
+        </WarningBanner>
+      ) : hasExistingSpec ? (
         <WarningBanner>
           {t('specialization.alreadyHasWarning')}
         </WarningBanner>
@@ -304,7 +359,7 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
 
       <SpecGrid>
         {Object.entries(SPECIALIZATION_DATA).map(([id, spec]) => {
-          const isLocked = spec.unlockLevel > userLevel;
+          const isLocked = !hasSpecializationsFeature;
           const isSelected = selected === id;
           const isCurrentSpec = specialization?.current === id;
 
@@ -321,8 +376,8 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
               <SpecName>{t(spec.nameKey)}</SpecName>
               <SpecBonus>{t(spec.bonusKey)}</SpecBonus>
               <SpecDesc>{t(spec.descKey)}</SpecDesc>
-              {isLocked && (
-                <LockedBadge>{t('specialization.unlocksAt', { level: spec.unlockLevel })}</LockedBadge>
+              {isLocked && !isCurrentSpec && (
+                <LockedBadge>{t('specialization.requiresFacility')}</LockedBadge>
               )}
               {isCurrentSpec && (
                 <LockedBadge style={{ background: 'rgba(76, 175, 80, 0.2)', color: '#4caf50' }}>
@@ -349,17 +404,22 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
             <ButtonGroup>
               <CancelButton
                 onClick={handleCancel}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                disabled={applying}
+                whileHover={!applying ? { scale: 1.02 } : {}}
+                whileTap={!applying ? { scale: 0.98 } : {}}
+                style={{ opacity: applying ? 0.5 : 1, cursor: applying ? 'not-allowed' : 'pointer' }}
               >
                 {t('common.cancel')}
               </CancelButton>
               <ConfirmButton
                 onClick={handleConfirm}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                disabled={applying}
+                whileHover={!applying ? { scale: 1.02 } : {}}
+                whileTap={!applying ? { scale: 0.98 } : {}}
+                style={{ opacity: applying ? 0.7 : 1, cursor: applying ? 'not-allowed' : 'pointer' }}
               >
-                {t('common.confirm')}
+                {applying && <LoadingSpinner size={14} />}
+                {applying ? t('specialization.applying') : t('common.confirm')}
               </ConfirmButton>
             </ButtonGroup>
           </ConfirmSection>

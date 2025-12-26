@@ -7,11 +7,11 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdClose, MdSearch } from 'react-icons/md';
+import { GiCrossedSwords, GiBookCover, GiSparkles } from 'react-icons/gi';
 
 import { Spinner } from '../../../design-system';
 import { getAssetUrl } from '../../../utils/api';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../../../utils/mediaUtils';
-
 import {
   ModalOverlay,
   ModalContent,
@@ -35,7 +35,21 @@ import {
   CharRarity,
   CharLevel,
   CharPowerBonus,
+  CharSpecBadge,
 } from './DojoPage.styles';
+
+// Specialization icon mapping
+const SPEC_ICONS = {
+  strength: GiCrossedSwords,
+  wisdom: GiBookCover,
+  spirit: GiSparkles
+};
+
+const SPEC_COLORS = {
+  strength: '#e74c3c',
+  wisdom: '#3498db',
+  spirit: '#9b59b6'
+};
 
 const DojoCharacterPicker = ({
   onClose,
@@ -147,6 +161,14 @@ const DojoCharacterPicker = ({
                                 </CharPowerBonus>
                               )}
                             </CharOverlay>
+                            {char.specialization && (
+                              <CharSpecBadge
+                                $color={SPEC_COLORS[char.specialization]}
+                                title={t(`specialization.${char.specialization}.name`)}
+                              >
+                                {React.createElement(SPEC_ICONS[char.specialization], { size: 12 })}
+                              </CharSpecBadge>
+                            )}
                           </CharacterCard>
                         ))}
                       </CharacterGrid>

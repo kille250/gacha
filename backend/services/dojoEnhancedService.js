@@ -537,13 +537,29 @@ function calculateEnhancedRewards(characters, hours, upgrades, facilityTier, opt
  * @returns {Promise<Object>} - Aggregated bonuses from all specialized characters
  */
 async function getUserSpecializationBonuses(userId) {
-  const { UserCharacter } = require('../models');
+  const { User, UserCharacter } = require('../models');
 
-  // Get all characters with specializations in the dojo
+  // Get user's dojo slots (character IDs in training)
+  const user = await User.findByPk(userId, { attributes: ['dojoSlots'] });
+  const dojoSlots = user?.dojoSlots || [];
+  const characterIds = dojoSlots.filter(id => id !== null);
+
+  if (characterIds.length === 0) {
+    return {
+      pointsMultiplier: 1.0,
+      ticketChanceMultiplier: 1.0,
+      synergyBonus: 0,
+      premiumCurrencyChance: 0,
+      fishingPowerBonus: 0,
+      gachaLuckBonus: 0
+    };
+  }
+
+  // Get specializations for characters currently in dojo
   const userChars = await UserCharacter.findAll({
     where: {
       UserId: userId,
-      inDojo: true
+      CharacterId: characterIds
     },
     attributes: ['specialization']
   });

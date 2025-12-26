@@ -62,7 +62,8 @@ router.get('/status', [auth, enforcementMiddleware], async (req, res) => {
         .map(uc => ({
           ...uc.Character.toJSON(),
           level: uc.level,
-          duplicateCount: uc.duplicateCount
+          duplicateCount: uc.duplicateCount,
+          specialization: uc.specialization || null
         }));
     }
     
@@ -131,7 +132,8 @@ router.get('/status', [auth, enforcementMiddleware], async (req, res) => {
           series: char.series,
           rarity: char.rarity,
           level: char.level || 1,
-          levelMultiplier: getLevelMultiplier(char.level || 1)
+          levelMultiplier: getLevelMultiplier(char.level || 1),
+          specialization: char.specialization || null
         } : null
       })),
       maxSlots,
@@ -213,7 +215,8 @@ router.get('/available-characters', [auth, enforcementMiddleware], async (req, r
         series: uc.Character.series,
         rarity: uc.Character.rarity,
         level: uc.level || 1,
-        levelMultiplier: getLevelMultiplier(uc.level || 1)
+        levelMultiplier: getLevelMultiplier(uc.level || 1),
+        specialization: uc.specialization || null
       }));
     
     // Group by series for UI convenience

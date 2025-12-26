@@ -1060,6 +1060,27 @@ export const SpecializeButton = styled.button`
   }
 `;
 
+export const SlotSpecBadge = styled.div`
+  position: absolute;
+  top: ${theme.spacing.xs};
+  left: ${theme.spacing.xs};
+  width: 28px;
+  height: 28px;
+  border-radius: ${theme.radius.full};
+  background: ${props => props.$color || '#9b59b6'};
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 24px;
+    height: 24px;
+  }
+`;
+
 export const EmptySlot = styled(motion.div)`
   aspect-ratio: 3/4;
   border-radius: ${theme.radius.xl};
@@ -1603,4 +1624,20 @@ export const CharPowerBonus = styled.div`
   font-weight: ${theme.fontWeights.bold};
   margin-top: 2px;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+`;
+
+export const CharSpecBadge = styled.div`
+  position: absolute;
+  top: 4px;
+  left: 4px;
+  width: 20px;
+  height: 20px;
+  border-radius: ${theme.radius.full};
+  background: ${props => props.$color || '#9b59b6'};
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
 `;

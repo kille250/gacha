@@ -1445,20 +1445,23 @@
     "unlocksAt": "Unlocks at Level {{level}}",
     "confirmApply": "Apply {{name}} specialization?",
     "permanentAction": "This action is permanent!",
+    "applying": "Applying...",
+    "applyError": "Failed to apply specialization. Please try again.",
+    "requiresFacility": "Requires Warrior's Hall facility",
     "strength": {
       "name": "Path of Strength",
       "bonus": "+15% Fishing Power",
-      "description": "Boosts fishing power against large fish"
+      "description": "Boosts fishing timing window against fish"
     },
     "wisdom": {
       "name": "Path of Wisdom",
-      "bonus": "+5% Gacha Luck, -50% Dojo Income",
-      "description": "Better gacha odds but reduced dojo earnings"
+      "bonus": "+5% Gacha Luck, +25% Ticket Chance, -50% Dojo Income",
+      "description": "Better gacha odds and more tickets, but reduced dojo points"
     },
     "spirit": {
       "name": "Path of Spirit",
-      "bonus": "+25% Dojo Income, +10% Synergy",
-      "description": "Enhanced dojo rewards and team harmony"
+      "bonus": "+25% Dojo Income, +10% Synergy, +10% Currency",
+      "description": "Enhanced dojo rewards, team synergy, and currency generation"
     }
   }
 }

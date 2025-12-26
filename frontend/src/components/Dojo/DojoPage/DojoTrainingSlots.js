@@ -8,6 +8,7 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdAdd, MdLock } from 'react-icons/md';
 import { FaDumbbell, FaTimes, FaStar } from 'react-icons/fa';
+import { GiCrossedSwords, GiBookCover, GiSparkles } from 'react-icons/gi';
 
 import { getAssetUrl } from '../../../utils/api';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../../../utils/mediaUtils';
@@ -27,11 +28,25 @@ import {
   SlotBadgeRow,
   SlotRarityBadge,
   SlotLevelBadge,
+  SlotSpecBadge,
   RemoveButton,
   SpecializeButton,
   EmptySlot,
   LockedSlot,
 } from './DojoPage.styles';
+
+// Specialization icon mapping
+const SPEC_ICONS = {
+  strength: GiCrossedSwords,
+  wisdom: GiBookCover,
+  spirit: GiSparkles
+};
+
+const SPEC_COLORS = {
+  strength: '#e74c3c',
+  wisdom: '#3498db',
+  spirit: '#9b59b6'
+};
 
 const DojoTrainingSlots = ({
   status,
@@ -109,7 +124,15 @@ const DojoTrainingSlots = ({
                 >
                   <FaTimes aria-hidden="true" />
                 </RemoveButton>
-                {onOpenSpecialization && (
+                {char.specialization ? (
+                  <SlotSpecBadge
+                    $color={SPEC_COLORS[char.specialization]}
+                    title={t(`specialization.${char.specialization}.name`)}
+                    aria-label={t(`specialization.${char.specialization}.name`)}
+                  >
+                    {React.createElement(SPEC_ICONS[char.specialization], { size: 14 })}
+                  </SlotSpecBadge>
+                ) : onOpenSpecialization && (
                   <SpecializeButton
                     onClick={() => onOpenSpecialization(char)}
                     aria-label={`${t('dojo.specialize')} ${char.name}`}
