@@ -114,10 +114,13 @@ const DojoTrainingSlots = ({
           return (
             <EmptySlot
               key={idx}
-              type="button"
-              onClick={() => onOpenPicker(idx)}
+              onClick={() => {
+                console.log('EmptySlot clicked, idx:', idx, 'onOpenPicker:', typeof onOpenPicker);
+                if (onOpenPicker) onOpenPicker(idx);
+              }}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
+              role="listitem"
               aria-label={t('dojo.addCharacter')}
             >
               <MdAdd aria-hidden="true" />
