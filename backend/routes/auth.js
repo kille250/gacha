@@ -1260,7 +1260,16 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
       totalLegendaries: 0, totalPerfects: 0, longestStreak: 0,
       currentStreak: 0, challengesCompleted: 0, prestige: 0
     };
-    
+
+    // Reset Game Enhancement fields
+    user.accountLevel = 1;
+    user.accountXP = 0;
+    user.dojoFacilityTiers = ['basic'];
+    user.baitInventory = {};
+    user.gachaPity = {};
+    user.bannerPity = {};
+    user.pullHistory = {};
+
     await user.save();
     
     // SECURITY: Clear failed attempts only AFTER successful save

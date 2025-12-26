@@ -301,12 +301,57 @@ function calculateCatchUpBonus(characterCount) {
 }
 
 /**
+ * Calculate specialization bonuses from characters
+ * @param {Array} characters - Characters with potential specializations
+ * @returns {Object} - Aggregated specialization bonuses
+ */
+function calculateSpecializationBonuses(characters) {
+  const DOJO_SPECIALIZATIONS = {
+    strength: {
+      bonuses: {
+        dojoPointsMultiplier: 1.0,
+        ticketChanceBonus: 0
+      }
+    },
+    wisdom: {
+      bonuses: {
+        dojoPointsMultiplier: 0.5,
+        ticketChanceBonus: 0.25
+      }
+    },
+    spirit: {
+      bonuses: {
+        dojoPointsMultiplier: 1.25,
+        ticketChanceBonus: 0
+      }
+    }
+  };
+
+  const bonuses = {
+    pointsMultiplier: 1.0,
+    ticketChanceMultiplier: 1.0
+  };
+
+  characters.forEach(char => {
+    if (char && char.specialization) {
+      const spec = DOJO_SPECIALIZATIONS[char.specialization];
+      if (spec) {
+        bonuses.pointsMultiplier *= spec.bonuses.dojoPointsMultiplier || 1.0;
+        bonuses.ticketChanceMultiplier *= 1 + (spec.bonuses.ticketChanceBonus || 0);
+      }
+    }
+  });
+
+  return bonuses;
+}
+
+/**
  * Calculate total rewards for accumulated time
- * 
+ *
  * Preview mode (isActive=false): Deterministic calculation for UI display
  * Claim mode (isActive=true): Applies randomness to ticket drops and active bonus
- * 
- * @param {Array} characters - Characters in training (with rarity, series, level)
+ *
+ * @param {Array} characters - Characters in training (with rarity, series, level, specialization)
  * @param {number} hours - Hours of accumulated training
  * @param {Object} upgrades - User's dojo upgrades
  * @param {boolean} isActive - Whether this is an active claim (bonus applies, randomness enabled)
@@ -329,7 +374,10 @@ function calculateRewards(characters, hours, upgrades = {}, isActive = false) {
   const { multiplier: synergyMultiplier, synergies, wasCapped: synergyCapped } = calculateSeriesSynergy(characters);
   const activeMultiplier = isActive ? DOJO_CONFIG.activeClaimMultiplier : 1;
   const catchUpBonus = calculateCatchUpBonus(characters.length);
-  
+
+  // Calculate specialization bonuses (if any characters have specializations)
+  const specBonuses = calculateSpecializationBonuses(characters);
+
   let rawPointsPerHour = 0;
   let totalExpectedRollTickets = 0;
   let totalExpectedPremiumTickets = 0;
@@ -343,15 +391,15 @@ function calculateRewards(characters, hours, upgrades = {}, isActive = false) {
     const levelMultiplier = getLevelMultiplier(charLevel);
     
     const basePoints = getBasePointsPerHour(char.rarity, upgrades, charLevel);
-    // Apply synergy, active bonus, AND catch-up bonus
-    const charPointsPerHour = basePoints * synergyMultiplier * activeMultiplier * catchUpBonus.multiplier;
-    
+    // Apply synergy, active bonus, catch-up bonus, AND specialization multiplier
+    const charPointsPerHour = basePoints * synergyMultiplier * activeMultiplier * catchUpBonus.multiplier * specBonuses.pointsMultiplier;
+
     rawPointsPerHour += charPointsPerHour;
-    
+
     // Calculate ticket chances (per hour)
-    // Level also boosts ticket chances slightly
-    const rollChance = (DOJO_RATES.ticketChances.rollTicket[char.rarity] || 0) * levelMultiplier;
-    const premiumChance = (DOJO_RATES.ticketChances.premiumTicket[char.rarity] || 0) * levelMultiplier;
+    // Level also boosts ticket chances slightly, plus specialization ticket chance multiplier
+    const rollChance = (DOJO_RATES.ticketChances.rollTicket[char.rarity] || 0) * levelMultiplier * specBonuses.ticketChanceMultiplier;
+    const premiumChance = (DOJO_RATES.ticketChances.premiumTicket[char.rarity] || 0) * levelMultiplier * specBonuses.ticketChanceMultiplier;
     
     totalExpectedRollTickets += rollChance * hours;
     totalExpectedPremiumTickets += premiumChance * hours;

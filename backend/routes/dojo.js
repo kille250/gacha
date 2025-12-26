@@ -480,7 +480,8 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
       .map(uc => ({
         ...uc.Character.toJSON(),
         level: uc.level,
-        duplicateCount: uc.duplicateCount
+        duplicateCount: uc.duplicateCount,
+        specialization: uc.specialization || null
       }));
     
     const activeCharacters = dojoSlots
