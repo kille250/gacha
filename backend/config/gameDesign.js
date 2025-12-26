@@ -397,101 +397,6 @@ const GACHA_ALTERNATIVE_PATHS = {
 // RETENTION SYSTEMS
 // ===========================================
 
-const WEEKLY_VOYAGE_CONFIG = {
-  // Weekly themed objective sets
-  duration: 7 * 24 * 60 * 60 * 1000, // 7 days in ms
-
-  chapterStructure: {
-    chapter1: { days: [1, 2] },
-    chapter2: { days: [3, 4] },
-    chapter3: { days: [5, 6, 7] }
-  },
-
-  // Template voyage types
-  voyageTypes: [
-    {
-      id: 'deep_expedition',
-      name: 'The Deep Expedition',
-      theme: 'ocean',
-      chapters: [
-        { objective: 'catch_deep_water', target: 5, description: 'Catch 5 deep-water fish' },
-        { objective: 'train_character', target: 1, description: 'Train a character to new level' },
-        { objective: 'catch_weekly_legendary', target: 1, description: 'Catch the Weekly Legendary' }
-      ],
-      rewards: {
-        chapter1: { spiritEssence: 500 },
-        chapter2: { item: 'premium_training_scroll' },
-        chapter3: { weeklyBannerTicket: 1 },
-        complete: { voyageChest: 1 }
-      }
-    },
-    {
-      id: 'masters_journey',
-      name: "Master's Journey",
-      theme: 'dojo',
-      chapters: [
-        { objective: 'claim_dojo_rewards', target: 5, description: 'Claim Dojo rewards 5 times' },
-        { objective: 'breakthrough_discovery', target: 1, description: 'Achieve a training breakthrough' },
-        { objective: 'synergy_bonus', target: 3, description: 'Earn synergy bonuses from 3 series' }
-      ],
-      rewards: {
-        chapter1: { points: 1000 },
-        chapter2: { rollTickets: 3 },
-        chapter3: { premiumTickets: 1 },
-        complete: { voyageChest: 1 }
-      }
-    },
-    {
-      id: 'collectors_quest',
-      name: "Collector's Quest",
-      theme: 'gacha',
-      chapters: [
-        { objective: 'gacha_pulls', target: 10, description: 'Perform 10 gacha pulls' },
-        { objective: 'new_character', target: 1, description: 'Obtain a new character' },
-        { objective: 'level_up_character', target: 3, description: 'Level up 3 characters' }
-      ],
-      rewards: {
-        chapter1: { rollTickets: 2 },
-        chapter2: { points: 2000 },
-        chapter3: { characterSelector: 'rare' },
-        complete: { voyageChest: 1 }
-      }
-    }
-  ]
-};
-
-const DAILY_ACTIVITY_MENU = {
-  // Players choose activities to complete for daily bonus
-  requiredActivities: 3, // Complete any 3 for daily bonus
-
-  activities: [
-    { id: 'collect_dojo', name: 'Collect Dojo rewards', weight: 1 },
-    { id: 'catch_10_fish', name: 'Catch 10 fish', weight: 1 },
-    { id: 'complete_training', name: 'Complete 1 training session', weight: 1 },
-    { id: 'catch_each_element', name: 'Catch a fish of each rarity', weight: 2 },
-    { id: 'perfect_catch', name: 'Score a "Perfect Catch"', weight: 1 },
-    { id: 'discover_species', name: 'Discover a new fish species', weight: 2 },
-    { id: 'upgrade_facility', name: 'Upgrade any facility', weight: 2 },
-    { id: 'trade_fish', name: 'Release fish worth 100+ essence', weight: 1 }
-  ],
-
-  // Bonus objectives for extra rewards
-  bonusObjectives: [
-    { id: 'catch_rare', name: 'Catch a Rare+ fish', bonusMultiplier: 1.5 },
-    { id: 'daily_training', name: "Complete a character's daily training", bonusMultiplier: 1.5 }
-  ],
-
-  dailyBonus: {
-    points: 200,
-    rollTickets: 1
-  },
-
-  bonusReward: {
-    points: 100,
-    premiumTickets: 0 // Only from special activities
-  }
-};
-
 const MASTERY_TRACKS = {
   // Character mastery progression
   characterMastery: {
@@ -629,8 +534,6 @@ module.exports = {
   GACHA_ALTERNATIVE_PATHS,
 
   // Retention
-  WEEKLY_VOYAGE_CONFIG,
-  DAILY_ACTIVITY_MENU,
   MASTERY_TRACKS,
 
   // Psychology

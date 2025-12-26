@@ -13,7 +13,6 @@ import { usePageError, useAnimatedCounter, useSwipeGesture } from '../hooks';
 
 // Components
 import { OnboardingModal, hasCompletedOnboarding } from '../components/Onboarding';
-import { VoyagePanel, DailyMenuPanel } from '../components/GameEnhancements';
 
 // Constants
 import { IconPoints, IconSparkle, IconGacha } from '../constants/icons';
@@ -475,12 +474,6 @@ const GachaPage = () => {
             <span aria-hidden="true" style={{ opacity: 0.7 }}>100 {t('common.points')}</span>
           </CTAButton>
         </StandardGachaCTA>
-
-        {/* Weekly Voyage Progress */}
-        <VoyagePanel />
-
-        {/* Daily Activities Menu */}
-        <DailyMenuPanel />
 
         {/* Empty State */}
         {banners.length === 0 && !loading && (

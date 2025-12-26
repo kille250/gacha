@@ -536,42 +536,6 @@ User.init(
       }
     },
 
-    // Weekly voyage progress (JSON object: {weekNumber: voyageData})
-    weeklyVoyages: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      defaultValue: '{}',
-      get() {
-        const value = this.getDataValue('weeklyVoyages');
-        try {
-          return value ? JSON.parse(value) : {};
-        } catch {
-          return {};
-        }
-      },
-      set(value) {
-        this.setDataValue('weeklyVoyages', JSON.stringify(value || {}));
-      }
-    },
-
-    // Daily activities (JSON object: {date: activityData})
-    dailyActivities: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      defaultValue: '{}',
-      get() {
-        const value = this.getDataValue('dailyActivities');
-        try {
-          return value ? JSON.parse(value) : {};
-        } catch {
-          return {};
-        }
-      },
-      set(value) {
-        this.setDataValue('dailyActivities', JSON.stringify(value || {}));
-      }
-    },
-
     // Character mastery progress (JSON object: {characterId: masteryData})
     characterMastery: {
       type: DataTypes.TEXT,
@@ -643,7 +607,7 @@ User.init(
       allowNull: true
     },
 
-    // Weekly banner tickets (from voyages)
+    // Weekly banner tickets
     weeklyBannerTickets: {
       type: DataTypes.INTEGER,
       allowNull: true,

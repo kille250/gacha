@@ -5,7 +5,7 @@
  * - Dojo enhancements (specializations, breakthroughs, facilities)
  * - Fishing enhancements (bait, double-or-nothing)
  * - Gacha enhancements (milestones, fate points, pity)
- * - Retention systems (voyages, mastery, daily menu)
+ * - Retention systems (mastery, return bonus)
  */
 
 import api, { clearCache } from './api';
@@ -157,48 +157,6 @@ export const gachaEnhancements = {
 // ===========================================
 
 export const retentionSystems = {
-  /**
-   * Get current weekly voyage
-   */
-  getVoyage: async () => {
-    const response = await api.get('/enhancements/voyage');
-    return response.data;
-  },
-
-  /**
-   * Claim voyage chapter reward
-   */
-  claimVoyageChapter: async (chapterIndex) => {
-    const response = await api.post('/enhancements/voyage/claim-chapter', {
-      chapterIndex
-    });
-    return response.data;
-  },
-
-  /**
-   * Claim voyage completion reward
-   */
-  claimVoyageComplete: async () => {
-    const response = await api.post('/enhancements/voyage/claim-complete');
-    return response.data;
-  },
-
-  /**
-   * Get daily activity menu
-   */
-  getDailyMenu: async () => {
-    const response = await api.get('/enhancements/daily-menu');
-    return response.data;
-  },
-
-  /**
-   * Claim daily bonus
-   */
-  claimDailyBonus: async () => {
-    const response = await api.post('/enhancements/daily-menu/claim');
-    return response.data;
-  },
-
   /**
    * Get character mastery progress
    */

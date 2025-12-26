@@ -12,8 +12,6 @@
  * - Pull history & milestones
  * - Fate points
  * - Character selectors
- * - Weekly voyages
- * - Daily activities
  * - Character mastery
  * - Fish codex
  * - Luck meter
@@ -102,24 +100,6 @@ module.exports = {
             type: Sequelize.TEXT,
             allowNull: true,
             defaultValue: '[]'
-          }
-        },
-        // Weekly voyage progress
-        {
-          name: 'weeklyVoyages',
-          config: {
-            type: Sequelize.TEXT,
-            allowNull: true,
-            defaultValue: '{}'
-          }
-        },
-        // Daily activities
-        {
-          name: 'dailyActivities',
-          config: {
-            type: Sequelize.TEXT,
-            allowNull: true,
-            defaultValue: '{}'
           }
         },
         // Character mastery progress
@@ -232,8 +212,6 @@ module.exports = {
         'pullHistory',
         'fatePoints',
         'characterSelectors',
-        'weeklyVoyages',
-        'dailyActivities',
         'characterMastery',
         'fishCodex',
         'luckMeter',

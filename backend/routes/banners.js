@@ -40,7 +40,6 @@ const { lockoutMiddleware } = require('../middleware/captcha');
 const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { getUserSpecializationBonuses } = require('../services/dojoEnhancedService');
-const { updateVoyageProgress } = require('../services/retentionService');
 const { addGachaPullXP, addNewCharacterXP } = require('../services/accountLevelService');
 
 // ===========================================
@@ -706,15 +705,10 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    // Update voyage progress and account XP for gacha pulls
+    // Update account XP for gacha pulls
     const freshUser = await User.findByPk(userId);
     let levelUpInfo = null;
     if (freshUser) {
-      updateVoyageProgress(freshUser, 'gacha_pulls', 1);
-      if (acquisition.isNew) {
-        updateVoyageProgress(freshUser, 'new_character', 1);
-      }
-
       // Add account XP for the pull
       const pullXPResult = addGachaPullXP(freshUser, 1);
 
@@ -944,15 +938,10 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    // Update voyage progress and account XP for gacha pulls
+    // Update account XP for gacha pulls
     const freshUser = await User.findByPk(userId);
     let levelUpInfo = null;
     if (freshUser) {
-      updateVoyageProgress(freshUser, 'gacha_pulls', count);
-      if (newCards > 0) {
-        updateVoyageProgress(freshUser, 'new_character', newCards);
-      }
-
       // Add account XP for the pulls
       const pullXPResult = addGachaPullXP(freshUser, count);
       if (pullXPResult.levelUp) {

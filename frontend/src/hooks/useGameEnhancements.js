@@ -2,8 +2,6 @@
  * useGameEnhancements Hook
  *
  * Manages state and actions for all game enhancement features:
- * - Weekly voyages
- * - Daily activity menu
  * - Pity system visibility
  * - Milestone rewards
  * - Fate points
@@ -12,123 +10,6 @@
 
 import { useState, useEffect, useCallback } from 'react';
 import enhancementsApi from '../utils/enhancementsApi';
-
-// ===========================================
-// VOYAGE HOOK
-// ===========================================
-
-export function useVoyage() {
-  const [voyage, setVoyage] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [claiming, setClaiming] = useState(false);
-
-  const fetchVoyage = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await enhancementsApi.retention.getVoyage();
-      setVoyage(data);
-      setError(null);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load voyage');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchVoyage();
-  }, [fetchVoyage]);
-
-  const claimChapter = useCallback(async (chapterIndex) => {
-    try {
-      setClaiming(true);
-      const result = await enhancementsApi.retention.claimVoyageChapter(chapterIndex);
-      await fetchVoyage(); // Refresh
-      return result;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to claim chapter reward');
-      throw err;
-    } finally {
-      setClaiming(false);
-    }
-  }, [fetchVoyage]);
-
-  const claimComplete = useCallback(async () => {
-    try {
-      setClaiming(true);
-      const result = await enhancementsApi.retention.claimVoyageComplete();
-      await fetchVoyage(); // Refresh
-      return result;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to claim voyage reward');
-      throw err;
-    } finally {
-      setClaiming(false);
-    }
-  }, [fetchVoyage]);
-
-  return {
-    voyage,
-    loading,
-    error,
-    claiming,
-    claimChapter,
-    claimComplete,
-    refresh: fetchVoyage
-  };
-}
-
-// ===========================================
-// DAILY MENU HOOK
-// ===========================================
-
-export function useDailyMenu() {
-  const [dailyMenu, setDailyMenu] = useState(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [claiming, setClaiming] = useState(false);
-
-  const fetchMenu = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await enhancementsApi.retention.getDailyMenu();
-      setDailyMenu(data);
-      setError(null);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load daily menu');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchMenu();
-  }, [fetchMenu]);
-
-  const claimBonus = useCallback(async () => {
-    try {
-      setClaiming(true);
-      const result = await enhancementsApi.retention.claimDailyBonus();
-      await fetchMenu(); // Refresh
-      return result;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to claim daily bonus');
-      throw err;
-    } finally {
-      setClaiming(false);
-    }
-  }, [fetchMenu]);
-
-  return {
-    dailyMenu,
-    loading,
-    error,
-    claiming,
-    claimBonus,
-    refresh: fetchMenu
-  };
-}
 
 // ===========================================
 // PITY STATE HOOK
@@ -582,8 +463,6 @@ export function useAccountLevel() {
 
 export function useGameEnhancements() {
   return {
-    useVoyage,
-    useDailyMenu,
     usePityState,
     useMilestones,
     useFatePoints,

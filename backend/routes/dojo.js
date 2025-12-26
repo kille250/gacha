@@ -22,7 +22,6 @@ const {
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
-const { updateVoyageProgress, completeDailyActivity } = require('../services/retentionService');
 const { addDojoClaimXP } = require('../services/accountLevelService');
 
 // Rate limiting is now handled via dojoLastClaim in the database
@@ -592,15 +591,10 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    // Update voyage progress for dojo claims (claim_dojo_rewards objective)
     // Refetch user to avoid stale data after transaction
     const freshUser = await User.findByPk(userId);
     let levelUpInfo = null;
     if (freshUser) {
-      updateVoyageProgress(freshUser, 'claim_dojo_rewards', 1);
-      completeDailyActivity(freshUser, 'collect_dojo');
-      completeDailyActivity(freshUser, 'complete_training');
-
       // Add account XP for dojo claim
       const xpResult = addDojoClaimXP(freshUser);
       if (xpResult.levelUp) {
@@ -763,13 +757,6 @@ router.post('/upgrade', [auth, enforcementMiddleware, deviceBindingMiddleware('d
       ipHash: req.deviceSignals?.ipHash,
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
-
-    // Update daily activity progress
-    const freshUser = await User.findByPk(userId);
-    if (freshUser) {
-      completeDailyActivity(freshUser, 'upgrade_facility');
-      await freshUser.save();
-    }
 
     // Get updated available upgrades
     const availableUpgrades = getAvailableUpgrades(upgrades);

@@ -32,7 +32,6 @@ const {
   getShardsToLevel
 } = require('../utils/characterLeveling');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
-const { updateVoyageProgress } = require('../services/retentionService');
 const { addGachaPullXP, addNewCharacterXP, addCharacterLevelXP } = require('../services/accountLevelService');
 
 // ===========================================
@@ -102,15 +101,10 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    // Update voyage progress and account XP for gacha pulls
+    // Update account XP for gacha pulls
     const freshUser = await User.findByPk(userId);
     let levelUpInfo = null;
     if (freshUser) {
-      updateVoyageProgress(freshUser, 'gacha_pulls', 1);
-      if (acquisition.isNew) {
-        updateVoyageProgress(freshUser, 'new_character', 1);
-      }
-
       // Add account XP for the pull
       const pullXPResult = addGachaPullXP(freshUser, 1);
 
@@ -239,15 +233,10 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
       deviceFingerprint: req.deviceSignals?.fingerprint
     });
 
-    // Update voyage progress and account XP for gacha pulls
+    // Update account XP for gacha pulls
     const freshUser = await User.findByPk(userId);
     let levelUpInfo = null;
     if (freshUser) {
-      updateVoyageProgress(freshUser, 'gacha_pulls', count);
-      if (newCards > 0) {
-        updateVoyageProgress(freshUser, 'new_character', newCards);
-      }
-
       // Add account XP for the pulls
       const pullXPResult = addGachaPullXP(freshUser, count);
       if (pullXPResult.levelUp) {
