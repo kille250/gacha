@@ -222,6 +222,51 @@ router.get('/dashboard', auth, adminAuth, async (req, res) => {
   }
 });
 
+// Get characters with server-side pagination (admin only)
+router.get('/characters', auth, adminAuth, async (req, res) => {
+  try {
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit, 10) || 20));
+    const search = req.query.search || '';
+    const offset = (page - 1) * limit;
+
+    // Build where clause for search
+    const whereClause = search
+      ? {
+          [Op.or]: [
+            { name: { [Op.like]: `%${search}%` } },
+            { series: { [Op.like]: `%${search}%` } }
+          ]
+        }
+      : {};
+
+    // Fetch characters and total count in parallel
+    const [characters, total] = await Promise.all([
+      Character.findAll({
+        attributes: ['id', 'name', 'series', 'rarity', 'image', 'isR18', 'createdAt'],
+        where: whereClause,
+        order: [['createdAt', 'DESC']],
+        limit,
+        offset
+      }),
+      Character.count({ where: whereClause })
+    ]);
+
+    res.json({
+      characters,
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
+  } catch (err) {
+    console.error('Characters fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get all users (admin only)
 router.get('/users', auth, adminAuth, async (req, res) => {
   try {

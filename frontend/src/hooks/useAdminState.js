@@ -13,7 +13,7 @@
 
 import { useState, useEffect, useCallback, useContext, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { getAdminDashboard, getSystemHealth } from '../utils/api';
+import { getAdminDashboard, getSystemHealth, getAdminCharacters } from '../utils/api';
 import {
   invalidateFor,
   CACHE_ACTIONS,
@@ -67,6 +67,16 @@ export const useAdminState = () => {
   const [lastHealthRefresh, setLastHealthRefresh] = useState(null);
   const healthIntervalRef = useRef(null);
 
+  // Character pagination state (server-side pagination)
+  const [characterPagination, setCharacterPagination] = useState({
+    page: 1,
+    limit: 20,
+    total: 0,
+    totalPages: 0,
+    search: ''
+  });
+  const [charactersLoading, setCharactersLoading] = useState(false);
+
   // UI states
   const [loading, setLoading] = useState(true);
 
@@ -102,14 +112,14 @@ export const useAdminState = () => {
   // Computed stats
   const stats = {
     totalUsers: users.length,
-    totalCharacters: characters.length,
+    totalCharacters: characterPagination.total,
     activeBanners: banners.filter(b => b.active).length,
     activeCoupons: coupons.filter(c => c.isActive).length,
     totalCoins: users.reduce((sum, u) => sum + (u.points || 0), 0),
     totalFish: apiStats.totalFishCaught || 0,
   };
 
-  // Fetch all data
+  // Fetch dashboard data (excluding characters which are paginated separately)
   // showLoading: only true for initial load, false for refreshes after CRUD operations
   const fetchAllData = useCallback(async (showLoading = false) => {
     try {
@@ -118,7 +128,6 @@ export const useAdminState = () => {
       }
       const data = await getAdminDashboard();
       setUsers(data.users || []);
-      setCharacters(data.characters || []);
       setBanners(data.banners || []);
       setCoupons(data.coupons || []);
       setApiStats(data.stats || { totalFishCaught: 0 });
@@ -132,12 +141,58 @@ export const useAdminState = () => {
     }
   }, [t, showError]);
 
+  // Fetch characters with server-side pagination
+  const fetchCharacters = useCallback(async ({ page, limit, search } = {}) => {
+    try {
+      setCharactersLoading(true);
+      const params = {
+        page: page ?? characterPagination.page,
+        limit: limit ?? characterPagination.limit,
+        search: search ?? characterPagination.search
+      };
+      const data = await getAdminCharacters(params);
+      setCharacters(data.characters || []);
+      setCharacterPagination(prev => ({
+        ...prev,
+        page: data.pagination.page,
+        limit: data.pagination.limit,
+        total: data.pagination.total,
+        totalPages: data.pagination.totalPages,
+        search: params.search
+      }));
+    } catch (err) {
+      console.error('Characters fetch error:', err);
+      showError(err.response?.data?.error || t('admin.failedLoadCharacters', 'Failed to load characters'));
+    } finally {
+      setCharactersLoading(false);
+    }
+  }, [characterPagination.page, characterPagination.limit, characterPagination.search, t, showError]);
+
+  // Character pagination handlers
+  const setCharacterPage = useCallback((page) => {
+    fetchCharacters({ page });
+  }, [fetchCharacters]);
+
+  const setCharacterLimit = useCallback((limit) => {
+    fetchCharacters({ page: 1, limit });
+  }, [fetchCharacters]);
+
+  const setCharacterSearch = useCallback((search) => {
+    fetchCharacters({ page: 1, search });
+  }, [fetchCharacters]);
+
+  // Refresh characters (keep current pagination state)
+  const refreshCharacters = useCallback(() => {
+    fetchCharacters();
+  }, [fetchCharacters]);
+
   // Initial data fetch - show loading spinner on first load
   useEffect(() => {
     if (user?.isAdmin) {
       fetchAllData(true);
+      fetchCharacters({ page: 1, limit: 20, search: '' });
     }
-  }, [user?.isAdmin, fetchAllData]);
+  }, [user?.isAdmin]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Visibility change handler - refresh admin data when tab becomes visible
   useEffect(() => {
@@ -258,7 +313,7 @@ export const useAdminState = () => {
     try {
       await addCharacterAction(formData);
       showSuccess(t('admin.characterAdded'));
-      await fetchAllData();
+      await refreshCharacters();
       return { success: true };
     } catch (err) {
       // Check for duplicate error - let caller handle
@@ -271,7 +326,7 @@ export const useAdminState = () => {
     } finally {
       endOperation(opId);
     }
-  }, [t, showSuccess, showError, fetchAllData, startOperation, endOperation]);
+  }, [t, showSuccess, showError, refreshCharacters, startOperation, endOperation]);
 
   const handleDeleteCharacter = useCallback(async (characterId) => {
     const opId = `delete-character-${characterId}`;
@@ -279,7 +334,7 @@ export const useAdminState = () => {
     try {
       await deleteCharacterAction(characterId);
       showSuccess(t('admin.characterDeleted'));
-      await fetchAllData();
+      await refreshCharacters();
       return { success: true };
     } catch (err) {
       showError(err.response?.data?.error || t('admin.failedDeleteCharacter'));
@@ -287,7 +342,7 @@ export const useAdminState = () => {
     } finally {
       endOperation(opId);
     }
-  }, [t, showSuccess, showError, fetchAllData, startOperation, endOperation]);
+  }, [t, showSuccess, showError, refreshCharacters, startOperation, endOperation]);
 
   const handleBatchDeleteCharacters = useCallback(async (characterIds) => {
     const opId = 'batch-delete-characters';
@@ -302,7 +357,7 @@ export const useAdminState = () => {
       } else {
         showSuccess(t('admin.batchDeleteSuccess', { count: deletedCount }));
       }
-      await fetchAllData();
+      await refreshCharacters();
       return { success: true, deleted: deletedCount, failed: failedCount };
     } catch (err) {
       showError(err.response?.data?.error || t('admin.failedBatchDelete'));
@@ -310,13 +365,13 @@ export const useAdminState = () => {
     } finally {
       endOperation(opId);
     }
-  }, [t, showSuccess, showError, fetchAllData, startOperation, endOperation]);
+  }, [t, showSuccess, showError, refreshCharacters, startOperation, endOperation]);
 
   const handleEditCharacterSuccess = useCallback((message) => {
     invalidateFor(CACHE_ACTIONS.ADMIN_CHARACTER_EDIT);
     showSuccess(message);
-    fetchAllData();
-  }, [fetchAllData, showSuccess]);
+    refreshCharacters();
+  }, [refreshCharacters, showSuccess]);
 
   // ==================== BANNER HANDLERS ====================
 
@@ -474,18 +529,18 @@ export const useAdminState = () => {
   const handleBulkUpload = useCallback((result) => {
     handleBulkUploadSuccess(() => {
       showSuccess(result.message);
-      fetchAllData();
+      refreshCharacters();
     }, result);
-  }, [showSuccess, fetchAllData]);
+  }, [showSuccess, refreshCharacters]);
 
   const handleAnimeImport = useCallback((result) => {
     handleAnimeImportSuccess(() => {
       // Support both: { message: '...' } from AnimeImportModal and [character] array from CreateFromDanbooru
       const message = result?.message || t('admin.characterAdded');
       showSuccess(message);
-      fetchAllData();
+      refreshCharacters();
     }, result);
-  }, [t, showSuccess, fetchAllData]);
+  }, [t, showSuccess, refreshCharacters]);
 
   return {
     // Data
@@ -502,6 +557,16 @@ export const useAdminState = () => {
       error: healthError,
       lastRefresh: lastHealthRefresh,
       refresh: fetchHealth,
+    },
+
+    // Character pagination state and handlers
+    characterPagination: {
+      ...characterPagination,
+      loading: charactersLoading,
+      setPage: setCharacterPage,
+      setLimit: setCharacterLimit,
+      setSearch: setCharacterSearch,
+      refresh: refreshCharacters,
     },
 
     // State

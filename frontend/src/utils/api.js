@@ -409,6 +409,25 @@ export const getSystemHealth = async () => {
   return response.data;
 };
 
+/**
+ * Get paginated characters for admin management
+ * @param {Object} params - Query parameters
+ * @param {number} params.page - Page number (1-indexed)
+ * @param {number} params.limit - Items per page (max 100)
+ * @param {string} params.search - Search query for name/series
+ * @returns {Promise<{characters: Array, pagination: {page, limit, total, totalPages}}>}
+ */
+export const getAdminCharacters = async ({ page = 1, limit = 20, search = '' } = {}) => {
+  const params = new URLSearchParams();
+  params.append('page', page);
+  params.append('limit', limit);
+  if (search) {
+    params.append('search', search);
+  }
+  const response = await api.get(`/admin/characters?${params.toString()}`);
+  return response.data;
+};
+
 // ===========================================
 // RARITY CONFIGURATION API
 // ===========================================

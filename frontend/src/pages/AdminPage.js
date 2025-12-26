@@ -314,6 +314,7 @@ const AdminPage = () => {
                   <TabPanel key="characters" role="tabpanel" aria-labelledby="tab-characters">
                     <AdminCharacters
                       characters={adminState.characters}
+                      pagination={adminState.characterPagination}
                       getImageUrl={getImageUrl}
                       onAddCharacter={addCharacterWithImage}
                       onEditCharacter={modals.openEditCharacterModal}

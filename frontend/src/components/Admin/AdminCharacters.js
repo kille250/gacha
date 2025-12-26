@@ -70,6 +70,7 @@ import {
 
 const AdminCharacters = ({
   characters,
+  pagination,
   getImageUrl,
   onAddCharacter,
   onEditCharacter,
@@ -87,31 +88,11 @@ const AdminCharacters = ({
   const { t } = useTranslation();
   const { getRarityColor, getOrderedRarities } = useRarity();
 
-  // Persist search, pagination in sessionStorage to survive re-renders/remounts
-  const [searchQuery, setSearchQuery] = useState(() => {
-    return sessionStorage.getItem('adminCharactersSearch') || '';
-  });
-  const [currentPage, setCurrentPage] = useState(() => {
-    const saved = sessionStorage.getItem('adminCharactersPage');
-    return saved ? parseInt(saved, 10) : 1;
-  });
-  const [itemsPerPage, setItemsPerPage] = useState(() => {
-    const saved = sessionStorage.getItem('adminCharactersPerPage');
-    return saved ? parseInt(saved, 10) : 20;
-  });
+  // Debounce timer ref for search
+  const searchDebounceRef = useRef(null);
 
-  // Sync search and pagination to sessionStorage
-  useEffect(() => {
-    sessionStorage.setItem('adminCharactersSearch', searchQuery);
-  }, [searchQuery]);
-
-  useEffect(() => {
-    sessionStorage.setItem('adminCharactersPage', String(currentPage));
-  }, [currentPage]);
-
-  useEffect(() => {
-    sessionStorage.setItem('adminCharactersPerPage', String(itemsPerPage));
-  }, [itemsPerPage]);
+  // Local search input state (for immediate UI feedback)
+  const [searchInput, setSearchInput] = useState(pagination.search || '');
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
@@ -143,23 +124,21 @@ const AdminCharacters = ({
       return () => clearTimeout(timer);
     }
   }, [showAddModal]);
-  
-  const filteredCharacters = characters.filter(char =>
-    char.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    char.series.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
-  const totalPages = Math.ceil(filteredCharacters.length / itemsPerPage);
-
-  // Auto-adjust page if current page is now empty (e.g., after deletion)
+  // Sync local search input with pagination state when it changes externally
   useEffect(() => {
-    if (currentPage > 1 && totalPages > 0 && currentPage > totalPages) {
-      setCurrentPage(totalPages);
-    }
-  }, [currentPage, totalPages]);
+    setSearchInput(pagination.search || '');
+  }, [pagination.search]);
 
-  const startIndex = (currentPage - 1) * itemsPerPage;
-  const currentCharacters = filteredCharacters.slice(startIndex, startIndex + itemsPerPage);
+  // Auto-adjust page if current page exceeds total pages (e.g., after deletion)
+  useEffect(() => {
+    if (pagination.page > 1 && pagination.totalPages > 0 && pagination.page > pagination.totalPages) {
+      pagination.setPage(pagination.totalPages);
+    }
+  }, [pagination]);
+
+  // Characters from server are already paginated - use directly
+  const currentCharacters = characters;
 
   // Announce function for screen readers
   const announce = useCallback((message) => {
@@ -169,13 +148,29 @@ const AdminCharacters = ({
   }, []);
 
   const handleSearchChange = (e) => {
-    setSearchQuery(e.target.value);
-    setCurrentPage(1);
+    const value = e.target.value;
+    setSearchInput(value);
+
+    // Debounce the server-side search
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      pagination.setSearch(value);
+    }, 300);
   };
 
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (searchDebounceRef.current) {
+        clearTimeout(searchDebounceRef.current);
+      }
+    };
+  }, []);
+
   const handleItemsPerPageChange = (e) => {
-    setItemsPerPage(Number(e.target.value));
-    setCurrentPage(1);
+    pagination.setLimit(Number(e.target.value));
   };
 
   const handleAddSubmit = async (e) => {
@@ -275,8 +270,9 @@ const AdminCharacters = ({
       <HeaderRow>
         <SectionTitle $iconColor={theme.colors.success}>
           <FaImage aria-hidden="true" /> {t('admin.characterManagement')}
-          <ItemCount aria-label={t('admin.characterCount', { count: filteredCharacters.length })}>
-            {filteredCharacters.length} {t('gacha.characters', 'characters')}
+          <ItemCount aria-label={t('admin.characterCount', { count: pagination.total })}>
+            {pagination.total} {t('gacha.characters', 'characters')}
+            {pagination.loading && <FaSpinner className="spin" style={{ marginLeft: '8px' }} aria-label={t('common.loading')} />}
           </ItemCount>
         </SectionTitle>
         <HeaderActions>
@@ -285,13 +281,13 @@ const AdminCharacters = ({
             <SearchInput
               type="search"
               placeholder={t('admin.searchCharacters', 'Search name or series...')}
-              value={searchQuery}
+              value={searchInput}
               onChange={handleSearchChange}
               aria-label={t('admin.searchCharacters', 'Search characters by name or series')}
             />
           </SearchWrapper>
           <ItemsPerPageSelect
-            value={itemsPerPage}
+            value={pagination.limit}
             onChange={handleItemsPerPageChange}
             aria-label={t('admin.itemsPerPage', 'Items per page')}
           >
@@ -514,21 +510,21 @@ const AdminCharacters = ({
         </CharacterList>
       )}
       
-      {totalPages > 1 && (
+      {pagination.totalPages > 1 && (
         <Pagination role="navigation" aria-label={t('common.pagination', 'Pagination')}>
           <PageButton
-            onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-            disabled={currentPage === 1}
+            onClick={() => pagination.setPage(Math.max(1, pagination.page - 1))}
+            disabled={pagination.page === 1 || pagination.loading}
             aria-label={t('common.previousPage', 'Previous page')}
           >
             {t('common.previous', 'Previous')}
           </PageButton>
           <PageInfo aria-live="polite" aria-atomic="true">
-            {t('common.pageOfTotal', { defaultValue: 'Page {{current}} of {{total}}', current: currentPage, total: totalPages })}
+            {t('common.pageOfTotal', { defaultValue: 'Page {{current}} of {{total}}', current: pagination.page, total: pagination.totalPages })}
           </PageInfo>
           <PageButton
-            onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-            disabled={currentPage === totalPages}
+            onClick={() => pagination.setPage(Math.min(pagination.totalPages, pagination.page + 1))}
+            disabled={pagination.page === pagination.totalPages || pagination.loading}
             aria-label={t('common.nextPage', 'Next page')}
           >
             {t('common.next', 'Next')}
@@ -948,7 +944,7 @@ const ListActions = styled.div`
 
 // PropTypes for type checking and documentation
 AdminCharacters.propTypes = {
-  /** Array of character objects to display */
+  /** Array of character objects to display (already paginated from server) */
   characters: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.oneOfType([PropTypes.string, PropTypes.number]).isRequired,
     name: PropTypes.string.isRequired,
@@ -957,6 +953,19 @@ AdminCharacters.propTypes = {
     image: PropTypes.string,
     isR18: PropTypes.bool,
   })).isRequired,
+  /** Server-side pagination state and handlers */
+  pagination: PropTypes.shape({
+    page: PropTypes.number.isRequired,
+    limit: PropTypes.number.isRequired,
+    total: PropTypes.number.isRequired,
+    totalPages: PropTypes.number.isRequired,
+    search: PropTypes.string,
+    loading: PropTypes.bool,
+    setPage: PropTypes.func.isRequired,
+    setLimit: PropTypes.func.isRequired,
+    setSearch: PropTypes.func.isRequired,
+    refresh: PropTypes.func.isRequired,
+  }).isRequired,
   /** Function to get full image URL from path */
   getImageUrl: PropTypes.func.isRequired,
   /** Handler for adding a new character */
