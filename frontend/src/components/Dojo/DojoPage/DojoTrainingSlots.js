@@ -114,10 +114,7 @@ const DojoTrainingSlots = ({
           return (
             <EmptySlot
               key={idx}
-              onClick={() => {
-                console.log('EmptySlot clicked, idx:', idx, 'onOpenPicker:', typeof onOpenPicker);
-                if (onOpenPicker) onOpenPicker(idx);
-              }}
+              onClick={() => onOpenPicker(idx)}
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
               role="listitem"
