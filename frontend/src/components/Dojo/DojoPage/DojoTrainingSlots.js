@@ -7,7 +7,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdAdd, MdLock } from 'react-icons/md';
-import { FaDumbbell, FaTimes } from 'react-icons/fa';
+import { FaDumbbell, FaTimes, FaStar } from 'react-icons/fa';
 
 import { getAssetUrl } from '../../../utils/api';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../../../utils/mediaUtils';
@@ -112,10 +112,10 @@ const DojoTrainingSlots = ({
                 {onOpenSpecialization && (
                   <SpecializeButton
                     onClick={() => onOpenSpecialization(char)}
-                    aria-label={`${t('dojo.specialize') || 'Specialize'} ${char.name}`}
+                    aria-label={`${t('dojo.specialize')} ${char.name}`}
                   >
-                    <span role="img" aria-hidden="true">⚔️</span>
-                    <span>{t('dojo.specialize') || 'Specialize'}</span>
+                    <FaStar aria-hidden="true" />
+                    <span>{t('dojo.specialize')}</span>
                   </SpecializeButton>
                 )}
               </FilledSlot>

@@ -8,7 +8,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { MdClose } from 'react-icons/md';
+import { MdClose, MdShoppingCart } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { BaitShop } from '../../GameEnhancements';
 
@@ -104,8 +104,8 @@ export function BaitShopModal({ show, onClose, userPoints = 0 }) {
           >
             <ModalHeader>
               <ModalTitle>
-                <span role="img" aria-hidden="true">🪱</span>
-                {t('fishing.baitShop') || 'Bait Shop'}
+                <MdShoppingCart />
+                {t('fishing.baitShop')}
               </ModalTitle>
               <CloseButton onClick={onClose} aria-label={t('common.close') || 'Close'}>
                 <MdClose size={20} />

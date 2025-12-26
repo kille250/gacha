@@ -6,16 +6,17 @@
 
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { 
-  MdArrowBack, 
-  MdHelpOutline, 
-  MdLeaderboard, 
-  MdAutorenew, 
-  MdPeople, 
-  MdEmojiEvents, 
-  MdSettings, 
-  MdMoreVert, 
-  MdStorefront 
+import {
+  MdArrowBack,
+  MdHelpOutline,
+  MdLeaderboard,
+  MdAutorenew,
+  MdPeople,
+  MdEmojiEvents,
+  MdSettings,
+  MdMoreVert,
+  MdStorefront,
+  MdShoppingCart,
 } from 'react-icons/md';
 import { FaCrown } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
@@ -159,8 +160,8 @@ export const FishingHeader = ({
                   <span>{t('fishing.tradingPost') || 'Trading Post'}</span>
                 </MoreMenuItem>
                 <MoreMenuItem onClick={() => { modals.baitShop.open(); modals.moreMenu.close(); }}>
-                  <span role="img" aria-hidden="true">🪱</span>
-                  <span>{t('fishing.baitShop') || 'Bait Shop'}</span>
+                  <MdShoppingCart />
+                  <span>{t('fishing.baitShop')}</span>
                 </MoreMenuItem>
               </MoreMenuDropdown>
             )}
