@@ -2,13 +2,14 @@
  * PityDisplay - Visible pity progress for gacha
  *
  * Shows detailed pity counters and progress toward
- * guaranteed pulls.
+ * guaranteed pulls with soft pity boost percentages.
  */
 
-import React from 'react';
+import React, { useMemo } from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { usePityState } from '../../hooks/useGameEnhancements';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled(motion.div)`
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -130,6 +131,37 @@ const SoftPityBadge = styled.span`
   font-size: 0.7rem;
 `;
 
+const SoftPityBoostText = styled.span`
+  color: #ffc107;
+  font-weight: 600;
+  margin-left: 4px;
+`;
+
+const FiftyFiftyBadge = styled.div`
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: ${props => props.$guaranteed
+    ? 'linear-gradient(135deg, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.1) 100%)'
+    : 'linear-gradient(135deg, rgba(255, 193, 7, 0.2) 0%, rgba(255, 152, 0, 0.2) 100%)'};
+  border: 1px solid ${props => props.$guaranteed ? 'rgba(76, 175, 80, 0.3)' : 'rgba(255, 193, 7, 0.3)'};
+  color: ${props => props.$guaranteed ? '#4caf50' : '#ffc107'};
+  padding: 4px 10px;
+  border-radius: 12px;
+  font-size: 0.8rem;
+  font-weight: 600;
+`;
+
+const CascadingResetNotice = styled(motion.div)`
+  background: linear-gradient(135deg, rgba(33, 150, 243, 0.15) 0%, rgba(33, 150, 243, 0.1) 100%);
+  border: 1px solid rgba(33, 150, 243, 0.3);
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-top: 12px;
+  font-size: 0.85rem;
+  color: #64b5f6;
+`;
+
 const GuaranteedMessage = styled(motion.div)`
   background: linear-gradient(135deg, rgba(76, 175, 80, 0.2) 0%, rgba(76, 175, 80, 0.1) 100%);
   border: 1px solid rgba(76, 175, 80, 0.3);
@@ -163,13 +195,50 @@ const RARITY_COLORS = {
   rare: '#2196f3'
 };
 
-export function PityDisplay({ bannerId = null, compact = false }) {
+export function PityDisplay({ bannerId = null, compact = false, pullResult = null }) {
+  const { t } = useTranslation();
   const { pityState, loading, error } = usePityState(bannerId);
+
+  // Get config-driven thresholds from pityState (centralized from backend)
+  const pityConfig = useMemo(() => {
+    if (!pityState?.config) {
+      // Fallback defaults if config not available
+      return {
+        legendary: { hardPity: 90, softPity: 75, boostPerPull: 0.06 },
+        epic: { hardPity: 50, softPity: 40, boostPerPull: 0.03 },
+        rare: { hardPity: 10, softPity: 7, boostPerPull: 0.10 }
+      };
+    }
+    return pityState.config.standard;
+  }, [pityState?.config]);
+
+  // Format soft pity boost for display
+  const formatSoftPityBadge = (softPityInfo, rarity) => {
+    if (!softPityInfo) return null;
+
+    const config = pityConfig[rarity];
+    if (softPityInfo.active) {
+      const boostPercent = Math.round(softPityInfo.currentBoost * 100);
+      const perPullPercent = Math.round((config?.boostPerPull || 0.06) * 100);
+      return {
+        text: t('pity.softPityActive', 'Soft Pity Active'),
+        boost: `+${boostPercent}%`,
+        tooltip: t('pity.softPityTooltip', { perPull: perPullPercent, threshold: config?.softPity }) ||
+          `+${perPullPercent}% per pull above ${config?.softPity}`
+      };
+    }
+    return {
+      text: t('pity.softPityAt', { threshold: config?.softPity }) || `Soft Pity @ ${config?.softPity}`,
+      boost: null,
+      tooltip: t('pity.softPityInactiveTooltip', { threshold: config?.softPity }) ||
+        `Rate boost activates at ${config?.softPity} pulls`
+    };
+  };
 
   if (loading) {
     return (
       <Container>
-        <LoadingState>Loading pity info...</LoadingState>
+        <LoadingState>{t('pity.loading', 'Loading pity info...')}</LoadingState>
       </Container>
     );
   }
@@ -228,14 +297,15 @@ export function PityDisplay({ bannerId = null, compact = false }) {
       {/* Legendary Pity */}
       <PityRow>
         <PityHeader>
-          <RarityLabel $color={RARITY_COLORS.legendary}>Legendary</RarityLabel>
+          <RarityLabel $color={RARITY_COLORS.legendary}>{t('rarity.legendary', 'Legendary')}</RarityLabel>
           <PityCount>
             {standard.progress.legendary.current} / {standard.progress.legendary.max}
-            {standard.untilGuaranteed.legendary === 0 && ' (Guaranteed!)'}
+            {standard.untilGuaranteed.legendary === 0 && ` (${t('pity.guaranteed', 'Guaranteed!')})`}
           </PityCount>
         </PityHeader>
         <ProgressBar>
-          <SoftPityMarker $position={(75 / 90) * 100} />
+          {/* Config-driven soft pity marker */}
+          <SoftPityMarker $position={(pityConfig.legendary.softPity / pityConfig.legendary.hardPity) * 100} />
           <ProgressFill
             $color={RARITY_COLORS.legendary}
             initial={{ width: 0 }}
@@ -244,23 +314,30 @@ export function PityDisplay({ bannerId = null, compact = false }) {
           />
         </ProgressBar>
         <PityInfo>
-          <span>{standard.untilGuaranteed.legendary} pulls until guaranteed</span>
-          <SoftPityBadge $active={standard.softPity.legendary}>
-            {standard.softPity.legendary ? 'Soft Pity Active' : 'Soft Pity @ 75'}
-          </SoftPityBadge>
+          <span>{standard.untilGuaranteed.legendary} {t('pity.pullsUntilGuaranteed', 'pulls until guaranteed')}</span>
+          {(() => {
+            const badgeInfo = formatSoftPityBadge(standard.softPity.legendary, 'legendary');
+            return (
+              <SoftPityBadge $active={standard.softPity.legendary?.active} title={badgeInfo?.tooltip}>
+                {badgeInfo?.text}
+                {badgeInfo?.boost && <SoftPityBoostText>{badgeInfo.boost}</SoftPityBoostText>}
+              </SoftPityBadge>
+            );
+          })()}
         </PityInfo>
       </PityRow>
 
       {/* Epic Pity */}
       <PityRow>
         <PityHeader>
-          <RarityLabel $color={RARITY_COLORS.epic}>Epic</RarityLabel>
+          <RarityLabel $color={RARITY_COLORS.epic}>{t('rarity.epic', 'Epic')}</RarityLabel>
           <PityCount>
             {standard.progress.epic.current} / {standard.progress.epic.max}
           </PityCount>
         </PityHeader>
         <ProgressBar>
-          <SoftPityMarker $position={(40 / 50) * 100} />
+          {/* Config-driven soft pity marker */}
+          <SoftPityMarker $position={(pityConfig.epic.softPity / pityConfig.epic.hardPity) * 100} />
           <ProgressFill
             $color={RARITY_COLORS.epic}
             initial={{ width: 0 }}
@@ -269,22 +346,30 @@ export function PityDisplay({ bannerId = null, compact = false }) {
           />
         </ProgressBar>
         <PityInfo>
-          <span>{standard.untilGuaranteed.epic} pulls until guaranteed</span>
-          <SoftPityBadge $active={standard.softPity.epic}>
-            {standard.softPity.epic ? 'Soft Pity Active' : 'Soft Pity @ 40'}
-          </SoftPityBadge>
+          <span>{standard.untilGuaranteed.epic} {t('pity.pullsUntilGuaranteed', 'pulls until guaranteed')}</span>
+          {(() => {
+            const badgeInfo = formatSoftPityBadge(standard.softPity.epic, 'epic');
+            return (
+              <SoftPityBadge $active={standard.softPity.epic?.active} title={badgeInfo?.tooltip}>
+                {badgeInfo?.text}
+                {badgeInfo?.boost && <SoftPityBoostText>{badgeInfo.boost}</SoftPityBoostText>}
+              </SoftPityBadge>
+            );
+          })()}
         </PityInfo>
       </PityRow>
 
       {/* Rare Pity */}
       <PityRow>
         <PityHeader>
-          <RarityLabel $color={RARITY_COLORS.rare}>Rare</RarityLabel>
+          <RarityLabel $color={RARITY_COLORS.rare}>{t('rarity.rare', 'Rare')}</RarityLabel>
           <PityCount>
             {standard.progress.rare.current} / {standard.progress.rare.max}
           </PityCount>
         </PityHeader>
         <ProgressBar>
+          {/* Config-driven soft pity marker */}
+          <SoftPityMarker $position={(pityConfig.rare.softPity / pityConfig.rare.hardPity) * 100} />
           <ProgressFill
             $color={RARITY_COLORS.rare}
             initial={{ width: 0 }}
@@ -293,7 +378,16 @@ export function PityDisplay({ bannerId = null, compact = false }) {
           />
         </ProgressBar>
         <PityInfo>
-          <span>{standard.untilGuaranteed.rare} pulls until guaranteed</span>
+          <span>{standard.untilGuaranteed.rare} {t('pity.pullsUntilGuaranteed', 'pulls until guaranteed')}</span>
+          {(() => {
+            const badgeInfo = formatSoftPityBadge(standard.softPity.rare, 'rare');
+            return (
+              <SoftPityBadge $active={standard.softPity.rare?.active} title={badgeInfo?.tooltip}>
+                {badgeInfo?.text}
+                {badgeInfo?.boost && <SoftPityBoostText>{badgeInfo.boost}</SoftPityBoostText>}
+              </SoftPityBadge>
+            );
+          })()}
         </PityInfo>
       </PityRow>
 
@@ -302,31 +396,65 @@ export function PityDisplay({ bannerId = null, compact = false }) {
         Standard pity progress is shared across all banners. Pulling on any banner advances these counters.
       </InfoTooltip>
 
-      {/* Banner-specific pity */}
+      {/* Banner-specific pity with 50/50 terminology */}
       {banner && (
         <BannerPitySection>
           <SectionTitle>
-            Featured Character Pity
-            <IsolatedBadge>This Banner Only</IsolatedBadge>
+            {t('pity.featuredCharacterPity', 'Featured Character Pity')}
+            <IsolatedBadge>{t('pity.thisBannerOnly', 'This Banner Only')}</IsolatedBadge>
           </SectionTitle>
+
+          {/* 50/50 Status Badge */}
+          <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '12px' }}>
+            <FiftyFiftyBadge $guaranteed={banner.guaranteedFeatured}>
+              {banner.guaranteedFeatured ? (
+                <>
+                  <span>✓</span>
+                  {t('pity.guaranteedFeatured', 'GUARANTEED Featured')}
+                </>
+              ) : (
+                <>
+                  <span>50/50</span>
+                  {t('pity.fiftyFiftyChance', '50/50 Chance')}
+                </>
+              )}
+            </FiftyFiftyBadge>
+          </div>
+
           {banner.guaranteedFeatured ? (
             <GuaranteedMessage
               initial={{ scale: 0.9 }}
               animate={{ scale: 1 }}
             >
               <GuaranteedLabel>
-                Next 5-star is GUARANTEED to be the featured character!
+                {t('pity.nextFiveStarGuaranteed', 'Next 5-star is GUARANTEED to be the featured character!')}
               </GuaranteedLabel>
             </GuaranteedMessage>
           ) : (
             <PityInfo style={{ justifyContent: 'center', color: '#888' }}>
-              {banner.message}
+              {banner.message || t('pity.fiftyFiftyMessage', 'Next 5-star has 50/50 chance to be featured (guaranteed after loss)')}
             </PityInfo>
           )}
           <InfoTooltip>
-            This progress is specific to this banner. If you pull a non-featured 5-star, your next 5-star on this banner is guaranteed to be featured.
+            {t('pity.bannerPityInfo', 'This progress is specific to this banner. If you pull a non-featured 5-star, your next 5-star on this banner is guaranteed to be featured.')}
           </InfoTooltip>
         </BannerPitySection>
+      )}
+
+      {/* Cascading Reset Notification - shows when a pull result has reset info */}
+      {pullResult?.cascadingResets && pullResult.cascadingResets.length > 0 && (
+        <CascadingResetNotice
+          initial={{ opacity: 0, y: -10 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0 }}
+        >
+          <strong>{pullResult.resetMessage || t('pity.pityReset', 'Pity counters reset!')}</strong>
+          <div style={{ marginTop: '6px', fontSize: '0.8rem' }}>
+            {pullResult.cascadingResets.map((reset, idx) => (
+              <div key={idx}>{reset.message}</div>
+            ))}
+          </div>
+        </CascadingResetNotice>
       )}
 
       {/* Near guarantee message */}
@@ -336,7 +464,8 @@ export function PityDisplay({ bannerId = null, compact = false }) {
           animate={{ opacity: 1, scale: 1 }}
         >
           <span style={{ color: '#ffc107' }}>
-            Only {standard.untilGuaranteed.legendary} pulls away from guaranteed Legendary!
+            {t('pity.nearGuarantee', { pulls: standard.untilGuaranteed.legendary }) ||
+              `Only ${standard.untilGuaranteed.legendary} pulls away from guaranteed Legendary!`}
           </span>
         </GuaranteedMessage>
       )}

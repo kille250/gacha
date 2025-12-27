@@ -77,6 +77,42 @@ function validateWeeklyFatePointsData(user) {
 // ===========================================
 
 /**
+ * Calculate soft pity boost information for a given rarity
+ * @param {number} currentPulls - Current pulls since last hit
+ * @param {Object} rarityConfig - Config for this rarity tier
+ * @returns {Object} - Soft pity details including boost percentage
+ */
+function calculateSoftPityBoost(currentPulls, rarityConfig) {
+  const { softPity, softPityBoostPerPull } = rarityConfig;
+  const isActive = currentPulls >= softPity;
+
+  if (!isActive) {
+    return {
+      active: false,
+      pullsInSoftPity: 0,
+      currentBoost: 0,
+      boostPerPull: softPityBoostPerPull || 0,
+      softPityThreshold: softPity,
+      description: `Soft pity activates at ${softPity} pulls`
+    };
+  }
+
+  const pullsInSoftPity = currentPulls - softPity;
+  const currentBoost = pullsInSoftPity * (softPityBoostPerPull || 0.06);
+  const boostPercent = Math.round(currentBoost * 100);
+  const perPullPercent = Math.round((softPityBoostPerPull || 0.06) * 100);
+
+  return {
+    active: true,
+    pullsInSoftPity,
+    currentBoost,
+    boostPerPull: softPityBoostPerPull || 0.06,
+    softPityThreshold: softPity,
+    description: `Soft Pity Active: +${boostPercent}% boost (+${perPullPercent}% per pull above ${softPity})`
+  };
+}
+
+/**
  * Get detailed pity information for display
  * @param {Object} user - User object
  * @param {Object} banner - Banner object (optional, for banner-specific pity)
@@ -113,9 +149,30 @@ function getPityState(user, banner = null) {
   const epicProgress = Math.min(100, (standardPity.pullsSinceEpic / epicMax) * 100);
   const legendaryProgress = Math.min(100, (standardPity.pullsSinceLegendary / legendaryMax) * 100);
 
-  // Determine if in soft pity (increased rates)
-  const inSoftPityLegendary = standardPity.pullsSinceLegendary >= pityConfig.legendary.softPity;
-  const inSoftPityEpic = standardPity.pullsSinceEpic >= pityConfig.epic.softPity;
+  // Calculate detailed soft pity information with boost percentages
+  const legendarySoftPity = calculateSoftPityBoost(standardPity.pullsSinceLegendary, pityConfig.legendary);
+  const epicSoftPity = calculateSoftPityBoost(standardPity.pullsSinceEpic, pityConfig.epic);
+  const rareSoftPity = calculateSoftPityBoost(standardPity.pullsSinceRare, pityConfig.rare);
+
+  // Get 50/50 configuration
+  const fiftyFiftyConfig = GACHA_PITY_CONFIG.banner?.fiftyFifty || {
+    featuredChance: 0.5,
+    guaranteedAfterLoss: true
+  };
+
+  // Build banner pity message with 50/50 terminology
+  let bannerMessage = null;
+  let bannerFiftyFiftyStatus = null;
+  if (bannerPity) {
+    if (bannerPity.guaranteedFeatured) {
+      bannerMessage = 'Next 5-star is GUARANTEED to be the featured character!';
+      bannerFiftyFiftyStatus = 'guaranteed';
+    } else {
+      const chancePercent = Math.round(fiftyFiftyConfig.featuredChance * 100);
+      bannerMessage = `Next 5-star has ${chancePercent}/${100 - chancePercent} chance to be featured (guaranteed after loss)`;
+      bannerFiftyFiftyStatus = 'fifty_fifty';
+    }
+  }
 
   return {
     standard: {
@@ -129,8 +186,9 @@ function getPityState(user, banner = null) {
         legendary: { current: standardPity.pullsSinceLegendary, max: legendaryMax, percent: legendaryProgress }
       },
       softPity: {
-        legendary: inSoftPityLegendary,
-        epic: inSoftPityEpic
+        legendary: legendarySoftPity,
+        epic: epicSoftPity,
+        rare: rareSoftPity
       },
       // Estimated pulls until guaranteed
       untilGuaranteed: {
@@ -143,10 +201,19 @@ function getPityState(user, banner = null) {
       pullsSinceFeatured: bannerPity.pullsSinceFeatured,
       guaranteedFeatured: bannerPity.guaranteedFeatured,
       totalBannerPulls: bannerPity.totalBannerPulls,
-      message: bannerPity.guaranteedFeatured
-        ? 'Next 5-star is guaranteed to be the featured character!'
-        : 'Standard rates apply'
-    } : null
+      fiftyFiftyStatus: bannerFiftyFiftyStatus,
+      fiftyFiftyChance: fiftyFiftyConfig.featuredChance,
+      message: bannerMessage
+    } : null,
+    // Configuration for frontend to use
+    config: {
+      standard: {
+        rare: { hardPity: rareMax, softPity: pityConfig.rare.softPity, boostPerPull: pityConfig.rare.softPityBoostPerPull },
+        epic: { hardPity: epicMax, softPity: pityConfig.epic.softPity, boostPerPull: pityConfig.epic.softPityBoostPerPull },
+        legendary: { hardPity: legendaryMax, softPity: pityConfig.legendary.softPity, boostPerPull: pityConfig.legendary.softPityBoostPerPull }
+      },
+      banner: GACHA_PITY_CONFIG.banner
+    }
   };
 }
 
@@ -156,7 +223,7 @@ function getPityState(user, banner = null) {
  * @param {string} rarity - Pulled character's rarity
  * @param {Object} banner - Banner pulled from (optional)
  * @param {boolean} isFeatured - Whether pulled character was featured
- * @returns {Object} - Updated pity state
+ * @returns {Object} - Updated pity state with reset notifications
  */
 function updatePityCounters(user, rarity, banner = null, isFeatured = false) {
   const pity = user.gachaPity || {
@@ -166,14 +233,47 @@ function updatePityCounters(user, rarity, banner = null, isFeatured = false) {
     totalPulls: 0
   };
 
+  // Capture previous values for cascading reset notification
+  const previousState = {
+    pullsSinceRare: pity.pullsSinceRare,
+    pullsSinceEpic: pity.pullsSinceEpic,
+    pullsSinceLegendary: pity.pullsSinceLegendary
+  };
+
   pity.totalPulls += 1;
+
+  // Track which counters were reset for notification
+  const resetNotifications = [];
 
   // Update counters based on rarity pulled
   if (rarity === 'legendary') {
+    // Cascading reset - legendary resets all lower tiers
+    if (previousState.pullsSinceEpic > 0) {
+      resetNotifications.push({
+        tier: 'epic',
+        previousValue: previousState.pullsSinceEpic,
+        message: `Epic pity reset (was ${previousState.pullsSinceEpic}/${GACHA_PITY_CONFIG.standard.epic.hardPity})`
+      });
+    }
+    if (previousState.pullsSinceRare > 0) {
+      resetNotifications.push({
+        tier: 'rare',
+        previousValue: previousState.pullsSinceRare,
+        message: `Rare pity reset (was ${previousState.pullsSinceRare}/${GACHA_PITY_CONFIG.standard.rare.hardPity})`
+      });
+    }
     pity.pullsSinceLegendary = 0;
     pity.pullsSinceEpic = 0;
     pity.pullsSinceRare = 0;
   } else if (rarity === 'epic') {
+    // Epic resets rare counter
+    if (previousState.pullsSinceRare > 0) {
+      resetNotifications.push({
+        tier: 'rare',
+        previousValue: previousState.pullsSinceRare,
+        message: `Rare pity reset (was ${previousState.pullsSinceRare}/${GACHA_PITY_CONFIG.standard.rare.hardPity})`
+      });
+    }
     pity.pullsSinceLegendary += 1;
     pity.pullsSinceEpic = 0;
     pity.pullsSinceRare = 0;
@@ -190,6 +290,7 @@ function updatePityCounters(user, rarity, banner = null, isFeatured = false) {
   user.gachaPity = pity;
 
   // Update banner-specific pity
+  let fiftyFiftyResult = null;
   if (banner) {
     const bannerPities = user.bannerPity || {};
     let bannerPity = bannerPities[banner.id] || {
@@ -203,10 +304,12 @@ function updatePityCounters(user, rarity, banner = null, isFeatured = false) {
     if (rarity === 'legendary') {
       if (isFeatured) {
         bannerPity.pullsSinceFeatured = 0;
+        fiftyFiftyResult = bannerPity.guaranteedFeatured ? 'guaranteed_win' : 'fifty_fifty_win';
         bannerPity.guaranteedFeatured = false;
       } else {
         // Lost 50/50 - next is guaranteed
         bannerPity.pullsSinceFeatured += 1;
+        fiftyFiftyResult = 'fifty_fifty_loss';
         bannerPity.guaranteedFeatured = true;
       }
     } else {
@@ -217,7 +320,97 @@ function updatePityCounters(user, rarity, banner = null, isFeatured = false) {
     user.bannerPity = bannerPities;
   }
 
-  return getPityState(user, banner);
+  const pityState = getPityState(user, banner);
+
+  // Add reset notifications and 50/50 result to response
+  return {
+    ...pityState,
+    pullResult: {
+      rarity,
+      isFeatured,
+      fiftyFiftyResult,
+      cascadingResets: resetNotifications,
+      // User-friendly summary message
+      resetMessage: resetNotifications.length > 0
+        ? `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} acquired! All pity counters reset.`
+        : null
+    }
+  };
+}
+
+/**
+ * Calculate carryover pity for a new banner based on previous banner
+ * @param {Object} user - User object
+ * @param {string} previousBannerId - ID of the previous/ended banner
+ * @param {string} newBannerId - ID of the new banner
+ * @returns {Object} - Carryover result
+ */
+function calculateBannerPityCarryover(user, previousBannerId, newBannerId) {
+  const carryoverConfig = GACHA_PITY_CONFIG.bannerCarryover;
+
+  if (!carryoverConfig?.enabled) {
+    return {
+      applied: false,
+      reason: 'Banner pity carryover is disabled'
+    };
+  }
+
+  const bannerPities = user.bannerPity || {};
+  const previousPity = bannerPities[previousBannerId];
+
+  if (!previousPity || previousPity.pullsSinceFeatured === 0) {
+    return {
+      applied: false,
+      reason: 'No pity to carry over from previous banner'
+    };
+  }
+
+  // Calculate carryover amount
+  const carryoverAmount = Math.floor(previousPity.pullsSinceFeatured * carryoverConfig.carryoverPercentage);
+
+  if (carryoverAmount === 0) {
+    return {
+      applied: false,
+      reason: 'Carryover amount too small',
+      previousPity: previousPity.pullsSinceFeatured
+    };
+  }
+
+  // Initialize or update new banner pity with carryover
+  const newPity = bannerPities[newBannerId] || {
+    pullsSinceFeatured: 0,
+    guaranteedFeatured: false,
+    totalBannerPulls: 0
+  };
+
+  // Add carryover (don't reduce if already higher)
+  const previousNewPity = newPity.pullsSinceFeatured;
+  newPity.pullsSinceFeatured = Math.max(newPity.pullsSinceFeatured, carryoverAmount);
+
+  // Optionally carry over guaranteed flag
+  if (carryoverConfig.guaranteedFlagCarries && previousPity.guaranteedFeatured) {
+    newPity.guaranteedFeatured = true;
+  }
+
+  // Mark carryover metadata
+  newPity.carryoverFrom = previousBannerId;
+  newPity.carryoverAmount = carryoverAmount;
+  newPity.carryoverAppliedAt = new Date().toISOString();
+
+  bannerPities[newBannerId] = newPity;
+  user.bannerPity = bannerPities;
+
+  return {
+    applied: true,
+    previousBannerId,
+    newBannerId,
+    previousPity: previousPity.pullsSinceFeatured,
+    carryoverAmount,
+    newPityValue: newPity.pullsSinceFeatured,
+    previousNewPity,
+    guaranteedCarried: carryoverConfig.guaranteedFlagCarries && previousPity.guaranteedFeatured,
+    message: `${carryoverAmount} pulls of pity carried over from previous banner (${Math.round(carryoverConfig.carryoverPercentage * 100)}% of ${previousPity.pullsSinceFeatured})`
+  };
 }
 
 // ===========================================
@@ -1300,6 +1493,211 @@ function rollbackGachaState(user, snapshot) {
 }
 
 // ===========================================
+// EXCHANGE OPTION REGISTRY
+// ===========================================
+
+/**
+ * Exchange Option Registry
+ * Centralized registry for all exchange options with validation
+ * This ensures consistency between config, backend handlers, and frontend
+ */
+const EXCHANGE_REGISTRY = {
+  rare_selector: {
+    id: 'rare_selector',
+    handler: 'handleRareSelector',
+    category: 'selector',
+    i18nKey: 'fatePoints.exchangeOptions.rare_selector',
+    icon: 'FaTicketAlt',
+    validate: () => true  // Always valid
+  },
+  epic_selector: {
+    id: 'epic_selector',
+    handler: 'handleEpicSelector',
+    category: 'selector',
+    i18nKey: 'fatePoints.exchangeOptions.epic_selector',
+    icon: 'FaHeart',
+    validate: () => true
+  },
+  legendary_selector: {
+    id: 'legendary_selector',
+    handler: 'handleLegendarySelector',
+    category: 'selector',
+    i18nKey: 'fatePoints.exchangeOptions.legendary_selector',
+    icon: 'FaCrown',
+    validate: () => true
+  },
+  pity_boost: {
+    id: 'pity_boost',
+    handler: 'handlePityBoost',
+    category: 'utility',
+    i18nKey: 'fatePoints.exchangeOptions.pity_boost',
+    icon: 'FaSync',
+    validate: (user, bannerId) => checkPityBoostEffectiveness(user, bannerId).wouldBeEffective
+  },
+  // Legacy support
+  banner_pity_reset: {
+    id: 'banner_pity_reset',
+    handler: 'handlePityBoost',
+    category: 'utility',
+    i18nKey: 'fatePoints.exchangeOptions.pity_boost',
+    icon: 'FaSync',
+    validate: (user, bannerId) => checkPityBoostEffectiveness(user, bannerId).wouldBeEffective,
+    deprecated: true,
+    replacedBy: 'pity_boost'
+  }
+};
+
+/**
+ * Get validated exchange options with registry metadata
+ * @param {Object} user - User object (for validation)
+ * @param {string} bannerId - Banner ID (for context-aware validation)
+ * @returns {Array} - Exchange options with validation status
+ */
+function getValidatedExchangeOptions(user, bannerId = null) {
+  const configOptions = GACHA_FATE_POINTS.exchangeOptions || {};
+  const totalPoints = getTotalFatePoints(user);
+
+  return Object.entries(configOptions)
+    .filter(([id]) => !EXCHANGE_REGISTRY[id]?.deprecated)
+    .map(([id, config]) => {
+      const registry = EXCHANGE_REGISTRY[id] || {};
+      const isValid = registry.validate ? registry.validate(user, bannerId) : true;
+
+      return {
+        ...config,
+        id,
+        affordable: totalPoints >= config.cost,
+        valid: isValid,
+        category: registry.category || 'unknown',
+        icon: registry.icon || 'FaMagic',
+        i18nKey: registry.i18nKey,
+        // Include validation message for invalid options
+        validationMessage: !isValid && id === 'pity_boost'
+          ? checkPityBoostEffectiveness(user, bannerId).message
+          : null
+      };
+    });
+}
+
+/**
+ * Validate an exchange type exists in registry
+ * @param {string} exchangeType - Exchange type ID
+ * @returns {Object} - { valid, error, registry }
+ */
+function validateExchangeType(exchangeType) {
+  const registry = EXCHANGE_REGISTRY[exchangeType];
+
+  if (!registry) {
+    return {
+      valid: false,
+      error: `Unknown exchange type: ${exchangeType}`,
+      availableTypes: Object.keys(EXCHANGE_REGISTRY).filter(k => !EXCHANGE_REGISTRY[k].deprecated)
+    };
+  }
+
+  if (registry.deprecated) {
+    return {
+      valid: true,
+      warning: `Exchange type '${exchangeType}' is deprecated. Use '${registry.replacedBy}' instead.`,
+      registry
+    };
+  }
+
+  return { valid: true, registry };
+}
+
+// ===========================================
+// BANNER RERUN LINKAGE
+// ===========================================
+
+/**
+ * Banner rerun/linkage tracking for explicit progress carryover
+ * Instead of relying on ID matching, this provides explicit linkage
+ */
+
+/**
+ * Link a new banner to a previous banner for pity carryover
+ * @param {Object} banner - New banner object
+ * @param {Object} previousBanner - Previous banner to link from
+ * @returns {Object} - Banner with linkage metadata
+ */
+function createBannerRerunLink(banner, previousBanner) {
+  return {
+    ...banner,
+    rerunInfo: {
+      isRerun: true,
+      previousBannerId: previousBanner.id,
+      previousBannerName: previousBanner.name,
+      linkedAt: new Date().toISOString(),
+      progressCarryover: GACHA_PITY_CONFIG.bannerCarryover?.enabled || false,
+      carryoverPercentage: GACHA_PITY_CONFIG.bannerCarryover?.carryoverPercentage || 0
+    }
+  };
+}
+
+/**
+ * Check if a banner is a rerun and get linkage info
+ * @param {Object} banner - Banner to check
+ * @returns {Object} - Rerun status and linkage info
+ */
+function getBannerRerunStatus(banner) {
+  if (!banner) {
+    return { isRerun: false };
+  }
+
+  // Check explicit rerun info first
+  if (banner.rerunInfo) {
+    return {
+      isRerun: true,
+      explicit: true,
+      ...banner.rerunInfo
+    };
+  }
+
+  // Check for implicit rerun (same featured characters, different ID)
+  // This would require access to banner history - return basic status for now
+  return {
+    isRerun: false,
+    explicit: false,
+    hint: 'Use createBannerRerunLink() to explicitly link banners for pity carryover'
+  };
+}
+
+/**
+ * Apply pity carryover when a player first pulls on a rerun banner
+ * @param {Object} user - User object
+ * @param {Object} banner - Banner with rerunInfo
+ * @returns {Object} - Carryover result
+ */
+function applyRerunPityCarryover(user, banner) {
+  if (!banner?.rerunInfo?.isRerun || !banner.rerunInfo.previousBannerId) {
+    return {
+      applied: false,
+      reason: 'Banner is not a linked rerun'
+    };
+  }
+
+  // Check if carryover was already applied
+  const bannerPities = user.bannerPity || {};
+  const currentPity = bannerPities[banner.id];
+
+  if (currentPity?.carryoverFrom === banner.rerunInfo.previousBannerId) {
+    return {
+      applied: false,
+      reason: 'Carryover already applied for this banner',
+      existingCarryover: currentPity.carryoverAmount
+    };
+  }
+
+  // Apply carryover
+  return calculateBannerPityCarryover(
+    user,
+    banner.rerunInfo.previousBannerId,
+    banner.id
+  );
+}
+
+// ===========================================
 // PULL RESULT ENHANCEMENT
 // ===========================================
 
@@ -1340,6 +1738,8 @@ module.exports = {
   // Pity System
   getPityState,
   updatePityCounters,
+  calculateSoftPityBoost,
+  calculateBannerPityCarryover,
 
   // Milestones
   getMilestoneStatus,
@@ -1357,8 +1757,13 @@ module.exports = {
   getTotalFatePoints,
   getWeeklyFatePoints,
   getExchangeOptions,
+  getValidatedExchangeOptions,
   recordFatePointsTransaction,
   getFatePointsHistory,
+
+  // Exchange Registry
+  EXCHANGE_REGISTRY,
+  validateExchangeType,
 
   // Validation helpers (for external use if needed)
   validateFatePointsData,
@@ -1368,6 +1773,11 @@ module.exports = {
   checkFishingPathUnlock,
   checkWanderingWarrior,
   recruitWanderingWarrior,
+
+  // Banner Rerun Linkage
+  createBannerRerunLink,
+  getBannerRerunStatus,
+  applyRerunPityCarryover,
 
   // Transactional helpers
   applyGachaStateUpdates,

@@ -293,27 +293,42 @@ const GACHA_PITY_CONFIG = {
   standard: {
     rare: {
       hardPity: 10,       // Guaranteed rare at 10 pulls
-      softPity: 7         // Increased rate starts at 7
+      softPity: 7,        // Increased rate starts at 7
+      softPityBoostPerPull: 0.10  // +10% additive rate per pull in soft pity
     },
     epic: {
       hardPity: 50,       // Guaranteed epic at 50 pulls
-      softPity: 40        // Increased rate starts at 40
+      softPity: 40,       // Increased rate starts at 40
+      softPityBoostPerPull: 0.03  // +3% additive rate per pull in soft pity
     },
     legendary: {
       hardPity: 90,       // Guaranteed legendary at 90 pulls
-      softPity: 75        // Increased rate starts at 75
+      softPity: 75,       // Increased rate starts at 75
+      softPityBoostPerPull: 0.06  // +6% additive rate per pull in soft pity
     }
   },
   // Banner pity threshold (for featured character)
   banner: {
     featured: {
       hardPity: 90,       // Guaranteed featured at 90 pulls
-      softPity: 75        // Increased rate starts at 75
+      softPity: 75,       // Increased rate starts at 75
+      softPityBoostPerPull: 0.06  // +6% additive rate per pull in soft pity
+    },
+    // 50/50 system configuration
+    fiftyFifty: {
+      featuredChance: 0.5,  // 50% chance for featured on first 5-star
+      guaranteedAfterLoss: true  // Next 5-star guaranteed featured after losing 50/50
     }
   },
   // Pity reset percentages for fate points exchange
   pityReset: {
     percentage: 0.5       // Reset to 50% of hard pity
+  },
+  // Banner pity carryover settings
+  bannerCarryover: {
+    enabled: true,
+    carryoverPercentage: 0.5,  // 50% of pity carries to next banner
+    guaranteedFlagCarries: false  // Guaranteed featured flag does NOT carry over
   }
 };
 
@@ -335,6 +350,23 @@ const GACHA_FATE_POINTS = {
   rateUpBanner: {
     // When you pull a non-featured 5-star, earn bonus fate points
     nonFeaturedFiveStarPoints: 5
+  },
+
+  // FP decay system for economy health (optional - can be disabled)
+  decay: {
+    enabled: false,  // Set to true to enable decay
+    decayAfterDays: 90,  // FP expires 90 days after earning
+    warningDays: 30,  // Warn player when FP is 30 days from expiring
+    // Seasonal cap as alternative to decay
+    seasonalCap: {
+      enabled: false,
+      maxPerSeason: 2000,  // Maximum FP per season
+      overflowConversion: {
+        enabled: true,
+        targetCurrency: 'points',
+        conversionRate: 10  // 1 FP overflow = 10 points
+      }
+    }
   },
 
   // Exchange shop - costs for different rewards
