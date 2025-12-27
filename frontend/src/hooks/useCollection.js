@@ -12,12 +12,13 @@
  * Filter state is synced to URL for shareable links and back/forward navigation.
  */
 
-import { useState, useEffect, useCallback, useMemo, useContext } from 'react';
+import { useState, useEffect, useCallback, useMemo, useContext, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { getCollectionData } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useActionLock, useAutoDismissError, useFilterParams } from './index';
 import { executeLevelUp, executeUpgradeAll } from '../actions/gachaActions';
+import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
 
 /**
  * @typedef {Object} FilterState
@@ -78,6 +79,9 @@ export function useCollection() {
 
   // Upgrade all state
   const [isUpgradingAll, setIsUpgradingAll] = useState(false);
+
+  // Concurrency guard for collection refresh
+  const collectionFetchGuard = useRef(createFetchGuard());
 
   // Fetch collection data
   const fetchData = useCallback(async () => {
@@ -263,18 +267,8 @@ export function useCollection() {
         console.error('Level up failed:', err);
         setError(err.response?.data?.error || t('collection.levelUpFailed') || 'Level up failed. Please try again.');
 
-        // Refresh with retry
-        const refreshWithRetry = async (retries = 2) => {
-          try {
-            await fetchData();
-          } catch (refreshErr) {
-            console.warn(`Failed to refresh collection (${retries} retries left):`, refreshErr);
-            if (retries > 0) {
-              setTimeout(() => refreshWithRetry(retries - 1), 1000);
-            }
-          }
-        };
-        refreshWithRetry();
+        // Refresh with retry using centralized utility with concurrency guard
+        fetchWithRetry(fetchData, { guard: collectionFetchGuard.current });
       }
     });
   }, [withLock, setUser, preview.character?.id, setError, t, fetchData]);

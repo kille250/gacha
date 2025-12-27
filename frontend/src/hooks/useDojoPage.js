@@ -99,28 +99,52 @@ export const useDojoPage = () => {
     fetchStatus();
   }, [fetchStatus]);
 
-  // Auto-refresh timer for idle game rewards
+  // Auto-refresh timer for idle game rewards (visibility-aware)
   const wasInteractingRef = useRef(isInteracting);
 
   useEffect(() => {
-    if (refreshIntervalRef.current) {
-      clearInterval(refreshIntervalRef.current);
-      refreshIntervalRef.current = null;
-    }
+    const startPolling = () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+      }
+      if (!isInteracting && document.visibilityState === 'visible') {
+        refreshIntervalRef.current = setInterval(fetchStatus, 30000);
+      }
+    };
 
+    const stopPolling = () => {
+      if (refreshIntervalRef.current) {
+        clearInterval(refreshIntervalRef.current);
+        refreshIntervalRef.current = null;
+      }
+    };
+
+    // Start/stop polling based on interaction state
     if (!isInteracting) {
       if (wasInteractingRef.current) {
         fetchStatus();
       }
-      refreshIntervalRef.current = setInterval(fetchStatus, 30000);
+      startPolling();
+    } else {
+      stopPolling();
     }
 
     wasInteractingRef.current = isInteracting;
 
-    return () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
+    // Pause polling when tab is hidden, resume when visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        stopPolling();
+      } else if (!isInteracting) {
+        startPolling();
       }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [fetchStatus, isInteracting]);
 

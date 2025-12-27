@@ -17,8 +17,9 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations } from '../hooks';
-import { onVisibilityChange, VISIBILITY_CALLBACK_IDS } from '../cache';
+import { onVisibilityChange, invalidateFor, VISIBILITY_CALLBACK_IDS, CACHE_ACTIONS } from '../cache';
 import { executeBannerRoll, executeBannerMultiRoll } from '../actions/gachaActions';
+import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
 
 /**
  * Broadcast ticket update to other tabs
@@ -98,6 +99,7 @@ export const useBannerPage = (bannerId) => {
 
   // Refs
   const videoRef = useRef(null);
+  const collectionFetchGuard = useRef(createFetchGuard());
 
   // Computed values
   const singlePullCost = pricing?.singlePullCost || 100;
@@ -255,28 +257,22 @@ export const useBannerPage = (bannerId) => {
           setShowSummonAnimation(true);
         }
 
-        // Non-blocking collection refresh
-        const refreshWithRetry = async (retries = 2) => {
-          try {
-            await fetchUserCollection();
-          } catch (err) {
-            if (retries > 0) {
-              setTimeout(() => refreshWithRetry(retries - 1), 1000);
-            }
-          }
-        };
-        refreshWithRetry();
+        // Non-blocking collection refresh with concurrency guard
+        fetchWithRetry(fetchUserCollection, { guard: collectionFetchGuard.current });
       } catch (err) {
         setError(err.response?.data?.error || t('roll.failedRoll'));
         setIsRolling(false);
 
         await refreshUser();
-        try {
-          const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+        // Fetch tickets with cache invalidation to ensure fresh data
+        invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+        const freshTickets = await fetchWithRetry(
+          () => api.get('/banners/user/tickets').then(res => res.data),
+          { silent: true }
+        );
+        if (freshTickets) {
           setTickets(freshTickets);
           broadcastTicketUpdate(freshTickets);
-        } catch {
-          // Ignore ticket refresh errors
         }
       }
     });
@@ -349,27 +345,22 @@ export const useBannerPage = (bannerId) => {
           setShowMultiSummonAnimation(true);
         }
 
-        const refreshWithRetry = async (retries = 2) => {
-          try {
-            await fetchUserCollection();
-          } catch (err) {
-            if (retries > 0) {
-              setTimeout(() => refreshWithRetry(retries - 1), 1000);
-            }
-          }
-        };
-        refreshWithRetry();
+        // Non-blocking collection refresh with concurrency guard
+        fetchWithRetry(fetchUserCollection, { guard: collectionFetchGuard.current });
       } catch (err) {
         setError(err.response?.data?.error || t('roll.failedMultiRoll'));
         setIsRolling(false);
 
         await refreshUser();
-        try {
-          const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+        // Fetch tickets with cache invalidation to ensure fresh data
+        invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+        const freshTickets = await fetchWithRetry(
+          () => api.get('/banners/user/tickets').then(res => res.data),
+          { silent: true }
+        );
+        if (freshTickets) {
           setTickets(freshTickets);
           broadcastTicketUpdate(freshTickets);
-        } catch {
-          // Ignore ticket refresh errors
         }
       }
     });
@@ -442,6 +433,8 @@ export const useBannerPage = (bannerId) => {
         }
 
         try {
+          // Invalidate cache before fetching tickets to ensure fresh data
+          invalidateFor(CACHE_ACTIONS.PRE_ROLL);
           const ticketsData = await api.get('/banners/user/tickets').then(res => res.data);
           setTickets(ticketsData);
         } catch {
@@ -460,8 +453,13 @@ export const useBannerPage = (bannerId) => {
   useEffect(() => {
     if (!bannerId) return;
 
-    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.BANNER_PRICING, async () => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.BANNER_PRICING, async (staleLevel) => {
+      // Only refresh on critical staleness or worse
+      if (!staleLevel) return;
+
       try {
+        // Invalidate cache before fetching to ensure fresh data
+        invalidateFor(CACHE_ACTIONS.PRE_ROLL);
         const [pricingData, ticketsData] = await Promise.all([
           getBannerPricing(bannerId),
           api.get('/banners/user/tickets').then(res => res.data)
@@ -550,11 +548,14 @@ export const useBannerPage = (bannerId) => {
     const handleOnline = async () => {
       refreshUser();
       fetchUserCollection();
-      try {
-        const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+      // Fetch tickets with cache invalidation to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+      const freshTickets = await fetchWithRetry(
+        () => api.get('/banners/user/tickets').then(res => res.data),
+        { silent: true }
+      );
+      if (freshTickets) {
         setTickets(freshTickets);
-      } catch {
-        // Ignore ticket refresh errors
       }
     };
 

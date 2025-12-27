@@ -12,8 +12,9 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { onVisibilityChange, VISIBILITY_CALLBACK_IDS } from '../cache';
+import { onVisibilityChange, invalidateFor, VISIBILITY_CALLBACK_IDS, CACHE_ACTIONS } from '../cache';
 import { executeBannerRoll, executeBannerMultiRoll } from '../actions/gachaActions';
+import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
 
 // Design System
 import {
@@ -194,6 +195,7 @@ const rarityIcons = {
 const BannerPage = () => {
   const { t } = useTranslation();
   const videoRef = useRef(null);
+  const collectionFetchGuard = useRef(createFetchGuard());
   const { bannerId } = useParams();
   const navigate = useNavigate();
   const { user, refreshUser, setUser } = useContext(AuthContext);
@@ -307,7 +309,9 @@ const BannerPage = () => {
         }
         
         // Fetch tickets separately - don't block on failure but show warning
+        // Invalidate cache to ensure fresh data
         try {
+          invalidateFor(CACHE_ACTIONS.PRE_ROLL);
           const ticketsData = await api.get('/banners/user/tickets').then(res => res.data);
           setTickets(ticketsData);
         } catch (ticketErr) {
@@ -333,9 +337,14 @@ const BannerPage = () => {
   useEffect(() => {
     if (!bannerId) return;
     
-    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.BANNER_PRICING, async () => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.BANNER_PRICING, async (staleLevel) => {
+      // Only refresh on staleness detection
+      if (!staleLevel) return;
+
       // Refresh both pricing and tickets in parallel on visibility change
+      // Invalidate cache first to ensure fresh data
       try {
+        invalidateFor(CACHE_ACTIONS.PRE_ROLL);
         const [pricingData, ticketsData] = await Promise.all([
           getBannerPricing(bannerId),
           api.get('/banners/user/tickets').then(res => res.data)
@@ -466,12 +475,14 @@ const BannerPage = () => {
       // Refresh user data and tickets when coming back online
       refreshUser();
       fetchUserCollection();
-      // Also refresh tickets to ensure sync
-      try {
-        const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+      // Also refresh tickets to ensure sync with cache invalidation
+      invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+      const freshTickets = await fetchWithRetry(
+        () => api.get('/banners/user/tickets').then(res => res.data),
+        { silent: true }
+      );
+      if (freshTickets) {
         setTickets(freshTickets);
-      } catch (err) {
-        console.warn('Failed to refresh tickets on reconnect:', err);
       }
     };
     
@@ -615,18 +626,8 @@ const BannerPage = () => {
           setShowSummonAnimation(true);
         }
         
-        // Non-blocking collection refresh with retry
-        const refreshWithRetry = async (retries = 2) => {
-          try {
-            await fetchUserCollection();
-          } catch (err) {
-            console.warn(`Failed to refresh collection (${retries} retries left):`, err);
-            if (retries > 0) {
-              setTimeout(() => refreshWithRetry(retries - 1), 1000);
-            }
-          }
-        };
-        refreshWithRetry();
+        // Non-blocking collection refresh with concurrency guard
+        fetchWithRetry(fetchUserCollection, { guard: collectionFetchGuard.current });
       } catch (err) {
         // Clear pending roll state on error
         try {
@@ -634,24 +635,26 @@ const BannerPage = () => {
         } catch {
           // Ignore sessionStorage errors
         }
-        
+
         const errorMessage = err.response?.data?.error || t('roll.failedRoll');
         setError(errorMessage);
         setIsRolling(false);
-        
+
         // Refresh user data and tickets to sync state after failure
         const refreshResult = await refreshUser();
         if (!refreshResult.success) {
           console.warn('Failed to refresh user after roll error:', refreshResult.error);
         }
-        
-        // Also refresh tickets to ensure sync (especially for ticket-related errors)
-        try {
-          const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+
+        // Also refresh tickets with cache invalidation to ensure fresh data
+        invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+        const freshTickets = await fetchWithRetry(
+          () => api.get('/banners/user/tickets').then(res => res.data),
+          { silent: true }
+        );
+        if (freshTickets) {
           setTickets(freshTickets);
           broadcastTicketUpdate(freshTickets);
-        } catch (ticketErr) {
-          console.warn('Failed to refresh tickets after error:', ticketErr);
         }
       }
     });
@@ -768,18 +771,8 @@ const BannerPage = () => {
           setShowMultiSummonAnimation(true);
         }
         
-        // Non-blocking collection refresh with retry
-        const refreshWithRetry = async (retries = 2) => {
-          try {
-            await fetchUserCollection();
-          } catch (err) {
-            console.warn(`Failed to refresh collection (${retries} retries left):`, err);
-            if (retries > 0) {
-              setTimeout(() => refreshWithRetry(retries - 1), 1000);
-            }
-          }
-        };
-        refreshWithRetry();
+        // Non-blocking collection refresh with concurrency guard
+        fetchWithRetry(fetchUserCollection, { guard: collectionFetchGuard.current });
       } catch (err) {
         // Clear pending roll state on error
         try {
@@ -787,29 +780,31 @@ const BannerPage = () => {
         } catch {
           // Ignore sessionStorage errors
         }
-        
+
         const errorMessage = err.response?.data?.error || t('roll.failedMultiRoll');
         setError(errorMessage);
         setIsRolling(false);
-        
+
         // Refresh user data and tickets to sync state after failure
         const refreshResult = await refreshUser();
         if (!refreshResult.success) {
           console.warn('Failed to refresh user after roll error:', refreshResult.error);
         }
-        
-        // Also refresh tickets to ensure sync (especially for ticket-related errors)
-        try {
-          const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+
+        // Also refresh tickets with cache invalidation to ensure fresh data
+        invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+        const freshTickets = await fetchWithRetry(
+          () => api.get('/banners/user/tickets').then(res => res.data),
+          { silent: true }
+        );
+        if (freshTickets) {
           setTickets(freshTickets);
           broadcastTicketUpdate(freshTickets);
-        } catch (ticketErr) {
-          console.warn('Failed to refresh tickets after error:', ticketErr);
         }
       }
     });
   };
-  
+
   const handleMultiSummonComplete = useCallback(() => {
     // Don't show results grid - animation already revealed each character
     // Just update the rarity history with the best pull

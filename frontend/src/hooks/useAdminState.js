@@ -225,23 +225,49 @@ export const useAdminState = () => {
     }
   }, []);
 
-  // Initial health fetch and interval setup
+  // Initial health fetch and interval setup (visibility-aware)
   // Uses ref to manage interval so it doesn't restart on re-renders
   useEffect(() => {
     if (!user?.isAdmin) return;
 
-    // Initial fetch
-    fetchHealth();
-
-    // Set up interval (60 seconds)
     const HEALTH_CHECK_INTERVAL = 60000;
-    healthIntervalRef.current = setInterval(fetchHealth, HEALTH_CHECK_INTERVAL);
 
-    return () => {
+    const startPolling = () => {
+      if (healthIntervalRef.current) {
+        clearInterval(healthIntervalRef.current);
+      }
+      if (document.visibilityState === 'visible') {
+        healthIntervalRef.current = setInterval(fetchHealth, HEALTH_CHECK_INTERVAL);
+      }
+    };
+
+    const stopPolling = () => {
       if (healthIntervalRef.current) {
         clearInterval(healthIntervalRef.current);
         healthIntervalRef.current = null;
       }
+    };
+
+    // Initial fetch
+    fetchHealth();
+    startPolling();
+
+    // Pause polling when tab is hidden, resume when visible
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'hidden') {
+        stopPolling();
+      } else {
+        // Fetch immediately when tab becomes visible, then resume polling
+        fetchHealth();
+        startPolling();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+
+    return () => {
+      stopPolling();
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user?.isAdmin, fetchHealth]);
 
