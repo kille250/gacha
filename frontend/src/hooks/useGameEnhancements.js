@@ -244,60 +244,6 @@ export function useFishCodex() {
 }
 
 // ===========================================
-// BAIT INVENTORY HOOK
-// ===========================================
-
-export function useBaitInventory() {
-  const [baits, setBaits] = useState(null);
-  const [inventory, setInventory] = useState({});
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState(null);
-  const [purchasing, setPurchasing] = useState(false);
-
-  const fetchBaits = useCallback(async () => {
-    try {
-      setLoading(true);
-      const data = await enhancementsApi.fishing.getBaits();
-      setBaits(data.baits);
-      setInventory(data.inventory);
-      setError(null);
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to load baits');
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => {
-    fetchBaits();
-  }, [fetchBaits]);
-
-  const purchase = useCallback(async (baitId, quantity = 1) => {
-    try {
-      setPurchasing(true);
-      const result = await enhancementsApi.fishing.purchaseBait(baitId, quantity);
-      await fetchBaits(); // Refresh
-      return result;
-    } catch (err) {
-      setError(err.response?.data?.error || 'Failed to purchase bait');
-      throw err;
-    } finally {
-      setPurchasing(false);
-    }
-  }, [fetchBaits]);
-
-  return {
-    baits,
-    inventory,
-    loading,
-    error,
-    purchasing,
-    purchaseBait: purchase,
-    refreshInventory: fetchBaits
-  };
-}
-
-// ===========================================
 // DOJO FACILITY HOOK
 // ===========================================
 
@@ -549,7 +495,6 @@ export function useGameEnhancements() {
     useFatePoints,
     useReturnBonus,
     useFishCodex,
-    useBaitInventory,
     useDojoFacility,
     useCharacterSpecialization,
     useAccountLevel,

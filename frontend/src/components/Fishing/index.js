@@ -15,7 +15,6 @@ export {
   ChallengesModal,
   EquipmentModal,
   PrestigeModal,
-  BaitShopModal,
 } from './modals';
 
 // Layout components

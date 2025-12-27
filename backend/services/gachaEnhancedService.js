@@ -247,11 +247,14 @@ function claimMilestoneReward(user, bannerId, milestonePulls) {
 function applyMilestoneReward(user, reward) {
   const applied = {};
 
-  if (reward.type === 'bait') {
-    const inventory = user.baitInventory || {};
-    inventory[reward.id] = (inventory[reward.id] || 0) + reward.quantity;
-    user.baitInventory = inventory;
-    applied.bait = { id: reward.id, quantity: reward.quantity };
+  if (reward.type === 'points') {
+    user.points = (user.points || 0) + reward.quantity;
+    applied.points = reward.quantity;
+  }
+
+  if (reward.type === 'roll_tickets') {
+    user.rollTickets = (user.rollTickets || 0) + reward.quantity;
+    applied.rollTickets = reward.quantity;
   }
 
   if (reward.type === 'premium_tickets') {

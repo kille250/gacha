@@ -180,72 +180,6 @@ const DOJO_BREAKTHROUGH_CONFIG = {
 // FISHING ENHANCEMENTS
 // ===========================================
 
-const FISHING_BAIT_SYSTEM = {
-  none: {
-    id: 'none',
-    name: 'No Bait',
-    description: 'Fish with no bait - standard rates',
-    cost: 0,
-    costType: null,
-    rarityBonus: 0,
-    catchRateBonus: 0,
-    consumable: false
-  },
-  basic_bait: {
-    id: 'basic_bait',
-    name: 'Basic Bait',
-    description: 'Slightly improved catch rates',
-    cost: 10,
-    costType: 'points',
-    rarityBonus: 0,
-    catchRateBonus: 0.1, // +10% catch window
-    consumable: true
-  },
-  quality_bait: {
-    id: 'quality_bait',
-    name: 'Quality Bait',
-    description: 'Better fish are more likely to appear',
-    cost: 50,
-    costType: 'points',
-    rarityBonus: 0.1, // +10% rare+ chance
-    catchRateBonus: 0.05,
-    consumable: true
-  },
-  premium_bait: {
-    id: 'premium_bait',
-    name: 'Premium Bait',
-    description: 'Guaranteed rare or better',
-    cost: 1,
-    costType: 'rollTickets',
-    rarityBonus: 0.5, // +50% rare+ chance
-    catchRateBonus: 0.15,
-    guaranteedMinRarity: 'rare',
-    consumable: true
-  },
-  legendary_bait: {
-    id: 'legendary_bait',
-    name: 'Legendary Lure',
-    description: 'Attracts the rarest fish',
-    cost: 1,
-    costType: 'premiumTickets',
-    rarityBonus: 1.0, // +100% rare+ chance
-    catchRateBonus: 0.2,
-    legendaryBonus: 0.1, // +10% legendary specifically
-    consumable: true
-  },
-  event_bait: {
-    id: 'event_bait',
-    name: 'Event Bait',
-    description: 'Special event-only bait',
-    cost: 0,
-    costType: null,
-    rarityBonus: 0.25,
-    catchRateBonus: 0.1,
-    eventOnly: true,
-    consumable: true
-  }
-};
-
 const FISHING_DOUBLE_OR_NOTHING = {
   enabled: true,
   minRarity: 'rare', // Only available for rare+ catches
@@ -336,10 +270,10 @@ const FISHING_VISUAL_RARITY_CONFIG = {
 const GACHA_MILESTONE_REWARDS = {
   // Rewards given at specific pull counts (per banner)
   milestones: [
-    { pulls: 10, reward: { type: 'bait', id: 'premium_bait', quantity: 5 } },
+    { pulls: 10, reward: { type: 'points', quantity: 500 } },
     { pulls: 30, reward: { type: 'rod_skin', id: 'starlight_rod' } },
     { pulls: 50, reward: { type: 'character_selector', rarity: 'rare' } },
-    { pulls: 80, reward: { type: 'bait', id: 'legendary_bait', quantity: 3 } },
+    { pulls: 80, reward: { type: 'roll_tickets', quantity: 5 } },
     { pulls: 100, reward: { type: 'character_selector', rarity: 'epic' } },
     { pulls: 150, reward: { type: 'premium_tickets', quantity: 10 } },
     { pulls: 200, reward: { type: 'character_selector', rarity: 'legendary' } }
@@ -460,7 +394,7 @@ const MASTERY_TRACKS = {
 
     milestones: [
       { count: 50, reward: { title: 'Budding Naturalist', rod: 'naturalist_rod' } },
-      { count: 100, reward: { title: 'Ichthyologist', baitRecipe: 'rare_bait' } },
+      { count: 100, reward: { title: 'Ichthyologist', premiumTickets: 3 } },
       { count: 150, reward: { title: 'Expert Ichthyologist', premiumTickets: 5 } },
       { count: 200, reward: { title: 'Marine Biologist', characterSelector: 'epic' } },
       { count: 250, reward: { title: 'Legendary Naturalist', premiumTickets: 10 } },
@@ -555,7 +489,6 @@ module.exports = {
   DOJO_BREAKTHROUGH_CONFIG,
 
   // Fishing
-  FISHING_BAIT_SYSTEM,
   FISHING_DOUBLE_OR_NOTHING,
   FISHING_VISUAL_RARITY_CONFIG,
 

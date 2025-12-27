@@ -16,7 +16,6 @@ import {
   MdSettings,
   MdMoreVert,
   MdStorefront,
-  MdShoppingCart,
 } from 'react-icons/md';
 import { FaCrown } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
@@ -158,10 +157,6 @@ export const FishingHeader = ({
                 <MoreMenuItem onClick={() => { modals.trading.open(); modals.moreMenu.close(); }}>
                   <MdStorefront />
                   <span>{t('fishing.tradingPost') || 'Trading Post'}</span>
-                </MoreMenuItem>
-                <MoreMenuItem onClick={() => { modals.baitShop.open(); modals.moreMenu.close(); }}>
-                  <MdShoppingCart />
-                  <span>{t('fishing.baitShop')}</span>
                 </MoreMenuItem>
               </MoreMenuDropdown>
             )}

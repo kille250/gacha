@@ -36,7 +36,6 @@ export const MODAL_TYPES = {
   CHALLENGES: 'challenges',
   EQUIPMENT: 'equipment',
   PRESTIGE: 'prestige',
-  BAIT_SHOP: 'baitShop',
 };
 
 /**
@@ -274,12 +273,6 @@ export function useFishingModals({
     ref: moreMenuRef,
   }), [showMoreMenu]);
 
-  const baitShopModal = useMemo(() => ({
-    isOpen: activeModal === MODAL_TYPES.BAIT_SHOP,
-    open: () => openModal(MODAL_TYPES.BAIT_SHOP),
-    close: closeModal,
-  }), [activeModal, openModal, closeModal]);
-
   // ===========================================
   // RETURN ORGANIZED MODAL CONTROLS
   // ===========================================
@@ -298,7 +291,6 @@ export function useFishingModals({
     challenges: challengesModal,
     equipment: equipmentModal,
     prestige: prestigeModal,
-    baitShop: baitShopModal,
     moreMenu: moreMenuControl,
 
     // Shared rank data (used by multiple modals)

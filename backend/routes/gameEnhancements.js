@@ -3,7 +3,7 @@
  *
  * Exposes the enhanced game features:
  * - Dojo enhancements (specializations, breakthroughs, facilities)
- * - Fishing enhancements (bait, double-or-nothing)
+ * - Fishing enhancements (double-or-nothing)
  * - Gacha enhancements (milestones, fate points)
  * - Retention systems (mastery, return bonus)
  */
@@ -179,73 +179,6 @@ router.post('/dojo/character/:id/specialize', [auth, enforcementMiddleware, devi
 // ===========================================
 // FISHING ENHANCEMENTS
 // ===========================================
-
-/**
- * GET /api/enhancements/fishing/bait
- * Get available baits and inventory
- */
-router.get('/fishing/bait', [auth, enforcementMiddleware], async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const baits = fishingEnhanced.getAvailableBaits(user);
-    const inventory = fishingEnhanced.getBaitInventory(user);
-
-    res.json({
-      baits,
-      inventory
-    });
-  } catch (err) {
-    console.error('Bait info error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
-
-/**
- * POST /api/enhancements/fishing/bait/purchase
- * Purchase bait
- */
-router.post('/fishing/bait/purchase', [auth, enforcementMiddleware, sensitiveActionLimiter], async (req, res) => {
-  const transaction = await sequelize.transaction();
-
-  try {
-    const { baitId, quantity = 1 } = req.body;
-
-    const user = await User.findByPk(req.user.id, {
-      lock: transaction.LOCK.UPDATE,
-      transaction
-    });
-
-    if (!user) {
-      await transaction.rollback();
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const result = fishingEnhanced.purchaseBait(user, baitId, quantity);
-
-    if (!result.success) {
-      await transaction.rollback();
-      return res.status(400).json({ error: result.error });
-    }
-
-    await user.save({ transaction });
-    await transaction.commit();
-
-    res.json({
-      success: true,
-      bait: result.bait,
-      quantity: result.quantity,
-      newInventory: result.newInventory
-    });
-  } catch (err) {
-    await transaction.rollback();
-    console.error('Bait purchase error:', err);
-    res.status(500).json({ error: 'Server error' });
-  }
-});
 
 /**
  * POST /api/enhancements/fishing/double-or-nothing

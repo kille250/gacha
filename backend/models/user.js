@@ -423,24 +423,6 @@ User.init(
       }
     },
 
-    // Bait inventory (JSON object: {baitId: quantity})
-    baitInventory: {
-      type: DataTypes.TEXT,
-      allowNull: true,
-      defaultValue: '{}',
-      get() {
-        const value = this.getDataValue('baitInventory');
-        try {
-          return value ? JSON.parse(value) : {};
-        } catch {
-          return {};
-        }
-      },
-      set(value) {
-        this.setDataValue('baitInventory', JSON.stringify(value || {}));
-      }
-    },
-
     // Gacha pity tracking (JSON object)
     gachaPity: {
       type: DataTypes.TEXT,

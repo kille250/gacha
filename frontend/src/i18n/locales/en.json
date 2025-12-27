@@ -289,7 +289,6 @@
       "streak_20": "Catch 20 fish in a row without missing",
       "autofish_50": "Catch 50 fish with autofish"
     },
-    "baitShop": "Bait Shop",
     "switchedTo": "Switched to {{area}}!",
     "equippedRod": "Equipped {{rod}}!",
     "rankRequired": "Rank #{{rank}}+",

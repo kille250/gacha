@@ -295,20 +295,6 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
                     </RewardItem>
                   )}
 
-                  {rewards?.bait > 0 && (
-                    <RewardItem
-                      initial={{ x: -20, opacity: 0 }}
-                      animate={{ x: 0, opacity: 1 }}
-                      transition={{ delay: 0.5 }}
-                    >
-                      <RewardInfo>
-                        <RewardIcon>🪱</RewardIcon>
-                        <RewardName>Fishing Bait</RewardName>
-                      </RewardInfo>
-                      <RewardValue>+{rewards.bait}</RewardValue>
-                    </RewardItem>
-                  )}
-
                   {rewards?.dojoBoost && (
                     <RewardItem
                       initial={{ x: -20, opacity: 0 }}

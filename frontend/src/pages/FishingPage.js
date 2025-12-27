@@ -54,7 +54,6 @@ import {
   ChallengesModal,
   EquipmentModal,
   PrestigeModal,
-  BaitShopModal,
   FishingHeader,
   FishingStatsBar,
   FishingGameCanvas,
@@ -476,11 +475,6 @@ const FishingPage = () => {
         prestigeData={modals.prestige.data}
         claimingPrestige={modals.prestige.claiming}
         onClaimPrestige={modals.prestige.onClaim}
-      />
-      <BaitShopModal
-        show={modals.baitShop.isOpen}
-        onClose={modals.baitShop.close}
-        userPoints={user?.points || 0}
       />
     </PageContainer>
   );

@@ -2,202 +2,16 @@
  * Enhanced Fishing Service
  *
  * Handles the enhanced fishing features including:
- * - Bait system
  * - Double-or-nothing mechanic
  * - Visual rarity communication
  * - Anti-frustration mechanics
  */
 
 const {
-  FISHING_BAIT_SYSTEM,
   FISHING_DOUBLE_OR_NOTHING,
   FISHING_VISUAL_RARITY_CONFIG,
   STREAK_INSURANCE
 } = require('../config/gameDesign');
-
-// ===========================================
-// BAIT SYSTEM
-// ===========================================
-
-/**
- * Get user's bait inventory
- * @param {Object} user - User object
- * @returns {Object} - Bait inventory with quantities
- */
-function getBaitInventory(user) {
-  const inventory = user.baitInventory || {};
-
-  // Ensure all bait types have a quantity (default 0)
-  const fullInventory = {};
-  Object.keys(FISHING_BAIT_SYSTEM).forEach(baitId => {
-    if (baitId !== 'none') {
-      fullInventory[baitId] = inventory[baitId] || 0;
-    }
-  });
-
-  return fullInventory;
-}
-
-/**
- * Get available baits for a user
- * @param {Object} user - User object
- * @returns {Array} - Available bait options with costs and effects
- */
-function getAvailableBaits(user) {
-  const inventory = getBaitInventory(user);
-
-  return Object.values(FISHING_BAIT_SYSTEM).map(bait => ({
-    ...bait,
-    owned: inventory[bait.id] || 0,
-    canAfford: canAffordBait(user, bait.id),
-    isAvailable: !bait.eventOnly // Event baits disabled until event system is implemented
-  }));
-}
-
-/**
- * Check if user can afford a bait
- * @param {Object} user - User object
- * @param {string} baitId - Bait ID
- * @returns {boolean}
- */
-function canAffordBait(user, baitId) {
-  const bait = FISHING_BAIT_SYSTEM[baitId];
-  if (!bait || bait.cost === 0) return true;
-
-  switch (bait.costType) {
-    case 'points':
-      return (user.points || 0) >= bait.cost;
-    case 'rollTickets':
-      return (user.rollTickets || 0) >= bait.cost;
-    case 'premiumTickets':
-      return (user.premiumTickets || 0) >= bait.cost;
-    default:
-      return true;
-  }
-}
-
-/**
- * Purchase bait (deduct cost and add to inventory)
- * @param {Object} user - User object
- * @param {string} baitId - Bait to purchase
- * @param {number} quantity - Amount to purchase
- * @returns {Object} - Result with success/error
- */
-function purchaseBait(user, baitId, quantity = 1) {
-  const bait = FISHING_BAIT_SYSTEM[baitId];
-  if (!bait) {
-    return { success: false, error: 'Invalid bait type' };
-  }
-
-  if (bait.cost === 0) {
-    return { success: false, error: 'This bait cannot be purchased' };
-  }
-
-  const totalCost = bait.cost * quantity;
-
-  // Check and deduct cost
-  switch (bait.costType) {
-    case 'points':
-      if ((user.points || 0) < totalCost) {
-        return { success: false, error: `Not enough points. Need ${totalCost}` };
-      }
-      user.points -= totalCost;
-      break;
-    case 'rollTickets':
-      if ((user.rollTickets || 0) < totalCost) {
-        return { success: false, error: `Not enough roll tickets. Need ${totalCost}` };
-      }
-      user.rollTickets -= totalCost;
-      break;
-    case 'premiumTickets':
-      if ((user.premiumTickets || 0) < totalCost) {
-        return { success: false, error: `Not enough premium tickets. Need ${totalCost}` };
-      }
-      user.premiumTickets -= totalCost;
-      break;
-    default:
-      return { success: false, error: 'Unknown cost type' };
-  }
-
-  // Add to inventory
-  const inventory = user.baitInventory || {};
-  inventory[baitId] = (inventory[baitId] || 0) + quantity;
-  user.baitInventory = inventory;
-
-  return {
-    success: true,
-    bait: bait,
-    quantity: quantity,
-    totalCost: totalCost,
-    newInventory: inventory[baitId]
-  };
-}
-
-/**
- * Use bait for a fishing cast
- * @param {Object} user - User object
- * @param {string} baitId - Bait to use (or 'none')
- * @returns {Object} - Result with bait effects
- */
-function useBait(user, baitId = 'none') {
-  if (baitId === 'none') {
-    return {
-      success: true,
-      bait: FISHING_BAIT_SYSTEM.none,
-      effects: {
-        rarityBonus: 0,
-        catchRateBonus: 0,
-        guaranteedMinRarity: null
-      }
-    };
-  }
-
-  const bait = FISHING_BAIT_SYSTEM[baitId];
-  if (!bait) {
-    return { success: false, error: 'Invalid bait type' };
-  }
-
-  // Check if consumable and user has it
-  if (bait.consumable) {
-    const inventory = user.baitInventory || {};
-    if ((inventory[baitId] || 0) <= 0) {
-      return { success: false, error: 'No bait remaining' };
-    }
-
-    // Consume bait
-    inventory[baitId] -= 1;
-    user.baitInventory = inventory;
-  }
-
-  return {
-    success: true,
-    bait: bait,
-    consumed: bait.consumable,
-    effects: {
-      rarityBonus: bait.rarityBonus || 0,
-      catchRateBonus: bait.catchRateBonus || 0,
-      guaranteedMinRarity: bait.guaranteedMinRarity || null,
-      legendaryBonus: bait.legendaryBonus || 0
-    }
-  };
-}
-
-/**
- * Apply bait effects to fish selection
- * @param {Object} baitEffects - Effects from useBait
- * @param {Object} selectionParams - Fish selection parameters
- * @returns {Object} - Modified selection parameters
- */
-function applyBaitToSelection(baitEffects, selectionParams) {
-  return {
-    ...selectionParams,
-    rarityBonus: (selectionParams.rarityBonus || 0) + baitEffects.rarityBonus,
-    legendaryBonus: (selectionParams.legendaryBonus || 0) + (baitEffects.legendaryBonus || 0),
-    guaranteedMinRarity: baitEffects.guaranteedMinRarity || selectionParams.guaranteedMinRarity,
-    timingWindowBonus: (selectionParams.timingWindowBonus || 0) +
-      (baitEffects.catchRateBonus * 200) // Convert to timing ms
-  };
-}
 
 // ===========================================
 // DOUBLE OR NOTHING SYSTEM
@@ -498,14 +312,6 @@ function calculateConsolationReward(fish) {
 // ===========================================
 
 module.exports = {
-  // Bait System
-  getBaitInventory,
-  getAvailableBaits,
-  canAffordBait,
-  purchaseBait,
-  useBait,
-  applyBaitToSelection,
-
   // Double or Nothing
   isDoubleOrNothingAvailable,
   executeDoubleOrNothing,

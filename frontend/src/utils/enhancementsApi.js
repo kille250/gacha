@@ -3,7 +3,7 @@
  *
  * Client-side API calls for the enhanced game features:
  * - Dojo enhancements (specializations, breakthroughs, facilities)
- * - Fishing enhancements (bait, double-or-nothing)
+ * - Fishing enhancements (double-or-nothing)
  * - Gacha enhancements (milestones, fate points, pity)
  * - Retention systems (mastery, return bonus)
  */
@@ -57,25 +57,6 @@ export const dojoEnhancements = {
 // ===========================================
 
 export const fishingEnhancements = {
-  /**
-   * Get available baits and inventory
-   */
-  getBaits: async () => {
-    const response = await api.get('/enhancements/fishing/bait');
-    return response.data;
-  },
-
-  /**
-   * Purchase bait
-   */
-  purchaseBait: async (baitId, quantity = 1) => {
-    const response = await api.post('/enhancements/fishing/bait/purchase', {
-      baitId,
-      quantity
-    });
-    return response.data;
-  },
-
   /**
    * Execute double-or-nothing gamble
    */

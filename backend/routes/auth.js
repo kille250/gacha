@@ -1266,7 +1266,6 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
     user.accountXP = 0;
     user.dojoClaimsTotal = 0;
     user.dojoFacilityTiers = ['basic'];
-    user.baitInventory = {};
 
     // Reset Gacha pity, milestone, and fate points systems
     user.gachaPity = { pullsSinceRare: 0, pullsSinceEpic: 0, pullsSinceLegendary: 0, totalPulls: 0 };

@@ -32,7 +32,6 @@ const createMockUser = () => ({
   fatePoints: {},
   characterSelectors: [],
   weeklyBannerTickets: 0,
-  baitInventory: {},
   rodSkins: [],
   items: []
 });
@@ -288,12 +287,12 @@ describe('Milestone System', () => {
   });
 
   describe('applyMilestoneReward', () => {
-    test('applies bait reward correctly', () => {
+    test('applies points reward correctly', () => {
       const user = createMockUser();
-      const reward = { type: 'bait', id: 'premium_bait', quantity: 5 };
+      const reward = { type: 'points', quantity: 500 };
       gachaEnhanced.applyMilestoneReward(user, reward);
 
-      expect(user.baitInventory.premium_bait).toBe(5);
+      expect(user.points).toBe(1500); // 1000 initial + 500
     });
 
     test('applies premium tickets reward correctly', () => {
