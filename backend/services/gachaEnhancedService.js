@@ -337,9 +337,10 @@ function getFatePointsStatus(user, bannerId) {
  * @param {string} bannerId - Banner ID
  * @param {string} pullType - 'standard', 'banner', 'premium'
  * @param {boolean} gotNonFeaturedFiveStar - Whether user got non-featured 5*
+ * @param {number} pullCount - Number of pulls (for multi-rolls)
  * @returns {Object} - Fate points awarded
  */
-function awardFatePoints(user, bannerId, pullType, gotNonFeaturedFiveStar = false) {
+function awardFatePoints(user, bannerId, pullType, gotNonFeaturedFiveStar = false, pullCount = 1) {
   if (!GACHA_FATE_POINTS.enabled) {
     return { awarded: 0 };
   }
@@ -347,9 +348,11 @@ function awardFatePoints(user, bannerId, pullType, gotNonFeaturedFiveStar = fals
   const fatePoints = user.fatePoints || {};
   const bannerFate = fatePoints[bannerId] || { points: 0, lastUpdate: null };
 
-  let pointsToAdd = GACHA_FATE_POINTS.pointsPerPull[pullType] || 1;
+  // Base points per pull multiplied by pull count
+  const basePointsPerPull = GACHA_FATE_POINTS.pointsPerPull[pullType] || 1;
+  let pointsToAdd = basePointsPerPull * pullCount;
 
-  // Bonus for non-featured 5-star
+  // Bonus for non-featured 5-star (only once per multi-roll, not multiplied)
   if (gotNonFeaturedFiveStar) {
     pointsToAdd += GACHA_FATE_POINTS.rateUpBanner.nonFeaturedFiveStarPoints;
   }

@@ -400,6 +400,22 @@ describe('Fate Points System', () => {
 
       expect(user.fatePoints.banner1.points).toBe(3);
     });
+
+    test('awards correct points for multi-pull', () => {
+      const user = createMockUser();
+      // 10x banner pull should award 10 * 2 = 20 points
+      gachaEnhanced.awardFatePoints(user, 'banner1', 'banner', false, 10);
+
+      expect(user.fatePoints.banner1.points).toBe(20);
+    });
+
+    test('awards correct points for multi-pull with non-featured bonus', () => {
+      const user = createMockUser();
+      // 10x banner pull with non-featured 5-star: 10 * 2 + 1 = 21 points
+      gachaEnhanced.awardFatePoints(user, 'banner1', 'banner', true, 10);
+
+      expect(user.fatePoints.banner1.points).toBe(21);
+    });
   });
 
   describe('exchangeFatePoints', () => {

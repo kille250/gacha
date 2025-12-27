@@ -241,7 +241,8 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
     }
     // Record total pulls for milestones
     gachaEnhanced.recordPull(user, 'standard', count);
-    gachaEnhanced.awardFatePoints(user, 'standard', 'standard', false);
+    // Award fate points for each pull
+    gachaEnhanced.awardFatePoints(user, 'standard', 'standard', false, count);
     await user.save();
 
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);

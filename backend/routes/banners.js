@@ -955,9 +955,9 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
     }
     // Record total pulls for milestones
     gachaEnhanced.recordPull(user, banner.id, count);
-    // Award fate points (use highest tier for multi - premium if any premium rolls)
+    // Award fate points for each pull (use highest tier for multi - premium if any premium rolls)
     const pullType = premiumCount > 0 ? 'premium' : 'banner';
-    gachaEnhanced.awardFatePoints(user, banner.id, pullType, gotNonFeaturedLegendary);
+    gachaEnhanced.awardFatePoints(user, banner.id, pullType, gotNonFeaturedLegendary, count);
     await user.save();
 
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);
