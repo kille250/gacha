@@ -53,7 +53,7 @@ const SPEC_COLORS = {
   spirit: '#9b59b6'
 };
 
-// Quick Fill button style
+// Quick Fill button style - icon-only on very narrow screens
 const QuickFillButton = styled.button`
   display: flex;
   align-items: center;
@@ -67,6 +67,9 @@ const QuickFillButton = styled.button`
   font-weight: ${theme.fontWeights.medium};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
 
   &:hover:not(:disabled) {
     background: linear-gradient(135deg, rgba(88, 86, 214, 0.3), rgba(175, 82, 222, 0.3));
@@ -79,7 +82,8 @@ const QuickFillButton = styled.button`
   }
 
   svg {
-    font-size: 14px;
+    font-size: 16px;
+    flex-shrink: 0;
   }
 
   .spin {
@@ -89,6 +93,15 @@ const QuickFillButton = styled.button`
   @keyframes spin {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+  }
+
+  /* Icon-only on narrow screens to prevent text truncation */
+  @media (max-width: 400px) {
+    padding: ${theme.spacing.sm};
+
+    span {
+      display: none;
+    }
   }
 `;
 

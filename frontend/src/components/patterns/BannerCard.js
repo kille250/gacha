@@ -15,10 +15,32 @@ const CardContainer = styled(motion.div)`
   width: 300px;
   scroll-snap-align: start;
   cursor: pointer;
+  position: relative;
+  /* Touch feedback ripple */
+  overflow: hidden;
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at var(--tap-x, 50%) var(--tap-y, 50%), rgba(255, 255, 255, 0.3) 0%, transparent 60%);
+    opacity: 0;
+    transition: opacity 0.3s ease;
+    pointer-events: none;
+    border-radius: 12px;
+  }
+
+  &:active::after {
+    opacity: 1;
+  }
 
   &:focus-visible {
     outline: 2px solid ${theme.colors.primary};
     outline-offset: 2px;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 260px;
   }
 `;
 

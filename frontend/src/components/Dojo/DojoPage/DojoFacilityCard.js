@@ -84,6 +84,44 @@ const HintText = styled.p`
   line-height: 1.4;
 `;
 
+// Step indicator for facility progression (desktop enhancement)
+const TierSteps = styled.div`
+  display: none;
+  gap: 4px;
+  margin-bottom: 16px;
+
+  @media (min-width: 768px) {
+    display: flex;
+  }
+`;
+
+const TierStep = styled.div`
+  flex: 1;
+  height: 4px;
+  border-radius: 2px;
+  background: ${props => props.$completed
+    ? 'linear-gradient(90deg, #5856d6 0%, #af52de 100%)'
+    : props.$current
+      ? 'linear-gradient(90deg, rgba(88, 86, 214, 0.5), rgba(175, 82, 222, 0.5))'
+      : 'rgba(255, 255, 255, 0.1)'};
+  transition: background 0.3s ease;
+`;
+
+const TierLabel = styled.div`
+  display: none;
+  justify-content: space-between;
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 8px;
+
+  @media (min-width: 768px) {
+    display: flex;
+  }
+`;
+
+// All facility tiers for step indicator
+const ALL_TIERS = ['basic', 'warriors_hall', 'masters_temple', 'grandmasters_sanctum'];
+
 const DojoFacilityCard = ({
   facility,
   userLevel,
@@ -97,6 +135,7 @@ const DojoFacilityCard = ({
   if (!facility) return null;
 
   const { current, nextTier } = facility;
+  const currentTierIndex = ALL_TIERS.indexOf(current?.id) || 0;
   const canAfford = nextTier ? userPoints >= nextTier.unlockCost : false;
   const meetsLevel = nextTier ? userLevel >= nextTier.requiredLevel : false;
   const canUpgrade = nextTier && canAfford && meetsLevel && !upgrading;
@@ -135,6 +174,24 @@ const DojoFacilityCard = ({
           <span>{t('dojo.facility.title')}</span>
         </FacilityTitle>
       </FacilityHeader>
+
+      {/* Tier progression indicator - visible on desktop */}
+      <TierLabel>
+        {ALL_TIERS.map((tier, idx) => (
+          <span key={tier} style={{ opacity: idx <= currentTierIndex ? 1 : 0.5 }}>
+            {t(`dojo.facility.tiers.${tier}.name`, { defaultValue: tier.replace('_', ' ') })}
+          </span>
+        ))}
+      </TierLabel>
+      <TierSteps role="progressbar" aria-valuenow={currentTierIndex + 1} aria-valuemax={ALL_TIERS.length} aria-label="Facility progression">
+        {ALL_TIERS.map((tier, idx) => (
+          <TierStep
+            key={tier}
+            $completed={idx < currentTierIndex}
+            $current={idx === currentTierIndex}
+          />
+        ))}
+      </TierSteps>
 
       <FacilityCurrentTier>
         <FacilityTierBadge $tier={current?.id}>

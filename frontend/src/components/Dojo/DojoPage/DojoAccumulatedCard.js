@@ -30,7 +30,7 @@ const pulse = keyframes`
   50% { opacity: 0.6; }
 `;
 
-// Warning badge for capped state
+// Warning badge for capped state - using darker color for WCAG AA contrast (4.5:1 ratio)
 const CappedWarning = styled.div`
   display: flex;
   align-items: center;
@@ -39,9 +39,9 @@ const CappedWarning = styled.div`
   background: rgba(255, 159, 10, 0.15);
   border: 1px solid rgba(255, 159, 10, 0.3);
   border-radius: ${theme.radius.md};
-  color: ${theme.colors.warning};
+  color: #b36b00; /* Darker orange for WCAG AA contrast */
   font-size: ${theme.fontSizes.xs};
-  font-weight: ${theme.fontWeights.medium};
+  font-weight: ${theme.fontWeights.semibold};
   margin-top: ${theme.spacing.sm};
 
   @media (prefers-reduced-motion: no-preference) {
@@ -50,6 +50,7 @@ const CappedWarning = styled.div`
 
   svg {
     font-size: 14px;
+    color: #b36b00;
   }
 
   @media (prefers-reduced-motion: reduce) {
@@ -106,6 +107,7 @@ const DojoAccumulatedCard = ({
         aria-valuenow={progressPercent}
         aria-valuemin={0}
         aria-valuemax={100}
+        aria-valuetext={`${status?.accumulated?.hours?.toFixed(1) || 0} hours of ${status?.accumulated?.capHours || 8} hours accumulated`}
       >
         <ProgressFill
           style={{ width: `${progressPercent}%` }}

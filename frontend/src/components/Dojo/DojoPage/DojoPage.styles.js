@@ -860,6 +860,12 @@ export const SlotsGrid = styled.div`
   @media (max-width: 480px) {
     grid-template-columns: repeat(2, 1fr);
   }
+
+  /* Very small screens (360px) - single column for better usability */
+  @media (max-width: 360px) {
+    grid-template-columns: 1fr;
+    gap: ${theme.spacing.md};
+  }
 `;
 
 export const FilledSlot = styled(motion.div)`
@@ -870,6 +876,21 @@ export const FilledSlot = styled(motion.div)`
   border: 2px solid ${props => props.$color || theme.colors.surfaceBorder};
   box-shadow: 0 0 20px ${props => props.$glow || 'transparent'};
   cursor: default;
+  transition: box-shadow ${theme.transitions.fast}, transform ${theme.transitions.fast};
+
+  /* Desktop: Enhanced hover state with shadow elevation */
+  @media (hover: hover) {
+    &:hover {
+      box-shadow: 0 0 20px ${props => props.$glow || 'transparent'},
+                  0 8px 24px rgba(0, 0, 0, 0.2);
+      transform: translateY(-2px);
+    }
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
+  }
 
   @media (max-width: ${theme.breakpoints.sm}) {
     border-radius: ${theme.radius.lg};
@@ -1010,12 +1031,13 @@ export const RemoveButton = styled.button`
     transform: scale(1.1);
   }
 
+  /* Mobile: Maintain 44px minimum touch target for WCAG compliance */
   @media (max-width: ${theme.breakpoints.sm}) {
-    width: 28px;
-    height: 28px;
-    min-width: 28px;
-    min-height: 28px;
-    font-size: 12px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    min-height: 44px;
+    font-size: 14px;
   }
 `;
 
@@ -1386,6 +1408,17 @@ export const ModalContent = styled(motion.div)`
     height: auto;
     max-height: 80vh;
     border-radius: ${theme.radius.xl};
+  }
+
+  /* Larger screens - expand modal width for better content display */
+  @media (min-width: ${theme.breakpoints.lg}) {
+    max-width: 800px;
+  }
+
+  /* Landscape mobile - reduce height to fit viewport */
+  @media (max-width: ${theme.breakpoints.md}) and (orientation: landscape) {
+    height: 70vh;
+    max-height: 70vh;
   }
 `;
 

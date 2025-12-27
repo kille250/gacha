@@ -24,6 +24,11 @@ const Header = styled.div`
   align-items: center;
   gap: 16px;
   margin-bottom: 20px;
+
+  /* Desktop: Horizontal layout with more space */
+  @media (min-width: 768px) {
+    gap: 24px;
+  }
 `;
 
 const LevelCircle = styled.div`

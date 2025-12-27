@@ -148,6 +148,8 @@ const UnlockName = styled.span`
 const ContinueButton = styled(motion.button)`
   margin-top: 16px;
   padding: 14px 32px;
+  min-height: 48px;
+  min-width: 120px;
   background: linear-gradient(135deg, #5856d6 0%, #af52de 100%);
   border: none;
   border-radius: 12px;
@@ -164,6 +166,11 @@ const ContinueButton = styled(motion.button)`
 
   &:active {
     transform: translateY(0);
+  }
+
+  &:focus-visible {
+    outline: 2px solid white;
+    outline-offset: 2px;
   }
 `;
 
@@ -193,8 +200,8 @@ const LevelUpNotification = ({
     }
   }, [isVisible]);
 
-  // Generate floating arrow particles
-  const arrows = Array.from({ length: 8 }, (_, i) => ({
+  // Generate floating arrow particles (reduced count for better performance)
+  const arrows = Array.from({ length: 5 }, (_, i) => ({
     id: i,
     x: Math.random() * 300 - 150,
     delay: Math.random() * 0.5

@@ -67,6 +67,9 @@ const PopupContainer = styled.div`
   flex-direction: column;
   align-items: center;
   padding-top: 100px;
+  /* Safe area insets for notched devices */
+  padding-left: env(safe-area-inset-left, 0);
+  padding-right: env(safe-area-inset-right, 0);
   z-index: ${theme.zIndex.modal};
   background: rgba(0, 0, 0, 0.3);
   backdrop-filter: blur(2px);

@@ -24,6 +24,12 @@ const BannerContainer = styled(motion.div)`
     height: 320px;
   }
 
+  /* Landscape mobile - reduce height to fit viewport better */
+  @media (max-width: ${theme.breakpoints.md}) and (orientation: landscape) {
+    height: 200px;
+    border-radius: 16px;
+  }
+
   &:focus-visible {
     outline: 2px solid ${theme.colors.primary};
     outline-offset: 2px;
