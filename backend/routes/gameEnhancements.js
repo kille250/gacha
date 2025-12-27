@@ -14,7 +14,7 @@ const auth = require('../middleware/auth');
 const { enforcementMiddleware } = require('../middleware/enforcement');
 const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
-const { User, Character, UserCharacter, sequelize } = require('../models');
+const { User, Character, UserCharacter, Banner, sequelize } = require('../models');
 
 // Service imports
 const dojoEnhanced = require('../services/dojoEnhancedService');
