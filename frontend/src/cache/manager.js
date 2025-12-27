@@ -147,10 +147,11 @@ const MODAL_PATTERNS = {
 
 /**
  * Gacha action invalidation patterns
+ * Note: Fate points are invalidated because rolls award points
  */
 const GACHA_PATTERNS = {
-  roll: ['/characters/collection', '/auth/me'],
-  roll_banner: ['/characters/collection', '/auth/me', '/banners/user/tickets'],
+  roll: ['/characters/collection', '/auth/me', '/enhancements/gacha/fate-points'],
+  roll_banner: ['/characters/collection', '/auth/me', '/banners/user/tickets', '/enhancements/gacha/fate-points'],
   level_up: ['/characters/collection', '/auth/me']
 };
 

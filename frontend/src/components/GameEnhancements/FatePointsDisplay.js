@@ -5,11 +5,13 @@
  * exchange for guaranteed characters.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTicketAlt, FaHeart, FaCrown, FaSync, FaMagic, FaCheck } from 'react-icons/fa';
+import { FaTicketAlt, FaHeart, FaCrown, FaSync, FaMagic, FaCheck, FaSpinner } from 'react-icons/fa';
 import { useFatePoints } from '../../hooks/useGameEnhancements';
+import { onVisibilityChange } from '../../cache';
+import { useTranslation } from 'react-i18next';
 
 const Container = styled(motion.div)`
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -270,47 +272,57 @@ const ToastContent = styled.div`
   }
 `;
 
-const EXCHANGE_OPTIONS = [
-  {
-    id: 'rare_selector',
-    Icon: FaTicketAlt,
-    name: 'Rare Selector',
-    cost: 100,
-    description: 'Choose any rare character'
-  },
-  {
-    id: 'epic_selector',
-    Icon: FaHeart,
-    name: 'Epic Selector',
-    cost: 300,
-    description: 'Choose any epic character'
-  },
-  {
-    id: 'legendary_selector',
-    Icon: FaCrown,
-    name: 'Legendary Selector',
-    cost: 600,
-    description: 'Choose any legendary character'
-  },
-  {
-    id: 'banner_pity_reset',
-    Icon: FaSync,
-    name: 'Pity Reset',
-    cost: 150,
-    description: 'Reset pity to 50% of max'
+const RemainingPoints = styled.div`
+  color: #666;
+  font-size: 0.75rem;
+  margin-top: 4px;
+`;
+
+const LoadingSpinner = styled(FaSpinner)`
+  animation: spin 1s linear infinite;
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
-];
+`;
+
+// Icon mapping for exchange options from backend
+const EXCHANGE_ICONS = {
+  rare_selector: FaTicketAlt,
+  epic_selector: FaHeart,
+  legendary_selector: FaCrown,
+  banner_pity_reset: FaSync
+};
 
 export function FatePointsDisplay({ bannerId = null }) {
-  const { fatePoints, loading, error, exchangePoints } = useFatePoints(bannerId);
+  const { t } = useTranslation();
+  const { fatePoints, loading, error, exchangePoints, refreshFatePoints } = useFatePoints(bannerId);
   const [selectedItem, setSelectedItem] = useState(null);
   const [exchanging, setExchanging] = useState(false);
   const [successToast, setSuccessToast] = useState(null);
 
+  // Refresh fate points when tab becomes visible after being hidden
+  useEffect(() => {
+    return onVisibilityChange('fate-points-display', (staleLevel) => {
+      if (staleLevel && refreshFatePoints) {
+        refreshFatePoints();
+      }
+    });
+  }, [refreshFatePoints]);
+
+  // Build exchange options from backend data with icons
+  const exchangeOptions = useMemo(() => {
+    if (!fatePoints?.exchangeOptions) return [];
+    return fatePoints.exchangeOptions.map(opt => ({
+      ...opt,
+      Icon: EXCHANGE_ICONS[opt.id] || FaMagic
+    }));
+  }, [fatePoints?.exchangeOptions]);
+
   if (loading) {
     return (
       <Container>
-        <Title>Loading fate points...</Title>
+        <Title><LoadingSpinner /> {t('fatePoints.loading', 'Loading fate points...')}</Title>
       </Container>
     );
   }
@@ -335,10 +347,10 @@ export function FatePointsDisplay({ bannerId = null }) {
       // Show success toast
       const isSelector = selectedItem.id.includes('selector');
       setSuccessToast({
-        title: `${selectedItem.name} obtained!`,
+        title: t('fatePoints.exchangeSuccess', { item: selectedItem.name }) || `${selectedItem.name} obtained!`,
         hint: isSelector
-          ? 'Go to Profile to use your selector'
-          : 'Your pity has been reset to 50%'
+          ? t('fatePoints.selectorHint', 'Go to Profile to use your selector')
+          : t('fatePoints.pityResetHint', 'Your pity has been reset to 50%')
       });
 
       // Auto-hide toast after 4 seconds
@@ -355,6 +367,9 @@ export function FatePointsDisplay({ bannerId = null }) {
   // Safe calculation with guards against division by zero
   const weeklyProgress = weeklyMax > 0 ? (pointsThisWeek / weeklyMax) * 100 : 0;
 
+  // Calculate remaining points after exchange for preview
+  const remainingAfterExchange = selectedItem ? points - selectedItem.cost : points;
+
   return (
     <>
       <Container
@@ -362,7 +377,7 @@ export function FatePointsDisplay({ bannerId = null }) {
         animate={{ opacity: 1, y: 0 }}
       >
         <Header>
-          <Title>Fate Points</Title>
+          <Title>{t('fatePoints.title', 'Fate Points')}</Title>
           <PointsCounter>
             <PointsIcon><FaMagic size={16} /></PointsIcon>
             <PointsValue>{points}</PointsValue>
@@ -371,7 +386,7 @@ export function FatePointsDisplay({ bannerId = null }) {
 
         <ProgressSection>
           <ProgressLabel>
-            <ProgressText>Weekly Earnings</ProgressText>
+            <ProgressText>{t('fatePoints.weeklyEarnings', 'Weekly Earnings')}</ProgressText>
             <ProgressCount>{pointsThisWeek} / {weeklyMax}</ProgressCount>
           </ProgressLabel>
           <ProgressBar>
@@ -384,10 +399,11 @@ export function FatePointsDisplay({ bannerId = null }) {
         </ProgressSection>
 
         <ExchangeSection>
-          <ExchangeTitle>Exchange for Rewards</ExchangeTitle>
+          <ExchangeTitle>{t('fatePoints.exchangeForRewards', 'Exchange for Rewards')}</ExchangeTitle>
           <ExchangeGrid>
-            {EXCHANGE_OPTIONS.map(option => {
+            {exchangeOptions.map(option => {
               const affordable = points >= option.cost;
+              const IconComponent = option.Icon;
               return (
                 <ExchangeCard
                   key={option.id}
@@ -396,9 +412,9 @@ export function FatePointsDisplay({ bannerId = null }) {
                   whileHover={affordable ? { scale: 1.02 } : {}}
                   whileTap={affordable ? { scale: 0.98 } : {}}
                 >
-                  <ItemIcon><option.Icon size={40} /></ItemIcon>
+                  <ItemIcon><IconComponent size={40} /></ItemIcon>
                   <ItemName>{option.name}</ItemName>
-                  <ItemCost>{option.cost} FP</ItemCost>
+                  <ItemCost>{option.cost} {t('fatePoints.fp', 'FP')}</ItemCost>
                 </ExchangeCard>
               );
             })}
@@ -406,7 +422,7 @@ export function FatePointsDisplay({ bannerId = null }) {
         </ExchangeSection>
 
         <InfoBox>
-          Earn Fate Points by pulling on banners. 1 pull = 1 FP. Weekly cap ensures fair progression.
+          {t('fatePoints.infoBox', 'Earn Fate Points by pulling on banners. 1 pull = 1 FP. Weekly cap ensures fair progression.')}
         </InfoBox>
       </Container>
 
@@ -429,8 +445,11 @@ export function FatePointsDisplay({ bannerId = null }) {
               <ModalDesc>{selectedItem.description}</ModalDesc>
 
               <ModalCost>
-                <CostLabel>Cost</CostLabel>
-                <CostValue>{selectedItem.cost} Fate Points</CostValue>
+                <CostLabel>{t('fatePoints.cost', 'Cost')}</CostLabel>
+                <CostValue>{selectedItem.cost} {t('fatePoints.fatePoints', 'Fate Points')}</CostValue>
+                <RemainingPoints>
+                  {t('fatePoints.remainingAfter', 'Remaining after exchange')}: {remainingAfterExchange} {t('fatePoints.fp', 'FP')}
+                </RemainingPoints>
               </ModalCost>
 
               <ButtonGroup>
@@ -439,7 +458,7 @@ export function FatePointsDisplay({ bannerId = null }) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  Cancel
+                  {t('common.cancel', 'Cancel')}
                 </CancelButton>
                 <ExchangeButton
                   onClick={handleExchange}
@@ -447,7 +466,7 @@ export function FatePointsDisplay({ bannerId = null }) {
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
                 >
-                  {exchanging ? 'Exchanging...' : 'Exchange'}
+                  {exchanging ? <><LoadingSpinner /> {t('fatePoints.exchanging', 'Exchanging...')}</> : t('fatePoints.exchange', 'Exchange')}
                 </ExchangeButton>
               </ButtonGroup>
             </ModalContent>

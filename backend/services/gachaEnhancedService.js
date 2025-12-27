@@ -395,11 +395,20 @@ function getTotalFatePoints(user) {
 /**
  * Get fate points status for a user
  * Returns global fate points pool with weekly tracking
+ *
+ * Note: Fate Points are a GLOBAL pool shared across all banners.
+ * The bannerId parameter is kept for API consistency but the returned
+ * data represents the user's total fate points across all banners.
+ *
  * @param {Object} user - User object
- * @param {string} _bannerId - Banner ID (unused - FP are global, kept for API compatibility)
+ * @param {string} [bannerId] - Banner ID (unused - FP are global, kept for API compatibility)
  * @returns {Object} - Fate points status
  */
-function getFatePointsStatus(user, _bannerId) {
+function getFatePointsStatus(user, bannerId = null) {
+  // bannerId is intentionally unused - fate points are global across all banners
+  // Keeping parameter for API consistency with other gacha functions
+  void bannerId;
+
   if (!GACHA_FATE_POINTS.enabled) {
     return { enabled: false };
   }
@@ -696,6 +705,40 @@ function getExchangeOptions(user) {
   }));
 }
 
+/**
+ * Award fate points for a gacha roll (centralized helper)
+ *
+ * This is the SINGLE entry point for awarding fate points from rolls.
+ * It handles both standard and banner rolls, single and multi-pulls,
+ * and correctly calculates bonuses for legendary pulls.
+ *
+ * @param {Object} user - User object (will be mutated)
+ * @param {Object} options - Roll options
+ * @param {string} options.bannerId - Banner ID ('standard' for standard banner)
+ * @param {string} options.pullType - 'standard', 'banner', or 'premium'
+ * @param {Array} options.results - Array of roll results [{actualRarity, isFeatured?, ...}]
+ * @param {number} [options.pullCount] - Override pull count (defaults to results.length)
+ * @returns {Object} - Fate points award result
+ */
+function awardFatePointsForRoll(user, options) {
+  const { bannerId, pullType, results, pullCount } = options;
+  const count = pullCount ?? results.length;
+
+  // Determine if any legendary was non-featured
+  // For standard banner, all legendaries are considered "non-featured" for bonus
+  // For other banners, only legendaries that aren't featured get the bonus
+  const isStandardBanner = bannerId === 'standard';
+  const gotNonFeaturedLegendary = results.some(r => {
+    if (r.actualRarity !== 'legendary') return false;
+    // Standard banner: all legendaries give bonus
+    if (isStandardBanner) return true;
+    // Other banners: only non-featured legendaries give bonus
+    return r.isFeatured === false || r.isBannerCharacter === false;
+  });
+
+  return awardFatePoints(user, bannerId, pullType, gotNonFeaturedLegendary, count);
+}
+
 // ===========================================
 // ALTERNATIVE PATHS
 // ===========================================
@@ -845,6 +888,7 @@ module.exports = {
   // Fate Points
   getFatePointsStatus,
   awardFatePoints,
+  awardFatePointsForRoll,
   exchangeFatePoints,
   getTotalFatePoints,
   getWeeklyFatePoints,
