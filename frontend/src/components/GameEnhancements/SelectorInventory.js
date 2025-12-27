@@ -1120,7 +1120,7 @@ export function SelectorInventory() {
                       <div className="name">{selectedCharacter.name}</div>
                       <div className="hint">
                         {selectedCharacter.owned ? (
-                          <><FaPlus size={10} /> Constellation +1</>
+                          <><FaPlus size={10} /> +1 Shard</>
                         ) : (
                           <><FaStar size={10} /> New Character!</>
                         )}
@@ -1176,7 +1176,7 @@ export function SelectorInventory() {
                 <FaCheck />
               </SuccessIcon>
               <SuccessTitle>
-                {successResult.isNew ? 'New Character!' : 'Constellation Up!'}
+                {successResult.isNew ? 'New Character!' : 'Shard Obtained!'}
               </SuccessTitle>
               <SuccessMessage>
                 {successResult.message}

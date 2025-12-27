@@ -794,25 +794,28 @@ router.post('/selectors/use', [auth, enforcementMiddleware, deviceBindingMiddlew
     };
     user.characterSelectors = selectors;
 
-    // Add character to collection (or increase copies if already owned)
+    // Add character to collection (or increase shards if already owned)
+    // Use the same system as gacha: duplicateCount = shards for leveling
     let userCharacter = await UserCharacter.findOne({
       where: { UserId: user.id, CharacterId: characterId },
       transaction
     });
 
     let isNew = false;
+    let shards = 0;
     if (userCharacter) {
-      // Already owned - increase copies
-      userCharacter.copies = (userCharacter.copies || 1) + 1;
+      // Already owned - add a shard (duplicateCount) like gacha does
+      userCharacter.duplicateCount = (userCharacter.duplicateCount || 0) + 1;
+      shards = userCharacter.duplicateCount;
       await userCharacter.save({ transaction });
     } else {
-      // New character
+      // New character - create at level 1 with 0 shards
       isNew = true;
       userCharacter = await UserCharacter.create({
         UserId: user.id,
         CharacterId: characterId,
-        copies: 1,
-        level: 1
+        level: 1,
+        duplicateCount: 0
       }, { transaction });
     }
 
@@ -829,10 +832,11 @@ router.post('/selectors/use', [auth, enforcementMiddleware, deviceBindingMiddlew
         imageUrl: character.imageUrl
       },
       isNew,
-      copies: userCharacter.copies,
+      shards,
+      level: userCharacter.level,
       message: isNew
         ? `${character.name} has joined your collection!`
-        : `${character.name} constellation increased! (${userCharacter.copies} copies)`,
+        : `${character.name} shard obtained! (${shards} shards)`,
       remainingSelectors: selectors.filter(s => !s.used).length
     });
   } catch (err) {
