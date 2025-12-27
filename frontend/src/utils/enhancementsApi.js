@@ -8,7 +8,8 @@
  * - Retention systems (mastery, return bonus)
  */
 
-import api, { clearCache } from './api';
+import api from './api';
+import { invalidateFor, CACHE_ACTIONS } from '../cache';
 
 // ===========================================
 // DOJO ENHANCEMENTS
@@ -25,9 +26,11 @@ export const dojoEnhancements = {
 
   /**
    * Upgrade to next facility tier
+   * NOTE: Cache invalidation is handled via invalidateFor for consistency
    */
   upgradeFacility: async (tierId) => {
     const response = await api.post('/enhancements/dojo/facility/upgrade', { tierId });
+    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_DOJO_FACILITY_UPGRADE);
     return response.data;
   },
 
@@ -41,13 +44,13 @@ export const dojoEnhancements = {
 
   /**
    * Apply specialization to a character (permanent)
+   * NOTE: Cache invalidation is handled via invalidateFor for consistency
    */
   applySpecialization: async (characterId, specializationId) => {
     const response = await api.post(`/enhancements/dojo/character/${characterId}/specialize`, {
       specializationId
     });
-    // Clear cache for this character's specialization endpoint so next GET gets fresh data
-    clearCache(`/enhancements/dojo/character/${characterId}/specialization`);
+    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_DOJO_SPECIALIZE);
     return response.data;
   }
 };
@@ -103,12 +106,14 @@ export const gachaEnhancements = {
 
   /**
    * Claim a milestone reward
+   * NOTE: Cache invalidation is handled via invalidateFor for consistency
    */
   claimMilestone: async (bannerId, milestonePulls) => {
     const response = await api.post('/enhancements/gacha/milestones/claim', {
       bannerId,
       milestonePulls
     });
+    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_CLAIM_MILESTONE);
     return response.data;
   },
 
@@ -126,12 +131,14 @@ export const gachaEnhancements = {
    * Exchange fate points for rewards (selectors, pity reset)
    * @param {string} exchangeType - Type of exchange: 'rare_selector', 'epic_selector', 'legendary_selector', 'banner_pity_reset'
    * @param {string} bannerId - Banner ID (optional, used for pity reset context)
+   * NOTE: Cache invalidation is handled via invalidateFor for consistency
    */
   exchangeFatePoints: async (exchangeType, bannerId = null) => {
     const response = await api.post('/enhancements/gacha/fate-points/exchange', {
       exchangeType,
       bannerId
     });
+    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_EXCHANGE_FATE_POINTS);
     return response.data;
   }
 };
@@ -167,9 +174,11 @@ export const retentionSystems = {
 
   /**
    * Claim rest-and-return bonus
+   * NOTE: Cache invalidation is handled via invalidateFor for consistency
    */
   claimReturnBonus: async () => {
     const response = await api.post('/enhancements/return-bonus/claim');
+    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_CLAIM_RETURN_BONUS);
     return response.data;
   }
 };
@@ -240,12 +249,14 @@ export const selectorApi = {
    * Use a selector to claim a specific character
    * @param {number} selectorIndex - Index of the selector to use
    * @param {number} characterId - ID of the character to claim
+   * NOTE: Cache invalidation is handled via invalidateFor for consistency
    */
   useSelector: async (selectorIndex, characterId) => {
     const response = await api.post('/enhancements/selectors/use', {
       selectorIndex,
       characterId
     });
+    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_USE_SELECTOR);
     return response.data;
   }
 };

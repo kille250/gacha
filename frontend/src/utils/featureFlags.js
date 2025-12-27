@@ -7,6 +7,37 @@
  * - Disable: localStorage.setItem('ff:new-validation-ui', 'false')
  */
 
+/**
+ * Feature flag version - increment this when you want to clear all overrides.
+ * This ensures stale user preferences don't persist when features are removed
+ * or defaults change significantly.
+ */
+const FF_VERSION = 1;
+const FF_VERSION_KEY = 'ff:version';
+
+/**
+ * Check and clear feature flag overrides if version changed.
+ * This runs on first access to ensure stale overrides are cleared.
+ */
+let versionChecked = false;
+const checkVersion = () => {
+  if (versionChecked) return;
+  versionChecked = true;
+
+  try {
+    const storedVersion = localStorage.getItem(FF_VERSION_KEY);
+    if (storedVersion !== String(FF_VERSION)) {
+      // Clear all feature flag overrides
+      Object.values(FEATURES).forEach((feature) => {
+        localStorage.removeItem(`ff:${feature}`);
+      });
+      localStorage.setItem(FF_VERSION_KEY, String(FF_VERSION));
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+};
+
 export const FEATURES = {
   NEW_VALIDATION_UI: 'new-validation-ui',
   SWIPE_TO_DELETE: 'swipe-to-delete',
@@ -22,6 +53,9 @@ export const FEATURES = {
  * @returns {boolean}
  */
 export const isEnabled = (feature) => {
+  // Check version on first access to clear stale overrides
+  checkVersion();
+
   // All features enabled by default for new implementation
   const defaultEnabled = [
     FEATURES.NEW_VALIDATION_UI,

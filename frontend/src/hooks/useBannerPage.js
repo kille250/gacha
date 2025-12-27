@@ -226,26 +226,8 @@ export const useBannerPage = (bannerId) => {
         setMultiRollResults([]);
         setRollCount(prev => prev + 1);
 
-        // Save pending roll state for recovery
-        try {
-          sessionStorage.setItem('gacha_pendingRoll', JSON.stringify({
-            bannerId,
-            timestamp: Date.now(),
-            type: 'single'
-          }));
-        } catch {
-          // Ignore sessionStorage errors
-        }
-
         const result = await executeBannerRoll(bannerId, useTicket, ticketType, setUser);
         const { character, tickets: newTickets } = result;
-
-        // Clear pending roll state
-        try {
-          sessionStorage.removeItem('gacha_pendingRoll');
-        } catch {
-          // Ignore sessionStorage errors
-        }
 
         if (newTickets) {
           setTickets(newTickets);
@@ -285,12 +267,6 @@ export const useBannerPage = (bannerId) => {
         };
         refreshWithRetry();
       } catch (err) {
-        try {
-          sessionStorage.removeItem('gacha_pendingRoll');
-        } catch {
-          // Ignore sessionStorage errors
-        }
-
         setError(err.response?.data?.error || t('roll.failedRoll'));
         setIsRolling(false);
 
@@ -334,25 +310,8 @@ export const useBannerPage = (bannerId) => {
         setError(null);
         setRollCount(prev => prev + count);
 
-        try {
-          sessionStorage.setItem('gacha_pendingRoll', JSON.stringify({
-            bannerId,
-            timestamp: Date.now(),
-            type: 'multi',
-            count
-          }));
-        } catch {
-          // Ignore sessionStorage errors
-        }
-
         const result = await executeBannerMultiRoll(bannerId, count, useTickets, ticketType, setUser);
         const { characters, tickets: newTickets } = result;
-
-        try {
-          sessionStorage.removeItem('gacha_pendingRoll');
-        } catch {
-          // Ignore sessionStorage errors
-        }
 
         if (newTickets) {
           setTickets(newTickets);
@@ -401,12 +360,6 @@ export const useBannerPage = (bannerId) => {
         };
         refreshWithRetry();
       } catch (err) {
-        try {
-          sessionStorage.removeItem('gacha_pendingRoll');
-        } catch {
-          // Ignore sessionStorage errors
-        }
-
         setError(err.response?.data?.error || t('roll.failedMultiRoll'));
         setIsRolling(false);
 

@@ -225,6 +225,29 @@ export const VISIBILITY_CALLBACK_IDS = {
 };
 
 // ===========================================
+// ENHANCEMENT ACTIONS
+// ===========================================
+
+/**
+ * Enhancement system actions for dojo specializations, gacha milestones,
+ * fate points, and retention systems.
+ */
+export const ENHANCEMENT_ACTIONS = {
+  /** Applying a specialization to a dojo character */
+  DOJO_SPECIALIZE: 'enhancement:dojo_specialize',
+  /** Upgrading a dojo facility tier */
+  DOJO_FACILITY_UPGRADE: 'enhancement:dojo_facility_upgrade',
+  /** Claiming a gacha milestone reward */
+  CLAIM_MILESTONE: 'enhancement:claim_milestone',
+  /** Exchanging fate points for rewards */
+  EXCHANGE_FATE_POINTS: 'enhancement:exchange_fate_points',
+  /** Claiming rest-and-return bonus */
+  CLAIM_RETURN_BONUS: 'enhancement:claim_return_bonus',
+  /** Using a character selector */
+  USE_SELECTOR: 'enhancement:use_selector',
+};
+
+// ===========================================
 // COMBINED EXPORT
 // ===========================================
 
@@ -310,6 +333,14 @@ export const CACHE_ACTIONS = {
   // Pre-transaction (defensive revalidation)
   PRE_ROLL: PRE_TRANSACTION_ACTIONS.PRE_ROLL,
   PRE_PURCHASE: PRE_TRANSACTION_ACTIONS.PRE_PURCHASE,
+
+  // Enhancement actions
+  ENHANCEMENT_DOJO_SPECIALIZE: ENHANCEMENT_ACTIONS.DOJO_SPECIALIZE,
+  ENHANCEMENT_DOJO_FACILITY_UPGRADE: ENHANCEMENT_ACTIONS.DOJO_FACILITY_UPGRADE,
+  ENHANCEMENT_CLAIM_MILESTONE: ENHANCEMENT_ACTIONS.CLAIM_MILESTONE,
+  ENHANCEMENT_EXCHANGE_FATE_POINTS: ENHANCEMENT_ACTIONS.EXCHANGE_FATE_POINTS,
+  ENHANCEMENT_CLAIM_RETURN_BONUS: ENHANCEMENT_ACTIONS.CLAIM_RETURN_BONUS,
+  ENHANCEMENT_USE_SELECTOR: ENHANCEMENT_ACTIONS.USE_SELECTOR,
 };
 
 // NOTE: Default export removed - use named exports instead for better tree-shaking

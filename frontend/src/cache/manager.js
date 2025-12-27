@@ -18,16 +18,17 @@
 import { clearCache } from '../utils/api';
 
 // Re-export CACHE_ACTIONS for convenience
-export { 
-  CACHE_ACTIONS, 
-  FISHING_ACTIONS, 
-  DOJO_ACTIONS, 
-  GACHA_ACTIONS, 
-  ADMIN_ACTIONS, 
-  AUTH_ACTIONS, 
-  COUPON_ACTIONS, 
+export {
+  CACHE_ACTIONS,
+  FISHING_ACTIONS,
+  DOJO_ACTIONS,
+  GACHA_ACTIONS,
+  ADMIN_ACTIONS,
+  AUTH_ACTIONS,
+  COUPON_ACTIONS,
   MODAL_ACTIONS,
   PRE_TRANSACTION_ACTIONS,
+  ENHANCEMENT_ACTIONS,
   VISIBILITY_CALLBACK_IDS
 } from './constants';
 
@@ -186,6 +187,19 @@ const SECURITY_PATTERNS = {
   approve_appeal: ['/admin/security', '/admin/users'],
   deny_appeal: ['/admin/security'],
   risk_decay: ['/admin/security']
+};
+
+/**
+ * Enhancement system invalidation patterns
+ * For dojo specializations, gacha milestones, fate points, and retention systems
+ */
+const ENHANCEMENT_PATTERNS = {
+  dojo_specialize: ['/enhancements/dojo/character', '/dojo/status'],
+  dojo_facility_upgrade: ['/enhancements/dojo/facility', '/dojo/status', '/auth/me'],
+  claim_milestone: ['/enhancements/gacha/milestones', '/auth/me', '/banners/user/tickets'],
+  exchange_fate_points: ['/enhancements/gacha/fate-points', '/characters/collection', '/enhancements/selectors'],
+  claim_return_bonus: ['/auth/me', '/enhancements/return-bonus'],
+  use_selector: ['/enhancements/selectors', '/characters/collection']
 };
 
 /**
@@ -455,7 +469,17 @@ const ACTION_HANDLERS = {
   // PRE-TRANSACTION ACTIONS (defensive revalidation)
   // ===========================================
   'pre:roll': () => invalidatePatterns(PRE_TRANSACTION_PATTERNS.roll),
-  'pre:purchase': () => invalidatePatterns(PRE_TRANSACTION_PATTERNS.purchase)
+  'pre:purchase': () => invalidatePatterns(PRE_TRANSACTION_PATTERNS.purchase),
+
+  // ===========================================
+  // ENHANCEMENT ACTIONS
+  // ===========================================
+  'enhancement:dojo_specialize': () => invalidatePatterns(ENHANCEMENT_PATTERNS.dojo_specialize),
+  'enhancement:dojo_facility_upgrade': () => invalidatePatterns(ENHANCEMENT_PATTERNS.dojo_facility_upgrade),
+  'enhancement:claim_milestone': () => invalidatePatterns(ENHANCEMENT_PATTERNS.claim_milestone),
+  'enhancement:exchange_fate_points': () => invalidatePatterns(ENHANCEMENT_PATTERNS.exchange_fate_points),
+  'enhancement:claim_return_bonus': () => invalidatePatterns(ENHANCEMENT_PATTERNS.claim_return_bonus),
+  'enhancement:use_selector': () => invalidatePatterns(ENHANCEMENT_PATTERNS.use_selector)
 };
 
 /**
@@ -570,6 +594,8 @@ export const getInvalidationPatterns = (action) => {
       return ['*']; // Full clear
     case 'pre':
       return PRE_TRANSACTION_PATTERNS[actionName] || null;
+    case 'enhancement':
+      return ENHANCEMENT_PATTERNS[actionName] || null;
     default:
       return null;
   }
@@ -681,7 +707,8 @@ export const enableCacheDebugging = () => {
       modal: { ...MODAL_PATTERNS },
       gacha: { ...GACHA_PATTERNS },
       coupon: { ...COUPON_PATTERNS },
-      pre: { ...PRE_TRANSACTION_PATTERNS }
+      pre: { ...PRE_TRANSACTION_PATTERNS },
+      enhancement: { ...ENHANCEMENT_PATTERNS }
     }),
 
     /**
