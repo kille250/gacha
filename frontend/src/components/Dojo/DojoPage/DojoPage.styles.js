@@ -1081,6 +1081,31 @@ export const SlotSpecBadge = styled.div`
   }
 `;
 
+// Always visible indicator for characters that can be specialized
+export const SlotSpecIndicator = styled.div`
+  position: absolute;
+  top: ${theme.spacing.xs};
+  left: ${theme.spacing.xs};
+  width: 20px;
+  height: 20px;
+  border-radius: ${theme.radius.full};
+  background: linear-gradient(135deg, rgba(156, 39, 176, 0.8), rgba(103, 58, 183, 0.8));
+  border: 1.5px solid rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
+  animation: ${pulse} 2s ease-in-out infinite;
+  cursor: pointer;
+  z-index: 5;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 18px;
+    height: 18px;
+  }
+`;
+
 export const EmptySlot = styled(motion.div)`
   aspect-ratio: 3/4;
   border-radius: ${theme.radius.xl};

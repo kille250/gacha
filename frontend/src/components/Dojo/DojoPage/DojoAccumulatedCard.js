@@ -2,12 +2,15 @@
  * DojoAccumulatedCard - Accumulated rewards display
  *
  * Shows training progress, accumulated rewards, and claim button.
+ * Includes visual indicator when accumulation cap is reached.
  */
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdAccessTime, MdAutorenew } from 'react-icons/md';
+import { MdAccessTime, MdAutorenew, MdWarning } from 'react-icons/md';
 import { FaCoins, FaTicketAlt, FaStar } from 'react-icons/fa';
+import styled, { keyframes } from 'styled-components';
+import { theme } from '../../../design-system';
 
 import {
   AccumulatedCard,
@@ -20,6 +23,36 @@ import {
   AccumulatedReward,
   ClaimButton,
 } from './DojoPage.styles';
+
+// Pulsing animation for capped warning
+const pulse = keyframes`
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.6; }
+`;
+
+// Warning badge for capped state
+const CappedWarning = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: rgba(255, 159, 10, 0.15);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.warning};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.medium};
+  animation: ${pulse} 2s ease-in-out infinite;
+  margin-top: ${theme.spacing.sm};
+
+  svg {
+    font-size: 14px;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+  }
+`;
 
 const DojoAccumulatedCard = ({
   status,
@@ -84,6 +117,14 @@ const DojoAccumulatedCard = ({
           <span>{status?.accumulated?.rewards?.premiumTickets || 0}</span>
         </AccumulatedReward>
       </AccumulatedRewards>
+
+      {/* Capped warning - shows when accumulation is full */}
+      {status?.accumulated?.isCapped && (
+        <CappedWarning role="alert">
+          <MdWarning aria-hidden="true" />
+          <span>{t('dojo.cappedWarning', { defaultValue: 'Storage full! Claim now to avoid losing rewards.' })}</span>
+        </CappedWarning>
+      )}
 
       <ClaimButton
         onClick={handleClaimClick}

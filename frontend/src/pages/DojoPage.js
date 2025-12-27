@@ -3,6 +3,7 @@
  *
  * This is the main page component that composes the extracted sub-components.
  * All state management is handled by useDojoPage hook.
+ * Wrapped in ErrorBoundary for crash recovery.
  */
 
 import React, { useState } from 'react';
@@ -12,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Spinner } from '../design-system';
 import { useDojoPage } from '../hooks/useDojoPage';
 import { useDojoFacility, useAccountLevel } from '../hooks/useGameEnhancements';
+import ErrorBoundary from '../components/UI/data/ErrorBoundary';
 
 // Extracted components
 import {
@@ -96,6 +98,11 @@ const DojoPage = () => {
     // Computed values
     progressPercent,
 
+    // Quick Fill
+    quickFilling,
+    handleQuickFill,
+    hasEmptySlots,
+
     // Refresh function
     refreshStatus,
   } = useDojoPage();
@@ -177,7 +184,10 @@ const DojoPage = () => {
 
         {/* Daily Caps Display */}
         {status?.dailyCaps && (
-          <DojoDailyCapsCard status={status} />
+          <DojoDailyCapsCard
+            dailyCaps={status.dailyCaps}
+            ticketProgress={status.ticketProgress}
+          />
         )}
 
         {/* Hourly Rate Display */}
@@ -192,6 +202,9 @@ const DojoPage = () => {
           onOpenPicker={openCharacterPicker}
           onUnassign={handleUnassign}
           onOpenSpecialization={handleOpenSpecialization}
+          onQuickFill={handleQuickFill}
+          quickFilling={quickFilling}
+          hasEmptySlots={hasEmptySlots}
         />
 
         {/* Facility Upgrade Card */}
@@ -229,6 +242,11 @@ const DojoPage = () => {
             onSelect={handleAssign}
             getRarityColor={getRarityColor}
             getAssetUrl={getAssetUrl}
+            currentlyTrainingSeries={
+              status?.slots
+                ?.filter(s => s?.character)
+                .map(s => s.character.series) || []
+            }
           />
         )}
       </AnimatePresence>
@@ -261,4 +279,11 @@ const DojoPage = () => {
   );
 };
 
-export default DojoPage;
+// Wrap in ErrorBoundary for crash recovery
+const DojoPageWithErrorBoundary = () => (
+  <ErrorBoundary>
+    <DojoPage />
+  </ErrorBoundary>
+);
+
+export default DojoPageWithErrorBoundary;

@@ -10,13 +10,15 @@
  * - Touch-friendly interactions
  */
 
-import React, { useState, useCallback, useRef, useEffect } from 'react';
+import React, { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdClose, MdSearch, MdCheck, MdClear } from 'react-icons/md';
+import { MdClose, MdSearch, MdCheck, MdClear, MdSort } from 'react-icons/md';
+import { FaUsers } from 'react-icons/fa';
 import { GiCrossedSwords, GiBookCover, GiSparkles } from 'react-icons/gi';
 import { AnimatePresence } from 'framer-motion';
+import styled from 'styled-components';
 
-import { Spinner } from '../../../design-system';
+import { Spinner, theme } from '../../../design-system';
 import { getAssetUrl } from '../../../utils/api';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../../../utils/mediaUtils';
 import {
@@ -65,6 +67,76 @@ const SPEC_COLORS = {
   spirit: '#9b59b6'
 };
 
+// Rarity order for sorting (higher = better)
+const RARITY_ORDER = {
+  'Common': 1,
+  'Uncommon': 2,
+  'Rare': 3,
+  'Epic': 4,
+  'Legendary': 5
+};
+
+// Sort options
+const SORT_OPTIONS = {
+  RARITY_DESC: 'rarity_desc',
+  LEVEL_DESC: 'level_desc',
+  NAME_ASC: 'name_asc',
+};
+
+// Sort controls container
+const SortContainer = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: 0 ${theme.spacing.md} ${theme.spacing.sm};
+  flex-wrap: wrap;
+`;
+
+const SortButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: ${props => props.$active ? 'rgba(0, 113, 227, 0.15)' : theme.colors.glass};
+  border: 1px solid ${props => props.$active ? theme.colors.primary : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${props => props.$active ? theme.colors.primary : theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.xs};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+
+  &:hover {
+    background: rgba(0, 113, 227, 0.1);
+    border-color: ${theme.colors.primary};
+  }
+
+  svg {
+    font-size: 14px;
+  }
+`;
+
+// Synergy badge for characters that would create/boost synergy
+const SynergyBadge = styled.div`
+  position: absolute;
+  top: ${theme.spacing.xs};
+  right: ${theme.spacing.xs};
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 2px 6px;
+  background: rgba(48, 209, 88, 0.9);
+  border-radius: ${theme.radius.sm};
+  color: white;
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.semibold};
+  z-index: 5;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+
+  svg {
+    font-size: 10px;
+  }
+`;
+
 const DojoCharacterPicker = ({
   onClose,
   charactersLoading,
@@ -74,10 +146,12 @@ const DojoCharacterPicker = ({
   onSearchChange,
   onSelect,
   getRarityColor,
+  currentlyTrainingSeries = [], // Series of characters currently in dojo
 }) => {
   const { t } = useTranslation();
   const [selectedCharId, setSelectedCharId] = useState(null);
   const [isConfirming, setIsConfirming] = useState(false);
+  const [sortBy, setSortBy] = useState(SORT_OPTIONS.RARITY_DESC);
   const searchInputRef = useRef(null);
   const gridRef = useRef(null);
 
@@ -85,6 +159,45 @@ const DojoCharacterPicker = ({
   const selectedChar = selectedCharId
     ? filteredCharacters.find(c => c.id === selectedCharId)
     : null;
+
+  // Sort characters within each series based on current sort option
+  const sortedCharactersBySeries = useMemo(() => {
+    const sorted = {};
+
+    Object.entries(charactersBySeries).forEach(([series, chars]) => {
+      const sortedChars = [...chars].sort((a, b) => {
+        switch (sortBy) {
+          case SORT_OPTIONS.RARITY_DESC:
+            // Sort by rarity descending, then by level descending
+            const rarityDiff = (RARITY_ORDER[b.rarity] || 0) - (RARITY_ORDER[a.rarity] || 0);
+            if (rarityDiff !== 0) return rarityDiff;
+            return (b.level || 1) - (a.level || 1);
+          case SORT_OPTIONS.LEVEL_DESC:
+            // Sort by level descending, then by rarity descending
+            const levelDiff = (b.level || 1) - (a.level || 1);
+            if (levelDiff !== 0) return levelDiff;
+            return (RARITY_ORDER[b.rarity] || 0) - (RARITY_ORDER[a.rarity] || 0);
+          case SORT_OPTIONS.NAME_ASC:
+            return a.name.localeCompare(b.name);
+          default:
+            return 0;
+        }
+      });
+      sorted[series] = sortedChars;
+    });
+
+    return sorted;
+  }, [charactersBySeries, sortBy]);
+
+  // Check if a character would create or boost a synergy
+  const getSynergyInfo = useCallback((char) => {
+    const seriesCount = currentlyTrainingSeries.filter(s => s === char.series).length;
+    if (seriesCount >= 1) {
+      // This would boost an existing synergy
+      return { type: 'boost', count: seriesCount + 1 };
+    }
+    return null;
+  }, [currentlyTrainingSeries]);
 
   // Handle confirmation
   const handleConfirm = useCallback(async () => {
@@ -200,6 +313,32 @@ const DojoCharacterPicker = ({
           </AnimatePresence>
         </PickerSearchContainer>
 
+        {/* Sort options */}
+        <SortContainer>
+          <MdSort aria-hidden="true" style={{ color: theme.colors.textSecondary }} />
+          <SortButton
+            $active={sortBy === SORT_OPTIONS.RARITY_DESC}
+            onClick={() => setSortBy(SORT_OPTIONS.RARITY_DESC)}
+            aria-pressed={sortBy === SORT_OPTIONS.RARITY_DESC}
+          >
+            {t('dojo.sortByRarity', { defaultValue: 'Rarity' })}
+          </SortButton>
+          <SortButton
+            $active={sortBy === SORT_OPTIONS.LEVEL_DESC}
+            onClick={() => setSortBy(SORT_OPTIONS.LEVEL_DESC)}
+            aria-pressed={sortBy === SORT_OPTIONS.LEVEL_DESC}
+          >
+            {t('dojo.sortByLevel', { defaultValue: 'Level' })}
+          </SortButton>
+          <SortButton
+            $active={sortBy === SORT_OPTIONS.NAME_ASC}
+            onClick={() => setSortBy(SORT_OPTIONS.NAME_ASC)}
+            aria-pressed={sortBy === SORT_OPTIONS.NAME_ASC}
+          >
+            {t('dojo.sortByName', { defaultValue: 'Name' })}
+          </SortButton>
+        </SortContainer>
+
         <ModalBody ref={gridRef}>
           {charactersLoading ? (
             <ModalLoading>
@@ -214,98 +353,121 @@ const DojoCharacterPicker = ({
             </NoCharacters>
           ) : (
             <CharacterList role="listbox" aria-label={t('dojo.characterList')}>
-              {Object.entries(charactersBySeries).map(([series, chars]) => (
-                <React.Fragment key={series}>
-                  <SeriesTitle>{series} ({chars.length})</SeriesTitle>
-                  <CharacterGrid>
-                    {chars.map((char) => {
-                      const isSelected = selectedCharId === char.id;
-                      const rarityColor = getRarityColor(char.rarity);
+              {Object.entries(sortedCharactersBySeries).map(([series, chars]) => {
+                // Check if this series has characters currently training
+                const seriesTrainingCount = currentlyTrainingSeries.filter(s => s === series).length;
+                const hasSynergy = seriesTrainingCount > 0;
 
-                      return (
-                        <PickerCharacterCard
-                          key={char.id}
-                          $color={rarityColor}
-                          $isSelected={isSelected}
-                          onClick={() => handleCharacterClick(char.id)}
-                          whileHover={{ scale: 1.03 }}
-                          whileTap={{ scale: 0.97 }}
-                          role="option"
-                          aria-selected={isSelected}
-                          aria-label={`${char.name} - ${char.rarity}${char.level ? ` Level ${char.level}` : ''}`}
-                          tabIndex={0}
-                          onKeyDown={(e) => {
-                            if (e.key === 'Enter' || e.key === ' ') {
-                              e.preventDefault();
-                              handleCharacterClick(char.id);
-                            }
-                          }}
-                        >
-                          {/* Selection indicator */}
-                          <AnimatePresence>
-                            {isSelected && (
-                              <PickerSelectedIndicator
-                                initial={{ opacity: 0, scale: 0 }}
-                                animate={{ opacity: 1, scale: 1 }}
-                                exit={{ opacity: 0, scale: 0 }}
-                              >
-                                <MdCheck />
-                              </PickerSelectedIndicator>
+                return (
+                  <React.Fragment key={series}>
+                    <SeriesTitle>
+                      {series} ({chars.length})
+                      {hasSynergy && (
+                        <span style={{ marginLeft: '8px', color: theme.colors.success, fontSize: '12px' }}>
+                          +{seriesTrainingCount} training
+                        </span>
+                      )}
+                    </SeriesTitle>
+                    <CharacterGrid>
+                      {chars.map((char) => {
+                        const isSelected = selectedCharId === char.id;
+                        const rarityColor = getRarityColor(char.rarity);
+                        const synergyInfo = getSynergyInfo(char);
+
+                        return (
+                          <PickerCharacterCard
+                            key={char.id}
+                            $color={rarityColor}
+                            $isSelected={isSelected}
+                            $hasSynergy={!!synergyInfo}
+                            onClick={() => handleCharacterClick(char.id)}
+                            whileHover={{ scale: 1.03 }}
+                            whileTap={{ scale: 0.97 }}
+                            role="option"
+                            aria-selected={isSelected}
+                            aria-label={`${char.name} - ${char.rarity}${char.level ? ` Level ${char.level}` : ''}${synergyInfo ? ` - Synergy ${synergyInfo.count}` : ''}`}
+                            tabIndex={0}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Enter' || e.key === ' ') {
+                                e.preventDefault();
+                                handleCharacterClick(char.id);
+                              }
+                            }}
+                          >
+                            {/* Synergy badge */}
+                            {synergyInfo && (
+                              <SynergyBadge title={t('dojo.synergyBoostHint', { count: synergyInfo.count, defaultValue: `Synergy x${synergyInfo.count}` })}>
+                                <FaUsers />
+                                <span>x{synergyInfo.count}</span>
+                              </SynergyBadge>
                             )}
-                          </AnimatePresence>
 
-                          {/* Character image */}
-                          {isVideo(char.image) ? (
-                            <PickerCharVideo autoPlay loop muted playsInline>
-                              <source src={getAssetUrl(char.image)} type={getVideoMimeType(char.image)} />
-                            </PickerCharVideo>
-                          ) : (
-                            <PickerCharImage
-                              src={getAssetUrl(char.image) || PLACEHOLDER_IMAGE}
-                              alt={char.name}
-                              loading="lazy"
-                              onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
-                            />
-                          )}
-
-                          {/* Character info overlay */}
-                          <PickerCharOverlay $isSelected={isSelected}>
-                            <PickerCharName>{char.name}</PickerCharName>
-                            <PickerCharSeries>{char.series}</PickerCharSeries>
-                            <PickerCharBadges>
-                              <PickerCharRarity $color={rarityColor}>
-                                {char.rarity}
-                              </PickerCharRarity>
-                              {char.level && (
-                                <PickerCharLevel
-                                  $isMaxLevel={char.level >= 5}
+                            {/* Selection indicator */}
+                            <AnimatePresence>
+                              {isSelected && (
+                                <PickerSelectedIndicator
+                                  initial={{ opacity: 0, scale: 0 }}
+                                  animate={{ opacity: 1, scale: 1 }}
+                                  exit={{ opacity: 0, scale: 0 }}
                                 >
-                                  Lv.{char.level}
-                                </PickerCharLevel>
+                                  <MdCheck />
+                                </PickerSelectedIndicator>
                               )}
-                            </PickerCharBadges>
-                            {char.levelMultiplier > 1 && (
-                              <PickerCharPowerBonus>
-                                +{Math.round((char.levelMultiplier - 1) * 100)}% power
-                              </PickerCharPowerBonus>
-                            )}
-                          </PickerCharOverlay>
+                            </AnimatePresence>
 
-                          {/* Specialization badge */}
-                          {char.specialization && (
-                            <PickerCharSpecBadge
-                              $color={SPEC_COLORS[char.specialization]}
-                              title={t(`specialization.${char.specialization}.name`)}
-                            >
-                              {React.createElement(SPEC_ICONS[char.specialization], { size: 12 })}
-                            </PickerCharSpecBadge>
-                          )}
-                        </PickerCharacterCard>
-                      );
-                    })}
-                  </CharacterGrid>
-                </React.Fragment>
-              ))}
+                            {/* Character image */}
+                            {isVideo(char.image) ? (
+                              <PickerCharVideo autoPlay loop muted playsInline>
+                                <source src={getAssetUrl(char.image)} type={getVideoMimeType(char.image)} />
+                              </PickerCharVideo>
+                            ) : (
+                              <PickerCharImage
+                                src={getAssetUrl(char.image) || PLACEHOLDER_IMAGE}
+                                alt={char.name}
+                                loading="lazy"
+                                onError={(e) => { e.target.src = PLACEHOLDER_IMAGE; }}
+                              />
+                            )}
+
+                            {/* Character info overlay */}
+                            <PickerCharOverlay $isSelected={isSelected}>
+                              <PickerCharName>{char.name}</PickerCharName>
+                              <PickerCharSeries>{char.series}</PickerCharSeries>
+                              <PickerCharBadges>
+                                <PickerCharRarity $color={rarityColor}>
+                                  {char.rarity}
+                                </PickerCharRarity>
+                                {char.level && (
+                                  <PickerCharLevel
+                                    $isMaxLevel={char.level >= 5}
+                                  >
+                                    Lv.{char.level}
+                                  </PickerCharLevel>
+                                )}
+                              </PickerCharBadges>
+                              {char.levelMultiplier > 1 && (
+                                <PickerCharPowerBonus>
+                                  +{Math.round((char.levelMultiplier - 1) * 100)}% power
+                                </PickerCharPowerBonus>
+                              )}
+                            </PickerCharOverlay>
+
+                            {/* Specialization badge */}
+                            {char.specialization && (
+                              <PickerCharSpecBadge
+                                $color={SPEC_COLORS[char.specialization]}
+                                title={t(`specialization.${char.specialization}.name`)}
+                              >
+                                {React.createElement(SPEC_ICONS[char.specialization], { size: 12 })}
+                              </PickerCharSpecBadge>
+                            )}
+                          </PickerCharacterCard>
+                        );
+                      })}
+                    </CharacterGrid>
+                  </React.Fragment>
+                );
+              })}
             </CharacterList>
           )}
         </ModalBody>

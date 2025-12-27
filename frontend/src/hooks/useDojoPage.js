@@ -306,10 +306,10 @@ export const useDojoPage = () => {
         setClaimResult(result);
         fetchStatus();
 
-        // Auto-hide after 5 seconds
+        // Auto-hide after 10 seconds (increased from 5 for better readability)
         setTimeout(() => {
           if (isMountedRef.current) setClaimResult(null);
-        }, 5000);
+        }, 10000);
       } catch (err) {
         if (!isMountedRef.current) return;
         console.error('Failed to claim rewards:', err);
@@ -364,6 +364,67 @@ export const useDojoPage = () => {
     setClaimResult(null);
   }, []);
 
+  // Quick Fill - auto-assign best available characters to empty slots
+  const [quickFilling, setQuickFilling] = useState(false);
+
+  const handleQuickFill = useCallback(async () => {
+    if (quickFilling || !status) return;
+
+    // Find empty slot indices
+    const emptySlotIndices = [];
+    for (let i = 0; i < (status.maxSlots || 3); i++) {
+      if (!status.slots?.[i]?.character) {
+        emptySlotIndices.push(i);
+      }
+    }
+
+    if (emptySlotIndices.length === 0 || availableCharacters.length === 0) return;
+
+    // Rarity order for sorting
+    const RARITY_ORDER = { 'Legendary': 5, 'Epic': 4, 'Rare': 3, 'Uncommon': 2, 'Common': 1 };
+
+    // Sort available characters by rarity (descending), then level (descending)
+    const sortedCharacters = [...availableCharacters].sort((a, b) => {
+      const rarityDiff = (RARITY_ORDER[b.rarity] || 0) - (RARITY_ORDER[a.rarity] || 0);
+      if (rarityDiff !== 0) return rarityDiff;
+      return (b.level || 1) - (a.level || 1);
+    });
+
+    // Take only as many characters as we have empty slots
+    const charsToAssign = sortedCharacters.slice(0, emptySlotIndices.length);
+
+    if (charsToAssign.length === 0) return;
+
+    setQuickFilling(true);
+
+    try {
+      // Assign characters one by one
+      for (let i = 0; i < charsToAssign.length; i++) {
+        const char = charsToAssign[i];
+        const slotIdx = emptySlotIndices[i];
+
+        await dojoAssignCharacter(char.id, slotIdx, setUser);
+      }
+
+      // Refresh status after all assignments
+      if (isMountedRef.current) {
+        fetchStatus();
+      }
+    } catch (err) {
+      if (isMountedRef.current) {
+        console.error('Quick fill error:', err);
+        setError(err.response?.data?.error || t('dojo.quickFillError', { defaultValue: 'Failed to quick fill' }));
+      }
+    } finally {
+      if (isMountedRef.current) {
+        setQuickFilling(false);
+      }
+    }
+  }, [quickFilling, status, availableCharacters, setUser, fetchStatus, t, setError]);
+
+  // Check if there are empty slots
+  const hasEmptySlots = status ? (status.usedSlots || 0) < (status.maxSlots || 3) : false;
+
   return {
     // Core state
     user,
@@ -407,6 +468,11 @@ export const useDojoPage = () => {
 
     // Computed values
     progressPercent,
+
+    // Quick Fill
+    quickFilling,
+    handleQuickFill,
+    hasEmptySlots,
 
     // Refresh function for external components
     refreshStatus: fetchStatus,

@@ -2,6 +2,7 @@
  * DojoUpgradesSection - Available upgrades list
  *
  * Displays purchasable upgrades with costs.
+ * Shows point deficit when user can't afford an upgrade.
  */
 
 import React from 'react';
@@ -9,6 +10,8 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { MdAutorenew } from 'react-icons/md';
 import { FaCoins } from 'react-icons/fa';
+import styled from 'styled-components';
+import { theme } from '../../../design-system';
 
 import {
   UpgradesSection,
@@ -22,6 +25,22 @@ import {
   UpgradeCost,
   NoUpgrades,
 } from './DojoPage.styles';
+
+// Deficit display for when user can't afford
+const DeficitBadge = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 8px;
+  background: rgba(255, 59, 48, 0.15);
+  border: 1px solid rgba(255, 59, 48, 0.3);
+  border-radius: ${theme.radius.sm};
+  color: ${theme.colors.error};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.medium};
+  margin-top: 4px;
+  white-space: nowrap;
+`;
 
 const DojoUpgradesSection = ({
   status,
@@ -81,6 +100,14 @@ const DojoUpgradesSection = ({
                   <>
                     <FaCoins aria-hidden="true" />
                     <span>{upgrade.cost.toLocaleString()}</span>
+                    {!canAfford && (
+                      <DeficitBadge>
+                        {t('dojo.needMore', {
+                          amount: (upgrade.cost - (user?.points || 0)).toLocaleString(),
+                          defaultValue: `Need ${(upgrade.cost - (user?.points || 0)).toLocaleString()} more`
+                        })}
+                      </DeficitBadge>
+                    )}
                   </>
                 )}
               </UpgradeCost>
