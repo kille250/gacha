@@ -166,10 +166,12 @@ export function useFishingModals({
           break;
           
         case MODAL_TYPES.TRADING:
+          invalidateFor(CACHE_ACTIONS.MODAL_TRADING_OPEN);
           trading.fetchOptions();
           break;
-          
+
         case MODAL_TYPES.CHALLENGES:
+          invalidateFor(CACHE_ACTIONS.MODAL_CHALLENGES_OPEN);
           challenges.fetchData();
           break;
           

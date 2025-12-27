@@ -136,27 +136,30 @@ export const useDojoPage = () => {
     fetchAvailableCharacters();
   }, [fetchAvailableCharacters]);
 
-  // Auto-refresh timer for idle game rewards (visibility-aware)
+  // Auto-refresh timer for idle game rewards
+  // Uses centralized visibility handler instead of manual event listeners
   const wasInteractingRef = useRef(isInteracting);
+  const visibilityDebounceRef = useRef(null);
 
+  // Start/stop polling helpers
+  const startPolling = useCallback(() => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+    }
+    if (!isInteracting && document.visibilityState === 'visible') {
+      refreshIntervalRef.current = setInterval(fetchStatus, 30000);
+    }
+  }, [isInteracting, fetchStatus]);
+
+  const stopPolling = useCallback(() => {
+    if (refreshIntervalRef.current) {
+      clearInterval(refreshIntervalRef.current);
+      refreshIntervalRef.current = null;
+    }
+  }, []);
+
+  // Manage polling based on interaction state
   useEffect(() => {
-    const startPolling = () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-      }
-      if (!isInteracting && document.visibilityState === 'visible') {
-        refreshIntervalRef.current = setInterval(fetchStatus, 30000);
-      }
-    };
-
-    const stopPolling = () => {
-      if (refreshIntervalRef.current) {
-        clearInterval(refreshIntervalRef.current);
-        refreshIntervalRef.current = null;
-      }
-    };
-
-    // Start/stop polling based on interaction state
     if (!isInteracting) {
       if (wasInteractingRef.current) {
         fetchStatus();
@@ -168,27 +171,26 @@ export const useDojoPage = () => {
 
     wasInteractingRef.current = isInteracting;
 
-    // Pause polling when tab is hidden, resume when visible
-    const handleVisibilityChange = () => {
-      if (document.visibilityState === 'hidden') {
-        stopPolling();
-      } else if (!isInteracting) {
-        startPolling();
-      }
-    };
-
-    document.addEventListener('visibilitychange', handleVisibilityChange);
-
     return () => {
       stopPolling();
-      document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
-  }, [fetchStatus, isInteracting]);
+  }, [fetchStatus, isInteracting, startPolling, stopPolling]);
 
-  // Visibility change handler with debounce (500ms) to prevent rapid refetches
-  const visibilityDebounceRef = useRef(null);
+  // Centralized visibility change handler - replaces manual event listener
+  // Handles both polling control and stale data refresh
   useEffect(() => {
-    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.DOJO_STATUS, () => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.DOJO_STATUS, (staleLevel) => {
+      // Stop polling when tab is hidden (staleLevel is null on first call after hidden)
+      if (document.visibilityState === 'hidden') {
+        stopPolling();
+        return;
+      }
+
+      // Resume polling when visible and not interacting
+      if (!isInteracting) {
+        startPolling();
+      }
+
       // Clear any pending debounced fetch
       if (visibilityDebounceRef.current) {
         clearTimeout(visibilityDebounceRef.current);
@@ -203,7 +205,7 @@ export const useDojoPage = () => {
         visibilityDebounceRef.current = null;
       }, 500);
     });
-  }, [fetchStatus]);
+  }, [fetchStatus, isInteracting, startPolling, stopPolling]);
 
   // Cleanup debounce timer on unmount
   useEffect(() => {

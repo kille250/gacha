@@ -132,9 +132,11 @@ export const gachaEnhancements = {
    * Exchange fate points for rewards (selectors, pity reset)
    * @param {string} exchangeType - Type of exchange: 'rare_selector', 'epic_selector', 'legendary_selector', 'banner_pity_reset'
    * @param {string} bannerId - Banner ID (optional, used for pity reset context)
-   * NOTE: Cache invalidation is handled via invalidateFor for consistency
+   * NOTE: Uses PRE_PURCHASE for defensive revalidation before spending fate points
    */
   exchangeFatePoints: async (exchangeType, bannerId = null) => {
+    // Defensive revalidation - ensure fresh user data before exchange
+    invalidateFor(CACHE_ACTIONS.PRE_PURCHASE);
     const response = await api.post('/enhancements/gacha/fate-points/exchange', {
       exchangeType,
       bannerId
@@ -250,9 +252,11 @@ export const selectorApi = {
    * Use a selector to claim a specific character
    * @param {number} selectorIndex - Index of the selector to use
    * @param {number} characterId - ID of the character to claim
-   * NOTE: Cache invalidation is handled via invalidateFor for consistency
+   * NOTE: Uses PRE_PURCHASE for defensive revalidation before spending selector
    */
   useSelector: async (selectorIndex, characterId) => {
+    // Defensive revalidation - ensure fresh user data before using selector
+    invalidateFor(CACHE_ACTIONS.PRE_PURCHASE);
     const response = await api.post('/enhancements/selectors/use', {
       selectorIndex,
       characterId

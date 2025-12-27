@@ -309,9 +309,8 @@ const BannerPage = () => {
         }
         
         // Fetch tickets separately - don't block on failure but show warning
-        // Invalidate cache to ensure fresh data
+        // Note: Cache invalidation happens via visibility handler for subsequent refreshes
         try {
-          invalidateFor(CACHE_ACTIONS.PRE_ROLL);
           const ticketsData = await api.get('/banners/user/tickets').then(res => res.data);
           setTickets(ticketsData);
         } catch (ticketErr) {

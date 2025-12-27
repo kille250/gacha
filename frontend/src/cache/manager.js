@@ -1,18 +1,44 @@
 /**
  * Centralized Cache Manager
- * 
+ *
  * Provides unified cache invalidation, visibility handling, and debugging tools.
  * This is the SINGLE SOURCE OF TRUTH for all cache invalidation patterns.
- * 
+ *
  * USAGE:
  * - Use invalidateFor(CACHE_ACTIONS.FISHING_CATCH) for type-safe invalidation
  * - Use onVisibilityChange() to register page-specific refresh callbacks
  * - Cache invalidation is the CALLER's responsibility (not API functions)
- * 
+ *
  * VISIBILITY HANDLING:
  * - Global visibility changes are handled centrally
  * - Pages can register callbacks via onVisibilityChange() for specific data refreshes
  * - This replaces scattered document.addEventListener('visibilitychange', ...) calls
+ *
+ * MODAL INVALIDATION PATTERN:
+ * When opening a modal that may show cached data:
+ * 1. Call invalidateFor(CACHE_ACTIONS.MODAL_*_OPEN) BEFORE fetching
+ * 2. Then fetch the data
+ * 3. Data will be fresh from server (cache cleared)
+ *
+ * This prevents showing stale data when user closes/reopens modal.
+ *
+ * Example:
+ *   case MODAL_TYPES.EQUIPMENT:
+ *     invalidateFor(CACHE_ACTIONS.MODAL_EQUIPMENT_OPEN);  // Clear first
+ *     equipment.fetchData();                              // Then fetch
+ *     break;
+ *
+ * PRE-TRANSACTION PATTERN:
+ * Before any action that spends currency (points, tickets, fate points):
+ * 1. Call invalidateFor(CACHE_ACTIONS.PRE_ROLL) or invalidateFor(CACHE_ACTIONS.PRE_PURCHASE)
+ * 2. This ensures fresh user data, preventing stale-state bugs
+ * 3. Then execute the transaction
+ * 4. After success, invalidate the result caches
+ *
+ * Example:
+ *   invalidateFor(CACHE_ACTIONS.PRE_PURCHASE);  // Ensure fresh user data
+ *   const result = await exchangeFatePoints(...);
+ *   invalidateFor(CACHE_ACTIONS.ENHANCEMENT_EXCHANGE_FATE_POINTS);
  */
 
 import { clearCache } from '../utils/api';
