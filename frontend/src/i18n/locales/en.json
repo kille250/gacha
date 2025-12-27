@@ -66,7 +66,10 @@
     "aboutBanner": "About This Banner",
     "availableUntil": "Available until",
     "pullCost": "Pull cost",
-    "rollNow": "Roll Now"
+    "rollNow": "Roll Now",
+    "skip": "Skip",
+    "continue": "Continue",
+    "noImage": "No Image"
   },
   "nav": {
     "banners": "Banners",
@@ -454,7 +457,9 @@
   },
   "errors": {
     "tooManyAttempts": "Too many attempts. Please wait a moment.",
-    "somethingWentWrong": "Something went wrong on our end.",
+    "somethingWentWrong": "Something went wrong",
+    "somethingWentWrongServer": "Something went wrong on our end.",
+    "errorDetails": "Error details",
     "unableToConnect": "Unable to connect. Please check your internet connection.",
     "requestTimedOut": "Request timed out. Please try again.",
     "networkError": "Unable to connect to server. Please check your internet connection.",
@@ -967,6 +972,32 @@
       "deviceBindingCleared": "Device binding cleared",
       "riskChange": "Risk score changed"
     },
+    "deviceHistory": {
+      "title": "Device History",
+      "currentDevices": "Current Devices",
+      "totalEverSeen": "Total Ever Seen",
+      "firstSeen": "First seen:",
+      "lastSeen": "Last seen:",
+      "logins": "Logins:",
+      "differentIPs": "{{count}} different IPs",
+      "noHistory": "No device history available",
+      "recentEvents": "Recent Device Events"
+    },
+    "riskScore": {
+      "title": "Risk Score History",
+      "currentScore": "Current Risk Score",
+      "scoreChanges": "Score Changes",
+      "noChanges": "No risk score changes recorded"
+    },
+    "sessionActivity": {
+      "title": "Session Activity",
+      "lastLogin": "Last Login",
+      "possibleAttack": "Possible attack",
+      "sessionInvalidated": "Session Invalidated",
+      "accountCreated": "Account Created",
+      "loginHistory": "Login History",
+      "noHistory": "No login history available"
+    },
     "economy": {
       "trade": "Trade completed"
     },
@@ -1462,7 +1493,22 @@
     "mathChallenge": "Math challenge",
     "onboardingSteps": "Onboarding steps",
     "impactSummary": "Impact summary",
-    "shortcutCategories": "Shortcut categories"
+    "shortcutCategories": "Shortcut categories",
+    "skipToMain": "Skip to main content",
+    "uploadedFiles": "Uploaded files",
+    "activeFilters": "Active filters",
+    "uploadProgress": "Upload progress",
+    "notifications": "Notifications",
+    "searchCharacters": "Search characters",
+    "clearSearch": "Clear search",
+    "characterSelection": "Character selection",
+    "closeResults": "Close results",
+    "closeInfoPanel": "Close info panel",
+    "previousBanner": "Previous banner",
+    "nextBanner": "Next banner",
+    "scrollLeft": "Scroll left",
+    "scrollRight": "Scroll right",
+    "facilityProgression": "Facility progression"
   },
   "specialization": {
     "title": "Character Specialization",
@@ -1494,6 +1540,40 @@
       "bonus": "+25% Dojo Income, +10% Synergy, +10% Currency",
       "description": "Enhanced dojo rewards, team synergy, and currency generation"
     }
+  },
+  "onboarding": {
+    "step1Title": "Welcome to GachaMaster!",
+    "step1Desc": "Discover, collect, and cherish characters from your favorite anime series. Every pull is a chance at something legendary!",
+    "step1Highlight": "500+ characters to collect",
+    "step2Title": "Earn Points, Roll Characters",
+    "step2Desc": "Claim your hourly reward to earn points. Use points to roll on banners and add characters to your collection.",
+    "step2Highlight": "Free points every hour",
+    "step3Title": "Ready to Start?",
+    "step3Desc": "Featured banners have boosted rates for rare characters. Check the pity counter to track your luck!",
+    "step3Highlight": "Good luck, Collector!",
+    "getStarted": "Let's Go!"
+  },
+  "returnBonus": {
+    "welcomeBack": "Welcome Back!",
+    "weMissedYou": "We missed you!",
+    "awayFor": "Away for {{time}}",
+    "yourRewards": "Your Return Rewards",
+    "bonusPoints": "Bonus Points",
+    "pullTickets": "Pull Tickets",
+    "dojoBoost": "Dojo Boost",
+    "dojoBoostDuration": "2x for 24h",
+    "loyaltyBonus": "Loyalty Bonus Applied",
+    "multiplierValue": "{{multiplier}}x Rewards!",
+    "claiming": "Claiming...",
+    "claimRewards": "Claim Rewards!",
+    "rewardsClaimed": "Rewards Claimed!"
+  },
+  "summon": {
+    "complete": "Summoning Complete",
+    "charactersObtained": "{{count}} characters obtained"
+  },
+  "doubleOrNothing": {
+    "winChance": "Win Chance"
   },
   "fatePoints": {
     "title": "Fate Points",
@@ -1531,14 +1611,20 @@
     }
   },
   "pity": {
+    "progress": "Pity Progress",
     "standardPity": "Standard Pity",
+    "shared": "Shared",
     "sharedBadge": "Shared",
+    "pullsUntilGuaranteed": "pulls until guaranteed",
+    "guaranteed": "Guaranteed!",
     "sharedInfo": "Standard pity progress is shared across all banners. Pulling on any banner advances these counters.",
     "featuredPity": "Featured Character Pity",
     "thisBannerOnly": "This Banner Only",
     "featuredInfo": "This progress is specific to this banner. If you pull a non-featured 5-star, your next 5-star on this banner is guaranteed to be featured."
   },
   "milestones": {
+    "title": "Pull Milestones",
+    "totalPulls": "Total Pulls",
     "starterBonus": "Starter Bonus",
     "starterBonusDesc": "500 Points",
     "rodSkin": "Rod Skin",

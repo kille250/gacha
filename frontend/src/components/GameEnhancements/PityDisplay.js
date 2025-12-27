@@ -286,21 +286,21 @@ export function PityDisplay({ bannerId = null, compact = false, pullResult = nul
       initial={{ opacity: 0, y: 10 }}
       animate={{ opacity: 1, y: 0 }}
     >
-      <Title>Pity Progress</Title>
+      <Title>{t('pity.progress')}</Title>
 
       {/* Standard Pity Section - Shared Across All Banners */}
       <SectionTitle>
-        Standard Pity
-        <SharedBadge>Shared</SharedBadge>
+        {t('pity.standardPity')}
+        <SharedBadge>{t('pity.shared')}</SharedBadge>
       </SectionTitle>
 
       {/* Legendary Pity */}
       <PityRow>
         <PityHeader>
-          <RarityLabel $color={RARITY_COLORS.legendary}>{t('rarity.legendary', 'Legendary')}</RarityLabel>
+          <RarityLabel $color={RARITY_COLORS.legendary}>{t('rarity.legendary')}</RarityLabel>
           <PityCount>
             {standard.progress.legendary.current} / {standard.progress.legendary.max}
-            {standard.untilGuaranteed.legendary === 0 && ` (${t('pity.guaranteed', 'Guaranteed!')})`}
+            {standard.untilGuaranteed.legendary === 0 && ` (${t('pity.guaranteed')})`}
           </PityCount>
         </PityHeader>
         <ProgressBar>
@@ -314,7 +314,7 @@ export function PityDisplay({ bannerId = null, compact = false, pullResult = nul
           />
         </ProgressBar>
         <PityInfo>
-          <span>{standard.untilGuaranteed.legendary} {t('pity.pullsUntilGuaranteed', 'pulls until guaranteed')}</span>
+          <span>{standard.untilGuaranteed.legendary} {t('pity.pullsUntilGuaranteed')}</span>
           {(() => {
             const badgeInfo = formatSoftPityBadge(standard.softPity.legendary, 'legendary');
             return (
@@ -330,7 +330,7 @@ export function PityDisplay({ bannerId = null, compact = false, pullResult = nul
       {/* Epic Pity */}
       <PityRow>
         <PityHeader>
-          <RarityLabel $color={RARITY_COLORS.epic}>{t('rarity.epic', 'Epic')}</RarityLabel>
+          <RarityLabel $color={RARITY_COLORS.epic}>{t('rarity.epic')}</RarityLabel>
           <PityCount>
             {standard.progress.epic.current} / {standard.progress.epic.max}
           </PityCount>

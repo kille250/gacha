@@ -8,6 +8,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { FaGift, FaGem, FaStar, FaCrown, FaTrophy, FaCheck } from 'react-icons/fa';
 import { useMilestones } from '../../hooks/useGameEnhancements';
 
@@ -213,6 +214,7 @@ const MILESTONE_REWARDS = {
 };
 
 export function MilestoneRewards({ bannerId = null }) {
+  const { t } = useTranslation();
   const { milestones, loading, error, claimMilestone } = useMilestones(bannerId);
   const [selectedMilestone, setSelectedMilestone] = React.useState(null);
 
@@ -255,11 +257,11 @@ export function MilestoneRewards({ bannerId = null }) {
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
       >
-        <Title>Pull Milestones</Title>
+        <Title>{t('milestones.title')}</Title>
 
         <PullCounter>
           <PullCount>{totalPulls}</PullCount>
-          <PullLabel>Total Pulls</PullLabel>
+          <PullLabel>{t('milestones.totalPulls')}</PullLabel>
         </PullCounter>
 
         <MilestoneTrack>

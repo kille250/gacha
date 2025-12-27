@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { FaStar, FaGem, FaTrophy, FaDice } from 'react-icons/fa';
 import confetti from 'canvas-confetti';
 import { theme } from '../../design-system';
@@ -68,7 +69,7 @@ export const SummonAnimation = ({
   const timersRef = useRef([]);
   const hasStartedRef = useRef(false);
   const hasCompletedRef = useRef(false); // Guard against double-click
-  
+
   // Get dynamic rarity configuration from context
   const { getRarityAnimation, getRarityColor, ordered } = useRarity();
   
@@ -960,6 +961,7 @@ export const MultiSummonAnimation = ({
   skipEnabled = true,
   getImagePath
 }) => {
+  const { t } = useTranslation();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [showSkippedResults, setShowSkippedResults] = useState(false);
   const hasCompletedRef = useRef(false); // Guard against double-click
@@ -1019,8 +1021,8 @@ export const MultiSummonAnimation = ({
       >
         <ResultsContent onClick={e => e.stopPropagation()}>
           <ResultsHeader>
-            <ResultsTitle>Summoning Complete</ResultsTitle>
-            <ResultsSubtitle>{characters.length} characters obtained</ResultsSubtitle>
+            <ResultsTitle>{t('summon.complete')}</ResultsTitle>
+            <ResultsSubtitle>{t('summon.charactersObtained', { count: characters.length })}</ResultsSubtitle>
           </ResultsHeader>
           
           <ResultsGrid>

@@ -8,6 +8,7 @@
 import React, { useState } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { useReturnBonus } from '../../hooks/useGameEnhancements';
 
 const Overlay = styled(motion.div)`
@@ -175,6 +176,7 @@ const ClaimedText = styled.div`
 `;
 
 export function ReturnBonusModal({ onClose, autoShow = true }) {
+  const { t } = useTranslation();
   const { returnBonus, loading, claimBonus } = useReturnBonus();
   const [claimed, setClaimed] = useState(false);
   const [claiming, setClaiming] = useState(false);
@@ -257,15 +259,15 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
                 🎊
               </WelcomeIcon>
 
-              <Title>Welcome Back!</Title>
-              <Subtitle>{message || "We missed you!"}</Subtitle>
+              <Title>{t('returnBonus.welcomeBack')}</Title>
+              <Subtitle>{message || t('returnBonus.weMissedYou')}</Subtitle>
 
               <TimeAwayBadge>
-                Away for {formatTimeAway(daysAway)}
+                {t('returnBonus.awayFor', { time: formatTimeAway(daysAway) })}
               </TimeAwayBadge>
 
               <RewardsContainer>
-                <RewardsTitle>Your Return Rewards</RewardsTitle>
+                <RewardsTitle>{t('returnBonus.yourRewards')}</RewardsTitle>
                 <RewardsList>
                   {rewards?.points > 0 && (
                     <RewardItem
@@ -275,7 +277,7 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
                     >
                       <RewardInfo>
                         <RewardIcon>💰</RewardIcon>
-                        <RewardName>Bonus Points</RewardName>
+                        <RewardName>{t('returnBonus.bonusPoints')}</RewardName>
                       </RewardInfo>
                       <RewardValue>+{rewards.points.toLocaleString()}</RewardValue>
                     </RewardItem>
@@ -289,7 +291,7 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
                     >
                       <RewardInfo>
                         <RewardIcon>🎟️</RewardIcon>
-                        <RewardName>Pull Tickets</RewardName>
+                        <RewardName>{t('returnBonus.pullTickets')}</RewardName>
                       </RewardInfo>
                       <RewardValue>+{rewards.tickets}</RewardValue>
                     </RewardItem>
@@ -303,9 +305,9 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
                     >
                       <RewardInfo>
                         <RewardIcon>🏯</RewardIcon>
-                        <RewardName>Dojo Boost</RewardName>
+                        <RewardName>{t('returnBonus.dojoBoost')}</RewardName>
                       </RewardInfo>
-                      <RewardValue>2x for 24h</RewardValue>
+                      <RewardValue>{t('returnBonus.dojoBoostDuration')}</RewardValue>
                     </RewardItem>
                   )}
                 </RewardsList>
@@ -317,8 +319,8 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
                   animate={{ scale: 1, opacity: 1 }}
                   transition={{ delay: 0.7 }}
                 >
-                  <MultiplierLabel>Loyalty Bonus Applied</MultiplierLabel>
-                  <MultiplierValue>{multiplier}x Rewards!</MultiplierValue>
+                  <MultiplierLabel>{t('returnBonus.loyaltyBonus')}</MultiplierLabel>
+                  <MultiplierValue>{t('returnBonus.multiplierValue', { multiplier })}</MultiplierValue>
                 </BonusMultiplier>
               )}
 
@@ -328,7 +330,7 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {claiming ? 'Claiming...' : 'Claim Rewards!'}
+                {claiming ? t('returnBonus.claiming') : t('returnBonus.claimRewards')}
               </ClaimButton>
             </motion.div>
           ) : (
@@ -344,7 +346,7 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
               >
                 ✅
               </ClaimedIcon>
-              <ClaimedText>Rewards Claimed!</ClaimedText>
+              <ClaimedText>{t('returnBonus.rewardsClaimed')}</ClaimedText>
             </ClaimedState>
           )}
         </AnimatePresence>

@@ -66,7 +66,10 @@
     "aboutBanner": "Über dieses Banner",
     "availableUntil": "Verfügbar bis",
     "pullCost": "Ziehungskosten",
-    "rollNow": "Jetzt ziehen"
+    "rollNow": "Jetzt ziehen",
+    "skip": "Überspringen",
+    "continue": "Fortfahren",
+    "noImage": "Kein Bild"
   },
   "nav": {
     "banners": "Banner",
@@ -482,7 +485,9 @@
   },
   "errors": {
     "tooManyAttempts": "Zu viele Versuche. Bitte warten Sie einen Moment.",
-    "somethingWentWrong": "Etwas ist auf unserer Seite schiefgelaufen.",
+    "somethingWentWrong": "Etwas ist schiefgelaufen",
+    "somethingWentWrongServer": "Etwas ist auf unserer Seite schiefgelaufen.",
+    "errorDetails": "Fehlerdetails",
     "unableToConnect": "Verbindung nicht möglich. Bitte überprüfen Sie Ihre Internetverbindung.",
     "requestTimedOut": "Anfrage abgelaufen. Bitte versuchen Sie es erneut.",
     "networkError": "Keine Verbindung zum Server möglich. Bitte überprüfen Sie Ihre Internetverbindung.",
@@ -900,6 +905,32 @@
       "deviceBindingBlocked": "Gerätebindung blockiert",
       "deviceBindingCleared": "Gerätebindung gelöscht",
       "riskChange": "Risikobewertung geändert"
+    },
+    "deviceHistory": {
+      "title": "Geräteverlauf",
+      "currentDevices": "Aktuelle Geräte",
+      "totalEverSeen": "Jemals gesehen",
+      "firstSeen": "Erstmals gesehen:",
+      "lastSeen": "Zuletzt gesehen:",
+      "logins": "Anmeldungen:",
+      "differentIPs": "{{count}} verschiedene IPs",
+      "noHistory": "Kein Geräteverlauf verfügbar",
+      "recentEvents": "Letzte Geräteereignisse"
+    },
+    "riskScore": {
+      "title": "Risikobewertungsverlauf",
+      "currentScore": "Aktuelle Risikobewertung",
+      "scoreChanges": "Bewertungsänderungen",
+      "noChanges": "Keine Risikobewertungsänderungen aufgezeichnet"
+    },
+    "sessionActivity": {
+      "title": "Sitzungsaktivität",
+      "lastLogin": "Letzte Anmeldung",
+      "possibleAttack": "Möglicher Angriff",
+      "sessionInvalidated": "Sitzung ungültig",
+      "accountCreated": "Konto erstellt",
+      "loginHistory": "Anmeldeverlauf",
+      "noHistory": "Kein Anmeldeverlauf verfügbar"
     },
     "economy": {
       "trade": "Tausch abgeschlossen"
@@ -1346,6 +1377,70 @@
     "closeResults": "Ergebnisse schließen",
     "showBannerInfo": "Banner-Info anzeigen",
     "closeInfoPanel": "Info-Panel schließen"
+  },
+  "onboarding": {
+    "step1Title": "Willkommen bei GachaMaster!",
+    "step1Desc": "Entdecke, sammle und schätze Charaktere aus deinen Lieblings-Anime-Serien. Jeder Zug ist eine Chance auf etwas Legendäres!",
+    "step1Highlight": "500+ Charaktere zum Sammeln",
+    "step2Title": "Verdiene Punkte, ziehe Charaktere",
+    "step2Desc": "Hole deine stündliche Belohnung ab, um Punkte zu verdienen. Verwende Punkte, um auf Bannern zu ziehen und Charaktere zu deiner Sammlung hinzuzufügen.",
+    "step2Highlight": "Kostenlose Punkte jede Stunde",
+    "step3Title": "Bereit zum Start?",
+    "step3Desc": "Hervorgehobene Banner haben erhöhte Raten für seltene Charaktere. Prüfe den Mitleid-Zähler, um dein Glück zu verfolgen!",
+    "step3Highlight": "Viel Glück, Sammler!",
+    "getStarted": "Los geht's!"
+  },
+  "returnBonus": {
+    "welcomeBack": "Willkommen zurück!",
+    "weMissedYou": "Wir haben dich vermisst!",
+    "awayFor": "{{time}} abwesend",
+    "yourRewards": "Deine Rückkehr-Belohnungen",
+    "bonusPoints": "Bonus-Punkte",
+    "pullTickets": "Zieh-Tickets",
+    "dojoBoost": "Dojo-Boost",
+    "dojoBoostDuration": "2x für 24h",
+    "loyaltyBonus": "Treue-Bonus angewendet",
+    "multiplierValue": "{{multiplier}}x Belohnungen!",
+    "claiming": "Abholen...",
+    "claimRewards": "Belohnungen abholen!",
+    "rewardsClaimed": "Belohnungen abgeholt!"
+  },
+  "summon": {
+    "complete": "Beschwörung abgeschlossen",
+    "charactersObtained": "{{count}} Charaktere erhalten"
+  },
+  "doubleOrNothing": {
+    "winChance": "Gewinnchance"
+  },
+  "pity": {
+    "progress": "Mitleid-Fortschritt",
+    "standardPity": "Standard-Mitleid",
+    "shared": "Geteilt",
+    "sharedBadge": "Geteilt",
+    "pullsUntilGuaranteed": "Züge bis Garantie",
+    "guaranteed": "Garantiert!",
+    "sharedInfo": "Der Standard-Mitleid-Fortschritt wird über alle Banner geteilt. Ziehen auf jedem Banner erhöht diese Zähler.",
+    "featuredPity": "Hervorgehobener Charakter Mitleid",
+    "thisBannerOnly": "Nur dieses Banner",
+    "featuredInfo": "Dieser Fortschritt ist spezifisch für dieses Banner. Wenn du einen nicht-hervorgehobenen 5-Stern ziehst, ist dein nächster 5-Stern auf diesem Banner garantiert hervorgehoben."
+  },
+  "milestones": {
+    "title": "Zieh-Meilensteine",
+    "totalPulls": "Züge Gesamt",
+    "starterBonus": "Starter-Bonus",
+    "starterBonusDesc": "500 Punkte",
+    "rodSkin": "Ruten-Skin",
+    "rodSkinDesc": "Sternenlicht-Rute Kosmetik",
+    "ticketPack": "Ticket-Paket",
+    "ticketPackDesc": "3 Zieh-Tickets",
+    "veteranPack": "Veteranen-Paket",
+    "veteranPackDesc": "5 Zieh-Tickets",
+    "premiumPack": "Premium-Paket",
+    "premiumPackDesc": "5 Premium-Tickets",
+    "elitePack": "Elite-Paket",
+    "elitePackDesc": "10 Premium-Tickets",
+    "championBonus": "Champion-Bonus",
+    "championBonusDesc": "10.000 Punkte"
   },
   "fatePoints": {
     "title": "Schicksalspunkte",
