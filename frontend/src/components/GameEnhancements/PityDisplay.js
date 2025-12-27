@@ -27,6 +27,44 @@ const Title = styled.h4`
   gap: 8px;
 `;
 
+const SectionTitle = styled.div`
+  color: #fff;
+  font-size: 0.95rem;
+  font-weight: 600;
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+`;
+
+const SharedBadge = styled.span`
+  background: rgba(33, 150, 243, 0.2);
+  color: #64b5f6;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+`;
+
+const IsolatedBadge = styled.span`
+  background: rgba(255, 152, 0, 0.2);
+  color: #ffb74d;
+  padding: 2px 8px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 500;
+`;
+
+const InfoTooltip = styled.div`
+  color: #666;
+  font-size: 0.75rem;
+  margin-top: 8px;
+  padding: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 6px;
+  line-height: 1.4;
+`;
+
 const PityRow = styled.div`
   margin-bottom: 16px;
 
@@ -181,6 +219,12 @@ export function PityDisplay({ bannerId = null, compact = false }) {
     >
       <Title>Pity Progress</Title>
 
+      {/* Standard Pity Section - Shared Across All Banners */}
+      <SectionTitle>
+        Standard Pity
+        <SharedBadge>Shared</SharedBadge>
+      </SectionTitle>
+
       {/* Legendary Pity */}
       <PityRow>
         <PityHeader>
@@ -253,10 +297,18 @@ export function PityDisplay({ bannerId = null, compact = false }) {
         </PityInfo>
       </PityRow>
 
+      {/* Info about shared pity */}
+      <InfoTooltip>
+        Standard pity progress is shared across all banners. Pulling on any banner advances these counters.
+      </InfoTooltip>
+
       {/* Banner-specific pity */}
       {banner && (
         <BannerPitySection>
-          <Title style={{ marginBottom: 12 }}>Banner Pity</Title>
+          <SectionTitle>
+            Featured Character Pity
+            <IsolatedBadge>This Banner Only</IsolatedBadge>
+          </SectionTitle>
           {banner.guaranteedFeatured ? (
             <GuaranteedMessage
               initial={{ scale: 0.9 }}
@@ -271,6 +323,9 @@ export function PityDisplay({ bannerId = null, compact = false }) {
               {banner.message}
             </PityInfo>
           )}
+          <InfoTooltip>
+            This progress is specific to this banner. If you pull a non-featured 5-star, your next 5-star on this banner is guaranteed to be featured.
+          </InfoTooltip>
         </BannerPitySection>
       )}
 

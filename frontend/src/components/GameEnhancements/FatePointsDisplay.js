@@ -311,7 +311,8 @@ const EXCHANGE_ICONS = {
   rare_selector: FaTicketAlt,
   epic_selector: FaHeart,
   legendary_selector: FaCrown,
-  banner_pity_reset: FaSync
+  pity_boost: FaSync,
+  banner_pity_reset: FaSync  // Legacy support
 };
 
 export function FatePointsDisplay({ bannerId = null }) {
@@ -369,11 +370,14 @@ export function FatePointsDisplay({ bannerId = null }) {
 
       // Show success toast
       const isSelector = selectedItem.id.includes('selector');
+      const isPityBoost = selectedItem.id === 'pity_boost' || selectedItem.id === 'banner_pity_reset';
       setSuccessToast({
         title: t('fatePoints.exchangeSuccess', { item: selectedItem.name }) || `${selectedItem.name} obtained!`,
         hint: isSelector
           ? t('fatePoints.selectorHint', 'Go to Profile to use your selector')
-          : t('fatePoints.pityResetHint', 'Your pity has been reset to 50%')
+          : isPityBoost
+            ? t('fatePoints.pityBoostHint', 'Your pity has been boosted to 50%!')
+            : ''
       });
 
       // Auto-hide toast after 4 seconds
@@ -470,7 +474,7 @@ export function FatePointsDisplay({ bannerId = null }) {
         </ExchangeSection>
 
         <InfoBox>
-          {t('fatePoints.infoBox', 'Earn Fate Points by pulling on banners. 1 pull = 1 FP. Weekly cap ensures fair progression.')}
+          {t('fatePoints.infoBox', 'Earn Fate Points by pulling on any banner. 1 pull = 1 FP. Your FP pool is shared globally and can be spent on any exchange. Weekly cap ensures fair progression.')}
         </InfoBox>
       </Container>
 

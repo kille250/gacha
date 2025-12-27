@@ -269,14 +269,15 @@ const FISHING_VISUAL_RARITY_CONFIG = {
 
 const GACHA_MILESTONE_REWARDS = {
   // Rewards given at specific pull counts (per banner)
+  // Thresholds aligned with 10-pull bundles for clean progression
   milestones: [
     { pulls: 10, reward: { type: 'points', quantity: 500 } },
     { pulls: 30, reward: { type: 'rod_skin', id: 'starlight_rod' } },
-    { pulls: 50, reward: { type: 'character_selector', rarity: 'rare' } },
-    { pulls: 80, reward: { type: 'roll_tickets', quantity: 5 } },
-    { pulls: 100, reward: { type: 'character_selector', rarity: 'epic' } },
-    { pulls: 150, reward: { type: 'premium_tickets', quantity: 10 } },
-    { pulls: 200, reward: { type: 'character_selector', rarity: 'legendary' } }
+    { pulls: 50, reward: { type: 'roll_tickets', quantity: 3 } },
+    { pulls: 100, reward: { type: 'roll_tickets', quantity: 5 } },
+    { pulls: 150, reward: { type: 'premium_tickets', quantity: 5 } },
+    { pulls: 200, reward: { type: 'premium_tickets', quantity: 10 } },
+    { pulls: 250, reward: { type: 'points', quantity: 10000 } }
   ]
 };
 
@@ -352,11 +353,11 @@ const GACHA_FATE_POINTS = {
       description: 'Choose any legendary character',
       cost: 600
     },
-    banner_pity_reset: {
-      id: 'banner_pity_reset',
-      name: 'Pity Reset',
-      description: 'Reset banner pity to 50% of max',
-      cost: 150
+    pity_boost: {
+      id: 'pity_boost',
+      name: 'Pity Boost',
+      description: 'Advance pity progress to 50% of guaranteed threshold',
+      cost: 100  // Reduced from 150 for better value proposition
     }
   }
 };

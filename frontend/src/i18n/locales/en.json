@@ -1509,8 +1509,9 @@
     "exchanging": "Exchanging...",
     "exchangeSuccess": "{{item}} obtained!",
     "selectorHint": "Go to Profile to use your selector",
+    "pityBoostHint": "Your pity has been boosted to 50%!",
     "pityResetHint": "Your pity has been reset to 50%",
-    "infoBox": "Earn Fate Points by pulling on banners. 1 pull = 1 FP. Lose 50/50 on a 5-star? +5 bonus FP! Weekly cap (resets Monday UTC) ensures fair progression.",
+    "infoBox": "Earn Fate Points by pulling on any banner. 1 pull = 1 FP. Your FP pool is shared globally and can be spent on any exchange. Weekly cap ensures fair progression.",
     "nearingCap": "Approaching weekly cap!",
     "capReached": "Weekly cap reached",
     "earnedPoints": "+{{count}} Fate Points",
@@ -1523,8 +1524,34 @@
       "epic_selector_desc": "Choose any epic character",
       "legendary_selector": "Legendary Selector",
       "legendary_selector_desc": "Choose any legendary character",
-      "banner_pity_reset": "Pity Reset",
-      "banner_pity_reset_desc": "Reset banner pity to 50% (45/90 pulls)"
+      "pity_boost": "Pity Boost",
+      "pity_boost_desc": "Advance pity progress to 50% of guaranteed threshold",
+      "banner_pity_reset": "Pity Boost",
+      "banner_pity_reset_desc": "Advance pity progress to 50% of guaranteed threshold"
     }
+  },
+  "pity": {
+    "standardPity": "Standard Pity",
+    "sharedBadge": "Shared",
+    "sharedInfo": "Standard pity progress is shared across all banners. Pulling on any banner advances these counters.",
+    "featuredPity": "Featured Character Pity",
+    "thisBannerOnly": "This Banner Only",
+    "featuredInfo": "This progress is specific to this banner. If you pull a non-featured 5-star, your next 5-star on this banner is guaranteed to be featured."
+  },
+  "milestones": {
+    "starterBonus": "Starter Bonus",
+    "starterBonusDesc": "500 Points",
+    "rodSkin": "Rod Skin",
+    "rodSkinDesc": "Starlight Rod cosmetic",
+    "ticketPack": "Ticket Pack",
+    "ticketPackDesc": "3 Roll Tickets",
+    "veteranPack": "Veteran Pack",
+    "veteranPackDesc": "5 Roll Tickets",
+    "premiumPack": "Premium Pack",
+    "premiumPackDesc": "5 Premium Tickets",
+    "elitePack": "Elite Pack",
+    "elitePackDesc": "10 Premium Tickets",
+    "championBonus": "Champion Bonus",
+    "championBonusDesc": "10,000 Points"
   }
 }

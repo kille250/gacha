@@ -496,6 +496,11 @@ function getFatePointsStatus(user, bannerId = null) {
   // Get exchange options from config
   const exchangeOptions = GACHA_FATE_POINTS.exchangeOptions || {};
 
+  // Find the cheapest affordable exchange option for progress display
+  const sortedOptions = Object.values(exchangeOptions).sort((a, b) => a.cost - b.cost);
+  const nextAffordable = sortedOptions.find(opt => opt.cost > totalPoints) || sortedOptions[sortedOptions.length - 1];
+  const nextAffordableCost = nextAffordable?.cost || 100;
+
   return {
     enabled: true,
     points: totalPoints,
@@ -509,10 +514,13 @@ function getFatePointsStatus(user, bannerId = null) {
       cost: opt.cost,
       affordable: totalPoints >= opt.cost
     })),
-    // Legacy fields for backwards compatibility
-    pointsNeeded: GACHA_FATE_POINTS.rateUpBanner?.pointsForGuaranteed || 300,
-    canGuarantee: totalPoints >= (GACHA_FATE_POINTS.rateUpBanner?.pointsForGuaranteed || 300),
-    progress: Math.min(100, (totalPoints / (GACHA_FATE_POINTS.rateUpBanner?.pointsForGuaranteed || 300)) * 100)
+    // Progress toward next affordable exchange (replaces legacy 300 FP calculation)
+    nextExchange: {
+      id: nextAffordable?.id,
+      name: nextAffordable?.name,
+      cost: nextAffordableCost,
+      progress: Math.min(100, (totalPoints / nextAffordableCost) * 100)
+    }
   };
 }
 
@@ -710,9 +718,10 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
       break;
     }
 
-    case 'banner_pity_reset': {
-      // Reset banner pity to configured percentage of max
-      const resetPercentage = GACHA_PITY_CONFIG.pityReset.percentage;
+    case 'pity_boost':
+    case 'banner_pity_reset': {  // Legacy support for old exchange type
+      // Boost pity progress to configured percentage of max (advances progress, doesn't reset it)
+      const boostPercentage = GACHA_PITY_CONFIG.pityReset.percentage;
       const bannerHardPity = GACHA_PITY_CONFIG.banner.featured.hardPity;
       const standardPityConfig = GACHA_PITY_CONFIG.standard;
 
@@ -724,20 +733,22 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
           totalBannerPulls: 0
         };
 
-        // Reset pity counter to configured percentage of the way to guaranteed
-        const resetValue = Math.floor(bannerHardPity * resetPercentage);
-        currentPity.pullsSinceFeatured = resetValue;
+        // Boost pity counter to configured percentage (only if current is lower)
+        const boostValue = Math.floor(bannerHardPity * boostPercentage);
+        const newValue = Math.max(currentPity.pullsSinceFeatured, boostValue);
+        currentPity.pullsSinceFeatured = newValue;
 
         bannerPities[bannerId] = currentPity;
         user.bannerPity = bannerPities;
 
-        reward.pityReset = {
+        reward.pityBoost = {
           bannerId,
-          newPityValue: resetValue,
-          message: `Pity reset to ${Math.round(resetPercentage * 100)}% (${resetValue}/${bannerHardPity} pulls)`
+          previousValue: currentPity.pullsSinceFeatured,
+          newPityValue: newValue,
+          message: `Pity boosted to ${Math.round(boostPercentage * 100)}% (${newValue}/${bannerHardPity} pulls)`
         };
       } else {
-        // Also reset standard pity if no banner specified
+        // Boost standard pity if no banner specified
         const gachaPity = user.gachaPity || {
           pullsSinceRare: 0,
           pullsSinceEpic: 0,
@@ -745,20 +756,20 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
           totalPulls: 0
         };
 
-        // Set legendary and epic pity to configured percentage
-        const legendaryReset = Math.floor(standardPityConfig.legendary.hardPity * resetPercentage);
-        const epicReset = Math.floor(standardPityConfig.epic.hardPity * resetPercentage);
+        // Boost legendary and epic pity to configured percentage (only if current is lower)
+        const legendaryBoost = Math.floor(standardPityConfig.legendary.hardPity * boostPercentage);
+        const epicBoost = Math.floor(standardPityConfig.epic.hardPity * boostPercentage);
 
-        gachaPity.pullsSinceLegendary = legendaryReset;
-        gachaPity.pullsSinceEpic = epicReset;
+        gachaPity.pullsSinceLegendary = Math.max(gachaPity.pullsSinceLegendary, legendaryBoost);
+        gachaPity.pullsSinceEpic = Math.max(gachaPity.pullsSinceEpic, epicBoost);
 
         user.gachaPity = gachaPity;
 
-        reward.pityReset = {
+        reward.pityBoost = {
           standardPity: true,
-          newLegendaryPity: legendaryReset,
-          newEpicPity: epicReset,
-          message: `Standard pity reset to ${Math.round(resetPercentage * 100)}%`
+          newLegendaryPity: gachaPity.pullsSinceLegendary,
+          newEpicPity: gachaPity.pullsSinceEpic,
+          message: `Standard pity boosted to ${Math.round(boostPercentage * 100)}%`
         };
       }
       break;

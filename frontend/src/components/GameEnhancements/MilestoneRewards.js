@@ -193,18 +193,23 @@ const ClaimButton = styled(motion.button)`
 
 const MILESTONE_ICONS = {
   10: FaGift,
+  30: FaGem,
   50: FaGem,
   100: FaStar,
-  250: FaCrown,
-  500: FaTrophy
+  150: FaStar,
+  200: FaCrown,
+  250: FaTrophy
 };
 
+// Milestone rewards aligned with backend gameDesign.js configuration
 const MILESTONE_REWARDS = {
-  10: { name: 'Starter Pack', desc: '500 Points + 1 Rare Character' },
-  50: { name: 'Veteran Pack', desc: '2000 Points + Character Selector' },
-  100: { name: 'Elite Pack', desc: '5000 Points + Guaranteed Epic' },
-  250: { name: 'Master Pack', desc: '10000 Points + Legendary Selector' },
-  500: { name: 'Legend Pack', desc: '25000 Points + Ultimate Reward' }
+  10: { name: 'Starter Bonus', desc: '500 Points' },
+  30: { name: 'Rod Skin', desc: 'Starlight Rod cosmetic' },
+  50: { name: 'Ticket Pack', desc: '3 Roll Tickets' },
+  100: { name: 'Veteran Pack', desc: '5 Roll Tickets' },
+  150: { name: 'Premium Pack', desc: '5 Premium Tickets' },
+  200: { name: 'Elite Pack', desc: '10 Premium Tickets' },
+  250: { name: 'Champion Bonus', desc: '10,000 Points' }
 };
 
 export function MilestoneRewards({ bannerId = null }) {
