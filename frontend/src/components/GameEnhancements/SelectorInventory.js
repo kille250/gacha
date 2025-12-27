@@ -3,13 +3,20 @@
  *
  * Shows owned character selectors and allows using them
  * to pick any character of the matching rarity.
+ *
+ * Image handling:
+ * - Uses getAssetUrl() to convert relative paths to full URLs
+ * - Includes error handlers with PLACEHOLDER_IMAGE fallback
+ * - Supports video media types (mp4, webm)
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaTicketAlt, FaHeart, FaCrown, FaCheck, FaSearch } from 'react-icons/fa';
 import { useSelectors } from '../../hooks/useGameEnhancements';
+import { getAssetUrl } from '../../utils/api';
+import { PLACEHOLDER_IMAGE, isVideo } from '../../utils/mediaUtils';
 
 const Container = styled(motion.div)`
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -250,12 +257,23 @@ const CharacterImage = styled.div`
   border-radius: 8px;
   background: rgba(255, 255, 255, 0.1);
   overflow: hidden;
+  position: relative;
 
-  img {
+  img, video {
     width: 100%;
     height: 100%;
     object-fit: cover;
   }
+`;
+
+const ImagePlaceholder = styled.div`
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #666;
+  font-size: 1.5rem;
 `;
 
 const CharacterName = styled.div`
@@ -318,7 +336,7 @@ const SelectedImage = styled.div`
   overflow: hidden;
   background: rgba(255, 255, 255, 0.1);
 
-  img {
+  img, video {
     width: 100%;
     height: 100%;
     object-fit: cover;
@@ -428,6 +446,16 @@ const RARITY_ICONS = {
   legendary: FaCrown
 };
 
+/**
+ * Resolves character image URL to a full asset URL
+ * Handles both imageUrl field and raw image paths
+ */
+const getCharacterImageUrl = (char) => {
+  const imagePath = char.imageUrl || char.image;
+  if (!imagePath) return PLACEHOLDER_IMAGE;
+  return getAssetUrl(imagePath);
+};
+
 export function SelectorInventory() {
   const {
     selectors,
@@ -444,6 +472,13 @@ export function SelectorInventory() {
   const [searchQuery, setSearchQuery] = useState('');
   const [ownershipFilter, setOwnershipFilter] = useState('all'); // 'all', 'owned', 'new'
   const [successResult, setSuccessResult] = useState(null);
+
+  // Handle image loading errors by falling back to placeholder
+  const handleImageError = useCallback((e) => {
+    if (!e.target.src.includes('data:image/svg') && !e.target.src.includes('placeholder')) {
+      e.target.src = PLACEHOLDER_IMAGE;
+    }
+  }, []);
 
   const handleSelectorClick = async (selector) => {
     setActiveSelector(selector);
@@ -604,36 +639,64 @@ export function SelectorInventory() {
                 Loading characters...
               </div>
             ) : (
-              <CharacterGrid>
-                {filteredCharacters.map(char => (
-                  <CharacterCard
-                    key={char.id}
-                    $selected={selectedCharacter?.id === char.id}
-                    onClick={() => setSelectedCharacter(char)}
-                    whileHover={{ scale: 1.02 }}
-                    whileTap={{ scale: 0.98 }}
-                  >
-                    {selectedCharacter?.id === char.id && (
-                      <SelectedCheck
-                        initial={{ scale: 0 }}
-                        animate={{ scale: 1 }}
-                      >
-                        <FaCheck size={12} />
-                      </SelectedCheck>
-                    )}
-                    {char.owned && <OwnedBadge>Owned</OwnedBadge>}
-                    <CharacterImage>
-                      {char.imageUrl ? (
-                        <img src={char.imageUrl} alt={char.name} />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>
-                          ?
-                        </div>
+              <CharacterGrid role="listbox" aria-label="Character selection">
+                {filteredCharacters.map(char => {
+                  const imageSrc = getCharacterImageUrl(char);
+                  const isSelected = selectedCharacter?.id === char.id;
+                  const charIsVideo = isVideo(char.imageUrl || char.image);
+
+                  return (
+                    <CharacterCard
+                      key={char.id}
+                      $selected={isSelected}
+                      onClick={() => setSelectedCharacter(char)}
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter' || e.key === ' ') {
+                          e.preventDefault();
+                          setSelectedCharacter(char);
+                        }
+                      }}
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      role="option"
+                      aria-selected={isSelected}
+                      tabIndex={0}
+                    >
+                      {isSelected && (
+                        <SelectedCheck
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          aria-hidden="true"
+                        >
+                          <FaCheck size={12} />
+                        </SelectedCheck>
                       )}
-                    </CharacterImage>
-                    <CharacterName>{char.name}</CharacterName>
-                  </CharacterCard>
-                ))}
+                      {char.owned && <OwnedBadge>Owned</OwnedBadge>}
+                      <CharacterImage>
+                        {charIsVideo ? (
+                          <video
+                            src={imageSrc}
+                            autoPlay
+                            loop
+                            muted
+                            playsInline
+                            onError={handleImageError}
+                          />
+                        ) : imageSrc && imageSrc !== PLACEHOLDER_IMAGE ? (
+                          <img
+                            src={imageSrc}
+                            alt={char.name}
+                            onError={handleImageError}
+                            loading="lazy"
+                          />
+                        ) : (
+                          <ImagePlaceholder aria-label="No image available">?</ImagePlaceholder>
+                        )}
+                      </CharacterImage>
+                      <CharacterName title={char.name}>{char.name}</CharacterName>
+                    </CharacterCard>
+                  );
+                })}
               </CharacterGrid>
             )}
 
@@ -647,11 +710,33 @@ export function SelectorInventory() {
                 >
                   <SelectedInfo>
                     <SelectedImage>
-                      {selectedCharacter.imageUrl ? (
-                        <img src={selectedCharacter.imageUrl} alt={selectedCharacter.name} />
-                      ) : (
-                        <div style={{ width: '100%', height: '100%', display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#666' }}>?</div>
-                      )}
+                      {(() => {
+                        const imageSrc = getCharacterImageUrl(selectedCharacter);
+                        const charIsVideo = isVideo(selectedCharacter.imageUrl || selectedCharacter.image);
+
+                        if (charIsVideo) {
+                          return (
+                            <video
+                              src={imageSrc}
+                              autoPlay
+                              loop
+                              muted
+                              playsInline
+                              onError={handleImageError}
+                            />
+                          );
+                        }
+                        if (imageSrc && imageSrc !== PLACEHOLDER_IMAGE) {
+                          return (
+                            <img
+                              src={imageSrc}
+                              alt={selectedCharacter.name}
+                              onError={handleImageError}
+                            />
+                          );
+                        }
+                        return <ImagePlaceholder>?</ImagePlaceholder>;
+                      })()}
                     </SelectedImage>
                     <SelectedText>
                       <div className="name">{selectedCharacter.name}</div>
