@@ -309,3 +309,92 @@ export const VersionText = styled.div`
   font-size: ${theme.fontSizes.xs};
   color: ${theme.colors.textMuted};
 `;
+
+// ==================== ACCOUNT LEVEL SECTION ====================
+
+export const LevelSection = styled.section`
+  margin-bottom: ${theme.spacing.xl};
+`;
+
+export const LevelCard = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.lg};
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.xl};
+  cursor: pointer;
+  width: 100%;
+  text-align: left;
+  transition: border-color ${theme.timing.fast} ${theme.easing.easeOut};
+  font-family: inherit;
+
+  &:hover {
+    border-color: rgba(88, 86, 214, 0.5);
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
+  }
+
+  @media (max-width: 480px) {
+    flex-direction: column;
+    text-align: center;
+  }
+`;
+
+export const LevelCircle = styled.div`
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #5856d6 0%, #af52de 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  font-size: 20px;
+  font-weight: ${theme.fontWeights.bold};
+  box-shadow: 0 4px 16px rgba(88, 86, 214, 0.3);
+  flex-shrink: 0;
+`;
+
+export const LevelInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+export const LevelTitle = styled.div`
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  margin-bottom: ${theme.spacing.xs};
+`;
+
+export const LevelProgressBar = styled.div`
+  height: 6px;
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 3px;
+  overflow: hidden;
+  margin-bottom: ${theme.spacing.xs};
+`;
+
+export const LevelProgressFill = styled.div`
+  height: 100%;
+  background: linear-gradient(90deg, #5856d6 0%, #af52de 100%);
+  border-radius: 3px;
+  transition: width 0.5s ease;
+`;
+
+export const LevelProgressText = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+`;
+
+export const BadgeRow = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  flex-wrap: wrap;
+`;

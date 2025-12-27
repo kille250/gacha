@@ -59,7 +59,7 @@ const DuplicateWarningBanner = ({
 
   if (compact) {
     return (
-      <CompactBanner $blocking={isBlocking}>
+      <CompactBanner $blocking={isBlocking} role="alert" aria-live="assertive">
         <CompactIcon $blocking={isBlocking}>
           {isBlocking ? <FaTimesCircle /> : <FaExclamationTriangle />}
         </CompactIcon>
@@ -85,7 +85,7 @@ const DuplicateWarningBanner = ({
   }
 
   return (
-    <BannerContainer $blocking={isBlocking}>
+    <BannerContainer $blocking={isBlocking} role="alert" aria-live="assertive">
       <BannerHeader>
         <BannerIcon $blocking={isBlocking}>
           {isBlocking ? <FaTimesCircle /> : <FaExclamationTriangle />}

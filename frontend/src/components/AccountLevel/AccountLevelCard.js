@@ -63,7 +63,7 @@ const LevelTitle = styled.h3`
 const LevelSubtitle = styled.p`
   margin: 0;
   font-size: 13px;
-  color: rgba(255, 255, 255, 0.6);
+  color: rgba(255, 255, 255, 0.62);
 `;
 
 const ProgressSection = styled.div`
@@ -145,7 +145,7 @@ const UnlockIcon = styled.div`
     ? 'rgba(52, 199, 89, 0.2)'
     : 'rgba(255, 255, 255, 0.1)'};
   border-radius: 8px;
-  color: ${props => props.$unlocked ? '#34c759' : 'rgba(255, 255, 255, 0.5)'};
+  color: ${props => props.$unlocked ? '#34c759' : 'rgba(255, 255, 255, 0.62)'};
 `;
 
 const UnlockInfo = styled.div`
@@ -161,7 +161,7 @@ const UnlockName = styled.span`
 
 const UnlockRequirement = styled.span`
   font-size: 12px;
-  color: ${props => props.$unlocked ? '#34c759' : 'rgba(255, 255, 255, 0.5)'};
+  color: ${props => props.$unlocked ? '#34c759' : 'rgba(255, 255, 255, 0.62)'};
 `;
 
 const MaxLevelBadge = styled.div`
@@ -228,12 +228,22 @@ const AccountLevelCard = ({
       {!isMaxLevel && (
         <ProgressSection>
           <ProgressHeader>
-            <ProgressLabel>{t('accountLevel.progress', 'Progress')}</ProgressLabel>
+            <ProgressLabel id="level-progress-label">{t('accountLevel.progress', 'Progress')}</ProgressLabel>
             <ProgressValue>
               {xpInLevel?.toLocaleString() || 0} / {xpNeededForLevel?.toLocaleString() || 0} XP
             </ProgressValue>
           </ProgressHeader>
-          <ProgressBarContainer>
+          <ProgressBarContainer
+            role="progressbar"
+            aria-valuenow={Math.round(progress * 100)}
+            aria-valuemin={0}
+            aria-valuemax={100}
+            aria-labelledby="level-progress-label"
+            aria-valuetext={t('accountLevel.progressText', '{{current}} of {{total}} XP', {
+              current: xpInLevel?.toLocaleString() || 0,
+              total: xpNeededForLevel?.toLocaleString() || 0
+            })}
+          >
             <ProgressBarFill
               initial={{ width: 0 }}
               animate={{ width: `${Math.round(progress * 100)}%` }}

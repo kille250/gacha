@@ -111,7 +111,7 @@ const TierLabel = styled.div`
   display: none;
   justify-content: space-between;
   font-size: 11px;
-  color: rgba(255, 255, 255, 0.5);
+  color: rgba(255, 255, 255, 0.62);
   margin-bottom: 8px;
 
   @media (min-width: 768px) {

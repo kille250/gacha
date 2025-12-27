@@ -872,7 +872,7 @@ export const FilledSlot = styled(motion.div)`
   position: relative;
   aspect-ratio: 3/4;
   border-radius: ${theme.radius.xl};
-  overflow: hidden;
+  overflow: visible;
   border: 2px solid ${props => props.$color || theme.colors.surfaceBorder};
   box-shadow: 0 0 20px ${props => props.$glow || 'transparent'};
   cursor: default;
@@ -890,6 +890,23 @@ export const FilledSlot = styled(motion.div)`
   &:focus-visible {
     outline: 2px solid ${theme.colors.primary};
     outline-offset: 2px;
+
+    /* Show keyboard hint on focus */
+    &::after {
+      content: 'Del to remove';
+      position: absolute;
+      bottom: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: ${theme.colors.backgroundSecondary};
+      color: ${theme.colors.textSecondary};
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: ${theme.radius.sm};
+      border: 1px solid ${theme.colors.surfaceBorder};
+      white-space: nowrap;
+      z-index: 10;
+    }
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {
@@ -1142,6 +1159,7 @@ export const EmptySlot = styled(motion.div)`
   color: ${theme.colors.textSecondary};
   transition: all ${theme.transitions.fast};
   min-height: 120px;
+  position: relative;
 
   svg {
     font-size: 28px;
@@ -1156,6 +1174,31 @@ export const EmptySlot = styled(motion.div)`
     border-color: ${theme.colors.primary};
     color: ${theme.colors.primary};
     background: rgba(0, 113, 227, 0.08);
+  }
+
+  /* Focus state with keyboard hint */
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
+    border-color: ${theme.colors.primary};
+    color: ${theme.colors.primary};
+
+    /* Show keyboard hint on focus */
+    &::after {
+      content: 'Press Enter to add';
+      position: absolute;
+      bottom: -24px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: ${theme.colors.backgroundSecondary};
+      color: ${theme.colors.textSecondary};
+      font-size: 10px;
+      padding: 2px 8px;
+      border-radius: ${theme.radius.sm};
+      border: 1px solid ${theme.colors.surfaceBorder};
+      white-space: nowrap;
+      z-index: 10;
+    }
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {

@@ -16,14 +16,16 @@
  */
 
 import React, { useMemo, useContext } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { MdAdminPanelSettings } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { useHourlyReward } from '../../hooks';
+import { useAccountLevel } from '../../hooks/useGameEnhancements';
 import { NAV_GROUPS } from '../../constants/navigation';
 import { AuthContext } from '../../context/AuthContext';
+import { AccountLevelBadge } from '../AccountLevel';
 
 // Extracted sub-components
 import HourlyReward from './HourlyReward';
@@ -33,10 +35,14 @@ import RewardPopup from './RewardPopup';
 const Navigation = () => {
   const { t } = useTranslation();
   const location = useLocation();
+  const navigate = useNavigate();
   const { user, setUser, logout } = useContext(AuthContext);
 
   // Hourly reward state
   const hourlyReward = useHourlyReward();
+
+  // Account level state
+  const { accountLevel } = useAccountLevel();
 
   // Navigation groups from centralized config
   const navGroups = useMemo(() => NAV_GROUPS.map(group => ({
@@ -114,6 +120,17 @@ const Navigation = () => {
 
         {/* User Controls */}
         <UserControls>
+          {/* Account Level Badge - Desktop only */}
+          {user && accountLevel && (
+            <AccountLevelBadgeWrapper>
+              <AccountLevelBadge
+                level={accountLevel.level || 1}
+                progress={accountLevel.progress || 0}
+                onClick={() => navigate('/profile')}
+              />
+            </AccountLevelBadgeWrapper>
+          )}
+
           {/* Hourly Reward Button - Always visible */}
           {user && (
             <HourlyReward
@@ -363,6 +380,15 @@ const UserControls = styled.div`
   /* Compact mode for narrower desktop screens */
   @media (min-width: ${theme.breakpoints.md}) and (max-width: ${theme.breakpoints.lg}) {
     gap: ${theme.spacing.xs};
+  }
+`;
+
+const AccountLevelBadgeWrapper = styled.div`
+  display: none;
+
+  /* Only show on desktop */
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: block;
   }
 `;
 

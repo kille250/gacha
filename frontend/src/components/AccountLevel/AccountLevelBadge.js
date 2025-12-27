@@ -83,7 +83,13 @@ const AccountLevelBadge = ({ level = 1, progress = 0, onClick }) => {
       </LevelIcon>
       <LevelInfo>
         <LevelText>Lv. {level}</LevelText>
-        <ProgressBar>
+        <ProgressBar
+          role="progressbar"
+          aria-valuenow={Math.round(progress * 100)}
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-label={t('accountLevel.progressLabel', 'Level progress')}
+        >
           <ProgressFill
             initial={{ width: 0 }}
             animate={{ width: `${Math.round(progress * 100)}%` }}

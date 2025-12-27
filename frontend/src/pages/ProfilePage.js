@@ -24,10 +24,13 @@ import {
   MdChevronRight,
   MdLanguage
 } from 'react-icons/md';
+import { FaStar } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
-import { springs, Container } from '../design-system';
+import { springs, Container, Modal } from '../design-system';
 import { LanguageSelector } from '../components/Navigation';
 import { SelectorInventory } from '../components/GameEnhancements';
+import { useAccountLevel } from '../hooks/useGameEnhancements';
+import { AccountLevelCard } from '../components/AccountLevel';
 import api from '../utils/api';
 
 // Styled Components
@@ -57,6 +60,15 @@ import {
   LanguageSelectorWrapper,
   LogoutButton,
   VersionText,
+  LevelSection,
+  LevelCard,
+  LevelCircle,
+  LevelInfo,
+  LevelTitle,
+  LevelProgressBar,
+  LevelProgressFill,
+  LevelProgressText,
+  BadgeRow,
 } from './ProfilePage.styles';
 import { theme } from '../design-system';
 
@@ -64,9 +76,11 @@ const ProfilePage = () => {
   const { t, i18n } = useTranslation();
   const navigate = useNavigate();
   const { user, setUser, logout } = useContext(AuthContext);
+  const { accountLevel, loading: levelLoading } = useAccountLevel();
 
   const [isTogglingR18, setIsTogglingR18] = useState(false);
   const [showLanguageSelector, setShowLanguageSelector] = useState(false);
+  const [showLevelModal, setShowLevelModal] = useState(false);
 
   const handleLogout = useCallback(async () => {
     try {
@@ -114,13 +128,57 @@ const ProfilePage = () => {
             </Avatar>
             <UserInfo>
               <Username>{user?.username || 'User'}</Username>
-              <PointsBadge>
-                <span>🪙</span>
-                <span>{user?.points?.toLocaleString() || 0}</span>
-              </PointsBadge>
+              <BadgeRow>
+                <PointsBadge>
+                  <span>🪙</span>
+                  <span>{user?.points?.toLocaleString() || 0}</span>
+                </PointsBadge>
+              </BadgeRow>
             </UserInfo>
           </AvatarSection>
         </ProfileHeader>
+
+        {/* Account Level Section */}
+        {!levelLoading && accountLevel && (
+          <LevelSection aria-labelledby="level-section-title">
+            <SectionTitle id="level-section-title">
+              <FaStar style={{ marginRight: '6px', verticalAlign: 'middle' }} aria-hidden="true" />
+              {t('accountLevel.title', 'Account Level')}
+            </SectionTitle>
+            <LevelCard
+              onClick={() => setShowLevelModal(true)}
+              aria-label={t('accountLevel.viewDetails', 'View level details')}
+              type="button"
+            >
+              <LevelCircle aria-hidden="true">
+                {accountLevel.level || 1}
+              </LevelCircle>
+              <LevelInfo>
+                <LevelTitle>
+                  {t('accountLevel.levelLabel', 'Level {{level}}', { level: accountLevel.level || 1 })}
+                </LevelTitle>
+                <LevelProgressBar
+                  role="progressbar"
+                  aria-valuenow={Math.round((accountLevel.progress || 0) * 100)}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-label={t('accountLevel.progressLabel', 'Level progress')}
+                >
+                  <LevelProgressFill style={{ width: `${Math.round((accountLevel.progress || 0) * 100)}%` }} />
+                </LevelProgressBar>
+                <LevelProgressText>
+                  {accountLevel.isMaxLevel
+                    ? t('accountLevel.maxLevelReached', 'Maximum level reached!')
+                    : t('accountLevel.xpProgress', '{{current}} / {{needed}} XP', {
+                        current: accountLevel.xpInLevel?.toLocaleString() || 0,
+                        needed: accountLevel.xpNeededForLevel?.toLocaleString() || 100
+                      })}
+                </LevelProgressText>
+              </LevelInfo>
+              <ChevronIcon><MdChevronRight /></ChevronIcon>
+            </LevelCard>
+          </LevelSection>
+        )}
 
         {/* Quick Stats */}
         <StatsGrid>
@@ -248,6 +306,25 @@ const ProfilePage = () => {
         {/* App Version */}
         <VersionText>{t('profile.version', { version: '1.0' })}</VersionText>
       </Container>
+
+      {/* Account Level Modal */}
+      <Modal
+        isOpen={showLevelModal}
+        onClose={() => setShowLevelModal(false)}
+        title={t('accountLevel.title', 'Account Level')}
+      >
+        {accountLevel && (
+          <AccountLevelCard
+            level={accountLevel.level}
+            xp={accountLevel.xp}
+            xpToNext={accountLevel.xpToNext}
+            xpInLevel={accountLevel.xpInLevel}
+            xpNeededForLevel={accountLevel.xpNeededForLevel}
+            progress={accountLevel.progress}
+            isMaxLevel={accountLevel.isMaxLevel}
+          />
+        )}
+      </Modal>
     </PageWrapper>
   );
 };
