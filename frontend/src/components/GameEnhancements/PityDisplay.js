@@ -393,7 +393,7 @@ export function PityDisplay({ bannerId = null, compact = false, pullResult = nul
 
       {/* Info about shared pity */}
       <InfoTooltip>
-        Standard pity progress is shared across all banners. Pulling on any banner advances these counters.
+        {t('pity.sharedInfo')}
       </InfoTooltip>
 
       {/* Banner-specific pity with 50/50 terminology */}

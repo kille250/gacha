@@ -58,14 +58,8 @@ const WelcomeIcon = styled(motion.div)`
 
 const Title = styled.h2`
   color: #fff;
-  margin: 0 0 8px 0;
+  margin: 0 0 16px 0;
   font-size: 1.8rem;
-`;
-
-const Subtitle = styled.div`
-  color: #4caf50;
-  font-size: 1rem;
-  margin-bottom: 24px;
 `;
 
 const TimeAwayBadge = styled.div`
@@ -193,7 +187,7 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
     return null;
   }
 
-  const { daysAway, rewards, multiplier, message } = returnBonus;
+  const { daysAway, rewards, multiplier } = returnBonus;
 
   const formatTimeAway = (days) => {
     if (days === 1) return '1 day';
@@ -260,7 +254,6 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
               </WelcomeIcon>
 
               <Title>{t('returnBonus.welcomeBack')}</Title>
-              <Subtitle>{message || t('returnBonus.weMissedYou')}</Subtitle>
 
               <TimeAwayBadge>
                 {t('returnBonus.awayFor', { time: formatTimeAway(daysAway) })}
@@ -330,7 +323,7 @@ export function ReturnBonusModal({ onClose, autoShow = true }) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                {claiming ? t('returnBonus.claiming') : t('returnBonus.claimRewards')}
+                {claiming ? t('common.claiming') : t('returnBonus.claimRewards')}
               </ClaimButton>
             </motion.div>
           ) : (

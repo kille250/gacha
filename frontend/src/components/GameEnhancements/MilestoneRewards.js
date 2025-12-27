@@ -221,7 +221,7 @@ export function MilestoneRewards({ bannerId = null }) {
   if (loading) {
     return (
       <Container>
-        <Title>Loading milestones...</Title>
+        <Title>{t('common.loading')}</Title>
       </Container>
     );
   }
@@ -343,7 +343,7 @@ export function MilestoneRewards({ bannerId = null }) {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Claim Reward
+                {t('common.claimReward')}
               </ClaimButton>
             </ModalContent>
           </ClaimModal>

@@ -1,6 +1,7 @@
 {
   "common": {
     "loading": "Loading...",
+    "loadingResource": "Loading {{resource}}...",
     "error": "Error",
     "success": "Success",
     "cancel": "Cancel",
@@ -47,6 +48,7 @@
     "networkDisconnected": "Network disconnected. Please check your connection and refresh.",
     "sessionExpired": "Session expired. Please log in again.",
     "claiming": "Claiming...",
+    "claimReward": "Claim Reward",
     "normal": "Normal",
     "single": "Single",
     "banners": "Banners",
@@ -148,7 +150,7 @@
     "chars": "chars",
     "boost": "boost",
     "howToPlay": "How to Play",
-    "bannersHelp": "Featured banners have boosted rates for specific characters. Click on a banner to roll!",
+    "bannersHelp": "Featured banners have boosted rates. Check drop rates and pity progress in the banner details.",
     "standardGachaHelp": "Roll from the entire character pool at 100 points per pull.",
     "pointsTitle": "Points",
     "pointsHelp": "Earn points through daily rewards and coupons. Use them to roll for characters!",
@@ -1261,7 +1263,6 @@
     "premiumTickets": "+{{count}} Premium Tickets",
     "activeBonusApplied": "1.5× Active Bonus Applied!",
     "accumulatedRewards": "Accumulated Rewards",
-    "claiming": "Claiming...",
     "claimRewards": "Claim Rewards (1.5× Active Bonus)",
     "noRewardsYet": "No Rewards Yet",
     "hourlyRate": "Hourly Rate",
@@ -1555,7 +1556,6 @@
   },
   "returnBonus": {
     "welcomeBack": "Welcome Back!",
-    "weMissedYou": "We missed you!",
     "awayFor": "Away for {{time}}",
     "yourRewards": "Your Return Rewards",
     "bonusPoints": "Bonus Points",
@@ -1564,7 +1564,6 @@
     "dojoBoostDuration": "2x for 24h",
     "loyaltyBonus": "Loyalty Bonus Applied",
     "multiplierValue": "{{multiplier}}x Rewards!",
-    "claiming": "Claiming...",
     "claimRewards": "Claim Rewards!",
     "rewardsClaimed": "Rewards Claimed!"
   },
@@ -1614,7 +1613,6 @@
     "progress": "Pity Progress",
     "standardPity": "Standard Pity",
     "shared": "Shared",
-    "sharedBadge": "Shared",
     "pullsUntilGuaranteed": "pulls until guaranteed",
     "guaranteed": "Guaranteed!",
     "sharedInfo": "Standard pity progress is shared across all banners. Pulling on any banner advances these counters.",

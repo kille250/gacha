@@ -1,6 +1,7 @@
 {
   "common": {
     "loading": "Cargando...",
+    "loadingResource": "Cargando {{resource}}...",
     "error": "Error",
     "success": "Éxito",
     "cancel": "Cancelar",
@@ -47,6 +48,7 @@
     "processing": "Procesando...",
     "networkDisconnected": "Red desconectada. Por favor verifica tu conexión y actualiza la página.",
     "claiming": "Reclamando...",
+    "claimReward": "Reclamar recompensa",
     "normal": "Normal",
     "single": "Simple",
     "banners": "Banners",

@@ -1,6 +1,7 @@
 {
   "common": {
     "loading": "Laden...",
+    "loadingResource": "{{resource}} laden...",
     "error": "Fehler",
     "success": "Erfolg",
     "cancel": "Abbrechen",
@@ -47,6 +48,7 @@
     "processing": "Verarbeiten...",
     "networkDisconnected": "Netzwerk getrennt. Bitte überprüfe deine Verbindung und aktualisiere die Seite.",
     "claiming": "Abholen...",
+    "claimReward": "Belohnung abholen",
     "normal": "Normal",
     "single": "Einzel",
     "banners": "Banner",
