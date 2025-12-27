@@ -1272,6 +1272,7 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
     user.bannerPity = {};
     user.pullHistory = {};
     user.fatePoints = {};
+    user.fatePointsWeekly = {};  // Reset weekly fate points limit
     user.characterSelectors = [];
     user.weeklyBannerTickets = 0;
 
