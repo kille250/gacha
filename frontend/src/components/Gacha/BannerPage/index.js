@@ -9,7 +9,6 @@ export { default as BannerHeroSection } from './BannerHeroSection';
 export { default as BannerCharacterAvatars } from './BannerCharacterAvatars';
 export { default as BannerRollControls } from './BannerRollControls';
 export { default as BannerTicketSection } from './BannerTicketSection';
-export { default as BannerInfoPanel } from './BannerInfoPanel';
 export { default as BannerRarityTracker } from './BannerRarityTracker';
 export { default as BannerResultCard } from './BannerResultCard';
 export { default as BannerMultiResults } from './BannerMultiResults';

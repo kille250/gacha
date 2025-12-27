@@ -33,7 +33,6 @@ import {
   BackButton,
   NavStats,
   StatPill,
-  PointsPill,
   HeroSection,
   HeroTitle,
   HeroSubtitle,
@@ -603,10 +602,6 @@ const RollPage = () => {
               <span><IconDice /></span>
               <span>{rollCount} {t('common.pulls')}</span>
             </StatPill>
-            <PointsPill>
-              <span><IconPoints /></span>
-              <span>{user?.points || 0}</span>
-            </PointsPill>
           </NavStats>
         </NavBar>
         

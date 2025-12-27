@@ -525,27 +525,6 @@ export const PremiumNote = styled.div`
   font-weight: ${theme.fontWeights.medium};
 `;
 
-export const PityInfoBox = styled.div`
-  background: linear-gradient(135deg, rgba(88, 86, 214, 0.15), rgba(175, 82, 222, 0.1));
-  border: 1px solid rgba(88, 86, 214, 0.3);
-  border-radius: ${theme.radius.lg};
-  padding: ${theme.spacing.md};
-  text-align: center;
-`;
-
-export const PityInfoTitle = styled.div`
-  font-size: ${theme.fontSizes.sm};
-  font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.accent};
-  margin-bottom: ${theme.spacing.xs};
-`;
-
-export const PityInfoText = styled.div`
-  font-size: ${theme.fontSizes.xs};
-  color: ${theme.colors.textSecondary};
-  line-height: ${theme.lineHeights.relaxed};
-`;
-
 // ==================== FEATURED LIST ====================
 
 export const FeaturedList = styled.div`

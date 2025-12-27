@@ -41,7 +41,6 @@ import {
   BackButton,
   NavStats,
   StatPill,
-  PointsPill,
   HeroSection,
   HeroContent,
   BannerTitle,
@@ -147,9 +146,6 @@ import {
   DropRateLabel,
   DropRateValue,
   PremiumNote,
-  PityInfoBox,
-  PityInfoTitle,
-  PityInfoText,
   FeaturedList,
   FeaturedItem,
   FeaturedThumb,
@@ -931,10 +927,6 @@ const BannerPage = () => {
               <span><IconDice /></span>
               <span>{rollCount} {t('common.pulls')}</span>
             </StatPill>
-            <PointsPill>
-              <span><IconPoints /></span>
-              <span>{user?.points || 0}</span>
-            </PointsPill>
             <IconButton onClick={() => setShowInfoPanel(true)} label="Show banner info">
               <MdInfo />
             </IconButton>
@@ -1507,18 +1499,11 @@ const BannerPage = () => {
                           <PremiumNote><IconSparkle /> {t('banner.guaranteedRare') || 'Guaranteed Rare or better!'}</PremiumNote>
                         </DropRateSection>
                       )}
-                      
-                      <PityInfoBox>
-                        <PityInfoTitle><IconPoolPity /> {t('banner.pitySystem') || '10-Pull Pity'}</PityInfoTitle>
-                        <PityInfoText>
-                          {t('banner.pityDescription') || 'Every 10-pull guarantees at least one Rare or higher character!'}
-                        </PityInfoText>
-                      </PityInfoBox>
                     </DropRatesContainer>
                   </InfoBlock>
                 )}
 
-                {/* Pity Progress Display */}
+                {/* Pity Progress Display - includes pity system explanation with actual user data */}
                 <PityDisplay bannerId={bannerId} compact={false} />
 
                 {/* Pull Milestones */}
