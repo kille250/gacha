@@ -383,7 +383,6 @@ const AdminPage = () => {
           const result = await adminState.handleAddBanner(formData);
           if (result.success) modals.closeAddBannerModal();
         }}
-        characters={adminState.characters}
       />
 
       <BannerFormModal
@@ -391,7 +390,6 @@ const AdminPage = () => {
         onClose={modals.closeEditBannerModal}
         onSubmit={handleUpdateBanner}
         banner={modals.editingBanner}
-        characters={adminState.characters}
       />
 
       <CouponFormModal

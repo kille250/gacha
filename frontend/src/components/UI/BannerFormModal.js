@@ -1,8 +1,8 @@
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes } from 'react-icons/fa';
-import { getAssetUrl } from '../../utils/api';
+import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes, FaSpinner } from 'react-icons/fa';
+import { getAssetUrl, getCharactersForBanner } from '../../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useRarity } from '../../context/RarityContext';
 
@@ -11,12 +11,13 @@ const getImageUrl = (imagePath) => {
   if (!imagePath) return PLACEHOLDER_IMAGE;
   return getAssetUrl(imagePath);
 };
-  
+
 // Rarity order for sorting (highest first)
 const RARITY_ORDER = ['legendary', 'epic', 'rare', 'uncommon', 'common'];
-const ITEMS_PER_PAGE = 48;
+const ITEMS_PER_PAGE = 100;
+const SEARCH_DEBOUNCE_MS = 300;
 
-const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
+const BannerFormModal = ({ show, onClose, onSubmit, banner }) => {
   const { t } = useTranslation();
   const { getRarityColor } = useRarity();
   const [formData, setFormData] = useState({
@@ -36,99 +37,160 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
   const [videoFile, setVideoFile] = useState(null);
   const [imagePreview, setImagePreview] = useState(null);
   const [videoPreview, setVideoPreview] = useState(null);
+
+  // Character selection state - now with server-side fetching
+  const [characters, setCharacters] = useState([]);
+  const [uniqueSeries, setUniqueSeries] = useState([]);
   const [characterSearch, setCharacterSearch] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [rarityFilter, setRarityFilter] = useState('all');
   const [seriesFilter, setSeriesFilter] = useState('all');
-  const [visibleCount, setVisibleCount] = useState(ITEMS_PER_PAGE);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pagination, setPagination] = useState({ total: 0, totalPages: 0, hasMore: false });
+  const [loading, setLoading] = useState(false);
   const [showSelected, setShowSelected] = useState(false);
 
-  // Get unique series from characters for filter dropdown
-  const uniqueSeries = useMemo(() => {
-    const series = [...new Set(characters.map(c => c.series).filter(Boolean))];
-    return series.sort();
-  }, [characters]);
+  // Refs for debouncing and preventing stale closures
+  const searchTimeoutRef = useRef(null);
+  const abortControllerRef = useRef(null);
 
-  // Filter characters based on search, rarity, and series
-  const filteredCharacters = useMemo(() => {
-    return characters.filter(char => {
-      const matchesSearch = char.name.toLowerCase().includes(characterSearch.toLowerCase()) ||
-                            (char.series && char.series.toLowerCase().includes(characterSearch.toLowerCase()));
-      const matchesRarity = rarityFilter === 'all' || char.rarity === rarityFilter;
-      const matchesSeries = seriesFilter === 'all' || char.series === seriesFilter;
-      return matchesSearch && matchesRarity && matchesSeries;
-    });
-  }, [characters, characterSearch, rarityFilter, seriesFilter]);
+  // Debounce search input
+  useEffect(() => {
+    if (searchTimeoutRef.current) {
+      clearTimeout(searchTimeoutRef.current);
+    }
+    searchTimeoutRef.current = setTimeout(() => {
+      setDebouncedSearch(characterSearch);
+      setCurrentPage(1); // Reset to first page on search change
+    }, SEARCH_DEBOUNCE_MS);
 
-  // Paginated characters for display
-  const visibleCharacters = filteredCharacters.slice(0, visibleCount);
-  const hasMore = visibleCount < filteredCharacters.length;
+    return () => {
+      if (searchTimeoutRef.current) {
+        clearTimeout(searchTimeoutRef.current);
+      }
+    };
+  }, [characterSearch]);
 
-  // Selected characters for summary display
+  // Fetch characters from server when filters change
+  const fetchCharacters = useCallback(async (page = 1, append = false) => {
+    // Cancel previous request
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
+    setLoading(true);
+    try {
+      const data = await getCharactersForBanner({
+        search: debouncedSearch,
+        rarity: rarityFilter,
+        series: seriesFilter,
+        page,
+        limit: ITEMS_PER_PAGE
+      });
+
+      if (append) {
+        setCharacters(prev => [...prev, ...data.characters]);
+      } else {
+        setCharacters(data.characters);
+      }
+      setUniqueSeries(data.series || []);
+      setPagination(data.pagination);
+    } catch (err) {
+      if (err.name !== 'AbortError') {
+        console.error('Failed to fetch characters:', err);
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [debouncedSearch, rarityFilter, seriesFilter]);
+
+  // Fetch characters when modal opens or filters change
+  useEffect(() => {
+    if (show) {
+      fetchCharacters(1, false);
+    }
+  }, [show, debouncedSearch, rarityFilter, seriesFilter, fetchCharacters]);
+
+  // Reset filters when rarity or series filter changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [rarityFilter, seriesFilter]);
+
+  // Selected characters for summary display - merge from fetched and form data
   const selectedCharactersList = useMemo(() => {
-    return characters.filter(c => formData.selectedCharacters.includes(c.id));
+    // Build a map of all known characters
+    const charMap = new Map(characters.map(c => [c.id, c]));
+    // Return only those that are selected and we have data for
+    return formData.selectedCharacters
+      .map(id => charMap.get(id))
+      .filter(Boolean);
   }, [characters, formData.selectedCharacters]);
-  
+
   // Reset and populate form when banner changes
   useEffect(() => {
-    if (banner) {
-      // Format dates for input fields
-      const startDate = banner.startDate
-        ? new Date(banner.startDate).toISOString().split('T')[0]
-        : new Date().toISOString().split('T')[0];
-      const endDate = banner.endDate
-        ? new Date(banner.endDate).toISOString().split('T')[0]
-        : '';
-      setFormData({
-        name: banner.name || '',
-        description: banner.description || '',
-        series: banner.series || '',
-        startDate,
-        endDate,
-        featured: banner.featured || false,
-        costMultiplier: banner.costMultiplier || 1.5,
-        rateMultiplier: banner.rateMultiplier || 5.0,
-        active: banner.active !== false,
-        isR18: banner.isR18 || false,
-        selectedCharacters: banner.Characters?.map(char => char.id) || []
-      });
-      // Set previews if available
-      if (banner.image) {
-        setImagePreview(getAssetUrl(banner.image));
+    if (show) {
+      if (banner) {
+        // Format dates for input fields
+        const startDate = banner.startDate
+          ? new Date(banner.startDate).toISOString().split('T')[0]
+          : new Date().toISOString().split('T')[0];
+        const endDate = banner.endDate
+          ? new Date(banner.endDate).toISOString().split('T')[0]
+          : '';
+        setFormData({
+          name: banner.name || '',
+          description: banner.description || '',
+          series: banner.series || '',
+          startDate,
+          endDate,
+          featured: banner.featured || false,
+          costMultiplier: banner.costMultiplier || 1.5,
+          rateMultiplier: banner.rateMultiplier || 5.0,
+          active: banner.active !== false,
+          isR18: banner.isR18 || false,
+          selectedCharacters: banner.Characters?.map(char => char.id) || []
+        });
+        // Set previews if available
+        if (banner.image) {
+          setImagePreview(getAssetUrl(banner.image));
+        } else {
+          setImagePreview(null);
+        }
+        if (banner.videoUrl) {
+          setVideoPreview(getAssetUrl(banner.videoUrl));
+        } else {
+          setVideoPreview(null);
+        }
       } else {
+        // Reset form for new banner
+        setFormData({
+          name: '',
+          description: '',
+          series: '',
+          startDate: new Date().toISOString().split('T')[0],
+          endDate: '',
+          featured: false,
+          costMultiplier: 1.5,
+          rateMultiplier: 5.0,
+          active: true,
+          isR18: false,
+          selectedCharacters: []
+        });
         setImagePreview(null);
-      }
-      if (banner.videoUrl) {
-        setVideoPreview(getAssetUrl(banner.videoUrl));
-      } else {
         setVideoPreview(null);
       }
-    } else {
-      // Reset form for new banner
-      setFormData({
-        name: '',
-        description: '',
-        series: '',
-        startDate: new Date().toISOString().split('T')[0],
-        endDate: '',
-        featured: false,
-        costMultiplier: 1.5,
-        rateMultiplier: 5.0,
-        active: true,
-        isR18: false,
-        selectedCharacters: []
-      });
-      setImagePreview(null);
-      setVideoPreview(null);
+      setImageFile(null);
+      setVideoFile(null);
+      setCharacterSearch('');
+      setDebouncedSearch('');
+      setRarityFilter('all');
+      setSeriesFilter('all');
+      setCurrentPage(1);
+      setShowSelected(false);
     }
-    setImageFile(null);
-    setVideoFile(null);
-    setCharacterSearch('');
-    setRarityFilter('all');
-    setSeriesFilter('all');
-    setVisibleCount(ITEMS_PER_PAGE);
-    setShowSelected(false);
   }, [banner, show]);
-  
+
   const handleChange = (e) => {
     const { name, value, type, checked } = e.target;
     setFormData(prev => ({
@@ -136,7 +198,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       [name]: type === 'checkbox' ? checked : value
     }));
   };
-  
+
   const handleImageChange = (e) => {
     const file = e.target.files[0];
     setImageFile(file);
@@ -148,7 +210,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       reader.readAsDataURL(file);
     }
   };
-  
+
   const handleVideoChange = (e) => {
     const file = e.target.files[0];
     setVideoFile(file);
@@ -160,7 +222,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       reader.readAsDataURL(file);
     }
   };
-  
+
   const handleCharacterToggle = useCallback((charId) => {
     setFormData(prev => {
       const selectedCharacters = [...prev.selectedCharacters];
@@ -178,37 +240,50 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     });
   }, []);
 
-  // Bulk action: Select all visible characters (only the paginated ones)
+  // Bulk action: Select all visible characters
   const handleSelectAllVisible = useCallback(() => {
-    const visibleIds = visibleCharacters.map(c => c.id);
+    const visibleIds = characters.map(c => c.id);
     setFormData(prev => ({
       ...prev,
       selectedCharacters: [...new Set([...prev.selectedCharacters, ...visibleIds])]
     }));
-  }, [visibleCharacters]);
+  }, [characters]);
 
   // Bulk action: Clear all selections
   const handleClearAll = useCallback(() => {
     setFormData(prev => ({ ...prev, selectedCharacters: [] }));
   }, []);
 
-  // Bulk action: Add all from banner's series
-  const handleAddAllFromSeries = useCallback(() => {
+  // Bulk action: Add all from banner's series (server-side fetch)
+  const handleAddAllFromSeries = useCallback(async () => {
     if (!formData.series) return;
-    const matchingIds = characters
-      .filter(c => c.series?.toLowerCase() === formData.series.toLowerCase())
-      .map(c => c.id);
-    setFormData(prev => ({
-      ...prev,
-      selectedCharacters: [...new Set([...prev.selectedCharacters, ...matchingIds])]
-    }));
-  }, [characters, formData.series]);
+    setLoading(true);
+    try {
+      // Fetch all characters from this series
+      const data = await getCharactersForBanner({
+        series: formData.series,
+        limit: 200,
+        page: 1
+      });
+      const matchingIds = data.characters.map(c => c.id);
+      setFormData(prev => ({
+        ...prev,
+        selectedCharacters: [...new Set([...prev.selectedCharacters, ...matchingIds])]
+      }));
+    } catch (err) {
+      console.error('Failed to fetch series characters:', err);
+    } finally {
+      setLoading(false);
+    }
+  }, [formData.series]);
 
   // Load more characters
   const handleLoadMore = useCallback(() => {
-    setVisibleCount(prev => prev + ITEMS_PER_PAGE);
-  }, []);
-  
+    const nextPage = currentPage + 1;
+    setCurrentPage(nextPage);
+    fetchCharacters(nextPage, true);
+  }, [currentPage, fetchCharacters]);
+
   const handleSubmit = (e) => {
     e.preventDefault();
     const submitData = new FormData();
@@ -231,11 +306,18 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     }
     onSubmit(submitData);
   };
-  
+
+  // Toggle show selected - no form submission, just UI toggle
+  const handleToggleShowSelected = useCallback((e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setShowSelected(prev => !prev);
+  }, []);
+
   // Render character media (image or video)
   const renderCharacterMedia = (char) => {
     const mediaSrc = getImageUrl(char.image);
-    
+
     if (isVideo(char.image)) {
       return (
         <CharOptionVideo
@@ -252,7 +334,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
         />
       );
     }
-    
+
     return (
       <CharOptionImage
         src={mediaSrc}
@@ -265,15 +347,15 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
       />
     );
   };
-  
+
   if (!show) return null;
-  
+
   return (
     <ModalOverlay onMouseDown={onClose}>
       <ModalContent onMouseDown={e => e.stopPropagation()}>
         <ModalHeader>
           <ModalTitle>{banner ? t('admin.bannerForm.editBanner') : t('admin.bannerForm.createNewBanner')}</ModalTitle>
-          <CloseButton onClick={onClose}><FaTimes /></CloseButton>
+          <CloseButton type="button" onClick={onClose}><FaTimes /></CloseButton>
         </ModalHeader>
         <ModalBody>
           <form onSubmit={handleSubmit}>
@@ -447,10 +529,10 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   </SelectedCount>
                   {formData.selectedCharacters.length > 0 && (
                     <SummaryActions>
-                      <SummaryToggle onClick={() => setShowSelected(!showSelected)}>
+                      <SummaryToggle type="button" onClick={handleToggleShowSelected}>
                         {showSelected ? t('common.hide', 'Hide') : t('common.view', 'View')}
                       </SummaryToggle>
-                      <ClearAllBtn onClick={handleClearAll}>
+                      <ClearAllBtn type="button" onClick={handleClearAll}>
                         {t('common.clearAll', 'Clear all')}
                       </ClearAllBtn>
                     </SummaryActions>
@@ -461,9 +543,14 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                     {selectedCharactersList.map(char => (
                       <SelectedPill key={char.id} $color={getRarityColor(char.rarity)}>
                         <span>{char.name}</span>
-                        <RemovePillBtn onClick={() => handleCharacterToggle(char.id)}>×</RemovePillBtn>
+                        <RemovePillBtn type="button" onClick={() => handleCharacterToggle(char.id)}>×</RemovePillBtn>
                       </SelectedPill>
                     ))}
+                    {formData.selectedCharacters.length > selectedCharactersList.length && (
+                      <SelectedPill $color="#666">
+                        <span>+{formData.selectedCharacters.length - selectedCharactersList.length} more</span>
+                      </SelectedPill>
+                    )}
                   </SelectedList>
                 )}
               </SelectionSummary>
@@ -504,17 +591,18 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                       onChange={(e) => setCharacterSearch(e.target.value)}
                     />
                     {characterSearch && (
-                      <ClearSearchBtn onClick={() => setCharacterSearch('')}>×</ClearSearchBtn>
+                      <ClearSearchBtn type="button" onClick={() => setCharacterSearch('')}>×</ClearSearchBtn>
                     )}
+                    {loading && <LoadingIcon><FaSpinner /></LoadingIcon>}
                   </SearchWrapper>
 
                   {/* Bulk Actions Row */}
                   <BulkActionsRow>
-                    <BulkActionBtn type="button" onClick={handleSelectAllVisible}>
-                      {t('admin.bannerForm.selectAllVisible', 'Select all visible')} ({visibleCharacters.length})
+                    <BulkActionBtn type="button" onClick={handleSelectAllVisible} disabled={loading}>
+                      {t('admin.bannerForm.selectAllVisible', 'Select all visible')} ({characters.length})
                     </BulkActionBtn>
                     {formData.series && (
-                      <BulkActionBtn type="button" onClick={handleAddAllFromSeries}>
+                      <BulkActionBtn type="button" onClick={handleAddAllFromSeries} disabled={loading}>
                         {t('admin.bannerForm.addAllFromSeries', 'Add all from')} "{formData.series}"
                       </BulkActionBtn>
                     )}
@@ -523,15 +611,20 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                   {/* Results count */}
                   <ResultsCount>
                     {t('admin.bannerForm.showingOf', 'Showing {{visible}} of {{total}}', {
-                      visible: visibleCharacters.length,
-                      total: filteredCharacters.length
+                      visible: characters.length,
+                      total: pagination.total
                     })}
                   </ResultsCount>
                 </SelectorHeader>
 
                 <CharacterGrid>
-                  {visibleCharacters.length > 0 ? (
-                    visibleCharacters.map(char => (
+                  {loading && characters.length === 0 ? (
+                    <LoadingPlaceholder>
+                      <FaSpinner className="spin" />
+                      <span>{t('common.loading', 'Loading...')}</span>
+                    </LoadingPlaceholder>
+                  ) : characters.length > 0 ? (
+                    characters.map(char => (
                       <CharacterOption
                         key={char.id}
                         $selected={formData.selectedCharacters.includes(char.id)}
@@ -558,10 +651,14 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
                 </CharacterGrid>
 
                 {/* Load More Button */}
-                {hasMore && (
+                {pagination.hasMore && (
                   <LoadMoreSection>
-                    <LoadMoreBtn type="button" onClick={handleLoadMore}>
-                      {t('admin.bannerForm.loadMore', 'Load more')} ({filteredCharacters.length - visibleCount} {t('admin.bannerForm.remaining', 'remaining')})
+                    <LoadMoreBtn type="button" onClick={handleLoadMore} disabled={loading}>
+                      {loading ? (
+                        <><FaSpinner className="spin" /> {t('common.loading', 'Loading...')}</>
+                      ) : (
+                        t('admin.bannerForm.loadMore', 'Load more') + ` (${pagination.total - characters.length} ${t('admin.bannerForm.remaining', 'remaining')})`
+                      )}
                     </LoadMoreBtn>
                   </LoadMoreSection>
                 )}
@@ -579,7 +676,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner, characters }) => {
     </ModalOverlay>
   );
 };
-  
+
 // ==================== STYLED COMPONENTS ====================
 
 const ModalOverlay = styled.div`
@@ -593,7 +690,7 @@ const ModalOverlay = styled.div`
   z-index: 9999;
   padding: 20px;
 `;
-  
+
 const ModalContent = styled.div`
   background: #1c1c1e;
   border-radius: 20px;
@@ -603,11 +700,11 @@ const ModalContent = styled.div`
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  box-shadow: 
+  box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.1),
     0 25px 80px rgba(0, 0, 0, 0.5);
 `;
-  
+
 const ModalHeader = styled.div`
   display: flex;
   justify-content: space-between;
@@ -623,7 +720,7 @@ const ModalTitle = styled.h3`
   font-weight: 600;
   letter-spacing: -0.02em;
 `;
-  
+
 const CloseButton = styled.button`
   background: rgba(255, 255, 255, 0.1);
   border: none;
@@ -636,19 +733,19 @@ const CloseButton = styled.button`
   align-items: center;
   justify-content: center;
   transition: all 0.2s;
-  
+
   &:hover {
     background: rgba(255, 255, 255, 0.15);
     color: #fff;
   }
 `;
-  
+
 const ModalBody = styled.div`
   padding: 24px;
   overflow-y: auto;
   flex: 1;
 `;
-  
+
 const FormGroup = styled.div`
   margin-bottom: 20px;
 `;
@@ -670,13 +767,13 @@ const Input = styled.input`
   font-size: 15px;
   color: #fff;
   transition: all 0.2s;
-  
+
   &:focus {
     outline: none;
     border-color: #007AFF;
     background: rgba(255, 255, 255, 0.08);
   }
-  
+
   &::placeholder {
     color: rgba(255, 255, 255, 0.3);
   }
@@ -694,33 +791,33 @@ const TextArea = styled.textarea`
   min-height: 80px;
   font-family: inherit;
   transition: all 0.2s;
-  
+
   &:focus {
     outline: none;
     border-color: #007AFF;
     background: rgba(255, 255, 255, 0.08);
   }
-  
+
   &::placeholder {
     color: rgba(255, 255, 255, 0.3);
   }
 `;
-  
+
 const FormRow = styled.div`
   display: grid;
   grid-template-columns: 1fr 1fr;
   gap: 16px;
   margin-bottom: 20px;
-  
+
   @media (max-width: 600px) {
     grid-template-columns: 1fr;
   }
-  
+
   ${FormGroup} {
     margin-bottom: 0;
   }
 `;
-  
+
 const DateInputWrapper = styled.div`
   display: flex;
   align-items: center;
@@ -728,23 +825,23 @@ const DateInputWrapper = styled.div`
   border: 1px solid rgba(255, 255, 255, 0.1);
   border-radius: 10px;
   padding: 0 14px;
-  
+
   svg {
     color: rgba(255, 255, 255, 0.4);
     margin-right: 10px;
     flex-shrink: 0;
   }
-  
+
   input {
     border: none;
     background: transparent;
     padding: 12px 0;
     flex: 1;
-    
+
     &:focus {
       outline: none;
     }
-    
+
     &::-webkit-calendar-picker-indicator {
       filter: invert(1);
       opacity: 0.5;
@@ -763,11 +860,11 @@ const FileInputWrapper = styled.div`
   cursor: pointer;
   position: relative;
   transition: all 0.2s;
-  
+
   &:hover {
     border-color: rgba(255, 255, 255, 0.2);
   }
-  
+
   svg {
     color: rgba(255, 255, 255, 0.4);
     margin-right: 10px;
@@ -786,14 +883,14 @@ const FileInputText = styled.span`
   color: rgba(255, 255, 255, 0.5);
   font-size: 14px;
 `;
-  
+
 const CheckboxGroup = styled.div`
   display: flex;
   flex-wrap: wrap;
   gap: 16px;
   margin-bottom: 24px;
 `;
-  
+
 const CheckboxControl = styled.div`
   display: flex;
   align-items: center;
@@ -813,27 +910,27 @@ const CheckboxLabel = styled.label`
   cursor: pointer;
   font-weight: ${props => props.$r18 ? '500' : '400'};
 `;
-  
+
 const FormHint = styled.p`
   font-size: 12px;
   color: rgba(255, 255, 255, 0.4);
   margin-top: 6px;
   margin-bottom: 0;
 `;
-  
+
 const MediaPreview = styled.div`
   margin-top: 12px;
   border-radius: 12px;
   overflow: hidden;
   background: rgba(0, 0, 0, 0.3);
-  
+
   img, video {
     max-width: 100%;
     max-height: 200px;
     display: block;
   }
 `;
-  
+
 const ButtonGroup = styled.div`
   display: flex;
   justify-content: flex-end;
@@ -842,7 +939,7 @@ const ButtonGroup = styled.div`
   padding-top: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.08);
 `;
-  
+
 const SubmitButton = styled.button`
   background: #007AFF;
   color: white;
@@ -853,12 +950,12 @@ const SubmitButton = styled.button`
   font-size: 15px;
   cursor: pointer;
   transition: all 0.2s;
-  
+
   &:hover {
     background: #0056CC;
   }
 `;
-  
+
 const CancelButton = styled.button`
   background: rgba(255, 255, 255, 0.1);
   color: rgba(255, 255, 255, 0.8);
@@ -869,12 +966,12 @@ const CancelButton = styled.button`
   font-size: 15px;
   cursor: pointer;
   transition: all 0.2s;
-  
+
   &:hover {
     background: rgba(255, 255, 255, 0.15);
   }
 `;
-  
+
 const CharacterSelector = styled.div`
   background: rgba(0, 0, 0, 0.25);
   border: 1px solid rgba(255, 255, 255, 0.1);
@@ -884,7 +981,7 @@ const CharacterSelector = styled.div`
   display: flex;
   flex-direction: column;
 `;
-  
+
 const SelectorHeader = styled.div`
   padding: 12px;
   background: rgba(0, 0, 0, 0.2);
@@ -893,13 +990,13 @@ const SelectorHeader = styled.div`
   flex-direction: column;
   gap: 10px;
 `;
-  
+
 const SelectedCount = styled.div`
   font-size: 14px;
   color: rgba(255, 255, 255, 0.7);
   font-weight: 500;
 `;
-  
+
 const SearchWrapper = styled.div`
   display: flex;
   align-items: center;
@@ -907,14 +1004,30 @@ const SearchWrapper = styled.div`
   border-radius: 8px;
   overflow: hidden;
 `;
-  
+
 const SearchIcon = styled.div`
   padding: 0 12px;
   color: rgba(255, 255, 255, 0.4);
   display: flex;
   align-items: center;
 `;
-  
+
+const LoadingIcon = styled.div`
+  padding: 0 12px;
+  color: rgba(255, 255, 255, 0.4);
+  display: flex;
+  align-items: center;
+
+  svg {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
 const SearchInput = styled.input`
   flex: 1;
   background: transparent;
@@ -922,16 +1035,16 @@ const SearchInput = styled.input`
   padding: 10px 0;
   font-size: 14px;
   color: #fff;
-  
+
   &:focus {
     outline: none;
   }
-  
+
   &::placeholder {
     color: rgba(255, 255, 255, 0.3);
   }
 `;
-  
+
 const ClearSearchBtn = styled.button`
   background: none;
   border: none;
@@ -939,12 +1052,12 @@ const ClearSearchBtn = styled.button`
   font-size: 20px;
   cursor: pointer;
   padding: 0 12px;
-  
+
   &:hover {
     color: rgba(255, 255, 255, 0.7);
   }
 `;
-  
+
 const CharacterGrid = styled.div`
   display: grid;
   grid-template-columns: repeat(2, 1fr);
@@ -952,12 +1065,32 @@ const CharacterGrid = styled.div`
   padding: 12px;
   overflow-y: auto;
   max-height: 350px;
-  
+
   @media (min-width: 700px) {
     grid-template-columns: repeat(3, 1fr);
   }
 `;
-  
+
+const LoadingPlaceholder = styled.div`
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 40px;
+  color: rgba(255, 255, 255, 0.5);
+  gap: 12px;
+
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
 const NoResults = styled.div`
   padding: 30px;
   text-align: center;
@@ -977,14 +1110,14 @@ const CharacterOption = styled.div`
   flex-direction: row;
   align-items: center;
   min-height: 90px;
-  
+
   &:hover {
     border-color: ${props => props.$color};
     transform: translateY(-2px);
     background: rgba(255, 255, 255, 0.06);
   }
 `;
-  
+
 const CharOptionImage = styled.img`
   width: 72px;
   height: 72px;
@@ -1004,7 +1137,7 @@ const CharOptionVideo = styled.video`
   border-radius: 8px;
   margin: 9px;
 `;
-  
+
 const CharOptionInfo = styled.div`
   flex: 1;
   padding: 12px 8px 12px 0;
@@ -1014,7 +1147,7 @@ const CharOptionInfo = styled.div`
   min-width: 0;
   overflow: hidden;
 `;
-  
+
 const CharOptionName = styled.div`
   font-size: 13px;
   font-weight: 600;
@@ -1026,7 +1159,7 @@ const CharOptionName = styled.div`
   overflow: hidden;
   word-break: break-word;
 `;
-  
+
 const CharOptionSeries = styled.div`
   font-size: 11px;
   color: rgba(255, 255, 255, 0.5);
@@ -1038,7 +1171,7 @@ const CharOptionSeries = styled.div`
   overflow: hidden;
   word-break: break-word;
 `;
-  
+
 const CharOptionBadges = styled.div`
   display: flex;
   align-items: center;
@@ -1068,7 +1201,7 @@ const R18Badge = styled.span`
   border-radius: 3px;
   font-weight: 600;
 `;
-  
+
 const CharOptionCheck = styled.div`
   width: 26px;
   height: 26px;
@@ -1222,9 +1355,14 @@ const BulkActionBtn = styled.button`
   cursor: pointer;
   transition: all 0.2s;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: rgba(0, 122, 255, 0.25);
     border-color: rgba(0, 122, 255, 0.5);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 `;
 
@@ -1251,10 +1389,28 @@ const LoadMoreBtn = styled.button`
   cursor: pointer;
   transition: all 0.2s;
   width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
 
-  &:hover {
+  &:hover:not(:disabled) {
     background: rgba(255, 255, 255, 0.12);
     border-color: rgba(255, 255, 255, 0.25);
+  }
+
+  &:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
+  }
+
+  .spin {
+    animation: spin 1s linear infinite;
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
   }
 `;
 

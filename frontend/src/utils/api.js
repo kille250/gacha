@@ -428,6 +428,27 @@ export const getAdminCharacters = async ({ page = 1, limit = 20, search = '' } =
   return response.data;
 };
 
+/**
+ * Get characters for banner selection modal with server-side search/filtering
+ * @param {Object} params - Query parameters
+ * @param {string} params.search - Search query for name/series
+ * @param {string} params.rarity - Rarity filter (or 'all')
+ * @param {string} params.series - Series filter (or 'all')
+ * @param {number} params.page - Page number (1-indexed)
+ * @param {number} params.limit - Items per page (max 200)
+ * @returns {Promise<{characters: Array, series: Array, pagination: Object}>}
+ */
+export const getCharactersForBanner = async ({ search = '', rarity = '', series = '', page = 1, limit = 100 } = {}) => {
+  const params = new URLSearchParams();
+  params.append('page', page);
+  params.append('limit', limit);
+  if (search) params.append('search', search);
+  if (rarity && rarity !== 'all') params.append('rarity', rarity);
+  if (series && series !== 'all') params.append('series', series);
+  const response = await api.get(`/admin/characters/for-banner?${params.toString()}`);
+  return response.data;
+};
+
 // ===========================================
 // RARITY CONFIGURATION API
 // ===========================================

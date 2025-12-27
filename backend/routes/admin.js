@@ -263,6 +263,71 @@ router.get('/characters', auth, adminAuth, async (req, res) => {
   }
 });
 
+// Get characters for banner selection (admin only)
+// Supports server-side search with higher limits for modal selection
+router.get('/characters/for-banner', auth, adminAuth, async (req, res) => {
+  try {
+    const search = req.query.search || '';
+    const rarity = req.query.rarity || '';
+    const series = req.query.series || '';
+    const page = Math.max(1, parseInt(req.query.page, 10) || 1);
+    const limit = Math.min(200, Math.max(1, parseInt(req.query.limit, 10) || 100));
+    const offset = (page - 1) * limit;
+
+    // Build where clause for filters
+    const whereClause = {};
+
+    if (search) {
+      whereClause[Op.or] = [
+        { name: { [Op.like]: `%${search}%` } },
+        { series: { [Op.like]: `%${search}%` } }
+      ];
+    }
+
+    if (rarity && rarity !== 'all') {
+      whereClause.rarity = rarity;
+    }
+
+    if (series && series !== 'all') {
+      whereClause.series = series;
+    }
+
+    // Fetch characters and total count in parallel
+    const [characters, total, allSeries] = await Promise.all([
+      Character.findAll({
+        attributes: ['id', 'name', 'series', 'rarity', 'image', 'isR18'],
+        where: whereClause,
+        order: [['name', 'ASC']],
+        limit,
+        offset
+      }),
+      Character.count({ where: whereClause }),
+      // Get all unique series for filter dropdown
+      Character.findAll({
+        attributes: [[sequelize.fn('DISTINCT', sequelize.col('series')), 'series']],
+        where: { series: { [Op.ne]: null, [Op.ne]: '' } },
+        order: [['series', 'ASC']],
+        raw: true
+      })
+    ]);
+
+    res.json({
+      characters,
+      series: allSeries.map(s => s.series).filter(Boolean),
+      pagination: {
+        page,
+        limit,
+        total,
+        totalPages: Math.ceil(total / limit),
+        hasMore: offset + characters.length < total
+      }
+    });
+  } catch (err) {
+    console.error('Characters for banner fetch error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 // Get all users (admin only)
 router.get('/users', auth, adminAuth, async (req, res) => {
   try {
