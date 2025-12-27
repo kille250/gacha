@@ -5,13 +5,15 @@
  * for their characters to enhance specific stats.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaUser, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
 import { GiCrossedSwords, GiBookCover, GiSparkles } from 'react-icons/gi';
 import { useTranslation } from 'react-i18next';
 import { useCharacterSpecialization, useDojoFacility } from '../../hooks/useGameEnhancements';
+import { getAssetUrl } from '../../utils/api';
+import { PLACEHOLDER_IMAGE, isVideo } from '../../utils/mediaUtils';
 
 const spin = keyframes`
   from { transform: rotate(0deg); }
@@ -62,6 +64,12 @@ const CharacterAvatar = styled.div`
   justify-content: center;
   font-size: 2rem;
   overflow: hidden;
+
+  img, video {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+  }
 `;
 
 const CharacterDetails = styled.div`
@@ -255,6 +263,15 @@ const SPECIALIZATION_DATA = {
   }
 };
 
+/**
+ * Get full image URL for character, handling both imageUrl and image fields
+ */
+const getCharacterImageUrl = (char) => {
+  const imagePath = char?.imageUrl || char?.image;
+  if (!imagePath) return null;
+  return getAssetUrl(imagePath);
+};
+
 export function SpecializationPicker({ character, userLevel = 1, onClose }) {
   const { t } = useTranslation();
   const { specialization, loading, error, applying, applySpecialization } = useCharacterSpecialization(character?.id);
@@ -264,6 +281,13 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
   const [applyError, setApplyError] = useState(null);
 
   const hasExistingSpec = !!specialization?.current;
+
+  // Handle image error by falling back to placeholder
+  const handleImageError = useCallback((e) => {
+    if (!e.target.src.includes('data:image/svg') && !e.target.src.includes('placeholder')) {
+      e.target.src = PLACEHOLDER_IMAGE;
+    }
+  }, []);
 
   // Check if specializations feature is unlocked (requires warriors_hall or higher)
   const hasSpecializationsFeature = facility?.current?.features?.includes('specializations') ?? false;
@@ -319,11 +343,33 @@ export function SpecializationPicker({ character, userLevel = 1, onClose }) {
 
       <CharacterInfo>
         <CharacterAvatar $rarity={character?.rarity}>
-          {character?.imageUrl ? (
-            <img src={character.imageUrl} alt={character.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
-          ) : (
-            <FaUser size={32} />
-          )}
+          {(() => {
+            const imageSrc = getCharacterImageUrl(character);
+            const charIsVideo = isVideo(character?.imageUrl || character?.image);
+
+            if (charIsVideo && imageSrc) {
+              return (
+                <video
+                  src={imageSrc}
+                  autoPlay
+                  loop
+                  muted
+                  playsInline
+                  onError={handleImageError}
+                />
+              );
+            }
+            if (imageSrc) {
+              return (
+                <img
+                  src={imageSrc}
+                  alt={character?.name || 'Character'}
+                  onError={handleImageError}
+                />
+              );
+            }
+            return <FaUser size={32} />;
+          })()}
         </CharacterAvatar>
         <CharacterDetails>
           <CharacterName>{character?.name || 'Unknown Character'}</CharacterName>
