@@ -17,6 +17,7 @@ import {
   FaChevronDown,
   FaChevronUp,
 } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 
 const UploadSummary = memo(({
@@ -25,6 +26,7 @@ const UploadSummary = memo(({
   onDismissWarnings,
   onClose,
 }) => {
+  const { t } = useTranslation();
   const [showDetails, setShowDetails] = useState(false);
 
   if (!result) return null;
@@ -72,10 +74,10 @@ const UploadSummary = memo(({
         <SummaryContent>
           <SummaryTitle $status={status}>
             {hasError
-              ? 'Upload Failed'
+              ? t('upload.failed')
               : isSuccess
-                ? `${totalCreated} Character${totalCreated !== 1 ? 's' : ''} Uploaded`
-                : 'Upload Complete'}
+                ? t('upload.charactersUploaded', { count: totalCreated })
+                : t('upload.complete')}
           </SummaryTitle>
 
           {hasError && (
@@ -92,13 +94,13 @@ const UploadSummary = memo(({
               {hasWarnings && (
                 <Stat $type="warning">
                   <FaExclamationTriangle />
-                  {totalWarnings || duplicateWarnings.length} warning{(totalWarnings || duplicateWarnings.length) !== 1 ? 's' : ''}
+                  {t('upload.warnings', { count: totalWarnings || duplicateWarnings.length })}
                 </Stat>
               )}
               {hasErrors && (
                 <Stat $type="error">
                   <FaTimesCircle />
-                  {totalErrors || errors.length} error{(totalErrors || errors.length) !== 1 ? 's' : ''}
+                  {t('upload.errors', { count: totalErrors || errors.length })}
                 </Stat>
               )}
             </QuickStats>
@@ -110,7 +112,7 @@ const UploadSummary = memo(({
           <ExpandButton
             onClick={() => setShowDetails(!showDetails)}
             aria-expanded={showDetails}
-            aria-label={showDetails ? 'Hide details' : 'Show details'}
+            aria-label={showDetails ? t('upload.hideDetails') : t('upload.showDetails')}
           >
             {showDetails ? <FaChevronUp /> : <FaChevronDown />}
           </ExpandButton>
@@ -131,10 +133,10 @@ const UploadSummary = memo(({
               <DetailGroup>
                 <DetailGroupTitle $type="warning">
                   <FaExclamationTriangle />
-                  Possible Duplicates
+                  {t('upload.possibleDuplicates')}
                 </DetailGroupTitle>
                 <DetailGroupText>
-                  These characters were uploaded but may be duplicates of existing ones.
+                  {t('upload.duplicateExplanation')}
                 </DetailGroupText>
                 <DetailList>
                   {duplicateWarnings.map((warning, i) => (
@@ -144,10 +146,10 @@ const UploadSummary = memo(({
                       </DetailItemName>
                       <DetailItemInfo>
                         {warning.similarity && (
-                          <InfoBadge $type="warning">{warning.similarity}% similar</InfoBadge>
+                          <InfoBadge $type="warning">{t('upload.similarPercent', { percent: warning.similarity })}</InfoBadge>
                         )}
                         {warning.existingMatch?.name && (
-                          <span>Similar to: {warning.existingMatch.name}</span>
+                          <span>{t('upload.similarTo', { name: warning.existingMatch.name })}</span>
                         )}
                       </DetailItemInfo>
                     </DetailItem>
@@ -155,7 +157,7 @@ const UploadSummary = memo(({
                 </DetailList>
                 {onDismissWarnings && (
                   <DismissButton onClick={onDismissWarnings}>
-                    Dismiss Warnings
+                    {t('upload.dismissWarnings')}
                   </DismissButton>
                 )}
               </DetailGroup>
@@ -166,7 +168,7 @@ const UploadSummary = memo(({
               <DetailGroup>
                 <DetailGroupTitle $type="error">
                   <FaTimesCircle />
-                  Failed Uploads
+                  {t('upload.failedUploads')}
                 </DetailGroupTitle>
                 <DetailList>
                   {errors.map((err, i) => (
@@ -191,7 +193,7 @@ const UploadSummary = memo(({
       {onClose && (
         <CloseAction>
           <CloseButton onClick={onClose}>
-            Close
+            {t('common.close')}
           </CloseButton>
         </CloseAction>
       )}

@@ -7,6 +7,7 @@
 import React, { Component } from 'react';
 import styled from 'styled-components';
 import { MdRefresh, MdError } from 'react-icons/md';
+import { useTranslation } from 'react-i18next';
 import { theme, Button } from '../../../design-system';
 
 const ErrorContainer = styled.div`
@@ -79,37 +80,41 @@ const Actions = styled.div`
 /**
  * Default fallback component
  */
-const DefaultFallback = ({ error, resetError, fullScreen }) => (
-  <ErrorContainer $fullScreen={fullScreen}>
-    <ErrorIcon>
-      <MdError />
-    </ErrorIcon>
-    <ErrorTitle>Something went wrong</ErrorTitle>
-    <ErrorMessage>
-      An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.
-    </ErrorMessage>
-    <Actions>
-      <Button onClick={() => window.location.reload()} variant="secondary">
-        Reload Page
-      </Button>
-      {resetError && (
-        <Button onClick={resetError}>
-          <MdRefresh style={{ marginRight: 8 }} />
-          Try Again
+const DefaultFallback = ({ error, resetError, fullScreen }) => {
+  const { t } = useTranslation();
+
+  return (
+    <ErrorContainer $fullScreen={fullScreen}>
+      <ErrorIcon>
+        <MdError />
+      </ErrorIcon>
+      <ErrorTitle>{t('errorBoundary.title')}</ErrorTitle>
+      <ErrorMessage>
+        {t('errorBoundary.message')}
+      </ErrorMessage>
+      <Actions>
+        <Button onClick={() => window.location.reload()} variant="secondary">
+          {t('errorBoundary.reloadPage')}
         </Button>
+        {resetError && (
+          <Button onClick={resetError}>
+            <MdRefresh style={{ marginRight: 8 }} />
+            {t('errorBoundary.tryAgain')}
+          </Button>
+        )}
+      </Actions>
+      {process.env.NODE_ENV === 'development' && error && (
+        <ErrorDetails>
+          <ErrorSummary>{t('errorBoundary.errorDetails')}</ErrorSummary>
+          <ErrorStack>
+            {error.toString()}
+            {error.stack && `\n\n${error.stack}`}
+          </ErrorStack>
+        </ErrorDetails>
       )}
-    </Actions>
-    {process.env.NODE_ENV === 'development' && error && (
-      <ErrorDetails>
-        <ErrorSummary>Error details</ErrorSummary>
-        <ErrorStack>
-          {error.toString()}
-          {error.stack && `\n\n${error.stack}`}
-        </ErrorStack>
-      </ErrorDetails>
-    )}
-  </ErrorContainer>
-);
+    </ErrorContainer>
+  );
+};
 
 /**
  * ErrorBoundary Component

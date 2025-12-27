@@ -7,7 +7,7 @@
  * - Compact and full display modes
  * - Animation for checking state
  */
-import React, { memo } from 'react';
+import React, { memo, useMemo } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import {
   FaSpinner,
@@ -17,6 +17,7 @@ import {
   FaClock,
   FaCloudUploadAlt,
 } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { FILE_STATUS } from '../../hooks/useUploadState';
 
@@ -29,20 +30,16 @@ const pulse = keyframes`
   50% { opacity: 0.6; }
 `;
 
-// Status configuration
-const STATUS_CONFIG = {
+// Status style configuration (non-translatable)
+const STATUS_STYLES = {
   [FILE_STATUS.PENDING]: {
     icon: FaClock,
-    label: 'Ready',
-    description: 'File is ready to upload',
     color: theme.colors.textMuted,
     bgColor: 'rgba(255, 255, 255, 0.1)',
     borderColor: 'rgba(255, 255, 255, 0.2)',
   },
   [FILE_STATUS.CHECKING]: {
     icon: FaSpinner,
-    label: 'Analyzing',
-    description: 'Analyzing file for duplicates',
     color: theme.colors.info,
     bgColor: 'rgba(90, 200, 250, 0.15)',
     borderColor: 'rgba(90, 200, 250, 0.3)',
@@ -50,8 +47,6 @@ const STATUS_CONFIG = {
   },
   [FILE_STATUS.UPLOADING]: {
     icon: FaCloudUploadAlt,
-    label: 'Uploading',
-    description: 'File is being uploaded',
     color: theme.colors.info,
     bgColor: 'rgba(90, 200, 250, 0.15)',
     borderColor: 'rgba(90, 200, 250, 0.3)',
@@ -59,36 +54,71 @@ const STATUS_CONFIG = {
   },
   [FILE_STATUS.ACCEPTED]: {
     icon: FaCheck,
-    label: 'Valid',
-    description: 'File passed all checks',
     color: theme.colors.success,
     bgColor: 'rgba(52, 199, 89, 0.15)',
     borderColor: 'rgba(52, 199, 89, 0.3)',
   },
   [FILE_STATUS.WARNING]: {
     icon: FaExclamationTriangle,
-    label: 'Warning',
-    description: 'Possible duplicate detected',
     color: theme.colors.warning,
     bgColor: 'rgba(255, 159, 10, 0.15)',
     borderColor: 'rgba(255, 159, 10, 0.3)',
   },
   [FILE_STATUS.BLOCKED]: {
     icon: FaTimesCircle,
-    label: 'Blocked',
-    description: 'Duplicate found - cannot upload',
     color: theme.colors.error,
     bgColor: 'rgba(255, 59, 48, 0.15)',
     borderColor: 'rgba(255, 59, 48, 0.3)',
   },
   [FILE_STATUS.ERROR]: {
     icon: FaTimesCircle,
-    label: 'Error',
-    description: 'Upload failed',
     color: theme.colors.error,
     bgColor: 'rgba(255, 59, 48, 0.15)',
     borderColor: 'rgba(255, 59, 48, 0.3)',
   },
+};
+
+// Hook to get translated status config
+const useStatusConfig = () => {
+  const { t } = useTranslation();
+
+  return useMemo(() => ({
+    [FILE_STATUS.PENDING]: {
+      ...STATUS_STYLES[FILE_STATUS.PENDING],
+      label: t('uploadStatus.ready'),
+      description: t('uploadStatus.readyDesc'),
+    },
+    [FILE_STATUS.CHECKING]: {
+      ...STATUS_STYLES[FILE_STATUS.CHECKING],
+      label: t('uploadStatus.analyzing'),
+      description: t('uploadStatus.analyzingDesc'),
+    },
+    [FILE_STATUS.UPLOADING]: {
+      ...STATUS_STYLES[FILE_STATUS.UPLOADING],
+      label: t('uploadStatus.uploading'),
+      description: t('uploadStatus.uploadingDesc'),
+    },
+    [FILE_STATUS.ACCEPTED]: {
+      ...STATUS_STYLES[FILE_STATUS.ACCEPTED],
+      label: t('uploadStatus.valid'),
+      description: t('uploadStatus.validDesc'),
+    },
+    [FILE_STATUS.WARNING]: {
+      ...STATUS_STYLES[FILE_STATUS.WARNING],
+      label: t('uploadStatus.warning'),
+      description: t('uploadStatus.warningDesc'),
+    },
+    [FILE_STATUS.BLOCKED]: {
+      ...STATUS_STYLES[FILE_STATUS.BLOCKED],
+      label: t('uploadStatus.blocked'),
+      description: t('uploadStatus.blockedDesc'),
+    },
+    [FILE_STATUS.ERROR]: {
+      ...STATUS_STYLES[FILE_STATUS.ERROR],
+      label: t('uploadStatus.error'),
+      description: t('uploadStatus.errorDesc'),
+    },
+  }), [t]);
 };
 
 const StatusBadge = memo(({
@@ -98,6 +128,7 @@ const StatusBadge = memo(({
   className,
   title,
 }) => {
+  const STATUS_CONFIG = useStatusConfig();
   const config = STATUS_CONFIG[status] || STATUS_CONFIG[FILE_STATUS.PENDING];
   const Icon = config.icon;
 
@@ -194,6 +225,6 @@ const Label = styled.span`
   letter-spacing: 0.5px;
 `;
 
-// Export status config for external use
-export { STATUS_CONFIG };
+// Export status styles for external use (non-translated)
+export { STATUS_STYLES };
 export default StatusBadge;

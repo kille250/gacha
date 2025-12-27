@@ -26,6 +26,7 @@ import PropTypes from 'prop-types';
 import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { MdWifiOff, MdWifi, MdRefresh, MdClose, MdSignalWifi1Bar } from 'react-icons/md';
+import { useTranslation } from 'react-i18next';
 import { theme } from '../../../design-system';
 import { useNetworkStatus } from '../../../hooks/useNetworkStatus';
 
@@ -251,6 +252,7 @@ const NetworkStatusBanner = ({
   dismissible = true,
   onlineDisplayDuration = 3000,
 }) => {
+  const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);
   const [isRetrying, setIsRetrying] = useState(false);
 
@@ -311,16 +313,16 @@ const NetworkStatusBanner = ({
     ) : (
       <IconWrapper $pulse><MdWifiOff /></IconWrapper>
     );
-    message = isRetrying ? 'Reconnecting...' : 'You are offline';
+    message = isRetrying ? t('network.reconnecting') : t('network.offline');
     showRetry = !isRetrying && onRetry;
   } else if (shouldShowOnline) {
     variant = 'online';
     icon = <IconWrapper><MdWifi /></IconWrapper>;
-    message = 'Back online!';
+    message = t('network.backOnline');
   } else if (shouldShowSlow) {
     variant = 'slow';
     icon = <IconWrapper><MdSignalWifi1Bar /></IconWrapper>;
-    message = 'Slow connection detected';
+    message = t('network.slowConnection');
   }
 
   // Don't render if nothing to show
@@ -346,17 +348,17 @@ const NetworkStatusBanner = ({
           {showRetry && (
             <ActionButton
               onClick={handleRetry}
-              aria-label="Retry connection"
+              aria-label={t('network.retryConnection')}
             >
               <MdRefresh aria-hidden="true" />
-              Retry
+              {t('network.retry')}
             </ActionButton>
           )}
 
           {dismissible && (shouldShowOnline || shouldShowSlow) && (
             <CloseButton
               onClick={handleDismiss}
-              aria-label="Dismiss notification"
+              aria-label={t('network.dismissNotification')}
             >
               <MdClose aria-hidden="true" />
             </CloseButton>
