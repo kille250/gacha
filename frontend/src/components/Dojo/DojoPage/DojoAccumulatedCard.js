@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { MdAccessTime, MdAutorenew, MdWarning } from 'react-icons/md';
 import { FaCoins, FaTicketAlt, FaStar } from 'react-icons/fa';
 import styled, { keyframes } from 'styled-components';
-import { theme } from '../../../design-system';
+import { theme, useReducedMotion } from '../../../design-system';
 
 import {
   AccumulatedCard,
@@ -42,8 +42,11 @@ const CappedWarning = styled.div`
   color: ${theme.colors.warning};
   font-size: ${theme.fontSizes.xs};
   font-weight: ${theme.fontWeights.medium};
-  animation: ${pulse} 2s ease-in-out infinite;
   margin-top: ${theme.spacing.sm};
+
+  @media (prefers-reduced-motion: no-preference) {
+    animation: ${pulse} 2s ease-in-out infinite;
+  }
 
   svg {
     font-size: 14px;
@@ -65,6 +68,13 @@ const DojoAccumulatedCard = ({
   setError,
 }) => {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
+
+  // Motion props that respect reduced motion preference
+  const buttonMotion = prefersReducedMotion ? {} : {
+    whileHover: canClaim && !locked ? { scale: 1.02 } : {},
+    whileTap: canClaim && !locked ? { scale: 0.98 } : {},
+  };
 
   const handleClaimClick = () => {
     const reason = getClaimDisabledReason();
@@ -131,8 +141,7 @@ const DojoAccumulatedCard = ({
         disabled={!canClaim || claiming || locked}
         $canClaim={canClaim && !locked}
         title={getClaimDisabledReason()}
-        whileHover={canClaim && !locked ? { scale: 1.02 } : {}}
-        whileTap={canClaim && !locked ? { scale: 0.98 } : {}}
+        {...buttonMotion}
         aria-label={claiming ? t('dojo.claiming') : canClaim ? t('dojo.claimRewards') : t('dojo.noRewardsYet')}
       >
         {claiming ? (

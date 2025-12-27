@@ -282,7 +282,7 @@ const DojoHourlyRateCard = ({ status }) => {
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpBaseRatesDesc', {
-                  defaultValue: 'Each character generates points based on their rarity: Common (5/h), Uncommon (10/h), Rare (20/h), Epic (40/h), Legendary (60/h).'
+                  defaultValue: 'Each character generates points based on their rarity: Common (5/h), Uncommon (8/h), Rare (15/h), Epic (30/h), Legendary (60/h).'
                 })}
               </TooltipText>
             </TooltipSection>
@@ -304,7 +304,7 @@ const DojoHourlyRateCard = ({ status }) => {
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpSynergyDesc', {
-                  defaultValue: 'Training multiple characters from the same series grants bonus earnings. 2 chars = +10%, 3 = +25%, 4 = +45%, 5 = +70%, 6+ = +100%.'
+                  defaultValue: 'Training multiple characters from the same series grants bonus earnings. 2 chars = +15%, 3 = +35%, 4 = +55%, 5 = +75%, 6+ = +100%.'
                 })}
               </TooltipText>
             </TooltipSection>

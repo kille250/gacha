@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { MdAutorenew } from 'react-icons/md';
 import { FaCoins } from 'react-icons/fa';
 import styled from 'styled-components';
-import { theme } from '../../../design-system';
+import { theme, useReducedMotion } from '../../../design-system';
 
 import {
   UpgradesSection,
@@ -52,6 +52,7 @@ const DojoUpgradesSection = ({
   setError,
 }) => {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
 
   const availableUpgrades = status?.availableUpgrades || [];
 
@@ -83,8 +84,8 @@ const DojoUpgradesSection = ({
               $disabled={isDisabled}
               onClick={() => handleUpgradeClick(upgrade, isDisabled, disabledReason)}
               title={disabledReason}
-              whileHover={!isDisabled ? { scale: 1.02 } : {}}
-              whileTap={!isDisabled ? { scale: 0.98 } : {}}
+              whileHover={!isDisabled && !prefersReducedMotion ? { scale: 1.02 } : {}}
+              whileTap={!isDisabled && !prefersReducedMotion ? { scale: 0.98 } : {}}
               aria-label={`${upgrade.name} - ${upgrade.cost.toLocaleString()} ${t('common.points')}`}
               aria-disabled={isDisabled}
             >

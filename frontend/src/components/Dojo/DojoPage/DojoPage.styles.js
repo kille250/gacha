@@ -1228,7 +1228,7 @@ export const UpgradeCard = styled(motion.div)`
     : theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
   cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
-  opacity: ${props => props.$disabled ? 0.6 : 1};
+  opacity: ${props => props.$disabled ? 0.7 : 1};
   transition: all ${theme.transitions.fast};
   min-height: 60px;
   width: 100%;
@@ -1239,7 +1239,7 @@ export const UpgradeCard = styled(motion.div)`
 
   &:disabled {
     cursor: not-allowed;
-    opacity: 0.6;
+    opacity: 0.7;
   }
 
   &:hover:not(:disabled), &:active:not(:disabled) {

@@ -11,7 +11,7 @@ import { MdAdd, MdLock, MdAutorenew } from 'react-icons/md';
 import { FaDumbbell, FaTimes, FaStar, FaMagic } from 'react-icons/fa';
 import { GiCrossedSwords, GiBookCover, GiSparkles } from 'react-icons/gi';
 import styled from 'styled-components';
-import { theme } from '../../../design-system';
+import { theme, useReducedMotion } from '../../../design-system';
 
 import { getAssetUrl } from '../../../utils/api';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../../../utils/mediaUtils';
@@ -74,7 +74,7 @@ const QuickFillButton = styled.button`
   }
 
   &:disabled {
-    opacity: 0.5;
+    opacity: 0.7;
     cursor: not-allowed;
   }
 
@@ -100,6 +100,41 @@ const HeaderRow = styled.div`
   gap: ${theme.spacing.sm};
 `;
 
+// Empty state guidance when no characters are training
+const EmptyStateGuidance = styled.div`
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: ${theme.spacing.xl};
+  background: linear-gradient(135deg, rgba(88, 86, 214, 0.05), rgba(175, 82, 222, 0.05));
+  border: 1px dashed rgba(88, 86, 214, 0.3);
+  border-radius: ${theme.radius.xl};
+  color: ${theme.colors.textSecondary};
+  gap: ${theme.spacing.md};
+
+  svg {
+    font-size: 32px;
+    color: ${theme.colors.primary};
+    opacity: 0.7;
+  }
+`;
+
+const GuidanceTitle = styled.div`
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+`;
+
+const GuidanceText = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  max-width: 280px;
+  line-height: 1.5;
+`;
+
 const DojoTrainingSlots = ({
   status,
   getRarityColor,
@@ -112,7 +147,12 @@ const DojoTrainingSlots = ({
   hasEmptySlots = false,
 }) => {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [confirmRemove, setConfirmRemove] = useState(null);
+
+  // Motion props that respect reduced motion preference
+  const hoverScale = prefersReducedMotion ? {} : { scale: 1.02 };
+  const tapScale = prefersReducedMotion ? {} : { scale: 0.98 };
 
   const maxSlots = status?.maxSlots || 3;
   const usedSlots = status?.usedSlots || 0;
@@ -175,6 +215,21 @@ const DojoTrainingSlots = ({
       </SlotsHeader>
 
       <SlotsGrid role="list">
+        {/* Empty state guidance when no characters are training */}
+        {usedSlots === 0 && (
+          <EmptyStateGuidance>
+            <FaDumbbell aria-hidden="true" />
+            <GuidanceTitle>
+              {t('dojo.emptyStateTitle', { defaultValue: 'Start Training!' })}
+            </GuidanceTitle>
+            <GuidanceText>
+              {t('dojo.emptyStateText', {
+                defaultValue: 'Assign characters to training slots to earn points and tickets passively. Higher rarity and leveled characters earn more rewards!'
+              })}
+            </GuidanceText>
+          </EmptyStateGuidance>
+        )}
+
         {/* Active Slots */}
         {Array.from({ length: maxSlots }).map((_, idx) => {
           const slot = status?.slots?.[idx];
@@ -187,7 +242,7 @@ const DojoTrainingSlots = ({
                 $rarity={char.rarity}
                 $color={getRarityColor(char.rarity)}
                 $glow={getRarityGlow(char.rarity)}
-                whileHover={{ scale: 1.02 }}
+                whileHover={hoverScale}
                 role="listitem"
                 tabIndex={0}
                 aria-label={`${char.name} - ${char.rarity}${char.level > 1 ? ` Level ${char.level}` : ''}${char.specialization ? ` (${char.specialization})` : ''}`}
@@ -267,8 +322,8 @@ const DojoTrainingSlots = ({
               key={idx}
               onClick={() => onOpenPicker(idx)}
               onKeyDown={(e) => handleSlotKeyDown(e, () => onOpenPicker(idx))}
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={hoverScale}
+              whileTap={tapScale}
               role="button"
               tabIndex={0}
               aria-label={t('dojo.addCharacter')}

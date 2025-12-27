@@ -6,7 +6,9 @@
 
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { FaCoins, FaTicketAlt, FaStar } from 'react-icons/fa';
+import { FaCoins, FaTicketAlt, FaStar, FaExclamationTriangle } from 'react-icons/fa';
+import styled from 'styled-components';
+import { theme } from '../../../design-system';
 
 import {
   DailyCapsCard,
@@ -29,12 +31,42 @@ import {
   TicketProgressFill,
 } from './DojoPage.styles';
 
+// Warning badge for approaching cap (80%+)
+const ApproachingCapWarning = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: rgba(255, 159, 10, 0.1);
+  border: 1px solid rgba(255, 159, 10, 0.3);
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.warning};
+  font-size: ${theme.fontSizes.xs};
+  margin-top: ${theme.spacing.sm};
+
+  svg {
+    font-size: 12px;
+    flex-shrink: 0;
+  }
+`;
+
 const DojoDailyCapsCard = ({ dailyCaps, ticketProgress }) => {
   const { t } = useTranslation();
 
   if (!dailyCaps) return null;
 
   const hasTicketProgress = ticketProgress && (ticketProgress.roll > 0 || ticketProgress.premium > 0);
+
+  // Calculate percentages for proactive warnings (80% threshold)
+  const pointsPercent = (dailyCaps.todayClaimed.points / dailyCaps.limits.points) * 100;
+  const rollTicketsPercent = (dailyCaps.todayClaimed.rollTickets / dailyCaps.limits.rollTickets) * 100;
+  const premiumTicketsPercent = (dailyCaps.todayClaimed.premiumTickets / dailyCaps.limits.premiumTickets) * 100;
+
+  // Show warning if any cap is approaching (80%+) but not yet full
+  const isApproachingPointsCap = pointsPercent >= 80 && pointsPercent < 100;
+  const isApproachingRollCap = rollTicketsPercent >= 80 && rollTicketsPercent < 100;
+  const isApproachingPremiumCap = premiumTicketsPercent >= 80 && premiumTicketsPercent < 100;
+  const isApproachingAnyCap = isApproachingPointsCap || isApproachingRollCap || isApproachingPremiumCap;
 
   return (
     <DailyCapsCard
@@ -128,6 +160,18 @@ const DojoDailyCapsCard = ({ dailyCaps, ticketProgress }) => {
           </DailyCapProgress>
         </DailyCapItem>
       </DailyCapsGrid>
+
+      {/* Proactive warning when approaching cap (80%+) */}
+      {isApproachingAnyCap && (
+        <ApproachingCapWarning role="alert">
+          <FaExclamationTriangle aria-hidden="true" />
+          <span>
+            {t('dojo.approachingCapWarning', {
+              defaultValue: 'Approaching daily limit! Claim rewards soon to maximize gains.'
+            })}
+          </span>
+        </ApproachingCapWarning>
+      )}
 
       {/* Ticket Progress (Pity System) */}
       {hasTicketProgress && (

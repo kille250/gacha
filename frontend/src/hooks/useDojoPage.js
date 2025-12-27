@@ -26,6 +26,24 @@ import {
   purchaseUpgrade as dojoPurchaseUpgrade
 } from '../actions/dojoActions';
 
+// Fetch timeout constant (15 seconds)
+const FETCH_TIMEOUT_MS = 15000;
+
+/**
+ * Wrapper to add timeout to fetch operations
+ * @param {Promise} fetchPromise - The fetch promise to wrap
+ * @param {number} timeoutMs - Timeout in milliseconds
+ * @returns {Promise} - Resolves with fetch result or rejects on timeout
+ */
+const withTimeout = (fetchPromise, timeoutMs = FETCH_TIMEOUT_MS) => {
+  return Promise.race([
+    fetchPromise,
+    new Promise((_, reject) =>
+      setTimeout(() => reject(new Error('Request timed out. Please try again.')), timeoutMs)
+    )
+  ]);
+};
+
 export const useDojoPage = () => {
   const { t } = useTranslation();
   const { user, setUser, refreshUser } = useContext(AuthContext);
@@ -78,17 +96,20 @@ export const useDojoPage = () => {
     };
   }, []);
 
-  // Fetch dojo status
+  // Fetch dojo status with timeout
   const fetchStatus = useCallback(async () => {
     try {
-      const data = await getDojoStatus();
+      const data = await withTimeout(getDojoStatus());
       if (!isMountedRef.current) return;
       setStatus(data);
       lastFetchTimeRef.current = Date.now();
     } catch (err) {
       if (!isMountedRef.current) return;
       console.error('Failed to fetch dojo status:', err);
-      setError(t('dojo.failedLoadStatus'));
+      const errorMessage = err.message?.includes('timed out')
+        ? t('dojo.requestTimeout', { defaultValue: 'Request timed out. Please try again.' })
+        : t('dojo.failedLoadStatus');
+      setError(errorMessage);
     } finally {
       if (isMountedRef.current) setLoading(false);
     }
@@ -98,6 +119,22 @@ export const useDojoPage = () => {
   useEffect(() => {
     fetchStatus();
   }, [fetchStatus]);
+
+  // Pre-fetch available characters on mount for Quick Fill functionality (with timeout)
+  const fetchAvailableCharacters = useCallback(async () => {
+    try {
+      const data = await withTimeout(getDojoAvailableCharacters());
+      if (isMountedRef.current) {
+        setAvailableCharacters(data.characters || []);
+      }
+    } catch (err) {
+      console.error('Failed to pre-fetch available characters:', err);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchAvailableCharacters();
+  }, [fetchAvailableCharacters]);
 
   // Auto-refresh timer for idle game rewards (visibility-aware)
   const wasInteractingRef = useRef(isInteracting);
@@ -148,15 +185,34 @@ export const useDojoPage = () => {
     };
   }, [fetchStatus, isInteracting]);
 
-  // Visibility change handler
+  // Visibility change handler with debounce (500ms) to prevent rapid refetches
+  const visibilityDebounceRef = useRef(null);
   useEffect(() => {
     return onVisibilityChange(VISIBILITY_CALLBACK_IDS.DOJO_STATUS, () => {
-      const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
-      if (timeSinceLastFetch > STALE_THRESHOLDS.normal) {
-        fetchStatus();
+      // Clear any pending debounced fetch
+      if (visibilityDebounceRef.current) {
+        clearTimeout(visibilityDebounceRef.current);
       }
+
+      // Debounce the refetch by 500ms to prevent rapid tab switching issues
+      visibilityDebounceRef.current = setTimeout(() => {
+        const timeSinceLastFetch = Date.now() - lastFetchTimeRef.current;
+        if (timeSinceLastFetch > STALE_THRESHOLDS.normal) {
+          fetchStatus();
+        }
+        visibilityDebounceRef.current = null;
+      }, 500);
     });
   }, [fetchStatus]);
+
+  // Cleanup debounce timer on unmount
+  useEffect(() => {
+    return () => {
+      if (visibilityDebounceRef.current) {
+        clearTimeout(visibilityDebounceRef.current);
+      }
+    };
+  }, []);
 
   // Network offline detection
   useEffect(() => {
@@ -398,7 +454,10 @@ export const useDojoPage = () => {
     setQuickFilling(true);
 
     try {
-      // Assign characters one by one
+      // Assign characters sequentially to ensure transaction safety.
+      // The backend uses row-level locking (LOCK.UPDATE) which prevents race conditions.
+      // A batch endpoint could improve performance but sequential awaits are safer
+      // and ensure each assignment completes before the next begins.
       for (let i = 0; i < charsToAssign.length; i++) {
         const char = charsToAssign[i];
         const slotIdx = emptySlotIndices[i];

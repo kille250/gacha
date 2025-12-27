@@ -18,7 +18,7 @@ import { GiCrossedSwords, GiBookCover, GiSparkles } from 'react-icons/gi';
 import { AnimatePresence } from 'framer-motion';
 import styled from 'styled-components';
 
-import { Spinner, theme } from '../../../design-system';
+import { Spinner, theme, useReducedMotion } from '../../../design-system';
 import { getAssetUrl } from '../../../utils/api';
 import { PLACEHOLDER_IMAGE, isVideo, getVideoMimeType } from '../../../utils/mediaUtils';
 import {
@@ -149,11 +149,23 @@ const DojoCharacterPicker = ({
   currentlyTrainingSeries = [], // Series of characters currently in dojo
 }) => {
   const { t } = useTranslation();
+  const prefersReducedMotion = useReducedMotion();
   const [selectedCharId, setSelectedCharId] = useState(null);
   const [isConfirming, setIsConfirming] = useState(false);
   const [sortBy, setSortBy] = useState(SORT_OPTIONS.RARITY_DESC);
   const searchInputRef = useRef(null);
   const gridRef = useRef(null);
+
+  // Motion variants that respect reduced motion preference
+  const motionProps = prefersReducedMotion ? {} : {
+    overlay: { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } },
+    content: { initial: { opacity: 0, scale: 0.95, y: 20 }, animate: { opacity: 1, scale: 1, y: 0 }, exit: { opacity: 0, scale: 0.95, y: 20 } },
+    card: { whileHover: { scale: 1.03 }, whileTap: { scale: 0.97 } },
+    button: { whileHover: { scale: 1.02 }, whileTap: { scale: 0.98 } },
+    indicator: { initial: { opacity: 0, scale: 0 }, animate: { opacity: 1, scale: 1 } },
+    clearButton: { initial: { opacity: 0, scale: 0.8 }, animate: { opacity: 1, scale: 1 }, whileHover: { scale: 1.1 }, whileTap: { scale: 0.9 } },
+    footer: { initial: { opacity: 0, y: 20 }, animate: { opacity: 1, y: 0 } },
+  };
 
   // Get selected character details
   const selectedChar = selectedCharId
@@ -263,15 +275,11 @@ const DojoCharacterPicker = ({
 
   return (
     <ModalOverlay
-      initial={{ opacity: 0 }}
-      animate={{ opacity: 1 }}
-      exit={{ opacity: 0 }}
+      {...motionProps.overlay}
       onClick={onClose}
     >
       <ModalContent
-        initial={{ opacity: 0, scale: 0.95, y: 20 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        exit={{ opacity: 0, scale: 0.95, y: 20 }}
+        {...motionProps.content}
         onClick={(e) => e.stopPropagation()}
         role="dialog"
         aria-label={t('dojo.selectCharacter')}
@@ -300,11 +308,8 @@ const DojoCharacterPicker = ({
             {searchQuery && (
               <PickerSearchClear
                 onClick={handleClearSearch}
-                initial={{ opacity: 0, scale: 0.8 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.8 }}
-                whileHover={{ scale: 1.1 }}
-                whileTap={{ scale: 0.9 }}
+                {...motionProps.clearButton}
+                exit={prefersReducedMotion ? {} : { opacity: 0, scale: 0.8 }}
                 aria-label={t('common.clear') || 'Clear search'}
               >
                 <MdClear />
@@ -381,8 +386,7 @@ const DojoCharacterPicker = ({
                             $isSelected={isSelected}
                             $hasSynergy={!!synergyInfo}
                             onClick={() => handleCharacterClick(char.id)}
-                            whileHover={{ scale: 1.03 }}
-                            whileTap={{ scale: 0.97 }}
+                            {...motionProps.card}
                             role="option"
                             aria-selected={isSelected}
                             aria-label={`${char.name} - ${char.rarity}${char.level ? ` Level ${char.level}` : ''}${synergyInfo ? ` - Synergy ${synergyInfo.count}` : ''}`}
@@ -406,9 +410,8 @@ const DojoCharacterPicker = ({
                             <AnimatePresence>
                               {isSelected && (
                                 <PickerSelectedIndicator
-                                  initial={{ opacity: 0, scale: 0 }}
-                                  animate={{ opacity: 1, scale: 1 }}
-                                  exit={{ opacity: 0, scale: 0 }}
+                                  {...motionProps.indicator}
+                                  exit={prefersReducedMotion ? {} : { opacity: 0, scale: 0 }}
                                 >
                                   <MdCheck />
                                 </PickerSelectedIndicator>
@@ -476,16 +479,14 @@ const DojoCharacterPicker = ({
         <AnimatePresence>
           {selectedChar && (
             <PickerFooter
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: 20 }}
+              {...motionProps.footer}
+              exit={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
             >
               <PickerConfirmButton
                 onClick={handleConfirm}
                 disabled={isConfirming}
                 $color={getRarityColor(selectedChar.rarity)}
-                whileHover={{ scale: 1.02 }}
-                whileTap={{ scale: 0.98 }}
+                {...motionProps.button}
               >
                 {isConfirming ? (
                   <Spinner size="small" />
