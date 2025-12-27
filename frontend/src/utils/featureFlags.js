@@ -9,12 +9,10 @@
 
 export const FEATURES = {
   NEW_VALIDATION_UI: 'new-validation-ui',
-  UPLOAD_QUEUE: 'upload-queue',
   SWIPE_TO_DELETE: 'swipe-to-delete',
   UNDO_REMOVAL: 'undo-removal',
   ENHANCED_PROGRESS: 'enhanced-progress',
   REDUCED_MOTION: 'reduced-motion',
-  LAZY_VIDEO_THUMBNAILS: 'lazy-video-thumbnails',
   FOCUS_FIRST_ERROR: 'focus-first-error',
 };
 
@@ -31,7 +29,6 @@ export const isEnabled = (feature) => {
     FEATURES.ENHANCED_PROGRESS,
     FEATURES.REDUCED_MOTION,
     FEATURES.SWIPE_TO_DELETE,
-    FEATURES.LAZY_VIDEO_THUMBNAILS,
     FEATURES.FOCUS_FIRST_ERROR,
   ];
 

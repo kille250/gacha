@@ -142,14 +142,17 @@ const isValidUUID = (value) => {
 };
 
 /**
- * Parse date value - converts empty/invalid strings to null
+ * Parse date value - converts empty/invalid strings to null or defaultValue
  * @param {any} dateValue - Date value to parse (string, Date, or null/undefined)
- * @returns {Date|null} - Valid Date object or null
+ * @param {Date|null} [defaultValue=null] - Default value if parsing fails
+ * @returns {Date|null} - Valid Date object or defaultValue
  */
-const parseDate = (dateValue) => {
-  if (!dateValue || dateValue === '') return null;
+const parseDate = (dateValue, defaultValue = null) => {
+  if (!dateValue || dateValue === '' || dateValue === 'Invalid date' || dateValue === 'null') {
+    return defaultValue;
+  }
   const date = new Date(dateValue);
-  return isNaN(date.getTime()) ? null : date;
+  return isNaN(date.getTime()) ? defaultValue : date;
 };
 
 module.exports = {
