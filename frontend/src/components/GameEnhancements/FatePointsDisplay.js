@@ -8,7 +8,7 @@
 import React, { useState } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTicketAlt, FaHeart, FaCrown, FaSync, FaMagic } from 'react-icons/fa';
+import { FaTicketAlt, FaHeart, FaCrown, FaSync, FaMagic, FaCheck } from 'react-icons/fa';
 import { useFatePoints } from '../../hooks/useGameEnhancements';
 
 const Container = styled(motion.div)`
@@ -232,6 +232,44 @@ const InfoBox = styled.div`
   color: #888;
 `;
 
+// Success Toast
+const SuccessToast = styled(motion.div)`
+  position: fixed;
+  bottom: 24px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: linear-gradient(135deg, #4caf50 0%, #388e3c 100%);
+  color: #fff;
+  padding: 16px 24px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  box-shadow: 0 8px 32px rgba(76, 175, 80, 0.4);
+  z-index: 1001;
+`;
+
+const ToastIcon = styled.div`
+  width: 28px;
+  height: 28px;
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const ToastContent = styled.div`
+  .title {
+    font-weight: 600;
+    font-size: 0.95rem;
+  }
+  .hint {
+    font-size: 0.8rem;
+    opacity: 0.9;
+  }
+`;
+
 const EXCHANGE_OPTIONS = [
   {
     id: 'rare_selector',
@@ -267,6 +305,7 @@ export function FatePointsDisplay({ bannerId = null }) {
   const { fatePoints, loading, error, exchangePoints } = useFatePoints(bannerId);
   const [selectedItem, setSelectedItem] = useState(null);
   const [exchanging, setExchanging] = useState(false);
+  const [successToast, setSuccessToast] = useState(null);
 
   if (loading) {
     return (
@@ -292,6 +331,19 @@ export function FatePointsDisplay({ bannerId = null }) {
     try {
       // Pass the exchange type to the API
       await exchangePoints(selectedItem.id);
+
+      // Show success toast
+      const isSelector = selectedItem.id.includes('selector');
+      setSuccessToast({
+        title: `${selectedItem.name} obtained!`,
+        hint: isSelector
+          ? 'Go to Profile to use your selector'
+          : 'Your pity has been reset to 50%'
+      });
+
+      // Auto-hide toast after 4 seconds
+      setTimeout(() => setSuccessToast(null), 4000);
+
       setSelectedItem(null);
     } catch (err) {
       console.error('Exchange failed:', err);
@@ -400,6 +452,26 @@ export function FatePointsDisplay({ bannerId = null }) {
               </ButtonGroup>
             </ModalContent>
           </ExchangeModal>
+        )}
+      </AnimatePresence>
+
+      {/* Success Toast */}
+      <AnimatePresence>
+        {successToast && (
+          <SuccessToast
+            initial={{ opacity: 0, y: 50, x: '-50%' }}
+            animate={{ opacity: 1, y: 0, x: '-50%' }}
+            exit={{ opacity: 0, y: 50, x: '-50%' }}
+            onClick={() => setSuccessToast(null)}
+          >
+            <ToastIcon>
+              <FaCheck size={14} />
+            </ToastIcon>
+            <ToastContent>
+              <div className="title">{successToast.title}</div>
+              <div className="hint">{successToast.hint}</div>
+            </ToastContent>
+          </SuccessToast>
         )}
       </AnimatePresence>
     </>

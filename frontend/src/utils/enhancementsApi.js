@@ -227,6 +227,44 @@ export const accountLevelApi = {
 };
 
 // ===========================================
+// CHARACTER SELECTORS
+// ===========================================
+
+export const selectorApi = {
+  /**
+   * Get user's character selectors inventory
+   */
+  getSelectors: async () => {
+    const response = await api.get('/enhancements/selectors');
+    return response.data;
+  },
+
+  /**
+   * Get available characters for a given rarity (for selector redemption)
+   * @param {string} rarity - 'rare', 'epic', or 'legendary'
+   */
+  getCharactersForRarity: async (rarity) => {
+    const response = await api.get('/enhancements/selectors/characters', {
+      params: { rarity }
+    });
+    return response.data;
+  },
+
+  /**
+   * Use a selector to claim a specific character
+   * @param {number} selectorIndex - Index of the selector to use
+   * @param {number} characterId - ID of the character to claim
+   */
+  useSelector: async (selectorIndex, characterId) => {
+    const response = await api.post('/enhancements/selectors/use', {
+      selectorIndex,
+      characterId
+    });
+    return response.data;
+  }
+};
+
+// ===========================================
 // COMBINED EXPORT
 // ===========================================
 
@@ -235,7 +273,8 @@ const enhancementsApi = {
   fishing: fishingEnhancements,
   gacha: gachaEnhancements,
   retention: retentionSystems,
-  accountLevel: accountLevelApi
+  accountLevel: accountLevelApi,
+  selectors: selectorApi
 };
 
 export default enhancementsApi;

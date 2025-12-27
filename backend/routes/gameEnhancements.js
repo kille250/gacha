@@ -688,4 +688,202 @@ router.get('/account-level/check-requirement', [auth, enforcementMiddleware], as
   }
 });
 
+// ===========================================
+// CHARACTER SELECTORS
+// ===========================================
+
+/**
+ * GET /api/enhancements/selectors
+ * Get user's character selectors inventory
+ */
+router.get('/selectors', [auth, enforcementMiddleware], async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const selectors = user.characterSelectors || [];
+
+    // Filter to only unused selectors and add index for identification
+    const availableSelectors = selectors
+      .map((s, index) => ({ ...s, id: index }))
+      .filter(s => !s.used);
+
+    res.json({
+      selectors: availableSelectors,
+      total: selectors.length,
+      available: availableSelectors.length,
+      used: selectors.filter(s => s.used).length
+    });
+  } catch (err) {
+    console.error('Get selectors error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * GET /api/enhancements/selectors/characters
+ * Get available characters for a given rarity (for selector redemption)
+ */
+router.get('/selectors/characters', [auth, enforcementMiddleware], async (req, res) => {
+  try {
+    const { rarity } = req.query;
+
+    if (!rarity || !['rare', 'epic', 'legendary'].includes(rarity)) {
+      return res.status(400).json({ error: 'Valid rarity required (rare, epic, legendary)' });
+    }
+
+    // Get all characters of this rarity
+    const characters = await Character.findAll({
+      where: { rarity },
+      attributes: ['id', 'name', 'rarity', 'element', 'imageUrl'],
+      order: [['name', 'ASC']]
+    });
+
+    // Get user's collection to mark owned characters
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: req.user.id },
+      attributes: ['CharacterId']
+    });
+    const ownedIds = new Set(userCharacters.map(uc => uc.CharacterId));
+
+    const charactersWithOwnership = characters.map(char => ({
+      id: char.id,
+      name: char.name,
+      rarity: char.rarity,
+      element: char.element,
+      imageUrl: char.imageUrl,
+      owned: ownedIds.has(char.id)
+    }));
+
+    res.json({
+      rarity,
+      characters: charactersWithOwnership,
+      total: characters.length
+    });
+  } catch (err) {
+    console.error('Get selector characters error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
+/**
+ * POST /api/enhancements/selectors/use
+ * Use a selector to claim a specific character
+ */
+router.post('/selectors/use', [auth, enforcementMiddleware, deviceBindingMiddleware('gacha'), sensitiveActionLimiter], async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { selectorIndex, characterId } = req.body;
+
+    if (selectorIndex === undefined || selectorIndex === null) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'selectorIndex required' });
+    }
+
+    if (!characterId) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'characterId required' });
+    }
+
+    const user = await User.findByPk(req.user.id, {
+      lock: transaction.LOCK.UPDATE,
+      transaction
+    });
+
+    if (!user) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const selectors = user.characterSelectors || [];
+
+    // Validate selector index
+    if (selectorIndex < 0 || selectorIndex >= selectors.length) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Invalid selector index' });
+    }
+
+    const selector = selectors[selectorIndex];
+
+    // Check if already used
+    if (selector.used) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Selector already used' });
+    }
+
+    // Validate character exists and matches rarity
+    const character = await Character.findByPk(characterId, { transaction });
+
+    if (!character) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'Character not found' });
+    }
+
+    if (character.rarity !== selector.rarity) {
+      await transaction.rollback();
+      return res.status(400).json({
+        error: `Selector is for ${selector.rarity} characters, but selected character is ${character.rarity}`
+      });
+    }
+
+    // Mark selector as used
+    selectors[selectorIndex] = {
+      ...selector,
+      used: true,
+      usedAt: new Date().toISOString(),
+      characterSelected: characterId
+    };
+    user.characterSelectors = selectors;
+
+    // Add character to collection (or increase copies if already owned)
+    let userCharacter = await UserCharacter.findOne({
+      where: { UserId: user.id, CharacterId: characterId },
+      transaction
+    });
+
+    let isNew = false;
+    if (userCharacter) {
+      // Already owned - increase copies
+      userCharacter.copies = (userCharacter.copies || 1) + 1;
+      await userCharacter.save({ transaction });
+    } else {
+      // New character
+      isNew = true;
+      userCharacter = await UserCharacter.create({
+        UserId: user.id,
+        CharacterId: characterId,
+        copies: 1,
+        level: 1
+      }, { transaction });
+    }
+
+    await user.save({ transaction });
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      character: {
+        id: character.id,
+        name: character.name,
+        rarity: character.rarity,
+        element: character.element,
+        imageUrl: character.imageUrl
+      },
+      isNew,
+      copies: userCharacter.copies,
+      message: isNew
+        ? `${character.name} has joined your collection!`
+        : `${character.name} constellation increased! (${userCharacter.copies} copies)`,
+      remainingSelectors: selectors.filter(s => !s.used).length
+    });
+  } catch (err) {
+    await transaction.rollback();
+    console.error('Use selector error:', err);
+    res.status(500).json({ error: 'Server error' });
+  }
+});
+
 module.exports = router;

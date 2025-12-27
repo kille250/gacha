@@ -27,6 +27,7 @@ import {
 import { AuthContext } from '../context/AuthContext';
 import { springs, Container } from '../design-system';
 import { LanguageSelector } from '../components/Navigation';
+import { SelectorInventory } from '../components/GameEnhancements';
 import api from '../utils/api';
 
 // Styled Components
@@ -155,6 +156,9 @@ const ProfilePage = () => {
             <ChevronIcon><MdChevronRight /></ChevronIcon>
           </StatCard>
         </StatsGrid>
+
+        {/* Character Selectors */}
+        <SelectorInventory />
 
         {/* Settings Section */}
         <SectionTitle>{t('nav.settings')}</SectionTitle>

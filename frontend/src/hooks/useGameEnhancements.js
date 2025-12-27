@@ -467,6 +467,78 @@ export function useAccountLevel() {
 }
 
 // ===========================================
+// CHARACTER SELECTORS HOOK
+// ===========================================
+
+export function useSelectors() {
+  const [selectors, setSelectors] = useState(null);
+  const [characters, setCharacters] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
+  const [using, setUsing] = useState(false);
+  const [loadingCharacters, setLoadingCharacters] = useState(false);
+
+  const fetchSelectors = useCallback(async () => {
+    try {
+      setLoading(true);
+      const data = await enhancementsApi.selectors.getSelectors();
+      setSelectors(data);
+      setError(null);
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to load selectors');
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    fetchSelectors();
+  }, [fetchSelectors]);
+
+  const fetchCharactersForRarity = useCallback(async (rarity) => {
+    try {
+      setLoadingCharacters(true);
+      const data = await enhancementsApi.selectors.getCharactersForRarity(rarity);
+      setCharacters(data);
+      setError(null);
+      return data;
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to load characters');
+      throw err;
+    } finally {
+      setLoadingCharacters(false);
+    }
+  }, []);
+
+  const useSelector = useCallback(async (selectorIndex, characterId) => {
+    try {
+      setUsing(true);
+      const result = await enhancementsApi.selectors.useSelector(selectorIndex, characterId);
+      // Refresh selectors after use
+      await fetchSelectors();
+      return result;
+    } catch (err) {
+      setError(err.response?.data?.error || 'Failed to use selector');
+      throw err;
+    } finally {
+      setUsing(false);
+    }
+  }, [fetchSelectors]);
+
+  return {
+    selectors,
+    characters,
+    loading,
+    loadingCharacters,
+    error,
+    using,
+    fetchCharactersForRarity,
+    useSelector,
+    refresh: fetchSelectors
+  };
+}
+
+// ===========================================
 // COMBINED HOOK
 // ===========================================
 
@@ -480,7 +552,8 @@ export function useGameEnhancements() {
     useBaitInventory,
     useDojoFacility,
     useCharacterSpecialization,
-    useAccountLevel
+    useAccountLevel,
+    useSelectors
   };
 }
 
