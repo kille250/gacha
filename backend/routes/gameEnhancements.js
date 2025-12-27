@@ -743,7 +743,7 @@ router.get('/selectors/characters', [auth, enforcementMiddleware], async (req, r
         include: [{
           model: Character,
           where: { rarity },
-          attributes: ['id', 'name', 'rarity', 'element', 'imageUrl'],
+          attributes: ['id', 'name', 'rarity', 'image'],
           required: false
         }]
       });
@@ -759,7 +759,7 @@ router.get('/selectors/characters', [auth, enforcementMiddleware], async (req, r
       // Fallback: Get all characters of this rarity from global pool
       characters = await Character.findAll({
         where: { rarity },
-        attributes: ['id', 'name', 'rarity', 'element', 'imageUrl'],
+        attributes: ['id', 'name', 'rarity', 'image'],
         order: [['name', 'ASC']]
       });
     }
@@ -775,8 +775,7 @@ router.get('/selectors/characters', [auth, enforcementMiddleware], async (req, r
       id: char.id,
       name: char.name,
       rarity: char.rarity,
-      element: char.element,
-      imageUrl: char.imageUrl,
+      imageUrl: char.image, // Map 'image' column to 'imageUrl' for frontend
       owned: ownedIds.has(char.id)
     }));
 
