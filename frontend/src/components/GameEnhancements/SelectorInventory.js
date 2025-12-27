@@ -450,7 +450,8 @@ export function SelectorInventory() {
     setSelectedCharacter(null);
     setSearchQuery('');
     setOwnershipFilter('all');
-    await fetchCharactersForRarity(selector.rarity);
+    // Pass bannerId to fetch banner-specific characters (if selector has one)
+    await fetchCharactersForRarity(selector.rarity, selector.bannerId);
   };
 
   const handleConfirm = async () => {

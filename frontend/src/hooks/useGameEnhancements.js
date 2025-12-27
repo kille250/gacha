@@ -495,10 +495,10 @@ export function useSelectors() {
     fetchSelectors();
   }, [fetchSelectors]);
 
-  const fetchCharactersForRarity = useCallback(async (rarity) => {
+  const fetchCharactersForRarity = useCallback(async (rarity, bannerId = null) => {
     try {
       setLoadingCharacters(true);
-      const data = await enhancementsApi.selectors.getCharactersForRarity(rarity);
+      const data = await enhancementsApi.selectors.getCharactersForRarity(rarity, bannerId);
       setCharacters(data);
       setError(null);
       return data;

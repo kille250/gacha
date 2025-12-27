@@ -725,21 +725,44 @@ router.get('/selectors', [auth, enforcementMiddleware], async (req, res) => {
 /**
  * GET /api/enhancements/selectors/characters
  * Get available characters for a given rarity (for selector redemption)
+ * If bannerId is provided, fetches characters from that banner's pool
  */
 router.get('/selectors/characters', [auth, enforcementMiddleware], async (req, res) => {
   try {
-    const { rarity } = req.query;
+    const { rarity, bannerId } = req.query;
 
     if (!rarity || !['rare', 'epic', 'legendary'].includes(rarity)) {
       return res.status(400).json({ error: 'Valid rarity required (rare, epic, legendary)' });
     }
 
-    // Get all characters of this rarity
-    const characters = await Character.findAll({
-      where: { rarity },
-      attributes: ['id', 'name', 'rarity', 'element', 'imageUrl'],
-      order: [['name', 'ASC']]
-    });
+    let characters;
+
+    if (bannerId) {
+      // Fetch characters from the specific banner's pool
+      const banner = await Banner.findByPk(bannerId, {
+        include: [{
+          model: Character,
+          where: { rarity },
+          attributes: ['id', 'name', 'rarity', 'element', 'imageUrl'],
+          required: false
+        }]
+      });
+
+      if (!banner) {
+        return res.status(404).json({ error: 'Banner not found' });
+      }
+
+      characters = banner.Characters || [];
+      // Sort by name
+      characters.sort((a, b) => a.name.localeCompare(b.name));
+    } else {
+      // Fallback: Get all characters of this rarity from global pool
+      characters = await Character.findAll({
+        where: { rarity },
+        attributes: ['id', 'name', 'rarity', 'element', 'imageUrl'],
+        order: [['name', 'ASC']]
+      });
+    }
 
     // Get user's collection to mark owned characters
     const userCharacters = await UserCharacter.findAll({
@@ -759,6 +782,7 @@ router.get('/selectors/characters', [auth, enforcementMiddleware], async (req, r
 
     res.json({
       rarity,
+      bannerId: bannerId || null,
       characters: charactersWithOwnership,
       total: characters.length
     });

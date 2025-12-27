@@ -585,11 +585,12 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
       rareSelectors.push({
         rarity: 'rare',
         source: 'fate_points_exchange',
+        bannerId: bannerId || null, // Store bannerId for banner-specific character pool
         obtained: new Date().toISOString(),
         used: false
       });
       user.characterSelectors = rareSelectors;
-      reward.selector = { rarity: 'rare' };
+      reward.selector = { rarity: 'rare', bannerId };
       break;
     }
 
@@ -599,11 +600,12 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
       epicSelectors.push({
         rarity: 'epic',
         source: 'fate_points_exchange',
+        bannerId: bannerId || null, // Store bannerId for banner-specific character pool
         obtained: new Date().toISOString(),
         used: false
       });
       user.characterSelectors = epicSelectors;
-      reward.selector = { rarity: 'epic' };
+      reward.selector = { rarity: 'epic', bannerId };
       break;
     }
 
@@ -613,11 +615,12 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
       legendarySelectors.push({
         rarity: 'legendary',
         source: 'fate_points_exchange',
+        bannerId: bannerId || null, // Store bannerId for banner-specific character pool
         obtained: new Date().toISOString(),
         used: false
       });
       user.characterSelectors = legendarySelectors;
-      reward.selector = { rarity: 'legendary' };
+      reward.selector = { rarity: 'legendary', bannerId };
       break;
     }
 

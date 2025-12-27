@@ -242,10 +242,15 @@ export const selectorApi = {
   /**
    * Get available characters for a given rarity (for selector redemption)
    * @param {string} rarity - 'rare', 'epic', or 'legendary'
+   * @param {string} bannerId - Optional banner ID to fetch banner-specific characters
    */
-  getCharactersForRarity: async (rarity) => {
+  getCharactersForRarity: async (rarity, bannerId = null) => {
+    const params = { rarity };
+    if (bannerId) {
+      params.bannerId = bannerId;
+    }
     const response = await api.get('/enhancements/selectors/characters', {
-      params: { rarity }
+      params
     });
     return response.data;
   },
