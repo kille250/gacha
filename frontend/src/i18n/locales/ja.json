@@ -1348,6 +1348,38 @@
     "showBannerInfo": "バナー情報を表示",
     "closeInfoPanel": "情報パネルを閉じる"
   },
+  "fatePoints": {
+    "title": "運命ポイント",
+    "loading": "運命ポイントを読み込み中...",
+    "weeklyEarnings": "今週の獲得",
+    "weeklyResetsInfo": "毎週月曜 00:00 UTCにリセット",
+    "exchangeForRewards": "報酬と交換",
+    "fp": "FP",
+    "fatePoints": "運命ポイント",
+    "cost": "コスト",
+    "remainingAfter": "交換後の残り",
+    "exchange": "交換",
+    "exchanging": "交換中...",
+    "exchangeSuccess": "{{item}}を獲得しました！",
+    "selectorHint": "プロフィールからセレクターを使用できます",
+    "pityResetHint": "天井が50%にリセットされました",
+    "infoBox": "バナーを引いて運命ポイントを獲得。1回 = 1FP。5星で50/50に負けたら+5ボーナスFP！週間上限（月曜UTCにリセット）で公平な進行を保証。",
+    "nearingCap": "週間上限に近づいています！",
+    "capReached": "週間上限に達しました",
+    "earnedPoints": "+{{count}} 運命ポイント",
+    "earnedPointsCapped": "+{{count}} 運命ポイント（週間上限に達しました）",
+    "insufficientPoints": "{{cost}} 運命ポイントが必要です（現在 {{current}}）",
+    "exchangeOptions": {
+      "rare_selector": "レアセレクター",
+      "rare_selector_desc": "任意のレアキャラクターを選択",
+      "epic_selector": "エピックセレクター",
+      "epic_selector_desc": "任意のエピックキャラクターを選択",
+      "legendary_selector": "レジェンダリーセレクター",
+      "legendary_selector_desc": "任意のレジェンダリーキャラクターを選択",
+      "banner_pity_reset": "天井リセット",
+      "banner_pity_reset_desc": "バナー天井を50%にリセット（45/90回）"
+    }
+  },
   "accessibility": {
     "loading": "読み込み中",
     "closeDialog": "ダイアログを閉じる",

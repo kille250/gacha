@@ -280,6 +280,36 @@ const GACHA_MILESTONE_REWARDS = {
   ]
 };
 
+// Gacha pity system configuration
+const GACHA_PITY_CONFIG = {
+  // Standard gacha pity thresholds
+  standard: {
+    rare: {
+      hardPity: 10,       // Guaranteed rare at 10 pulls
+      softPity: 7         // Increased rate starts at 7
+    },
+    epic: {
+      hardPity: 50,       // Guaranteed epic at 50 pulls
+      softPity: 40        // Increased rate starts at 40
+    },
+    legendary: {
+      hardPity: 90,       // Guaranteed legendary at 90 pulls
+      softPity: 75        // Increased rate starts at 75
+    }
+  },
+  // Banner pity threshold (for featured character)
+  banner: {
+    featured: {
+      hardPity: 90,       // Guaranteed featured at 90 pulls
+      softPity: 75        // Increased rate starts at 75
+    }
+  },
+  // Pity reset percentages for fate points exchange
+  pityReset: {
+    percentage: 0.5       // Reset to 50% of hard pity
+  }
+};
+
 const GACHA_FATE_POINTS = {
   enabled: true,
 
@@ -493,6 +523,7 @@ module.exports = {
   FISHING_VISUAL_RARITY_CONFIG,
 
   // Gacha
+  GACHA_PITY_CONFIG,
   GACHA_MILESTONE_REWARDS,
   GACHA_FATE_POINTS,
   GACHA_ALTERNATIVE_PATHS,

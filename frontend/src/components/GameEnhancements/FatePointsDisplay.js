@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTicketAlt, FaHeart, FaCrown, FaSync, FaMagic, FaCheck, FaSpinner } from 'react-icons/fa';
+import { FaTicketAlt, FaHeart, FaCrown, FaSync, FaMagic, FaCheck, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
 import { useFatePoints } from '../../hooks/useGameEnhancements';
 import { onVisibilityChange } from '../../cache';
 import { useTranslation } from 'react-i18next';
@@ -239,6 +239,21 @@ const InfoBox = styled.div`
   color: #888;
 `;
 
+const CapWarning = styled(motion.div)`
+  background: ${props => props.$atCap
+    ? 'linear-gradient(135deg, rgba(244, 67, 54, 0.15) 0%, rgba(211, 47, 47, 0.15) 100%)'
+    : 'linear-gradient(135deg, rgba(255, 152, 0, 0.15) 0%, rgba(245, 124, 0, 0.15) 100%)'};
+  border: 1px solid ${props => props.$atCap ? 'rgba(244, 67, 54, 0.4)' : 'rgba(255, 152, 0, 0.4)'};
+  border-radius: 8px;
+  padding: 10px 14px;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-size: 0.85rem;
+  color: ${props => props.$atCap ? '#ef5350' : '#ffb74d'};
+`;
+
 // Success Toast
 const SuccessToast = styled(motion.div)`
   position: fixed;
@@ -378,6 +393,11 @@ export function FatePointsDisplay({ bannerId = null }) {
   // Calculate remaining points after exchange for preview
   const remainingAfterExchange = selectedItem ? points - selectedItem.cost : points;
 
+  // Near-cap warning threshold (90% of weekly max)
+  const nearCapThreshold = weeklyMax * 0.9;
+  const isNearCap = pointsThisWeek >= nearCapThreshold && pointsThisWeek < weeklyMax;
+  const isAtCap = pointsThisWeek >= weeklyMax;
+
   return (
     <>
       <Container
@@ -391,6 +411,23 @@ export function FatePointsDisplay({ bannerId = null }) {
             <PointsValue>{points}</PointsValue>
           </PointsCounter>
         </Header>
+
+        {/* Near-cap / At-cap warning */}
+        <AnimatePresence>
+          {(isNearCap || isAtCap) && (
+            <CapWarning
+              $atCap={isAtCap}
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+            >
+              <FaExclamationTriangle />
+              {isAtCap
+                ? t('fatePoints.capReached', 'Weekly cap reached')
+                : t('fatePoints.nearingCap', 'Nearing weekly cap!')}
+            </CapWarning>
+          )}
+        </AnimatePresence>
 
         <ProgressSection>
           <ProgressLabel>

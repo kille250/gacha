@@ -9,10 +9,68 @@
  */
 
 const {
+  GACHA_PITY_CONFIG,
   GACHA_MILESTONE_REWARDS,
   GACHA_FATE_POINTS,
   GACHA_ALTERNATIVE_PATHS
 } = require('../config/gameDesign');
+
+// ===========================================
+// DEFENSIVE VALIDATION HELPERS
+// ===========================================
+
+/**
+ * Validate and sanitize fate points value
+ * Ensures FP values are always non-negative integers
+ * @param {number} value - Value to validate
+ * @returns {number} - Validated value (0 if invalid)
+ */
+function validateFatePointsValue(value) {
+  if (typeof value !== 'number' || isNaN(value) || value < 0) {
+    return 0;
+  }
+  return Math.floor(value);
+}
+
+/**
+ * Validate user's fate points data structure
+ * Repairs any corrupted data and returns sanitized object
+ * @param {Object} user - User object
+ * @returns {Object} - Validated fatePoints object
+ */
+function validateFatePointsData(user) {
+  if (!user.fatePoints || typeof user.fatePoints !== 'object') {
+    user.fatePoints = {};
+  }
+
+  // Validate each banner's fate points
+  for (const bannerId of Object.keys(user.fatePoints)) {
+    const bannerData = user.fatePoints[bannerId];
+    if (!bannerData || typeof bannerData !== 'object') {
+      user.fatePoints[bannerId] = { points: 0, lastUpdate: null };
+    } else {
+      bannerData.points = validateFatePointsValue(bannerData.points);
+    }
+  }
+
+  return user.fatePoints;
+}
+
+/**
+ * Validate weekly fate points data
+ * @param {Object} user - User object
+ * @returns {Object} - Validated fatePointsWeekly object
+ */
+function validateWeeklyFatePointsData(user) {
+  if (!user.fatePointsWeekly || typeof user.fatePointsWeekly !== 'object') {
+    user.fatePointsWeekly = { weekStart: null, pointsEarned: 0 };
+  } else {
+    user.fatePointsWeekly.pointsEarned = validateFatePointsValue(
+      user.fatePointsWeekly.pointsEarned
+    );
+  }
+  return user.fatePointsWeekly;
+}
 
 // ===========================================
 // PITY VISIBILITY SYSTEM
@@ -44,14 +102,20 @@ function getPityState(user, banner = null) {
     };
   }
 
+  // Get pity thresholds from config
+  const pityConfig = GACHA_PITY_CONFIG.standard;
+  const rareMax = pityConfig.rare.hardPity;
+  const epicMax = pityConfig.epic.hardPity;
+  const legendaryMax = pityConfig.legendary.hardPity;
+
   // Calculate progress percentages
-  const rareProgress = Math.min(100, (standardPity.pullsSinceRare / 10) * 100);
-  const epicProgress = Math.min(100, (standardPity.pullsSinceEpic / 50) * 100);
-  const legendaryProgress = Math.min(100, (standardPity.pullsSinceLegendary / 90) * 100);
+  const rareProgress = Math.min(100, (standardPity.pullsSinceRare / rareMax) * 100);
+  const epicProgress = Math.min(100, (standardPity.pullsSinceEpic / epicMax) * 100);
+  const legendaryProgress = Math.min(100, (standardPity.pullsSinceLegendary / legendaryMax) * 100);
 
   // Determine if in soft pity (increased rates)
-  const inSoftPityLegendary = standardPity.pullsSinceLegendary >= 75;
-  const inSoftPityEpic = standardPity.pullsSinceEpic >= 40;
+  const inSoftPityLegendary = standardPity.pullsSinceLegendary >= pityConfig.legendary.softPity;
+  const inSoftPityEpic = standardPity.pullsSinceEpic >= pityConfig.epic.softPity;
 
   return {
     standard: {
@@ -60,9 +124,9 @@ function getPityState(user, banner = null) {
       pullsSinceLegendary: standardPity.pullsSinceLegendary,
       totalPulls: standardPity.totalPulls,
       progress: {
-        rare: { current: standardPity.pullsSinceRare, max: 10, percent: rareProgress },
-        epic: { current: standardPity.pullsSinceEpic, max: 50, percent: epicProgress },
-        legendary: { current: standardPity.pullsSinceLegendary, max: 90, percent: legendaryProgress }
+        rare: { current: standardPity.pullsSinceRare, max: rareMax, percent: rareProgress },
+        epic: { current: standardPity.pullsSinceEpic, max: epicMax, percent: epicProgress },
+        legendary: { current: standardPity.pullsSinceLegendary, max: legendaryMax, percent: legendaryProgress }
       },
       softPity: {
         legendary: inSoftPityLegendary,
@@ -70,9 +134,9 @@ function getPityState(user, banner = null) {
       },
       // Estimated pulls until guaranteed
       untilGuaranteed: {
-        rare: Math.max(0, 10 - standardPity.pullsSinceRare),
-        epic: Math.max(0, 50 - standardPity.pullsSinceEpic),
-        legendary: Math.max(0, 90 - standardPity.pullsSinceLegendary)
+        rare: Math.max(0, rareMax - standardPity.pullsSinceRare),
+        epic: Math.max(0, epicMax - standardPity.pullsSinceEpic),
+        legendary: Math.max(0, legendaryMax - standardPity.pullsSinceLegendary)
       }
     },
     banner: bannerPity ? {
@@ -326,15 +390,23 @@ function getWeekStart() {
  * @param {Object} user - User object
  * @returns {Object} - { pointsThisWeek, weeklyMax, weekStart }
  */
-function getWeeklyFatePoints(user) {
+function getWeeklyFatePoints(user, persistReset = false) {
   const weeklyMax = GACHA_FATE_POINTS.weeklyMax || 500;
   const currentWeekStart = getWeekStart().toISOString();
 
-  const weeklyData = user.fatePointsWeekly || {};
+  // Validate weekly data structure
+  const weeklyData = validateWeeklyFatePointsData(user);
 
   // Check if we're in a new week
   if (weeklyData.weekStart !== currentWeekStart) {
     // New week - reset tracking
+    // If persistReset is true, save the reset to user object
+    if (persistReset) {
+      user.fatePointsWeekly = {
+        weekStart: currentWeekStart,
+        pointsEarned: 0
+      };
+    }
     return {
       pointsThisWeek: 0,
       weeklyMax,
@@ -344,7 +416,7 @@ function getWeeklyFatePoints(user) {
   }
 
   return {
-    pointsThisWeek: weeklyData.pointsEarned || 0,
+    pointsThisWeek: validateFatePointsValue(weeklyData.pointsEarned),
     weeklyMax,
     weekStart: currentWeekStart,
     isNewWeek: false
@@ -384,12 +456,13 @@ function updateWeeklyFatePoints(user, pointsEarned) {
  * @returns {number} - Total fate points
  */
 function getTotalFatePoints(user) {
-  const fatePoints = user.fatePoints || {};
+  // Validate and repair FP data structure
+  const fatePoints = validateFatePointsData(user);
   let total = 0;
   for (const bannerId of Object.keys(fatePoints)) {
     total += fatePoints[bannerId]?.points || 0;
   }
-  return total;
+  return validateFatePointsValue(total);
 }
 
 /**
@@ -416,8 +489,9 @@ function getFatePointsStatus(user, bannerId = null) {
   // Get total points across all banners (global pool)
   const totalPoints = getTotalFatePoints(user);
 
-  // Get weekly tracking
-  const weekly = getWeeklyFatePoints(user);
+  // Get weekly tracking - persist reset to ensure consistent data
+  // This fixes the bug where weekly reset wasn't persisted until the next award
+  const weekly = getWeeklyFatePoints(user, true);
 
   // Get exchange options from config
   const exchangeOptions = GACHA_FATE_POINTS.exchangeOptions || {};
@@ -637,7 +711,11 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
     }
 
     case 'banner_pity_reset': {
-      // Reset banner pity to 50% of max
+      // Reset banner pity to configured percentage of max
+      const resetPercentage = GACHA_PITY_CONFIG.pityReset.percentage;
+      const bannerHardPity = GACHA_PITY_CONFIG.banner.featured.hardPity;
+      const standardPityConfig = GACHA_PITY_CONFIG.standard;
+
       if (bannerId) {
         const bannerPities = user.bannerPity || {};
         const currentPity = bannerPities[bannerId] || {
@@ -646,17 +724,17 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
           totalBannerPulls: 0
         };
 
-        // Reset pity counter to 50% of the way to guaranteed (45 out of 90)
-        const halfPity = 45;
-        currentPity.pullsSinceFeatured = halfPity;
+        // Reset pity counter to configured percentage of the way to guaranteed
+        const resetValue = Math.floor(bannerHardPity * resetPercentage);
+        currentPity.pullsSinceFeatured = resetValue;
 
         bannerPities[bannerId] = currentPity;
         user.bannerPity = bannerPities;
 
         reward.pityReset = {
           bannerId,
-          newPityValue: halfPity,
-          message: 'Pity reset to 50% (45/90 pulls)'
+          newPityValue: resetValue,
+          message: `Pity reset to ${Math.round(resetPercentage * 100)}% (${resetValue}/${bannerHardPity} pulls)`
         };
       } else {
         // Also reset standard pity if no banner specified
@@ -667,17 +745,20 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
           totalPulls: 0
         };
 
-        // Set legendary pity to 50% (45 out of 90)
-        gachaPity.pullsSinceLegendary = 45;
-        gachaPity.pullsSinceEpic = 25; // 50% of 50
+        // Set legendary and epic pity to configured percentage
+        const legendaryReset = Math.floor(standardPityConfig.legendary.hardPity * resetPercentage);
+        const epicReset = Math.floor(standardPityConfig.epic.hardPity * resetPercentage);
+
+        gachaPity.pullsSinceLegendary = legendaryReset;
+        gachaPity.pullsSinceEpic = epicReset;
 
         user.gachaPity = gachaPity;
 
         reward.pityReset = {
           standardPity: true,
-          newLegendaryPity: 45,
-          newEpicPity: 25,
-          message: 'Standard pity reset to 50%'
+          newLegendaryPity: legendaryReset,
+          newEpicPity: epicReset,
+          message: `Standard pity reset to ${Math.round(resetPercentage * 100)}%`
         };
       }
       break;
@@ -893,6 +974,10 @@ module.exports = {
   getTotalFatePoints,
   getWeeklyFatePoints,
   getExchangeOptions,
+
+  // Validation helpers (for external use if needed)
+  validateFatePointsData,
+  validateWeeklyFatePointsData,
 
   // Alternative Paths
   checkFishingPathUnlock,

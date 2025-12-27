@@ -1107,5 +1107,37 @@
   "createFromDanbooru": {
     "addAndContinue": "Agregar y Continuar",
     "addAndClose": "Agregar y Cerrar"
+  },
+  "fatePoints": {
+    "title": "Puntos de Destino",
+    "loading": "Cargando puntos de destino...",
+    "weeklyEarnings": "Ganancias Semanales",
+    "weeklyResetsInfo": "Se reinicia lunes 00:00 UTC",
+    "exchangeForRewards": "Intercambiar por Recompensas",
+    "fp": "PD",
+    "fatePoints": "Puntos de Destino",
+    "cost": "Costo",
+    "remainingAfter": "Restante después del intercambio",
+    "exchange": "Intercambiar",
+    "exchanging": "Intercambiando...",
+    "exchangeSuccess": "¡{{item}} obtenido!",
+    "selectorHint": "Ve al Perfil para usar tu selector",
+    "pityResetHint": "Tu pity ha sido reiniciado al 50%",
+    "infoBox": "Gana Puntos de Destino tirando en banners. 1 tirada = 1 PD. ¿Perdiste el 50/50 en un 5 estrellas? ¡+5 PD de bonificación! El límite semanal (se reinicia lunes UTC) asegura progresión justa.",
+    "nearingCap": "¡Acercándose al límite semanal!",
+    "capReached": "Límite semanal alcanzado",
+    "earnedPoints": "+{{count}} Puntos de Destino",
+    "earnedPointsCapped": "+{{count}} Puntos de Destino (límite semanal alcanzado)",
+    "insufficientPoints": "Necesitas {{cost}} Puntos de Destino (tienes {{current}})",
+    "exchangeOptions": {
+      "rare_selector": "Selector Raro",
+      "rare_selector_desc": "Elige cualquier personaje raro",
+      "epic_selector": "Selector Épico",
+      "epic_selector_desc": "Elige cualquier personaje épico",
+      "legendary_selector": "Selector Legendario",
+      "legendary_selector_desc": "Elige cualquier personaje legendario",
+      "banner_pity_reset": "Reinicio de Pity",
+      "banner_pity_reset_desc": "Reinicia pity de banner al 50% (45/90 tiradas)"
+    }
   }
 }

@@ -1347,6 +1347,38 @@
     "showBannerInfo": "Banner-Info anzeigen",
     "closeInfoPanel": "Info-Panel schließen"
   },
+  "fatePoints": {
+    "title": "Schicksalspunkte",
+    "loading": "Lade Schicksalspunkte...",
+    "weeklyEarnings": "Wöchentliche Einnahmen",
+    "weeklyResetsInfo": "Reset Montag 00:00 UTC",
+    "exchangeForRewards": "Gegen Belohnungen eintauschen",
+    "fp": "SP",
+    "fatePoints": "Schicksalspunkte",
+    "cost": "Kosten",
+    "remainingAfter": "Verbleibend nach Tausch",
+    "exchange": "Tauschen",
+    "exchanging": "Tausche...",
+    "exchangeSuccess": "{{item}} erhalten!",
+    "selectorHint": "Gehe zum Profil, um deinen Selektor zu verwenden",
+    "pityResetHint": "Dein Mitleid wurde auf 50% zurückgesetzt",
+    "infoBox": "Verdiene Schicksalspunkte durch Ziehen auf Bannern. 1 Zug = 1 SP. 50/50 bei 5-Stern verloren? +5 Bonus SP! Wöchentliches Limit (Reset Montag UTC) sichert faire Progression.",
+    "nearingCap": "Wöchentliches Limit fast erreicht!",
+    "capReached": "Wöchentliches Limit erreicht",
+    "earnedPoints": "+{{count}} Schicksalspunkte",
+    "earnedPointsCapped": "+{{count}} Schicksalspunkte (wöchentliches Limit erreicht)",
+    "insufficientPoints": "Benötigt {{cost}} Schicksalspunkte (habe {{current}})",
+    "exchangeOptions": {
+      "rare_selector": "Seltener Selektor",
+      "rare_selector_desc": "Wähle einen seltenen Charakter",
+      "epic_selector": "Epischer Selektor",
+      "epic_selector_desc": "Wähle einen epischen Charakter",
+      "legendary_selector": "Legendärer Selektor",
+      "legendary_selector_desc": "Wähle einen legendären Charakter",
+      "banner_pity_reset": "Mitleid-Reset",
+      "banner_pity_reset_desc": "Setze Banner-Mitleid auf 50% zurück (45/90 Züge)"
+    }
+  },
   "accessibility": {
     "loading": "Laden",
     "closeDialog": "Dialog schließen",

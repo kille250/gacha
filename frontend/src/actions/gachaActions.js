@@ -14,6 +14,7 @@
 import { rollCharacter, rollMultipleCharacters, rollOnBanner, multiRollOnBanner, levelUpCharacter, levelUpAllCharacters } from '../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../cache';
 import { applyPointsUpdate } from '../utils/userStateUpdates';
+import fatePointsEvents, { FP_EVENTS } from '../events/fatePointsEvents';
 
 /**
  * Execute a standard gacha roll with proper cache invalidation and state updates.
@@ -25,15 +26,20 @@ import { applyPointsUpdate } from '../utils/userStateUpdates';
 export const executeStandardRoll = async (setUser) => {
   // Defensive revalidation before spending currency to prevent stale-state bugs
   invalidateFor(CACHE_ACTIONS.PRE_ROLL);
-  
+
   const result = await rollCharacter();
-  
+
   // Update user state from response
   applyPointsUpdate(setUser, result.updatedPoints);
-  
+
+  // Emit fate points update for immediate UI refresh
+  if (result.fatePoints) {
+    fatePointsEvents.emit(FP_EVENTS.EARNED, result.fatePoints);
+  }
+
   // Invalidate gacha-related caches
   invalidateFor(CACHE_ACTIONS.GACHA_ROLL);
-  
+
   return result;
 };
 
@@ -48,15 +54,20 @@ export const executeStandardRoll = async (setUser) => {
 export const executeStandardMultiRoll = async (count, setUser) => {
   // Defensive revalidation before spending currency to prevent stale-state bugs
   invalidateFor(CACHE_ACTIONS.PRE_ROLL);
-  
+
   const result = await rollMultipleCharacters(count);
-  
+
   // Update user state from response
   applyPointsUpdate(setUser, result.updatedPoints);
-  
+
+  // Emit fate points update for immediate UI refresh
+  if (result.fatePoints) {
+    fatePointsEvents.emit(FP_EVENTS.EARNED, result.fatePoints);
+  }
+
   // Invalidate gacha-related caches
   invalidateFor(CACHE_ACTIONS.GACHA_ROLL);
-  
+
   return result;
 };
 
@@ -73,15 +84,20 @@ export const executeStandardMultiRoll = async (count, setUser) => {
 export const executeBannerRoll = async (bannerId, useTicket, ticketType, setUser) => {
   // Defensive revalidation before spending currency to prevent stale-state bugs
   invalidateFor(CACHE_ACTIONS.PRE_ROLL);
-  
+
   const result = await rollOnBanner(bannerId, useTicket, ticketType);
-  
+
   // Update user state from response
   applyPointsUpdate(setUser, result.updatedPoints);
-  
+
+  // Emit fate points update for immediate UI refresh
+  if (result.fatePoints) {
+    fatePointsEvents.emit(FP_EVENTS.EARNED, result.fatePoints);
+  }
+
   // Invalidate banner roll caches (includes tickets)
   invalidateFor(CACHE_ACTIONS.GACHA_ROLL_BANNER);
-  
+
   return result;
 };
 
@@ -99,15 +115,20 @@ export const executeBannerRoll = async (bannerId, useTicket, ticketType, setUser
 export const executeBannerMultiRoll = async (bannerId, count, useTickets, ticketType, setUser) => {
   // Defensive revalidation before spending currency to prevent stale-state bugs
   invalidateFor(CACHE_ACTIONS.PRE_ROLL);
-  
+
   const result = await multiRollOnBanner(bannerId, count, useTickets, ticketType);
-  
+
   // Update user state from response
   applyPointsUpdate(setUser, result.updatedPoints);
-  
+
+  // Emit fate points update for immediate UI refresh
+  if (result.fatePoints) {
+    fatePointsEvents.emit(FP_EVENTS.EARNED, result.fatePoints);
+  }
+
   // Invalidate banner roll caches (includes tickets)
   invalidateFor(CACHE_ACTIONS.GACHA_ROLL_BANNER);
-  
+
   return result;
 };
 

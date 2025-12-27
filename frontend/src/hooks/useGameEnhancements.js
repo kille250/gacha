@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import enhancementsApi from '../utils/enhancementsApi';
+import fatePointsEvents, { FP_EVENTS } from '../events/fatePointsEvents';
 
 // ===========================================
 // PITY STATE HOOK
@@ -135,6 +136,31 @@ export function useFatePoints(bannerId = null) {
     fetchFatePoints();
   }, [fetchFatePoints]);
 
+  // Subscribe to FP events for immediate state updates after rolls
+  useEffect(() => {
+    const unsubEarned = fatePointsEvents.on(FP_EVENTS.EARNED, (newFatePoints) => {
+      // Merge with existing exchange options if available
+      setFatePoints(prev => ({
+        ...prev,
+        ...newFatePoints,
+        exchangeOptions: newFatePoints.exchangeOptions || prev?.exchangeOptions
+      }));
+    });
+
+    const unsubSpent = fatePointsEvents.on(FP_EVENTS.SPENT, (newFatePoints) => {
+      setFatePoints(prev => ({
+        ...prev,
+        ...newFatePoints,
+        exchangeOptions: newFatePoints.exchangeOptions || prev?.exchangeOptions
+      }));
+    });
+
+    return () => {
+      unsubEarned();
+      unsubSpent();
+    };
+  }, []);
+
   /**
    * Exchange fate points for a reward
    * @param {string} exchangeType - Type: 'rare_selector', 'epic_selector', 'legendary_selector', 'banner_pity_reset'
@@ -146,6 +172,8 @@ export function useFatePoints(bannerId = null) {
       // Update local state with the returned fate points status
       if (result.fatePoints) {
         setFatePoints(result.fatePoints);
+        // Emit spent event for other components listening
+        fatePointsEvents.emit(FP_EVENTS.SPENT, result.fatePoints);
       } else {
         await fetchFatePoints(); // Fallback refresh
       }
