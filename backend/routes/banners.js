@@ -29,7 +29,8 @@ const {
 const {
   buildBannerRollContext,
   executeSingleBannerRoll,
-  executeBannerMultiRoll
+  executeBannerMultiRoll,
+  getSoftPityProgress
 } = require('../utils/rollEngine');
 const {
   acquireCharacter,
@@ -91,48 +92,72 @@ router.get('/pricing', (req, res) => {
 /**
  * Get pricing for a specific banner (includes costMultiplier and drop rates)
  * GET /api/banners/:id/pricing
+ * Optional auth: if authenticated, includes FP cap warnings
  */
 router.get('/:id/pricing', async (req, res) => {
   try {
     if (!isValidId(req.params.id)) {
       return res.status(400).json({ error: 'Invalid banner ID' });
     }
-    
+
     const banner = await Banner.findByPk(req.params.id, {
       attributes: ['id', 'name', 'costMultiplier', 'rateMultiplier']
     });
-    
+
     if (!banner) {
       return res.status(404).json({ error: 'Banner not found' });
     }
-    
+
     const raritiesData = await getRarities();
     const singlePullCost = Math.floor(PRICING_CONFIG.baseCost * (banner.costMultiplier || 1));
-    
+
     // Calculate all rate tables
     const bannerDropRates = roundRatesForDisplay(await calculateBannerRates(banner.rateMultiplier, false, raritiesData));
     const standardRates = await getStandardRates(false, raritiesData);
     const premiumRates = await getPremiumRates(false, raritiesData);
     const pityRates = await getPityRates(raritiesData);
-    
+
+    // Build pull options with FP cap warnings if user is authenticated
+    let user = null;
+    try {
+      // Try to get user from token if present (optional auth)
+      const token = req.header('x-auth-token') || req.header('Authorization')?.replace('Bearer ', '');
+      if (token) {
+        const jwt = require('jsonwebtoken');
+        const decoded = jwt.verify(token, process.env.JWT_SECRET);
+        user = await User.findByPk(decoded.user?.id || decoded.id);
+      }
+    } catch (_tokenErr) {
+      // No valid token - continue without user-specific warnings
+    }
+
+    const pullOptions = PRICING_CONFIG.quickSelectOptions.map(count => {
+      const discount = getDiscountForCount(count);
+      const baseCost = count * singlePullCost;
+      const finalCost = Math.floor(baseCost * (1 - discount));
+      const option = {
+        count,
+        discount,
+        discountPercent: Math.round(discount * 100),
+        baseCost,
+        finalCost,
+        savings: baseCost - finalCost
+      };
+
+      // Add FP cap warning if user is authenticated
+      if (user) {
+        option.fatePointsWarning = gachaEnhanced.getWeeklyCapWarning(user, count, 'banner');
+      }
+
+      return option;
+    });
+
     res.json({
       ...PRICING_CONFIG,
       costMultiplier: banner.costMultiplier || 1,
       rateMultiplier: banner.rateMultiplier || 1,
       singlePullCost,
-      pullOptions: PRICING_CONFIG.quickSelectOptions.map(count => {
-        const discount = getDiscountForCount(count);
-        const baseCost = count * singlePullCost;
-        const finalCost = Math.floor(baseCost * (1 - discount));
-        return {
-          count,
-          discount,
-          discountPercent: Math.round(discount * 100),
-          baseCost,
-          finalCost,
-          savings: baseCost - finalCost
-        };
-      }),
+      pullOptions,
       dropRates: {
         banner: bannerDropRates,
         standard: standardRates,
@@ -143,11 +168,11 @@ router.get('/:id/pricing', async (req, res) => {
           pityRates: pityRates
         }
       },
-      rarities: raritiesData.map(r => ({ 
-        name: r.name, 
-        displayName: r.displayName, 
+      rarities: raritiesData.map(r => ({
+        name: r.name,
+        displayName: r.displayName,
         color: r.color,
-        order: r.order 
+        order: r.order
       }))
     });
   } catch (err) {
@@ -357,6 +382,30 @@ router.patch('/:id/featured', [auth, adminAuth], async (req, res) => {
 });
 
 /**
+ * Check for similar banners (rerun validation)
+ * Helps prevent accidentally creating a new banner ID when rerunning
+ */
+async function checkSimilarBanners(name, series) {
+  const { Op } = require('sequelize');
+  const similarBanners = await Banner.findAll({
+    where: {
+      [Op.or]: [
+        { name: { [Op.iLike]: `%${name}%` } },
+        { name: { [Op.iLike]: `%${name.replace(/\s*(rerun|remix|2024|2025|ii|iii|part\s*\d+)\s*/gi, '')}%` } }
+      ]
+    },
+    attributes: ['id', 'name', 'series', 'active', 'endDate', 'createdAt'],
+    order: [['createdAt', 'DESC']],
+    limit: 5
+  });
+
+  return similarBanners.filter(b =>
+    b.name.toLowerCase() !== name.toLowerCase() || // Not exact match
+    b.series === series // Same series
+  );
+}
+
+/**
  * Create a new banner
  * POST /api/banners
  */
@@ -365,19 +414,46 @@ router.post('/', [auth, adminAuth], upload.fields([
   { name: 'video', maxCount: 1 }
 ]), async (req, res) => {
   try {
-    const { 
-      name, description, series, startDate, endDate, 
-      featured, costMultiplier, rateMultiplier, active, isR18 
+    const {
+      name, description, series, startDate, endDate,
+      featured, costMultiplier, rateMultiplier, active, isR18,
+      forceCreate  // Set to true to bypass similar banner warning
     } = req.body;
-    
+
     const characterIds = parseCharacterIds(req.body.characterIds);
     if (characterIds === null) {
       return res.status(400).json({ error: 'Invalid characterIds format. Must be an array of positive integers.' });
     }
-    
+
+    // Check for similar banners (rerun validation)
+    if (!forceCreate || forceCreate !== 'true') {
+      try {
+        const similarBanners = await checkSimilarBanners(name, series);
+        if (similarBanners.length > 0) {
+          return res.status(409).json({
+            warning: 'Similar banners exist',
+            code: 'SIMILAR_BANNER_EXISTS',
+            message: 'Creating a new banner will NOT preserve player pity/milestone progress from these similar banners. If this is a rerun, consider updating the existing banner instead.',
+            similarBanners: similarBanners.map(b => ({
+              id: b.id,
+              name: b.name,
+              series: b.series,
+              active: b.active,
+              endDate: b.endDate,
+              action: `To rerun this banner and preserve progress: PUT /api/banners/${b.id}`
+            })),
+            hint: 'Set forceCreate=true to proceed anyway, or update an existing banner to preserve player progress.'
+          });
+        }
+      } catch (similarErr) {
+        // Non-blocking - continue with creation if check fails
+        console.warn('Similar banner check failed:', similarErr.message);
+      }
+    }
+
     let imagePath = null;
     let videoPath = null;
-    
+
     if (req.files) {
       if (req.files.image) {
         imagePath = getUrlPath('banners', req.files.image[0].filename);
@@ -386,7 +462,7 @@ router.post('/', [auth, adminAuth], upload.fields([
         videoPath = getUrlPath('videos', req.files.video[0].filename);
       }
     }
-    
+
     // Parse and validate dates
     const parseDate = (dateValue, defaultValue = null) => {
       if (!dateValue || dateValue === '' || dateValue === 'Invalid date' || dateValue === 'null') {
@@ -664,11 +740,19 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
       luckBonus
     );
 
+    // Calculate soft pity state from user's current pity counters
+    const userPity = user.gachaPity || { pullsSinceLegendary: 0, pullsSinceEpic: 0 };
+    const softPityState = {
+      legendary: getSoftPityProgress(userPity.pullsSinceLegendary || 0, 'legendary'),
+      epic: getSoftPityProgress(userPity.pullsSinceEpic || 0, 'epic')
+    };
+
     const result = await executeSingleBannerRoll(context, {
       isPremium,
       needsPity: false,
       isMulti: false,
-      isLast3: false
+      isLast3: false,
+      softPityState
     });
     
     // Refund on failure
@@ -916,7 +1000,14 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
       luckBonus
     );
 
-    const results = await executeBannerMultiRoll(context, count, premiumCount);
+    // Pass initial pity state for soft pity calculations during multi-roll
+    const userPity = user.gachaPity || { pullsSinceLegendary: 0, pullsSinceEpic: 0 };
+    const initialPityState = {
+      pullsSinceLegendary: userPity.pullsSinceLegendary || 0,
+      pullsSinceEpic: userPity.pullsSinceEpic || 0
+    };
+
+    const results = await executeBannerMultiRoll(context, count, premiumCount, initialPityState);
     
     // Add all characters (shards on duplicates, bonus points if max)
     const characters = results.map(r => r.character).filter(c => c);

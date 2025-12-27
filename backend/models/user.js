@@ -518,6 +518,24 @@ User.init(
       }
     },
 
+    // Fate points transaction history (JSON array, last 50 transactions)
+    fatePointsHistory: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('fatePointsHistory');
+        try {
+          return value ? JSON.parse(value) : [];
+        } catch {
+          return [];
+        }
+      },
+      set(value) {
+        this.setDataValue('fatePointsHistory', JSON.stringify(value || []));
+      }
+    },
+
     // Character selectors earned (JSON array)
     characterSelectors: {
       type: DataTypes.TEXT,

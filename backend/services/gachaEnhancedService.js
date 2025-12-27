@@ -228,34 +228,66 @@ function updatePityCounters(user, rarity, banner = null, isFeatured = false) {
  * Get milestone rewards status for a banner
  * @param {Object} user - User object
  * @param {string} bannerId - Banner ID (or 'standard' for standard banner)
+ * @param {Object} banner - Optional banner object (to check grace period status)
  * @returns {Object} - Milestone status and available claims
  */
-function getMilestoneStatus(user, bannerId = 'standard') {
+function getMilestoneStatus(user, bannerId = 'standard', banner = null) {
   const pullHistory = user.pullHistory || {};
   const bannerPulls = pullHistory[bannerId] || { total: 0, claimed: [] };
 
+  // Check grace period status
+  let graceStatus = null;
+  if (banner && banner.endDate && GACHA_MILESTONE_REWARDS.gracePeriod?.enabled) {
+    const endDate = new Date(banner.endDate);
+    const now = new Date();
+    const daysSinceEnd = (now - endDate) / (1000 * 60 * 60 * 24);
+
+    if (daysSinceEnd > 0) {
+      const graceDays = GACHA_MILESTONE_REWARDS.gracePeriod.daysAfterEnd;
+      const daysRemaining = Math.max(0, graceDays - daysSinceEnd);
+      graceStatus = {
+        bannerEnded: true,
+        inGracePeriod: daysRemaining > 0,
+        gracePeriodExpired: daysRemaining <= 0,
+        daysRemaining: Math.ceil(daysRemaining),
+        expiresAt: new Date(endDate.getTime() + (graceDays * 24 * 60 * 60 * 1000)).toISOString(),
+        message: daysRemaining > 0
+          ? `Banner ended! You have ${Math.ceil(daysRemaining)} day(s) to claim unclaimed milestones.`
+          : 'Grace period expired. Unclaimed milestones are no longer available.'
+      };
+    }
+  }
+
   const milestones = GACHA_MILESTONE_REWARDS.milestones.map(milestone => {
-    const canClaim = bannerPulls.total >= milestone.pulls &&
-      !bannerPulls.claimed.includes(milestone.pulls);
+    const hasEnoughPulls = bannerPulls.total >= milestone.pulls;
+    const alreadyClaimed = bannerPulls.claimed.includes(milestone.pulls);
+
+    // Can only claim if: enough pulls, not claimed, and (no grace status OR still in grace period)
+    const canClaim = hasEnoughPulls &&
+      !alreadyClaimed &&
+      (!graceStatus || graceStatus.inGracePeriod);
 
     return {
       pulls: milestone.pulls,
       reward: milestone.reward,
-      claimed: bannerPulls.claimed.includes(milestone.pulls),
+      claimed: alreadyClaimed,
       canClaim,
       progress: Math.min(100, (bannerPulls.total / milestone.pulls) * 100),
-      remaining: Math.max(0, milestone.pulls - bannerPulls.total)
+      remaining: Math.max(0, milestone.pulls - bannerPulls.total),
+      // Mark as expired if grace period ended and not claimed
+      expired: graceStatus?.gracePeriodExpired && hasEnoughPulls && !alreadyClaimed
     };
   });
 
   // Find next unclaimed milestone
-  const nextMilestone = milestones.find(m => !m.claimed);
+  const nextMilestone = milestones.find(m => !m.claimed && !m.expired);
 
   return {
     totalPulls: bannerPulls.total,
     milestones,
     nextMilestone,
-    claimable: milestones.filter(m => m.canClaim)
+    claimable: milestones.filter(m => m.canClaim),
+    graceStatus
   };
 }
 
@@ -264,9 +296,10 @@ function getMilestoneStatus(user, bannerId = 'standard') {
  * @param {Object} user - User object
  * @param {string} bannerId - Banner ID
  * @param {number} milestonePulls - Milestone pull count to claim
+ * @param {Object} banner - Optional banner object (to check grace period)
  * @returns {Object} - Claim result
  */
-function claimMilestoneReward(user, bannerId, milestonePulls) {
+function claimMilestoneReward(user, bannerId, milestonePulls, banner = null) {
   const pullHistory = user.pullHistory || {};
   const bannerPulls = pullHistory[bannerId] || { total: 0, claimed: [] };
 
@@ -283,6 +316,29 @@ function claimMilestoneReward(user, bannerId, milestonePulls) {
 
   if (bannerPulls.claimed.includes(milestonePulls)) {
     return { success: false, error: 'Already claimed' };
+  }
+
+  // Check grace period if banner has ended
+  if (banner && banner.endDate && GACHA_MILESTONE_REWARDS.gracePeriod?.enabled) {
+    const endDate = new Date(banner.endDate);
+    const now = new Date();
+    const daysSinceEnd = (now - endDate) / (1000 * 60 * 60 * 24);
+
+    if (daysSinceEnd > 0) {
+      const graceDays = GACHA_MILESTONE_REWARDS.gracePeriod.daysAfterEnd;
+      if (daysSinceEnd > graceDays) {
+        return {
+          success: false,
+          error: 'Grace period expired',
+          code: 'GRACE_PERIOD_EXPIRED',
+          details: {
+            bannerEndedAt: endDate.toISOString(),
+            gracePeriodDays: graceDays,
+            expiredDaysAgo: Math.floor(daysSinceEnd - graceDays)
+          }
+        };
+      }
+    }
   }
 
   // Mark as claimed
@@ -501,12 +557,22 @@ function getFatePointsStatus(user, bannerId = null) {
   const nextAffordable = sortedOptions.find(opt => opt.cost > totalPoints) || sortedOptions[sortedOptions.length - 1];
   const nextAffordableCost = nextAffordable?.cost || 100;
 
+  // Calculate canGuarantee based on legendary selector (highest tier)
+  const legendarySelector = exchangeOptions.legendary_selector;
+  const guaranteeCost = legendarySelector?.cost || 600;
+  const canGuarantee = totalPoints >= guaranteeCost;
+  const progress = Math.min(100, Math.round((totalPoints / guaranteeCost) * 100));
+
   return {
     enabled: true,
     points: totalPoints,
     pointsThisWeek: weekly.pointsThisWeek,
     weeklyMax: weekly.weeklyMax,
     weekStart: weekly.weekStart,
+    // Legacy fields for backwards compatibility
+    canGuarantee,
+    progress,
+    guaranteeCost,
     exchangeOptions: Object.values(exchangeOptions).map(opt => ({
       id: opt.id,
       name: opt.name,
@@ -514,7 +580,7 @@ function getFatePointsStatus(user, bannerId = null) {
       cost: opt.cost,
       affordable: totalPoints >= opt.cost
     })),
-    // Progress toward next affordable exchange (replaces legacy 300 FP calculation)
+    // Progress toward next affordable exchange
     nextExchange: {
       id: nextAffordable?.id,
       name: nextAffordable?.name,
@@ -560,6 +626,18 @@ function awardFatePoints(user, bannerId, pullType, gotNonFeaturedFiveStar = fals
 
   fatePoints[bannerId] = bannerFate;
   user.fatePoints = fatePoints;
+
+  // Record transaction history (after updating points)
+  if (actualPoints > 0) {
+    recordFatePointsTransaction(user, 'earned', actualPoints, {
+      source: 'gacha_pull',
+      pullType,
+      pullCount,
+      bannerId,
+      gotNonFeaturedFiveStar,
+      wasCapped
+    });
+  }
 
   return {
     awarded: actualPoints,
@@ -609,13 +687,73 @@ function deductFatePoints(user, amount) {
 }
 
 /**
+ * Check if pity boost would be effective (pre-purchase validation)
+ * @param {Object} user - User object
+ * @param {string} bannerId - Banner ID (optional, for banner-specific boost)
+ * @returns {Object} - { wouldBeEffective, currentProgress, boostTarget, message }
+ */
+function checkPityBoostEffectiveness(user, bannerId = null) {
+  const boostPercentage = GACHA_PITY_CONFIG.pityReset.percentage;
+
+  if (bannerId) {
+    const bannerHardPity = GACHA_PITY_CONFIG.banner.featured.hardPity;
+    const bannerPities = user.bannerPity || {};
+    const currentPity = bannerPities[bannerId] || { pullsSinceFeatured: 0 };
+    const boostValue = Math.floor(bannerHardPity * boostPercentage);
+    const currentProgress = (currentPity.pullsSinceFeatured / bannerHardPity) * 100;
+
+    return {
+      wouldBeEffective: currentPity.pullsSinceFeatured < boostValue,
+      currentProgress: Math.round(currentProgress),
+      boostTarget: Math.round(boostPercentage * 100),
+      currentPulls: currentPity.pullsSinceFeatured,
+      boostValue,
+      maxPity: bannerHardPity,
+      message: currentPity.pullsSinceFeatured >= boostValue
+        ? `Your pity is already at ${currentPity.pullsSinceFeatured}/${bannerHardPity} (${Math.round(currentProgress)}%). Boost would have no effect.`
+        : `Boost will advance pity from ${currentPity.pullsSinceFeatured} to ${boostValue} pulls.`
+    };
+  } else {
+    const standardPityConfig = GACHA_PITY_CONFIG.standard;
+    const gachaPity = user.gachaPity || { pullsSinceLegendary: 0, pullsSinceEpic: 0 };
+    const legendaryBoost = Math.floor(standardPityConfig.legendary.hardPity * boostPercentage);
+    const epicBoost = Math.floor(standardPityConfig.epic.hardPity * boostPercentage);
+
+    const legendaryWouldBoost = gachaPity.pullsSinceLegendary < legendaryBoost;
+    const epicWouldBoost = gachaPity.pullsSinceEpic < epicBoost;
+
+    return {
+      wouldBeEffective: legendaryWouldBoost || epicWouldBoost,
+      legendary: {
+        current: gachaPity.pullsSinceLegendary,
+        boostValue: legendaryBoost,
+        max: standardPityConfig.legendary.hardPity,
+        wouldBoost: legendaryWouldBoost
+      },
+      epic: {
+        current: gachaPity.pullsSinceEpic,
+        boostValue: epicBoost,
+        max: standardPityConfig.epic.hardPity,
+        wouldBoost: epicWouldBoost
+      },
+      boostTarget: Math.round(boostPercentage * 100),
+      message: !legendaryWouldBoost && !epicWouldBoost
+        ? `Your pity is already at or above ${Math.round(boostPercentage * 100)}%. Boost would have no effect.`
+        : `Boost will advance pity to ${Math.round(boostPercentage * 100)}% of guaranteed.`
+    };
+  }
+}
+
+/**
  * Exchange fate points for a reward
  * @param {Object} user - User object
  * @param {string} exchangeType - Type of exchange (rare_selector, epic_selector, legendary_selector, banner_pity_reset)
  * @param {string} bannerId - Banner ID (required for pity reset)
+ * @param {Object} options - Additional options
+ * @param {boolean} options.force - Force exchange even if ineffective (for pity_boost)
  * @returns {Object} - Exchange result
  */
-function exchangeFatePoints(user, exchangeType, bannerId = null) {
+function exchangeFatePoints(user, exchangeType, bannerId = null, options = {}) {
   if (!GACHA_FATE_POINTS.enabled) {
     return { success: false, error: 'Fate points not enabled' };
   }
@@ -641,6 +779,20 @@ function exchangeFatePoints(user, exchangeType, bannerId = null) {
     };
   }
 
+  // Pre-validation for pity boost - check if it would be effective
+  if ((exchangeType === 'pity_boost' || exchangeType === 'banner_pity_reset') && !options.force) {
+    const effectiveness = checkPityBoostEffectiveness(user, bannerId);
+    if (!effectiveness.wouldBeEffective) {
+      return {
+        success: false,
+        error: effectiveness.message,
+        code: 'PITY_BOOST_INEFFECTIVE',
+        effectiveness,
+        hint: 'Set force=true to proceed anyway, or save your Fate Points for other rewards.'
+      };
+    }
+  }
+
   // Deduct points from global pool
   if (!deductFatePoints(user, cost)) {
     return {
@@ -651,6 +803,15 @@ function exchangeFatePoints(user, exchangeType, bannerId = null) {
 
   // Handle the reward based on exchange type
   const reward = applyFatePointsExchangeReward(user, exchangeType, bannerId);
+
+  // Record transaction history
+  recordFatePointsTransaction(user, 'spent', cost, {
+    source: 'exchange',
+    exchangeType,
+    bannerId,
+    rewardType: reward.type,
+    itemName: option.name
+  });
 
   return {
     success: true,
@@ -735,7 +896,8 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
 
         // Boost pity counter to configured percentage (only if current is lower)
         const boostValue = Math.floor(bannerHardPity * boostPercentage);
-        const newValue = Math.max(currentPity.pullsSinceFeatured, boostValue);
+        const previousValue = currentPity.pullsSinceFeatured;
+        const newValue = Math.max(previousValue, boostValue);
         currentPity.pullsSinceFeatured = newValue;
 
         bannerPities[bannerId] = currentPity;
@@ -743,9 +905,12 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
 
         reward.pityBoost = {
           bannerId,
-          previousValue: currentPity.pullsSinceFeatured,
+          previousValue,
           newPityValue: newValue,
-          message: `Pity boosted to ${Math.round(boostPercentage * 100)}% (${newValue}/${bannerHardPity} pulls)`
+          wasEffective: newValue > previousValue,
+          message: newValue > previousValue
+            ? `Pity boosted to ${Math.round(boostPercentage * 100)}% (${newValue}/${bannerHardPity} pulls)`
+            : `Pity already at ${previousValue}/${bannerHardPity} - no change needed`
         };
       } else {
         // Boost standard pity if no banner specified
@@ -760,16 +925,27 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
         const legendaryBoost = Math.floor(standardPityConfig.legendary.hardPity * boostPercentage);
         const epicBoost = Math.floor(standardPityConfig.epic.hardPity * boostPercentage);
 
-        gachaPity.pullsSinceLegendary = Math.max(gachaPity.pullsSinceLegendary, legendaryBoost);
-        gachaPity.pullsSinceEpic = Math.max(gachaPity.pullsSinceEpic, epicBoost);
+        const prevLegendary = gachaPity.pullsSinceLegendary;
+        const prevEpic = gachaPity.pullsSinceEpic;
+
+        gachaPity.pullsSinceLegendary = Math.max(prevLegendary, legendaryBoost);
+        gachaPity.pullsSinceEpic = Math.max(prevEpic, epicBoost);
 
         user.gachaPity = gachaPity;
 
+        const wasEffective = gachaPity.pullsSinceLegendary > prevLegendary ||
+                            gachaPity.pullsSinceEpic > prevEpic;
+
         reward.pityBoost = {
           standardPity: true,
+          previousLegendary: prevLegendary,
+          previousEpic: prevEpic,
           newLegendaryPity: gachaPity.pullsSinceLegendary,
           newEpicPity: gachaPity.pullsSinceEpic,
-          message: `Standard pity boosted to ${Math.round(boostPercentage * 100)}%`
+          wasEffective,
+          message: wasEffective
+            ? `Standard pity boosted to ${Math.round(boostPercentage * 100)}%`
+            : `Pity already at or above ${Math.round(boostPercentage * 100)}% - no change needed`
         };
       }
       break;
@@ -795,6 +971,112 @@ function getExchangeOptions(user) {
     ...opt,
     affordable: totalPoints >= opt.cost
   }));
+}
+
+// ===========================================
+// FATE POINTS TRANSACTION HISTORY
+// ===========================================
+
+const FP_HISTORY_MAX_ENTRIES = 50;
+
+/**
+ * Record a fate points transaction
+ * @param {Object} user - User object
+ * @param {string} type - 'earned' or 'spent'
+ * @param {number} amount - Points amount (positive for earned, positive for spent)
+ * @param {Object} details - Additional details about the transaction
+ */
+function recordFatePointsTransaction(user, type, amount, details = {}) {
+  const history = user.fatePointsHistory || [];
+
+  const transaction = {
+    id: `fp_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`,
+    type,
+    amount: type === 'spent' ? -Math.abs(amount) : Math.abs(amount),
+    balance: getTotalFatePoints(user),
+    timestamp: new Date().toISOString(),
+    ...details
+  };
+
+  // Add to beginning and limit size
+  history.unshift(transaction);
+  if (history.length > FP_HISTORY_MAX_ENTRIES) {
+    history.length = FP_HISTORY_MAX_ENTRIES;
+  }
+
+  user.fatePointsHistory = history;
+  return transaction;
+}
+
+/**
+ * Get fate points transaction history
+ * @param {Object} user - User object
+ * @param {Object} options - Filter options
+ * @param {number} options.limit - Max entries to return
+ * @param {string} options.type - Filter by type ('earned' or 'spent')
+ * @returns {Array} - Transaction history
+ */
+function getFatePointsHistory(user, options = {}) {
+  const history = user.fatePointsHistory || [];
+  let filtered = [...history];
+
+  if (options.type) {
+    filtered = filtered.filter(t => t.type === options.type);
+  }
+
+  if (options.limit && options.limit > 0) {
+    filtered = filtered.slice(0, options.limit);
+  }
+
+  return filtered;
+}
+
+/**
+ * Get weekly FP cap warning for upcoming pulls
+ * Call this BEFORE a purchase to warn players they're near the cap
+ *
+ * @param {Object} user - User object
+ * @param {number} plannedPulls - Number of pulls player is about to do
+ * @param {string} pullType - 'standard', 'banner', or 'premium'
+ * @returns {Object} - { atCap, nearCap, wouldEarn, actualEarn, wasted, message }
+ */
+function getWeeklyCapWarning(user, plannedPulls = 1, pullType = 'banner') {
+  if (!GACHA_FATE_POINTS.weeklyCapEnabled) {
+    return { atCap: false, nearCap: false, message: null };
+  }
+
+  const weekly = getWeeklyFatePoints(user);
+  const pointsPerPull = GACHA_FATE_POINTS.pointsPerPull[pullType] || 1;
+  const wouldEarn = plannedPulls * pointsPerPull;
+  const remainingCap = Math.max(0, weekly.weeklyMax - weekly.pointsThisWeek);
+  const actualEarn = Math.min(wouldEarn, remainingCap);
+  const wasted = wouldEarn - actualEarn;
+
+  const atCap = remainingCap === 0;
+  const nearCap = !atCap && wasted > 0;
+  const willReachCap = !atCap && (weekly.pointsThisWeek + wouldEarn) >= weekly.weeklyMax;
+
+  let message = null;
+  if (atCap) {
+    message = `Weekly Fate Points cap reached (${weekly.weeklyMax}/${weekly.weeklyMax}). Pulls will not earn additional FP until next week.`;
+  } else if (wasted > 0) {
+    message = `Near weekly cap: This ${plannedPulls}-pull will only earn ${actualEarn} FP (${wasted} would exceed cap).`;
+  } else if (willReachCap) {
+    message = `This pull will reach the weekly FP cap (${weekly.pointsThisWeek + wouldEarn}/${weekly.weeklyMax}).`;
+  }
+
+  return {
+    atCap,
+    nearCap,
+    willReachCap,
+    currentWeeklyProgress: weekly.pointsThisWeek,
+    weeklyMax: weekly.weeklyMax,
+    remainingCap,
+    wouldEarn,
+    actualEarn,
+    wasted,
+    message
+  };
 }
 
 /**
@@ -930,6 +1212,94 @@ function recruitWanderingWarrior(user, characterId) {
 }
 
 // ===========================================
+// TRANSACTIONAL GACHA STATE UPDATE
+// ===========================================
+
+/**
+ * Apply all gacha state updates atomically
+ * This function captures state before modifications and can rollback on failure
+ *
+ * @param {Object} user - User object (will be modified in place)
+ * @param {Object} updates - Update configuration
+ * @param {Object} updates.pity - Pity update params { rarity, banner, isFeatured }
+ * @param {Object} updates.milestone - Milestone params { bannerId, pullCount }
+ * @param {Object} updates.fatePoints - Fate points params { bannerId, pullType, results }
+ * @returns {Object} - { success, snapshot, error }
+ */
+function applyGachaStateUpdates(user, updates = {}) {
+  // Capture snapshot of current state for rollback
+  const snapshot = {
+    gachaPity: JSON.parse(JSON.stringify(user.gachaPity || {})),
+    bannerPity: JSON.parse(JSON.stringify(user.bannerPity || {})),
+    pullHistory: JSON.parse(JSON.stringify(user.pullHistory || {})),
+    fatePoints: JSON.parse(JSON.stringify(user.fatePoints || {})),
+    fatePointsWeekly: JSON.parse(JSON.stringify(user.fatePointsWeekly || {})),
+    fatePointsHistory: JSON.parse(JSON.stringify(user.fatePointsHistory || []))
+  };
+
+  try {
+    const results = {};
+
+    // Update pity counters
+    if (updates.pity) {
+      results.pity = updatePityCounters(
+        user,
+        updates.pity.rarity,
+        updates.pity.banner,
+        updates.pity.isFeatured
+      );
+    }
+
+    // Record pull for milestones
+    if (updates.milestone) {
+      recordPull(user, updates.milestone.bannerId, updates.milestone.pullCount);
+      results.milestone = getMilestoneStatus(user, updates.milestone.bannerId);
+    }
+
+    // Award fate points
+    if (updates.fatePoints) {
+      results.fatePoints = awardFatePointsForRoll(user, updates.fatePoints);
+    }
+
+    return {
+      success: true,
+      snapshot,
+      results
+    };
+  } catch (error) {
+    // Rollback on any error
+    user.gachaPity = snapshot.gachaPity;
+    user.bannerPity = snapshot.bannerPity;
+    user.pullHistory = snapshot.pullHistory;
+    user.fatePoints = snapshot.fatePoints;
+    user.fatePointsWeekly = snapshot.fatePointsWeekly;
+    user.fatePointsHistory = snapshot.fatePointsHistory;
+
+    return {
+      success: false,
+      snapshot,
+      error: error.message
+    };
+  }
+}
+
+/**
+ * Rollback gacha state to a previous snapshot
+ * @param {Object} user - User object
+ * @param {Object} snapshot - State snapshot from applyGachaStateUpdates
+ */
+function rollbackGachaState(user, snapshot) {
+  if (!snapshot) return;
+
+  user.gachaPity = snapshot.gachaPity;
+  user.bannerPity = snapshot.bannerPity;
+  user.pullHistory = snapshot.pullHistory;
+  user.fatePoints = snapshot.fatePoints;
+  user.fatePointsWeekly = snapshot.fatePointsWeekly;
+  user.fatePointsHistory = snapshot.fatePointsHistory;
+}
+
+// ===========================================
 // PULL RESULT ENHANCEMENT
 // ===========================================
 
@@ -982,9 +1352,13 @@ module.exports = {
   awardFatePoints,
   awardFatePointsForRoll,
   exchangeFatePoints,
+  checkPityBoostEffectiveness,
+  getWeeklyCapWarning,
   getTotalFatePoints,
   getWeeklyFatePoints,
   getExchangeOptions,
+  recordFatePointsTransaction,
+  getFatePointsHistory,
 
   // Validation helpers (for external use if needed)
   validateFatePointsData,
@@ -994,6 +1368,10 @@ module.exports = {
   checkFishingPathUnlock,
   checkWanderingWarrior,
   recruitWanderingWarrior,
+
+  // Transactional helpers
+  applyGachaStateUpdates,
+  rollbackGachaState,
 
   // Enhancement
   enhancePullResult

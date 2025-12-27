@@ -292,7 +292,7 @@ describe('Milestone System', () => {
       const reward = { type: 'points', quantity: 500 };
       gachaEnhanced.applyMilestoneReward(user, reward);
 
-      expect(user.points).toBe(1500); // 1000 initial + 500
+      expect(user.points).toBe(10500); // 10000 initial + 500
     });
 
     test('applies premium tickets reward correctly', () => {
@@ -340,7 +340,8 @@ describe('Fate Points System', () => {
 
     test('calculates progress correctly', () => {
       const user = createMockUser();
-      const pointsNeeded = GACHA_FATE_POINTS.rateUpBanner.pointsForGuaranteed;
+      // Using legendary selector cost (600) as the "guarantee" reference point
+      const pointsNeeded = GACHA_FATE_POINTS.exchangeOptions.legendary_selector.cost;
       const halfPoints = Math.floor(pointsNeeded / 2);
       user.fatePoints = { banner1: { points: halfPoints, lastUpdate: new Date().toISOString() } };
       const status = gachaEnhanced.getFatePointsStatus(user, 'banner1');
@@ -352,7 +353,8 @@ describe('Fate Points System', () => {
 
     test('allows guarantee when enough points', () => {
       const user = createMockUser();
-      const pointsNeeded = GACHA_FATE_POINTS.rateUpBanner.pointsForGuaranteed;
+      // Using legendary selector cost (600) as the "guarantee" reference point
+      const pointsNeeded = GACHA_FATE_POINTS.exchangeOptions.legendary_selector.cost;
       user.fatePoints = { banner1: { points: pointsNeeded, lastUpdate: new Date().toISOString() } };
       const status = gachaEnhanced.getFatePointsStatus(user, 'banner1');
 
@@ -490,16 +492,16 @@ describe('Fate Points System', () => {
       expect(result.reward.selector.rarity).toBe('legendary');
     });
 
-    test('successfully exchanges fate points for pity reset', () => {
+    test('successfully exchanges fate points for pity boost', () => {
       const user = createMockUser();
-      const cost = GACHA_FATE_POINTS.exchangeOptions.banner_pity_reset.cost;
+      const cost = GACHA_FATE_POINTS.exchangeOptions.pity_boost.cost;
       user.fatePoints = { banner1: { points: cost } };
 
-      const result = gachaEnhanced.exchangeFatePoints(user, 'banner_pity_reset', 'banner1');
+      const result = gachaEnhanced.exchangeFatePoints(user, 'pity_boost', 'banner1');
 
       expect(result.success).toBe(true);
       expect(result.pointsSpent).toBe(cost);
-      expect(result.reward.pityReset).toBeDefined();
+      expect(result.reward.pityBoost).toBeDefined();
     });
 
     test('fails when not enough points', () => {

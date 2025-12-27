@@ -278,7 +278,13 @@ const GACHA_MILESTONE_REWARDS = {
     { pulls: 150, reward: { type: 'premium_tickets', quantity: 5 } },
     { pulls: 200, reward: { type: 'premium_tickets', quantity: 10 } },
     { pulls: 250, reward: { type: 'points', quantity: 10000 } }
-  ]
+  ],
+
+  // Grace period for claiming milestones after banner ends
+  gracePeriod: {
+    enabled: true,
+    daysAfterEnd: 7  // Players can claim unclaimed milestones for 7 days after banner ends
+  }
 };
 
 // Gacha pity system configuration
@@ -325,12 +331,10 @@ const GACHA_FATE_POINTS = {
   weeklyCapEnabled: true,
   weeklyMax: 500,  // Maximum FP earnable per week
 
-  // Rate-up banner specific (legacy - kept for backwards compatibility)
+  // Rate-up banner specific
   rateUpBanner: {
     // When you pull a non-featured 5-star, earn bonus fate points
-    nonFeaturedFiveStarPoints: 5,
-    // Points needed for guaranteed featured character (legacy)
-    pointsForGuaranteed: 300
+    nonFeaturedFiveStarPoints: 5
   },
 
   // Exchange shop - costs for different rewards
