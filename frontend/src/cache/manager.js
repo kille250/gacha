@@ -66,7 +66,7 @@ export const REFRESH_INTERVALS = {
  */
 const VISIBILITY_INVALIDATIONS = {
   critical: ['/auth/me', '/banners/user/tickets'],
-  normal: ['/fishing/info', '/fishing/rank', '/fishing/challenges', '/dojo/status'],
+  normal: ['/fishing/info', '/fishing/rank', '/fishing/challenges', '/dojo/status', '/enhancements/gacha/fate-points'],
   static: ['/characters', '/banners']
 };
 

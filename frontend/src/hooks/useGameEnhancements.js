@@ -8,7 +8,7 @@
  * - Return bonuses
  */
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import enhancementsApi from '../utils/enhancementsApi';
 
 // ===========================================
@@ -100,16 +100,26 @@ export function useMilestones(bannerId = 'standard') {
 // FATE POINTS HOOK
 // ===========================================
 
-export function useFatePoints(bannerId) {
+/**
+ * Hook to manage Fate Points state
+ * Note: Fate Points are a GLOBAL pool. The bannerId parameter is optional
+ * and kept for backwards compatibility (e.g., for pity reset context).
+ */
+export function useFatePoints(bannerId = null) {
   const [fatePoints, setFatePoints] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [exchanging, setExchanging] = useState(false);
+  // Guard against concurrent fetches (e.g., from visibility change + manual refresh)
+  const isFetchingRef = useRef(false);
 
   const fetchFatePoints = useCallback(async () => {
-    if (!bannerId) return;
+    // Prevent concurrent fetches
+    if (isFetchingRef.current) return;
+    isFetchingRef.current = true;
     try {
       setLoading(true);
+      // bannerId is optional - Fate Points are global across all banners
       const data = await enhancementsApi.gacha.getFatePoints(bannerId);
       setFatePoints(data);
       setError(null);
@@ -117,6 +127,7 @@ export function useFatePoints(bannerId) {
       setError(err.response?.data?.error || 'Failed to load fate points');
     } finally {
       setLoading(false);
+      isFetchingRef.current = false;
     }
   }, [bannerId]);
 

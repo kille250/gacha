@@ -119,11 +119,12 @@ export const gachaEnhancements = {
 
   /**
    * Get fate points status
+   * Note: Fate Points are a GLOBAL pool. bannerId is optional
+   * and kept for backwards compatibility.
    */
-  getFatePoints: async (bannerId) => {
-    const response = await api.get('/enhancements/gacha/fate-points', {
-      params: { bannerId }
-    });
+  getFatePoints: async (bannerId = null) => {
+    const params = bannerId ? { bannerId } : {};
+    const response = await api.get('/enhancements/gacha/fate-points', { params });
     return response.data;
   },
 

@@ -330,21 +330,22 @@ router.post('/gacha/milestones/claim', [auth, enforcementMiddleware, sensitiveAc
 /**
  * GET /api/enhancements/gacha/fate-points
  * Get fate points status
+ *
+ * Note: Fate Points are a GLOBAL pool shared across all banners.
+ * The bannerId parameter is optional and kept for backwards compatibility,
+ * but the returned data represents the user's total fate points.
  */
 router.get('/gacha/fate-points', [auth, enforcementMiddleware], async (req, res) => {
   try {
+    // bannerId is optional - Fate Points are global across all banners
     const { bannerId } = req.query;
-
-    if (!bannerId) {
-      return res.status(400).json({ error: 'bannerId required' });
-    }
 
     const user = await User.findByPk(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const fatePoints = gachaEnhanced.getFatePointsStatus(user, bannerId);
+    const fatePoints = gachaEnhanced.getFatePointsStatus(user, bannerId || null);
 
     res.json(fatePoints);
   } catch (err) {

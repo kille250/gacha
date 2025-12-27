@@ -97,9 +97,12 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
     // Update pity counters and milestone progress for standard banner
     gachaEnhanced.updatePityCounters(user, result.actualRarity, null, false);
     gachaEnhanced.recordPull(user, 'standard', 1);
-    // Award fate points - legendary on standard banner counts as non-featured for bonus
-    const gotLegendary = result.actualRarity === 'legendary';
-    gachaEnhanced.awardFatePoints(user, 'standard', 'standard', gotLegendary);
+    // Use centralized helper for fate points award (standard banner: all legendaries give bonus)
+    gachaEnhanced.awardFatePointsForRoll(user, {
+      bannerId: 'standard',
+      pullType: 'standard',
+      results: [{ actualRarity: result.actualRarity }]
+    });
     await user.save();
 
     // SECURITY: Update risk score AFTER successful roll
@@ -236,20 +239,22 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
     const shardsGained = acquisitions.filter(a => a.isDuplicate && !a.isMaxLevel).length;
     const bonusPointsTotal = acquisitions.reduce((sum, a) => sum + (a.bonusPoints || 0), 0);
 
-    // Update pity counters and milestone progress for each pull
-    // Also check if any legendary was pulled (counts as non-featured for standard banner bonus)
-    let gotLegendary = false;
+    // Update pity counters for each pull result
+    const rollResults = [];
     for (const r of results) {
       if (!r.character) continue;
       gachaEnhanced.updatePityCounters(user, r.actualRarity, null, false);
-      if (r.actualRarity === 'legendary') {
-        gotLegendary = true;
-      }
+      rollResults.push({ actualRarity: r.actualRarity });
     }
     // Record total pulls for milestones
     gachaEnhanced.recordPull(user, 'standard', count);
-    // Award fate points for each pull - legendary on standard banner gives bonus
-    gachaEnhanced.awardFatePoints(user, 'standard', 'standard', gotLegendary, count);
+    // Use centralized helper for fate points award (standard banner: all legendaries give bonus)
+    gachaEnhanced.awardFatePointsForRoll(user, {
+      bannerId: 'standard',
+      pullType: 'standard',
+      results: rollResults,
+      pullCount: count
+    });
     await user.save();
 
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);

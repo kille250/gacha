@@ -702,9 +702,12 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
     const isFeatured = isBannerPull && result.actualRarity === 'legendary';
     gachaEnhanced.updatePityCounters(user, result.actualRarity, banner, isFeatured);
     gachaEnhanced.recordPull(user, banner.id, 1);
-    const pullType = isPremium ? 'premium' : 'banner';
-    const gotNonFeaturedLegendary = result.actualRarity === 'legendary' && !isFeatured;
-    gachaEnhanced.awardFatePoints(user, banner.id, pullType, gotNonFeaturedLegendary);
+    // Use centralized helper for fate points award
+    gachaEnhanced.awardFatePointsForRoll(user, {
+      bannerId: banner.id,
+      pullType: isPremium ? 'premium' : 'banner',
+      results: [{ actualRarity: result.actualRarity, isFeatured, isBannerCharacter: isBannerPull }]
+    });
     await user.save();
 
     // SECURITY: Update risk score AFTER successful banner roll
@@ -942,22 +945,27 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
     const shardsGained = acquisitions.filter(a => a.isDuplicate && !a.isMaxLevel).length;
     const bonusPointsTotal = acquisitions.reduce((sum, a) => sum + (a.bonusPoints || 0), 0);
 
-    // Update pity counters, milestone progress, and fate points for each pull
-    let gotNonFeaturedLegendary = false;
-    for (let i = 0; i < results.length; i++) {
-      const r = results[i];
+    // Update pity counters for each pull result
+    const rollResults = [];
+    for (const r of results) {
       if (!r.character) continue;
       const isFeatured = r.isBannerCharacter && r.actualRarity === 'legendary';
       gachaEnhanced.updatePityCounters(user, r.actualRarity, banner, isFeatured);
-      if (r.actualRarity === 'legendary' && !isFeatured) {
-        gotNonFeaturedLegendary = true;
-      }
+      rollResults.push({
+        actualRarity: r.actualRarity,
+        isFeatured,
+        isBannerCharacter: r.isBannerCharacter
+      });
     }
     // Record total pulls for milestones
     gachaEnhanced.recordPull(user, banner.id, count);
-    // Award fate points for each pull (use highest tier for multi - premium if any premium rolls)
-    const pullType = premiumCount > 0 ? 'premium' : 'banner';
-    gachaEnhanced.awardFatePoints(user, banner.id, pullType, gotNonFeaturedLegendary, count);
+    // Use centralized helper for fate points award
+    gachaEnhanced.awardFatePointsForRoll(user, {
+      bannerId: banner.id,
+      pullType: premiumCount > 0 ? 'premium' : 'banner',
+      results: rollResults,
+      pullCount: count
+    });
     await user.save();
 
     console.log(`User ${user.username} (ID: ${user.id}) performed a ${count}× roll on banner '${banner.name}' (cost: ${finalCost}, new: ${newCards}, shards: ${shardsGained}, bonus pts: ${bonusPointsTotal})`);

@@ -1494,5 +1494,37 @@
       "bonus": "+25% Dojo Income, +10% Synergy, +10% Currency",
       "description": "Enhanced dojo rewards, team synergy, and currency generation"
     }
+  },
+  "fatePoints": {
+    "title": "Fate Points",
+    "loading": "Loading fate points...",
+    "weeklyEarnings": "Weekly Earnings",
+    "weeklyResetsInfo": "Resets Monday 00:00 UTC",
+    "exchangeForRewards": "Exchange for Rewards",
+    "fp": "FP",
+    "fatePoints": "Fate Points",
+    "cost": "Cost",
+    "remainingAfter": "Remaining after exchange",
+    "exchange": "Exchange",
+    "exchanging": "Exchanging...",
+    "exchangeSuccess": "{{item}} obtained!",
+    "selectorHint": "Go to Profile to use your selector",
+    "pityResetHint": "Your pity has been reset to 50%",
+    "infoBox": "Earn Fate Points by pulling on banners. 1 pull = 1 FP. Lose 50/50 on a 5-star? +5 bonus FP! Weekly cap (resets Monday UTC) ensures fair progression.",
+    "nearingCap": "Approaching weekly cap!",
+    "capReached": "Weekly cap reached",
+    "earnedPoints": "+{{count}} Fate Points",
+    "earnedPointsCapped": "+{{count}} Fate Points (weekly cap reached)",
+    "insufficientPoints": "Need {{cost}} Fate Points (have {{current}})",
+    "exchangeOptions": {
+      "rare_selector": "Rare Selector",
+      "rare_selector_desc": "Choose any rare character",
+      "epic_selector": "Epic Selector",
+      "epic_selector_desc": "Choose any epic character",
+      "legendary_selector": "Legendary Selector",
+      "legendary_selector_desc": "Choose any legendary character",
+      "banner_pity_reset": "Pity Reset",
+      "banner_pity_reset_desc": "Reset banner pity to 50% (45/90 pulls)"
+    }
   }
 }

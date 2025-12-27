@@ -71,6 +71,11 @@ const ProgressText = styled.span`
   color: #888;
 `;
 
+const ResetInfo = styled.span`
+  color: #666;
+  font-size: 0.75rem;
+`;
+
 const ProgressCount = styled.span`
   color: #ba68c8;
 `;
@@ -310,14 +315,17 @@ export function FatePointsDisplay({ bannerId = null }) {
     });
   }, [refreshFatePoints]);
 
-  // Build exchange options from backend data with icons
+  // Build exchange options from backend data with icons and translated descriptions
   const exchangeOptions = useMemo(() => {
     if (!fatePoints?.exchangeOptions) return [];
     return fatePoints.exchangeOptions.map(opt => ({
       ...opt,
+      // Use translated name and description, fallback to backend values
+      name: t(`fatePoints.exchangeOptions.${opt.id}`, opt.name),
+      description: t(`fatePoints.exchangeOptions.${opt.id}_desc`, opt.description),
       Icon: EXCHANGE_ICONS[opt.id] || FaMagic
     }));
-  }, [fatePoints?.exchangeOptions]);
+  }, [fatePoints?.exchangeOptions, t]);
 
   if (loading) {
     return (
@@ -386,7 +394,10 @@ export function FatePointsDisplay({ bannerId = null }) {
 
         <ProgressSection>
           <ProgressLabel>
-            <ProgressText>{t('fatePoints.weeklyEarnings', 'Weekly Earnings')}</ProgressText>
+            <ProgressText>
+              {t('fatePoints.weeklyEarnings', 'Weekly Earnings')}
+              <ResetInfo> ({t('fatePoints.weeklyResetsInfo', 'Resets Monday 00:00 UTC')})</ResetInfo>
+            </ProgressText>
             <ProgressCount>{pointsThisWeek} / {weeklyMax}</ProgressCount>
           </ProgressLabel>
           <ProgressBar>
