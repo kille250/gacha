@@ -264,7 +264,7 @@ const EXCHANGE_OPTIONS = [
 ];
 
 export function FatePointsDisplay({ bannerId = null }) {
-  const { fatePoints, loading, error, exchangePoints, refreshFatePoints } = useFatePoints(bannerId);
+  const { fatePoints, loading, error, exchangePoints } = useFatePoints(bannerId);
   const [selectedItem, setSelectedItem] = useState(null);
   const [exchanging, setExchanging] = useState(false);
 
@@ -280,15 +280,18 @@ export function FatePointsDisplay({ bannerId = null }) {
     return null;
   }
 
-  const { points, pointsThisWeek, weeklyMax } = fatePoints;
+  // Extract values with safe defaults
+  const points = fatePoints.points ?? 0;
+  const pointsThisWeek = fatePoints.pointsThisWeek ?? 0;
+  const weeklyMax = fatePoints.weeklyMax ?? 500;
 
   const handleExchange = async () => {
     if (!selectedItem || exchanging) return;
 
     setExchanging(true);
     try {
+      // Pass the exchange type to the API
       await exchangePoints(selectedItem.id);
-      await refreshFatePoints();
       setSelectedItem(null);
     } catch (err) {
       console.error('Exchange failed:', err);
@@ -297,7 +300,8 @@ export function FatePointsDisplay({ bannerId = null }) {
     }
   };
 
-  const weeklyProgress = (pointsThisWeek / weeklyMax) * 100;
+  // Safe calculation with guards against division by zero
+  const weeklyProgress = weeklyMax > 0 ? (pointsThisWeek / weeklyMax) * 100 : 0;
 
   return (
     <>

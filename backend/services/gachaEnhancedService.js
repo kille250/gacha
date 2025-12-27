@@ -303,36 +303,136 @@ function recordPull(user, bannerId, count = 1) {
 // ===========================================
 
 /**
- * Get fate points status for a user
+ * Get the start of the current week (Monday 00:00:00 UTC)
+ * @returns {Date} - Start of current week
+ */
+function getWeekStart() {
+  const now = new Date();
+  const dayOfWeek = now.getUTCDay();
+  // Adjust so Monday is day 0
+  const daysFromMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1;
+  const weekStart = new Date(now);
+  weekStart.setUTCDate(now.getUTCDate() - daysFromMonday);
+  weekStart.setUTCHours(0, 0, 0, 0);
+  return weekStart;
+}
+
+/**
+ * Get weekly fate points tracking data
+ * Resets automatically if week has changed
  * @param {Object} user - User object
- * @param {string} bannerId - Banner ID
+ * @returns {Object} - { pointsThisWeek, weeklyMax, weekStart }
+ */
+function getWeeklyFatePoints(user) {
+  const weeklyMax = GACHA_FATE_POINTS.weeklyMax || 500;
+  const currentWeekStart = getWeekStart().toISOString();
+
+  const weeklyData = user.fatePointsWeekly || {};
+
+  // Check if we're in a new week
+  if (weeklyData.weekStart !== currentWeekStart) {
+    // New week - reset tracking
+    return {
+      pointsThisWeek: 0,
+      weeklyMax,
+      weekStart: currentWeekStart,
+      isNewWeek: true
+    };
+  }
+
+  return {
+    pointsThisWeek: weeklyData.pointsEarned || 0,
+    weeklyMax,
+    weekStart: currentWeekStart,
+    isNewWeek: false
+  };
+}
+
+/**
+ * Update weekly fate points tracking
+ * @param {Object} user - User object
+ * @param {number} pointsEarned - Points earned this transaction
+ * @returns {number} - Actual points added (may be capped)
+ */
+function updateWeeklyFatePoints(user, pointsEarned) {
+  if (!GACHA_FATE_POINTS.weeklyCapEnabled) {
+    return pointsEarned;
+  }
+
+  const weekly = getWeeklyFatePoints(user);
+  const weeklyMax = weekly.weeklyMax;
+
+  // Calculate how many points can actually be added
+  const remainingCap = Math.max(0, weeklyMax - weekly.pointsThisWeek);
+  const actualPoints = Math.min(pointsEarned, remainingCap);
+
+  // Update weekly tracking
+  user.fatePointsWeekly = {
+    weekStart: weekly.weekStart,
+    pointsEarned: weekly.pointsThisWeek + actualPoints
+  };
+
+  return actualPoints;
+}
+
+/**
+ * Get total fate points across all banners (global pool)
+ * @param {Object} user - User object
+ * @returns {number} - Total fate points
+ */
+function getTotalFatePoints(user) {
+  const fatePoints = user.fatePoints || {};
+  let total = 0;
+  for (const bannerId of Object.keys(fatePoints)) {
+    total += fatePoints[bannerId]?.points || 0;
+  }
+  return total;
+}
+
+/**
+ * Get fate points status for a user
+ * Returns global fate points pool with weekly tracking
+ * @param {Object} user - User object
+ * @param {string} _bannerId - Banner ID (unused - FP are global, kept for API compatibility)
  * @returns {Object} - Fate points status
  */
-function getFatePointsStatus(user, bannerId) {
+function getFatePointsStatus(user, _bannerId) {
   if (!GACHA_FATE_POINTS.enabled) {
     return { enabled: false };
   }
 
-  const fatePoints = user.fatePoints || {};
-  const bannerFate = fatePoints[bannerId] || { points: 0, lastUpdate: null };
+  // Get total points across all banners (global pool)
+  const totalPoints = getTotalFatePoints(user);
 
-  const pointsNeeded = GACHA_FATE_POINTS.rateUpBanner.pointsForGuaranteed;
-  const canGuarantee = bannerFate.points >= pointsNeeded;
+  // Get weekly tracking
+  const weekly = getWeeklyFatePoints(user);
+
+  // Get exchange options from config
+  const exchangeOptions = GACHA_FATE_POINTS.exchangeOptions || {};
 
   return {
     enabled: true,
-    points: bannerFate.points,
-    pointsNeeded: pointsNeeded,
-    canGuarantee,
-    progress: Math.min(100, (bannerFate.points / pointsNeeded) * 100),
-    message: canGuarantee
-      ? 'You can exchange Fate Points for the featured character!'
-      : `${pointsNeeded - bannerFate.points} more Fate Points needed`
+    points: totalPoints,
+    pointsThisWeek: weekly.pointsThisWeek,
+    weeklyMax: weekly.weeklyMax,
+    weekStart: weekly.weekStart,
+    exchangeOptions: Object.values(exchangeOptions).map(opt => ({
+      id: opt.id,
+      name: opt.name,
+      description: opt.description,
+      cost: opt.cost,
+      affordable: totalPoints >= opt.cost
+    })),
+    // Legacy fields for backwards compatibility
+    pointsNeeded: GACHA_FATE_POINTS.rateUpBanner?.pointsForGuaranteed || 300,
+    canGuarantee: totalPoints >= (GACHA_FATE_POINTS.rateUpBanner?.pointsForGuaranteed || 300),
+    progress: Math.min(100, (totalPoints / (GACHA_FATE_POINTS.rateUpBanner?.pointsForGuaranteed || 300)) * 100)
   };
 }
 
 /**
  * Award fate points after a pull
+ * Points are added to a specific banner but weekly cap is global
  * @param {Object} user - User object
  * @param {string} bannerId - Banner ID
  * @param {string} pullType - 'standard', 'banner', 'premium'
@@ -342,7 +442,7 @@ function getFatePointsStatus(user, bannerId) {
  */
 function awardFatePoints(user, bannerId, pullType, gotNonFeaturedFiveStar = false, pullCount = 1) {
   if (!GACHA_FATE_POINTS.enabled) {
-    return { awarded: 0 };
+    return { awarded: 0, capped: false };
   }
 
   const fatePoints = user.fatePoints || {};
@@ -354,55 +454,240 @@ function awardFatePoints(user, bannerId, pullType, gotNonFeaturedFiveStar = fals
 
   // Bonus for non-featured 5-star (only once per multi-roll, not multiplied)
   if (gotNonFeaturedFiveStar) {
-    pointsToAdd += GACHA_FATE_POINTS.rateUpBanner.nonFeaturedFiveStarPoints;
+    pointsToAdd += GACHA_FATE_POINTS.rateUpBanner?.nonFeaturedFiveStarPoints || 0;
   }
 
-  bannerFate.points += pointsToAdd;
+  // Apply weekly cap
+  const actualPoints = updateWeeklyFatePoints(user, pointsToAdd);
+  const wasCapped = actualPoints < pointsToAdd;
+
+  bannerFate.points += actualPoints;
   bannerFate.lastUpdate = new Date().toISOString();
 
   fatePoints[bannerId] = bannerFate;
   user.fatePoints = fatePoints;
 
   return {
-    awarded: pointsToAdd,
-    total: bannerFate.points,
-    message: `+${pointsToAdd} Fate Points`
+    awarded: actualPoints,
+    requested: pointsToAdd,
+    capped: wasCapped,
+    total: getTotalFatePoints(user),
+    message: wasCapped
+      ? `+${actualPoints} Fate Points (weekly cap reached)`
+      : `+${actualPoints} Fate Points`
   };
 }
 
 /**
- * Exchange fate points for guaranteed featured character
+ * Deduct fate points from user's global pool
+ * Deducts from banners in order of most points first
  * @param {Object} user - User object
- * @param {string} bannerId - Banner ID
+ * @param {number} amount - Amount to deduct
+ * @returns {boolean} - Success
+ */
+function deductFatePoints(user, amount) {
+  const fatePoints = user.fatePoints || {};
+  const totalPoints = getTotalFatePoints(user);
+
+  if (totalPoints < amount) {
+    return false;
+  }
+
+  let remaining = amount;
+
+  // Sort banners by points descending
+  const bannerIds = Object.keys(fatePoints).sort((a, b) => {
+    return (fatePoints[b]?.points || 0) - (fatePoints[a]?.points || 0);
+  });
+
+  for (const bannerId of bannerIds) {
+    if (remaining <= 0) break;
+
+    const bannerPoints = fatePoints[bannerId]?.points || 0;
+    const deduct = Math.min(bannerPoints, remaining);
+
+    fatePoints[bannerId].points -= deduct;
+    remaining -= deduct;
+  }
+
+  user.fatePoints = fatePoints;
+  return true;
+}
+
+/**
+ * Exchange fate points for a reward
+ * @param {Object} user - User object
+ * @param {string} exchangeType - Type of exchange (rare_selector, epic_selector, legendary_selector, banner_pity_reset)
+ * @param {string} bannerId - Banner ID (required for pity reset)
  * @returns {Object} - Exchange result
  */
-function exchangeFatePoints(user, bannerId) {
+function exchangeFatePoints(user, exchangeType, bannerId = null) {
   if (!GACHA_FATE_POINTS.enabled) {
     return { success: false, error: 'Fate points not enabled' };
   }
 
-  const fatePoints = user.fatePoints || {};
-  const bannerFate = fatePoints[bannerId] || { points: 0 };
+  // Validate exchange type
+  const exchangeOptions = GACHA_FATE_POINTS.exchangeOptions || {};
+  const option = exchangeOptions[exchangeType];
 
-  const pointsNeeded = GACHA_FATE_POINTS.rateUpBanner.pointsForGuaranteed;
-  if (bannerFate.points < pointsNeeded) {
+  if (!option) {
     return {
       success: false,
-      error: `Need ${pointsNeeded} Fate Points (have ${bannerFate.points})`
+      error: `Invalid exchange type: ${exchangeType}`
     };
   }
 
-  // Deduct points
-  bannerFate.points -= pointsNeeded;
-  fatePoints[bannerId] = bannerFate;
-  user.fatePoints = fatePoints;
+  const totalPoints = getTotalFatePoints(user);
+  const cost = option.cost;
+
+  if (totalPoints < cost) {
+    return {
+      success: false,
+      error: `Need ${cost} Fate Points (have ${totalPoints})`
+    };
+  }
+
+  // Deduct points from global pool
+  if (!deductFatePoints(user, cost)) {
+    return {
+      success: false,
+      error: 'Failed to deduct fate points'
+    };
+  }
+
+  // Handle the reward based on exchange type
+  const reward = applyFatePointsExchangeReward(user, exchangeType, bannerId);
 
   return {
     success: true,
-    pointsSpent: pointsNeeded,
-    remainingPoints: bannerFate.points,
-    message: 'Fate Points exchanged! You will receive the featured character.'
+    exchangeType,
+    pointsSpent: cost,
+    remainingPoints: getTotalFatePoints(user),
+    reward,
+    message: `Exchanged ${cost} Fate Points for ${option.name}!`
   };
+}
+
+/**
+ * Apply the reward from a fate points exchange
+ * @param {Object} user - User object
+ * @param {string} exchangeType - Type of exchange
+ * @param {string} bannerId - Banner ID (for pity reset)
+ * @returns {Object} - Reward details
+ */
+function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
+  const reward = { type: exchangeType };
+
+  switch (exchangeType) {
+    case 'rare_selector': {
+      // Add rare selector to user's inventory
+      const rareSelectors = user.characterSelectors || [];
+      rareSelectors.push({
+        rarity: 'rare',
+        source: 'fate_points_exchange',
+        obtained: new Date().toISOString(),
+        used: false
+      });
+      user.characterSelectors = rareSelectors;
+      reward.selector = { rarity: 'rare' };
+      break;
+    }
+
+    case 'epic_selector': {
+      // Add epic selector to user's inventory
+      const epicSelectors = user.characterSelectors || [];
+      epicSelectors.push({
+        rarity: 'epic',
+        source: 'fate_points_exchange',
+        obtained: new Date().toISOString(),
+        used: false
+      });
+      user.characterSelectors = epicSelectors;
+      reward.selector = { rarity: 'epic' };
+      break;
+    }
+
+    case 'legendary_selector': {
+      // Add legendary selector to user's inventory
+      const legendarySelectors = user.characterSelectors || [];
+      legendarySelectors.push({
+        rarity: 'legendary',
+        source: 'fate_points_exchange',
+        obtained: new Date().toISOString(),
+        used: false
+      });
+      user.characterSelectors = legendarySelectors;
+      reward.selector = { rarity: 'legendary' };
+      break;
+    }
+
+    case 'banner_pity_reset': {
+      // Reset banner pity to 50% of max
+      if (bannerId) {
+        const bannerPities = user.bannerPity || {};
+        const currentPity = bannerPities[bannerId] || {
+          pullsSinceFeatured: 0,
+          guaranteedFeatured: false,
+          totalBannerPulls: 0
+        };
+
+        // Reset pity counter to 50% of the way to guaranteed (45 out of 90)
+        const halfPity = 45;
+        currentPity.pullsSinceFeatured = halfPity;
+
+        bannerPities[bannerId] = currentPity;
+        user.bannerPity = bannerPities;
+
+        reward.pityReset = {
+          bannerId,
+          newPityValue: halfPity,
+          message: 'Pity reset to 50% (45/90 pulls)'
+        };
+      } else {
+        // Also reset standard pity if no banner specified
+        const gachaPity = user.gachaPity || {
+          pullsSinceRare: 0,
+          pullsSinceEpic: 0,
+          pullsSinceLegendary: 0,
+          totalPulls: 0
+        };
+
+        // Set legendary pity to 50% (45 out of 90)
+        gachaPity.pullsSinceLegendary = 45;
+        gachaPity.pullsSinceEpic = 25; // 50% of 50
+
+        user.gachaPity = gachaPity;
+
+        reward.pityReset = {
+          standardPity: true,
+          newLegendaryPity: 45,
+          newEpicPity: 25,
+          message: 'Standard pity reset to 50%'
+        };
+      }
+      break;
+    }
+
+    default:
+      reward.error = 'Unknown reward type';
+  }
+
+  return reward;
+}
+
+/**
+ * Get available exchange options with affordability
+ * @param {Object} user - User object
+ * @returns {Array} - Available exchange options
+ */
+function getExchangeOptions(user) {
+  const totalPoints = getTotalFatePoints(user);
+  const options = GACHA_FATE_POINTS.exchangeOptions || {};
+
+  return Object.values(options).map(opt => ({
+    ...opt,
+    affordable: totalPoints >= opt.cost
+  }));
 }
 
 // ===========================================
@@ -555,6 +840,9 @@ module.exports = {
   getFatePointsStatus,
   awardFatePoints,
   exchangeFatePoints,
+  getTotalFatePoints,
+  getWeeklyFatePoints,
+  getExchangeOptions,
 
   // Alternative Paths
   checkFishingPathUnlock,

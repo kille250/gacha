@@ -422,17 +422,29 @@ router.get('/gacha/fate-points', [auth, enforcementMiddleware], async (req, res)
 
 /**
  * POST /api/enhancements/gacha/fate-points/exchange
- * Exchange fate points for guaranteed featured character
+ * Exchange fate points for rewards (selectors, pity reset)
+ *
+ * Body: {
+ *   exchangeType: 'rare_selector' | 'epic_selector' | 'legendary_selector' | 'banner_pity_reset',
+ *   bannerId: string (optional, used for pity reset context)
+ * }
  */
 router.post('/gacha/fate-points/exchange', [auth, enforcementMiddleware, deviceBindingMiddleware('gacha'), sensitiveActionLimiter], async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
-    const { bannerId } = req.body;
+    const { exchangeType, bannerId } = req.body;
 
-    if (!bannerId) {
+    if (!exchangeType) {
       await transaction.rollback();
-      return res.status(400).json({ error: 'bannerId required' });
+      return res.status(400).json({ error: 'exchangeType required' });
+    }
+
+    // Validate exchange type
+    const validTypes = ['rare_selector', 'epic_selector', 'legendary_selector', 'banner_pity_reset'];
+    if (!validTypes.includes(exchangeType)) {
+      await transaction.rollback();
+      return res.status(400).json({ error: `Invalid exchangeType. Must be one of: ${validTypes.join(', ')}` });
     }
 
     const user = await User.findByPk(req.user.id, {
@@ -445,23 +457,22 @@ router.post('/gacha/fate-points/exchange', [auth, enforcementMiddleware, deviceB
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const result = gachaEnhanced.exchangeFatePoints(user, bannerId);
+    // Exchange fate points for the specified reward
+    const result = gachaEnhanced.exchangeFatePoints(user, exchangeType, bannerId);
 
     if (!result.success) {
       await transaction.rollback();
       return res.status(400).json({ error: result.error });
     }
 
-    // Mark that next pull is guaranteed featured
-    const bannerPities = user.bannerPity || {};
-    bannerPities[bannerId] = bannerPities[bannerId] || {};
-    bannerPities[bannerId].fatePointsGuarantee = true;
-    user.bannerPity = bannerPities;
-
     await user.save({ transaction });
     await transaction.commit();
 
-    res.json(result);
+    // Return result with updated fate points status
+    res.json({
+      ...result,
+      fatePoints: gachaEnhanced.getFatePointsStatus(user, bannerId)
+    });
   } catch (err) {
     await transaction.rollback();
     console.error('Fate points exchange error:', err);

@@ -518,6 +518,24 @@ User.init(
       }
     },
 
+    // Weekly fate points tracking (JSON object: {weekStart, pointsEarned})
+    fatePointsWeekly: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{}',
+      get() {
+        const value = this.getDataValue('fatePointsWeekly');
+        try {
+          return value ? JSON.parse(value) : {};
+        } catch {
+          return {};
+        }
+      },
+      set(value) {
+        this.setDataValue('fatePointsWeekly', JSON.stringify(value || {}));
+      }
+    },
+
     // Character selectors earned (JSON array)
     characterSelectors: {
       type: DataTypes.TEXT,

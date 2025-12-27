@@ -124,11 +124,20 @@ export function useFatePoints(bannerId) {
     fetchFatePoints();
   }, [fetchFatePoints]);
 
-  const exchange = useCallback(async () => {
+  /**
+   * Exchange fate points for a reward
+   * @param {string} exchangeType - Type: 'rare_selector', 'epic_selector', 'legendary_selector', 'banner_pity_reset'
+   */
+  const exchange = useCallback(async (exchangeType) => {
     try {
       setExchanging(true);
-      const result = await enhancementsApi.gacha.exchangeFatePoints(bannerId);
-      await fetchFatePoints(); // Refresh
+      const result = await enhancementsApi.gacha.exchangeFatePoints(exchangeType, bannerId);
+      // Update local state with the returned fate points status
+      if (result.fatePoints) {
+        setFatePoints(result.fatePoints);
+      } else {
+        await fetchFatePoints(); // Fallback refresh
+      }
       return result;
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to exchange fate points');

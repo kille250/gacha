@@ -341,11 +341,13 @@ describe('Fate Points System', () => {
 
     test('calculates progress correctly', () => {
       const user = createMockUser();
-      user.fatePoints = { banner1: { points: 1, lastUpdate: new Date().toISOString() } };
+      const pointsNeeded = GACHA_FATE_POINTS.rateUpBanner.pointsForGuaranteed;
+      const halfPoints = Math.floor(pointsNeeded / 2);
+      user.fatePoints = { banner1: { points: halfPoints, lastUpdate: new Date().toISOString() } };
       const status = gachaEnhanced.getFatePointsStatus(user, 'banner1');
 
-      expect(status.points).toBe(1);
-      expect(status.progress).toBe(50); // 1/2 = 50%
+      expect(status.points).toBe(halfPoints);
+      expect(status.progress).toBe(50); // half = 50%
       expect(status.canGuarantee).toBe(false);
     });
 
@@ -357,6 +359,24 @@ describe('Fate Points System', () => {
 
       expect(status.canGuarantee).toBe(true);
       expect(status.progress).toBe(100);
+    });
+
+    test('returns weekly tracking data', () => {
+      const user = createMockUser();
+      const status = gachaEnhanced.getFatePointsStatus(user, 'banner1');
+
+      expect(status.pointsThisWeek).toBeDefined();
+      expect(status.weeklyMax).toBeDefined();
+      expect(status.weeklyMax).toBe(GACHA_FATE_POINTS.weeklyMax);
+    });
+
+    test('returns exchange options', () => {
+      const user = createMockUser();
+      const status = gachaEnhanced.getFatePointsStatus(user, 'banner1');
+
+      expect(status.exchangeOptions).toBeDefined();
+      expect(Array.isArray(status.exchangeOptions)).toBe(true);
+      expect(status.exchangeOptions.length).toBe(4);
     });
   });
 
@@ -398,47 +418,122 @@ describe('Fate Points System', () => {
       gachaEnhanced.awardFatePoints(user, 'banner1', 'standard', false);
       gachaEnhanced.awardFatePoints(user, 'banner1', 'standard', false);
 
-      expect(user.fatePoints.banner1.points).toBe(3);
+      expect(user.fatePoints.banner1.points).toBe(3 * GACHA_FATE_POINTS.pointsPerPull.standard);
     });
 
     test('awards correct points for multi-pull', () => {
       const user = createMockUser();
-      // 10x banner pull should award 10 * 2 = 20 points
+      // 10x banner pull should award 10 * pointsPerPull.banner points
+      const expectedPoints = 10 * GACHA_FATE_POINTS.pointsPerPull.banner;
       gachaEnhanced.awardFatePoints(user, 'banner1', 'banner', false, 10);
 
-      expect(user.fatePoints.banner1.points).toBe(20);
+      expect(user.fatePoints.banner1.points).toBe(expectedPoints);
     });
 
     test('awards correct points for multi-pull with non-featured bonus', () => {
       const user = createMockUser();
-      // 10x banner pull with non-featured 5-star: 10 * 2 + 1 = 21 points
+      // 10x banner pull with non-featured 5-star: 10 * pointsPerPull + bonus
+      const expectedPoints = 10 * GACHA_FATE_POINTS.pointsPerPull.banner +
+        GACHA_FATE_POINTS.rateUpBanner.nonFeaturedFiveStarPoints;
       gachaEnhanced.awardFatePoints(user, 'banner1', 'banner', true, 10);
 
-      expect(user.fatePoints.banner1.points).toBe(21);
+      expect(user.fatePoints.banner1.points).toBe(expectedPoints);
+    });
+
+    test('respects weekly cap', () => {
+      const user = createMockUser();
+      const weeklyMax = GACHA_FATE_POINTS.weeklyMax;
+
+      // Award more than weekly cap
+      const result = gachaEnhanced.awardFatePoints(user, 'banner1', 'standard', false, weeklyMax + 100);
+
+      // Should be capped at weeklyMax
+      expect(result.awarded).toBeLessThanOrEqual(weeklyMax);
+      expect(result.capped).toBe(true);
     });
   });
 
   describe('exchangeFatePoints', () => {
-    test('successfully exchanges fate points when enough', () => {
+    test('successfully exchanges fate points for rare selector', () => {
       const user = createMockUser();
-      const pointsNeeded = GACHA_FATE_POINTS.rateUpBanner.pointsForGuaranteed;
-      user.fatePoints = { banner1: { points: pointsNeeded + 1 } };
+      const cost = GACHA_FATE_POINTS.exchangeOptions.rare_selector.cost;
+      user.fatePoints = { banner1: { points: cost + 10 } };
 
-      const result = gachaEnhanced.exchangeFatePoints(user, 'banner1');
+      const result = gachaEnhanced.exchangeFatePoints(user, 'rare_selector', 'banner1');
 
       expect(result.success).toBe(true);
-      expect(result.pointsSpent).toBe(pointsNeeded);
-      expect(user.fatePoints.banner1.points).toBe(1);
+      expect(result.pointsSpent).toBe(cost);
+      expect(result.exchangeType).toBe('rare_selector');
+      expect(result.reward.selector.rarity).toBe('rare');
+    });
+
+    test('successfully exchanges fate points for epic selector', () => {
+      const user = createMockUser();
+      const cost = GACHA_FATE_POINTS.exchangeOptions.epic_selector.cost;
+      user.fatePoints = { banner1: { points: cost } };
+
+      const result = gachaEnhanced.exchangeFatePoints(user, 'epic_selector', 'banner1');
+
+      expect(result.success).toBe(true);
+      expect(result.pointsSpent).toBe(cost);
+      expect(result.reward.selector.rarity).toBe('epic');
+    });
+
+    test('successfully exchanges fate points for legendary selector', () => {
+      const user = createMockUser();
+      const cost = GACHA_FATE_POINTS.exchangeOptions.legendary_selector.cost;
+      user.fatePoints = { banner1: { points: cost } };
+
+      const result = gachaEnhanced.exchangeFatePoints(user, 'legendary_selector', 'banner1');
+
+      expect(result.success).toBe(true);
+      expect(result.pointsSpent).toBe(cost);
+      expect(result.reward.selector.rarity).toBe('legendary');
+    });
+
+    test('successfully exchanges fate points for pity reset', () => {
+      const user = createMockUser();
+      const cost = GACHA_FATE_POINTS.exchangeOptions.banner_pity_reset.cost;
+      user.fatePoints = { banner1: { points: cost } };
+
+      const result = gachaEnhanced.exchangeFatePoints(user, 'banner_pity_reset', 'banner1');
+
+      expect(result.success).toBe(true);
+      expect(result.pointsSpent).toBe(cost);
+      expect(result.reward.pityReset).toBeDefined();
     });
 
     test('fails when not enough points', () => {
       const user = createMockUser();
-      user.fatePoints = { banner1: { points: 1 } };
+      user.fatePoints = { banner1: { points: 50 } }; // Less than 100 for rare selector
 
-      const result = gachaEnhanced.exchangeFatePoints(user, 'banner1');
+      const result = gachaEnhanced.exchangeFatePoints(user, 'rare_selector', 'banner1');
 
       expect(result.success).toBe(false);
       expect(result.error).toContain('Need');
+    });
+
+    test('fails for invalid exchange type', () => {
+      const user = createMockUser();
+      user.fatePoints = { banner1: { points: 1000 } };
+
+      const result = gachaEnhanced.exchangeFatePoints(user, 'invalid_type', 'banner1');
+
+      expect(result.success).toBe(false);
+      expect(result.error).toContain('Invalid exchange type');
+    });
+
+    test('adds selector to characterSelectors array', () => {
+      const user = createMockUser();
+      const cost = GACHA_FATE_POINTS.exchangeOptions.rare_selector.cost;
+      user.fatePoints = { banner1: { points: cost } };
+
+      gachaEnhanced.exchangeFatePoints(user, 'rare_selector', 'banner1');
+
+      expect(user.characterSelectors).toBeDefined();
+      expect(user.characterSelectors.length).toBe(1);
+      expect(user.characterSelectors[0].rarity).toBe('rare');
+      expect(user.characterSelectors[0].source).toBe('fate_points_exchange');
     });
   });
 });
@@ -510,8 +605,11 @@ describe('Edge Cases', () => {
     gachaEnhanced.awardFatePoints(user, 'banner2', 'standard', false);
     gachaEnhanced.awardFatePoints(user, 'banner1', 'premium', false);
 
-    expect(user.fatePoints.banner1.points).toBe(6); // 3 + 3
-    expect(user.fatePoints.banner2.points).toBe(1);
+    // With new config, all pull types award 1 FP each
+    const premiumPts = GACHA_FATE_POINTS.pointsPerPull.premium;
+    const standardPts = GACHA_FATE_POINTS.pointsPerPull.standard;
+    expect(user.fatePoints.banner1.points).toBe(premiumPts * 2);
+    expect(user.fatePoints.banner2.points).toBe(standardPts);
   });
 
   test('handles undefined/null user fields gracefully', () => {

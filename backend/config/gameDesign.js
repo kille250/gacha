@@ -349,20 +349,51 @@ const GACHA_MILESTONE_REWARDS = {
 const GACHA_FATE_POINTS = {
   enabled: true,
 
-  // Points earned per pull type
+  // Points earned per pull type (1 pull = 1 FP for standard display, but varies by type)
   pointsPerPull: {
     standard: 1,
-    banner: 2,
-    premium: 3
+    banner: 1,    // Changed to 1 to match UI "1 pull = 1 FP"
+    premium: 1    // Changed to 1 to match UI "1 pull = 1 FP"
   },
 
-  // Rate-up banner specific
-  rateUpBanner: {
-    // When you pull a non-featured 5-star, earn fate points
-    nonFeaturedFiveStarPoints: 1,
+  // Weekly cap for fair progression
+  weeklyCapEnabled: true,
+  weeklyMax: 500,  // Maximum FP earnable per week
 
-    // Points needed for guaranteed featured character
-    pointsForGuaranteed: 2
+  // Rate-up banner specific (legacy - kept for backwards compatibility)
+  rateUpBanner: {
+    // When you pull a non-featured 5-star, earn bonus fate points
+    nonFeaturedFiveStarPoints: 5,
+    // Points needed for guaranteed featured character (legacy)
+    pointsForGuaranteed: 300
+  },
+
+  // Exchange shop - costs for different rewards
+  exchangeOptions: {
+    rare_selector: {
+      id: 'rare_selector',
+      name: 'Rare Selector',
+      description: 'Choose any rare character',
+      cost: 100
+    },
+    epic_selector: {
+      id: 'epic_selector',
+      name: 'Epic Selector',
+      description: 'Choose any epic character',
+      cost: 300
+    },
+    legendary_selector: {
+      id: 'legendary_selector',
+      name: 'Legendary Selector',
+      description: 'Choose any legendary character',
+      cost: 600
+    },
+    banner_pity_reset: {
+      id: 'banner_pity_reset',
+      name: 'Pity Reset',
+      description: 'Reset banner pity to 50% of max',
+      cost: 150
+    }
   }
 };
 

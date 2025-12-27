@@ -142,10 +142,13 @@ export const gachaEnhancements = {
   },
 
   /**
-   * Exchange fate points for guaranteed featured character
+   * Exchange fate points for rewards (selectors, pity reset)
+   * @param {string} exchangeType - Type of exchange: 'rare_selector', 'epic_selector', 'legendary_selector', 'banner_pity_reset'
+   * @param {string} bannerId - Banner ID (optional, used for pity reset context)
    */
-  exchangeFatePoints: async (bannerId) => {
+  exchangeFatePoints: async (exchangeType, bannerId = null) => {
     const response = await api.post('/enhancements/gacha/fate-points/exchange', {
+      exchangeType,
       bannerId
     });
     return response.data;
