@@ -271,6 +271,7 @@ const CreateFromDanbooru = ({
   // Ref for modal body to track scroll position
   const bodyRef = useRef(null);
   const savedScrollPosition = useRef(0);
+  const shouldRestoreScroll = useRef(false);
 
   // Focus name input when entering details step
   useEffect(() => {
@@ -279,6 +280,25 @@ const CreateFromDanbooru = ({
         nameInputRef.current?.focus();
       }, 100);
       return () => clearTimeout(timer);
+    }
+  }, [step]);
+
+  // Restore scroll position when returning to search step
+  useEffect(() => {
+    if (step === 'search' && shouldRestoreScroll.current && savedScrollPosition.current > 0) {
+      // Use multiple requestAnimationFrame calls to ensure DOM is fully ready
+      // First rAF waits for React render, second waits for layout
+      const restoreScroll = () => {
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => {
+            if (bodyRef.current) {
+              bodyRef.current.scrollTop = savedScrollPosition.current;
+            }
+            shouldRestoreScroll.current = false;
+          });
+        });
+      };
+      restoreScroll();
     }
   }, [step]);
 
@@ -297,6 +317,9 @@ const CreateFromDanbooru = ({
       setCharacterData({ name: '', series: '', rarity: 'common', isR18: false });
       setDuplicateError(null);
       setError(null);
+      // Reset scroll tracking refs
+      savedScrollPosition.current = 0;
+      shouldRestoreScroll.current = false;
     }
   }, [show]);
 
@@ -432,6 +455,7 @@ const CreateFromDanbooru = ({
     // Save scroll position before switching to details step
     if (bodyRef.current) {
       savedScrollPosition.current = bodyRef.current.scrollTop;
+      shouldRestoreScroll.current = true;
     }
 
     setSelectedMedia(media);
@@ -465,13 +489,7 @@ const CreateFromDanbooru = ({
     setSelectedMedia(null);
     setDuplicateError(null);
     setError(null);
-
-    // Restore scroll position after step transition
-    requestAnimationFrame(() => {
-      if (bodyRef.current) {
-        bodyRef.current.scrollTop = savedScrollPosition.current;
-      }
-    });
+    // Scroll restoration is handled by useEffect watching step changes
   }, []);
 
   // Handle character form changes
@@ -526,13 +544,7 @@ const CreateFromDanbooru = ({
         setCharacterData({ name: '', series: '', rarity: 'common', isR18: false });
         setDuplicateError(null);
         setError(null);
-
-        // Restore scroll position after step transition
-        requestAnimationFrame(() => {
-          if (bodyRef.current) {
-            bodyRef.current.scrollTop = savedScrollPosition.current;
-          }
-        });
+        // Scroll restoration is handled by useEffect watching step changes
       } else {
         onClose();
       }
