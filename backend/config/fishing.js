@@ -5,33 +5,36 @@
  * Extracted from routes/fishing.js for better maintainability.
  *
  * ============================================================================
- * BALANCE UPDATE (v5.0 - Ultimate Mode Balancing)
+ * BALANCE UPDATE (v6.0 - Comprehensive Mode Harmony)
  * ============================================================================
  * Key changes:
  *
- * 1. XP REBALANCED FOR MODE PARITY:
- *    - Perfect catch multiplier: 1.4x (down from 1.5x)
- *    - Great catch multiplier: 1.2x (down from 1.25x)
- *    - Autofish XP penalty: 0.75x (encourages manual fishing)
- *    - Streak XP bonuses: 5-75 XP at streak milestones
+ * 1. STREAK MILESTONES EXTENDED: Smoother progression
+ *    - Added 30 streak: +40 XP (fills 20→50 gap)
+ *    - Added 40 streak: +55 XP (fills 20→50 gap)
+ *    - Streak bonuses now synced with accountLevel.js
  *
- * 2. TRADE VALUES BUFFED: Better rewards for rare catches
- *    - Epic fish: 700 points (up from 600)
- *    - Legendary fish: 3000 points (up from 2500)
- *    - Epic→tickets: 4 roll tickets (up from 3)
+ * 2. MANUAL FISHING EXCELLENCE: Skill-based rewards
+ *    - NEW: 5 perfect catches in a row: +25 XP
+ *    - NEW: 10 perfect catches daily: +50 XP
+ *    - NEW: 25 perfect catches daily: +100 XP (mastery)
+ *    - Rationale: Reward skilled active play
  *
- * 3. DAILY LIMITS INCREASED: Support dedicated fishing sessions
- *    - Manual casts: 700/day (up from 600)
- *    - Autofish casts: 200/day (up from 175)
- *    - Points from trades: 25,000/day (up from 20,000)
+ * 3. FIRST-TIME ACHIEVEMENTS: Milestone celebrations
+ *    - First legendary fish: 200 XP
+ *    - First area unlock: 50 XP
+ *    - First 10-catch perfect streak: 75 XP
+ *    - Rationale: Make achievements feel special
  *
- * 4. CHALLENGE REWARDS BUFFED: More rewarding daily goals
- *    - All challenge XP increased by ~25%
- *    - Legendary challenge: 125 XP + better rewards
+ * 4. SYNERGY WITH ACCOUNT PROGRESSION:
+ *    - Fishing rarity bonus from prestige (0.5% per level)
+ *    - New level 90 milestone adds +2% fishing rarity
  *
- * 5. AREA UNLOCKS ADJUSTED: Better progression feel
- *    - Ocean: Rank 40 (down from 50)
- *    - Abyss: Rank 75 (down from 100)
+ * Previous v5.0 changes (preserved):
+ * - Perfect: 1.4x, Great: 1.2x, Autofish: 0.75x XP
+ * - Epic fish: 700 pts, Legendary: 3000 pts
+ * - Daily limits: 700 manual, 200 autofish, 25k trade pts
+ * - Ocean: Rank 40, Abyss: Rank 75
  *
  * Previous v3.0 changes (preserved):
  * - Account XP integration
@@ -204,21 +207,35 @@ const FISHING_CONFIG = {
   
   // === STREAK BONUS SYSTEM ===
   // Consecutive catches without missing award bonuses
+  // BALANCE UPDATE v6.0: Added 30 and 40 streak milestones to fill the gap
   streakBonuses: {
-    5: { 
+    5: {
       pointsMultiplier: 1.1,   // +10% points from trades
       message: '🔥 5 streak! +10% bonus!'
     },
-    10: { 
+    10: {
       pointsMultiplier: 1.2,   // +20% points
       message: '🔥🔥 10 streak! +20% bonus!'
     },
-    20: { 
+    20: {
       pointsMultiplier: 1.3,   // +30% points
       extraFishChance: 0.1,    // 10% chance for extra fish
       message: '🔥🔥🔥 20 streak! +30% bonus + extra fish chance!'
     },
-    50: { 
+    // NEW in v6.0: Fill the 20→50 gap for smoother progression
+    30: {
+      pointsMultiplier: 1.35,  // +35% points
+      extraFishChance: 0.12,   // 12% chance for extra fish
+      rarityBonus: 0.02,       // +2% rare+ chance
+      message: '🔥🔥🔥🔥 30 streak! +35% bonus + rarity boost!'
+    },
+    40: {
+      pointsMultiplier: 1.42,  // +42% points
+      extraFishChance: 0.15,   // 15% chance for extra fish
+      rarityBonus: 0.035,      // +3.5% rare+ chance
+      message: '🔥🔥🔥🔥🔥 40 streak! Almost legendary!'
+    },
+    50: {
       pointsMultiplier: 1.5,   // +50% points
       extraFishChance: 0.2,    // 20% chance for extra fish
       rarityBonus: 0.05,       // +5% rare+ chance

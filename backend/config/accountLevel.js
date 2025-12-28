@@ -5,39 +5,63 @@
  * Account level unlocks facility upgrades (Warriors Hall, etc.)
  *
  * ============================================================================
- * BALANCE UPDATE (v5.0 - Ultimate Mode Balancing)
+ * BALANCE UPDATE (v6.0 - Comprehensive Mode Harmony)
  * ============================================================================
- * Key changes in v5.0:
+ * Key changes in v6.0:
  *
- * 1. DOJO XP FURTHER BUFFED: Better alignment with fishing
- *    - Base claim: 18 XP (up from 15)
- *    - Efficiency bonus: 10 XP (up from 8)
- *    - Hourly passive: 3 XP/hr (up from 2)
- *    - Training streak bonus: +2 XP per consecutive day (max +14)
- *    - Rationale: Dojo now contributes ~20-25% of daily XP
+ * 1. EXTENDED LOGIN STREAK REWARDS: Long-term player retention
+ *    - Added day 60: 150 XP, day 90: 250 XP
+ *    - Added day 180: 500 XP, day 365: 1000 XP + exclusive title
+ *    - Rationale: Reward dedicated long-term players
  *
- * 2. FISHING XP REBALANCED: Slightly reduced to match dojo better
- *    - Perfect catch multiplier: 1.4 (down from 1.5)
- *    - Great catch multiplier: 1.2 (down from 1.25)
- *    - Autofish XP penalty: 0.75x (new - encourages active play)
+ * 2. FISHING STREAK GAPS FILLED: Smoother progression
+ *    - Added 30 streak: +40 XP, 40 streak: +55 XP
+ *    - Rationale: Bridge the 20→50 streak gap
  *
- * 3. GACHA XP BUFFED: More rewarding pulls
- *    - Base XP per pull: 12 (up from 10)
- *    - Character mastery XP: New system contributing to profile
- *    - Milestone XP increased by ~20%
+ * 3. NEW LEVEL MILESTONES: Fill 75-100 gap
+ *    - Level 85: 15k points, 8 roll tickets, +3% XP
+ *    - Level 90: 30k points, 12 roll tickets, 5 premium
+ *    - Level 95: 50k points, 15 roll tickets, 8 premium
+ *    - Rationale: Late-game needs more frequent rewards
  *
- * 4. PRESTIGE SYSTEM ADDED: Post-level-100 progression
- *    - Prestige levels 1-10 after hitting max
- *    - Each prestige grants permanent 2% XP bonus
- *    - Prestige resets to level 50, keeps all unlocks
+ * 4. BUFFED DAILY ENGAGEMENT GOALS: More impactful
+ *    - Two-modes bonus: 25 → 40 XP
+ *    - Focus bonus: 15 → 25 XP
+ *    - NEW: Dedicated mode bonus (5+ activities): 35 XP
+ *    - Rationale: Make daily goals feel worthwhile
  *
- * 5. STREAK SYSTEM ADDED: Daily engagement rewards
- *    - Login streak XP: 5-50 XP scaling with streak length
- *    - Activity streak: Bonus XP for consecutive active days
+ * 5. MANUAL FISHING EXCELLENCE: Skill rewards
+ *    - NEW: 5 perfect catches in a row: +25 XP
+ *    - NEW: 10 perfect catches daily: +50 XP
+ *    - Rationale: Reward active play skill
  *
- * 6. CATCH-UP MECHANICS IMPROVED:
- *    - Rested XP: +50% XP for first 500 XP after 24+ hours away
- *    - Double XP weekends for lower-level players (under 50)
+ * 6. EXTENDED DOJO TRAINING STREAK: 7 → 14 days
+ *    - Days 8-14: +3 XP per day (max +35 total)
+ *    - Rationale: Extended engagement rewards
+ *
+ * 7. EXPANDED PRESTIGE SYSTEM: 10 → 20 levels
+ *    - Prestige 11-20 rewards added
+ *    - NEW: +1% gacha luck per 5 prestige levels
+ *    - Rationale: Deeper endgame progression
+ *
+ * 8. CHARACTER MASTERY XP: New system
+ *    - Each mastery level: 15 XP
+ *    - Max mastery (level 10): 50 XP bonus
+ *    - Rationale: Connect character investment to profile
+ *
+ * 9. FIRST-TIME ACHIEVEMENT BONUSES: Milestone celebrations
+ *    - First legendary fish: 200 XP
+ *    - First epic character: 100 XP
+ *    - First legendary character: 300 XP
+ *    - First prestige: 500 XP
+ *    - Rationale: Celebrate player achievements
+ * ============================================================================
+ *
+ * Previous v5.0 changes (preserved):
+ * - Dojo: 18 XP claim, +10 efficiency, +3/hr passive
+ * - Fishing: 1.4x perfect, 1.2x great, 0.75x autofish
+ * - Gacha: 12 XP per pull
+ * - Prestige system, streak system, rested XP
  * ============================================================================
  *
  * Previous v4.0 changes (preserved):
@@ -100,12 +124,15 @@ const XP_SOURCES = {
   // Rewards players for keeping characters training even between claims
   dojoHourlyPassive: 3,
 
-  // NEW in v5.0: Training streak bonus (consecutive days with dojo claims)
-  // +2 XP per consecutive day, capped at +14 (7 day streak)
+  // NEW in v5.0, EXTENDED in v6.0: Training streak bonus (consecutive days with dojo claims)
+  // Days 1-7: +2 XP per day (was capped here in v5.0)
+  // Days 8-14: +3 XP per day (NEW in v6.0 - rewards dedication)
+  // Total max bonus: 14 + 21 = 35 XP
   dojoStreakBonus: {
-    perDay: 2,
-    maxDays: 7,
-    maxBonus: 14
+    perDay: 2,         // Days 1-7
+    perDayExtended: 3, // Days 8-14 (NEW v6.0)
+    maxDays: 14,       // Extended from 7 (v6.0)
+    maxBonus: 35       // Extended from 14 (v6.0)
   },
 
   // ===========================================
@@ -213,12 +240,23 @@ const XP_SOURCES = {
     // Each prestige level adds +5% to all fishing XP
     prestigeXPBonus: 0.05,
 
-    // NEW in v5.0: Fishing streak bonus for consecutive catches without miss
+    // NEW in v5.0, EXTENDED in v6.0: Fishing streak bonus for consecutive catches without miss
+    // v6.0: Added 30 and 40 milestones to fill the 20→50 gap
     streakXP: {
       5: 5,    // 5 streak: +5 XP
       10: 12,  // 10 streak: +12 XP
       20: 25,  // 20 streak: +25 XP
+      30: 40,  // 30 streak: +40 XP (NEW v6.0)
+      40: 55,  // 40 streak: +55 XP (NEW v6.0)
       50: 75   // 50 streak: +75 XP
+    },
+
+    // NEW in v6.0: Manual fishing excellence bonuses
+    // Rewards skilled active play with extra XP
+    manualExcellence: {
+      perfectStreak5: 25,      // 5 perfect catches in a row: +25 XP
+      perfectDaily10: 50,      // 10 perfect catches in one day: +50 XP
+      perfectDaily25: 100      // 25 perfect catches in one day: +100 XP (mastery)
     }
   },
 
@@ -236,10 +274,10 @@ const XP_SOURCES = {
   },
 
   // ===========================================
-  // MODE VARIETY SYSTEM (NEW in v4.0, ENHANCED in v5.0)
+  // MODE VARIETY SYSTEM (NEW in v4.0, ENHANCED in v5.0, BUFFED in v6.0)
   // ===========================================
   // Rewards players for switching between modes and diverse engagement.
-  // BALANCE UPDATE v5.0: Added daily goal system and improved weekly rewards
+  // BALANCE UPDATE v6.0: Significantly buffed daily goals, added dedicated mode bonus
   modeVariety: {
     // Bonus multiplier when switching to a different mode than last action
     // e.g., Fish then Dojo = 1.15x XP on dojo action
@@ -259,41 +297,62 @@ const XP_SOURCES = {
       }
     },
 
-    // NEW in v5.0: Daily engagement goals (smaller, more frequent rewards)
+    // NEW in v5.0, BUFFED in v6.0: Daily engagement goals
+    // v6.0: Significantly increased rewards to make goals feel worthwhile
     dailyEngagementGoals: {
       // Complete any 2 of 3 modes for bonus
       twoModesBonus: {
-        xp: 25
+        xp: 40              // Was 25 (v6.0: +60% to make it meaningful)
       },
-      // 3+ activities in a single mode
+      // 3+ activities in a single mode (focus play)
       focusBonus: {
-        xp: 15
+        xp: 25              // Was 15 (v6.0: +67% for focused players)
+      },
+      // NEW in v6.0: Dedicated mode bonus for 5+ activities in one mode
+      // Rewards players who really dive deep into a mode each day
+      dedicatedModeBonus: {
+        xp: 35,
+        requiredActivities: 5
       }
     }
   },
 
   // ===========================================
-  // LOGIN STREAK SYSTEM (NEW in v5.0)
+  // LOGIN STREAK SYSTEM (NEW in v5.0, EXTENDED in v6.0)
   // ===========================================
   // Rewards consecutive daily logins with XP bonuses.
   // Encourages daily engagement without being punishing for missed days.
+  // BALANCE UPDATE v6.0: Extended with long-term milestones for dedicated players
   loginStreak: {
     // XP awarded per day based on streak length
+    // v6.0: Added day 60, 90, 180, 365 milestones for long-term players
     streakXP: {
-      1: 5,     // Day 1
-      2: 8,     // Day 2
-      3: 12,    // Day 3
-      4: 16,    // Day 4
-      5: 20,    // Day 5
-      6: 25,    // Day 6
-      7: 35,    // Day 7 (weekly milestone)
-      14: 50,   // Day 14 (bi-weekly milestone)
-      30: 100   // Day 30 (monthly milestone)
+      1: 5,       // Day 1
+      2: 8,       // Day 2
+      3: 12,      // Day 3
+      4: 16,      // Day 4
+      5: 20,      // Day 5
+      6: 25,      // Day 6
+      7: 35,      // Day 7 (weekly milestone)
+      14: 50,     // Day 14 (bi-weekly milestone)
+      30: 100,    // Day 30 (monthly milestone)
+      60: 150,    // Day 60 (NEW v6.0 - two months)
+      90: 250,    // Day 90 (NEW v6.0 - quarterly)
+      180: 500,   // Day 180 (NEW v6.0 - half year)
+      365: 1000   // Day 365 (NEW v6.0 - one year!)
     },
     // Maximum streak XP per day (prevents infinite scaling)
-    maxDailyStreakXP: 100,
+    // v6.0: Increased to accommodate 365-day milestone
+    maxDailyStreakXP: 1000,
     // Grace period: 36 hours to maintain streak (accounts for time zones)
-    gracePeriodHours: 36
+    gracePeriodHours: 36,
+    // NEW in v6.0: Long-streak titles (cosmetic rewards)
+    titles: {
+      30: 'Dedicated Player',
+      90: 'Loyal Warrior',
+      180: 'Eternal Champion',
+      365: 'Legendary Devotee'
+    }
   },
 
   // ===========================================
@@ -313,36 +372,80 @@ const XP_SOURCES = {
   },
 
   // ===========================================
-  // ACCOUNT PRESTIGE SYSTEM (NEW in v5.0)
+  // ACCOUNT PRESTIGE SYSTEM (NEW in v5.0, EXPANDED in v6.0)
   // ===========================================
   // Post-level-100 progression for dedicated players.
   // Provides long-term goals and meaningful rewards.
+  // BALANCE UPDATE v6.0: Expanded from 10 to 20 levels with gacha luck bonus
   accountPrestige: {
     // Must be at max level to prestige
     requiredLevel: 100,
     // Level to reset to after prestige
     resetToLevel: 50,
-    // Maximum prestige level
-    maxPrestige: 10,
+    // Maximum prestige level - BALANCE UPDATE v6.0: Extended from 10 to 20
+    maxPrestige: 20,
     // Permanent bonuses per prestige level
+    // BALANCE UPDATE v6.0: Added gacha luck bonus every 5 levels
     bonusesPerLevel: {
       xpMultiplier: 0.02,      // +2% XP per prestige level
       dojoEfficiency: 0.01,    // +1% dojo efficiency per prestige
-      fishingRarity: 0.005     // +0.5% rare fish chance per prestige
+      fishingRarity: 0.005,    // +0.5% rare fish chance per prestige
+      // NEW in v6.0: Gacha luck bonus at prestige milestones
+      gachaLuckPerFiveLevels: 0.01  // +1% gacha luck per 5 prestige levels
     },
     // Prestige rewards (one-time per prestige level)
+    // BALANCE UPDATE v6.0: Added prestige 11-20 rewards
     levelRewards: {
       1: { points: 25000, rollTickets: 10, premiumTickets: 5, title: 'Prestige Warrior' },
       2: { points: 30000, rollTickets: 12, premiumTickets: 6 },
       3: { points: 35000, rollTickets: 15, premiumTickets: 8, title: 'Elite Veteran' },
       4: { points: 40000, rollTickets: 18, premiumTickets: 10 },
-      5: { points: 50000, rollTickets: 20, premiumTickets: 12, title: 'Legendary Master' },
+      5: { points: 50000, rollTickets: 20, premiumTickets: 12, title: 'Legendary Master', gachaLuckBonus: true },
       6: { points: 60000, rollTickets: 22, premiumTickets: 14 },
       7: { points: 70000, rollTickets: 25, premiumTickets: 16, title: 'Mythic Champion' },
       8: { points: 80000, rollTickets: 28, premiumTickets: 18 },
       9: { points: 90000, rollTickets: 30, premiumTickets: 20, title: 'Immortal Legend' },
-      10: { points: 150000, rollTickets: 50, premiumTickets: 30, title: 'Ultimate Transcendent', exclusiveReward: true }
+      10: { points: 150000, rollTickets: 50, premiumTickets: 30, title: 'Ultimate Transcendent', gachaLuckBonus: true },
+      // NEW in v6.0: Prestige 11-20 rewards for ultra-dedicated players
+      11: { points: 100000, rollTickets: 35, premiumTickets: 20, title: 'Ascended One' },
+      12: { points: 110000, rollTickets: 38, premiumTickets: 22 },
+      13: { points: 120000, rollTickets: 42, premiumTickets: 25, title: 'Eternal Sage' },
+      14: { points: 130000, rollTickets: 45, premiumTickets: 28 },
+      15: { points: 175000, rollTickets: 55, premiumTickets: 35, title: 'Divine Master', gachaLuckBonus: true },
+      16: { points: 150000, rollTickets: 48, premiumTickets: 30 },
+      17: { points: 165000, rollTickets: 52, premiumTickets: 33, title: 'Celestial Guardian' },
+      18: { points: 180000, rollTickets: 56, premiumTickets: 36 },
+      19: { points: 200000, rollTickets: 60, premiumTickets: 40, title: 'Cosmic Champion' },
+      20: { points: 300000, rollTickets: 100, premiumTickets: 60, title: 'Infinite Legend', gachaLuckBonus: true, exclusiveReward: true }
     }
+  },
+
+  // ===========================================
+  // CHARACTER MASTERY XP (NEW in v6.0)
+  // ===========================================
+  // Connecting character investment to profile progression.
+  // Rewards players for developing their characters beyond levels.
+  characterMastery: {
+    // XP per mastery level gained
+    xpPerLevel: 15,
+    // Bonus XP for reaching max mastery (level 10)
+    maxMasteryBonus: 50
+  },
+
+  // ===========================================
+  // FIRST-TIME ACHIEVEMENT BONUSES (NEW in v6.0)
+  // ===========================================
+  // Celebrate player milestones with one-time XP bonuses.
+  // Makes special moments feel even more rewarding.
+  firstTimeAchievements: {
+    firstLegendaryFish: 200,      // First legendary fish ever caught
+    firstEpicCharacter: 100,      // First epic character pulled
+    firstLegendaryCharacter: 300, // First legendary character pulled
+    firstPrestige: 500,           // First time prestiging
+    firstMaxCharacter: 150,       // First character to max level (5)
+    firstAreaUnlock: 50,          // First fishing area unlocked (River, Ocean, Abyss each)
+    firstPerfectStreak10: 75,     // First 10-catch perfect streak
+    firstWeeklyBonus: 100         // First time earning weekly all-mode bonus
   }
 };
 
@@ -379,7 +482,8 @@ const LEVEL_CONFIG = {
   exponent: 1.12,   // Reduced from 1.5 for gentler curve
 
   // Milestone levels (for UI display and achievements)
-  milestones: [5, 10, 15, 20, 25, 30, 40, 50, 75, 100]
+  // BALANCE UPDATE v6.0: Added 60, 85, 90, 95 milestones
+  milestones: [5, 10, 15, 20, 25, 30, 40, 50, 60, 75, 85, 90, 95, 100]
 };
 
 // ===========================================
@@ -470,6 +574,31 @@ function getLevelReward(level) {
       premiumTickets: 6,
       permanentBonus: { xpMultiplier: 0.10 },
       description: '+10% XP from all sources'
+    },
+    // NEW in v6.0: Fill the 75-100 gap with meaningful milestones
+    85: {
+      name: 'Elite Commander',
+      points: 15000,
+      rollTickets: 8,
+      premiumTickets: 4,
+      permanentBonus: { xpMultiplier: 0.03 },
+      description: '+3% XP from all sources'
+    },
+    90: {
+      name: 'Grand Warden',
+      points: 30000,
+      rollTickets: 12,
+      premiumTickets: 5,
+      permanentBonus: { dojoEfficiency: 0.05, fishingRarity: 0.02 },
+      description: '+5% Dojo efficiency, +2% fishing rarity'
+    },
+    95: {
+      name: 'Supreme Master',
+      points: 50000,
+      rollTickets: 15,
+      premiumTickets: 8,
+      permanentBonus: { xpMultiplier: 0.05 },
+      description: '+5% XP from all sources - Almost there!'
     },
     100: {
       name: 'Ultimate Master',
@@ -774,11 +903,14 @@ function validateAccountLevelConfig() {
   }
 
   // Log key milestones for verification
-  console.log(`[OK] Account level configuration validated (v4.0 - baseXP=${LEVEL_CONFIG.baseXP}, exponent=${LEVEL_CONFIG.exponent})`);
+  console.log(`[OK] Account level configuration validated (v6.0 - baseXP=${LEVEL_CONFIG.baseXP}, exponent=${LEVEL_CONFIG.exponent})`);
   console.log(`     Level 10 (Warriors Hall): ${getXPForLevel(10)} XP`);
   console.log(`     Level 25 (Master's Temple): ${getXPForLevel(25)} XP`);
   console.log(`     Level 50 (Grandmaster's Sanctum): ${getXPForLevel(50)} XP`);
   console.log(`     Level 75 (Mythic Champion): ${getXPForLevel(75)} XP`);
+  console.log(`     Level 85 (Elite Commander): ${getXPForLevel(85)} XP`);
+  console.log(`     Level 90 (Grand Warden): ${getXPForLevel(90)} XP`);
+  console.log(`     Level 95 (Supreme Master): ${getXPForLevel(95)} XP`);
   console.log(`     Level 100 (Ultimate Master): ${getXPForLevel(100)} XP`);
 }
 

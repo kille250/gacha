@@ -9,15 +9,24 @@
  * - Getting account level status
  *
  * ============================================================================
- * BALANCE UPDATE (v4.0 - Comprehensive Mode Balancing)
+ * BALANCE UPDATE (v6.0 - Comprehensive Mode Harmony)
  * ============================================================================
- * New in v4.0:
- * - Dojo XP: 15 XP per claim (up from 8), +8 efficiency, +2/hr passive
- * - Breakthrough XP: 30-150 XP based on breakthrough type
- * - Gacha Milestone XP: 25-500 XP at pull milestones
+ * New in v6.0:
+ * - Character Mastery XP: 15 XP per level, 50 XP bonus at max
+ * - First-time Achievement XP: One-time bonuses for milestones
+ * - Fishing Excellence XP: Rewards for perfect catch streaks
+ * - Extended Login Streak: Day 60/90/180/365 milestones
+ * - Extended Dojo Streak: 14 days max (was 7)
+ * - Extended Fishing Streak: Added 30/40 milestones
+ * - Dedicated Mode Bonus: +35 XP for 5+ activities in one mode
+ *
+ * Previous v4.0 features (preserved):
+ * - Dojo XP: 18 XP per claim, +10 efficiency, +3/hr passive
+ * - Breakthrough XP: 40-180 XP based on breakthrough type
+ * - Gacha Milestone XP: 30-600 XP at pull milestones
  * - Rest-and-Return XP: 100-3000 XP for returning players
  * - Mode variety bonuses: +15% XP for mode switching
- * - Weekly all-mode bonus: 500 XP + 5 roll tickets
+ * - Weekly all-mode bonus: 600 XP + 6 roll tickets
  *
  * Previous v3.0 features (preserved):
  * - Fishing XP functions and daily variety bonus tracking
@@ -703,6 +712,231 @@ async function initializeUserXP(user, collection = []) {
   };
 }
 
+// ===========================================
+// CHARACTER MASTERY XP (NEW in v6.0)
+// ===========================================
+
+/**
+ * Add XP for gaining a character mastery level
+ * @param {Object} user - Sequelize User instance
+ * @param {number} newLevel - The mastery level achieved (1-10)
+ * @returns {Object} - { xpAdded, levelUp, isMaxMastery }
+ */
+function addCharacterMasteryXP(user, newLevel) {
+  if (!XP_SOURCES.characterMastery) {
+    return { xpAdded: 0, levelUp: null, isMaxMastery: false };
+  }
+
+  let xp = XP_SOURCES.characterMastery.xpPerLevel || 15;
+  const isMaxMastery = newLevel >= 10;
+
+  // Bonus XP for reaching max mastery
+  if (isMaxMastery && XP_SOURCES.characterMastery.maxMasteryBonus) {
+    xp += XP_SOURCES.characterMastery.maxMasteryBonus;
+  }
+
+  console.log(`[MASTERY XP] User ${user.id} earned ${xp} XP for mastery level ${newLevel}${isMaxMastery ? ' (MAX!)' : ''}`);
+  const result = addXP(user, xp, `mastery_level_${newLevel}`);
+
+  return { ...result, isMaxMastery };
+}
+
+// ===========================================
+// FIRST-TIME ACHIEVEMENT XP (NEW in v6.0)
+// ===========================================
+
+/**
+ * Add XP for a first-time achievement
+ * @param {Object} user - Sequelize User instance
+ * @param {string} achievementType - Type of achievement (e.g., 'firstLegendaryFish')
+ * @returns {Object} - { xpAdded, levelUp, alreadyAchieved }
+ */
+function addFirstTimeAchievementXP(user, achievementType) {
+  if (!XP_SOURCES.firstTimeAchievements) {
+    return { xpAdded: 0, levelUp: null, alreadyAchieved: false };
+  }
+
+  const xp = XP_SOURCES.firstTimeAchievements[achievementType];
+  if (!xp) {
+    return { xpAdded: 0, levelUp: null, alreadyAchieved: false };
+  }
+
+  // Check if already achieved (stored in user's achievements)
+  const achievements = user.firstTimeAchievements || {};
+  if (achievements[achievementType]) {
+    return { xpAdded: 0, levelUp: null, alreadyAchieved: true };
+  }
+
+  // Mark as achieved
+  achievements[achievementType] = { date: new Date().toISOString(), xp };
+  user.firstTimeAchievements = achievements;
+
+  console.log(`[FIRST-TIME XP] User ${user.id} earned ${xp} XP for achievement: ${achievementType}`);
+  const result = addXP(user, xp, `first_time_${achievementType}`);
+
+  return { ...result, alreadyAchieved: false };
+}
+
+// ===========================================
+// FISHING EXCELLENCE XP (NEW in v6.0)
+// ===========================================
+
+/**
+ * Check and award fishing excellence bonuses
+ * @param {Object} user - Sequelize User instance
+ * @param {boolean} isPerfect - Whether the catch was perfect
+ * @returns {Object} - { xpAdded, levelUp, bonusType }
+ */
+function checkFishingExcellenceBonus(user, isPerfect) {
+  if (!isPerfect || !XP_SOURCES.fishing || !XP_SOURCES.fishing.manualExcellence) {
+    return { xpAdded: 0, levelUp: null, bonusType: null };
+  }
+
+  const today = new Date().toISOString().split('T')[0];
+
+  // Initialize daily fishing stats
+  if (!user.dailyFishingStats || user.dailyFishingStats.date !== today) {
+    user.dailyFishingStats = {
+      date: today,
+      perfectCatches: 0,
+      perfectStreak: 0,
+      dailyPerfect10Claimed: false,
+      dailyPerfect25Claimed: false
+    };
+  }
+
+  const stats = user.dailyFishingStats;
+  stats.perfectCatches++;
+  stats.perfectStreak++;
+
+  let totalXP = 0;
+  let bonusType = null;
+
+  const excellence = XP_SOURCES.fishing.manualExcellence;
+
+  // Check for 5-catch perfect streak bonus
+  if (stats.perfectStreak === 5 && excellence.perfectStreak5) {
+    totalXP += excellence.perfectStreak5;
+    bonusType = 'perfectStreak5';
+    console.log(`[FISHING EXCELLENCE] User ${user.id} earned ${excellence.perfectStreak5} XP for 5 perfect streak!`);
+  }
+
+  // Check for 10 perfect catches daily bonus
+  if (stats.perfectCatches === 10 && !stats.dailyPerfect10Claimed && excellence.perfectDaily10) {
+    totalXP += excellence.perfectDaily10;
+    stats.dailyPerfect10Claimed = true;
+    bonusType = bonusType ? 'multiple' : 'perfectDaily10';
+    console.log(`[FISHING EXCELLENCE] User ${user.id} earned ${excellence.perfectDaily10} XP for 10 daily perfects!`);
+  }
+
+  // Check for 25 perfect catches daily bonus
+  if (stats.perfectCatches === 25 && !stats.dailyPerfect25Claimed && excellence.perfectDaily25) {
+    totalXP += excellence.perfectDaily25;
+    stats.dailyPerfect25Claimed = true;
+    bonusType = bonusType ? 'multiple' : 'perfectDaily25';
+    console.log(`[FISHING EXCELLENCE] User ${user.id} earned ${excellence.perfectDaily25} XP for 25 daily perfects (MASTERY)!`);
+  }
+
+  user.dailyFishingStats = stats;
+
+  if (totalXP === 0) {
+    return { xpAdded: 0, levelUp: null, bonusType: null };
+  }
+
+  const result = addXP(user, totalXP, `fishing_excellence_${bonusType}`);
+  return { ...result, bonusType };
+}
+
+/**
+ * Reset fishing excellence streak (called on miss)
+ * @param {Object} user - Sequelize User instance
+ */
+function resetFishingPerfectStreak(user) {
+  if (user.dailyFishingStats) {
+    user.dailyFishingStats.perfectStreak = 0;
+  }
+}
+
+// ===========================================
+// EXTENDED DOJO STREAK XP (NEW in v6.0)
+// ===========================================
+
+/**
+ * Calculate dojo training streak XP with extended v6.0 formula
+ * @param {number} streakDays - Consecutive days with dojo claims
+ * @returns {number} - XP bonus for this streak level
+ */
+function calculateDojoStreakXP(streakDays) {
+  if (!XP_SOURCES.dojoStreakBonus || streakDays <= 0) {
+    return 0;
+  }
+
+  const config = XP_SOURCES.dojoStreakBonus;
+  let xp = 0;
+
+  // Days 1-7: perDay XP each
+  const daysInFirstWeek = Math.min(streakDays, 7);
+  xp += daysInFirstWeek * (config.perDay || 2);
+
+  // Days 8-14: perDayExtended XP each (NEW in v6.0)
+  if (streakDays > 7 && config.perDayExtended) {
+    const daysInSecondWeek = Math.min(streakDays - 7, 7);
+    xp += daysInSecondWeek * config.perDayExtended;
+  }
+
+  // Cap at maxBonus
+  return Math.min(xp, config.maxBonus || 35);
+}
+
+// ===========================================
+// EXTENDED LOGIN STREAK XP (NEW in v6.0)
+// ===========================================
+
+/**
+ * Add XP for login streak with v6.0 extended milestones
+ * @param {Object} user - Sequelize User instance
+ * @param {number} streakDays - Current login streak length
+ * @returns {Object} - { xpAdded, levelUp, milestone, title }
+ */
+function addLoginStreakXP(user, streakDays) {
+  if (!XP_SOURCES.loginStreak || !XP_SOURCES.loginStreak.streakXP) {
+    return { xpAdded: 0, levelUp: null, milestone: null, title: null };
+  }
+
+  const streakXP = XP_SOURCES.loginStreak.streakXP;
+
+  // Find the highest applicable milestone
+  let xp = 0;
+  let milestone = null;
+
+  const milestones = Object.keys(streakXP).map(Number).sort((a, b) => b - a);
+  for (const m of milestones) {
+    if (streakDays >= m) {
+      xp = streakXP[m];
+      milestone = m;
+      break;
+    }
+  }
+
+  if (xp === 0) {
+    return { xpAdded: 0, levelUp: null, milestone: null, title: null };
+  }
+
+  // Cap at maxDailyStreakXP
+  xp = Math.min(xp, XP_SOURCES.loginStreak.maxDailyStreakXP || 1000);
+
+  // Check for title unlock
+  let title = null;
+  if (XP_SOURCES.loginStreak.titles && XP_SOURCES.loginStreak.titles[streakDays]) {
+    title = XP_SOURCES.loginStreak.titles[streakDays];
+  }
+
+  console.log(`[LOGIN STREAK] User ${user.id} earned ${xp} XP for ${streakDays}-day streak${title ? ` + title: ${title}` : ''}`);
+  const result = addXP(user, xp, `login_streak_${streakDays}`);
+
+  return { ...result, milestone, title };
+}
+
 module.exports = {
   addXP,
   addGachaPullXP,
@@ -734,6 +968,16 @@ module.exports = {
   addFishingChallengeXP,
   // Variety bonus (NEW in v3.0)
   checkDailyVarietyBonus,
+  // Character Mastery XP (NEW in v6.0)
+  addCharacterMasteryXP,
+  // First-time Achievement XP (NEW in v6.0)
+  addFirstTimeAchievementXP,
+  // Fishing Excellence XP (NEW in v6.0)
+  checkFishingExcellenceBonus,
+  resetFishingPerfectStreak,
+  // Extended Streak XP (NEW in v6.0)
+  calculateDojoStreakXP,
+  addLoginStreakXP,
   // Re-exported config functions
   getLevelReward,
   getRewardsForLevelRange,

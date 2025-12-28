@@ -8,35 +8,31 @@
  * Level multipliers are defined in config/leveling.js (single source of truth).
  *
  * ============================================================================
- * BALANCE SUMMARY (v5.0 - Ultimate Mode Balancing)
+ * BALANCE SUMMARY (v6.0 - Comprehensive Mode Harmony)
  * ============================================================================
- * Key changes in v5.0:
+ * Key changes in v6.0:
  *
- * 1. DOJO XP FURTHER BUFFED: Better parity with fishing
- *    - Base claim: 18 XP (up from 15)
- *    - Efficient claim: +10 XP bonus (up from 8)
- *    - Hourly passive XP: +3 XP per hour (up from 2)
- *    - Training streak bonus: +2 XP per consecutive day (max +14)
- *    - Rationale: Dojo now contributes ~20-25% of daily XP
+ * 1. EXTENDED TRAINING STREAK: 7 days → 14 days
+ *    - Days 1-7: +2 XP per day (unchanged)
+ *    - Days 8-14: +3 XP per day (NEW)
+ *    - Total max bonus: +35 XP (up from +14)
+ *    - Rationale: Reward dedicated daily dojo users
  *
- * 2. BASE RATES BUFFED: Better early/mid game experience
- *    - Common: 6 pts/hr (up from 5)
- *    - Uncommon: 10 pts/hr (up from 8)
- *    - Rare: 18 pts/hr (up from 15)
- *    - Epic: 35 pts/hr (up from 30)
- *    - Legendary: 70 pts/hr (up from 60)
+ * 2. SYNERGY WITH ACCOUNT PROGRESSION:
+ *    - Dojo efficiency now scales with account prestige
+ *    - +1% efficiency per prestige level (up to +20% at P20)
+ *    - New level 85/90/95 milestones add dojo bonuses
  *
- * 3. TICKET GENERATION BUFFED: More satisfying drops
- *    - Roll ticket chances increased by ~10-15%
- *    - Premium ticket chances increased by ~10%
+ * 3. WISDOM SPECIALIZATION SYNCED:
+ *    - Ticket chance bonus: 80% (synced with accountLevel.js)
+ *    - Gacha XP bonus: 30% (synced with gameDesign.js)
  *
- * 4. BREAKTHROUGH RATES INCREASED: More frequent events
- *    - Base chance: 2.5%/hr (up from 2%)
- *    - Legendary character multiplier: 1.75x (up from 1.5)
- *
- * 5. DAILY CAPS INCREASED: Support longer play sessions
- *    - Points: 25,000/day (up from 20,000)
- *    - Roll tickets: 30/day (up from 25)
+ * Previous v5.0 changes (preserved):
+ * - Base claim: 18 XP, Efficient: +10 XP, Passive: 3 XP/hr
+ * - Base rates: C6/U10/R18/E35/L70 pts/hr
+ * - Ticket chances buffed ~10-15%
+ * - Breakthrough base: 2.5%/hr
+ * - Daily caps: 25k points, 30 roll tickets
  *
  * Previous v4.0 changes (preserved):
  * - Wisdom specialization: -10% dojo, +75% tickets, +25% gacha XP
@@ -709,7 +705,7 @@ function validateDojoConfig() {
     throw new Error('Dojo Config Error: Synergy thresholds must be >= 2 (minimum for series bonus)');
   }
   
-  console.log('[OK] Dojo configuration validated successfully');
+  console.log('[OK] Dojo configuration validated successfully (v6.0)');
 }
 
 // Run validation when module is loaded
