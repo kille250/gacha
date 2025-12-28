@@ -9,10 +9,19 @@
  * - Getting account level status
  *
  * ============================================================================
- * BALANCE UPDATE (v3.0 - Cross-Mode Economy Balancing)
+ * BALANCE UPDATE (v4.0 - Comprehensive Mode Balancing)
  * ============================================================================
- * Added fishing XP functions and daily variety bonus tracking.
- * All game modes now contribute to profile progression.
+ * New in v4.0:
+ * - Dojo XP: 15 XP per claim (up from 8), +8 efficiency, +2/hr passive
+ * - Breakthrough XP: 30-150 XP based on breakthrough type
+ * - Gacha Milestone XP: 25-500 XP at pull milestones
+ * - Rest-and-Return XP: 100-3000 XP for returning players
+ * - Mode variety bonuses: +15% XP for mode switching
+ * - Weekly all-mode bonus: 500 XP + 5 roll tickets
+ *
+ * Previous v3.0 features (preserved):
+ * - Fishing XP functions and daily variety bonus tracking
+ * - All game modes contribute to profile progression
  * ============================================================================
  */
 
@@ -126,6 +135,264 @@ function addDojoClaimXP(user, isEfficient = false) {
   }
 
   return addXP(user, xp, isEfficient ? 'dojo_claim_efficient' : 'dojo_claim');
+}
+
+/**
+ * Add XP for passive dojo training hours
+ * NEW in v4.0: Rewards players for keeping characters training
+ * @param {Object} user - Sequelize User instance
+ * @param {number} hours - Hours of training time
+ * @returns {Object} - { xpAdded, levelUp }
+ */
+function addDojoPassiveXP(user, hours) {
+  if (!XP_SOURCES.dojoHourlyPassive || hours <= 0) {
+    return { xpAdded: 0, levelUp: null };
+  }
+
+  const xp = Math.floor(hours * XP_SOURCES.dojoHourlyPassive);
+  if (xp === 0) return { xpAdded: 0, levelUp: null };
+
+  return addXP(user, xp, 'dojo_passive');
+}
+
+// ===========================================
+// BREAKTHROUGH XP FUNCTIONS (NEW in v4.0)
+// ===========================================
+
+/**
+ * Add XP for a dojo breakthrough discovery
+ * @param {Object} user - Sequelize User instance
+ * @param {string} breakthroughType - Type of breakthrough (skill_discovery, hidden_treasure, etc.)
+ * @returns {Object} - { xpAdded, levelUp }
+ */
+function addBreakthroughXP(user, breakthroughType) {
+  if (!XP_SOURCES.breakthrough) {
+    return { xpAdded: 0, levelUp: null };
+  }
+
+  const xp = XP_SOURCES.breakthrough[breakthroughType] || 0;
+  if (xp === 0) return { xpAdded: 0, levelUp: null };
+
+  console.log(`[BREAKTHROUGH XP] User ${user.id} earned ${xp} XP from ${breakthroughType}`);
+  return addXP(user, xp, `breakthrough_${breakthroughType}`);
+}
+
+// ===========================================
+// GACHA MILESTONE XP FUNCTIONS (NEW in v4.0)
+// ===========================================
+
+/**
+ * Add XP for reaching a gacha pull milestone
+ * @param {Object} user - Sequelize User instance
+ * @param {number} milestone - Milestone reached (10, 30, 50, etc.)
+ * @returns {Object} - { xpAdded, levelUp }
+ */
+function addGachaMilestoneXP(user, milestone) {
+  if (!XP_SOURCES.gachaMilestone) {
+    return { xpAdded: 0, levelUp: null };
+  }
+
+  const xp = XP_SOURCES.gachaMilestone[milestone] || 0;
+  if (xp === 0) return { xpAdded: 0, levelUp: null };
+
+  console.log(`[MILESTONE XP] User ${user.id} earned ${xp} XP for reaching ${milestone} pulls`);
+  return addXP(user, xp, `gacha_milestone_${milestone}`);
+}
+
+/**
+ * Check if a pull count triggers a milestone and award XP
+ * @param {Object} user - Sequelize User instance
+ * @param {number} previousPulls - Pull count before this action
+ * @param {number} newPulls - Pull count after this action
+ * @returns {Object} - { xpAdded, milestonesReached, levelUp }
+ */
+function checkAndAwardMilestoneXP(user, previousPulls, newPulls) {
+  if (!XP_SOURCES.gachaMilestone) {
+    return { xpAdded: 0, milestonesReached: [], levelUp: null };
+  }
+
+  const milestones = Object.keys(XP_SOURCES.gachaMilestone).map(Number).sort((a, b) => a - b);
+  const milestonesReached = [];
+  let totalXP = 0;
+  let lastLevelUp = null;
+
+  for (const milestone of milestones) {
+    if (previousPulls < milestone && newPulls >= milestone) {
+      const result = addGachaMilestoneXP(user, milestone);
+      totalXP += result.xpAdded;
+      milestonesReached.push(milestone);
+      if (result.levelUp) lastLevelUp = result.levelUp;
+    }
+  }
+
+  return { xpAdded: totalXP, milestonesReached, levelUp: lastLevelUp };
+}
+
+// ===========================================
+// REST-AND-RETURN XP FUNCTIONS (NEW in v4.0)
+// ===========================================
+
+/**
+ * Add XP for returning after absence
+ * @param {Object} user - Sequelize User instance
+ * @param {number} daysAway - Number of days since last login
+ * @returns {Object} - { xpAdded, levelUp, tier }
+ */
+function addRestAndReturnXP(user, daysAway) {
+  if (!XP_SOURCES.restAndReturn || daysAway < 2) {
+    return { xpAdded: 0, levelUp: null, tier: null };
+  }
+
+  // Find applicable tier
+  const tiers = Object.values(XP_SOURCES.restAndReturn);
+  let applicableTier = null;
+
+  for (const tier of tiers) {
+    if (daysAway >= tier.minDays && daysAway <= tier.maxDays) {
+      applicableTier = tier;
+      break;
+    }
+  }
+
+  if (!applicableTier) {
+    return { xpAdded: 0, levelUp: null, tier: null };
+  }
+
+  const xp = applicableTier.xp;
+  console.log(`[RETURN BONUS] User ${user.id} earned ${xp} XP for returning after ${daysAway} days`);
+
+  const result = addXP(user, xp, `rest_return_${daysAway}d`);
+  return { ...result, tier: applicableTier };
+}
+
+// ===========================================
+// MODE VARIETY XP FUNCTIONS (NEW in v4.0)
+// ===========================================
+
+/**
+ * Apply mode switch bonus if user is switching modes
+ * @param {Object} user - Sequelize User instance
+ * @param {string} currentMode - Current mode being played (dojo, fishing, gacha)
+ * @param {number} baseXP - Base XP being awarded
+ * @returns {Object} - { xpAdded, bonusApplied, levelUp }
+ */
+function applyModeSwitchBonus(user, currentMode, baseXP) {
+  if (!XP_SOURCES.modeVariety || !XP_SOURCES.modeVariety.modeSwitchMultiplier) {
+    return { xpAdded: baseXP, bonusApplied: false, levelUp: null };
+  }
+
+  const lastMode = user.lastPlayedMode || null;
+  const isSwitch = lastMode && lastMode !== currentMode;
+
+  // Update last played mode
+  user.lastPlayedMode = currentMode;
+
+  if (isSwitch) {
+    const multiplier = XP_SOURCES.modeVariety.modeSwitchMultiplier;
+    const bonusXP = Math.floor(baseXP * (multiplier - 1));
+    const totalXP = baseXP + bonusXP;
+
+    console.log(`[MODE SWITCH] User ${user.id} earned +${bonusXP} XP bonus for switching from ${lastMode} to ${currentMode}`);
+    return { xpAdded: totalXP, bonusApplied: true, bonusXP, levelUp: null };
+  }
+
+  return { xpAdded: baseXP, bonusApplied: false, levelUp: null };
+}
+
+/**
+ * Check and award weekly all-mode bonus
+ * @param {Object} user - Sequelize User instance
+ * @returns {Object} - { xpAwarded, ticketsAwarded, bonusGranted }
+ */
+function checkWeeklyAllModeBonus(user) {
+  if (!XP_SOURCES.modeVariety || !XP_SOURCES.modeVariety.weeklyAllModeBonus) {
+    return { xpAwarded: 0, ticketsAwarded: 0, bonusGranted: false };
+  }
+
+  const config = XP_SOURCES.modeVariety.weeklyAllModeBonus;
+  const req = config.requirements;
+
+  // Check weekly stats
+  const weekly = user.weeklyModeStats || { dojoClaims: 0, fishCatches: 0, gachaPulls: 0, bonusClaimed: false };
+
+  // Check if already claimed this week
+  if (weekly.bonusClaimed) {
+    return { xpAwarded: 0, ticketsAwarded: 0, bonusGranted: false, alreadyClaimed: true };
+  }
+
+  // Check requirements
+  const meetsRequirements =
+    (weekly.dojoClaims || 0) >= req.dojoClaims &&
+    (weekly.fishCatches || 0) >= req.fishCatches &&
+    (weekly.gachaPulls || 0) >= req.gachaPulls;
+
+  if (!meetsRequirements) {
+    return {
+      xpAwarded: 0,
+      ticketsAwarded: 0,
+      bonusGranted: false,
+      progress: {
+        dojoClaims: { current: weekly.dojoClaims || 0, required: req.dojoClaims },
+        fishCatches: { current: weekly.fishCatches || 0, required: req.fishCatches },
+        gachaPulls: { current: weekly.gachaPulls || 0, required: req.gachaPulls }
+      }
+    };
+  }
+
+  // Award bonus
+  weekly.bonusClaimed = true;
+  user.weeklyModeStats = weekly;
+
+  const xp = config.rewards.xp;
+  const tickets = config.rewards.rollTickets;
+
+  console.log(`[WEEKLY BONUS] User ${user.id} earned ${xp} XP and ${tickets} roll tickets for weekly all-mode bonus`);
+
+  const xpResult = addXP(user, xp, 'weekly_all_mode_bonus');
+
+  return {
+    xpAwarded: xp,
+    ticketsAwarded: tickets,
+    bonusGranted: true,
+    levelUp: xpResult.levelUp
+  };
+}
+
+/**
+ * Increment weekly mode stats
+ * @param {Object} user - Sequelize User instance
+ * @param {string} mode - Mode to increment (dojoClaims, fishCatches, gachaPulls)
+ * @param {number} count - Amount to increment (default 1)
+ */
+function incrementWeeklyModeStat(user, mode, count = 1) {
+  const currentWeek = getWeekNumber();
+
+  // Initialize or reset weekly stats
+  if (!user.weeklyModeStats || user.weeklyModeStats.weekNumber !== currentWeek) {
+    user.weeklyModeStats = {
+      weekNumber: currentWeek,
+      dojoClaims: 0,
+      fishCatches: 0,
+      gachaPulls: 0,
+      bonusClaimed: false
+    };
+  }
+
+  // Increment the stat
+  if (user.weeklyModeStats[mode] !== undefined) {
+    user.weeklyModeStats[mode] += count;
+  }
+}
+
+/**
+ * Get current week number (ISO week)
+ */
+function getWeekNumber() {
+  const now = new Date();
+  const start = new Date(now.getFullYear(), 0, 1);
+  const diff = now - start + ((start.getTimezoneOffset() - now.getTimezoneOffset()) * 60 * 1000);
+  const oneWeek = 604800000; // 1 week in ms
+  return Math.floor(diff / oneWeek);
 }
 
 // ===========================================
@@ -446,6 +713,19 @@ module.exports = {
   getAccountLevelStatus,
   checkFacilityRequirement,
   initializeUserXP,
+  // Dojo XP (NEW in v4.0)
+  addDojoPassiveXP,
+  // Breakthrough XP (NEW in v4.0)
+  addBreakthroughXP,
+  // Gacha Milestone XP (NEW in v4.0)
+  addGachaMilestoneXP,
+  checkAndAwardMilestoneXP,
+  // Rest-and-Return XP (NEW in v4.0)
+  addRestAndReturnXP,
+  // Mode Variety XP (NEW in v4.0)
+  applyModeSwitchBonus,
+  checkWeeklyAllModeBonus,
+  incrementWeeklyModeStat,
   // Fishing XP (NEW in v3.0)
   addFishingCatchXP,
   addFishingTradeXP,

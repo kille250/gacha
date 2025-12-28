@@ -22,26 +22,34 @@ const DOJO_SPECIALIZATIONS = {
       fishingPowerBonus: 0.15,      // +15% fishing power vs large fish
       gachaLuckBonus: 0,
       currencyBonus: 0,
-      synergyBonus: 0
+      synergyBonus: 0,
+      xpBonus: 0
     }
   },
   wisdom: {
     id: 'wisdom',
     name: 'Path of Wisdom',
-    description: 'Enhanced learning and gacha fortune',
+    description: 'Enhanced learning, gacha fortune, and profile growth',
     icon: 'book',
     bonuses: {
-      // BALANCE UPDATE v2.1: Reduced penalty from -50% to -20%
-      // Rationale: Old -50% penalty was a "trap choice" - players lost ~200 pts/hr
-      // to gain ~10-15 pts/day in ticket value (8:1 loss ratio).
-      // New -20% penalty with doubled ticket bonus creates viable trade-off:
-      // Lose ~80 pts/hr to gain ~30 pts/day equivalent (~3:1 ratio, acceptable).
-      dojoPointsMultiplier: 0.8,    // -20% dojo income (balanced trade-off)
+      // BALANCE UPDATE v4.0: Further reduced penalty and added XP bonus
+      // Rationale: Even at -20%, Wisdom was still mathematically inferior.
+      // By reducing to -10% and adding +25% gacha XP, Wisdom becomes
+      // "the gacha specialist" - players who prioritize collection over income.
+      //
+      // New trade-off:
+      // - Lose 10% dojo income (~40 pts/hr at mid-game)
+      // - Gain 8% gacha luck (was 5%)
+      // - Gain 75% ticket drop chance (was 50%)
+      // - Gain 25% XP from gacha pulls (NEW - unique to Wisdom)
+      // This makes Wisdom clearly the best choice for gacha-focused players.
+      dojoPointsMultiplier: 0.90,   // -10% dojo income (reduced from -20%)
       fishingPowerBonus: 0,
-      gachaLuckBonus: 0.05,         // +5% gacha luck
-      ticketChanceBonus: 0.50,      // +50% ticket drop chance (doubled from 25%)
+      gachaLuckBonus: 0.08,         // +8% gacha luck (buffed from 5%)
+      ticketChanceBonus: 0.75,      // +75% ticket drop chance (buffed from 50%)
       currencyBonus: 0,
-      synergyBonus: 0
+      synergyBonus: 0,
+      xpBonusFromGacha: 0.25        // NEW: +25% XP from gacha pulls
     }
   },
   spirit: {
@@ -54,7 +62,8 @@ const DOJO_SPECIALIZATIONS = {
       fishingPowerBonus: 0,
       gachaLuckBonus: 0,
       currencyBonus: 0.1,           // +10% currency from all sources
-      synergyBonus: 0.1             // +10% team synergy effectiveness
+      synergyBonus: 0.1,            // +10% team synergy effectiveness
+      xpBonus: 0
     }
   }
 };
@@ -513,12 +522,14 @@ const REST_AND_RETURN_BONUS = {
   enabled: true,
 
   // Bonus tiers based on absence duration
+  // BALANCE UPDATE v4.0: Added XP rewards to help returning players with progression
+  // XP values match those defined in XP_SOURCES.restAndReturn for consistency
   tiers: [
-    { minDays: 2, maxDays: 3, bonus: { points: 500, message: 'Welcome back! Here\'s a small bonus.' } },
-    { minDays: 4, maxDays: 7, bonus: { points: 1500, rollTickets: 2, message: 'We missed you! Enjoy these rewards.' } },
-    { minDays: 8, maxDays: 14, bonus: { points: 3000, rollTickets: 5, premiumTickets: 1, message: 'Great to see you again! Here\'s a welcome back gift.' } },
-    { minDays: 15, maxDays: 30, bonus: { points: 5000, rollTickets: 10, premiumTickets: 3, message: 'It\'s been a while! We prepared something special.' } },
-    { minDays: 31, maxDays: Infinity, bonus: { points: 10000, rollTickets: 20, premiumTickets: 5, characterSelector: 'rare', message: 'Welcome home! Here\'s everything you need to catch up.' } }
+    { minDays: 2, maxDays: 3, bonus: { points: 500, xp: 100, message: 'Welcome back! Here\'s a small bonus.' } },
+    { minDays: 4, maxDays: 7, bonus: { points: 1500, rollTickets: 2, xp: 300, message: 'We missed you! Enjoy these rewards.' } },
+    { minDays: 8, maxDays: 14, bonus: { points: 3000, rollTickets: 5, premiumTickets: 1, xp: 750, message: 'Great to see you again! Here\'s a welcome back gift.' } },
+    { minDays: 15, maxDays: 30, bonus: { points: 5000, rollTickets: 10, premiumTickets: 3, xp: 1500, message: 'It\'s been a while! We prepared something special.' } },
+    { minDays: 31, maxDays: Infinity, bonus: { points: 10000, rollTickets: 20, premiumTickets: 5, characterSelector: 'rare', xp: 3000, message: 'Welcome home! Here\'s everything you need to catch up.' } }
   ],
 
   // Dojo catch-up (accumulated rewards don't decay completely)
