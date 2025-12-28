@@ -12,6 +12,7 @@ const AuditEvent = require('./auditEvent');
 const Appeal = require('./appeal');
 const SecurityConfig = require('./securityConfig');
 const ImportJob = require('./importJob');
+const PasswordResetHistory = require('./passwordResetHistory');
 
 // ===========================================
 // USER CHARACTERS JUNCTION TABLE (with leveling)
@@ -106,6 +107,12 @@ Appeal.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 User.hasMany(Appeal, { foreignKey: 'reviewedBy', as: 'reviewedAppeals' });
 Appeal.belongsTo(User, { foreignKey: 'reviewedBy', as: 'reviewer' });
 
+// User <-> PasswordResetHistory (for password reset audit trail)
+User.hasMany(PasswordResetHistory, { foreignKey: 'targetUserId', as: 'passwordResets' });
+PasswordResetHistory.belongsTo(User, { foreignKey: 'targetUserId', as: 'targetUser' });
+User.hasMany(PasswordResetHistory, { foreignKey: 'adminId', as: 'adminPasswordResets' });
+PasswordResetHistory.belongsTo(User, { foreignKey: 'adminId', as: 'admin' });
+
 module.exports = {
   sequelize,
   User,
@@ -119,5 +126,6 @@ module.exports = {
   AuditEvent,
   Appeal,
   SecurityConfig,
-  ImportJob
+  ImportJob,
+  PasswordResetHistory
 };

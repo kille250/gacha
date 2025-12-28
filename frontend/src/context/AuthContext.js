@@ -17,6 +17,8 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [sessionExpired, setSessionExpired] = useState(false);
+  const [requiresPasswordChange, setRequiresPasswordChange] = useState(false);
+  const [passwordResetExpiry, setPasswordResetExpiry] = useState(null);
   const sessionExpiredHandled = useRef(false);
 
   // Refresh user data from the server (forces fresh fetch by clearing auth cache)
@@ -116,25 +118,43 @@ export const AuthProvider = ({ children }) => {
       // Reset local state before login attempt
       setCurrentUser(null);
       removeStoredUser();
-      
+      setRequiresPasswordChange(false);
+      setPasswordResetExpiry(null);
+
       const response = await api.post('/auth/login', {
         username,
         password
       });
-      
+
       setToken(response.data.token);
-      
+
+      // Check if password change is required (admin-initiated password reset)
+      if (response.data.requiresPasswordChange) {
+        setRequiresPasswordChange(true);
+        setPasswordResetExpiry(response.data.passwordResetExpiry);
+
+        // Get user data but indicate password change needed
+        invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
+        const userResponse = await api.get('/auth/me');
+        const userData = userResponse.data;
+        setCurrentUser(userData);
+        setStoredUser(userData);
+
+        // Return special status for password change required
+        return { success: true, requiresPasswordChange: true };
+      }
+
       // Clear cache after token is set (new token = new cache namespace)
       // Single invalidation is sufficient since cache is keyed by token hash
       invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
-      
+
       // Get user data from backend (fresh, uncached)
       const userResponse = await api.get('/auth/me');
-      
+
       const userData = userResponse.data;
       setCurrentUser(userData);
       setStoredUser(userData);
-      
+
       return true;
     } catch (err) {
       console.error("Login error:", err);
@@ -252,12 +272,18 @@ export const AuthProvider = ({ children }) => {
     sessionExpiredHandled.current = false;
   }, []);
 
+  // Clear password change requirement after successful password change
+  const clearPasswordChangeRequired = useCallback(() => {
+    setRequiresPasswordChange(false);
+    setPasswordResetExpiry(null);
+  }, []);
+
   return (
-    <AuthContext.Provider value={{ 
-      user: currentUser, 
-      loading, 
-      error, 
-      login, 
+    <AuthContext.Provider value={{
+      user: currentUser,
+      loading,
+      error,
+      login,
       register,
       googleLogin,
       googleRelink,
@@ -266,7 +292,10 @@ export const AuthProvider = ({ children }) => {
       setUser: setCurrentUser,
       refreshUser,
       sessionExpired,
-      clearSessionExpired
+      clearSessionExpired,
+      requiresPasswordChange,
+      passwordResetExpiry,
+      clearPasswordChangeRequired
     }}>
       {children}
     </AuthContext.Provider>

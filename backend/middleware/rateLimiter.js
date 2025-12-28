@@ -426,6 +426,25 @@ const adminImportLimiter = rateLimit({
 });
 
 /**
+ * Admin password reset rate limiter
+ * - Prevents abuse of password reset functionality
+ * - Limit: 10 resets per admin per hour
+ */
+const adminPasswordResetLimiter = rateLimit({
+  windowMs: 3600000,  // 1 hour
+  max: 10,            // 10 password resets per hour per admin
+  message: {
+    error: 'Password reset rate limit exceeded. Maximum 10 resets per hour.',
+    code: 'PASSWORD_RESET_RATE_LIMITED'
+  },
+  standardHeaders: true,
+  legacyHeaders: false,
+  keyGenerator: (req) => {
+    return `admin_password_reset:${req.user?.id || 'unknown'}`;
+  }
+});
+
+/**
  * Public read rate limiter
  * Prevents scraping of public endpoints (characters, banners, rarities)
  * More permissive than general limiter but still prevents abuse
@@ -477,6 +496,7 @@ module.exports = {
   tradeLimiter,
   // Admin/security rate limiters
   adminImportLimiter,
+  adminPasswordResetLimiter,
   publicReadLimiter,
   reloadConfig,
   getCurrentConfig

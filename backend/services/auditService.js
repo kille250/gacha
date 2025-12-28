@@ -33,6 +33,7 @@ const AUDIT_EVENTS = {
   ADMIN_UNRESTRICT: 'admin.unrestrict',
   ADMIN_WARNING: 'admin.warning',
   ADMIN_POINTS_ADJUST: 'admin.points_adjust',
+  ADMIN_PASSWORD_RESET: 'admin.password_reset',
   
   // Security events
   DEVICE_NEW: 'admin.security.deviceNew',

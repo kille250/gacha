@@ -7,8 +7,9 @@ const os = require('os');
 const { Op } = require('sequelize');
 const auth = require('../middleware/auth');
 const adminAuth = require('../middleware/adminAuth');
-const { generalRateLimiter, sensitiveActionLimiter } = require('../middleware/rateLimiter');
-const { User, Character, Banner, Coupon, CouponRedemption, FishInventory, AuditEvent } = require('../models');
+const { generalRateLimiter, sensitiveActionLimiter, adminPasswordResetLimiter } = require('../middleware/rateLimiter');
+const { User, Character, Banner, Coupon, CouponRedemption, FishInventory, AuditEvent, PasswordResetHistory } = require('../models');
+const { generateSecurePassword } = require('../utils/passwordGenerator');
 // Standard banner service imports moved to ./admin/standardBanner.js
 const { getUrlPath, UPLOAD_BASE } = require('../config/upload');
 const { logAdminAction, AUDIT_EVENTS, getSecurityEvents } = require('../services/auditService');
@@ -2164,6 +2165,157 @@ router.post('/users/bulk-force-logout', [auth, adminAuth, sensitiveActionLimiter
   } catch (err) {
     console.error('Bulk force logout error:', err);
     res.status(500).json({ error: 'Failed to perform bulk force logout' });
+  }
+});
+
+// ===========================================
+// PASSWORD RESET
+// ===========================================
+
+/**
+ * POST /api/admin/users/:id/reset-password - Reset a user's password
+ *
+ * Security measures:
+ * - Admin authentication required (adminAuth)
+ * - Rate limited to 10 resets per admin per hour
+ * - Cannot reset own password or other admin passwords
+ * - Generates cryptographically secure temporary password
+ * - Temporary password expires after 48 hours
+ * - Forces password change on next login
+ * - Full audit trail with IP hash and timestamp
+ *
+ * Response includes the temporary password ONCE - it is not stored in plaintext.
+ */
+router.post('/users/:id/reset-password', [auth, adminAuth, adminPasswordResetLimiter], async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+
+    const user = await User.findByPk(userId);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    // Prevent resetting own password through this endpoint
+    if (user.id === req.user.id) {
+      return res.status(400).json({ error: 'Cannot reset your own password. Use the profile settings instead.' });
+    }
+
+    // Prevent resetting other admin passwords
+    if (user.isAdmin) {
+      return res.status(403).json({ error: 'Cannot reset password for admin accounts. Admins must reset their own passwords.' });
+    }
+
+    // Prevent resetting password for Google-only accounts
+    if (user.googleId && !user.password) {
+      return res.status(400).json({
+        error: 'This user uses Google Sign-In only. They can set a password from their profile settings.'
+      });
+    }
+
+    // Generate secure temporary password
+    const temporaryPassword = generateSecurePassword(16);
+
+    // Set password expiry (48 hours from now)
+    const expiresAt = new Date(Date.now() + 48 * 60 * 60 * 1000);
+
+    // Update user record
+    user.password = temporaryPassword; // Will be hashed by the model's setter
+    user.forcePasswordChange = true;
+    user.passwordResetExpiry = expiresAt;
+    user.passwordResetAt = new Date();
+
+    // Invalidate all existing sessions (force re-login with new password)
+    user.sessionInvalidatedAt = new Date();
+
+    await user.save();
+
+    // Create audit record in password reset history
+    await PasswordResetHistory.create({
+      adminId: req.user.id,
+      targetUserId: user.id,
+      ipHash: req.deviceSignals?.ipHash || null,
+      userAgent: req.get('User-Agent')?.substring(0, 500) || null,
+      expiresAt
+    });
+
+    // Log to general audit trail
+    await logAdminAction(AUDIT_EVENTS.ADMIN_PASSWORD_RESET, req.user.id, user.id, {
+      expiresAt: expiresAt.toISOString(),
+      reason: 'Admin initiated password reset'
+    }, req);
+
+    console.log(`Admin (ID: ${req.user.id}) reset password for user ${user.username} (ID: ${userId})`);
+
+    res.json({
+      success: true,
+      message: `Password reset successful for ${user.username}`,
+      temporaryPassword,
+      expiresAt: expiresAt.toISOString(),
+      notes: [
+        'This temporary password is shown ONCE and will not be displayed again.',
+        'The user must change their password upon next login.',
+        'The temporary password expires in 48 hours if not used.',
+        'All existing sessions for this user have been invalidated.'
+      ]
+    });
+  } catch (err) {
+    console.error('Password reset error:', err);
+    res.status(500).json({ error: 'Failed to reset password' });
+  }
+});
+
+/**
+ * GET /api/admin/users/:id/password-reset-history - Get password reset history for a user
+ *
+ * Returns the audit trail of all password resets for a specific user.
+ */
+router.get('/users/:id/password-reset-history', [auth, adminAuth], async (req, res) => {
+  try {
+    const userId = parseInt(req.params.id, 10);
+
+    if (!isValidId(userId)) {
+      return res.status(400).json({ error: 'Invalid user ID' });
+    }
+
+    const user = await User.findByPk(userId, {
+      attributes: ['id', 'username']
+    });
+
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const history = await PasswordResetHistory.findAll({
+      where: { targetUserId: userId },
+      include: [
+        {
+          model: User,
+          as: 'admin',
+          attributes: ['id', 'username']
+        }
+      ],
+      order: [['createdAt', 'DESC']],
+      limit: 50
+    });
+
+    res.json({
+      user: { id: user.id, username: user.username },
+      history: history.map(entry => ({
+        id: entry.id,
+        admin: entry.admin ? { id: entry.admin.id, username: entry.admin.username } : null,
+        createdAt: entry.createdAt,
+        expiresAt: entry.expiresAt,
+        usedAt: entry.usedAt,
+        ipHash: entry.ipHash ? entry.ipHash.substring(0, 8) + '...' : null
+      }))
+    });
+  } catch (err) {
+    console.error('Password reset history error:', err);
+    res.status(500).json({ error: 'Failed to fetch password reset history' });
   }
 });
 

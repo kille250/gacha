@@ -136,6 +136,8 @@ export const ADMIN_ACTIONS = {
   DENY_APPEAL: 'admin:deny_appeal',
   /** Triggering risk score decay */
   RISK_DECAY: 'admin:risk_decay',
+  /** Resetting a user's password */
+  PASSWORD_RESET: 'admin:password_reset',
 };
 
 // ===========================================
@@ -312,6 +314,7 @@ export const CACHE_ACTIONS = {
   ADMIN_APPROVE_APPEAL: ADMIN_ACTIONS.APPROVE_APPEAL,
   ADMIN_DENY_APPEAL: ADMIN_ACTIONS.DENY_APPEAL,
   ADMIN_RISK_DECAY: ADMIN_ACTIONS.RISK_DECAY,
+  ADMIN_PASSWORD_RESET: ADMIN_ACTIONS.PASSWORD_RESET,
   
   // Auth
   AUTH_LOGIN: AUTH_ACTIONS.LOGIN,
