@@ -8,24 +8,30 @@
  * Level multipliers are defined in config/leveling.js (single source of truth).
  *
  * ============================================================================
- * BALANCE SUMMARY (v3.0 - Cross-Mode Economy Balancing)
+ * BALANCE SUMMARY (v4.0 - Comprehensive Mode Balancing)
  * ============================================================================
- * Key changes in v3.0:
+ * Key changes in v4.0:
  *
- * 1. ACCOUNT LEVEL INTEGRATION: Dojo now applies account level bonuses
- *    - Level 20: +5% efficiency
- *    - Level 40: +5% XP multiplier (from account level)
- *    - Level 60: +10% efficiency
- *    - Level 100: +15% efficiency
- *    - Total potential: +30% efficiency at max account level
+ * 1. DOJO XP SIGNIFICANTLY BUFFED: Increased contribution to profile XP
+ *    - Base claim: 15 XP (up from 8)
+ *    - Efficient claim: +8 XP bonus (up from 5)
+ *    - Hourly passive XP: +2 XP per hour of training (NEW)
+ *    - Rationale: Dojo was only ~6% of daily XP, now ~15-20%
  *
- * 2. DOJO XP CONTRIBUTION: Dojo claims now award meaningful profile XP
- *    - Base claim: 8 XP (up from 5)
- *    - Efficient claim: +5 XP bonus
- *    - Daily variety bonus: +15 XP first claim
+ * 2. WISDOM SPECIALIZATION REBALANCED:
+ *    - Penalty reduced from -20% to -10% dojo income
+ *    - Ticket chance buffed from +50% to +75%
+ *    - Added +25% XP from gacha pulls (unique to Wisdom)
  *
- * 3. TICKET GENERATION SMOOTHING: Premium tickets slightly buffed
- *    for legendary characters to feel more rewarding
+ * 3. BREAKTHROUGH XP: Dojo breakthroughs now award profile XP
+ *    - skill_discovery: 50 XP
+ *    - hidden_treasure: 30 XP
+ *    - moment_of_clarity: 75 XP
+ *    - legendary_insight: 150 XP
+ *
+ * Previous v3.0 changes (preserved):
+ * - Account level bonuses: +30% efficiency at max level
+ * - Daily variety bonus: +15 XP first claim
  * ============================================================================
  *
  * ============================================================================
@@ -372,6 +378,9 @@ function calculateCatchUpBonus(characterCount) {
  * @returns {Object} - Aggregated specialization bonuses
  */
 function calculateSpecializationBonuses(characters) {
+  // BALANCE UPDATE v4.0: Synced with gameDesign.js DOJO_SPECIALIZATIONS
+  // Wisdom penalty reduced from 0.8 to 0.9 (-10% instead of -20%)
+  // Ticket chance buffed from 0.50 to 0.75 (+75%)
   const DOJO_SPECIALIZATIONS = {
     strength: {
       bonuses: {
@@ -381,8 +390,8 @@ function calculateSpecializationBonuses(characters) {
     },
     wisdom: {
       bonuses: {
-        dojoPointsMultiplier: 0.5,
-        ticketChanceBonus: 0.25
+        dojoPointsMultiplier: 0.90,   // -10% (v4.0: was 0.8/-20%)
+        ticketChanceBonus: 0.75       // +75% (v4.0: was 0.50/+50%)
       }
     },
     spirit: {

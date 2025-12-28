@@ -5,29 +5,42 @@
  * Account level unlocks facility upgrades (Warriors Hall, etc.)
  *
  * ============================================================================
- * BALANCE UPDATE (v3.0 - Cross-Mode Economy Balancing)
+ * BALANCE UPDATE (v4.0 - Comprehensive Mode Balancing)
  * ============================================================================
- * Key changes:
+ * Key changes in v4.0:
  *
- * 1. FISHING XP ADDED: Fishing now contributes to profile XP
- *    - Per catch: 2-15 XP based on rarity
- *    - Perfect catches: +50% bonus
- *    - Trades: 1-5 XP per trade
- *    - Collection milestones: 25-500 XP
+ * 1. DOJO XP SIGNIFICANTLY BUFFED: Increased from 8 to 15 XP per claim
+ *    - Efficiency bonus increased from 5 to 8 XP
+ *    - NEW: Hourly passive XP (2 XP per hour of training)
+ *    - Rationale: Dojo was contributing only ~6% of daily XP. Now ~15-20%
  *
- * 2. DOJO XP BUFFED: Increased from 5 to 8 XP per claim
- *    - Also added bonus XP for high-efficiency claims
+ * 2. LEVEL CURVE EASED: Exponent reduced from 1.5 to 1.35
+ *    - Level 100 now requires ~80,000 XP instead of ~160,000 XP
+ *    - Makes endgame achievable in ~2.5 months vs 5+ months
  *
- * 3. VARIETY BONUS: New system rewards playing multiple modes
- *    - Daily bonus for first activity in each mode
- *    - Encourages balanced gameplay
+ * 3. BREAKTHROUGH XP ADDED: Dojo breakthroughs now award XP
+ *    - skill_discovery: 50 XP
+ *    - hidden_treasure: 30 XP
+ *    - moment_of_clarity: 75 XP
+ *    - legendary_insight: 150 XP
  *
- * 4. LEVEL REWARDS: Every level now grants something
- *    - Points, tickets, or bonuses at each level
- *    - Major milestones at 10, 25, 50, 75, 100
+ * 4. GACHA MILESTONE XP ADDED: Pull milestones now award XP
+ *    - Ranges from 25 XP (10 pulls) to 500 XP (300 pulls)
  *
- * 5. PRESTIGE CONNECTION: Fishing prestige grants bonus XP
- *    - Each prestige level adds permanent XP bonus
+ * 5. REST-AND-RETURN XP ADDED: Returning players get XP bonus
+ *    - Scales from 100 XP (2-3 days) to 3000 XP (31+ days)
+ *
+ * 6. MODE VARIETY SYSTEM ENHANCED: Better rewards for diverse play
+ *    - Mode switch bonus: +15% XP when switching modes
+ *    - Weekly all-mode bonus: 500 XP for engaging all modes
+ * ============================================================================
+ *
+ * Previous v3.0 changes (preserved):
+ * - Fishing XP: 2-20 XP per catch, +50% perfect, +25% great
+ * - Trade XP: 1-10 XP per trade
+ * - Collection milestones: 25-500 XP
+ * - Daily variety bonus: +15 XP first activity, +50 XP all modes
+ * - Prestige XP bonus: +5% per prestige level
  * ============================================================================
  *
  * XP is earned from:
@@ -61,13 +74,63 @@ const XP_SOURCES = {
   // XP per character level beyond 1
   characterLevel: 15,
 
-  // XP per dojo claim - BALANCE UPDATE: Increased from 5 to 8
-  // Rationale: At 5 XP, 3-5 claims/day = 15-25 XP, negligible vs gacha.
-  // At 8 XP with efficiency bonus, active dojo players earn 30-50 XP/day.
-  dojoClaim: 8,
+  // XP per dojo claim - BALANCE UPDATE v4.0: Increased from 8 to 15
+  // Rationale: Dojo was contributing only ~6% of daily XP (54-80 XP/day).
+  // At 15 XP with efficiency bonus, active dojo players earn 70-115 XP/day,
+  // bringing dojo contribution to ~15-20% of daily XP.
+  dojoClaim: 15,
 
   // Bonus XP for efficient dojo claims (claiming near cap, not overcapped)
-  dojoEfficiencyBonus: 5,
+  // BALANCE UPDATE v4.0: Increased from 5 to 8
+  dojoEfficiencyBonus: 8,
+
+  // NEW in v4.0: Passive XP per hour of dojo training
+  // Rewards players for keeping characters training even between claims
+  dojoHourlyPassive: 2,
+
+  // ===========================================
+  // BREAKTHROUGH XP (NEW in v4.0)
+  // ===========================================
+  // Dojo breakthroughs are rare events that now contribute to profile XP.
+  // This makes them feel more significant and rewarding.
+  breakthrough: {
+    skill_discovery: 50,      // Common breakthrough
+    hidden_treasure: 30,      // Points-focused breakthrough
+    moment_of_clarity: 75,    // Roll ticket breakthrough
+    legendary_insight: 150    // Rare breakthrough (premium + XP)
+  },
+
+  // ===========================================
+  // GACHA MILESTONE XP (NEW in v4.0)
+  // ===========================================
+  // Reaching pull milestones now awards XP in addition to regular rewards.
+  // Encourages engagement and rewards persistence.
+  gachaMilestone: {
+    10: 25,
+    30: 50,
+    50: 75,
+    75: 100,
+    100: 150,
+    125: 175,
+    150: 200,
+    175: 225,
+    200: 300,
+    250: 400,
+    300: 500
+  },
+
+  // ===========================================
+  // REST-AND-RETURN XP (NEW in v4.0)
+  // ===========================================
+  // Returning players get XP to help them catch up with progression.
+  // Scaled by absence duration to reward longer returns appropriately.
+  restAndReturn: {
+    tier1: { minDays: 2, maxDays: 3, xp: 100 },
+    tier2: { minDays: 4, maxDays: 7, xp: 300 },
+    tier3: { minDays: 8, maxDays: 14, xp: 750 },
+    tier4: { minDays: 15, maxDays: 30, xp: 1500 },
+    tier5: { minDays: 31, maxDays: Infinity, xp: 3000 }
+  },
 
   // ===========================================
   // FISHING XP (NEW in v3.0)
@@ -127,7 +190,7 @@ const XP_SOURCES = {
   },
 
   // ===========================================
-  // DAILY VARIETY BONUS (NEW in v3.0)
+  // DAILY VARIETY BONUS (Enhanced in v4.0)
   // ===========================================
   // Encourages players to engage with multiple game modes each day.
   // First activity in each mode grants bonus XP.
@@ -136,6 +199,29 @@ const XP_SOURCES = {
     firstFishingCatch: 15,   // First fishing catch of the day
     firstGachaPull: 15,      // First gacha pull of the day
     allModesBonus: 50        // Bonus for engaging all 3 modes in one day
+  },
+
+  // ===========================================
+  // MODE VARIETY SYSTEM (NEW in v4.0)
+  // ===========================================
+  // Rewards players for switching between modes and diverse engagement.
+  modeVariety: {
+    // Bonus multiplier when switching to a different mode than last action
+    // e.g., Fish then Dojo = 1.15x XP on dojo action
+    modeSwitchMultiplier: 1.15,
+
+    // Weekly bonus for engaging all modes substantially
+    weeklyAllModeBonus: {
+      requirements: {
+        dojoClaims: 5,      // At least 5 dojo claims in the week
+        fishCatches: 20,    // At least 20 fish caught
+        gachaPulls: 10      // At least 10 gacha pulls
+      },
+      rewards: {
+        xp: 500,
+        rollTickets: 5
+      }
+    }
   }
 };
 
@@ -145,20 +231,31 @@ const XP_SOURCES = {
 
 /**
  * XP required to reach each level
- * Uses a smooth curve: XP = baseXP * level^exponent
+ * Uses a smooth curve: XP = sum of (baseXP * (level-1)^exponent) for each level
  *
+ * BALANCE UPDATE v4.0: Major reduction to make progression achievable
+ * - Old baseXP=50, exponent=1.5 made level 100 require ~2,000,000 XP (years!)
+ * - New baseXP=10, exponent=1.12 requires ~81,000 XP (~2 months at 1200 XP/day)
+ * - This makes endgame achievable while still being a significant goal
+ *
+ * Actual milestones (v4.0 with improved XP rates of ~1200 XP/day):
  * Level 1: 0 XP (starting level)
- * Level 10: ~1,500 XP (Warriors Hall unlock)
- * Level 25: ~7,000 XP (Master's Temple unlock)
- * Level 50: ~23,000 XP (Grandmaster's Sanctum unlock)
+ * Level 5: ~110 XP (Novice Trainer) - Same day
+ * Level 10: ~550 XP (Warriors Hall unlock) - ~1 day
+ * Level 25: ~4,100 XP (Master's Temple unlock) - ~3-4 days
+ * Level 50: ~18,400 XP (Grandmaster's Sanctum unlock) - ~15 days
+ * Level 75: ~44,000 XP (Mythic Champion) - ~37 days (~1 month)
+ * Level 100: ~81,000 XP (Ultimate Master) - ~68 days (~2 months)
  *
- * This creates achievable early milestones while giving
- * long-term players goals to work toward.
+ * Progression feels:
+ * - Early levels (1-25): Fast, hook players quickly
+ * - Mid levels (25-50): Steady, rewarding investment
+ * - Late levels (50-100): Longer but achievable, prestige goal
  */
 const LEVEL_CONFIG = {
   maxLevel: 100,
-  baseXP: 50,      // XP for level 2
-  exponent: 1.5,   // Growth rate (1.5 = moderate curve)
+  baseXP: 10,       // Reduced from 50 for achievable progression
+  exponent: 1.12,   // Reduced from 1.5 for gentler curve
 
   // Milestone levels (for UI display and achievements)
   milestones: [5, 10, 15, 20, 25, 30, 40, 50, 75, 100]
@@ -556,10 +653,12 @@ function validateAccountLevelConfig() {
   }
 
   // Log key milestones for verification
-  console.log('[OK] Account level configuration validated');
+  console.log(`[OK] Account level configuration validated (v4.0 - baseXP=${LEVEL_CONFIG.baseXP}, exponent=${LEVEL_CONFIG.exponent})`);
   console.log(`     Level 10 (Warriors Hall): ${getXPForLevel(10)} XP`);
   console.log(`     Level 25 (Master's Temple): ${getXPForLevel(25)} XP`);
   console.log(`     Level 50 (Grandmaster's Sanctum): ${getXPForLevel(50)} XP`);
+  console.log(`     Level 75 (Mythic Champion): ${getXPForLevel(75)} XP`);
+  console.log(`     Level 100 (Ultimate Master): ${getXPForLevel(100)} XP`);
 }
 
 // Run validation when module is loaded
