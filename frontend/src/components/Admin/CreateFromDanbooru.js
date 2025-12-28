@@ -288,31 +288,39 @@ const CreateFromDanbooru = ({
     if (step === 'search' && shouldRestoreScroll.current && savedScrollPosition.current > 0) {
       const targetScroll = savedScrollPosition.current;
       let attempts = 0;
-      const maxAttempts = 5;
+      const maxAttempts = 15; // More attempts for large result sets
 
       const tryRestoreScroll = () => {
         attempts++;
         if (bodyRef.current) {
+          const maxScrollable = bodyRef.current.scrollHeight - bodyRef.current.clientHeight;
+
+          // Wait until scroll container is tall enough
+          if (maxScrollable < targetScroll && attempts < maxAttempts) {
+            setTimeout(tryRestoreScroll, 100);
+            return;
+          }
+
           bodyRef.current.scrollTop = targetScroll;
 
-          // Verify scroll was applied (with small tolerance for rounding)
+          // Verify scroll was applied (with tolerance)
           const actualScroll = bodyRef.current.scrollTop;
           const scrollSucceeded = Math.abs(actualScroll - targetScroll) < 10 ||
-                                  actualScroll >= bodyRef.current.scrollHeight - bodyRef.current.clientHeight;
+                                  actualScroll >= maxScrollable - 10;
 
           if (scrollSucceeded || attempts >= maxAttempts) {
             shouldRestoreScroll.current = false;
             return;
           }
-        }
 
-        // Retry with increasing delay if scroll didn't work
-        if (attempts < maxAttempts) {
-          setTimeout(tryRestoreScroll, 50);
+          // Retry if scroll didn't work yet
+          setTimeout(tryRestoreScroll, 100);
+        } else if (attempts < maxAttempts) {
+          setTimeout(tryRestoreScroll, 100);
         }
       };
 
-      // Initial delay to let React render the content
+      // Initial delay to let React start rendering
       setTimeout(tryRestoreScroll, 50);
     }
   }, [step]);
