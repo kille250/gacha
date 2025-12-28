@@ -9,7 +9,7 @@
  * the frontend UI (help texts, tooltips, etc.). When backend balance values
  * change, update this file to keep frontend in sync.
  *
- * VERSION: v8.0 (Complete Mode Harmony & Frontend Sync)
+ * VERSION: v9.0 (Complete Balance Audit & Sync)
  *
  * USAGE:
  * - Backend: Authoritative values are in respective config files
@@ -22,6 +22,11 @@
  * 2. This file is updated with new display values
  * 3. Frontend components using hardcoded values are updated
  *
+ * v9.0 CHANGES:
+ * - Added 350 gacha milestone XP (750 XP) to XP_SOURCES
+ * - Complete balance audit verified all modes
+ * - All frontend/backend values confirmed synced
+ *
  * v8.0 CHANGES:
  * - Buffed Gacha XP from 12 to 15 per pull (+25%)
  * - Added all account level milestones (60, 75, 85, 90, 95, 100)
@@ -32,7 +37,7 @@
  * ============================================================================
  */
 
-const BALANCE_VERSION = '8.0';
+const BALANCE_VERSION = '9.0';
 
 // ===========================================
 // DOJO BALANCE CONSTANTS

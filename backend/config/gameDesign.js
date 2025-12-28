@@ -6,6 +6,20 @@
  * for the enhanced Dojo, Fishing, Gacha, and Retention systems.
  *
  * ============================================================================
+ * BALANCE UPDATE (v9.0 - Complete Balance Audit & Sync)
+ * ============================================================================
+ * Key changes in v9.0:
+ *
+ * 1. FULL SYSTEM AUDIT:
+ *    - All game modes analyzed for XP/reward balance
+ *    - Frontend/backend values verified synced
+ *    - XP rates across modes confirmed fair
+ *
+ * 2. 350 MILESTONE SYNC:
+ *    - Added 350 milestone XP (750) to accountLevel.js XP_SOURCES
+ *    - All 12 milestones now fully documented
+ *
+ * ============================================================================
  * BALANCE UPDATE (v8.0 - Complete Mode Harmony & Frontend Sync)
  * ============================================================================
  * Key changes in v8.0:

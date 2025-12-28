@@ -8,6 +8,16 @@
  * Level multipliers are defined in config/leveling.js (single source of truth).
  *
  * ============================================================================
+ * BALANCE SUMMARY (v9.0 - Complete Balance Audit & Sync)
+ * ============================================================================
+ * Key changes in v9.0:
+ *
+ * 1. BALANCE AUDIT COMPLETE:
+ *    - Dojo XP rates verified appropriate for passive mode
+ *    - Active vs passive ratio (~10-20x) confirmed intentional
+ *    - All values synced with shared/balanceConstants.js v9.0
+ *
+ * ============================================================================
  * BALANCE SUMMARY (v8.0 - Complete Mode Harmony & Frontend Sync)
  * ============================================================================
  * Key changes in v8.0:

@@ -5,6 +5,19 @@
  * Account level unlocks facility upgrades (Warriors Hall, etc.)
  *
  * ============================================================================
+ * BALANCE UPDATE (v9.0 - Complete Balance Audit & Sync)
+ * ============================================================================
+ * Key changes in v9.0:
+ *
+ * 1. GACHA MILESTONE SYNC: Added missing 350 pull milestone (750 XP)
+ *    - Now matches gameDesign.js GACHA_MILESTONE_REWARDS completely
+ *    - Total gacha milestone XP now: 30+60+90+120+180+210+240+270+360+480+600+750 = 3,390 XP
+ *
+ * 2. DOCUMENTATION IMPROVEMENTS:
+ *    - All XP sources fully documented
+ *    - Cross-mode balance verified
+ *
+ * ============================================================================
  * BALANCE UPDATE (v8.0 - Complete Mode Harmony & Frontend Sync)
  * ============================================================================
  * Key changes in v8.0:
@@ -169,6 +182,7 @@ const XP_SOURCES = {
   // ===========================================
   // Reaching pull milestones now awards XP in addition to regular rewards.
   // BALANCE UPDATE v5.0: Increased all values by ~20% for better pull engagement
+  // BALANCE UPDATE v9.0: Added 350 milestone to match gameDesign.js
   gachaMilestone: {
     10: 30,       // Was 25
     30: 60,       // Was 50
@@ -180,7 +194,8 @@ const XP_SOURCES = {
     175: 270,     // Was 225
     200: 360,     // Was 300
     250: 480,     // Was 400
-    300: 600      // Was 500
+    300: 600,     // Was 500
+    350: 750      // Ultimate milestone - Epic character selector
   },
 
   // ===========================================

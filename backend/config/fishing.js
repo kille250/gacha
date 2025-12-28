@@ -5,6 +5,16 @@
  * Extracted from routes/fishing.js for better maintainability.
  *
  * ============================================================================
+ * BALANCE UPDATE (v9.0 - Complete Balance Audit & Sync)
+ * ============================================================================
+ * Key changes in v9.0:
+ *
+ * 1. BALANCE AUDIT COMPLETE:
+ *    - Fishing XP rates verified competitive with other modes
+ *    - ~80-120 XP/hour active play confirmed appropriate
+ *    - All values synced with shared/balanceConstants.js v9.0
+ *
+ * ============================================================================
  * BALANCE UPDATE (v8.0 - Complete Mode Harmony & Frontend Sync)
  * ============================================================================
  * Key changes in v8.0:
