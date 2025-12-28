@@ -286,19 +286,34 @@ const CreateFromDanbooru = ({
   // Restore scroll position when returning to search step
   useEffect(() => {
     if (step === 'search' && shouldRestoreScroll.current && savedScrollPosition.current > 0) {
-      // Use multiple requestAnimationFrame calls to ensure DOM is fully ready
-      // First rAF waits for React render, second waits for layout
-      const restoreScroll = () => {
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            if (bodyRef.current) {
-              bodyRef.current.scrollTop = savedScrollPosition.current;
-            }
+      const targetScroll = savedScrollPosition.current;
+      let attempts = 0;
+      const maxAttempts = 5;
+
+      const tryRestoreScroll = () => {
+        attempts++;
+        if (bodyRef.current) {
+          bodyRef.current.scrollTop = targetScroll;
+
+          // Verify scroll was applied (with small tolerance for rounding)
+          const actualScroll = bodyRef.current.scrollTop;
+          const scrollSucceeded = Math.abs(actualScroll - targetScroll) < 10 ||
+                                  actualScroll >= bodyRef.current.scrollHeight - bodyRef.current.clientHeight;
+
+          if (scrollSucceeded || attempts >= maxAttempts) {
             shouldRestoreScroll.current = false;
-          });
-        });
+            return;
+          }
+        }
+
+        // Retry with increasing delay if scroll didn't work
+        if (attempts < maxAttempts) {
+          setTimeout(tryRestoreScroll, 50);
+        }
       };
-      restoreScroll();
+
+      // Initial delay to let React render the content
+      setTimeout(tryRestoreScroll, 50);
     }
   }, [step]);
 
