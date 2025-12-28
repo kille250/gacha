@@ -117,7 +117,10 @@ const PRESTIGE_LEVELS = {
       totalLegendaries: 200,
       longestStreak: 50,
       challengesCompleted: 250,
-      collectionStars: 75             // High but achievable (all fish at 5 stars = 75)
+      // BALANCE UPDATE v2.1: collectionStars requirement reduced to 70
+      // Max possible is 75 (15 fish * 5 stars), requiring exactly max feels punishing
+      // 70 stars = 93% completion, leaving room for 1 fish not at max
+      collectionStars: 70
     },
     rewards: {
       bonusPoints: 750000,

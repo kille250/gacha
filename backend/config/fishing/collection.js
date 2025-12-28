@@ -6,15 +6,21 @@
  */
 
 // Base star thresholds - how many of a fish type to catch for each star
-const BASE_STAR_THRESHOLDS = [1, 10, 50, 100, 500];
+// BALANCE UPDATE v2.1: Reduced base thresholds to improve early-game experience
+// Old: [1, 10, 50, 100, 500] - common fish took 500 catches for max stars (too grindy)
+// New: [1, 5, 20, 50, 150] - common fish takes 150 catches (reasonable for most players)
+const BASE_STAR_THRESHOLDS = [1, 5, 20, 50, 150];
 
 // Rarity multipliers for star thresholds (rarer fish = easier to max)
+// BALANCE UPDATE v2.1: Adjusted multipliers for better progression curve
+// Old common/legendary ratio was 16.7x (500 vs 30), now 5x (150 vs 30)
+// This makes common fish feel rewarding without trivializing rare catches
 const RARITY_THRESHOLD_MULTIPLIERS = {
-  common: 1.0,      // Full thresholds: [1, 10, 50, 100, 500]
-  uncommon: 0.6,    // Reduced: [1, 6, 30, 60, 300]
-  rare: 0.3,        // Reduced: [1, 3, 15, 30, 150]
-  epic: 0.15,       // Reduced: [1, 2, 8, 15, 75]
-  legendary: 0.06   // Reduced: [1, 1, 3, 6, 30]
+  common: 1.0,      // Full thresholds: [1, 5, 20, 50, 150]
+  uncommon: 0.7,    // Reduced: [1, 4, 14, 35, 105]
+  rare: 0.4,        // Reduced: [1, 2, 8, 20, 60]
+  epic: 0.25,       // Reduced: [1, 2, 5, 13, 38]
+  legendary: 0.2    // Reduced: [1, 1, 4, 10, 30]
 };
 
 /**
@@ -31,32 +37,48 @@ function getStarThresholdsForRarity(rarity) {
 // Default thresholds for backwards compatibility
 const STAR_THRESHOLDS = BASE_STAR_THRESHOLDS;
 
-// Rewards for reaching star milestones on a single fish
+// Base rewards for reaching star milestones on a single fish
+// BALANCE UPDATE v2.1: Base rewards used as multiplier foundation
+// Actual rewards = base * STAR_REWARD_RARITY_MULTIPLIERS[rarity]
 const STAR_REWARDS = {
-  1: { 
+  1: {
     points: 25,
     description: 'First catch!'
   },
-  2: { 
+  2: {
     points: 75,
     description: 'Familiar catch'
   },
-  3: { 
+  3: {
     points: 150,
     rollTickets: 1,
     description: 'Expert at catching this fish'
   },
-  4: { 
+  4: {
     points: 300,
     rollTickets: 2,
     description: 'Master of this species'
   },
-  5: { 
+  5: {
     points: 500,
     premiumTickets: 1,
     permanentBonus: true,
     description: 'Ultimate mastery achieved!'
   }
+};
+
+// BALANCE UPDATE v2.1: Rarity-based reward multipliers
+// Rationale: Since rarer fish have lower thresholds (easier to max stars),
+// their rewards should scale proportionally. This creates balanced progression:
+// - Common fish: Lower multiplier, higher thresholds = consistent effort/reward
+// - Legendary fish: Higher multiplier, lower thresholds = rare but exciting
+// End result: ~equal total rewards for time invested across all rarities
+const STAR_REWARD_RARITY_MULTIPLIERS = {
+  common: 1.0,      // Base rewards
+  uncommon: 1.2,    // +20% rewards
+  rare: 1.5,        // +50% rewards
+  epic: 2.0,        // +100% rewards
+  legendary: 3.0    // +200% rewards (but fewer catches needed)
 };
 
 // Bonuses for completing rarity tiers (all fish of a rarity at 5 stars)
@@ -92,8 +114,9 @@ const RARITY_COMPLETION_BONUSES = {
 };
 
 // Collection milestones (total unique fish caught)
-// BALANCE UPDATE: Fixed milestone counts to match actual fish species count (15 total)
-// Added intermediate milestone at 12 for smoother progression
+// BALANCE UPDATE v2.1: Smoothed progression curve
+// Old 12→15 jump was 666% points increase for 25% progress
+// New curve: 3k→8k→20k (2.67x, 2.5x incremental multipliers)
 const COLLECTION_MILESTONES = {
   5: {
     name: 'Budding Collector',
@@ -102,21 +125,23 @@ const COLLECTION_MILESTONES = {
   },
   8: {
     name: 'Fish Enthusiast',
-    reward: { points: 1000, rollTickets: 2 },
+    reward: { points: 1500, rollTickets: 2 },
     description: 'Catch 8 different fish species'
   },
   12: {
     name: 'Diverse Angler',
-    reward: { points: 3000, rollTickets: 4, premiumTickets: 1 },
+    // BALANCE UPDATE v2.1: Increased from 3k to 5k (mid-point)
+    reward: { points: 5000, rollTickets: 5, premiumTickets: 2 },
     description: 'Catch 12 different fish species'
   },
   15: {
     name: 'Complete Collector',
-    // Adjusted rewards for full collection (all 15 species)
+    // BALANCE UPDATE v2.1: Reduced from 20k to 12k for smoother curve
+    // Still a significant reward but not a 4x jump from previous tier
     reward: {
-      points: 20000,
-      rollTickets: 10,
-      premiumTickets: 5,
+      points: 12000,
+      rollTickets: 8,
+      premiumTickets: 4,
       permanentBonus: { rarityBonus: 0.05 }
     },
     description: 'Catch all fish species!'
@@ -124,19 +149,22 @@ const COLLECTION_MILESTONES = {
 };
 
 // Total star milestones (sum of all stars across all fish)
+// BALANCE UPDATE v2.1: Fixed max milestone to 75 (15 fish * 5 stars = 75 max)
+// Previous milestone 80 was impossible to reach!
 const TOTAL_STAR_MILESTONES = {
   10: { reward: { points: 1000 } },
   25: { reward: { points: 3000, rollTickets: 2 } },
-  50: { reward: { points: 10000, rollTickets: 5, premiumTickets: 1 } },
-  75: { reward: { points: 25000, premiumTickets: 3 } },
-  80: { 
-    reward: { 
-      points: 100000, 
-      premiumTickets: 10,
-      permanentBonus: { 
-        timingBonus: 100, 
-        rarityBonus: 0.10, 
-        autofishBonus: 50 
+  45: { reward: { points: 8000, rollTickets: 4, premiumTickets: 1 } },
+  60: { reward: { points: 15000, rollTickets: 6, premiumTickets: 2 } },
+  75: {
+    // Max possible (all 15 fish at 5 stars)
+    reward: {
+      points: 50000,
+      premiumTickets: 8,
+      permanentBonus: {
+        timingBonus: 75,
+        rarityBonus: 0.08,
+        autofishBonus: 40
       }
     },
     description: 'Maximum star mastery - all fish at 5 stars!'
@@ -298,6 +326,34 @@ function checkNewMilestones(oldCollection, newCollection) {
 }
 
 /**
+ * Get star reward with rarity multiplier applied
+ * @param {number} star - Star level (1-5)
+ * @param {string} rarity - Fish rarity
+ * @returns {Object} - Reward with multiplied values
+ */
+function getStarRewardForRarity(star, rarity = 'common') {
+  const baseReward = STAR_REWARDS[star];
+  if (!baseReward) return null;
+
+  const multiplier = STAR_REWARD_RARITY_MULTIPLIERS[rarity] || 1.0;
+
+  const scaledReward = {
+    ...baseReward,
+    points: Math.floor((baseReward.points || 0) * multiplier)
+  };
+
+  // Tickets are not multiplied (keep as integers), but higher rarities get bonus tickets
+  if (rarity === 'legendary' && star >= 3) {
+    scaledReward.rollTickets = (baseReward.rollTickets || 0) + 1;
+  }
+  if (rarity === 'epic' && star >= 4) {
+    scaledReward.rollTickets = (baseReward.rollTickets || 0) + 1;
+  }
+
+  return scaledReward;
+}
+
+/**
  * Check for new star rewards on a specific fish
  * @param {string} fishId - Fish ID
  * @param {number} oldQuantity - Previous quantity
@@ -311,11 +367,13 @@ function checkStarRewards(fishId, oldQuantity, newQuantity, rarity = null) {
   const rewards = [];
 
   for (let star = oldStars + 1; star <= newStars; star++) {
-    if (STAR_REWARDS[star]) {
+    // BALANCE UPDATE v2.1: Use rarity-scaled rewards
+    const scaledReward = getStarRewardForRarity(star, rarity);
+    if (scaledReward) {
       rewards.push({
         fishId,
         star,
-        ...STAR_REWARDS[star]
+        ...scaledReward
       });
     }
   }
@@ -352,12 +410,14 @@ module.exports = {
   BASE_STAR_THRESHOLDS,
   RARITY_THRESHOLD_MULTIPLIERS,
   STAR_REWARDS,
+  STAR_REWARD_RARITY_MULTIPLIERS,  // BALANCE UPDATE v2.1: New export
   RARITY_COMPLETION_BONUSES,
   COLLECTION_MILESTONES,
   TOTAL_STAR_MILESTONES,
   calculateStarLevel,
   getStarThresholdsForRarity,
   getNextStarProgress,
+  getStarRewardForRarity,  // BALANCE UPDATE v2.1: New export
   buildCollectionData,
   checkNewMilestones,
   checkStarRewards,

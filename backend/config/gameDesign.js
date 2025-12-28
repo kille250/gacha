@@ -31,10 +31,15 @@ const DOJO_SPECIALIZATIONS = {
     description: 'Enhanced learning and gacha fortune',
     icon: 'book',
     bonuses: {
-      dojoPointsMultiplier: 0.5,    // -50% dojo income (trade-off)
+      // BALANCE UPDATE v2.1: Reduced penalty from -50% to -20%
+      // Rationale: Old -50% penalty was a "trap choice" - players lost ~200 pts/hr
+      // to gain ~10-15 pts/day in ticket value (8:1 loss ratio).
+      // New -20% penalty with doubled ticket bonus creates viable trade-off:
+      // Lose ~80 pts/hr to gain ~30 pts/day equivalent (~3:1 ratio, acceptable).
+      dojoPointsMultiplier: 0.8,    // -20% dojo income (balanced trade-off)
       fishingPowerBonus: 0,
       gachaLuckBonus: 0.05,         // +5% gacha luck
-      ticketChanceBonus: 0.25,      // +25% ticket drop chance from dojo
+      ticketChanceBonus: 0.50,      // +50% ticket drop chance (doubled from 25%)
       currencyBonus: 0,
       synergyBonus: 0
     }
@@ -376,46 +381,46 @@ const GACHA_FATE_POINTS = {
   },
 
   // Exchange shop - costs for different rewards
-  // BALANCE UPDATE: Adjusted costs to fit within weekly cap considerations
-  // Rationale: With weeklyMax of 500 FP, a legendary selector at 600 required
-  // 2+ weeks of max play. Now at 450, dedicated weekly players can earn it.
-  // Also added roll ticket and points options for incremental spending.
+  // BALANCE UPDATE v2.1: Further adjusted costs for achievability
+  // Rationale: With weeklyMax of 500 FP, old 450 cost for legendary required
+  // 90% of weekly FP (no room for error). New 350 cost = 70% of weekly FP,
+  // allowing players to miss 1-2 days and still reach goal.
   exchangeOptions: {
     roll_tickets: {
       id: 'roll_tickets',
       name: 'Roll Ticket Bundle',
       description: 'Exchange for 5 roll tickets',
-      cost: 25  // NEW: Small, frequent reward option
+      cost: 25  // Small, frequent reward option
     },
     premium_tickets: {
       id: 'premium_tickets',
       name: 'Premium Ticket',
       description: 'Exchange for 1 premium ticket',
-      cost: 40  // NEW: Premium ticket for savers
+      cost: 35  // Reduced from 40 for better value
     },
     rare_selector: {
       id: 'rare_selector',
       name: 'Rare Selector',
       description: 'Choose any rare character',
-      cost: 80  // Reduced from 100 for better accessibility
+      cost: 75  // Reduced from 80
     },
     epic_selector: {
       id: 'epic_selector',
       name: 'Epic Selector',
       description: 'Choose any epic character',
-      cost: 250  // Reduced from 300
+      cost: 200  // Reduced from 250 (40% of weekly)
     },
     legendary_selector: {
       id: 'legendary_selector',
       name: 'Legendary Selector',
       description: 'Choose any legendary character',
-      cost: 450  // Reduced from 600 to fit within ~1 week of dedicated play
+      cost: 350  // Reduced from 450 (70% of weekly, achievable with 1-2 missed days)
     },
     pity_boost: {
       id: 'pity_boost',
       name: 'Pity Boost',
       description: 'Advance pity progress to 50% of guaranteed threshold',
-      cost: 75  // Reduced from 100 for better value proposition
+      cost: 60  // Reduced from 75 for better value proposition
     }
   }
 };

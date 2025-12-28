@@ -76,13 +76,15 @@ const FISHING_CONFIG = {
   castCost: 0,
   
   // === DAILY LIMITS (Anti-Inflation) ===
+  // BALANCE UPDATE v2.1: Aligned caps with Dojo for consistency
+  // Also raised soft cap to reduce penalty feeling
   dailyLimits: {
-    manualCasts: 500,         // Max manual casts per day
-    autofishCasts: 150,       // Base autofish limit (see autofish.baseDailyLimit)
-    pointsFromTrades: 15000,  // Max points from trades per day (hard cap)
-    pointsSoftCap: 10000,     // Soft cap: 50% reduction after this amount
+    manualCasts: 600,         // Max manual casts per day (was 500)
+    autofishCasts: 175,       // Base autofish limit (was 150)
+    pointsFromTrades: 20000,  // Max points from trades per day (was 15k, matches Dojo)
+    pointsSoftCap: 15000,     // Soft cap raised: 50% reduction starts later (was 10k)
     rollTickets: 25,          // Max roll tickets from fishing per day
-    premiumTickets: 8         // Max premium tickets from fishing per day
+    premiumTickets: 6         // Max premium tickets (was 8, now matches Dojo for balance)
   },
   
   // Network latency buffer for reaction time validation (ms)
@@ -236,7 +238,11 @@ const FISHING_AREAS = {
     emoji: '🌊',
     description: 'Deep waters where legends lurk',
     unlockCost: 10000,
-    unlockRank: 100,
+    // BALANCE UPDATE v2.1: Changed from rank 100 to rank 50
+    // Rationale: Ocean should be accessible before Abyss in natural progression.
+    // Old system: Ocean (rank 100) > Abyss (rank 25) - backwards!
+    // New system: Ocean (rank 50) < Abyss (rank 100) - proper progression.
+    unlockRank: 50,
     fishPool: ['tuna', 'snapper', 'swordfish', 'marlin', 'manta', 'whale'],
     rarityBonus: 0.2, // +20% rare+ chance
     background: 'ocean'
@@ -246,11 +252,15 @@ const FISHING_AREAS = {
     name: 'The Abyss',
     emoji: '🌑',
     description: 'Where mythical creatures dwell',
-    // BALANCE UPDATE: Reduced from 50,000 to 35,000
-    // Rationale: At ~500 pts/hr from Dojo, 50k took 100 hours. Now ~70 hours.
-    // Still a significant goal but achievable within 1-2 weeks of play.
-    unlockCost: 35000,
-    unlockRank: 25,
+    // BALANCE UPDATE v2.1: Reduced from 35,000 to 20,000 points
+    // Rationale: At early-game rates (~70 pts/hr), 35k took 500 hours (62 days).
+    // Now at 20k: ~285 hours for new players (35 days), ~45 hours for mid-game.
+    // This makes Abyss achievable within first month for dedicated players.
+    unlockCost: 20000,
+    // BALANCE UPDATE v2.1: Changed from rank 25 to rank 100
+    // Rationale: Abyss is endgame content with legendary fish pool.
+    // Should require top 100 ranking (competitive achievement).
+    unlockRank: 100,
     fishPool: ['marlin', 'manta', 'whale', 'kraken', 'dragon'],
     rarityBonus: 0.35, // +35% rare+ chance
     background: 'abyss'
