@@ -92,27 +92,30 @@ const RARITY_COMPLETION_BONUSES = {
 };
 
 // Collection milestones (total unique fish caught)
+// BALANCE UPDATE: Fixed milestone counts to match actual fish species count (15 total)
+// Added intermediate milestone at 12 for smoother progression
 const COLLECTION_MILESTONES = {
   5: {
     name: 'Budding Collector',
     reward: { points: 500 },
     description: 'Catch 5 different fish species'
   },
-  10: {
+  8: {
     name: 'Fish Enthusiast',
-    reward: { points: 1500, rollTickets: 3 },
-    description: 'Catch 10 different fish species'
+    reward: { points: 1000, rollTickets: 2 },
+    description: 'Catch 8 different fish species'
+  },
+  12: {
+    name: 'Diverse Angler',
+    reward: { points: 3000, rollTickets: 4, premiumTickets: 1 },
+    description: 'Catch 12 different fish species'
   },
   15: {
-    name: 'Diverse Angler',
-    reward: { points: 5000, rollTickets: 5, premiumTickets: 1 },
-    description: 'Catch 15 different fish species'
-  },
-  16: {
     name: 'Complete Collector',
-    reward: { 
-      points: 25000, 
-      rollTickets: 10, 
+    // Adjusted rewards for full collection (all 15 species)
+    reward: {
+      points: 20000,
+      rollTickets: 10,
       premiumTickets: 5,
       permanentBonus: { rarityBonus: 0.05 }
     },

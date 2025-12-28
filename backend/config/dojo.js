@@ -1,12 +1,40 @@
 /**
  * Character Dojo Configuration
- * 
+ *
  * Centralized configuration for the idle training dojo game.
  * Characters assigned to training slots generate passive rewards.
- * 
+ *
  * Character levels (from duplicate cards) multiply the base rates.
  * Level multipliers are defined in config/leveling.js (single source of truth).
- * 
+ *
+ * ============================================================================
+ * BALANCE SUMMARY (v2.0 - Game Mode Balancing Update)
+ * ============================================================================
+ * Key balance changes made:
+ *
+ * 1. DIMINISHING RETURNS: Raised thresholds significantly
+ *    - Old: 100% until 200 pts/hr (too punishing at mid-game)
+ *    - New: 100% until 350 pts/hr, smoother curve thereafter
+ *    - Rationale: 4-5 rare characters shouldn't trigger heavy penalties
+ *
+ * 2. SYNERGY CAP: Raised from 2.0x to 2.5x
+ *    - Allows dual-synergy teams to exceed single full synergy
+ *    - Rewards diverse collection strategies
+ *
+ * 3. CATCH-UP BONUS: Extended from 3 to 5 characters
+ *    - 1 char: +150% (was +100%)
+ *    - 2 chars: +80% (was +50%)
+ *    - 3 chars: +40% (was +20%)
+ *    - 4 chars: +20% (NEW)
+ *    - 5 chars: +10% (NEW)
+ *    - Smooths mid-game transition
+ *
+ * 4. TICKET GENERATION: Buffed across all rarities
+ *    - Legendary roll ticket: ~4.5 hrs average (was ~7 hrs)
+ *    - Legendary premium ticket: ~10 hrs average (was ~17 hrs)
+ *    - Early-game tickets more accessible
+ * ============================================================================
+ *
  * Balance considerations:
  * - Diminishing returns prevent runaway late-game scaling
  * - Daily/weekly caps ensure active play remains rewarding
@@ -33,23 +61,26 @@ const DOJO_RATES = {
   },
   
   // Ticket generation (per hour, chance-based)
-  // Buffed for early game - Commons now have meaningful ticket progress
+  // BALANCE UPDATE: Buffed across the board for better engagement
+  // Rationale: Previous rates meant ~7 hours per roll ticket even with legendary.
+  // Players should see ticket progress within a typical play session.
+  // Target: Legendary generates ~1 roll ticket per 4-5 hours, premium per 10 hours.
   ticketChances: {
     // Chance to generate 1 roll ticket per hour
     rollTicket: {
-      common: 0.02,      // Buffed: 2% per hour (was 1%)
-      uncommon: 0.04,    // Buffed: 4% per hour (was 2%)
-      rare: 0.06,        // Buffed: 6% per hour (was 5%)
-      epic: 0.10,        // Unchanged: 10% per hour
-      legendary: 0.15    // Reduced: 15% per hour (was 20%)
+      common: 0.03,      // 3% per hour (~33 hours average)
+      uncommon: 0.05,    // 5% per hour (~20 hours average)
+      rare: 0.08,        // 8% per hour (~12 hours average)
+      epic: 0.14,        // 14% per hour (~7 hours average)
+      legendary: 0.22    // 22% per hour (~4.5 hours average)
     },
     // Chance to generate 1 premium ticket per hour
     premiumTicket: {
-      common: 0.005,     // New: 0.5% per hour (was 0)
-      uncommon: 0.01,    // New: 1% per hour (was 0)
-      rare: 0.02,        // Buffed: 2% per hour (was 1%)
-      epic: 0.04,        // Buffed: 4% per hour (was 3%)
-      legendary: 0.06    // Reduced: 6% per hour (was 8%)
+      common: 0.008,     // 0.8% per hour
+      uncommon: 0.015,   // 1.5% per hour
+      rare: 0.03,        // 3% per hour
+      epic: 0.05,        // 5% per hour (~20 hours average)
+      legendary: 0.10    // 10% per hour (~10 hours average)
     }
   }
 };
@@ -60,25 +91,30 @@ const DOJO_RATES = {
 
 const DOJO_BALANCE = {
   // Diminishing returns brackets for hourly income
-  // Softer curve - rewards late-game investment without runaway scaling
+  // BALANCE UPDATE: Raised thresholds to not penalize mid-game players
+  // Old thresholds punished players with 4-5 rare characters too early.
+  // New curve allows comfortable mid-game progression before scaling kicks in.
   incomeBrackets: [
-    { threshold: 0,    efficiency: 1.0 },   // 0-200 pts/h: 100%
-    { threshold: 200,  efficiency: 0.85 },  // 200-600: 85%
-    { threshold: 600,  efficiency: 0.70 },  // 600-1500: 70%
-    { threshold: 1500, efficiency: 0.50 },  // 1500-3000: 50%
-    { threshold: 3000, efficiency: 0.35 },  // 3000+: 35%
+    { threshold: 0,    efficiency: 1.0 },   // 0-350 pts/h: 100% (full value)
+    { threshold: 350,  efficiency: 0.90 },  // 350-800: 90% (light reduction)
+    { threshold: 800,  efficiency: 0.75 },  // 800-1800: 75% (moderate)
+    { threshold: 1800, efficiency: 0.55 },  // 1800-3500: 55% (significant)
+    { threshold: 3500, efficiency: 0.35 },  // 3500+: 35% (heavy late-game cap)
   ],
-  
+
   // Daily caps (reset at midnight UTC)
   dailyCaps: {
     points: 15000,          // Max 15k points/day from Dojo
     rollTickets: 20,        // Max 20 roll tickets/day
     premiumTickets: 5       // Max 5 premium tickets/day
   },
-  
+
   // Maximum synergy multiplier (prevents stacking multiple series bonuses)
-  // With new curve, single series can reach 2.0, but multiple series stack additively
-  maxSynergyMultiplier: 2.0  // Cap at +100% total from synergies
+  // BALANCE UPDATE: Raised from 2.0 to 2.5
+  // Rationale: A single 6-character series hits exactly 2.0x. Raising to 2.5x
+  // allows players with 2 partial synergies (e.g., 3+3) to exceed what a
+  // single full synergy provides, rewarding diverse collection strategies.
+  maxSynergyMultiplier: 2.5  // Cap at +150% total from synergies
 };
 
 // ===========================================
@@ -101,13 +137,17 @@ const DOJO_CONFIG = {
   minClaimInterval: 3,
   
   // Catch-up bonus for players with fewer characters assigned
-  // Helps new players feel progression even with limited collection
-  // Key = number of characters assigned, Value = bonus multiplier
+  // BALANCE UPDATE: Extended to 5 characters (mid-game support)
+  // Rationale: Original system dropped new players off a cliff at 4 characters.
+  // Extending the curve helps mid-game feel less punishing while still
+  // transitioning players to the "full power" endgame at 6+ characters.
   catchUpBonus: {
-    1: 2.0,   // Only 1 character: +100% bonus
-    2: 1.5,   // 2 characters: +50% bonus
-    3: 1.2,   // 3 characters: +20% bonus
-    // 4+ characters: no bonus (standard rate)
+    1: 2.5,   // Only 1 character: +150% bonus (strong early-game boost)
+    2: 1.8,   // 2 characters: +80% bonus
+    3: 1.4,   // 3 characters: +40% bonus
+    4: 1.2,   // 4 characters: +20% bonus (new - smoother mid-game)
+    5: 1.1,   // 5 characters: +10% bonus (new - gentle transition)
+    // 6+ characters: no bonus (standard rate)
   },
   
   // Series synergy bonuses - smoother curve for better progression feel
