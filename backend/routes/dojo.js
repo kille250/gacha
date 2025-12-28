@@ -24,6 +24,14 @@ const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { addDojoClaimXP } = require('../services/accountLevelService');
 
+// Enhanced dojo features
+const {
+  getFacilityTier,
+  processBreakthroughs,
+  applyBreakthroughRewards,
+  getAvailableTrainingMethods
+} = require('../services/dojoEnhancedService');
+
 // Rate limiting is now handled via dojoLastClaim in the database
 // This makes it multi-server safe (works behind load balancers)
 
@@ -122,7 +130,11 @@ router.get('/status', [auth, enforcementMiddleware], async (req, res) => {
     
     // Get ticket progress for pity system display
     const ticketProgress = user.dojoTicketProgress || { roll: 0, premium: 0 };
-    
+
+    // Get facility tier info for enhanced features
+    const facilityInfo = getFacilityTier(user);
+    const trainingMethods = getAvailableTrainingMethods(facilityInfo.current);
+
     res.json({
       slots: slotsWithCharacters.map((char, idx) => ({
         index: idx,
@@ -176,7 +188,14 @@ router.get('/status', [auth, enforcementMiddleware], async (req, res) => {
         premium: Math.round(ticketProgress.premium * 100) / 100
       },
       availableUpgrades,
-      lastClaim: user.dojoLastClaim
+      lastClaim: user.dojoLastClaim,
+      // Enhanced facility info
+      facility: {
+        current: facilityInfo.current,
+        nextTier: facilityInfo.nextTier,
+        features: facilityInfo.features
+      },
+      trainingMethods
     });
     
   } catch (err) {
@@ -487,7 +506,11 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
     const activeCharacters = dojoSlots
       .map(id => charactersWithLevels.find(c => c.id === id))
       .filter(c => c !== null && c !== undefined);
-    
+
+    // Get facility tier for enhanced features (breakthroughs, etc.)
+    const facilityInfo = getFacilityTier(user);
+    const hasBreakthroughs = facilityInfo.features.includes('breakthroughs');
+
     // Calculate time elapsed
     const lastClaimTime = new Date(user.dojoLastClaim);
     const elapsedMs = new Date() - lastClaimTime;
@@ -500,7 +523,37 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
     
     // Calculate rewards (active claim bonus)
     const rewards = calculateRewards(activeCharacters, elapsedHours, upgrades, true);
-    
+
+    // =============================================
+    // BREAKTHROUGHS (Level 25+ facility feature)
+    // =============================================
+    let breakthroughs = [];
+    let breakthroughRewards = { xpBonus: 0, pointsBonus: 0, rollTickets: 0, premiumTickets: 0 };
+
+    if (hasBreakthroughs) {
+      // Process potential breakthroughs for each training character
+      breakthroughs = processBreakthroughs(activeCharacters, elapsedHours, facilityInfo.current);
+
+      if (breakthroughs.length > 0) {
+        // Calculate total breakthrough rewards (applied separately from base rewards)
+        breakthroughRewards = applyBreakthroughRewards({ points: 0, rollTickets: 0, premiumTickets: 0 }, breakthroughs);
+        // Note: applyBreakthroughRewards modifies the user object directly, so we pass a dummy
+        // and manually apply below to maintain transaction safety
+        breakthroughRewards = {
+          xpBonus: 0,
+          pointsBonus: 0,
+          rollTickets: 0,
+          premiumTickets: 0
+        };
+        breakthroughs.forEach(bt => {
+          if (bt.rewards.xpBonus) breakthroughRewards.xpBonus += bt.rewards.xpBonus;
+          if (bt.rewards.pointsBonus) breakthroughRewards.pointsBonus += bt.rewards.pointsBonus;
+          if (bt.rewards.rollTickets) breakthroughRewards.rollTickets += bt.rewards.rollTickets;
+          if (bt.rewards.premiumTickets) breakthroughRewards.premiumTickets += bt.rewards.premiumTickets;
+        });
+      }
+    }
+
     // =============================================
     // DAILY CAPS ENFORCEMENT
     // =============================================
@@ -574,10 +627,11 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
     
     user.dojoDailyStats = dailyStats;
     
-    // Apply rewards
-    user.points += cappedRewards.points;
-    user.rollTickets = (user.rollTickets || 0) + finalRollTickets;
-    user.premiumTickets = (user.premiumTickets || 0) + finalPremiumTickets;
+    // Apply rewards (base + breakthrough bonuses)
+    // Note: Breakthrough rewards are NOT subject to daily caps (they're bonus discoveries)
+    user.points += cappedRewards.points + breakthroughRewards.pointsBonus;
+    user.rollTickets = (user.rollTickets || 0) + finalRollTickets + breakthroughRewards.rollTickets;
+    user.premiumTickets = (user.premiumTickets || 0) + finalPremiumTickets + breakthroughRewards.premiumTickets;
     user.dojoLastClaim = new Date();
     
     await user.save({ transaction });
@@ -611,9 +665,16 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
     res.json({
       success: true,
       rewards: {
-        points: cappedRewards.points,
-        rollTickets: finalRollTickets,
-        premiumTickets: finalPremiumTickets
+        points: cappedRewards.points + breakthroughRewards.pointsBonus,
+        rollTickets: finalRollTickets + breakthroughRewards.rollTickets,
+        premiumTickets: finalPremiumTickets + breakthroughRewards.premiumTickets,
+        // Breakdown of base vs breakthrough
+        base: {
+          points: cappedRewards.points,
+          rollTickets: finalRollTickets,
+          premiumTickets: finalPremiumTickets
+        },
+        breakthrough: breakthroughRewards
       },
       breakdown: rewards.breakdown,
       synergies: rewards.synergies,
@@ -651,7 +712,13 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
         level: freshUser.accountLevel,
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
-      } : null
+      } : null,
+      // Enhanced features (Level 25+ facility)
+      breakthroughs: breakthroughs,
+      facility: {
+        current: facilityInfo.current.id,
+        features: facilityInfo.features
+      }
     });
     
   } catch (err) {
