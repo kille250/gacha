@@ -489,6 +489,7 @@ export const useDojoPage = () => {
   return {
     // Core state
     user,
+    setUser,
     status,
     loading,
     error,
