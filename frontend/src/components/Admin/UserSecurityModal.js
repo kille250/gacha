@@ -658,6 +658,14 @@ const Username = styled.span`
 const TabsContainer = styled.div`
   display: flex;
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  -ms-overflow-style: none;
+
+  &::-webkit-scrollbar {
+    display: none;
+  }
 `;
 
 const Tab = styled.button`
@@ -670,9 +678,15 @@ const Tab = styled.button`
   font-weight: ${theme.fontWeights.medium};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
-  
+  white-space: nowrap;
+
   &:hover {
     color: ${theme.colors.text};
+  }
+
+  @media (max-width: 768px) {
+    flex: 0 0 auto;
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
   }
 `;
 
