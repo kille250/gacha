@@ -282,7 +282,7 @@ const DojoHourlyRateCard = ({ status }) => {
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpBaseRatesDesc', {
-                  defaultValue: 'Each character generates points based on their rarity: Common (5/h), Uncommon (8/h), Rare (15/h), Epic (30/h), Legendary (60/h).'
+                  defaultValue: 'Each character generates points based on their rarity: Common (6/h), Uncommon (10/h), Rare (18/h), Epic (35/h), Legendary (70/h).'
                 })}
               </TooltipText>
             </TooltipSection>
@@ -293,7 +293,7 @@ const DojoHourlyRateCard = ({ status }) => {
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpLevelsDesc', {
-                  defaultValue: 'Duplicate characters increase level (max 5). Each level adds +25% power bonus. Level 5 = +100% bonus!'
+                  defaultValue: 'Duplicate characters increase level (max 5). Higher levels give increasing bonuses: Lv2 +15%, Lv3 +30%, Lv4 +50%, Lv5 +75%!'
                 })}
               </TooltipText>
             </TooltipSection>
@@ -326,7 +326,7 @@ const DojoHourlyRateCard = ({ status }) => {
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpDiminishingDesc', {
-                  defaultValue: 'To keep the game balanced, earnings above 3000 pts/h are reduced progressively. Efficiency shows your effective rate compared to raw rate.'
+                  defaultValue: 'To keep the game balanced, earnings scale progressively: 0-350 pts/h (100%), 350-800 (90%), 800-1800 (75%), 1800-3500 (55%), 3500+ (35%). Efficiency shows your effective rate.'
                 })}
               </TooltipText>
             </TooltipSection>
@@ -348,7 +348,7 @@ const DojoHourlyRateCard = ({ status }) => {
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpDailyCapsDesc', {
-                  defaultValue: 'Daily caps: 15,000 points, 20 roll tickets, 5 premium tickets. Limits reset at midnight.'
+                  defaultValue: 'Daily caps: 25,000 points, 30 roll tickets, 8 premium tickets. Limits reset at midnight.'
                 })}
               </TooltipText>
             </TooltipSection>
