@@ -384,14 +384,7 @@ User.init(
     // GAME ENHANCEMENT FIELDS
     // ===========================================
 
-    // Account level for facility tier unlocks
-    accountLevel: {
-      type: DataTypes.INTEGER,
-      allowNull: true,
-      defaultValue: 1
-    },
-
-    // Account XP for level progression
+    // Account XP for level progression (level is calculated from XP)
     accountXP: {
       type: DataTypes.INTEGER,
       allowNull: true,

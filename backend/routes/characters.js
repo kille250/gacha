@@ -33,6 +33,7 @@ const {
 } = require('../utils/characterLeveling');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { addGachaPullXP, addNewCharacterXP, addCharacterLevelXP } = require('../services/accountLevelService');
+const { getLevelFromXP } = require('../config/accountLevel');
 const gachaEnhanced = require('../services/gachaEnhancedService');
 
 // ===========================================
@@ -154,7 +155,7 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
         canLevelUp: acquisition.canLevelUp
       },
       accountLevel: freshUser ? {
-        level: freshUser.accountLevel,
+        level: getLevelFromXP(freshUser.accountXP || 0),
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
       } : null,
@@ -307,7 +308,7 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
         duplicates: acquisitions.filter(a => a.isDuplicate).length
       },
       accountLevel: freshUser ? {
-        level: freshUser.accountLevel,
+        level: getLevelFromXP(freshUser.accountXP || 0),
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
       } : null,
@@ -604,7 +605,7 @@ router.post('/:id/level-up', [auth, enforcementMiddleware, deviceBindingMiddlewa
         rarity: character.rarity
       },
       accountLevel: user ? {
-        level: user.accountLevel,
+        level: getLevelFromXP(user.accountXP || 0),
         xp: user.accountXP,
         levelUp: levelUpInfo
       } : null

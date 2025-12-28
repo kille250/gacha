@@ -23,6 +23,7 @@ const { sensitiveActionLimiter } = require('../middleware/rateLimiter');
 const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { addDojoClaimXP } = require('../services/accountLevelService');
+const { getLevelFromXP } = require('../config/accountLevel');
 
 // Enhanced dojo features
 const {
@@ -709,7 +710,7 @@ router.post('/claim', [auth, enforcementMiddleware, deviceBindingMiddleware('doj
       },
       // Account level info
       accountLevel: freshUser ? {
-        level: freshUser.accountLevel,
+        level: getLevelFromXP(freshUser.accountXP || 0),
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
       } : null,

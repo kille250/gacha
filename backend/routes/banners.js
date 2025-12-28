@@ -42,6 +42,7 @@ const { deviceBindingMiddleware } = require('../middleware/deviceBinding');
 const { updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { getUserSpecializationBonuses } = require('../services/dojoEnhancedService');
 const { addGachaPullXP, addNewCharacterXP } = require('../services/accountLevelService');
+const { getLevelFromXP } = require('../config/accountLevel');
 const gachaEnhanced = require('../services/gachaEnhancedService');
 
 // ===========================================
@@ -848,7 +849,7 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
         canLevelUp: acquisition.canLevelUp
       },
       accountLevel: freshUser ? {
-        level: freshUser.accountLevel,
+        level: getLevelFromXP(freshUser.accountXP || 0),
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
       } : null,
@@ -1116,7 +1117,7 @@ router.post('/:id/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware
         duplicates: acquisitions.filter(a => a.isDuplicate).length
       },
       accountLevel: freshUser ? {
-        level: freshUser.accountLevel,
+        level: getLevelFromXP(freshUser.accountXP || 0),
         xp: freshUser.accountXP,
         levelUp: levelUpInfo
       } : null,
