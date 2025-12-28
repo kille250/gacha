@@ -15,6 +15,8 @@ const {
   DOJO_BREAKTHROUGH_CONFIG
 } = require('../config/gameDesign');
 
+const { getLevelFromXP } = require('../config/accountLevel');
+
 // ===========================================
 // SPECIALIZATION SYSTEM
 // ===========================================
@@ -123,7 +125,6 @@ function calculateSpecializationBonuses(characters) {
  */
 function getFacilityTier(user) {
   const unlockedTiers = user.dojoFacilityTiers || ['basic'];
-  const _accountLevel = user.accountLevel || 1;
 
   // Find highest unlocked tier
   let currentTier = DOJO_FACILITY_TIERS.basic;
@@ -164,7 +165,8 @@ function unlockFacilityTier(user, tierId) {
     return { success: false, error: 'Invalid facility tier' };
   }
 
-  const accountLevel = user.accountLevel || 1;
+  // Calculate level from XP to ensure accuracy (stored accountLevel may be stale)
+  const accountLevel = getLevelFromXP(user.accountXP || 0);
   if (accountLevel < tier.requiredLevel) {
     return {
       success: false,
