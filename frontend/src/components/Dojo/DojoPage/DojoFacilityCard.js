@@ -146,18 +146,24 @@ const DojoFacilityCard = ({
 
   const handleUpgrade = async () => {
     if (!canUpgrade) {
+      // Always show feedback when clicking a disabled button
       if (!meetsLevel) {
         setError(t('dojo.facility.requiresLevel', { level: nextTier.requiredLevel }));
       } else if (!canAfford) {
         setError(t('dojo.facility.notEnoughPoints'));
+      } else if (upgrading) {
+        setError(t('dojo.facility.upgradeInProgress', { defaultValue: 'Upgrade in progress...' }));
+      } else {
+        setError(t('dojo.facility.upgradeNotAvailable', { defaultValue: 'Upgrade not available' }));
       }
       return;
     }
 
     try {
       await onUpgrade(nextTier.id);
-    } catch (_err) {
-      // Error handled by hook
+    } catch (err) {
+      // Display the error to the user
+      setError(err.response?.data?.error || err.message || t('dojo.facility.upgradeFailed', { defaultValue: 'Failed to upgrade facility' }));
     }
   };
 

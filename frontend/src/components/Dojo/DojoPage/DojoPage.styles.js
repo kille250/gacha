@@ -1897,13 +1897,14 @@ export const FacilityUpgradeButton = styled.button`
   font-size: ${theme.fontSizes.md};
   font-weight: ${theme.fontWeights.semibold};
   cursor: ${props => props.$disabled ? 'not-allowed' : 'pointer'};
+  opacity: ${props => props.$disabled ? 0.6 : 1};
   transition: all ${theme.transitions.fast};
 
   background: ${props => {
     if (props.$disabled) {
-      if (!props.$meetsLevel) return 'rgba(255, 255, 255, 0.1)';
-      if (!props.$canAfford) return 'rgba(244, 67, 54, 0.2)';
-      return 'rgba(255, 255, 255, 0.1)';
+      if (!props.$meetsLevel) return 'rgba(255, 255, 255, 0.15)';
+      if (!props.$canAfford) return 'rgba(244, 67, 54, 0.3)';
+      return 'rgba(255, 255, 255, 0.15)';
     }
     return 'linear-gradient(135deg, #2196f3, #1976d2)';
   }};
