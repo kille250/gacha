@@ -6,26 +6,39 @@
  * for the enhanced Dojo, Fishing, Gacha, and Retention systems.
  *
  * ============================================================================
- * BALANCE UPDATE (v5.0 - Ultimate Mode Balancing)
+ * BALANCE UPDATE (v6.0 - Comprehensive Mode Harmony)
  * ============================================================================
- * Key changes in v5.0:
+ * Key changes in v6.0:
  *
- * 1. GACHA MILESTONE REWARDS BUFFED: Better progression incentives
- *    - Pull milestones now award XP in addition to items
- *    - New milestone at 350 pulls
- *    - Fate point exchange costs reduced
+ * 1. EXPANDED PRESTIGE SYSTEM SYNERGY:
+ *    - Prestige 11-20 rewards defined in accountLevel.js
+ *    - Gacha luck bonus: +1% per 5 prestige levels
+ *    - All systems now reference unified prestige bonuses
  *
- * 2. BREAKTHROUGH RATES INCREASED: More frequent excitement
- *    - Base chance: 2.5%/hr (up from 2%)
- *    - Legendary breakthrough: +50 XP bonus
+ * 2. CHARACTER MASTERY XP INTEGRATION:
+ *    - Mastery levels now contribute to account XP
+ *    - 15 XP per mastery level, 50 XP bonus at max
+ *    - Connects character investment to profile progression
  *
- * 3. REST-AND-RETURN ENHANCED: Better catch-up mechanics
- *    - All tiers now include XP rewards
- *    - Dojo catch-up efficiency increased to 85%
+ * 3. FIRST-TIME ACHIEVEMENTS SYSTEM:
+ *    - One-time XP bonuses for milestone moments
+ *    - First legendary fish/character, first prestige, etc.
+ *    - Makes special moments feel even more rewarding
  *
- * 4. WISDOM SPECIALIZATION FURTHER BUFFED:
- *    - Gacha luck bonus: 10% (up from 8%)
- *    - XP from gacha: 30% (up from 25%)
+ * 4. EXTENDED STREAK SYSTEMS:
+ *    - Login streak: Added day 60/90/180/365 milestones
+ *    - Dojo streak: Extended from 7 to 14 days
+ *    - Fishing streak: Added 30/40 milestones
+ *
+ * 5. LEVEL REWARD IMPROVEMENTS:
+ *    - New milestones at levels 85, 90, 95
+ *    - Better late-game progression feel
+ *
+ * Previous v5.0 changes (preserved):
+ * - Gacha milestone XP rewards, 350 pull milestone
+ * - Breakthrough: 2.5%/hr base, legendary +50 XP
+ * - Rest-and-Return XP, 85% dojo catch-up
+ * - Wisdom: 10% gacha luck, 30% gacha XP
  * ============================================================================
  */
 
