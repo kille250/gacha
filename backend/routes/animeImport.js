@@ -473,8 +473,8 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
     const tag = toDanbooruTag(q);
     const limit = 20;
     
-    // First try: search for animated content with safe rating
-    const animatedTags = `${tag} animated -rating:explicit -rating:questionable`;
+    // First try: search for animated content (exclude explicit only)
+    const animatedTags = `${tag} animated -rating:explicit`;
     let searchUrl = addDanbooruAuth(`${DANBOORU_API}/posts.json?tags=${encodeURIComponent(animatedTags)}&limit=${limit}&page=${page}`);
     
     let response = await fetchWithTimeout(searchUrl, { headers: DANBOORU_HEADERS });
@@ -486,7 +486,7 @@ router.get('/search-sakuga', auth, adminAuth, async (req, res) => {
 
     // If no animated results, fallback to regular images
     if (posts.length === 0 && animated !== 'false') {
-      const fallbackTags = `${tag} -rating:explicit -rating:questionable`;
+      const fallbackTags = `${tag} -rating:explicit`;
       searchUrl = addDanbooruAuth(`${DANBOORU_API}/posts.json?tags=${encodeURIComponent(fallbackTags)}&limit=${limit}&page=${page}`);
       response = await fetchWithTimeout(searchUrl, { headers: DANBOORU_HEADERS });
       if (response.ok) {
@@ -529,8 +529,8 @@ router.get('/search-sakuga-anime', auth, adminAuth, async (req, res) => {
     
     const tag = toDanbooruTag(q);
     const limit = 30;
-    // Search with animated tag and safe rating
-    const tagsQuery = `${tag} animated -rating:explicit -rating:questionable`;
+    // Search with animated tag (exclude explicit only)
+    const tagsQuery = `${tag} animated -rating:explicit`;
     const searchUrl = addDanbooruAuth(`${DANBOORU_API}/posts.json?tags=${encodeURIComponent(tagsQuery)}&limit=${limit}&page=${page}`);
     
     const response = await fetchWithTimeout(searchUrl, { headers: DANBOORU_HEADERS });
@@ -984,9 +984,8 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
     }
     // Note: For 'static', we filter client-side because -animated negation can cause API issues
     
-    // Add safe rating filter (exclude explicit and questionable)
+    // Add rating filter (exclude explicit only, allow questionable)
     tagsList.push('-rating:explicit');
-    tagsList.push('-rating:questionable');
     
     // Add sorting
     tagsList.push(orderTag);
