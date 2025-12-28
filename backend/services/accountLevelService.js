@@ -64,9 +64,6 @@ function addXP(user, xpAmount, source = 'unknown') {
   const levelUpInfo = checkLevelUp(oldXP, newXP);
 
   if (levelUpInfo) {
-    // Update account level
-    user.accountLevel = levelUpInfo.newLevel;
-
     console.log(
       `[LEVEL UP] User ${user.id} (${user.username}): Level ${levelUpInfo.oldLevel} -> ${levelUpInfo.newLevel} (+${xpAmount} XP from ${source})`
     );
@@ -583,7 +580,7 @@ function checkDailyVarietyBonus(user, mode) {
  */
 function recalculateXP(user, collection = []) {
   const oldXP = user.accountXP || 0;
-  const oldLevel = user.accountLevel || 1;
+  const oldLevel = getLevelFromXP(oldXP);
 
   let totalXP = 0;
 
@@ -609,15 +606,15 @@ function recalculateXP(user, collection = []) {
   const dojoClaimsTotal = user.dojoClaimsTotal || 0;
   totalXP += dojoClaimsTotal * XP_SOURCES.dojoClaim;
 
-  // Update user
+  // Update user XP
   user.accountXP = totalXP;
-  user.accountLevel = getLevelFromXP(totalXP);
+  const newLevel = getLevelFromXP(totalXP);
 
   const changed = totalXP !== oldXP;
 
   if (changed) {
     console.log(
-      `[XP RECALC] User ${user.id} (${user.username}): XP ${oldXP} -> ${totalXP}, Level ${oldLevel} -> ${user.accountLevel}`
+      `[XP RECALC] User ${user.id} (${user.username}): XP ${oldXP} -> ${totalXP}, Level ${oldLevel} -> ${newLevel}`
     );
   }
 
@@ -625,7 +622,7 @@ function recalculateXP(user, collection = []) {
     oldXP,
     newXP: totalXP,
     oldLevel,
-    newLevel: user.accountLevel,
+    newLevel,
     changed
   };
 }
@@ -676,7 +673,7 @@ function getAccountLevelStatus(user) {
  * @returns {Object} - { meetsRequirement, currentLevel, requiredLevel, levelsNeeded }
  */
 function checkFacilityRequirement(user, requiredLevel) {
-  const currentLevel = user.accountLevel || 1;
+  const currentLevel = getLevelFromXP(user.accountXP || 0);
   const meetsRequirement = currentLevel >= requiredLevel;
 
   return {

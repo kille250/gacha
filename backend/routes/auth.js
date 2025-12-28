@@ -1262,7 +1262,6 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
     };
 
     // Reset Game Enhancement fields
-    user.accountLevel = 1;
     user.accountXP = 0;
     user.dojoClaimsTotal = 0;
     user.dojoFacilityTiers = ['basic'];
