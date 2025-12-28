@@ -161,8 +161,9 @@ const DojoFacilityCard = ({
 
     try {
       await onUpgrade(nextTier.id);
-    } catch (_err) {
-      // Error handled by hook
+    } catch (err) {
+      // Display the error to the user
+      setError(err.response?.data?.error || err.message || t('dojo.facility.upgradeFailed', { defaultValue: 'Failed to upgrade facility' }));
     }
   };
 
