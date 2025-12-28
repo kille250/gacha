@@ -103,10 +103,13 @@ const DOJO_BALANCE = {
   ],
 
   // Daily caps (reset at midnight UTC)
+  // BALANCE UPDATE v2.1: Increased caps to allow extended play sessions
+  // Old caps hit too early for mid-game players (~10 hours)
+  // New caps allow longer sessions while still providing some daily structure
   dailyCaps: {
-    points: 15000,          // Max 15k points/day from Dojo
-    rollTickets: 20,        // Max 20 roll tickets/day
-    premiumTickets: 5       // Max 5 premium tickets/day
+    points: 20000,          // Max 20k points/day from Dojo (was 15k)
+    rollTickets: 25,        // Max 25 roll tickets/day (was 20)
+    premiumTickets: 6       // Max 6 premium tickets/day (was 5)
   },
 
   // Maximum synergy multiplier (prevents stacking multiple series bonuses)
@@ -174,16 +177,18 @@ const DOJO_CONFIG = {
 
 const DOJO_UPGRADES = {
   // Cost to unlock additional slots
-  // Smoother progression curve for better mid-game pacing
-  // Old total: 89,000 | New total: 46,500 (more accessible)
+  // BALANCE UPDATE v2.1: Further reduced early-game costs
+  // Old early costs created 2.8 month grind for new players to unlock slots
+  // New costs: First 3 upgrades ~50% cheaper, total from 46,500 to 41,750
+  // Early-game players can now unlock 4th-5th slot within first week
   slotCosts: [
-    500,    // 4th slot  - Early unlock, quick win
-    1000,   // 5th slot  - Still accessible
-    2000,   // 6th slot  - Reasonable mid-game
-    4000,   // 7th slot  - Commitment required
-    7000,   // 8th slot  - Serious investment
+    250,    // 4th slot  - Quick win for new players (was 500)
+    500,    // 5th slot  - Achievable day 2-3 (was 1000)
+    1000,   // 6th slot  - Week 1 goal (was 2000)
+    3500,   // 7th slot  - Mid-game milestone
+    6500,   // 8th slot  - Serious investment
     12000,  // 9th slot  - Late-game goal
-    20000   // 10th slot - Endgame achievement
+    18000   // 10th slot - Endgame achievement
   ],
   
   // Cost to increase accumulation cap (per +4 hours)
