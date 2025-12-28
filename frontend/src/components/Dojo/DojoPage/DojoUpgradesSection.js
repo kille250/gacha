@@ -57,8 +57,10 @@ const DojoUpgradesSection = ({
   const availableUpgrades = status?.availableUpgrades || [];
 
   const handleUpgradeClick = (upgrade, isDisabled, disabledReason) => {
-    if (isDisabled && disabledReason) {
-      setError(disabledReason);
+    if (isDisabled) {
+      // Always show feedback when clicking a disabled button
+      const message = disabledReason || t('dojo.upgradeNotAvailable', { defaultValue: 'Upgrade not available' });
+      setError(message);
       return;
     }
     onUpgrade(upgrade.type, upgrade.rarity);
@@ -79,7 +81,6 @@ const DojoUpgradesSection = ({
               key={idx}
               as={motion.button}
               type="button"
-              disabled={isDisabled}
               $canAfford={canAfford && !locked}
               $disabled={isDisabled}
               onClick={() => handleUpgradeClick(upgrade, isDisabled, disabledReason)}

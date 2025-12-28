@@ -154,7 +154,7 @@ const DojoPage = () => {
         {error && (
           <DojoErrorBanner
             error={error}
-            onClose={() => setError(null)}
+            onDismiss={() => setError(null)}
           />
         )}
       </AnimatePresence>
