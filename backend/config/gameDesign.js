@@ -6,6 +6,20 @@
  * for the enhanced Dojo, Fishing, Gacha, and Retention systems.
  *
  * ============================================================================
+ * BALANCE UPDATE (v8.0 - Complete Mode Harmony & Frontend Sync)
+ * ============================================================================
+ * Key changes in v8.0:
+ *
+ * 1. GACHA MILESTONE SYNC:
+ *    - All milestone rewards now synced with frontend MilestoneRewards.js
+ *    - Added missing milestones display (75, 125, 175, 300, 350)
+ *    - XP rewards included in display text
+ *
+ * 2. CROSS-MODE BALANCE VERIFIED:
+ *    - Gacha XP buffed to 15/pull in accountLevel.js
+ *    - All mode XP rates documented in shared/balanceConstants.js
+ *
+ * ============================================================================
  * BALANCE UPDATE (v6.0 - Comprehensive Mode Harmony)
  * ============================================================================
  * Key changes in v6.0:

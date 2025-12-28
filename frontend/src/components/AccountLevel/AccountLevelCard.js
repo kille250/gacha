@@ -189,12 +189,19 @@ const AccountLevelCard = ({
 }) => {
   const { t } = useTranslation();
 
-  // Define facility unlocks for display
+  // Define facility unlocks and major milestones for display
+  // Must match backend/config/accountLevel.js majorMilestones (v8.0 sync)
   const facilityUnlocks = [
-    { level: 1, name: t('dojo.facility.tiers.basic.name', 'Basic Dojo'), unlocked: level >= 1 },
-    { level: 10, name: t('dojo.facility.tiers.warriors_hall.name', "Warrior's Hall"), unlocked: level >= 10 },
-    { level: 25, name: t('dojo.facility.tiers.masters_temple.name', "Master's Temple"), unlocked: level >= 25 },
-    { level: 50, name: t('dojo.facility.tiers.grandmasters_sanctum.name', "Grandmaster's Sanctum"), unlocked: level >= 50 }
+    { level: 1, name: t('dojo.facility.tiers.basic.name', 'Basic Dojo'), unlocked: level >= 1, type: 'facility' },
+    { level: 10, name: t('dojo.facility.tiers.warriors_hall.name', "Warrior's Hall"), unlocked: level >= 10, type: 'facility' },
+    { level: 25, name: t('dojo.facility.tiers.masters_temple.name', "Master's Temple"), unlocked: level >= 25, type: 'facility' },
+    { level: 50, name: t('dojo.facility.tiers.grandmasters_sanctum.name', "Grandmaster's Sanctum"), unlocked: level >= 50, type: 'facility' },
+    { level: 60, name: t('accountLevel.milestones.legendary_trainer', 'Legendary Trainer (+10% Dojo)'), unlocked: level >= 60, type: 'bonus' },
+    { level: 75, name: t('accountLevel.milestones.mythic_champion', 'Mythic Champion (+10% XP)'), unlocked: level >= 75, type: 'bonus' },
+    { level: 85, name: t('accountLevel.milestones.elite_commander', 'Elite Commander (+3% XP)'), unlocked: level >= 85, type: 'bonus' },
+    { level: 90, name: t('accountLevel.milestones.grand_warden', 'Grand Warden (+5% Dojo, +2% Fishing)'), unlocked: level >= 90, type: 'bonus' },
+    { level: 95, name: t('accountLevel.milestones.supreme_master', 'Supreme Master (+5% XP)'), unlocked: level >= 95, type: 'bonus' },
+    { level: 100, name: t('accountLevel.milestones.ultimate_master', 'Ultimate Master (All bonuses!)'), unlocked: level >= 100, type: 'prestige' }
   ];
 
   return (

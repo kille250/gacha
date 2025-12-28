@@ -5,6 +5,21 @@
  * Account level unlocks facility upgrades (Warriors Hall, etc.)
  *
  * ============================================================================
+ * BALANCE UPDATE (v8.0 - Complete Mode Harmony & Frontend Sync)
+ * ============================================================================
+ * Key changes in v8.0:
+ *
+ * 1. GACHA XP BUFF: Increased from 12 to 15 per pull (+25%)
+ *    - Rationale: Gacha was underpowered as XP source
+ *    - 10-pull now gives 150 XP vs 120 before
+ *    - More competitive with fishing (~80-120 XP/hr active)
+ *
+ * 2. FRONTEND SYNCHRONIZATION:
+ *    - All milestone rewards synced with frontend display
+ *    - Shared constants updated to v8.0
+ *    - MilestoneRewards.js and AccountLevelCard.js updated
+ *
+ * ============================================================================
  * BALANCE UPDATE (v6.0 - Comprehensive Mode Harmony)
  * ============================================================================
  * Key changes in v6.0:
@@ -95,9 +110,11 @@
 // ===========================================
 
 const XP_SOURCES = {
-  // XP per gacha pull - BALANCE UPDATE v5.0: Increased from 10 to 12
-  // Rationale: Gacha should feel rewarding even without rare pulls
-  gachaPull: 12,
+  // XP per gacha pull - BALANCE UPDATE v8.0: Increased from 12 to 15 (+25%)
+  // Rationale: Gacha was underpowered as XP source compared to fishing/dojo.
+  // At 15 XP per pull, a 10-pull now gives 150 XP vs 120 before.
+  // This makes gacha competitive with fishing (~80-120 XP/hr active) for XP.
+  gachaPull: 15,
 
   // XP per unique warrior in collection - BALANCE UPDATE v5.0: Buffed rare+ values
   collectionWarrior: {

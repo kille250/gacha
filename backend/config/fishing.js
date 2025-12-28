@@ -5,6 +5,23 @@
  * Extracted from routes/fishing.js for better maintainability.
  *
  * ============================================================================
+ * BALANCE UPDATE (v8.0 - Complete Mode Harmony & Frontend Sync)
+ * ============================================================================
+ * Key changes in v8.0:
+ *
+ * 1. FRONTEND SYNCHRONIZATION:
+ *    - Perfect catch multiplier (1.4x) synced with shared constants
+ *    - Great catch multiplier (1.2x) synced with shared constants
+ *    - Autofish multiplier (0.75x) synced with shared constants
+ *    - Fishing XP values now documented in balanceConstants.js
+ *
+ * 2. CROSS-MODE BALANCE DOCUMENTATION:
+ *    - Active fishing: ~60-120 XP/hour
+ *    - Autofish: ~45-90 XP/hour (0.75x of manual)
+ *    - Perfect catches: 40% bonus XP
+ *    - Great catches: 20% bonus XP
+ *
+ * ============================================================================
  * BALANCE UPDATE (v6.0 - Comprehensive Mode Harmony)
  * ============================================================================
  * Key changes:
