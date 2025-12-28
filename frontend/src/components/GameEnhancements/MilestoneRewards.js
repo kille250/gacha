@@ -196,21 +196,32 @@ const MILESTONE_ICONS = {
   10: FaGift,
   30: FaGem,
   50: FaGem,
+  75: FaGift,
   100: FaStar,
+  125: FaStar,
   150: FaStar,
+  175: FaGem,
   200: FaCrown,
-  250: FaTrophy
+  250: FaCrown,
+  300: FaTrophy,
+  350: FaTrophy
 };
 
-// Milestone rewards aligned with backend gameDesign.js configuration
+// Milestone rewards aligned with backend gameDesign.js configuration (v8.0 sync)
+// These values MUST match backend/config/gameDesign.js GACHA_MILESTONE_REWARDS
 const MILESTONE_REWARDS = {
-  10: { name: 'Starter Bonus', desc: '500 Points' },
-  30: { name: 'Rod Skin', desc: 'Starlight Rod cosmetic' },
-  50: { name: 'Ticket Pack', desc: '3 Roll Tickets' },
-  100: { name: 'Veteran Pack', desc: '5 Roll Tickets' },
-  150: { name: 'Premium Pack', desc: '5 Premium Tickets' },
-  200: { name: 'Elite Pack', desc: '10 Premium Tickets' },
-  250: { name: 'Champion Bonus', desc: '10,000 Points' }
+  10: { name: 'Starter Bonus', desc: '600 Points + 30 XP' },
+  30: { name: 'Rod Skin', desc: 'Starlight Rod cosmetic + 60 XP' },
+  50: { name: 'Ticket Pack', desc: '4 Roll Tickets + 90 XP' },
+  75: { name: 'Progress Bonus', desc: '1,800 Points + 120 XP' },
+  100: { name: 'Veteran Pack', desc: '6 Roll Tickets + 180 XP' },
+  125: { name: 'Collector Pack', desc: '3 Premium Tickets + 210 XP' },
+  150: { name: 'Premium Pack', desc: '6 Premium Tickets + 240 XP' },
+  175: { name: 'Ticket Bundle', desc: '10 Roll Tickets + 270 XP' },
+  200: { name: 'Elite Pack', desc: '12 Premium Tickets + 360 XP' },
+  250: { name: 'Champion Bonus', desc: '12,000 Points + 480 XP' },
+  300: { name: 'Legend Pack', desc: '18 Premium Tickets + 600 XP' },
+  350: { name: 'Ultimate Reward', desc: 'Epic Character Selector + 750 XP' }
 };
 
 export function MilestoneRewards({ bannerId = null }) {

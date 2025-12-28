@@ -8,6 +8,22 @@
  * Level multipliers are defined in config/leveling.js (single source of truth).
  *
  * ============================================================================
+ * BALANCE SUMMARY (v8.0 - Complete Mode Harmony & Frontend Sync)
+ * ============================================================================
+ * Key changes in v8.0:
+ *
+ * 1. FRONTEND SYNCHRONIZATION:
+ *    - DojoHourlyRateCard.js help text verified to match these values
+ *    - Daily caps display synced: 25,000 pts, 30 roll, 8 premium
+ *    - Efficiency brackets synced with UI display
+ *
+ * 2. CROSS-MODE BALANCE:
+ *    - Dojo provides ~30-50 XP per 8-hour cycle (passive)
+ *    - Fishing provides ~480-960 XP per 8 hours (active)
+ *    - This 10-20x ratio is intentional: active > passive
+ *    - Mode variety bonuses encourage playing both
+ *
+ * ============================================================================
  * BALANCE SUMMARY (v6.0 - Comprehensive Mode Harmony)
  * ============================================================================
  * Key changes in v6.0:

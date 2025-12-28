@@ -9,7 +9,7 @@
  * the frontend UI (help texts, tooltips, etc.). When backend balance values
  * change, update this file to keep frontend in sync.
  *
- * VERSION: v7.0 (Synchronized Balance Update)
+ * VERSION: v8.0 (Complete Mode Harmony & Frontend Sync)
  *
  * USAGE:
  * - Backend: Authoritative values are in respective config files
@@ -21,10 +21,18 @@
  * 1. Backend config is updated (dojo.js, fishing.js, accountLevel.js, etc.)
  * 2. This file is updated with new display values
  * 3. Frontend components using hardcoded values are updated
+ *
+ * v8.0 CHANGES:
+ * - Buffed Gacha XP from 12 to 15 per pull (+25%)
+ * - Added all account level milestones (60, 75, 85, 90, 95, 100)
+ * - Added extended prestige system (11-20 levels)
+ * - Added first-time achievement bonuses
+ * - Added character mastery XP system
+ * - Synced all milestone rewards with frontend display
  * ============================================================================
  */
 
-const BALANCE_VERSION = '7.0';
+const BALANCE_VERSION = '8.0';
 
 // ===========================================
 // DOJO BALANCE CONSTANTS
@@ -111,8 +119,9 @@ const FISHING_DISPLAY = {
 // ===========================================
 
 const GACHA_DISPLAY = {
-  // XP per pull
-  xpPerPull: 12,
+  // XP per pull - BALANCE UPDATE v8.0: Increased from 12 to 15 (+25%)
+  // Rationale: Gacha was underpowered as XP source compared to fishing/dojo
+  xpPerPull: 15,
 
   // Pity thresholds
   pity: {
@@ -122,7 +131,23 @@ const GACHA_DISPLAY = {
   },
 
   // Fate points weekly cap
-  fatePointsWeeklyCap: 500
+  fatePointsWeeklyCap: 500,
+
+  // Milestone rewards (must match gameDesign.js)
+  milestones: {
+    10: { type: 'points', quantity: 600, xp: 30 },
+    30: { type: 'rod_skin', id: 'starlight_rod', xp: 60 },
+    50: { type: 'roll_tickets', quantity: 4, xp: 90 },
+    75: { type: 'points', quantity: 1800, xp: 120 },
+    100: { type: 'roll_tickets', quantity: 6, xp: 180 },
+    125: { type: 'premium_tickets', quantity: 3, xp: 210 },
+    150: { type: 'premium_tickets', quantity: 6, xp: 240 },
+    175: { type: 'roll_tickets', quantity: 10, xp: 270 },
+    200: { type: 'premium_tickets', quantity: 12, xp: 360 },
+    250: { type: 'points', quantity: 12000, xp: 480 },
+    300: { type: 'premium_tickets', quantity: 18, xp: 600 },
+    350: { type: 'character_selector', rarity: 'epic', xp: 750 }
+  }
 };
 
 // ===========================================
@@ -130,28 +155,69 @@ const GACHA_DISPLAY = {
 // ===========================================
 
 const ACCOUNT_LEVEL_DISPLAY = {
-  // Key milestones
+  // Maximum account level
+  maxLevel: 100,
+
+  // Key milestones (must match accountLevel.js majorMilestones)
   milestones: {
-    10: "Warrior's Hall",
-    25: "Master's Temple",
-    50: "Grandmaster's Sanctum",
-    75: "Mythic Champion",
-    100: "Ultimate Master"
+    5: { name: 'Novice Trainer', reward: '500 pts, 1 roll ticket' },
+    10: { name: "Warrior's Hall", reward: '1,500 pts, 3 roll, 1 premium', unlock: 'warriors_hall' },
+    15: { name: 'Seasoned Collector', reward: '1,000 pts, 2 roll' },
+    20: { name: 'Veteran Trainer', reward: '2,000 pts, 3 roll, +5% Dojo' },
+    25: { name: "Master's Temple", reward: '5,000 pts, 5 roll, 2 premium', unlock: 'masters_temple' },
+    30: { name: 'Elite Collector', reward: '3,000 pts, 4 roll, +2% fish rarity' },
+    40: { name: 'Champion Trainer', reward: '5,000 pts, 5 roll, 2 premium, +5% XP' },
+    50: { name: "Grandmaster's Sanctum", reward: '15,000 pts, 10 roll, 5 premium', unlock: 'grandmasters_sanctum' },
+    60: { name: 'Legendary Trainer', reward: '8,000 pts, 6 roll, 3 premium, +10% Dojo' },
+    75: { name: 'Mythic Champion', reward: '25,000 pts, 12 roll, 6 premium, +10% XP' },
+    85: { name: 'Elite Commander', reward: '15,000 pts, 8 roll, 4 premium, +3% XP' },
+    90: { name: 'Grand Warden', reward: '30,000 pts, 12 roll, 5 premium, +5% Dojo, +2% fish' },
+    95: { name: 'Supreme Master', reward: '50,000 pts, 15 roll, 8 premium, +5% XP' },
+    100: { name: 'Ultimate Master', reward: '100,000 pts, 25 roll, 15 premium, +15% all bonuses' }
   },
 
-  // XP sources summary
+  // XP sources summary - BALANCE UPDATE v8.0: Gacha buffed from 12 to 15
   xpSources: {
-    gachaPull: 12,
+    gachaPull: 15,           // Buffed from 12 in v8.0
     dojoClaim: 18,
     dojoEfficiencyBonus: 10,
-    dojoPassivePerHour: 3
+    dojoPassivePerHour: 3,
+    fishingCatchCommon: 2,
+    fishingCatchLegendary: 20,
+    perfectCatchMultiplier: 1.4,
+    greatCatchMultiplier: 1.2,
+    autofishMultiplier: 0.75
   },
 
   // Prestige system
   prestige: {
     maxLevel: 20,
     requiredAccountLevel: 100,
-    resetToLevel: 50
+    resetToLevel: 50,
+    bonusesPerLevel: {
+      xpMultiplier: 0.02,        // +2% XP per prestige
+      dojoEfficiency: 0.01,      // +1% dojo per prestige
+      fishingRarity: 0.005,      // +0.5% rare fish per prestige
+      gachaLuckPerFive: 0.01     // +1% gacha luck per 5 prestige levels
+    }
+  },
+
+  // First-time achievement bonuses (NEW in v6.0, documented in v8.0)
+  firstTimeAchievements: {
+    firstLegendaryFish: 200,
+    firstEpicCharacter: 100,
+    firstLegendaryCharacter: 300,
+    firstPrestige: 500,
+    firstMaxCharacter: 150,
+    firstAreaUnlock: 50,
+    firstPerfectStreak10: 75,
+    firstWeeklyBonus: 100
+  },
+
+  // Character mastery XP (NEW in v6.0, documented in v8.0)
+  characterMastery: {
+    xpPerLevel: 15,
+    maxMasteryBonus: 50
   }
 };
 
