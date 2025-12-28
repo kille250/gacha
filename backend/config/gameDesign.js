@@ -4,6 +4,29 @@
  * Centralized configuration for game systems based on the comprehensive
  * game design document. This file contains constants and configurations
  * for the enhanced Dojo, Fishing, Gacha, and Retention systems.
+ *
+ * ============================================================================
+ * BALANCE UPDATE (v5.0 - Ultimate Mode Balancing)
+ * ============================================================================
+ * Key changes in v5.0:
+ *
+ * 1. GACHA MILESTONE REWARDS BUFFED: Better progression incentives
+ *    - Pull milestones now award XP in addition to items
+ *    - New milestone at 350 pulls
+ *    - Fate point exchange costs reduced
+ *
+ * 2. BREAKTHROUGH RATES INCREASED: More frequent excitement
+ *    - Base chance: 2.5%/hr (up from 2%)
+ *    - Legendary breakthrough: +50 XP bonus
+ *
+ * 3. REST-AND-RETURN ENHANCED: Better catch-up mechanics
+ *    - All tiers now include XP rewards
+ *    - Dojo catch-up efficiency increased to 85%
+ *
+ * 4. WISDOM SPECIALIZATION FURTHER BUFFED:
+ *    - Gacha luck bonus: 10% (up from 8%)
+ *    - XP from gacha: 30% (up from 25%)
+ * ============================================================================
  */
 
 // ===========================================
@@ -32,24 +55,24 @@ const DOJO_SPECIALIZATIONS = {
     description: 'Enhanced learning, gacha fortune, and profile growth',
     icon: 'book',
     bonuses: {
-      // BALANCE UPDATE v4.0: Further reduced penalty and added XP bonus
-      // Rationale: Even at -20%, Wisdom was still mathematically inferior.
-      // By reducing to -10% and adding +25% gacha XP, Wisdom becomes
-      // "the gacha specialist" - players who prioritize collection over income.
+      // BALANCE UPDATE v5.0: Further buffed to make Wisdom clearly attractive
+      // Rationale: Wisdom should be THE choice for collectors and gacha enthusiasts.
+      // The dojo penalty is offset by significantly better gacha returns.
       //
-      // New trade-off:
-      // - Lose 10% dojo income (~40 pts/hr at mid-game)
-      // - Gain 8% gacha luck (was 5%)
-      // - Gain 75% ticket drop chance (was 50%)
-      // - Gain 25% XP from gacha pulls (NEW - unique to Wisdom)
-      // This makes Wisdom clearly the best choice for gacha-focused players.
-      dojoPointsMultiplier: 0.90,   // -10% dojo income (reduced from -20%)
+      // v5.0 trade-off:
+      // - Lose 10% dojo income (~45 pts/hr at mid-game with v5.0 rates)
+      // - Gain 10% gacha luck (buffed from 8%)
+      // - Gain 80% ticket drop chance (buffed from 75%)
+      // - Gain 30% XP from gacha pulls (buffed from 25%)
+      // - NEW: +5% chance for character level-up on duplicate
+      dojoPointsMultiplier: 0.90,   // -10% dojo income (unchanged)
       fishingPowerBonus: 0,
-      gachaLuckBonus: 0.08,         // +8% gacha luck (buffed from 5%)
-      ticketChanceBonus: 0.75,      // +75% ticket drop chance (buffed from 50%)
+      gachaLuckBonus: 0.10,         // +10% gacha luck (buffed from 8%)
+      ticketChanceBonus: 0.80,      // +80% ticket drop chance (buffed from 75%)
       currencyBonus: 0,
       synergyBonus: 0,
-      xpBonusFromGacha: 0.25        // NEW: +25% XP from gacha pulls
+      xpBonusFromGacha: 0.30,       // +30% XP from gacha pulls (buffed from 25%)
+      duplicateLevelUpBonus: 0.05   // NEW: +5% chance for extra level on duplicate
     }
   },
   spirit: {
@@ -150,42 +173,45 @@ const DOJO_TRAINING_METHODS = {
 
 const DOJO_BREAKTHROUGH_CONFIG = {
   // Base chance per hour of training
-  baseChancePerHour: 0.02, // 2% per hour
+  // BALANCE UPDATE v5.0: Increased from 2% to 2.5% for more frequent excitement
+  baseChancePerHour: 0.025, // 2.5% per hour
 
   // Multipliers by rarity
+  // BALANCE UPDATE v5.0: Buffed legendary multiplier
   rarityMultipliers: {
     common: 0.5,
     uncommon: 0.75,
     rare: 1.0,
-    epic: 1.25,
-    legendary: 1.5
+    epic: 1.35,       // Buffed from 1.25
+    legendary: 1.75   // Buffed from 1.5
   },
 
   // Breakthrough types and their rewards
+  // BALANCE UPDATE v5.0: Increased rewards across the board
   types: {
     skill_discovery: {
       weight: 40,
       name: 'Skill Discovery',
       description: 'Discovered a new technique!',
-      rewards: { xpBonus: 500 }
+      rewards: { xpBonus: 600, pointsBonus: 100 }  // Buffed from 500 XP, added points
     },
     hidden_treasure: {
       weight: 30,
       name: 'Hidden Treasure',
       description: 'Found a hidden cache of resources!',
-      rewards: { pointsBonus: 1000 }
+      rewards: { pointsBonus: 1250 }  // Buffed from 1000
     },
     moment_of_clarity: {
       weight: 20,
       name: 'Moment of Clarity',
       description: 'Achieved enlightenment!',
-      rewards: { rollTickets: 1 }
+      rewards: { rollTickets: 2 }  // Buffed from 1
     },
     legendary_insight: {
       weight: 10,
       name: 'Legendary Insight',
       description: 'A rare and powerful discovery!',
-      rewards: { premiumTickets: 1, xpBonus: 1000 }
+      rewards: { premiumTickets: 2, xpBonus: 1200 }  // Buffed from 1 ticket, 1000 XP
     }
   }
 };
@@ -283,27 +309,27 @@ const FISHING_VISUAL_RARITY_CONFIG = {
 
 const GACHA_MILESTONE_REWARDS = {
   // Rewards given at specific pull counts (per banner)
-  // BALANCE UPDATE: Added intermediate milestones (75, 125, 175) for smoother progression
-  // Rationale: Previous 50-pull gaps (100→150→200) felt too sparse. Players now get
-  // smaller rewards more frequently, creating consistent dopamine hits.
+  // BALANCE UPDATE v5.0: Buffed all rewards by ~15-20%, added 350 milestone
+  // All milestones now include XP rewards for profile progression
   milestones: [
-    { pulls: 10, reward: { type: 'points', quantity: 500 } },
-    { pulls: 30, reward: { type: 'rod_skin', id: 'starlight_rod' } },
-    { pulls: 50, reward: { type: 'roll_tickets', quantity: 3 } },
-    { pulls: 75, reward: { type: 'points', quantity: 1500 } },           // NEW: Bridge to 100
-    { pulls: 100, reward: { type: 'roll_tickets', quantity: 5 } },
-    { pulls: 125, reward: { type: 'premium_tickets', quantity: 2 } },   // NEW: Smaller premium reward
-    { pulls: 150, reward: { type: 'premium_tickets', quantity: 5 } },
-    { pulls: 175, reward: { type: 'roll_tickets', quantity: 8 } },       // NEW: Bridge to 200
-    { pulls: 200, reward: { type: 'premium_tickets', quantity: 10 } },
-    { pulls: 250, reward: { type: 'points', quantity: 10000 } },
-    { pulls: 300, reward: { type: 'premium_tickets', quantity: 15 } }    // NEW: Extended endgame
+    { pulls: 10, reward: { type: 'points', quantity: 600, xp: 30 } },           // Buffed from 500
+    { pulls: 30, reward: { type: 'rod_skin', id: 'starlight_rod', xp: 60 } },
+    { pulls: 50, reward: { type: 'roll_tickets', quantity: 4, xp: 90 } },       // Buffed from 3
+    { pulls: 75, reward: { type: 'points', quantity: 1800, xp: 120 } },         // Buffed from 1500
+    { pulls: 100, reward: { type: 'roll_tickets', quantity: 6, xp: 180 } },     // Buffed from 5
+    { pulls: 125, reward: { type: 'premium_tickets', quantity: 3, xp: 210 } },  // Buffed from 2
+    { pulls: 150, reward: { type: 'premium_tickets', quantity: 6, xp: 240 } },  // Buffed from 5
+    { pulls: 175, reward: { type: 'roll_tickets', quantity: 10, xp: 270 } },    // Buffed from 8
+    { pulls: 200, reward: { type: 'premium_tickets', quantity: 12, xp: 360 } }, // Buffed from 10
+    { pulls: 250, reward: { type: 'points', quantity: 12000, xp: 480 } },       // Buffed from 10000
+    { pulls: 300, reward: { type: 'premium_tickets', quantity: 18, xp: 600 } }, // Buffed from 15
+    { pulls: 350, reward: { type: 'character_selector', rarity: 'epic', xp: 750 } } // NEW: Ultimate endgame
   ],
 
   // Grace period for claiming milestones after banner ends
   gracePeriod: {
     enabled: true,
-    daysAfterEnd: 7  // Players can claim unclaimed milestones for 7 days after banner ends
+    daysAfterEnd: 14  // Extended from 7 to 14 days for better player experience
   }
 };
 
@@ -390,46 +416,51 @@ const GACHA_FATE_POINTS = {
   },
 
   // Exchange shop - costs for different rewards
-  // BALANCE UPDATE v2.1: Further adjusted costs for achievability
-  // Rationale: With weeklyMax of 500 FP, old 450 cost for legendary required
-  // 90% of weekly FP (no room for error). New 350 cost = 70% of weekly FP,
-  // allowing players to miss 1-2 days and still reach goal.
+  // BALANCE UPDATE v5.0: Further reduced costs for better player experience
+  // Rationale: With weeklyMax of 500 FP, all rewards should be achievable
+  // with reasonable play. Legendary now costs 300 FP (60% of weekly).
   exchangeOptions: {
     roll_tickets: {
       id: 'roll_tickets',
       name: 'Roll Ticket Bundle',
-      description: 'Exchange for 5 roll tickets',
+      description: 'Exchange for 6 roll tickets',     // Buffed from 5
       cost: 25  // Small, frequent reward option
     },
     premium_tickets: {
       id: 'premium_tickets',
-      name: 'Premium Ticket',
-      description: 'Exchange for 1 premium ticket',
-      cost: 35  // Reduced from 40 for better value
+      name: 'Premium Ticket Pack',
+      description: 'Exchange for 2 premium tickets',   // Buffed from 1
+      cost: 50  // Adjusted for 2 tickets
     },
     rare_selector: {
       id: 'rare_selector',
       name: 'Rare Selector',
       description: 'Choose any rare character',
-      cost: 75  // Reduced from 80
+      cost: 60  // Reduced from 75
     },
     epic_selector: {
       id: 'epic_selector',
       name: 'Epic Selector',
       description: 'Choose any epic character',
-      cost: 200  // Reduced from 250 (40% of weekly)
+      cost: 175  // Reduced from 200 (35% of weekly)
     },
     legendary_selector: {
       id: 'legendary_selector',
       name: 'Legendary Selector',
       description: 'Choose any legendary character',
-      cost: 350  // Reduced from 450 (70% of weekly, achievable with 1-2 missed days)
+      cost: 300  // Reduced from 350 (60% of weekly, achievable in ~4 days)
     },
     pity_boost: {
       id: 'pity_boost',
       name: 'Pity Boost',
       description: 'Advance pity progress to 50% of guaranteed threshold',
-      cost: 60  // Reduced from 75 for better value proposition
+      cost: 50  // Reduced from 60
+    },
+    xp_boost: {
+      id: 'xp_boost',
+      name: 'XP Boost',
+      description: 'Get 500 account XP instantly',
+      cost: 40  // NEW: Alternative reward for progression-focused players
     }
   }
 };
@@ -522,21 +553,22 @@ const REST_AND_RETURN_BONUS = {
   enabled: true,
 
   // Bonus tiers based on absence duration
-  // BALANCE UPDATE v4.0: Added XP rewards to help returning players with progression
+  // BALANCE UPDATE v5.0: Buffed all rewards by ~15-20%, improved messaging
   // XP values match those defined in XP_SOURCES.restAndReturn for consistency
   tiers: [
-    { minDays: 2, maxDays: 3, bonus: { points: 500, xp: 100, message: 'Welcome back! Here\'s a small bonus.' } },
-    { minDays: 4, maxDays: 7, bonus: { points: 1500, rollTickets: 2, xp: 300, message: 'We missed you! Enjoy these rewards.' } },
-    { minDays: 8, maxDays: 14, bonus: { points: 3000, rollTickets: 5, premiumTickets: 1, xp: 750, message: 'Great to see you again! Here\'s a welcome back gift.' } },
-    { minDays: 15, maxDays: 30, bonus: { points: 5000, rollTickets: 10, premiumTickets: 3, xp: 1500, message: 'It\'s been a while! We prepared something special.' } },
-    { minDays: 31, maxDays: Infinity, bonus: { points: 10000, rollTickets: 20, premiumTickets: 5, characterSelector: 'rare', xp: 3000, message: 'Welcome home! Here\'s everything you need to catch up.' } }
+    { minDays: 2, maxDays: 3, bonus: { points: 600, xp: 120, message: 'Welcome back! Here\'s a small bonus.' } },
+    { minDays: 4, maxDays: 7, bonus: { points: 1800, rollTickets: 3, xp: 350, message: 'We missed you! Enjoy these rewards.' } },
+    { minDays: 8, maxDays: 14, bonus: { points: 3500, rollTickets: 6, premiumTickets: 2, xp: 850, message: 'Great to see you again! Here\'s a welcome back gift.' } },
+    { minDays: 15, maxDays: 30, bonus: { points: 6000, rollTickets: 12, premiumTickets: 4, xp: 1750, message: 'It\'s been a while! We prepared something special.' } },
+    { minDays: 31, maxDays: Infinity, bonus: { points: 12000, rollTickets: 25, premiumTickets: 8, characterSelector: 'rare', xp: 3500, message: 'Welcome home! Here\'s everything you need to catch up.' } }
   ],
 
   // Dojo catch-up (accumulated rewards don't decay completely)
+  // BALANCE UPDATE v5.0: Improved efficiency and extended cap
   dojoCatchUp: {
     enabled: true,
-    maxAccumulatedDays: 7, // Cap at 7 days worth
-    efficiencyDecay: 0.8   // 80% efficiency for offline rewards beyond cap
+    maxAccumulatedDays: 10, // Extended from 7 to 10 days
+    efficiencyDecay: 0.85   // Improved from 80% to 85% efficiency
   }
 };
 

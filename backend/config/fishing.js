@@ -5,28 +5,39 @@
  * Extracted from routes/fishing.js for better maintainability.
  *
  * ============================================================================
- * BALANCE UPDATE (v3.0 - Cross-Mode Economy Balancing)
+ * BALANCE UPDATE (v5.0 - Ultimate Mode Balancing)
  * ============================================================================
  * Key changes:
  *
- * 1. ACCOUNT XP INTEGRATION: Fishing now contributes to profile progression
- *    - Per catch: 2-20 XP based on rarity (see accountLevel.js)
- *    - Perfect/Great catches: +50%/+25% XP bonus
- *    - Fish trades: 1-10 XP
- *    - New fish discoveries: +25 XP
- *    - Star milestones: 10-75 XP
- *    - Daily challenges: 15-100 XP by difficulty
+ * 1. XP REBALANCED FOR MODE PARITY:
+ *    - Perfect catch multiplier: 1.4x (down from 1.5x)
+ *    - Great catch multiplier: 1.2x (down from 1.25x)
+ *    - Autofish XP penalty: 0.75x (encourages manual fishing)
+ *    - Streak XP bonuses: 5-75 XP at streak milestones
  *
- * 2. ACCOUNT LEVEL RARITY BONUS: Account level grants fishing rarity bonuses
- *    - Level 30: +2% rare fish chance
- *    - Level 100: +5% total rare fish chance
- *    - Stacks with prestige and rod bonuses
+ * 2. TRADE VALUES BUFFED: Better rewards for rare catches
+ *    - Epic fish: 700 points (up from 600)
+ *    - Legendary fish: 3000 points (up from 2500)
+ *    - Epic→tickets: 4 roll tickets (up from 3)
  *
- * 3. PRESTIGE XP MULTIPLIER: Each prestige level adds +5% fishing XP
- *    - Max prestige: +25% XP from all fishing activities
+ * 3. DAILY LIMITS INCREASED: Support dedicated fishing sessions
+ *    - Manual casts: 700/day (up from 600)
+ *    - Autofish casts: 200/day (up from 175)
+ *    - Points from trades: 25,000/day (up from 20,000)
  *
- * 4. VARIETY BONUS: First fishing catch of the day awards +15 bonus XP
- *    - Playing all modes (Dojo, Fishing, Gacha) grants +50 bonus XP
+ * 4. CHALLENGE REWARDS BUFFED: More rewarding daily goals
+ *    - All challenge XP increased by ~25%
+ *    - Legendary challenge: 125 XP + better rewards
+ *
+ * 5. AREA UNLOCKS ADJUSTED: Better progression feel
+ *    - Ocean: Rank 40 (down from 50)
+ *    - Abyss: Rank 75 (down from 100)
+ *
+ * Previous v3.0 changes (preserved):
+ * - Account XP integration
+ * - Account level rarity bonuses
+ * - Prestige XP multiplier (+5% per level)
+ * - Daily variety bonus
  * ============================================================================
  *
  * ============================================================================
@@ -101,15 +112,15 @@ const FISHING_CONFIG = {
   castCost: 0,
   
   // === DAILY LIMITS (Anti-Inflation) ===
-  // BALANCE UPDATE v2.1: Aligned caps with Dojo for consistency
-  // Also raised soft cap to reduce penalty feeling
+  // BALANCE UPDATE v5.0: Increased all limits for dedicated players
+  // Matches updated Dojo caps for cross-mode consistency
   dailyLimits: {
-    manualCasts: 600,         // Max manual casts per day (was 500)
-    autofishCasts: 175,       // Base autofish limit (was 150)
-    pointsFromTrades: 20000,  // Max points from trades per day (was 15k, matches Dojo)
-    pointsSoftCap: 15000,     // Soft cap raised: 50% reduction starts later (was 10k)
-    rollTickets: 25,          // Max roll tickets from fishing per day
-    premiumTickets: 6         // Max premium tickets (was 8, now matches Dojo for balance)
+    manualCasts: 700,         // Max manual casts per day (was 600)
+    autofishCasts: 200,       // Base autofish limit (was 175)
+    pointsFromTrades: 25000,  // Max points from trades per day (matches Dojo v5.0)
+    pointsSoftCap: 18000,     // Soft cap raised (was 15k)
+    rollTickets: 30,          // Max roll tickets from fishing per day (matches Dojo v5.0)
+    premiumTickets: 8         // Max premium tickets (matches Dojo v5.0)
   },
   
   // Network latency buffer for reaction time validation (ms)
@@ -263,11 +274,10 @@ const FISHING_AREAS = {
     emoji: '🌊',
     description: 'Deep waters where legends lurk',
     unlockCost: 10000,
-    // BALANCE UPDATE v2.1: Changed from rank 100 to rank 50
-    // Rationale: Ocean should be accessible before Abyss in natural progression.
-    // Old system: Ocean (rank 100) > Abyss (rank 25) - backwards!
-    // New system: Ocean (rank 50) < Abyss (rank 100) - proper progression.
-    unlockRank: 50,
+    // BALANCE UPDATE v5.0: Reduced from rank 50 to rank 40
+    // Rationale: Make ocean accessible earlier for mid-game content.
+    // Players reaching rank 40 have demonstrated commitment.
+    unlockRank: 40,
     fishPool: ['tuna', 'snapper', 'swordfish', 'marlin', 'manta', 'whale'],
     rarityBonus: 0.2, // +20% rare+ chance
     background: 'ocean'
@@ -277,15 +287,14 @@ const FISHING_AREAS = {
     name: 'The Abyss',
     emoji: '🌑',
     description: 'Where mythical creatures dwell',
-    // BALANCE UPDATE v2.1: Reduced from 35,000 to 20,000 points
-    // Rationale: At early-game rates (~70 pts/hr), 35k took 500 hours (62 days).
-    // Now at 20k: ~285 hours for new players (35 days), ~45 hours for mid-game.
-    // This makes Abyss achievable within first month for dedicated players.
-    unlockCost: 20000,
-    // BALANCE UPDATE v2.1: Changed from rank 25 to rank 100
-    // Rationale: Abyss is endgame content with legendary fish pool.
-    // Should require top 100 ranking (competitive achievement).
-    unlockRank: 100,
+    // BALANCE UPDATE v5.0: Reduced from 20,000 to 15,000 points
+    // Rationale: With buffed dojo/fishing rates, 15k is achievable in ~20 days.
+    // Makes endgame content accessible within first month for active players.
+    unlockCost: 15000,
+    // BALANCE UPDATE v5.0: Changed from rank 100 to rank 75
+    // Rationale: Rank 100 was too exclusive for core content.
+    // Rank 75 is still a significant achievement but more accessible.
+    unlockRank: 75,
     fishPool: ['marlin', 'manta', 'whale', 'kraken', 'dragon'],
     rarityBonus: 0.35, // +35% rare+ chance
     background: 'abyss'
@@ -801,11 +810,10 @@ const TRADE_OPTIONS = [
     requiredRarity: 'epic',
     requiredQuantity: 1,
     rewardType: 'points',
-    // BALANCE UPDATE: Increased from 400 to 600
-    // Rationale: Epic fish are ~4% chance vs legendary ~1%. Previous 400 vs 2500
-    // meant legendary was 6.25x more valuable but only 4x rarer. Now 600 vs 2500
-    // creates a ~4.2x ratio matching the rarity gap more closely.
-    rewardAmount: 600,
+    // BALANCE UPDATE v5.0: Increased from 600 to 700
+    // Rationale: With buffed point generation, epic fish value needed adjustment.
+    // 700 vs 3000 legendary = ~4.3x ratio, slightly favoring epic for accessibility.
+    rewardAmount: 700,
     emoji: '🦈',
     category: 'points'
   },
@@ -816,7 +824,9 @@ const TRADE_OPTIONS = [
     requiredRarity: 'legendary',
     requiredQuantity: 1,
     rewardType: 'points',
-    rewardAmount: 2500,
+    // BALANCE UPDATE v5.0: Increased from 2500 to 3000
+    // Rationale: Legendary fish are rare achievements - reward should feel impactful.
+    rewardAmount: 3000,
     emoji: '🐋',
     category: 'points'
   },
@@ -862,10 +872,10 @@ const TRADE_OPTIONS = [
     requiredRarity: 'epic',
     requiredQuantity: 1,
     rewardType: 'rollTickets',
-    // BALANCE UPDATE: New trade option
-    // Rationale: Previously epic fish only had premium ticket trade (2 fish -> 2 tickets).
-    // This gives players a smaller-scale option for single epic catches.
-    rewardAmount: 3,
+    // BALANCE UPDATE v5.0: Increased from 3 to 4 roll tickets
+    // Rationale: Better value proposition vs points trade (700 pts = 7 pulls).
+    // 4 tickets = 4 free pulls, more attractive for ticket-focused players.
+    rewardAmount: 4,
     emoji: '🎟️',
     category: 'tickets'
   },
@@ -887,7 +897,9 @@ const TRADE_OPTIONS = [
     requiredRarity: 'legendary',
     requiredQuantity: 1,
     rewardType: 'premiumTickets',
-    rewardAmount: 5,
+    // BALANCE UPDATE v5.0: Increased from 5 to 6 premium tickets
+    // Rationale: Legendary fish are ~1% catch rate - reward should be exciting.
+    rewardAmount: 6,
     emoji: '✨',
     category: 'tickets'
   },
