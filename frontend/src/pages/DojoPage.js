@@ -6,7 +6,7 @@
  * Wrapped in ErrorBoundary for crash recovery.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -111,8 +111,16 @@ const DojoPage = () => {
   const {
     facility,
     upgrading: facilityUpgrading,
-    upgrade: upgradeFacility,
+    upgrade: upgradeFacilityBase,
   } = useDojoFacility();
+
+  // Wrap facility upgrade to also refresh dojo status
+  // (facility upgrades may unlock new training slots, change rates, etc.)
+  const upgradeFacility = useCallback(async (tierId) => {
+    const result = await upgradeFacilityBase(tierId);
+    await refreshStatus();
+    return result;
+  }, [upgradeFacilityBase, refreshStatus]);
 
   // Account level for facility requirements
   const { accountLevel } = useAccountLevel();
