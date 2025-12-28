@@ -261,9 +261,9 @@ const DojoFacilityCard = ({
           <FacilityUpgradeCost>
             <FacilityUpgradeButton
               onClick={handleUpgrade}
-              disabled={!canUpgrade}
               $canAfford={canAfford}
               $meetsLevel={meetsLevel}
+              $disabled={!canUpgrade}
             >
               {upgrading ? (
                 <MdAutorenew className="spin" aria-hidden="true" />
