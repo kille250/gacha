@@ -449,6 +449,14 @@ router.post('/login', async (req, res) => {
       }
     }
 
+    // Clear session invalidation after successful login
+    // The session invalidation served its purpose (invalidated old sessions)
+    // Now that the user has logged in with valid credentials, clear it
+    if (user.sessionInvalidatedAt) {
+      user.sessionInvalidatedAt = null;
+      await user.save();
+    }
+
     const payload = {
       user: {
         id: user.id,
@@ -736,13 +744,20 @@ router.post('/google', async (req, res) => {
       data: { username: user.username },
       req
     });
-    
+
+    // Clear session invalidation after successful login
+    // The session invalidation served its purpose (invalidated old sessions)
+    if (user.sessionInvalidatedAt) {
+      user.sessionInvalidatedAt = null;
+      await user.save();
+    }
+
     // Create JWT token
-    const jwtPayload = { 
-      user: { 
+    const jwtPayload = {
+      user: {
         id: user.id,
         isAdmin: user.isAdmin
-      } 
+      }
     };
     
     const token = await new Promise((resolve, reject) => {
