@@ -340,6 +340,26 @@ User.init(
       type: DataTypes.DATE,
       allowNull: true
     },
+
+    // Password reset fields (for admin-initiated password resets)
+    // When true, user must change password on next login
+    forcePasswordChange: {
+      type: DataTypes.BOOLEAN,
+      allowNull: true,
+      defaultValue: false
+    },
+
+    // When temporary password expires (48 hours after reset)
+    passwordResetExpiry: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
+
+    // Timestamp of last password reset (for audit)
+    passwordResetAt: {
+      type: DataTypes.DATE,
+      allowNull: true
+    },
     
     // Username change history (JSON array of {oldUsername, changedAt})
     usernameHistory: {

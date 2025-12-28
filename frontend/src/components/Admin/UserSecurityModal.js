@@ -6,16 +6,16 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
-import { 
+import {
   FaUserShield, FaBan, FaExclamationTriangle, FaHistory,
-  FaFingerprint, FaGlobe, FaClock, FaUndo, FaTrash, FaSync, FaLink
+  FaFingerprint, FaGlobe, FaClock, FaUndo, FaTrash, FaSync, FaLink, FaKey, FaCopy
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
-import { 
-  getUserSecurity, restrictUser, unrestrictUser, 
+import {
+  getUserSecurity, restrictUser, unrestrictUser,
   warnUser, resetUserWarnings, clearUserDevices,
-  recalculateUserRisk, resetUserRisk
+  recalculateUserRisk, resetUserRisk, resetUserPassword
 } from '../../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../../cache';
 import { 
@@ -67,6 +67,12 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
   // Perm ban confirmation
   const [showPermBanConfirm, setShowPermBanConfirm] = useState(false);
   const [permBanConfirmText, setPermBanConfirmText] = useState('');
+
+  // Password reset
+  const [showPasswordResetConfirm, setShowPasswordResetConfirm] = useState(false);
+  const [showPasswordResetResult, setShowPasswordResetResult] = useState(false);
+  const [passwordResetResult, setPasswordResetResult] = useState(null);
+  const [copiedPassword, setCopiedPassword] = useState(false);
   
   const fetchUserSecurity = useCallback(async () => {
     if (!userId) return;
@@ -210,7 +216,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
   
   const handleResetRisk = async () => {
     if (!window.confirm(t('admin.security.confirmResetRisk'))) return;
-    
+
     setActionLoading(true);
     try {
       const result = await resetUserRisk(userId, t('admin.security.manualResetByAdmin'));
@@ -223,7 +229,49 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
       setActionLoading(false);
     }
   };
-  
+
+  const handlePasswordResetClick = () => {
+    // Show confirmation dialog
+    setShowPasswordResetConfirm(true);
+  };
+
+  const handlePasswordResetConfirm = async () => {
+    setShowPasswordResetConfirm(false);
+    setActionLoading(true);
+
+    try {
+      const result = await resetUserPassword(userId);
+      invalidateFor(CACHE_ACTIONS.ADMIN_PASSWORD_RESET);
+      setPasswordResetResult(result);
+      setShowPasswordResetResult(true);
+      setCopiedPassword(false);
+    } catch (err) {
+      console.error('Failed to reset password:', err);
+      const errorMessage = err.response?.data?.error || 'Failed to reset password';
+      onSuccess(errorMessage); // Using onSuccess for error display as well
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleCopyPassword = async () => {
+    if (passwordResetResult?.temporaryPassword) {
+      try {
+        await navigator.clipboard.writeText(passwordResetResult.temporaryPassword);
+        setCopiedPassword(true);
+        setTimeout(() => setCopiedPassword(false), 2000);
+      } catch (err) {
+        console.error('Failed to copy password:', err);
+      }
+    }
+  };
+
+  const handlePasswordResetResultClose = () => {
+    setShowPasswordResetResult(false);
+    setPasswordResetResult(null);
+    onSuccess(`Password reset successful for ${userData?.username}`);
+  };
+
   const formatTimestamp = (ts) => new Date(ts).toLocaleString();
   
   if (!show) return null;
@@ -554,12 +602,34 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                           onChange={(e) => setWarningReason(e.target.value)}
                         />
                       </FormGroup>
-                      <SecondaryButton 
-                        onClick={handleIssueWarning} 
+                      <SecondaryButton
+                        onClick={handleIssueWarning}
                         disabled={actionLoading || !warningReason}
                       >
                         <FaExclamationTriangle /> {t('admin.security.issueWarning')}
                       </SecondaryButton>
+                    </ActionSection>
+
+                    <ActionSection>
+                      <SectionLabel>
+                        <FaKey /> {t('admin.security.passwordReset', 'Password Reset')}
+                      </SectionLabel>
+                      <PasswordResetInfo>
+                        {t('admin.security.passwordResetInfo', 'Reset the user\'s password and generate a temporary password. The user will be required to set a new password on their next login.')}
+                      </PasswordResetInfo>
+                      {userData?.isAdmin ? (
+                        <PasswordResetWarning>
+                          <FaExclamationTriangle />
+                          {t('admin.security.cannotResetAdminPassword', 'Cannot reset password for admin accounts.')}
+                        </PasswordResetWarning>
+                      ) : (
+                        <PasswordResetButton
+                          onClick={handlePasswordResetClick}
+                          disabled={actionLoading}
+                        >
+                          <FaKey /> {t('admin.security.resetPassword', 'Reset Password')}
+                        </PasswordResetButton>
+                      )}
                     </ActionSection>
                   </ActionsTab>
                 )}
@@ -643,6 +713,90 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
               </DangerButton>
             </PermBanFooter>
           </PermBanModal>
+        </PermBanOverlay>
+      )}
+
+      {/* Password Reset Confirmation Modal */}
+      {showPasswordResetConfirm && (
+        <PermBanOverlay onClick={() => setShowPasswordResetConfirm(false)}>
+          <PasswordResetModal onClick={e => e.stopPropagation()}>
+            <PasswordResetModalHeader>
+              <FaKey style={{ color: theme.colors.warning }} />
+              {t('admin.security.confirmPasswordReset', 'Confirm Password Reset')}
+            </PasswordResetModalHeader>
+            <PasswordResetModalBody>
+              <PasswordResetModalWarning>
+                <FaExclamationTriangle />
+                <span>
+                  {t('admin.security.passwordResetWarning', {
+                    username: userData?.username,
+                    defaultValue: `Are you sure you want to reset the password for "${userData?.username}"? This will generate a new temporary password and invalidate all existing sessions.`
+                  })}
+                </span>
+              </PasswordResetModalWarning>
+            </PasswordResetModalBody>
+            <PasswordResetModalFooter>
+              <SecondaryButton onClick={() => setShowPasswordResetConfirm(false)}>
+                {t('common.cancel')}
+              </SecondaryButton>
+              <PasswordResetConfirmButton
+                onClick={handlePasswordResetConfirm}
+                disabled={actionLoading}
+              >
+                {actionLoading ? t('common.processing', 'Processing...') : t('admin.security.resetPassword', 'Reset Password')}
+              </PasswordResetConfirmButton>
+            </PasswordResetModalFooter>
+          </PasswordResetModal>
+        </PermBanOverlay>
+      )}
+
+      {/* Password Reset Result Modal */}
+      {showPasswordResetResult && passwordResetResult && (
+        <PermBanOverlay onClick={handlePasswordResetResultClose}>
+          <PasswordResetResultModal onClick={e => e.stopPropagation()}>
+            <PasswordResetResultHeader>
+              <FaKey style={{ color: theme.colors.success }} />
+              {t('admin.security.passwordResetSuccess', 'Password Reset Successful')}
+            </PasswordResetResultHeader>
+            <PasswordResetResultBody>
+              <PasswordResetResultMessage>
+                {passwordResetResult.message}
+              </PasswordResetResultMessage>
+
+              <TemporaryPasswordSection>
+                <TemporaryPasswordLabel>
+                  {t('admin.security.temporaryPassword', 'Temporary Password')}:
+                </TemporaryPasswordLabel>
+                <TemporaryPasswordDisplay>
+                  <TemporaryPasswordValue>
+                    {passwordResetResult.temporaryPassword}
+                  </TemporaryPasswordValue>
+                  <CopyButton onClick={handleCopyPassword} title={t('admin.security.copyPassword', 'Copy password')}>
+                    <FaCopy />
+                    {copiedPassword ? t('common.copied', 'Copied!') : t('common.copy', 'Copy')}
+                  </CopyButton>
+                </TemporaryPasswordDisplay>
+              </TemporaryPasswordSection>
+
+              <PasswordResetNotes>
+                {passwordResetResult.notes?.map((note, index) => (
+                  <PasswordResetNote key={index}>
+                    <FaExclamationTriangle style={{ flexShrink: 0 }} />
+                    <span>{note}</span>
+                  </PasswordResetNote>
+                ))}
+              </PasswordResetNotes>
+
+              <ExpiryInfo>
+                {t('admin.security.expiresAt', 'Expires at')}: {new Date(passwordResetResult.expiresAt).toLocaleString()}
+              </ExpiryInfo>
+            </PasswordResetResultBody>
+            <PasswordResetResultFooter>
+              <PrimaryButton onClick={handlePasswordResetResultClose}>
+                {t('common.done', 'Done')}
+              </PrimaryButton>
+            </PasswordResetResultFooter>
+          </PasswordResetResultModal>
         </PermBanOverlay>
       )}
     </AnimatePresence>
@@ -1205,15 +1359,177 @@ const DangerButton = styled.button`
   font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
   transition: all ${theme.transitions.fast};
-  
+
   &:hover:not(:disabled) {
     background: #d63329;
   }
-  
+
   &:disabled {
     opacity: 0.5;
     cursor: not-allowed;
   }
+`;
+
+// Password Reset Styled Components
+const PasswordResetInfo = styled.p`
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  margin-bottom: ${theme.spacing.md};
+  line-height: 1.5;
+`;
+
+const PasswordResetWarning = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.warning}20;
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.warning};
+  font-size: ${theme.fontSizes.sm};
+
+  svg {
+    flex-shrink: 0;
+  }
+`;
+
+const PasswordResetButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  background: ${theme.colors.warning};
+  border: none;
+  border-radius: ${theme.radius.lg};
+  color: white;
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+
+  &:hover:not(:disabled) {
+    background: ${theme.colors.warningDark || '#e6a700'};
+    transform: translateY(-1px);
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const PasswordResetModal = styled(PermBanModal)``;
+
+const PasswordResetModalHeader = styled(PermBanHeader)``;
+
+const PasswordResetModalBody = styled(PermBanBody)``;
+
+const PasswordResetModalWarning = styled(PermBanWarning)`
+  svg {
+    color: ${theme.colors.warning};
+  }
+`;
+
+const PasswordResetModalFooter = styled(PermBanFooter)``;
+
+const PasswordResetConfirmButton = styled(PasswordResetButton)``;
+
+const PasswordResetResultModal = styled(PermBanModal)`
+  max-width: 500px;
+`;
+
+const PasswordResetResultHeader = styled(PermBanHeader)``;
+
+const PasswordResetResultBody = styled(PermBanBody)``;
+
+const PasswordResetResultMessage = styled.p`
+  color: ${theme.colors.text};
+  margin-bottom: ${theme.spacing.lg};
+  font-weight: ${theme.fontWeights.medium};
+`;
+
+const TemporaryPasswordSection = styled.div`
+  background: ${theme.colors.backgroundSecondary};
+  border-radius: ${theme.radius.md};
+  padding: ${theme.spacing.md};
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const TemporaryPasswordLabel = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.sm};
+`;
+
+const TemporaryPasswordDisplay = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+`;
+
+const TemporaryPasswordValue = styled.code`
+  flex: 1;
+  font-family: monospace;
+  font-size: ${theme.fontSizes.lg};
+  color: ${theme.colors.primary};
+  background: ${theme.colors.background};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.radius.sm};
+  letter-spacing: 0.5px;
+  user-select: all;
+`;
+
+const CopyButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${theme.colors.primary};
+  border: none;
+  border-radius: ${theme.radius.md};
+  color: white;
+  font-size: ${theme.fontSizes.sm};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+
+  &:hover {
+    background: ${theme.colors.primaryDark || theme.colors.primary};
+    transform: translateY(-1px);
+  }
+`;
+
+const PasswordResetNotes = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const PasswordResetNote = styled.div`
+  display: flex;
+  align-items: flex-start;
+  gap: ${theme.spacing.sm};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.warning};
+  padding: ${theme.spacing.sm};
+  background: ${theme.colors.warning}10;
+  border-radius: ${theme.radius.sm};
+
+  span {
+    flex: 1;
+  }
+`;
+
+const ExpiryInfo = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  text-align: center;
+  padding: ${theme.spacing.sm};
+  background: ${theme.colors.backgroundSecondary};
+  border-radius: ${theme.radius.sm};
+`;
+
+const PasswordResetResultFooter = styled(PermBanFooter)`
+  justify-content: center;
 `;
 
 export default UserSecurityModal;

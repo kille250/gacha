@@ -8,6 +8,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { motionVariants, springs, LoadingSpinner } from '../design-system';
 import { languages } from '../i18n';
+import ForcePasswordChangeModal from '../components/Auth/ForcePasswordChangeModal';
 
 // Styled Components
 import {
@@ -55,15 +56,23 @@ const LoginPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [showLangMenu, setShowLangMenu] = useState(false);
-  const { login, googleLogin, error, user, loading } = useContext(AuthContext);
+  const {
+    login,
+    googleLogin,
+    error,
+    user,
+    loading,
+    requiresPasswordChange,
+    passwordResetExpiry
+  } = useContext(AuthContext);
   const navigate = useNavigate();
 
-  // Redirect if already logged in
+  // Redirect if already logged in (but not if password change is required)
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && !requiresPasswordChange) {
       navigate('/gacha', { replace: true });
     }
-  }, [user, loading, navigate]);
+  }, [user, loading, navigate, requiresPasswordChange]);
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -73,9 +82,20 @@ const LoginPage = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     setIsLoading(true);
-    const success = await login(username, password);
+    const result = await login(username, password);
     setIsLoading(false);
-    if (success) navigate('/gacha');
+
+    // If login was successful and no password change required, navigate
+    if (result === true) {
+      navigate('/gacha');
+    }
+    // If result is an object with requiresPasswordChange, the modal will be shown
+    // No need to navigate here - the modal handles it
+  };
+
+  const handlePasswordChangeSuccess = () => {
+    // After successful password change, navigate to the app
+    navigate('/gacha');
   };
 
   const handleGoogleSuccess = async (credentialResponse) => {
@@ -289,6 +309,14 @@ const LoginPage = () => {
           </NavigationPrompt>
         </AuthCard>
       </ContentWrapper>
+
+      {/* Force Password Change Modal */}
+      {requiresPasswordChange && (
+        <ForcePasswordChangeModal
+          onSuccess={handlePasswordChangeSuccess}
+          expiresAt={passwordResetExpiry}
+        />
+      )}
     </PageContainer>
   );
 };

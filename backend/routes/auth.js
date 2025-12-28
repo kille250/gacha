@@ -3,7 +3,7 @@ const router = express.Router();
 const jwt = require('jsonwebtoken');
 const { OAuth2Client } = require('google-auth-library');
 const auth = require('../middleware/auth');
-const { User } = require('../models');
+const { User, PasswordResetHistory } = require('../models');
 const { validateUsername, validatePassword, validateEmail } = require('../utils/validation');
 const { checkSignupRisk, updateRiskScore, RISK_ACTIONS } = require('../services/riskService');
 const { recordDeviceFingerprint, recordIPHash } = require('../middleware/deviceSignals');
@@ -433,21 +433,45 @@ router.post('/login', async (req, res) => {
       data: { username: user.username },
       req
     });
-    
-    const payload = { 
-      user: { 
+
+    // Check if password change is required (admin-initiated password reset)
+    const requiresPasswordChange = user.forcePasswordChange === true;
+    let passwordExpired = false;
+
+    if (requiresPasswordChange && user.passwordResetExpiry) {
+      // Check if the temporary password has expired
+      if (new Date() > new Date(user.passwordResetExpiry)) {
+        passwordExpired = true;
+        return res.status(403).json({
+          error: 'Temporary password has expired. Please contact an administrator for a new password.',
+          code: 'PASSWORD_EXPIRED'
+        });
+      }
+    }
+
+    const payload = {
+      user: {
         id: user.id,
         isAdmin: user.isAdmin
-      } 
+      }
     };
-    
+
     const token = await new Promise((resolve, reject) => {
       jwt.sign(payload, process.env.JWT_SECRET, { expiresIn: '24h' }, (err, token) => {
         if (err) reject(err);
         else resolve(token);
       });
     });
-    
+
+    // Return token with password change requirement flag if needed
+    if (requiresPasswordChange) {
+      return res.json({
+        token,
+        requiresPasswordChange: true,
+        passwordResetExpiry: user.passwordResetExpiry
+      });
+    }
+
     res.json({ token });
   } catch (err) {
     console.error('Login error:', err);
@@ -1056,22 +1080,45 @@ router.put('/profile/password', [auth, lockoutMiddleware(), enforcementMiddlewar
     
     // Track whether user had a password before this change (for audit log)
     const hadPreviousPassword = !!user.password;
-    
+
+    // Track if this was a forced password change (from admin reset)
+    const wasForcedChange = user.forcePasswordChange === true;
+
     // Set the new password (the model's beforeCreate/beforeUpdate hook will hash it)
     user.password = newPassword;
+
+    // Clear forced password change flags if they were set
+    if (wasForcedChange) {
+      user.forcePasswordChange = false;
+      user.passwordResetExpiry = null;
+
+      // Update the most recent password reset history record to mark it as used
+      const recentReset = await PasswordResetHistory.findOne({
+        where: { targetUserId: user.id, usedAt: null },
+        order: [['createdAt', 'DESC']]
+      });
+      if (recentReset) {
+        recentReset.usedAt = new Date();
+        await recentReset.save();
+      }
+    }
+
     await user.save();
-    
+
     // SECURITY: Clear failed attempts only AFTER successful save
     clearFailedAttempts(attemptKey);
-    
+
     // Log successful password change
     await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
       success: true,
-      hadPreviousPassword
+      hadPreviousPassword,
+      wasForcedChange
     }, req);
-    
-    res.json({ 
-      message: 'Password updated successfully'
+
+    res.json({
+      message: wasForcedChange
+        ? 'Password updated successfully. You can now use your new password to log in.'
+        : 'Password updated successfully'
     });
   } catch (err) {
     console.error('Set password error:', err);

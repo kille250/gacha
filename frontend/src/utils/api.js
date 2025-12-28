@@ -684,6 +684,16 @@ export const resetUserRisk = async (userId, reason) => {
   return response.data;
 };
 
+export const resetUserPassword = async (userId) => {
+  const response = await api.post(`/admin/users/${userId}/reset-password`);
+  return response.data;
+};
+
+export const getPasswordResetHistory = async (userId) => {
+  const response = await api.get(`/admin/users/${userId}/password-reset-history`);
+  return response.data;
+};
+
 export const getUserLinkedAccounts = async (userId) => {
   const response = await api.get(`/admin/users/${userId}/linked-accounts`);
   return response.data;
