@@ -948,13 +948,13 @@ router.post('/google/unlink', [auth, lockoutMiddleware(), enforcementMiddleware,
 router.get('/me', auth, async (req, res) => {
   try {
     const user = await User.findByPk(req.user.id, {
-      attributes: ['id', 'username', 'email', 'password', 'googleId', 'googleEmail', 'points', 'isAdmin', 'lastDailyReward', 'allowR18', 'showR18', 'usernameChanged']
+      attributes: ['id', 'username', 'email', 'password', 'googleId', 'googleEmail', 'points', 'isAdmin', 'lastDailyReward', 'allowR18', 'showR18', 'usernameChanged', 'forcePasswordChange', 'passwordResetExpiry']
     });
-    
+
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
+
     // Build response object (avoid mutating Sequelize instance)
     const hasGoogle = !!user.googleId;
     const hasPassword = !!user.password;
@@ -973,7 +973,14 @@ router.get('/me', auth, async (req, res) => {
       // The actual Google account email (updated on each Google login)
       linkedGoogleEmail: user.googleEmail || null
     };
-    
+
+    // Include password change requirement status if applicable
+    // This ensures the modal appears on page reload during password reset flow
+    if (user.forcePasswordChange === true) {
+      response.requiresPasswordChange = true;
+      response.passwordResetExpiry = user.passwordResetExpiry;
+    }
+
     res.json(response);
   } catch (err) {
     console.error('Get user error:', err);
@@ -1071,33 +1078,37 @@ router.put('/profile/password', [auth, lockoutMiddleware(), enforcementMiddlewar
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
-    
-    // If user already has a password, require current password verification
-    if (user.password) {
+
+    // Check if this is a forced password change (from admin reset) FIRST
+    // This must happen before current password verification since the user
+    // may not know/remember the temporary password they logged in with
+    const wasForcedChange = user.forcePasswordChange === true;
+
+    // If user already has a password AND this is NOT a forced password change,
+    // require current password verification
+    if (user.password && !wasForcedChange) {
       if (!currentPassword) {
         return res.status(400).json({ error: 'Current password is required' });
       }
       if (!user.validPassword(currentPassword)) {
         // Record failed attempt for CAPTCHA escalation
         recordFailedAttempt(attemptKey);
-        
+
         // Log failed password attempt
         await logSecurityEvent(AUDIT_EVENTS.PASSWORD_CHANGE, req.user.id, {
           success: false,
           reason: 'Invalid current password'
         }, req);
-        
+
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
     }
-    // For Google-only users (no password), they can set one without verification
-    // since they've already authenticated via Google/JWT
-    
+    // For Google-only users (no password) or forced password changes,
+    // they can set a new password without providing current password
+    // since they've already authenticated via Google/JWT or admin-reset flow
+
     // Track whether user had a password before this change (for audit log)
     const hadPreviousPassword = !!user.password;
-
-    // Track if this was a forced password change (from admin reset)
-    const wasForcedChange = user.forcePasswordChange === true;
 
     // Set the new password (the model's beforeCreate/beforeUpdate hook will hash it)
     user.password = newPassword;

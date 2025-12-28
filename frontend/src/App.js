@@ -1,5 +1,5 @@
 import React, { useContext, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
 import { AnimatePresence, motion } from 'framer-motion';
 import { AuthProvider, AuthContext } from './context/AuthContext';
@@ -22,6 +22,7 @@ import GachaPage from './pages/GachaPage';
 // Components
 import ProtectedRoute from './components/Auth/ProtectedRoute';
 import GlobalCaptchaHandler from './components/UI/GlobalCaptchaHandler';
+import ForcePasswordChangeModal from './components/Auth/ForcePasswordChangeModal';
 
 // ==================== CODE SPLITTING ====================
 // Large pages are lazy-loaded to improve initial bundle size and load time
@@ -94,6 +95,30 @@ const PageTransition = ({ children }) => (
     {children}
   </motion.div>
 );
+
+// Global password change handler - shows modal when password change is required
+// This ensures the modal appears on ANY page after reload, not just the login page
+const GlobalPasswordChangeHandler = () => {
+  const { requiresPasswordChange, passwordResetExpiry, clearPasswordChangeRequired, refreshUser } = useContext(AuthContext);
+  const navigate = useNavigate();
+
+  const handlePasswordChangeSuccess = async () => {
+    // Refresh user data to clear the requiresPasswordChange flag from backend
+    await refreshUser();
+    clearPasswordChangeRequired();
+    // Navigate to main app if on login page
+    navigate('/gacha', { replace: true });
+  };
+
+  if (!requiresPasswordChange) return null;
+
+  return (
+    <ForcePasswordChangeModal
+      onSuccess={handlePasswordChangeSuccess}
+      expiresAt={passwordResetExpiry}
+    />
+  );
+};
 
 // Animated Routes wrapper - handles page transitions
 const AnimatedRoutes = () => {
@@ -313,6 +338,8 @@ function App() {
                 <GlobalStyle />
                 {/* Global CAPTCHA handler - listens for CAPTCHA_REQUIRED events from API */}
                 <GlobalCaptchaHandler />
+                {/* Global password change handler - shows modal when password change is required */}
+                <GlobalPasswordChangeHandler />
                 <AppContainer>
                   {/* Skip to content link for accessibility - allows keyboard users to skip navigation */}
                   <a href="#main-content" className="skip-to-content">
