@@ -13,6 +13,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { Spinner } from '../design-system';
 import { useDojoPage } from '../hooks/useDojoPage';
 import { useDojoFacility, useAccountLevel } from '../hooks/useGameEnhancements';
+import { applyPointsUpdate } from '../utils/userStateUpdates';
 import ErrorBoundary from '../components/UI/data/ErrorBoundary';
 
 // Extracted components
@@ -59,6 +60,7 @@ const DojoPage = () => {
   const {
     // Core state
     user,
+    setUser,
     status,
     loading,
     error,
@@ -114,13 +116,15 @@ const DojoPage = () => {
     upgrade: upgradeFacilityBase,
   } = useDojoFacility();
 
-  // Wrap facility upgrade to also refresh dojo status
+  // Wrap facility upgrade to also refresh dojo status and update user points
   // (facility upgrades may unlock new training slots, change rates, etc.)
   const upgradeFacility = useCallback(async (tierId) => {
     const result = await upgradeFacilityBase(tierId);
+    // Update user points from server response (cache invalidation doesn't auto-refresh context)
+    applyPointsUpdate(setUser, result.newPoints);
     await refreshStatus();
     return result;
-  }, [upgradeFacilityBase, refreshStatus]);
+  }, [upgradeFacilityBase, refreshStatus, setUser]);
 
   // Account level for facility requirements
   const { accountLevel } = useAccountLevel();
