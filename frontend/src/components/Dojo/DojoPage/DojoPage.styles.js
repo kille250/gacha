@@ -247,7 +247,8 @@ export const ClaimPopup = styled(motion.div)`
   display: flex;
   align-items: center;
   justify-content: center;
-  pointer-events: none;
+  background: rgba(0, 0, 0, 0.6);
+  cursor: pointer;
 `;
 
 export const ClaimPopupContent = styled.div`
@@ -260,7 +261,8 @@ export const ClaimPopupContent = styled.div`
   animation: ${glow} 2s ease-in-out infinite;
   width: calc(100% - 32px);
   max-width: 320px;
-  pointer-events: auto;
+  cursor: default;
+  position: relative;
 
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.lg};
