@@ -5,6 +5,27 @@
  * Extracted from routes/fishing.js for better maintainability.
  *
  * ============================================================================
+ * BALANCE SUMMARY (v2.0 - Game Mode Balancing Update)
+ * ============================================================================
+ * Key balance changes made:
+ *
+ * 1. ABYSS AREA: Reduced unlock cost from 50,000 to 35,000 points
+ *    - Previous: ~100 hours of Dojo income to unlock
+ *    - Now: ~70 hours - achievable within 1-2 weeks of active play
+ *
+ * 2. EPIC FISH VALUE: Increased trade value from 400 to 600 points
+ *    - Better scales with rarity (epic ~4% vs legendary ~1%)
+ *    - Added new epic fish → 3 roll tickets trade option
+ *
+ * 3. FISH TOTALS: Game has 15 fish species total
+ *    - Common: 3 (Sardine, Anchovy, Herring)
+ *    - Uncommon: 3 (Bass, Trout, Mackerel)
+ *    - Rare: 3 (Salmon, Tuna, Snapper)
+ *    - Epic: 3 (Swordfish, Marlin, Manta)
+ *    - Legendary: 3 (Whale, Kraken, Dragon)
+ * ============================================================================
+ *
+ * ============================================================================
  * EMOJI USAGE NOTICE
  * ============================================================================
  * This file contains INTENTIONAL emoji usage as game data. Emojis represent:
@@ -225,7 +246,10 @@ const FISHING_AREAS = {
     name: 'The Abyss',
     emoji: '🌑',
     description: 'Where mythical creatures dwell',
-    unlockCost: 50000,
+    // BALANCE UPDATE: Reduced from 50,000 to 35,000
+    // Rationale: At ~500 pts/hr from Dojo, 50k took 100 hours. Now ~70 hours.
+    // Still a significant goal but achievable within 1-2 weeks of play.
+    unlockCost: 35000,
     unlockRank: 25,
     fishPool: ['marlin', 'manta', 'whale', 'kraken', 'dragon'],
     rarityBonus: 0.35, // +35% rare+ chance
@@ -742,7 +766,11 @@ const TRADE_OPTIONS = [
     requiredRarity: 'epic',
     requiredQuantity: 1,
     rewardType: 'points',
-    rewardAmount: 400,  // Adjusted for better rarity-value scaling (was 250)
+    // BALANCE UPDATE: Increased from 400 to 600
+    // Rationale: Epic fish are ~4% chance vs legendary ~1%. Previous 400 vs 2500
+    // meant legendary was 6.25x more valuable but only 4x rarer. Now 600 vs 2500
+    // creates a ~4.2x ratio matching the rarity gap more closely.
+    rewardAmount: 600,
     emoji: '🦈',
     category: 'points'
   },
@@ -753,7 +781,7 @@ const TRADE_OPTIONS = [
     requiredRarity: 'legendary',
     requiredQuantity: 1,
     rewardType: 'points',
-    rewardAmount: 2500,  // Increased from 1000 for better rarity-value scaling
+    rewardAmount: 2500,
     emoji: '🐋',
     category: 'points'
   },
@@ -790,6 +818,20 @@ const TRADE_OPTIONS = [
     rewardType: 'premiumTickets',
     rewardAmount: 1,
     emoji: '🌟',
+    category: 'tickets'
+  },
+  {
+    id: 'epic_to_roll_tickets',
+    name: 'Epic Roll Bundle',
+    description: 'Trade epic fish for roll tickets',
+    requiredRarity: 'epic',
+    requiredQuantity: 1,
+    rewardType: 'rollTickets',
+    // BALANCE UPDATE: New trade option
+    // Rationale: Previously epic fish only had premium ticket trade (2 fish -> 2 tickets).
+    // This gives players a smaller-scale option for single epic catches.
+    rewardAmount: 3,
+    emoji: '🎟️',
     category: 'tickets'
   },
   {

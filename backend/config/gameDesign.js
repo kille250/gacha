@@ -269,15 +269,21 @@ const FISHING_VISUAL_RARITY_CONFIG = {
 
 const GACHA_MILESTONE_REWARDS = {
   // Rewards given at specific pull counts (per banner)
-  // Thresholds aligned with 10-pull bundles for clean progression
+  // BALANCE UPDATE: Added intermediate milestones (75, 125, 175) for smoother progression
+  // Rationale: Previous 50-pull gaps (100→150→200) felt too sparse. Players now get
+  // smaller rewards more frequently, creating consistent dopamine hits.
   milestones: [
     { pulls: 10, reward: { type: 'points', quantity: 500 } },
     { pulls: 30, reward: { type: 'rod_skin', id: 'starlight_rod' } },
     { pulls: 50, reward: { type: 'roll_tickets', quantity: 3 } },
+    { pulls: 75, reward: { type: 'points', quantity: 1500 } },           // NEW: Bridge to 100
     { pulls: 100, reward: { type: 'roll_tickets', quantity: 5 } },
+    { pulls: 125, reward: { type: 'premium_tickets', quantity: 2 } },   // NEW: Smaller premium reward
     { pulls: 150, reward: { type: 'premium_tickets', quantity: 5 } },
+    { pulls: 175, reward: { type: 'roll_tickets', quantity: 8 } },       // NEW: Bridge to 200
     { pulls: 200, reward: { type: 'premium_tickets', quantity: 10 } },
-    { pulls: 250, reward: { type: 'points', quantity: 10000 } }
+    { pulls: 250, reward: { type: 'points', quantity: 10000 } },
+    { pulls: 300, reward: { type: 'premium_tickets', quantity: 15 } }    // NEW: Extended endgame
   ],
 
   // Grace period for claiming milestones after banner ends
@@ -370,30 +376,46 @@ const GACHA_FATE_POINTS = {
   },
 
   // Exchange shop - costs for different rewards
+  // BALANCE UPDATE: Adjusted costs to fit within weekly cap considerations
+  // Rationale: With weeklyMax of 500 FP, a legendary selector at 600 required
+  // 2+ weeks of max play. Now at 450, dedicated weekly players can earn it.
+  // Also added roll ticket and points options for incremental spending.
   exchangeOptions: {
+    roll_tickets: {
+      id: 'roll_tickets',
+      name: 'Roll Ticket Bundle',
+      description: 'Exchange for 5 roll tickets',
+      cost: 25  // NEW: Small, frequent reward option
+    },
+    premium_tickets: {
+      id: 'premium_tickets',
+      name: 'Premium Ticket',
+      description: 'Exchange for 1 premium ticket',
+      cost: 40  // NEW: Premium ticket for savers
+    },
     rare_selector: {
       id: 'rare_selector',
       name: 'Rare Selector',
       description: 'Choose any rare character',
-      cost: 100
+      cost: 80  // Reduced from 100 for better accessibility
     },
     epic_selector: {
       id: 'epic_selector',
       name: 'Epic Selector',
       description: 'Choose any epic character',
-      cost: 300
+      cost: 250  // Reduced from 300
     },
     legendary_selector: {
       id: 'legendary_selector',
       name: 'Legendary Selector',
       description: 'Choose any legendary character',
-      cost: 600
+      cost: 450  // Reduced from 600 to fit within ~1 week of dedicated play
     },
     pity_boost: {
       id: 'pity_boost',
       name: 'Pity Boost',
       description: 'Advance pity progress to 50% of guaranteed threshold',
-      cost: 100  // Reduced from 150 for better value proposition
+      cost: 75  // Reduced from 100 for better value proposition
     }
   }
 };

@@ -18,21 +18,28 @@
 // Import directly from parent to avoid circular dependency (index.js imports this file)
 const { FISH_TYPES } = require('../fishing');
 
-// Smoother progression curve - reduced requirements for better player retention
+// BALANCE UPDATE: Rebalanced prestige requirements and rewards
+// Design Philosophy:
+// - Level 1: Achievable within first week of dedicated fishing (~500 catches)
+// - Level 2: Mid-game goal (~1-2 weeks of fishing)
+// - Level 3: Late-game achievement (~1 month of play)
+// - Level 4-5: Endgame prestige for dedicated players
+// - Removed "allFishMaxStars" requirement (too grindy, some fish need 500 catches)
+// - Autofish bonuses capped to prevent trivializing active play
 const PRESTIGE_LEVELS = {
   1: {
     name: 'Journeyman Angler',
     emoji: '🥉',
     requirements: {
-      totalCatches: 500,              // Reduced from 1000
-      totalLegendaries: 3,            // Reduced from 5
-      totalPerfects: 50,              // Reduced from 100
-      areasUnlocked: 2,               // Reduced from 3
-      rodsOwned: 2                    // Reduced from 3
+      totalCatches: 300,              // Reduced: achievable in 2-3 play sessions
+      totalLegendaries: 2,            // 2 legendaries more accessible
+      totalPerfects: 30,              // ~10% of catches being perfect is reasonable
+      areasUnlocked: 2,               // River + Pond
+      rodsOwned: 2
     },
     rewards: {
-      bonusPoints: 25000,
-      permanentTimingBonus: 25,       // +25ms to all timing windows
+      bonusPoints: 15000,             // Reduced from 25k - first prestige shouldn't be windfall
+      permanentTimingBonus: 30,       // +30ms to all timing windows
       permanentRarityBonus: 0.02,     // +2% rare+ chance
       unlocks: ['master_rod_purchase']
     },
@@ -42,18 +49,18 @@ const PRESTIGE_LEVELS = {
     name: 'Expert Angler',
     emoji: '🥈',
     requirements: {
-      totalCatches: 2000,             // Reduced from 5000
-      totalLegendaries: 12,           // Reduced from 25
-      totalPerfects: 200,             // Reduced from 500
-      areasUnlocked: 3,               // Reduced from 4
-      longestStreak: 15,              // Reduced from 25
-      challengesCompleted: 25         // Reduced from 50
+      totalCatches: 1200,             // ~4x Level 1 requirement
+      totalLegendaries: 8,            // Reasonable with Prestige 1 bonuses
+      totalPerfects: 120,             // 10% perfect rate maintained
+      areasUnlocked: 3,               // Includes Ocean
+      longestStreak: 12,              // Achievable with focus
+      challengesCompleted: 20
     },
     rewards: {
-      bonusPoints: 75000,
-      permanentTimingBonus: 50,
-      permanentRarityBonus: 0.05,
-      bonusAutofishLimit: 50,
+      bonusPoints: 50000,
+      permanentTimingBonus: 40,       // +70ms total with Prestige 1
+      permanentRarityBonus: 0.04,     // +6% total
+      bonusAutofishLimit: 30,
       unlocks: ['celestial_area']
     },
     description: 'Master the art of fishing'
@@ -62,19 +69,19 @@ const PRESTIGE_LEVELS = {
     name: 'Master Angler',
     emoji: '🥇',
     requirements: {
-      totalCatches: 6000,             // Reduced from 15000
-      totalLegendaries: 40,           // Reduced from 100
-      totalPerfects: 600,             // Reduced from 1500
-      longestStreak: 30,              // Reduced from 50
-      challengesCompleted: 75,        // Reduced from 150
-      collectionComplete: true        // All fish caught at least once
+      totalCatches: 4000,             // ~3.3x Level 2
+      totalLegendaries: 25,
+      totalPerfects: 400,
+      longestStreak: 20,
+      challengesCompleted: 50,
+      collectionComplete: true        // All 15 fish caught at least once
     },
     rewards: {
-      bonusPoints: 200000,
-      permanentTimingBonus: 100,
-      permanentRarityBonus: 0.10,
-      bonusAutofishLimit: 100,
-      premiumTicketBonus: 1,          // +1 premium ticket per day from challenges
+      bonusPoints: 150000,
+      permanentTimingBonus: 50,       // +120ms total
+      permanentRarityBonus: 0.06,     // +12% total
+      bonusAutofishLimit: 50,         // +80 total
+      premiumTicketBonus: 1,
       unlocks: ['mythic_rod_purchase', 'void_area']
     },
     description: 'Become a legend among fishers'
@@ -83,20 +90,21 @@ const PRESTIGE_LEVELS = {
     name: 'Legendary Angler',
     emoji: '👑',
     requirements: {
-      totalCatches: 20000,            // Reduced from 50000
-      totalLegendaries: 150,          // Reduced from 500
-      totalPerfects: 2000,            // Reduced from 5000
-      longestStreak: 50,              // Reduced from 100
-      challengesCompleted: 200,       // Reduced from 500
-      allFishMaxStars: true           // All fish at 5 stars
+      totalCatches: 12000,            // 3x Level 3
+      totalLegendaries: 80,
+      totalPerfects: 1200,
+      longestStreak: 35,
+      challengesCompleted: 120,
+      // Removed allFishMaxStars - too grindy (would need 7500+ catches)
+      collectionStars: 60             // NEW: 60 total stars across all fish (more flexible)
     },
     rewards: {
-      bonusPoints: 500000,
-      permanentTimingBonus: 150,
-      permanentRarityBonus: 0.15,
-      bonusAutofishLimit: 200,
+      bonusPoints: 350000,
+      permanentTimingBonus: 60,       // +180ms total
+      permanentRarityBonus: 0.08,     // +20% total
+      bonusAutofishLimit: 70,         // +150 total
       premiumTicketBonus: 2,
-      autofishPerfectChance: 0.05,    // 5% chance for "perfect" quality on autofish
+      autofishPerfectChance: 0.05,
       unlocks: ['legendary_title', 'celestial_rod_purchase']
     },
     description: 'Achieve immortal status in the fishing world'
@@ -105,18 +113,20 @@ const PRESTIGE_LEVELS = {
     name: 'Mythic Angler',
     emoji: '🌟',
     requirements: {
-      totalCatches: 50000,            // Reduced from 100000
-      totalLegendaries: 400,          // Reduced from 1000
-      allPrestigeBonusesActive: true
+      totalCatches: 30000,
+      totalLegendaries: 200,
+      longestStreak: 50,
+      challengesCompleted: 250,
+      collectionStars: 75             // High but achievable (all fish at 5 stars = 75)
     },
     rewards: {
-      bonusPoints: 1000000,
-      permanentTimingBonus: 200,
-      permanentRarityBonus: 0.20,
-      bonusAutofishLimit: 350,
+      bonusPoints: 750000,
+      permanentTimingBonus: 70,       // +250ms total (very forgiving timing)
+      permanentRarityBonus: 0.10,     // +30% total rare+ chance
+      bonusAutofishLimit: 100,        // +250 total (capped to not trivialize)
       premiumTicketBonus: 3,
       autofishPerfectChance: 0.10,
-      pityReduction: 0.20,            // 20% faster pity buildup
+      pityReduction: 0.15,            // 15% faster pity buildup
       unlocks: ['mythic_title', 'rainbow_rod']
     },
     description: 'Transcend mortal fishing limits'
@@ -174,6 +184,14 @@ function checkPrestigeRequirements(achievements, stats, areas, ownedRods, target
     const totalFishTypes = FISH_TYPES.length;
     if (uniqueFishCaught < totalFishTypes) {
       missing.push(`Catch all fish species (${uniqueFishCaught}/${totalFishTypes})`);
+    }
+  }
+
+  // NEW: Check collection stars requirement (total stars across all fish)
+  if (req.collectionStars) {
+    const totalStars = achievements.totalStars || 0;
+    if (totalStars < req.collectionStars) {
+      missing.push(`Earn ${req.collectionStars - totalStars} more collection stars (${totalStars}/${req.collectionStars})`);
     }
   }
 
@@ -280,10 +298,19 @@ function getPrestigeProgress(achievements, stats, currentPrestige) {
     };
   }
 
+  // NEW: Track collection stars progress
+  if (req.collectionStars) {
+    progress.collectionStars = {
+      current: achievements.totalStars || 0,
+      required: req.collectionStars,
+      percent: Math.min(100, ((achievements.totalStars || 0) / req.collectionStars) * 100)
+    };
+  }
+
   // Calculate overall progress
   const progressValues = Object.values(progress).map(p => p.percent);
-  const overallProgress = progressValues.length > 0 
-    ? progressValues.reduce((a, b) => a + b, 0) / progressValues.length 
+  const overallProgress = progressValues.length > 0
+    ? progressValues.reduce((a, b) => a + b, 0) / progressValues.length
     : 0;
 
   return {
