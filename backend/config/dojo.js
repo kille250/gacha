@@ -8,6 +8,27 @@
  * Level multipliers are defined in config/leveling.js (single source of truth).
  *
  * ============================================================================
+ * BALANCE SUMMARY (v3.0 - Cross-Mode Economy Balancing)
+ * ============================================================================
+ * Key changes in v3.0:
+ *
+ * 1. ACCOUNT LEVEL INTEGRATION: Dojo now applies account level bonuses
+ *    - Level 20: +5% efficiency
+ *    - Level 40: +5% XP multiplier (from account level)
+ *    - Level 60: +10% efficiency
+ *    - Level 100: +15% efficiency
+ *    - Total potential: +30% efficiency at max account level
+ *
+ * 2. DOJO XP CONTRIBUTION: Dojo claims now award meaningful profile XP
+ *    - Base claim: 8 XP (up from 5)
+ *    - Efficient claim: +5 XP bonus
+ *    - Daily variety bonus: +15 XP first claim
+ *
+ * 3. TICKET GENERATION SMOOTHING: Premium tickets slightly buffed
+ *    for legendary characters to feel more rewarding
+ * ============================================================================
+ *
+ * ============================================================================
  * BALANCE SUMMARY (v2.0 - Game Mode Balancing Update)
  * ============================================================================
  * Key balance changes made:
@@ -677,6 +698,73 @@ function validateDojoConfig() {
 // Run validation when module is loaded
 validateDojoConfig();
 
+// ===========================================
+// ACCOUNT LEVEL INTEGRATION (NEW in v3.0)
+// ===========================================
+
+/**
+ * Get dojo efficiency bonus from account level
+ * Uses the cumulative bonuses from account level rewards
+ *
+ * @param {number} accountLevel - User's current account level
+ * @returns {number} - Efficiency multiplier (1.0 = no bonus)
+ */
+function getAccountLevelDojoBonus(accountLevel) {
+  // Try to get cumulative bonuses from accountLevel config
+  // This avoids circular dependency by not requiring at module load
+  try {
+    const { getCumulativeBonuses } = require('./accountLevel');
+    const bonuses = getCumulativeBonuses(accountLevel || 1);
+    return 1 + (bonuses.dojoEfficiency || 0);
+  } catch (e) {
+    // Fallback: calculate directly
+    let efficiency = 0;
+
+    // Level 20: +5% efficiency
+    if (accountLevel >= 20) efficiency += 0.05;
+    // Level 60: +10% efficiency
+    if (accountLevel >= 60) efficiency += 0.10;
+    // Level 100: +15% efficiency
+    if (accountLevel >= 100) efficiency += 0.15;
+
+    return 1 + efficiency;
+  }
+}
+
+/**
+ * Calculate rewards with account level bonuses applied
+ * Wrapper around calculateRewards that adds account-level efficiency bonus
+ *
+ * @param {Array} characters - Characters in training
+ * @param {number} hours - Hours of accumulated training
+ * @param {Object} upgrades - User's dojo upgrades
+ * @param {boolean} isActive - Whether this is an active claim
+ * @param {number} accountLevel - User's account level
+ * @returns {Object} - Rewards with account bonus applied
+ */
+function calculateRewardsWithAccountBonus(characters, hours, upgrades, isActive, accountLevel) {
+  // First calculate base rewards
+  const baseRewards = calculateRewards(characters, hours, upgrades, isActive);
+
+  // Apply account level efficiency bonus
+  const accountBonus = getAccountLevelDojoBonus(accountLevel);
+
+  if (accountBonus > 1) {
+    baseRewards.points = Math.floor(baseRewards.points * accountBonus);
+    baseRewards.accountLevelBonus = {
+      multiplier: accountBonus,
+      percentage: Math.round((accountBonus - 1) * 100)
+    };
+
+    // Update breakdown
+    baseRewards.breakdown.forEach(entry => {
+      entry.earnedPoints = Math.floor(entry.earnedPoints * accountBonus);
+    });
+  }
+
+  return baseRewards;
+}
+
 module.exports = {
   DOJO_RATES,
   DOJO_CONFIG,
@@ -690,6 +778,9 @@ module.exports = {
   getUpgradeCost,
   getAvailableUpgrades,
   applyDiminishingReturns,
-  validateDojoConfig  // Export for testing
+  validateDojoConfig,  // Export for testing
+  // New in v3.0
+  getAccountLevelDojoBonus,
+  calculateRewardsWithAccountBonus
 };
 
