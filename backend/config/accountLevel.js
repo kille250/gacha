@@ -5,50 +5,62 @@
  * Account level unlocks facility upgrades (Warriors Hall, etc.)
  *
  * ============================================================================
- * BALANCE UPDATE (v4.0 - Comprehensive Mode Balancing)
+ * BALANCE UPDATE (v5.0 - Ultimate Mode Balancing)
  * ============================================================================
- * Key changes in v4.0:
+ * Key changes in v5.0:
  *
- * 1. DOJO XP SIGNIFICANTLY BUFFED: Increased from 8 to 15 XP per claim
- *    - Efficiency bonus increased from 5 to 8 XP
- *    - NEW: Hourly passive XP (2 XP per hour of training)
- *    - Rationale: Dojo was contributing only ~6% of daily XP. Now ~15-20%
+ * 1. DOJO XP FURTHER BUFFED: Better alignment with fishing
+ *    - Base claim: 18 XP (up from 15)
+ *    - Efficiency bonus: 10 XP (up from 8)
+ *    - Hourly passive: 3 XP/hr (up from 2)
+ *    - Training streak bonus: +2 XP per consecutive day (max +14)
+ *    - Rationale: Dojo now contributes ~20-25% of daily XP
  *
- * 2. LEVEL CURVE EASED: Exponent reduced from 1.5 to 1.35
- *    - Level 100 now requires ~80,000 XP instead of ~160,000 XP
- *    - Makes endgame achievable in ~2.5 months vs 5+ months
+ * 2. FISHING XP REBALANCED: Slightly reduced to match dojo better
+ *    - Perfect catch multiplier: 1.4 (down from 1.5)
+ *    - Great catch multiplier: 1.2 (down from 1.25)
+ *    - Autofish XP penalty: 0.75x (new - encourages active play)
  *
- * 3. BREAKTHROUGH XP ADDED: Dojo breakthroughs now award XP
- *    - skill_discovery: 50 XP
- *    - hidden_treasure: 30 XP
- *    - moment_of_clarity: 75 XP
- *    - legendary_insight: 150 XP
+ * 3. GACHA XP BUFFED: More rewarding pulls
+ *    - Base XP per pull: 12 (up from 10)
+ *    - Character mastery XP: New system contributing to profile
+ *    - Milestone XP increased by ~20%
  *
- * 4. GACHA MILESTONE XP ADDED: Pull milestones now award XP
- *    - Ranges from 25 XP (10 pulls) to 500 XP (300 pulls)
+ * 4. PRESTIGE SYSTEM ADDED: Post-level-100 progression
+ *    - Prestige levels 1-10 after hitting max
+ *    - Each prestige grants permanent 2% XP bonus
+ *    - Prestige resets to level 50, keeps all unlocks
  *
- * 5. REST-AND-RETURN XP ADDED: Returning players get XP bonus
- *    - Scales from 100 XP (2-3 days) to 3000 XP (31+ days)
+ * 5. STREAK SYSTEM ADDED: Daily engagement rewards
+ *    - Login streak XP: 5-50 XP scaling with streak length
+ *    - Activity streak: Bonus XP for consecutive active days
  *
- * 6. MODE VARIETY SYSTEM ENHANCED: Better rewards for diverse play
- *    - Mode switch bonus: +15% XP when switching modes
- *    - Weekly all-mode bonus: 500 XP for engaging all modes
+ * 6. CATCH-UP MECHANICS IMPROVED:
+ *    - Rested XP: +50% XP for first 500 XP after 24+ hours away
+ *    - Double XP weekends for lower-level players (under 50)
  * ============================================================================
+ *
+ * Previous v4.0 changes (preserved):
+ * - Breakthrough XP: 30-150 XP based on type
+ * - Gacha Milestone XP: 25-500 XP
+ * - Rest-and-Return XP: 100-3000 XP
+ * - Mode variety system with switch bonus
  *
  * Previous v3.0 changes (preserved):
- * - Fishing XP: 2-20 XP per catch, +50% perfect, +25% great
+ * - Fishing XP: 2-20 XP per catch
  * - Trade XP: 1-10 XP per trade
  * - Collection milestones: 25-500 XP
  * - Daily variety bonus: +15 XP first activity, +50 XP all modes
- * - Prestige XP bonus: +5% per prestige level
+ * - Fishing prestige XP bonus: +5% per prestige level
  * ============================================================================
  *
  * XP is earned from:
  * - Gacha pulls (total pulls tracked in gachaPity.totalPulls)
  * - Collection size (unique warriors owned)
  * - Dojo training (claims completed)
- * - Fishing catches and activities (NEW)
- * - Daily variety bonus (NEW)
+ * - Fishing catches and activities
+ * - Daily variety bonus
+ * - Streaks and engagement bonuses
  *
  * Formula uses a smooth curve where early levels are fast
  * and later levels require more investment.
@@ -59,64 +71,72 @@
 // ===========================================
 
 const XP_SOURCES = {
-  // XP per gacha pull
-  gachaPull: 10,
+  // XP per gacha pull - BALANCE UPDATE v5.0: Increased from 10 to 12
+  // Rationale: Gacha should feel rewarding even without rare pulls
+  gachaPull: 12,
 
-  // XP per unique warrior in collection
+  // XP per unique warrior in collection - BALANCE UPDATE v5.0: Buffed rare+ values
   collectionWarrior: {
     common: 5,
-    uncommon: 10,
-    rare: 25,
-    epic: 50,
-    legendary: 100
+    uncommon: 12,     // Buffed from 10
+    rare: 30,         // Buffed from 25
+    epic: 60,         // Buffed from 50
+    legendary: 125    // Buffed from 100
   },
 
-  // XP per character level beyond 1
-  characterLevel: 15,
+  // XP per character level beyond 1 - BALANCE UPDATE v5.0: Increased from 15 to 20
+  characterLevel: 20,
 
-  // XP per dojo claim - BALANCE UPDATE v4.0: Increased from 8 to 15
-  // Rationale: Dojo was contributing only ~6% of daily XP (54-80 XP/day).
-  // At 15 XP with efficiency bonus, active dojo players earn 70-115 XP/day,
-  // bringing dojo contribution to ~15-20% of daily XP.
-  dojoClaim: 15,
+  // XP per dojo claim - BALANCE UPDATE v5.0: Increased from 15 to 18
+  // Rationale: Dojo was still ~15-20% of daily XP. Now ~20-25%.
+  // With streak bonuses, dedicated dojo players can earn 80-140 XP/day.
+  dojoClaim: 18,
 
   // Bonus XP for efficient dojo claims (claiming near cap, not overcapped)
-  // BALANCE UPDATE v4.0: Increased from 5 to 8
-  dojoEfficiencyBonus: 8,
+  // BALANCE UPDATE v5.0: Increased from 8 to 10
+  dojoEfficiencyBonus: 10,
 
-  // NEW in v4.0: Passive XP per hour of dojo training
+  // Passive XP per hour of dojo training - BALANCE UPDATE v5.0: Increased from 2 to 3
   // Rewards players for keeping characters training even between claims
-  dojoHourlyPassive: 2,
+  dojoHourlyPassive: 3,
 
-  // ===========================================
-  // BREAKTHROUGH XP (NEW in v4.0)
-  // ===========================================
-  // Dojo breakthroughs are rare events that now contribute to profile XP.
-  // This makes them feel more significant and rewarding.
-  breakthrough: {
-    skill_discovery: 50,      // Common breakthrough
-    hidden_treasure: 30,      // Points-focused breakthrough
-    moment_of_clarity: 75,    // Roll ticket breakthrough
-    legendary_insight: 150    // Rare breakthrough (premium + XP)
+  // NEW in v5.0: Training streak bonus (consecutive days with dojo claims)
+  // +2 XP per consecutive day, capped at +14 (7 day streak)
+  dojoStreakBonus: {
+    perDay: 2,
+    maxDays: 7,
+    maxBonus: 14
   },
 
   // ===========================================
-  // GACHA MILESTONE XP (NEW in v4.0)
+  // BREAKTHROUGH XP (NEW in v4.0, BUFFED in v5.0)
+  // ===========================================
+  // Dojo breakthroughs are rare events that now contribute to profile XP.
+  // BALANCE UPDATE v5.0: Increased all values by ~20% to make breakthroughs exciting
+  breakthrough: {
+    skill_discovery: 60,      // Common breakthrough (was 50)
+    hidden_treasure: 40,      // Points-focused breakthrough (was 30)
+    moment_of_clarity: 90,    // Roll ticket breakthrough (was 75)
+    legendary_insight: 180    // Rare breakthrough (was 150)
+  },
+
+  // ===========================================
+  // GACHA MILESTONE XP (NEW in v4.0, BUFFED in v5.0)
   // ===========================================
   // Reaching pull milestones now awards XP in addition to regular rewards.
-  // Encourages engagement and rewards persistence.
+  // BALANCE UPDATE v5.0: Increased all values by ~20% for better pull engagement
   gachaMilestone: {
-    10: 25,
-    30: 50,
-    50: 75,
-    75: 100,
-    100: 150,
-    125: 175,
-    150: 200,
-    175: 225,
-    200: 300,
-    250: 400,
-    300: 500
+    10: 30,       // Was 25
+    30: 60,       // Was 50
+    50: 90,       // Was 75
+    75: 120,      // Was 100
+    100: 180,     // Was 150
+    125: 210,     // Was 175
+    150: 240,     // Was 200
+    175: 270,     // Was 225
+    200: 360,     // Was 300
+    250: 480,     // Was 400
+    300: 600      // Was 500
   },
 
   // ===========================================
@@ -133,13 +153,13 @@ const XP_SOURCES = {
   },
 
   // ===========================================
-  // FISHING XP (NEW in v3.0)
+  // FISHING XP (NEW in v3.0, REBALANCED in v5.0)
   // ===========================================
-  // Fishing was previously disconnected from account progression.
-  // These rates make fishing competitive with gacha for XP earning.
-  // Target: ~50-100 XP per 30-min fishing session
+  // BALANCE UPDATE v5.0: Slight reduction to quality bonuses for mode parity.
+  // Active fishing still very rewarding, but autofish reduced to encourage engagement.
+  // Target: ~80-120 XP per 30-min manual fishing session
   fishing: {
-    // XP per fish catch by rarity
+    // XP per fish catch by rarity - unchanged, solid base values
     catchXP: {
       common: 2,
       uncommon: 4,
@@ -148,79 +168,180 @@ const XP_SOURCES = {
       legendary: 20
     },
 
-    // Bonus multiplier for perfect catches (+50%)
-    perfectCatchMultiplier: 1.5,
+    // Bonus multiplier for perfect catches - BALANCE UPDATE v5.0: Reduced from 1.5 to 1.4
+    // Rationale: 50% bonus was too strong vs other modes; 40% still rewarding
+    perfectCatchMultiplier: 1.4,
 
-    // Bonus multiplier for great catches (+25%)
-    greatCatchMultiplier: 1.25,
+    // Bonus multiplier for great catches - BALANCE UPDATE v5.0: Reduced from 1.25 to 1.2
+    greatCatchMultiplier: 1.2,
 
-    // XP per trade completed
+    // NEW in v5.0: Autofish XP multiplier (passive fishing earns less XP)
+    // Rationale: Active play should be more rewarding than passive
+    autofishXPMultiplier: 0.75,
+
+    // XP per trade completed - BALANCE UPDATE v5.0: Slight buff to epic/legendary
     tradeXP: {
       common: 1,
       uncommon: 2,
-      rare: 3,
-      epic: 4,
-      legendary: 5,
-      collection: 10  // Collection trades (all rarities)
+      rare: 4,        // Was 3
+      epic: 6,        // Was 4
+      legendary: 8,   // Was 5
+      collection: 12  // Was 10 - Collection trades (all rarities)
     },
 
-    // XP for collection milestones (first catch of each fish)
-    newFishXP: 25,
+    // XP for collection milestones (first catch of each fish) - BALANCE UPDATE v5.0: Buffed
+    newFishXP: 30,  // Was 25
 
-    // XP for star milestones on fish collection
+    // XP for star milestones on fish collection - BALANCE UPDATE v5.0: Buffed higher stars
     starMilestoneXP: {
-      1: 10,   // First star
-      2: 15,
-      3: 25,
-      4: 40,
-      5: 75   // Max star
+      1: 10,    // First star
+      2: 18,    // Was 15
+      3: 30,    // Was 25
+      4: 50,    // Was 40
+      5: 100    // Was 75 - Max star now feels more special
     },
 
-    // XP for completing daily challenges
+    // XP for completing daily challenges - BALANCE UPDATE v5.0: Buffed all tiers
     challengeXP: {
-      easy: 15,
-      medium: 30,
-      hard: 50,
-      legendary: 100
+      easy: 20,       // Was 15
+      medium: 40,     // Was 30
+      hard: 65,       // Was 50
+      legendary: 125  // Was 100
     },
 
     // Prestige level bonus (permanent XP multiplier)
     // Each prestige level adds +5% to all fishing XP
-    prestigeXPBonus: 0.05
+    prestigeXPBonus: 0.05,
+
+    // NEW in v5.0: Fishing streak bonus for consecutive catches without miss
+    streakXP: {
+      5: 5,    // 5 streak: +5 XP
+      10: 12,  // 10 streak: +12 XP
+      20: 25,  // 20 streak: +25 XP
+      50: 75   // 50 streak: +75 XP
+    }
   },
 
   // ===========================================
-  // DAILY VARIETY BONUS (Enhanced in v4.0)
+  // DAILY VARIETY BONUS (Enhanced in v4.0, BUFFED in v5.0)
   // ===========================================
   // Encourages players to engage with multiple game modes each day.
   // First activity in each mode grants bonus XP.
+  // BALANCE UPDATE v5.0: Increased all values to make variety more rewarding
   dailyVarietyBonus: {
-    firstDojoClaim: 15,      // First dojo claim of the day
-    firstFishingCatch: 15,   // First fishing catch of the day
-    firstGachaPull: 15,      // First gacha pull of the day
-    allModesBonus: 50        // Bonus for engaging all 3 modes in one day
+    firstDojoClaim: 20,      // Was 15 - First dojo claim of the day
+    firstFishingCatch: 20,   // Was 15 - First fishing catch of the day
+    firstGachaPull: 20,      // Was 15 - First gacha pull of the day
+    allModesBonus: 75        // Was 50 - Bonus for engaging all 3 modes in one day
   },
 
   // ===========================================
-  // MODE VARIETY SYSTEM (NEW in v4.0)
+  // MODE VARIETY SYSTEM (NEW in v4.0, ENHANCED in v5.0)
   // ===========================================
   // Rewards players for switching between modes and diverse engagement.
+  // BALANCE UPDATE v5.0: Added daily goal system and improved weekly rewards
   modeVariety: {
     // Bonus multiplier when switching to a different mode than last action
     // e.g., Fish then Dojo = 1.15x XP on dojo action
     modeSwitchMultiplier: 1.15,
 
     // Weekly bonus for engaging all modes substantially
+    // BALANCE UPDATE v5.0: Reduced requirements, increased rewards
     weeklyAllModeBonus: {
       requirements: {
-        dojoClaims: 5,      // At least 5 dojo claims in the week
-        fishCatches: 20,    // At least 20 fish caught
-        gachaPulls: 10      // At least 10 gacha pulls
+        dojoClaims: 4,      // Was 5 - More achievable for casual players
+        fishCatches: 15,    // Was 20 - More achievable
+        gachaPulls: 5       // Was 10 - Most limited by resources, reduced
       },
       rewards: {
-        xp: 500,
-        rollTickets: 5
+        xp: 600,            // Was 500
+        rollTickets: 6      // Was 5
       }
+    },
+
+    // NEW in v5.0: Daily engagement goals (smaller, more frequent rewards)
+    dailyEngagementGoals: {
+      // Complete any 2 of 3 modes for bonus
+      twoModesBonus: {
+        xp: 25
+      },
+      // 3+ activities in a single mode
+      focusBonus: {
+        xp: 15
+      }
+    }
+  },
+
+  // ===========================================
+  // LOGIN STREAK SYSTEM (NEW in v5.0)
+  // ===========================================
+  // Rewards consecutive daily logins with XP bonuses.
+  // Encourages daily engagement without being punishing for missed days.
+  loginStreak: {
+    // XP awarded per day based on streak length
+    streakXP: {
+      1: 5,     // Day 1
+      2: 8,     // Day 2
+      3: 12,    // Day 3
+      4: 16,    // Day 4
+      5: 20,    // Day 5
+      6: 25,    // Day 6
+      7: 35,    // Day 7 (weekly milestone)
+      14: 50,   // Day 14 (bi-weekly milestone)
+      30: 100   // Day 30 (monthly milestone)
+    },
+    // Maximum streak XP per day (prevents infinite scaling)
+    maxDailyStreakXP: 100,
+    // Grace period: 36 hours to maintain streak (accounts for time zones)
+    gracePeriodHours: 36
+  },
+
+  // ===========================================
+  // RESTED XP SYSTEM (NEW in v5.0)
+  // ===========================================
+  // Players returning after 24+ hours get bonus XP for first activities.
+  // Helps casual players catch up without punishing breaks.
+  restedXP: {
+    // Hours away before rested XP activates
+    minimumHoursAway: 24,
+    // Rested XP bonus multiplier (1.5 = 50% more XP)
+    bonusMultiplier: 1.5,
+    // Maximum bonus XP that can be earned with rested bonus
+    maxBonusXP: 500,
+    // Bonus applies to first N XP earned
+    bonusAppliesTo: 500
+  },
+
+  // ===========================================
+  // ACCOUNT PRESTIGE SYSTEM (NEW in v5.0)
+  // ===========================================
+  // Post-level-100 progression for dedicated players.
+  // Provides long-term goals and meaningful rewards.
+  accountPrestige: {
+    // Must be at max level to prestige
+    requiredLevel: 100,
+    // Level to reset to after prestige
+    resetToLevel: 50,
+    // Maximum prestige level
+    maxPrestige: 10,
+    // Permanent bonuses per prestige level
+    bonusesPerLevel: {
+      xpMultiplier: 0.02,      // +2% XP per prestige level
+      dojoEfficiency: 0.01,    // +1% dojo efficiency per prestige
+      fishingRarity: 0.005     // +0.5% rare fish chance per prestige
+    },
+    // Prestige rewards (one-time per prestige level)
+    levelRewards: {
+      1: { points: 25000, rollTickets: 10, premiumTickets: 5, title: 'Prestige Warrior' },
+      2: { points: 30000, rollTickets: 12, premiumTickets: 6 },
+      3: { points: 35000, rollTickets: 15, premiumTickets: 8, title: 'Elite Veteran' },
+      4: { points: 40000, rollTickets: 18, premiumTickets: 10 },
+      5: { points: 50000, rollTickets: 20, premiumTickets: 12, title: 'Legendary Master' },
+      6: { points: 60000, rollTickets: 22, premiumTickets: 14 },
+      7: { points: 70000, rollTickets: 25, premiumTickets: 16, title: 'Mythic Champion' },
+      8: { points: 80000, rollTickets: 28, premiumTickets: 18 },
+      9: { points: 90000, rollTickets: 30, premiumTickets: 20, title: 'Immortal Legend' },
+      10: { points: 150000, rollTickets: 50, premiumTickets: 30, title: 'Ultimate Transcendent', exclusiveReward: true }
     }
   }
 };

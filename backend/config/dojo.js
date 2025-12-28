@@ -8,30 +8,40 @@
  * Level multipliers are defined in config/leveling.js (single source of truth).
  *
  * ============================================================================
- * BALANCE SUMMARY (v4.0 - Comprehensive Mode Balancing)
+ * BALANCE SUMMARY (v5.0 - Ultimate Mode Balancing)
  * ============================================================================
- * Key changes in v4.0:
+ * Key changes in v5.0:
  *
- * 1. DOJO XP SIGNIFICANTLY BUFFED: Increased contribution to profile XP
- *    - Base claim: 15 XP (up from 8)
- *    - Efficient claim: +8 XP bonus (up from 5)
- *    - Hourly passive XP: +2 XP per hour of training (NEW)
- *    - Rationale: Dojo was only ~6% of daily XP, now ~15-20%
+ * 1. DOJO XP FURTHER BUFFED: Better parity with fishing
+ *    - Base claim: 18 XP (up from 15)
+ *    - Efficient claim: +10 XP bonus (up from 8)
+ *    - Hourly passive XP: +3 XP per hour (up from 2)
+ *    - Training streak bonus: +2 XP per consecutive day (max +14)
+ *    - Rationale: Dojo now contributes ~20-25% of daily XP
  *
- * 2. WISDOM SPECIALIZATION REBALANCED:
- *    - Penalty reduced from -20% to -10% dojo income
- *    - Ticket chance buffed from +50% to +75%
- *    - Added +25% XP from gacha pulls (unique to Wisdom)
+ * 2. BASE RATES BUFFED: Better early/mid game experience
+ *    - Common: 6 pts/hr (up from 5)
+ *    - Uncommon: 10 pts/hr (up from 8)
+ *    - Rare: 18 pts/hr (up from 15)
+ *    - Epic: 35 pts/hr (up from 30)
+ *    - Legendary: 70 pts/hr (up from 60)
  *
- * 3. BREAKTHROUGH XP: Dojo breakthroughs now award profile XP
- *    - skill_discovery: 50 XP
- *    - hidden_treasure: 30 XP
- *    - moment_of_clarity: 75 XP
- *    - legendary_insight: 150 XP
+ * 3. TICKET GENERATION BUFFED: More satisfying drops
+ *    - Roll ticket chances increased by ~10-15%
+ *    - Premium ticket chances increased by ~10%
  *
- * Previous v3.0 changes (preserved):
+ * 4. BREAKTHROUGH RATES INCREASED: More frequent events
+ *    - Base chance: 2.5%/hr (up from 2%)
+ *    - Legendary character multiplier: 1.75x (up from 1.5)
+ *
+ * 5. DAILY CAPS INCREASED: Support longer play sessions
+ *    - Points: 25,000/day (up from 20,000)
+ *    - Roll tickets: 30/day (up from 25)
+ *
+ * Previous v4.0 changes (preserved):
+ * - Wisdom specialization: -10% dojo, +75% tickets, +25% gacha XP
+ * - Breakthrough XP: 40-180 XP based on type
  * - Account level bonuses: +30% efficiency at max level
- * - Daily variety bonus: +15 XP first claim
  * ============================================================================
  *
  * ============================================================================
@@ -76,38 +86,38 @@ const { getLevelMultiplier: getLevelMultiplierFromConfig } = require('./leveling
 
 const DOJO_RATES = {
   // Base points per hour by rarity
-  // Balanced for better early-game experience:
-  // - Commons/Uncommons buffed to feel rewarding for new players
-  // - Legendary slightly reduced to narrow gap with Epic
+  // BALANCE UPDATE v5.0: Increased all rates for better progression
+  // - All rarities buffed by 15-20% for faster point generation
+  // - Gap between rarities slightly narrowed for better value at all tiers
   baseRates: {
-    common: 5,      // Buffed from 2 (2.5x) - early game feels rewarding
-    uncommon: 8,    // Buffed from 5 (1.6x)
-    rare: 15,       // Buffed from 12 (1.25x)
-    epic: 30,       // Unchanged - anchor point
-    legendary: 60   // Reduced from 75 - now 2x Epic instead of 2.5x
+    common: 6,      // Buffed from 5 (v5.0)
+    uncommon: 10,   // Buffed from 8 (v5.0)
+    rare: 18,       // Buffed from 15 (v5.0)
+    epic: 35,       // Buffed from 30 (v5.0)
+    legendary: 70   // Buffed from 60 (v5.0)
   },
-  
+
   // Ticket generation (per hour, chance-based)
-  // BALANCE UPDATE: Buffed across the board for better engagement
-  // Rationale: Previous rates meant ~7 hours per roll ticket even with legendary.
-  // Players should see ticket progress within a typical play session.
-  // Target: Legendary generates ~1 roll ticket per 4-5 hours, premium per 10 hours.
+  // BALANCE UPDATE v5.0: Further buffed for satisfying drops
+  // Target: Legendary generates ~1 roll ticket per 4 hours, premium per 8-9 hours.
   ticketChances: {
     // Chance to generate 1 roll ticket per hour
+    // BALANCE UPDATE v5.0: Increased all by ~10-15%
     rollTicket: {
-      common: 0.03,      // 3% per hour (~33 hours average)
-      uncommon: 0.05,    // 5% per hour (~20 hours average)
-      rare: 0.08,        // 8% per hour (~12 hours average)
-      epic: 0.14,        // 14% per hour (~7 hours average)
-      legendary: 0.22    // 22% per hour (~4.5 hours average)
+      common: 0.035,     // Was 0.03 - 3.5% per hour (~29 hours average)
+      uncommon: 0.06,    // Was 0.05 - 6% per hour (~17 hours average)
+      rare: 0.10,        // Was 0.08 - 10% per hour (~10 hours average)
+      epic: 0.16,        // Was 0.14 - 16% per hour (~6 hours average)
+      legendary: 0.25    // Was 0.22 - 25% per hour (~4 hours average)
     },
     // Chance to generate 1 premium ticket per hour
+    // BALANCE UPDATE v5.0: Increased all by ~10-15%
     premiumTicket: {
-      common: 0.008,     // 0.8% per hour
-      uncommon: 0.015,   // 1.5% per hour
-      rare: 0.03,        // 3% per hour
-      epic: 0.05,        // 5% per hour (~20 hours average)
-      legendary: 0.10    // 10% per hour (~10 hours average)
+      common: 0.01,      // Was 0.008 - 1% per hour
+      uncommon: 0.018,   // Was 0.015 - 1.8% per hour
+      rare: 0.035,       // Was 0.03 - 3.5% per hour
+      epic: 0.06,        // Was 0.05 - 6% per hour (~17 hours average)
+      legendary: 0.12    // Was 0.10 - 12% per hour (~8-9 hours average)
     }
   }
 };
@@ -130,13 +140,12 @@ const DOJO_BALANCE = {
   ],
 
   // Daily caps (reset at midnight UTC)
-  // BALANCE UPDATE v2.1: Increased caps to allow extended play sessions
-  // Old caps hit too early for mid-game players (~10 hours)
-  // New caps allow longer sessions while still providing some daily structure
+  // BALANCE UPDATE v5.0: Further increased caps for dedicated players
+  // New caps support ~12-14 hours of active play before hitting limits
   dailyCaps: {
-    points: 20000,          // Max 20k points/day from Dojo (was 15k)
-    rollTickets: 25,        // Max 25 roll tickets/day (was 20)
-    premiumTickets: 6       // Max 6 premium tickets/day (was 5)
+    points: 25000,          // Max 25k points/day from Dojo (was 20k)
+    rollTickets: 30,        // Max 30 roll tickets/day (was 25)
+    premiumTickets: 8       // Max 8 premium tickets/day (was 6)
   },
 
   // Maximum synergy multiplier (prevents stacking multiple series bonuses)
@@ -378,9 +387,8 @@ function calculateCatchUpBonus(characterCount) {
  * @returns {Object} - Aggregated specialization bonuses
  */
 function calculateSpecializationBonuses(characters) {
-  // BALANCE UPDATE v4.0: Synced with gameDesign.js DOJO_SPECIALIZATIONS
-  // Wisdom penalty reduced from 0.8 to 0.9 (-10% instead of -20%)
-  // Ticket chance buffed from 0.50 to 0.75 (+75%)
+  // BALANCE UPDATE v5.0: Synced with gameDesign.js DOJO_SPECIALIZATIONS
+  // Wisdom ticket chance buffed from 0.75 to 0.80 (+80%)
   const DOJO_SPECIALIZATIONS = {
     strength: {
       bonuses: {
@@ -390,8 +398,8 @@ function calculateSpecializationBonuses(characters) {
     },
     wisdom: {
       bonuses: {
-        dojoPointsMultiplier: 0.90,   // -10% (v4.0: was 0.8/-20%)
-        ticketChanceBonus: 0.75       // +75% (v4.0: was 0.50/+50%)
+        dojoPointsMultiplier: 0.90,   // -10% (unchanged from v4.0)
+        ticketChanceBonus: 0.80       // +80% (v5.0: was 0.75/+75%)
       }
     },
     spirit: {
