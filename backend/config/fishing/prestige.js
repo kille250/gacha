@@ -5,6 +5,27 @@
  * Each prestige level requires achievements and offers permanent bonuses.
  *
  * ============================================================================
+ * BALANCE UPDATE (v3.0 - Cross-Mode Economy Balancing)
+ * ============================================================================
+ * Key changes:
+ *
+ * 1. ACCOUNT XP INTEGRATION: Prestige levels now award account XP
+ *    - Prestige 1: 500 XP
+ *    - Prestige 2: 1500 XP
+ *    - Prestige 3: 4000 XP
+ *    - Prestige 4: 8000 XP
+ *    - Prestige 5: 15000 XP
+ *    - Total: 29,000 XP from prestige alone
+ *
+ * 2. PERMANENT XP BONUS: Each prestige level adds +5% to fishing XP
+ *    - Connects fishing progression to account progression
+ *    - Max prestige = +25% fishing XP
+ *
+ * 3. ACCOUNT LEVEL BONUSES APPLY: Account level fishing rarity bonuses
+ *    now stack with prestige rarity bonuses
+ * ============================================================================
+ *
+ * ============================================================================
  * EMOJI USAGE NOTICE
  * ============================================================================
  * This file contains INTENTIONAL emoji usage as game data. Emojis represent:
@@ -41,7 +62,10 @@ const PRESTIGE_LEVELS = {
       bonusPoints: 15000,             // Reduced from 25k - first prestige shouldn't be windfall
       permanentTimingBonus: 30,       // +30ms to all timing windows
       permanentRarityBonus: 0.02,     // +2% rare+ chance
-      unlocks: ['master_rod_purchase']
+      unlocks: ['master_rod_purchase'],
+      // NEW in v3.0: Account XP integration
+      accountXP: 500,                 // Contributes to profile progression
+      permanentXPBonus: 0.05          // +5% XP from fishing permanently
     },
     description: 'Prove your worth as a dedicated fisher'
   },
@@ -61,7 +85,10 @@ const PRESTIGE_LEVELS = {
       permanentTimingBonus: 40,       // +70ms total with Prestige 1
       permanentRarityBonus: 0.04,     // +6% total
       bonusAutofishLimit: 30,
-      unlocks: ['celestial_area']
+      unlocks: ['celestial_area'],
+      // NEW in v3.0: Account XP integration
+      accountXP: 1500,                // Contributes to profile progression
+      permanentXPBonus: 0.05          // +10% total XP from fishing
     },
     description: 'Master the art of fishing'
   },
@@ -82,7 +109,10 @@ const PRESTIGE_LEVELS = {
       permanentRarityBonus: 0.06,     // +12% total
       bonusAutofishLimit: 50,         // +80 total
       premiumTicketBonus: 1,
-      unlocks: ['mythic_rod_purchase', 'void_area']
+      unlocks: ['mythic_rod_purchase', 'void_area'],
+      // NEW in v3.0: Account XP integration
+      accountXP: 4000,                // Contributes to profile progression
+      permanentXPBonus: 0.05          // +15% total XP from fishing
     },
     description: 'Become a legend among fishers'
   },
@@ -105,7 +135,10 @@ const PRESTIGE_LEVELS = {
       bonusAutofishLimit: 70,         // +150 total
       premiumTicketBonus: 2,
       autofishPerfectChance: 0.05,
-      unlocks: ['legendary_title', 'celestial_rod_purchase']
+      unlocks: ['legendary_title', 'celestial_rod_purchase'],
+      // NEW in v3.0: Account XP integration
+      accountXP: 8000,                // Contributes to profile progression
+      permanentXPBonus: 0.05          // +20% total XP from fishing
     },
     description: 'Achieve immortal status in the fishing world'
   },
@@ -130,7 +163,10 @@ const PRESTIGE_LEVELS = {
       premiumTicketBonus: 3,
       autofishPerfectChance: 0.10,
       pityReduction: 0.15,            // 15% faster pity buildup
-      unlocks: ['mythic_title', 'rainbow_rod']
+      unlocks: ['mythic_title', 'rainbow_rod'],
+      // NEW in v3.0: Account XP integration
+      accountXP: 15000,               // Major contribution to profile progression
+      permanentXPBonus: 0.05          // +25% total XP from fishing (max prestige)
     },
     description: 'Transcend mortal fishing limits'
   }
@@ -218,6 +254,8 @@ function getPrestigeBonuses(prestigeLevel) {
     premiumTicketBonus: 0,
     autofishPerfectChance: 0,
     pityReduction: 0,
+    xpMultiplier: 0,      // NEW in v3.0: Cumulative XP bonus
+    totalAccountXP: 0,     // NEW in v3.0: Total account XP earned from prestige
     unlocks: []
   };
 
@@ -230,6 +268,9 @@ function getPrestigeBonuses(prestigeLevel) {
       bonuses.premiumTicketBonus += level.rewards.premiumTicketBonus || 0;
       bonuses.autofishPerfectChance += level.rewards.autofishPerfectChance || 0;
       bonuses.pityReduction += level.rewards.pityReduction || 0;
+      // NEW in v3.0: Track XP bonuses
+      bonuses.xpMultiplier += level.rewards.permanentXPBonus || 0;
+      bonuses.totalAccountXP += level.rewards.accountXP || 0;
       if (level.rewards.unlocks) {
         bonuses.unlocks.push(...level.rewards.unlocks);
       }

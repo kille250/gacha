@@ -7,6 +7,13 @@
  * - Recalculating total XP from user data
  * - Checking and applying level ups
  * - Getting account level status
+ *
+ * ============================================================================
+ * BALANCE UPDATE (v3.0 - Cross-Mode Economy Balancing)
+ * ============================================================================
+ * Added fishing XP functions and daily variety bonus tracking.
+ * All game modes now contribute to profile progression.
+ * ============================================================================
  */
 
 const {
@@ -15,7 +22,10 @@ const {
   getLevelFromXP,
   getLevelProgress,
   checkLevelUp,
-  getUnlocksAtLevel
+  getUnlocksAtLevel,
+  getLevelReward,
+  getRewardsForLevelRange,
+  getCumulativeBonuses
 } = require('../config/accountLevel');
 
 /**
@@ -102,14 +112,189 @@ function addCharacterLevelXP(user) {
 /**
  * Add XP for a dojo claim
  * @param {Object} user - Sequelize User instance
+ * @param {boolean} isEfficient - Whether the claim was near cap (not overcapped)
  * @returns {Object} - { xpAdded, levelUp }
  */
-function addDojoClaimXP(user) {
+function addDojoClaimXP(user, isEfficient = false) {
   // Increment total claims counter
   user.dojoClaimsTotal = (user.dojoClaimsTotal || 0) + 1;
 
-  const xp = XP_SOURCES.dojoClaim;
-  return addXP(user, xp, 'dojo_claim');
+  // Base XP + efficiency bonus
+  let xp = XP_SOURCES.dojoClaim;
+  if (isEfficient && XP_SOURCES.dojoEfficiencyBonus) {
+    xp += XP_SOURCES.dojoEfficiencyBonus;
+  }
+
+  return addXP(user, xp, isEfficient ? 'dojo_claim_efficient' : 'dojo_claim');
+}
+
+// ===========================================
+// FISHING XP FUNCTIONS (NEW in v3.0)
+// ===========================================
+
+/**
+ * Add XP for catching a fish
+ * @param {Object} user - Sequelize User instance
+ * @param {string} rarity - Fish rarity
+ * @param {string} catchQuality - 'perfect', 'great', or 'normal'
+ * @param {number} prestigeLevel - User's fishing prestige level (for bonus)
+ * @returns {Object} - { xpAdded, levelUp }
+ */
+function addFishingCatchXP(user, rarity, catchQuality = 'normal', prestigeLevel = 0) {
+  if (!XP_SOURCES.fishing) {
+    return { xpAdded: 0, levelUp: null };
+  }
+
+  const baseXP = XP_SOURCES.fishing.catchXP[rarity] || XP_SOURCES.fishing.catchXP.common;
+  let multiplier = 1.0;
+
+  // Apply catch quality bonus
+  if (catchQuality === 'perfect') {
+    multiplier *= XP_SOURCES.fishing.perfectCatchMultiplier || 1.5;
+  } else if (catchQuality === 'great') {
+    multiplier *= XP_SOURCES.fishing.greatCatchMultiplier || 1.25;
+  }
+
+  // Apply prestige bonus
+  if (prestigeLevel > 0 && XP_SOURCES.fishing.prestigeXPBonus) {
+    multiplier *= 1 + (prestigeLevel * XP_SOURCES.fishing.prestigeXPBonus);
+  }
+
+  const xp = Math.floor(baseXP * multiplier);
+  return addXP(user, xp, `fishing_catch_${rarity}_${catchQuality}`);
+}
+
+/**
+ * Add XP for completing a fish trade
+ * @param {Object} user - Sequelize User instance
+ * @param {string} rarity - Traded fish rarity (or 'collection' for collection trades)
+ * @returns {Object} - { xpAdded, levelUp }
+ */
+function addFishingTradeXP(user, rarity) {
+  if (!XP_SOURCES.fishing || !XP_SOURCES.fishing.tradeXP) {
+    return { xpAdded: 0, levelUp: null };
+  }
+
+  const xp = XP_SOURCES.fishing.tradeXP[rarity] || XP_SOURCES.fishing.tradeXP.common || 1;
+  return addXP(user, xp, `fishing_trade_${rarity}`);
+}
+
+/**
+ * Add XP for catching a new fish species (first catch)
+ * @param {Object} user - Sequelize User instance
+ * @returns {Object} - { xpAdded, levelUp }
+ */
+function addNewFishXP(user) {
+  if (!XP_SOURCES.fishing || !XP_SOURCES.fishing.newFishXP) {
+    return { xpAdded: 0, levelUp: null };
+  }
+
+  const xp = XP_SOURCES.fishing.newFishXP;
+  return addXP(user, xp, 'fishing_new_fish');
+}
+
+/**
+ * Add XP for reaching a star milestone on a fish
+ * @param {Object} user - Sequelize User instance
+ * @param {number} starLevel - Star level achieved (1-5)
+ * @returns {Object} - { xpAdded, levelUp }
+ */
+function addFishStarMilestoneXP(user, starLevel) {
+  if (!XP_SOURCES.fishing || !XP_SOURCES.fishing.starMilestoneXP) {
+    return { xpAdded: 0, levelUp: null };
+  }
+
+  const xp = XP_SOURCES.fishing.starMilestoneXP[starLevel] || 0;
+  if (xp === 0) return { xpAdded: 0, levelUp: null };
+
+  return addXP(user, xp, `fishing_star_${starLevel}`);
+}
+
+/**
+ * Add XP for completing a fishing challenge
+ * @param {Object} user - Sequelize User instance
+ * @param {string} difficulty - Challenge difficulty (easy, medium, hard, legendary)
+ * @returns {Object} - { xpAdded, levelUp }
+ */
+function addFishingChallengeXP(user, difficulty) {
+  if (!XP_SOURCES.fishing || !XP_SOURCES.fishing.challengeXP) {
+    return { xpAdded: 0, levelUp: null };
+  }
+
+  const xp = XP_SOURCES.fishing.challengeXP[difficulty] || XP_SOURCES.fishing.challengeXP.easy || 10;
+  return addXP(user, xp, `fishing_challenge_${difficulty}`);
+}
+
+// ===========================================
+// DAILY VARIETY BONUS (NEW in v3.0)
+// ===========================================
+
+/**
+ * Check and award daily variety bonus
+ * Tracks which modes the user has engaged with today
+ *
+ * @param {Object} user - Sequelize User instance
+ * @param {string} mode - Mode being engaged ('dojo', 'fishing', 'gacha')
+ * @returns {Object} - { xpAdded, levelUp, varietyBonus, allModesBonus }
+ */
+function checkDailyVarietyBonus(user, mode) {
+  if (!XP_SOURCES.dailyVarietyBonus) {
+    return { xpAdded: 0, levelUp: null, varietyBonus: false, allModesBonus: false };
+  }
+
+  // Initialize daily variety tracker if needed
+  const today = new Date().toISOString().split('T')[0];
+  if (!user.dailyVariety || user.dailyVariety.date !== today) {
+    user.dailyVariety = {
+      date: today,
+      dojo: false,
+      fishing: false,
+      gacha: false
+    };
+  }
+
+  let xpAdded = 0;
+  let varietyBonus = false;
+  let allModesBonus = false;
+
+  // Check if this is first activity in this mode today
+  if (!user.dailyVariety[mode]) {
+    user.dailyVariety[mode] = true;
+
+    // Award mode-specific variety bonus
+    const bonusMap = {
+      dojo: XP_SOURCES.dailyVarietyBonus.firstDojoClaim,
+      fishing: XP_SOURCES.dailyVarietyBonus.firstFishingCatch,
+      gacha: XP_SOURCES.dailyVarietyBonus.firstGachaPull
+    };
+
+    if (bonusMap[mode]) {
+      xpAdded = bonusMap[mode];
+      varietyBonus = true;
+
+      console.log(`[VARIETY BONUS] User ${user.id} earned ${xpAdded} XP for first ${mode} activity today`);
+    }
+
+    // Check if all modes completed for extra bonus
+    if (user.dailyVariety.dojo && user.dailyVariety.fishing && user.dailyVariety.gacha) {
+      const allModesXP = XP_SOURCES.dailyVarietyBonus.allModesBonus || 0;
+      if (allModesXP > 0) {
+        xpAdded += allModesXP;
+        allModesBonus = true;
+
+        console.log(`[ALL MODES BONUS] User ${user.id} earned ${allModesXP} XP for engaging all modes today`);
+      }
+    }
+  }
+
+  // Apply XP if any bonus earned
+  let levelUp = null;
+  if (xpAdded > 0) {
+    const result = addXP(user, xpAdded, `variety_bonus_${mode}`);
+    levelUp = result.levelUp;
+  }
+
+  return { xpAdded, levelUp, varietyBonus, allModesBonus };
 }
 
 /**
@@ -260,5 +445,17 @@ module.exports = {
   recalculateXP,
   getAccountLevelStatus,
   checkFacilityRequirement,
-  initializeUserXP
+  initializeUserXP,
+  // Fishing XP (NEW in v3.0)
+  addFishingCatchXP,
+  addFishingTradeXP,
+  addNewFishXP,
+  addFishStarMilestoneXP,
+  addFishingChallengeXP,
+  // Variety bonus (NEW in v3.0)
+  checkDailyVarietyBonus,
+  // Re-exported config functions
+  getLevelReward,
+  getRewardsForLevelRange,
+  getCumulativeBonuses
 };

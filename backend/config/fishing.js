@@ -5,6 +5,31 @@
  * Extracted from routes/fishing.js for better maintainability.
  *
  * ============================================================================
+ * BALANCE UPDATE (v3.0 - Cross-Mode Economy Balancing)
+ * ============================================================================
+ * Key changes:
+ *
+ * 1. ACCOUNT XP INTEGRATION: Fishing now contributes to profile progression
+ *    - Per catch: 2-20 XP based on rarity (see accountLevel.js)
+ *    - Perfect/Great catches: +50%/+25% XP bonus
+ *    - Fish trades: 1-10 XP
+ *    - New fish discoveries: +25 XP
+ *    - Star milestones: 10-75 XP
+ *    - Daily challenges: 15-100 XP by difficulty
+ *
+ * 2. ACCOUNT LEVEL RARITY BONUS: Account level grants fishing rarity bonuses
+ *    - Level 30: +2% rare fish chance
+ *    - Level 100: +5% total rare fish chance
+ *    - Stacks with prestige and rod bonuses
+ *
+ * 3. PRESTIGE XP MULTIPLIER: Each prestige level adds +5% fishing XP
+ *    - Max prestige: +25% XP from all fishing activities
+ *
+ * 4. VARIETY BONUS: First fishing catch of the day awards +15 bonus XP
+ *    - Playing all modes (Dojo, Fishing, Gacha) grants +50 bonus XP
+ * ============================================================================
+ *
+ * ============================================================================
  * BALANCE SUMMARY (v2.0 - Game Mode Balancing Update)
  * ============================================================================
  * Key balance changes made:
@@ -1144,6 +1169,150 @@ function selectRandomFishWithBonuses(pityData, areaId = 'pond', rodId = 'basic')
   return { fish: areaFish[0], pityTriggered: false, resetPity: [] };
 }
 
+// ===========================================
+// ACCOUNT LEVEL INTEGRATION (NEW in v3.0)
+// ===========================================
+
+/**
+ * Get fishing rarity bonus from account level
+ * Uses the cumulative bonuses from account level rewards
+ *
+ * @param {number} accountLevel - User's current account level
+ * @returns {number} - Rarity bonus (e.g., 0.05 = +5%)
+ */
+function getAccountLevelFishingBonus(accountLevel) {
+  // Try to get cumulative bonuses from accountLevel config
+  // This avoids circular dependency by not requiring at module load
+  try {
+    const { getCumulativeBonuses } = require('./accountLevel');
+    const bonuses = getCumulativeBonuses(accountLevel || 1);
+    return bonuses.fishingRarity || 0;
+  } catch (e) {
+    // Fallback: calculate directly
+    let rarityBonus = 0;
+
+    // Level 30: +2% rare fish chance
+    if (accountLevel >= 30) rarityBonus += 0.02;
+    // Level 100: +5% total (including the 2% from level 30)
+    if (accountLevel >= 100) rarityBonus += 0.03;
+
+    return rarityBonus;
+  }
+}
+
+/**
+ * Select random fish with all bonuses including account level
+ * Wrapper around selectRandomFishWithBonuses that adds account-level rarity bonus
+ *
+ * @param {Object} pityData - User's pity counters
+ * @param {string} areaId - Current fishing area
+ * @param {string} rodId - Current fishing rod
+ * @param {number} accountLevel - User's account level
+ * @param {number} prestigeLevel - User's fishing prestige level
+ * @returns {Object} - { fish, pityTriggered, resetPity, accountBonus }
+ */
+function selectRandomFishWithAccountBonus(pityData, areaId = 'pond', rodId = 'basic', accountLevel = 1, prestigeLevel = 0) {
+  const area = FISHING_AREAS[areaId] || FISHING_AREAS.pond;
+  const rod = FISHING_RODS[rodId] || FISHING_RODS.basic;
+  const areaFish = getFishForArea(areaId);
+
+  // Calculate total rarity bonus including account level
+  const accountBonus = getAccountLevelFishingBonus(accountLevel);
+
+  // Get prestige bonuses if available
+  let prestigeRarityBonus = 0;
+  try {
+    const { getPrestigeBonuses } = require('./fishing/prestige');
+    const prestigeBonuses = getPrestigeBonuses(prestigeLevel);
+    prestigeRarityBonus = prestigeBonuses.rarityBonus || 0;
+  } catch (e) {
+    // Prestige module not available, skip
+  }
+
+  const totalRarityBonus = (area.rarityBonus || 0) + (rod.rarityBonus || 0) + accountBonus + prestigeRarityBonus;
+
+  // Check for hard pity first (same as selectRandomFishWithBonuses)
+  const legendaryPity = FISHING_CONFIG.pity.legendary;
+  const epicPity = FISHING_CONFIG.pity.epic;
+
+  if (pityData && pityData.legendary >= legendaryPity.hardPity) {
+    const legendaryFish = areaFish.filter(f => f.rarity === 'legendary');
+    if (legendaryFish.length > 0) {
+      return {
+        fish: legendaryFish[Math.floor(Math.random() * legendaryFish.length)],
+        pityTriggered: true,
+        resetPity: ['legendary', 'epic'],
+        accountBonus: accountBonus,
+        totalRarityBonus: totalRarityBonus
+      };
+    }
+  }
+
+  if (pityData && pityData.epic >= epicPity.hardPity) {
+    const epicFish = areaFish.filter(f => f.rarity === 'epic');
+    if (epicFish.length > 0) {
+      return {
+        fish: epicFish[Math.floor(Math.random() * epicFish.length)],
+        pityTriggered: true,
+        resetPity: ['epic'],
+        accountBonus: accountBonus,
+        totalRarityBonus: totalRarityBonus
+      };
+    }
+  }
+
+  // Calculate adjusted weights with pity and all bonuses
+  let adjustedWeights = areaFish.map(fish => {
+    let weight = fish.weight;
+
+    // Apply pity bonus
+    if (fish.rarity === 'legendary' && pityData) {
+      weight += calculatePityBonus(pityData, 'legendary');
+    } else if (fish.rarity === 'epic' && pityData) {
+      weight += calculatePityBonus(pityData, 'epic');
+    }
+
+    // Apply total rarity bonus for rare+ fish
+    if (['rare', 'epic', 'legendary'].includes(fish.rarity)) {
+      weight *= (1 + totalRarityBonus);
+    }
+
+    return { ...fish, adjustedWeight: weight };
+  });
+
+  const totalWeight = adjustedWeights.reduce((sum, f) => sum + f.adjustedWeight, 0);
+  const random = Math.random() * totalWeight;
+  let cumulative = 0;
+
+  for (const fish of adjustedWeights) {
+    cumulative += fish.adjustedWeight;
+    if (random < cumulative) {
+      let resetPity = [];
+      if (fish.rarity === 'legendary') {
+        resetPity = ['legendary', 'epic'];
+      } else if (fish.rarity === 'epic') {
+        resetPity = ['epic'];
+      }
+
+      return {
+        fish: areaFish.find(f => f.id === fish.id),
+        pityTriggered: false,
+        resetPity,
+        accountBonus: accountBonus,
+        totalRarityBonus: totalRarityBonus
+      };
+    }
+  }
+
+  return {
+    fish: areaFish[0],
+    pityTriggered: false,
+    resetPity: [],
+    accountBonus: accountBonus,
+    totalRarityBonus: totalRarityBonus
+  };
+}
+
 module.exports = {
   FISHING_CONFIG,
   FISH_TYPES,
@@ -1161,5 +1330,8 @@ module.exports = {
   getTodayString,
   needsDailyReset,
   getFishForArea,
-  generateDailyChallenges
+  generateDailyChallenges,
+  // New in v3.0
+  getAccountLevelFishingBonus,
+  selectRandomFishWithAccountBonus
 };
