@@ -17,7 +17,6 @@
     "axios": "^1.8.4",
     "framer-motion": "^12.5.0",
     "gsap": "^3.14.2",
-    "canvas-confetti": "^1.9.3",
     "howler": "^2.2.4",
     "i18next": "^25.7.3",
     "i18next-browser-languagedetector": "^8.0.4",
@@ -37,8 +36,8 @@
     "build": "react-scripts build",
     "test": "react-scripts test",
     "eject": "react-scripts eject",
-    "lint": "eslint src --ext .js,.jsx",
-    "lint:fix": "eslint src --ext .js,.jsx --fix"
+    "lint": "eslint src",
+    "lint:fix": "eslint src --fix"
   },
   "browserslist": {
     "production": [
@@ -51,5 +50,9 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.39.2",
+    "globals": "^16.5.0"
   }
 }

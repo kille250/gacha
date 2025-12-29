@@ -3,7 +3,6 @@ import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaStar, FaGem, FaTrophy, FaDice } from 'react-icons/fa';
-import confetti from 'canvas-confetti';
 import { theme } from '../../design-system';
 import { isVideo } from '../../utils/mediaUtils';
 import { useRarity } from '../../context/RarityContext';
@@ -25,7 +24,6 @@ const DEFAULT_ANIMATION_CONFIG = {
   accentColor: '#a8a8ad',
   glowIntensity: 0.2,
   buildupTime: 500,
-  confettiCount: 12,
   orbCount: 2,
   ringCount: 1
 };
@@ -71,8 +69,6 @@ export const SummonAnimation = ({
   const hasStartedRef = useRef(false);
   const hasCompletedRef = useRef(false); // Guard against double-click
   const buildupStopRef = useRef(null); // For stopping buildup sound
-  const confettiCanvasRef = useRef(null);
-  const confettiInstanceRef = useRef(null);
 
   // Get dynamic rarity configuration from context
   const { getRarityAnimation, getRarityColor, ordered } = useRarity();
@@ -120,96 +116,6 @@ export const SummonAnimation = ({
     timersRef.current = [];
   }, []);
 
-  // Ref callback to initialize confetti instance immediately when canvas is mounted
-  const setConfettiCanvas = useCallback((canvas) => {
-    confettiCanvasRef.current = canvas;
-    if (canvas && !confettiInstanceRef.current) {
-      confettiInstanceRef.current = confetti.create(canvas, {
-        resize: true,
-        useWorker: true
-      });
-    }
-  }, []);
-
-  // Cleanup confetti on unmount
-  useEffect(() => {
-    return () => {
-      if (confettiInstanceRef.current) {
-        confettiInstanceRef.current.reset();
-        confettiInstanceRef.current = null;
-      }
-    };
-  }, []);
-
-  // Fire confetti celebration - uses dedicated canvas to prevent layout shifts
-  const fireConfetti = useCallback(() => {
-    if (ambientConfig.confettiCount === 0) return;
-
-    // ONLY use our canvas-bound instance - never fallback to global confetti
-    // Global confetti creates its own canvas which causes layout shifts
-    const fireFunc = confettiInstanceRef.current;
-    if (!fireFunc) return; // Skip if canvas not ready yet
-
-    const colors = [ambientConfig.color, ambientConfig.accentColor, '#ffffff'];
-
-    // Check for reduced motion preference
-    const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (prefersReducedMotion) {
-      // Minimal confetti for accessibility
-      fireFunc({
-        particleCount: Math.min(20, ambientConfig.confettiCount),
-        spread: 60,
-        origin: { y: 0.5, x: 0.5 },
-        colors,
-        startVelocity: 20,
-        gravity: 1.2,
-        ticks: 50,
-        disableForReducedMotion: false // We handle it ourselves
-      });
-      return;
-    }
-
-    // Main burst - originates from below center so confetti rises up around the card
-    fireFunc({
-      particleCount: ambientConfig.confettiCount,
-      spread: 70,
-      origin: { y: 0.7, x: 0.5 },
-      colors,
-      startVelocity: 45,
-      gravity: 1.0,
-      shapes: ['circle', 'square'],
-      scalar: 1.0,
-      ticks: 100,
-      drift: 0
-    });
-
-    // Side bursts for legendary/epic - originate from lower corners
-    if (effectRarity === 'legendary' || effectRarity === 'epic') {
-      setTimeout(() => {
-        const fireFuncLater = confettiInstanceRef.current;
-        if (!fireFuncLater) return; // Skip if instance not available
-        fireFuncLater({
-          particleCount: 30,
-          angle: 60,
-          spread: 45,
-          origin: { x: 0.1, y: 0.8 },
-          colors,
-          startVelocity: 35,
-          gravity: 1.0
-        });
-        fireFuncLater({
-          particleCount: 30,
-          angle: 120,
-          spread: 45,
-          origin: { x: 0.9, y: 0.8 },
-          colors,
-          startVelocity: 35,
-          gravity: 1.0
-        });
-      }, 150);
-    }
-  }, [ambientConfig, effectRarity]);
-
   // Check for reduced motion preference
   const prefersReducedMotion = useMemo(() => {
     if (typeof window === 'undefined') return false;
@@ -227,7 +133,6 @@ export const SummonAnimation = ({
       // For reduced motion, skip directly to reveal
       if (prefersReducedMotion) {
         setPhase(PHASES.REVEAL);
-        fireConfetti();
         triggerRevealSequence(effectRarity);
         const completeTimer = setTimeout(() => {
           setPhase(PHASES.COMPLETE);
@@ -254,7 +159,7 @@ export const SummonAnimation = ({
           buildupStopRef.current();
           buildupStopRef.current = null;
         }
-        // Trigger screen shake, flash, and reveal sounds (but NOT confetti yet)
+        // Trigger screen shake, flash, and reveal sounds
         triggerRevealSequence(effectRarity);
       }, ambientConfig.buildupTime);
       timersRef.current.push(flashTimer);
@@ -262,8 +167,6 @@ export const SummonAnimation = ({
       // Reveal phase - slight overlap with flash for seamless transition
       const revealTimer = setTimeout(() => {
         setPhase(PHASES.REVEAL);
-        // Fire confetti AFTER the character card is visible
-        fireConfetti();
       }, ambientConfig.buildupTime + PHASE_TIMINGS.REVEAL_OFFSET);
       timersRef.current.push(revealTimer);
 
@@ -278,7 +181,7 @@ export const SummonAnimation = ({
     return () => {
       if (!isActive) clearAllTimers();
     };
-  }, [isActive, ambientConfig.buildupTime, fireConfetti, clearAllTimers, prefersReducedMotion, playPullStart, playBuildup, triggerRevealSequence, effectRarity]);
+  }, [isActive, ambientConfig.buildupTime, clearAllTimers, prefersReducedMotion, playPullStart, playBuildup, triggerRevealSequence, effectRarity]);
 
   // Reset when inactive
   useEffect(() => {
@@ -323,10 +226,8 @@ export const SummonAnimation = ({
       // Trigger reveal effects (flash, shake, sound)
       triggerRevealSequence(effectRarity);
 
-      // Fire confetti when reveal phase starts (after card is visible)
       setTimeout(() => {
         setPhase(PHASES.REVEAL);
-        fireConfetti();
       }, 200);
       const completeTimer = setTimeout(() => {
         setPhase(PHASES.COMPLETE);
@@ -334,7 +235,7 @@ export const SummonAnimation = ({
       }, 700);
       timersRef.current.push(completeTimer);
     }
-  }, [phase, skipEnabled, onComplete, clearAllTimers, fireConfetti, playContinue, triggerRevealSequence, effectRarity]);
+  }, [phase, skipEnabled, onComplete, clearAllTimers, playContinue, triggerRevealSequence, effectRarity]);
 
   if (!isActive) return null;
 
@@ -343,9 +244,6 @@ export const SummonAnimation = ({
 
   return (
     <Overlay onClick={handleInteraction}>
-      {/* Dedicated confetti canvas - fixed position, no layout impact */}
-      <ConfettiCanvas ref={setConfettiCanvas} />
-
       <Container
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -592,19 +490,6 @@ const Overlay = styled.div`
   background: #05050a;
 `;
 
-// Dedicated canvas for confetti - positioned fixed so it doesn't affect layout
-const ConfettiCanvas = styled.canvas`
-  position: fixed;
-  top: 0;
-  left: 0;
-  width: 100vw;
-  height: 100vh;
-  pointer-events: none;
-  z-index: 2147483647;
-  contain: strict;
-  isolation: isolate;
-`;
-
 const Container = styled(motion.div)`
   position: absolute;
   inset: 0;
@@ -616,8 +501,6 @@ const Container = styled(motion.div)`
     #05050a 100%
   );
   overflow: hidden;
-  /* Isolate from confetti layer to prevent layout interference */
-  isolation: isolate;
 `;
 
 const AmbientGlow = styled.div`
@@ -768,7 +651,6 @@ const CardContainer = styled(motion.div)`
   position: relative;
   perspective: 1000px;
   z-index: 10;
-  /* Prevent confetti from affecting card position */
   transform: translateZ(0);
 `;
 
@@ -1094,10 +976,6 @@ export const MultiSummonAnimation = ({
   }, [currentIndex, characters.length, onComplete]);
 
   const handleSkipAll = useCallback(() => {
-    // Reset any ongoing confetti before showing results
-    if (typeof confetti.reset === 'function') {
-      confetti.reset();
-    }
     setShowSkippedResults(true);
   }, []);
 
@@ -1210,7 +1088,6 @@ const ResultsContent = styled.div`
   padding: 20px;
   padding-top: 60px;
   overflow-y: auto;
-  /* Isolate scroll context to prevent confetti from affecting position */
   overscroll-behavior: contain;
 
   @media (min-height: 700px) {

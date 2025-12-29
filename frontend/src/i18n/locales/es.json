@@ -860,7 +860,6 @@
       "animationSettings": "Configuración de Animación",
       "glowIntensity": "Intensidad del Brillo (0-1)",
       "buildupTime": "Tiempo de Carga (ms)",
-      "confettiCount": "Cantidad de Confeti",
       "orbCount": "Cantidad de Orbes",
       "ringCount": "Cantidad de Anillos",
       "isPityEligible": "Elegible para Pity (raro+)",
