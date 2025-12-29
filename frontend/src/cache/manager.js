@@ -224,7 +224,7 @@ const ENHANCEMENT_PATTERNS = {
   dojo_specialize: ['/enhancements/dojo/character', '/dojo/status'],
   dojo_facility_upgrade: ['/enhancements/dojo/facility', '/dojo/status', '/auth/me'],
   claim_milestone: ['/enhancements/gacha/milestones', '/auth/me', '/banners/user/tickets'],
-  exchange_fate_points: ['/enhancements/gacha/fate-points', '/characters/collection', '/enhancements/selectors'],
+  exchange_fate_points: ['/enhancements/gacha/fate-points', '/characters/collection', '/enhancements/selectors', '/banners/user/tickets', '/auth/me'],
   claim_return_bonus: ['/auth/me', '/enhancements/return-bonus'],
   use_selector: ['/enhancements/selectors', '/characters/collection']
 };

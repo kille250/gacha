@@ -177,6 +177,35 @@ export function useFatePoints(bannerId = null) {
       } else {
         await fetchFatePoints(); // Fallback refresh
       }
+
+      // Broadcast ticket updates to other components (e.g., BannerPage)
+      if (result.reward?.tickets) {
+        const ticketType = result.reward.tickets.type;
+        const ticketAmount = result.reward.tickets.amount;
+        // Use BroadcastChannel to notify BannerPage of ticket update
+        if (typeof BroadcastChannel !== 'undefined') {
+          try {
+            const channel = new BroadcastChannel('gacha_ticket_sync');
+            // Signal that tickets were updated - BannerPage will refetch
+            channel.postMessage({ type: 'TICKETS_CHANGED', ticketType, ticketAmount });
+            channel.close();
+          } catch {
+            // Fall through to localStorage fallback
+          }
+        }
+        // Also use localStorage for cross-tab sync
+        try {
+          localStorage.setItem('gacha_tickets_sync', JSON.stringify({
+            type: 'TICKETS_CHANGED',
+            ticketType,
+            ticketAmount,
+            timestamp: Date.now()
+          }));
+        } catch {
+          // Ignore localStorage errors
+        }
+      }
+
       return result;
     } catch (err) {
       setError(err.response?.data?.error || 'Failed to exchange fate points');

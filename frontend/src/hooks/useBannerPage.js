@@ -473,13 +473,30 @@ export const useBannerPage = (bannerId) => {
     });
   }, [bannerId]);
 
-  // Cross-tab ticket sync
+  // Cross-tab ticket sync and same-tab ticket change notifications
   useEffect(() => {
+    // Helper to refetch tickets from server
+    const refetchTickets = async () => {
+      try {
+        invalidateFor(CACHE_ACTIONS.PRE_ROLL);
+        const freshTickets = await api.get('/banners/user/tickets').then(res => res.data);
+        if (freshTickets) {
+          setTickets(freshTickets);
+        }
+      } catch {
+        // Ignore refetch errors
+      }
+    };
+
     if (typeof BroadcastChannel !== 'undefined') {
       const channel = new BroadcastChannel('gacha_ticket_sync');
       channel.onmessage = (event) => {
         if (event.data.type === 'TICKETS_UPDATED') {
+          // Direct ticket update from roll actions
           setTickets(event.data.tickets);
+        } else if (event.data.type === 'TICKETS_CHANGED') {
+          // Tickets changed from FP exchange - refetch from server
+          refetchTickets();
         }
       };
       return () => channel.close();
@@ -490,7 +507,11 @@ export const useBannerPage = (bannerId) => {
         try {
           const syncData = JSON.parse(e.newValue);
           if (syncData.tickets) {
+            // Direct ticket update
             setTickets(syncData.tickets);
+          } else if (syncData.type === 'TICKETS_CHANGED') {
+            // Tickets changed from FP exchange - refetch from server
+            refetchTickets();
           }
         } catch {
           // Ignore parse errors
