@@ -505,20 +505,21 @@ export const useDojoPage = () => {
 
   /**
    * Smart character scoring algorithm for Quick Fill
-   * Matches backend dojo.js calculateRewards logic exactly
+   * Matches backend dojo.js calculateRewards logic EXACTLY
    *
-   * Score = BaseRate × LevelMult × SynergyMult × SpecMult + TicketValue
+   * Total Value = Points Score + Ticket Value
    *
-   * Prioritizes:
-   * 1. Raw power (rarity × level multiplier)
-   * 2. Synergy potential (same series as team)
-   * 3. Specialization bonuses (Spirit +25%, Wisdom for tickets)
-   * 4. Ticket generation value (Wisdom chars valued for tickets)
+   * Points Score = BaseRate × LevelMult × SynergyMult × SpecPointsMult
+   * Ticket Value = (RollChance × RollValue + PremiumChance × PremiumValue) × LevelMult × SpecTicketMult
+   *
+   * All config values sourced from:
+   * - backend/config/dojo.js (DOJO_RATES, DOJO_CONFIG, DOJO_SPECIALIZATIONS)
+   * - backend/config/leveling.js (LEVEL_CONFIG.levelMultipliers)
    */
   const scoreCharacterForQuickFill = useCallback((char, currentTeam, alreadySelected) => {
-    // === BACKEND CONFIG VALUES (from config/dojo.js & config/leveling.js) ===
+    // === BACKEND CONFIG VALUES ===
 
-    // Base points per hour by rarity
+    // Base points per hour by rarity (from DOJO_RATES.baseRates)
     const RARITY_BASE_RATES = {
       'Legendary': 70,
       'Epic': 35,
@@ -527,7 +528,7 @@ export const useDojoPage = () => {
       'Common': 6
     };
 
-    // Level multipliers (from config/leveling.js)
+    // Level multipliers (from config/leveling.js LEVEL_CONFIG.levelMultipliers)
     const LEVEL_MULTIPLIERS = {
       1: 1.00,
       2: 1.15,
@@ -536,7 +537,8 @@ export const useDojoPage = () => {
       5: 1.75
     };
 
-    // Series synergy multipliers
+    // Series synergy multipliers (from DOJO_CONFIG.seriesSynergy)
+    // Backend applies these ADDITIVELY for multiple synergies, capped at 2.5x
     const SERIES_SYNERGY = {
       2: 1.15,  // 2 chars from same series: +15%
       3: 1.35,  // 3 chars: +35%
@@ -545,14 +547,20 @@ export const useDojoPage = () => {
       6: 2.00   // 6+ chars: +100%
     };
 
-    // Specialization dojo multipliers
-    const SPEC_DOJO_MULT = {
-      strength: 1.0,   // No change
-      wisdom: 0.90,    // -10% points (but +80% tickets)
+    // Specialization multipliers (from DOJO_SPECIALIZATIONS in dojo.js)
+    const SPEC_POINTS_MULT = {
+      strength: 1.0,   // No change to points
+      wisdom: 0.90,    // -10% points
       spirit: 1.25     // +25% points
     };
 
-    // Ticket chances per hour (for valuing Wisdom)
+    const SPEC_TICKET_MULT = {
+      strength: 1.0,   // No ticket bonus
+      wisdom: 1.80,    // +80% ticket chance
+      spirit: 1.0      // No ticket bonus
+    };
+
+    // Roll ticket chances per hour (from DOJO_RATES.ticketChances.rollTicket)
     const ROLL_TICKET_CHANCES = {
       'Legendary': 0.25,
       'Epic': 0.16,
@@ -561,14 +569,27 @@ export const useDojoPage = () => {
       'Common': 0.035
     };
 
-    // === CALCULATE BASE POWER ===
+    // Premium ticket chances per hour (from DOJO_RATES.ticketChances.premiumTicket)
+    const PREMIUM_TICKET_CHANCES = {
+      'Legendary': 0.10,
+      'Epic': 0.055,
+      'Rare': 0.035,
+      'Uncommon': 0.018,
+      'Common': 0.01
+    };
+
+    // Ticket value equivalents (in points)
+    // Roll ticket = 1 pull opportunity = ~100 points value
+    // Premium ticket = better odds pull = ~200 points value
+    const ROLL_TICKET_VALUE = 100;
+    const PREMIUM_TICKET_VALUE = 200;
+
+    // === CALCULATE BASE VALUES ===
     const baseRate = RARITY_BASE_RATES[char.rarity] || 6;
     const level = Math.min(Math.max(char.level || 1, 1), 5);
     const levelMult = LEVEL_MULTIPLIERS[level] || 1.0;
 
-    let score = baseRate * levelMult;
-
-    // === CALCULATE SYNERGY BONUS ===
+    // === CALCULATE SYNERGY MULTIPLIER ===
     // Count series occurrences in current team + already selected
     const combinedTeam = [...currentTeam, ...alreadySelected].filter(Boolean);
     const seriesCounts = {};
@@ -578,51 +599,51 @@ export const useDojoPage = () => {
       }
     });
 
-    // Check if this character would create/extend a synergy
+    let synergyMult = 1.0;
     if (char.series) {
       const currentSeriesCount = seriesCounts[char.series] || 0;
       const newSeriesCount = currentSeriesCount + 1;
 
       if (newSeriesCount >= 2) {
-        // Character joins an existing synergy - apply the synergy multiplier
-        const synergyMult = SERIES_SYNERGY[Math.min(newSeriesCount, 6)] || 1;
-        score *= synergyMult;
-      } else if (currentSeriesCount === 0) {
-        // Character starts a NEW potential synergy
-        // Check if there are more chars of this series in available pool
-        // (Not implemented here - would need availableCharacters in scope)
-        // Small bonus for series diversity
-        score *= 1.02;
+        // Character joins/extends a synergy - apply the synergy multiplier
+        synergyMult = SERIES_SYNERGY[Math.min(newSeriesCount, 6)] || 1;
       }
     }
 
-    // === APPLY SPECIALIZATION MULTIPLIER ===
-    if (char.specialization) {
-      const specMult = SPEC_DOJO_MULT[char.specialization] || 1.0;
-      score *= specMult;
+    // === GET SPECIALIZATION MULTIPLIERS ===
+    const specPointsMult = char.specialization ? (SPEC_POINTS_MULT[char.specialization] || 1.0) : 1.0;
+    const specTicketMult = char.specialization ? (SPEC_TICKET_MULT[char.specialization] || 1.0) : 1.0;
 
-      // Wisdom characters also generate more tickets - add ticket value
-      if (char.specialization === 'wisdom') {
-        // Wisdom gives +80% ticket chance
-        // Value tickets: 1 roll ticket ≈ 100 points equivalent
-        const baseTicketChance = ROLL_TICKET_CHANCES[char.rarity] || 0.05;
-        const ticketChanceWithWisdom = baseTicketChance * 1.80;
-        const ticketValuePerHour = ticketChanceWithWisdom * 100; // Convert to point-equivalent
-        score += ticketValuePerHour * levelMult;
-      }
-    }
+    // === CALCULATE POINTS SCORE ===
+    // Formula: baseRate × levelMult × synergyMult × specPointsMult
+    const pointsPerHour = baseRate * levelMult * synergyMult * specPointsMult;
 
-    // === SPIRIT SYNERGY BONUS ===
+    // === CALCULATE TICKET VALUE ===
+    // Roll tickets: chance × levelMult × specTicketMult × value
+    const rollChance = (ROLL_TICKET_CHANCES[char.rarity] || 0.05) * levelMult * specTicketMult;
+    const rollTicketValue = rollChance * ROLL_TICKET_VALUE;
+
+    // Premium tickets: chance × levelMult × specTicketMult × value
+    const premiumChance = (PREMIUM_TICKET_CHANCES[char.rarity] || 0.01) * levelMult * specTicketMult;
+    const premiumTicketValue = premiumChance * PREMIUM_TICKET_VALUE;
+
+    // Total ticket value per hour
+    const ticketValuePerHour = rollTicketValue + premiumTicketValue;
+
+    // === TOTAL SCORE ===
+    let totalScore = pointsPerHour + ticketValuePerHour;
+
+    // === SPIRIT SYNERGY AMPLIFICATION ===
     // Spirit characters boost team synergy effectiveness by +10%
-    // If adding a Spirit char to a team with synergies, extra value
+    // If adding a Spirit char to a team with active synergies, extra value
     if (char.specialization === 'spirit') {
-      const hasSynergy = Object.values(seriesCounts).some(count => count >= 2);
-      if (hasSynergy) {
-        score *= 1.10; // Additional 10% because spirit boosts synergy effectiveness
+      const hasActiveSynergy = Object.values(seriesCounts).some(count => count >= 2);
+      if (hasActiveSynergy) {
+        totalScore *= 1.10; // +10% because spirit amplifies synergy bonuses
       }
     }
 
-    return score;
+    return totalScore;
   }, []);
 
   /**
