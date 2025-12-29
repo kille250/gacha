@@ -23,11 +23,14 @@ const getSharedCanvas = () => {
     sharedCanvas = document.createElement('canvas');
     sharedCanvas.style.cssText = `
       position: fixed;
-      inset: 0;
-      width: 100%;
-      height: 100%;
+      top: 0;
+      left: 0;
+      width: 100vw;
+      height: 100vh;
       pointer-events: none;
-      z-index: 100000;
+      z-index: 2147483647;
+      contain: strict;
+      isolation: isolate;
     `;
     sharedCanvas.id = 'shared-confetti-canvas';
     document.body.appendChild(sharedCanvas);

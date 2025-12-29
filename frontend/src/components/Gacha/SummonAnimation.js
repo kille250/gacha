@@ -595,11 +595,14 @@ const Overlay = styled.div`
 // Dedicated canvas for confetti - positioned fixed so it doesn't affect layout
 const ConfettiCanvas = styled.canvas`
   position: fixed;
-  inset: 0;
-  width: 100%;
-  height: 100%;
+  top: 0;
+  left: 0;
+  width: 100vw;
+  height: 100vh;
   pointer-events: none;
-  z-index: 100000;
+  z-index: 2147483647;
+  contain: strict;
+  isolation: isolate;
 `;
 
 const Container = styled(motion.div)`
@@ -613,6 +616,8 @@ const Container = styled(motion.div)`
     #05050a 100%
   );
   overflow: hidden;
+  /* Isolate from confetti layer to prevent layout interference */
+  isolation: isolate;
 `;
 
 const AmbientGlow = styled.div`
@@ -763,6 +768,8 @@ const CardContainer = styled(motion.div)`
   position: relative;
   perspective: 1000px;
   z-index: 10;
+  /* Prevent confetti from affecting card position */
+  transform: translateZ(0);
 `;
 
 const CharacterCard = styled.div`
@@ -1189,22 +1196,26 @@ const ResultsOverlay = styled(motion.div)`
   z-index: 99999;
   background: rgba(5, 5, 10, 0.98);
   display: flex;
-  align-items: flex-start;
+  align-items: center;
   justify-content: center;
-  padding: 20px;
-  padding-top: 60px;
-  overflow-y: auto;
-
-  @media (min-height: 700px) {
-    align-items: center;
-    padding-top: 20px;
-  }
+  /* Prevent any scroll-induced layout shifts */
+  overflow: hidden;
 `;
 
 const ResultsContent = styled.div`
   max-width: 900px;
   width: 100%;
-  flex-shrink: 0;
+  max-height: 100vh;
+  max-height: 100dvh;
+  padding: 20px;
+  padding-top: 60px;
+  overflow-y: auto;
+  /* Isolate scroll context to prevent confetti from affecting position */
+  overscroll-behavior: contain;
+
+  @media (min-height: 700px) {
+    padding-top: 20px;
+  }
 `;
 
 const ResultsHeader = styled.div`
