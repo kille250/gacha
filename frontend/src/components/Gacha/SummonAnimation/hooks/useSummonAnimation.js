@@ -21,6 +21,7 @@ import {
  * @property {number} timingMultiplier - Multiplier for multi-pull acceleration
  * @property {boolean} skipEnabled - Whether skip is allowed
  * @property {boolean} reducedMotion - Force reduced motion mode
+ * @property {number} currentPull - Current pull index for multi-pull (triggers reset on change)
  * @property {Function} onPhaseChange - Callback when phase changes
  * @property {Function} onReveal - Callback at reveal moment
  * @property {Function} onComplete - Callback when animation completes
@@ -44,6 +45,7 @@ export const useSummonAnimation = ({
   timingMultiplier = 1.0,
   skipEnabled = true,
   reducedMotion: forceReducedMotion = false,
+  currentPull = 1,
   onPhaseChange,
   onReveal,
   onComplete,
@@ -57,6 +59,7 @@ export const useSummonAnimation = ({
   const hasStartedRef = useRef(false);
   const hasCompletedRef = useRef(false);
   const phaseStartTimeRef = useRef(0);
+  const prevPullRef = useRef(currentPull);
 
   // Check for reduced motion preference
   const prefersReducedMotion = useMemo(() => {
@@ -248,6 +251,15 @@ export const useSummonAnimation = ({
       reset();
     }
   }, [isActive, reset]);
+
+  // Reset when currentPull changes (multi-pull transition to next character)
+  useEffect(() => {
+    if (prevPullRef.current !== currentPull) {
+      prevPullRef.current = currentPull;
+      // Reset to allow new animation to start
+      reset();
+    }
+  }, [currentPull, reset]);
 
   // Cleanup on unmount
   useEffect(() => {

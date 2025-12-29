@@ -119,6 +119,7 @@ export const SummonAnimation = ({
     rarity: effectRarity,
     timingMultiplier,
     skipEnabled,
+    currentPull,
     onPhaseChange: (newPhase) => {
       // Handle phase-specific effects
       if (newPhase === PHASES.INITIATION) {
