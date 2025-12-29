@@ -7,6 +7,7 @@ import confetti from 'canvas-confetti';
 import { theme } from '../../design-system';
 import { isVideo } from '../../utils/mediaUtils';
 import { useRarity } from '../../context/RarityContext';
+import { useGachaEffects } from '../../engine/effects/useGachaEffects';
 
 // ==================== RARITY ICON MAPPING ====================
 // Icons are React components and can't be stored in database, so we map by order
@@ -69,9 +70,19 @@ export const SummonAnimation = ({
   const timersRef = useRef([]);
   const hasStartedRef = useRef(false);
   const hasCompletedRef = useRef(false); // Guard against double-click
+  const buildupStopRef = useRef(null); // For stopping buildup sound
 
   // Get dynamic rarity configuration from context
   const { getRarityAnimation, getRarityColor, ordered } = useRarity();
+
+  // Game effects - screen shake, flash, audio, haptics
+  const {
+    playPullStart,
+    playBuildup,
+    triggerRevealSequence,
+    playContinue,
+    stopAllEffects
+  } = useGachaEffects();
   
   const effectRarity = ambientRarity || rarity;
   
@@ -180,10 +191,14 @@ export const SummonAnimation = ({
     if (isActive && !hasStartedRef.current) {
       hasStartedRef.current = true;
 
+      // Play pull start sound and haptic
+      playPullStart();
+
       // For reduced motion, skip directly to reveal
       if (prefersReducedMotion) {
         setPhase(PHASES.REVEAL);
         fireConfetti();
+        triggerRevealSequence(effectRarity);
         const completeTimer = setTimeout(() => {
           setPhase(PHASES.COMPLETE);
         }, 300);
@@ -194,6 +209,9 @@ export const SummonAnimation = ({
       setPhase(PHASES.BUILDUP);
       setShowSkipHint(false);
 
+      // Start buildup sound/effects
+      buildupStopRef.current = playBuildup();
+
       // Show skip hint earlier for better UX
       const skipTimer = setTimeout(() => setShowSkipHint(true), PHASE_TIMINGS.SKIP_HINT_DELAY);
       timersRef.current.push(skipTimer);
@@ -201,7 +219,14 @@ export const SummonAnimation = ({
       // Flash phase - quick and impactful
       const flashTimer = setTimeout(() => {
         setPhase(PHASES.FLASH);
+        // Stop buildup sound
+        if (buildupStopRef.current) {
+          buildupStopRef.current();
+          buildupStopRef.current = null;
+        }
         fireConfetti();
+        // Trigger screen shake, flash, and reveal sounds
+        triggerRevealSequence(effectRarity);
       }, ambientConfig.buildupTime);
       timersRef.current.push(flashTimer);
 
@@ -222,7 +247,7 @@ export const SummonAnimation = ({
     return () => {
       if (!isActive) clearAllTimers();
     };
-  }, [isActive, ambientConfig.buildupTime, fireConfetti, clearAllTimers, prefersReducedMotion]);
+  }, [isActive, ambientConfig.buildupTime, fireConfetti, clearAllTimers, prefersReducedMotion, playPullStart, playBuildup, triggerRevealSequence, effectRarity]);
 
   // Reset when inactive
   useEffect(() => {
@@ -232,8 +257,14 @@ export const SummonAnimation = ({
       setShowSkipHint(false);
       hasStartedRef.current = false;
       hasCompletedRef.current = false; // Reset guard for next animation
+      // Stop any ongoing effects
+      if (buildupStopRef.current) {
+        buildupStopRef.current();
+        buildupStopRef.current = null;
+      }
+      stopAllEffects();
     }
-  }, [isActive, clearAllTimers]);
+  }, [isActive, clearAllTimers, stopAllEffects]);
 
   // Reset completed guard when character changes (for multi-pull)
   useEffect(() => {
@@ -243,17 +274,25 @@ export const SummonAnimation = ({
   // Handle skip/continue
   const handleInteraction = useCallback((e) => {
     e.stopPropagation();
-    
+
     if (phase === PHASES.COMPLETE) {
       // Guard against double-click
       if (hasCompletedRef.current) return;
       hasCompletedRef.current = true;
+      playContinue();
       onComplete?.();
     } else if (skipEnabled && phase === PHASES.BUILDUP) {
       clearAllTimers();
+      // Stop buildup sound
+      if (buildupStopRef.current) {
+        buildupStopRef.current();
+        buildupStopRef.current = null;
+      }
       setPhase(PHASES.FLASH);
       fireConfetti();
-      
+      // Trigger reveal effects
+      triggerRevealSequence(effectRarity);
+
       setTimeout(() => setPhase(PHASES.REVEAL), 200);
       const completeTimer = setTimeout(() => {
         setPhase(PHASES.COMPLETE);
@@ -261,7 +300,7 @@ export const SummonAnimation = ({
       }, 700);
       timersRef.current.push(completeTimer);
     }
-  }, [phase, skipEnabled, onComplete, clearAllTimers, fireConfetti]);
+  }, [phase, skipEnabled, onComplete, clearAllTimers, fireConfetti, playContinue, triggerRevealSequence, effectRarity]);
 
   if (!isActive) return null;
 

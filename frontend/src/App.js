@@ -6,6 +6,8 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { RarityProvider } from './context/RarityContext';
 import { RecaptchaProvider } from './context/RecaptchaContext';
 import { ToastProvider } from './context/ToastContext';
+import { AudioProvider } from './engine/audio/AudioProvider';
+import { PixiOverlayProvider } from './engine/pixi/PixiOverlayProvider';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { theme } from './design-system';
 import { initVisibilityHandler, enableCacheDebugging } from './cache';
@@ -340,6 +342,8 @@ function App() {
         <AuthProvider>
           <RarityProvider>
             <ToastProvider>
+            <AudioProvider>
+              <PixiOverlayProvider>
               <Router>
                 <GlobalStyle />
                 {/* Global CAPTCHA handler - listens for CAPTCHA_REQUIRED events from API */}
@@ -356,6 +360,8 @@ function App() {
                   </Suspense>
                 </AppContainer>
               </Router>
+              </PixiOverlayProvider>
+            </AudioProvider>
             </ToastProvider>
           </RarityProvider>
         </AuthProvider>
