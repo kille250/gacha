@@ -12,7 +12,7 @@
 
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import { MdAdd, MdLock, MdAutorenew } from 'react-icons/md';
+import { MdAdd, MdLock, MdAutorenew, MdUndo } from 'react-icons/md';
 import { FaDumbbell, FaTimes, FaStar, FaMagic } from 'react-icons/fa';
 import { GiCrossedSwords, GiBookCover, GiSparkles } from 'react-icons/gi';
 import styled from 'styled-components';
@@ -58,7 +58,7 @@ const SPEC_COLORS = {
   spirit: '#9b59b6'
 };
 
-// Quick Fill button style - icon-only on very narrow screens
+// Quick Fill button style - magical effect with icon-only on narrow screens
 const QuickFillButton = styled.button`
   display: flex;
   align-items: center;
@@ -75,10 +75,39 @@ const QuickFillButton = styled.button`
   min-width: 44px;
   min-height: 44px;
   justify-content: center;
+  position: relative;
+  overflow: hidden;
+
+  /* Shimmer effect on idle */
+  &::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+      90deg,
+      transparent,
+      rgba(255, 255, 255, 0.15),
+      transparent
+    );
+    transition: left 0.5s ease;
+  }
 
   &:hover:not(:disabled) {
-    background: linear-gradient(135deg, rgba(88, 86, 214, 0.3), rgba(175, 82, 222, 0.3));
-    transform: translateY(-1px);
+    background: linear-gradient(135deg, rgba(88, 86, 214, 0.35), rgba(175, 82, 222, 0.35));
+    transform: translateY(-2px);
+    box-shadow: 0 4px 16px rgba(88, 86, 214, 0.3);
+    border-color: rgba(175, 82, 222, 0.6);
+
+    &::before {
+      left: 100%;
+    }
+  }
+
+  &:active:not(:disabled) {
+    transform: scale(0.95);
   }
 
   &:disabled {
@@ -89,6 +118,15 @@ const QuickFillButton = styled.button`
   svg {
     font-size: 16px;
     flex-shrink: 0;
+  }
+
+  /* Magic wand sparkle effect when idle */
+  .magic-icon {
+    transition: transform 0.3s ease;
+  }
+
+  &:hover:not(:disabled) .magic-icon {
+    transform: rotate(-15deg) scale(1.1);
   }
 
   .spin {
@@ -106,6 +144,77 @@ const QuickFillButton = styled.button`
 
     span {
       display: none;
+    }
+  }
+
+  /* Reduced motion: disable shimmer and transforms */
+  @media (prefers-reduced-motion: reduce) {
+    &::before {
+      display: none;
+    }
+
+    &:hover:not(:disabled) {
+      transform: none;
+    }
+
+    &:active:not(:disabled) {
+      transform: none;
+      opacity: 0.8;
+    }
+
+    &:hover:not(:disabled) .magic-icon {
+      transform: none;
+    }
+  }
+`;
+
+// Undo Quick Fill button
+const UndoButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: linear-gradient(135deg, rgba(255, 149, 0, 0.15), rgba(255, 204, 0, 0.1));
+  border: 1px solid rgba(255, 149, 0, 0.4);
+  border-radius: ${theme.radius.md};
+  color: #ff9f0a;
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.medium};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+  min-width: 44px;
+  min-height: 44px;
+  justify-content: center;
+  animation: fadeIn 0.3s ease;
+
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateX(10px); }
+    to { opacity: 1; transform: translateX(0); }
+  }
+
+  &:hover {
+    background: linear-gradient(135deg, rgba(255, 149, 0, 0.25), rgba(255, 204, 0, 0.2));
+    transform: translateY(-1px);
+  }
+
+  &:active {
+    transform: scale(0.95);
+  }
+
+  svg {
+    font-size: 14px;
+  }
+
+  @media (max-width: 400px) {
+    span {
+      display: none;
+    }
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    &:hover, &:active {
+      transform: none;
     }
   }
 `;
@@ -198,6 +307,8 @@ const DojoTrainingSlots = ({
   hasEmptySlots = false,
   canUndo = false,
   onUndo,
+  canUndoQuickFill = false,
+  onUndoQuickFill,
 }) => {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
@@ -243,16 +354,20 @@ const DojoTrainingSlots = ({
         onQuickFill();
       }
 
-      // Ctrl+Z / Cmd+Z for undo (if available)
-      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && canUndo && onUndo) {
+      // Ctrl+Z / Cmd+Z for undo (Quick Fill undo takes priority, then single assignment undo)
+      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey)) {
         e.preventDefault();
-        onUndo();
+        if (canUndoQuickFill && onUndoQuickFill) {
+          onUndoQuickFill();
+        } else if (canUndo && onUndo) {
+          onUndo();
+        }
       }
     };
 
     document.addEventListener('keydown', handleKeyDown);
     return () => document.removeEventListener('keydown', handleKeyDown);
-  }, [firstEmptySlotIndex, quickFilling, onOpenPicker, hasEmptySlots, onQuickFill, canUndo, onUndo]);
+  }, [firstEmptySlotIndex, quickFilling, onOpenPicker, hasEmptySlots, onQuickFill, canUndo, onUndo, canUndoQuickFill, onUndoQuickFill]);
 
   // Handle remove with confirmation for leveled characters
   const handleRemoveClick = useCallback((idx, char) => {
@@ -313,17 +428,28 @@ const DojoTrainingSlots = ({
                 )}
               </KeyboardShortcutHint>
             )}
+            {/* Undo Quick Fill button - appears for 5 seconds after Quick Fill */}
+            {canUndoQuickFill && onUndoQuickFill && (
+              <UndoButton
+                onClick={onUndoQuickFill}
+                title={t('dojo.undoQuickFill', { defaultValue: 'Undo Quick Fill' })}
+                aria-label={t('dojo.undoQuickFill', { defaultValue: 'Undo Quick Fill' })}
+              >
+                <MdUndo aria-hidden="true" />
+                <span>{t('common.undo', { defaultValue: 'Undo' })}</span>
+              </UndoButton>
+            )}
             {onQuickFill && hasEmptySlots && (
               <QuickFillButton
                 onClick={onQuickFill}
                 disabled={quickFilling}
                 title={t('dojo.quickFillHint', { defaultValue: 'Auto-fill empty slots with best characters (Press Q)' })}
-                aria-label={t('dojo.quickFill', { defaultValue: 'Quick Fill' })}
+                aria-label={t('dojo.quickFillAriaLabel', { defaultValue: 'Quick fill team with best available characters' })}
               >
                 {quickFilling ? (
                   <MdAutorenew className="spin" aria-hidden="true" />
                 ) : (
-                  <FaMagic aria-hidden="true" />
+                  <FaMagic className="magic-icon" aria-hidden="true" />
                 )}
                 <span>{t('dojo.quickFill', { defaultValue: 'Quick Fill' })}</span>
               </QuickFillButton>

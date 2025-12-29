@@ -240,8 +240,8 @@ const NavigationHint = styled.div`
   }
 `;
 
-// Character card with highlighted name
-const CharacterCardContent = memo(({ char, isSelected, rarityColor, synergyInfo, searchQuery, matches, motionProps, prefersReducedMotion, t, onKeyDown, onClick }) => {
+// Character card with highlighted name - using forwardRef for keyboard navigation
+const CharacterCardContent = memo(React.forwardRef(({ char, isSelected, rarityColor, synergyInfo, searchQuery, matches, motionProps, prefersReducedMotion, t, onKeyDown, onClick, id }, ref) => {
   const nameSegments = useMemo(() => {
     if (searchQuery && matches?.name) {
       return highlightMatches(char.name, matches.name);
@@ -258,11 +258,15 @@ const CharacterCardContent = memo(({ char, isSelected, rarityColor, synergyInfo,
 
   return (
     <PickerCharacterCard
+      ref={ref}
+      id={id}
       $color={rarityColor}
       $isSelected={isSelected}
       $hasSynergy={!!synergyInfo}
       onClick={onClick}
-      {...motionProps.card}
+      whileHover={motionProps.card?.whileHover}
+      whileTap={motionProps.card?.whileTap}
+      transition={motionProps.card?.transition}
       role="option"
       aria-selected={isSelected}
       aria-label={`${char.name} - ${char.rarity}${char.level ? ` Level ${char.level}` : ''}${synergyInfo ? ` - Synergy ${synergyInfo.count}` : ''}`}
@@ -351,7 +355,7 @@ const CharacterCardContent = memo(({ char, isSelected, rarityColor, synergyInfo,
       <KeyboardHint>Enter to select</KeyboardHint>
     </PickerCharacterCard>
   );
-});
+}));
 
 CharacterCardContent.displayName = 'CharacterCardContent';
 
@@ -378,8 +382,15 @@ const DojoCharacterPicker = ({
   const modalContentRef = useRef(null);
 
   // Motion variants that respect reduced motion preference
-  // Using transform/opacity only for GPU acceleration
-  const motionProps = prefersReducedMotion ? {} : {
+  // Using scale/opacity/y for proper framer-motion syntax
+  const motionProps = prefersReducedMotion ? {
+    overlay: {},
+    content: {},
+    card: {},
+    indicator: {},
+    clearButton: {},
+    footer: {},
+  } : {
     overlay: {
       initial: { opacity: 0 },
       animate: { opacity: 1 },
@@ -387,34 +398,30 @@ const DojoCharacterPicker = ({
       transition: { duration: 0.15 }
     },
     content: {
-      initial: { opacity: 0, transform: 'scale(0.95) translateY(20px)' },
-      animate: { opacity: 1, transform: 'scale(1) translateY(0)' },
-      exit: { opacity: 0, transform: 'scale(0.95) translateY(20px)' },
+      initial: { opacity: 0, scale: 0.95, y: 20 },
+      animate: { opacity: 1, scale: 1, y: 0 },
+      exit: { opacity: 0, scale: 0.95, y: 20 },
       transition: { duration: 0.15, ease: 'easeOut' }
     },
     card: {
-      whileHover: { transform: 'scale(1.03)' },
-      whileTap: { transform: 'scale(0.97)' },
+      whileHover: { scale: 1.03 },
+      whileTap: { scale: 0.97 },
       transition: { duration: 0.1 }
     },
-    button: {
-      whileHover: { transform: 'scale(1.02)' },
-      whileTap: { transform: 'scale(0.98)' }
-    },
     indicator: {
-      initial: { opacity: 0, transform: 'scale(0)' },
-      animate: { opacity: 1, transform: 'scale(1)' },
+      initial: { opacity: 0, scale: 0 },
+      animate: { opacity: 1, scale: 1 },
       transition: { type: 'spring', stiffness: 500, damping: 25 }
     },
     clearButton: {
-      initial: { opacity: 0, transform: 'scale(0.8)' },
-      animate: { opacity: 1, transform: 'scale(1)' },
-      whileHover: { transform: 'scale(1.1)' },
-      whileTap: { transform: 'scale(0.9)' }
+      initial: { opacity: 0, scale: 0.8 },
+      animate: { opacity: 1, scale: 1 },
+      whileHover: { scale: 1.1 },
+      whileTap: { scale: 0.9 }
     },
     footer: {
-      initial: { opacity: 0, transform: 'translateY(20px)' },
-      animate: { opacity: 1, transform: 'translateY(0)' },
+      initial: { opacity: 0, y: 20 },
+      animate: { opacity: 1, y: 0 },
       transition: { duration: 0.15, ease: 'easeOut' }
     },
   };
@@ -802,6 +809,8 @@ const DojoCharacterPicker = ({
                         return (
                           <CharacterCardContent
                             key={char.id}
+                            ref={(el) => { characterRefs.current[char.id] = el; }}
+                            id={`char-${char.id}`}
                             char={char}
                             isSelected={isSelected}
                             rarityColor={rarityColor}
@@ -832,17 +841,19 @@ const DojoCharacterPicker = ({
         </NavigationHint>
 
         {/* Sticky footer with confirm button */}
-        <AnimatePresence>
+        <AnimatePresence mode="wait">
           {selectedChar && (
             <PickerFooter
-              {...motionProps.footer}
-              exit={prefersReducedMotion ? {} : { opacity: 0, transform: 'translateY(20px)' }}
+              key="picker-footer"
+              initial={prefersReducedMotion ? false : { opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={prefersReducedMotion ? {} : { opacity: 0, y: 20 }}
+              transition={{ duration: 0.15, ease: 'easeOut' }}
             >
               <PickerConfirmButton
                 onClick={handleConfirm}
                 disabled={isConfirming}
                 $color={getRarityColor(selectedChar.rarity)}
-                {...motionProps.button}
                 aria-describedby="confirm-hint"
               >
                 {isConfirming ? (

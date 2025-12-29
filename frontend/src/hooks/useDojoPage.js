@@ -500,6 +500,73 @@ export const useDojoPage = () => {
 
   // Quick Fill - auto-assign best available characters to empty slots
   const [quickFilling, setQuickFilling] = useState(false);
+  const [quickFillResult, setQuickFillResult] = useState(null);
+  const quickFillUndoRef = useRef(null);
+
+  /**
+   * Smart character scoring algorithm for Quick Fill
+   * Prioritizes: Power (rarity×level) > Synergy potential > Diversity
+   */
+  const scoreCharacterForQuickFill = useCallback((char, currentTeam, alreadySelected) => {
+    // Rarity power values (base points per hour from dojo config)
+    const RARITY_POWER = { 'Legendary': 70, 'Epic': 35, 'Rare': 18, 'Uncommon': 10, 'Common': 6 };
+
+    // Base power score from rarity and level
+    const basePower = RARITY_POWER[char.rarity] || 6;
+    const levelMultiplier = 1 + ((char.level || 1) - 1) * 0.1; // +10% per level above 1
+    let score = basePower * levelMultiplier;
+
+    // Synergy bonus: check if character matches series of current team or selected chars
+    const teamSeries = [...currentTeam, ...alreadySelected]
+      .filter(c => c?.series)
+      .map(c => c.series);
+
+    if (char.series && teamSeries.includes(char.series)) {
+      // Count how many chars share this series (including this one)
+      const seriesCount = teamSeries.filter(s => s === char.series).length + 1;
+      // Synergy multipliers from backend config
+      const SYNERGY_BONUS = { 2: 1.15, 3: 1.35, 4: 1.55, 5: 1.75, 6: 2.0 };
+      const synergyMult = SYNERGY_BONUS[Math.min(seriesCount, 6)] || 1;
+      score *= synergyMult;
+    }
+
+    // Specialization bonus: strength and spirit boost dojo output
+    if (char.specialization === 'strength') {
+      score *= 1.1; // Strength is best for raw power
+    } else if (char.specialization === 'spirit') {
+      score *= 1.25; // Spirit gives +25% dojo points
+    }
+    // Wisdom gives ticket bonus but -10% points, so no score adjustment
+
+    return score;
+  }, []);
+
+  /**
+   * Select optimal characters for empty slots using greedy scoring
+   */
+  const selectOptimalCharacters = useCallback((available, emptyCount, currentTeam) => {
+    if (available.length === 0 || emptyCount === 0) return [];
+
+    const selected = [];
+    const remaining = [...available];
+
+    for (let i = 0; i < emptyCount && remaining.length > 0; i++) {
+      // Score all remaining characters considering already selected
+      const scored = remaining.map(char => ({
+        char,
+        score: scoreCharacterForQuickFill(char, currentTeam, selected)
+      }));
+
+      // Sort by score descending and take best
+      scored.sort((a, b) => b.score - a.score);
+      const best = scored[0];
+
+      selected.push(best.char);
+      remaining.splice(remaining.indexOf(best.char), 1);
+    }
+
+    return selected;
+  }, [scoreCharacterForQuickFill]);
 
   const handleQuickFill = useCallback(async () => {
     if (quickFilling || !status) return;
@@ -512,52 +579,162 @@ export const useDojoPage = () => {
       }
     }
 
-    if (emptySlotIndices.length === 0 || availableCharacters.length === 0) return;
+    if (emptySlotIndices.length === 0 || availableCharacters.length === 0) {
+      toast.info(t('dojo.noCharactersAvailable', { defaultValue: 'No characters available to assign' }));
+      return;
+    }
 
-    // Rarity order for sorting
-    const RARITY_ORDER = { 'Legendary': 5, 'Epic': 4, 'Rare': 3, 'Uncommon': 2, 'Common': 1 };
+    // Get currently assigned characters for synergy calculation
+    const currentTeam = (status.slots || [])
+      .map(s => s?.character)
+      .filter(Boolean);
 
-    // Sort available characters by rarity (descending), then level (descending)
-    const sortedCharacters = [...availableCharacters].sort((a, b) => {
-      const rarityDiff = (RARITY_ORDER[b.rarity] || 0) - (RARITY_ORDER[a.rarity] || 0);
-      if (rarityDiff !== 0) return rarityDiff;
-      return (b.level || 1) - (a.level || 1);
-    });
+    // Use smart selection algorithm
+    const charsToAssign = selectOptimalCharacters(
+      availableCharacters,
+      emptySlotIndices.length,
+      currentTeam
+    );
 
-    // Take only as many characters as we have empty slots
-    const charsToAssign = sortedCharacters.slice(0, emptySlotIndices.length);
+    if (charsToAssign.length === 0) {
+      toast.info(t('dojo.noCharactersAvailable', { defaultValue: 'No characters available to assign' }));
+      return;
+    }
 
-    if (charsToAssign.length === 0) return;
+    // Store previous status for undo
+    const previousStatus = JSON.parse(JSON.stringify(status));
+    const previousAvailable = [...availableCharacters];
 
     setQuickFilling(true);
+
+    // Optimistic UI update with staggered animation data
+    const assignmentPairs = charsToAssign.map((char, i) => ({
+      char,
+      slotIdx: emptySlotIndices[i],
+      animationDelay: i * 80 // 80ms stagger
+    }));
+
+    // Apply optimistic update
+    setStatus(prev => {
+      const newSlots = [...(prev.slots || [])];
+      assignmentPairs.forEach(({ char, slotIdx }) => {
+        newSlots[slotIdx] = { ...newSlots[slotIdx], character: char };
+      });
+      return {
+        ...prev,
+        slots: newSlots,
+        usedSlots: (prev.usedSlots || 0) + assignmentPairs.length
+      };
+    });
+
+    // Update available characters optimistically
+    setAvailableCharacters(prev =>
+      prev.filter(c => !charsToAssign.some(selected => selected.id === c.id))
+    );
 
     try {
       // Assign characters sequentially to ensure transaction safety.
       // The backend uses row-level locking (LOCK.UPDATE) which prevents race conditions.
-      // A batch endpoint could improve performance but sequential awaits are safer
-      // and ensure each assignment completes before the next begins.
-      for (let i = 0; i < charsToAssign.length; i++) {
-        const char = charsToAssign[i];
-        const slotIdx = emptySlotIndices[i];
-
+      for (let i = 0; i < assignmentPairs.length; i++) {
+        const { char, slotIdx } = assignmentPairs[i];
         await dojoAssignCharacter(char.id, slotIdx, setUser);
       }
 
-      // Refresh status after all assignments
-      if (isMountedRef.current) {
-        fetchStatus();
+      if (!isMountedRef.current) return;
+
+      // Store result for undo functionality
+      setQuickFillResult({
+        assignedCharacters: charsToAssign,
+        slotIndices: emptySlotIndices.slice(0, charsToAssign.length),
+        previousStatus,
+        previousAvailable,
+        timestamp: Date.now()
+      });
+
+      // Show success toast with character names
+      const charNames = charsToAssign.slice(0, 3).map(c => c.name).join(', ');
+      const moreCount = charsToAssign.length - 3;
+      const namesDisplay = moreCount > 0
+        ? `${charNames} +${moreCount}`
+        : charNames;
+
+      toast.success(
+        t('dojo.quickFillSuccess', {
+          count: charsToAssign.length,
+          names: namesDisplay,
+          defaultValue: `Team assembled! ${namesDisplay}`
+        }),
+        t('dojo.undoAvailable', { defaultValue: 'Undo available for 5 seconds' })
+      );
+
+      // Clear undo after 5 seconds
+      if (quickFillUndoRef.current) {
+        clearTimeout(quickFillUndoRef.current);
       }
+      quickFillUndoRef.current = setTimeout(() => {
+        setQuickFillResult(null);
+      }, UNDO_WINDOW_MS);
+
+      // Refresh to ensure consistency
+      fetchStatus();
+      fetchAvailableCharacters();
     } catch (err) {
-      if (isMountedRef.current) {
-        console.error('Quick fill error:', err);
-        setError(err.response?.data?.error || t('dojo.quickFillError', { defaultValue: 'Failed to quick fill' }));
-      }
+      if (!isMountedRef.current) return;
+
+      // Revert optimistic updates on error
+      setStatus(previousStatus);
+      setAvailableCharacters(previousAvailable);
+
+      console.error('Quick fill error:', err);
+      setError(err.response?.data?.error || t('dojo.quickFillError', { defaultValue: 'Failed to quick fill' }));
     } finally {
       if (isMountedRef.current) {
         setQuickFilling(false);
       }
     }
-  }, [quickFilling, status, availableCharacters, setUser, fetchStatus, t, setError]);
+  }, [quickFilling, status, availableCharacters, setUser, fetchStatus, fetchAvailableCharacters, t, setError, toast, selectOptimalCharacters]);
+
+  // Undo Quick Fill
+  const undoQuickFill = useCallback(async () => {
+    if (!quickFillResult) return;
+
+    // Clear undo timeout
+    if (quickFillUndoRef.current) {
+      clearTimeout(quickFillUndoRef.current);
+      quickFillUndoRef.current = null;
+    }
+
+    const { slotIndices, assignedCharacters, previousStatus, previousAvailable } = quickFillResult;
+
+    // Optimistic revert
+    setStatus(previousStatus);
+    setAvailableCharacters(previousAvailable);
+    setQuickFillResult(null);
+
+    try {
+      // Unassign all quick-filled characters
+      for (const slotIdx of slotIndices) {
+        await dojoUnassignCharacter(slotIdx);
+      }
+
+      if (!isMountedRef.current) return;
+
+      const charNames = assignedCharacters.slice(0, 2).map(c => c.name).join(', ');
+      toast.success(
+        t('dojo.quickFillUndone', {
+          defaultValue: `Quick Fill undone - ${charNames}${assignedCharacters.length > 2 ? '...' : ''} removed`
+        })
+      );
+
+      fetchStatus();
+      fetchAvailableCharacters();
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      console.error('Failed to undo quick fill:', err);
+      toast.error(t('dojo.undoFailed', { defaultValue: 'Failed to undo. Please try again.' }));
+      fetchStatus();
+    }
+  }, [quickFillResult, fetchStatus, fetchAvailableCharacters, t, toast]);
 
   // Check if there are empty slots
   const hasEmptySlots = status ? (status.usedSlots || 0) < (status.maxSlots || 3) : false;
@@ -616,6 +793,9 @@ export const useDojoPage = () => {
     quickFilling,
     handleQuickFill,
     hasEmptySlots,
+    quickFillResult,
+    undoQuickFill,
+    canUndoQuickFill: !!quickFillResult,
 
     // Refresh function for external components
     refreshStatus: fetchStatus,

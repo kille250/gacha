@@ -108,6 +108,8 @@ const DojoPage = () => {
     quickFilling,
     handleQuickFill,
     hasEmptySlots,
+    canUndoQuickFill,
+    undoQuickFill,
 
     // Refresh function
     refreshStatus,
@@ -223,6 +225,8 @@ const DojoPage = () => {
           hasEmptySlots={hasEmptySlots}
           canUndo={canUndo}
           onUndo={undoAssignment}
+          canUndoQuickFill={canUndoQuickFill}
+          onUndoQuickFill={undoQuickFill}
         />
 
         {/* Facility Upgrade Card */}
