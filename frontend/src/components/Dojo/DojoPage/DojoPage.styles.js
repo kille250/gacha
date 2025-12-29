@@ -945,9 +945,11 @@ export const SlotOverlay = styled.div`
   right: 0;
   padding: ${theme.spacing.sm};
   background: linear-gradient(transparent, rgba(0, 0, 0, 0.9));
+  border-radius: 0 0 ${theme.radius.xl} ${theme.radius.xl};
 
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.xs};
+    border-radius: 0 0 ${theme.radius.lg} ${theme.radius.lg};
   }
 `;
 
