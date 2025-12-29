@@ -74,14 +74,15 @@
     "noImage": "No Image",
     "copy": "Copy",
     "copied": "Copied!",
-    "done": "Done"
+    "done": "Done",
+    "new": "New"
   },
   "nav": {
-    "banners": "Banners",
+    "banners": "Gacha",
     "roll": "Roll",
     "fishing": "Fishing",
     "dojo": "Dojo",
-    "fortuneWheel": "Wheel",
+    "fortuneWheel": "Fortune Wheel",
     "collection": "Collection",
     "coupons": "Coupons",
     "admin": "Admin",
@@ -100,7 +101,10 @@
     "activities": "Activities",
     "profile": "Profile",
     "settings": "Settings",
-    "language": "Language"
+    "language": "Language",
+    "games": "Games",
+    "more": "More",
+    "mainNavigation": "Main navigation"
   },
   "auth": {
     "login": "Sign In",

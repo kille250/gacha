@@ -4,15 +4,18 @@
  * Single source of truth for navigation items.
  * Used by Navigation and BottomNav components.
  *
- * Mobile navigation uses a unified bottom tab bar pattern:
- * - 5 primary tabs always visible
- * - Profile tab consolidates user actions (settings, logout, etc.)
- * - No hamburger menu needed
+ * Mobile navigation uses a 4-tab bottom bar with sheet menus:
+ * - Gacha (primary)
+ * - Games (hub for mini-games)
+ * - Collection
+ * - More (profile, settings, coupons)
+ *
+ * Desktop uses horizontal nav with dropdown for Games.
  */
 
-import { MdCasino, MdCollections, MdLocalActivity, MdAdminPanelSettings, MdSettings, MdPerson } from 'react-icons/md';
+import { MdCasino, MdCollections, MdLocalActivity, MdAdminPanelSettings, MdSettings, MdPerson, MdMoreHoriz } from 'react-icons/md';
 import { GiFishingPole, GiDoubleDragon, GiCartwheel } from 'react-icons/gi';
-import { FaDice } from 'react-icons/fa';
+import { FaDice, FaGamepad } from 'react-icons/fa';
 
 /**
  * Navigation item definition
@@ -21,12 +24,96 @@ import { FaDice } from 'react-icons/fa';
  * @property {string} labelKey - i18n translation key
  * @property {React.ComponentType} icon - Icon component
  * @property {boolean} [adminOnly] - Only show for admin users
- * @property {boolean} [bottomNav] - Include in bottom navigation
+ * @property {boolean} [isNew] - Show "New" badge for discoverability
  */
 
 /**
- * Main navigation items grouped by category
- * Used primarily for desktop navigation display
+ * Games hub items - shown in Games dropdown/sheet
+ */
+export const GAMES_ITEMS = [
+  { path: '/fishing', labelKey: 'nav.fishing', icon: GiFishingPole },
+  { path: '/dojo', labelKey: 'nav.dojo', icon: GiDoubleDragon },
+  { path: '/fortune-wheel', labelKey: 'nav.fortuneWheel', icon: GiCartwheel, isNew: true },
+];
+
+/**
+ * More menu items - shown in More sheet (mobile) or profile dropdown (desktop)
+ */
+export const MORE_ITEMS = [
+  { path: '/profile', labelKey: 'nav.profile', icon: MdPerson },
+  { path: '/coupons', labelKey: 'nav.coupons', icon: MdLocalActivity },
+  { path: '/settings', labelKey: 'nav.settings', icon: MdSettings },
+];
+
+/**
+ * Admin navigation item (shown separately, conditional)
+ */
+export const ADMIN_NAV_ITEM = {
+  path: '/admin',
+  labelKey: 'nav.admin',
+  icon: MdAdminPanelSettings,
+  adminOnly: true,
+};
+
+/**
+ * Primary navigation items for desktop top nav
+ * (Games has a dropdown, others are direct links)
+ */
+export const DESKTOP_NAV_ITEMS = [
+  { path: '/gacha', labelKey: 'nav.banners', icon: MdCasino },
+  { path: '/roll', labelKey: 'nav.roll', icon: FaDice },
+  {
+    id: 'games',
+    labelKey: 'nav.games',
+    icon: FaGamepad,
+    isDropdown: true,
+    items: GAMES_ITEMS,
+  },
+  { path: '/collection', labelKey: 'nav.collection', icon: MdCollections },
+];
+
+/**
+ * Bottom navigation items (mobile)
+ * 4 tabs: Gacha, Games (sheet), Collection, More (sheet)
+ */
+export const BOTTOM_NAV_ITEMS = [
+  {
+    id: 'gacha',
+    path: '/gacha',
+    labelKey: 'nav.banners',
+    icon: MdCasino,
+    type: 'link',
+  },
+  {
+    id: 'games',
+    labelKey: 'nav.games',
+    icon: FaGamepad,
+    type: 'sheet',
+    items: GAMES_ITEMS,
+    // Paths that should highlight this tab
+    activePaths: ['/fishing', '/dojo', '/fortune-wheel'],
+  },
+  {
+    id: 'collection',
+    path: '/collection',
+    labelKey: 'nav.collection',
+    icon: MdCollections,
+    type: 'link',
+  },
+  {
+    id: 'more',
+    labelKey: 'nav.more',
+    icon: MdMoreHoriz,
+    type: 'sheet',
+    items: MORE_ITEMS,
+    // Paths that should highlight this tab
+    activePaths: ['/profile', '/settings', '/coupons', '/admin'],
+  },
+];
+
+/**
+ * Legacy NAV_GROUPS for backward compatibility during migration
+ * @deprecated Use DESKTOP_NAV_ITEMS instead
  */
 export const NAV_GROUPS = [
   {
@@ -58,7 +145,7 @@ export const NAV_GROUPS = [
 
 /**
  * Profile navigation item for bottom nav
- * This is the unified user hub that replaces the hamburger menu
+ * @deprecated Use BOTTOM_NAV_ITEMS with 'more' sheet instead
  */
 export const PROFILE_NAV_ITEM = {
   path: '/profile',
@@ -68,24 +155,12 @@ export const PROFILE_NAV_ITEM = {
 };
 
 /**
- * Admin navigation item (shown separately)
- */
-export const ADMIN_NAV_ITEM = {
-  path: '/admin',
-  labelKey: 'nav.admin',
-  icon: MdAdminPanelSettings,
-  adminOnly: true,
-  bottomNav: false,
-};
-
-/**
  * Settings navigation item
  */
 export const SETTINGS_NAV_ITEM = {
   path: '/settings',
   labelKey: 'nav.settings',
   icon: MdSettings,
-  bottomNav: false,
 };
 
 /**
@@ -98,7 +173,14 @@ export const SETTINGS_NAV_ITEM = {
 export function getAllNavItems(options = {}) {
   const { includeAdmin = false, includeSettings = false } = options;
 
-  const items = NAV_GROUPS.flatMap(group => group.items);
+  const items = [
+    { path: '/gacha', labelKey: 'nav.banners', icon: MdCasino },
+    { path: '/roll', labelKey: 'nav.roll', icon: FaDice },
+    ...GAMES_ITEMS,
+    { path: '/collection', labelKey: 'nav.collection', icon: MdCollections },
+    { path: '/profile', labelKey: 'nav.profile', icon: MdPerson },
+    { path: '/coupons', labelKey: 'nav.coupons', icon: MdLocalActivity },
+  ];
 
   if (includeSettings) {
     items.push(SETTINGS_NAV_ITEM);
@@ -113,14 +195,12 @@ export function getAllNavItems(options = {}) {
 
 /**
  * Get navigation items for bottom nav (mobile)
- * Returns 5 primary tabs: Gacha, Fishing, Dojo, Collection, Profile
+ * Returns the 4-tab configuration with sheet metadata
  * @returns {NavItem[]}
+ * @deprecated Use BOTTOM_NAV_ITEMS directly
  */
 export function getBottomNavItems() {
-  const items = NAV_GROUPS.flatMap(group => group.items).filter(item => item.bottomNav);
-  // Add Profile tab at the end
-  items.push(PROFILE_NAV_ITEM);
-  return items;
+  return BOTTOM_NAV_ITEMS;
 }
 
 /**
@@ -134,6 +214,16 @@ export function isActiveRoute(path, currentPath) {
     return currentPath === '/';
   }
   return currentPath === path || currentPath.startsWith(`${path}/`);
+}
+
+/**
+ * Check if any path in an array matches the current route
+ * @param {string[]} paths - Array of route paths to check
+ * @param {string} currentPath - Current location pathname
+ * @returns {boolean}
+ */
+export function isAnyRouteActive(paths, currentPath) {
+  return paths.some(path => isActiveRoute(path, currentPath));
 }
 
 export default NAV_GROUPS;

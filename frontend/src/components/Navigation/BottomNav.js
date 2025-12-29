@@ -3,7 +3,11 @@
  *
  * Provides thumb-friendly navigation for mobile users.
  * Shows on mobile devices only (< 768px).
- * Highlights the active route with smooth animation.
+ *
+ * Navigation Pattern:
+ * - 4 tabs: Gacha, Games, Collection, More
+ * - Direct links for Gacha and Collection
+ * - Bottom sheet menus for Games and More
  *
  * Features:
  * - 48px+ touch targets for accessibility
@@ -11,31 +15,48 @@
  * - Smooth active state animations
  * - Landscape mode optimizations
  * - Reduced motion support
+ * - Haptic feedback
  *
  * Uses centralized navigation config from constants/navigation.js
  */
 
-import React, { useMemo, useCallback } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { theme, springs, useReducedMotion } from '../../design-system';
-import { getBottomNavItems } from '../../constants/navigation';
+import { BOTTOM_NAV_ITEMS, isAnyRouteActive } from '../../constants/navigation';
+import NavSheet from './NavSheet';
 
 const BottomNav = () => {
   const { t } = useTranslation();
   const location = useLocation();
   const prefersReducedMotion = useReducedMotion();
 
-  // Get items from centralized config that are marked for bottom nav
+  // Track which sheet is open (null, 'games', or 'more')
+  const [openSheet, setOpenSheet] = useState(null);
+
+  // Build nav items with translated labels
   const navItems = useMemo(() =>
-    getBottomNavItems().map(item => ({
-      path: item.path,
+    BOTTOM_NAV_ITEMS.map(item => ({
+      ...item,
       label: t(item.labelKey),
       icon: <item.icon />,
     })),
   [t]);
+
+  // Check if a tab is active
+  const isTabActive = useCallback((item) => {
+    if (item.type === 'link') {
+      return location.pathname === item.path;
+    }
+    // For sheet tabs, check if any of the child paths are active
+    if (item.activePaths) {
+      return isAnyRouteActive(item.activePaths, location.pathname);
+    }
+    return false;
+  }, [location.pathname]);
 
   // Haptic feedback on tap (if available)
   const handleTap = useCallback(() => {
@@ -44,38 +65,83 @@ const BottomNav = () => {
     }
   }, []);
 
+  // Handle tab click
+  const handleTabClick = useCallback((item, e) => {
+    handleTap();
+
+    if (item.type === 'sheet') {
+      e.preventDefault();
+      // Toggle sheet - if same sheet is open, close it
+      setOpenSheet(prev => prev === item.id ? null : item.id);
+    }
+    // For 'link' type, let the Link component handle navigation
+  }, [handleTap]);
+
+  // Close any open sheet
+  const closeSheet = useCallback(() => {
+    setOpenSheet(null);
+  }, []);
+
+  // Get the currently open sheet's data
+  const activeSheetData = useMemo(() => {
+    if (!openSheet) return null;
+    return BOTTOM_NAV_ITEMS.find(item => item.id === openSheet);
+  }, [openSheet]);
+
   return (
-    <NavContainer role="navigation" aria-label={t('nav.mainNavigation') || 'Main navigation'}>
-      {navItems.map(item => {
-        const isActive = location.pathname === item.path;
-        return (
-          <NavItem
-            key={item.path}
-            to={item.path}
-            $isActive={isActive}
-            aria-current={isActive ? 'page' : undefined}
-            onClick={handleTap}
-          >
-            {isActive && !prefersReducedMotion && (
-              <ActiveBackground
-                layoutId="bottomNavActive"
-                initial={false}
-                transition={springs.snappy}
-              />
-            )}
-            {isActive && prefersReducedMotion && (
-              <ActiveBackgroundStatic />
-            )}
-            <NavIcon $isActive={isActive}>
-              {item.icon}
-            </NavIcon>
-            <NavLabel $isActive={isActive}>{item.label}</NavLabel>
-          </NavItem>
-        );
-      })}
-    </NavContainer>
+    <>
+      <NavContainer role="navigation" aria-label={t('nav.mainNavigation') || 'Main navigation'}>
+        {navItems.map(item => {
+          const isActive = isTabActive(item);
+          const isSheetOpen = openSheet === item.id;
+
+          // Wrapper component - Link for links, button for sheets
+          const TabComponent = item.type === 'link' ? NavLink : NavButton;
+
+          return (
+            <TabComponent
+              key={item.id}
+              {...(item.type === 'link' ? { to: item.path } : {})}
+              $isActive={isActive || isSheetOpen}
+              aria-current={isActive ? 'page' : undefined}
+              aria-expanded={item.type === 'sheet' ? isSheetOpen : undefined}
+              aria-haspopup={item.type === 'sheet' ? 'dialog' : undefined}
+              onClick={(e) => handleTabClick(item, e)}
+            >
+              {(isActive || isSheetOpen) && !prefersReducedMotion && (
+                <ActiveBackground
+                  layoutId="bottomNavActive"
+                  initial={false}
+                  transition={springs.snappy}
+                />
+              )}
+              {(isActive || isSheetOpen) && prefersReducedMotion && (
+                <ActiveBackgroundStatic />
+              )}
+              <NavIcon $isActive={isActive || isSheetOpen}>
+                {item.icon}
+              </NavIcon>
+              <NavLabel $isActive={isActive || isSheetOpen}>{item.label}</NavLabel>
+            </TabComponent>
+          );
+        })}
+      </NavContainer>
+
+      {/* Navigation Sheets */}
+      {activeSheetData && (
+        <NavSheet
+          isOpen={!!openSheet}
+          onClose={closeSheet}
+          title={activeSheetData.labelKey}
+          items={activeSheetData.items}
+          showAdmin={activeSheetData.id === 'more'}
+        />
+      )}
+    </>
   );
 };
+
+// ==================== STYLED COMPONENTS ====================
 
 const NavContainer = styled.nav`
   display: none;
@@ -125,7 +191,8 @@ const NavContainer = styled.nav`
   }
 `;
 
-const NavItem = styled(Link)`
+// Base styles for both Link and Button tab items
+const navItemStyles = `
   display: flex;
   flex-direction: column;
   align-items: center;
@@ -141,6 +208,11 @@ const NavItem = styled(Link)`
   -webkit-tap-highlight-color: transparent;
   /* Improve touch responsiveness */
   touch-action: manipulation;
+  /* Reset button styles */
+  border: none;
+  background: transparent;
+  cursor: pointer;
+  font-family: inherit;
 
   &:focus-visible {
     outline: none;
@@ -178,6 +250,14 @@ const NavItem = styled(Link)`
       background: ${theme.colors.primarySubtle};
     }
   }
+`;
+
+const NavLink = styled(Link)`
+  ${navItemStyles}
+`;
+
+const NavButton = styled.button`
+  ${navItemStyles}
 `;
 
 const NavIcon = styled.span`
@@ -246,7 +326,7 @@ const NavLabel = styled.span`
   overflow: hidden;
   text-overflow: ellipsis;
   /* Use percentage-based width for better responsiveness across screen sizes */
-  max-width: min(72px, 18vw);
+  max-width: min(72px, 20vw);
   position: relative;
   z-index: 1;
   letter-spacing: ${theme.letterSpacing.wide};

@@ -1,7 +1,7 @@
 /**
  * Navigation - Main navigation component
  *
- * Desktop: Full navigation bar with links and profile dropdown
+ * Desktop: Full navigation bar with links and dropdowns
  * Mobile: Minimal top bar with logo and hourly reward button
  *        (Navigation handled by BottomNav component)
  *
@@ -9,21 +9,22 @@
  * - HourlyReward: Reward button with timer (visible on both desktop & mobile)
  * - ProfileDropdown: User profile menu (desktop only)
  * - RewardPopup: Celebration popup for claimed rewards
+ * - GamesDropdown: Games hub dropdown (desktop only)
  *
  * Hooks:
- * - useNavigation: Shared navigation state and logic
  * - useHourlyReward: Hourly reward state management
  */
 
-import React, { useMemo, useContext } from 'react';
+import React, { useMemo, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { MdAdminPanelSettings } from 'react-icons/md';
+import { motion, AnimatePresence } from 'framer-motion';
+import { MdAdminPanelSettings, MdExpandMore } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
-import { theme } from '../../design-system';
+import { theme, springs } from '../../design-system';
 import { useHourlyReward } from '../../hooks';
 import { useAccountLevel } from '../../hooks/useGameEnhancements';
-import { NAV_GROUPS } from '../../constants/navigation';
+import { DESKTOP_NAV_ITEMS, GAMES_ITEMS, ADMIN_NAV_ITEM, isAnyRouteActive } from '../../constants/navigation';
 import { AuthContext } from '../../context/AuthContext';
 import { AccountLevelBadge } from '../AccountLevel';
 
@@ -38,22 +39,71 @@ const Navigation = () => {
   const navigate = useNavigate();
   const { user, setUser, logout } = useContext(AuthContext);
 
+  // Dropdown state
+  const [gamesDropdownOpen, setGamesDropdownOpen] = useState(false);
+  const dropdownRef = useRef(null);
+
   // Hourly reward state
   const hourlyReward = useHourlyReward();
 
   // Account level state
   const { accountLevel } = useAccountLevel();
 
-  // Navigation groups from centralized config
-  const navGroups = useMemo(() => NAV_GROUPS.map(group => ({
-    id: group.id,
-    label: t(group.labelKey),
-    items: group.items.map(item => ({
-      path: item.path,
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setGamesDropdownOpen(false);
+      }
+    };
+
+    if (gamesDropdownOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('touchstart', handleClickOutside);
+    }
+
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('touchstart', handleClickOutside);
+    };
+  }, [gamesDropdownOpen]);
+
+  // Close dropdown on route change
+  useEffect(() => {
+    setGamesDropdownOpen(false);
+  }, [location.pathname]);
+
+  // Toggle games dropdown
+  const toggleGamesDropdown = useCallback(() => {
+    setGamesDropdownOpen(prev => !prev);
+  }, []);
+
+  // Handle keyboard navigation in dropdown
+  const handleKeyDown = useCallback((e) => {
+    if (e.key === 'Escape') {
+      setGamesDropdownOpen(false);
+    }
+  }, []);
+
+  // Check if games tab is active
+  const isGamesActive = useMemo(() => {
+    const gamesPaths = GAMES_ITEMS.map(item => item.path);
+    return isAnyRouteActive(gamesPaths, location.pathname);
+  }, [location.pathname]);
+
+  // Build nav items from config
+  const navItems = useMemo(() =>
+    DESKTOP_NAV_ITEMS.map(item => ({
+      ...item,
       label: t(item.labelKey),
-      icon: <item.icon />,
+      icon: item.icon ? <item.icon /> : null,
+      items: item.items?.map(subItem => ({
+        ...subItem,
+        label: t(subItem.labelKey),
+        icon: <subItem.icon />,
+      })),
     })),
-  })), [t]);
+  [t]);
 
   return (
     <>
@@ -81,25 +131,73 @@ const Navigation = () => {
 
         {/* Desktop Navigation */}
         <DesktopNav>
-          {navGroups.map((group, groupIndex) => (
-            <NavGroup key={group.id}>
-              {group.items.map(item => {
-                const isActive = location.pathname === item.path;
-                return (
-                  <NavLink
-                    key={item.path}
-                    to={item.path}
-                    $isActive={isActive}
-                    aria-current={isActive ? 'page' : undefined}
+          {navItems.map((item) => {
+            // Dropdown item (Games)
+            if (item.isDropdown) {
+              return (
+                <DropdownWrapper key={item.id} ref={dropdownRef}>
+                  <DropdownTrigger
+                    onClick={toggleGamesDropdown}
+                    onKeyDown={handleKeyDown}
+                    $isActive={isGamesActive || gamesDropdownOpen}
+                    aria-expanded={gamesDropdownOpen}
+                    aria-haspopup="menu"
                   >
                     <NavIcon>{item.icon}</NavIcon>
                     <span>{item.label}</span>
-                  </NavLink>
-                );
-              })}
-              {groupIndex < navGroups.length - 1 && <NavDivider />}
-            </NavGroup>
-          ))}
+                    <DropdownArrow $isOpen={gamesDropdownOpen}>
+                      <MdExpandMore />
+                    </DropdownArrow>
+                  </DropdownTrigger>
+
+                  <AnimatePresence>
+                    {gamesDropdownOpen && (
+                      <DropdownMenu
+                        role="menu"
+                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                        transition={springs.snappy}
+                      >
+                        {item.items.map((subItem) => {
+                          const isSubActive = location.pathname === subItem.path;
+                          return (
+                            <DropdownItem
+                              key={subItem.path}
+                              to={subItem.path}
+                              role="menuitem"
+                              $isActive={isSubActive}
+                              aria-current={isSubActive ? 'page' : undefined}
+                            >
+                              <DropdownItemIcon $isActive={isSubActive}>
+                                {subItem.icon}
+                              </DropdownItemIcon>
+                              <span>{subItem.label}</span>
+                              {subItem.isNew && <NewBadge>{t('common.new')}</NewBadge>}
+                            </DropdownItem>
+                          );
+                        })}
+                      </DropdownMenu>
+                    )}
+                  </AnimatePresence>
+                </DropdownWrapper>
+              );
+            }
+
+            // Regular nav link
+            const isActive = location.pathname === item.path;
+            return (
+              <NavLink
+                key={item.path}
+                to={item.path}
+                $isActive={isActive}
+                aria-current={isActive ? 'page' : undefined}
+              >
+                <NavIcon>{item.icon}</NavIcon>
+                <span>{item.label}</span>
+              </NavLink>
+            );
+          })}
 
           {/* Admin Link */}
           {user?.isAdmin && (
@@ -112,7 +210,7 @@ const Navigation = () => {
                 aria-current={location.pathname === '/admin' ? 'page' : undefined}
               >
                 <NavIcon><MdAdminPanelSettings /></NavIcon>
-                <span>{t('nav.admin')}</span>
+                <span>{t(ADMIN_NAV_ITEM.labelKey)}</span>
               </NavLink>
             </>
           )}
@@ -290,12 +388,6 @@ const DesktopNav = styled.div`
   }
 `;
 
-const NavGroup = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.xs};
-`;
-
 const NavDivider = styled.div`
   width: 1px;
   height: 24px;
@@ -369,6 +461,129 @@ const NavIcon = styled.span`
     font-size: 16px;
   }
 `;
+
+// ==================== DROPDOWN COMPONENTS ====================
+
+const DropdownWrapper = styled.div`
+  position: relative;
+`;
+
+const DropdownTrigger = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.radius.md};
+  color: ${props => props.$isActive ? theme.colors.primary : theme.colors.textSecondary};
+  background: ${props => props.$isActive ? theme.colors.primarySubtle : 'transparent'};
+  border: none;
+  cursor: pointer;
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${props => props.$isActive ? theme.fontWeights.medium : theme.fontWeights.regular};
+  font-family: inherit;
+  white-space: nowrap;
+  transition:
+    color ${theme.timing.fast} ${theme.easing.easeOut},
+    background ${theme.timing.fast} ${theme.easing.easeOut};
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      color: ${theme.colors.text};
+      background: ${theme.colors.glass};
+    }
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: 0 0 0 2px ${theme.colors.focusRing};
+  }
+
+  /* Compact mode for narrower desktop screens */
+  @media (min-width: ${theme.breakpoints.md}) and (max-width: ${theme.breakpoints.lg}) {
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    gap: ${theme.spacing.xs};
+    font-size: ${theme.fontSizes.xs};
+  }
+`;
+
+const DropdownArrow = styled.span`
+  display: flex;
+  align-items: center;
+  font-size: 18px;
+  transition: transform ${theme.timing.fast} ${theme.easing.easeOut};
+
+  ${props => props.$isOpen && `
+    transform: rotate(180deg);
+  `}
+`;
+
+const DropdownMenu = styled(motion.div)`
+  position: absolute;
+  top: calc(100% + ${theme.spacing.xs});
+  left: 50%;
+  transform: translateX(-50%);
+  min-width: 200px;
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.lg};
+  box-shadow: ${theme.shadows.lg};
+  padding: ${theme.spacing.xs};
+  z-index: ${theme.zIndex.stickyDropdown};
+`;
+
+const DropdownItem = styled(Link)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  border-radius: ${theme.radius.md};
+  color: ${props => props.$isActive ? theme.colors.primary : theme.colors.text};
+  background: ${props => props.$isActive ? theme.colors.primarySubtle : 'transparent'};
+  text-decoration: none;
+  font-size: ${theme.fontSizes.sm};
+  transition:
+    color ${theme.timing.fast} ${theme.easing.easeOut},
+    background ${theme.timing.fast} ${theme.easing.easeOut};
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: ${theme.colors.glass};
+    }
+  }
+
+  &:focus-visible {
+    outline: none;
+    box-shadow: inset 0 0 0 2px ${theme.colors.focusRing};
+  }
+`;
+
+const DropdownItemIcon = styled.span`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: ${theme.radius.md};
+  background: ${props => props.$isActive ? theme.colors.primary : theme.colors.backgroundSecondary};
+  color: ${props => props.$isActive ? 'white' : theme.colors.textSecondary};
+  font-size: 16px;
+`;
+
+const NewBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 6px;
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.semibold};
+  color: white;
+  background: linear-gradient(135deg, ${theme.colors.success}, ${theme.colors.successHover});
+  border-radius: ${theme.radius.full};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-left: auto;
+`;
+
+// ==================== USER CONTROLS ====================
 
 const UserControls = styled.div`
   display: flex;
