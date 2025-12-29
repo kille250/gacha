@@ -860,13 +860,14 @@ export const SlotsGrid = styled.div`
   }
 
   @media (max-width: 480px) {
-    grid-template-columns: repeat(2, 1fr);
+    grid-template-columns: repeat(3, 1fr);
+    gap: ${theme.spacing.xs};
   }
 
-  /* Very small screens (360px) - single column for better usability */
+  /* Very small screens (360px) - 2 columns for better usability */
   @media (max-width: 360px) {
-    grid-template-columns: 1fr;
-    gap: ${theme.spacing.md};
+    grid-template-columns: repeat(2, 1fr);
+    gap: ${theme.spacing.xs};
   }
 `;
 
