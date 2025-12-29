@@ -71,7 +71,10 @@
     "rollNow": "Roll Now",
     "skip": "Skip",
     "continue": "Continue",
-    "noImage": "No Image"
+    "noImage": "No Image",
+    "copy": "Copy",
+    "copied": "Copied!",
+    "done": "Done"
   },
   "nav": {
     "banners": "Banners",
@@ -132,7 +135,26 @@
     "registrationUnavailable": "Registration is not available",
     "bonusInfo": "New players receive <strong>{{gems}} free gems</strong> to start!",
     "googleLoginFailed": "Google sign-in failed. Please try again.",
-    "continueWithGoogle": "Continue with Google"
+    "continueWithGoogle": "Continue with Google",
+    "changePasswordRequired": "Password Change Required",
+    "forcePasswordChangeDesc": "Your password was reset by an administrator. You must set a new password to continue.",
+    "temporaryPasswordExpires": "Temporary password expires in",
+    "temporaryPasswordExpired": "Your temporary password has expired. Please contact an administrator for a new password.",
+    "passwordChanged": "Password Changed!",
+    "passwordChangeSuccess": "Your password has been changed successfully. Redirecting...",
+    "passwordChangeFailed": "Failed to change password",
+    "newPassword": "New Password",
+    "enterNewPassword": "Enter new password",
+    "confirmNewPassword": "Confirm new password",
+    "passwordRequirementsTitle": "Password Requirements",
+    "atLeast8Chars": "At least 8 characters",
+    "atLeastOneLetter": "At least one letter",
+    "atLeastOneNumber": "At least one number",
+    "passwordsMatch": "Passwords match",
+    "passwordsDoNotMatch": "Passwords do not match",
+    "setNewPassword": "Set New Password",
+    "passwordNeedsLetter": "Password must contain at least one letter",
+    "passwordNeedsNumber": "Password must contain at least one number"
   },
   "gacha": {
     "title": "GachaMaster",
@@ -972,7 +994,17 @@
       "deviceMismatch": "Device mismatch detected",
       "deviceBindingBlocked": "Device binding blocked",
       "deviceBindingCleared": "Device binding cleared",
-      "riskChange": "Risk score changed"
+      "riskChange": "Risk score changed",
+      "passwordReset": "Password Reset",
+      "passwordResetInfo": "Reset the user's password and generate a temporary password. The user will be required to set a new password on their next login.",
+      "cannotResetAdminPassword": "Cannot reset password for admin accounts.",
+      "resetPassword": "Reset Password",
+      "confirmPasswordReset": "Confirm Password Reset",
+      "passwordResetWarning": "Are you sure you want to reset the password for \"{{username}}\"? This will generate a new temporary password and invalidate all existing sessions.",
+      "passwordResetSuccess": "Password Reset Successful",
+      "temporaryPassword": "Temporary Password",
+      "copyPassword": "Copy password",
+      "expiresAt": "Expires at"
     },
     "deviceHistory": {
       "title": "Device History",
