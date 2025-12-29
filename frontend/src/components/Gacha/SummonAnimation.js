@@ -141,42 +141,42 @@ export const SummonAnimation = ({
       return;
     }
 
-    // Main burst - refined physics
+    // Main burst - originates from below center so confetti rises up around the card
     confetti({
       particleCount: ambientConfig.confettiCount,
       spread: 70,
-      origin: { y: 0.45, x: 0.5 },
+      origin: { y: 0.7, x: 0.5 },
       colors,
-      startVelocity: 30,
+      startVelocity: 45,
       gravity: 1.0,
       shapes: ['circle', 'square'],
       scalar: 1.0,
-      ticks: 80,
+      ticks: 100,
       drift: 0
     });
 
-    // Side bursts for legendary/epic - more elegant timing
+    // Side bursts for legendary/epic - originate from lower corners
     if (effectRarity === 'legendary' || effectRarity === 'epic') {
       setTimeout(() => {
         confetti({
           particleCount: 30,
           angle: 60,
-          spread: 40,
-          origin: { x: 0.1, y: 0.5 },
+          spread: 45,
+          origin: { x: 0.1, y: 0.8 },
           colors,
-          startVelocity: 25,
+          startVelocity: 35,
           gravity: 1.0
         });
         confetti({
           particleCount: 30,
           angle: 120,
-          spread: 40,
-          origin: { x: 0.9, y: 0.5 },
+          spread: 45,
+          origin: { x: 0.9, y: 0.8 },
           colors,
-          startVelocity: 25,
+          startVelocity: 35,
           gravity: 1.0
         });
-      }, 100);
+      }, 150);
     }
   }, [ambientConfig, effectRarity]);
 
@@ -224,8 +224,7 @@ export const SummonAnimation = ({
           buildupStopRef.current();
           buildupStopRef.current = null;
         }
-        fireConfetti();
-        // Trigger screen shake, flash, and reveal sounds
+        // Trigger screen shake, flash, and reveal sounds (but NOT confetti yet)
         triggerRevealSequence(effectRarity);
       }, ambientConfig.buildupTime);
       timersRef.current.push(flashTimer);
@@ -233,6 +232,8 @@ export const SummonAnimation = ({
       // Reveal phase - slight overlap with flash for seamless transition
       const revealTimer = setTimeout(() => {
         setPhase(PHASES.REVEAL);
+        // Fire confetti AFTER the character card is visible
+        fireConfetti();
       }, ambientConfig.buildupTime + PHASE_TIMINGS.REVEAL_OFFSET);
       timersRef.current.push(revealTimer);
 
@@ -289,11 +290,14 @@ export const SummonAnimation = ({
         buildupStopRef.current = null;
       }
       setPhase(PHASES.FLASH);
-      fireConfetti();
-      // Trigger reveal effects
+      // Trigger reveal effects (flash, shake, sound)
       triggerRevealSequence(effectRarity);
 
-      setTimeout(() => setPhase(PHASES.REVEAL), 200);
+      // Fire confetti when reveal phase starts (after card is visible)
+      setTimeout(() => {
+        setPhase(PHASES.REVEAL);
+        fireConfetti();
+      }, 200);
       const completeTimer = setTimeout(() => {
         setPhase(PHASES.COMPLETE);
         setShowSkipHint(false);
