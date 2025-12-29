@@ -116,13 +116,20 @@ export const useScreenShake = () => {
 
   /**
    * Stop any active shake
+   * IMPORTANT: Always clears the transform even if this instance doesn't have
+   * the timeline ref. This handles the case where stopShake is called from a
+   * different component instance than the one that started the shake.
    */
   const stopShake = useCallback(() => {
     if (shakeTimelineRef.current) {
       shakeTimelineRef.current.kill();
-      const element = document.getElementById('app-shake-container') || document.body;
-      gsap.set(element, { x: 0, y: 0, clearProps: 'transform' });
+      shakeTimelineRef.current = null;
     }
+    // Always clear the transform - critical for multi-summon where stopShake
+    // may be called from a different component instance (MultiSummonAnimation)
+    // than the one that started the shake (SummonAnimation)
+    const element = document.getElementById('app-shake-container') || document.body;
+    gsap.set(element, { x: 0, y: 0, clearProps: 'transform' });
   }, []);
 
   return {
