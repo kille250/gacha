@@ -10,6 +10,7 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { usePityState } from '../../hooks/useGameEnhancements';
 import { useTranslation } from 'react-i18next';
+import { IconFire, IconSparkle } from '../../constants/icons';
 
 const Container = styled(motion.div)`
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -534,7 +535,7 @@ export function PityDisplay({ bannerId = null, compact = false, pullResult = nul
           $urgency={standard.untilGuaranteed.legendary <= 5 ? 'high' : 'medium'}
         >
           <NearPityIcon $urgency={standard.untilGuaranteed.legendary <= 5 ? 'high' : 'medium'}>
-            {standard.untilGuaranteed.legendary <= 5 ? '🔥' : '✨'}
+            {standard.untilGuaranteed.legendary <= 5 ? <IconFire /> : <IconSparkle />}
           </NearPityIcon>
           <NearPityContent>
             <NearPityTitle $urgency={standard.untilGuaranteed.legendary <= 5 ? 'high' : 'medium'}>

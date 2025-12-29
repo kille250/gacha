@@ -21,7 +21,6 @@ import {
   ClaimPopupIcon,
   ClaimPopupTitle,
   ClaimPopupRewards,
-  RewardItem,
   ActiveBonusTag,
   CatchUpBonusTag,
 } from './DojoPage.styles';

@@ -13,19 +13,9 @@ import { FaCheck, FaGift, FaFish, FaDice, FaDumbbell, FaStar } from 'react-icons
 import { theme } from '../../design-system';
 
 // Animations
-const shimmer = keyframes`
-  0% { background-position: -200% center; }
-  100% { background-position: 200% center; }
-`;
-
 const pulse = keyframes`
   0%, 100% { transform: scale(1); opacity: 1; }
   50% { transform: scale(1.05); opacity: 0.9; }
-`;
-
-const checkmarkDraw = keyframes`
-  from { stroke-dashoffset: 24; }
-  to { stroke-dashoffset: 0; }
 `;
 
 // Container
