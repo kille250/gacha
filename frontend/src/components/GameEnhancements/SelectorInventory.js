@@ -27,6 +27,7 @@ import {
   FaPlus
 } from 'react-icons/fa';
 import { MdClose } from 'react-icons/md';
+import { useTranslation } from 'react-i18next';
 import { useSelectors } from '../../hooks/useGameEnhancements';
 import { getAssetUrl } from '../../utils/api';
 import { PLACEHOLDER_IMAGE, isVideo } from '../../utils/mediaUtils';
@@ -744,6 +745,7 @@ const getCharacterImageUrl = (char) => {
 // ===========================================
 
 export function SelectorInventory() {
+  const { t } = useTranslation();
   const {
     selectors,
     characters,
@@ -861,7 +863,7 @@ export function SelectorInventory() {
   if (loading) {
     return (
       <Container>
-        <Title>Loading selectors...</Title>
+        <Title>{t('selectorInventory.loadingSelectors')}</Title>
       </Container>
     );
   }
@@ -875,14 +877,14 @@ export function SelectorInventory() {
         <Header>
           <Title>
             <FaTicketAlt size={18} />
-            Character Selectors
+            {t('selectorInventory.title')}
           </Title>
         </Header>
         <EmptyState>
           <EmptyIcon><FaTicketAlt /></EmptyIcon>
           <EmptyText>
-            No selectors available.<br />
-            Exchange Fate Points to get selectors!
+            {t('selectorInventory.noSelectorsAvailable')}<br />
+            {t('selectorInventory.exchangeFatePoints')}
           </EmptyText>
         </EmptyState>
       </Container>
@@ -898,9 +900,9 @@ export function SelectorInventory() {
         <Header>
           <Title>
             <FaTicketAlt size={18} />
-            Character Selectors
+            {t('selectorInventory.title')}
           </Title>
-          <SelectorCount>{selectors.available} Available</SelectorCount>
+          <SelectorCount>{selectors.available} {t('selectorInventory.available')}</SelectorCount>
         </Header>
 
         <SelectorGrid>
@@ -918,9 +920,9 @@ export function SelectorInventory() {
                   <Icon size={40} />
                 </SelectorIcon>
                 <SelectorRarity>{selector.rarity}</SelectorRarity>
-                <SelectorLabel>Selector</SelectorLabel>
+                <SelectorLabel>{t('selectorInventory.selector')}</SelectorLabel>
                 <SelectorDate>
-                  Obtained: {formatDate(selector.obtained)}
+                  {t('selectorInventory.obtained')}: {formatDate(selector.obtained)}
                 </SelectorDate>
               </SelectorCard>
             );
@@ -938,12 +940,12 @@ export function SelectorInventory() {
           >
             <PickerHeader>
               <PickerTitle>
-                Choose Your Character
+                {t('selectorInventory.chooseCharacter')}
                 <RarityBadge $rarity={activeSelector.rarity}>
                   {activeSelector.rarity}
                 </RarityBadge>
               </PickerTitle>
-              <CloseButton onClick={handleClose} aria-label="Close">
+              <CloseButton onClick={handleClose} aria-label={t('common.close')}>
                 <MdClose />
               </CloseButton>
             </PickerHeader>
@@ -953,10 +955,10 @@ export function SelectorInventory() {
                 <FaSearch />
                 <SearchInput
                   ref={searchInputRef}
-                  placeholder="Search by name or series..."
+                  placeholder={t('selectorInventory.searchPlaceholder')}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
-                  aria-label="Search characters"
+                  aria-label={t('accessibility.searchCharacters')}
                 />
                 <AnimatePresence>
                   {searchQuery && (
@@ -965,7 +967,7 @@ export function SelectorInventory() {
                       initial={{ opacity: 0, scale: 0.8 }}
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
-                      aria-label="Clear search"
+                      aria-label={t('accessibility.clearSearch')}
                     >
                       <FaTimes size={12} />
                     </ClearSearchButton>
@@ -979,33 +981,33 @@ export function SelectorInventory() {
                 $active={ownershipFilter === 'all'}
                 onClick={() => setOwnershipFilter('all')}
               >
-                All ({characters?.total || 0})
+                {t('selectorInventory.filters.all')} ({characters?.total || 0})
               </FilterButton>
               <FilterButton
                 $active={ownershipFilter === 'new'}
                 onClick={() => setOwnershipFilter('new')}
               >
                 <FaStar />
-                New ({characters?.characters?.filter(c => !c.owned).length || 0})
+                {t('selectorInventory.filters.new')} ({characters?.characters?.filter(c => !c.owned).length || 0})
               </FilterButton>
               <FilterButton
                 $active={ownershipFilter === 'owned'}
                 onClick={() => setOwnershipFilter('owned')}
               >
                 <FaCheck />
-                Owned ({characters?.characters?.filter(c => c.owned).length || 0})
+                {t('selectorInventory.filters.owned')} ({characters?.characters?.filter(c => c.owned).length || 0})
               </FilterButton>
             </FilterRow>
 
             <PickerContent>
               {loadingCharacters ? (
-                <LoadingText>Loading characters...</LoadingText>
+                <LoadingText>{t('selectorInventory.loadingCharacters')}</LoadingText>
               ) : filteredCharacters.length === 0 ? (
                 <LoadingText>
-                  {searchQuery ? 'No characters match your search.' : 'No characters available.'}
+                  {searchQuery ? t('selectorInventory.noMatch') : t('selectorInventory.noCharacters')}
                 </LoadingText>
               ) : (
-                <CharacterGrid role="listbox" aria-label="Character selection">
+                <CharacterGrid role="listbox" aria-label={t('accessibility.characterSelection')}>
                   {filteredCharacters.map(char => {
                     const imageSrc = getCharacterImageUrl(char);
                     const isSelected = selectedCharacter?.id === char.id;
@@ -1022,7 +1024,7 @@ export function SelectorInventory() {
                         whileTap={{ scale: 0.98 }}
                         role="option"
                         aria-selected={isSelected}
-                        aria-label={`${char.name}${char.owned ? ' (Owned)' : ' (New)'}`}
+                        aria-label={`${char.name}${char.owned ? ` (${t('selectorInventory.filters.owned')})` : ` (${t('selectorInventory.filters.new')})`}`}
                       >
                         <AnimatePresence>
                           {isSelected && (
@@ -1038,9 +1040,9 @@ export function SelectorInventory() {
 
                         <OwnershipBadge $owned={char.owned}>
                           {char.owned ? (
-                            <><FaPlus size={8} /> Dupe</>
+                            <><FaPlus size={8} /> {t('selectorInventory.status.dupe')}</>
                           ) : (
-                            <><FaStar size={8} /> New</>
+                            <><FaStar size={8} /> {t('selectorInventory.status.new')}</>
                           )}
                         </OwnershipBadge>
 
@@ -1120,9 +1122,9 @@ export function SelectorInventory() {
                       <div className="name">{selectedCharacter.name}</div>
                       <div className="hint">
                         {selectedCharacter.owned ? (
-                          <><FaPlus size={10} /> +1 Shard</>
+                          <><FaPlus size={10} /> {t('selectorInventory.status.shard')}</>
                         ) : (
-                          <><FaStar size={10} /> New Character!</>
+                          <><FaStar size={10} /> {t('selectorInventory.status.newCharacter')}</>
                         )}
                       </div>
                     </SelectedText>
@@ -1133,8 +1135,8 @@ export function SelectorInventory() {
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
                   >
-                    {using ? 'Claiming...' : (
-                      <><FaCheck /> Confirm</>
+                    {using ? t('selectorInventory.claiming') : (
+                      <><FaCheck /> {t('common.confirm')}</>
                     )}
                   </ConfirmButton>
                 </ConfirmBar>
@@ -1146,7 +1148,7 @@ export function SelectorInventory() {
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
               >
-                Claiming character...
+                {t('selectorInventory.claimingCharacter')}
               </LoadingOverlay>
             )}
           </PickerModal>
@@ -1176,7 +1178,7 @@ export function SelectorInventory() {
                 <FaCheck />
               </SuccessIcon>
               <SuccessTitle>
-                {successResult.isNew ? 'New Character!' : 'Shard Obtained!'}
+                {successResult.isNew ? t('selectorInventory.success.newCharacter') : t('selectorInventory.success.shardObtained')}
               </SuccessTitle>
               <SuccessMessage>
                 {successResult.message}
@@ -1186,7 +1188,7 @@ export function SelectorInventory() {
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
               >
-                Awesome!
+                {t('selectorInventory.success.awesome')}
               </SuccessButton>
             </SuccessContent>
           </SuccessModal>

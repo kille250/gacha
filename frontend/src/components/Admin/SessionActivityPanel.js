@@ -7,17 +7,19 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaSignInAlt, FaSync, FaGoogle, FaKey, FaTimes, FaCheckCircle } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
 import { getUserSessions } from '../../utils/api';
 
 const SessionActivityPanel = ({ userId }) => {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const fetchData = useCallback(async () => {
     if (!userId) return;
-    
+
     setLoading(true);
     setError(null);
     try {
@@ -25,35 +27,35 @@ const SessionActivityPanel = ({ userId }) => {
       setData(result);
     } catch (err) {
       console.error('Failed to fetch sessions:', err);
-      setError('Failed to load session activity');
+      setError(t('adminSecurity.sessionActivity.failedLoad'));
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, t]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
-  const formatTimestamp = (ts) => ts ? new Date(ts).toLocaleString() : 'Never';
+  const formatTimestamp = (ts) => ts ? new Date(ts).toLocaleString() : t('time.never');
 
   const formatRelativeTime = (ts) => {
-    if (!ts) return 'Never';
+    if (!ts) return t('time.never');
     const diff = Date.now() - new Date(ts).getTime();
     const minutes = Math.floor(diff / (1000 * 60));
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1) return t('time.justNow');
+    if (minutes < 60) return t('time.minutesAgo', { count: minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return t('time.hoursAgo', { count: hours });
     const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+    return t('time.daysAgo', { count: days });
   };
 
   if (loading) {
     return (
       <Container>
         <LoadingState>
-          <FaSync className="spin" /> Loading session activity...
+          <FaSync className="spin" /> {t('adminSecurity.sessionActivity.loadingActivity')}
         </LoadingState>
       </Container>
     );
@@ -77,7 +79,7 @@ const SessionActivityPanel = ({ userId }) => {
     >
       <Header>
         <Title>
-          <FaSignInAlt /> Session Activity
+          <FaSignInAlt /> {t('admin.security.sessionActivity', 'Session Activity')}
         </Title>
         <RefreshButton onClick={fetchData}>
           <FaSync />
@@ -86,42 +88,42 @@ const SessionActivityPanel = ({ userId }) => {
 
       <SummaryGrid>
         <SummaryCard>
-          <SummaryLabel>Last Login</SummaryLabel>
+          <SummaryLabel>{t('adminSecurity.sessionActivity.lastLogin')}</SummaryLabel>
           <SummaryValue>
-            {data.lastSuccessfulLogin 
+            {data.lastSuccessfulLogin
               ? formatRelativeTime(data.lastSuccessfulLogin.timestamp)
-              : 'Never'
+              : t('time.never')
             }
           </SummaryValue>
           {data.lastSuccessfulLogin && (
             <SummaryMeta>
-              via {data.lastSuccessfulLogin.method === 'google' ? 'Google SSO' : 'Password'}
+              {t('adminSecurity.sessionActivity.via')} {data.lastSuccessfulLogin.method === 'google' ? t('adminSecurity.loginMethod.google') : t('adminSecurity.loginMethod.password')}
             </SummaryMeta>
           )}
         </SummaryCard>
         
         <SummaryCard>
-          <SummaryLabel>Failed Logins (24h)</SummaryLabel>
+          <SummaryLabel>{t('adminSecurity.sessionActivity.failedLogins24h')}</SummaryLabel>
           <SummaryValue $warning={data.recentFailedLogins > 0}>
             {data.recentFailedLogins || 0}
           </SummaryValue>
           {data.recentFailedLogins > 2 && (
-            <SummaryMeta $warning>Possible attack</SummaryMeta>
+            <SummaryMeta $warning>{t('adminSecurity.sessionActivity.possibleAttack')}</SummaryMeta>
           )}
         </SummaryCard>
-        
+
         <SummaryCard>
-          <SummaryLabel>Session Invalidated</SummaryLabel>
+          <SummaryLabel>{t('adminSecurity.sessionActivity.sessionInvalidated')}</SummaryLabel>
           <SummaryValue $small>
-            {data.sessionInvalidatedAt 
+            {data.sessionInvalidatedAt
               ? formatTimestamp(data.sessionInvalidatedAt)
-              : 'Never'
+              : t('time.never')
             }
           </SummaryValue>
         </SummaryCard>
-        
+
         <SummaryCard>
-          <SummaryLabel>Account Created</SummaryLabel>
+          <SummaryLabel>{t('adminSecurity.sessionActivity.accountCreated')}</SummaryLabel>
           <SummaryValue $small>
             {formatTimestamp(data.accountCreated)}
           </SummaryValue>
@@ -130,7 +132,7 @@ const SessionActivityPanel = ({ userId }) => {
 
       {data.loginHistory?.length > 0 && (
         <HistorySection>
-          <HistoryTitle>Login History</HistoryTitle>
+          <HistoryTitle>{t('adminSecurity.sessionActivity.loginHistory')}</HistoryTitle>
           <HistoryList>
             <AnimatePresence>
               {data.loginHistory.map((event, index) => (
@@ -146,11 +148,11 @@ const SessionActivityPanel = ({ userId }) => {
                     <EventMethod>
                       {event.type === 'auth.google.login' ? (
                         <>
-                          <FaGoogle /> Google SSO
+                          <FaGoogle /> {t('adminSecurity.loginMethod.google')}
                         </>
                       ) : (
                         <>
-                          <FaKey /> {event.success ? 'Password Login' : 'Failed Attempt'}
+                          <FaKey /> {event.success ? t('adminSecurity.loginMethod.password') : t('adminSecurity.sessionActivity.failedAttempt')}
                         </>
                       )}
                     </EventMethod>
@@ -169,7 +171,7 @@ const SessionActivityPanel = ({ userId }) => {
       )}
 
       {(!data.loginHistory || data.loginHistory.length === 0) && (
-        <EmptyState>No login history available</EmptyState>
+        <EmptyState>{t('adminSecurity.sessionActivity.noHistory')}</EmptyState>
       )}
     </Container>
   );

@@ -15,6 +15,7 @@ import React, { Component } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { FaExclamationTriangle, FaRedo, FaHome } from 'react-icons/fa';
+import { withTranslation } from 'react-i18next';
 import { theme, Button, Container } from '../../design-system';
 
 class AdminErrorBoundary extends Component {
@@ -63,6 +64,8 @@ class AdminErrorBoundary extends Component {
   };
 
   render() {
+    const { t } = this.props;
+
     if (this.state.hasError) {
       const { error } = this.state;
       const isDevelopment = process.env.NODE_ENV === 'development';
@@ -75,10 +78,10 @@ class AdminErrorBoundary extends Component {
                 <FaExclamationTriangle />
               </IconWrapper>
 
-              <ErrorTitle>Something went wrong</ErrorTitle>
+              <ErrorTitle>{t('errorBoundary.title')}</ErrorTitle>
 
               <ErrorMessage>
-                An error occurred in the admin panel. This has been logged and we'll look into it.
+                {t('errorBoundary.adminPanelError')}
               </ErrorMessage>
 
               {isDevelopment && error && (
@@ -101,13 +104,13 @@ class AdminErrorBoundary extends Component {
                   variant="primary"
                   onClick={this.handleReset}
                 >
-                  <FaRedo /> Try Again
+                  <FaRedo /> {t('errorBoundary.tryAgain')}
                 </Button>
                 <Button
                   variant="secondary"
                   onClick={this.handleNavigateHome}
                 >
-                  <FaHome /> Go to Home
+                  <FaHome /> {t('errorBoundary.goHome')}
                 </Button>
               </ActionButtons>
             </ErrorCard>
@@ -219,6 +222,8 @@ AdminErrorBoundary.propTypes = {
   onError: PropTypes.func,
   /** Optional callback when reset is triggered */
   onReset: PropTypes.func,
+  /** Translation function from i18next */
+  t: PropTypes.func.isRequired,
 };
 
 AdminErrorBoundary.defaultProps = {
@@ -226,4 +231,4 @@ AdminErrorBoundary.defaultProps = {
   onReset: null,
 };
 
-export default AdminErrorBoundary;
+export default withTranslation()(AdminErrorBoundary);

@@ -1349,7 +1349,99 @@
     "message": "Ocurrió un error inesperado. Por favor, intenta actualizar la página o contacta soporte si el problema persiste.",
     "reloadPage": "Recargar Página",
     "tryAgain": "Intentar de Nuevo",
-    "errorDetails": "Detalles del error"
+    "errorDetails": "Detalles del error",
+    "goHome": "Ir al Inicio",
+    "errorInPage": "Error en {{pageName}}",
+    "weEncounteredError": "Encontramos un error inesperado. Se ha registrado y lo investigaremos.",
+    "clickTryAgain": "Haz clic en \"Intentar de Nuevo\" para intentar recuperar. Si el problema persiste, intenta navegar a otra página.",
+    "retrying": "Reintentando...",
+    "retryAttempt": "Intento {{current}} de {{max}}",
+    "adminPanelError": "Ocurrió un error en el panel de administración. Se ha registrado y lo investigaremos."
+  },
+  "selectorInventory": {
+    "title": "Selectores de Personajes",
+    "available": "Disponible",
+    "noSelectorsAvailable": "No hay selectores disponibles.",
+    "exchangeFatePoints": "¡Intercambia Puntos de Destino por selectores!",
+    "loadingSelectors": "Cargando selectores...",
+    "selector": "Selector",
+    "obtained": "Obtenido",
+    "chooseCharacter": "Elige Tu Personaje",
+    "searchPlaceholder": "Buscar por nombre o serie...",
+    "filters": {
+      "all": "Todos",
+      "new": "Nuevo",
+      "owned": "Obtenido"
+    },
+    "status": {
+      "dupe": "Duplicado",
+      "new": "Nuevo",
+      "shard": "+1 Fragmento",
+      "newCharacter": "¡Nuevo Personaje!"
+    },
+    "loadingCharacters": "Cargando personajes...",
+    "noMatch": "No hay personajes que coincidan con tu búsqueda.",
+    "noCharacters": "No hay personajes disponibles.",
+    "claiming": "Reclamando...",
+    "claimingCharacter": "Reclamando personaje...",
+    "success": {
+      "newCharacter": "¡Nuevo Personaje!",
+      "shardObtained": "¡Fragmento Obtenido!",
+      "awesome": "¡Genial!"
+    }
+  },
+  "time": {
+    "justNow": "Ahora mismo",
+    "today": "Hoy",
+    "yesterday": "Ayer",
+    "daysAgo": "hace {{count}} días",
+    "weeksAgo": "hace {{count}} semanas",
+    "monthsAgo": "hace {{count}} meses",
+    "minutesAgo": "hace {{count}}m",
+    "hoursAgo": "hace {{count}}h",
+    "never": "Nunca"
+  },
+  "adminSecurity": {
+    "loginMethod": {
+      "google": "Google SSO",
+      "password": "Contraseña",
+      "unknown": "Desconocido"
+    },
+    "riskLevel": {
+      "critical": "Crítico",
+      "high": "Alto",
+      "elevated": "Elevado",
+      "monitoring": "Monitoreo",
+      "normal": "Normal"
+    },
+    "deviceHistory": {
+      "loadingHistory": "Cargando historial de dispositivos...",
+      "failedLoad": "Error al cargar historial de dispositivos",
+      "noHistory": "Sin historial de dispositivos disponible",
+      "recentEvents": "Eventos Recientes de Dispositivos"
+    },
+    "riskHistory": {
+      "loadingHistory": "Cargando historial de riesgo...",
+      "failedLoad": "Error al cargar historial de riesgo",
+      "currentScore": "Puntuación de Riesgo Actual",
+      "scoreChanges": "Cambios de Puntuación",
+      "noChanges": "Sin cambios de puntuación de riesgo registrados",
+      "noReason": "Sin razón registrada",
+      "adminAction": "Acción de administrador"
+    },
+    "sessionActivity": {
+      "loadingActivity": "Cargando actividad de sesión...",
+      "failedLoad": "Error al cargar actividad de sesión",
+      "lastLogin": "Último Inicio de Sesión",
+      "failedLogins24h": "Inicios Fallidos (24h)",
+      "possibleAttack": "Posible ataque",
+      "sessionInvalidated": "Sesión Invalidada",
+      "accountCreated": "Cuenta Creada",
+      "loginHistory": "Historial de Inicios de Sesión",
+      "noHistory": "Sin historial de inicios de sesión disponible",
+      "via": "vía",
+      "failedAttempt": "Intento Fallido"
+    }
   },
   "upload": {
     "failed": "Subida Fallida",
@@ -1410,6 +1502,7 @@
     "closeResults": "Cerrar resultados",
     "editRarity": "Editar rareza",
     "scrollLeft": "Desplazar a la izquierda",
-    "scrollRight": "Desplazar a la derecha"
+    "scrollRight": "Desplazar a la derecha",
+    "skipToMain": "Saltar al contenido principal"
   }
 }

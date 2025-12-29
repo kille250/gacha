@@ -17,6 +17,7 @@ import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { MdRefresh, MdError, MdHome, MdBugReport } from 'react-icons/md';
+import { withTranslation } from 'react-i18next';
 import { theme, Button, Container } from '../../../design-system';
 
 /**
@@ -249,6 +250,7 @@ class PageErrorBoundary extends Component {
       pageName,
       fullHeight = true,
       showDetails = process.env.NODE_ENV === 'development',
+      t,
     } = this.props;
 
     if (!hasError) {
@@ -290,16 +292,16 @@ class PageErrorBoundary extends Component {
             </ErrorIconWrapper>
 
             <ErrorTitle>
-              {pageName ? `Error in ${pageName}` : 'Something went wrong'}
+              {pageName ? t('errorBoundary.errorInPage', { pageName }) : t('errorBoundary.title')}
             </ErrorTitle>
 
             <ErrorMessage>
-              We encountered an unexpected error. This has been logged and we'll look into it.
+              {t('errorBoundary.weEncounteredError')}
             </ErrorMessage>
 
             {canRetry && (
               <ErrorHint>
-                Click "Try Again" to attempt recovery. If the problem persists, try navigating to another page.
+                {t('errorBoundary.clickTryAgain')}
               </ErrorHint>
             )}
 
@@ -315,7 +317,7 @@ class PageErrorBoundary extends Component {
                     className={isRecovering ? 'spin' : ''}
                     aria-hidden="true"
                   />
-                  {isRecovering ? 'Retrying...' : 'Try Again'}
+                  {isRecovering ? t('errorBoundary.retrying') : t('errorBoundary.tryAgain')}
                 </Button>
               )}
 
@@ -324,7 +326,7 @@ class PageErrorBoundary extends Component {
                 onClick={() => this.handleNavigate('/gacha')}
               >
                 <MdHome style={{ marginRight: 8 }} aria-hidden="true" />
-                Go to Home
+                {t('errorBoundary.goHome')}
               </Button>
 
               {!canRetry && (
@@ -333,14 +335,14 @@ class PageErrorBoundary extends Component {
                   onClick={this.handleReload}
                 >
                   <MdRefresh style={{ marginRight: 8 }} aria-hidden="true" />
-                  Reload Page
+                  {t('errorBoundary.reloadPage')}
                 </Button>
               )}
             </ActionButtons>
 
             {retryCount > 0 && (
               <RetryCount>
-                Retry attempt {retryCount} of {this.maxRetries}
+                {t('errorBoundary.retryAttempt', { current: retryCount, max: this.maxRetries })}
               </RetryCount>
             )}
 
@@ -348,7 +350,7 @@ class PageErrorBoundary extends Component {
               <ErrorDetails>
                 <ErrorSummary>
                   <MdBugReport style={{ marginRight: 8, verticalAlign: 'middle' }} />
-                  Error Details
+                  {t('errorBoundary.errorDetails')}
                 </ErrorSummary>
                 <ErrorStack>
                   {error.toString()}
@@ -380,9 +382,11 @@ PageErrorBoundary.propTypes = {
   onError: PropTypes.func,
   /** Callback on retry attempt */
   onRetry: PropTypes.func,
+  /** Translation function from i18next */
+  t: PropTypes.func.isRequired,
 };
 
-export default PageErrorBoundary;
+export default withTranslation()(PageErrorBoundary);
 
 // Named exports for strategies
 export { RECOVERY_STRATEGIES };

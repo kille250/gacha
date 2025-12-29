@@ -173,7 +173,6 @@ import {
   IconPremiumTicket,
   IconWarning,
   IconStar,
-  IconPoolPity,
 } from '../constants/icons';
 
 // ==================== CONSTANTS ====================

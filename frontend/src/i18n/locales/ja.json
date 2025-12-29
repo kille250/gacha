@@ -1604,7 +1604,8 @@
     "goBack": "戻る",
     "closeResults": "結果を閉じる",
     "editRarity": "レアリティを編集",
-    "closePreview": "プレビューを閉じる"
+    "closePreview": "プレビューを閉じる",
+    "skipToMain": "メインコンテンツへスキップ"
   },
   "network": {
     "offline": "オフラインです",
@@ -1620,7 +1621,99 @@
     "message": "予期しないエラーが発生しました。ページを更新するか、問題が続く場合はサポートにお問い合わせください。",
     "reloadPage": "ページを再読み込み",
     "tryAgain": "再試行",
-    "errorDetails": "エラー詳細"
+    "errorDetails": "エラー詳細",
+    "goHome": "ホームへ戻る",
+    "errorInPage": "{{pageName}}でエラー",
+    "weEncounteredError": "予期しないエラーが発生しました。ログに記録され、調査いたします。",
+    "clickTryAgain": "「再試行」をクリックして復元を試みてください。問題が続く場合は、別のページに移動してください。",
+    "retrying": "再試行中...",
+    "retryAttempt": "再試行 {{current}}/{{max}}",
+    "adminPanelError": "管理パネルでエラーが発生しました。ログに記録され、調査いたします。"
+  },
+  "selectorInventory": {
+    "title": "キャラクターセレクター",
+    "available": "利用可能",
+    "noSelectorsAvailable": "セレクターがありません。",
+    "exchangeFatePoints": "運命ポイントを交換してセレクターを入手！",
+    "loadingSelectors": "セレクターを読み込み中...",
+    "selector": "セレクター",
+    "obtained": "入手日",
+    "chooseCharacter": "キャラクターを選択",
+    "searchPlaceholder": "名前またはシリーズで検索...",
+    "filters": {
+      "all": "すべて",
+      "new": "新規",
+      "owned": "所持"
+    },
+    "status": {
+      "dupe": "重複",
+      "new": "新規",
+      "shard": "+1 欠片",
+      "newCharacter": "新キャラクター！"
+    },
+    "loadingCharacters": "キャラクターを読み込み中...",
+    "noMatch": "検索に一致するキャラクターがありません。",
+    "noCharacters": "利用可能なキャラクターがありません。",
+    "claiming": "獲得中...",
+    "claimingCharacter": "キャラクターを獲得中...",
+    "success": {
+      "newCharacter": "新キャラクター！",
+      "shardObtained": "欠片を入手！",
+      "awesome": "すごい！"
+    }
+  },
+  "time": {
+    "justNow": "たった今",
+    "today": "今日",
+    "yesterday": "昨日",
+    "daysAgo": "{{count}}日前",
+    "weeksAgo": "{{count}}週間前",
+    "monthsAgo": "{{count}}ヶ月前",
+    "minutesAgo": "{{count}}分前",
+    "hoursAgo": "{{count}}時間前",
+    "never": "なし"
+  },
+  "adminSecurity": {
+    "loginMethod": {
+      "google": "Google SSO",
+      "password": "パスワードログイン",
+      "unknown": "不明"
+    },
+    "riskLevel": {
+      "critical": "危険",
+      "high": "高",
+      "elevated": "警戒",
+      "monitoring": "監視中",
+      "normal": "正常"
+    },
+    "deviceHistory": {
+      "loadingHistory": "デバイス履歴を読み込み中...",
+      "failedLoad": "デバイス履歴の読み込みに失敗",
+      "noHistory": "デバイス履歴がありません",
+      "recentEvents": "最近のデバイスイベント"
+    },
+    "riskHistory": {
+      "loadingHistory": "リスク履歴を読み込み中...",
+      "failedLoad": "リスク履歴の読み込みに失敗",
+      "currentScore": "現在のリスクスコア",
+      "scoreChanges": "スコア変更",
+      "noChanges": "リスクスコアの変更記録なし",
+      "noReason": "理由なし",
+      "adminAction": "管理者アクション"
+    },
+    "sessionActivity": {
+      "loadingActivity": "セッションアクティビティを読み込み中...",
+      "failedLoad": "セッションアクティビティの読み込みに失敗",
+      "lastLogin": "最終ログイン",
+      "failedLogins24h": "失敗したログイン (24時間)",
+      "possibleAttack": "攻撃の可能性",
+      "sessionInvalidated": "セッション無効化",
+      "accountCreated": "アカウント作成日",
+      "loginHistory": "ログイン履歴",
+      "noHistory": "ログイン履歴がありません",
+      "via": "経由",
+      "failedAttempt": "失敗した試行"
+    }
   },
   "upload": {
     "failed": "アップロード失敗",

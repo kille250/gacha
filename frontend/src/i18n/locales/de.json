@@ -1550,7 +1550,8 @@
     "editRarity": "Seltenheit bearbeiten",
     "scrollLeft": "Nach links scrollen",
     "scrollRight": "Nach rechts scrollen",
-    "closePreview": "Vorschau schließen"
+    "closePreview": "Vorschau schließen",
+    "skipToMain": "Zum Hauptinhalt springen"
   },
   "network": {
     "offline": "Du bist offline",
@@ -1566,7 +1567,99 @@
     "message": "Ein unerwarteter Fehler ist aufgetreten. Bitte versuche die Seite zu aktualisieren oder kontaktiere den Support, wenn das Problem weiterhin besteht.",
     "reloadPage": "Seite neu laden",
     "tryAgain": "Erneut versuchen",
-    "errorDetails": "Fehlerdetails"
+    "errorDetails": "Fehlerdetails",
+    "goHome": "Zur Startseite",
+    "errorInPage": "Fehler in {{pageName}}",
+    "weEncounteredError": "Ein unerwarteter Fehler ist aufgetreten. Dies wurde protokolliert und wir werden es untersuchen.",
+    "clickTryAgain": "Klicke auf \"Erneut versuchen\" zur Wiederherstellung. Wenn das Problem weiterhin besteht, navigiere zu einer anderen Seite.",
+    "retrying": "Erneut versuchen...",
+    "retryAttempt": "Versuch {{current}} von {{max}}",
+    "adminPanelError": "Ein Fehler ist im Admin-Bereich aufgetreten. Dies wurde protokolliert und wir werden es untersuchen."
+  },
+  "selectorInventory": {
+    "title": "Charakter-Selektoren",
+    "available": "Verfügbar",
+    "noSelectorsAvailable": "Keine Selektoren verfügbar.",
+    "exchangeFatePoints": "Tausche Schicksalspunkte gegen Selektoren ein!",
+    "loadingSelectors": "Lade Selektoren...",
+    "selector": "Selektor",
+    "obtained": "Erhalten",
+    "chooseCharacter": "Wähle deinen Charakter",
+    "searchPlaceholder": "Nach Name oder Serie suchen...",
+    "filters": {
+      "all": "Alle",
+      "new": "Neu",
+      "owned": "Besitzt"
+    },
+    "status": {
+      "dupe": "Duplikat",
+      "new": "Neu",
+      "shard": "+1 Scherbe",
+      "newCharacter": "Neuer Charakter!"
+    },
+    "loadingCharacters": "Lade Charaktere...",
+    "noMatch": "Keine Charaktere entsprechen deiner Suche.",
+    "noCharacters": "Keine Charaktere verfügbar.",
+    "claiming": "Anfordern...",
+    "claimingCharacter": "Charakter anfordern...",
+    "success": {
+      "newCharacter": "Neuer Charakter!",
+      "shardObtained": "Scherbe erhalten!",
+      "awesome": "Super!"
+    }
+  },
+  "time": {
+    "justNow": "Gerade eben",
+    "today": "Heute",
+    "yesterday": "Gestern",
+    "daysAgo": "vor {{count}} Tagen",
+    "weeksAgo": "vor {{count}} Wochen",
+    "monthsAgo": "vor {{count}} Monaten",
+    "minutesAgo": "vor {{count}} Min.",
+    "hoursAgo": "vor {{count}} Std.",
+    "never": "Nie"
+  },
+  "adminSecurity": {
+    "loginMethod": {
+      "google": "Google SSO",
+      "password": "Passwort-Login",
+      "unknown": "Unbekannt"
+    },
+    "riskLevel": {
+      "critical": "Kritisch",
+      "high": "Hoch",
+      "elevated": "Erhöht",
+      "monitoring": "Überwachung",
+      "normal": "Normal"
+    },
+    "deviceHistory": {
+      "loadingHistory": "Lade Geräteverlauf...",
+      "failedLoad": "Geräteverlauf konnte nicht geladen werden",
+      "noHistory": "Kein Geräteverlauf verfügbar",
+      "recentEvents": "Aktuelle Geräteereignisse"
+    },
+    "riskHistory": {
+      "loadingHistory": "Lade Risikoverlauf...",
+      "failedLoad": "Risikoverlauf konnte nicht geladen werden",
+      "currentScore": "Aktueller Risikoscore",
+      "scoreChanges": "Score-Änderungen",
+      "noChanges": "Keine Risikoscore-Änderungen aufgezeichnet",
+      "noReason": "Kein Grund angegeben",
+      "adminAction": "Admin-Aktion"
+    },
+    "sessionActivity": {
+      "loadingActivity": "Lade Sitzungsaktivität...",
+      "failedLoad": "Sitzungsaktivität konnte nicht geladen werden",
+      "lastLogin": "Letzte Anmeldung",
+      "failedLogins24h": "Fehlgeschlagene Anmeldungen (24h)",
+      "possibleAttack": "Möglicher Angriff",
+      "sessionInvalidated": "Sitzung ungültig gemacht",
+      "accountCreated": "Konto erstellt",
+      "loginHistory": "Anmeldeverlauf",
+      "noHistory": "Kein Anmeldeverlauf verfügbar",
+      "via": "über",
+      "failedAttempt": "Fehlgeschlagener Versuch"
+    }
   },
   "upload": {
     "failed": "Upload fehlgeschlagen",

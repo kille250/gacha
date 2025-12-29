@@ -7,10 +7,12 @@ import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaChartLine, FaSync, FaArrowUp, FaArrowDown, FaMinus, FaShieldAlt } from 'react-icons/fa';
+import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
 import { getUserRiskHistory } from '../../utils/api';
 
 const RiskScoreHistoryPanel = ({ userId }) => {
+  const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -25,26 +27,26 @@ const RiskScoreHistoryPanel = ({ userId }) => {
       setData(result);
     } catch (err) {
       console.error('Failed to fetch risk history:', err);
-      setError('Failed to load risk history');
+      setError(t('adminSecurity.riskHistory.failedLoad'));
     } finally {
       setLoading(false);
     }
-  }, [userId]);
+  }, [userId, t]);
 
   useEffect(() => {
     fetchData();
   }, [fetchData]);
 
   const formatRelativeTime = (ts) => {
-    if (!ts) return 'Unknown';
+    if (!ts) return t('common.unknown', 'Unknown');
     const diff = Date.now() - new Date(ts).getTime();
     const minutes = Math.floor(diff / (1000 * 60));
-    if (minutes < 1) return 'Just now';
-    if (minutes < 60) return `${minutes}m ago`;
+    if (minutes < 1) return t('time.justNow');
+    if (minutes < 60) return t('time.minutesAgo', { count: minutes });
     const hours = Math.floor(minutes / 60);
-    if (hours < 24) return `${hours}h ago`;
+    if (hours < 24) return t('time.hoursAgo', { count: hours });
     const days = Math.floor(hours / 24);
-    return `${days}d ago`;
+    return t('time.daysAgo', { count: days });
   };
 
   const getScoreColor = (score) => {
@@ -71,7 +73,7 @@ const RiskScoreHistoryPanel = ({ userId }) => {
     return (
       <Container>
         <LoadingState>
-          <FaSync className="spin" /> Loading risk history...
+          <FaSync className="spin" /> {t('adminSecurity.riskHistory.loadingHistory')}
         </LoadingState>
       </Container>
     );
@@ -109,7 +111,7 @@ const RiskScoreHistoryPanel = ({ userId }) => {
     >
       <Header>
         <Title>
-          <FaChartLine /> Risk Score History
+          <FaChartLine /> {t('admin.security.riskHistory', 'Risk Score History')}
         </Title>
         <RefreshButton onClick={fetchData}>
           <FaSync />
@@ -121,20 +123,20 @@ const RiskScoreHistoryPanel = ({ userId }) => {
           {data.currentScore || 0}
         </ScoreCircle>
         <ScoreInfo>
-          <ScoreLabel>Current Risk Score</ScoreLabel>
+          <ScoreLabel>{t('adminSecurity.riskHistory.currentScore')}</ScoreLabel>
           <ScoreStatus $color={getScoreColor(data.currentScore)}>
-            {data.currentScore >= 85 ? 'Critical' :
-             data.currentScore >= 70 ? 'High' :
-             data.currentScore >= 50 ? 'Elevated' :
-             data.currentScore >= 30 ? 'Monitoring' :
-             'Normal'}
+            {data.currentScore >= 85 ? t('adminSecurity.riskLevel.critical') :
+             data.currentScore >= 70 ? t('adminSecurity.riskLevel.high') :
+             data.currentScore >= 50 ? t('adminSecurity.riskLevel.elevated') :
+             data.currentScore >= 30 ? t('adminSecurity.riskLevel.monitoring') :
+             t('adminSecurity.riskLevel.normal')}
           </ScoreStatus>
         </ScoreInfo>
       </CurrentScore>
 
       {allHistory.length > 0 ? (
         <HistorySection>
-          <HistoryTitle>Score Changes</HistoryTitle>
+          <HistoryTitle>{t('adminSecurity.riskHistory.scoreChanges')}</HistoryTitle>
           <HistoryList>
             <AnimatePresence>
               {allHistory.slice(0, 15).map((item, index) => (
@@ -162,10 +164,10 @@ const RiskScoreHistoryPanel = ({ userId }) => {
                         </Delta>
                       )}
                     </ChangeScores>
-                    <ChangeReason>{item.reason || 'No reason recorded'}</ChangeReason>
+                    <ChangeReason>{item.reason || t('adminSecurity.riskHistory.noReason')}</ChangeReason>
                     {item.adminId && (
                       <AdminBadge>
-                        <FaShieldAlt /> Admin action
+                        <FaShieldAlt /> {t('adminSecurity.riskHistory.adminAction')}
                       </AdminBadge>
                     )}
                   </ChangeContent>
@@ -176,7 +178,7 @@ const RiskScoreHistoryPanel = ({ userId }) => {
           </HistoryList>
         </HistorySection>
       ) : (
-        <EmptyState>No risk score changes recorded</EmptyState>
+        <EmptyState>{t('adminSecurity.riskHistory.noChanges')}</EmptyState>
       )}
     </Container>
   );

@@ -15,6 +15,7 @@
 import React, { Suspense, useState, useEffect } from 'react';
 import styled, { keyframes, createGlobalStyle } from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
+import { useTranslation } from 'react-i18next';
 import { theme, SkipLink } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
@@ -113,10 +114,10 @@ const PageLoaderText = styled.div`
  * Fallback component shown while lazy-loaded pages are loading.
  * Keeps navigation visible for better UX continuity.
  */
-const PageLoader = () => (
+const PageLoader = ({ t }) => (
   <PageLoaderContainer>
     <PageLoaderSpinner />
-    <PageLoaderText>Loading...</PageLoaderText>
+    <PageLoaderText>{t('common.loading')}</PageLoaderText>
   </PageLoaderContainer>
 );
 
@@ -128,6 +129,7 @@ const PageLoader = () => (
  * @param {boolean} props.hideBottomNav - Hide bottom nav for specific pages
  */
 const MainLayout = ({ children, hideBottomNav = false }) => {
+  const { t } = useTranslation();
   const [showReturnBonus, setShowReturnBonus] = useState(false);
 
   // Check for return bonus on initial mount (once per session)
@@ -151,11 +153,11 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
     <>
       <NavHeightVariables />
       <LayoutContainer>
-        <SkipLink href="#main-content">Skip to main content</SkipLink>
+        <SkipLink href="#main-content">{t('accessibility.skipToMain', 'Skip to main content')}</SkipLink>
         <Navigation />
         <PageContent>
           {/* Suspense boundary inside layout keeps navigation visible during lazy page loads */}
-          <Suspense fallback={<PageLoader />}>
+          <Suspense fallback={<PageLoader t={t} />}>
             {children}
           </Suspense>
         </PageContent>

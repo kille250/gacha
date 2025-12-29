@@ -63,7 +63,6 @@ const LoginPage = () => {
     user,
     loading,
     requiresPasswordChange,
-    passwordResetExpiry
   } = useContext(AuthContext);
   const navigate = useNavigate();
 

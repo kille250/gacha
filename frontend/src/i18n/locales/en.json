@@ -1690,7 +1690,99 @@
     "message": "An unexpected error occurred. Please try refreshing the page or contact support if the problem persists.",
     "reloadPage": "Reload Page",
     "tryAgain": "Try Again",
-    "errorDetails": "Error details"
+    "errorDetails": "Error details",
+    "goHome": "Go to Home",
+    "errorInPage": "Error in {{pageName}}",
+    "weEncounteredError": "We encountered an unexpected error. This has been logged and we'll look into it.",
+    "clickTryAgain": "Click \"Try Again\" to attempt recovery. If the problem persists, try navigating to another page.",
+    "retrying": "Retrying...",
+    "retryAttempt": "Retry attempt {{current}} of {{max}}",
+    "adminPanelError": "An error occurred in the admin panel. This has been logged and we'll look into it."
+  },
+  "selectorInventory": {
+    "title": "Character Selectors",
+    "available": "Available",
+    "noSelectorsAvailable": "No selectors available.",
+    "exchangeFatePoints": "Exchange Fate Points to get selectors!",
+    "loadingSelectors": "Loading selectors...",
+    "selector": "Selector",
+    "obtained": "Obtained",
+    "chooseCharacter": "Choose Your Character",
+    "searchPlaceholder": "Search by name or series...",
+    "filters": {
+      "all": "All",
+      "new": "New",
+      "owned": "Owned"
+    },
+    "status": {
+      "dupe": "Dupe",
+      "new": "New",
+      "shard": "+1 Shard",
+      "newCharacter": "New Character!"
+    },
+    "loadingCharacters": "Loading characters...",
+    "noMatch": "No characters match your search.",
+    "noCharacters": "No characters available.",
+    "claiming": "Claiming...",
+    "claimingCharacter": "Claiming character...",
+    "success": {
+      "newCharacter": "New Character!",
+      "shardObtained": "Shard Obtained!",
+      "awesome": "Awesome!"
+    }
+  },
+  "time": {
+    "justNow": "Just now",
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago",
+    "weeksAgo": "{{count}} weeks ago",
+    "monthsAgo": "{{count}} months ago",
+    "minutesAgo": "{{count}}m ago",
+    "hoursAgo": "{{count}}h ago",
+    "never": "Never"
+  },
+  "adminSecurity": {
+    "loginMethod": {
+      "google": "Google SSO",
+      "password": "Password Login",
+      "unknown": "Unknown"
+    },
+    "riskLevel": {
+      "critical": "Critical",
+      "high": "High",
+      "elevated": "Elevated",
+      "monitoring": "Monitoring",
+      "normal": "Normal"
+    },
+    "deviceHistory": {
+      "loadingHistory": "Loading device history...",
+      "failedLoad": "Failed to load device history",
+      "noHistory": "No device history available",
+      "recentEvents": "Recent Device Events"
+    },
+    "riskHistory": {
+      "loadingHistory": "Loading risk history...",
+      "failedLoad": "Failed to load risk history",
+      "currentScore": "Current Risk Score",
+      "scoreChanges": "Score Changes",
+      "noChanges": "No risk score changes recorded",
+      "noReason": "No reason recorded",
+      "adminAction": "Admin action"
+    },
+    "sessionActivity": {
+      "loadingActivity": "Loading session activity...",
+      "failedLoad": "Failed to load session activity",
+      "lastLogin": "Last Login",
+      "failedLogins24h": "Failed Logins (24h)",
+      "possibleAttack": "Possible attack",
+      "sessionInvalidated": "Session Invalidated",
+      "accountCreated": "Account Created",
+      "loginHistory": "Login History",
+      "noHistory": "No login history available",
+      "via": "via",
+      "failedAttempt": "Failed Attempt"
+    }
   },
   "upload": {
     "failed": "Upload Failed",
@@ -1751,6 +1843,7 @@
     "closeInfoPanel": "Close info panel",
     "goBack": "Go back",
     "closeResults": "Close results",
-    "editRarity": "Edit rarity"
+    "editRarity": "Edit rarity",
+    "skipToMain": "Skip to main content"
   }
 }
