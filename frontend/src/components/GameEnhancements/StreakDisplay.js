@@ -6,8 +6,8 @@
  */
 
 import React from 'react';
-import styled, { keyframes, css } from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
+import styled, { keyframes } from 'styled-components';
+import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 
