@@ -920,12 +920,22 @@ export const SlotImage = styled.img`
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: ${theme.radius.xl};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    border-radius: ${theme.radius.lg};
+  }
 `;
 
 export const SlotVideo = styled.video`
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: ${theme.radius.xl};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    border-radius: ${theme.radius.lg};
+  }
 `;
 
 export const SlotOverlay = styled.div`
