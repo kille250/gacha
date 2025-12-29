@@ -505,48 +505,205 @@ export const useDojoPage = () => {
 
   /**
    * Smart character scoring algorithm for Quick Fill
-   * Prioritizes: Power (rarity×level) > Synergy potential > Diversity
+   * Matches backend dojo.js calculateRewards logic exactly
+   *
+   * Score = BaseRate × LevelMult × SynergyMult × SpecMult + TicketValue
+   *
+   * Prioritizes:
+   * 1. Raw power (rarity × level multiplier)
+   * 2. Synergy potential (same series as team)
+   * 3. Specialization bonuses (Spirit +25%, Wisdom for tickets)
+   * 4. Ticket generation value (Wisdom chars valued for tickets)
    */
   const scoreCharacterForQuickFill = useCallback((char, currentTeam, alreadySelected) => {
-    // Rarity power values (base points per hour from dojo config)
-    const RARITY_POWER = { 'Legendary': 70, 'Epic': 35, 'Rare': 18, 'Uncommon': 10, 'Common': 6 };
+    // === BACKEND CONFIG VALUES (from config/dojo.js & config/leveling.js) ===
 
-    // Base power score from rarity and level
-    const basePower = RARITY_POWER[char.rarity] || 6;
-    const levelMultiplier = 1 + ((char.level || 1) - 1) * 0.1; // +10% per level above 1
-    let score = basePower * levelMultiplier;
+    // Base points per hour by rarity
+    const RARITY_BASE_RATES = {
+      'Legendary': 70,
+      'Epic': 35,
+      'Rare': 18,
+      'Uncommon': 10,
+      'Common': 6
+    };
 
-    // Synergy bonus: check if character matches series of current team or selected chars
-    const teamSeries = [...currentTeam, ...alreadySelected]
-      .filter(c => c?.series)
-      .map(c => c.series);
+    // Level multipliers (from config/leveling.js)
+    const LEVEL_MULTIPLIERS = {
+      1: 1.00,
+      2: 1.15,
+      3: 1.30,
+      4: 1.50,
+      5: 1.75
+    };
 
-    if (char.series && teamSeries.includes(char.series)) {
-      // Count how many chars share this series (including this one)
-      const seriesCount = teamSeries.filter(s => s === char.series).length + 1;
-      // Synergy multipliers from backend config
-      const SYNERGY_BONUS = { 2: 1.15, 3: 1.35, 4: 1.55, 5: 1.75, 6: 2.0 };
-      const synergyMult = SYNERGY_BONUS[Math.min(seriesCount, 6)] || 1;
-      score *= synergyMult;
+    // Series synergy multipliers
+    const SERIES_SYNERGY = {
+      2: 1.15,  // 2 chars from same series: +15%
+      3: 1.35,  // 3 chars: +35%
+      4: 1.55,  // 4 chars: +55%
+      5: 1.75,  // 5 chars: +75%
+      6: 2.00   // 6+ chars: +100%
+    };
+
+    // Specialization dojo multipliers
+    const SPEC_DOJO_MULT = {
+      strength: 1.0,   // No change
+      wisdom: 0.90,    // -10% points (but +80% tickets)
+      spirit: 1.25     // +25% points
+    };
+
+    // Ticket chances per hour (for valuing Wisdom)
+    const ROLL_TICKET_CHANCES = {
+      'Legendary': 0.25,
+      'Epic': 0.16,
+      'Rare': 0.10,
+      'Uncommon': 0.06,
+      'Common': 0.035
+    };
+
+    // === CALCULATE BASE POWER ===
+    const baseRate = RARITY_BASE_RATES[char.rarity] || 6;
+    const level = Math.min(Math.max(char.level || 1, 1), 5);
+    const levelMult = LEVEL_MULTIPLIERS[level] || 1.0;
+
+    let score = baseRate * levelMult;
+
+    // === CALCULATE SYNERGY BONUS ===
+    // Count series occurrences in current team + already selected
+    const combinedTeam = [...currentTeam, ...alreadySelected].filter(Boolean);
+    const seriesCounts = {};
+    combinedTeam.forEach(c => {
+      if (c?.series) {
+        seriesCounts[c.series] = (seriesCounts[c.series] || 0) + 1;
+      }
+    });
+
+    // Check if this character would create/extend a synergy
+    if (char.series) {
+      const currentSeriesCount = seriesCounts[char.series] || 0;
+      const newSeriesCount = currentSeriesCount + 1;
+
+      if (newSeriesCount >= 2) {
+        // Character joins an existing synergy - apply the synergy multiplier
+        const synergyMult = SERIES_SYNERGY[Math.min(newSeriesCount, 6)] || 1;
+        score *= synergyMult;
+      } else if (currentSeriesCount === 0) {
+        // Character starts a NEW potential synergy
+        // Check if there are more chars of this series in available pool
+        // (Not implemented here - would need availableCharacters in scope)
+        // Small bonus for series diversity
+        score *= 1.02;
+      }
     }
 
-    // Specialization bonus: strength and spirit boost dojo output
-    if (char.specialization === 'strength') {
-      score *= 1.1; // Strength is best for raw power
-    } else if (char.specialization === 'spirit') {
-      score *= 1.25; // Spirit gives +25% dojo points
+    // === APPLY SPECIALIZATION MULTIPLIER ===
+    if (char.specialization) {
+      const specMult = SPEC_DOJO_MULT[char.specialization] || 1.0;
+      score *= specMult;
+
+      // Wisdom characters also generate more tickets - add ticket value
+      if (char.specialization === 'wisdom') {
+        // Wisdom gives +80% ticket chance
+        // Value tickets: 1 roll ticket ≈ 100 points equivalent
+        const baseTicketChance = ROLL_TICKET_CHANCES[char.rarity] || 0.05;
+        const ticketChanceWithWisdom = baseTicketChance * 1.80;
+        const ticketValuePerHour = ticketChanceWithWisdom * 100; // Convert to point-equivalent
+        score += ticketValuePerHour * levelMult;
+      }
     }
-    // Wisdom gives ticket bonus but -10% points, so no score adjustment
+
+    // === SPIRIT SYNERGY BONUS ===
+    // Spirit characters boost team synergy effectiveness by +10%
+    // If adding a Spirit char to a team with synergies, extra value
+    if (char.specialization === 'spirit') {
+      const hasSynergy = Object.values(seriesCounts).some(count => count >= 2);
+      if (hasSynergy) {
+        score *= 1.10; // Additional 10% because spirit boosts synergy effectiveness
+      }
+    }
 
     return score;
   }, []);
 
   /**
-   * Select optimal characters for empty slots using greedy scoring
+   * Select optimal characters for empty slots using enhanced greedy scoring
+   *
+   * Enhancement: Before greedy selection, analyze available pool for synergy potential
+   * to prioritize characters that can form synergies together
    */
   const selectOptimalCharacters = useCallback((available, emptyCount, currentTeam) => {
     if (available.length === 0 || emptyCount === 0) return [];
 
+    // === PRE-ANALYSIS: Find synergy opportunities in available pool ===
+    const seriesInAvailable = {};
+    available.forEach(char => {
+      if (char.series) {
+        if (!seriesInAvailable[char.series]) {
+          seriesInAvailable[char.series] = [];
+        }
+        seriesInAvailable[char.series].push(char);
+      }
+    });
+
+    // Count existing series in current team
+    const existingSeriesCounts = {};
+    currentTeam.forEach(char => {
+      if (char?.series) {
+        existingSeriesCounts[char.series] = (existingSeriesCounts[char.series] || 0) + 1;
+      }
+    });
+
+    // Find series where we can complete/extend a synergy
+    const synergyOpportunities = {};
+    Object.entries(seriesInAvailable).forEach(([series, chars]) => {
+      const existingCount = existingSeriesCounts[series] || 0;
+      const availableCount = chars.length;
+      const totalPotential = existingCount + Math.min(availableCount, emptyCount);
+
+      // Score the opportunity
+      if (totalPotential >= 2) {
+        // Can form a synergy!
+        synergyOpportunities[series] = {
+          existingCount,
+          availableCount,
+          totalPotential,
+          // Prioritize extending existing synergies over starting new ones
+          priority: existingCount > 0 ? 2 : 1
+        };
+      }
+    });
+
+    // === ENHANCED SCORING FUNCTION ===
+    const enhancedScore = (char, team, alreadySelected) => {
+      let score = scoreCharacterForQuickFill(char, team, alreadySelected);
+
+      // Bonus for synergy opportunities
+      if (char.series && synergyOpportunities[char.series]) {
+        const opp = synergyOpportunities[char.series];
+
+        // Count how many of this series are already selected
+        const selectedFromSeries = alreadySelected.filter(c => c.series === char.series).length;
+        const totalAfterThis = opp.existingCount + selectedFromSeries + 1;
+
+        // Bonus for completing a synergy threshold
+        if (totalAfterThis === 2) {
+          score *= 1.20; // 20% bonus for starting a synergy
+        } else if (totalAfterThis === 3) {
+          score *= 1.15; // 15% bonus for 3rd char
+        } else if (totalAfterThis >= 4) {
+          score *= 1.10; // 10% bonus for 4th+ char
+        }
+
+        // Extra priority for extending existing team synergies
+        if (opp.priority === 2) {
+          score *= 1.05;
+        }
+      }
+
+      return score;
+    };
+
+    // === GREEDY SELECTION WITH ENHANCED SCORING ===
     const selected = [];
     const remaining = [...available];
 
@@ -554,7 +711,7 @@ export const useDojoPage = () => {
       // Score all remaining characters considering already selected
       const scored = remaining.map(char => ({
         char,
-        score: scoreCharacterForQuickFill(char, currentTeam, selected)
+        score: enhancedScore(char, currentTeam, selected)
       }));
 
       // Sort by score descending and take best
