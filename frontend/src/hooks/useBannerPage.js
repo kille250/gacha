@@ -15,7 +15,7 @@ import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api'
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock, useAutoDismissError, useSkipAnimations, useConfetti } from '../hooks';
+import { useActionLock, useAutoDismissError, useSkipAnimations } from '../hooks';
 import { onVisibilityChange, invalidateFor, VISIBILITY_CALLBACK_IDS, CACHE_ACTIONS } from '../cache';
 import { executeBannerRoll, executeBannerMultiRoll } from '../actions/gachaActions';
 import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
@@ -49,9 +49,6 @@ export const useBannerPage = (bannerId) => {
   const { t } = useTranslation();
   const { user, refreshUser, setUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
-
-  // Confetti with shared canvas (prevents layout shifts)
-  const { fireRarePull, fireMultiPull } = useConfetti();
 
   // Action lock to prevent rapid double-clicks
   const { withLock, locked } = useActionLock(300);
@@ -166,11 +163,6 @@ export const useBannerPage = (bannerId) => {
     }
   }, []);
 
-  // Show rare pull effect
-  const showRarePullEffect = useCallback((rarity) => {
-    fireRarePull(rarity, getRarityColor(rarity));
-  }, [getRarityColor, fireRarePull]);
-
   // Character preview handlers
   const openPreview = useCallback((char) => {
     if (char) {
@@ -235,7 +227,6 @@ export const useBannerPage = (bannerId) => {
           setCurrentChar(character);
           setShowCard(true);
           setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
-          showRarePullEffect(character.rarity);
           setIsRolling(false);
         } else {
           try {
@@ -271,7 +262,7 @@ export const useBannerPage = (bannerId) => {
         }
       }
     });
-  }, [withLock, tickets, user?.points, singlePullCost, bannerId, setUser, skipAnimations, showRarePullEffect, fetchUserCollection, refreshUser, t, setError]);
+  }, [withLock, tickets, user?.points, singlePullCost, bannerId, setUser, skipAnimations, fetchUserCollection, refreshUser, t, setError]);
 
   // Multi-roll handler
   const handleMultiRoll = useCallback(async (count, useTickets = false, ticketType = 'roll') => {
@@ -320,9 +311,6 @@ export const useBannerPage = (bannerId) => {
           }, 'common');
 
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
-
-          const hasRare = characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity));
-          fireMultiPull(hasRare);
           setIsRolling(false);
         } else {
           try {
@@ -358,7 +346,7 @@ export const useBannerPage = (bannerId) => {
         }
       }
     });
-  }, [withLock, tickets, getMultiPullCost, user?.points, bannerId, setUser, skipAnimations, fetchUserCollection, refreshUser, t, setError, fireMultiPull]);
+  }, [withLock, tickets, getMultiPullCost, user?.points, bannerId, setUser, skipAnimations, fetchUserCollection, refreshUser, t, setError]);
 
   // Animation complete handlers
   const handleSummonComplete = useCallback(() => {

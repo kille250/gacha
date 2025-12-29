@@ -10,7 +10,7 @@ import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api'
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity, useConfetti } from '../hooks';
+import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
 import { onVisibilityChange, invalidateFor, VISIBILITY_CALLBACK_IDS, CACHE_ACTIONS } from '../cache';
 import { executeBannerRoll, executeBannerMultiRoll } from '../actions/gachaActions';
 import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
@@ -194,9 +194,6 @@ const BannerPage = () => {
   const navigate = useNavigate();
   const { user, refreshUser, setUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
-
-  // Confetti with shared canvas (prevents layout shifts)
-  const { fireRarePull, fireMultiPull } = useConfetti();
 
   // Action lock to prevent rapid double-clicks
   const { withLock, locked } = useActionLock(300);
@@ -540,10 +537,6 @@ const BannerPage = () => {
     return userCollection.some(c => c.id === char.id);
   }, [userCollection]);
 
-  const showRarePullEffect = useCallback((rarity) => {
-    fireRarePull(rarity, getRarityColor(rarity));
-  }, [getRarityColor, fireRarePull]);
-
   // Handlers
   const handleRoll = async (useTicket = false, ticketType = 'roll') => {
     // Use action lock to prevent rapid double-clicks
@@ -605,7 +598,6 @@ const BannerPage = () => {
           setCurrentChar(character);
           setShowCard(true);
           setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
-          showRarePullEffect(character.rarity);
           setIsRolling(false);
         } else {
           // Persist roll result before animation for recovery if user navigates away
@@ -739,17 +731,14 @@ const BannerPage = () => {
           // Skip animation - show results directly
           setMultiRollResults(characters);
           setShowMultiResults(true);
-          
+
           const rarityOrder = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
           const bestRarity = characters.reduce((best, char) => {
             const idx = rarityOrder.indexOf(char.rarity);
             return idx > rarityOrder.indexOf(best) ? char.rarity : best;
           }, 'common');
-          
-          setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
 
-          const hasRare = characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity));
-          fireMultiPull(hasRare);
+          setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
           setIsRolling(false);
         } else {
           // Persist roll results before animation for recovery if user navigates away

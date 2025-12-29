@@ -1,20 +1,17 @@
 /**
  * useGachaRoll - Shared gacha roll logic extracted from BannerPage and RollPage
- * 
+ *
  * This hook encapsulates:
  * - Roll animation state management
  * - Single/multi roll flow
  * - Summoning animation orchestration
  * - Preview modal state
  * - Rarity tracking
- * - Confetti effects
  */
 import { useState, useCallback, useContext } from 'react';
 import { AuthContext } from '../context/AuthContext';
-import { useRarity } from '../context/RarityContext';
 import { getAssetUrl } from '../utils/api';
 import { applyPointsUpdate } from '../utils/userStateUpdates';
-import { useConfetti } from './useConfetti';
 
 // ==================== CONSTANTS ====================
 
@@ -45,10 +42,6 @@ const MAX_RARITY_HISTORY = 5;
  */
 export const useGachaRoll = ({ onRollComplete } = {}) => {
   const { setUser } = useContext(AuthContext);
-  const { getRarityColor } = useRarity();
-
-  // Confetti with shared canvas (prevents layout shifts)
-  const { fireRarePull, fireMultiPull } = useConfetti();
 
   // ==================== STATE ====================
   
@@ -96,13 +89,6 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
 
   // ==================== HELPERS ====================
-
-  /**
-   * Show confetti effect for rare pulls
-   */
-  const showRarePullEffect = useCallback((rarity) => {
-    fireRarePull(rarity, getRarityColor(rarity));
-  }, [getRarityColor, fireRarePull]);
 
   /**
    * Get the highest rarity from a list of characters
@@ -177,7 +163,6 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
       setCurrentChar(character);
       setShowCard(true);
       addToRarityHistory(character.rarity);
-      showRarePullEffect(character.rarity);
       setIsRolling(false);
     } else {
       // Show summoning animation
@@ -189,7 +174,7 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
     onRollComplete?.();
     
     return { character, tickets };
-  }, [setUser, skipAnimations, addToRarityHistory, showRarePullEffect, onRollComplete]);
+  }, [setUser, skipAnimations, addToRarityHistory, onRollComplete]);
 
   /**
    * Start a single roll
@@ -229,13 +214,9 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
       // Skip animation - show results directly
       setMultiRollResults(characters);
       setShowMultiResults(true);
-      
+
       const bestRarity = getBestRarity(characters);
       addToRarityHistory(bestRarity);
-      
-      // Celebrate if any rare+ pulls
-      const hasRare = characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity));
-      fireMultiPull(hasRare);
       setIsRolling(false);
     } else {
       // Show multi-summon animation
@@ -247,7 +228,7 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
     onRollComplete?.();
     
     return { characters, tickets };
-  }, [setUser, skipAnimations, getBestRarity, addToRarityHistory, onRollComplete, fireMultiPull]);
+  }, [setUser, skipAnimations, getBestRarity, addToRarityHistory, onRollComplete]);
 
   /**
    * Start a multi-roll
@@ -355,7 +336,6 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
     
     // Helpers
     getImagePath,
-    showRarePullEffect,
     resetAll
   };
 };

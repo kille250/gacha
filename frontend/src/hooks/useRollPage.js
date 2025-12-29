@@ -13,7 +13,7 @@ import { useTranslation } from 'react-i18next';
 import { getStandardPricing, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock, useAutoDismissError, useSkipAnimations, useConfetti } from '../hooks';
+import { useActionLock, useAutoDismissError, useSkipAnimations } from '../hooks';
 import { onVisibilityChange, VISIBILITY_CALLBACK_IDS } from '../cache';
 import { executeStandardRoll, executeStandardMultiRoll } from '../actions/gachaActions';
 
@@ -23,9 +23,6 @@ export const useRollPage = () => {
   const { t } = useTranslation();
   const { user, refreshUser, setUser } = useContext(AuthContext);
   const { getRarityColor } = useRarity();
-
-  // Confetti with shared canvas (prevents layout shifts)
-  const { fireRarePull, fireMultiPull } = useConfetti();
 
   // Action lock to prevent rapid double-clicks
   const { withLock, locked } = useActionLock(300);
@@ -212,11 +209,6 @@ export const useRollPage = () => {
     return undefined;
   }, [pricingLoaded, pricingError, isRolling, locked, user?.points, t]);
 
-  // Show confetti for rare pulls
-  const showRarePullEffect = useCallback((rarity) => {
-    fireRarePull(rarity, getRarityColor(rarity));
-  }, [getRarityColor, fireRarePull]);
-
   // Handle single roll
   const handleRoll = async () => {
     await withLock(async () => {
@@ -257,7 +249,6 @@ export const useRollPage = () => {
           setCurrentChar(character);
           setShowCard(true);
           setLastRarities(prev => [character.rarity, ...prev.slice(0, 4)]);
-          showRarePullEffect(character.rarity);
           setIsRolling(false);
         } else {
           try {
@@ -352,9 +343,6 @@ export const useRollPage = () => {
           }, 'common');
 
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
-
-          const hasRare = characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity));
-          fireMultiPull(hasRare);
           setIsRolling(false);
         } else {
           try {
