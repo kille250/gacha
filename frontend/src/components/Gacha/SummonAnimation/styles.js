@@ -491,10 +491,20 @@ export const ShowcaseContainer = styled(motion.div)`
   align-items: center;
   justify-content: center;
   z-index: ${Z_LAYERS.card};
+
+  /* GPU acceleration to ensure faster layout calculation on mobile */
+  transform: translateZ(0);
+  will-change: opacity;
 `;
 
 export const CardFloat = styled(motion.div)`
+  /* Explicit centering to prevent mobile positioning issues on first render */
+  position: relative;
+
+  /* Delay the float animation to ensure layout is stable before it starts */
   animation: ${floatUpDown} 3s ease-in-out infinite;
+  animation-delay: 0.3s;
+  animation-fill-mode: backwards;
 `;
 
 // ==================== UI ELEMENTS ====================
