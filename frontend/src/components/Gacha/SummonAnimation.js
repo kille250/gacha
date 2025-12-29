@@ -545,20 +545,33 @@ const orbitPath = keyframes`
 
 const Overlay = styled.div`
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
+  max-height: 100vh;
   z-index: 99999;
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
+  overflow: hidden;
 `;
 
 const Container = styled(motion.div)`
   position: absolute;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100%;
+  height: 100%;
+  max-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
-  background: linear-gradient(180deg, 
-    rgba(10, 10, 15, 0.98) 0%, 
+  background: linear-gradient(180deg,
+    rgba(10, 10, 15, 0.98) 0%,
     rgba(5, 5, 10, 1) 100%
   );
   overflow: hidden;
@@ -589,11 +602,11 @@ const Vignette = styled.div`
 // Buildup Elements
 const BuildupContainer = styled(motion.div)`
   position: absolute;
-  width: 100%;
-  height: 100%;
+  inset: 0;
   display: flex;
   align-items: center;
   justify-content: center;
+  overflow: hidden;
 `;
 
 const CentralOrb = styled.div`
