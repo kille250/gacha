@@ -227,6 +227,19 @@ const ACCOUNT_LEVEL_DISPLAY = {
 };
 
 // ===========================================
+// UI THRESHOLDS
+// ===========================================
+
+const UI_THRESHOLDS = {
+  // Daily cap warning threshold (percentage)
+  // Shows warning when player approaches this % of daily limit
+  dailyCapWarningPercent: 80,
+
+  // Low quota warning for fishing (casts remaining)
+  fishingLowQuota: 20
+};
+
+// ===========================================
 // HELP TEXT TEMPLATES
 // ===========================================
 
@@ -256,9 +269,10 @@ if (typeof module !== 'undefined' && module.exports) {
     FISHING_DISPLAY,
     GACHA_DISPLAY,
     ACCOUNT_LEVEL_DISPLAY,
+    UI_THRESHOLDS,
     HELP_TEXT
   };
 }
 
 // ES Module export for frontend (when using bundler)
-// export { BALANCE_VERSION, DOJO_DISPLAY, FISHING_DISPLAY, GACHA_DISPLAY, ACCOUNT_LEVEL_DISPLAY, HELP_TEXT };
+// export { BALANCE_VERSION, DOJO_DISPLAY, FISHING_DISPLAY, GACHA_DISPLAY, ACCOUNT_LEVEL_DISPLAY, UI_THRESHOLDS, HELP_TEXT };

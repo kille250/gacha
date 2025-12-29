@@ -1243,7 +1243,7 @@ function getAccountLevelFishingBonus(accountLevel) {
     const { getCumulativeBonuses } = require('./accountLevel');
     const bonuses = getCumulativeBonuses(accountLevel || 1);
     return bonuses.fishingRarity || 0;
-  } catch (e) {
+  } catch (_e) {
     // Fallback: calculate directly
     let rarityBonus = 0;
 
@@ -1281,7 +1281,7 @@ function selectRandomFishWithAccountBonus(pityData, areaId = 'pond', rodId = 'ba
     const { getPrestigeBonuses } = require('./fishing/prestige');
     const prestigeBonuses = getPrestigeBonuses(prestigeLevel);
     prestigeRarityBonus = prestigeBonuses.rarityBonus || 0;
-  } catch (e) {
+  } catch (_e) {
     // Prestige module not available, skip
   }
 

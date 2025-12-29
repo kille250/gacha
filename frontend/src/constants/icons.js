@@ -296,6 +296,20 @@ export const IconCross = (props) => <FaTimesCircle {...props} />;
 /** Skull/danger icon */
 export const IconSkull = (props) => <FaSkull {...props} />;
 
+// ==================== ACHIEVEMENT ICONS ====================
+
+/** Book/mastery icon */
+export const IconMastery = (props) => <FaClipboardList {...props} />;
+
+/** Crown/achievement icon */
+export const IconAchievementCrown = (props) => <FaCrown {...props} />;
+
+/** Map/exploration icon */
+export const IconMap = (props) => <FaGlobe {...props} />;
+
+/** Target/precision icon */
+export const IconTarget = (props) => <FaBullseye {...props} />;
+
 // ==================== HELPER: Category Icons Map ====================
 
 /**

@@ -19,6 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, springs, useReducedMotion, VisuallyHidden } from '../../design-system';
 import { PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useVideoVisibility } from '../../hooks';
+import { IconTrophy, IconMastery } from '../../constants/icons';
 
 // Premium shimmer animation for legendary/epic cards
 const shimmer = keyframes`
@@ -252,6 +253,53 @@ const ShardBadge = styled.div`
     : theme.shadows.xs};
 `;
 
+// Mastery progress indicator - shows character mastery XP progress (v6.0)
+const MasteryBadge = styled.div`
+  position: absolute;
+  bottom: 8px;
+  left: 8px;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: ${props => props.$isMaxMastery
+    ? 'linear-gradient(135deg, rgba(255, 215, 0, 0.95), rgba(255, 165, 0, 0.95))'
+    : 'rgba(88, 86, 214, 0.9)'};
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-radius: ${theme.radius.full};
+  font-size: 10px;
+  font-weight: ${theme.fontWeights.semibold};
+  color: white;
+  z-index: 2;
+  box-shadow: ${props => props.$isMaxMastery
+    ? `0 2px 8px rgba(255, 215, 0, 0.4), ${theme.shadows.xs}`
+    : theme.shadows.xs};
+
+  ${props => props.$isMaxMastery && css`
+    animation: ${glowPulse} 3s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  `}
+`;
+
+const MasteryProgressBar = styled.div`
+  width: 24px;
+  height: 3px;
+  background: rgba(255, 255, 255, 0.3);
+  border-radius: 2px;
+  overflow: hidden;
+`;
+
+const MasteryProgressFill = styled.div`
+  height: 100%;
+  background: white;
+  border-radius: 2px;
+  transition: width 0.3s ease;
+`;
+
 const CardContent = styled.div`
   padding: ${theme.spacing.md};
 `;
@@ -286,6 +334,33 @@ const RARITY_SYMBOLS = {
   legendary: '✧',
 };
 
+// Mastery level thresholds (matches backend gameDesign.js MASTERY_TRACKS)
+const MASTERY_THRESHOLDS = [0, 100, 300, 600, 1000, 1500, 2200, 3000, 4000, 5500];
+const MAX_MASTERY_LEVEL = 10;
+
+/**
+ * Calculate mastery level from XP
+ * @param {number} masteryXp - Current mastery XP
+ * @returns {Object} - { level, progress, isMax }
+ */
+function calculateMasteryLevel(masteryXp = 0) {
+  let level = 1;
+  for (let i = 1; i < MASTERY_THRESHOLDS.length; i++) {
+    if (masteryXp >= MASTERY_THRESHOLDS[i]) {
+      level = i + 1;
+    } else {
+      break;
+    }
+  }
+
+  const isMax = level >= MAX_MASTERY_LEVEL;
+  const currentThreshold = MASTERY_THRESHOLDS[level - 1] || 0;
+  const nextThreshold = MASTERY_THRESHOLDS[level] || MASTERY_THRESHOLDS[MASTERY_THRESHOLDS.length - 1];
+  const progress = isMax ? 1 : (masteryXp - currentThreshold) / (nextThreshold - currentThreshold);
+
+  return { level, progress: Math.min(1, Math.max(0, progress)), isMax };
+}
+
 /**
  * CharacterCard Component
  *
@@ -297,6 +372,7 @@ const RARITY_SYMBOLS = {
  * @param {string} props.rarityColor - Color for rarity indicator
  * @param {string} props.rarityGlow - Glow effect for rarity
  * @param {Object} props.levelInfo - Level, shards, canLevelUp info
+ * @param {Object} props.masteryInfo - Mastery XP and level info (optional)
  * @param {string} props.notOwnedLabel - Label for not-owned state
  * @param {Function} props.onClick - Click handler
  */
@@ -308,12 +384,18 @@ const CharacterCard = memo(({
   rarityColor,
   rarityGlow,
   levelInfo = {},
+  masteryInfo = {},
   notOwnedLabel,
   onClick,
   ...props
 }) => {
   const { t } = useTranslation();
   const { level = 1, isMaxLevel = false, shards = 0, shardsToNextLevel, canLevelUp = false } = levelInfo;
+
+  // Calculate mastery level from XP if provided
+  const masteryXp = masteryInfo?.masteryXp || character?.masteryXp || 0;
+  const masteryData = calculateMasteryLevel(masteryXp);
+  const showMastery = isOwned && masteryXp > 0;
   const prefersReducedMotion = useReducedMotion();
   const videoRef = useRef(null);
 
@@ -399,6 +481,25 @@ const CharacterCard = memo(({
                 ◆ {shards}/{shardsToNextLevel}
               </ShardBadge>
             )}
+            {showMastery && (
+              <MasteryBadge
+                $isMaxMastery={masteryData.isMax}
+                aria-hidden="true"
+                title={t('patterns.masteryLevel', {
+                  level: masteryData.level,
+                  max: MAX_MASTERY_LEVEL,
+                  defaultValue: `Mastery ${masteryData.level}/${MAX_MASTERY_LEVEL}`
+                })}
+              >
+                {masteryData.isMax ? <IconTrophy size={10} /> : <IconMastery size={10} />}
+                {' '}M{masteryData.level}
+                {!masteryData.isMax && (
+                  <MasteryProgressBar>
+                    <MasteryProgressFill style={{ width: `${masteryData.progress * 100}%` }} />
+                  </MasteryProgressBar>
+                )}
+              </MasteryBadge>
+            )}
           </>
         )}
         <RarityIndicator $color={rarityColor} $isOwned={isOwned} aria-hidden="true" />
@@ -421,7 +522,10 @@ const CharacterCard = memo(({
     prevProps.isOwned === nextProps.isOwned &&
     prevProps.levelInfo?.level === nextProps.levelInfo?.level &&
     prevProps.levelInfo?.shards === nextProps.levelInfo?.shards &&
-    prevProps.levelInfo?.canLevelUp === nextProps.levelInfo?.canLevelUp
+    prevProps.levelInfo?.canLevelUp === nextProps.levelInfo?.canLevelUp &&
+    // Include mastery info in comparison
+    (prevProps.masteryInfo?.masteryXp || prevProps.character?.masteryXp) ===
+    (nextProps.masteryInfo?.masteryXp || nextProps.character?.masteryXp)
   );
 });
 

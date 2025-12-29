@@ -755,7 +755,7 @@ function getAccountLevelDojoBonus(accountLevel) {
     const { getCumulativeBonuses } = require('./accountLevel');
     const bonuses = getCumulativeBonuses(accountLevel || 1);
     return 1 + (bonuses.dojoEfficiency || 0);
-  } catch (e) {
+  } catch (_e) {
     // Fallback: calculate directly
     let efficiency = 0;
 

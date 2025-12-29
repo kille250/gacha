@@ -183,3 +183,6 @@ export { default as useUndoStack, createUndoToast } from './useUndoStack';
 
 // Undoable action hook for delayed execution with undo
 export { useUndoableAction } from './useUndoableAction';
+
+// Achievement notifications for first-time achievements
+export { useAchievementNotifications } from './useAchievementNotifications';

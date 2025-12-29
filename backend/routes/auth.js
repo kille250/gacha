@@ -436,12 +436,10 @@ router.post('/login', async (req, res) => {
 
     // Check if password change is required (admin-initiated password reset)
     const requiresPasswordChange = user.forcePasswordChange === true;
-    let passwordExpired = false;
 
     if (requiresPasswordChange && user.passwordResetExpiry) {
       // Check if the temporary password has expired
       if (new Date() > new Date(user.passwordResetExpiry)) {
-        passwordExpired = true;
         return res.status(403).json({
           error: 'Temporary password has expired. Please contact an administrator for a new password.',
           code: 'PASSWORD_EXPIRED'

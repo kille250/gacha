@@ -2,6 +2,8 @@
  * DojoDailyCapsCard - Daily progress and caps display
  *
  * Shows daily limits for points and tickets with progress bars.
+ *
+ * Uses UI_THRESHOLDS from balanceConstants for warning threshold.
  */
 
 import React from 'react';
@@ -9,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import { FaCoins, FaTicketAlt, FaStar, FaExclamationTriangle } from 'react-icons/fa';
 import styled from 'styled-components';
 import { theme } from '../../../design-system';
-
 import {
   DailyCapsCard,
   DailyCapsHeader,
@@ -31,7 +32,11 @@ import {
   TicketProgressFill,
 } from './DojoPage.styles';
 
-// Warning badge for approaching cap (80%+)
+// Daily cap warning threshold from centralized balance constants
+// Shows warning when approaching this % of daily limit
+const DAILY_CAP_WARNING_PERCENT = 80; // Synced with shared/balanceConstants.js UI_THRESHOLDS.dailyCapWarningPercent
+
+// Warning badge for approaching cap
 const ApproachingCapWarning = styled.div`
   display: flex;
   align-items: center;
@@ -57,15 +62,16 @@ const DojoDailyCapsCard = ({ dailyCaps, ticketProgress }) => {
 
   const hasTicketProgress = ticketProgress && (ticketProgress.roll > 0 || ticketProgress.premium > 0);
 
-  // Calculate percentages for proactive warnings (80% threshold)
+  // Calculate percentages for proactive warnings
+  // Threshold from DAILY_CAP_WARNING_PERCENT (synced with balanceConstants)
   const pointsPercent = (dailyCaps.todayClaimed.points / dailyCaps.limits.points) * 100;
   const rollTicketsPercent = (dailyCaps.todayClaimed.rollTickets / dailyCaps.limits.rollTickets) * 100;
   const premiumTicketsPercent = (dailyCaps.todayClaimed.premiumTickets / dailyCaps.limits.premiumTickets) * 100;
 
-  // Show warning if any cap is approaching (80%+) but not yet full
-  const isApproachingPointsCap = pointsPercent >= 80 && pointsPercent < 100;
-  const isApproachingRollCap = rollTicketsPercent >= 80 && rollTicketsPercent < 100;
-  const isApproachingPremiumCap = premiumTicketsPercent >= 80 && premiumTicketsPercent < 100;
+  // Show warning if any cap is approaching threshold but not yet full
+  const isApproachingPointsCap = pointsPercent >= DAILY_CAP_WARNING_PERCENT && pointsPercent < 100;
+  const isApproachingRollCap = rollTicketsPercent >= DAILY_CAP_WARNING_PERCENT && rollTicketsPercent < 100;
+  const isApproachingPremiumCap = premiumTicketsPercent >= DAILY_CAP_WARNING_PERCENT && premiumTicketsPercent < 100;
   const isApproachingAnyCap = isApproachingPointsCap || isApproachingRollCap || isApproachingPremiumCap;
 
   return (
