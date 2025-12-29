@@ -152,32 +152,34 @@ const Navigation = () => {
 
                   <AnimatePresence>
                     {gamesDropdownOpen && (
-                      <DropdownMenu
-                        role="menu"
-                        initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                        transition={springs.snappy}
-                      >
-                        {item.items.map((subItem) => {
-                          const isSubActive = location.pathname === subItem.path;
-                          return (
-                            <DropdownItem
-                              key={subItem.path}
-                              to={subItem.path}
-                              role="menuitem"
-                              $isActive={isSubActive}
-                              aria-current={isSubActive ? 'page' : undefined}
-                            >
-                              <DropdownItemIcon $isActive={isSubActive}>
-                                {subItem.icon}
-                              </DropdownItemIcon>
-                              <span>{subItem.label}</span>
-                              {subItem.isNew && <NewBadge>{t('common.new')}</NewBadge>}
-                            </DropdownItem>
-                          );
-                        })}
-                      </DropdownMenu>
+                      <DropdownMenuContainer>
+                        <DropdownMenu
+                          role="menu"
+                          initial={{ opacity: 0, y: -8, scale: 0.95 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -8, scale: 0.95 }}
+                          transition={springs.snappy}
+                        >
+                          {item.items.map((subItem) => {
+                            const isSubActive = location.pathname === subItem.path;
+                            return (
+                              <DropdownItem
+                                key={subItem.path}
+                                to={subItem.path}
+                                role="menuitem"
+                                $isActive={isSubActive}
+                                aria-current={isSubActive ? 'page' : undefined}
+                              >
+                                <DropdownItemIcon $isActive={isSubActive}>
+                                  {subItem.icon}
+                                </DropdownItemIcon>
+                                <span>{subItem.label}</span>
+                                {subItem.isNew && <NewBadge>{t('common.new')}</NewBadge>}
+                              </DropdownItem>
+                            );
+                          })}
+                        </DropdownMenu>
+                      </DropdownMenuContainer>
                     )}
                   </AnimatePresence>
                 </DropdownWrapper>
@@ -517,18 +519,21 @@ const DropdownArrow = styled.span`
   `}
 `;
 
-const DropdownMenu = styled(motion.div)`
+const DropdownMenuContainer = styled.div`
   position: absolute;
   top: calc(100% + ${theme.spacing.xs});
   left: 50%;
   transform: translateX(-50%);
+  z-index: ${theme.zIndex.stickyDropdown};
+`;
+
+const DropdownMenu = styled(motion.div)`
   min-width: 200px;
   background: ${theme.colors.surface};
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
   box-shadow: ${theme.shadows.lg};
   padding: ${theme.spacing.xs};
-  z-index: ${theme.zIndex.stickyDropdown};
 `;
 
 const DropdownItem = styled(Link)`
