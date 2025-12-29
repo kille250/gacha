@@ -129,7 +129,19 @@ export const useScreenShake = () => {
     // may be called from a different component instance (MultiSummonAnimation)
     // than the one that started the shake (SummonAnimation)
     const element = document.getElementById('app-shake-container') || document.body;
-    gsap.set(element, { x: 0, y: 0, clearProps: 'transform' });
+
+    // Animate back to center smoothly instead of instant jump
+    // This prevents jarring visual shifts when shake is interrupted mid-animation
+    // (especially noticeable in multi-summon transitions)
+    gsap.to(element, {
+      x: 0,
+      y: 0,
+      duration: 0.08,
+      ease: 'power2.out',
+      onComplete: () => {
+        gsap.set(element, { clearProps: 'transform' });
+      }
+    });
   }, []);
 
   return {
