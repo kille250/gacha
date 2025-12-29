@@ -71,6 +71,8 @@ export const SummonAnimation = ({
   const hasStartedRef = useRef(false);
   const hasCompletedRef = useRef(false); // Guard against double-click
   const buildupStopRef = useRef(null); // For stopping buildup sound
+  const confettiCanvasRef = useRef(null);
+  const confettiInstanceRef = useRef(null);
 
   // Get dynamic rarity configuration from context
   const { getRarityAnimation, getRarityColor, ordered } = useRarity();
@@ -118,9 +120,27 @@ export const SummonAnimation = ({
     timersRef.current = [];
   }, []);
 
-  // Fire confetti celebration - refined for premium feel
+  // Initialize confetti instance bound to our canvas (prevents layout issues)
+  useEffect(() => {
+    if (confettiCanvasRef.current && !confettiInstanceRef.current) {
+      confettiInstanceRef.current = confetti.create(confettiCanvasRef.current, {
+        resize: true,
+        useWorker: true
+      });
+    }
+    return () => {
+      if (confettiInstanceRef.current) {
+        confettiInstanceRef.current.reset();
+      }
+    };
+  }, []);
+
+  // Fire confetti celebration - uses dedicated canvas to prevent layout shifts
   const fireConfetti = useCallback(() => {
     if (ambientConfig.confettiCount === 0) return;
+
+    // Use our canvas-bound instance, fallback to global if not ready
+    const fireFunc = confettiInstanceRef.current || confetti;
 
     const colors = [ambientConfig.color, ambientConfig.accentColor, '#ffffff'];
 
@@ -128,7 +148,7 @@ export const SummonAnimation = ({
     const prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     if (prefersReducedMotion) {
       // Minimal confetti for accessibility
-      confetti({
+      fireFunc({
         particleCount: Math.min(20, ambientConfig.confettiCount),
         spread: 60,
         origin: { y: 0.5, x: 0.5 },
@@ -142,7 +162,7 @@ export const SummonAnimation = ({
     }
 
     // Main burst - originates from below center so confetti rises up around the card
-    confetti({
+    fireFunc({
       particleCount: ambientConfig.confettiCount,
       spread: 70,
       origin: { y: 0.7, x: 0.5 },
@@ -158,7 +178,8 @@ export const SummonAnimation = ({
     // Side bursts for legendary/epic - originate from lower corners
     if (effectRarity === 'legendary' || effectRarity === 'epic') {
       setTimeout(() => {
-        confetti({
+        const fireFuncLater = confettiInstanceRef.current || confetti;
+        fireFuncLater({
           particleCount: 30,
           angle: 60,
           spread: 45,
@@ -167,7 +188,7 @@ export const SummonAnimation = ({
           startVelocity: 35,
           gravity: 1.0
         });
-        confetti({
+        fireFuncLater({
           particleCount: 30,
           angle: 120,
           spread: 45,
@@ -313,6 +334,9 @@ export const SummonAnimation = ({
 
   return (
     <Overlay onClick={handleInteraction}>
+      {/* Dedicated confetti canvas - fixed position, no layout impact */}
+      <ConfettiCanvas ref={confettiCanvasRef} />
+
       <Container
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
@@ -557,6 +581,16 @@ const Overlay = styled.div`
   -webkit-tap-highlight-color: transparent;
   overflow: hidden;
   background: #05050a;
+`;
+
+// Dedicated canvas for confetti - positioned fixed so it doesn't affect layout
+const ConfettiCanvas = styled.canvas`
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 100000;
 `;
 
 const Container = styled(motion.div)`
