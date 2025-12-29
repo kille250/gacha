@@ -42,15 +42,22 @@ const STANDARD_WHEEL = {
   description: 'Spin once daily for free rewards!',
   minAccountLevel: 1,
   segments: [
-    { id: 'points_50', label: '50 Points', type: 'points', value: 50, color: '#4CAF50', weight: 25 },
-    { id: 'points_100', label: '100 Points', type: 'points', value: 100, color: '#8BC34A', weight: 20 },
-    { id: 'points_200', label: '200 Points', type: 'points', value: 200, color: '#CDDC39', weight: 12 },
-    { id: 'points_500', label: '500 Points', type: 'points', value: 500, color: '#FFC107', weight: 5 },
-    { id: 'ticket_1', label: '1 Ticket', type: 'tickets', value: 1, color: '#03A9F4', weight: 15 },
+    // Points segments - buffed to feel meaningful (compare: 1 roll = 100 pts)
+    { id: 'points_100', label: '100 Points', type: 'points', value: 100, color: '#4CAF50', weight: 22 },
+    { id: 'points_200', label: '200 Points', type: 'points', value: 200, color: '#66BB6A', weight: 18 },
+    { id: 'points_350', label: '350 Points', type: 'points', value: 350, color: '#8BC34A', weight: 12 },
+    { id: 'points_500', label: '500 Points', type: 'points', value: 500, color: '#CDDC39', weight: 6 },
+    // Ticket segments - valuable (1 ticket = 100 pts saved)
+    { id: 'ticket_1', label: '1 Ticket', type: 'tickets', value: 1, color: '#03A9F4', weight: 14 },
     { id: 'ticket_2', label: '2 Tickets', type: 'tickets', value: 2, color: '#00BCD4', weight: 8 },
-    { id: 'premium_1', label: '1 Premium', type: 'premium', value: 1, color: '#9C27B0', weight: 3 },
-    { id: 'xp_boost', label: '2x XP (1hr)', type: 'multiplier', value: 2, color: '#E91E63', weight: 8 },
-    { id: 'jackpot', label: 'JACKPOT!', type: 'jackpot', value: 1000, color: '#FFD700', weight: 2 },
+    { id: 'ticket_3', label: '3 Tickets', type: 'tickets', value: 3, color: '#0097A7', weight: 4 },
+    // Premium - rare but exciting
+    { id: 'premium_1', label: '1 Premium', type: 'premium', value: 1, color: '#9C27B0', weight: 5 },
+    // XP boost - helpful for progression
+    { id: 'xp_boost', label: '2x XP (1hr)', type: 'multiplier', value: 2, color: '#E91E63', weight: 6 },
+    // Jackpot - the dream (2500 pts = 25 rolls worth!)
+    { id: 'jackpot', label: 'JACKPOT!', type: 'jackpot', value: 2500, color: '#FFD700', weight: 3 },
+    // Try again - minimal punishment
     { id: 'try_again', label: 'Try Again', type: 'nothing', value: 0, color: '#607D8B', weight: 2 },
   ]
 };
@@ -61,16 +68,23 @@ const PREMIUM_WHEEL = {
   description: 'Better odds for high-level players!',
   minAccountLevel: 50,
   segments: [
-    { id: 'points_100', label: '100 Points', type: 'points', value: 100, color: '#4CAF50', weight: 20 },
-    { id: 'points_250', label: '250 Points', type: 'points', value: 250, color: '#8BC34A', weight: 18 },
-    { id: 'points_500', label: '500 Points', type: 'points', value: 500, color: '#CDDC39', weight: 12 },
-    { id: 'points_1000', label: '1000 Points', type: 'points', value: 1000, color: '#FFC107', weight: 5 },
-    { id: 'ticket_2', label: '2 Tickets', type: 'tickets', value: 2, color: '#03A9F4', weight: 15 },
+    // Points - higher baseline for veteran players
+    { id: 'points_250', label: '250 Points', type: 'points', value: 250, color: '#4CAF50', weight: 18 },
+    { id: 'points_500', label: '500 Points', type: 'points', value: 500, color: '#66BB6A', weight: 15 },
+    { id: 'points_750', label: '750 Points', type: 'points', value: 750, color: '#8BC34A', weight: 10 },
+    { id: 'points_1000', label: '1000 Points', type: 'points', value: 1000, color: '#CDDC39', weight: 5 },
+    // Tickets - generous for active players
+    { id: 'ticket_2', label: '2 Tickets', type: 'tickets', value: 2, color: '#03A9F4', weight: 12 },
     { id: 'ticket_3', label: '3 Tickets', type: 'tickets', value: 3, color: '#00BCD4', weight: 8 },
+    { id: 'ticket_5', label: '5 Tickets', type: 'tickets', value: 5, color: '#0097A7', weight: 4 },
+    // Premium - better odds for veterans
     { id: 'premium_1', label: '1 Premium', type: 'premium', value: 1, color: '#9C27B0', weight: 8 },
-    { id: 'premium_2', label: '2 Premium', type: 'premium', value: 2, color: '#7B1FA2', weight: 3 },
+    { id: 'premium_2', label: '2 Premium', type: 'premium', value: 2, color: '#7B1FA2', weight: 4 },
+    // XP boost - longer duration
     { id: 'xp_boost', label: '2x XP (2hr)', type: 'multiplier', value: 2, color: '#E91E63', weight: 6 },
-    { id: 'jackpot', label: 'MEGA JACKPOT!', type: 'jackpot', value: 2500, color: '#FFD700', weight: 5 },
+    // Mega Jackpot - worth grinding for
+    { id: 'jackpot', label: 'MEGA JACKPOT!', type: 'jackpot', value: 5000, color: '#FFD700', weight: 5 },
+    // No "try again" on premium wheel - always win something!
   ]
 };
 
