@@ -11,7 +11,7 @@
  */
 
 import { MdCasino, MdCollections, MdLocalActivity, MdAdminPanelSettings, MdSettings, MdPerson } from 'react-icons/md';
-import { GiFishingPole, GiDoubleDragon } from 'react-icons/gi';
+import { GiFishingPole, GiDoubleDragon, GiCartwheel } from 'react-icons/gi';
 import { FaDice } from 'react-icons/fa';
 
 /**
@@ -43,6 +43,7 @@ export const NAV_GROUPS = [
     items: [
       { path: '/fishing', labelKey: 'nav.fishing', icon: GiFishingPole, bottomNav: true },
       { path: '/dojo', labelKey: 'nav.dojo', icon: GiDoubleDragon, bottomNav: true },
+      { path: '/fortune-wheel', labelKey: 'nav.fortuneWheel', icon: GiCartwheel, bottomNav: false },
     ],
   },
   {

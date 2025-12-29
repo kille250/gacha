@@ -79,6 +79,7 @@ export { useBannerPage } from './useBannerPage';
 export { useRollPage } from './useRollPage';
 export { useDojoPage } from './useDojoPage';
 export { useCollection } from './useCollection';
+export { useFortuneWheel } from './useFortuneWheel';
 
 // Alt media search (for anime import modal)
 export { useAltMediaSearch } from './useAltMediaSearch';

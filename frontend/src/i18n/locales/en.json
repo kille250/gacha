@@ -81,6 +81,7 @@
     "roll": "Roll",
     "fishing": "Fishing",
     "dojo": "Dojo",
+    "fortuneWheel": "Wheel",
     "collection": "Collection",
     "coupons": "Coupons",
     "admin": "Admin",
@@ -1357,6 +1358,45 @@
         "breakthroughs": "Breakthroughs",
         "legacy_training": "Legacy Training"
       }
+    }
+  },
+  "fortuneWheel": {
+    "title": "Fortune Wheel",
+    "subtitle": "Spin daily for exciting rewards!",
+    "loading": "Loading Fortune Wheel...",
+    "errorTitle": "Failed to load Fortune Wheel",
+    "spin": "SPIN!",
+    "spinning": "Spinning...",
+    "remaining": "{{count}} spin remaining today",
+    "remaining_plural": "{{count}} spins remaining today",
+    "nextSpinIn": "Next free spin in:",
+    "streakValue": "{{count}} Day Streak!",
+    "streakOnFire": "You're on fire!",
+    "keepSpinning": "Keep spinning daily!",
+    "totalSpins": "Total Spins",
+    "jackpots": "Jackpots",
+    "dayStreak": "Day Streak",
+    "recentSpins": "Recent Spins",
+    "multiplierActive": "{{value}}x XP Active ({{minutes}}m left)",
+    "awesome": "Awesome!",
+    "prize": {
+      "default": "Prize!",
+      "jackpot": "JACKPOT!",
+      "jackpotDesc": "You hit the big one!",
+      "points": "Points Won!",
+      "niceSpin": "Nice spin!",
+      "pointsValue": "+{{count}} Points",
+      "tickets": "Tickets Won!",
+      "ticketsDesc": "Use them for gacha pulls!",
+      "ticketsValue": "+{{count}} Ticket",
+      "premium": "Premium Ticket!",
+      "premiumDesc": "A rare prize!",
+      "premiumValue": "+{{count}} Premium Ticket",
+      "multiplier": "XP Boost!",
+      "multiplierDesc": "Your XP is doubled!",
+      "multiplierValue": "2x XP for {{minutes}} min",
+      "nothing": "Try Again",
+      "nothingDesc": "Better luck next time!"
     }
   },
   "animeImport": {

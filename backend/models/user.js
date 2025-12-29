@@ -686,6 +686,68 @@ User.init(
       type: DataTypes.DATE,
       allowNull: true
     },
+
+    // ===========================================
+    // FORTUNE WHEEL FIELDS
+    // ===========================================
+
+    // Fortune wheel state (JSON object)
+    fortuneWheel: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '{"lastFreeSpinAt":null,"totalSpins":0,"jackpotsWon":0,"currentStreak":0,"longestStreak":0,"badSpinStreak":0,"todaySpins":0,"todayDate":null,"activeMultiplier":null}',
+      get() {
+        const value = this.getDataValue('fortuneWheel');
+        try {
+          return value ? JSON.parse(value) : {
+            lastFreeSpinAt: null,
+            totalSpins: 0,
+            jackpotsWon: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            badSpinStreak: 0,
+            todaySpins: 0,
+            todayDate: null,
+            activeMultiplier: null
+          };
+        } catch {
+          return {
+            lastFreeSpinAt: null,
+            totalSpins: 0,
+            jackpotsWon: 0,
+            currentStreak: 0,
+            longestStreak: 0,
+            badSpinStreak: 0,
+            todaySpins: 0,
+            todayDate: null,
+            activeMultiplier: null
+          };
+        }
+      },
+      set(value) {
+        this.setDataValue('fortuneWheel', JSON.stringify(value || {}));
+      }
+    },
+
+    // Fortune wheel spin history (JSON array, last 20 spins)
+    fortuneWheelHistory: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: '[]',
+      get() {
+        const value = this.getDataValue('fortuneWheelHistory');
+        try {
+          return value ? JSON.parse(value) : [];
+        } catch {
+          return [];
+        }
+      },
+      set(value) {
+        // Keep only last 20 entries
+        const arr = Array.isArray(value) ? value.slice(-20) : [];
+        this.setDataValue('fortuneWheelHistory', JSON.stringify(arr));
+      }
+    },
   },
   {
     sequelize,

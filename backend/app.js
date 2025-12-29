@@ -334,6 +334,9 @@ app.use('/api/rarities', publicReadLimiter, require('./routes/rarities'));
 // Dojo (idle game) routes
 app.use('/api/dojo', require('./routes/dojo'));
 
+// Fortune Wheel mini-game routes
+app.use('/api/fortune-wheel', require('./routes/fortuneWheel'));
+
 // Game enhancements routes (specializations, breakthroughs, mastery, etc.)
 app.use('/api/enhancements', require('./routes/gameEnhancements'));
 

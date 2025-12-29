@@ -678,6 +678,71 @@ export const CTAButton = styled(motion.button)`
   }
 `;
 
+// ==================== FORTUNE WHEEL CTA ====================
+
+export const FortuneWheelCTA = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: ${theme.spacing.lg};
+  padding: ${theme.spacing.lg};
+  background: linear-gradient(135deg, rgba(255, 200, 0, 0.1) 0%, rgba(255, 150, 0, 0.1) 100%);
+  border: 1px solid rgba(255, 200, 0, 0.3);
+  border-radius: ${theme.radius.xl};
+  margin-top: ${theme.spacing.md};
+  box-shadow: ${theme.shadows.card};
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    border-color: rgba(255, 200, 0, 0.5);
+    background: linear-gradient(135deg, rgba(255, 200, 0, 0.15) 0%, rgba(255, 150, 0, 0.15) 100%);
+    transform: translateY(-2px);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex-direction: column;
+    text-align: center;
+  }
+`;
+
+export const FortuneWheelIcon = styled.span`
+  font-size: 32px;
+  animation: spin 8s linear infinite;
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
+export const FortuneWheelText = styled.div`
+  flex: 1;
+`;
+
+export const FortuneWheelTitle = styled.h3`
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
+  margin: 0 0 4px;
+  color: #FFD700;
+`;
+
+export const FortuneWheelSubtitle = styled.p`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  margin: 0;
+`;
+
+export const FortuneWheelBadge = styled.span`
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: linear-gradient(135deg, #FFD700 0%, #FFA500 100%);
+  color: ${theme.colors.background};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.bold};
+  border-radius: ${theme.radius.full};
+  white-space: nowrap;
+`;
+
 // ==================== HELP MODAL ====================
 
 export const HelpSection = styled.div`

@@ -82,6 +82,12 @@ import {
   CTATitle,
   CTASubtitle,
   CTAButton,
+  FortuneWheelCTA,
+  FortuneWheelIcon,
+  FortuneWheelText,
+  FortuneWheelTitle,
+  FortuneWheelSubtitle,
+  FortuneWheelBadge,
   HelpSection,
   HelpSectionTitle,
 } from './GachaPage.styles';
@@ -474,6 +480,16 @@ const GachaPage = () => {
             <span aria-hidden="true" style={{ opacity: 0.7 }}>100 {t('common.points')}</span>
           </CTAButton>
         </StandardGachaCTA>
+
+        {/* Fortune Wheel CTA */}
+        <FortuneWheelCTA onClick={() => navigate('/fortune-wheel')}>
+          <FortuneWheelIcon>🎡</FortuneWheelIcon>
+          <FortuneWheelText>
+            <FortuneWheelTitle>Daily Fortune Wheel</FortuneWheelTitle>
+            <FortuneWheelSubtitle>Spin daily for free rewards!</FortuneWheelSubtitle>
+          </FortuneWheelText>
+          <FortuneWheelBadge>FREE</FortuneWheelBadge>
+        </FortuneWheelCTA>
 
         {/* Empty State */}
         {banners.length === 0 && !loading && (

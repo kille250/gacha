@@ -899,4 +899,40 @@ export const purchaseDojoUpgrade = async (upgradeType, rarity = null) => {
   return response.data;
 };
 
+// ===========================================
+// FORTUNE WHEEL API
+// ===========================================
+
+/**
+ * Get fortune wheel status including available spins and wheel configuration
+ */
+export const getFortuneWheelStatus = async () => {
+  const response = await api.get('/fortune-wheel/status');
+  return response.data;
+};
+
+/**
+ * Perform a fortune wheel spin
+ */
+export const spinFortuneWheel = async () => {
+  const response = await api.post('/fortune-wheel/spin');
+  return response.data;
+};
+
+/**
+ * Get fortune wheel spin history
+ */
+export const getFortuneWheelHistory = async (limit = 20) => {
+  const response = await api.get('/fortune-wheel/history', { params: { limit } });
+  return response.data;
+};
+
+/**
+ * Get active XP multiplier from wheel rewards
+ */
+export const getFortuneWheelMultiplier = async () => {
+  const response = await api.get('/fortune-wheel/multiplier');
+  return response.data;
+};
+
 export default api;
