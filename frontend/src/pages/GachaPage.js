@@ -1,6 +1,7 @@
 import React, { useState, useContext, useEffect, useRef, useCallback } from 'react';
 import { MdHelpOutline, MdChevronLeft, MdChevronRight } from 'react-icons/md';
 import { FaStar, FaPlay } from 'react-icons/fa';
+import { GiCartwheel } from 'react-icons/gi';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 
@@ -483,12 +484,12 @@ const GachaPage = () => {
 
         {/* Fortune Wheel CTA */}
         <FortuneWheelCTA onClick={() => navigate('/fortune-wheel')}>
-          <FortuneWheelIcon>🎡</FortuneWheelIcon>
+          <FortuneWheelIcon><GiCartwheel size={32} /></FortuneWheelIcon>
           <FortuneWheelText>
-            <FortuneWheelTitle>Daily Fortune Wheel</FortuneWheelTitle>
-            <FortuneWheelSubtitle>Spin daily for free rewards!</FortuneWheelSubtitle>
+            <FortuneWheelTitle>{t('fortuneWheel.title', 'Fortune Wheel')}</FortuneWheelTitle>
+            <FortuneWheelSubtitle>{t('fortuneWheel.subtitle', 'Spin daily for exciting rewards!')}</FortuneWheelSubtitle>
           </FortuneWheelText>
-          <FortuneWheelBadge>FREE</FortuneWheelBadge>
+          <FortuneWheelBadge>{t('common.free', 'FREE')}</FortuneWheelBadge>
         </FortuneWheelCTA>
 
         {/* Empty State */}
