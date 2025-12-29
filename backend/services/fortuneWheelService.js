@@ -90,7 +90,8 @@ function getWheelConfig(user) {
       label: s.label,
       type: s.type,
       color: s.color,
-      icon: s.icon
+      iconType: s.iconType,
+      value: s.value
     }))
   };
 }
@@ -239,7 +240,8 @@ async function performSpin(user) {
       label: segment.label,
       type: segment.type,
       color: segment.color,
-      icon: segment.icon,
+      iconType: segment.iconType,
+      value: segment.value,
       index: segmentIndex
     },
     rewards,

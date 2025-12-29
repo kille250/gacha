@@ -1270,6 +1270,14 @@
       "multiplierValue": "{{minutes}}分間2倍XP",
       "nothing": "もう一度",
       "nothingDesc": "次はきっと当たる！"
+    },
+    "legend": {
+      "points": "{{value}}ポイント",
+      "tickets": "{{value}}チケット",
+      "tickets_plural": "{{value}}チケット",
+      "premium": "{{value}}プレミアム",
+      "xpBoost": "2倍XP",
+      "retry": "再挑戦"
     }
   },
   "animeImport": {

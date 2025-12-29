@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { useFortuneWheel } from '../../hooks/useFortuneWheel';
 import { LoadingState, ErrorState } from '../../design-system';
 import FortuneWheel from './FortuneWheel';
+import WheelLegend from './WheelLegend';
 import PrizePopup from './PrizePopup';
 import {
   IconGacha,
@@ -188,6 +189,12 @@ const FortuneWheelPage = () => {
           rotation={displayRotation}
           spinning={spinning}
           spinDuration={spinDuration}
+        />
+
+        {/* Legend */}
+        <WheelLegend
+          segments={segments}
+          highlightedId={spinResult?.segment?.id}
         />
 
         {/* Spin Button / Timer */}

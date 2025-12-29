@@ -537,3 +537,60 @@ export const LoadingContainer = styled.div`
   min-height: 60vh;
   gap: ${theme.spacing.lg};
 `;
+
+// ===========================================
+// WHEEL LEGEND
+// ===========================================
+
+export const LegendContainer = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: ${theme.spacing.xs} ${theme.spacing.sm};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${theme.colors.surface};
+  border-radius: ${theme.radius.lg};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  max-width: 340px;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    max-width: 300px;
+    gap: ${theme.spacing.xs};
+  }
+`;
+
+export const LegendItem = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  border-radius: ${theme.radius.sm};
+  background: ${props => props.$highlighted ? 'rgba(255, 200, 0, 0.2)' : 'transparent'};
+  transition: background 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+  }
+`;
+
+export const LegendColorDot = styled.span`
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  background: ${props => props.$color};
+  flex-shrink: 0;
+  box-shadow: 0 0 4px ${props => props.$color}40;
+`;
+
+export const LegendIcon = styled.span`
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  color: ${theme.colors.textSecondary};
+`;
+
+export const LegendLabel = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.text};
+  white-space: nowrap;
+`;

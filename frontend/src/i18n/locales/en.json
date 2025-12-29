@@ -1401,6 +1401,14 @@
       "multiplierValue": "2x XP for {{minutes}} min",
       "nothing": "Try Again",
       "nothingDesc": "Better luck next time!"
+    },
+    "legend": {
+      "points": "{{value}} Points",
+      "tickets": "{{value}} Ticket",
+      "tickets_plural": "{{value}} Tickets",
+      "premium": "{{value}} Premium",
+      "xpBoost": "2x XP",
+      "retry": "Retry"
     }
   },
   "animeImport": {
