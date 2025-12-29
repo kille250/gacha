@@ -4,14 +4,13 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { MdArrowBack, MdClose, MdFastForward, MdInfo, MdRefresh } from 'react-icons/md';
 import { FaGem, FaDice, FaTrophy, FaPlay, FaPause, FaChevronRight, FaStar } from 'react-icons/fa';
-import confetti from 'canvas-confetti';
 
 // API & Context
 import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
+import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity, useConfetti } from '../hooks';
 import { onVisibilityChange, invalidateFor, VISIBILITY_CALLBACK_IDS, CACHE_ACTIONS } from '../cache';
 import { executeBannerRoll, executeBannerMultiRoll } from '../actions/gachaActions';
 import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
@@ -195,7 +194,10 @@ const BannerPage = () => {
   const navigate = useNavigate();
   const { user, refreshUser, setUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
-  
+
+  // Confetti with shared canvas (prevents layout shifts)
+  const { fireRarePull, fireMultiPull } = useConfetti();
+
   // Action lock to prevent rapid double-clicks
   const { withLock, locked } = useActionLock(300);
   
@@ -539,15 +541,8 @@ const BannerPage = () => {
   }, [userCollection]);
 
   const showRarePullEffect = useCallback((rarity) => {
-    if (['legendary', 'epic'].includes(rarity)) {
-      confetti({
-        particleCount: rarity === 'legendary' ? 200 : 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: [getRarityColor(rarity), '#ffffff', '#ffd700']
-      });
-    }
-  }, [getRarityColor]);
+    fireRarePull(rarity, getRarityColor(rarity));
+  }, [getRarityColor, fireRarePull]);
 
   // Handlers
   const handleRoll = async (useTicket = false, ticketType = 'roll') => {
@@ -752,10 +747,9 @@ const BannerPage = () => {
           }, 'common');
           
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
-          
-          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
-            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
-          }
+
+          const hasRare = characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity));
+          fireMultiPull(hasRare);
           setIsRolling(false);
         } else {
           // Persist roll results before animation for recovery if user navigates away

@@ -10,11 +10,11 @@
  * - Confetti effects
  */
 import { useState, useCallback, useContext } from 'react';
-import confetti from 'canvas-confetti';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { getAssetUrl } from '../utils/api';
 import { applyPointsUpdate } from '../utils/userStateUpdates';
+import { useConfetti } from './useConfetti';
 
 // ==================== CONSTANTS ====================
 
@@ -46,6 +46,9 @@ const MAX_RARITY_HISTORY = 5;
 export const useGachaRoll = ({ onRollComplete } = {}) => {
   const { setUser } = useContext(AuthContext);
   const { getRarityColor } = useRarity();
+
+  // Confetti with shared canvas (prevents layout shifts)
+  const { fireRarePull, fireMultiPull } = useConfetti();
 
   // ==================== STATE ====================
   
@@ -98,15 +101,8 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
    * Show confetti effect for rare pulls
    */
   const showRarePullEffect = useCallback((rarity) => {
-    if (['legendary', 'epic'].includes(rarity)) {
-      confetti({
-        particleCount: rarity === 'legendary' ? 200 : 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: [getRarityColor(rarity), '#ffffff', '#ffd700']
-      });
-    }
-  }, [getRarityColor]);
+    fireRarePull(rarity, getRarityColor(rarity));
+  }, [getRarityColor, fireRarePull]);
 
   /**
    * Get the highest rarity from a list of characters
@@ -238,9 +234,8 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
       addToRarityHistory(bestRarity);
       
       // Celebrate if any rare+ pulls
-      if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
-        confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
-      }
+      const hasRare = characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity));
+      fireMultiPull(hasRare);
       setIsRolling(false);
     } else {
       // Show multi-summon animation
@@ -252,7 +247,7 @@ export const useGachaRoll = ({ onRollComplete } = {}) => {
     onRollComplete?.();
     
     return { characters, tickets };
-  }, [setUser, skipAnimations, getBestRarity, addToRarityHistory, onRollComplete]);
+  }, [setUser, skipAnimations, getBestRarity, addToRarityHistory, onRollComplete, fireMultiPull]);
 
   /**
    * Start a multi-roll

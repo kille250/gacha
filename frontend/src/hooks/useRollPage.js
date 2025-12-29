@@ -9,12 +9,11 @@
 
 import { useState, useContext, useEffect, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import confetti from 'canvas-confetti';
 
 import { getStandardPricing, getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock, useAutoDismissError, useSkipAnimations } from '../hooks';
+import { useActionLock, useAutoDismissError, useSkipAnimations, useConfetti } from '../hooks';
 import { onVisibilityChange, VISIBILITY_CALLBACK_IDS } from '../cache';
 import { executeStandardRoll, executeStandardMultiRoll } from '../actions/gachaActions';
 
@@ -24,6 +23,9 @@ export const useRollPage = () => {
   const { t } = useTranslation();
   const { user, refreshUser, setUser } = useContext(AuthContext);
   const { getRarityColor } = useRarity();
+
+  // Confetti with shared canvas (prevents layout shifts)
+  const { fireRarePull, fireMultiPull } = useConfetti();
 
   // Action lock to prevent rapid double-clicks
   const { withLock, locked } = useActionLock(300);
@@ -212,15 +214,8 @@ export const useRollPage = () => {
 
   // Show confetti for rare pulls
   const showRarePullEffect = useCallback((rarity) => {
-    if (['legendary', 'epic'].includes(rarity)) {
-      confetti({
-        particleCount: rarity === 'legendary' ? 200 : 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: [getRarityColor(rarity), '#ffffff', '#ffd700']
-      });
-    }
-  }, [getRarityColor]);
+    fireRarePull(rarity, getRarityColor(rarity));
+  }, [getRarityColor, fireRarePull]);
 
   // Handle single roll
   const handleRoll = async () => {
@@ -358,9 +353,8 @@ export const useRollPage = () => {
 
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
 
-          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
-            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
-          }
+          const hasRare = characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity));
+          fireMultiPull(hasRare);
           setIsRolling(false);
         } else {
           try {

@@ -187,3 +187,6 @@ export { useUndoableAction } from './useUndoableAction';
 
 // Achievement notifications for first-time achievements
 export { useAchievementNotifications } from './useAchievementNotifications';
+
+// Confetti effects with shared canvas (prevents layout shifts)
+export { useConfetti } from './useConfetti';

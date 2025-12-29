@@ -10,13 +10,12 @@
 
 import { useState, useEffect, useContext, useCallback, useMemo, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
-import confetti from 'canvas-confetti';
 
 import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api';
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock, useAutoDismissError, useSkipAnimations } from '../hooks';
+import { useActionLock, useAutoDismissError, useSkipAnimations, useConfetti } from '../hooks';
 import { onVisibilityChange, invalidateFor, VISIBILITY_CALLBACK_IDS, CACHE_ACTIONS } from '../cache';
 import { executeBannerRoll, executeBannerMultiRoll } from '../actions/gachaActions';
 import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
@@ -50,6 +49,9 @@ export const useBannerPage = (bannerId) => {
   const { t } = useTranslation();
   const { user, refreshUser, setUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
+
+  // Confetti with shared canvas (prevents layout shifts)
+  const { fireRarePull, fireMultiPull } = useConfetti();
 
   // Action lock to prevent rapid double-clicks
   const { withLock, locked } = useActionLock(300);
@@ -166,15 +168,8 @@ export const useBannerPage = (bannerId) => {
 
   // Show rare pull effect
   const showRarePullEffect = useCallback((rarity) => {
-    if (['legendary', 'epic'].includes(rarity)) {
-      confetti({
-        particleCount: rarity === 'legendary' ? 200 : 100,
-        spread: 70,
-        origin: { y: 0.6 },
-        colors: [getRarityColor(rarity), '#ffffff', '#ffd700']
-      });
-    }
-  }, [getRarityColor]);
+    fireRarePull(rarity, getRarityColor(rarity));
+  }, [getRarityColor, fireRarePull]);
 
   // Character preview handlers
   const openPreview = useCallback((char) => {
@@ -326,9 +321,8 @@ export const useBannerPage = (bannerId) => {
 
           setLastRarities(prev => [bestRarity, ...prev.slice(0, 4)]);
 
-          if (characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity))) {
-            confetti({ particleCount: 150, spread: 90, origin: { y: 0.5 } });
-          }
+          const hasRare = characters.some(c => ['rare', 'epic', 'legendary'].includes(c.rarity));
+          fireMultiPull(hasRare);
           setIsRolling(false);
         } else {
           try {
@@ -364,7 +358,7 @@ export const useBannerPage = (bannerId) => {
         }
       }
     });
-  }, [withLock, tickets, getMultiPullCost, user?.points, bannerId, setUser, skipAnimations, fetchUserCollection, refreshUser, t, setError]);
+  }, [withLock, tickets, getMultiPullCost, user?.points, bannerId, setUser, skipAnimations, fetchUserCollection, refreshUser, t, setError, fireMultiPull]);
 
   // Animation complete handlers
   const handleSummonComplete = useCallback(() => {
