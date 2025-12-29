@@ -71,7 +71,10 @@
     "rollNow": "Tirar ahora",
     "skip": "Saltar",
     "continue": "Continuar",
-    "noImage": "Sin imagen"
+    "noImage": "Sin imagen",
+    "copy": "Copiar",
+    "copied": "¡Copiado!",
+    "done": "Hecho"
   },
   "nav": {
     "banners": "Banners",
@@ -132,7 +135,26 @@
     "registrationUnavailable": "El registro no está disponible",
     "bonusInfo": "¡Los nuevos jugadores reciben <strong>{{gems}} gemas gratis</strong> para empezar!",
     "googleLoginFailed": "Error al iniciar sesión con Google. Por favor, inténtalo de nuevo.",
-    "continueWithGoogle": "Continuar con Google"
+    "continueWithGoogle": "Continuar con Google",
+    "changePasswordRequired": "Se requiere cambio de contraseña",
+    "forcePasswordChangeDesc": "Tu contraseña fue restablecida por un administrador. Debes establecer una nueva contraseña para continuar.",
+    "temporaryPasswordExpires": "La contraseña temporal expira en",
+    "temporaryPasswordExpired": "Tu contraseña temporal ha expirado. Por favor contacta a un administrador para una nueva contraseña.",
+    "passwordChanged": "¡Contraseña cambiada!",
+    "passwordChangeSuccess": "Tu contraseña ha sido cambiada exitosamente. Redirigiendo...",
+    "passwordChangeFailed": "Error al cambiar la contraseña",
+    "newPassword": "Nueva contraseña",
+    "enterNewPassword": "Ingresa nueva contraseña",
+    "confirmNewPassword": "Confirmar nueva contraseña",
+    "passwordRequirementsTitle": "Requisitos de contraseña",
+    "atLeast8Chars": "Al menos 8 caracteres",
+    "atLeastOneLetter": "Al menos una letra",
+    "atLeastOneNumber": "Al menos un número",
+    "passwordsMatch": "Las contraseñas coinciden",
+    "passwordsDoNotMatch": "Las contraseñas no coinciden",
+    "setNewPassword": "Establecer nueva contraseña",
+    "passwordNeedsLetter": "La contraseña debe contener al menos una letra",
+    "passwordNeedsNumber": "La contraseña debe contener al menos un número"
   },
   "gacha": {
     "title": "GachaMaster",
@@ -759,7 +781,17 @@
       "deviceMismatch": "Discrepancia de dispositivo detectada",
       "deviceBindingBlocked": "Vinculación de dispositivo bloqueada",
       "deviceBindingCleared": "Vinculación de dispositivo eliminada",
-      "riskChange": "Puntuación de riesgo cambiada"
+      "riskChange": "Puntuación de riesgo cambiada",
+      "passwordReset": "Restablecer contraseña",
+      "passwordResetInfo": "Restablece la contraseña del usuario y genera una contraseña temporal. El usuario deberá establecer una nueva contraseña en su próximo inicio de sesión.",
+      "cannotResetAdminPassword": "No se puede restablecer la contraseña de cuentas de administrador.",
+      "resetPassword": "Restablecer contraseña",
+      "confirmPasswordReset": "Confirmar restablecimiento de contraseña",
+      "passwordResetWarning": "¿Estás seguro de que deseas restablecer la contraseña de \"{{username}}\"? Esto generará una nueva contraseña temporal e invalidará todas las sesiones existentes.",
+      "passwordResetSuccess": "Contraseña restablecida exitosamente",
+      "temporaryPassword": "Contraseña temporal",
+      "copyPassword": "Copiar contraseña",
+      "expiresAt": "Expira el"
     },
     "economy": {
       "trade": "Intercambio completado"

@@ -168,7 +168,7 @@ const ForcePasswordChangeModal = ({ onSuccess, expiresAt }) => {
             </InputGroup>
 
             <PasswordRequirements>
-              <RequirementTitle>{t('auth.passwordRequirements', 'Password Requirements')}:</RequirementTitle>
+              <RequirementTitle>{t('auth.passwordRequirementsTitle', 'Password Requirements')}:</RequirementTitle>
               <Requirement $met={newPassword.length >= 8}>
                 {t('auth.atLeast8Chars', 'At least 8 characters')}
               </Requirement>

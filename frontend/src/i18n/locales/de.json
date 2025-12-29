@@ -71,7 +71,10 @@
     "rollNow": "Jetzt ziehen",
     "skip": "Überspringen",
     "continue": "Fortfahren",
-    "noImage": "Kein Bild"
+    "noImage": "Kein Bild",
+    "copy": "Kopieren",
+    "copied": "Kopiert!",
+    "done": "Fertig"
   },
   "nav": {
     "banners": "Banner",
@@ -132,7 +135,26 @@
     "registrationUnavailable": "Registrierung ist nicht verfügbar",
     "bonusInfo": "Neue Spieler erhalten <strong>{{gems}} kostenlose Edelsteine</strong> zum Start!",
     "googleLoginFailed": "Google-Anmeldung fehlgeschlagen. Bitte erneut versuchen.",
-    "continueWithGoogle": "Mit Google fortfahren"
+    "continueWithGoogle": "Mit Google fortfahren",
+    "changePasswordRequired": "Passwortänderung erforderlich",
+    "forcePasswordChangeDesc": "Dein Passwort wurde von einem Administrator zurückgesetzt. Du musst ein neues Passwort festlegen, um fortzufahren.",
+    "temporaryPasswordExpires": "Temporäres Passwort läuft ab in",
+    "temporaryPasswordExpired": "Dein temporäres Passwort ist abgelaufen. Bitte kontaktiere einen Administrator für ein neues Passwort.",
+    "passwordChanged": "Passwort geändert!",
+    "passwordChangeSuccess": "Dein Passwort wurde erfolgreich geändert. Weiterleitung...",
+    "passwordChangeFailed": "Passwortänderung fehlgeschlagen",
+    "newPassword": "Neues Passwort",
+    "enterNewPassword": "Neues Passwort eingeben",
+    "confirmNewPassword": "Neues Passwort bestätigen",
+    "passwordRequirementsTitle": "Passwortanforderungen",
+    "atLeast8Chars": "Mindestens 8 Zeichen",
+    "atLeastOneLetter": "Mindestens ein Buchstabe",
+    "atLeastOneNumber": "Mindestens eine Zahl",
+    "passwordsMatch": "Passwörter stimmen überein",
+    "passwordsDoNotMatch": "Passwörter stimmen nicht überein",
+    "setNewPassword": "Neues Passwort festlegen",
+    "passwordNeedsLetter": "Passwort muss mindestens einen Buchstaben enthalten",
+    "passwordNeedsNumber": "Passwort muss mindestens eine Zahl enthalten"
   },
   "gacha": {
     "title": "GachaMaster",
@@ -906,7 +928,17 @@
       "deviceMismatch": "Geräteabweichung erkannt",
       "deviceBindingBlocked": "Gerätebindung blockiert",
       "deviceBindingCleared": "Gerätebindung gelöscht",
-      "riskChange": "Risikobewertung geändert"
+      "riskChange": "Risikobewertung geändert",
+      "passwordReset": "Passwort zurücksetzen",
+      "passwordResetInfo": "Setze das Passwort des Benutzers zurück und erstelle ein temporäres Passwort. Der Benutzer muss bei der nächsten Anmeldung ein neues Passwort festlegen.",
+      "cannotResetAdminPassword": "Das Passwort von Admin-Konten kann nicht zurückgesetzt werden.",
+      "resetPassword": "Passwort zurücksetzen",
+      "confirmPasswordReset": "Passwort-Zurücksetzung bestätigen",
+      "passwordResetWarning": "Möchtest du wirklich das Passwort für \"{{username}}\" zurücksetzen? Dies generiert ein neues temporäres Passwort und beendet alle bestehenden Sitzungen.",
+      "passwordResetSuccess": "Passwort erfolgreich zurückgesetzt",
+      "temporaryPassword": "Temporäres Passwort",
+      "copyPassword": "Passwort kopieren",
+      "expiresAt": "Läuft ab am"
     },
     "deviceHistory": {
       "title": "Geräteverlauf",

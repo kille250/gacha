@@ -69,7 +69,10 @@
     "rollNow": "今すぐ回す",
     "skip": "スキップ",
     "continue": "続ける",
-    "noImage": "画像なし"
+    "noImage": "画像なし",
+    "copy": "コピー",
+    "copied": "コピー済み！",
+    "done": "完了"
   },
   "nav": {
     "banners": "バナー",
@@ -130,7 +133,26 @@
     "registrationUnavailable": "登録は現在利用できません",
     "bonusInfo": "新規プレイヤーは<strong>{{gems}}個の無料ジェム</strong>を獲得！",
     "googleLoginFailed": "Googleログインに失敗しました。もう一度お試しください。",
-    "continueWithGoogle": "Googleで続ける"
+    "continueWithGoogle": "Googleで続ける",
+    "changePasswordRequired": "パスワード変更が必要です",
+    "forcePasswordChangeDesc": "管理者によってパスワードがリセットされました。続行するには新しいパスワードを設定する必要があります。",
+    "temporaryPasswordExpires": "一時パスワードの有効期限",
+    "temporaryPasswordExpired": "一時パスワードの有効期限が切れました。新しいパスワードについては管理者にお問い合わせください。",
+    "passwordChanged": "パスワードが変更されました！",
+    "passwordChangeSuccess": "パスワードが正常に変更されました。リダイレクト中...",
+    "passwordChangeFailed": "パスワードの変更に失敗しました",
+    "newPassword": "新しいパスワード",
+    "enterNewPassword": "新しいパスワードを入力",
+    "confirmNewPassword": "新しいパスワードを確認",
+    "passwordRequirementsTitle": "パスワード要件",
+    "atLeast8Chars": "8文字以上",
+    "atLeastOneLetter": "1文字以上のアルファベット",
+    "atLeastOneNumber": "1つ以上の数字",
+    "passwordsMatch": "パスワードが一致",
+    "passwordsDoNotMatch": "パスワードが一致しません",
+    "setNewPassword": "新しいパスワードを設定",
+    "passwordNeedsLetter": "パスワードには少なくとも1つの文字が必要です",
+    "passwordNeedsNumber": "パスワードには少なくとも1つの数字が必要です"
   },
   "gacha": {
     "title": "ガチャマスター",
@@ -902,7 +924,17 @@
       "deviceMismatch": "デバイス不一致を検出",
       "deviceBindingBlocked": "デバイスバインディングがブロックされました",
       "deviceBindingCleared": "デバイスバインディングがクリアされました",
-      "riskChange": "リスクスコアが変更されました"
+      "riskChange": "リスクスコアが変更されました",
+      "passwordReset": "パスワードリセット",
+      "passwordResetInfo": "ユーザーのパスワードをリセットし、一時パスワードを生成します。ユーザーは次回ログイン時に新しいパスワードを設定する必要があります。",
+      "cannotResetAdminPassword": "管理者アカウントのパスワードはリセットできません。",
+      "resetPassword": "パスワードをリセット",
+      "confirmPasswordReset": "パスワードリセットを確認",
+      "passwordResetWarning": "「{{username}}」のパスワードをリセットしてもよろしいですか？新しい一時パスワードが生成され、既存のすべてのセッションが無効になります。",
+      "passwordResetSuccess": "パスワードのリセットに成功しました",
+      "temporaryPassword": "一時パスワード",
+      "copyPassword": "パスワードをコピー",
+      "expiresAt": "有効期限"
     },
     "economy": {
       "trade": "取引が完了しました"
