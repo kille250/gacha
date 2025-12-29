@@ -200,10 +200,26 @@ export const SummonAnimation = ({
     }
   }, [isActive, clearAllTimers, stopAllEffects]);
 
-  // Reset completed guard when character changes (for multi-pull)
+  // Cleanup on unmount - ensures effects are stopped when component is removed
+  // This is critical for multi-summon where the component may unmount while effects are active
+  useEffect(() => {
+    return () => {
+      if (buildupStopRef.current) {
+        buildupStopRef.current();
+        buildupStopRef.current = null;
+      }
+      stopAllEffects();
+    };
+  }, [stopAllEffects]);
+
+  // Reset state when character changes (for multi-pull)
+  // Also stop any lingering effects from the previous character
   useEffect(() => {
     hasCompletedRef.current = false;
-  }, [currentPull]);
+    // Stop any ongoing effects when moving to next character
+    // This prevents screen shake from previous reveal carrying over
+    stopAllEffects();
+  }, [currentPull, stopAllEffects]);
 
   // Handle skip/continue
   const handleInteraction = useCallback((e) => {
@@ -946,6 +962,9 @@ export const MultiSummonAnimation = ({
   // Get dynamic rarity colors from context
   const { getRarityColor } = useRarity();
 
+  // Get effects control to stop effects when skipping
+  const { stopAllEffects } = useGachaEffects();
+
   const highestRarity = getHighestRarity(characters);
 
   // Calculate timing multiplier for current pull (used for accelerating animation)
@@ -959,8 +978,16 @@ export const MultiSummonAnimation = ({
       setCurrentIndex(0);
       setShowSkippedResults(false);
       hasCompletedRef.current = false; // Reset guard for next animation
+      stopAllEffects();
     }
-  }, [isActive]);
+  }, [isActive, stopAllEffects]);
+
+  // Cleanup on unmount - ensures effects are stopped when component is removed
+  useEffect(() => {
+    return () => {
+      stopAllEffects();
+    };
+  }, [stopAllEffects]);
 
   const handleSingleComplete = useCallback(() => {
     if (currentIndex < characters.length - 1) {
@@ -974,8 +1001,11 @@ export const MultiSummonAnimation = ({
   }, [currentIndex, characters.length, onComplete]);
 
   const handleSkipAll = useCallback(() => {
+    // Stop any ongoing effects (screen shake, flash, etc.) before showing results
+    // This prevents the offset issue when transitioning to results view
+    stopAllEffects();
     setShowSkippedResults(true);
-  }, []);
+  }, [stopAllEffects]);
 
   const handleCloseSkippedResults = useCallback(() => {
     // Guard against double-click
