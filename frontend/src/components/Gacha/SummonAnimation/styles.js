@@ -337,17 +337,16 @@ export const FlashOverlay = styled(motion.div)`
 // ==================== CARD STYLES ====================
 
 export const CardContainer = styled(motion.div)`
-  position: relative;
+  /* Use absolute positioning with transform centering for bulletproof initial positioning */
+  /* This ensures the card is centered even before parent flexbox is calculated */
+  position: absolute;
+  top: 50%;
+  left: 50%;
   perspective: 1000px;
   z-index: ${Z_LAYERS.card};
 
-  /* Ensure card is centered and doesn't shift on mobile initial render */
-  display: flex;
-  align-items: center;
-  justify-content: center;
-
   /* GPU acceleration for smooth animations */
-  transform: translateZ(0);
+  /* Note: Framer Motion will combine its transforms with this base transform */
   will-change: transform, opacity, filter;
 `;
 
@@ -506,6 +505,8 @@ export const ShowcaseContainer = styled(motion.div)`
   /* Ensure children are properly centered on mobile from first render */
   & > * {
     flex-shrink: 0;
+    /* Fallback centering using margin auto in case flexbox isn't calculated yet */
+    margin: auto;
   }
 `;
 
@@ -514,12 +515,13 @@ export const CardFloat = styled.div`
   position: relative;
 
   /* Ensure the card starts at transform origin for proper centering on mobile */
+  /* Using !important to prevent any race conditions with animation-fill-mode */
   transform: translateY(0);
 
-  /* Delay the float animation to ensure layout is stable before it starts */
-  animation: ${floatUpDown} 3s ease-in-out infinite;
-  animation-delay: 0.3s;
-  animation-fill-mode: backwards;
+  /* Float animation starts immediately - no delay needed since we have a stable initial transform */
+  /* Removed animation-fill-mode: backwards as it caused race conditions on mobile */
+  /* where the first keyframe styles weren't applied fast enough on initial render */
+  animation: ${floatUpDown} 3s ease-in-out 0.3s infinite;
 `;
 
 // ==================== UI ELEMENTS ====================
