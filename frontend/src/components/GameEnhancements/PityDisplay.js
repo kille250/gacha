@@ -189,6 +189,65 @@ const LoadingState = styled.div`
   padding: 20px;
 `;
 
+// Near Pity Alert - "Almost There" / "So Close!" indicator
+const NearPityAlert = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 16px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: ${props => {
+    if (props.$urgency === 'high') return 'linear-gradient(135deg, rgba(255, 193, 7, 0.25) 0%, rgba(255, 152, 0, 0.2) 100%)';
+    if (props.$urgency === 'medium') return 'linear-gradient(135deg, rgba(255, 215, 0, 0.15) 0%, rgba(255, 193, 7, 0.1) 100%)';
+    return 'linear-gradient(135deg, rgba(156, 39, 176, 0.15) 0%, rgba(156, 39, 176, 0.1) 100%)';
+  }};
+  border: 1px solid ${props => {
+    if (props.$urgency === 'high') return 'rgba(255, 193, 7, 0.5)';
+    if (props.$urgency === 'medium') return 'rgba(255, 215, 0, 0.3)';
+    return 'rgba(156, 39, 176, 0.3)';
+  }};
+`;
+
+const NearPityIcon = styled.div`
+  font-size: ${props => props.$urgency === 'high' ? '2rem' : '1.5rem'};
+  animation: ${props => props.$urgency === 'high' ? 'pulse 1s ease-in-out infinite' : 'none'};
+
+  @keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.15); }
+  }
+`;
+
+const NearPityContent = styled.div`
+  flex: 1;
+`;
+
+const NearPityTitle = styled.div`
+  font-size: ${props => props.$urgency === 'high' ? '1.1rem' : '0.95rem'};
+  font-weight: 700;
+  color: ${props => {
+    if (props.$urgency === 'high') return '#ffc107';
+    if (props.$urgency === 'medium') return '#ffd700';
+    return '#ba68c8';
+  }};
+  text-transform: ${props => props.$urgency === 'high' ? 'uppercase' : 'none'};
+  letter-spacing: ${props => props.$urgency === 'high' ? '0.5px' : 'normal'};
+`;
+
+const NearPityText = styled.div`
+  font-size: 0.85rem;
+  color: #ccc;
+  margin-top: 2px;
+`;
+
+const NearPityUrgent = styled.div`
+  font-size: 0.8rem;
+  color: #ff9800;
+  font-weight: 600;
+  margin-top: 4px;
+`;
+
 const RARITY_COLORS = {
   legendary: '#ffd700',
   epic: '#9c27b0',
@@ -457,17 +516,67 @@ export function PityDisplay({ bannerId = null, compact = false, pullResult = nul
         </CascadingResetNotice>
       )}
 
-      {/* Near guarantee message */}
-      {standard.untilGuaranteed.legendary <= 10 && standard.untilGuaranteed.legendary > 0 && (
-        <GuaranteedMessage
-          initial={{ opacity: 0, scale: 0.9 }}
-          animate={{ opacity: 1, scale: 1 }}
+      {/* Near guarantee message - Enhanced "Almost There" indicator */}
+      {standard.untilGuaranteed.legendary <= 15 && standard.untilGuaranteed.legendary > 0 && (
+        <NearPityAlert
+          initial={{ opacity: 0, scale: 0.9, y: 10 }}
+          animate={{
+            opacity: 1,
+            scale: 1,
+            y: 0,
+            boxShadow: standard.untilGuaranteed.legendary <= 5
+              ? ['0 0 10px rgba(255, 215, 0, 0.3)', '0 0 20px rgba(255, 215, 0, 0.5)', '0 0 10px rgba(255, 215, 0, 0.3)']
+              : 'none'
+          }}
+          transition={{
+            boxShadow: { repeat: Infinity, duration: 1.5 }
+          }}
+          $urgency={standard.untilGuaranteed.legendary <= 5 ? 'high' : 'medium'}
         >
-          <span style={{ color: '#ffc107' }}>
-            {t('pity.nearGuarantee', { pulls: standard.untilGuaranteed.legendary }) ||
-              `Only ${standard.untilGuaranteed.legendary} pulls away from guaranteed Legendary!`}
-          </span>
-        </GuaranteedMessage>
+          <NearPityIcon $urgency={standard.untilGuaranteed.legendary <= 5 ? 'high' : 'medium'}>
+            {standard.untilGuaranteed.legendary <= 5 ? '🔥' : '✨'}
+          </NearPityIcon>
+          <NearPityContent>
+            <NearPityTitle $urgency={standard.untilGuaranteed.legendary <= 5 ? 'high' : 'medium'}>
+              {standard.untilGuaranteed.legendary <= 5
+                ? t('pity.soClose', 'SO CLOSE!')
+                : t('pity.almostThere', 'Almost there!')}
+            </NearPityTitle>
+            <NearPityText>
+              {t('pity.nearGuaranteeDetailed', {
+                pulls: standard.untilGuaranteed.legendary,
+                rarity: t('rarity.legendary')
+              }) || `Only ${standard.untilGuaranteed.legendary} pulls away from guaranteed Legendary!`}
+            </NearPityText>
+            {standard.untilGuaranteed.legendary <= 5 && (
+              <NearPityUrgent>
+                {t('pity.dontStopNow', "Don't stop now!")}
+              </NearPityUrgent>
+            )}
+          </NearPityContent>
+        </NearPityAlert>
+      )}
+
+      {/* Epic near guarantee */}
+      {standard.untilGuaranteed.epic <= 8 && standard.untilGuaranteed.epic > 0 && standard.untilGuaranteed.legendary > 15 && (
+        <NearPityAlert
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          $urgency="low"
+        >
+          <NearPityIcon $urgency="low">💜</NearPityIcon>
+          <NearPityContent>
+            <NearPityTitle $urgency="low">
+              {t('pity.epicSoon', 'Epic incoming!')}
+            </NearPityTitle>
+            <NearPityText>
+              {t('pity.nearGuaranteeDetailed', {
+                pulls: standard.untilGuaranteed.epic,
+                rarity: t('rarity.epic')
+              }) || `${standard.untilGuaranteed.epic} pulls until guaranteed Epic`}
+            </NearPityText>
+          </NearPityContent>
+        </NearPityAlert>
       )}
     </Container>
   );
