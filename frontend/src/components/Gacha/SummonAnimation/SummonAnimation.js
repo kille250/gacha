@@ -364,11 +364,13 @@ export const SummonAnimation = ({
                 initial={{
                   scale: 0.85,
                   opacity: 0,
+                  y: 0,
                   filter: 'blur(12px)',
                 }}
                 animate={{
                   scale: 1,
                   opacity: 1,
+                  y: 0,
                   filter: 'blur(0px)',
                 }}
                 exit={{
@@ -377,6 +379,7 @@ export const SummonAnimation = ({
                 }}
                 transition={{
                   ...EASINGS.spring.reveal,
+                  y: { duration: 0 },
                   filter: { duration: 0.35, ease: EASINGS.easeOut },
                 }}
               >

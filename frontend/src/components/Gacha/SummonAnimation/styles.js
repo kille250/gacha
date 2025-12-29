@@ -340,6 +340,13 @@ export const CardContainer = styled(motion.div)`
   position: relative;
   perspective: 1000px;
   z-index: ${Z_LAYERS.card};
+
+  /* Ensure card is centered and doesn't shift on mobile initial render */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+
+  /* GPU acceleration for smooth animations */
   transform: translateZ(0);
   will-change: transform, opacity, filter;
 `;
@@ -495,11 +502,19 @@ export const ShowcaseContainer = styled(motion.div)`
   /* GPU acceleration to ensure faster layout calculation on mobile */
   transform: translateZ(0);
   will-change: opacity;
+
+  /* Ensure children are properly centered on mobile from first render */
+  & > * {
+    flex-shrink: 0;
+  }
 `;
 
-export const CardFloat = styled(motion.div)`
-  /* Explicit centering to prevent mobile positioning issues on first render */
+export const CardFloat = styled.div`
+  /* Explicit centering - using regular div to avoid Framer Motion transform conflicts */
   position: relative;
+
+  /* Ensure the card starts at transform origin for proper centering on mobile */
+  transform: translateY(0);
 
   /* Delay the float animation to ensure layout is stable before it starts */
   animation: ${floatUpDown} 3s ease-in-out infinite;
