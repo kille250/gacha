@@ -1078,6 +1078,10 @@ export const MultiSummonAnimation = ({
   }, [currentIndex, characters.length, onComplete]);
 
   const handleSkipAll = useCallback(() => {
+    // Reset any ongoing confetti before showing results
+    if (typeof confetti.reset === 'function') {
+      confetti.reset();
+    }
     setShowSkippedResults(true);
   }, []);
 
@@ -1102,9 +1106,9 @@ export const MultiSummonAnimation = ({
       >
         <ResultsContent
           as={motion.div}
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.3, ease: "easeOut" }}
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.25, ease: "easeOut" }}
           onClick={e => e.stopPropagation()}
         >
           <ResultsHeader>
@@ -1117,13 +1121,11 @@ export const MultiSummonAnimation = ({
               <ResultCard
                 key={index}
                 $color={getRarityColor(char.rarity)}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{
-                  delay: 0.2 + index * 0.03,  // Wait for container, then cascade
-                  type: "spring",
-                  damping: 20,
-                  stiffness: 300
+                  delay: 0.15 + index * 0.025,
+                  duration: 0.2
                 }}
               >
                 <ResultImageWrapper>
@@ -1178,15 +1180,22 @@ const ResultsOverlay = styled(motion.div)`
   z-index: 99999;
   background: rgba(5, 5, 10, 0.98);
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: center;
   padding: 20px;
+  padding-top: 60px;
   overflow-y: auto;
+
+  @media (min-height: 700px) {
+    align-items: center;
+    padding-top: 20px;
+  }
 `;
 
 const ResultsContent = styled.div`
   max-width: 900px;
   width: 100%;
+  flex-shrink: 0;
 `;
 
 const ResultsHeader = styled.div`
