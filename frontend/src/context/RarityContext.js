@@ -26,17 +26,15 @@ const DEFAULT_RARITY_CONFIG = {
       color: '#8e8e93',
       accentColor: '#a8a8ad',
       glowIntensity: 0.2,
-      buildupTime: 500,      // Reduced - respect user time
-      confettiCount: 12,     // Small celebration even for commons
-      orbCount: 2,           // Simplified
+      buildupTime: 500,
+      orbCount: 2,
       ringCount: 1
     },
     uncommon: {
       color: '#34c759',
       accentColor: '#5fe07a',
       glowIntensity: 0.35,
-      buildupTime: 700,      // Reduced from 1000
-      confettiCount: 35,
+      buildupTime: 700,
       orbCount: 3,
       ringCount: 1
     },
@@ -44,8 +42,7 @@ const DEFAULT_RARITY_CONFIG = {
       color: '#3b82f6',
       accentColor: '#60a5fa',
       glowIntensity: 0.5,
-      buildupTime: 1100,     // Reduced from 1400
-      confettiCount: 70,
+      buildupTime: 1100,
       orbCount: 4,
       ringCount: 2
     },
@@ -53,19 +50,17 @@ const DEFAULT_RARITY_CONFIG = {
       color: '#a855f7',
       accentColor: '#c084fc',
       glowIntensity: 0.65,
-      buildupTime: 1400,     // Reduced from 1800
-      confettiCount: 100,
-      orbCount: 5,           // Reduced from 6
+      buildupTime: 1400,
+      orbCount: 5,
       ringCount: 2
     },
     legendary: {
       color: '#f5a623',
       accentColor: '#fbbf24',
-      glowIntensity: 0.8,    // Reduced from 1.0 - more elegant
-      buildupTime: 1700,     // Reduced from 2200
-      confettiCount: 150,    // Reduced from 200
-      orbCount: 5,           // Reduced from 8 - less clutter
-      ringCount: 2           // Reduced from 3
+      glowIntensity: 0.8,
+      buildupTime: 1700,
+      orbCount: 5,
+      ringCount: 2
     }
   },
   ordered: [

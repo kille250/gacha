@@ -62,7 +62,6 @@ const RARITY_PRESETS = {
       isPityEligible: false,
       glowIntensity: 0.3,
       buildupTime: 800,
-      confettiCount: 0,
       orbCount: 3,
       ringCount: 1,
     }
@@ -83,7 +82,6 @@ const RARITY_PRESETS = {
       isPityEligible: false,
       glowIntensity: 0.5,
       buildupTime: 1000,
-      confettiCount: 30,
       orbCount: 4,
       ringCount: 1,
     }
@@ -104,7 +102,6 @@ const RARITY_PRESETS = {
       isPityEligible: true,
       glowIntensity: 0.7,
       buildupTime: 1400,
-      confettiCount: 80,
       orbCount: 5,
       ringCount: 2,
     }
@@ -125,7 +122,6 @@ const RARITY_PRESETS = {
       isPityEligible: true,
       glowIntensity: 0.85,
       buildupTime: 1800,
-      confettiCount: 120,
       orbCount: 6,
       ringCount: 2,
     }
@@ -146,7 +142,6 @@ const RARITY_PRESETS = {
       isPityEligible: true,
       glowIntensity: 1.0,
       buildupTime: 2200,
-      confettiCount: 200,
       orbCount: 8,
       ringCount: 3,
     }
@@ -229,7 +224,6 @@ const AdminRarities = ({ onRefresh }) => {
       accentColor: '',
       glowIntensity: 0.5,
       buildupTime: 1000,
-      confettiCount: 0,
       orbCount: 3,
       ringCount: 1,
       isPityEligible: false,
@@ -389,7 +383,6 @@ const AdminRarities = ({ onRefresh }) => {
       accentColor: rarity.accentColor || '',
       glowIntensity: rarity.glowIntensity,
       buildupTime: rarity.buildupTime,
-      confettiCount: rarity.confettiCount,
       orbCount: rarity.orbCount,
       ringCount: rarity.ringCount,
       isPityEligible: rarity.isPityEligible,
@@ -1329,16 +1322,6 @@ const AdminRarities = ({ onRefresh }) => {
                                 onChange={handleNumberChange}
                                 min="0"
                                 step="100"
-                              />
-                            </FormGroup>
-                            <FormGroup style={{ flex: 1 }}>
-                              <Label>{t('admin.rarities.confettiCount')}</Label>
-                              <Input
-                                type="number"
-                                name="confettiCount"
-                                value={formData.confettiCount}
-                                onChange={handleNumberChange}
-                                min="0"
                               />
                             </FormGroup>
                           </FormRow>

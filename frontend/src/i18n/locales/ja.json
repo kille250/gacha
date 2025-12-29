@@ -1003,7 +1003,6 @@
       "animationSettings": "アニメーション設定",
       "glowIntensity": "発光強度（0-1）",
       "buildupTime": "演出時間（ms）",
-      "confettiCount": "紙吹雪の数",
       "orbCount": "オーブの数",
       "ringCount": "リングの数",
       "isPityEligible": "天井対象（レア+）",

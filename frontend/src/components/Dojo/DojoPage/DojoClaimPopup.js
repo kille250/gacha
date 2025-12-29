@@ -1,7 +1,7 @@
 /**
  * DojoClaimPopup - Reward claim success popup
  *
- * Shows claimed rewards with animation and confetti celebration.
+ * Shows claimed rewards with animation.
  * Includes close button and tap-to-dismiss functionality.
  */
 
@@ -11,7 +11,6 @@ import { useTranslation } from 'react-i18next';
 import { FaCoins, FaTicketAlt, FaStar } from 'react-icons/fa';
 import { MdClose } from 'react-icons/md';
 import styled, { keyframes } from 'styled-components';
-import confetti from 'canvas-confetti';
 import { theme } from '../../../design-system';
 import { haptic } from '../../../design-system/utilities/microInteractions';
 
@@ -101,43 +100,6 @@ const DismissHint = styled.div`
   color: ${theme.colors.textTertiary};
 `;
 
-// Fire confetti celebration
-const fireConfetti = (intensity = 'normal') => {
-  const count = intensity === 'high' ? 200 : intensity === 'low' ? 50 : 100;
-  const spread = intensity === 'high' ? 100 : 70;
-
-  // Center burst
-  confetti({
-    particleCount: count,
-    spread: spread,
-    origin: { y: 0.6 },
-    colors: ['#ffd700', '#ffab00', '#4caf50', '#2196f3', '#9c27b0'],
-    disableForReducedMotion: true,
-  });
-
-  // Side bursts for high intensity
-  if (intensity === 'high') {
-    setTimeout(() => {
-      confetti({
-        particleCount: 50,
-        angle: 60,
-        spread: 55,
-        origin: { x: 0 },
-        colors: ['#ffd700', '#ffab00'],
-        disableForReducedMotion: true,
-      });
-      confetti({
-        particleCount: 50,
-        angle: 120,
-        spread: 55,
-        origin: { x: 1 },
-        colors: ['#ffd700', '#ffab00'],
-        disableForReducedMotion: true,
-      });
-    }, 150);
-  }
-};
-
 const DojoClaimPopup = ({ claimResult, onDismiss }) => {
   const { t } = useTranslation();
   const hasTriggeredCelebration = useRef(false);
@@ -163,9 +125,6 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
     if (claimResult && !hasTriggeredCelebration.current) {
       hasTriggeredCelebration.current = true;
       const intensity = getCelebrationIntensity(claimResult);
-
-      // Fire confetti
-      fireConfetti(intensity);
 
       // Haptic feedback
       if (intensity === 'high') {

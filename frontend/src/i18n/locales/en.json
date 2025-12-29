@@ -1103,7 +1103,6 @@
       "animationSettings": "Animation Settings",
       "glowIntensity": "Glow Intensity (0-1)",
       "buildupTime": "Buildup Time (ms)",
-      "confettiCount": "Confetti Count",
       "orbCount": "Orb Count",
       "ringCount": "Ring Count",
       "isPityEligible": "Pity Eligible (rare+)",

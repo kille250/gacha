@@ -205,7 +205,6 @@ const AdminRarities = ({ onRefresh }) => {
       accentColor: rarity.accentColor || '',
       glowIntensity: rarity.glowIntensity,
       buildupTime: rarity.buildupTime,
-      confettiCount: rarity.confettiCount,
       orbCount: rarity.orbCount,
       ringCount: rarity.ringCount,
       isPityEligible: rarity.isPityEligible,

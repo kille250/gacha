@@ -2,14 +2,13 @@
  * PrizePopup Component
  *
  * Celebration modal shown after spinning the wheel.
- * Displays the won prize with confetti animation.
+ * Displays the won prize with animation.
  */
 
 import React, { useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import confetti from 'canvas-confetti';
 
 import {
   IconStar,
@@ -68,52 +67,6 @@ const iconVariants = {
       stiffness: 200,
       delay: 0.2
     }
-  }
-};
-
-/**
- * Fire confetti based on prize type
- */
-const fireConfetti = (isJackpot) => {
-  if (isJackpot) {
-    // Big jackpot celebration
-    const duration = 3000;
-    const animationEnd = Date.now() + duration;
-    const defaults = { startVelocity: 30, spread: 360, ticks: 60, zIndex: 1001 };
-
-    const randomInRange = (min, max) => Math.random() * (max - min) + min;
-
-    const interval = setInterval(() => {
-      const timeLeft = animationEnd - Date.now();
-
-      if (timeLeft <= 0) {
-        return clearInterval(interval);
-      }
-
-      const particleCount = 50 * (timeLeft / duration);
-
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.1, 0.3), y: Math.random() - 0.2 },
-        colors: ['#FFD700', '#FFA500', '#FF6B6B', '#4ECDC4', '#45B7D1']
-      });
-      confetti({
-        ...defaults,
-        particleCount,
-        origin: { x: randomInRange(0.7, 0.9), y: Math.random() - 0.2 },
-        colors: ['#FFD700', '#FFA500', '#FF6B6B', '#4ECDC4', '#45B7D1']
-      });
-    }, 250);
-  } else {
-    // Standard prize celebration
-    confetti({
-      particleCount: 100,
-      spread: 70,
-      origin: { y: 0.6 },
-      colors: ['#FFD700', '#4CAF50', '#03A9F4', '#9C27B0'],
-      zIndex: 1001
-    });
   }
 };
 
@@ -222,13 +175,6 @@ const PrizePopup = ({
   }, [segment, rewards, isJackpot, t]);
 
   const display = getPrizeDisplay();
-
-  // Fire confetti on open
-  useEffect(() => {
-    if (isOpen && rewards && segment?.type !== 'nothing') {
-      fireConfetti(isJackpot);
-    }
-  }, [isOpen, rewards, isJackpot, segment?.type]);
 
   // Close on escape key
   const handleKeyDown = useCallback((e) => {

@@ -1033,7 +1033,6 @@
       "animationSettings": "Animations-Einstellungen",
       "glowIntensity": "Leuchtintensität (0-1)",
       "buildupTime": "Aufbauzeit (ms)",
-      "confettiCount": "Konfetti-Anzahl",
       "orbCount": "Kugel-Anzahl",
       "ringCount": "Ring-Anzahl",
       "isPityEligible": "Mitleid-berechtigt (selten+)",

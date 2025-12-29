@@ -818,17 +818,6 @@ const RarityFormModal = ({
                           step="100"
                         />
                       </FormGroup>
-                      <FormGroup style={{ flex: 1 }}>
-                        <Label htmlFor="confettiCount">{t('admin.rarities.confettiCount')}</Label>
-                        <Input
-                          id="confettiCount"
-                          type="number"
-                          name="confettiCount"
-                          value={formData.confettiCount}
-                          onChange={handleNumberChange}
-                          min="0"
-                        />
-                      </FormGroup>
                     </FormRow>
                     <FormRow>
                       <FormGroup style={{ flex: 1 }}>

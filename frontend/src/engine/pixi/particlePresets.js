@@ -141,32 +141,6 @@ export const PARTICLE_PRESETS = {
   }),
 
   /**
-   * Confetti burst - celebration effect
-   */
-  CONFETTI: (colors = [0xff6b6b, 0xffd93d, 0x6bcb77, 0x4d96ff, 0xaf52de]) => ({
-    maxParticles: 100,
-    burst: true,
-    burstCount: 80,
-
-    life: { min: 1, max: 2 },
-    speed: { min: 200, max: 400 },
-    angle: { min: 240, max: 300 }, // Upward spray
-    size: { min: 6, max: 12 },
-    sizeEnd: { min: 4, max: 8 },
-    color: colors[Math.floor(Math.random() * colors.length)],
-    alpha: 1,
-    alphaEnd: 0.3,
-    rotation: { min: 0, max: 360 },
-    rotationSpeed: { min: -360, max: 360 },
-    shape: 'square',
-    gravity: 400,
-    friction: 0.98,
-
-    spawnRadius: 20,
-    autoDestroy: true
-  }),
-
-  /**
    * Reward particles - for claiming rewards
    */
   REWARD_BURST: (color = 0xffd700) => ({
