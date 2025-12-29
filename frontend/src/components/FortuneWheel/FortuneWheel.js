@@ -112,28 +112,16 @@ const FortuneWheel = ({
                 strokeWidth="1"
               />
 
-              {/* Segment icon */}
-              <text
-                x={segment.textPos.x}
-                y={segment.textPos.y - 8}
-                textAnchor="middle"
-                dominantBaseline="middle"
-                fontSize="20"
-                transform={`rotate(${segment.textRotation}, ${segment.textPos.x}, ${segment.textPos.y - 8})`}
-              >
-                {segment.icon}
-              </text>
-
               {/* Segment label */}
               <text
                 x={segment.textPos.x}
-                y={segment.textPos.y + 12}
+                y={segment.textPos.y}
                 textAnchor="middle"
                 dominantBaseline="middle"
-                fontSize="10"
+                fontSize="11"
                 fontWeight="bold"
                 fill="white"
-                transform={`rotate(${segment.textRotation}, ${segment.textPos.x}, ${segment.textPos.y + 12})`}
+                transform={`rotate(${segment.textRotation}, ${segment.textPos.x}, ${segment.textPos.y})`}
                 style={{
                   textShadow: '1px 1px 2px rgba(0,0,0,0.5)',
                   paintOrder: 'stroke fill',
@@ -162,8 +150,7 @@ FortuneWheel.propTypes = {
   segments: PropTypes.arrayOf(PropTypes.shape({
     id: PropTypes.string.isRequired,
     label: PropTypes.string.isRequired,
-    color: PropTypes.string.isRequired,
-    icon: PropTypes.string
+    color: PropTypes.string.isRequired
   })).isRequired,
   rotation: PropTypes.number,
   spinning: PropTypes.bool,
