@@ -990,6 +990,11 @@ export const MultiSummonAnimation = ({
   }, [stopAllEffects]);
 
   const handleSingleComplete = useCallback(() => {
+    // Clear effects BEFORE state update to prevent offset during transition
+    // This ensures the shake transform is cleared before React re-renders
+    // with the new character content
+    stopAllEffects();
+
     if (currentIndex < characters.length - 1) {
       setCurrentIndex(prev => prev + 1);
     } else {
@@ -998,7 +1003,7 @@ export const MultiSummonAnimation = ({
       hasCompletedRef.current = true;
       onComplete?.();
     }
-  }, [currentIndex, characters.length, onComplete]);
+  }, [currentIndex, characters.length, onComplete, stopAllEffects]);
 
   const handleSkipAll = useCallback(() => {
     // Stop any ongoing effects (screen shake, flash, etc.) before showing results
