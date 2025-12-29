@@ -327,68 +327,75 @@ export const SummonAnimation = ({
         {/* Character Card Reveal */}
         <AnimatePresence>
           {isRevealed && character && (
-            <S.CardContainer
-              initial={{
-                scale: 0.85,
-                opacity: 0,
-                filter: 'blur(12px)',
-              }}
-              animate={{
-                scale: 1,
-                opacity: 1,
-                filter: 'blur(0px)',
-              }}
-              exit={{
-                scale: 0.95,
-                opacity: 0,
-              }}
-              transition={{
-                ...EASINGS.spring.reveal,
-                filter: { duration: 0.35, ease: EASINGS.easeOut },
-              }}
+            <S.ShowcaseContainer
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              transition={{ duration: 0.15 }}
             >
-              <S.CardFloat>
-                <S.CharacterCard>
-                  <S.CardShine />
+              <S.CardContainer
+                initial={{
+                  scale: 0.85,
+                  opacity: 0,
+                  filter: 'blur(12px)',
+                }}
+                animate={{
+                  scale: 1,
+                  opacity: 1,
+                  filter: 'blur(0px)',
+                }}
+                exit={{
+                  scale: 0.95,
+                  opacity: 0,
+                }}
+                transition={{
+                  ...EASINGS.spring.reveal,
+                  filter: { duration: 0.35, ease: EASINGS.easeOut },
+                }}
+              >
+                <S.CardFloat>
+                  <S.CharacterCard>
+                    <S.CardShine />
 
-                  <S.CardImageContainer>
-                    {isVideo(character.image) ? (
-                      <S.CardVideo
-                        src={getImagePath(character.image)}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                      />
-                    ) : (
-                      <S.CardImage
-                        src={getImagePath(character.image)}
-                        alt={character.name}
-                      />
-                    )}
-                    <S.ImageGradient />
-                  </S.CardImageContainer>
+                    <S.CardImageContainer>
+                      {isVideo(character.image) ? (
+                        <S.CardVideo
+                          src={getImagePath(character.image)}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <S.CardImage
+                          src={getImagePath(character.image)}
+                          alt={character.name}
+                        />
+                      )}
+                      <S.ImageGradient />
+                    </S.CardImageContainer>
 
-                  <S.CardInfo
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{
-                      delay: PHASE_TIMINGS.SHOWCASE.statsDelay / 1000,
-                      duration: 0.3,
-                    }}
-                  >
-                    <S.RarityBadge>
-                      {animConfig.icon}
-                      <span>{rarity.toUpperCase()}</span>
-                    </S.RarityBadge>
-                    <S.CharacterName>{character.name}</S.CharacterName>
-                    <S.CharacterSeries>{character.series}</S.CharacterSeries>
-                  </S.CardInfo>
+                    <S.CardInfo
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{
+                        delay: PHASE_TIMINGS.SHOWCASE.statsDelay / 1000,
+                        duration: 0.3,
+                      }}
+                    >
+                      <S.RarityBadge>
+                        {animConfig.icon}
+                        <span>{rarity.toUpperCase()}</span>
+                      </S.RarityBadge>
+                      <S.CharacterName>{character.name}</S.CharacterName>
+                      <S.CharacterSeries>{character.series}</S.CharacterSeries>
+                    </S.CardInfo>
 
-                  <S.CardGlowBorder $rarity={rarity} />
-                </S.CharacterCard>
-              </S.CardFloat>
-            </S.CardContainer>
+                    <S.CardGlowBorder $rarity={rarity} />
+                  </S.CharacterCard>
+                </S.CardFloat>
+              </S.CardContainer>
+            </S.ShowcaseContainer>
           )}
         </AnimatePresence>
 
