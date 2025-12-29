@@ -48,7 +48,7 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const checkLoggedIn = async () => {
       const token = getToken();
-      
+
       if (!token) {
         // No token - ensure clean state
         removeStoredUser();
@@ -56,17 +56,24 @@ export const AuthProvider = ({ children }) => {
         setLoading(false);
         return;
       }
-      
+
       // Always fetch fresh data from server when token exists
       // Don't trust localStorage as it might be from a different session
       try {
         // Clear auth cache to ensure we get fresh data on initial load
         invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
-        
+
         const response = await api.get('/auth/me');
         const freshUserData = { ...response.data };
         setCurrentUser(freshUserData);
         setStoredUser(freshUserData);
+
+        // Check if password change is required (from admin-initiated reset)
+        // This ensures the modal appears even after page reload
+        if (response.data.requiresPasswordChange) {
+          setRequiresPasswordChange(true);
+          setPasswordResetExpiry(response.data.passwordResetExpiry || null);
+        }
       } catch (error) {
         console.error('Error fetching fresh user data:', error);
         // Token is likely invalid - clear everything
@@ -75,10 +82,10 @@ export const AuthProvider = ({ children }) => {
           setCurrentUser(null);
         }
       }
-      
+
       setLoading(false);
     };
-    
+
     checkLoggedIn();
   }, []);
 

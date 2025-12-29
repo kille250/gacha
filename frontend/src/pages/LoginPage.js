@@ -8,7 +8,7 @@ import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { motionVariants, springs, LoadingSpinner } from '../design-system';
 import { languages } from '../i18n';
-import ForcePasswordChangeModal from '../components/Auth/ForcePasswordChangeModal';
+// ForcePasswordChangeModal is now handled globally in App.js
 
 // Styled Components
 import {
@@ -93,10 +93,7 @@ const LoginPage = () => {
     // No need to navigate here - the modal handles it
   };
 
-  const handlePasswordChangeSuccess = () => {
-    // After successful password change, navigate to the app
-    navigate('/gacha');
-  };
+  // Password change success is now handled by GlobalPasswordChangeHandler in App.js
 
   const handleGoogleSuccess = async (credentialResponse) => {
     setIsGoogleLoading(true);
@@ -310,13 +307,7 @@ const LoginPage = () => {
         </AuthCard>
       </ContentWrapper>
 
-      {/* Force Password Change Modal */}
-      {requiresPasswordChange && (
-        <ForcePasswordChangeModal
-          onSuccess={handlePasswordChangeSuccess}
-          expiresAt={passwordResetExpiry}
-        />
-      )}
+      {/* Force Password Change Modal is now rendered globally in App.js */}
     </PageContainer>
   );
 };
