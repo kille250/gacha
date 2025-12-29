@@ -18,10 +18,10 @@
 import React, { useMemo, useContext, useState, useRef, useEffect, useCallback } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
+// motion/AnimatePresence available if needed for future animations
 import { MdAdminPanelSettings, MdExpandMore } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
-import { theme, springs } from '../../design-system';
+import { theme } from '../../design-system';
 import { useHourlyReward } from '../../hooks';
 import { useAccountLevel } from '../../hooks/useGameEnhancements';
 import { DESKTOP_NAV_ITEMS, GAMES_ITEMS, ADMIN_NAV_ITEM, isAnyRouteActive } from '../../constants/navigation';
@@ -150,38 +150,30 @@ const Navigation = () => {
                     </DropdownArrow>
                   </DropdownTrigger>
 
-                  <AnimatePresence>
-                    {gamesDropdownOpen && (
-                      <DropdownMenuContainer>
-                        <DropdownMenu
-                          role="menu"
-                          initial={{ opacity: 0, y: -8, scale: 0.95 }}
-                          animate={{ opacity: 1, y: 0, scale: 1 }}
-                          exit={{ opacity: 0, y: -8, scale: 0.95 }}
-                          transition={springs.snappy}
-                        >
-                          {item.items.map((subItem) => {
-                            const isSubActive = location.pathname === subItem.path;
-                            return (
-                              <DropdownItem
-                                key={subItem.path}
-                                to={subItem.path}
-                                role="menuitem"
-                                $isActive={isSubActive}
-                                aria-current={isSubActive ? 'page' : undefined}
-                              >
-                                <DropdownItemIcon $isActive={isSubActive}>
-                                  {subItem.icon}
-                                </DropdownItemIcon>
-                                <span>{subItem.label}</span>
-                                {subItem.isNew && <NewBadge>{t('common.new')}</NewBadge>}
-                              </DropdownItem>
-                            );
-                          })}
-                        </DropdownMenu>
-                      </DropdownMenuContainer>
-                    )}
-                  </AnimatePresence>
+                  {gamesDropdownOpen && (
+                    <DropdownMenuContainer>
+                      <DropdownMenuInner role="menu">
+                        {item.items.map((subItem) => {
+                          const isSubActive = location.pathname === subItem.path;
+                          return (
+                            <DropdownItem
+                              key={subItem.path}
+                              to={subItem.path}
+                              role="menuitem"
+                              $isActive={isSubActive}
+                              aria-current={isSubActive ? 'page' : undefined}
+                            >
+                              <DropdownItemIcon $isActive={isSubActive}>
+                                {subItem.icon}
+                              </DropdownItemIcon>
+                              <span>{subItem.label}</span>
+                              {subItem.isNew && <NewBadge>{t('common.new')}</NewBadge>}
+                            </DropdownItem>
+                          );
+                        })}
+                      </DropdownMenuInner>
+                    </DropdownMenuContainer>
+                  )}
                 </DropdownWrapper>
               );
             }
@@ -527,7 +519,7 @@ const DropdownMenuContainer = styled.div`
   z-index: ${theme.zIndex.stickyDropdown};
 `;
 
-const DropdownMenu = styled(motion.div)`
+const DropdownMenuInner = styled.div`
   min-width: 200px;
   background: ${theme.colors.surface};
   border: 1px solid ${theme.colors.surfaceBorder};
