@@ -1629,6 +1629,10 @@
     "earnedPointsCapped": "+{{count}} Fate Points (weekly cap reached)",
     "insufficientPoints": "Need {{cost}} Fate Points (have {{current}})",
     "exchangeOptions": {
+      "roll_tickets": "Roll Ticket Bundle",
+      "roll_tickets_desc": "Exchange for 6 roll tickets",
+      "premium_tickets": "Premium Ticket Pack",
+      "premium_tickets_desc": "Exchange for 2 premium tickets",
       "rare_selector": "Rare Selector",
       "rare_selector_desc": "Choose any rare character",
       "epic_selector": "Epic Selector",
@@ -1637,6 +1641,8 @@
       "legendary_selector_desc": "Choose any legendary character",
       "pity_boost": "Pity Boost",
       "pity_boost_desc": "Advance pity progress to 50% of guaranteed threshold",
+      "xp_boost": "XP Boost",
+      "xp_boost_desc": "Get 500 account XP instantly",
       "banner_pity_reset": "Pity Boost",
       "banner_pity_reset_desc": "Advance pity progress to 50% of guaranteed threshold"
     }

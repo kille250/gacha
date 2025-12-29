@@ -1555,14 +1555,22 @@
     "earnedPointsCapped": "+{{count}} 運命ポイント（週間上限に達しました）",
     "insufficientPoints": "{{cost}} 運命ポイントが必要です（現在 {{current}}）",
     "exchangeOptions": {
+      "roll_tickets": "ガチャチケットパック",
+      "roll_tickets_desc": "ガチャチケット6枚と交換",
+      "premium_tickets": "プレミアムチケットパック",
+      "premium_tickets_desc": "プレミアムチケット2枚と交換",
       "rare_selector": "レアセレクター",
       "rare_selector_desc": "任意のレアキャラクターを選択",
       "epic_selector": "エピックセレクター",
       "epic_selector_desc": "任意のエピックキャラクターを選択",
       "legendary_selector": "レジェンダリーセレクター",
       "legendary_selector_desc": "任意のレジェンダリーキャラクターを選択",
-      "banner_pity_reset": "天井リセット",
-      "banner_pity_reset_desc": "バナー天井を50%にリセット（45/90回）"
+      "pity_boost": "天井ブースト",
+      "pity_boost_desc": "天井進行度を50%まで進める",
+      "xp_boost": "経験値ブースト",
+      "xp_boost_desc": "アカウント経験値500を即座に獲得",
+      "banner_pity_reset": "天井ブースト",
+      "banner_pity_reset_desc": "天井進行度を50%まで進める"
     }
   },
   "accessibility": {

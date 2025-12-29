@@ -375,7 +375,7 @@ router.post('/gacha/fate-points/exchange', [auth, enforcementMiddleware, deviceB
     }
 
     // Validate exchange type
-    const validTypes = ['rare_selector', 'epic_selector', 'legendary_selector', 'banner_pity_reset'];
+    const validTypes = ['roll_tickets', 'premium_tickets', 'rare_selector', 'epic_selector', 'legendary_selector', 'pity_boost', 'xp_boost', 'banner_pity_reset'];
     if (!validTypes.includes(exchangeType)) {
       await transaction.rollback();
       return res.status(400).json({ error: `Invalid exchangeType. Must be one of: ${validTypes.join(', ')}` });

@@ -1317,14 +1317,22 @@
     "earnedPointsCapped": "+{{count}} Puntos de Destino (límite semanal alcanzado)",
     "insufficientPoints": "Necesitas {{cost}} Puntos de Destino (tienes {{current}})",
     "exchangeOptions": {
+      "roll_tickets": "Paquete de Tickets",
+      "roll_tickets_desc": "Intercambia por 6 tickets de tirada",
+      "premium_tickets": "Paquete Premium",
+      "premium_tickets_desc": "Intercambia por 2 tickets premium",
       "rare_selector": "Selector Raro",
       "rare_selector_desc": "Elige cualquier personaje raro",
       "epic_selector": "Selector Épico",
       "epic_selector_desc": "Elige cualquier personaje épico",
       "legendary_selector": "Selector Legendario",
       "legendary_selector_desc": "Elige cualquier personaje legendario",
-      "banner_pity_reset": "Reinicio de Pity",
-      "banner_pity_reset_desc": "Reinicia pity de banner al 50% (45/90 tiradas)"
+      "pity_boost": "Impulso de Pity",
+      "pity_boost_desc": "Avanza el progreso de pity al 50% del umbral garantizado",
+      "xp_boost": "Impulso de XP",
+      "xp_boost_desc": "Obtén 500 XP de cuenta instantáneamente",
+      "banner_pity_reset": "Impulso de Pity",
+      "banner_pity_reset_desc": "Avanza el progreso de pity al 50% del umbral garantizado"
     }
   },
   "network": {

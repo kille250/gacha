@@ -1498,14 +1498,22 @@
     "earnedPointsCapped": "+{{count}} Schicksalspunkte (wöchentliches Limit erreicht)",
     "insufficientPoints": "Benötigt {{cost}} Schicksalspunkte (habe {{current}})",
     "exchangeOptions": {
+      "roll_tickets": "Ticket-Paket",
+      "roll_tickets_desc": "Tausche gegen 6 Zieh-Tickets",
+      "premium_tickets": "Premium-Ticket-Paket",
+      "premium_tickets_desc": "Tausche gegen 2 Premium-Tickets",
       "rare_selector": "Seltener Selektor",
       "rare_selector_desc": "Wähle einen seltenen Charakter",
       "epic_selector": "Epischer Selektor",
       "epic_selector_desc": "Wähle einen epischen Charakter",
       "legendary_selector": "Legendärer Selektor",
       "legendary_selector_desc": "Wähle einen legendären Charakter",
-      "banner_pity_reset": "Mitleid-Reset",
-      "banner_pity_reset_desc": "Setze Banner-Mitleid auf 50% zurück (45/90 Züge)"
+      "pity_boost": "Mitleid-Boost",
+      "pity_boost_desc": "Erhöhe den Mitleid-Fortschritt auf 50% der Garantieschwelle",
+      "xp_boost": "XP-Boost",
+      "xp_boost_desc": "Erhalte sofort 500 Konto-XP",
+      "banner_pity_reset": "Mitleid-Boost",
+      "banner_pity_reset_desc": "Erhöhe den Mitleid-Fortschritt auf 50% der Garantieschwelle"
     }
   },
   "accessibility": {

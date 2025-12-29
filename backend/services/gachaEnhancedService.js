@@ -1027,6 +1027,30 @@ function applyFatePointsExchangeReward(user, exchangeType, bannerId) {
   const reward = { type: exchangeType };
 
   switch (exchangeType) {
+    case 'roll_tickets': {
+      // Add 6 roll tickets to user's inventory
+      const ticketAmount = 6;
+      user.rollTickets = (user.rollTickets || 0) + ticketAmount;
+      reward.tickets = { type: 'roll', amount: ticketAmount };
+      break;
+    }
+
+    case 'premium_tickets': {
+      // Add 2 premium tickets to user's inventory
+      const ticketAmount = 2;
+      user.premiumTickets = (user.premiumTickets || 0) + ticketAmount;
+      reward.tickets = { type: 'premium', amount: ticketAmount };
+      break;
+    }
+
+    case 'xp_boost': {
+      // Add 500 account XP instantly
+      const xpAmount = 500;
+      user.accountXP = (user.accountXP || 0) + xpAmount;
+      reward.xp = { amount: xpAmount };
+      break;
+    }
+
     case 'rare_selector': {
       // Add rare selector to user's inventory
       const rareSelectors = user.characterSelectors || [];

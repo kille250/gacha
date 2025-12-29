@@ -8,7 +8,7 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaTicketAlt, FaHeart, FaCrown, FaSync, FaMagic, FaCheck, FaSpinner, FaExclamationTriangle } from 'react-icons/fa';
+import { FaTicketAlt, FaHeart, FaCrown, FaSync, FaMagic, FaCheck, FaSpinner, FaExclamationTriangle, FaStar, FaGem, FaArrowUp } from 'react-icons/fa';
 import { useFatePoints } from '../../hooks/useGameEnhancements';
 import { onVisibilityChange } from '../../cache';
 import { useTranslation } from 'react-i18next';
@@ -308,10 +308,13 @@ const LoadingSpinner = styled(FaSpinner)`
 
 // Icon mapping for exchange options from backend
 const EXCHANGE_ICONS = {
-  rare_selector: FaTicketAlt,
+  roll_tickets: FaTicketAlt,
+  premium_tickets: FaGem,
+  rare_selector: FaStar,
   epic_selector: FaHeart,
   legendary_selector: FaCrown,
   pity_boost: FaSync,
+  xp_boost: FaArrowUp,
   banner_pity_reset: FaSync  // Legacy support
 };
 
