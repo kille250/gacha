@@ -12,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
+import { useToast } from '../context/ToastContext';
 import { useActionLock, useAutoDismissError } from '../hooks';
 import {
   getDojoStatus,
@@ -44,16 +45,24 @@ const withTimeout = (fetchPromise, timeoutMs = FETCH_TIMEOUT_MS) => {
   ]);
 };
 
+// Undo window for character assignment (5 seconds)
+const UNDO_WINDOW_MS = 5000;
+
 export const useDojoPage = () => {
   const { t } = useTranslation();
   const { user, setUser, refreshUser } = useContext(AuthContext);
   const { getRarityColor, getRarityGlow } = useRarity();
+  const toast = useToast();
 
   // Action lock to prevent rapid double-clicks
   const { withLock, locked } = useActionLock(300);
 
   // Auto-dismissing error state
   const [error, setError] = useAutoDismissError();
+
+  // Undo state for character assignments
+  const undoTimeoutRef = useRef(null);
+  const [lastAssignment, setLastAssignment] = useState(null);
 
   // Unmount guard for async operations
   const isMountedRef = useRef(true);
@@ -289,20 +298,60 @@ export const useDojoPage = () => {
     setSelectedSlot(null);
   }, []);
 
-  // Assign character to slot
+  // Undo the last character assignment
+  const undoAssignment = useCallback(async () => {
+    if (!lastAssignment) return;
+
+    // Clear the undo timeout
+    if (undoTimeoutRef.current) {
+      clearTimeout(undoTimeoutRef.current);
+      undoTimeoutRef.current = null;
+    }
+
+    const { slotIndex, previousStatus, characterName } = lastAssignment;
+
+    try {
+      // Revert to previous status optimistically
+      setStatus(previousStatus);
+
+      // Unassign from server
+      await dojoUnassignCharacter(slotIndex);
+
+      if (!isMountedRef.current) return;
+
+      toast.success(
+        t('dojo.assignmentUndone', {
+          name: characterName,
+          defaultValue: `${characterName} removed from training`
+        })
+      );
+
+      fetchStatus();
+    } catch (err) {
+      if (!isMountedRef.current) return;
+      console.error('Failed to undo assignment:', err);
+      toast.error(t('dojo.undoFailed', { defaultValue: 'Failed to undo. Please try again.' }));
+      fetchStatus();
+    } finally {
+      setLastAssignment(null);
+    }
+  }, [lastAssignment, fetchStatus, t, toast]);
+
+  // Assign character to slot with toast notification and undo option
   const handleAssign = useCallback(async (characterId) => {
     if (selectedSlot === null) return;
 
     await withLock(async () => {
       const selectedCharacter = availableCharacters.find(c => c.id === characterId);
       const previousStatus = status;
+      const slotIndex = selectedSlot;
 
       // Optimistic update
       if (selectedCharacter) {
         setStatus(prev => ({
           ...prev,
           slots: prev.slots.map((s, i) =>
-            i === selectedSlot ? { ...s, character: selectedCharacter } : s
+            i === slotIndex ? { ...s, character: selectedCharacter } : s
           ),
           usedSlots: (prev.usedSlots || 0) + 1
         }));
@@ -311,8 +360,35 @@ export const useDojoPage = () => {
       setSelectedSlot(null);
 
       try {
-        await dojoAssignCharacter(characterId, selectedSlot);
+        await dojoAssignCharacter(characterId, slotIndex);
         if (!isMountedRef.current) return;
+
+        // Store assignment for undo
+        setLastAssignment({
+          slotIndex,
+          characterId,
+          characterName: selectedCharacter?.name || 'Character',
+          previousStatus,
+          timestamp: Date.now()
+        });
+
+        // Show success toast with undo option
+        toast.success(
+          t('dojo.characterAssigned', {
+            name: selectedCharacter?.name || 'Character',
+            defaultValue: `${selectedCharacter?.name || 'Character'} is now training!`
+          }),
+          t('dojo.pressToUndo', { defaultValue: 'Undo available for 5 seconds' })
+        );
+
+        // Clear undo after window expires
+        if (undoTimeoutRef.current) {
+          clearTimeout(undoTimeoutRef.current);
+        }
+        undoTimeoutRef.current = setTimeout(() => {
+          setLastAssignment(null);
+        }, UNDO_WINDOW_MS);
+
         fetchStatus();
       } catch (err) {
         if (!isMountedRef.current) return;
@@ -321,7 +397,7 @@ export const useDojoPage = () => {
         setError(err.response?.data?.error || t('dojo.failedAssign'));
       }
     });
-  }, [selectedSlot, availableCharacters, status, withLock, fetchStatus, t, setError]);
+  }, [selectedSlot, availableCharacters, status, withLock, fetchStatus, t, setError, toast]);
 
   // Remove character from slot
   const handleUnassign = useCallback(async (slotIndex) => {
@@ -527,6 +603,11 @@ export const useDojoPage = () => {
     closeCharacterPicker,
     handleAssign,
     handleUnassign,
+
+    // Undo functionality
+    lastAssignment,
+    undoAssignment,
+    canUndo: !!lastAssignment,
 
     // Computed values
     progressPercent,

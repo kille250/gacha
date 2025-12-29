@@ -25,3 +25,6 @@ export * from './userStateUpdates';
 // Feature flags
 export * from './featureFlags';
 
+// Fuzzy search
+export * from './fuzzySearch';
+

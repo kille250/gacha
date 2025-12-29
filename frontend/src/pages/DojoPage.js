@@ -100,6 +100,10 @@ const DojoPage = () => {
     // Computed values
     progressPercent,
 
+    // Undo functionality
+    canUndo,
+    undoAssignment,
+
     // Quick Fill
     quickFilling,
     handleQuickFill,
@@ -217,6 +221,8 @@ const DojoPage = () => {
           onQuickFill={handleQuickFill}
           quickFilling={quickFilling}
           hasEmptySlots={hasEmptySlots}
+          canUndo={canUndo}
+          onUndo={undoAssignment}
         />
 
         {/* Facility Upgrade Card */}

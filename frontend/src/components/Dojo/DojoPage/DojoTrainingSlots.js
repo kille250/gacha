@@ -3,9 +3,14 @@
  *
  * Displays filled slots with characters and empty/locked slots.
  * Includes keyboard navigation and confirmation for removing leveled characters.
+ *
+ * Keyboard shortcuts:
+ * - 'A' key: Open character picker for first empty slot (quick-assign)
+ * - 'Delete/Backspace': Remove focused character from slot
+ * - 'Enter/Space': Interact with focused slot
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdAdd, MdLock, MdAutorenew } from 'react-icons/md';
 import { FaDumbbell, FaTimes, FaStar, FaMagic } from 'react-icons/fa';
@@ -148,6 +153,39 @@ const GuidanceText = styled.div`
   line-height: 1.5;
 `;
 
+// Keyboard shortcut hint
+const KeyboardShortcutHint = styled.div`
+  display: none;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textTertiary};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: ${theme.colors.glass};
+  border-radius: ${theme.radius.md};
+  border: 1px solid ${theme.colors.surfaceBorder};
+
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: flex;
+  }
+
+  kbd {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 4px;
+    background: ${theme.colors.backgroundTertiary};
+    border: 1px solid ${theme.colors.surfaceBorder};
+    border-radius: ${theme.radius.sm};
+    font-family: inherit;
+    font-size: 11px;
+    font-weight: ${theme.fontWeights.medium};
+    color: ${theme.colors.textSecondary};
+  }
+`;
+
 const DojoTrainingSlots = ({
   status,
   getRarityColor,
@@ -158,10 +196,13 @@ const DojoTrainingSlots = ({
   onQuickFill,
   quickFilling = false,
   hasEmptySlots = false,
+  canUndo = false,
+  onUndo,
 }) => {
   const { t } = useTranslation();
   const prefersReducedMotion = useReducedMotion();
   const [confirmRemove, setConfirmRemove] = useState(null);
+  const sectionRef = useRef(null);
 
   // Motion props that respect reduced motion preference
   const hoverScale = prefersReducedMotion ? {} : { scale: 1.02 };
@@ -170,6 +211,48 @@ const DojoTrainingSlots = ({
   const maxSlots = status?.maxSlots || 3;
   const usedSlots = status?.usedSlots || 0;
   const lockedSlotsToShow = Math.min(2, 10 - maxSlots);
+
+  // Find first empty slot index
+  const firstEmptySlotIndex = Array.from({ length: maxSlots }).findIndex((_, idx) => {
+    return !status?.slots?.[idx]?.character;
+  });
+
+  // Keyboard shortcut: 'A' to quick-assign (open picker for first empty slot)
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      // Don't trigger if user is typing in an input or textarea
+      if (
+        e.target.tagName === 'INPUT' ||
+        e.target.tagName === 'TEXTAREA' ||
+        e.target.isContentEditable
+      ) {
+        return;
+      }
+
+      // 'A' key to open character picker for first empty slot
+      if (e.key === 'a' || e.key === 'A') {
+        if (firstEmptySlotIndex !== -1 && !quickFilling) {
+          e.preventDefault();
+          onOpenPicker(firstEmptySlotIndex);
+        }
+      }
+
+      // 'Q' key for quick fill (if available)
+      if ((e.key === 'q' || e.key === 'Q') && hasEmptySlots && onQuickFill && !quickFilling) {
+        e.preventDefault();
+        onQuickFill();
+      }
+
+      // Ctrl+Z / Cmd+Z for undo (if available)
+      if ((e.key === 'z' || e.key === 'Z') && (e.ctrlKey || e.metaKey) && canUndo && onUndo) {
+        e.preventDefault();
+        onUndo();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [firstEmptySlotIndex, quickFilling, onOpenPicker, hasEmptySlots, onQuickFill, canUndo, onUndo]);
 
   // Handle remove with confirmation for leveled characters
   const handleRemoveClick = useCallback((idx, char) => {
@@ -197,19 +280,44 @@ const DojoTrainingSlots = ({
   }, []);
 
   return (
-    <SlotsSection role="region" aria-label={t('dojo.trainingSlots')}>
+    <SlotsSection ref={sectionRef} role="region" aria-label={t('dojo.trainingSlots')}>
       <SlotsHeader>
         <HeaderRow>
           <SlotsTitle>
             <FaDumbbell aria-hidden="true" />
             <span>{t('dojo.trainingSlots')}</span>
           </SlotsTitle>
-          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px', flexWrap: 'wrap' }}>
+            {/* Keyboard shortcut hints - only shown on desktop */}
+            {(hasEmptySlots || canUndo) && (
+              <KeyboardShortcutHint>
+                {hasEmptySlots && (
+                  <>
+                    <kbd>A</kbd>
+                    <span>{t('dojo.assignKey', { defaultValue: 'Assign' })}</span>
+                  </>
+                )}
+                {hasEmptySlots && onQuickFill && (
+                  <>
+                    <span style={{ color: theme.colors.surfaceBorder }}>|</span>
+                    <kbd>Q</kbd>
+                    <span>{t('dojo.quickFillKey', { defaultValue: 'Quick Fill' })}</span>
+                  </>
+                )}
+                {canUndo && (
+                  <>
+                    <span style={{ color: theme.colors.surfaceBorder }}>|</span>
+                    <kbd>Ctrl</kbd><kbd>Z</kbd>
+                    <span>{t('common.undo', { defaultValue: 'Undo' })}</span>
+                  </>
+                )}
+              </KeyboardShortcutHint>
+            )}
             {onQuickFill && hasEmptySlots && (
               <QuickFillButton
                 onClick={onQuickFill}
                 disabled={quickFilling}
-                title={t('dojo.quickFillHint', { defaultValue: 'Auto-fill empty slots with best characters' })}
+                title={t('dojo.quickFillHint', { defaultValue: 'Auto-fill empty slots with best characters (Press Q)' })}
                 aria-label={t('dojo.quickFill', { defaultValue: 'Quick Fill' })}
               >
                 {quickFilling ? (
