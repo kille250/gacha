@@ -68,7 +68,7 @@ export const useScreenShake = () => {
     const tl = gsap.timeline({
       onComplete: () => {
         // Ensure element returns to original position
-        gsap.set(element, { x: 0, y: 0 });
+        gsap.set(element, { x: 0, y: 0, clearProps: 'transform' });
       }
     });
 
@@ -89,12 +89,13 @@ export const useScreenShake = () => {
       });
     }
 
-    // Final return to center
+    // Final return to center and clear transforms
     tl.to(element, {
       x: 0,
       y: 0,
       duration: interval,
-      ease: 'power2.out'
+      ease: 'power2.out',
+      clearProps: 'transform'
     });
 
     shakeTimelineRef.current = tl;
@@ -119,7 +120,7 @@ export const useScreenShake = () => {
   const stopShake = useCallback(() => {
     if (shakeTimelineRef.current) {
       shakeTimelineRef.current.kill();
-      gsap.set(document.body, { x: 0, y: 0 });
+      gsap.set(document.body, { x: 0, y: 0, clearProps: 'transform' });
     }
   }, []);
 
