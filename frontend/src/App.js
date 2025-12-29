@@ -350,7 +350,7 @@ function App() {
                 <GlobalCaptchaHandler />
                 {/* Global password change handler - shows modal when password change is required */}
                 <GlobalPasswordChangeHandler />
-                <AppContainer>
+                <AppContainer id="app-shake-container">
                   {/* Skip to content link for accessibility - allows keyboard users to skip navigation */}
                   <a href="#main-content" className="skip-to-content">
                     Skip to main content

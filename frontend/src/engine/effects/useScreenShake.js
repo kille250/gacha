@@ -41,7 +41,7 @@ export const useScreenShake = () => {
    * @param {number} options.intensity - Maximum pixel displacement (default: 8)
    * @param {number} options.duration - Duration in seconds (default: 0.4)
    * @param {number} options.frequency - Shakes per second (default: 25)
-   * @param {HTMLElement} options.target - Element to shake (default: document.body)
+   * @param {HTMLElement} options.target - Element to shake (default: #app-shake-container)
    */
   const shake = useCallback(({
     intensity = 8,
@@ -52,8 +52,8 @@ export const useScreenShake = () => {
     // Respect reduced motion preference
     if (prefersReducedMotion) return;
 
-    // Default to body if no target specified
-    const element = target || document.body;
+    // Default to app shake container (avoids affecting fixed overlays)
+    const element = target || document.getElementById('app-shake-container') || document.body;
 
     // Kill any existing shake
     if (shakeTimelineRef.current) {
@@ -120,7 +120,8 @@ export const useScreenShake = () => {
   const stopShake = useCallback(() => {
     if (shakeTimelineRef.current) {
       shakeTimelineRef.current.kill();
-      gsap.set(document.body, { x: 0, y: 0, clearProps: 'transform' });
+      const element = document.getElementById('app-shake-container') || document.body;
+      gsap.set(element, { x: 0, y: 0, clearProps: 'transform' });
     }
   }, []);
 
