@@ -120,17 +120,23 @@ export const SummonAnimation = ({
     timersRef.current = [];
   }, []);
 
-  // Initialize confetti instance bound to our canvas (prevents layout issues)
-  useEffect(() => {
-    if (confettiCanvasRef.current && !confettiInstanceRef.current) {
-      confettiInstanceRef.current = confetti.create(confettiCanvasRef.current, {
+  // Ref callback to initialize confetti instance immediately when canvas is mounted
+  const setConfettiCanvas = useCallback((canvas) => {
+    confettiCanvasRef.current = canvas;
+    if (canvas && !confettiInstanceRef.current) {
+      confettiInstanceRef.current = confetti.create(canvas, {
         resize: true,
         useWorker: true
       });
     }
+  }, []);
+
+  // Cleanup confetti on unmount
+  useEffect(() => {
     return () => {
       if (confettiInstanceRef.current) {
         confettiInstanceRef.current.reset();
+        confettiInstanceRef.current = null;
       }
     };
   }, []);
@@ -139,8 +145,10 @@ export const SummonAnimation = ({
   const fireConfetti = useCallback(() => {
     if (ambientConfig.confettiCount === 0) return;
 
-    // Use our canvas-bound instance, fallback to global if not ready
-    const fireFunc = confettiInstanceRef.current || confetti;
+    // ONLY use our canvas-bound instance - never fallback to global confetti
+    // Global confetti creates its own canvas which causes layout shifts
+    const fireFunc = confettiInstanceRef.current;
+    if (!fireFunc) return; // Skip if canvas not ready yet
 
     const colors = [ambientConfig.color, ambientConfig.accentColor, '#ffffff'];
 
@@ -178,7 +186,8 @@ export const SummonAnimation = ({
     // Side bursts for legendary/epic - originate from lower corners
     if (effectRarity === 'legendary' || effectRarity === 'epic') {
       setTimeout(() => {
-        const fireFuncLater = confettiInstanceRef.current || confetti;
+        const fireFuncLater = confettiInstanceRef.current;
+        if (!fireFuncLater) return; // Skip if instance not available
         fireFuncLater({
           particleCount: 30,
           angle: 60,
@@ -335,7 +344,7 @@ export const SummonAnimation = ({
   return (
     <Overlay onClick={handleInteraction}>
       {/* Dedicated confetti canvas - fixed position, no layout impact */}
-      <ConfettiCanvas ref={confettiCanvasRef} />
+      <ConfettiCanvas ref={setConfettiCanvas} />
 
       <Container
         initial={{ opacity: 0 }}
