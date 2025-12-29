@@ -174,7 +174,7 @@ export const AriaAlert = ({ children, ...props }) => (
 export function useAriaLive(defaultPoliteness = 'polite') {
   const [message, setMessage] = useState('');
 
-  const announce = useCallback((newMessage, politeness = defaultPoliteness) => {
+  const announce = useCallback((newMessage, _politeness = defaultPoliteness) => {
     // Clear first to ensure repeated messages are announced
     setMessage('');
     // Use requestAnimationFrame to ensure the clear happens first

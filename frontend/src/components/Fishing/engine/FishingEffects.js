@@ -26,7 +26,7 @@ const PARTICLE_BEHAVIORS = {
       particle.maxLife = 3 + Math.random() * 4;
       particle.size = 2 + Math.random() * 3;
     },
-    update: (particle, dt) => {
+    update: (particle, _dt) => {
       particle.x += Math.sin(particle.phase) * 0.3;
       particle.y += Math.cos(particle.phase * 0.7) * 0.2;
     },
@@ -52,7 +52,7 @@ const PARTICLE_BEHAVIORS = {
       particle.maxLife = 3 + Math.random() * 4;
       particle.size = 2 + Math.random() * 3;
     },
-    update: (particle, dt) => {
+    update: (particle, _dt) => {
       particle.x += particle.vx + Math.sin(particle.phase * 3) * 0.5;
       particle.y += Math.sin(particle.phase * 2) * 0.8;
     },
@@ -90,7 +90,7 @@ const PARTICLE_BEHAVIORS = {
       particle.maxLife = 3 + Math.random() * 4;
       particle.size = 2 + Math.random() * 3;
     },
-    update: (particle, dt) => {
+    update: (particle, _dt) => {
       particle.x += particle.vx + Math.sin(particle.phase) * 0.3;
       particle.y += 0.5 + Math.sin(particle.phase * 0.5) * 0.2;
     },

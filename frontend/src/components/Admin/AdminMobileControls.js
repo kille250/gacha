@@ -64,7 +64,7 @@ const QUICK_ACTIONS = {
 const AdminMobileControls = ({
   activeTab = 'dashboard',
   onAction,
-  isOpen = false,
+  isOpen: _isOpen = false,
   onOpenChange,
   primaryAction,
   className

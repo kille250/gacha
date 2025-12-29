@@ -121,7 +121,7 @@ export const usePressState = (options = {}) => {
   }, [config, clearLongPressTimer]);
 
   // Handle press end
-  const handlePressEnd = useCallback((event) => {
+  const handlePressEnd = useCallback((_event) => {
     clearLongPressTimer();
 
     if (!isPressed) return;

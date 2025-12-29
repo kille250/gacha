@@ -272,7 +272,7 @@ const getCharacterImageUrl = (char) => {
   return getAssetUrl(imagePath);
 };
 
-export function SpecializationPicker({ character, userLevel = 1, onClose }) {
+export function SpecializationPicker({ character, userLevel: _userLevel = 1, onClose }) {
   const { t } = useTranslation();
   const { specialization, loading, error, applying, applySpecialization } = useCharacterSpecialization(character?.id);
   const { facility, loading: facilityLoading } = useDojoFacility();

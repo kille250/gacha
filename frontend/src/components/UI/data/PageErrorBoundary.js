@@ -189,7 +189,7 @@ class PageErrorBoundary extends Component {
   /**
    * Report error to external service
    */
-  reportError = (error, errorInfo) => {
+  reportError = (_error, _errorInfo) => {
     // In production, you might send this to Sentry, LogRocket, etc.
     if (process.env.NODE_ENV === 'production') {
       // Example: window.Sentry?.captureException(error, { extra: errorInfo });

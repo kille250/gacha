@@ -70,7 +70,7 @@ export const catchFish = async (sessionId, reactionTime, setUser) => {
  * @returns {Promise<Object>} Miss result from API
  * @throws {Error} If report fails
  */
-export const reportMiss = async (sessionId, setUser) => {
+export const reportMiss = async (sessionId, _setUser) => {
   const response = await api.post('/fishing/catch', { sessionId, missed: true });
   const result = response.data;
   
