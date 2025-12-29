@@ -292,8 +292,8 @@ const Highlight = styled.div`
   align-items: center;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: ${props => `${props.$color}15` || theme.colors.primaryMuted};
-  border: 1px solid ${props => `${props.$color}30` || theme.colors.primaryMuted};
+  background: ${props => props.$color ? `${props.$color}15` : theme.colors.primaryMuted};
+  border: 1px solid ${props => props.$color ? `${props.$color}30` : theme.colors.primaryMuted};
   border-radius: ${theme.radius.full};
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.medium};

@@ -145,7 +145,7 @@ export const drawTile = (g, tile, x, y) => {
       }
       break;
       
-    case TILES.PATH:
+    case TILES.PATH: {
       g.rect(0, 0, TILE_SIZE, TILE_SIZE);
       g.fill(PALETTE.path[variant % 2]);
       // Cobblestone pattern
@@ -158,8 +158,9 @@ export const drawTile = (g, tile, x, y) => {
       g.rect(6, 6, 4, 2);
       g.fill({ color: 0xffffff, alpha: 0.1 });
       break;
+    }
       
-    case TILES.FLOWERS:
+    case TILES.FLOWERS: {
       // Base grass
       g.rect(0, 0, TILE_SIZE, TILE_SIZE);
       g.fill(PALETTE.grass[variant]);
@@ -185,6 +186,7 @@ export const drawTile = (g, tile, x, y) => {
         g.fill(0xfff59d);
       }
       break;
+    }
       
     case TILES.DOCK:
       // Water underneath
@@ -301,7 +303,7 @@ export const drawTile = (g, tile, x, y) => {
       }
       break;
       
-    case TILES.CAMPFIRE:
+    case TILES.CAMPFIRE: {
       // Base grass
       g.rect(0, 0, TILE_SIZE, TILE_SIZE);
       g.fill(PALETTE.grass[2]);
@@ -325,6 +327,7 @@ export const drawTile = (g, tile, x, y) => {
       g.ellipse(20, 26, 8, 4);
       g.fill(0x2a2020);
       break;
+    }
       
     case TILES.LANTERN:
       // Sand base (same as SAND tile but with lantern)

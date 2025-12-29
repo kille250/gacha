@@ -164,40 +164,44 @@ export const useCaptchaProtectedRequest = () => {
    * @param {Object} options - Additional options
    * @returns {Promise} - Resolves with the response data
    */
-  const execute = useCallback(async (requestFn, action = 'verify', options = {}) => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        // Execute the request
-        const result = await requestFn();
-        resolve(result);
-      } catch (err) {
-        // Check if CAPTCHA is required
-        const responseData = err.response?.data;
-        
-        if (responseData?.code === 'CAPTCHA_REQUIRED') {
-          // Store the request for retry
-          pendingRequest.current = {
-            requestFn,
-            originalConfig: err.config
-          };
-          pendingResolve.current = resolve;
-          pendingReject.current = reject;
-          
-          // Set up modal
-          setCurrentAction(responseData.action || action);
-          setCaptchaType(responseData.captchaType || 'recaptcha');
-          setChallenge(responseData.challenge || null);
-          setSiteKey(responseData.siteKey || null);
-          setSubmitError(null);
-          setIsRetrying(false);
-          setShowModal(true);
-          
-          return; // Don't resolve/reject yet - wait for CAPTCHA completion
+  const execute = useCallback((requestFn, action = 'verify', options = {}) => {
+    return new Promise((resolve, reject) => {
+      const executeRequest = async () => {
+        try {
+          // Execute the request
+          const result = await requestFn();
+          resolve(result);
+        } catch (err) {
+          // Check if CAPTCHA is required
+          const responseData = err.response?.data;
+
+          if (responseData?.code === 'CAPTCHA_REQUIRED') {
+            // Store the request for retry
+            pendingRequest.current = {
+              requestFn,
+              originalConfig: err.config
+            };
+            pendingResolve.current = resolve;
+            pendingReject.current = reject;
+
+            // Set up modal
+            setCurrentAction(responseData.action || action);
+            setCaptchaType(responseData.captchaType || 'recaptcha');
+            setChallenge(responseData.challenge || null);
+            setSiteKey(responseData.siteKey || null);
+            setSubmitError(null);
+            setIsRetrying(false);
+            setShowModal(true);
+
+            return; // Don't resolve/reject yet - wait for CAPTCHA completion
+          }
+
+          // Not a CAPTCHA error, propagate it
+          reject(err);
         }
-        
-        // Not a CAPTCHA error, propagate it
-        reject(err);
-      }
+      };
+
+      executeRequest();
     });
   }, []);
   

@@ -6,6 +6,7 @@
 
 import js from '@eslint/js';
 import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
   js.configs.recommended,
@@ -37,10 +38,17 @@ export default [
         }
       }
     },
+    plugins: {
+      'react-hooks': reactHooks
+    },
     rules: {
       // Relax some rules for React apps
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
       'no-console': 'off',
+
+      // React hooks rules
+      'react-hooks/rules-of-hooks': 'error',
+      'react-hooks/exhaustive-deps': 'warn',
 
       // Custom no-emojis rule
       'no-restricted-syntax': [

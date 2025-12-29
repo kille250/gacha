@@ -354,7 +354,7 @@ const ActionButton = styled(motion.button)`
 
   &:active {
     transform: scale(0.96);
-    background: ${props => `${props.$color}15` || theme.colors.surface};
+    background: ${props => props.$color ? `${props.$color}15` : theme.colors.surface};
   }
 
   &:focus-visible {
@@ -369,7 +369,7 @@ const ActionIconWrapper = styled.div`
   justify-content: center;
   width: 44px;
   height: 44px;
-  background: ${props => `${props.$color}20` || theme.colors.primarySubtle};
+  background: ${props => props.$color ? `${props.$color}20` : theme.colors.primarySubtle};
   border-radius: ${theme.radius.lg};
   color: ${props => props.$color || theme.colors.primary};
   font-size: 20px;
