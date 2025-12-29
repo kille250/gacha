@@ -330,13 +330,11 @@ export const SummonAnimation = ({
               initial={{
                 scale: 0.92,
                 opacity: 0,
-                y: 24,
                 filter: 'blur(8px)'
               }}
               animate={{
                 scale: 1,
                 opacity: 1,
-                y: 0,
                 filter: 'blur(0px)',
                 transition: {
                   type: "spring",
@@ -346,7 +344,7 @@ export const SummonAnimation = ({
                   filter: { duration: 0.35, ease: [0.25, 0.1, 0.25, 1] }
                 }
               }}
-              exit={{ scale: 0.95, opacity: 0, y: -16 }}
+              exit={{ scale: 0.95, opacity: 0 }}
             >
               <CharacterCard>
                 <CardShine />
@@ -384,9 +382,9 @@ export const SummonAnimation = ({
         <AnimatePresence>
           {showSkipHint && skipEnabled && isBuildup && (
             <SkipHint
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 0.6, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 0.6 }}
+              exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
               Tap to skip
@@ -410,8 +408,8 @@ export const SummonAnimation = ({
           <AnimatePresence>
             {phase === PHASES.COMPLETE && (
               <ContinueButton
-                initial={{ opacity: 0, y: 20, scale: 0.9 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
                 exit={{ opacity: 0 }}
                 transition={{ type: "spring", damping: 20 }}
                 whileHover={{ scale: 1.03 }}
