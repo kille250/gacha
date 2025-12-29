@@ -363,14 +363,8 @@ const DesktopNav = styled.div`
   justify-content: center;
   /* Prevent horizontal overflow - allow shrinking and scrolling if needed */
   min-width: 0;
-  overflow-x: auto;
-  overflow-y: hidden;
-  /* Hide scrollbar but keep functionality */
-  scrollbar-width: none;
-  -ms-overflow-style: none;
-  &::-webkit-scrollbar {
-    display: none;
-  }
+  /* Use visible overflow to allow dropdown menus to render outside container */
+  overflow: visible;
 
   @media (min-width: ${theme.breakpoints.md}) {
     display: flex;
