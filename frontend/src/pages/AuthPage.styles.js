@@ -564,12 +564,16 @@ export const GoogleButtonWrapper = styled.div`
   display: flex;
   justify-content: center;
 
+  /* Google Sign-In button container needs full width */
   > div {
-    width: 100% !important;
+    width: 100%;
+    max-width: 100%;
   }
 
+  /* Google iframe also needs full width */
   iframe {
-    width: 100% !important;
+    width: 100%;
+    max-width: 100%;
   }
 `;
 

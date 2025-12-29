@@ -132,21 +132,29 @@ const BannerDescription = styled.p`
 const CTAButton = styled(motion.button)`
   display: inline-flex;
   align-items: center;
-  gap: 10px;
+  gap: ${theme.spacing.sm};
   background: rgba(255, 255, 255, 0.95);
-  color: #1a1a2e;
+  color: ${theme.colors.backgroundSecondary};
   border: none;
-  padding: 14px 28px;
-  border-radius: 8px;
-  font-size: 15px;
-  font-weight: 600;
+  padding: ${theme.spacing.md} ${theme.spacing.xl};
+  border-radius: ${theme.radius.md};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
   cursor: pointer;
   width: fit-content;
-  transition: all 0.2s ease;
+  min-height: 44px;
+  transition: all ${theme.transitions.fast};
 
-  &:hover {
-    background: white;
-    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.3);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: white;
+      box-shadow: ${theme.shadows.lg};
+    }
+  }
+
+  &:active {
+    background: rgba(255, 255, 255, 0.9);
+    transform: scale(0.98);
   }
 
   &:focus-visible {
@@ -174,20 +182,27 @@ const NavArrow = styled.button`
   height: 48px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.6);
-  backdrop-filter: blur(8px);
+  backdrop-filter: blur(${theme.blur.sm});
   border: 1px solid rgba(255, 255, 255, 0.2);
   color: white;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  z-index: 10;
+  z-index: ${theme.zIndex.dropdown};
   font-size: 28px;
-  transition: all 0.2s ease;
+  transition: all ${theme.transitions.fast};
 
-  &:hover {
-    background: rgba(0, 0, 0, 0.8);
-    transform: translateY(-50%) scale(1.1);
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: rgba(0, 0, 0, 0.8);
+      transform: translateY(-50%) scale(1.1);
+    }
+  }
+
+  &:active {
+    background: rgba(0, 0, 0, 0.9);
+    transform: translateY(-50%) scale(0.95);
   }
 
   &:focus-visible {
@@ -196,8 +211,9 @@ const NavArrow = styled.button`
   }
 
   @media (max-width: ${theme.breakpoints.md}) {
-    width: 40px;
-    height: 40px;
+    /* Keep minimum 44px touch target on mobile */
+    width: 44px;
+    height: 44px;
     font-size: 24px;
   }
 `;
@@ -212,16 +228,33 @@ const Indicators = styled.div`
 `;
 
 const IndicatorDot = styled.button`
+  /* Visual size */
   width: ${props => props.$active ? '24px' : '10px'};
   height: 10px;
   border-radius: 5px;
   background: ${props => props.$active ? 'white' : 'rgba(255, 255, 255, 0.4)'};
   border: none;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: all ${theme.transitions.fast};
 
-  &:hover {
-    background: ${props => props.$active ? 'white' : 'rgba(255, 255, 255, 0.6)'};
+  /* Touch target: 44px minimum */
+  position: relative;
+
+  &::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 44px;
+    height: 44px;
+    border-radius: ${theme.radius.full};
+  }
+
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: ${props => props.$active ? 'white' : 'rgba(255, 255, 255, 0.6)'};
+    }
   }
 
   &:focus-visible {

@@ -31,8 +31,9 @@ export const BackButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 40px;
-  height: 40px;
+  /* Minimum 44px for touch targets (WCAG 2.5.5) */
+  width: 44px;
+  height: 44px;
   background: ${theme.colors.glass};
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
@@ -40,8 +41,20 @@ export const BackButton = styled.button`
   cursor: pointer;
   transition: all ${theme.transitions.fast};
 
-  &:hover {
-    background: ${theme.colors.surface};
+  @media (hover: hover) and (pointer: fine) {
+    &:hover {
+      background: ${theme.colors.surface};
+    }
+  }
+
+  &:active {
+    background: ${theme.colors.surfaceHover};
+    transform: scale(0.95);
+  }
+
+  &:focus-visible {
+    outline: 2px solid ${theme.colors.primary};
+    outline-offset: 2px;
   }
 `;
 
@@ -119,7 +132,7 @@ export const Tab = styled(motion.button)`
     }
   }
 
-  @media (max-width: 500px) {
+  @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.sm} ${theme.spacing.md};
 
     span {
@@ -477,12 +490,16 @@ export const GoogleButtonWrapper = styled.div`
   display: flex;
   justify-content: center;
 
+  /* Google Sign-In button container needs full width */
   > div {
-    width: 100% !important;
+    width: 100%;
+    max-width: 100%;
   }
 
+  /* Google iframe also needs full width */
   iframe {
-    width: 100% !important;
+    width: 100%;
+    max-width: 100%;
   }
 `;
 

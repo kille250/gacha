@@ -19,13 +19,17 @@ import {
  */
 export const FishingGameCanvas = forwardRef((props, ref) => {
   return (
-    <GameContainer>
+    <GameContainer
+      role="application"
+      aria-label="Interactive fishing game - Use arrow keys or touch to move your character and catch fish"
+      tabIndex={0}
+    >
       <CanvasFrame>
-        <CanvasWrapper ref={ref} />
-        <CanvasCorner $position="tl" />
-        <CanvasCorner $position="tr" />
-        <CanvasCorner $position="bl" />
-        <CanvasCorner $position="br" />
+        <CanvasWrapper ref={ref} aria-hidden="true" />
+        <CanvasCorner $position="tl" aria-hidden="true" />
+        <CanvasCorner $position="tr" aria-hidden="true" />
+        <CanvasCorner $position="bl" aria-hidden="true" />
+        <CanvasCorner $position="br" aria-hidden="true" />
       </CanvasFrame>
     </GameContainer>
   );

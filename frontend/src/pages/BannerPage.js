@@ -257,7 +257,16 @@ const BannerPage = () => {
     , multiOptions[0]);
     return best?.count || null;
   }, [pullOptions]);
-  
+
+  // Memoize sorted featured characters to avoid sorting on every render
+  const sortedFeaturedCharacters = useMemo(() => {
+    if (!banner?.Characters?.length) return [];
+    const rarityOrder = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
+    return [...banner.Characters]
+      .sort((a, b) => (rarityOrder[a.rarity] ?? 5) - (rarityOrder[b.rarity] ?? 5))
+      .slice(0, 6);
+  }, [banner?.Characters]);
+
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
   
@@ -953,10 +962,7 @@ const BannerPage = () => {
             <FeaturedSection>
               <FeaturedLabel>{t('banner.featuredCharacters')}</FeaturedLabel>
               <CharacterAvatars>
-                {(banner.Characters || []).slice().sort((a, b) => {
-                  const rarityOrder = { legendary: 0, epic: 1, rare: 2, uncommon: 3, common: 4 };
-                  return (rarityOrder[a.rarity] ?? 5) - (rarityOrder[b.rarity] ?? 5);
-                }).slice(0, 6).map(char => (
+                {sortedFeaturedCharacters.map(char => (
                   <Avatar
                     key={char.id}
                     $color={getRarityColor(char.rarity)}

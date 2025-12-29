@@ -1900,13 +1900,14 @@ const MobilePreviewInfo = styled.div`
 
 const MobilePreviewAdded = styled.span`
   width: 100%;
-  justify-content: center !important;
-  color: #2ecc71 !important;
-  font-weight: 600;
-  margin-top: 4px;
+  display: flex;
+  justify-content: center;
+  color: ${theme.colors.success};
+  font-weight: ${theme.fontWeights.semibold};
+  margin-top: ${theme.spacing.xs};
 
   svg {
-    color: #2ecc71 !important;
+    color: ${theme.colors.success};
   }
 `;
 
