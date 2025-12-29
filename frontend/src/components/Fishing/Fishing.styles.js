@@ -2163,7 +2163,7 @@ export const TradeGrid = styled.div`
 export const QuickTradeCard = styled(motion.div)`
   background: rgba(255,255,255,0.8);
   border-radius: 14px;
-  border: 3px solid ${props => `${props.$color}50` || 'rgba(139, 105, 20, 0.3)'};
+  border: 3px solid ${props => props.$color ? `${props.$color}50` : 'rgba(139, 105, 20, 0.3)'};
   padding: 12px 10px;
   display: flex;
   flex-direction: column;

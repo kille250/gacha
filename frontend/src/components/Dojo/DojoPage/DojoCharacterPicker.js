@@ -485,14 +485,16 @@ const DojoCharacterPicker = ({
     Object.entries(groupedBySeries).forEach(([series, chars]) => {
       const sortedChars = [...chars].sort((a, b) => {
         switch (sortBy) {
-          case SORT_OPTIONS.RARITY_DESC:
+          case SORT_OPTIONS.RARITY_DESC: {
             const rarityDiff = (RARITY_ORDER[b.rarity] || 0) - (RARITY_ORDER[a.rarity] || 0);
             if (rarityDiff !== 0) return rarityDiff;
             return (b.level || 1) - (a.level || 1);
-          case SORT_OPTIONS.LEVEL_DESC:
+          }
+          case SORT_OPTIONS.LEVEL_DESC: {
             const levelDiff = (b.level || 1) - (a.level || 1);
             if (levelDiff !== 0) return levelDiff;
             return (RARITY_ORDER[b.rarity] || 0) - (RARITY_ORDER[a.rarity] || 0);
+          }
           case SORT_OPTIONS.NAME_ASC:
             return a.name.localeCompare(b.name);
           default:
