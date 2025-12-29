@@ -182,7 +182,7 @@ const ArrowIcon = styled(motion.div)`
 
 const LevelUpNotification = ({
   isVisible,
-  oldLevel,
+  oldLevel: _oldLevel,
   newLevel,
   unlocks = [],
   onDismiss

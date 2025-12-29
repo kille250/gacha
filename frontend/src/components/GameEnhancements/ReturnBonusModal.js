@@ -169,7 +169,7 @@ const ClaimedText = styled.div`
   font-weight: 600;
 `;
 
-export function ReturnBonusModal({ onClose, autoShow = true }) {
+export function ReturnBonusModal({ onClose, autoShow: _autoShow = true }) {
   const { t } = useTranslation();
   const { returnBonus, loading, claimBonus } = useReturnBonus();
   const [claimed, setClaimed] = useState(false);

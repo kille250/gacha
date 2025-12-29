@@ -11,7 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
 import { getUserDeviceHistory } from '../../utils/api';
 
-const DeviceHistoryPanel = ({ userId, username }) => {
+const DeviceHistoryPanel = ({ userId, username: _username }) => {
   const { t } = useTranslation();
   const [data, setData] = useState(null);
   const [loading, setLoading] = useState(true);

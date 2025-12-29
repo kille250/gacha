@@ -363,7 +363,7 @@ const DojoCharacterPicker = ({
   onClose,
   charactersLoading,
   filteredCharacters,
-  charactersBySeries,
+  charactersBySeries: _charactersBySeries,
   searchQuery,
   onSearchChange,
   onSelect,

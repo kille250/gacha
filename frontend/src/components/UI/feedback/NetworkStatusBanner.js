@@ -250,7 +250,7 @@ const NetworkStatusBanner = ({
   onRetry,
   showSlowWarning = false,
   dismissible = true,
-  onlineDisplayDuration = 3000,
+  onlineDisplayDuration: _onlineDisplayDuration = 3000,
 }) => {
   const { t } = useTranslation();
   const [dismissed, setDismissed] = useState(false);

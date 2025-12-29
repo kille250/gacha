@@ -188,7 +188,7 @@ export const useDojoPage = () => {
   // Centralized visibility change handler - replaces manual event listener
   // Handles both polling control and stale data refresh
   useEffect(() => {
-    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.DOJO_STATUS, (staleLevel) => {
+    return onVisibilityChange(VISIBILITY_CALLBACK_IDS.DOJO_STATUS, (_staleLevel) => {
       // Stop polling when tab is hidden (staleLevel is null on first call after hidden)
       if (document.visibilityState === 'hidden') {
         stopPolling();

@@ -6,6 +6,7 @@
 
 import js from '@eslint/js';
 import globals from 'globals';
+import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 
 export default [
@@ -39,12 +40,27 @@ export default [
       }
     },
     plugins: {
+      'react': reactPlugin,
       'react-hooks': reactHooks
+    },
+    settings: {
+      react: {
+        version: 'detect'
+      }
     },
     rules: {
       // Relax some rules for React apps
-      'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_' }],
+      // varsIgnorePattern includes capitalized names (React components/styled-components)
+      'no-unused-vars': ['warn', {
+        argsIgnorePattern: '^_',
+        varsIgnorePattern: '^_|^[A-Z]',
+        ignoreRestSiblings: true
+      }],
       'no-console': 'off',
+
+      // React rules - detect JSX usage
+      'react/jsx-uses-react': 'error',
+      'react/jsx-uses-vars': 'error',
 
       // React hooks rules
       'react-hooks/rules-of-hooks': 'error',

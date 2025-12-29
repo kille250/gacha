@@ -164,7 +164,7 @@ export const useCaptchaProtectedRequest = () => {
    * @param {Object} options - Additional options
    * @returns {Promise} - Resolves with the response data
    */
-  const execute = useCallback((requestFn, action = 'verify', options = {}) => {
+  const execute = useCallback((requestFn, action = 'verify', _options = {}) => {
     return new Promise((resolve, reject) => {
       const executeRequest = async () => {
         try {

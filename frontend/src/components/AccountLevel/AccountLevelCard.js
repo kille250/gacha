@@ -179,13 +179,13 @@ const MaxLevelBadge = styled.div`
 
 const AccountLevelCard = ({
   level = 1,
-  xp = 0,
+  xp: _xp = 0,
   xpToNext = 100,
   xpInLevel = 0,
   xpNeededForLevel = 100,
   progress = 0,
   isMaxLevel = false,
-  upcomingUnlocks = []
+  upcomingUnlocks: _upcomingUnlocks = []
 }) => {
   const { t } = useTranslation();
 

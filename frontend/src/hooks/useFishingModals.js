@@ -53,7 +53,7 @@ export const MODAL_TYPES = {
  * @returns {Object} Modal controls and state
  */
 export function useFishingModals({
-  user,
+  user: _user,
   setUser,
   refreshUser,
   showNotification,
