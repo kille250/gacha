@@ -1066,7 +1066,13 @@ export const MultiSummonAnimation = ({
         exit={{ opacity: 0 }}
         onClick={handleCloseSkippedResults}
       >
-        <ResultsContent onClick={e => e.stopPropagation()}>
+        <ResultsContent
+          as={motion.div}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.3, ease: "easeOut" }}
+          onClick={e => e.stopPropagation()}
+        >
           <ResultsHeader>
             <ResultsTitle>{t('summon.complete')}</ResultsTitle>
             <ResultsSubtitle>{t('summon.charactersObtained', { count: characters.length })}</ResultsSubtitle>
@@ -1077,10 +1083,10 @@ export const MultiSummonAnimation = ({
               <ResultCard
                 key={index}
                 $color={getRarityColor(char.rarity)}
-                initial={{ opacity: 0, scale: 0.85, y: 16 }}
-                animate={{ opacity: 1, scale: 1, y: 0 }}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
                 transition={{
-                  delay: index * 0.035,  // Slightly slower cascade for elegance
+                  delay: 0.2 + index * 0.03,  // Wait for container, then cascade
                   type: "spring",
                   damping: 20,
                   stiffness: 300
