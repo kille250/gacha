@@ -71,7 +71,7 @@ export const SummonAnimation = forwardRef(({
   // State
   const [phase, setPhase] = useState(ANIMATION_PHASES.IDLE);
   const [showSkipHint, setShowSkipHint] = useState(false);
-  const [isComplete, setIsComplete] = useState(false);
+  const [isShowcaseReady, setIsShowcaseReady] = useState(false);
   const [animationError, setAnimationError] = useState(null);
 
   // Normalize entity prop
@@ -115,7 +115,7 @@ export const SummonAnimation = forwardRef(({
         console.error('Failed to play summon animation:', error);
         setAnimationError(error);
         setPhase(ANIMATION_PHASES.COMPLETE);
-        setIsComplete(true);
+        setIsShowcaseReady(true);
       }
     },
     skip: () => sceneRef.current?.skip(),
@@ -188,18 +188,18 @@ export const SummonAnimation = forwardRef(({
         sceneRef.current.reset();
       }
       setPhase(ANIMATION_PHASES.IDLE);
-      setIsComplete(false);
+      setIsShowcaseReady(false);
       setShowSkipHint(false);
       setAnimationError(null);
       initErrorRef.current = null;
       return;
     }
 
-    // If there's already an initialization error, skip to complete
+    // If there's already an initialization error, skip to showcase ready
     if (initErrorRef.current) {
       setAnimationError(initErrorRef.current);
       setPhase(ANIMATION_PHASES.COMPLETE);
-      setIsComplete(true);
+      setIsShowcaseReady(true);
       return;
     }
 
@@ -233,9 +233,12 @@ export const SummonAnimation = forwardRef(({
         triggerRevealSequence(effectRarity);
         onReveal?.();
       },
+      onShowcaseReady: () => {
+        setPhase(ANIMATION_PHASES.SHOWCASE);
+        setIsShowcaseReady(true);
+      },
       onAnimationComplete: () => {
         setPhase(ANIMATION_PHASES.COMPLETE);
-        setIsComplete(true);
       },
       onSkip: () => {
         setShowSkipHint(false);
@@ -243,6 +246,7 @@ export const SummonAnimation = forwardRef(({
           buildupStopRef.current();
           buildupStopRef.current = null;
         }
+        setIsShowcaseReady(true);
         onSkip?.();
       },
     });
@@ -252,9 +256,9 @@ export const SummonAnimation = forwardRef(({
       scene.play(normalizedEntity).catch((error) => {
         console.error('Failed to play summon animation:', error);
         setAnimationError(error);
-        // Skip to completion state on error so user can continue
+        // Skip to showcase ready state on error so user can continue
         setPhase(ANIMATION_PHASES.COMPLETE);
-        setIsComplete(true);
+        setIsShowcaseReady(true);
       });
     }
 
@@ -287,7 +291,7 @@ export const SummonAnimation = forwardRef(({
     if (isMultiPull && sceneRef.current) {
       sceneRef.current.reset();
       setPhase(ANIMATION_PHASES.IDLE);
-      setIsComplete(false);
+      setIsShowcaseReady(false);
       setAnimationError(null);
       stopAllEffects();
     }
@@ -321,7 +325,7 @@ export const SummonAnimation = forwardRef(({
   const handleInteraction = useCallback((e) => {
     e?.stopPropagation?.();
 
-    if (isComplete || animationError) {
+    if (isShowcaseReady || animationError) {
       playContinue();
       setAnimationError(null);
       onComplete?.();
@@ -329,7 +333,7 @@ export const SummonAnimation = forwardRef(({
     } else if ((allowSkip || skipEnabled) && showSkipHint) {
       sceneRef.current?.skip();
     }
-  }, [isComplete, animationError, allowSkip, skipEnabled, showSkipHint, playContinue, onComplete, onAnimationComplete]);
+  }, [isShowcaseReady, animationError, allowSkip, skipEnabled, showSkipHint, playContinue, onComplete, onAnimationComplete]);
 
   // Keyboard support
   useEffect(() => {
@@ -358,7 +362,7 @@ export const SummonAnimation = forwardRef(({
     >
       {/* Screen reader announcement */}
       <S.ScreenReaderOnly role="status" aria-live="polite">
-        {isComplete && normalizedEntity
+        {isShowcaseReady && normalizedEntity
           ? `You summoned ${normalizedEntity.name}, ${effectRarity} rarity`
           : 'Summoning in progress'}
       </S.ScreenReaderOnly>
@@ -374,7 +378,7 @@ export const SummonAnimation = forwardRef(({
 
         {/* Skip Hint */}
         <AnimatePresence>
-          {showSkipHint && !isComplete && (
+          {showSkipHint && !isShowcaseReady && (
             <S.SkipHint
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.6 }}
@@ -386,9 +390,9 @@ export const SummonAnimation = forwardRef(({
           )}
         </AnimatePresence>
 
-        {/* Character Info (shown on complete) */}
+        {/* Character Info (shown when showcase ready) */}
         <AnimatePresence>
-          {isComplete && normalizedEntity && (
+          {isShowcaseReady && normalizedEntity && (
             <S.CharacterInfo
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -420,7 +424,7 @@ export const SummonAnimation = forwardRef(({
 
           {/* Continue Button */}
           <AnimatePresence>
-            {isComplete && (
+            {isShowcaseReady && (
               <S.ContinueButton
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
@@ -436,7 +440,7 @@ export const SummonAnimation = forwardRef(({
           </AnimatePresence>
 
           {/* Skip All Button (Multi-pull) */}
-          {isMultiPull && onSkipAll && !isComplete && (
+          {isMultiPull && onSkipAll && !isShowcaseReady && (
             <S.SkipAllButton
               onClick={(e) => {
                 e.stopPropagation();

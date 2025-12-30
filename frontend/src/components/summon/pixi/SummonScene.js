@@ -67,6 +67,7 @@ export class SummonScene {
       onAnimationStart: null,
       onBuildUpComplete: null,
       onReveal: null,
+      onShowcaseReady: null,
       onAnimationComplete: null,
       onSkip: null,
     };
@@ -408,6 +409,7 @@ export class SummonScene {
       this.layers.character.setShowcase();
       this.effects.particles.start();
       this.layers.foreground.setDim(0);
+      this.callbacks.onShowcaseReady?.();
     }, durations.initiation + durations.buildUp + durations.reveal);
 
     // No auto-complete timer - user controls when to proceed
@@ -427,6 +429,7 @@ export class SummonScene {
     this.addTimer(() => {
       this.setPhase(ANIMATION_PHASES.SHOWCASE);
       this.layers.character.setShowcase();
+      this.callbacks.onShowcaseReady?.();
     }, timings.reveal);
 
     // No auto-complete timer - user controls when to proceed
