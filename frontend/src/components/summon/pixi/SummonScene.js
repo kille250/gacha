@@ -87,19 +87,50 @@ export class SummonScene {
       this.prefersReducedMotion = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
     }
 
+    // Check WebGL support
+    const testCanvas = document.createElement('canvas');
+    const gl = testCanvas.getContext('webgl') || testCanvas.getContext('experimental-webgl');
+    if (!gl) {
+      console.warn('WebGL not supported, using reduced motion mode');
+      this.prefersReducedMotion = true;
+    }
+
     // Create Pixi Application
     this.app = new Application();
 
-    await this.app.init({
-      canvas: this.canvas,
-      width: this.config.width,
-      height: this.config.height,
-      resolution: this.config.resolution,
-      autoDensity: true,
-      antialias: this.config.antialias,
-      backgroundAlpha: 0,
-      powerPreference: 'high-performance',
-    });
+    try {
+      await this.app.init({
+        canvas: this.canvas,
+        width: this.config.width,
+        height: this.config.height,
+        resolution: this.config.resolution,
+        autoDensity: true,
+        antialias: this.config.antialias,
+        backgroundAlpha: 0,
+        powerPreference: 'high-performance',
+        // Fallback for devices with limited WebGL support
+        preferWebGLVersion: 2,
+        failIfMajorPerformanceCaveat: false,
+      });
+    } catch (initError) {
+      console.error('Pixi.js initialization failed:', initError);
+      // Force reduced motion mode on initialization failure
+      this.prefersReducedMotion = true;
+      // Try with minimal settings
+      try {
+        await this.app.init({
+          canvas: this.canvas,
+          width: this.config.width,
+          height: this.config.height,
+          resolution: 1,
+          antialias: false,
+          backgroundAlpha: 0,
+        });
+      } catch (fallbackError) {
+        console.error('Pixi.js fallback initialization also failed:', fallbackError);
+        throw fallbackError;
+      }
+    }
 
     // Create layers
     this.createLayers();
