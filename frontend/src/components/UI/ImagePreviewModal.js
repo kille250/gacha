@@ -64,6 +64,7 @@ const ImagePreviewModal = ({
             <MediaWrapper>
               {isVideo ? (
                 <Media
+                  key={image}
                   as="video"
                   src={image}
                   autoPlay
