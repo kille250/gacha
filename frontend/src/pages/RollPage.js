@@ -94,7 +94,7 @@ import {
   FastModeToggle,
 } from './RollPage.styles';
 
-import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
+import { SummonAnimation, MultiSummonAnimation } from '../components/summon';
 
 // Icon Constants
 import { IconDice, IconPoints, IconSearch, IconSparkle, IconMagic } from '../constants/icons';

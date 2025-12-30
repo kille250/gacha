@@ -4,8 +4,8 @@
  * Components for the gacha/summoning system.
  */
 
-// Summon Animation
-export { SummonAnimation, MultiSummonAnimation } from './SummonAnimation';
+// Summon Animation - from new Pixi.js implementation
+export { SummonAnimation, MultiSummonAnimation } from '../summon';
 
 // Banner Page Components
 export * from './BannerPage';
