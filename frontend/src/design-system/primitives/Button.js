@@ -270,7 +270,7 @@ const StyledButton = styled(motion.button)`
     box-shadow: none;
   }
 
-  /* High-visibility focus ring for keyboard navigation */
+  /* High-visibility focus ring for keyboard navigation with animation */
   &:focus-visible {
     outline: none;
     box-shadow:
@@ -279,6 +279,19 @@ const StyledButton = styled(motion.button)`
     /* Ensure focus ring is visible on all backgrounds */
     position: relative;
     z-index: 1;
+    /* Subtle scale pulse on focus for premium feel */
+    animation: focusScale 0.2s ease-out;
+  }
+
+  @keyframes focusScale {
+    0% {
+      box-shadow: 0 0 0 0px transparent, 0 0 0 0px transparent;
+    }
+    100% {
+      box-shadow:
+        0 0 0 2px ${theme.colors.background},
+        0 0 0 4px ${theme.colors.focusRing};
+    }
   }
 
   /* Touch feedback for mobile - subtle background flash */

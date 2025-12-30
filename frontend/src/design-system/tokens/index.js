@@ -26,6 +26,10 @@ export {
   glowSubtle,
   sparkle,
   focusRing,
+  focusRingIn,
+  cardLift,
+  celebrationPulse,
+  screenShake,
   // Timing & Easing
   timing,
   easing,

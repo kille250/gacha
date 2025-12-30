@@ -489,26 +489,56 @@ export const NetflixBannerCard = styled(motion.div)`
 
 export const NetflixCardInner = styled(motion.div)`
   background: ${theme.colors.surface};
-  border-radius: ${theme.radius.xl};  /* Standardized to xl (20px) */
+  border-radius: ${theme.radius.xl};
   overflow: hidden;
   border: 1px solid ${theme.colors.surfaceBorderSubtle};
   box-shadow: ${theme.shadows.card};
+  position: relative;
   transition:
     box-shadow ${theme.timing.normal} ${theme.easing.easeOut},
     border-color ${theme.timing.fast} ${theme.easing.easeOut},
-    transform ${theme.timing.normal} ${theme.easing.appleSpring};
+    transform ${theme.timing.normal} cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  /* Shine overlay effect */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      105deg,
+      transparent 40%,
+      rgba(255, 255, 255, 0.03) 45%,
+      rgba(255, 255, 255, 0.06) 50%,
+      rgba(255, 255, 255, 0.03) 55%,
+      transparent 60%
+    );
+    background-size: 200% 100%;
+    background-position: 100% 0;
+    z-index: 10;
+    pointer-events: none;
+    transition: background-position 0.6s ease;
+    border-radius: inherit;
+  }
 
   @media (hover: hover) and (pointer: fine) {
     ${NetflixBannerCard}:hover & {
-      box-shadow: ${theme.shadows.cardHover};
+      box-shadow:
+        0 8px 24px rgba(0, 0, 0, 0.18),
+        0 16px 48px rgba(0, 0, 0, 0.12);
       border-color: ${theme.colors.surfaceBorder};
-      /* Enhanced lift for more impactful hover */
-      transform: translateY(-6px) scale(1.01);
+      /* Enhanced lift with bounce physics feel */
+      transform: translateY(-8px) scale(1.02);
+
+      /* Animate shine across card */
+      &::before {
+        background-position: -100% 0;
+      }
     }
   }
 
   ${NetflixBannerCard}:active & {
-    transform: translateY(-2px) scale(0.99);
+    transform: translateY(-2px) scale(0.98);
+    transition-duration: 0.1s;
   }
 
   ${NetflixBannerCard}:focus-visible & {
@@ -516,6 +546,16 @@ export const NetflixCardInner = styled(motion.div)`
       0 0 0 2px ${theme.colors.background},
       0 0 0 4px ${theme.colors.focusRing},
       ${theme.shadows.cardHover};
+  }
+
+  /* Reduced motion - disable transform animations */
+  @media (prefers-reduced-motion: reduce) {
+    transition: box-shadow ${theme.timing.fast}, border-color ${theme.timing.fast};
+    transform: none !important;
+
+    &::before {
+      display: none;
+    }
   }
 `;
 

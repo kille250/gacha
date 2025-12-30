@@ -36,6 +36,10 @@ export {
   pulse,
   float,
   spin,
+  focusRingIn,
+  cardLift,
+  celebrationPulse,
+  screenShake,
   motionVariants
 } from './tokens';
 
