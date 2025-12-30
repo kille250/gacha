@@ -45,6 +45,8 @@ export class CharacterLayer {
     this.imageLoaded = false;
     this.imageUrl = null;
     this.isDestroyed = false;
+    // Counter to track current load request and prevent race conditions
+    this.loadId = 0;
   }
 
   /**
@@ -55,14 +57,28 @@ export class CharacterLayer {
 
     this.imageUrl = getImagePath ? getImagePath(imageUrl) : imageUrl;
 
+    // Increment load ID to track this specific load request
+    // This prevents race conditions when setImage is called multiple times
+    const currentLoadId = ++this.loadId;
+
+    // Immediately clear old sprite to prevent showing wrong image during load
+    // This is critical for multi-pull where entities change rapidly
+    if (this.characterSprite) {
+      this.container.removeChild(this.characterSprite);
+      this.characterSprite.destroy();
+      this.characterSprite = null;
+    }
+    this.imageLoaded = false;
+
     try {
       // Load image using native Image element for reliability
       const texture = await this.loadTexture(this.imageUrl);
 
-      // Remove old sprite if exists
-      if (this.characterSprite) {
-        this.container.removeChild(this.characterSprite);
-        this.characterSprite.destroy();
+      // Check if this load is still current (another setImage may have been called)
+      if (currentLoadId !== this.loadId) {
+        // This load is stale, discard the texture and abort
+        texture.destroy(true);
+        return;
       }
 
       // Create new sprite
@@ -93,8 +109,11 @@ export class CharacterLayer {
 
       this.imageLoaded = true;
     } catch (error) {
-      console.warn('Failed to load character image:', error.message || error);
-      this.imageLoaded = false;
+      // Only log error if this is still the current load
+      if (currentLoadId === this.loadId) {
+        console.warn('Failed to load character image:', error.message || error);
+        this.imageLoaded = false;
+      }
     }
   }
 
@@ -368,6 +387,10 @@ export class CharacterLayer {
     this.showcaseTime = 0;
     this.glowIntensity = 0;
     this.targetScale = 1;
+
+    // Increment loadId to invalidate any pending image loads
+    // This prevents race conditions where old loads complete after reset
+    this.loadId++;
 
     if (this.characterSprite) {
       this.characterSprite.alpha = 0;
