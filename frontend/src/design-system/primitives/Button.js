@@ -9,16 +9,47 @@
  * - Softer shadows using new shadow system
  * - Better focus transitions
  * - Enhanced disabled states
+ * - Material-style ripple effect on click
  *
  * @example
  * <Button variant="primary" size="md">Click me</Button>
  * <Button variant="danger" size="sm" loading>Deleting...</Button>
  */
 
-import React, { forwardRef, memo } from 'react';
+import React, { forwardRef, memo, useState, useCallback, useLayoutEffect } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
 import { theme, springs } from '../tokens';
+
+// Ripple animation
+const rippleAnimation = keyframes`
+  0% {
+    transform: scale(0);
+    opacity: 0.4;
+  }
+  100% {
+    transform: scale(4);
+    opacity: 0;
+  }
+`;
+
+const RippleContainer = styled.span`
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+  z-index: 0;
+`;
+
+const RippleCircle = styled.span`
+  position: absolute;
+  border-radius: 50%;
+  background: ${props => props.$color || 'rgba(255, 255, 255, 0.35)'};
+  animation: ${rippleAnimation} 600ms ease-out forwards;
+  transform: scale(0);
+  pointer-events: none;
+`;
 
 const spin = keyframes`
   to { transform: rotate(360deg); }
@@ -296,6 +327,7 @@ const LoadingWrapper = styled.span`
  * @param {boolean} fullWidth - Fill container width
  * @param {boolean} loading - Show loading spinner
  * @param {boolean} iconOnly - Icon-only button (square)
+ * @param {boolean} disableRipple - Disable ripple effect
  * @param {React.ReactNode} leftIcon - Icon before text
  * @param {React.ReactNode} rightIcon - Icon after text
  * @param {React.ReactNode} children - Button content
@@ -307,13 +339,44 @@ const Button = memo(forwardRef(function Button({
   fullWidth = false,
   loading = false,
   iconOnly = false,
+  disableRipple = false,
   leftIcon,
   rightIcon,
   disabled = false,
   type = 'button',
+  onClick,
   ...props
 }, ref) {
   const isDisabled = disabled || loading;
+  const [ripples, setRipples] = useState([]);
+
+  // Clean up completed ripples
+  useLayoutEffect(() => {
+    if (ripples.length === 0) return;
+    const timeoutId = setTimeout(() => {
+      setRipples([]);
+    }, 700);
+    return () => clearTimeout(timeoutId);
+  }, [ripples]);
+
+  // Handle ripple on click
+  const handleClick = useCallback((event) => {
+    if (!disableRipple && !isDisabled) {
+      const button = event.currentTarget;
+      const rect = button.getBoundingClientRect();
+      const size = Math.max(rect.width, rect.height);
+      const x = event.clientX - rect.left - size / 2;
+      const y = event.clientY - rect.top - size / 2;
+
+      setRipples(prev => [...prev, { x, y, size, key: Date.now() }]);
+    }
+    onClick?.(event);
+  }, [disableRipple, isDisabled, onClick]);
+
+  // Get ripple color based on variant
+  const rippleColor = variant === 'secondary' || variant === 'ghost'
+    ? 'rgba(0, 113, 227, 0.25)'
+    : 'rgba(255, 255, 255, 0.35)';
 
   return (
     <StyledButton
@@ -328,8 +391,26 @@ const Button = memo(forwardRef(function Button({
       whileTap={!isDisabled ? { scale: 0.97, y: 0 } : undefined}
       transition={springs.snappy}
       aria-busy={loading}
+      onClick={handleClick}
       {...props}
     >
+      {/* Ripple effect */}
+      {!disableRipple && ripples.length > 0 && (
+        <RippleContainer>
+          {ripples.map(ripple => (
+            <RippleCircle
+              key={ripple.key}
+              $color={rippleColor}
+              style={{
+                left: ripple.x,
+                top: ripple.y,
+                width: ripple.size,
+                height: ripple.size,
+              }}
+            />
+          ))}
+        </RippleContainer>
+      )}
       {loading && (
         <LoadingWrapper>
           <LoadingSpinner $size={size} />

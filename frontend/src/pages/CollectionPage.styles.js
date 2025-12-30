@@ -567,6 +567,32 @@ export const ErrorMessage = styled.div`
 
 // ==================== CHARACTER GRID ====================
 
+// Stagger animation variants for grid items
+export const gridContainerVariants = {
+  hidden: { opacity: 0 },
+  visible: {
+    opacity: 1,
+    transition: {
+      staggerChildren: 0.03,
+      delayChildren: 0.05
+    }
+  }
+};
+
+export const gridItemVariants = {
+  hidden: { opacity: 0, y: 15, scale: 0.95 },
+  visible: {
+    opacity: 1,
+    y: 0,
+    scale: 1,
+    transition: {
+      type: 'spring',
+      stiffness: 350,
+      damping: 25
+    }
+  }
+};
+
 export const CharacterGrid = styled(motion.div)`
   display: grid;
   /* Mobile: 2 columns with minimum card size for readability */
@@ -594,6 +620,12 @@ export const CharacterGrid = styled(motion.div)`
   @media (min-width: ${theme.breakpoints.xl}) {
     grid-template-columns: repeat(6, 1fr);
   }
+`;
+
+// Wrapper for individual grid items with stagger animation
+export const CharacterGridItem = styled(motion.div)`
+  /* Smooth appearance for staggered items */
+  will-change: opacity, transform;
 `;
 
 // ==================== PAGINATION ====================

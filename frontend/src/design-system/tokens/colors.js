@@ -94,6 +94,42 @@ export const colors = {
     legendary: 'rgba(255, 167, 38, 0.32)'
   },
 
+  // Rarity gradients - premium feel for cards and badges
+  rarityGradient: {
+    common: 'linear-gradient(135deg, #8e8e93 0%, #636366 100%)',
+    uncommon: 'linear-gradient(135deg, #32d74b 0%, #28a745 100%)',
+    rare: 'linear-gradient(135deg, #0a84ff 0%, #007aff 100%)',
+    epic: 'linear-gradient(135deg, #bf5af2 0%, #9c27b0 50%, #bf5af2 100%)',
+    legendary: 'linear-gradient(135deg, #ffd700 0%, #ff8c00 50%, #ffd700 100%)'
+  },
+
+  // Rarity border gradients for animated borders
+  rarityBorderGradient: {
+    common: 'linear-gradient(135deg, #8e8e93, #636366, #8e8e93)',
+    uncommon: 'linear-gradient(135deg, #32d74b, #28a745, #32d74b)',
+    rare: 'linear-gradient(135deg, #0a84ff, #007aff, #0a84ff)',
+    epic: 'linear-gradient(135deg, #bf5af2, #9c27b0, #af52de, #bf5af2)',
+    legendary: 'linear-gradient(135deg, #ffd700, #ff8c00, #ffb300, #ffd700)'
+  },
+
+  // Spotlight/radial glow for reveals and highlights
+  spotlight: {
+    legendary: 'radial-gradient(circle, rgba(255,215,0,0.35) 0%, rgba(255,140,0,0.15) 40%, transparent 70%)',
+    epic: 'radial-gradient(circle, rgba(191,90,242,0.30) 0%, rgba(156,39,176,0.12) 40%, transparent 70%)',
+    rare: 'radial-gradient(circle, rgba(10,132,255,0.25) 0%, transparent 60%)',
+    featured: 'radial-gradient(circle, rgba(245,166,35,0.30) 0%, transparent 70%)'
+  },
+
+  // Premium gradient presets
+  gradients: {
+    primary: 'linear-gradient(135deg, #0071e3 0%, #5856d6 100%)',
+    accent: 'linear-gradient(135deg, #5856d6 0%, #af52de 100%)',
+    featured: 'linear-gradient(135deg, #F5A623 0%, #FF6B00 100%)',
+    dark: 'linear-gradient(180deg, #1c1c1e 0%, #000000 100%)',
+    shimmer: 'linear-gradient(90deg, transparent 0%, rgba(255,255,255,0.08) 50%, transparent 100%)',
+    cardOverlay: 'linear-gradient(180deg, transparent 0%, rgba(0,0,0,0.7) 100%)'
+  },
+
   // Featured/promotional colors
   featured: '#F5A623',
   featuredHover: '#FDB63C',

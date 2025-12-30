@@ -25,3 +25,9 @@ export { ErrorMessage, SuccessMessage, WarningMessage } from './Messages';
 
 // Animated value displays
 export { default as AnimatedValue, AnimatedCurrency, AnimatedPoints, AnimatedScore, AnimatedPercentage } from './AnimatedValue';
+
+// Page transitions
+export { default as PageTransition, StaggerChild, FadeIn, SlideIn, ScaleIn, staggerContainer, staggerItem } from './PageTransition';
+
+// Ripple effect
+export { default as Ripple, useRipple } from './Ripple';

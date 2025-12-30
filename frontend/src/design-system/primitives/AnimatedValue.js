@@ -30,6 +30,16 @@ const pulse = keyframes`
   50% { transform: scale(1.05); }
 `;
 
+const flashGreen = keyframes`
+  0% { color: ${theme.colors.success}; text-shadow: 0 0 8px ${theme.colors.success}; }
+  100% { color: inherit; text-shadow: none; }
+`;
+
+const flashRed = keyframes`
+  0% { color: ${theme.colors.error}; text-shadow: 0 0 8px ${theme.colors.error}; }
+  100% { color: inherit; text-shadow: none; }
+`;
+
 // ==================== STYLED COMPONENTS ====================
 
 const Container = styled.span`
@@ -51,6 +61,15 @@ const ValueText = styled.span`
   /* Pulse animation on change */
   ${props => props.$animate && !props.$reducedMotion && css`
     animation: ${pulse} 0.3s ease-out;
+  `}
+
+  /* Color flash on value change */
+  ${props => props.$flashPositive && !props.$reducedMotion && css`
+    animation: ${flashGreen} 0.6s ease-out;
+  `}
+
+  ${props => props.$flashNegative && !props.$reducedMotion && css`
+    animation: ${flashRed} 0.6s ease-out;
   `}
 `;
 
@@ -160,6 +179,7 @@ const useAnimatedCount = (value, duration = 400, enabled = true) => {
  * @param {boolean} bold - Bold text
  * @param {Function} formatValue - Custom formatter
  * @param {string} ariaLabel - Accessible label
+ * @param {boolean} flashOnChange - Flash color on change (green/red)
  */
 const AnimatedValue = memo(function AnimatedValue({
   value,
@@ -170,6 +190,7 @@ const AnimatedValue = memo(function AnimatedValue({
   deltaDuration = 2000,
   animationDuration = 400,
   hapticOnChange = false,
+  flashOnChange = false,
   color,
   bold = false,
   formatValue,
@@ -180,8 +201,10 @@ const AnimatedValue = memo(function AnimatedValue({
   const [showDeltaIndicator, setShowDeltaIndicator] = useState(false);
   const [currentDelta, setCurrentDelta] = useState(0);
   const [animate, setAnimate] = useState(false);
+  const [flashType, setFlashType] = useState(null); // 'positive' | 'negative' | null
   const previousValueRef = useRef(value);
   const deltaTimerRef = useRef(null);
+  const flashTimerRef = useRef(null);
 
   // Check for reduced motion preference
   const prefersReducedMotion =
@@ -203,6 +226,17 @@ const AnimatedValue = memo(function AnimatedValue({
       // Trigger animation
       setAnimate(true);
       setTimeout(() => setAnimate(false), 300);
+
+      // Flash color on change
+      if (flashOnChange && delta !== 0) {
+        setFlashType(delta > 0 ? 'positive' : 'negative');
+        if (flashTimerRef.current) {
+          clearTimeout(flashTimerRef.current);
+        }
+        flashTimerRef.current = setTimeout(() => {
+          setFlashType(null);
+        }, 600);
+      }
 
       // Haptic feedback
       if (hapticOnChange && delta !== 0) {
@@ -232,8 +266,11 @@ const AnimatedValue = memo(function AnimatedValue({
       if (deltaTimerRef.current) {
         clearTimeout(deltaTimerRef.current);
       }
+      if (flashTimerRef.current) {
+        clearTimeout(flashTimerRef.current);
+      }
     };
-  }, [value, showDelta, deltaDuration, hapticOnChange]);
+  }, [value, showDelta, deltaDuration, hapticOnChange, flashOnChange]);
 
   // Format the display value
   const formattedValue = formatValue
@@ -273,6 +310,8 @@ const AnimatedValue = memo(function AnimatedValue({
         $color={color}
         $bold={bold}
         $animate={animate}
+        $flashPositive={flashType === 'positive'}
+        $flashNegative={flashType === 'negative'}
         $reducedMotion={prefersReducedMotion}
         aria-live="polite"
         aria-atomic="true"

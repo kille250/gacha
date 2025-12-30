@@ -69,7 +69,18 @@ export {
   AnimatedCurrency,
   AnimatedPoints,
   AnimatedScore,
-  AnimatedPercentage
+  AnimatedPercentage,
+  // Page transitions
+  PageTransition,
+  StaggerChild,
+  FadeIn,
+  SlideIn,
+  ScaleIn,
+  staggerContainer,
+  staggerItem,
+  // Ripple effect
+  Ripple,
+  useRipple
 } from './primitives';
 
 // Layout
@@ -161,6 +172,14 @@ export {
   enhancedFocus,
   microMotionVariants
 } from './utilities';
+
+// Effects
+export {
+  Confetti,
+  useConfetti,
+  HolographicCard,
+  holographicBorderStyle
+} from './effects';
 
 // Re-export theme as default for backward compatibility
 export { theme as default } from './tokens';
