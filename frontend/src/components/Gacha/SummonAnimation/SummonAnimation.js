@@ -119,6 +119,7 @@ export const SummonAnimation = ({
     rarity: effectRarity,
     timingMultiplier,
     skipEnabled,
+    currentPull,
     onPhaseChange: (newPhase) => {
       // Handle phase-specific effects
       if (newPhase === PHASES.INITIATION) {
@@ -326,8 +327,8 @@ export const SummonAnimation = ({
 
               {/* Rarity Icon */}
               <S.RarityIconContainer
-                initial={{ scale: 0, rotate: -180 }}
-                animate={{ scale: 1, rotate: 0 }}
+                initial={{ scale: 0, rotate: -180, x: '-50%', y: '-50%' }}
+                animate={{ scale: 1, rotate: 0, x: '-50%', y: '-50%' }}
                 transition={EASINGS.spring.bounce}
               >
                 {animConfig.icon}
