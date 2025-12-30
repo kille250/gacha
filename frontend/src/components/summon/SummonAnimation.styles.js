@@ -322,63 +322,6 @@ export const ShowcaseRaritySymbol = styled.span`
   opacity: 0.7;
 `;
 
-// ==================== CHARACTER INFO (Legacy - kept for backwards compatibility) ====================
-
-export const CharacterInfo = styled(motion.div)`
-  position: absolute;
-  bottom: 20%;
-  left: 0;
-  right: 0;
-  width: 100%;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  text-align: center;
-  color: white;
-  pointer-events: none;
-`;
-
-export const RarityBadge = styled.div`
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 6px 14px;
-  background: ${props => props.$color || '#6366f1'};
-  color: white;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 1.5px;
-  border-radius: 100px;
-  margin-bottom: 14px;
-  box-shadow: 0 4px 12px ${props => props.$color ? `${props.$color}80` : 'rgba(99, 102, 241, 0.5)'};
-  text-transform: uppercase;
-
-  svg {
-    font-size: 12px;
-  }
-`;
-
-export const CharacterName = styled.h2`
-  margin: 0 0 8px;
-  font-size: 26px;
-  font-weight: 700;
-  color: white;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
-  text-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
-
-  @media (max-width: 768px) {
-    font-size: 22px;
-  }
-`;
-
-export const CharacterSeries = styled.p`
-  margin: 0;
-  font-size: 12px;
-  color: rgba(255, 255, 255, 0.7);
-  letter-spacing: 0.02em;
-`;
-
 // ==================== MULTI-PULL RESULTS ====================
 
 export const ResultsOverlay = styled(motion.div)`
@@ -458,53 +401,6 @@ export const ResultsGrid = styled.div`
 // Result card wrapper - provides animation wrapper for CharacterCard
 export const ResultCardWrapper = styled(motion.div)`
   /* Minimal wrapper - CharacterCard provides all styling */
-`;
-
-// Legacy ResultCard styles kept for backwards compatibility but deprecated
-export const ResultCard = styled(motion.div)`
-  background: rgba(20, 20, 28, 1);
-  border-radius: 14px;
-  overflow: hidden;
-  border: 2px solid var(--rarity-color, #6366f1);
-  box-shadow: 0 0 16px var(--rarity-color-alpha, rgba(99, 102, 241, 0.25));
-`;
-
-export const ResultImageWrapper = styled.div`
-  height: 120px;
-  overflow: hidden;
-
-  img, video {
-    width: 100%;
-    height: 100%;
-    object-fit: cover;
-  }
-
-  @media (max-width: 768px) {
-    height: 100px;
-  }
-`;
-
-export const ResultInfo = styled.div`
-  padding: 10px;
-  text-align: center;
-`;
-
-export const ResultName = styled.div`
-  font-size: 12px;
-  font-weight: 600;
-  color: white;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-  margin-bottom: 4px;
-`;
-
-export const ResultRarity = styled.div`
-  font-size: 10px;
-  font-weight: 700;
-  text-transform: uppercase;
-  color: var(--rarity-color, #6366f1);
-  letter-spacing: 0.5px;
 `;
 
 export const CloseButton = styled(motion.button)`
