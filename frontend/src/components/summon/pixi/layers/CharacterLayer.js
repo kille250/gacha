@@ -44,13 +44,14 @@ export class CharacterLayer {
     // Image loading state
     this.imageLoaded = false;
     this.imageUrl = null;
+    this.isDestroyed = false;
   }
 
   /**
    * Set the character image
    */
   async setImage(imageUrl, getImagePath) {
-    if (!imageUrl) return;
+    if (!imageUrl || this.isDestroyed || !this.container) return;
 
     this.imageUrl = getImagePath ? getImagePath(imageUrl) : imageUrl;
 
@@ -82,12 +83,17 @@ export class CharacterLayer {
       this.characterSprite.visible = false; // Double-ensure no flash
       this.characterSprite.tint = 0x000000; // Start with black tint too
 
-      // Add to container after silhouette
-      this.container.addChildAt(this.characterSprite, 1);
+      // Add to container after silhouette (safely handle variable child count)
+      const insertIndex = Math.min(1, this.container.children.length);
+      if (insertIndex < this.container.children.length) {
+        this.container.addChildAt(this.characterSprite, insertIndex);
+      } else {
+        this.container.addChild(this.characterSprite);
+      }
 
       this.imageLoaded = true;
     } catch (error) {
-      console.warn('Failed to load character image:', error);
+      console.warn('Failed to load character image:', error.message || error);
       this.imageLoaded = false;
     }
   }
@@ -144,6 +150,7 @@ export class CharacterLayer {
    * Start reveal animation
    */
   reveal(options = {}) {
+    if (this.isDestroyed) return;
     this.phase = 'revealing';
     this.revealProgress = 0;
     this.scaleProgress = 0;
@@ -179,6 +186,7 @@ export class CharacterLayer {
    * Hide character
    */
   hide() {
+    if (this.isDestroyed) return;
     this.phase = 'hidden';
     this.revealProgress = 0;
     this.scaleProgress = 0;
@@ -189,14 +197,16 @@ export class CharacterLayer {
       this.characterSprite.scale.set(this.baseScale * 0.01);
       this.characterSprite.tint = 0x000000;
     }
-    this.silhouette.clear();
-    this.glowOverlay.clear();
+    // Safely clear graphics (may be null if destroyed)
+    this.silhouette?.clear();
+    this.glowOverlay?.clear();
   }
 
   /**
    * Update animation
    */
   update(dt = 1) {
+    if (this.isDestroyed) return;
     this.time += dt / 60;
 
     if (this.phase === 'hidden') {
@@ -314,6 +324,7 @@ export class CharacterLayer {
    * Update glow overlay
    */
   updateGlow() {
+    if (!this.glowOverlay) return;
     this.glowOverlay.clear();
 
     if (this.glowIntensity <= 0 || !this.characterSprite) return;
@@ -339,6 +350,7 @@ export class CharacterLayer {
    * Set showcase mode
    */
   setShowcase() {
+    if (this.isDestroyed) return;
     this.phase = 'showcase';
     // Reset showcaseTime so floating animation starts smoothly from center (sin(0) = 0).
     this.showcaseTime = 0;
@@ -356,6 +368,7 @@ export class CharacterLayer {
    * Reset
    */
   reset() {
+    if (this.isDestroyed) return;
     this.phase = 'hidden';
     this.revealProgress = 0;
     this.scaleProgress = 0;
@@ -375,20 +388,26 @@ export class CharacterLayer {
       this.characterSprite.tint = 0xffffff;
     }
 
-    this.silhouette.clear();
-    this.glowOverlay.clear();
+    // Safely clear graphics (may be null if destroyed)
+    this.silhouette?.clear();
+    this.glowOverlay?.clear();
   }
 
   /**
    * Destroy layer
    */
   destroy() {
+    this.isDestroyed = true;
     if (this.characterSprite) {
       this.characterSprite.destroy();
+      this.characterSprite = null;
     }
-    this.silhouette.destroy();
-    this.glowOverlay.destroy();
-    this.container.destroy({ children: true });
+    this.silhouette?.destroy();
+    this.silhouette = null;
+    this.glowOverlay?.destroy();
+    this.glowOverlay = null;
+    this.container?.destroy({ children: true });
+    this.container = null;
   }
 }
 
