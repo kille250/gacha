@@ -60,11 +60,30 @@ const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
 const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
 
 // ==================== PAGE LOADER ====================
-// Suspense fallback component for lazy-loaded pages
+// Suspense fallback component for lazy-loaded pages - Branded experience
 const PageLoader = () => (
   <LoaderContainer>
-    <LoaderSpinner />
-    <LoaderText>Loading...</LoaderText>
+    <LoaderBrand
+      initial={{ opacity: 0, scale: 0.8 }}
+      animate={{ opacity: 1, scale: 1 }}
+      transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
+    >
+      <LoaderLogo>✦</LoaderLogo>
+      <LoaderRing />
+    </LoaderBrand>
+    <LoaderText
+      as={motion.div}
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay: 0.2, duration: 0.3 }}
+    >
+      Summoning...
+    </LoaderText>
+    <LoaderParticles>
+      {[...Array(6)].map((_, i) => (
+        <LoaderParticle key={i} $delay={i * 0.15} $index={i} />
+      ))}
+    </LoaderParticles>
   </LoaderContainer>
 );
 
@@ -79,11 +98,23 @@ const HomeRedirect = () => {
   return <Navigate to={user ? "/gacha" : "/login"} replace />;
 };
 
-// Page transition variants - subtle fade for premium feel
+// Page transition variants - cinematic feel with spring physics
 const pageTransitionVariants = {
-  initial: { opacity: 0 },
-  animate: { opacity: 1, transition: { duration: 0.15, ease: [0.25, 0.1, 0.25, 1] } },
-  exit: { opacity: 0, transition: { duration: 0.1 } }
+  initial: { opacity: 0, y: 12 },
+  animate: {
+    opacity: 1,
+    y: 0,
+    transition: {
+      duration: 0.3,
+      ease: [0.25, 0.1, 0.25, 1],
+      staggerChildren: 0.05
+    }
+  },
+  exit: {
+    opacity: 0,
+    y: -8,
+    transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
+  }
 };
 
 // Animated page wrapper component
@@ -393,28 +424,108 @@ const spin = keyframes`
   to { transform: rotate(360deg); }
 `;
 
+const pulse = keyframes`
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.7; transform: scale(1.05); }
+`;
+
+const float = keyframes`
+  0%, 100% { transform: translateY(0) translateX(0); opacity: 0; }
+  10% { opacity: 1; }
+  90% { opacity: 1; }
+  100% { transform: translateY(-60px) translateX(var(--float-x, 10px)); opacity: 0; }
+`;
+
+const shimmerGlow = keyframes`
+  0%, 100% {
+    box-shadow: 0 0 20px rgba(255, 215, 0, 0.3), 0 0 40px rgba(255, 215, 0, 0.1);
+  }
+  50% {
+    box-shadow: 0 0 30px rgba(255, 215, 0, 0.5), 0 0 60px rgba(255, 215, 0, 0.2);
+  }
+`;
+
 const LoaderContainer = styled.div`
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   min-height: 100vh;
-  background: ${theme.colors.background};
-  gap: ${theme.spacing.md};
+  background: radial-gradient(ellipse at center, ${theme.colors.backgroundSecondary} 0%, ${theme.colors.background} 70%);
+  gap: ${theme.spacing.lg};
+  position: relative;
+  overflow: hidden;
 `;
 
-const LoaderSpinner = styled.div`
-  width: 48px;
-  height: 48px;
-  border: 3px solid ${theme.colors.surfaceBorder};
-  border-top-color: ${theme.colors.primary};
+const LoaderBrand = styled(motion.div)`
+  position: relative;
+  width: 80px;
+  height: 80px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+`;
+
+const LoaderLogo = styled.div`
+  font-size: 36px;
+  color: ${theme.colors.featured};
+  z-index: 2;
+  animation: ${pulse} 2s ease-in-out infinite;
+  text-shadow: 0 0 20px rgba(255, 215, 0, 0.5);
+`;
+
+const LoaderRing = styled.div`
+  position: absolute;
+  inset: 0;
+  border: 3px solid transparent;
+  border-top-color: ${theme.colors.featured};
+  border-right-color: ${theme.colors.featured};
   border-radius: 50%;
-  animation: ${spin} 0.8s linear infinite;
+  animation: ${spin} 1.2s cubic-bezier(0.5, 0.1, 0.5, 0.9) infinite, ${shimmerGlow} 2s ease-in-out infinite;
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: -6px;
+    border: 2px solid transparent;
+    border-top-color: rgba(255, 215, 0, 0.3);
+    border-radius: 50%;
+    animation: ${spin} 2s linear infinite reverse;
+  }
 `;
 
 const LoaderText = styled.div`
-  font-size: ${theme.fontSizes.sm};
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.medium};
   color: ${theme.colors.textSecondary};
+  letter-spacing: ${theme.letterSpacing.wide};
+`;
+
+const LoaderParticles = styled.div`
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+`;
+
+const LoaderParticle = styled.div`
+  position: absolute;
+  width: 4px;
+  height: 4px;
+  background: ${theme.colors.featured};
+  border-radius: 50%;
+  bottom: 40%;
+  left: ${props => 45 + (props.$index % 3) * 5}%;
+  --float-x: ${props => (props.$index % 2 === 0 ? '' : '-')}${props => 10 + props.$index * 5}px;
+  animation: ${float} 2.5s ease-out infinite;
+  animation-delay: ${props => props.$delay}s;
+  opacity: 0;
+  box-shadow: 0 0 6px ${theme.colors.featured};
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    opacity: 0;
+  }
 `;
 
 export default App;

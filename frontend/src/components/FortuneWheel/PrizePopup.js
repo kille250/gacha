@@ -5,7 +5,7 @@
  * Displays the won prize with animation.
  */
 
-import React, { useEffect, useCallback } from 'react';
+import React, { useEffect, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -27,8 +27,25 @@ import {
   PrizeTitle,
   PrizeDescription,
   PrizeValue,
-  PrizeCloseButton
+  PrizeCloseButton,
+  ConfettiPiece
 } from './FortuneWheel.styles';
+
+// Confetti colors
+const CONFETTI_COLORS = ['#FFD700', '#FFA500', '#FF6B6B', '#4ECDC4', '#A855F7', '#3B82F6', '#22C55E'];
+
+// Generate random confetti pieces
+const generateConfetti = (count = 30) => {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i,
+    left: Math.random() * 100,
+    size: 6 + Math.random() * 8,
+    color: CONFETTI_COLORS[Math.floor(Math.random() * CONFETTI_COLORS.length)],
+    duration: 2 + Math.random() * 2,
+    delay: Math.random() * 0.5,
+    isCircle: Math.random() > 0.5
+  }));
+};
 
 // Animation variants for framer-motion
 const overlayVariants = {
@@ -197,6 +214,13 @@ const PrizePopup = ({
     }
   }, [onClose]);
 
+  // Generate confetti pieces (more for jackpot)
+  const confettiPieces = useMemo(() => {
+    if (!isOpen) return [];
+    const count = isJackpot ? 50 : (segment?.type !== 'nothing' ? 25 : 0);
+    return generateConfetti(count);
+  }, [isOpen, isJackpot, segment?.type]);
+
   return (
     <AnimatePresence>
       {isOpen && (
@@ -207,6 +231,19 @@ const PrizePopup = ({
           exit="exit"
           onClick={handleOverlayClick}
         >
+          {/* Confetti celebration */}
+          {confettiPieces.map(piece => (
+            <ConfettiPiece
+              key={piece.id}
+              $left={piece.left}
+              $size={piece.size}
+              $color={piece.color}
+              $duration={piece.duration}
+              $delay={piece.delay}
+              $isCircle={piece.isCircle}
+            />
+          ))}
+
           <PrizePopupContent
             variants={contentVariants}
             initial="hidden"

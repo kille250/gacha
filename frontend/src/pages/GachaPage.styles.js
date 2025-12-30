@@ -429,6 +429,33 @@ export const NavButton = styled.button`
   }
 `;
 
+export const BannerCarouselWrapper = styled.div`
+  position: relative;
+
+  /* Scroll hint gradients */
+  &::before,
+  &::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 60px;
+    pointer-events: none;
+    z-index: 2;
+    opacity: 0.9;
+  }
+
+  &::before {
+    left: 0;
+    background: linear-gradient(to right, ${theme.colors.background}, transparent);
+  }
+
+  &::after {
+    right: 0;
+    background: linear-gradient(to left, ${theme.colors.background}, transparent);
+  }
+`;
+
 export const BannerCarousel = styled.div`
   display: flex;
   gap: ${theme.spacing.lg};
@@ -440,6 +467,7 @@ export const BannerCarousel = styled.div`
   margin: 0 -${theme.spacing.sm};
   padding-left: ${theme.spacing.sm};
   padding-right: ${theme.spacing.sm};
+  scroll-behavior: smooth;
 
   &::-webkit-scrollbar {
     display: none;
@@ -474,9 +502,13 @@ export const NetflixCardInner = styled(motion.div)`
     ${NetflixBannerCard}:hover & {
       box-shadow: ${theme.shadows.cardHover};
       border-color: ${theme.colors.surfaceBorder};
-      /* Subtle lift - Apple aesthetic */
-      transform: translateY(-3px);
+      /* Enhanced lift for more impactful hover */
+      transform: translateY(-6px) scale(1.01);
     }
+  }
+
+  ${NetflixBannerCard}:active & {
+    transform: translateY(-2px) scale(0.99);
   }
 
   ${NetflixBannerCard}:focus-visible & {

@@ -62,6 +62,7 @@ import {
   CarouselTitle,
   CarouselNav,
   NavButton,
+  BannerCarouselWrapper,
   BannerCarousel,
   NetflixBannerCard,
   NetflixCardInner,
@@ -411,54 +412,56 @@ const GachaPage = () => {
               </CarouselNav>
             </CarouselHeader>
 
-            <BannerCarousel
-              ref={carouselRef}
-              onKeyDown={handleCarouselKeyDown}
-              tabIndex={0}
-              role="region"
-              aria-label={t('gacha.allBanners') || 'All banners'}
-            >
-              {otherBanners.map((banner, index) => (
-                <NetflixBannerCard
-                  key={banner.id}
-                  onClick={() => navigate(`/banner/${banner.id}`)}
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: index * 0.05 }}
-                  role="button"
-                  tabIndex={0}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' || e.key === ' ') {
-                      e.preventDefault();
-                      navigate(`/banner/${banner.id}`);
-                    }
-                  }}
-                  aria-label={`${banner.name} - ${banner.series}`}
-                >
-                  <NetflixCardInner>
-                    <NetflixImageContainer>
-                      <NetflixBannerImage src={getBannerImage(banner.image)} alt="" />
-                      <NetflixImageOverlay />
-                    </NetflixImageContainer>
-                    <NetflixCardInfo>
-                      <NetflixCardTitle>{banner.name}</NetflixCardTitle>
-                      <NetflixCardMeta>
-                        <NetflixSeries>{banner.series}</NetflixSeries>
-                        <NetflixCharCount>{banner.Characters?.length || 0} {t('gacha.chars')}</NetflixCharCount>
-                      </NetflixCardMeta>
-                      <NetflixCardFooter>
-                        <NetflixCost>
-                          <IconPoints aria-hidden="true" /> {Math.floor(100 * (banner.costMultiplier || 1.5))} {t('common.points')}
-                        </NetflixCost>
-                        {banner.rateBoost && (
-                          <NetflixBoost>+{Math.round((banner.rateBoost - 1) * 100)}% {t('gacha.boost')}</NetflixBoost>
-                        )}
-                      </NetflixCardFooter>
-                    </NetflixCardInfo>
-                  </NetflixCardInner>
-                </NetflixBannerCard>
-              ))}
-            </BannerCarousel>
+            <BannerCarouselWrapper>
+              <BannerCarousel
+                ref={carouselRef}
+                onKeyDown={handleCarouselKeyDown}
+                tabIndex={0}
+                role="region"
+                aria-label={t('gacha.allBanners') || 'All banners'}
+              >
+                {otherBanners.map((banner, index) => (
+                  <NetflixBannerCard
+                    key={banner.id}
+                    onClick={() => navigate(`/banner/${banner.id}`)}
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ delay: index * 0.05 }}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        navigate(`/banner/${banner.id}`);
+                      }
+                    }}
+                    aria-label={`${banner.name} - ${banner.series}`}
+                  >
+                    <NetflixCardInner>
+                      <NetflixImageContainer>
+                        <NetflixBannerImage src={getBannerImage(banner.image)} alt="" />
+                        <NetflixImageOverlay />
+                      </NetflixImageContainer>
+                      <NetflixCardInfo>
+                        <NetflixCardTitle>{banner.name}</NetflixCardTitle>
+                        <NetflixCardMeta>
+                          <NetflixSeries>{banner.series}</NetflixSeries>
+                          <NetflixCharCount>{banner.Characters?.length || 0} {t('gacha.chars')}</NetflixCharCount>
+                        </NetflixCardMeta>
+                        <NetflixCardFooter>
+                          <NetflixCost>
+                            <IconPoints aria-hidden="true" /> {Math.floor(100 * (banner.costMultiplier || 1.5))} {t('common.points')}
+                          </NetflixCost>
+                          {banner.rateBoost && (
+                            <NetflixBoost>+{Math.round((banner.rateBoost - 1) * 100)}% {t('gacha.boost')}</NetflixBoost>
+                          )}
+                        </NetflixCardFooter>
+                      </NetflixCardInfo>
+                    </NetflixCardInner>
+                  </NetflixBannerCard>
+                ))}
+              </BannerCarousel>
+            </BannerCarouselWrapper>
           </BannerCarouselSection>
         )}
 

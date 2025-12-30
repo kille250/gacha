@@ -23,3 +23,6 @@ export { useSwipeToDelete } from '../useSwipeToDelete';
 
 // Filter state
 export { useFilterState, useFilteredData } from '../useFilterState';
+
+// Keyboard shortcuts
+export { default as useKeyboardShortcuts, SHORTCUT_HELP } from './useKeyboardShortcuts';
