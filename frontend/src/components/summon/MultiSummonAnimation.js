@@ -3,6 +3,7 @@
  *
  * Wrapper component for handling multi-pull summon animations.
  * Manages the sequence of individual animations and skip-all functionality.
+ * Uses CharacterCard component for consistent styling with collection.
  */
 
 import React, { useState, useEffect, useCallback, useRef } from 'react';
@@ -11,6 +12,7 @@ import { useTranslation } from 'react-i18next';
 import { useRarity } from '../../context/RarityContext';
 import { useGachaEffects } from '../../engine/effects/useGachaEffects';
 import { isVideo } from '../../utils/mediaUtils';
+import CharacterCard from '../patterns/CharacterCard';
 
 import { SummonAnimation } from './SummonAnimation';
 import * as S from './SummonAnimation.styles';
@@ -33,8 +35,8 @@ export const MultiSummonAnimation = ({
   // Refs
   const hasCompletedRef = useRef(false);
 
-  // Context hooks - use getRarityAnimation to get dynamic colors
-  const { getRarityAnimation } = useRarity();
+  // Context hooks - use getRarityColor/Glow for CharacterCard
+  const { getRarityColor, getRarityGlow } = useRarity();
   const { stopAllEffects } = useGachaEffects();
 
   // Current character
@@ -137,12 +139,12 @@ export const MultiSummonAnimation = ({
 
           <S.ResultsGrid>
             {characters.map((char, index) => {
-              // Use dynamic rarity colors from context (admin-configurable)
-              const animConfig = getRarityAnimation(char.rarity);
-              const colorHex = animConfig.color;
+              // Use CharacterCard for consistent styling with collection
+              const imagePath = getImagePath ? getImagePath(char.image) : char.image;
+              const isVideoMedia = isVideo(char.image);
 
               return (
-                <S.ResultCard
+                <S.ResultCardWrapper
                   key={index}
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
@@ -150,34 +152,17 @@ export const MultiSummonAnimation = ({
                     delay: 0.1 + index * 0.03,
                     duration: 0.25,
                   }}
-                  style={{
-                    '--rarity-color': colorHex,
-                    '--rarity-color-alpha': `${colorHex}40`,
-                  }}
                 >
-                  <S.ResultImageWrapper>
-                    {isVideo(char.image) ? (
-                      <video
-                        src={getImagePath ? getImagePath(char.image) : char.image}
-                        autoPlay
-                        loop
-                        muted
-                        playsInline
-                      />
-                    ) : (
-                      <img
-                        src={getImagePath ? getImagePath(char.image) : char.image}
-                        alt={char.name}
-                      />
-                    )}
-                  </S.ResultImageWrapper>
-                  <S.ResultInfo>
-                    <S.ResultName>{char.name}</S.ResultName>
-                    <S.ResultRarity style={{ color: colorHex }}>
-                      {char.rarity}
-                    </S.ResultRarity>
-                  </S.ResultInfo>
-                </S.ResultCard>
+                  <CharacterCard
+                    character={char}
+                    isOwned={true}
+                    isVideo={isVideoMedia}
+                    imageSrc={imagePath}
+                    rarityColor={getRarityColor(char.rarity)}
+                    rarityGlow={getRarityGlow(char.rarity)}
+                    levelInfo={{ level: 1 }}
+                  />
+                </S.ResultCardWrapper>
               );
             })}
           </S.ResultsGrid>

@@ -2,10 +2,12 @@
  * SummonAnimation Styles
  *
  * Styled components for the React wrapper.
+ * Updated to match collection card styling for visual consistency.
  */
 
-import styled from 'styled-components';
+import styled, { css, keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
+import { theme } from '../../design-system';
 
 // ==================== CONTAINER ====================
 
@@ -160,7 +162,156 @@ export const SkipHint = styled(motion.div)`
   letter-spacing: 0.02em;
 `;
 
-// ==================== CHARACTER INFO ====================
+// ==================== SHOWCASE CARD (Collection-style) ====================
+
+// Premium shimmer animation for legendary cards (matches CharacterCard)
+const shimmer = keyframes`
+  0% {
+    background-position: -200% 0;
+    opacity: 0;
+  }
+  50% {
+    opacity: 0.6;
+  }
+  100% {
+    background-position: 200% 0;
+    opacity: 0;
+  }
+`;
+
+// Legendary shimmer effect (matches CharacterCard)
+const legendaryShimmer = css`
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: linear-gradient(
+      110deg,
+      transparent 25%,
+      rgba(255, 167, 38, 0.08) 45%,
+      rgba(255, 215, 0, 0.12) 50%,
+      rgba(255, 167, 38, 0.08) 55%,
+      transparent 75%
+    );
+    background-size: 200% 100%;
+    animation: ${shimmer} 4s ease-in-out infinite;
+    pointer-events: none;
+    z-index: 3;
+    border-radius: inherit;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+      opacity: 0;
+    }
+  }
+`;
+
+// Showcase card container - matches CharacterCard styling
+export const ShowcaseCard = styled(motion.div)`
+  position: absolute;
+  bottom: 15%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 90%;
+  max-width: 280px;
+  background: ${theme.colors.surface};
+  border-radius: ${theme.radius.xl};
+  overflow: hidden;
+  border: 1px solid ${props => props.$color || theme.colors.surfaceBorder};
+  box-shadow:
+    ${theme.shadows.card},
+    0 0 20px ${props => props.$color ? `${props.$color}50` : 'transparent'},
+    0 0 40px ${props => props.$color ? `${props.$color}30` : 'transparent'};
+  pointer-events: none;
+
+  /* Apply legendary shimmer effect */
+  ${props => props.$rarity === 'legendary' && legendaryShimmer}
+
+  @media (max-width: 480px) {
+    max-width: 240px;
+    bottom: 18%;
+  }
+`;
+
+export const ShowcaseImageWrapper = styled.div`
+  position: relative;
+  aspect-ratio: 1;
+  overflow: hidden;
+  background: ${theme.colors.backgroundTertiary};
+`;
+
+export const ShowcaseImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+export const ShowcaseVideo = styled.video`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+// Rarity indicator bar at bottom of image (matches CharacterCard)
+export const ShowcaseRarityIndicator = styled.div`
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  height: 3px;
+  background: ${props => props.$color};
+  box-shadow: 0 0 12px ${props => props.$color}80;
+`;
+
+// NEW badge for newly summoned characters
+export const ShowcaseNewBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  padding: 5px 10px;
+  background: linear-gradient(135deg, #34C759, #2FB64E);
+  backdrop-filter: blur(8px);
+  border-radius: ${theme.radius.full};
+  font-size: 11px;
+  font-weight: 700;
+  color: white;
+  letter-spacing: 0.5px;
+  box-shadow: 0 2px 8px rgba(52, 199, 89, 0.4);
+  z-index: 2;
+`;
+
+export const ShowcaseContent = styled.div`
+  padding: ${theme.spacing.md};
+`;
+
+export const ShowcaseName = styled.h3`
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  line-height: ${theme.lineHeights.snug};
+  color: ${theme.colors.text};
+  margin: 0 0 4px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+export const ShowcaseSeries = styled.p`
+  font-size: ${theme.fontSizes.xs};
+  line-height: ${theme.lineHeights.snug};
+  color: ${theme.colors.textTertiary};
+  margin: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+// Rarity symbol for accessibility (matches CharacterCard)
+export const ShowcaseRaritySymbol = styled.span`
+  margin-right: 4px;
+  opacity: 0.7;
+`;
+
+// ==================== CHARACTER INFO (Legacy - kept for backwards compatibility) ====================
 
 export const CharacterInfo = styled(motion.div)`
   position: absolute;
@@ -266,8 +417,8 @@ export const ResultsSubtitle = styled.p`
 
 export const ResultsGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
-  gap: 14px;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 16px;
   margin-bottom: 28px;
   max-height: 55vh;
   overflow-y: auto;
@@ -288,11 +439,17 @@ export const ResultsGrid = styled.div`
   }
 
   @media (max-width: 768px) {
-    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-    gap: 10px;
+    grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+    gap: 12px;
   }
 `;
 
+// Result card wrapper - provides animation wrapper for CharacterCard
+export const ResultCardWrapper = styled(motion.div)`
+  /* Minimal wrapper - CharacterCard provides all styling */
+`;
+
+// Legacy ResultCard styles kept for backwards compatibility but deprecated
 export const ResultCard = styled(motion.div)`
   background: rgba(20, 20, 28, 1);
   border-radius: 14px;

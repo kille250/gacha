@@ -15,24 +15,24 @@ import React, {
   useMemo,
 } from 'react';
 import { AnimatePresence } from 'framer-motion';
-import { FaStar, FaGem, FaTrophy, FaDice } from 'react-icons/fa';
 
 import { useTranslation } from 'react-i18next';
 import { useRarity } from '../../context/RarityContext';
 import { useGachaEffects } from '../../engine/effects/useGachaEffects';
+import { isVideo } from '../../utils/mediaUtils';
 import { SummonScene } from './pixi/SummonScene';
 import { ANIMATION_PHASES } from './pixi/constants';
 import * as S from './SummonAnimation.styles';
 
 // ==================== UTILITIES ====================
 
-const getIconByRarity = (rarity) => {
-  const rarityLower = rarity?.toLowerCase();
-  if (rarityLower === 'legendary') return <FaTrophy />;
-  if (rarityLower === 'epic') return <FaGem />;
-  if (rarityLower === 'rare') return <FaStar />;
-  if (rarityLower === 'uncommon') return <FaStar />;
-  return <FaDice />;
+// Rarity symbols for accessibility (matches CharacterCard)
+const RARITY_SYMBOLS = {
+  common: '●',
+  uncommon: '◆',
+  rare: '★',
+  epic: '✦',
+  legendary: '✧',
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -90,8 +90,8 @@ export const SummonAnimation = forwardRef(({
   // Translation
   const { t } = useTranslation();
 
-  // Get rarity context with animation config
-  const { getRarityAnimation } = useRarity();
+  // Get rarity context with animation config and color functions
+  const { getRarityAnimation, getRarityColor } = useRarity();
   const effectRarity = normalizedEntity?.rarity || 'common';
 
   // Get dynamic rarity config from context (admin-configurable)
@@ -460,25 +460,50 @@ export const SummonAnimation = forwardRef(({
           )}
         </AnimatePresence>
 
-        {/* Character Info (shown when showcase ready for THIS entity) */}
+        {/* Character Card (shown when showcase ready for THIS entity) */}
+        {/* Uses collection-style card for visual consistency */}
         {/* Bug fix: Check showcaseReadyForEntityRef to prevent name flash when entity changes */}
         <AnimatePresence>
           {isShowcaseReady && normalizedEntity && showcaseReadyForEntityRef.current === normalizedEntity.id && (
-            <S.CharacterInfo
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              exit={{ opacity: 0 }}
-              transition={{ duration: 0.2 }}
+            <S.ShowcaseCard
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20, scale: 0.95 }}
+              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
+              $color={getRarityColor(effectRarity)}
+              $rarity={effectRarity}
             >
-              <S.RarityBadge $color={rarityAnimConfig.color}>
-                {getIconByRarity(effectRarity)}
-                <span>{effectRarity.toUpperCase()}</span>
-              </S.RarityBadge>
-              <S.CharacterName>{normalizedEntity.name}</S.CharacterName>
-              {normalizedEntity.series && (
-                <S.CharacterSeries>{normalizedEntity.series}</S.CharacterSeries>
-              )}
-            </S.CharacterInfo>
+              <S.ShowcaseImageWrapper>
+                {isVideo(normalizedEntity.image) ? (
+                  <S.ShowcaseVideo
+                    src={getImagePath ? getImagePath(normalizedEntity.image) : normalizedEntity.image}
+                    autoPlay
+                    loop
+                    muted
+                    playsInline
+                    aria-hidden="true"
+                  />
+                ) : (
+                  <S.ShowcaseImage
+                    src={getImagePath ? getImagePath(normalizedEntity.image) : normalizedEntity.image}
+                    alt=""
+                  />
+                )}
+                <S.ShowcaseNewBadge>NEW</S.ShowcaseNewBadge>
+                <S.ShowcaseRarityIndicator $color={getRarityColor(effectRarity)} />
+              </S.ShowcaseImageWrapper>
+              <S.ShowcaseContent>
+                <S.ShowcaseName>
+                  <S.ShowcaseRaritySymbol aria-hidden="true">
+                    {RARITY_SYMBOLS[effectRarity] || RARITY_SYMBOLS.common}
+                  </S.ShowcaseRaritySymbol>
+                  {normalizedEntity.name}
+                </S.ShowcaseName>
+                {normalizedEntity.series && (
+                  <S.ShowcaseSeries>{normalizedEntity.series}</S.ShowcaseSeries>
+                )}
+              </S.ShowcaseContent>
+            </S.ShowcaseCard>
           )}
         </AnimatePresence>
 
