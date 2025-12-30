@@ -10,6 +10,7 @@ import { AudioProvider } from './engine/audio/AudioProvider';
 import { PixiOverlayProvider } from './engine/pixi/PixiOverlayProvider';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { theme } from './design-system';
+import { CelebrationProvider, FloatingPointsProvider } from './design-system/effects';
 import { initVisibilityHandler, enableCacheDebugging } from './cache';
 import { ErrorBoundary, MainLayout } from './components/UI';
 
@@ -386,6 +387,8 @@ function App() {
             <ToastProvider>
             <AudioProvider>
               <PixiOverlayProvider>
+              <CelebrationProvider>
+              <FloatingPointsProvider>
               <Router>
                 <GlobalStyle />
                 {/* Global CAPTCHA handler - listens for CAPTCHA_REQUIRED events from API */}
@@ -402,6 +405,8 @@ function App() {
                   </Suspense>
                 </AppContainer>
               </Router>
+              </FloatingPointsProvider>
+              </CelebrationProvider>
               </PixiOverlayProvider>
             </AudioProvider>
             </ToastProvider>
@@ -423,10 +428,52 @@ function App() {
   return content;
 }
 
+// Ambient gradient animation for premium feel
+const ambientShift = keyframes`
+  0%, 100% {
+    opacity: 1;
+    transform: translate(0, 0) scale(1);
+  }
+  33% {
+    opacity: 0.8;
+    transform: translate(2%, -2%) scale(1.02);
+  }
+  66% {
+    opacity: 0.9;
+    transform: translate(-1%, 1%) scale(0.98);
+  }
+`;
+
 const AppContainer = styled.div`
   min-height: 100vh;
   display: flex;
   flex-direction: column;
+  position: relative;
+  overflow-x: hidden;
+
+  /* Ambient gradient background for premium feel */
+  &::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background:
+      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(0, 113, 227, 0.12), transparent 50%),
+      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(88, 86, 214, 0.08), transparent 50%),
+      radial-gradient(ellipse 50% 30% at 10% 60%, rgba(175, 82, 222, 0.06), transparent 50%);
+    pointer-events: none;
+    z-index: 0;
+    animation: ${ambientShift} 20s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+    }
+  }
+
+  /* Ensure content is above the gradient */
+  & > * {
+    position: relative;
+    z-index: 1;
+  }
 `;
 
 // ==================== PAGE LOADER STYLES ====================
