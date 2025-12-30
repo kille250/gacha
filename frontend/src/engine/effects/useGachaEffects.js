@@ -88,7 +88,6 @@ export const useGachaEffects = (options = {}) => {
    */
   const playReveal = useCallback((rarity) => {
     const rarityLower = rarity?.toLowerCase() || 'common';
-    const tier = RARITY_TIERS[rarityLower] || 0;
 
     // Stop buildup sound
     stopSound(GACHA_SOUNDS.BUILDUP_LOOP);
@@ -118,8 +117,8 @@ export const useGachaEffects = (options = {}) => {
       revealRarity(rarityLower);
     }
   }, [
-    flash, shake, play, stopSound, revealRarity,
-    enableFlash, enableShake, enableSound, enableHaptics,
+    flash, play, stopSound, revealRarity,
+    enableFlash, enableSound, enableHaptics,
     intensity, prefersReducedMotion
   ]);
 

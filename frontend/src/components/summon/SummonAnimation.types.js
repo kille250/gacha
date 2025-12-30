@@ -64,13 +64,6 @@
  * @property {number} glow - Glow color (hex number)
  */
 
-export const ANIMATION_PHASES = {
-  IDLE: 'idle',
-  INITIATION: 'initiation',
-  BUILD_UP: 'build_up',
-  REVEAL: 'reveal',
-  SHOWCASE: 'showcase',
-  COMPLETE: 'complete',
-};
-
-export default ANIMATION_PHASES;
+// Re-export ANIMATION_PHASES from the single source of truth
+export { ANIMATION_PHASES } from './pixi/constants';
+export { ANIMATION_PHASES as default } from './pixi/constants';
