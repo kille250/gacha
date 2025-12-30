@@ -130,9 +130,47 @@ export const Z_LAYERS = {
   particles: 2,
   sparks: 3,
   shockwave: 4,
-  character: 5,
-  glow: 6,
-  foreground: 7,
+  cardFrame: 5,
+  character: 6,
+  cardShine: 7,
+  glow: 8,
+  foreground: 9,
+};
+
+/**
+ * Card frame styling by rarity
+ */
+export const CARD_FRAME_SETTINGS = {
+  common: {
+    showFrame: true,
+    showShine: false,
+    shineSpeed: 0,
+    framePadding: 16,
+  },
+  uncommon: {
+    showFrame: true,
+    showShine: true,
+    shineSpeed: 0.8,
+    framePadding: 16,
+  },
+  rare: {
+    showFrame: true,
+    showShine: true,
+    shineSpeed: 1.0,
+    framePadding: 18,
+  },
+  epic: {
+    showFrame: true,
+    showShine: true,
+    shineSpeed: 1.2,
+    framePadding: 20,
+  },
+  legendary: {
+    showFrame: true,
+    showShine: true,
+    shineSpeed: 1.5,
+    framePadding: 22,
+  },
 };
 
 /**
@@ -154,6 +192,7 @@ export const getRarityConfig = (rarity) => {
     colors: RARITY_COLORS[normalized] || RARITY_COLORS.common,
     particles: PARTICLE_COUNTS[normalized] || PARTICLE_COUNTS.common,
     effects: EFFECT_INTENSITY[normalized] || EFFECT_INTENSITY.common,
+    cardFrame: CARD_FRAME_SETTINGS[normalized] || CARD_FRAME_SETTINGS.common,
   };
 };
 
@@ -174,6 +213,7 @@ const summonConstants = {
   EFFECT_INTENSITY,
   REDUCED_MOTION_TIMINGS,
   Z_LAYERS,
+  CARD_FRAME_SETTINGS,
   PERFORMANCE_TIERS,
   getRarityConfig,
   getTotalDuration,

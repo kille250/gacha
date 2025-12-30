@@ -13,6 +13,8 @@ import { VortexEffect } from './effects/VortexEffect';
 import { SparkEffect } from './effects/SparkEffect';
 import { ShockwaveEffect } from './effects/ShockwaveEffect';
 import { GlowEffect } from './effects/GlowEffect';
+import { CardFrameEffect } from './effects/CardFrameEffect';
+import { CardShineEffect } from './effects/CardShineEffect';
 import { ParticleSystem } from './ParticleSystem';
 import {
   ANIMATION_PHASES,
@@ -51,6 +53,8 @@ export class SummonScene {
       shockwave: null,
       glow: null,
       particles: null,
+      cardFrame: null,
+      cardShine: null,
     };
 
     // Animation state
@@ -264,6 +268,29 @@ export class SummonScene {
       spawnRadius: 150,
     });
     this.layers.effects.addChild(this.effects.particles.container);
+
+    // Card frame effect (reveal/showcase) - positioned behind character
+    this.effects.cardFrame = new CardFrameEffect({
+      x: centerX,
+      y: centerY,
+      width: Math.min(width * 0.6, 350),
+      height: Math.min(height * 0.6, 450),
+      padding: 20,
+    });
+    // Insert card frame before character layer for correct z-order
+    const characterIndex = this.app.stage.getChildIndex(this.layers.character.container);
+    this.app.stage.addChildAt(this.effects.cardFrame.container, characterIndex);
+
+    // Card shine effect (reveal/showcase) - positioned on top of character
+    this.effects.cardShine = new CardShineEffect({
+      x: centerX,
+      y: centerY,
+      width: Math.min(width * 0.6, 350) + 40, // Slightly larger than frame
+      height: Math.min(height * 0.6, 450) + 40,
+      cornerRadius: 20,
+    });
+    // Insert shine after character layer
+    this.app.stage.addChildAt(this.effects.cardShine.container, characterIndex + 2);
   }
 
   /**
@@ -302,6 +329,8 @@ export class SummonScene {
         this.effects.shockwave?.setPosition?.(centerX, centerY);
         this.effects.glow?.setPosition?.(centerX, centerY);
         this.effects.particles?.setPosition?.(centerX, centerY + 100);
+        this.effects.cardFrame?.setPosition?.(centerX, centerY);
+        this.effects.cardShine?.setPosition?.(centerX, centerY);
       } catch (e) {
         console.warn('Error during resize:', e);
       }
@@ -399,6 +428,11 @@ export class SummonScene {
       }
       this.layers.background?.setRarityColor(colors.primary);
 
+      // Set up card frame and shine effects based on rarity
+      const rarity = entity?.rarity?.toLowerCase() || 'common';
+      this.effects.cardFrame?.setRarity(rarity);
+      this.effects.cardShine?.setRarity(rarity);
+
       // Load character image
       if (entity?.image) {
         try {
@@ -485,6 +519,14 @@ export class SummonScene {
     this.layers.character.reveal({ glowIntensity: 0.3 });
     this.callbacks.onReveal?.();
 
+    // Show card frame instantly in reduced motion
+    if (this.effects.cardFrame) {
+      const charWidth = this.layers.character.maxWidth;
+      const charHeight = this.layers.character.maxHeight;
+      this.effects.cardFrame.setDimensions(charWidth, charHeight);
+      this.effects.cardFrame.start({ instant: true });
+    }
+
     this.addTimer(() => {
       this.setPhase(ANIMATION_PHASES.SHOWCASE);
       this.layers.character.setShowcase();
@@ -533,6 +575,23 @@ export class SummonScene {
       showRays: this.entity?.rarity?.toLowerCase() === 'legendary',
     });
 
+    // Start card frame effect with reveal animation
+    if (this.effects.cardFrame) {
+      // Update dimensions based on character layer bounds
+      const charWidth = this.layers.character.maxWidth;
+      const charHeight = this.layers.character.maxHeight;
+      this.effects.cardFrame.setDimensions(charWidth, charHeight);
+      this.effects.cardFrame.start();
+    }
+
+    // Start card shine effect with sweep animation
+    if (this.effects.cardShine) {
+      const charWidth = this.layers.character.maxWidth;
+      const charHeight = this.layers.character.maxHeight;
+      this.effects.cardShine.setDimensions(charWidth + 40, charHeight + 40, 20);
+      this.effects.cardShine.start({ sweepDirection: 1 });
+    }
+
     this.callbacks.onReveal?.();
   }
 
@@ -557,6 +616,22 @@ export class SummonScene {
       this.effects.glow.start({
         intensity: this.rarityConfig?.effects?.glowIntensity || 0.5,
       });
+
+      // Start card frame with instant reveal
+      if (this.effects.cardFrame) {
+        const charWidth = this.layers.character.maxWidth;
+        const charHeight = this.layers.character.maxHeight;
+        this.effects.cardFrame.setDimensions(charWidth, charHeight);
+        this.effects.cardFrame.start({ instant: true });
+      }
+
+      // Start card shine with instant state
+      if (this.effects.cardShine) {
+        const charWidth = this.layers.character.maxWidth;
+        const charHeight = this.layers.character.maxHeight;
+        this.effects.cardShine.setDimensions(charWidth + 40, charHeight + 40, 20);
+        this.effects.cardShine.start({ sweepDirection: 1 });
+      }
     }
 
     // Jump to showcase
@@ -633,6 +708,8 @@ export class SummonScene {
     this.effects.shockwave?.update(dt);
     this.effects.glow?.update(dt);
     this.effects.particles?.update(dt);
+    this.effects.cardFrame?.update(dt);
+    this.effects.cardShine?.update(dt);
   }
 
   /**
@@ -656,6 +733,8 @@ export class SummonScene {
     this.effects.glow?.stop();
     this.effects.particles?.stop();
     this.effects.particles?.clear();
+    this.effects.cardFrame?.reset();
+    this.effects.cardShine?.reset();
   }
 
   /**
