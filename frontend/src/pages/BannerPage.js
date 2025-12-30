@@ -26,14 +26,13 @@ import {
   Text,
   RarityBadge,
   ModalOverlay,
+  Skeleton,
 } from '../design-system';
 
 // Styled Components
 import {
   StyledPageWrapper,
   HeroBackground,
-  LoadingPage,
-  LoadingText,
   ErrorPage,
   ErrorBox,
   NavBar,
@@ -838,13 +837,73 @@ const BannerPage = () => {
     }
   };
 
-  // Loading state
+  // Loading state - skeleton layout matching page structure
+  // This provides a seamless transition from App's PageLoader
   if (loading) {
     return (
-      <LoadingPage>
-        <Spinner size="56px" />
-        <LoadingText>{t('banner.loadingBanner')}</LoadingText>
-      </LoadingPage>
+      <StyledPageWrapper>
+        <HeroBackground style={{ background: 'linear-gradient(135deg, rgba(88, 86, 214, 0.1), rgba(0, 0, 0, 0.3))' }} />
+        <Container>
+          {/* NavBar skeleton */}
+          <NavBar>
+            <Skeleton $height="36px" $width="100px" $radius="20px" />
+            <NavStats>
+              <Skeleton $height="32px" $width="80px" $radius="16px" />
+              <Skeleton $height="40px" $width="40px" $radius="12px" />
+            </NavStats>
+          </NavBar>
+
+          {/* Hero Section skeleton */}
+          <HeroSection>
+            <HeroContent>
+              <Skeleton $height="48px" $width="280px" $radius="8px" style={{ margin: '0 auto 12px' }} />
+              <Skeleton $height="24px" $width="180px" $radius="6px" $delay="50ms" style={{ margin: '0 auto 16px' }} />
+              <Skeleton $height="18px" $width="320px" $radius="4px" $delay="100ms" style={{ margin: '0 auto 24px' }} />
+              <BadgeRow>
+                <Skeleton $height="32px" $width="120px" $radius="16px" $delay="150ms" />
+                <Skeleton $height="32px" $width="140px" $radius="16px" $delay="200ms" />
+              </BadgeRow>
+            </HeroContent>
+
+            {/* Featured Characters skeleton */}
+            <FeaturedSection>
+              <Skeleton $height="14px" $width="140px" $radius="4px" $delay="250ms" style={{ margin: '0 auto 16px' }} />
+              <CharacterAvatars>
+                {[...Array(5)].map((_, i) => (
+                  <Skeleton
+                    key={i}
+                    $height="56px"
+                    $width="56px"
+                    $radius="50%"
+                    $delay={`${300 + i * 50}ms`}
+                  />
+                ))}
+              </CharacterAvatars>
+            </FeaturedSection>
+          </HeroSection>
+
+          {/* Gacha Container skeleton */}
+          <GachaContainer>
+            <ResultsArea>
+              <EmptyState style={{ opacity: 0.5 }}>
+                <Skeleton $height="56px" $width="56px" $radius="12px" $delay="400ms" style={{ margin: '0 auto 16px' }} />
+                <Skeleton $height="24px" $width="200px" $radius="6px" $delay="450ms" style={{ margin: '0 auto 8px' }} />
+                <Skeleton $height="16px" $width="160px" $radius="4px" $delay="500ms" style={{ margin: '0 auto' }} />
+              </EmptyState>
+            </ResultsArea>
+
+            {/* Controls skeleton */}
+            <ControlsSection style={{ opacity: 0.6 }}>
+              <Skeleton $height="80px" $width="100%" $radius="16px" $delay="550ms" />
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginTop: '16px' }}>
+                <Skeleton $height="90px" $radius="14px" $delay="600ms" />
+                <Skeleton $height="90px" $radius="14px" $delay="650ms" />
+                <Skeleton $height="90px" $radius="14px" $delay="700ms" />
+              </div>
+            </ControlsSection>
+          </GachaContainer>
+        </Container>
+      </StyledPageWrapper>
     );
   }
 
