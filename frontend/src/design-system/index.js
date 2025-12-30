@@ -113,6 +113,8 @@ export {
   EmptyState,
   Alert,
   Tooltip,
+  ProgressRing,
+  PulsingDot,
   // Skeleton loaders - comprehensive set for all UI patterns
   Skeleton,
   SkeletonBase,
@@ -183,7 +185,8 @@ export {
   Confetti,
   useConfetti,
   HolographicCard,
-  holographicBorderStyle
+  holographicBorderStyle,
+  AmbientParticles
 } from './effects';
 
 // Re-export theme as default for backward compatibility

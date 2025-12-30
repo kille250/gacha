@@ -194,3 +194,6 @@ export { useCardTilt } from './useCardTilt';
 // Collection milestones
 export { useCollectionMilestones, MILESTONES } from './useCollectionMilestones';
 
+// Button charge-up animation
+export { default as useChargeUp } from './useChargeUp';
+

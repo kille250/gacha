@@ -100,6 +100,9 @@ import { SummonAnimation, MultiSummonAnimation } from '../components/summon';
 import { IconDice, IconPoints, IconSearch, IconSparkle, IconMagic } from '../constants/icons';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
+// Game Enhancements
+import { PityDisplay } from '../components/GameEnhancements';
+
 // ==================== CONSTANTS ====================
 
 // Default pricing (will be overridden by server data)
@@ -551,7 +554,10 @@ const RollPage = () => {
           <HeroTitle>{t('roll.title')}</HeroTitle>
           <HeroSubtitle>{t('roll.subtitle')}</HeroSubtitle>
         </HeroSection>
-        
+
+        {/* Compact Pity Display - Shows pity progress inline */}
+        <PityDisplay compact />
+
         {/* Error Alert - uses severity to distinguish recoverable vs critical errors */}
         <AnimatePresence>
           {error && (

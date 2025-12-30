@@ -106,11 +106,23 @@ const rareGlow = keyframes`
   }
 `;
 
+// Subtle idle breathing animation for legendary cards
+const legendaryIdle = keyframes`
+  0%, 100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-3px);
+  }
+`;
+
 // Rarity-specific styles - legendary gets enhanced shimmer + glow + holographic
 const rarityStyles = {
   legendary: css`
-    /* Animated border glow */
-    animation: ${legendaryBorderGlow} 3s ease-in-out infinite;
+    /* Animated border glow + subtle idle breathing */
+    animation:
+      ${legendaryBorderGlow} 3s ease-in-out infinite,
+      ${legendaryIdle} 4s ease-in-out infinite;
     border-color: rgba(255, 215, 0, 0.5);
 
     @media (prefers-reduced-motion: reduce) {
