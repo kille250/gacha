@@ -358,6 +358,12 @@ export class SummonScene {
         throw new Error('Scene not properly initialized');
       }
 
+      // If already playing, clear previous animation timers to prevent race conditions
+      // This ensures clean state when play is called multiple times (e.g., during multi-pull)
+      if (this.isPlaying) {
+        this.clearTimers();
+      }
+
       this.entity = entity;
 
       // Get base config from constants, then override with dynamic admin config
