@@ -133,6 +133,8 @@ export const SummonAnimation = forwardRef(({
         console.error('Failed to play summon animation:', error);
         setAnimationError(error);
         setPhase(ANIMATION_PHASES.COMPLETE);
+        // Set showcaseReadyForEntityRef so the UI will display for this entity
+        showcaseReadyForEntityRef.current = normalizedEntity?.id;
         setIsShowcaseReady(true);
       }
     },
@@ -155,14 +157,21 @@ export const SummonAnimation = forwardRef(({
   // Initialize scene - only once when canvas is available
   useEffect(() => {
     if (!canvasRef.current) return;
-    // Don't re-initialize if already exists and is initialized
-    if (sceneRef.current?.isInitialized) return;
+    // Don't re-initialize if already exists and is initialized and not destroyed
+    if (sceneRef.current?.isInitialized && !sceneRef.current?.isDestroyed) return;
 
-    // Clean up any existing scene that failed to initialize
+    // Clean up any existing scene that failed to initialize or was destroyed
     if (sceneRef.current) {
-      sceneRef.current.destroy();
+      try {
+        sceneRef.current.destroy();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
       sceneRef.current = null;
     }
+
+    // Clear any previous error state on re-initialization
+    initErrorRef.current = null;
 
     let mounted = true;
     const canvas = canvasRef.current;
@@ -176,7 +185,7 @@ export const SummonAnimation = forwardRef(({
 
     // Initialize with proper error handling and timeout
     const initTimeout = setTimeout(() => {
-      if (mounted && !scene.isInitialized) {
+      if (mounted && !scene.isInitialized && !scene.isDestroyed) {
         console.error('Summon animation initialization timeout');
         initErrorRef.current = new Error('Initialization timeout');
         setAnimationError(new Error('Initialization timeout'));
@@ -185,24 +194,30 @@ export const SummonAnimation = forwardRef(({
 
     scene.initialize()
       .then(() => {
-        if (mounted) {
+        if (mounted && !scene.isDestroyed) {
           clearTimeout(initTimeout);
+          // Clear any error state on successful init
+          initErrorRef.current = null;
+          setAnimationError(null);
         }
       })
       .catch((error) => {
         clearTimeout(initTimeout);
-        console.error('Failed to initialize summon animation:', error);
-        if (mounted) {
-          initErrorRef.current = error;
-          setAnimationError(error);
+        // Don't log error if scene was destroyed (expected in React strict mode)
+        if (!scene.isDestroyed) {
+          console.error('Failed to initialize summon animation:', error);
+          if (mounted) {
+            initErrorRef.current = error;
+            setAnimationError(error);
+          }
         }
       });
 
     return () => {
       mounted = false;
       clearTimeout(initTimeout);
-      if (sceneRef.current) {
-        sceneRef.current.destroy();
+      if (sceneRef.current === scene) {
+        scene.destroy();
         sceneRef.current = null;
       }
     };
@@ -210,7 +225,7 @@ export const SummonAnimation = forwardRef(({
 
   // Handle activation
   useEffect(() => {
-    if (!isActive || !sceneRef.current || !normalizedEntity) {
+    if (!isActive || !normalizedEntity) {
       if (sceneRef.current) {
         sceneRef.current.reset();
       }
@@ -230,11 +245,24 @@ export const SummonAnimation = forwardRef(({
     if (initErrorRef.current) {
       setAnimationError(initErrorRef.current);
       setPhase(ANIMATION_PHASES.COMPLETE);
+      // Set showcaseReadyForEntityRef so the UI will display for this entity
+      showcaseReadyForEntityRef.current = normalizedEntity?.id;
       setIsShowcaseReady(true);
       return;
     }
 
+    // Handle case where scene doesn't exist or was destroyed
+    // This can happen in React strict mode during the second mount
     const scene = sceneRef.current;
+    if (!scene || scene.isDestroyed) {
+      // Scene not ready yet - the initialization effect will handle it
+      // For now, show error state so user isn't stuck
+      console.warn('SummonAnimation: Scene not available, showing fallback UI');
+      setPhase(ANIMATION_PHASES.COMPLETE);
+      showcaseReadyForEntityRef.current = normalizedEntity?.id;
+      setIsShowcaseReady(true);
+      return;
+    }
 
     // Set callbacks
     scene.setCallbacks({
@@ -299,6 +327,8 @@ export const SummonAnimation = forwardRef(({
         setAnimationError(error);
         // Skip to showcase ready state on error so user can continue
         setPhase(ANIMATION_PHASES.COMPLETE);
+        // Set showcaseReadyForEntityRef so the UI will display for this entity
+        showcaseReadyForEntityRef.current = normalizedEntity?.id;
         setIsShowcaseReady(true);
       });
     }
