@@ -89,14 +89,22 @@ export class CharacterLayer {
   async loadTexture(url) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
-    img.src = url;
 
-    // Use decode() for reliable loading in PIXI v8
+    // Create load promise that resolves on load or rejects on error
+    const loadPromise = new Promise((resolve, reject) => {
+      img.onload = () => resolve();
+      img.onerror = (e) => reject(new Error(`Image failed to load: ${e.message || 'unknown error'}`));
+    });
+
     const timeoutPromise = new Promise((_, reject) => {
       setTimeout(() => reject(new Error('Image load timeout')), 10000);
     });
 
-    await Promise.race([img.decode(), timeoutPromise]);
+    // Set src after event handlers are attached
+    img.src = url;
+
+    // Wait for load with timeout
+    await Promise.race([loadPromise, timeoutPromise]);
 
     const texture = Texture.from(img);
     if (!texture || !texture.width || !texture.height) {

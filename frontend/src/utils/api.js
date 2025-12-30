@@ -27,10 +27,7 @@ export const getAssetUrl = (path) => {
   if (!path) return '';
   if (path.startsWith('http')) return path;
   if (path.startsWith('/uploads')) return `${API_BASE}${path}`;
-  // Handle character images - both legacy 'image-' prefix and new 'imported-' prefix
-  if (path.startsWith('image-') || path.startsWith('imported-')) {
-    return `${API_BASE}/uploads/characters/${path}`;
-  }
+  if (path.startsWith('image-')) return `${API_BASE}/uploads/characters/${path}`;
   return `${API_BASE}${path.startsWith('/') ? '' : '/'}${path}`;
 };
 
