@@ -1356,6 +1356,20 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
     user.rodSkins = [];
     user.lastWanderingWarrior = null;
 
+    // Reset Fortune Wheel fields
+    user.fortuneWheel = {
+      lastFreeSpinAt: null,
+      totalSpins: 0,
+      jackpotsWon: 0,
+      currentStreak: 0,
+      longestStreak: 0,
+      badSpinStreak: 0,
+      todaySpins: 0,
+      todayDate: null,
+      activeMultiplier: null
+    };
+    user.fortuneWheelHistory = [];
+
     await user.save();
     
     // SECURITY: Clear failed attempts only AFTER successful save
