@@ -60,6 +60,7 @@ export class SummonScene {
     this.rarityConfig = null;
     this.isPlaying = false;
     this.isPaused = false;
+    this.isDestroyed = false;
     this.timers = [];
 
     // Callbacks
@@ -144,6 +145,12 @@ export class SummonScene {
         console.error('Pixi.js fallback initialization also failed:', fallbackError);
         throw fallbackError;
       }
+    }
+
+    // Check if app was destroyed during async init (React strict mode)
+    if (!this.app || this.isDestroyed) {
+      console.warn('SummonScene was destroyed during initialization, aborting');
+      return;
     }
 
     // Verify app initialized properly
@@ -330,6 +337,12 @@ export class SummonScene {
    */
   async play(entity, animConfig = {}) {
     try {
+      // Check if destroyed before starting
+      if (this.isDestroyed) {
+        console.warn('SummonScene.play() called on destroyed scene');
+        return;
+      }
+
       if (!this.isInitialized) {
         // Add timeout to initialization to prevent hanging
         const initPromise = this.initialize();
@@ -337,6 +350,12 @@ export class SummonScene {
           setTimeout(() => reject(new Error('Scene initialization timeout')), 5000);
         });
         await Promise.race([initPromise, timeoutPromise]);
+      }
+
+      // Check again after async init (React strict mode may have destroyed during await)
+      if (this.isDestroyed) {
+        console.warn('SummonScene was destroyed during initialization');
+        return;
       }
 
       // Verify initialization succeeded
@@ -649,6 +668,7 @@ export class SummonScene {
    * Destroy scene and clean up resources
    */
   destroy() {
+    this.isDestroyed = true;
     this.clearTimers();
 
     // Remove resize handler
