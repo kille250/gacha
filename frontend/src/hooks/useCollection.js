@@ -20,15 +20,6 @@ import { useActionLock, useAutoDismissError, useFilterParams } from './index';
 import { executeLevelUp, executeUpgradeAll } from '../actions/gachaActions';
 import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
 
-// Try to import celebration context (optional - graceful fallback if not available)
-let useCelebrationContext = null;
-try {
-  const celebrationModule = require('../design-system/effects/CelebrationEffects');
-  useCelebrationContext = celebrationModule.useCelebrationContext;
-} catch {
-  // Celebration effects not available
-}
-
 /**
  * @typedef {Object} FilterState
  * @property {string} rarity - Rarity filter ('all' or rarity name)
@@ -60,15 +51,6 @@ export function useCollection() {
   const { setUser } = useContext(AuthContext);
   const { withLock } = useActionLock(200);
   const [error, setError] = useAutoDismissError();
-
-  // Celebration effects (optional - may not be available in all contexts)
-  let celebration = null;
-  try {
-    // eslint-disable-next-line react-hooks/rules-of-hooks
-    celebration = useCelebrationContext ? useCelebrationContext() : null;
-  } catch {
-    // Not inside CelebrationProvider, skip celebration effects
-  }
 
   // Data state
   const [data, setData] = useState({
@@ -249,32 +231,6 @@ export function useCollection() {
         const result = await executeLevelUp(characterId, setUser);
 
         if (result.success) {
-          // Trigger celebration effects for level-up!
-          if (celebration) {
-            // Screen flash
-            celebration.triggerFlash({
-              color: result.isMaxLevel
-                ? 'rgba(255, 215, 0, 0.4)'  // Gold flash for max level
-                : 'rgba(52, 199, 89, 0.3)', // Green flash for regular level-up
-              duration: 400,
-            });
-
-            // Confetti for level-up
-            celebration.triggerConfetti({
-              count: result.isMaxLevel ? 100 : 50,
-            });
-
-            // Extra explosion effect for reaching max level
-            if (result.isMaxLevel) {
-              setTimeout(() => {
-                celebration.triggerExplosion({
-                  color: '#ffd700',
-                  count: 25,
-                });
-              }, 150);
-            }
-          }
-
           // Update collection state with new level
           setData(prev => ({
             ...prev,
@@ -315,7 +271,7 @@ export function useCollection() {
         fetchWithRetry(fetchData, { guard: collectionFetchGuard.current });
       }
     });
-  }, [withLock, setUser, preview.character?.id, setError, t, fetchData, celebration]);
+  }, [withLock, setUser, preview.character?.id, setError, t, fetchData]);
 
   // Upgrade all handler
   const handleUpgradeAll = useCallback(async () => {
@@ -326,17 +282,6 @@ export function useCollection() {
       const result = await executeUpgradeAll();
 
       if (result.success && result.upgraded > 0) {
-        // Celebrate mass upgrade!
-        if (celebration) {
-          celebration.triggerFlash({
-            color: 'rgba(52, 199, 89, 0.35)',
-            duration: 500,
-          });
-          celebration.triggerConfetti({
-            count: Math.min(150, result.upgraded * 20),
-          });
-        }
-
         await fetchData();
       }
     } catch (err) {
@@ -346,7 +291,7 @@ export function useCollection() {
     } finally {
       setIsUpgradingAll(false);
     }
-  }, [isUpgradingAll, stats.upgradableCount, fetchData, setError, t, celebration]);
+  }, [isUpgradingAll, stats.upgradableCount, fetchData, setError, t]);
 
   return {
     // Data
