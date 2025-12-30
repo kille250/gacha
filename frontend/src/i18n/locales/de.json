@@ -1488,7 +1488,11 @@
   },
   "summon": {
     "complete": "Beschwörung abgeschlossen",
-    "charactersObtained": "{{count}} Charaktere erhalten"
+    "charactersObtained": "{{count}} Charaktere erhalten",
+    "tapToSkip": "Tippen zum Überspringen",
+    "skipAll": "Alle überspringen",
+    "next": "Weiter",
+    "continue": "Fortfahren"
   },
   "doubleOrNothing": {
     "winChance": "Gewinnchance"

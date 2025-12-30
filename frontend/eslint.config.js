@@ -9,6 +9,16 @@ import globals from 'globals';
 import reactPlugin from 'eslint-plugin-react';
 import reactHooks from 'eslint-plugin-react-hooks';
 
+// Clean globals to remove any keys with leading/trailing whitespace
+const cleanGlobals = (obj) => {
+  if (!obj) return {};
+  const result = {};
+  for (const key of Object.keys(obj)) {
+    result[key.trim()] = obj[key];
+  }
+  return result;
+};
+
 export default [
   js.configs.recommended,
   {
@@ -16,9 +26,9 @@ export default [
       ecmaVersion: 2022,
       sourceType: 'module',
       globals: {
-        ...globals.browser,
-        ...globals.es2021,
-        ...globals.node,
+        ...cleanGlobals(globals.browser),
+        ...cleanGlobals(globals.es2021),
+        ...cleanGlobals(globals.node),
         // React globals
         React: 'readonly',
         JSX: 'readonly',

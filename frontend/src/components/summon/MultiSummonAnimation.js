@@ -13,15 +13,7 @@ import { useGachaEffects } from '../../engine/effects/useGachaEffects';
 import { isVideo } from '../../utils/mediaUtils';
 
 import { SummonAnimation } from './SummonAnimation';
-import { RARITY_COLORS } from './pixi/constants';
 import * as S from './SummonAnimation.styles';
-
-// ==================== UTILITIES ====================
-
-const hexToString = (hex) => {
-  if (typeof hex === 'string') return hex;
-  return '#' + hex.toString(16).padStart(6, '0');
-};
 
 // ==================== MAIN COMPONENT ====================
 
@@ -41,8 +33,8 @@ export const MultiSummonAnimation = ({
   // Refs
   const hasCompletedRef = useRef(false);
 
-  // Context hooks
-  useRarity(); // For rarity context availability
+  // Context hooks - use getRarityAnimation to get dynamic colors
+  const { getRarityAnimation } = useRarity();
   const { stopAllEffects } = useGachaEffects();
 
   // Current character
@@ -145,8 +137,9 @@ export const MultiSummonAnimation = ({
 
           <S.ResultsGrid>
             {characters.map((char, index) => {
-              const colors = RARITY_COLORS[char.rarity?.toLowerCase()] || RARITY_COLORS.common;
-              const colorHex = hexToString(colors.primary);
+              // Use dynamic rarity colors from context (admin-configurable)
+              const animConfig = getRarityAnimation(char.rarity);
+              const colorHex = animConfig.color;
 
               return (
                 <S.ResultCard

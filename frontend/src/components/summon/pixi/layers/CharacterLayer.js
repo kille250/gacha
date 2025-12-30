@@ -32,7 +32,8 @@ export class CharacterLayer {
     this.phase = 'hidden'; // hidden, silhouette, revealing, revealed, showcase
     this.revealProgress = 0;
     this.scaleProgress = 0;
-    this.targetScale = 1;
+    this.baseScale = 1; // Scale to fit image within bounds (calculated on image load)
+    this.targetScale = 1; // Animation target scale multiplier
     this.currentScale = 0;
     this.glowColor = 0xffffff;
     this.glowIntensity = 0;
@@ -66,9 +67,9 @@ export class CharacterLayer {
       // Scale to fit within max dimensions while maintaining aspect ratio
       const scaleX = this.maxWidth / texture.width;
       const scaleY = this.maxHeight / texture.height;
-      const scale = Math.min(scaleX, scaleY);
+      this.baseScale = Math.min(scaleX, scaleY);
 
-      this.characterSprite.scale.set(scale);
+      this.characterSprite.scale.set(this.baseScale);
       this.characterSprite.anchor.set(0.5);
       this.characterSprite.position.set(this.centerX, this.centerY);
       this.characterSprite.alpha = 0;
@@ -163,7 +164,8 @@ export class CharacterLayer {
     this.currentScale = 0;
     if (this.characterSprite) {
       this.characterSprite.alpha = 0;
-      this.characterSprite.scale.set(0);
+      // Set to baseScale * 0 effectively (or just use baseScale for hidden state)
+      this.characterSprite.scale.set(this.baseScale * 0.01);
     }
     this.silhouette.clear();
     this.glowOverlay.clear();
@@ -200,10 +202,10 @@ export class CharacterLayer {
     this.characterSprite.alpha = 0.8;
     this.characterSprite.tint = 0x111111;
 
-    // Slight scale pulse
+    // Slight scale pulse (using baseScale to maintain proper sizing)
     const pulse = oscillate(this.time, 0.5);
-    const scale = 0.95 + pulse * 0.05;
-    this.characterSprite.scale.set(scale * this.targetScale);
+    const scaleMult = 0.95 + pulse * 0.05;
+    this.characterSprite.scale.set(this.baseScale * this.targetScale * scaleMult);
   }
 
   /**
@@ -216,9 +218,10 @@ export class CharacterLayer {
     this.revealProgress = Math.min(1, this.revealProgress + dt / 30); // ~0.5s reveal
     this.scaleProgress = Math.min(1, this.scaleProgress + dt / 20); // Scale animation
 
-    // Scale with overshoot
+    // Scale with overshoot (baseScale ensures proper sizing, targetScale is animation multiplier)
     const scaleEased = easeOutBack(this.scaleProgress);
-    this.currentScale = lerp(0.85, this.targetScale, scaleEased);
+    const scaleMult = lerp(0.85, this.targetScale, scaleEased);
+    this.currentScale = this.baseScale * scaleMult;
 
     // Apply scale
     this.characterSprite.scale.set(this.currentScale);
@@ -253,9 +256,9 @@ export class CharacterLayer {
     this.characterSprite.alpha = 1;
     this.characterSprite.tint = 0xffffff;
 
-    // Subtle scale pulse
+    // Subtle scale pulse (baseScale ensures proper sizing)
     const scalePulse = 1 + Math.sin(this.time * 2.5) * 0.02;
-    this.characterSprite.scale.set(this.targetScale * scalePulse);
+    this.characterSprite.scale.set(this.baseScale * this.targetScale * scalePulse);
   }
 
   /**
@@ -300,10 +303,12 @@ export class CharacterLayer {
     this.currentScale = 0;
     this.time = 0;
     this.glowIntensity = 0;
+    this.targetScale = 1;
 
     if (this.characterSprite) {
       this.characterSprite.alpha = 0;
-      this.characterSprite.scale.set(0);
+      // Use baseScale * tiny multiplier to keep proportions correct but invisible
+      this.characterSprite.scale.set(this.baseScale * 0.01);
       this.characterSprite.rotation = 0;
       this.characterSprite.tint = 0xffffff;
     }

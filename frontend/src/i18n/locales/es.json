@@ -1221,7 +1221,11 @@
   },
   "summon": {
     "complete": "Invocación Completa",
-    "charactersObtained": "{{count}} personajes obtenidos"
+    "charactersObtained": "{{count}} personajes obtenidos",
+    "tapToSkip": "Toca para saltar",
+    "skipAll": "Saltar todo",
+    "next": "Siguiente",
+    "continue": "Continuar"
   },
   "doubleOrNothing": {
     "winChance": "Probabilidad de Ganar"

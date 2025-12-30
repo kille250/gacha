@@ -1459,7 +1459,11 @@
   },
   "summon": {
     "complete": "召喚完了",
-    "charactersObtained": "{{count}}キャラクターを獲得"
+    "charactersObtained": "{{count}}キャラクターを獲得",
+    "tapToSkip": "タップでスキップ",
+    "skipAll": "全てスキップ",
+    "next": "次へ",
+    "continue": "続ける"
   },
   "doubleOrNothing": {
     "winChance": "勝率"

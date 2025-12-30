@@ -1652,7 +1652,11 @@
   },
   "summon": {
     "complete": "Summoning Complete",
-    "charactersObtained": "{{count}} characters obtained"
+    "charactersObtained": "{{count}} characters obtained",
+    "tapToSkip": "Tap to skip",
+    "skipAll": "Skip All",
+    "next": "Next",
+    "continue": "Continue"
   },
   "doubleOrNothing": {
     "winChance": "Win Chance"

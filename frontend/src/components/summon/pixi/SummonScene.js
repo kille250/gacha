@@ -302,8 +302,15 @@ export class SummonScene {
 
   /**
    * Play animation for entity
+   * @param {Object} entity - The entity to display
+   * @param {Object} animConfig - Dynamic animation config from admin (optional)
+   * @param {Object} animConfig.colors - { primary, secondary, glow } as hex numbers
+   * @param {number} animConfig.glowIntensity - Glow intensity 0-1
+   * @param {number} animConfig.buildupTime - Buildup phase duration in ms
+   * @param {number} animConfig.orbCount - Number of orbs
+   * @param {number} animConfig.ringCount - Number of shockwave rings
    */
-  async play(entity) {
+  async play(entity, animConfig = {}) {
     try {
       if (!this.isInitialized) {
         // Add timeout to initialization to prevent hanging
@@ -320,12 +327,29 @@ export class SummonScene {
       }
 
       this.entity = entity;
-      this.rarityConfig = getRarityConfig(entity?.rarity);
+
+      // Get base config from constants, then override with dynamic admin config
+      const baseConfig = getRarityConfig(entity?.rarity);
+      this.rarityConfig = {
+        ...baseConfig,
+        effects: {
+          ...baseConfig.effects,
+          glowIntensity: animConfig.glowIntensity ?? baseConfig.effects.glowIntensity,
+          ringCount: animConfig.ringCount ?? baseConfig.effects.ringCount,
+          orbCount: animConfig.orbCount ?? baseConfig.effects.orbCount,
+        },
+        durations: {
+          ...baseConfig.durations,
+          // Override buildUp with admin-defined buildupTime if provided
+          buildUp: animConfig.buildupTime ?? baseConfig.durations.buildUp,
+        },
+      };
+
       this.isPlaying = true;
       this.isPaused = false;
 
-      // Set colors based on rarity
-      const colors = RARITY_COLORS[entity?.rarity?.toLowerCase()] || RARITY_COLORS.common;
+      // Use dynamic colors from admin config, fallback to constants
+      const colors = animConfig.colors || RARITY_COLORS[entity?.rarity?.toLowerCase()] || RARITY_COLORS.common;
 
       this.effects.vortex?.setColors(colors.primary, colors.secondary);
       this.effects.sparks?.setColors(colors.primary, colors.glow);

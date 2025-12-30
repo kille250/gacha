@@ -17,10 +17,11 @@ import React, {
 import { AnimatePresence } from 'framer-motion';
 import { FaStar, FaGem, FaTrophy, FaDice } from 'react-icons/fa';
 
+import { useTranslation } from 'react-i18next';
 import { useRarity } from '../../context/RarityContext';
 import { useGachaEffects } from '../../engine/effects/useGachaEffects';
 import { SummonScene } from './pixi/SummonScene';
-import { ANIMATION_PHASES, RARITY_COLORS } from './pixi/constants';
+import { ANIMATION_PHASES } from './pixi/constants';
 import * as S from './SummonAnimation.styles';
 
 // ==================== UTILITIES ====================
@@ -32,11 +33,6 @@ const getIconByRarity = (rarity) => {
   if (rarityLower === 'rare') return <FaStar />;
   if (rarityLower === 'uncommon') return <FaStar />;
   return <FaDice />;
-};
-
-const hexToString = (hex) => {
-  if (typeof hex === 'string') return hex;
-  return '#' + hex.toString(16).padStart(6, '0');
 };
 
 // ==================== MAIN COMPONENT ====================
@@ -87,15 +83,35 @@ export const SummonAnimation = forwardRef(({
     };
   }, [entity, character, rarity]);
 
-  // Get rarity context
-  const { getRarityColor } = useRarity();
-  const effectRarity = normalizedEntity?.rarity || 'common';
-  getRarityColor(effectRarity); // Validate rarity exists
+  // Translation
+  const { t } = useTranslation();
 
-  // Get rarity colors
+  // Get rarity context with animation config
+  const { getRarityAnimation } = useRarity();
+  const effectRarity = normalizedEntity?.rarity || 'common';
+
+  // Get dynamic rarity config from context (admin-configurable)
+  const rarityAnimConfig = useMemo(() => {
+    return getRarityAnimation(effectRarity);
+  }, [getRarityAnimation, effectRarity]);
+
+  // Convert hex string color to number for Pixi
+  const hexStringToNumber = (hexStr) => {
+    if (typeof hexStr === 'number') return hexStr;
+    if (typeof hexStr === 'string' && hexStr.startsWith('#')) {
+      return parseInt(hexStr.slice(1), 16);
+    }
+    return 0xffffff;
+  };
+
+  // Build rarity colors object for Pixi from admin config
   const rarityColors = useMemo(() => {
-    return RARITY_COLORS[effectRarity?.toLowerCase()] || RARITY_COLORS.common;
-  }, [effectRarity]);
+    const primary = hexStringToNumber(rarityAnimConfig.color);
+    const secondary = hexStringToNumber(rarityAnimConfig.accentColor || rarityAnimConfig.color);
+    // Create a lighter glow color
+    const glow = secondary;
+    return { primary, secondary, glow };
+  }, [rarityAnimConfig]);
 
   // Effects hook
   const {
@@ -251,9 +267,15 @@ export const SummonAnimation = forwardRef(({
       },
     });
 
-    // Play animation with error handling
+    // Play animation with error handling, passing dynamic config
     if (autoPlay) {
-      scene.play(normalizedEntity).catch((error) => {
+      scene.play(normalizedEntity, {
+        colors: rarityColors,
+        glowIntensity: rarityAnimConfig.glowIntensity,
+        buildupTime: rarityAnimConfig.buildupTime,
+        orbCount: rarityAnimConfig.orbCount,
+        ringCount: rarityAnimConfig.ringCount,
+      }).catch((error) => {
         console.error('Failed to play summon animation:', error);
         setAnimationError(error);
         // Skip to showcase ready state on error so user can continue
@@ -276,6 +298,8 @@ export const SummonAnimation = forwardRef(({
     allowSkip,
     skipEnabled,
     effectRarity,
+    rarityColors,
+    rarityAnimConfig,
     playPullStart,
     playBuildup,
     triggerRevealSequence,
@@ -385,7 +409,7 @@ export const SummonAnimation = forwardRef(({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
-              Tap to skip
+              {t('summon.tapToSkip', 'Tap to skip')}
             </S.SkipHint>
           )}
         </AnimatePresence>
@@ -399,7 +423,7 @@ export const SummonAnimation = forwardRef(({
               exit={{ opacity: 0 }}
               transition={{ duration: 0.3 }}
             >
-              <S.RarityBadge $color={hexToString(rarityColors.primary)}>
+              <S.RarityBadge $color={rarityAnimConfig.color}>
                 {getIconByRarity(effectRarity)}
                 <span>{effectRarity.toUpperCase()}</span>
               </S.RarityBadge>
@@ -434,7 +458,9 @@ export const SummonAnimation = forwardRef(({
                 whileTap={{ scale: 0.97 }}
                 onClick={handleInteraction}
               >
-                {isMultiPull && currentPull < totalPulls ? 'Next' : 'Continue'}
+                {isMultiPull && currentPull < totalPulls
+                  ? t('summon.next', 'Next')
+                  : t('summon.continue', 'Continue')}
               </S.ContinueButton>
             )}
           </AnimatePresence>
@@ -451,7 +477,7 @@ export const SummonAnimation = forwardRef(({
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
             >
-              Skip All
+              {t('summon.skipAll', 'Skip All')}
             </S.SkipAllButton>
           )}
         </S.BottomArea>
