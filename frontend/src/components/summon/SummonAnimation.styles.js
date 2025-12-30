@@ -33,8 +33,6 @@ export const CanvasContainer = styled.div`
 
   canvas {
     display: block;
-    width: 100%;
-    height: 100%;
   }
 `;
 

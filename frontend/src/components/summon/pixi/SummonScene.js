@@ -27,12 +27,13 @@ import {
 export class SummonScene {
   constructor(canvas, config = {}) {
     this.canvas = canvas;
-    // Use visualViewport when available for accurate mobile dimensions
-    const viewportWidth = window.visualViewport?.width || window.innerWidth;
-    const viewportHeight = window.visualViewport?.height || window.innerHeight;
+    // Use the canvas parent's dimensions if available, otherwise fall back to window
+    const container = canvas?.parentElement;
+    const containerWidth = container?.clientWidth || window.innerWidth;
+    const containerHeight = container?.clientHeight || window.innerHeight;
     this.config = {
-      width: config.width || viewportWidth,
-      height: config.height || viewportHeight,
+      width: config.width || containerWidth,
+      height: config.height || containerHeight,
       resolution: config.resolution || window.devicePixelRatio || 1,
       antialias: config.antialias !== false,
     };
@@ -210,11 +211,12 @@ export class SummonScene {
     this.app.stage.addChild(this.layers.character.container);
 
     // Collection card layer (the main reveal card)
+    const cardCenterY = height * 0.5;
     const cardWidth = Math.min(width * 0.75, 300);
     const cardHeight = cardWidth * 1.35;
     this.layers.collectionCard = new CollectionCardLayer({
       x: centerX,
-      y: centerY,
+      y: cardCenterY,
       width: cardWidth,
       height: cardHeight,
     });
@@ -260,10 +262,11 @@ export class SummonScene {
     });
     this.layers.effects.addChild(this.effects.shockwave.container);
 
-    // Glow effect (showcase)
+    // Glow effect (showcase) - position at card center
+    const glowCenterY = height * 0.5;
     this.effects.glow = new GlowEffect({
       x: centerX,
-      y: centerY,
+      y: glowCenterY,
       radius: 150,
     });
     this.layers.effects.addChild(this.effects.glow.container);
@@ -271,7 +274,7 @@ export class SummonScene {
     // Ambient particle system (showcase)
     this.effects.particles = new ParticleSystem({
       x: centerX,
-      y: centerY + 100,
+      y: glowCenterY + 100,
       maxParticles: 30,
       emitRate: 5,
       life: { min: 1.5, max: 2.5 },
@@ -285,13 +288,14 @@ export class SummonScene {
     this.layers.effects.addChild(this.effects.particles.container);
 
     // Card shine effect (reveal/showcase) - positioned on top of collection card
-    const cardWidth = Math.min(width * 0.75, 300);
-    const cardHeight = cardWidth * 1.35;
+    const shineCardWidth = Math.min(width * 0.75, 300);
+    const shineCardHeight = shineCardWidth * 1.35;
+    const shineCardCenterY = height * 0.5;
     this.effects.cardShine = new CardShineEffect({
       x: centerX,
-      y: centerY,
-      width: cardWidth + 20,
-      height: cardHeight + 20,
+      y: shineCardCenterY,
+      width: shineCardWidth + 20,
+      height: shineCardHeight + 20,
       cornerRadius: 20,
     });
     // Insert shine after collection card layer
@@ -309,9 +313,10 @@ export class SummonScene {
       // Don't resize if destroyed
       if (!this.isInitialized || !this.app) return;
 
-      // Use visualViewport when available for accurate mobile dimensions
-      const width = window.visualViewport?.width || window.innerWidth;
-      const height = window.visualViewport?.height || window.innerHeight;
+      // Use the canvas parent's dimensions for accurate sizing
+      const container = this.canvas?.parentElement;
+      const width = container?.clientWidth || window.innerWidth;
+      const height = container?.clientHeight || window.innerHeight;
 
       this.config.width = width;
       this.config.height = height;
@@ -329,23 +334,22 @@ export class SummonScene {
         // Update positions
         const centerX = width / 2;
         const centerY = height / 2;
+        const cardCenterY = height * 0.5;
 
         this.layers.character?.setPosition?.(centerX, centerY);
-        this.layers.collectionCard?.setPosition?.(centerX, centerY);
+        this.layers.collectionCard?.setPosition?.(centerX, cardCenterY);
         this.effects.vortex?.setPosition?.(centerX, centerY);
         this.effects.sparks?.setPosition?.(centerX, centerY);
         this.effects.shockwave?.setPosition?.(centerX, centerY);
-        this.effects.glow?.setPosition?.(centerX, centerY);
-        this.effects.particles?.setPosition?.(centerX, centerY + 100);
-        this.effects.cardShine?.setPosition?.(centerX, centerY);
+        this.effects.glow?.setPosition?.(centerX, cardCenterY);
+        this.effects.particles?.setPosition?.(centerX, cardCenterY + 100);
+        this.effects.cardShine?.setPosition?.(centerX, cardCenterY);
       } catch (e) {
         console.warn('Error during resize:', e);
       }
     };
 
     window.addEventListener('resize', handleResize);
-    // Also listen to visualViewport resize for mobile toolbar changes
-    window.visualViewport?.addEventListener('resize', handleResize);
     this.resizeHandler = handleResize;
   }
 
@@ -717,10 +721,9 @@ export class SummonScene {
     this.isDestroyed = true;
     this.clearTimers();
 
-    // Remove resize handlers
+    // Remove resize handler
     if (this.resizeHandler && typeof window !== 'undefined') {
       window.removeEventListener('resize', this.resizeHandler);
-      window.visualViewport?.removeEventListener('resize', this.resizeHandler);
     }
 
     // Destroy effects
