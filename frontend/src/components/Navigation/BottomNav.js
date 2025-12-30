@@ -349,4 +349,5 @@ const NavLabel = styled.span`
   }
 `;
 
-export default BottomNav;
+// Memoize BottomNav to prevent unnecessary re-renders during page transitions
+export default React.memo(BottomNav);

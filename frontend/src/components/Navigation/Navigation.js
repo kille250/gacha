@@ -598,4 +598,6 @@ const AccountLevelBadgeWrapper = styled.div`
   }
 `;
 
-export default Navigation;
+// Memoize Navigation to prevent unnecessary re-renders during page transitions
+// Navigation state (location, user) changes will still trigger re-renders
+export default React.memo(Navigation);
