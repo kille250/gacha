@@ -6,3 +6,13 @@
 
 export { default as Confetti, useConfetti } from './Confetti';
 export { default as HolographicCard, holographicBorderStyle } from './HolographicCard';
+export {
+  useFloatingPoints,
+  FloatingPointsProvider,
+  useFloatingPointsContext,
+} from './FloatingPoints';
+export {
+  useCelebration,
+  CelebrationProvider,
+  useCelebrationContext,
+} from './CelebrationEffects';

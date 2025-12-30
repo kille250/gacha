@@ -188,3 +188,9 @@ export { useUndoableAction } from './useUndoableAction';
 // Achievement notifications for first-time achievements
 export { useAchievementNotifications } from './useAchievementNotifications';
 
+// 3D card tilt effect
+export { useCardTilt } from './useCardTilt';
+
+// Collection milestones
+export { useCollectionMilestones, MILESTONES } from './useCollectionMilestones';
+

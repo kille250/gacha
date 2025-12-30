@@ -62,7 +62,51 @@ const legendaryBorderGlow = keyframes`
   }
 `;
 
-// Rarity-specific styles - legendary gets enhanced shimmer + glow
+// Holographic rainbow effect for legendary cards
+const holographicShift = keyframes`
+  0% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+  50% {
+    background-position: 100% 50%;
+    filter: hue-rotate(15deg);
+  }
+  100% {
+    background-position: 0% 50%;
+    filter: hue-rotate(0deg);
+  }
+`;
+
+// Epic glow pulse
+const epicGlowPulse = keyframes`
+  0%, 100% {
+    box-shadow:
+      0 0 10px rgba(191, 90, 242, 0.3),
+      0 0 20px rgba(191, 90, 242, 0.15);
+  }
+  50% {
+    box-shadow:
+      0 0 18px rgba(191, 90, 242, 0.45),
+      0 0 35px rgba(191, 90, 242, 0.25);
+  }
+`;
+
+// Rare glow on hover
+const rareGlow = keyframes`
+  0%, 100% {
+    box-shadow:
+      0 0 8px rgba(10, 132, 255, 0.25),
+      0 0 16px rgba(10, 132, 255, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 14px rgba(10, 132, 255, 0.4),
+      0 0 28px rgba(10, 132, 255, 0.2);
+  }
+`;
+
+// Rarity-specific styles - legendary gets enhanced shimmer + glow + holographic
 const rarityStyles = {
   legendary: css`
     /* Animated border glow */
@@ -74,24 +118,28 @@ const rarityStyles = {
       box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
     }
 
-    /* Enhanced shimmer overlay */
+    /* Holographic rainbow shimmer overlay */
     &::before {
       content: '';
       position: absolute;
       inset: 0;
       background: linear-gradient(
-        110deg,
-        transparent 20%,
-        rgba(255, 167, 38, 0.15) 40%,
-        rgba(255, 215, 0, 0.25) 50%,
-        rgba(255, 167, 38, 0.15) 60%,
-        transparent 80%
+        125deg,
+        transparent 0%,
+        rgba(255, 0, 128, 0.08) 15%,
+        rgba(255, 215, 0, 0.12) 30%,
+        rgba(0, 255, 128, 0.08) 45%,
+        rgba(0, 128, 255, 0.08) 60%,
+        rgba(128, 0, 255, 0.08) 75%,
+        rgba(255, 0, 128, 0.08) 90%,
+        transparent 100%
       );
-      background-size: 200% 100%;
-      animation: ${shimmer} 3s ease-in-out infinite;
+      background-size: 400% 400%;
+      animation: ${holographicShift} 6s ease-in-out infinite;
       pointer-events: none;
       z-index: 3;
       border-radius: inherit;
+      mix-blend-mode: overlay;
 
       @media (prefers-reduced-motion: reduce) {
         animation: none;
@@ -99,30 +147,58 @@ const rarityStyles = {
       }
     }
 
-    /* Secondary sparkle layer */
+    /* Secondary golden sparkle layer */
     &::after {
       content: '';
       position: absolute;
       inset: 0;
-      background: radial-gradient(
-        circle at 30% 30%,
-        rgba(255, 255, 255, 0.15) 0%,
-        transparent 50%
-      ),
-      radial-gradient(
-        circle at 70% 70%,
-        rgba(255, 215, 0, 0.1) 0%,
-        transparent 40%
-      );
+      background:
+        radial-gradient(
+          circle at 30% 30%,
+          rgba(255, 255, 255, 0.2) 0%,
+          transparent 50%
+        ),
+        radial-gradient(
+          circle at 70% 70%,
+          rgba(255, 215, 0, 0.15) 0%,
+          transparent 40%
+        ),
+        linear-gradient(
+          110deg,
+          transparent 20%,
+          rgba(255, 215, 0, 0.15) 40%,
+          rgba(255, 255, 255, 0.1) 50%,
+          rgba(255, 215, 0, 0.15) 60%,
+          transparent 80%
+        );
+      background-size: 100% 100%, 100% 100%, 200% 100%;
+      animation: ${shimmer} 3s ease-in-out infinite;
       pointer-events: none;
       z-index: 4;
       border-radius: inherit;
-      opacity: 0.8;
+      opacity: 0.9;
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+        background: radial-gradient(
+          circle at 50% 50%,
+          rgba(255, 215, 0, 0.15) 0%,
+          transparent 70%
+        );
+      }
     }
   `,
 
-  // Epic gets subtle shimmer
+  // Epic gets animated purple glow + shimmer
   epic: css`
+    animation: ${epicGlowPulse} 3.5s ease-in-out infinite;
+    border-color: rgba(191, 90, 242, 0.4);
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+      box-shadow: 0 0 15px rgba(191, 90, 242, 0.3);
+    }
+
     &::before {
       content: '';
       position: absolute;
@@ -130,9 +206,9 @@ const rarityStyles = {
       background: linear-gradient(
         110deg,
         transparent 30%,
-        rgba(191, 90, 242, 0.1) 45%,
-        rgba(156, 39, 176, 0.15) 50%,
-        rgba(191, 90, 242, 0.1) 55%,
+        rgba(191, 90, 242, 0.12) 45%,
+        rgba(156, 39, 176, 0.18) 50%,
+        rgba(191, 90, 242, 0.12) 55%,
         transparent 70%
       );
       background-size: 200% 100%;
@@ -144,6 +220,37 @@ const rarityStyles = {
       @media (prefers-reduced-motion: reduce) {
         animation: none;
         opacity: 0;
+      }
+    }
+  `,
+
+  // Rare gets blue glow on hover
+  rare: css`
+    border-color: rgba(10, 132, 255, 0.25);
+
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        animation: ${rareGlow} 2s ease-in-out infinite;
+        border-color: rgba(10, 132, 255, 0.5);
+      }
+    }
+
+    @media (prefers-reduced-motion: reduce) {
+      &:hover {
+        animation: none;
+        box-shadow: 0 0 12px rgba(10, 132, 255, 0.3);
+      }
+    }
+  `,
+
+  // Uncommon gets subtle green tint on hover
+  uncommon: css`
+    @media (hover: hover) and (pointer: fine) {
+      &:hover {
+        border-color: rgba(52, 199, 89, 0.4);
+        box-shadow:
+          ${theme.shadows.cardHover},
+          0 0 12px rgba(52, 199, 89, 0.2);
       }
     }
   `
@@ -163,9 +270,11 @@ const Card = styled(motion.div)`
     border-color ${theme.timing.fast} ${theme.easing.easeOut},
     box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
 
-  /* Apply rarity-specific effects for owned legendary/epic cards */
+  /* Apply rarity-specific effects for owned cards */
   ${props => props.$isOwned && props.$rarity === 'legendary' && rarityStyles.legendary}
   ${props => props.$isOwned && props.$rarity === 'epic' && rarityStyles.epic}
+  ${props => props.$isOwned && props.$rarity === 'rare' && rarityStyles.rare}
+  ${props => props.$isOwned && props.$rarity === 'uncommon' && rarityStyles.uncommon}
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {

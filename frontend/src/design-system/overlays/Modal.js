@@ -59,9 +59,15 @@ const overlayVariants = {
 const Overlay = styled(motion.div)`
   position: fixed;
   inset: 0;
-  background: ${theme.colors.overlay};
-  backdrop-filter: blur(${theme.blur.md});
-  -webkit-backdrop-filter: blur(${theme.blur.md});
+  /* Enhanced vignette backdrop for cinematic feel */
+  background: radial-gradient(
+    ellipse at center,
+    rgba(0, 0, 0, 0.5) 0%,
+    rgba(0, 0, 0, 0.65) 50%,
+    rgba(0, 0, 0, 0.8) 100%
+  );
+  backdrop-filter: blur(${theme.blur.lg});
+  -webkit-backdrop-filter: blur(${theme.blur.lg});
   display: flex;
   align-items: center;
   justify-content: center;

@@ -40,6 +40,9 @@ const flashRed = keyframes`
   100% { color: inherit; text-shadow: none; }
 `;
 
+// Note: Additional dramatic animation keyframes (rollIn, sparkleGlow) can be
+// added here for future slot-machine style number reveals.
+
 // ==================== STYLED COMPONENTS ====================
 
 const Container = styled.span`
@@ -106,6 +109,10 @@ const SrOnly = styled.span`
   white-space: nowrap;
   border: 0;
 `;
+
+// Note: RollingDigitContainer, RollingDigit, and BigRevealNumber are available
+// for future slot-machine style number animations. They use the rollIn and
+// sparkleGlow keyframes defined above. Uncomment when implementing digit rolling.
 
 // ==================== HOOKS ====================
 
