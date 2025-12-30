@@ -5,13 +5,13 @@
  * Includes close button and tap-to-dismiss functionality.
  */
 
-import React, { useEffect, useCallback, useRef } from 'react';
+import React, { useEffect, useCallback, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaCoins, FaTicketAlt, FaStar } from 'react-icons/fa';
 import { MdClose } from 'react-icons/md';
 import styled, { keyframes } from 'styled-components';
-import { theme } from '../../../design-system';
+import { theme, Confetti, AnimatedValue } from '../../../design-system';
 import { haptic } from '../../../design-system/utilities/microInteractions';
 
 import {
@@ -103,6 +103,7 @@ const DismissHint = styled.div`
 const DojoClaimPopup = ({ claimResult, onDismiss }) => {
   const { t } = useTranslation();
   const hasTriggeredCelebration = useRef(false);
+  const [showConfetti, setShowConfetti] = useState(false);
 
   // Determine celebration intensity based on rewards
   const getCelebrationIntensity = useCallback((result) => {
@@ -111,6 +112,15 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
     if (premiumTickets >= 2 || points >= 5000) return 'high';
     if (premiumTickets >= 1 || points >= 2000) return 'normal';
     return 'low';
+  }, []);
+
+  // Determine confetti variant based on rewards
+  const getConfettiVariant = useCallback((result) => {
+    if (!result?.rewards) return 'default';
+    const { premiumTickets = 0 } = result.rewards;
+    if (premiumTickets >= 2) return 'legendary';
+    if (premiumTickets >= 1) return 'epic';
+    return 'default';
   }, []);
 
   // Handle escape key to dismiss
@@ -132,11 +142,17 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
       } else {
         haptic.medium();
       }
+
+      // Trigger confetti for medium+ rewards
+      if (intensity === 'high' || intensity === 'normal') {
+        setShowConfetti(true);
+      }
     }
 
-    // Reset flag when popup closes
+    // Reset flags when popup closes
     if (!claimResult) {
       hasTriggeredCelebration.current = false;
+      setShowConfetti(false);
     }
   }, [claimResult, getCelebrationIntensity]);
 
@@ -150,14 +166,23 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
   return (
     <AnimatePresence>
       {claimResult && (
-        <ClaimPopup
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          exit={{ opacity: 0 }}
-          onClick={onDismiss}
-          role="dialog"
-          aria-label={t('dojo.trainingComplete')}
-        >
+        <>
+          {/* Confetti celebration for premium rewards */}
+          <Confetti
+            active={showConfetti}
+            particleCount={getCelebrationIntensity(claimResult) === 'high' ? 80 : 50}
+            variant={getConfettiVariant(claimResult)}
+            onComplete={() => setShowConfetti(false)}
+          />
+
+          <ClaimPopup
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onClick={onDismiss}
+            role="dialog"
+            aria-label={t('dojo.trainingComplete')}
+          >
           <ClaimPopupContent onClick={(e) => e.stopPropagation()}>
             <CloseButton
               onClick={onDismiss}
@@ -177,7 +202,11 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
                 >
                   <FaCoins color="#FFD700" aria-hidden="true" />
                   <AnimatedRewardValue>
-                    +{claimResult.rewards.points.toLocaleString()}
+                    +<AnimatedValue
+                      value={claimResult.rewards.points}
+                      animationDuration={800}
+                      bold
+                    />
                   </AnimatedRewardValue>
                   <span>{t('common.points')}</span>
                 </AnimatedRewardItem>
@@ -191,7 +220,11 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
                 >
                   <FaTicketAlt color="#0a84ff" aria-hidden="true" />
                   <AnimatedRewardValue>
-                    +{claimResult.rewards.rollTickets}
+                    +<AnimatedValue
+                      value={claimResult.rewards.rollTickets}
+                      animationDuration={600}
+                      bold
+                    />
                   </AnimatedRewardValue>
                   <span>{t('dojo.rollTicketsLabel')}</span>
                 </AnimatedRewardItem>
@@ -205,7 +238,11 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
                 >
                   <FaStar color="#bf5af2" aria-hidden="true" />
                   <AnimatedRewardValue>
-                    +{claimResult.rewards.premiumTickets}
+                    +<AnimatedValue
+                      value={claimResult.rewards.premiumTickets}
+                      animationDuration={600}
+                      bold
+                    />
                   </AnimatedRewardValue>
                   <span>{t('dojo.premiumTicketsLabel')}</span>
                 </AnimatedRewardItem>
@@ -238,6 +275,7 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
             </DismissHint>
           </ClaimPopupContent>
         </ClaimPopup>
+        </>
       )}
     </AnimatePresence>
   );

@@ -317,12 +317,50 @@ export const motionVariants = {
     }
   },
 
+  // Dramatic stagger for cinematic reveals (character grids, reward displays)
+  staggerContainerDramatic: {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.08,
+        delayChildren: 0.1,
+        when: 'beforeChildren'
+      }
+    }
+  },
+
+  // Wave pattern stagger (diagonal wave effect)
+  staggerContainerWave: {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.04,
+        delayChildren: 0.05,
+        staggerDirection: 1
+      }
+    }
+  },
+
   staggerItem: {
     hidden: { opacity: 0, y: 8 },
     visible: {
       opacity: 1,
       y: 0,
       transition: { ...springs.gentle }
+    }
+  },
+
+  // Enhanced stagger item with subtle rotation for visual interest
+  staggerItemDramatic: {
+    hidden: { opacity: 0, y: 16, scale: 0.95, rotate: -2 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      rotate: 0,
+      transition: { ...springs.bouncy }
     }
   },
 

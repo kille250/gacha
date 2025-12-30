@@ -163,17 +163,44 @@ export const useGachaEffects = (options = {}) => {
   /**
    * Complete reveal sequence - call this during the reveal phase
    * Combines flash, shake, and reveal sound in one orchestrated call
+   * Enhanced with dramatic timing for rare+ pulls
    * @param {string} rarity - Rarity of revealed character
    */
   const triggerRevealSequence = useCallback((rarity) => {
-    // Play all reveal effects
-    playReveal(rarity);
+    const rarityLower = rarity?.toLowerCase() || 'common';
+    const tier = RARITY_TIERS[rarityLower] || 0;
 
-    // Slight delay then play character appear
+    // For epic/legendary: Add dramatic double-flash effect
+    if (tier >= 3 && enableFlash && !prefersReducedMotion) {
+      // First flash - bright white
+      flash({
+        color: '#ffffff',
+        opacity: 0.9 * intensity,
+        duration: 100
+      });
+
+      // Second flash with rarity color after brief pause
+      setTimeout(() => {
+        playReveal(rarity);
+      }, 150);
+    } else {
+      // Standard reveal for lower rarities
+      playReveal(rarity);
+    }
+
+    // Character appear timing based on rarity (more dramatic = longer pause)
+    const appearDelay = tier >= 4 ? 250 : tier >= 3 ? 180 : 100;
+
     setTimeout(() => {
       playCharacterAppear(rarity);
-    }, 100);
-  }, [playReveal, playCharacterAppear]);
+
+      // Extra haptic burst for legendary
+      if (tier >= 4 && enableHaptics) {
+        setTimeout(() => impact('heavy'), 50);
+        setTimeout(() => impact('medium'), 150);
+      }
+    }, appearDelay);
+  }, [playReveal, playCharacterAppear, flash, impact, enableFlash, enableHaptics, intensity, prefersReducedMotion]);
 
   /**
    * Stop all active effects

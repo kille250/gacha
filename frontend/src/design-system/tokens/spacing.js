@@ -15,6 +15,7 @@ export const spacing = {
   lg: '24px',
   xl: '32px',
   '2xl': '48px',
+  xxl: '48px',  // Alias for backwards compatibility
   '3xl': '64px',
   '4xl': '96px'
 };

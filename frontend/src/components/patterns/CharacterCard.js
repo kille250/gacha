@@ -46,20 +46,94 @@ const glowPulse = keyframes`
   }
 `;
 
-// Rarity-specific styles - only legendary gets shimmer (reduced intensity)
+// Animated border glow for legendary cards
+const legendaryBorderGlow = keyframes`
+  0%, 100% {
+    box-shadow:
+      0 0 15px rgba(255, 215, 0, 0.4),
+      0 0 30px rgba(255, 167, 38, 0.2),
+      inset 0 0 15px rgba(255, 215, 0, 0.1);
+  }
+  50% {
+    box-shadow:
+      0 0 25px rgba(255, 215, 0, 0.6),
+      0 0 50px rgba(255, 167, 38, 0.3),
+      inset 0 0 20px rgba(255, 215, 0, 0.15);
+  }
+`;
+
+// Rarity-specific styles - legendary gets enhanced shimmer + glow
 const rarityStyles = {
   legendary: css`
+    /* Animated border glow */
+    animation: ${legendaryBorderGlow} 3s ease-in-out infinite;
+    border-color: rgba(255, 215, 0, 0.5);
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+      box-shadow: 0 0 20px rgba(255, 215, 0, 0.4);
+    }
+
+    /* Enhanced shimmer overlay */
     &::before {
       content: '';
       position: absolute;
       inset: 0;
       background: linear-gradient(
         110deg,
-        transparent 25%,
-        rgba(255, 167, 38, 0.08) 45%,
-        rgba(255, 215, 0, 0.12) 50%,
-        rgba(255, 167, 38, 0.08) 55%,
-        transparent 75%
+        transparent 20%,
+        rgba(255, 167, 38, 0.15) 40%,
+        rgba(255, 215, 0, 0.25) 50%,
+        rgba(255, 167, 38, 0.15) 60%,
+        transparent 80%
+      );
+      background-size: 200% 100%;
+      animation: ${shimmer} 3s ease-in-out infinite;
+      pointer-events: none;
+      z-index: 3;
+      border-radius: inherit;
+
+      @media (prefers-reduced-motion: reduce) {
+        animation: none;
+        opacity: 0;
+      }
+    }
+
+    /* Secondary sparkle layer */
+    &::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(
+        circle at 30% 30%,
+        rgba(255, 255, 255, 0.15) 0%,
+        transparent 50%
+      ),
+      radial-gradient(
+        circle at 70% 70%,
+        rgba(255, 215, 0, 0.1) 0%,
+        transparent 40%
+      );
+      pointer-events: none;
+      z-index: 4;
+      border-radius: inherit;
+      opacity: 0.8;
+    }
+  `,
+
+  // Epic gets subtle shimmer
+  epic: css`
+    &::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(
+        110deg,
+        transparent 30%,
+        rgba(191, 90, 242, 0.1) 45%,
+        rgba(156, 39, 176, 0.15) 50%,
+        rgba(191, 90, 242, 0.1) 55%,
+        transparent 70%
       );
       background-size: 200% 100%;
       animation: ${shimmer} 4s ease-in-out infinite;
@@ -73,7 +147,6 @@ const rarityStyles = {
       }
     }
   `
-  // Epic shimmer removed - too many competing effects on screen
 };
 
 const Card = styled(motion.div)`
@@ -90,8 +163,9 @@ const Card = styled(motion.div)`
     border-color ${theme.timing.fast} ${theme.easing.easeOut},
     box-shadow ${theme.timing.normal} ${theme.easing.easeOut};
 
-  /* Apply rarity-specific shimmer for owned legendary cards only */
+  /* Apply rarity-specific effects for owned legendary/epic cards */
   ${props => props.$isOwned && props.$rarity === 'legendary' && rarityStyles.legendary}
+  ${props => props.$isOwned && props.$rarity === 'epic' && rarityStyles.epic}
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {

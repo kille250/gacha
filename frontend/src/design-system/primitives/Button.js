@@ -19,7 +19,7 @@
 import React, { forwardRef, memo, useState, useCallback, useLayoutEffect } from 'react';
 import styled, { css, keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, springs } from '../tokens';
+import { theme } from '../tokens';
 
 // Ripple animation
 const rippleAnimation = keyframes`
@@ -387,9 +387,13 @@ const Button = memo(forwardRef(function Button({
       $fullWidth={fullWidth}
       $iconOnly={iconOnly}
       disabled={isDisabled}
-      whileHover={!isDisabled ? { y: -2 } : undefined}
-      whileTap={!isDisabled ? { scale: 0.97, y: 0 } : undefined}
-      transition={springs.snappy}
+      whileHover={!isDisabled ? { y: -2, scale: 1.01 } : undefined}
+      whileTap={!isDisabled ? {
+        scale: 0.97,
+        y: 1,
+        boxShadow: 'inset 0 2px 4px rgba(0, 0, 0, 0.2), inset 0 1px 2px rgba(0, 0, 0, 0.1)'
+      } : undefined}
+      transition={{ type: 'spring', stiffness: 500, damping: 30, mass: 0.5 }}
       aria-busy={loading}
       onClick={handleClick}
       {...props}

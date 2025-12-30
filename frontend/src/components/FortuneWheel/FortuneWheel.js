@@ -87,7 +87,7 @@ const FortuneWheel = ({
   return (
     <WheelContainer>
       {/* Pointer at top */}
-      <Pointer>
+      <Pointer $spinning={spinning}>
         <PointerTriangle $spinning={spinning} />
       </Pointer>
 

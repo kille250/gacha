@@ -28,6 +28,29 @@ export const sparkle = keyframes`
   100% { opacity: 0; transform: scale(0) rotate(360deg); }
 `;
 
+// Tick animation for pointer during spin
+export const pointerTick = keyframes`
+  0%, 100% {
+    transform: translateX(-50%) rotate(0deg);
+  }
+  25% {
+    transform: translateX(-50%) rotate(-8deg);
+  }
+  75% {
+    transform: translateX(-50%) rotate(8deg);
+  }
+`;
+
+// Excited shake before spin starts
+export const excitedShake = keyframes`
+  0%, 100% { transform: translateX(-50%) rotate(0deg); }
+  10% { transform: translateX(-50%) rotate(-3deg); }
+  20% { transform: translateX(-50%) rotate(3deg); }
+  30% { transform: translateX(-50%) rotate(-3deg); }
+  40% { transform: translateX(-50%) rotate(3deg); }
+  50% { transform: translateX(-50%) rotate(0deg); }
+`;
+
 export const slideInUp = keyframes`
   from { opacity: 0; transform: translateY(30px); }
   to { opacity: 1; transform: translateY(0); }
@@ -143,9 +166,11 @@ export const WheelInner = styled.div`
 export const WheelSvg = styled.svg`
   width: 100%;
   height: 100%;
-  transition: transform cubic-bezier(0.17, 0.67, 0.12, 0.99);
+  /* Enhanced anticipation easing: starts slow, speeds up, then slow deceleration at end */
+  transition: transform cubic-bezier(0.15, 0.85, 0.10, 1.0);
   transition-duration: ${props => props.$duration || 4000}ms;
   transform: rotate(${props => props.$rotation || 0}deg);
+  will-change: transform;
 `;
 
 export const WheelCenter = styled.div`
@@ -189,6 +214,10 @@ export const Pointer = styled.div`
   left: 50%;
   transform: translateX(-50%);
   z-index: 20;
+
+  ${props => props.$spinning && css`
+    animation: ${pointerTick} 0.15s ease-in-out infinite;
+  `}
 `;
 
 export const PointerTriangle = styled.div`
@@ -216,7 +245,7 @@ export const SpinButtonContainer = styled.div`
 `;
 
 export const SpinButton = styled(motion.button)`
-  padding: ${theme.spacing.lg} ${theme.spacing.xxl};
+  padding: ${theme.spacing.lg} ${theme.spacing['2xl']};
   font-size: ${theme.fontSizes.xl};
   font-weight: ${theme.fontWeights.bold};
   color: ${theme.colors.background};
@@ -440,7 +469,7 @@ export const PrizePopupOverlay = styled(motion.div)`
 export const PrizePopupContent = styled(motion.div)`
   background: ${theme.colors.surface};
   border-radius: ${theme.radius.xl};
-  padding: ${theme.spacing.xxl};
+  padding: ${theme.spacing['2xl']};
   max-width: 400px;
   width: 100%;
   text-align: center;
@@ -485,7 +514,7 @@ export const PrizeValue = styled.div`
 `;
 
 export const PrizeCloseButton = styled(motion.button)`
-  padding: ${theme.spacing.md} ${theme.spacing.xxl};
+  padding: ${theme.spacing.md} ${theme.spacing['2xl']};
   font-size: ${theme.fontSizes.md};
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
