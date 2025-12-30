@@ -265,39 +265,46 @@ export class SummonScene {
    * Play animation for entity
    */
   async play(entity) {
-    if (!this.isInitialized) {
-      await this.initialize();
-    }
+    try {
+      if (!this.isInitialized) {
+        await this.initialize();
+      }
 
-    this.entity = entity;
-    this.rarityConfig = getRarityConfig(entity?.rarity);
-    this.isPlaying = true;
-    this.isPaused = false;
+      this.entity = entity;
+      this.rarityConfig = getRarityConfig(entity?.rarity);
+      this.isPlaying = true;
+      this.isPaused = false;
 
-    // Set colors based on rarity
-    const colors = RARITY_COLORS[entity?.rarity?.toLowerCase()] || RARITY_COLORS.common;
+      // Set colors based on rarity
+      const colors = RARITY_COLORS[entity?.rarity?.toLowerCase()] || RARITY_COLORS.common;
 
-    this.effects.vortex.setColors(colors.primary, colors.secondary);
-    this.effects.sparks.setColors(colors.primary, colors.glow);
-    this.effects.shockwave.setColor(colors.primary);
-    this.effects.glow.setColor(colors.glow);
-    this.effects.particles.config.color = colors.primary;
-    this.effects.particles.config.colorEnd = colors.glow;
-    this.layers.background.setRarityColor(colors.primary);
+      this.effects.vortex?.setColors(colors.primary, colors.secondary);
+      this.effects.sparks?.setColors(colors.primary, colors.glow);
+      this.effects.shockwave?.setColor(colors.primary);
+      this.effects.glow?.setColor(colors.glow);
+      if (this.effects.particles?.config) {
+        this.effects.particles.config.color = colors.primary;
+        this.effects.particles.config.colorEnd = colors.glow;
+      }
+      this.layers.background?.setRarityColor(colors.primary);
 
-    // Load character image
-    if (entity?.image) {
-      await this.layers.character.setImage(entity.image, this.getImagePath);
-    }
+      // Load character image
+      if (entity?.image) {
+        await this.layers.character?.setImage(entity.image, this.getImagePath);
+      }
 
-    // Callback
-    this.callbacks.onAnimationStart?.();
+      // Callback
+      this.callbacks.onAnimationStart?.();
 
-    // Start animation phases
-    if (this.prefersReducedMotion) {
-      this.playReducedMotion();
-    } else {
-      this.playFullAnimation();
+      // Start animation phases
+      if (this.prefersReducedMotion) {
+        this.playReducedMotion();
+      } else {
+        this.playFullAnimation();
+      }
+    } catch (error) {
+      console.error('Error in SummonScene.play():', error);
+      throw error; // Re-throw so React component can handle it
     }
   }
 
