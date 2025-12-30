@@ -65,6 +65,8 @@ export const SummonAnimation = forwardRef(({
   const initErrorRef = useRef(null);
   // Track which entity the showcase is ready for (prevents name flash bug)
   const showcaseReadyForEntityRef = useRef(null);
+  // Track previous entity for multi-pull reset detection
+  const prevEntityIdRef = useRef(null);
 
   // State
   const [phase, setPhase] = useState(ANIMATION_PHASES.IDLE);
@@ -253,6 +255,22 @@ export const SummonAnimation = forwardRef(({
       return;
     }
 
+    // For multi-pull: reset scene and state when entity changes
+    // This MUST happen before play() to ensure isPlaying is set correctly
+    const entityId = normalizedEntity?.id;
+    if (isMultiPull && prevEntityIdRef.current !== null && prevEntityIdRef.current !== entityId) {
+      // Reset React state for new pull
+      setShowSkipHint(false);
+      setPhase(ANIMATION_PHASES.IDLE);
+      setIsShowcaseReady(false);
+      setAnimationError(null);
+      stopAllEffects();
+
+      // Reset scene before playing new animation
+      scene.reset();
+    }
+    prevEntityIdRef.current = entityId;
+
     // Set callbacks
     scene.setCallbacks({
       onAnimationStart: () => {
@@ -338,6 +356,7 @@ export const SummonAnimation = forwardRef(({
     effectRarity,
     rarityColors,
     rarityAnimConfig,
+    isMultiPull,
     playPullStart,
     playBuildup,
     triggerRevealSequence,
@@ -347,17 +366,6 @@ export const SummonAnimation = forwardRef(({
     onReveal,
     onSkip,
   ]);
-
-  // Reset on currentPull change (multi-pull)
-  useEffect(() => {
-    if (isMultiPull && sceneRef.current) {
-      sceneRef.current.reset();
-      setPhase(ANIMATION_PHASES.IDLE);
-      setIsShowcaseReady(false);
-      setAnimationError(null);
-      stopAllEffects();
-    }
-  }, [currentPull, isMultiPull, stopAllEffects]);
 
   // Lock body scroll
   useEffect(() => {
