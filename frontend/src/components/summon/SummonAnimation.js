@@ -19,21 +19,11 @@ import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useRarity } from '../../context/RarityContext';
 import { useGachaEffects } from '../../engine/effects/useGachaEffects';
-import { isVideo } from '../../utils/mediaUtils';
 import { SummonScene } from './pixi/SummonScene';
 import { ANIMATION_PHASES } from './pixi/constants';
 import * as S from './SummonAnimation.styles';
 
 // ==================== UTILITIES ====================
-
-// Rarity symbols for accessibility (matches CharacterCard)
-const RARITY_SYMBOLS = {
-  common: '●',
-  uncommon: '◆',
-  rare: '★',
-  epic: '✦',
-  legendary: '✧',
-};
 
 // ==================== MAIN COMPONENT ====================
 
@@ -90,8 +80,8 @@ export const SummonAnimation = forwardRef(({
   // Translation
   const { t } = useTranslation();
 
-  // Get rarity context with animation config and color functions
-  const { getRarityAnimation, getRarityColor } = useRarity();
+  // Get rarity context with animation config
+  const { getRarityAnimation } = useRarity();
   const effectRarity = normalizedEntity?.rarity || 'common';
 
   // Get dynamic rarity config from context (admin-configurable)
@@ -460,52 +450,7 @@ export const SummonAnimation = forwardRef(({
           )}
         </AnimatePresence>
 
-        {/* Character Card (shown when showcase ready for THIS entity) */}
-        {/* Uses collection-style card for visual consistency */}
-        {/* Bug fix: Check showcaseReadyForEntityRef to prevent name flash when entity changes */}
-        <AnimatePresence>
-          {isShowcaseReady && normalizedEntity && showcaseReadyForEntityRef.current === normalizedEntity.id && (
-            <S.ShowcaseCard
-              initial={{ opacity: 0, y: 20, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20, scale: 0.95 }}
-              transition={{ type: 'spring', stiffness: 300, damping: 25 }}
-              $color={getRarityColor(effectRarity)}
-              $rarity={effectRarity}
-            >
-              <S.ShowcaseImageWrapper>
-                {isVideo(normalizedEntity.image) ? (
-                  <S.ShowcaseVideo
-                    src={getImagePath ? getImagePath(normalizedEntity.image) : normalizedEntity.image}
-                    autoPlay
-                    loop
-                    muted
-                    playsInline
-                    aria-hidden="true"
-                  />
-                ) : (
-                  <S.ShowcaseImage
-                    src={getImagePath ? getImagePath(normalizedEntity.image) : normalizedEntity.image}
-                    alt=""
-                  />
-                )}
-                <S.ShowcaseNewBadge>NEW</S.ShowcaseNewBadge>
-                <S.ShowcaseRarityIndicator $color={getRarityColor(effectRarity)} />
-              </S.ShowcaseImageWrapper>
-              <S.ShowcaseContent>
-                <S.ShowcaseName>
-                  <S.ShowcaseRaritySymbol aria-hidden="true">
-                    {RARITY_SYMBOLS[effectRarity] || RARITY_SYMBOLS.common}
-                  </S.ShowcaseRaritySymbol>
-                  {normalizedEntity.name}
-                </S.ShowcaseName>
-                {normalizedEntity.series && (
-                  <S.ShowcaseSeries>{normalizedEntity.series}</S.ShowcaseSeries>
-                )}
-              </S.ShowcaseContent>
-            </S.ShowcaseCard>
-          )}
-        </AnimatePresence>
+        {/* Character card is now rendered in Pixi.js CollectionCardLayer */}
 
         <S.BottomArea>
           {/* Multi-pull Progress */}

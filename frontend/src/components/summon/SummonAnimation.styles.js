@@ -208,11 +208,18 @@ const legendaryShimmer = css`
 
 // Showcase card container - centered and scaled up as the main reveal element
 // Uses collection card styling for visual consistency
+// Uses flexbox centering to avoid transform conflicts with Framer Motion animations
 export const ShowcaseCard = styled(motion.div)`
   position: absolute;
-  top: 50%;
-  left: 50%;
-  transform: translate(-50%, -50%);
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+`;
+
+// Inner card with actual styling - separated to avoid transform conflicts
+export const ShowcaseCardInner = styled.div`
   width: 90%;
   max-width: 320px;
   background: ${theme.colors.surface};
@@ -224,7 +231,6 @@ export const ShowcaseCard = styled(motion.div)`
     0 0 30px ${props => props.$color ? `${props.$color}60` : 'transparent'},
     0 0 60px ${props => props.$color ? `${props.$color}40` : 'transparent'},
     0 0 100px ${props => props.$color ? `${props.$color}25` : 'transparent'};
-  pointer-events: none;
 
   /* Apply legendary shimmer effect */
   ${props => props.$rarity === 'legendary' && legendaryShimmer}

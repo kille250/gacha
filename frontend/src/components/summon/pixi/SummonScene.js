@@ -8,12 +8,12 @@
 import { Application, Container } from 'pixi.js';
 import { BackgroundLayer } from './layers/BackgroundLayer';
 import { CharacterLayer } from './layers/CharacterLayer';
+import { CollectionCardLayer } from './layers/CollectionCardLayer';
 import { ForegroundLayer } from './layers/ForegroundLayer';
 import { VortexEffect } from './effects/VortexEffect';
 import { SparkEffect } from './effects/SparkEffect';
 import { ShockwaveEffect } from './effects/ShockwaveEffect';
 import { GlowEffect } from './effects/GlowEffect';
-import { CardFrameEffect } from './effects/CardFrameEffect';
 import { CardShineEffect } from './effects/CardShineEffect';
 import { ParticleSystem } from './ParticleSystem';
 import {
@@ -43,6 +43,7 @@ export class SummonScene {
       background: null,
       effects: null,
       character: null,
+      collectionCard: null,
       foreground: null,
     };
 
@@ -53,7 +54,6 @@ export class SummonScene {
       shockwave: null,
       glow: null,
       particles: null,
-      cardFrame: null,
       cardShine: null,
     };
 
@@ -197,7 +197,7 @@ export class SummonScene {
     this.layers.effects.label = 'effects-container';
     this.app.stage.addChild(this.layers.effects);
 
-    // Character layer
+    // Character layer (used during buildup, hidden during reveal)
     this.layers.character = new CharacterLayer({
       x: centerX,
       y: centerY,
@@ -205,6 +205,18 @@ export class SummonScene {
       maxHeight: Math.min(height * 0.6, 450),
     });
     this.app.stage.addChild(this.layers.character.container);
+
+    // Collection card layer (the main reveal card)
+    const cardWidth = Math.min(width * 0.75, 300);
+    const cardHeight = cardWidth * 1.35;
+    this.layers.collectionCard = new CollectionCardLayer({
+      x: centerX,
+      y: centerY,
+      width: cardWidth,
+      height: cardHeight,
+    });
+    this.layers.collectionCard.setImagePathResolver(this.getImagePath);
+    this.app.stage.addChild(this.layers.collectionCard.container);
 
     // Foreground layer
     this.layers.foreground = new ForegroundLayer({
@@ -269,28 +281,19 @@ export class SummonScene {
     });
     this.layers.effects.addChild(this.effects.particles.container);
 
-    // Card frame effect (reveal/showcase) - positioned behind character
-    this.effects.cardFrame = new CardFrameEffect({
-      x: centerX,
-      y: centerY,
-      width: Math.min(width * 0.6, 350),
-      height: Math.min(height * 0.6, 450),
-      padding: 20,
-    });
-    // Insert card frame before character layer for correct z-order
-    const characterIndex = this.app.stage.getChildIndex(this.layers.character.container);
-    this.app.stage.addChildAt(this.effects.cardFrame.container, characterIndex);
-
-    // Card shine effect (reveal/showcase) - positioned on top of character
+    // Card shine effect (reveal/showcase) - positioned on top of collection card
+    const cardWidth = Math.min(width * 0.75, 300);
+    const cardHeight = cardWidth * 1.35;
     this.effects.cardShine = new CardShineEffect({
       x: centerX,
       y: centerY,
-      width: Math.min(width * 0.6, 350) + 40, // Slightly larger than frame
-      height: Math.min(height * 0.6, 450) + 40,
+      width: cardWidth + 20,
+      height: cardHeight + 20,
       cornerRadius: 20,
     });
-    // Insert shine after character layer
-    this.app.stage.addChildAt(this.effects.cardShine.container, characterIndex + 2);
+    // Insert shine after collection card layer
+    const cardIndex = this.app.stage.getChildIndex(this.layers.collectionCard.container);
+    this.app.stage.addChildAt(this.effects.cardShine.container, cardIndex + 1);
   }
 
   /**
@@ -324,12 +327,12 @@ export class SummonScene {
         const centerY = height / 2;
 
         this.layers.character?.setPosition?.(centerX, centerY);
+        this.layers.collectionCard?.setPosition?.(centerX, centerY);
         this.effects.vortex?.setPosition?.(centerX, centerY);
         this.effects.sparks?.setPosition?.(centerX, centerY);
         this.effects.shockwave?.setPosition?.(centerX, centerY);
         this.effects.glow?.setPosition?.(centerX, centerY);
         this.effects.particles?.setPosition?.(centerX, centerY + 100);
-        this.effects.cardFrame?.setPosition?.(centerX, centerY);
         this.effects.cardShine?.setPosition?.(centerX, centerY);
       } catch (e) {
         console.warn('Error during resize:', e);
@@ -428,22 +431,16 @@ export class SummonScene {
       }
       this.layers.background?.setRarityColor(colors.primary);
 
-      // Set up card frame and shine effects based on rarity
+      // Set up card shine effect based on rarity
       const rarity = entity?.rarity?.toLowerCase() || 'common';
-      this.effects.cardFrame?.setRarity(rarity);
       this.effects.cardShine?.setRarity(rarity);
 
-      // Load character image
-      if (entity?.image) {
-        try {
-          await this.layers.character?.setImage(entity.image, this.getImagePath);
-        } catch (imgError) {
-          console.warn('Failed to load character image, continuing:', imgError);
-        }
-      }
+      // Set up collection card with entity data (loads image internally)
+      this.layers.collectionCard?.setImagePathResolver(this.getImagePath);
+      await this.layers.collectionCard?.setEntity(entity);
+      this.layers.collectionCard?.reset(); // Start hidden
 
-      // Explicitly ensure character is hidden before animation starts
-      // This prevents any premature flash of the character image/name
+      // Explicitly ensure character layer is hidden (not used anymore but keep for safety)
       this.layers.character?.hide();
 
       // Callback
@@ -497,13 +494,8 @@ export class SummonScene {
     }, durations.initiation + durations.buildUp);
 
     // Phase 4: Showcase - stays here until user taps to continue
-    // Hide Pixi elements (character, card frame, shine) so only React ShowcaseCard displays
     this.addTimer(() => {
       this.setPhase(ANIMATION_PHASES.SHOWCASE);
-      this.layers.character.setShowcase();
-      // Hide card frame and shine - React ShowcaseCard will display instead
-      this.effects.cardFrame?.reset();
-      this.effects.cardShine?.reset();
       this.effects.particles.start();
       this.layers.foreground.setDim(0);
       this.callbacks.onShowcaseReady?.();
@@ -518,25 +510,13 @@ export class SummonScene {
   playReducedMotion() {
     const timings = REDUCED_MOTION_TIMINGS;
 
-    // Skip to reveal immediately with simple fade
+    // Skip to reveal immediately - show collection card instantly
     this.setPhase(ANIMATION_PHASES.REVEAL);
-    this.layers.character.reveal({ glowIntensity: 0.3 });
+    this.layers.collectionCard?.start({ instant: true });
     this.callbacks.onReveal?.();
-
-    // Show card frame instantly in reduced motion
-    if (this.effects.cardFrame) {
-      const charWidth = this.layers.character.maxWidth;
-      const charHeight = this.layers.character.maxHeight;
-      this.effects.cardFrame.setDimensions(charWidth, charHeight);
-      this.effects.cardFrame.start({ instant: true });
-    }
 
     this.addTimer(() => {
       this.setPhase(ANIMATION_PHASES.SHOWCASE);
-      this.layers.character.setShowcase();
-      // Hide card frame and shine - React ShowcaseCard will display instead
-      this.effects.cardFrame?.reset();
-      this.effects.cardShine?.reset();
       this.callbacks.onShowcaseReady?.();
     }, timings.reveal);
 
@@ -571,31 +551,20 @@ export class SummonScene {
       speedMax: 800,
     });
 
-    // Reveal character
-    this.layers.character.reveal({
-      glowIntensity: this.rarityConfig?.effects?.glowIntensity || 0.5,
-    });
-
     // Start glow effect
     this.effects.glow.start({
       intensity: this.rarityConfig?.effects?.glowIntensity || 0.5,
       showRays: this.entity?.rarity?.toLowerCase() === 'legendary',
     });
 
-    // Start card frame effect with reveal animation
-    if (this.effects.cardFrame) {
-      // Update dimensions based on character layer bounds
-      const charWidth = this.layers.character.maxWidth;
-      const charHeight = this.layers.character.maxHeight;
-      this.effects.cardFrame.setDimensions(charWidth, charHeight);
-      this.effects.cardFrame.start();
-    }
+    // Reveal the collection card (the main reveal element)
+    this.layers.collectionCard?.start();
 
     // Start card shine effect with sweep animation
     if (this.effects.cardShine) {
-      const charWidth = this.layers.character.maxWidth;
-      const charHeight = this.layers.character.maxHeight;
-      this.effects.cardShine.setDimensions(charWidth + 40, charHeight + 40, 20);
+      const cardWidth = Math.min(this.config.width * 0.75, 300);
+      const cardHeight = cardWidth * 1.35;
+      this.effects.cardShine.setDimensions(cardWidth + 20, cardHeight + 20, 16);
       this.effects.cardShine.start({ sweepDirection: 1 });
     }
 
@@ -617,36 +586,24 @@ export class SummonScene {
       this.layers.foreground.flash({ alpha: 0.6, decay: 0.2 });
       this.effects.shockwave.trigger();
       this.effects.sparks.radialBurst(40);
-      this.layers.character.reveal({
-        glowIntensity: this.rarityConfig?.effects?.glowIntensity || 0.5,
-      });
       this.effects.glow.start({
         intensity: this.rarityConfig?.effects?.glowIntensity || 0.5,
       });
 
-      // Start card frame with instant reveal
-      if (this.effects.cardFrame) {
-        const charWidth = this.layers.character.maxWidth;
-        const charHeight = this.layers.character.maxHeight;
-        this.effects.cardFrame.setDimensions(charWidth, charHeight);
-        this.effects.cardFrame.start({ instant: true });
-      }
+      // Show collection card instantly
+      this.layers.collectionCard?.start({ instant: true });
 
       // Start card shine with instant state
       if (this.effects.cardShine) {
-        const charWidth = this.layers.character.maxWidth;
-        const charHeight = this.layers.character.maxHeight;
-        this.effects.cardShine.setDimensions(charWidth + 40, charHeight + 40, 20);
+        const cardWidth = Math.min(this.config.width * 0.75, 300);
+        const cardHeight = cardWidth * 1.35;
+        this.effects.cardShine.setDimensions(cardWidth + 20, cardHeight + 20, 16);
         this.effects.cardShine.start({ sweepDirection: 1 });
       }
     }
 
-    // Jump to showcase - hide Pixi elements so only React ShowcaseCard displays
+    // Jump to showcase
     this.setPhase(ANIMATION_PHASES.SHOWCASE);
-    this.layers.character.setShowcase();
-    // Hide card frame and shine - React ShowcaseCard will display instead
-    this.effects.cardFrame?.reset();
-    this.effects.cardShine?.reset();
     this.effects.particles.start();
     this.layers.foreground.setDim(0);
 
@@ -710,6 +667,7 @@ export class SummonScene {
     // Update layers
     this.layers.background?.update(dt);
     this.layers.character?.update(dt);
+    this.layers.collectionCard?.update(dt);
     this.layers.foreground?.update(dt);
 
     // Update effects
@@ -718,7 +676,6 @@ export class SummonScene {
     this.effects.shockwave?.update(dt);
     this.effects.glow?.update(dt);
     this.effects.particles?.update(dt);
-    this.effects.cardFrame?.update(dt);
     this.effects.cardShine?.update(dt);
   }
 
@@ -734,6 +691,7 @@ export class SummonScene {
     // Reset layers
     this.layers.background?.setIntensity(0);
     this.layers.character?.reset();
+    this.layers.collectionCard?.reset();
     this.layers.foreground?.clear();
 
     // Reset effects
@@ -743,7 +701,6 @@ export class SummonScene {
     this.effects.glow?.stop();
     this.effects.particles?.stop();
     this.effects.particles?.clear();
-    this.effects.cardFrame?.reset();
     this.effects.cardShine?.reset();
   }
 
