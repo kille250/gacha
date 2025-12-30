@@ -63,6 +63,8 @@ export const SummonAnimation = forwardRef(({
   const sceneRef = useRef(null);
   const buildupStopRef = useRef(null);
   const initErrorRef = useRef(null);
+  // Track which entity the showcase is ready for (prevents name flash bug)
+  const showcaseReadyForEntityRef = useRef(null);
 
   // State
   const [phase, setPhase] = useState(ANIMATION_PHASES.IDLE);
@@ -153,11 +155,18 @@ export const SummonAnimation = forwardRef(({
   // Initialize scene - only once when canvas is available
   useEffect(() => {
     if (!canvasRef.current) return;
-    // Don't re-initialize if already exists
-    if (sceneRef.current) return;
+    // Don't re-initialize if already exists and is initialized
+    if (sceneRef.current?.isInitialized) return;
+
+    // Clean up any existing scene that failed to initialize
+    if (sceneRef.current) {
+      sceneRef.current.destroy();
+      sceneRef.current = null;
+    }
 
     let mounted = true;
-    const scene = new SummonScene(canvasRef.current);
+    const canvas = canvasRef.current;
+    const scene = new SummonScene(canvas);
     sceneRef.current = scene;
 
     // Set image path resolver using ref
@@ -176,7 +185,9 @@ export const SummonAnimation = forwardRef(({
 
     scene.initialize()
       .then(() => {
-        clearTimeout(initTimeout);
+        if (mounted) {
+          clearTimeout(initTimeout);
+        }
       })
       .catch((error) => {
         clearTimeout(initTimeout);
@@ -208,8 +219,12 @@ export const SummonAnimation = forwardRef(({
       setShowSkipHint(false);
       setAnimationError(null);
       initErrorRef.current = null;
+      showcaseReadyForEntityRef.current = null;
       return;
     }
+
+    // Reset showcase tracking when entity changes (prevents name flash bug)
+    showcaseReadyForEntityRef.current = null;
 
     // If there's already an initialization error, skip to showcase ready
     if (initErrorRef.current) {
@@ -251,6 +266,8 @@ export const SummonAnimation = forwardRef(({
       },
       onShowcaseReady: () => {
         setPhase(ANIMATION_PHASES.SHOWCASE);
+        // Track which entity this showcase is for (prevents name flash on entity change)
+        showcaseReadyForEntityRef.current = normalizedEntity?.id;
         setIsShowcaseReady(true);
       },
       onAnimationComplete: () => {
@@ -262,6 +279,8 @@ export const SummonAnimation = forwardRef(({
           buildupStopRef.current();
           buildupStopRef.current = null;
         }
+        // Track which entity this showcase is for (prevents name flash on entity change)
+        showcaseReadyForEntityRef.current = normalizedEntity?.id;
         setIsShowcaseReady(true);
         onSkip?.();
       },
@@ -414,14 +433,15 @@ export const SummonAnimation = forwardRef(({
           )}
         </AnimatePresence>
 
-        {/* Character Info (shown when showcase ready) */}
+        {/* Character Info (shown when showcase ready for THIS entity) */}
+        {/* Bug fix: Check showcaseReadyForEntityRef to prevent name flash when entity changes */}
         <AnimatePresence>
-          {isShowcaseReady && normalizedEntity && (
+          {isShowcaseReady && normalizedEntity && showcaseReadyForEntityRef.current === normalizedEntity.id && (
             <S.CharacterInfo
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
               exit={{ opacity: 0 }}
-              transition={{ duration: 0.3 }}
+              transition={{ duration: 0.2 }}
             >
               <S.RarityBadge $color={rarityAnimConfig.color}>
                 {getIconByRarity(effectRarity)}
@@ -446,14 +466,14 @@ export const SummonAnimation = forwardRef(({
             </S.ProgressBar>
           )}
 
-          {/* Continue Button */}
+          {/* Continue Button - also uses entity check to prevent flash */}
           <AnimatePresence>
-            {isShowcaseReady && (
+            {isShowcaseReady && showcaseReadyForEntityRef.current === normalizedEntity?.id && (
               <S.ContinueButton
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
-                transition={{ type: 'spring', damping: 20, stiffness: 300 }}
+                transition={{ duration: 0.2 }}
                 whileHover={{ scale: 1.03 }}
                 whileTap={{ scale: 0.97 }}
                 onClick={handleInteraction}

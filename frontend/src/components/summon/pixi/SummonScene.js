@@ -96,6 +96,19 @@ export class SummonScene {
       this.prefersReducedMotion = true;
     }
 
+    // Clean up any existing app (handles React strict mode double-mount)
+    if (this.app) {
+      try {
+        this.app.ticker?.stop();
+        if (this.app.renderer) {
+          this.app.destroy(true, { children: true });
+        }
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      this.app = null;
+    }
+
     // Create Pixi Application
     this.app = new Application();
 
@@ -131,6 +144,11 @@ export class SummonScene {
         console.error('Pixi.js fallback initialization also failed:', fallbackError);
         throw fallbackError;
       }
+    }
+
+    // Verify app initialized properly
+    if (!this.app.stage) {
+      throw new Error('Pixi.js Application stage not available after initialization');
     }
 
     // Create layers
@@ -377,7 +395,7 @@ export class SummonScene {
         }
       }
 
-      // Bug fix: Explicitly ensure character is hidden before animation starts
+      // Explicitly ensure character is hidden before animation starts
       // This prevents any premature flash of the character image/name
       this.layers.character?.hide();
 

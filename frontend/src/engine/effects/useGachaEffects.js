@@ -102,16 +102,11 @@ export const useGachaEffects = (options = {}) => {
       });
     }
 
-    // Screen shake for rare+ (scaled by intensity)
-    if (enableShake && tier >= 2 && !prefersReducedMotion) {
-      const shakeConfig = RARITY_SHAKE_MAP[rarityLower];
-      if (shakeConfig) {
-        shake({
-          ...shakeConfig,
-          intensity: shakeConfig.intensity * intensity
-        });
-      }
-    }
+    // Screen shake disabled for summon animations
+    // The shake transforms the app-shake-container which includes the fixed-position
+    // summon overlay (due to CSS transform creating a new containing block).
+    // This causes a visible "snap" when the shake ends.
+    // The Pixi.js shockwave and flash effects already provide sufficient visual feedback.
 
     // Impact sound
     if (enableSound) {
@@ -228,6 +223,7 @@ export const useGachaEffects = (options = {}) => {
 
     // Direct access to individual effect hooks
     shake,
+    stopShake,
     flash,
     vibrate,
     play,

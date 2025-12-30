@@ -80,6 +80,7 @@ export class CharacterLayer {
       this.characterSprite.alpha = 0;
       this.characterSprite.scale.set(this.baseScale * 0.01);
       this.characterSprite.visible = false; // Double-ensure no flash
+      this.characterSprite.tint = 0x000000; // Start with black tint too
 
       // Add to container after silhouette
       this.container.addChildAt(this.characterSprite, 1);
@@ -152,6 +153,13 @@ export class CharacterLayer {
     // Make sprite visible now that reveal is starting
     if (this.characterSprite) {
       this.characterSprite.visible = true;
+      // Ensure character starts at center position for reveal
+      this.characterSprite.position.set(this.centerX, this.centerY);
+      this.characterSprite.rotation = 0;
+      // Start with proper initial state for reveal animation
+      this.characterSprite.alpha = 0;
+      this.characterSprite.scale.set(this.baseScale * 0.85);
+      this.characterSprite.tint = 0x000000;
     }
   }
 
@@ -179,6 +187,7 @@ export class CharacterLayer {
       this.characterSprite.alpha = 0;
       this.characterSprite.visible = false;
       this.characterSprite.scale.set(this.baseScale * 0.01);
+      this.characterSprite.tint = 0x000000;
     }
     this.silhouette.clear();
     this.glowOverlay.clear();
@@ -198,7 +207,9 @@ export class CharacterLayer {
       this.updateSilhouette(dt);
     } else if (this.phase === 'revealing') {
       this.updateReveal(dt);
-    } else if (this.phase === 'revealed' || this.phase === 'showcase') {
+    } else if (this.phase === 'revealed') {
+      this.updateRevealed(dt);
+    } else if (this.phase === 'showcase') {
       this.updateShowcase(dt);
     }
 
@@ -231,6 +242,10 @@ export class CharacterLayer {
     this.revealProgress = Math.min(1, this.revealProgress + dt / 30); // ~0.5s reveal
     this.scaleProgress = Math.min(1, this.scaleProgress + dt / 20); // Scale animation
 
+    // Keep position locked at center during reveal
+    this.characterSprite.position.set(this.centerX, this.centerY);
+    this.characterSprite.rotation = 0;
+
     // Scale with overshoot (baseScale ensures proper sizing, targetScale is animation multiplier)
     const scaleEased = easeOutBack(this.scaleProgress);
     const scaleMult = lerp(0.85, this.targetScale, scaleEased);
@@ -252,6 +267,21 @@ export class CharacterLayer {
       this.phase = 'revealed';
       this.characterSprite.tint = 0xffffff;
     }
+  }
+
+  /**
+   * Update revealed phase (static, waiting for showcase)
+   * Character stays at center position without floating.
+   */
+  updateRevealed(_dt) {
+    if (!this.characterSprite) return;
+
+    // Keep character static at center - no floating yet
+    this.characterSprite.position.set(this.centerX, this.centerY);
+    this.characterSprite.rotation = 0;
+    this.characterSprite.alpha = 1;
+    this.characterSprite.tint = 0xffffff;
+    this.characterSprite.scale.set(this.baseScale * this.targetScale);
   }
 
   /**
@@ -310,8 +340,16 @@ export class CharacterLayer {
    */
   setShowcase() {
     this.phase = 'showcase';
-    // Reset showcase time so floating animation starts smoothly from center (sin(0) = 0)
+    // Reset showcaseTime so floating animation starts smoothly from center (sin(0) = 0).
     this.showcaseTime = 0;
+    // Explicitly set position to center - handles skip case where reveal was interrupted
+    if (this.characterSprite) {
+      this.characterSprite.position.set(this.centerX, this.centerY);
+      this.characterSprite.rotation = 0;
+      this.characterSprite.alpha = 1;
+      this.characterSprite.tint = 0xffffff;
+      this.characterSprite.scale.set(this.baseScale * this.targetScale);
+    }
   }
 
   /**
