@@ -27,9 +27,12 @@ import {
 export class SummonScene {
   constructor(canvas, config = {}) {
     this.canvas = canvas;
+    // Use visualViewport when available for accurate mobile dimensions
+    const viewportWidth = window.visualViewport?.width || window.innerWidth;
+    const viewportHeight = window.visualViewport?.height || window.innerHeight;
     this.config = {
-      width: config.width || window.innerWidth,
-      height: config.height || window.innerHeight,
+      width: config.width || viewportWidth,
+      height: config.height || viewportHeight,
       resolution: config.resolution || window.devicePixelRatio || 1,
       antialias: config.antialias !== false,
     };
@@ -306,8 +309,9 @@ export class SummonScene {
       // Don't resize if destroyed
       if (!this.isInitialized || !this.app) return;
 
-      const width = window.innerWidth;
-      const height = window.innerHeight;
+      // Use visualViewport when available for accurate mobile dimensions
+      const width = window.visualViewport?.width || window.innerWidth;
+      const height = window.visualViewport?.height || window.innerHeight;
 
       this.config.width = width;
       this.config.height = height;
@@ -340,6 +344,8 @@ export class SummonScene {
     };
 
     window.addEventListener('resize', handleResize);
+    // Also listen to visualViewport resize for mobile toolbar changes
+    window.visualViewport?.addEventListener('resize', handleResize);
     this.resizeHandler = handleResize;
   }
 
@@ -711,9 +717,10 @@ export class SummonScene {
     this.isDestroyed = true;
     this.clearTimers();
 
-    // Remove resize handler
+    // Remove resize handlers
     if (this.resizeHandler && typeof window !== 'undefined') {
       window.removeEventListener('resize', this.resizeHandler);
+      window.visualViewport?.removeEventListener('resize', this.resizeHandler);
     }
 
     // Destroy effects
