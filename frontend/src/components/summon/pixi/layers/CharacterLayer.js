@@ -86,37 +86,23 @@ export class CharacterLayer {
   /**
    * Load texture from URL using native Image element
    */
-  loadTexture(url) {
-    return new Promise((resolve, reject) => {
-      const img = new Image();
-      img.crossOrigin = 'anonymous';
+  async loadTexture(url) {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = url;
 
-      const timeout = setTimeout(() => {
-        img.src = '';
-        reject(new Error('Image load timeout'));
-      }, 10000);
-
-      img.onload = () => {
-        clearTimeout(timeout);
-        try {
-          const texture = Texture.from(img);
-          if (!texture || !texture.width || !texture.height) {
-            reject(new Error('Invalid texture created'));
-            return;
-          }
-          resolve(texture);
-        } catch (err) {
-          reject(err);
-        }
-      };
-
-      img.onerror = () => {
-        clearTimeout(timeout);
-        reject(new Error('Failed to load image'));
-      };
-
-      img.src = url;
+    // Use decode() for reliable loading in PIXI v8
+    const timeoutPromise = new Promise((_, reject) => {
+      setTimeout(() => reject(new Error('Image load timeout')), 10000);
     });
+
+    await Promise.race([img.decode(), timeoutPromise]);
+
+    const texture = Texture.from(img);
+    if (!texture || !texture.width || !texture.height) {
+      throw new Error('Invalid texture created');
+    }
+    return texture;
   }
 
   /**
