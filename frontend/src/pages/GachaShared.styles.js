@@ -24,10 +24,22 @@ export const StyledPageWrapper = styled(PageWrapper)`
 export const HeroBackground = styled.div`
   position: fixed;
   inset: 0;
+  /* Prevent layout shift: set dimensions explicitly */
+  width: 100%;
+  height: 100%;
+  /* Fallback background color shown while image loads */
+  background-color: ${theme.colors.backgroundSecondary};
   background-size: cover;
   background-position: center top;
+  background-repeat: no-repeat;
+  /* Default opacity - can be overridden via style prop for fade-in effect */
   opacity: 0.15;
   z-index: 0;
+  /* Hardware acceleration to prevent repaint flicker */
+  will-change: opacity, background-image;
+  transform: translateZ(0);
+  /* Smooth transition when background image loads and opacity changes */
+  transition: opacity 0.4s ease-out, background-image 0.4s ease-out;
 
   &::after {
     content: '';

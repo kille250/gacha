@@ -197,3 +197,5 @@ export { useCollectionMilestones, MILESTONES } from './useCollectionMilestones';
 // Button charge-up animation
 export { default as useChargeUp } from './useChargeUp';
 
+// Image preloading for CLS prevention
+export { useImagePreload, useImagesPreload } from './useImagePreload';

@@ -10,7 +10,7 @@ import api, { getBannerById, getBannerPricing, getAssetUrl } from '../utils/api'
 import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
-import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
+import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity, useImagePreload } from '../hooks';
 import { onVisibilityChange, invalidateFor, VISIBILITY_CALLBACK_IDS, CACHE_ACTIONS } from '../cache';
 import { executeBannerRoll, executeBannerMultiRoll } from '../actions/gachaActions';
 import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
@@ -264,6 +264,12 @@ const BannerPage = () => {
       .sort((a, b) => (rarityOrder[a.rarity] ?? 5) - (rarityOrder[b.rarity] ?? 5))
       .slice(0, 6);
   }, [banner?.Characters]);
+
+  // Preload hero background image to prevent layout shift
+  const bannerBgUrl = useMemo(() =>
+    banner?.image ? getAssetUrl(banner.image) : null,
+  [banner?.image]);
+  const { loaded: bgImageLoaded } = useImagePreload(bannerBgUrl);
 
   // Check if animation is currently showing
   const isAnimating = showSummonAnimation || showMultiSummonAnimation;
@@ -921,8 +927,13 @@ const BannerPage = () => {
 
   return (
     <StyledPageWrapper>
-      {/* Hero Background */}
-      <HeroBackground style={{ backgroundImage: `url(${getBannerImage(banner.image)})` }} />
+      {/* Hero Background - only show image when preloaded to prevent layout shift */}
+      <HeroBackground
+        style={{
+          backgroundImage: bgImageLoaded && bannerBgUrl ? `url(${bannerBgUrl})` : 'none',
+          opacity: bgImageLoaded ? 0.15 : 0.08,
+        }}
+      />
       
       <Container>
         {/* Navigation Bar */}
