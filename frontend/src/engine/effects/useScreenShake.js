@@ -130,6 +130,9 @@ export const useScreenShake = () => {
     // than the one that started the shake (SummonAnimation)
     const element = document.getElementById('app-shake-container') || document.body;
 
+    // Kill any existing GSAP animations on this element first
+    gsap.killTweensOf(element);
+
     // Animate back to center smoothly instead of instant jump
     // This prevents jarring visual shifts when shake is interrupted mid-animation
     // (especially noticeable in multi-summon transitions)
@@ -139,7 +142,12 @@ export const useScreenShake = () => {
       duration: 0.08,
       ease: 'power2.out',
       onComplete: () => {
-        gsap.set(element, { clearProps: 'transform' });
+        // Clear all transform-related props and remove inline style completely
+        gsap.set(element, { clearProps: 'all' });
+        // Also directly remove the style attribute as a fallback
+        if (element.style.transform) {
+          element.style.transform = '';
+        }
       }
     });
   }, []);

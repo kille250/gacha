@@ -469,11 +469,6 @@ const AppContainer = styled.div`
     }
   }
 
-  /* Ensure content is above the gradient */
-  & > * {
-    position: relative;
-    z-index: 1;
-  }
 `;
 
 // ==================== PAGE LOADER STYLES ====================
