@@ -10,6 +10,8 @@ export { default as ErrorState } from './ErrorState';
 export { default as EmptyState } from './EmptyState';
 export { default as Alert } from './Alert';
 export { default as Tooltip } from './Tooltip';
+export { default as ProgressRing } from './ProgressRing';
+export { default as PulsingDot } from './PulsingDot';
 
 // Skeleton loading placeholders
 export {

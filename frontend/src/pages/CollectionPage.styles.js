@@ -299,6 +299,25 @@ export const FiltersPanel = styled(motion.div)`
   margin-bottom: ${theme.spacing.lg};
   overflow: hidden;
   box-shadow: ${theme.shadows.card};
+
+  /* Fix: Prevent filter panel from exceeding viewport on mobile */
+  @media (max-width: ${theme.breakpoints.md}) {
+    max-height: 50vh;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+
+    /* Custom scrollbar */
+    &::-webkit-scrollbar {
+      width: 4px;
+    }
+    &::-webkit-scrollbar-track {
+      background: transparent;
+    }
+    &::-webkit-scrollbar-thumb {
+      background: rgba(255, 255, 255, 0.2);
+      border-radius: 2px;
+    }
+  }
 `;
 
 export const FilterGroup = styled.div`
