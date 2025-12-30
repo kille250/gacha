@@ -4,6 +4,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdCheckCircle, MdClose } from 'react-icons/md';
 import { FaDice, FaGem, FaTrophy, FaStar, FaArrowUp } from 'react-icons/fa';
 import { useRarity } from '../../context/RarityContext';
+import { theme } from '../../design-system/tokens';
 
 const rarityIcons = {
   common: <FaDice />,
@@ -45,14 +46,14 @@ const ImagePreviewModal = ({
           animate={{ opacity: 1 }}
           exit={{ opacity: 0 }}
           transition={{ duration: 0.2 }}
-          onMouseDown={onClose}
+          onClick={onClose}
         >
           <ModalContent
             initial={{ scale: 0.95, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.95, opacity: 0 }}
             transition={{ type: 'spring', damping: 30, stiffness: 400 }}
-            onMouseDown={handleModalClick}
+            onClick={handleModalClick}
             $color={rarityColor}
           >
             {/* Close Button */}
@@ -197,6 +198,17 @@ const ModalOverlay = styled(motion.div)`
   justify-content: center;
   z-index: 9999;
   padding: 24px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.sm};
+  }
+
+  @media (max-width: ${theme.breakpoints.xs}) {
+    padding: 0;
+  }
 `;
 
 const ModalContent = styled(motion.div)`
@@ -207,14 +219,33 @@ const ModalContent = styled(motion.div)`
   width: 100%;
   max-height: 85vh;
   overflow: hidden;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
-  
+
   /* Subtle shadow instead of heavy border */
-  box-shadow: 
+  box-shadow:
     0 0 0 1px rgba(255, 255, 255, 0.08),
     0 25px 80px -12px rgba(0, 0, 0, 0.6),
     0 0 60px ${props => props.$color}15;
+
+  /* Mobile: nearly full screen with subtle margin */
+  @media (max-width: ${theme.breakpoints.sm}) {
+    max-width: calc(100% - ${theme.spacing.md});
+    max-height: calc(100vh - ${theme.spacing.xl});
+    border-radius: ${theme.radius.xl};
+    margin: ${theme.spacing.sm};
+  }
+
+  /* Very small screens: full screen modal */
+  @media (max-width: ${theme.breakpoints.xs}) {
+    max-width: 100%;
+    max-height: 100%;
+    border-radius: 0;
+    margin: 0;
+    height: 100%;
+  }
 `;
 
 const CloseButton = styled.button`
@@ -227,19 +258,31 @@ const CloseButton = styled.button`
   border: none;
   color: rgba(255, 255, 255, 0.9);
   border-radius: 50%;
-  width: 36px;
-  height: 36px;
+  /* Minimum 44px touch target for accessibility */
+  min-width: 44px;
+  min-height: 44px;
+  width: 44px;
+  height: 44px;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 20;
-  font-size: 20px;
+  font-size: 22px;
   transition: all 0.2s ease;
-  
-  &:hover {
+
+  /* Only apply hover styles on devices that support hover */
+  @media (hover: hover) {
+    &:hover {
+      background: rgba(0, 0, 0, 0.7);
+      transform: scale(1.05);
+    }
+  }
+
+  /* Active state for touch feedback */
+  &:active {
     background: rgba(0, 0, 0, 0.7);
-    transform: scale(1.05);
+    transform: scale(0.95);
   }
 `;
 
@@ -250,17 +293,36 @@ const MediaWrapper = styled.div`
   align-items: center;
   justify-content: center;
   background: #000;
-  min-height: 300px;
-  max-height: 60vh;
+  min-height: 200px;
+  max-height: 55vh;
   overflow: hidden;
+  flex-shrink: 0;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-height: 150px;
+    max-height: 45vh;
+  }
+
+  @media (max-width: ${theme.breakpoints.xs}) {
+    min-height: 120px;
+    max-height: 40vh;
+  }
 `;
 
 const Media = styled.div`
   width: 100%;
   height: auto;
-  max-height: 60vh;
+  max-height: 55vh;
   object-fit: contain;
   display: block;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    max-height: 45vh;
+  }
+
+  @media (max-width: ${theme.breakpoints.xs}) {
+    max-height: 40vh;
+  }
 `;
 
 const RarityGlow = styled.div`
@@ -281,12 +343,28 @@ const InfoBar = styled.div`
   background: #1c1c1e;
   padding: 20px;
   border-top: 1px solid rgba(255, 255, 255, 0.06);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  flex: 1;
+  min-height: 0;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.md};
+  }
+
+  @media (max-width: ${theme.breakpoints.xs}) {
+    padding: ${theme.spacing.sm};
+  }
 `;
 
 const InfoContent = styled.div`
   display: flex;
   flex-direction: column;
   gap: 16px;
+
+  @media (max-width: ${theme.breakpoints.xs}) {
+    gap: 12px;
+  }
 `;
 
 const BadgesRow = styled.div`
@@ -343,6 +421,8 @@ const LevelUpButton = styled(motion.button)`
   justify-content: center;
   gap: 8px;
   width: 100%;
+  /* Minimum 44px touch target */
+  min-height: 44px;
   padding: 14px 20px;
   background: linear-gradient(135deg, #34C759, #30B350);
   border: none;
@@ -352,15 +432,24 @@ const LevelUpButton = styled(motion.button)`
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s ease;
-  
+
   svg {
     font-size: 14px;
   }
-  
-  &:hover:not(:disabled) {
-    box-shadow: 0 4px 20px rgba(52, 199, 89, 0.4);
+
+  /* Only apply hover styles on devices that support hover */
+  @media (hover: hover) {
+    &:hover:not(:disabled) {
+      box-shadow: 0 4px 20px rgba(52, 199, 89, 0.4);
+    }
   }
-  
+
+  /* Active state for touch feedback */
+  &:active:not(:disabled) {
+    box-shadow: 0 2px 10px rgba(52, 199, 89, 0.3);
+    transform: scale(0.98);
+  }
+
   &:disabled {
     opacity: 0.7;
     cursor: not-allowed;
@@ -397,12 +486,24 @@ const CharacterName = styled.h2`
   color: #fff;
   letter-spacing: -0.02em;
   line-height: 1.2;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: 20px;
+  }
+
+  @media (max-width: ${theme.breakpoints.xs}) {
+    font-size: 18px;
+  }
 `;
 
 const CharacterSeries = styled.p`
   margin: 4px 0 0;
   font-size: 15px;
   color: rgba(255, 255, 255, 0.5);
+
+  @media (max-width: ${theme.breakpoints.xs}) {
+    font-size: 14px;
+  }
 `;
 
 const LevelSection = styled.div`
@@ -412,6 +513,11 @@ const LevelSection = styled.div`
   display: flex;
   flex-direction: column;
   gap: 12px;
+
+  @media (max-width: ${theme.breakpoints.xs}) {
+    padding: 12px;
+    gap: 10px;
+  }
 `;
 
 const LevelHeader = styled.div`
