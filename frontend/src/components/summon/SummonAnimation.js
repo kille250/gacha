@@ -183,26 +183,16 @@ export const SummonAnimation = forwardRef(({
       return getImagePathRef.current ? getImagePathRef.current(path) : path;
     });
 
-    // Initialize with proper error handling and timeout
-    const initTimeout = setTimeout(() => {
-      if (mounted && !scene.isInitialized && !scene.isDestroyed) {
-        console.error('Summon animation initialization timeout');
-        initErrorRef.current = new Error('Initialization timeout');
-        setAnimationError(new Error('Initialization timeout'));
-      }
-    }, 5000);
-
+    // Initialize with proper error handling
     scene.initialize()
       .then(() => {
         if (mounted && !scene.isDestroyed) {
-          clearTimeout(initTimeout);
           // Clear any error state on successful init
           initErrorRef.current = null;
           setAnimationError(null);
         }
       })
       .catch((error) => {
-        clearTimeout(initTimeout);
         // Don't log error if scene was destroyed (expected in React strict mode)
         if (!scene.isDestroyed) {
           console.error('Failed to initialize summon animation:', error);
@@ -215,7 +205,6 @@ export const SummonAnimation = forwardRef(({
 
     return () => {
       mounted = false;
-      clearTimeout(initTimeout);
       if (sceneRef.current === scene) {
         scene.destroy();
         sceneRef.current = null;

@@ -571,30 +571,6 @@ export const useBannerPage = (bannerId) => {
     };
   }, [isRolling, showSummonAnimation, showMultiSummonAnimation, t, refreshUser, fetchUserCollection, setError]);
 
-  // Animation timeout fallbacks
-  useEffect(() => {
-    if (showSummonAnimation && pendingCharacter) {
-      const timeout = setTimeout(() => {
-        console.warn('[Animation] Single summon timeout - forcing completion');
-        setError(t('banner.animationTimeout') || 'Animation timed out, but your pull was successful!');
-        handleSummonComplete();
-      }, 15000);
-      return () => clearTimeout(timeout);
-    }
-  }, [showSummonAnimation, pendingCharacter, handleSummonComplete, t, setError]);
-
-  useEffect(() => {
-    if (showMultiSummonAnimation && pendingMultiResults.length > 0) {
-      const maxTime = 15000 + (pendingMultiResults.length * 2000);
-      const timeout = setTimeout(() => {
-        console.warn('[Animation] Multi-summon timeout - forcing completion');
-        setError(t('banner.animationTimeout') || 'Animation timed out, but your pulls were successful!');
-        handleMultiSummonComplete();
-      }, maxTime);
-      return () => clearTimeout(timeout);
-    }
-  }, [showMultiSummonAnimation, pendingMultiResults, handleMultiSummonComplete, t, setError]);
-
   return {
     // State
     banner,

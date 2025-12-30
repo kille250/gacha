@@ -344,12 +344,7 @@ export class SummonScene {
       }
 
       if (!this.isInitialized) {
-        // Add timeout to initialization to prevent hanging
-        const initPromise = this.initialize();
-        const timeoutPromise = new Promise((_, reject) => {
-          setTimeout(() => reject(new Error('Scene initialization timeout')), 5000);
-        });
-        await Promise.race([initPromise, timeoutPromise]);
+        await this.initialize();
       }
 
       // Check again after async init (React strict mode may have destroyed during await)

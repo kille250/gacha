@@ -815,47 +815,6 @@ const BannerPage = () => {
     setIsRolling(false);
   }, [pendingMultiResults]);
   
-  // Animation timeout fallback - prevents stuck states if animation fails
-  useEffect(() => {
-    if (showSummonAnimation && pendingCharacter) {
-      const timeout = setTimeout(() => {
-        try {
-          console.warn('[Animation] Single summon timeout - forcing completion');
-          // Notify user that animation timed out but pull was successful
-          setError(t('banner.animationTimeout') || 'Animation timed out, but your pull was successful! Check your collection.');
-          handleSummonComplete();
-        } catch (e) {
-          console.error('[Animation] Force complete failed:', e);
-          setIsRolling(false);
-          setShowSummonAnimation(false);
-          setPendingCharacter(null);
-        }
-      }, 15000); // Max 15 seconds for single animation
-      return () => clearTimeout(timeout);
-    }
-  }, [showSummonAnimation, pendingCharacter, handleSummonComplete, t, setError]);
-  
-  useEffect(() => {
-    if (showMultiSummonAnimation && pendingMultiResults.length > 0) {
-      // Multi-summon can take longer: base 15s + 2s per character
-      const maxTime = 15000 + (pendingMultiResults.length * 2000);
-      const timeout = setTimeout(() => {
-        try {
-          console.warn('[Animation] Multi-summon timeout - forcing completion');
-          // Notify user that animation timed out but pulls were successful
-          setError(t('banner.animationTimeout') || 'Animation timed out, but your pulls were successful! Check your collection.');
-          handleMultiSummonComplete();
-        } catch (e) {
-          console.error('[Animation] Multi-summon force complete failed:', e);
-          setIsRolling(false);
-          setShowMultiSummonAnimation(false);
-          setPendingMultiResults([]);
-        }
-      }, maxTime);
-      return () => clearTimeout(timeout);
-    }
-  }, [showMultiSummonAnimation, pendingMultiResults, handleMultiSummonComplete, t, setError]);
-
   const getImagePath = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300?text=No+Image';
   const getBannerImage = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/1200x400?text=Banner';
   const getVideoPath = (src) => src ? getAssetUrl(src) : null;
