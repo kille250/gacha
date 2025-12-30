@@ -66,11 +66,13 @@ export const SummonAnimation = forwardRef(({
   const canvasRef = useRef(null);
   const sceneRef = useRef(null);
   const buildupStopRef = useRef(null);
+  const initErrorRef = useRef(null);
 
   // State
   const [phase, setPhase] = useState(ANIMATION_PHASES.IDLE);
   const [showSkipHint, setShowSkipHint] = useState(false);
   const [isComplete, setIsComplete] = useState(false);
+  const [animationError, setAnimationError] = useState(null);
 
   // Normalize entity prop
   const normalizedEntity = useMemo(() => {
@@ -106,7 +108,16 @@ export const SummonAnimation = forwardRef(({
 
   // Expose imperative handle
   useImperativeHandle(ref, () => ({
-    play: () => sceneRef.current?.play(normalizedEntity),
+    play: async () => {
+      try {
+        await sceneRef.current?.play(normalizedEntity);
+      } catch (error) {
+        console.error('Failed to play summon animation:', error);
+        setAnimationError(error);
+        setPhase(ANIMATION_PHASES.COMPLETE);
+        setIsComplete(true);
+      }
+    },
     skip: () => sceneRef.current?.skip(),
     pause: () => sceneRef.current?.pause(),
     resume: () => sceneRef.current?.resume(),
@@ -129,8 +140,12 @@ export const SummonAnimation = forwardRef(({
       scene.setImagePathResolver(getImagePath);
     }
 
-    // Initialize
-    scene.initialize().catch(console.error);
+    // Initialize with proper error handling
+    scene.initialize().catch((error) => {
+      console.error('Failed to initialize summon animation:', error);
+      initErrorRef.current = error;
+      setAnimationError(error);
+    });
 
     return () => {
       scene.destroy();
@@ -147,6 +162,16 @@ export const SummonAnimation = forwardRef(({
       setPhase(ANIMATION_PHASES.IDLE);
       setIsComplete(false);
       setShowSkipHint(false);
+      setAnimationError(null);
+      initErrorRef.current = null;
+      return;
+    }
+
+    // If there's already an initialization error, skip to complete
+    if (initErrorRef.current) {
+      setAnimationError(initErrorRef.current);
+      setPhase(ANIMATION_PHASES.COMPLETE);
+      setIsComplete(true);
       return;
     }
 
@@ -194,9 +219,15 @@ export const SummonAnimation = forwardRef(({
       },
     });
 
-    // Play animation
+    // Play animation with error handling
     if (autoPlay) {
-      scene.play(normalizedEntity);
+      scene.play(normalizedEntity).catch((error) => {
+        console.error('Failed to play summon animation:', error);
+        setAnimationError(error);
+        // Skip to completion state on error so user can continue
+        setPhase(ANIMATION_PHASES.COMPLETE);
+        setIsComplete(true);
+      });
     }
 
     return () => {
@@ -229,6 +260,7 @@ export const SummonAnimation = forwardRef(({
       sceneRef.current.reset();
       setPhase(ANIMATION_PHASES.IDLE);
       setIsComplete(false);
+      setAnimationError(null);
       stopAllEffects();
     }
   }, [currentPull, isMultiPull, stopAllEffects]);
@@ -261,14 +293,15 @@ export const SummonAnimation = forwardRef(({
   const handleInteraction = useCallback((e) => {
     e?.stopPropagation?.();
 
-    if (isComplete) {
+    if (isComplete || animationError) {
       playContinue();
+      setAnimationError(null);
       onComplete?.();
       onAnimationComplete?.();
     } else if ((allowSkip || skipEnabled) && showSkipHint) {
       sceneRef.current?.skip();
     }
-  }, [isComplete, allowSkip, skipEnabled, showSkipHint, playContinue, onComplete, onAnimationComplete]);
+  }, [isComplete, animationError, allowSkip, skipEnabled, showSkipHint, playContinue, onComplete, onAnimationComplete]);
 
   // Keyboard support
   useEffect(() => {
