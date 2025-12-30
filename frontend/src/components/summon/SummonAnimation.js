@@ -132,6 +132,7 @@ export const SummonAnimation = forwardRef(({
   useEffect(() => {
     if (!canvasRef.current || sceneRef.current) return;
 
+    let mounted = true;
     const scene = new SummonScene(canvasRef.current);
     sceneRef.current = scene;
 
@@ -140,14 +141,31 @@ export const SummonAnimation = forwardRef(({
       scene.setImagePathResolver(getImagePath);
     }
 
-    // Initialize with proper error handling
-    scene.initialize().catch((error) => {
-      console.error('Failed to initialize summon animation:', error);
-      initErrorRef.current = error;
-      setAnimationError(error);
-    });
+    // Initialize with proper error handling and timeout
+    const initTimeout = setTimeout(() => {
+      if (mounted && !scene.isInitialized) {
+        console.error('Summon animation initialization timeout');
+        initErrorRef.current = new Error('Initialization timeout');
+        setAnimationError(new Error('Initialization timeout'));
+      }
+    }, 5000);
+
+    scene.initialize()
+      .then(() => {
+        clearTimeout(initTimeout);
+      })
+      .catch((error) => {
+        clearTimeout(initTimeout);
+        console.error('Failed to initialize summon animation:', error);
+        if (mounted) {
+          initErrorRef.current = error;
+          setAnimationError(error);
+        }
+      });
 
     return () => {
+      mounted = false;
+      clearTimeout(initTimeout);
       scene.destroy();
       sceneRef.current = null;
     };

@@ -267,7 +267,17 @@ export class SummonScene {
   async play(entity) {
     try {
       if (!this.isInitialized) {
-        await this.initialize();
+        // Add timeout to initialization to prevent hanging
+        const initPromise = this.initialize();
+        const timeoutPromise = new Promise((_, reject) => {
+          setTimeout(() => reject(new Error('Scene initialization timeout')), 5000);
+        });
+        await Promise.race([initPromise, timeoutPromise]);
+      }
+
+      // Verify initialization succeeded
+      if (!this.app || !this.layers.character) {
+        throw new Error('Scene not properly initialized');
       }
 
       this.entity = entity;
@@ -288,9 +298,20 @@ export class SummonScene {
       }
       this.layers.background?.setRarityColor(colors.primary);
 
-      // Load character image
+      // Load character image with timeout
       if (entity?.image) {
-        await this.layers.character?.setImage(entity.image, this.getImagePath);
+        try {
+          const imagePromise = this.layers.character?.setImage(entity.image, this.getImagePath);
+          const imageTimeout = new Promise((resolve) => {
+            setTimeout(() => {
+              console.warn('Character image load timeout, continuing without image');
+              resolve();
+            }, 8000);
+          });
+          await Promise.race([imagePromise, imageTimeout]);
+        } catch (imgError) {
+          console.warn('Failed to load character image, continuing:', imgError);
+        }
       }
 
       // Callback
