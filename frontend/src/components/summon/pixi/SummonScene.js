@@ -398,17 +398,10 @@ export class SummonScene {
       }
       this.layers.background?.setRarityColor(colors.primary);
 
-      // Load character image with timeout
+      // Load character image
       if (entity?.image) {
         try {
-          const imagePromise = this.layers.character?.setImage(entity.image, this.getImagePath);
-          const imageTimeout = new Promise((resolve) => {
-            setTimeout(() => {
-              console.warn('Character image load timeout, continuing without image');
-              resolve();
-            }, 8000);
-          });
-          await Promise.race([imagePromise, imageTimeout]);
+          await this.layers.character?.setImage(entity.image, this.getImagePath);
         } catch (imgError) {
           console.warn('Failed to load character image, continuing:', imgError);
         }
