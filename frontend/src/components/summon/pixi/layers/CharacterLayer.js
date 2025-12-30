@@ -385,29 +385,13 @@ export class CharacterLayer {
   }
 
   /**
-   * Update showcase phase (idle floating)
+   * Update showcase phase
+   * In showcase mode, the Pixi sprite is hidden and the React ShowcaseCard
+   * displays the character instead. This method is now a no-op.
    */
-  updateShowcase(dt) {
-    if (!this.characterSprite) return;
-
-    // Use separate showcase time for smooth animation start from center
-    // Bug fix: Using this.time caused position jump because sin(time) could be any value
-    // when showcase started. Now showcase starts with showcaseTime=0, so sin(0)=0 means
-    // the character starts exactly at center and smoothly begins floating.
-    this.showcaseTime += dt / 60;
-
-    // Floating animation - starts from center (sin(0) = 0)
-    const floatY = Math.sin(this.showcaseTime * 2) * 8;
-    const floatRotation = Math.sin(this.showcaseTime * 1.5) * 0.02;
-
-    this.characterSprite.position.set(this.centerX, this.centerY + floatY);
-    this.characterSprite.rotation = floatRotation;
-    this.characterSprite.alpha = 1;
-    this.characterSprite.tint = 0xffffff;
-
-    // Subtle scale pulse (baseScale ensures proper sizing)
-    const scalePulse = 1 + Math.sin(this.showcaseTime * 2.5) * 0.02;
-    this.characterSprite.scale.set(this.baseScale * this.targetScale * scalePulse);
+  updateShowcase(_dt) {
+    // Character is hidden during showcase - React ShowcaseCard displays instead
+    // No update needed
   }
 
   /**
@@ -438,20 +422,23 @@ export class CharacterLayer {
 
   /**
    * Set showcase mode
+   * In showcase mode, we hide the Pixi character sprite since the React
+   * ShowcaseCard (collection-style card) will display the character instead.
+   * This prevents showing duplicate character displays.
    */
   setShowcase() {
     if (this.isDestroyed) return;
     this.phase = 'showcase';
-    // Reset showcaseTime so floating animation starts smoothly from center (sin(0) = 0).
+    // Reset showcaseTime for consistency
     this.showcaseTime = 0;
-    // Explicitly set position to center - handles skip case where reveal was interrupted
+    // Hide the character sprite - the React ShowcaseCard will display instead
     if (this.characterSprite) {
-      this.characterSprite.position.set(this.centerX, this.centerY);
-      this.characterSprite.rotation = 0;
-      this.characterSprite.alpha = 1;
-      this.characterSprite.tint = 0xffffff;
-      this.characterSprite.scale.set(this.baseScale * this.targetScale);
+      this.characterSprite.alpha = 0;
+      this.characterSprite.visible = false;
     }
+    // Clear glow overlay since React card has its own glow
+    this.glowIntensity = 0;
+    this.glowOverlay?.clear();
   }
 
   /**

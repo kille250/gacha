@@ -206,30 +206,35 @@ const legendaryShimmer = css`
   }
 `;
 
-// Showcase card container - matches CharacterCard styling
+// Showcase card container - centered and scaled up as the main reveal element
+// Uses collection card styling for visual consistency
 export const ShowcaseCard = styled(motion.div)`
   position: absolute;
-  bottom: 15%;
+  top: 50%;
   left: 50%;
-  transform: translateX(-50%);
+  transform: translate(-50%, -50%);
   width: 90%;
-  max-width: 280px;
+  max-width: 320px;
   background: ${theme.colors.surface};
   border-radius: ${theme.radius.xl};
   overflow: hidden;
-  border: 1px solid ${props => props.$color || theme.colors.surfaceBorder};
+  border: 2px solid ${props => props.$color || theme.colors.surfaceBorder};
   box-shadow:
     ${theme.shadows.card},
-    0 0 20px ${props => props.$color ? `${props.$color}50` : 'transparent'},
-    0 0 40px ${props => props.$color ? `${props.$color}30` : 'transparent'};
+    0 0 30px ${props => props.$color ? `${props.$color}60` : 'transparent'},
+    0 0 60px ${props => props.$color ? `${props.$color}40` : 'transparent'},
+    0 0 100px ${props => props.$color ? `${props.$color}25` : 'transparent'};
   pointer-events: none;
 
   /* Apply legendary shimmer effect */
   ${props => props.$rarity === 'legendary' && legendaryShimmer}
 
   @media (max-width: 480px) {
-    max-width: 240px;
-    bottom: 18%;
+    max-width: 280px;
+  }
+
+  @media (min-width: 768px) {
+    max-width: 360px;
   }
 `;
 
