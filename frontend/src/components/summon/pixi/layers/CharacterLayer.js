@@ -8,6 +8,7 @@
 import { Container, Sprite, Graphics, Texture } from 'pixi.js';
 import { lerp, oscillate } from '../utils/math';
 import { easeOutBack, easeOutQuad } from '../utils/easing';
+import { isVideo } from '../../../../utils/mediaUtils';
 
 export class CharacterLayer {
   constructor(options = {}) {
@@ -47,6 +48,8 @@ export class CharacterLayer {
     this.isDestroyed = false;
     // Counter to track current load request and prevent race conditions
     this.loadId = 0;
+    // Video element reference for cleanup
+    this.videoElement = null;
   }
 
   /**
@@ -67,6 +70,13 @@ export class CharacterLayer {
       this.container.removeChild(this.characterSprite);
       this.characterSprite.destroy();
       this.characterSprite = null;
+    }
+    // Clean up any existing video element
+    if (this.videoElement) {
+      this.videoElement.pause();
+      this.videoElement.src = '';
+      this.videoElement.load();
+      this.videoElement = null;
     }
     this.imageLoaded = false;
 
@@ -118,9 +128,20 @@ export class CharacterLayer {
   }
 
   /**
-   * Load texture from URL using native Image element
+   * Load texture from URL - handles both images and videos
    */
   async loadTexture(url) {
+    // Check if the URL is a video file
+    if (isVideo(url)) {
+      return this.loadVideoTexture(url);
+    }
+    return this.loadImageTexture(url);
+  }
+
+  /**
+   * Load texture from image URL using native Image element
+   */
+  async loadImageTexture(url) {
     const img = new Image();
     img.crossOrigin = 'anonymous';
 
@@ -134,6 +155,58 @@ export class CharacterLayer {
     const texture = Texture.from(img);
     if (!texture || !texture.width || !texture.height) {
       throw new Error('Invalid texture created');
+    }
+    return texture;
+  }
+
+  /**
+   * Load texture from video URL using native Video element
+   */
+  async loadVideoTexture(url) {
+    const video = document.createElement('video');
+    video.crossOrigin = 'anonymous';
+    video.muted = true;
+    video.loop = true;
+    video.playsInline = true;
+    video.autoplay = true;
+    // Prevent video from showing controls
+    video.controls = false;
+    // Preload metadata to get dimensions
+    video.preload = 'auto';
+
+    // Create load promise that resolves when video has enough data
+    await new Promise((resolve, reject) => {
+      const onCanPlay = () => {
+        video.removeEventListener('canplaythrough', onCanPlay);
+        video.removeEventListener('error', onError);
+        resolve();
+      };
+      const onError = (e) => {
+        video.removeEventListener('canplaythrough', onCanPlay);
+        video.removeEventListener('error', onError);
+        reject(new Error(`Video failed to load: ${e.message || 'unknown error'}`));
+      };
+      video.addEventListener('canplaythrough', onCanPlay);
+      video.addEventListener('error', onError);
+      video.src = url;
+      video.load();
+    });
+
+    // Store reference for cleanup
+    this.videoElement = video;
+
+    // Start playing the video
+    try {
+      await video.play();
+    } catch (playError) {
+      // Autoplay might be blocked, but we can still use the texture
+      console.warn('Video autoplay blocked, texture will still work:', playError);
+    }
+
+    // Create texture from video element
+    const texture = Texture.from(video, { resourceOptions: { autoPlay: true } });
+    if (!texture || !texture.width || !texture.height) {
+      throw new Error('Invalid video texture created');
     }
     return texture;
   }
@@ -166,6 +239,13 @@ export class CharacterLayer {
     this.scaleProgress = 0;
     this.targetScale = options.targetScale || 1;
     this.glowIntensity = options.glowIntensity || 0.6;
+
+    // Resume video playback if this is a video texture
+    if (this.videoElement) {
+      this.videoElement.play().catch(() => {
+        // Ignore autoplay errors
+      });
+    }
 
     // Make sprite visible now that reveal is starting
     if (this.characterSprite) {
@@ -392,6 +472,11 @@ export class CharacterLayer {
     // This prevents race conditions where old loads complete after reset
     this.loadId++;
 
+    // Pause video playback when hidden to save resources
+    if (this.videoElement) {
+      this.videoElement.pause();
+    }
+
     if (this.characterSprite) {
       this.characterSprite.alpha = 0;
       this.characterSprite.visible = false;
@@ -415,6 +500,13 @@ export class CharacterLayer {
     if (this.characterSprite) {
       this.characterSprite.destroy();
       this.characterSprite = null;
+    }
+    // Clean up video element
+    if (this.videoElement) {
+      this.videoElement.pause();
+      this.videoElement.src = '';
+      this.videoElement.load();
+      this.videoElement = null;
     }
     this.silhouette?.destroy();
     this.silhouette = null;
