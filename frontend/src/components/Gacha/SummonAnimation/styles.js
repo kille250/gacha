@@ -18,13 +18,13 @@ import {
 // ==================== KEYFRAMES ====================
 
 const rotate = keyframes`
-  from { transform: rotate(0deg); }
-  to { transform: rotate(360deg); }
+  from { transform: translate(-50%, -50%) rotate(0deg); }
+  to { transform: translate(-50%, -50%) rotate(360deg); }
 `;
 
 const rotateReverse = keyframes`
-  from { transform: rotate(360deg); }
-  to { transform: rotate(0deg); }
+  from { transform: translate(-50%, -50%) rotate(360deg); }
+  to { transform: translate(-50%, -50%) rotate(0deg); }
 `;
 
 const pulse = keyframes`
@@ -201,15 +201,20 @@ export const EnergyGatherPoint = styled.div`
 export const BuildupContainer = styled(motion.div)`
   position: absolute;
   inset: 0;
-  display: flex;
-  align-items: center;
-  justify-content: center;
   overflow: hidden;
   z-index: ${Z_LAYERS.orb};
+
+  /* GPU acceleration for faster initial render on mobile */
+  transform: translateZ(0);
+  will-change: opacity, transform;
 `;
 
 export const CentralOrb = styled.div`
-  position: relative;
+  /* Use absolute positioning with transform centering for bulletproof initial positioning on mobile */
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: ${ORB_CONFIG.baseSize}px;
   height: ${ORB_CONFIG.baseSize}px;
   display: flex;
@@ -254,10 +259,15 @@ export const OrbPulseRing = styled.div`
 
 export const Ring = styled.div`
   position: absolute;
+  /* Center the ring within the container */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: ${props => RING_CONFIG.baseSize + props.$index * RING_CONFIG.sizeIncrement}px;
   height: ${props => RING_CONFIG.baseSize + props.$index * RING_CONFIG.sizeIncrement}px;
   border: 1.5px solid rgba(var(--rarity-color-rgb), 0.4);
   border-radius: 50%;
+  /* Combine centering transform with rotation animation */
   animation: ${props => props.$index % 2 === 0 ? rotate : rotateReverse}
              ${props => RING_CONFIG.rotationDuration + props.$index * 2}s linear infinite;
   z-index: ${Z_LAYERS.rings};
@@ -284,6 +294,10 @@ export const Ring = styled.div`
 
 export const OrbField = styled.div`
   position: absolute;
+  /* Center the orb field within container */
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
   width: 100%;
   height: 100%;
   pointer-events: none;
@@ -313,6 +327,9 @@ export const FloatingOrb = styled.div`
 
 export const RarityIconContainer = styled(motion.div)`
   position: absolute;
+  /* Center the icon within the container */
+  top: 50%;
+  left: 50%;
   font-size: 28px;
   color: var(--rarity-color);
   filter: drop-shadow(0 0 15px var(--rarity-color));
