@@ -66,7 +66,8 @@ export class CollectionCardLayer {
     this.targetScale = 1;
     this.revealProgress = 0;
     this.shakeIntensity = 0; // For shake effect on reveal
-    this.shakeDecay = 0.92; // How fast shake decays
+    this.shakeDuration = 0; // How long shake lasts (in seconds)
+    this.shakeMaxDuration = 0.8; // Total shake duration
 
     // Image loading
     this.imageLoaded = false;
@@ -300,19 +301,21 @@ export class CollectionCardLayer {
 
     // Trigger shake effect on reveal (stronger for higher rarities)
     const shakeByRarity = {
-      common: 3,
-      uncommon: 4,
-      rare: 5,
-      epic: 7,
-      legendary: 10,
+      common: 4,
+      uncommon: 6,
+      rare: 8,
+      epic: 12,
+      legendary: 18,
     };
-    this.shakeIntensity = shakeByRarity[this.rarity] || 4;
+    this.shakeIntensity = shakeByRarity[this.rarity] || 6;
+    this.shakeDuration = this.shakeMaxDuration;
 
     if (options.instant) {
       this.opacity = 1;
       this.scale = 1;
       this.revealProgress = 1;
       this.shakeIntensity = 0; // No shake on instant
+      this.shakeDuration = 0;
     }
 
     // Resume video if present
@@ -340,6 +343,7 @@ export class CollectionCardLayer {
     this.targetScale = 1;
     this.revealProgress = 0;
     this.shakeIntensity = 0;
+    this.shakeDuration = 0;
     this.time = 0;
 
     if (this.videoElement) {
@@ -393,19 +397,24 @@ export class CollectionCardLayer {
     const revealEased = easeOutBack(this.revealProgress);
     const currentScale = this.scale * (0.9 + revealEased * 0.1);
 
-    // Calculate shake offset
+    // Calculate shake offset based on remaining duration
     let shakeX = 0;
     let shakeY = 0;
     let shakeRotation = 0;
-    if (this.shakeIntensity > 0.1) {
-      // Random shake with decreasing intensity
-      shakeX = (Math.random() - 0.5) * this.shakeIntensity * 2;
-      shakeY = (Math.random() - 0.5) * this.shakeIntensity * 1.5;
-      shakeRotation = (Math.random() - 0.5) * this.shakeIntensity * 0.008;
-      // Decay shake over time
-      this.shakeIntensity *= this.shakeDecay;
-    } else {
-      this.shakeIntensity = 0;
+    if (this.shakeDuration > 0) {
+      // Calculate decay factor (1.0 at start, 0.0 at end)
+      const decayFactor = this.shakeDuration / this.shakeMaxDuration;
+      const currentIntensity = this.shakeIntensity * decayFactor;
+
+      // Use sine waves for smoother shake instead of pure random
+      const shakeSpeed = 25; // How fast the shake oscillates
+      shakeX = Math.sin(this.time * shakeSpeed) * currentIntensity;
+      shakeY = Math.cos(this.time * shakeSpeed * 1.3) * currentIntensity * 0.7;
+      shakeRotation = Math.sin(this.time * shakeSpeed * 0.8) * currentIntensity * 0.003;
+
+      // Decrease duration based on deltaTime (roughly 1/60 per frame)
+      this.shakeDuration -= 1 / 60;
+      if (this.shakeDuration < 0) this.shakeDuration = 0;
     }
 
     // Apply container transforms with shake
