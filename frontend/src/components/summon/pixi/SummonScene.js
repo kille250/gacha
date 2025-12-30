@@ -497,9 +497,13 @@ export class SummonScene {
     }, durations.initiation + durations.buildUp);
 
     // Phase 4: Showcase - stays here until user taps to continue
+    // Hide Pixi elements (character, card frame, shine) so only React ShowcaseCard displays
     this.addTimer(() => {
       this.setPhase(ANIMATION_PHASES.SHOWCASE);
       this.layers.character.setShowcase();
+      // Hide card frame and shine - React ShowcaseCard will display instead
+      this.effects.cardFrame?.reset();
+      this.effects.cardShine?.reset();
       this.effects.particles.start();
       this.layers.foreground.setDim(0);
       this.callbacks.onShowcaseReady?.();
@@ -530,6 +534,9 @@ export class SummonScene {
     this.addTimer(() => {
       this.setPhase(ANIMATION_PHASES.SHOWCASE);
       this.layers.character.setShowcase();
+      // Hide card frame and shine - React ShowcaseCard will display instead
+      this.effects.cardFrame?.reset();
+      this.effects.cardShine?.reset();
       this.callbacks.onShowcaseReady?.();
     }, timings.reveal);
 
@@ -634,9 +641,12 @@ export class SummonScene {
       }
     }
 
-    // Jump to showcase
+    // Jump to showcase - hide Pixi elements so only React ShowcaseCard displays
     this.setPhase(ANIMATION_PHASES.SHOWCASE);
     this.layers.character.setShowcase();
+    // Hide card frame and shine - React ShowcaseCard will display instead
+    this.effects.cardFrame?.reset();
+    this.effects.cardShine?.reset();
     this.effects.particles.start();
     this.layers.foreground.setDim(0);
 
