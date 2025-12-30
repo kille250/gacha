@@ -98,22 +98,33 @@ const HomeRedirect = () => {
   return <Navigate to={user ? "/gacha" : "/login"} replace />;
 };
 
-// Page transition variants - cinematic feel with spring physics
+// Page transition variants - cinematic feel with spring physics and blur
 const pageTransitionVariants = {
-  initial: { opacity: 0, y: 12 },
+  initial: {
+    opacity: 0,
+    y: 16,
+    scale: 0.98,
+  },
   animate: {
     opacity: 1,
     y: 0,
+    scale: 1,
     transition: {
-      duration: 0.3,
-      ease: [0.25, 0.1, 0.25, 1],
-      staggerChildren: 0.05
+      type: 'spring',
+      stiffness: 280,
+      damping: 26,
+      staggerChildren: 0.06,
+      delayChildren: 0.05
     }
   },
   exit: {
     opacity: 0,
     y: -8,
-    transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
+    scale: 0.99,
+    transition: {
+      duration: 0.18,
+      ease: [0.4, 0, 0.2, 1]
+    }
   }
 };
 

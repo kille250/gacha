@@ -198,6 +198,71 @@ export const focusRing = keyframes`
   100% { box-shadow: 0 0 0 3px rgba(0, 113, 227, 0.4); }
 `;
 
+// Focus ring entrance animation (smooth reveal)
+export const focusRingIn = keyframes`
+  0% {
+    box-shadow: 0 0 0 0px transparent, 0 0 0 0px transparent;
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.01);
+  }
+  100% {
+    box-shadow: 0 0 0 2px #000000, 0 0 0 4px rgba(0, 113, 227, 0.7);
+    transform: scale(1);
+  }
+`;
+
+// Card lift animation on hover
+export const cardLift = keyframes`
+  0% {
+    transform: translateY(0) scale(1);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+  }
+  100% {
+    transform: translateY(-6px) scale(1.01);
+    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.18);
+  }
+`;
+
+// Celebration pulse for rewards
+export const celebrationPulse = keyframes`
+  0% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  25% {
+    transform: scale(1.05);
+    filter: brightness(1.2);
+  }
+  50% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+  75% {
+    transform: scale(1.02);
+    filter: brightness(1.1);
+  }
+  100% {
+    transform: scale(1);
+    filter: brightness(1);
+  }
+`;
+
+// Screen shake for epic reveals
+export const screenShake = keyframes`
+  0%, 100% { transform: translateX(0) translateY(0); }
+  10% { transform: translateX(-4px) translateY(2px); }
+  20% { transform: translateX(4px) translateY(-2px); }
+  30% { transform: translateX(-3px) translateY(1px); }
+  40% { transform: translateX(3px) translateY(-1px); }
+  50% { transform: translateX(-2px) translateY(1px); }
+  60% { transform: translateX(2px) translateY(-1px); }
+  70% { transform: translateX(-1px) translateY(0); }
+  80% { transform: translateX(1px) translateY(0); }
+  90% { transform: translateX(0) translateY(0); }
+`;
+
 /**
  * Transition Presets
  *
@@ -488,6 +553,124 @@ export const motionVariants = {
       scale: 0.8,
       transition: { duration: 0.2 }
     }
+  },
+
+  // Enhanced page transition (cinematic)
+  pageCinematic: {
+    initial: {
+      opacity: 0,
+      y: 20,
+      scale: 0.98,
+      filter: 'blur(4px)'
+    },
+    animate: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      filter: 'blur(0px)',
+      transition: {
+        type: 'spring',
+        stiffness: 260,
+        damping: 25,
+        staggerChildren: 0.08
+      }
+    },
+    exit: {
+      opacity: 0,
+      y: -10,
+      scale: 0.99,
+      transition: { duration: 0.2, ease: [0.4, 0, 0.2, 1] }
+    }
+  },
+
+  // Card grid with wave stagger effect
+  gridWave: {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.04,
+        delayChildren: 0.08,
+        when: 'beforeChildren'
+      }
+    }
+  },
+
+  // Enhanced grid item with rotation
+  gridItem: {
+    hidden: {
+      opacity: 0,
+      y: 24,
+      scale: 0.94,
+      rotateX: -10
+    },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      rotateX: 0,
+      transition: {
+        type: 'spring',
+        stiffness: 320,
+        damping: 24
+      }
+    }
+  },
+
+  // Banner card with parallax-like effect
+  bannerCard: {
+    hidden: { opacity: 0, y: 30, scale: 0.95 },
+    visible: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 280,
+        damping: 22
+      }
+    },
+    hover: {
+      y: -8,
+      scale: 1.02,
+      transition: {
+        type: 'spring',
+        stiffness: 400,
+        damping: 25
+      }
+    },
+    tap: {
+      scale: 0.98,
+      transition: { duration: 0.1 }
+    }
+  },
+
+  // Celebration burst for rewards
+  celebration: {
+    hidden: { opacity: 0, scale: 0.5 },
+    visible: {
+      opacity: 1,
+      scale: [0.5, 1.1, 1],
+      transition: {
+        duration: 0.5,
+        times: [0, 0.6, 1],
+        ease: [0.34, 1.56, 0.64, 1]
+      }
+    }
+  },
+
+  // Float animation for emphasis
+  floatIn: {
+    hidden: { opacity: 0, y: 20 },
+    visible: {
+      opacity: 1,
+      y: [20, -5, 0],
+      transition: {
+        duration: 0.6,
+        times: [0, 0.7, 1],
+        ease: [0.25, 0.1, 0.25, 1]
+      }
+    }
   }
 };
 
@@ -508,8 +691,12 @@ const animations = {
   glowSubtle,
   sparkle,
   focusRing,
+  focusRingIn,
   revealBlur,
   dustFloat,
+  cardLift,
+  celebrationPulse,
+  screenShake,
 
   // Timing & easing
   timing,
