@@ -56,6 +56,52 @@ export const slideInUp = keyframes`
   to { opacity: 1; transform: translateY(0); }
 `;
 
+// Victory celebration confetti
+export const confettiFall = keyframes`
+  0% {
+    transform: translateY(-100vh) rotate(0deg);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(100vh) rotate(720deg);
+    opacity: 0;
+  }
+`;
+
+// Screen flash for big wins
+export const victoryFlash = keyframes`
+  0% { opacity: 0; }
+  15% { opacity: 0.8; }
+  100% { opacity: 0; }
+`;
+
+// Radial burst for jackpot
+export const radialBurst = keyframes`
+  0% {
+    transform: scale(0);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(3);
+    opacity: 0;
+  }
+`;
+
+// Star burst animation
+export const starBurst = keyframes`
+  0% {
+    transform: scale(0) rotate(0deg);
+    opacity: 1;
+  }
+  50% {
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5) rotate(180deg);
+    opacity: 0;
+  }
+`;
+
 // ===========================================
 // PAGE LAYOUT
 // ===========================================
@@ -458,19 +504,51 @@ export const HistoryItemReward = styled.span`
 export const PrizePopupOverlay = styled(motion.div)`
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.8);
+  background: rgba(0, 0, 0, 0.85);
   display: flex;
   align-items: center;
   justify-content: center;
   z-index: 1000;
   padding: ${theme.spacing.lg};
+  overflow: hidden;
+
+  /* Victory flash effect for jackpot */
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle at center, rgba(255, 215, 0, 0.5) 0%, transparent 70%);
+    opacity: 0;
+    pointer-events: none;
+    animation: ${victoryFlash} 0.6s ease-out forwards;
+  }
+`;
+
+// Confetti particle
+export const ConfettiPiece = styled.div`
+  position: absolute;
+  width: ${props => props.$size || 10}px;
+  height: ${props => props.$size || 10}px;
+  background: ${props => props.$color || '#FFD700'};
+  left: ${props => props.$left || 50}%;
+  top: -20px;
+  animation: ${confettiFall} ${props => props.$duration || 3}s linear forwards;
+  animation-delay: ${props => props.$delay || 0}s;
+  border-radius: ${props => props.$isCircle ? '50%' : '2px'};
+  z-index: 999;
+
+  @media (prefers-reduced-motion: reduce) {
+    animation: none;
+    display: none;
+  }
 `;
 
 export const PrizePopupContent = styled(motion.div)`
+  position: relative;
   background: ${theme.colors.surface};
-  border-radius: ${theme.radius.xl};
-  padding: ${theme.spacing['2xl']};
-  max-width: 400px;
+  border-radius: ${theme.radius['2xl']};
+  padding: ${theme.spacing['2xl']} ${theme.spacing['3xl']};
+  max-width: 420px;
   width: 100%;
   text-align: center;
   display: flex;
@@ -478,11 +556,47 @@ export const PrizePopupContent = styled(motion.div)`
   align-items: center;
   gap: ${theme.spacing.lg};
   box-shadow:
-    0 20px 60px rgba(0, 0, 0, 0.5),
-    0 0 40px rgba(255, 200, 0, 0.3);
+    0 25px 80px rgba(0, 0, 0, 0.6),
+    0 0 60px rgba(255, 200, 0, 0.25);
+  border: 1px solid ${theme.colors.surfaceBorder};
+  overflow: hidden;
 
+  /* Jackpot enhanced glow with radial burst */
   ${props => props.$isJackpot && css`
-    animation: ${glow} 1s ease-in-out infinite;
+    animation: ${glow} 1.5s ease-in-out infinite;
+    border-color: rgba(255, 215, 0, 0.5);
+    background: linear-gradient(
+      135deg,
+      ${theme.colors.surface} 0%,
+      rgba(255, 200, 0, 0.05) 50%,
+      ${theme.colors.surface} 100%
+    );
+
+    /* Radial burst behind content */
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 200px;
+      height: 200px;
+      margin: -100px 0 0 -100px;
+      background: radial-gradient(circle, rgba(255, 215, 0, 0.3) 0%, transparent 70%);
+      animation: ${radialBurst} 1s ease-out forwards;
+      z-index: 0;
+    }
+
+    /* Star burst overlay */
+    &::after {
+      content: '✦';
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      font-size: 24px;
+      color: #FFD700;
+      animation: ${starBurst} 1.5s ease-out infinite;
+      text-shadow: 0 0 10px rgba(255, 215, 0, 0.8);
+    }
   `}
 `;
 

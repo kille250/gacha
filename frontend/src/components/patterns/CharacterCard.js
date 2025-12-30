@@ -510,8 +510,12 @@ const CharacterCard = memo(({
       $rarity={character.rarity}
       onClick={onClick}
       onKeyDown={handleKeyDown}
-      whileHover={prefersReducedMotion ? undefined : { y: -6 }}
-      whileTap={prefersReducedMotion ? undefined : { scale: 0.98 }}
+      whileHover={prefersReducedMotion ? undefined : {
+        y: -8,
+        scale: 1.02,
+        transition: { type: 'spring', stiffness: 400, damping: 25 }
+      }}
+      whileTap={prefersReducedMotion ? undefined : { scale: 0.97 }}
       transition={springs.gentle}
       tabIndex={0}
       role="button"

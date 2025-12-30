@@ -108,6 +108,7 @@ export {
   ErrorState,
   EmptyState,
   Alert,
+  Tooltip,
   // Skeleton loaders - comprehensive set for all UI patterns
   Skeleton,
   SkeletonBase,
