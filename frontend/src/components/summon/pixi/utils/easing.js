@@ -155,7 +155,7 @@ export const bezier = (x1, y1, x2, y2) => {
   };
 };
 
-export default {
+const easingFunctions = {
   linear,
   easeOutQuad,
   easeInQuad,
@@ -174,3 +174,5 @@ export default {
   anticipate,
   bezier,
 };
+
+export default easingFunctions;

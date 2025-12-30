@@ -166,7 +166,7 @@ export const getTotalDuration = (rarity) => {
   return durations.initiation + durations.buildUp + durations.reveal + durations.showcase;
 };
 
-export default {
+const summonConstants = {
   ANIMATION_PHASES,
   PHASE_DURATIONS,
   RARITY_COLORS,
@@ -178,3 +178,5 @@ export default {
   getRarityConfig,
   getTotalDuration,
 };
+
+export default summonConstants;
