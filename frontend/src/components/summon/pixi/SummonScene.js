@@ -402,7 +402,7 @@ export class SummonScene {
       this.triggerReveal();
     }, durations.initiation + durations.buildUp);
 
-    // Phase 4: Showcase
+    // Phase 4: Showcase - stays here until user taps to continue
     this.addTimer(() => {
       this.setPhase(ANIMATION_PHASES.SHOWCASE);
       this.layers.character.setShowcase();
@@ -410,11 +410,7 @@ export class SummonScene {
       this.layers.foreground.setDim(0);
     }, durations.initiation + durations.buildUp + durations.reveal);
 
-    // Phase 5: Complete
-    this.addTimer(() => {
-      this.setPhase(ANIMATION_PHASES.COMPLETE);
-      this.callbacks.onAnimationComplete?.();
-    }, durations.initiation + durations.buildUp + durations.reveal + durations.showcase);
+    // No auto-complete timer - user controls when to proceed
   }
 
   /**
@@ -433,10 +429,7 @@ export class SummonScene {
       this.layers.character.setShowcase();
     }, timings.reveal);
 
-    this.addTimer(() => {
-      this.setPhase(ANIMATION_PHASES.COMPLETE);
-      this.callbacks.onAnimationComplete?.();
-    }, timings.reveal + timings.showcase);
+    // No auto-complete timer - user controls when to proceed
   }
 
   /**
