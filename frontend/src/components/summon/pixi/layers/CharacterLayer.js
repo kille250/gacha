@@ -38,6 +38,9 @@ export class CharacterLayer {
     this.glowColor = 0xffffff;
     this.glowIntensity = 0;
 
+    // Showcase animation state - separate time tracker for smooth floating start
+    this.showcaseTime = 0;
+
     // Image loading state
     this.imageLoaded = false;
     this.imageUrl = null;
@@ -69,10 +72,14 @@ export class CharacterLayer {
       const scaleY = this.maxHeight / texture.height;
       this.baseScale = Math.min(scaleX, scaleY);
 
-      this.characterSprite.scale.set(this.baseScale);
       this.characterSprite.anchor.set(0.5);
       this.characterSprite.position.set(this.centerX, this.centerY);
+
+      // Bug fix: Ensure sprite starts fully hidden (alpha 0 AND tiny scale)
+      // This prevents any flash during the frame between image load and animation start
       this.characterSprite.alpha = 0;
+      this.characterSprite.scale.set(this.baseScale * 0.01);
+      this.characterSprite.visible = false; // Double-ensure no flash
 
       // Add to container after silhouette
       this.container.addChildAt(this.characterSprite, 1);
@@ -141,6 +148,11 @@ export class CharacterLayer {
     this.scaleProgress = 0;
     this.targetScale = options.targetScale || 1;
     this.glowIntensity = options.glowIntensity || 0.6;
+
+    // Make sprite visible now that reveal is starting
+    if (this.characterSprite) {
+      this.characterSprite.visible = true;
+    }
   }
 
   /**
@@ -149,6 +161,7 @@ export class CharacterLayer {
   showSilhouette() {
     this.phase = 'silhouette';
     if (this.characterSprite) {
+      this.characterSprite.visible = true;
       this.characterSprite.alpha = 0;
       this.characterSprite.tint = 0x000000;
     }
@@ -164,7 +177,7 @@ export class CharacterLayer {
     this.currentScale = 0;
     if (this.characterSprite) {
       this.characterSprite.alpha = 0;
-      // Set to baseScale * 0 effectively (or just use baseScale for hidden state)
+      this.characterSprite.visible = false;
       this.characterSprite.scale.set(this.baseScale * 0.01);
     }
     this.silhouette.clear();
@@ -244,12 +257,18 @@ export class CharacterLayer {
   /**
    * Update showcase phase (idle floating)
    */
-  updateShowcase(_dt) {
+  updateShowcase(dt) {
     if (!this.characterSprite) return;
 
-    // Floating animation
-    const floatY = Math.sin(this.time * 2) * 8;
-    const floatRotation = Math.sin(this.time * 1.5) * 0.02;
+    // Use separate showcase time for smooth animation start from center
+    // Bug fix: Using this.time caused position jump because sin(time) could be any value
+    // when showcase started. Now showcase starts with showcaseTime=0, so sin(0)=0 means
+    // the character starts exactly at center and smoothly begins floating.
+    this.showcaseTime += dt / 60;
+
+    // Floating animation - starts from center (sin(0) = 0)
+    const floatY = Math.sin(this.showcaseTime * 2) * 8;
+    const floatRotation = Math.sin(this.showcaseTime * 1.5) * 0.02;
 
     this.characterSprite.position.set(this.centerX, this.centerY + floatY);
     this.characterSprite.rotation = floatRotation;
@@ -257,7 +276,7 @@ export class CharacterLayer {
     this.characterSprite.tint = 0xffffff;
 
     // Subtle scale pulse (baseScale ensures proper sizing)
-    const scalePulse = 1 + Math.sin(this.time * 2.5) * 0.02;
+    const scalePulse = 1 + Math.sin(this.showcaseTime * 2.5) * 0.02;
     this.characterSprite.scale.set(this.baseScale * this.targetScale * scalePulse);
   }
 
@@ -291,6 +310,8 @@ export class CharacterLayer {
    */
   setShowcase() {
     this.phase = 'showcase';
+    // Reset showcase time so floating animation starts smoothly from center (sin(0) = 0)
+    this.showcaseTime = 0;
   }
 
   /**
@@ -302,14 +323,17 @@ export class CharacterLayer {
     this.scaleProgress = 0;
     this.currentScale = 0;
     this.time = 0;
+    this.showcaseTime = 0;
     this.glowIntensity = 0;
     this.targetScale = 1;
 
     if (this.characterSprite) {
       this.characterSprite.alpha = 0;
+      this.characterSprite.visible = false;
       // Use baseScale * tiny multiplier to keep proportions correct but invisible
       this.characterSprite.scale.set(this.baseScale * 0.01);
       this.characterSprite.rotation = 0;
+      this.characterSprite.position.set(this.centerX, this.centerY);
       this.characterSprite.tint = 0xffffff;
     }
 

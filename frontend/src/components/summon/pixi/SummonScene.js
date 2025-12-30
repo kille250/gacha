@@ -377,6 +377,10 @@ export class SummonScene {
         }
       }
 
+      // Bug fix: Explicitly ensure character is hidden before animation starts
+      // This prevents any premature flash of the character image/name
+      this.layers.character?.hide();
+
       // Callback
       this.callbacks.onAnimationStart?.();
 
