@@ -24,29 +24,35 @@ export const StyledPageWrapper = styled(PageWrapper)`
 export const HeroBackground = styled.div`
   position: fixed;
   inset: 0;
-  /* Prevent layout shift: set dimensions explicitly */
   width: 100%;
   height: 100%;
-  /* Fallback background color shown while image loads */
-  background-color: ${theme.colors.backgroundSecondary};
-  background-size: cover;
-  background-position: center top;
-  background-repeat: no-repeat;
-  /* Default opacity - can be overridden via style prop for fade-in effect */
-  opacity: 0.15;
   z-index: 0;
-  /* Hardware acceleration to prevent repaint flicker */
-  will-change: opacity, background-image;
-  transform: translateZ(0);
-  /* Smooth transition when background image loads and opacity changes */
-  transition: opacity 0.4s ease-out, background-image 0.4s ease-out;
+  overflow: hidden;
+  /* Fallback background color */
+  background-color: ${theme.colors.backgroundSecondary};
 
   &::after {
     content: '';
     position: absolute;
     inset: 0;
     background: linear-gradient(to bottom, transparent 0%, ${theme.colors.background} 100%);
+    z-index: 1;
   }
+`;
+
+// Use an actual img element for better control over loading behavior
+export const HeroBackgroundImage = styled.img`
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: center top;
+  opacity: ${props => props.$loaded ? 0.15 : 0};
+  transition: opacity 0.4s ease-out;
+  /* Hardware acceleration */
+  will-change: opacity;
+  transform: translateZ(0);
 `;
 
 // ==================== LOADING & ERROR PAGES ====================

@@ -34,6 +34,7 @@ import {
 import {
   StyledPageWrapper,
   HeroBackground,
+  HeroBackgroundImage,
   ErrorPage,
   ErrorBox,
   NavBar,
@@ -929,14 +930,18 @@ const BannerPage = () => {
   return (
     <PageTransition>
       <StyledPageWrapper>
-        {/* Hero Background - only show image when preloaded to prevent layout shift */}
-        <HeroBackground
-          style={{
-            backgroundImage: bgImageLoaded && bannerBgUrl ? `url(${bannerBgUrl})` : 'none',
-            opacity: bgImageLoaded ? 0.15 : 0.08,
-          }}
-        />
-      
+        {/* Hero Background - uses img element for stable loading without realignment */}
+        <HeroBackground>
+          {bannerBgUrl && (
+            <HeroBackgroundImage
+              src={bannerBgUrl}
+              alt=""
+              $loaded={bgImageLoaded}
+              onLoad={() => {}} // Loading handled by useImagePreload
+            />
+          )}
+        </HeroBackground>
+
       <Container>
         {/* Navigation Bar */}
         <NavBar>
