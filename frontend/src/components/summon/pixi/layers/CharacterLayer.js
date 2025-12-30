@@ -5,7 +5,7 @@
  * Handles silhouette reveal, scale animation, and floating idle.
  */
 
-import { Container, Sprite, Texture, Graphics } from 'pixi.js';
+import { Container, Sprite, Graphics, Assets } from 'pixi.js';
 import { lerp, oscillate } from '../utils/math';
 import { easeOutBack, easeOutQuad } from '../utils/easing';
 
@@ -51,8 +51,8 @@ export class CharacterLayer {
     this.imageUrl = getImagePath ? getImagePath(imageUrl) : imageUrl;
 
     try {
-      // Create texture from URL
-      const texture = await Texture.fromURL(this.imageUrl);
+      // Load texture using PIXI v8 Assets API
+      const texture = await Assets.load(this.imageUrl);
 
       // Remove old sprite if exists
       if (this.characterSprite) {
