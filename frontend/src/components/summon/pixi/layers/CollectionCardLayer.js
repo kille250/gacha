@@ -65,6 +65,8 @@ export class CollectionCardLayer {
     this.scale = 0.8;
     this.targetScale = 1;
     this.revealProgress = 0;
+    this.shakeIntensity = 0; // For shake effect on reveal
+    this.shakeDecay = 0.92; // How fast shake decays
 
     // Image loading
     this.imageLoaded = false;
@@ -296,10 +298,21 @@ export class CollectionCardLayer {
     this.targetScale = 1;
     this.revealProgress = 0;
 
+    // Trigger shake effect on reveal (stronger for higher rarities)
+    const shakeByRarity = {
+      common: 3,
+      uncommon: 4,
+      rare: 5,
+      epic: 7,
+      legendary: 10,
+    };
+    this.shakeIntensity = shakeByRarity[this.rarity] || 4;
+
     if (options.instant) {
       this.opacity = 1;
       this.scale = 1;
       this.revealProgress = 1;
+      this.shakeIntensity = 0; // No shake on instant
     }
 
     // Resume video if present
@@ -326,6 +339,7 @@ export class CollectionCardLayer {
     this.scale = 0.8;
     this.targetScale = 1;
     this.revealProgress = 0;
+    this.shakeIntensity = 0;
     this.time = 0;
 
     if (this.videoElement) {
@@ -334,6 +348,7 @@ export class CollectionCardLayer {
 
     this.container.alpha = 0;
     this.container.scale.set(0.8);
+    this.container.rotation = 0;
   }
 
   /**
@@ -378,10 +393,26 @@ export class CollectionCardLayer {
     const revealEased = easeOutBack(this.revealProgress);
     const currentScale = this.scale * (0.9 + revealEased * 0.1);
 
-    // Apply container transforms
-    this.container.position.set(this.centerX, this.centerY);
+    // Calculate shake offset
+    let shakeX = 0;
+    let shakeY = 0;
+    let shakeRotation = 0;
+    if (this.shakeIntensity > 0.1) {
+      // Random shake with decreasing intensity
+      shakeX = (Math.random() - 0.5) * this.shakeIntensity * 2;
+      shakeY = (Math.random() - 0.5) * this.shakeIntensity * 1.5;
+      shakeRotation = (Math.random() - 0.5) * this.shakeIntensity * 0.008;
+      // Decay shake over time
+      this.shakeIntensity *= this.shakeDecay;
+    } else {
+      this.shakeIntensity = 0;
+    }
+
+    // Apply container transforms with shake
+    this.container.position.set(this.centerX + shakeX, this.centerY + shakeY);
     this.container.scale.set(currentScale);
     this.container.alpha = this.opacity;
+    this.container.rotation = shakeRotation;
 
     // Draw components
     this.drawGlow();
