@@ -155,7 +155,7 @@ import {
   RollFromPanelBtn,
 } from './BannerPage.styles';
 
-import { SummonAnimation, MultiSummonAnimation } from '../components/Gacha/SummonAnimation';
+import { SummonAnimation, MultiSummonAnimation } from '../components/summon';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 // Game Enhancement Components
