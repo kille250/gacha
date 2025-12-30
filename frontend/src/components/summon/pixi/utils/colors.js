@@ -147,7 +147,7 @@ export const saturate = (color, amount) => {
   return rgbToHex(r, g, b);
 };
 
-export default {
+const colorUtils = {
   getColorsForRarity,
   hexToRgb,
   rgbToHex,
@@ -161,3 +161,5 @@ export default {
   getContrastColor,
   saturate,
 };
+
+export default colorUtils;

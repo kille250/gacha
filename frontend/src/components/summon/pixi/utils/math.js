@@ -196,7 +196,7 @@ export const simpleNoise = (x, y, seed = 0) => {
   return n - Math.floor(n);
 };
 
-export default {
+const mathUtils = {
   clamp,
   lerp,
   mapRange,
@@ -227,3 +227,5 @@ export default {
   wrap,
   simpleNoise,
 };
+
+export default mathUtils;
