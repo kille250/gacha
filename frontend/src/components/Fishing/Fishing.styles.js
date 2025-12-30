@@ -233,8 +233,8 @@ export const SignContent = styled.div`
 `;
 
 export const BackButton = styled.button`
-  width: clamp(32px, 9vw, 40px);
-  height: clamp(32px, 9vw, 40px);
+  width: clamp(44px, 10vw, 48px);
+  height: clamp(44px, 10vw, 48px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -245,44 +245,43 @@ export const BackButton = styled.button`
   font-size: clamp(16px, 4.5vw, 22px);
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 
+  box-shadow:
     inset 0 2px 0 rgba(255,255,255,0.2),
     0 3px 0 #4a3008,
     0 5px 8px rgba(0,0,0,0.3);
   flex-shrink: 0;
   position: relative;
-  
+
   &::before {
     content: '';
     position: absolute;
     inset: -6px;
     border-radius: 14px;
   }
-  
+
   @media (max-width: 600px) {
     border-width: 2px;
     border-radius: 8px;
   }
-  
-  @media (max-width: 360px) {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
-  }
-  
+
   &:hover {
     transform: translateY(-2px);
-    box-shadow: 
+    box-shadow:
       inset 0 2px 0 rgba(255,255,255,0.2),
       0 5px 0 #4a3008,
       0 8px 12px rgba(0,0,0,0.3);
   }
-  
+
   &:active {
     transform: translateY(2px);
-    box-shadow: 
+    box-shadow:
       inset 0 2px 0 rgba(0,0,0,0.1),
       0 1px 0 #4a3008;
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(255, 248, 225, 0.6);
+    outline-offset: 2px;
   }
 `;
 
@@ -322,8 +321,8 @@ export const CoinDot = styled.div`
 `;
 
 export const WoodButton = styled.button`
-  width: clamp(32px, 9vw, 40px);
-  height: clamp(32px, 9vw, 40px);
+  width: clamp(44px, 10vw, 48px);
+  height: clamp(44px, 10vw, 48px);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -334,38 +333,37 @@ export const WoodButton = styled.button`
   font-size: clamp(16px, 4.5vw, 22px);
   cursor: pointer;
   transition: all 0.2s;
-  box-shadow: 
+  box-shadow:
     inset 0 2px 0 rgba(255,255,255,0.2),
     0 3px 0 #4a3008;
   flex-shrink: 0;
   position: relative;
-  
+
   &::before {
     content: '';
     position: absolute;
     inset: -6px;
     border-radius: 14px;
   }
-  
+
   @media (max-width: 600px) {
     border-width: 2px;
     border-radius: 8px;
   }
-  
-  @media (max-width: 360px) {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
-  }
-  
+
   &:hover {
     background: linear-gradient(180deg, #b88a40 0%, #8a6828 100%);
     transform: translateY(-1px);
   }
-  
+
   &:active {
     transform: translateY(2px);
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.2);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(255, 248, 225, 0.6);
+    outline-offset: 2px;
   }
 `;
 
@@ -411,14 +409,14 @@ export const MultiplayerBadge = styled.div`
 `;
 
 export const AutofishButton = styled.button`
-  width: clamp(32px, 9vw, 40px);
-  height: clamp(32px, 9vw, 40px);
+  width: clamp(44px, 10vw, 48px);
+  height: clamp(44px, 10vw, 48px);
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${props => props.$active 
-    ? 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)' 
-    : props.$lowQuota 
+  background: ${props => props.$active
+    ? 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)'
+    : props.$lowQuota
       ? 'linear-gradient(180deg, #ff9800 0%, #f57c00 100%)'
       : 'linear-gradient(180deg, #a07830 0%, #7a5820 100%)'};
   border: 3px solid ${props => props.$active ? '#2e7d32' : props.$lowQuota ? '#e65100' : '#5a4010'};
@@ -432,14 +430,14 @@ export const AutofishButton = styled.button`
     : 'inset 0 2px 0 rgba(255,255,255,0.2), 0 3px 0 #4a3008'};
   flex-shrink: 0;
   position: relative;
-  
+
   &::before {
     content: '';
     position: absolute;
     inset: -6px;
     border-radius: 14px;
   }
-  
+
   ${props => props.$inFlight && props.$active && css`
     &::after {
       content: '';
@@ -449,24 +447,23 @@ export const AutofishButton = styled.button`
       border-radius: 14px;
       animation: pulse-ring 1s ease-out infinite;
     }
-    
+
     @keyframes pulse-ring {
       0% { transform: scale(1); opacity: 1; }
       100% { transform: scale(1.2); opacity: 0; }
     }
   `}
-  
+
   @media (max-width: 600px) {
     border-width: 2px;
     border-radius: 8px;
   }
-  
-  @media (max-width: 360px) {
-    width: 28px;
-    height: 28px;
-    font-size: 14px;
+
+  &:focus-visible {
+    outline: 3px solid rgba(255, 248, 225, 0.6);
+    outline-offset: 2px;
   }
-  
+
   svg.spinning { animation: ${spin} 1s linear infinite; }
 `;
 
@@ -989,14 +986,14 @@ export const DPadButton = styled.button`
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 
+  box-shadow:
     inset 0 2px 0 rgba(255,255,255,0.2),
     0 3px 0 #4a3008,
     0 5px 8px rgba(0,0,0,0.3);
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
-  
+
   ${props => {
     switch (props.$position) {
       case 'up': return 'top: 0; left: 50%; transform: translateX(-50%);';
@@ -1006,15 +1003,15 @@ export const DPadButton = styled.button`
       default: return '';
     }
   }}
-  
+
   @media (max-width: 400px) {
-    width: 42px;
-    height: 42px;
+    width: 44px;
+    height: 44px;
     font-size: 24px;
     border-radius: 10px;
     border-width: 2px;
   }
-  
+
   &:active {
     background: linear-gradient(180deg, #b88a40 0%, #8a6828 100%);
     transform: ${props => {
@@ -1027,6 +1024,11 @@ export const DPadButton = styled.button`
       }
     }};
     box-shadow: inset 0 2px 4px rgba(0,0,0,0.3);
+  }
+
+  &:focus-visible {
+    outline: 3px solid rgba(255, 248, 225, 0.6);
+    outline-offset: 2px;
   }
 `;
 
@@ -1053,7 +1055,7 @@ export const ActionButton = styled(motion.button)`
     if (props.$canFish) return '#1565c0';
     return '#5a4010';
   }};
-  box-shadow: 
+  box-shadow:
     inset 0 3px 0 rgba(255,255,255,0.3),
     0 4px 0 ${props => {
       if (props.$state === 'fish_appeared') return '#7f0000';
@@ -1061,22 +1063,20 @@ export const ActionButton = styled(motion.button)`
       return '#4a3008';
     }},
     0 6px 12px rgba(0,0,0,0.4);
-  
-  @media (max-width: 400px) {
-    width: 76px;
-    height: 76px;
-    font-size: 32px;
-    border-width: 3px;
-  }
-  
+
   ${props => props.$state === 'fish_appeared' && css`
     animation: ${pulse} 0.25s ease-in-out infinite;
-    box-shadow: 
+    box-shadow:
       inset 0 3px 0 rgba(255,255,255,0.3),
       0 4px 0 #7f0000,
       0 0 30px rgba(255, 82, 82, 0.6);
   `}
-  
+
+  &:focus-visible {
+    outline: 3px solid rgba(255, 248, 225, 0.6);
+    outline-offset: 2px;
+  }
+
   &:disabled { opacity: 0.5; }
 `;
 
@@ -1086,7 +1086,7 @@ export const ActionButton = styled(motion.button)`
 
 export const Notification = styled(motion.div)`
   position: fixed;
-  top: 120px;
+  top: calc(var(--nav-top-height, 56px) + 16px + env(safe-area-inset-top, 0px));
   left: 50%;
   display: flex;
   align-items: center;
@@ -1095,8 +1095,8 @@ export const Notification = styled(motion.div)`
   border-radius: 16px;
   font-weight: 700;
   z-index: 1000;
-  background: ${props => props.$type === 'error' 
-    ? 'linear-gradient(180deg, #ff5252 0%, #d32f2f 100%)' 
+  background: ${props => props.$type === 'error'
+    ? 'linear-gradient(180deg, #ff5252 0%, #d32f2f 100%)'
     : 'linear-gradient(180deg, #66bb6a 0%, #43a047 100%)'};
   border: 3px solid ${props => props.$type === 'error' ? '#b71c1c' : '#2e7d32'};
   color: white;

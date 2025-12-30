@@ -85,7 +85,9 @@ const SheetContainer = styled(motion.div)`
 const DragHandle = styled.div`
   display: flex;
   justify-content: center;
-  padding: ${theme.spacing.sm} 0;
+  align-items: center;
+  padding: ${theme.spacing.md} 0;
+  min-height: 44px;
   cursor: grab;
   touch-action: none;
 
