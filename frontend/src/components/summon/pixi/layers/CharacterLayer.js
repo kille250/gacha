@@ -5,7 +5,7 @@
  * Handles silhouette reveal, scale animation, and floating idle.
  */
 
-import { Container, Sprite, Graphics, Assets } from 'pixi.js';
+import { Container, Sprite, Graphics, Texture } from 'pixi.js';
 import { lerp, oscillate } from '../utils/math';
 import { easeOutBack, easeOutQuad } from '../utils/easing';
 
@@ -51,8 +51,8 @@ export class CharacterLayer {
     this.imageUrl = getImagePath ? getImagePath(imageUrl) : imageUrl;
 
     try {
-      // Load texture using PIXI v8 Assets API
-      const texture = await Assets.load(this.imageUrl);
+      // Load image using native Image element for reliability
+      const texture = await this.loadTexture(this.imageUrl);
 
       // Remove old sprite if exists
       if (this.characterSprite) {
@@ -81,6 +81,42 @@ export class CharacterLayer {
       console.warn('Failed to load character image:', error);
       this.imageLoaded = false;
     }
+  }
+
+  /**
+   * Load texture from URL using native Image element
+   */
+  loadTexture(url) {
+    return new Promise((resolve, reject) => {
+      const img = new Image();
+      img.crossOrigin = 'anonymous';
+
+      const timeout = setTimeout(() => {
+        img.src = '';
+        reject(new Error('Image load timeout'));
+      }, 10000);
+
+      img.onload = () => {
+        clearTimeout(timeout);
+        try {
+          const texture = Texture.from(img);
+          if (!texture || !texture.width || !texture.height) {
+            reject(new Error('Invalid texture created'));
+            return;
+          }
+          resolve(texture);
+        } catch (err) {
+          reject(err);
+        }
+      };
+
+      img.onerror = () => {
+        clearTimeout(timeout);
+        reject(new Error('Failed to load image'));
+      };
+
+      img.src = url;
+    });
   }
 
   /**
