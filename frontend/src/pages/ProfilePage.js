@@ -26,7 +26,7 @@ import {
 } from 'react-icons/md';
 import { FaStar } from 'react-icons/fa';
 import { AuthContext } from '../context/AuthContext';
-import { springs, Container, Modal } from '../design-system';
+import { springs, Container, Modal, PageTransition } from '../design-system';
 import { LanguageSelector } from '../components/Navigation';
 import { SelectorInventory } from '../components/GameEnhancements';
 import { useAccountLevel } from '../hooks/useGameEnhancements';
@@ -118,8 +118,9 @@ const ProfilePage = () => {
   };
 
   return (
-    <PageWrapper>
-      <Container>
+    <PageTransition>
+      <PageWrapper>
+        <Container>
         {/* Profile Header */}
         <ProfileHeader>
           <AvatarSection>
@@ -326,6 +327,7 @@ const ProfilePage = () => {
         )}
       </Modal>
     </PageWrapper>
+    </PageTransition>
   );
 };
 

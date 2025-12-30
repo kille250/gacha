@@ -5,7 +5,7 @@ import { FaUser, FaEnvelope, FaCheck, FaArrowLeft, FaGoogle, FaLock, FaUnlink, F
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { theme, LoadingSpinner, ErrorMessage as SharedErrorMessage, SuccessMessage as SharedSuccessMessage } from '../design-system';
+import { theme, LoadingSpinner, ErrorMessage as SharedErrorMessage, SuccessMessage as SharedSuccessMessage, PageTransition } from '../design-system';
 import {
   updateEmail as updateEmailAction,
   updateUsername as updateUsernameAction,
@@ -780,13 +780,14 @@ const SettingsPage = () => {
   };
 
   return (
-    <PageContainer>
-      <Header>
-        <BackButton onClick={() => navigate(-1)}>
-          <FaArrowLeft />
-        </BackButton>
-        <Title>{t('settings.title')}</Title>
-      </Header>
+    <PageTransition>
+      <PageContainer>
+        <Header>
+          <BackButton onClick={() => navigate(-1)}>
+            <FaArrowLeft />
+          </BackButton>
+          <Title>{t('settings.title')}</Title>
+        </Header>
 
       <Content>
         <TabsContainer>
@@ -824,6 +825,7 @@ const SettingsPage = () => {
         </TabsContainer>
       </Content>
     </PageContainer>
+    </PageTransition>
   );
 };
 

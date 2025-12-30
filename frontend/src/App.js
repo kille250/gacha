@@ -1,7 +1,7 @@
 import React, { useContext, Suspense, lazy } from 'react';
-import { BrowserRouter as Router, Routes, Route, Navigate, useLocation, useNavigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate, useNavigate, Outlet } from 'react-router-dom';
 import { GoogleOAuthProvider } from '@react-oauth/google';
-import { AnimatePresence, motion } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { AuthProvider, AuthContext } from './context/AuthContext';
 import { RarityProvider } from './context/RarityContext';
 import { RecaptchaProvider } from './context/RecaptchaContext';
@@ -99,8 +99,9 @@ const HomeRedirect = () => {
   return <Navigate to={user ? "/gacha" : "/login"} replace />;
 };
 
-// Page transition variants - cinematic feel with spring physics and blur
-const pageTransitionVariants = {
+// Page enter animation variants - used by individual pages
+// No exit animation needed - instant navigation feels snappier
+export const pageEnterVariants = {
   initial: {
     opacity: 0,
     y: 16,
@@ -117,30 +118,8 @@ const pageTransitionVariants = {
       staggerChildren: 0.06,
       delayChildren: 0.05
     }
-  },
-  exit: {
-    opacity: 0,
-    y: -8,
-    scale: 0.99,
-    transition: {
-      duration: 0.18,
-      ease: [0.4, 0, 0.2, 1]
-    }
   }
 };
-
-// Animated page wrapper component
-const PageTransition = ({ children }) => (
-  <motion.div
-    variants={pageTransitionVariants}
-    initial="initial"
-    animate="animate"
-    exit="exit"
-    style={{ flex: 1, display: 'flex', flexDirection: 'column' }}
-  >
-    {children}
-  </motion.div>
-);
 
 // Global password change handler - shows modal when password change is required
 // This ensures the modal appears on ANY page after reload, not just the login page
@@ -166,75 +145,53 @@ const GlobalPasswordChangeHandler = () => {
   );
 };
 
-// Animated Routes wrapper - handles page transitions
-// Navigation stability is achieved through MainLayout's internal structure
+// Layout wrapper for protected routes with MainLayout
+// MainLayout stays mounted - only page content changes
+const ProtectedMainLayout = () => (
+  <ProtectedRoute>
+    <MainLayout>
+      <Outlet />
+    </MainLayout>
+  </ProtectedRoute>
+);
+
+// Layout wrapper for full-screen protected routes (no navigation)
+const ProtectedFullScreen = () => (
+  <ProtectedRoute>
+    <Outlet />
+  </ProtectedRoute>
+);
+
+// Routes wrapper - Navigation stays persistent, pages animate themselves
 const AnimatedRoutes = () => {
-  const location = useLocation();
-
   return (
-    <AnimatePresence mode="wait" initial={false}>
-      <Routes location={location} key={location.pathname}>
-        {/* Public routes */}
-        <Route path="/login" element={<PageTransition><LoginPage /></PageTransition>} />
-        <Route path="/register" element={<PageTransition><RegisterPage /></PageTransition>} />
+    <Routes>
+      {/* Public routes - no layout */}
+      <Route path="/login" element={<LoginPage />} />
+      <Route path="/register" element={<RegisterPage />} />
 
-        {/* Protected routes with main navigation layout */}
-        <Route path="/gacha" element={
-          <ProtectedRoute>
-            <MainLayout><PageTransition><GachaPage /></PageTransition></MainLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/collection" element={
-          <ProtectedRoute>
-            <MainLayout><PageTransition><CollectionPage /></PageTransition></MainLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/profile" element={
-          <ProtectedRoute>
-            <MainLayout><PageTransition><ProfilePage /></PageTransition></MainLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/dojo" element={
-          <ProtectedRoute>
-            <MainLayout><PageTransition><DojoPage /></PageTransition></MainLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/fortune-wheel" element={
-          <ProtectedRoute>
-            <MainLayout><PageTransition><FortuneWheelPage /></PageTransition></MainLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/coupons" element={
-          <ProtectedRoute>
-            <MainLayout><PageTransition><CouponPage /></PageTransition></MainLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/settings" element={
-          <ProtectedRoute>
-            <MainLayout><PageTransition><SettingsPage /></PageTransition></MainLayout>
-          </ProtectedRoute>
-        } />
-        <Route path="/admin" element={
-          <ProtectedRoute>
-            <MainLayout><PageTransition><AdminPage /></PageTransition></MainLayout>
-          </ProtectedRoute>
-        } />
+      {/* Protected routes with persistent main navigation layout */}
+      <Route element={<ProtectedMainLayout />}>
+        <Route path="/gacha" element={<GachaPage />} />
+        <Route path="/collection" element={<CollectionPage />} />
+        <Route path="/profile" element={<ProfilePage />} />
+        <Route path="/dojo" element={<DojoPage />} />
+        <Route path="/fortune-wheel" element={<FortuneWheelPage />} />
+        <Route path="/coupons" element={<CouponPage />} />
+        <Route path="/settings" element={<SettingsPage />} />
+        <Route path="/admin" element={<AdminPage />} />
+      </Route>
 
-        {/* Full-screen immersive routes (no navigation) */}
-        <Route path="/roll" element={
-          <ProtectedRoute><PageTransition><RollPage /></PageTransition></ProtectedRoute>
-        } />
-        <Route path="/banner/:bannerId" element={
-          <ProtectedRoute><PageTransition><BannerPage /></PageTransition></ProtectedRoute>
-        } />
-        <Route path="/fishing" element={
-          <ProtectedRoute><PageTransition><FishingPage /></PageTransition></ProtectedRoute>
-        } />
+      {/* Full-screen immersive routes (no navigation) */}
+      <Route element={<ProtectedFullScreen />}>
+        <Route path="/roll" element={<RollPage />} />
+        <Route path="/banner/:bannerId" element={<BannerPage />} />
+        <Route path="/fishing" element={<FishingPage />} />
+      </Route>
 
-        {/* Default redirect */}
-        <Route path="/" element={<HomeRedirect />} />
-      </Routes>
-    </AnimatePresence>
+      {/* Default redirect */}
+      <Route path="/" element={<HomeRedirect />} />
+    </Routes>
   );
 };
 

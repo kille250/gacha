@@ -22,6 +22,7 @@ import {
   Alert,
   motionVariants,
   RarityBadge,
+  PageTransition,
 } from '../design-system';
 
 // Styled Components
@@ -521,18 +522,19 @@ const RollPage = () => {
   }, [pendingMultiResults]);
   
   const getImagePath = (src) => src ? getAssetUrl(src) : 'https://via.placeholder.com/300?text=No+Image';
-  
+
   const openPreview = (character) => {
     if (character) {
       setPreviewChar(character);
       setPreviewOpen(true);
     }
   };
-  
+
   return (
-    <StyledPageWrapper>
-      {/* Background Effect */}
-      <BackgroundGradient />
+    <PageTransition>
+      <StyledPageWrapper>
+        {/* Background Effect */}
+        <BackgroundGradient />
       
       <Container>
         {/* Navigation */}
@@ -842,6 +844,7 @@ const RollPage = () => {
         isVideo={previewChar?.isVideo || isVideo(previewChar?.image)}
       />
     </StyledPageWrapper>
+    </PageTransition>
   );
 };
 

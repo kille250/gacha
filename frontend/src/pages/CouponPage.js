@@ -15,7 +15,7 @@ import { getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { redeemCoupon as redeemCouponAction } from '../actions/couponActions';
-import { Container, Heading2 } from '../design-system';
+import { Container, Heading2, PageTransition } from '../design-system';
 
 // Icon Constants
 import { IconPoints, IconGift, IconCoupon } from '../constants/icons';
@@ -130,10 +130,11 @@ const CouponPage = () => {
   };
 
   return (
-    <StyledPageWrapper>
-      <Container>
-        {/* Header */}
-        <Header>
+    <PageTransition>
+      <StyledPageWrapper>
+        <Container>
+          {/* Header */}
+          <Header>
           <HeaderContent>
             <PageTitle>
               {t('coupon.title')}<TitleAccent>{t('coupon.titleAccent')}</TitleAccent>
@@ -325,6 +326,7 @@ const CouponPage = () => {
         </ContentGrid>
       </Container>
     </StyledPageWrapper>
+    </PageTransition>
   );
 };
 

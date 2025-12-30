@@ -6,7 +6,7 @@ import { MdLanguage } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { motionVariants, LoadingSpinner } from '../design-system';
+import { motionVariants, LoadingSpinner, PageTransition } from '../design-system';
 import { languages } from '../i18n';
 
 // Styled Components
@@ -133,9 +133,10 @@ const RegisterPage = () => {
   const displayError = localError || error;
 
   return (
-    <PageContainer>
-      {/* Language Selector */}
-      <LanguageSelectorContainer>
+    <PageTransition>
+      <PageContainer>
+        {/* Language Selector */}
+        <LanguageSelectorContainer>
         <LanguageButton
           onClick={() => setShowLangMenu(!showLangMenu)}
           whileHover={{ scale: 1.05 }}
@@ -332,6 +333,7 @@ const RegisterPage = () => {
         </AuthCardXl>
       </ContentWrapper>
     </PageContainer>
+    </PageTransition>
   );
 };
 

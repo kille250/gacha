@@ -79,6 +79,9 @@ import {
 // Styled components
 import { PageContainer, StarsOverlay } from '../components/Fishing/Fishing.styles';
 
+// Design System
+import { PageTransition } from '../design-system';
+
 // ===========================================
 // MAIN COMPONENT
 // ===========================================
@@ -384,10 +387,11 @@ const FishingPage = () => {
   // ===========================================
   // RENDER
   // ===========================================
-  
+
   return (
-    <PageContainer $timeOfDay={timeOfDay}>
-      {timeOfDay === TIME_PERIODS.NIGHT && <StarsOverlay />}
+    <PageTransition>
+      <PageContainer $timeOfDay={timeOfDay}>
+        {timeOfDay === TIME_PERIODS.NIGHT && <StarsOverlay />}
       
       {/* Header */}
       <FishingHeader
@@ -477,6 +481,7 @@ const FishingPage = () => {
         onClaimPrestige={modals.prestige.onClaim}
       />
     </PageContainer>
+    </PageTransition>
   );
 };
 

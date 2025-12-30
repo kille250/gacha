@@ -58,6 +58,7 @@ import {
   ConfirmDialog,
   SkipLink,
   AriaLiveRegion,
+  PageTransition,
 } from '../design-system';
 
 // ============================================
@@ -245,11 +246,12 @@ const AdminPage = () => {
   }
 
   return (
-    <StyledPageWrapper>
-      {/* Skip link for keyboard navigation */}
-      <SkipLink href="#admin-content">
-        {t('accessibility.skipToContent', 'Skip to main content')}
-      </SkipLink>
+    <PageTransition>
+      <StyledPageWrapper>
+        {/* Skip link for keyboard navigation */}
+        <SkipLink href="#admin-content">
+          {t('accessibility.skipToContent', 'Skip to main content')}
+        </SkipLink>
 
       {/* Live region for screen reader announcements */}
       <AriaLiveRegion />
@@ -458,6 +460,7 @@ const AdminPage = () => {
         onClose={() => setShowKeyboardShortcuts(false)}
       />
     </StyledPageWrapper>
+    </PageTransition>
   );
 };
 

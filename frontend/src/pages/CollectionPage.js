@@ -17,7 +17,7 @@ import { useCollection } from '../hooks';
 import { useRarity } from '../context/RarityContext';
 
 // Design System - consolidated imports
-import { Container, motionVariants, LoadingState, EmptyState } from '../design-system';
+import { Container, motionVariants, LoadingState, EmptyState, PageTransition } from '../design-system';
 
 // Icon Constants
 import { IconSearch, IconCombat } from '../constants/icons';
@@ -149,8 +149,9 @@ const CollectionPage = () => {
   }
 
   return (
-    <StyledPageWrapper>
-      <Container>
+    <PageTransition>
+      <StyledPageWrapper>
+        <Container>
         {/* Header Section */}
         <HeaderSection>
           <HeaderContent>
@@ -448,6 +449,7 @@ const CollectionPage = () => {
       {/* Floating scroll-to-top button for long collections */}
       <ScrollToTop threshold={600} />
     </StyledPageWrapper>
+    </PageTransition>
   );
 };
 

@@ -1,17 +1,17 @@
 /**
- * PageTransition - Animated page wrapper for smooth transitions
+ * PageTransition - Animated page wrapper for smooth enter transitions
  *
- * Provides cinematic page transitions with multiple animation modes.
- * Wrap page content to get smooth enter/exit animations.
+ * Provides cinematic page enter animations. Each page animates itself on mount.
+ * No exit animations - instant navigation feels snappier and allows layout to stay persistent.
  *
  * Features:
- * - Multiple transition modes (fade, slide, scale, slideUp)
+ * - Multiple transition modes (fade, slide, scale, slideUp, cinematic)
  * - Respects reduced motion preferences
  * - Staggered children animations
  * - GPU-accelerated for smooth performance
  *
  * @example
- * <PageTransition mode="slideUp">
+ * <PageTransition mode="cinematic">
  *   <YourPageContent />
  * </PageTransition>
  */
@@ -27,28 +27,39 @@ import { springs } from '../tokens';
 const pageVariants = {
   fade: {
     initial: { opacity: 0 },
-    animate: { opacity: 1, transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] } },
-    exit: { opacity: 0, transition: { duration: 0.15 } }
+    animate: { opacity: 1, transition: { duration: 0.25, ease: [0.25, 0.1, 0.25, 1] } }
   },
   slide: {
     initial: { opacity: 0, x: 20 },
-    animate: { opacity: 1, x: 0, transition: { ...springs.gentle, duration: 0.3 } },
-    exit: { opacity: 0, x: -20, transition: { duration: 0.15 } }
+    animate: { opacity: 1, x: 0, transition: { ...springs.gentle, duration: 0.3 } }
   },
   slideUp: {
     initial: { opacity: 0, y: 20 },
-    animate: { opacity: 1, y: 0, transition: { ...springs.gentle, duration: 0.35 } },
-    exit: { opacity: 0, y: -10, transition: { duration: 0.15 } }
+    animate: { opacity: 1, y: 0, transition: { ...springs.gentle, duration: 0.35 } }
   },
   scale: {
     initial: { opacity: 0, scale: 0.96 },
-    animate: { opacity: 1, scale: 1, transition: { ...springs.snappy, duration: 0.25 } },
-    exit: { opacity: 0, scale: 0.98, transition: { duration: 0.15 } }
+    animate: { opacity: 1, scale: 1, transition: { ...springs.snappy, duration: 0.25 } }
+  },
+  // Cinematic mode - matches the original App.js transition
+  cinematic: {
+    initial: { opacity: 0, y: 16, scale: 0.98 },
+    animate: {
+      opacity: 1,
+      y: 0,
+      scale: 1,
+      transition: {
+        type: 'spring',
+        stiffness: 280,
+        damping: 26,
+        staggerChildren: 0.06,
+        delayChildren: 0.05
+      }
+    }
   },
   none: {
     initial: {},
-    animate: {},
-    exit: {}
+    animate: {}
   }
 };
 
@@ -61,8 +72,7 @@ export const staggerContainer = {
       staggerChildren: 0.05,
       delayChildren: 0.1
     }
-  },
-  exit: { opacity: 0 }
+  }
 };
 
 // Stagger item for children
@@ -72,8 +82,7 @@ export const staggerItem = {
     opacity: 1,
     y: 0,
     transition: { ...springs.gentle }
-  },
-  exit: { opacity: 0, y: -5, transition: { duration: 0.1 } }
+  }
 };
 
 // ==================== STYLED COMPONENTS ====================
@@ -90,13 +99,13 @@ const PageWrapper = styled(motion.div)`
 /**
  * PageTransition Component
  *
- * @param {'fade' | 'slide' | 'slideUp' | 'scale' | 'none'} mode - Animation mode
+ * @param {'fade' | 'slide' | 'slideUp' | 'scale' | 'cinematic' | 'none'} mode - Animation mode
  * @param {boolean} stagger - Enable staggered children animations
  * @param {React.ReactNode} children - Page content
  */
 const PageTransition = memo(function PageTransition({
   children,
-  mode = 'slideUp',
+  mode = 'cinematic',
   stagger = false,
   className,
   ...props
@@ -112,7 +121,6 @@ const PageTransition = memo(function PageTransition({
       className={className}
       initial="initial"
       animate="animate"
-      exit="exit"
       variants={variants}
       {...props}
     >

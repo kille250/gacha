@@ -9,7 +9,7 @@ import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 
 import { useFortuneWheel } from '../../hooks/useFortuneWheel';
-import { LoadingState, ErrorState } from '../../design-system';
+import { LoadingState, ErrorState, PageTransition } from '../../design-system';
 import FortuneWheel from './FortuneWheel';
 import WheelLegend from './WheelLegend';
 import PrizePopup from './PrizePopup';
@@ -159,8 +159,9 @@ const FortuneWheelPage = () => {
   const displayRotation = spinning ? targetRotation : currentRotation;
 
   return (
-    <PageContainer>
-      <MainContent>
+    <PageTransition>
+      <PageContainer>
+        <MainContent>
         {/* Header */}
         <Header>
           <Title>
@@ -314,6 +315,7 @@ const FortuneWheelPage = () => {
         rewards={spinResult?.rewards}
       />
     </PageContainer>
+    </PageTransition>
   );
 };
 

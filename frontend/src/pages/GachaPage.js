@@ -29,6 +29,7 @@ import {
   SkeletonHero,
   SkeletonBannerCarousel,
   Skeleton,
+  PageTransition,
 } from '../design-system';
 
 // Extracted styles
@@ -269,8 +270,9 @@ const GachaPage = () => {
   }
 
   return (
-    <StyledPageWrapper>
-      <Container>
+    <PageTransition>
+      <StyledPageWrapper>
+        <Container>
         {/* Hero Section */}
         <HeroSection>
           <HeroContent>
@@ -534,6 +536,7 @@ const GachaPage = () => {
         onClose={() => setShowOnboarding(false)}
       />
     </StyledPageWrapper>
+    </PageTransition>
   );
 };
 

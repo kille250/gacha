@@ -10,7 +10,7 @@ import React, { useState, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Spinner } from '../design-system';
+import { Spinner, PageTransition } from '../design-system';
 import { useDojoPage } from '../hooks/useDojoPage';
 import { useDojoFacility, useAccountLevel } from '../hooks/useGameEnhancements';
 import { applyPointsUpdate } from '../utils/userStateUpdates';
@@ -160,12 +160,13 @@ const DojoPage = () => {
   }
 
   return (
-    <PageContainer>
-      {/* Header */}
-      <DojoHeader
-        user={user}
-        onBack={() => navigate(-1)}
-      />
+    <PageTransition>
+      <PageContainer>
+        {/* Header */}
+        <DojoHeader
+          user={user}
+          onBack={() => navigate(-1)}
+        />
 
       {/* Error Display */}
       <AnimatePresence>
@@ -298,6 +299,7 @@ const DojoPage = () => {
         )}
       </AnimatePresence>
     </PageContainer>
+    </PageTransition>
   );
 };
 

@@ -27,6 +27,7 @@ import {
   RarityBadge,
   ModalOverlay,
   Skeleton,
+  PageTransition,
 } from '../design-system';
 
 // Styled Components
@@ -926,14 +927,15 @@ const BannerPage = () => {
   }
 
   return (
-    <StyledPageWrapper>
-      {/* Hero Background - only show image when preloaded to prevent layout shift */}
-      <HeroBackground
-        style={{
-          backgroundImage: bgImageLoaded && bannerBgUrl ? `url(${bannerBgUrl})` : 'none',
-          opacity: bgImageLoaded ? 0.15 : 0.08,
-        }}
-      />
+    <PageTransition>
+      <StyledPageWrapper>
+        {/* Hero Background - only show image when preloaded to prevent layout shift */}
+        <HeroBackground
+          style={{
+            backgroundImage: bgImageLoaded && bannerBgUrl ? `url(${bannerBgUrl})` : 'none',
+            opacity: bgImageLoaded ? 0.15 : 0.08,
+          }}
+        />
       
       <Container>
         {/* Navigation Bar */}
@@ -1572,6 +1574,7 @@ const BannerPage = () => {
         )}
       </AnimatePresence>
     </StyledPageWrapper>
+    </PageTransition>
   );
 };
 

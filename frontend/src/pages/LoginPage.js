@@ -6,7 +6,7 @@ import { MdLanguage, MdCollections, MdAutoAwesome } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
-import { motionVariants, springs, LoadingSpinner } from '../design-system';
+import { motionVariants, springs, LoadingSpinner, PageTransition } from '../design-system';
 import { languages } from '../i18n';
 // ForcePasswordChangeModal is now handled globally in App.js
 
@@ -113,9 +113,10 @@ const LoginPage = () => {
   ];
 
   return (
-    <PageContainer>
-      {/* Language Selector */}
-      <LanguageSelectorContainer>
+    <PageTransition>
+      <PageContainer>
+        {/* Language Selector */}
+        <LanguageSelectorContainer>
         <LanguageButton
           onClick={() => setShowLangMenu(!showLangMenu)}
           whileHover={{ scale: 1.05 }}
@@ -308,6 +309,7 @@ const LoginPage = () => {
 
       {/* Force Password Change Modal is now rendered globally in App.js */}
     </PageContainer>
+    </PageTransition>
   );
 };
 
