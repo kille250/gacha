@@ -165,8 +165,12 @@ export const SkipHint = styled(motion.div)`
 export const CharacterInfo = styled(motion.div)`
   position: absolute;
   bottom: 20%;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
   text-align: center;
   color: white;
   pointer-events: none;

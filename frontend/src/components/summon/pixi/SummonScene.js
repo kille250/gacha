@@ -247,6 +247,9 @@ export class SummonScene {
     if (typeof window === 'undefined') return;
 
     const handleResize = () => {
+      // Don't resize if destroyed
+      if (!this.isInitialized || !this.app) return;
+
       const width = window.innerWidth;
       const height = window.innerHeight;
 
@@ -258,20 +261,24 @@ export class SummonScene {
         this.app.renderer.resize(width, height);
       }
 
-      // Resize layers
-      this.layers.background?.resize(width, height);
-      this.layers.foreground?.resize(width, height);
+      // Resize layers (with safety checks)
+      try {
+        this.layers.background?.resize?.(width, height);
+        this.layers.foreground?.resize?.(width, height);
 
-      // Update positions
-      const centerX = width / 2;
-      const centerY = height / 2;
+        // Update positions
+        const centerX = width / 2;
+        const centerY = height / 2;
 
-      this.layers.character?.setPosition(centerX, centerY);
-      this.effects.vortex?.setPosition(centerX, centerY);
-      this.effects.sparks?.setPosition(centerX, centerY);
-      this.effects.shockwave?.setPosition(centerX, centerY);
-      this.effects.glow?.setPosition(centerX, centerY);
-      this.effects.particles?.setPosition(centerX, centerY + 100);
+        this.layers.character?.setPosition?.(centerX, centerY);
+        this.effects.vortex?.setPosition?.(centerX, centerY);
+        this.effects.sparks?.setPosition?.(centerX, centerY);
+        this.effects.shockwave?.setPosition?.(centerX, centerY);
+        this.effects.glow?.setPosition?.(centerX, centerY);
+        this.effects.particles?.setPosition?.(centerX, centerY + 100);
+      } catch (e) {
+        console.warn('Error during resize:', e);
+      }
     };
 
     window.addEventListener('resize', handleResize);
@@ -608,14 +615,35 @@ export class SummonScene {
     }
 
     // Destroy effects
-    Object.values(this.effects).forEach((effect) => effect?.destroy?.());
+    Object.values(this.effects).forEach((effect) => {
+      try {
+        effect?.destroy?.();
+      } catch (e) {
+        console.warn('Error destroying effect:', e);
+      }
+    });
 
     // Destroy layers
-    Object.values(this.layers).forEach((layer) => layer?.destroy?.());
+    Object.values(this.layers).forEach((layer) => {
+      try {
+        layer?.destroy?.();
+      } catch (e) {
+        console.warn('Error destroying layer:', e);
+      }
+    });
 
-    // Destroy app
+    // Destroy app safely
     if (this.app) {
-      this.app.destroy(true, { children: true, texture: true });
+      try {
+        // Stop the ticker first
+        this.app.ticker?.stop();
+        // Only destroy if the app was fully initialized
+        if (this.app.renderer) {
+          this.app.destroy(true, { children: true, texture: true });
+        }
+      } catch (e) {
+        console.warn('Error destroying Pixi app:', e);
+      }
       this.app = null;
     }
 

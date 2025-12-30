@@ -128,18 +128,26 @@ export const SummonAnimation = forwardRef(({
     getPhase: () => phase,
   }), [normalizedEntity, phase]);
 
-  // Initialize scene
+  // Store getImagePath in a ref to avoid re-initializing on every render
+  const getImagePathRef = useRef(getImagePath);
   useEffect(() => {
-    if (!canvasRef.current || sceneRef.current) return;
+    getImagePathRef.current = getImagePath;
+  }, [getImagePath]);
+
+  // Initialize scene - only once when canvas is available
+  useEffect(() => {
+    if (!canvasRef.current) return;
+    // Don't re-initialize if already exists
+    if (sceneRef.current) return;
 
     let mounted = true;
     const scene = new SummonScene(canvasRef.current);
     sceneRef.current = scene;
 
-    // Set image path resolver
-    if (getImagePath) {
-      scene.setImagePathResolver(getImagePath);
-    }
+    // Set image path resolver using ref
+    scene.setImagePathResolver((path) => {
+      return getImagePathRef.current ? getImagePathRef.current(path) : path;
+    });
 
     // Initialize with proper error handling and timeout
     const initTimeout = setTimeout(() => {
@@ -166,10 +174,12 @@ export const SummonAnimation = forwardRef(({
     return () => {
       mounted = false;
       clearTimeout(initTimeout);
-      scene.destroy();
-      sceneRef.current = null;
+      if (sceneRef.current) {
+        sceneRef.current.destroy();
+        sceneRef.current = null;
+      }
     };
-  }, [getImagePath]);
+  }, []); // Empty dependency - initialize only once
 
   // Handle activation
   useEffect(() => {
