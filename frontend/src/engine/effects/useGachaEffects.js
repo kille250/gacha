@@ -6,7 +6,7 @@
  */
 
 import { useCallback, useMemo } from 'react';
-import { useScreenShake, RARITY_SHAKE_MAP } from './useScreenShake';
+import { useScreenShake } from './useScreenShake';
 import { useScreenFlash, RARITY_FLASH_MAP } from './useScreenFlash';
 import { useHaptics } from './useHaptics';
 import { useAudio, SOUND_CATEGORIES } from '../audio/AudioProvider';
