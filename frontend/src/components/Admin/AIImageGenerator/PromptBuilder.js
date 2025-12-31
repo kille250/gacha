@@ -512,6 +512,12 @@ const PromptBuilder = ({
     post_processing: []
   });
 
+  // Content options state
+  const [contentOptions, setContentOptions] = useState({
+    nsfw: false,
+    censor_nsfw: true
+  });
+
   // Build preview prompt
   const previewPrompt = useMemo(() => {
     return buildPrompt(options);
@@ -571,6 +577,10 @@ const PromptBuilder = ({
       seed: '',
       post_processing: []
     });
+    setContentOptions({
+      nsfw: false,
+      censor_nsfw: true
+    });
   }, []);
 
   // Toggle post-processor
@@ -613,9 +623,11 @@ const PromptBuilder = ({
       prompt: previewPrompt,
       negative_prompt: NEGATIVE_PROMPT_TEMPLATE,
       models: options.models,
-      params: generationParams
+      params: generationParams,
+      nsfw: contentOptions.nsfw,
+      censor_nsfw: contentOptions.censor_nsfw
     });
-  }, [previewPrompt, options.models, params, onGenerate]);
+  }, [previewPrompt, options.models, params, contentOptions, onGenerate]);
 
   // Get models to display
   const displayModels = availableModels?.length > 0
@@ -948,6 +960,33 @@ const PromptBuilder = ({
                     GFPGAN/CodeFormers: Face enhancement | RealESRGAN: Upscaling | strip_background: Remove background
                   </HelpText>
                 </MultiSelectContainer>
+              </SubSection>
+
+              {/* Content Options */}
+              <SubSection>
+                <SubSectionTitle>Content Options</SubSectionTitle>
+                <CheckboxGroup>
+                  <CheckboxLabel>
+                    <input
+                      type="checkbox"
+                      checked={contentOptions.nsfw}
+                      onChange={e => setContentOptions(prev => ({ ...prev, nsfw: e.target.checked }))}
+                    />
+                    Allow NSFW Content
+                  </CheckboxLabel>
+                  <CheckboxLabel>
+                    <input
+                      type="checkbox"
+                      checked={contentOptions.censor_nsfw}
+                      onChange={e => setContentOptions(prev => ({ ...prev, censor_nsfw: e.target.checked }))}
+                      disabled={!contentOptions.nsfw}
+                    />
+                    Censor NSFW (blur if detected)
+                  </CheckboxLabel>
+                </CheckboxGroup>
+                <HelpText>
+                  Enable NSFW to generate adult content. Workers may still refuse explicit requests.
+                </HelpText>
               </SubSection>
             </SectionContent>
           )}
