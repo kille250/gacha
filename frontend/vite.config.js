@@ -9,7 +9,7 @@ export default defineConfig({
   },
   build: {
     outDir: 'build',
-    sourcemap: false,
+    sourcemap: true,
     // Chunk size warning limit adjusted for this feature-rich SPA:
     // - The main bundle (~1.1MB raw, ~307KB gzip) contains shared app code
     // - This is acceptable for a game app with heavy animation/graphics

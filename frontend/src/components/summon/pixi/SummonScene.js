@@ -5,7 +5,11 @@
  * Coordinates all layers and effects for a premium animation experience.
  */
 
-import { Application, Container } from 'pixi.js';
+import { Application, Container, Graphics } from 'pixi.js';
+
+// Ensure Graphics is available for layer constructors
+// This helps Vite/Rollup properly tree-shake and bundle
+const _GraphicsCheck = Graphics;
 import { BackgroundLayer } from './layers/BackgroundLayer';
 import { CharacterLayer } from './layers/CharacterLayer';
 import { CollectionCardLayer } from './layers/CollectionCardLayer';
