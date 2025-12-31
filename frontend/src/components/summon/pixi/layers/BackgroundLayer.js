@@ -100,7 +100,7 @@ export class BackgroundLayer {
    */
   update(dt = 1) {
     // Skip update if layer has been destroyed
-    if (!this.container) return;
+    if (!this.container || this.container.destroyed) return;
 
     this.time += dt / 60;
 
@@ -116,14 +116,19 @@ export class BackgroundLayer {
    * Draw animated gradient
    */
   drawGradient() {
-    // Safety check - ensure graphics objects still exist
-    if (!this.gradient) return;
+    // Safety check - ensure graphics objects still exist and are not destroyed
+    if (!this.gradient || this.gradient.destroyed) return;
 
     const { width, height } = this;
     const centerX = width / 2;
     const centerY = height / 2;
 
-    this.gradient.clear();
+    try {
+      this.gradient.clear();
+    } catch (e) {
+      // Graphics context may have been destroyed
+      return;
+    }
 
     if (this.intensity < 0.01) return;
 
@@ -146,14 +151,19 @@ export class BackgroundLayer {
    * Draw ambient glow
    */
   drawAmbientGlow() {
-    // Safety check - ensure graphics objects still exist
-    if (!this.ambientGlow) return;
+    // Safety check - ensure graphics objects still exist and are not destroyed
+    if (!this.ambientGlow || this.ambientGlow.destroyed) return;
 
     const { width, height } = this;
     const centerX = width / 2;
     const centerY = height / 2;
 
-    this.ambientGlow.clear();
+    try {
+      this.ambientGlow.clear();
+    } catch (e) {
+      // Graphics context may have been destroyed
+      return;
+    }
 
     if (this.intensity < 0.01) return;
 
