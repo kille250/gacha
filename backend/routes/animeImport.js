@@ -19,7 +19,7 @@ const JIKAN_API = 'https://api.jikan.moe/v4';
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 500; // 500ms between requests (safer than 350ms)
 const MAX_RETRIES = 3;
-const FETCH_TIMEOUT = 10000; // 10 second timeout for API requests
+const FETCH_TIMEOUT = 30000; // 30 second timeout for API requests
 
 /**
  * Fetch with timeout using AbortController
@@ -571,7 +571,8 @@ router.get('/sakuga-tags', auth, adminAuth, async (req, res) => {
     const searchTerm = toDanbooruTag(q);
     
     // Build search URL - optionally filter by category (4 = character)
-    let searchUrl = `${DANBOORU_API}/tags.json?search[name_matches]=*${encodeURIComponent(searchTerm)}*&search[order]=count&limit=20`;
+    // Use prefix matching (searchTerm*) instead of substring (*searchTerm*) for much faster queries
+    let searchUrl = `${DANBOORU_API}/tags.json?search[name_matches]=${encodeURIComponent(searchTerm)}*&search[order]=count&limit=20`;
     if (category) {
       searchUrl += `&search[category]=${category}`;
     }

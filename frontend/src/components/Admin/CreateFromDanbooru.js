@@ -363,15 +363,20 @@ const CreateFromDanbooru = ({
   const searchTags = useCallback(async (query) => {
     if (!query || query.length < 2) {
       setTags([]);
+      setError(null);
       return;
     }
 
     setLoading(true);
+    setError(null);
     try {
       const response = await api.get(`/anime-import/sakuga-tags?q=${encodeURIComponent(query)}`);
       setTags(response.data.tags || []);
     } catch (err) {
       console.error('Tag search failed:', err);
+      const isTimeout = err.message?.includes('timeout') || err.code === 'ECONNABORTED';
+      setError(isTimeout ? 'Search timed out. Try a more specific search term.' : 'Failed to search tags. Please try again.');
+      setTags([]);
     } finally {
       setLoading(false);
     }
@@ -384,6 +389,7 @@ const CreateFromDanbooru = ({
       setLoading(true);
       setResults([]);
       setPage(1);
+      setError(null);
     } else {
       setLoadingMore(true);
     }
@@ -412,6 +418,8 @@ const CreateFromDanbooru = ({
       checkAddedPosts(newResults);
     } catch (err) {
       console.error('Image search failed:', err);
+      const isTimeout = err.message?.includes('timeout') || err.code === 'ECONNABORTED';
+      setError(isTimeout ? 'Search timed out. Please try again.' : 'Failed to load images. Please try again.');
     } finally {
       setLoading(false);
       setLoadingMore(false);
@@ -719,6 +727,8 @@ const CreateFromDanbooru = ({
                 <LoadingText>
                   <FaSpinner className="spin" /> {t('animeImport.searchingVideos', 'Searching...')}
                 </LoadingText>
+              ) : error ? (
+                <ErrorText>{error}</ErrorText>
               ) : selectedTag && results.length === 0 ? (
                 <EmptyText>{t('animeImport.noVideosFound', 'No results found')}</EmptyText>
               ) : results.length > 0 ? (
@@ -1349,6 +1359,15 @@ const EmptyText = styled.p`
   color: #666;
   text-align: center;
   padding: 30px;
+`;
+
+const ErrorText = styled.p`
+  color: #e74c3c;
+  text-align: center;
+  padding: 30px;
+  background: rgba(231, 76, 60, 0.1);
+  border-radius: 8px;
+  margin: 10px 0;
 `;
 
 const ResultsInfo = styled.div`
