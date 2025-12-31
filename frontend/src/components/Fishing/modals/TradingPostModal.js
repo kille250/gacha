@@ -8,7 +8,8 @@ import { ModalOverlay, motionVariants } from '../../../design-system';
 import {
   IconFishCommon, IconFishUncommon, IconFishRare, IconFishEpic, IconFishLegendary,
   IconFishing, IconPoints, IconTicket, IconPremiumTicket, IconGift,
-  IconCheckmark, IconSparkleSymbol, IconClock, IconLocked, IconWarningTriangle
+  IconCheckmark, IconSparkleSymbol, IconClock, IconLocked, IconWarningTriangle,
+  IconArrowRight
 } from '../../../constants/icons';
 import {
   TradingPostModal as TradingPostModalStyled, ShopHeader, ShopTitleRow, ShopIcon, ShopTitle, ShopBody,
@@ -195,7 +196,7 @@ export const TradingPostModal = ({
                                     <TradeGiveAmount>×{option.requiredQuantity}</TradeGiveAmount>
                                   </TradeGiveContent>
                                 </TradeGiveSection>
-                                <TradeArrow>→</TradeArrow>
+                                <TradeArrow><IconArrowRight /></TradeArrow>
                                 <TradeGetSection>
                                   <TradeLabel>{t('fishing.get') || 'Get'}</TradeLabel>
                                   <TradeGetContent $type={option.rewardType}>

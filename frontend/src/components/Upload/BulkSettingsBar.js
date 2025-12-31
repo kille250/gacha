@@ -12,6 +12,7 @@ import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { FaMagic, FaCheck } from 'react-icons/fa';
 import { theme } from '../../design-system';
+import { IconAdultContent } from '../../constants/icons';
 
 const BulkSettingsBar = memo(({
   bulkDefaults,
@@ -84,7 +85,7 @@ const BulkSettingsBar = memo(({
               disabled={disabled}
               aria-label="Mark as R18 content"
             />
-            <span>🔞 R18</span>
+            <span><IconAdultContent /> R18</span>
           </CheckboxLabel>
         </SettingField>
       </SettingsGrid>

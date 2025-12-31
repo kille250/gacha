@@ -8,6 +8,7 @@ import { CSS } from '@dnd-kit/utilities';
 import { theme, motionVariants } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import { PLACEHOLDER_BANNER } from '../../utils/mediaUtils';
+import { IconInfo, IconBanner } from '../../constants/icons';
 import {
   AdminContainer,
   HeaderRow,
@@ -211,12 +212,12 @@ const AdminBanners = ({
       </HeaderRow>
 
       <DragHint role="note" aria-live="polite">
-        <span aria-hidden="true">💡</span> {t('admin.dragToReorder', 'Drag banners to change their display order. Use keyboard arrow keys when focused on the drag handle.')}
+        <IconInfo aria-hidden="true" /> {t('admin.dragToReorder', 'Drag banners to change their display order. Use keyboard arrow keys when focused on the drag handle.')}
       </DragHint>
 
       {banners.length === 0 ? (
         <EmptyState role="status">
-          <EmptyIcon aria-hidden="true">🏳️</EmptyIcon>
+          <EmptyIcon aria-hidden="true"><IconBanner /></EmptyIcon>
           <EmptyText>{t('admin.noBannersYet', 'No banners yet')}</EmptyText>
           <EmptySubtext>{t('admin.createFirstBanner', 'Create your first banner to get started')}</EmptySubtext>
           <AddBannerButton

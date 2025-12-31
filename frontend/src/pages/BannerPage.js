@@ -174,6 +174,7 @@ import {
   IconStar,
   IconCheckmark,
   IconStarFilled,
+  IconArrowRight,
 } from '../constants/icons';
 
 // ==================== CONSTANTS ====================
@@ -1203,7 +1204,7 @@ const BannerPage = () => {
                       <CostUnit>{t('common.points')}</CostUnit>
                     </PullCardCost>
                   </PullCardContent>
-                  <PullCardArrow>→</PullCardArrow>
+                  <PullCardArrow><IconArrowRight /></PullCardArrow>
                 </PrimaryPullCard>
 
                 {/* Multi-Pull Options Grid */}

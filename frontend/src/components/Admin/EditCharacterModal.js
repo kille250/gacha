@@ -7,6 +7,7 @@ import api from '../../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../../cache';
 import { isVideo } from '../../utils/mediaUtils';
 import { isDuplicateError, getDuplicateInfo, DUPLICATE_STATUS } from '../../utils/errorHandler';
+import { IconAdultContent } from '../../constants/icons';
 import AltMediaPicker from './AltMediaPicker';
 import DuplicateWarningBanner from '../UI/DuplicateWarningBanner';
 import {
@@ -296,7 +297,7 @@ const EditCharacterModal = ({
                       checked={editForm.isR18}
                       onChange={(e) => handleFormChange('isR18', e.target.checked)}
                     />
-                    <span>🔞 {t('admin.r18Content')}</span>
+                    <span><IconAdultContent /> {t('admin.r18Content')}</span>
                   </CheckboxLabel>
                 </FormGroup>
                 <FormGroup>

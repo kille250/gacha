@@ -13,6 +13,7 @@ import { MdClose } from 'react-icons/md';
 import styled, { keyframes } from 'styled-components';
 import { theme, Confetti, AnimatedValue } from '../../../design-system';
 import { haptic } from '../../../design-system/utilities/microInteractions';
+import { IconConfetti, IconBoost } from '../../../constants/icons';
 
 import {
   ClaimPopup,
@@ -190,7 +191,7 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
             >
               <MdClose aria-hidden="true" />
             </CloseButton>
-            <ClaimPopupIcon aria-hidden="true">🎉</ClaimPopupIcon>
+            <ClaimPopupIcon aria-hidden="true"><IconConfetti /></ClaimPopupIcon>
             <ClaimPopupTitle>{t('dojo.trainingComplete')}</ClaimPopupTitle>
             <ClaimPopupRewards>
               {claimResult.rewards.points > 0 && (
@@ -264,7 +265,7 @@ const DojoClaimPopup = ({ claimResult, onDismiss }) => {
                 transition={{ delay: 0.5 }}
               >
                 <CatchUpBonusTag>
-                  🚀 {t('dojo.catchUpBonusApplied', {
+                  <IconBoost /> {t('dojo.catchUpBonusApplied', {
                     bonus: Math.round((claimResult.catchUpBonus.multiplier - 1) * 100)
                   })}
                 </CatchUpBonusTag>

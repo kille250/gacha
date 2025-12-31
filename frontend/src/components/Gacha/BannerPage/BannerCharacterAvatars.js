@@ -7,6 +7,7 @@
 import React, { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { isVideo } from '../../../utils/mediaUtils';
+import { IconCheckmark } from '../../../constants/icons';
 
 import {
   FeaturedSection,
@@ -83,7 +84,7 @@ const BannerCharacterAvatars = ({
                   alt={char.name}
                 />
               )}
-              {owned && <OwnedMark aria-hidden="true">✓</OwnedMark>}
+              {owned && <OwnedMark aria-hidden="true"><IconCheckmark /></OwnedMark>}
             </Avatar>
           );
         })}

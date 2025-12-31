@@ -7,6 +7,8 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 
+import { IconStar, IconTicket } from '../../../constants/icons';
+
 import {
   TicketWarning,
   TicketSection,
@@ -69,18 +71,18 @@ const BannerTicketSection = ({
         <TicketSection role="region" aria-label={t('common.tickets', 'Tickets')}>
           <TicketSectionHeader>
             <TicketSectionTitle>
-              🎟️ {t('common.tickets') || 'Your Tickets'}
+              <IconTicket /> {t('common.tickets') || 'Your Tickets'}
             </TicketSectionTitle>
             <TicketCounts>
               {tickets.rollTickets > 0 && (
                 <TicketCount aria-label={`${tickets.rollTickets} roll tickets`}>
-                  <span aria-hidden="true">🎟️</span>
+                  <span aria-hidden="true"><IconTicket /></span>
                   <strong>{tickets.rollTickets}</strong>
                 </TicketCount>
               )}
               {tickets.premiumTickets > 0 && (
                 <TicketCount $premium aria-label={`${tickets.premiumTickets} premium tickets`}>
-                  <span aria-hidden="true">🌟</span>
+                  <span aria-hidden="true"><IconStar /></span>
                   <strong>{tickets.premiumTickets}</strong>
                 </TicketCount>
               )}
@@ -97,7 +99,7 @@ const BannerTicketSection = ({
                 whileTap={{ scale: 0.98 }}
                 aria-label={`Use 1 roll ticket`}
               >
-                <TicketButtonIcon aria-hidden="true">🎟️</TicketButtonIcon>
+                <TicketButtonIcon aria-hidden="true"><IconTicket /></TicketButtonIcon>
                 <TicketButtonText>
                   <span>{t('common.use') || 'Use'} 1×</span>
                   <small>{t('common.rollTicket') || 'Roll Ticket'}</small>
@@ -114,7 +116,7 @@ const BannerTicketSection = ({
                 whileTap={{ scale: 0.98 }}
                 aria-label={`Use 1 premium ticket - guaranteed rare or better`}
               >
-                <TicketButtonIcon aria-hidden="true">🌟</TicketButtonIcon>
+                <TicketButtonIcon aria-hidden="true"><IconStar /></TicketButtonIcon>
                 <TicketButtonText>
                   <span>{t('common.premium') || 'Premium'}</span>
                   <small>{t('common.guaranteedRare') || 'Rare+ Guaranteed!'}</small>
@@ -131,7 +133,7 @@ const BannerTicketSection = ({
                 whileTap={{ scale: 0.98 }}
                 aria-label={`Use 10 roll tickets`}
               >
-                <TicketButtonIcon aria-hidden="true">🎟️</TicketButtonIcon>
+                <TicketButtonIcon aria-hidden="true"><IconTicket /></TicketButtonIcon>
                 <TicketButtonText>
                   <span>{t('common.use') || 'Use'} 10×</span>
                   <small>{t('common.rollTickets') || 'Roll Tickets'}</small>
@@ -148,7 +150,7 @@ const BannerTicketSection = ({
                 whileTap={{ scale: 0.98 }}
                 aria-label={`Use 10 premium tickets - all rare or better`}
               >
-                <TicketButtonIcon aria-hidden="true">🌟</TicketButtonIcon>
+                <TicketButtonIcon aria-hidden="true"><IconStar /></TicketButtonIcon>
                 <TicketButtonText>
                   <span>10× {t('common.premium') || 'Premium'}</span>
                   <small>{t('common.allRarePlus') || 'All Rare+!'}</small>

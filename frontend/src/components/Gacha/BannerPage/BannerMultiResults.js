@@ -10,6 +10,7 @@ import { FaGem, FaDice, FaTrophy, FaStar } from 'react-icons/fa';
 
 import { IconButton, motionVariants } from '../../../design-system';
 import { isVideo } from '../../../utils/mediaUtils';
+import { IconCheckmark, IconStarFilled } from '../../../constants/icons';
 
 import {
   MultiResultsContainer,
@@ -92,9 +93,9 @@ const BannerMultiResults = ({
                   alt={char.name}
                 />
               )}
-              <MiniCollected aria-hidden="true">✓</MiniCollected>
+              <MiniCollected aria-hidden="true"><IconCheckmark /></MiniCollected>
               {char.isBannerCharacter && (
-                <MiniBannerMark aria-hidden="true">★</MiniBannerMark>
+                <MiniBannerMark aria-hidden="true"><IconStarFilled /></MiniBannerMark>
               )}
             </MiniCardImage>
             <MiniCardInfo>

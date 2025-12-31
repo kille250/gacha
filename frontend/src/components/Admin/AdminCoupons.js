@@ -22,6 +22,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { FaTicketAlt, FaPlus, FaEdit, FaTrash, FaCoins, FaUsers, FaCalendarAlt, FaCopy, FaCheck, FaGem } from 'react-icons/fa';
 import { theme, motionVariants, AriaLiveRegion } from '../../design-system';
 import { useTranslation } from 'react-i18next';
+import { IconTicket } from '../../constants/icons';
 import {
   AdminContainer,
   HeaderRow,
@@ -106,10 +107,10 @@ const AdminCoupons = ({
           <MiniStatLabel>{t('admin.totalUses')}</MiniStatLabel>
         </MiniStat>
       </StatsRow>
-      
+
       {coupons.length === 0 ? (
         <EmptyState role="status">
-          <EmptyIcon aria-hidden="true">🎫</EmptyIcon>
+          <EmptyIcon aria-hidden="true"><IconTicket /></EmptyIcon>
           <EmptyText>{t('admin.noCouponsYet')}</EmptyText>
           <EmptySubtext>{t('admin.createDiscountCodes')}</EmptySubtext>
           <AddCouponButton onClick={onAddCoupon} style={{ marginTop: theme.spacing.lg }}>

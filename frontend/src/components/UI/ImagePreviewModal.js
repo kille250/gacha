@@ -5,6 +5,7 @@ import { MdCheckCircle, MdClose } from 'react-icons/md';
 import { FaDice, FaGem, FaTrophy, FaStar, FaArrowUp } from 'react-icons/fa';
 import { useRarity } from '../../context/RarityContext';
 import { theme } from '../../design-system/tokens';
+import { IconStarFilled, IconSword, IconDiamond, IconInfo, IconConfetti, IconArrowRight } from '../../constants/icons';
 
 const rarityIcons = {
   common: <FaDice />,
@@ -108,7 +109,7 @@ const ImagePreviewModal = ({
                   )}
                   {isBannerCharacter && (
                     <Badge variant="banner">
-                      ★ Featured
+                      <IconStarFilled /> Featured
                     </Badge>
                   )}
                   <RarityPill $color={rarityColor}>
@@ -128,7 +129,7 @@ const ImagePreviewModal = ({
                   <LevelSection>
                     <LevelHeader>
                       <LevelTitle>
-                        <span>⚔️ Card Level</span>
+                        <span><IconSword /> Card Level</span>
                         <LevelValue $isMaxLevel={level >= 5}>
                           Lv.{level}{level >= 5 ? ' MAX' : ''}
                         </LevelValue>
@@ -139,11 +140,11 @@ const ImagePreviewModal = ({
                       <>
                         <ProgressContainer>
                           <ProgressLabel>
-                            <span>◆ Shards</span>
+                            <span><IconDiamond /> Shards</span>
                             <span>{shards || 0} / {shardsToNextLevel || '?'}</span>
                           </ProgressLabel>
                           <ProgressBar>
-                            <ProgressFill 
+                            <ProgressFill
                               style={{ width: `${Math.min(100, ((shards || 0) / (shardsToNextLevel || 1)) * 100)}%` }}
                               $complete={canLevelUp}
                             />
@@ -151,27 +152,27 @@ const ImagePreviewModal = ({
                         </ProgressContainer>
                         
                         <ShardHint>
-                          💡 Roll duplicates to earn shards for leveling up!
+                          <IconInfo /> Roll duplicates to earn shards for leveling up!
                         </ShardHint>
                       </>
                     )}
                     
                     {level >= 5 && (
                       <MaxLevelInfo>
-                        🎉 Max level reached! Duplicates now give +50 bonus points.
+                        <IconConfetti /> Max level reached! Duplicates now give +50 bonus points.
                       </MaxLevelInfo>
                     )}
                     
                     {/* Level Up Button */}
                     {canLevelUp && onLevelUp && (
-                      <LevelUpButton 
+                      <LevelUpButton
                         onClick={handleLevelUp}
                         disabled={isLevelingUp}
                         whileHover={{ scale: 1.02 }}
                         whileTap={{ scale: 0.98 }}
                       >
                         <FaArrowUp />
-                        {isLevelingUp ? 'Leveling...' : `Level Up → Lv.${level + 1}`}
+                        {isLevelingUp ? 'Leveling...' : (<>Level Up <IconArrowRight /> Lv.{level + 1}</>)}
                       </LevelUpButton>
                     )}
                   </LevelSection>

@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
 import { getAutoEnforcements } from '../../utils/api';
 import { RESTRICTION_COLORS } from '../../constants/securityConstants';
+import { IconArrowLeft, IconArrowRight } from '../../constants/icons';
 import { SecondaryButton } from './Admin.styles';
 
 const ACTION_ICONS = {
@@ -137,13 +138,13 @@ const AutoEnforcementViewer = ({ onViewUser }) => {
 
           <Pagination>
             <SecondaryButton onClick={handlePrevPage} disabled={offset === 0}>
-              ← {t('admin.security.previous')}
+              <IconArrowLeft /> {t('admin.security.previous')}
             </SecondaryButton>
             <PageInfo>
               {offset + 1} - {Math.min(offset + limit, total)} {t('common.of')} {total}
             </PageInfo>
             <SecondaryButton onClick={handleNextPage} disabled={offset + limit >= total}>
-              {t('common.next')} →
+              {t('common.next')} <IconArrowRight />
             </SecondaryButton>
           </Pagination>
         </>

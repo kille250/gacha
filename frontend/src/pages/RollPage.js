@@ -98,7 +98,7 @@ import {
 import { SummonAnimation, MultiSummonAnimation } from '../components/summon';
 
 // Icon Constants
-import { IconDice, IconPoints, IconSearch, IconSparkle, IconMagic, IconCheckmark } from '../constants/icons';
+import { IconDice, IconPoints, IconSearch, IconSparkle, IconMagic, IconCheckmark, IconArrowRight } from '../constants/icons';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 // Game Enhancements
@@ -742,7 +742,7 @@ const RollPage = () => {
                       <CostUnit>{t('common.points')}</CostUnit>
                     </PullCardCost>
                   </PullCardContent>
-                  <PullCardArrow>→</PullCardArrow>
+                  <PullCardArrow><IconArrowRight /></PullCardArrow>
                 </PrimaryPullCard>
 
                 {/* Multi-Pull Options Grid */}

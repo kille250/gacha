@@ -34,6 +34,7 @@ import { useToast } from '../../../context/ToastContext';
 import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../../../cache';
 import { useRarity } from '../../../context/RarityContext';
+import { IconArrowRight } from '../../../constants/icons';
 import {
   AdminContainer,
   HeaderRow,
@@ -469,7 +470,7 @@ const AdminRarities = ({ onRefresh }) => {
                   <RateTotalLabel>{pool.label}</RateTotalLabel>
                   <RateTotalValue $isValid={pool.isValid}>
                     {pool.total.toFixed(1)}%
-                    {!pool.isValid && <span> → normalized</span>}
+                    {!pool.isValid && <span> <IconArrowRight /> normalized</span>}
                   </RateTotalValue>
                 </RateTotalItem>
               ))}

@@ -110,10 +110,10 @@ const ProfilePage = () => {
 
   const getLanguageDisplay = () => {
     const langMap = {
-      en: { flag: '🇺🇸', name: 'English' },
-      ja: { flag: '🇯🇵', name: '日本語' },
-      zh: { flag: '🇨🇳', name: '中文' },
-      ko: { flag: '🇰🇷', name: '한국어' },
+      en: { flag: 'EN', name: 'English' },
+      ja: { flag: 'JA', name: '日本語' },
+      zh: { flag: 'ZH', name: '中文' },
+      ko: { flag: 'KO', name: '한국어' },
     };
     return langMap[i18n.language] || langMap.en;
   };

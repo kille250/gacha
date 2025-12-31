@@ -5,6 +5,7 @@ import { FaSearch, FaTimes, FaCheck, FaExclamationTriangle, FaDownload, FaStar, 
 import { useTranslation } from 'react-i18next';
 import api from '../../utils/api';
 import { useRarity } from '../../context/RarityContext';
+import { IconArrowLeft } from '../../constants/icons';
 
 // Category icons for tag display
 const CATEGORY_ICON_MAP = {
@@ -526,7 +527,7 @@ const AnimeImportModal = ({ show, onClose, onSuccess }) => {
                     setAnimeCharacters([]);
                     setSelectedCharacters([]);
                   }}>
-                    ← {t('animeImport.backToResults')}
+                    <IconArrowLeft /> {t('animeImport.backToResults')}
                   </BackButton>
                 </div>
                 <SelectionButtons>

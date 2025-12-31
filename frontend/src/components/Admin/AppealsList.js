@@ -10,6 +10,7 @@ import { FaGavel, FaSync, FaCheck, FaEye } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
 import { getPendingAppeals, getAppealStats } from '../../utils/api';
+import { IconWarning } from '../../constants/icons';
 import {
   HeaderRow,
   SectionTitle,
@@ -143,7 +144,7 @@ const AppealsList = ({ onReviewAppeal }) => {
                     <UserInfo>
                       <Username>{appeal.user?.username || `User ${appeal.userId}`}</Username>
                       {appeal.user?.warningCount > 0 && (
-                        <WarningBadge>⚠️ {appeal.user.warningCount}</WarningBadge>
+                        <WarningBadge><IconWarning /> {appeal.user.warningCount}</WarningBadge>
                       )}
                     </UserInfo>
                   </Cell>

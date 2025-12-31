@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
 import { getHighRiskUsers } from '../../utils/api';
 import { getRiskColor } from '../../constants/securityConstants';
+import { IconWarning } from '../../constants/icons';
 import {
   HeaderRow,
   SectionTitle,
@@ -121,7 +122,7 @@ const HighRiskUsersList = ({ onViewUser }) => {
                   </Cell>
                   <Cell $width="100px">
                     {user.warningCount > 0 ? (
-                      <WarningBadge>⚠️ {user.warningCount}</WarningBadge>
+                      <WarningBadge><IconWarning /> {user.warningCount}</WarningBadge>
                     ) : (
                       <span>—</span>
                     )}

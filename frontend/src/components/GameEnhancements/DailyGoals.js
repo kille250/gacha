@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaCheck, FaGift, FaFish, FaDice, FaDumbbell, FaStar } from 'react-icons/fa';
 import { theme } from '../../design-system';
+import { IconLog } from '../../constants/icons';
 
 // Animations
 const pulse = keyframes`
@@ -368,7 +369,7 @@ export function DailyGoals({
     >
       <Header>
         <Title>
-          📋 {t('dailyGoals.title', 'Daily Goals')}
+          <IconLog /> {t('dailyGoals.title', 'Daily Goals')}
         </Title>
         <ResetTimer>
           {t('dailyGoals.resetsIn', 'Resets in')} {getTimeUntilReset()}
@@ -497,7 +498,7 @@ export function DailyGoalsCompact({ goals = [], onClick }) {
         cursor: 'pointer',
       }}
     >
-      <span style={{ fontSize: '1.2rem' }}>📋</span>
+      <span style={{ fontSize: '1.2rem' }}><IconLog /></span>
       <div>
         <div style={{ fontSize: theme.fontSizes.sm, fontWeight: 600, color: theme.colors.text }}>
           Daily Goals
