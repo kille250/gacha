@@ -185,8 +185,7 @@ export {
   Confetti,
   useConfetti,
   HolographicCard,
-  holographicBorderStyle,
-  AmbientParticles
+  holographicBorderStyle
 } from './effects';
 
 // Re-export theme as default for backward compatibility

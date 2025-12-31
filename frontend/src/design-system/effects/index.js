@@ -16,4 +16,3 @@ export {
   CelebrationProvider,
   useCelebrationContext,
 } from './CelebrationEffects';
-export { default as AmbientParticles } from './AmbientParticles';
