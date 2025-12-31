@@ -527,20 +527,11 @@ const PromptBuilder = ({
         sessionStorage.removeItem('pendingPrompt');
 
         if (pendingPrompt.prompt) {
+          // Only set the custom prompt text, don't override style options
           setOptions(prev => ({
             ...prev,
             customPrompt: pendingPrompt.prompt
           }));
-
-          // Also apply advanced params if available
-          if (pendingPrompt.steps || pendingPrompt.cfgScale || pendingPrompt.sampler) {
-            setParams(prev => ({
-              ...prev,
-              ...(pendingPrompt.steps && { steps: pendingPrompt.steps }),
-              ...(pendingPrompt.cfgScale && { cfg_scale: pendingPrompt.cfgScale }),
-              ...(pendingPrompt.sampler && { sampler_name: pendingPrompt.sampler })
-            }));
-          }
 
           info('Prompt loaded', 'Prompt from library has been applied');
         }

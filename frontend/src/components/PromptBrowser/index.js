@@ -294,12 +294,15 @@ function PromptBrowser({
     nsfw,
     sort,
     period,
+    baseModel,
+    availableModels,
     search,
     loadMore,
     refresh,
     setNsfw,
     setSort,
-    setPeriod
+    setPeriod,
+    setBaseModel
   } = useCivitaiSearch();
 
   // Modal state
@@ -428,10 +431,13 @@ function PromptBrowser({
         nsfw={nsfw}
         sort={sort}
         period={period}
+        baseModel={baseModel}
+        availableModels={availableModels}
         onQueryChange={search}
         onNsfwChange={setNsfw}
         onSortChange={setSort}
         onPeriodChange={setPeriod}
+        onBaseModelChange={setBaseModel}
         onAgeGateRequired={handleAgeGateRequired}
       />
 

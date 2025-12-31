@@ -225,10 +225,13 @@ function SearchFilters({
   nsfw,
   sort,
   period,
+  baseModel,
+  availableModels,
   onQueryChange,
   onNsfwChange,
   onSortChange,
   onPeriodChange,
+  onBaseModelChange,
   onAgeGateRequired
 }) {
   const [showFilters, setShowFilters] = useState(false);
@@ -237,7 +240,8 @@ function SearchFilters({
   const activeFilterCount = [
     nsfw !== NSFW_LEVELS.NONE,
     sort !== 'Most Reactions',
-    period !== 'AllTime'
+    period !== 'AllTime',
+    baseModel !== ''
   ].filter(Boolean).length;
 
   const handleNsfwChange = useCallback((e) => {
@@ -358,6 +362,25 @@ function SearchFilters({
                 <SelectIcon />
               </SelectWrapper>
             </FilterGroup>
+
+            <FilterGroup>
+              <FilterLabel htmlFor="model-select">Base Model</FilterLabel>
+              <SelectWrapper>
+                <Select
+                  id="model-select"
+                  value={baseModel}
+                  onChange={(e) => onBaseModelChange(e.target.value)}
+                >
+                  <option value="">All Models</option>
+                  {availableModels.map(model => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </Select>
+                <SelectIcon />
+              </SelectWrapper>
+            </FilterGroup>
           </FiltersPanel>
         )}
       </AnimatePresence>
@@ -370,10 +393,13 @@ SearchFilters.propTypes = {
   nsfw: PropTypes.string.isRequired,
   sort: PropTypes.string.isRequired,
   period: PropTypes.string.isRequired,
+  baseModel: PropTypes.string.isRequired,
+  availableModels: PropTypes.arrayOf(PropTypes.string).isRequired,
   onQueryChange: PropTypes.func.isRequired,
   onNsfwChange: PropTypes.func.isRequired,
   onSortChange: PropTypes.func.isRequired,
   onPeriodChange: PropTypes.func.isRequired,
+  onBaseModelChange: PropTypes.func.isRequired,
   onAgeGateRequired: PropTypes.func
 };
 

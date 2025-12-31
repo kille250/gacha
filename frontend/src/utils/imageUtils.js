@@ -5,6 +5,8 @@
  * and converting remote images to File objects.
  */
 
+import api, { getAssetUrl } from './api';
+
 /**
  * Download an image from a URL and convert it to a File object
  *
@@ -42,6 +44,41 @@ export const urlToFile = async (imageUrl, filename = 'generated-image.png') => {
     console.error('Error converting URL to File:', error);
     throw error;
   }
+};
+
+/**
+ * Download an external image via backend proxy (bypasses CORS)
+ * Used for AI-generated images from Stable Horde/R2 storage
+ *
+ * @param {string} imageUrl - The external URL of the image
+ * @returns {Promise<{localUrl: string, filename: string}>} - Local URL path and filename
+ */
+export const proxyDownloadImage = async (imageUrl) => {
+  const response = await api.post('/admin/proxy-image', { url: imageUrl });
+  return {
+    localUrl: response.data.localUrl,
+    filename: response.data.filename
+  };
+};
+
+/**
+ * Download a proxied image and return both File and data URL
+ * Used for AI-generated images that need CORS bypass
+ *
+ * @param {string} imageUrl - The external URL of the image
+ * @param {string} [filename] - Optional filename override
+ * @returns {Promise<{file: File, dataUrl: string, localUrl: string}>}
+ */
+export const downloadProxiedImageAsFile = async (imageUrl, filename) => {
+  // First, proxy download through backend
+  const { localUrl, filename: serverFilename } = await proxyDownloadImage(imageUrl);
+
+  // Fetch the now-local image (no CORS issues)
+  const fullUrl = getAssetUrl(localUrl);
+  const file = await urlToFile(fullUrl, filename || serverFilename);
+  const dataUrl = await fileToDataUrl(file);
+
+  return { file, dataUrl, localUrl };
 };
 
 /**
@@ -112,6 +149,8 @@ export default {
   urlToFile,
   fileToDataUrl,
   downloadImageAsFile,
+  downloadProxiedImageAsFile,
+  proxyDownloadImage,
   isValidImageUrl,
   getImageDimensions
 };

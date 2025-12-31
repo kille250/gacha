@@ -40,11 +40,13 @@ export const PERIOD_OPTIONS = [
   { value: 'Day', label: 'Today' }
 ];
 
+
 // Default values
 export const DEFAULTS = {
   NSFW: NSFW_LEVELS.NONE,
   SORT: 'Most Reactions',
   PERIOD: 'AllTime',
+  BASE_MODEL: '',
   LIMIT: 20,
   DEBOUNCE_MS: 300
 };

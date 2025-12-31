@@ -140,6 +140,7 @@ export function useCivitaiSearch(options = {}) {
   const [nsfw, setNsfw] = useState(getSavedNsfwPreference);
   const [sort, setSort] = useState(DEFAULTS.SORT);
   const [period, setPeriod] = useState(DEFAULTS.PERIOD);
+  const [baseModel, setBaseModel] = useState(DEFAULTS.BASE_MODEL);
 
   // Refs for cleanup and request tracking
   const abortControllerRef = useRef(null);
@@ -195,6 +196,7 @@ export function useCivitaiSearch(options = {}) {
         sort,
         period,
         ...(query && { query }),
+        ...(baseModel && { baseModels: baseModel }),
         ...(isLoadMore && cursor && { cursor })
       };
 
@@ -238,12 +240,13 @@ export function useCivitaiSearch(options = {}) {
         setLoadingMore(false);
       }
     }
-  }, [query, nsfw, sort, period, cursor, initialLimit]);
+  }, [query, nsfw, sort, period, baseModel, cursor, initialLimit]);
 
   /**
    * Debounced search for query changes
    */
   const debouncedSearchRef = useRef(null);
+  const isInitialMount = useRef(true);
 
   useEffect(() => {
     debouncedSearchRef.current = debounce(() => {
@@ -257,13 +260,23 @@ export function useCivitaiSearch(options = {}) {
   }, [performSearch, debounceMs]);
 
   /**
-   * Trigger search when filters change
+   * Initial search on mount
    */
   useEffect(() => {
-    if (debouncedSearchRef.current) {
+    if (isInitialMount.current) {
+      isInitialMount.current = false;
+      performSearch(false);
+    }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  /**
+   * Trigger search when filters change (after initial mount)
+   */
+  useEffect(() => {
+    if (!isInitialMount.current && debouncedSearchRef.current) {
       debouncedSearchRef.current();
     }
-  }, [query, nsfw, sort, period]);
+  }, [query, nsfw, sort, period, baseModel]);
 
   /**
    * Load more results (pagination)
@@ -313,6 +326,25 @@ export function useCivitaiSearch(options = {}) {
     setCursor(null);
   }, []);
 
+  /**
+   * Update base model filter
+   */
+  const updateBaseModel = useCallback((newBaseModel) => {
+    setBaseModel(newBaseModel);
+    setCursor(null);
+  }, []);
+
+  // Extract unique base models from loaded images for dynamic filter options
+  const availableModels = React.useMemo(() => {
+    const models = new Set();
+    images.forEach(img => {
+      if (img.baseModel) {
+        models.add(img.baseModel);
+      }
+    });
+    return Array.from(models).sort();
+  }, [images]);
+
   return {
     // Data
     images,
@@ -326,6 +358,10 @@ export function useCivitaiSearch(options = {}) {
     nsfw,
     sort,
     period,
+    baseModel,
+
+    // Dynamic options
+    availableModels,
 
     // Actions
     search,
@@ -333,7 +369,8 @@ export function useCivitaiSearch(options = {}) {
     refresh,
     setNsfw: updateNsfw,
     setSort: updateSort,
-    setPeriod: updatePeriod
+    setPeriod: updatePeriod,
+    setBaseModel: updateBaseModel
   };
 }
 

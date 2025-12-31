@@ -27,7 +27,7 @@ import { useAdminKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 // Utils
 import { getAssetUrl } from '../utils/api';
 import { PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
-import { downloadImageAsFile } from '../utils/imageUtils';
+import { downloadProxiedImageAsFile } from '../utils/imageUtils';
 
 // Components
 import BannerFormModal from '../components/UI/BannerFormModal';
@@ -167,8 +167,8 @@ const AdminPage = () => {
   // AI Image Generation handler
   const handleAIImageGenerated = useCallback(async (imageData) => {
     try {
-      // Download the image from StableHorde URL and convert to File
-      const { file, dataUrl } = await downloadImageAsFile(
+      // Download the image via backend proxy (bypasses CORS for R2/StableHorde URLs)
+      const { file, dataUrl } = await downloadProxiedImageAsFile(
         imageData.url,
         `ai-generated-${imageData.seed || Date.now()}.png`
       );
