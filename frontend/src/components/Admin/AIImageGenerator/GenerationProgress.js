@@ -225,10 +225,7 @@ const PhaseDot = styled.div`
   border-radius: 50%;
   background: ${props => props.$active ? theme.colors.primary : theme.colors.surfaceBorder};
   transition: background 0.3s ease;
-
-  ${props => props.$active && `
-    animation: ${pulse} 1s ease-in-out infinite;
-  `}
+  animation: ${props => props.$active ? `${pulse} 1s ease-in-out infinite` : 'none'};
 `;
 
 const PhaseLine = styled.div`
