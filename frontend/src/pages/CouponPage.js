@@ -8,6 +8,7 @@
  * - premium_ticket: Premium gacha ticket reward display
  */
 import React, { useState, useContext } from 'react';
+import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaTicketAlt, FaCoins, FaGift, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
 import { getAssetUrl } from '../utils/api';
