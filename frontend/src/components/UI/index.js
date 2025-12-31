@@ -30,7 +30,6 @@ export { default as Card } from './data/Card';
 
 // App shell layouts
 export { default as MainLayout } from './layout/MainLayout';
-export { default as PageLayout } from './layout/PageLayout';
 
 // Form components with app-specific styling
 export { default as SearchInput } from './forms/SearchInput';

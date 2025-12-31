@@ -38,15 +38,14 @@ export const Section = styled(GlassCard)`
  * PageWrapper - Full-page wrapper
  *
  * Note: Background is handled by MainLayout. This wrapper provides
- * base page structure without redundant background declarations.
- * Use --page-bottom-padding CSS variable for consistent bottom spacing.
+ * base page structure with consistent bottom spacing for bottom nav.
  */
 export const PageWrapper = styled.div`
   min-height: 100vh;
-  color: ${theme.colors.text};
-  font-family: ${theme.fonts.primary};
   position: relative;
   overflow-x: hidden;
+  /* Standard bottom padding - accounts for bottom nav + safe area */
+  padding-bottom: var(--page-bottom-padding, ${theme.spacing['2xl']});
 `;
 
 const CardComponents = { GlassCard, Section, PageWrapper };

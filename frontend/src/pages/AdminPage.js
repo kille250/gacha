@@ -468,16 +468,13 @@ const AdminPage = () => {
 // STYLED COMPONENTS
 // ============================================
 
+// StyledPageWrapper - admin-specific gradient (bottom padding is built into PageWrapper)
 const StyledPageWrapper = styled(PageWrapper)`
-  /* Use CSS variable for consistent bottom padding */
-  padding-bottom: var(--page-bottom-padding, ${theme.spacing['3xl']});
-  /* Smooth background for admin context - intentionally different from standard pages */
   background: linear-gradient(
     180deg,
     ${theme.colors.background} 0%,
     ${theme.colors.backgroundSubtle} 100%
   );
-  min-height: 100vh;
 `;
 
 const AdminHeader = styled.header`

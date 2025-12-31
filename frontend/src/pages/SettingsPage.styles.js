@@ -7,16 +7,12 @@
 
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme } from '../design-system';
+import { theme, PageWrapper } from '../design-system';
 
 // ==================== PAGE LAYOUT ====================
 
-export const PageContainer = styled.div`
-  min-height: 100vh;
-  /* Background handled by MainLayout */
-  color: ${theme.colors.text};
-  font-family: ${theme.fonts.primary};
-`;
+// PageContainer - uses design-system PageWrapper for consistency
+export const PageContainer = styled(PageWrapper)``;
 
 export const Header = styled.header`
   display: flex;

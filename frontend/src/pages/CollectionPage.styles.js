@@ -17,10 +17,9 @@ import { theme, PageWrapper, Section } from '../design-system';
 
 // ==================== PAGE WRAPPER ====================
 
+// StyledPageWrapper - extends PageWrapper with top padding only (bottom padding is built-in)
 export const StyledPageWrapper = styled(PageWrapper)`
-  padding: ${theme.spacing.lg} 0;
-  /* Use CSS variable for consistent bottom padding */
-  padding-bottom: var(--page-bottom-padding, ${theme.spacing['3xl']});
+  padding-top: ${theme.spacing.lg};
 `;
 
 // ==================== HEADER ====================

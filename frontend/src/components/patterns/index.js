@@ -9,7 +9,6 @@ export { default as CharacterCard } from './CharacterCard';
 export { default as FilterBar } from './FilterBar';
 export { default as Pagination } from './Pagination';
 export { default as PageHeader } from './PageHeader';
-export { default as PageShell } from './PageShell';
 export { default as HeroBanner } from './HeroBanner';
 export { default as BannerCard } from './BannerCard';
 export { default as Carousel } from './Carousel';

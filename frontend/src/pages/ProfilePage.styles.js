@@ -7,16 +7,13 @@
 
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme } from '../design-system';
+import { theme, PageWrapper as BasePageWrapper } from '../design-system';
 
 // ==================== PAGE LAYOUT ====================
 
-export const PageWrapper = styled.div`
-  min-height: 100vh;
-  padding: ${theme.spacing.lg} 0;
-  /* Use CSS variable for consistent bottom padding (accounts for bottom nav) */
-  padding-bottom: var(--page-bottom-padding, calc(${theme.spacing.xl} + 80px));
-  /* Background handled by MainLayout */
+// PageWrapper - extends design-system PageWrapper with top padding
+export const PageWrapper = styled(BasePageWrapper)`
+  padding-top: ${theme.spacing.lg};
 `;
 
 // ==================== PROFILE HEADER ====================

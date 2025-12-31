@@ -17,10 +17,8 @@ import {
 
 // ==================== PAGE LAYOUT ====================
 
-export const StyledPageWrapper = styled(PageWrapper)`
-  /* Use CSS variable for consistent bottom padding across all pages */
-  padding-bottom: var(--page-bottom-padding, ${theme.spacing['3xl']});
-`;
+// StyledPageWrapper - just use base PageWrapper, padding is now built-in
+export const StyledPageWrapper = styled(PageWrapper)``;
 
 export const HeroBackground = styled.div`
   position: fixed;
