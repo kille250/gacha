@@ -13,7 +13,7 @@ import { theme } from '../design-system';
 
 export const PageContainer = styled.div`
   min-height: 100vh;
-  background: ${theme.colors.background};
+  background: ${theme.colors.pageGradient};
   color: ${theme.colors.text};
   font-family: ${theme.fonts.primary};
 `;
