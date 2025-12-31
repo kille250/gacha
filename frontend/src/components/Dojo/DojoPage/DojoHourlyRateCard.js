@@ -8,10 +8,11 @@
 import React, { useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { MdTrendingUp, MdInfo, MdClose } from 'react-icons/md';
-import { FaCoins, FaTicketAlt, FaStar, FaQuestionCircle } from 'react-icons/fa';
+import { FaCoins, FaTicketAlt, FaStar, FaQuestionCircle, FaUsers } from 'react-icons/fa';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { theme } from '../../../design-system';
+import { IconCombat, IconBoost, IconBalance, IconTicket, IconStats } from '../../../constants/icons';
 
 import {
   HourlyRateCard,
@@ -204,7 +205,7 @@ const DojoHourlyRateCard = ({ status }) => {
       {/* Level Bonuses */}
       {leveledCharacters.length > 0 && (
         <LevelBonusSection>
-          <LevelBonusLabel>⚔️ {t('dojo.levelBonuses')}:</LevelBonusLabel>
+          <LevelBonusLabel><IconCombat aria-hidden="true" /> {t('dojo.levelBonuses')}:</LevelBonusLabel>
           <LevelBonusBadges>
             {leveledCharacters.map((slot, idx) => {
               const char = slot.character;
@@ -222,7 +223,7 @@ const DojoHourlyRateCard = ({ status }) => {
       {/* Catch-Up Bonus */}
       {hasCatchUpBonus && (
         <CatchUpBonusBadge>
-          🚀 {t('dojo.catchUpBonus', {
+          <IconBoost aria-hidden="true" /> {t('dojo.catchUpBonus', {
             bonus: Math.round((status.hourlyRate.catchUpBonus.multiplier - 1) * 100)
           })}
         </CatchUpBonusBadge>
@@ -246,7 +247,7 @@ const DojoHourlyRateCard = ({ status }) => {
       {/* Diminishing Returns Indicator */}
       {hasDiminishingReturns && (
         <EfficiencyIndicator>
-          ⚖️ {t('dojo.efficiency', { percent: status.hourlyRate.efficiency || 100 })}
+          <IconBalance aria-hidden="true" /> {t('dojo.efficiency', { percent: status.hourlyRate.efficiency || 100 })}
         </EfficiencyIndicator>
       )}
     </HourlyRateCard>
@@ -289,7 +290,7 @@ const DojoHourlyRateCard = ({ status }) => {
 
             <TooltipSection>
               <TooltipSectionTitle>
-                ⚔️ {t('dojo.helpLevels', { defaultValue: 'Character Levels' })}
+                <IconCombat aria-hidden="true" /> {t('dojo.helpLevels', { defaultValue: 'Character Levels' })}
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpLevelsDesc', {
@@ -300,7 +301,7 @@ const DojoHourlyRateCard = ({ status }) => {
 
             <TooltipSection>
               <TooltipSectionTitle>
-                👥 {t('dojo.helpSynergy', { defaultValue: 'Series Synergy' })}
+                <FaUsers aria-hidden="true" /> {t('dojo.helpSynergy', { defaultValue: 'Series Synergy' })}
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpSynergyDesc', {
@@ -311,7 +312,7 @@ const DojoHourlyRateCard = ({ status }) => {
 
             <TooltipSection>
               <TooltipSectionTitle>
-                🚀 {t('dojo.helpCatchUp', { defaultValue: 'Catch-Up Bonus' })}
+                <IconBoost aria-hidden="true" /> {t('dojo.helpCatchUp', { defaultValue: 'Catch-Up Bonus' })}
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpCatchUpDesc', {
@@ -322,7 +323,7 @@ const DojoHourlyRateCard = ({ status }) => {
 
             <TooltipSection>
               <TooltipSectionTitle>
-                ⚖️ {t('dojo.helpDiminishing', { defaultValue: 'Efficiency Scaling' })}
+                <IconBalance aria-hidden="true" /> {t('dojo.helpDiminishing', { defaultValue: 'Efficiency Scaling' })}
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpDiminishingDesc', {
@@ -333,7 +334,7 @@ const DojoHourlyRateCard = ({ status }) => {
 
             <TooltipSection>
               <TooltipSectionTitle>
-                🎫 {t('dojo.helpTickets', { defaultValue: 'Ticket Generation' })}
+                <IconTicket aria-hidden="true" /> {t('dojo.helpTickets', { defaultValue: 'Ticket Generation' })}
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpTicketsDesc', {
@@ -344,7 +345,7 @@ const DojoHourlyRateCard = ({ status }) => {
 
             <TooltipSection>
               <TooltipSectionTitle>
-                📊 {t('dojo.helpDailyCaps', { defaultValue: 'Daily Limits' })}
+                <IconStats aria-hidden="true" /> {t('dojo.helpDailyCaps', { defaultValue: 'Daily Limits' })}
               </TooltipSectionTitle>
               <TooltipText>
                 {t('dojo.helpDailyCapsDesc', {

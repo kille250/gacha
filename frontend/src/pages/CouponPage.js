@@ -19,7 +19,7 @@ import { redeemCoupon as redeemCouponAction } from '../actions/couponActions';
 import { Container, Heading2, PageTransition } from '../design-system';
 
 // Icon Constants
-import { IconPoints, IconGift, IconCoupon } from '../constants/icons';
+import { IconPoints, IconGift, IconCoupon, IconSparkleSymbol } from '../constants/icons';
 
 // Styled Components
 import {
@@ -169,19 +169,19 @@ const CouponPage = () => {
                 <InstructionTitle>{t('coupon.howToUse')}</InstructionTitle>
                 <InstructionList>
                   <InstructionItem>
-                    <Bullet>✦</Bullet>
+                    <Bullet><IconSparkleSymbol /></Bullet>
                     <span>{t('coupon.instruction1')}</span>
                   </InstructionItem>
                   <InstructionItem>
-                    <Bullet>✦</Bullet>
+                    <Bullet><IconSparkleSymbol /></Bullet>
                     <span>{t('coupon.instruction2')}</span>
                   </InstructionItem>
                   <InstructionItem>
-                    <Bullet>✦</Bullet>
+                    <Bullet><IconSparkleSymbol /></Bullet>
                     <span>{t('coupon.instruction3')}</span>
                   </InstructionItem>
                   <InstructionItem>
-                    <Bullet>✦</Bullet>
+                    <Bullet><IconSparkleSymbol /></Bullet>
                     <span>{t('coupon.instruction4')}</span>
                   </InstructionItem>
                 </InstructionList>

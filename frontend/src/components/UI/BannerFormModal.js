@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes, FaSpinner } from 'react-icons/fa';
+import { FaImage, FaVideo, FaCalendar, FaSearch, FaTimes, FaSpinner, FaCheck } from 'react-icons/fa';
 import { getAssetUrl, getCharactersForBanner } from '../../utils/api';
 import { isVideo, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useRarity } from '../../context/RarityContext';
@@ -641,7 +641,7 @@ const BannerFormModal = ({ show, onClose, onSubmit, banner }) => {
                           </CharOptionBadges>
                         </CharOptionInfo>
                         <CharOptionCheck $selected={formData.selectedCharacters.includes(char.id)}>
-                          {formData.selectedCharacters.includes(char.id) && '✓'}
+                          {formData.selectedCharacters.includes(char.id) && <FaCheck />}
                         </CharOptionCheck>
                       </CharacterOption>
                     ))

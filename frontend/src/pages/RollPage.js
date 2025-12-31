@@ -98,7 +98,7 @@ import {
 import { SummonAnimation, MultiSummonAnimation } from '../components/summon';
 
 // Icon Constants
-import { IconDice, IconPoints, IconSearch, IconSparkle, IconMagic } from '../constants/icons';
+import { IconDice, IconPoints, IconSearch, IconSparkle, IconMagic, IconCheckmark } from '../constants/icons';
 import ImagePreviewModal from '../components/UI/ImagePreviewModal';
 
 // Game Enhancements
@@ -616,7 +616,7 @@ const RollPage = () => {
                     <CardOverlay>
                       <span><IconSearch /> {t('common.view')}</span>
                     </CardOverlay>
-                    <CollectedBadge>✓ {t('common.collected')}</CollectedBadge>
+                    <CollectedBadge><IconCheckmark /> {t('common.collected')}</CollectedBadge>
                   </CardImageWrapper>
                   <CardContent>
                     <CardMeta>
@@ -669,7 +669,7 @@ const RollPage = () => {
                           ) : (
                             <img src={getImagePath(char.image)} alt={char.name} />
                           )}
-                          <MiniCollected>✓</MiniCollected>
+                          <MiniCollected><IconCheckmark /></MiniCollected>
                         </MiniCardImage>
                         <MiniCardInfo>
                           <MiniName>{char.name}</MiniName>

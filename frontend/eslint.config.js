@@ -77,16 +77,16 @@ export default [
       'react-hooks/rules-of-hooks': 'error',
       'react-hooks/exhaustive-deps': 'warn',
 
-      // Custom no-emojis rule
+      // Custom no-emojis rule - enforces React Icons usage
       'no-restricted-syntax': [
-        'warn',
+        'error',
         {
-          selector: 'Literal[value=/[\\u{1F300}-\\u{1F9FF}]/u]',
-          message: 'Avoid using emojis directly in code. Import from constants/icons.js instead.'
+          selector: 'Literal[value=/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{26FF}\\u{2700}-\\u{27BF}]/u]',
+          message: 'Emojis are not allowed. Use React Icons from the icons utility instead.'
         },
         {
-          selector: 'TemplateElement[value.raw=/[\\u{1F300}-\\u{1F9FF}]/u]',
-          message: 'Avoid using emojis directly in code. Import from constants/icons.js instead.'
+          selector: 'TemplateElement[value.raw=/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{26FF}\\u{2700}-\\u{27BF}]/u]',
+          message: 'Emojis are not allowed. Use React Icons from the icons utility instead.'
         }
       ]
     }
@@ -94,16 +94,6 @@ export default [
   {
     // Allow emojis in the centralized icons file
     files: ['src/constants/icons.js'],
-    rules: {
-      'no-restricted-syntax': 'off'
-    }
-  },
-  {
-    // Allow emojis in fishing components
-    files: [
-      'src/components/Fishing/**/*.js',
-      'src/hooks/useFishingNotifications.js'
-    ],
     rules: {
       'no-restricted-syntax': 'off'
     }

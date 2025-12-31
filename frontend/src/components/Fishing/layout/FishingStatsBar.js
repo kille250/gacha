@@ -7,6 +7,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRarity } from '../../../context/RarityContext';
+import { IconPity } from '../../../constants/icons';
 
 import {
   StatsBar,
@@ -55,13 +56,13 @@ export const FishingStatsBar = ({ sessionStats, fishInfo }) => {
           <StatDivider />
           <StatItem $pity title={`${fishInfo.pity.legendary.current}/${fishInfo.pity.legendary.hardPity} ${t('fishing.casts').toLowerCase()}`}>
             <PityBar>
-              <PityFill 
-                $progress={fishInfo.pity.legendary.progress} 
+              <PityFill
+                $progress={fishInfo.pity.legendary.progress}
                 $inSoftPity={fishInfo.pity.legendary.inSoftPity}
                 $color="#ffc107"
               />
             </PityBar>
-            <StatLabel>🐋 {t('fishing.pity')}</StatLabel>
+            <StatLabel><IconPity /> {t('fishing.pity')}</StatLabel>
           </StatItem>
         </>
       )}

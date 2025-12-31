@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import { FaCoins, FaTicketAlt, FaStar, FaExclamationTriangle } from 'react-icons/fa';
 import styled from 'styled-components';
 import { theme } from '../../../design-system';
+import { IconStats, IconTicket } from '../../../constants/icons';
 import {
   DailyCapsCard,
   DailyCapsHeader,
@@ -82,7 +83,7 @@ const DojoDailyCapsCard = ({ dailyCaps, ticketProgress }) => {
     >
       <DailyCapsHeader>
         <DailyCapsTitle>
-          📊 {t('dojo.dailyProgress')}
+          <IconStats aria-hidden="true" /> {t('dojo.dailyProgress')}
         </DailyCapsTitle>
         <DailyCapsReset>
           {t('dojo.resetsAtMidnight')}
@@ -182,7 +183,7 @@ const DojoDailyCapsCard = ({ dailyCaps, ticketProgress }) => {
       {/* Ticket Progress (Pity System) */}
       {hasTicketProgress && (
         <TicketProgressSection>
-          <TicketProgressLabel>🎫 {t('dojo.ticketProgress')}</TicketProgressLabel>
+          <TicketProgressLabel><IconTicket aria-hidden="true" /> {t('dojo.ticketProgress')}</TicketProgressLabel>
           <TicketProgressBars>
             {ticketProgress.roll > 0 && (
               <TicketProgressItem>

@@ -11,7 +11,7 @@
 import React, { useState, useEffect } from 'react';
 import styled from 'styled-components';
 import { useTranslation } from 'react-i18next';
-import { FaTicketAlt, FaCoins, FaUsers, FaCalendarAlt, FaTimes, FaGem } from 'react-icons/fa';
+import { FaTicketAlt, FaCoins, FaUsers, FaCalendarAlt, FaTimes, FaGem, FaCheck } from 'react-icons/fa';
 
 const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
   const { t } = useTranslation();
@@ -265,7 +265,7 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
                 />
                 <CheckboxLabel htmlFor="isActive">
                   <CheckboxIndicator $checked={formData.isActive}>
-                    {formData.isActive && '✓'}
+                    {formData.isActive && <FaCheck />}
                   </CheckboxIndicator>
                   {t('admin.active')}
                 </CheckboxLabel>

@@ -19,6 +19,7 @@ import {
 } from 'react-icons/md';
 import { FaCrown } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
+import { IconFishing, IconStarFilled } from '../../../constants/icons';
 
 import {
   Header,
@@ -77,15 +78,15 @@ export const FishingHeader = ({
             <span>{playerCount}</span>
           </MultiplayerBadge>
         )}
-        <PrestigeBadge 
+        <PrestigeBadge
           onClick={modals.prestige.open}
           $level={modals.prestige.data?.currentLevel || 0}
           title={modals.prestige.data?.currentName || t('fishing.noviceAngler')}
         >
-          <PrestigeEmoji>{modals.prestige.data?.currentEmoji || '🎣'}</PrestigeEmoji>
+          <PrestigeEmoji>{modals.prestige.data?.currentEmoji || <IconFishing />}</PrestigeEmoji>
           <PrestigeName>
-            {modals.prestige.data?.currentLevel > 0 
-              ? modals.prestige.data.currentName?.split(' ')[0] 
+            {modals.prestige.data?.currentLevel > 0
+              ? modals.prestige.data.currentName?.split(' ')[0]
               : t('fishing.novice') || 'Novice'}
           </PrestigeName>
         </PrestigeBadge>
@@ -119,7 +120,7 @@ export const FishingHeader = ({
               >
                 {modals.prestige.data && (
                   <MoreMenuItem onClick={() => { modals.prestige.open(); modals.moreMenu.close(); }}>
-                    <span>{modals.prestige.data.currentEmoji || '🎣'}</span>
+                    <span>{modals.prestige.data.currentEmoji || <IconFishing />}</span>
                     <span>{modals.prestige.data.currentName || t('fishing.noviceAngler')}</span>
                     {modals.prestige.data.canPrestige && <MoreMenuBadge $glow>!</MoreMenuBadge>}
                   </MoreMenuItem>
@@ -128,7 +129,7 @@ export const FishingHeader = ({
                   <MoreMenuItem onClick={() => { modals.leaderboard.open(); modals.moreMenu.close(); }}>
                     <FaCrown style={{ color: modals.rankData.canAutofish ? '#ffd54f' : '#a1887f' }} />
                     <span>#{modals.rankData.rank}</span>
-                    {modals.rankData.canAutofish && <MoreMenuBadge>⭐</MoreMenuBadge>}
+                    {modals.rankData.canAutofish && <MoreMenuBadge><IconStarFilled /></MoreMenuBadge>}
                   </MoreMenuItem>
                 )}
                 {dailyStats && (

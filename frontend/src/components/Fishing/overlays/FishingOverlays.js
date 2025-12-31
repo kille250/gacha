@@ -10,6 +10,7 @@ import { FaFish } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { useRarity } from '../../../context/RarityContext';
 import { GAME_STATES } from '../../../constants/fishingConstants';
+import { IconFish, IconStarFilled, IconSparkleSymbol } from '../../../constants/icons';
 
 import {
   FishPrompt,
@@ -127,9 +128,9 @@ const ResultPopupOverlay = ({ lastResult }) => {
         </ResultFishName>
         {lastResult.success && (
           <ResultReward $quality={lastResult.catchQuality}>
-            +{lastResult.fishQuantity || 1} 🐟
-            {lastResult.catchQuality === 'perfect' && ' ⭐'}
-            {lastResult.catchQuality === 'great' && ' ✨'}
+            +{lastResult.fishQuantity || 1} <IconFish />
+            {lastResult.catchQuality === 'perfect' && <> <IconStarFilled /></>}
+            {lastResult.catchQuality === 'great' && <> <IconSparkleSymbol /></>}
           </ResultReward>
         )}
       </ResultInfo>

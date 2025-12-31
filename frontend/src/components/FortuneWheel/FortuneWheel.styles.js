@@ -586,9 +586,9 @@ export const PrizePopupContent = styled(motion.div)`
       z-index: 0;
     }
 
-    /* Star burst overlay */
+    /* Star burst overlay - using CSS escape for sparkle symbol */
     &::after {
-      content: '✦';
+      content: '\\2726';
       position: absolute;
       top: 20px;
       right: 20px;

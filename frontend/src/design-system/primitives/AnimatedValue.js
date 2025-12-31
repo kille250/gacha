@@ -22,6 +22,7 @@ import styled, { keyframes, css } from 'styled-components';
 import { AnimatePresence, motion } from 'framer-motion';
 import { theme } from '../tokens';
 import { haptic } from '../utilities/microInteractions';
+import { IconStarFilled } from '../../constants/icons';
 
 // ==================== ANIMATIONS ====================
 
@@ -378,13 +379,13 @@ export const AnimatedCurrency = memo(function AnimatedCurrency({
  */
 export const AnimatedPoints = memo(function AnimatedPoints({
   value,
-  icon = '★',
+  icon = <IconStarFilled size={16} />,
   ...props
 }) {
   return (
     <AnimatedValue
       value={value}
-      prefix={`${icon} `}
+      prefix={<span style={{ marginRight: '4px' }}>{icon}</span>}
       showDelta
       hapticOnChange
       bold

@@ -20,7 +20,7 @@ import styled, { keyframes, css } from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { useRecaptcha } from '../../context/RecaptchaContext';
-import { IconSearch, IconSuccess, IconInfo } from '../../constants/icons';
+import { IconSearch, IconSuccess, IconInfo, IconCheckmark, IconCrossmark } from '../../constants/icons';
 
 // State icons mapping (use react-icons for consistent cross-platform display)
 const STATE_ICONS = {
@@ -684,7 +684,7 @@ const CaptchaModal = ({
       >
         <Header>
           <IconWrapper $variant={config.iconVariant}>
-            {currentState === 'verified' && !submitError ? '✓' : config.icon}
+            {currentState === 'verified' && !submitError ? <IconCheckmark /> : config.icon}
           </IconWrapper>
           <Title id="captcha-title">{config.title}</Title>
           <Description id="captcha-description">{config.description}</Description>
@@ -700,7 +700,7 @@ const CaptchaModal = ({
                 ) : currentState === 'verified' || (currentState === 'verifying' && verified) ? (
                   <Checkmark />
                 ) : currentState === 'captcha_error' ? (
-                  '✕'
+                  <IconCrossmark />
                 ) : (
                   <Spinner />
                 )}

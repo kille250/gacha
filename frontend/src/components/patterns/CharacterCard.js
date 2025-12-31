@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, springs, useReducedMotion, VisuallyHidden } from '../../design-system';
 import { PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useVideoVisibility } from '../../hooks';
-import { IconTrophy, IconMastery } from '../../constants/icons';
+import { IconTrophy, IconMastery, IconDiamond, IconArrowUp, IconStarFilled, IconSparkleSymbol, IconStarOutline } from '../../constants/icons';
 
 // Premium shimmer animation for legendary/epic cards
 const shimmer = keyframes`
@@ -523,11 +523,11 @@ const CharSeries = styled.p`
 
 // Rarity symbols for accessibility (visible alongside color indicator)
 const RARITY_SYMBOLS = {
-  common: '●',
-  uncommon: '◆',
-  rare: '★',
-  epic: '✦',
-  legendary: '✧',
+  common: <IconStarFilled size={12} />,
+  uncommon: <IconDiamond size={12} />,
+  rare: <IconStarFilled size={12} />,
+  epic: <IconSparkleSymbol size={12} />,
+  legendary: <IconStarOutline size={12} />,
 };
 
 // Mastery level thresholds (matches backend gameDesign.js MASTERY_TRACKS)
@@ -674,11 +674,13 @@ const CharacterCard = memo(({
         {isOwned && (
           <>
             <LevelBadge $isMaxLevel={isMaxLevel} $canLevelUp={canLevelUp} aria-hidden="true">
-              Lv.{level}{isMaxLevel ? ' ★' : ''}{canLevelUp && ' ⬆'}
+              Lv.{level}
+              {isMaxLevel && <> <IconStarFilled size={10} /></>}
+              {canLevelUp && <> <IconArrowUp size={10} /></>}
             </LevelBadge>
             {!isMaxLevel && shards > 0 && (
               <ShardBadge $canLevelUp={canLevelUp} aria-hidden="true">
-                ◆ {shards}/{shardsToNextLevel}
+                <IconDiamond size={10} /> {shards}/{shardsToNextLevel}
               </ShardBadge>
             )}
             {showMastery && (
@@ -706,7 +708,7 @@ const CharacterCard = memo(({
       </ImageWrapper>
       <CardContent>
         <CharName $isOwned={isOwned}>
-          <span aria-hidden="true" style={{ marginRight: '4px', opacity: 0.7 }}>{raritySymbol}</span>
+          <span aria-hidden="true" style={{ marginRight: '4px', opacity: 0.7, display: 'inline-flex', alignItems: 'center' }}>{raritySymbol}</span>
           {character.name}
         </CharName>
         <CharSeries $isOwned={isOwned}>{character.series}</CharSeries>

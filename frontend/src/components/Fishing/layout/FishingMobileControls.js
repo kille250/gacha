@@ -7,6 +7,7 @@
 import React from 'react';
 import { MdKeyboardArrowUp, MdKeyboardArrowDown, MdKeyboardArrowLeft, MdKeyboardArrowRight } from 'react-icons/md';
 import { FaFish } from 'react-icons/fa';
+import { IconCheckmark, IconCrossmark } from '../../../constants/icons';
 
 import { GAME_STATES, DIRECTIONS } from '../../../constants/fishingConstants';
 
@@ -56,7 +57,7 @@ export const FishingMobileControls = ({
       return '!';
     }
     if (gameState === GAME_STATES.SUCCESS || gameState === GAME_STATES.FAILURE) {
-      return lastResult?.success ? '✓' : '✗';
+      return lastResult?.success ? <IconCheckmark /> : <IconCrossmark />;
     }
     return '•';
   };

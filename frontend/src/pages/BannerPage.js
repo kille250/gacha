@@ -172,6 +172,8 @@ import {
   IconPremiumTicket,
   IconWarning,
   IconStar,
+  IconCheckmark,
+  IconStarFilled,
 } from '../constants/icons';
 
 // ==================== CONSTANTS ====================
@@ -986,7 +988,7 @@ const BannerPage = () => {
                     ) : (
                       <img src={getImagePath(char.image)} alt={char.name} />
                     )}
-                    {isInCollection(char) && <OwnedMark>✓</OwnedMark>}
+                    {isInCollection(char) && <OwnedMark><IconCheckmark /></OwnedMark>}
                   </Avatar>
                 ))}
                 {banner.Characters.length > 6 && (
@@ -1072,8 +1074,8 @@ const BannerPage = () => {
                     <CardOverlay>
                       <span><IconSearch /> {t('common.view')}</span>
                     </CardOverlay>
-                    <CollectedBadge>✓ {t('common.collected')}</CollectedBadge>
-                    {currentChar?.isBannerCharacter && <BannerCharBadge>★ {t('banner.bannerChar')}</BannerCharBadge>}
+                    <CollectedBadge><IconCheckmark /> {t('common.collected')}</CollectedBadge>
+                    {currentChar?.isBannerCharacter && <BannerCharBadge><IconStarFilled /> {t('banner.bannerChar')}</BannerCharBadge>}
                   </CardImageWrapper>
                   <CardContent>
                     <CardMeta>
@@ -1127,8 +1129,8 @@ const BannerPage = () => {
                           ) : (
                             <img src={getImagePath(char.image)} alt={char.name} />
                           )}
-                          <MiniCollected>✓</MiniCollected>
-                          {char.isBannerCharacter && <MiniBannerMark>★</MiniBannerMark>}
+                          <MiniCollected><IconCheckmark /></MiniCollected>
+                          {char.isBannerCharacter && <MiniBannerMark><IconStarFilled /></MiniBannerMark>}
                         </MiniCardImage>
                         <MiniCardInfo>
                           <MiniName>{char.name}</MiniName>
@@ -1547,7 +1549,7 @@ const BannerPage = () => {
                           <FeaturedRarity $color={getRarityColor(char.rarity)}>
                             {rarityIcons[char.rarity]} {char.rarity}
                           </FeaturedRarity>
-                          {isInCollection(char) && <OwnedLabel>✓ {t('common.owned')}</OwnedLabel>}
+                          {isInCollection(char) && <OwnedLabel><IconCheckmark /> {t('common.owned')}</OwnedLabel>}
                         </FeaturedInfo>
                         <FaChevronRight style={{ color: 'rgba(255,255,255,0.3)', flexShrink: 0 }} />
                       </FeaturedItem>

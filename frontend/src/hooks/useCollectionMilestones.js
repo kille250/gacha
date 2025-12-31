@@ -13,13 +13,14 @@
 
 import { useEffect, useRef, useCallback } from 'react';
 import { useToast } from '../context/ToastContext';
+import { IconStarFilled, IconSparkleSymbol, IconStarOutline, IconCrownSymbol } from '../constants/icons';
 
-// Milestone thresholds - icons are star/sparkle characters, not emojis
+// Milestone thresholds - icons are React Icon components
 export const MILESTONES = [
-  { threshold: 25, title: 'Getting Started', description: 'Collected 25% of all characters!', icon: '★' },
-  { threshold: 50, title: 'Halfway There', description: 'Collected 50% of all characters!', icon: '✦' },
-  { threshold: 75, title: 'Almost Complete', description: 'Collected 75% of all characters!', icon: '✧' },
-  { threshold: 100, title: 'Master Collector', description: 'Collected ALL characters!', icon: '♛' },
+  { threshold: 25, title: 'Getting Started', description: 'Collected 25% of all characters!', icon: <IconStarFilled size={16} /> },
+  { threshold: 50, title: 'Halfway There', description: 'Collected 50% of all characters!', icon: <IconSparkleSymbol size={16} /> },
+  { threshold: 75, title: 'Almost Complete', description: 'Collected 75% of all characters!', icon: <IconStarOutline size={16} /> },
+  { threshold: 100, title: 'Master Collector', description: 'Collected ALL characters!', icon: <IconCrownSymbol size={16} /> },
 ];
 
 const STORAGE_KEY = 'gacha_collection_milestones';
@@ -101,7 +102,8 @@ export const useCollectionMilestones = (completionPercentage, options = {}) => {
         if (toast?.showToast) {
           toast.showToast({
             type: 'success',
-            title: `${milestone.icon} ${milestone.title}`,
+            title: milestone.title,
+            icon: milestone.icon,
             message: milestone.description,
             duration: 5000,
           });
