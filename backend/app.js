@@ -249,7 +249,7 @@ app.use(helmet({
 
 // 3. CORS - MUST come before rate limiting to handle preflight
 app.use(cors(corsOptions));
-app.options('*', cors(corsOptions));
+app.options('/{*path}', cors(corsOptions));
 
 // 4. Body parsing with size limits
 // Note: anime-import needs larger limit for bulk character imports (1000+ characters)
