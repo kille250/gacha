@@ -5,7 +5,7 @@
  * Coordinates all layers and effects for a premium animation experience.
  */
 
-import { Application, Container } from 'pixi.js';
+import { Application, Container, Ticker } from 'pixi.js';
 import { BackgroundLayer } from './layers/BackgroundLayer';
 import { CharacterLayer } from './layers/CharacterLayer';
 import { CollectionCardLayer } from './layers/CollectionCardLayer';
@@ -181,12 +181,14 @@ export class SummonScene {
     // Setup resize handler
     this.setupResize();
 
-    // Start render loop
-    if (!this.app.ticker) {
-      console.error('SummonScene: app.ticker is undefined after init - PixiJS ticker plugin may not be loaded');
+    // Start render loop - use app.ticker if available, otherwise use shared Ticker
+    const ticker = this.app.ticker || Ticker.shared;
+    if (!ticker) {
+      console.error('SummonScene: No ticker available (neither app.ticker nor Ticker.shared)');
       throw new Error('PixiJS ticker not available');
     }
-    this.app.ticker.add(this.update.bind(this));
+    this.ticker = ticker;
+    this.ticker.add(this.update.bind(this));
 
     this.isInitialized = true;
   }
@@ -711,7 +713,7 @@ export class SummonScene {
   update() {
     if (this.isPaused) return;
 
-    const dt = this.app.ticker.deltaTime;
+    const dt = this.ticker?.deltaTime ?? 1;
 
     // Update layers
     this.layers.background?.update(dt);
@@ -782,6 +784,15 @@ export class SummonScene {
         console.warn('Error destroying layer:', e);
       }
     });
+
+    // Remove update from ticker
+    if (this.ticker && this.update) {
+      try {
+        this.ticker.remove(this.update.bind(this));
+      } catch (e) {
+        // Ignore ticker cleanup errors
+      }
+    }
 
     // Destroy app safely
     if (this.app) {
