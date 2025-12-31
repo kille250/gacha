@@ -41,28 +41,35 @@ export {
   motionVariants
 } from './animations';
 
+// Import all tokens for consolidated theme object
+import { colors } from './colors';
+import { fonts, fontSizes, fontWeights, lineHeights, letterSpacing, textStyles } from './typography';
+import { spacing, radius, shadows, elevation, blur } from './spacing';
+import { breakpoints, zIndex, navHeights, transitions as breakpointTransitionsImport } from './breakpoints';
+import { timing, easing, springs, animationMixins } from './animations';
+
 // Consolidated theme object for backward compatibility
 export const theme = {
-  colors: require('./colors').colors,
-  fonts: require('./typography').fonts,
-  fontSizes: require('./typography').fontSizes,
-  fontWeights: require('./typography').fontWeights,
-  lineHeights: require('./typography').lineHeights,
-  letterSpacing: require('./typography').letterSpacing,
-  textStyles: require('./typography').textStyles,
-  spacing: require('./spacing').spacing,
-  radius: require('./spacing').radius,
-  shadows: require('./spacing').shadows,
-  elevation: require('./spacing').elevation,
-  blur: require('./spacing').blur,
-  breakpoints: require('./breakpoints').breakpoints,
-  zIndex: require('./breakpoints').zIndex,
-  navHeights: require('./breakpoints').navHeights,
-  transitions: require('./breakpoints').transitions,
-  timing: require('./animations').timing,
-  easing: require('./animations').easing,
-  springs: require('./animations').springs,
-  animationMixins: require('./animations').animationMixins
+  colors,
+  fonts,
+  fontSizes,
+  fontWeights,
+  lineHeights,
+  letterSpacing,
+  textStyles,
+  spacing,
+  radius,
+  shadows,
+  elevation,
+  blur,
+  breakpoints,
+  zIndex,
+  navHeights,
+  transitions: breakpointTransitionsImport,
+  timing,
+  easing,
+  springs,
+  animationMixins
 };
 
 export default theme;

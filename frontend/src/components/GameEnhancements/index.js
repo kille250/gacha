@@ -16,19 +16,30 @@ export { SelectorInventory } from './SelectorInventory';
 export { StreakDisplay, StreakBadge } from './StreakDisplay';
 export { DailyGoals, DailyGoalsCompact } from './DailyGoals';
 
+// Import all components for the default export object
+import { PityDisplay } from './PityDisplay';
+import { MilestoneRewards } from './MilestoneRewards';
+import { DoubleOrNothingModal } from './DoubleOrNothingModal';
+import { ReturnBonusModal } from './ReturnBonusModal';
+import { SpecializationPicker } from './SpecializationPicker';
+import { FatePointsDisplay } from './FatePointsDisplay';
+import { SelectorInventory } from './SelectorInventory';
+import { StreakDisplay, StreakBadge } from './StreakDisplay';
+import { DailyGoals, DailyGoalsCompact } from './DailyGoals';
+
 // All components object
 const GameEnhancementsComponents = {
-  PityDisplay: require('./PityDisplay').PityDisplay,
-  MilestoneRewards: require('./MilestoneRewards').MilestoneRewards,
-  DoubleOrNothingModal: require('./DoubleOrNothingModal').DoubleOrNothingModal,
-  ReturnBonusModal: require('./ReturnBonusModal').ReturnBonusModal,
-  SpecializationPicker: require('./SpecializationPicker').SpecializationPicker,
-  FatePointsDisplay: require('./FatePointsDisplay').FatePointsDisplay,
-  SelectorInventory: require('./SelectorInventory').SelectorInventory,
-  StreakDisplay: require('./StreakDisplay').StreakDisplay,
-  StreakBadge: require('./StreakDisplay').StreakBadge,
-  DailyGoals: require('./DailyGoals').DailyGoals,
-  DailyGoalsCompact: require('./DailyGoals').DailyGoalsCompact
+  PityDisplay,
+  MilestoneRewards,
+  DoubleOrNothingModal,
+  ReturnBonusModal,
+  SpecializationPicker,
+  FatePointsDisplay,
+  SelectorInventory,
+  StreakDisplay,
+  StreakBadge,
+  DailyGoals,
+  DailyGoalsCompact
 };
 
 export default GameEnhancementsComponents;
