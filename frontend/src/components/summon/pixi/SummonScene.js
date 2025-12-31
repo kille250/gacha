@@ -166,6 +166,12 @@ export class SummonScene {
     // Create layers
     this.createLayers();
 
+    // Verify layers were created successfully
+    if (!this.layers.background || !this.layers.effects) {
+      console.warn('SummonScene: Layers failed to initialize');
+      return;
+    }
+
     // Create effects
     this.createEffects();
 
@@ -182,6 +188,12 @@ export class SummonScene {
    * Create layer hierarchy
    */
   createLayers() {
+    // Safety check - ensure app and stage are still valid
+    if (!this.app || !this.app.stage || this.isDestroyed) {
+      console.warn('SummonScene.createLayers() called but app/stage not available');
+      return;
+    }
+
     const { width, height } = this.config;
     const centerX = width / 2;
     const centerY = height / 2;
@@ -232,6 +244,12 @@ export class SummonScene {
    * Create effect instances
    */
   createEffects() {
+    // Safety check - ensure app, stage, and effects layer are still valid
+    if (!this.app || !this.app.stage || this.isDestroyed || !this.layers.effects) {
+      console.warn('SummonScene.createEffects() called but app/stage/layers not available');
+      return;
+    }
+
     const { width, height } = this.config;
     const centerX = width / 2;
     const centerY = height / 2;
