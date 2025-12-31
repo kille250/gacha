@@ -3,21 +3,18 @@
  *
  * Animates a number value smoothly from the previous value to the new value.
  * Creates a satisfying counting-up effect when points/currency changes.
+ * Uses easeOutBack easing for a subtle bounce effect at the end.
  *
  * @param {number} value - The target value to animate to
  * @param {Object} options - Animation options
  * @param {number} options.duration - Animation duration in ms (default: 400)
  * @param {boolean} options.enabled - Whether animation is enabled (default: true)
  * @param {Function} options.onComplete - Callback when animation completes
- * @returns {Object} { value: number, isAnimating: boolean } - The animated value and animation state
+ * @returns {number} The animated current value (backwards compatible)
  *
  * @example
- * const { value: animatedPoints, isAnimating } = useAnimatedCounter(user?.points || 0, {
- *   duration: 500,
- *   onComplete: () => console.log('Animation done!')
- * });
- * // animatedPoints will smoothly count up to user.points
- * // isAnimating will be true during animation (useful for adding bounce CSS class)
+ * const animatedPoints = useAnimatedCounter(user?.points || 0, { duration: 500 });
+ * // animatedPoints will smoothly count up to user.points with a bounce effect
  */
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -30,7 +27,6 @@ const useAnimatedCounter = (value, options = {}) => {
   } = options;
 
   const [displayValue, setDisplayValue] = useState(value);
-  const [isAnimating, setIsAnimating] = useState(false);
   const previousValue = useRef(value);
   const animationRef = useRef(null);
   const startTimeRef = useRef(null);
@@ -73,7 +69,6 @@ const useAnimatedCounter = (value, options = {}) => {
     }
 
     startTimeRef.current = null;
-    setIsAnimating(true);
 
     const animate = (timestamp) => {
       if (!startTimeRef.current) {
@@ -92,7 +87,6 @@ const useAnimatedCounter = (value, options = {}) => {
       } else {
         setDisplayValue(endValue);
         previousValue.current = endValue;
-        setIsAnimating(false);
         onCompleteRef.current?.();
       }
     };
@@ -113,13 +107,7 @@ const useAnimatedCounter = (value, options = {}) => {
     };
   }, [value]);
 
-  // Return both the value and animation state for backward compatibility
-  // Can be used as: const value = useAnimatedCounter(...)  (backwards compatible)
-  // Or as: const { value, isAnimating } = useAnimatedCounter(...)
-  const result = displayValue;
-  result.value = displayValue;
-  result.isAnimating = isAnimating;
-  return result;
+  return displayValue;
 };
 
 export default useAnimatedCounter;
