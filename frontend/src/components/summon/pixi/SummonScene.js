@@ -5,11 +5,7 @@
  * Coordinates all layers and effects for a premium animation experience.
  */
 
-import { Application, Container, Graphics } from 'pixi.js';
-
-// Ensure Graphics is available for layer constructors
-// This helps Vite/Rollup properly tree-shake and bundle
-const _GraphicsCheck = Graphics;
+import { Application, Container } from 'pixi.js';
 import { BackgroundLayer } from './layers/BackgroundLayer';
 import { CharacterLayer } from './layers/CharacterLayer';
 import { CollectionCardLayer } from './layers/CollectionCardLayer';
@@ -135,6 +131,8 @@ export class SummonScene {
         // Fallback for devices with limited WebGL support
         preferWebGLVersion: 2,
         failIfMajorPerformanceCaveat: false,
+        // Ensure ticker is available (PixiJS v8)
+        autoStart: true,
       });
     } catch (initError) {
       console.error('Pixi.js initialization failed:', initError);
@@ -149,6 +147,7 @@ export class SummonScene {
           resolution: 1,
           antialias: false,
           backgroundAlpha: 0,
+          autoStart: true,
         });
       } catch (fallbackError) {
         console.error('Pixi.js fallback initialization also failed:', fallbackError);
@@ -183,6 +182,10 @@ export class SummonScene {
     this.setupResize();
 
     // Start render loop
+    if (!this.app.ticker) {
+      console.error('SummonScene: app.ticker is undefined after init - PixiJS ticker plugin may not be loaded');
+      throw new Error('PixiJS ticker not available');
+    }
     this.app.ticker.add(this.update.bind(this));
 
     this.isInitialized = true;
