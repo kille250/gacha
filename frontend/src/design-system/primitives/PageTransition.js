@@ -90,6 +90,10 @@ export const staggerItem = {
 const PageWrapper = styled(motion.div)`
   min-height: 100%;
   width: 100%;
+  /* Prevent scale animation from causing brief scrollbar appearance by
+     anchoring the transform to the top. Without this, scaling from center
+     causes content to expand downward, briefly triggering document overflow. */
+  transform-origin: top center;
 `;
 
 // ==================== COMPONENT ====================
