@@ -125,7 +125,7 @@ export class BackgroundLayer {
 
     try {
       this.gradient.clear();
-    } catch (e) {
+    } catch (_e) {
       // Graphics context may have been destroyed
       return;
     }
@@ -160,7 +160,7 @@ export class BackgroundLayer {
 
     try {
       this.ambientGlow.clear();
-    } catch (e) {
+    } catch (_e) {
       // Graphics context may have been destroyed
       return;
     }

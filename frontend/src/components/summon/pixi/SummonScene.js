@@ -790,7 +790,7 @@ export class SummonScene {
     if (this.ticker && this.update) {
       try {
         this.ticker.remove(this.update.bind(this));
-      } catch (e) {
+      } catch (_e) {
         // Ignore ticker cleanup errors
       }
     }

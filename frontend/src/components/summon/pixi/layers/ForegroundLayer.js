@@ -92,7 +92,7 @@ export class ForegroundLayer {
     if (!this.flashOverlay || this.flashOverlay.destroyed) return;
     try {
       this.flashOverlay.clear();
-    } catch (e) {
+    } catch (_e) {
       return;
     }
 
@@ -109,7 +109,7 @@ export class ForegroundLayer {
     if (!this.dimOverlay || this.dimOverlay.destroyed) return;
     try {
       this.dimOverlay.clear();
-    } catch (e) {
+    } catch (_e) {
       return;
     }
 
