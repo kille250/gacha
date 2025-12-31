@@ -32,7 +32,7 @@ import {
   DEFAULT_PARAMS,
   NEGATIVE_PROMPT_TEMPLATE
 } from '../../../config/characterPrompts.config';
-import { SAMPLER_NAMES, RECOMMENDED_MODELS } from '../../../services/stableHordeService';
+import { SAMPLER_NAMES, RECOMMENDED_MODELS, POST_PROCESSORS } from '../../../services/stableHordeService';
 import { useToast } from '../../../context/ToastContext';
 
 // ===========================================
@@ -262,6 +262,110 @@ const RangeInput = styled.input`
   }
 `;
 
+const TextInput = styled.input`
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.text};
+  font-size: ${theme.fontSizes.sm};
+  font-family: monospace;
+  transition: all 0.2s ease;
+
+  &:focus {
+    outline: none;
+    border-color: ${theme.colors.primary};
+    box-shadow: 0 0 0 2px ${theme.colors.primary}20;
+  }
+
+  &::placeholder {
+    color: ${theme.colors.textSecondary};
+  }
+`;
+
+const CheckboxGroup = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.md};
+`;
+
+const CheckboxLabel = styled.label`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.text};
+  cursor: pointer;
+  user-select: none;
+
+  input[type="checkbox"] {
+    width: 16px;
+    height: 16px;
+    accent-color: ${theme.colors.primary};
+    cursor: pointer;
+  }
+`;
+
+const MultiSelectContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+`;
+
+const MultiSelectChips = styled.div`
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm};
+  background: ${theme.colors.backgroundTertiary};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+  min-height: 40px;
+`;
+
+const Chip = styled.button`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  background: ${props => props.$selected ? theme.colors.primary : theme.colors.surface};
+  border: 1px solid ${props => props.$selected ? theme.colors.primary : theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.full};
+  color: ${props => props.$selected ? 'white' : theme.colors.text};
+  font-size: ${theme.fontSizes.xs};
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: ${props => props.$selected ? theme.colors.primaryHover : theme.colors.backgroundTertiary};
+    border-color: ${theme.colors.primary};
+  }
+`;
+
+const SubSection = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md};
+  background: ${theme.colors.surface};
+  border: 1px solid ${theme.colors.surfaceBorder};
+  border-radius: ${theme.radius.md};
+`;
+
+const SubSectionTitle = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.textSecondary};
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+`;
+
+const HelpText = styled.span`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+  font-style: italic;
+`;
+
 const PromptPreview = styled.div`
   padding: ${theme.spacing.md};
   background: ${theme.colors.backgroundTertiary};
@@ -400,7 +504,12 @@ const PromptBuilder = ({
     height: 768,
     steps: 30,
     cfg_scale: 7,
-    sampler_name: 'k_euler_a'
+    sampler_name: 'k_euler_a',
+    clip_skip: 2,
+    karras: true,
+    n: 1,
+    seed: '',
+    post_processing: []
   });
 
   // Build preview prompt
@@ -455,7 +564,26 @@ const PromptBuilder = ({
       height: 768,
       steps: 30,
       cfg_scale: 7,
-      sampler_name: 'k_euler_a'
+      sampler_name: 'k_euler_a',
+      clip_skip: 2,
+      karras: true,
+      n: 1,
+      seed: '',
+      post_processing: []
+    });
+  }, []);
+
+  // Toggle post-processor
+  const togglePostProcessor = useCallback((processor) => {
+    setParams(prev => {
+      const current = prev.post_processing || [];
+      const isSelected = current.includes(processor);
+      return {
+        ...prev,
+        post_processing: isSelected
+          ? current.filter(p => p !== processor)
+          : [...current, processor]
+      };
     });
   }, []);
 
@@ -471,11 +599,21 @@ const PromptBuilder = ({
 
   // Handle generate
   const handleGenerate = useCallback(() => {
+    // Build params, excluding empty seed
+    const generationParams = { ...params };
+    if (!generationParams.seed || generationParams.seed.trim() === '') {
+      delete generationParams.seed;
+    }
+    // Filter empty post_processing
+    if (!generationParams.post_processing || generationParams.post_processing.length === 0) {
+      delete generationParams.post_processing;
+    }
+
     onGenerate?.({
       prompt: previewPrompt,
       negative_prompt: NEGATIVE_PROMPT_TEMPLATE,
       models: options.models,
-      params
+      params: generationParams
     });
   }, [previewPrompt, options.models, params, onGenerate]);
 
@@ -599,102 +737,218 @@ const PromptBuilder = ({
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
             >
-              <FormRow>
+              {/* Model Selection */}
+              <SubSection>
+                <SubSectionTitle>Model</SubSectionTitle>
                 <FormGroup>
-                  <Label htmlFor="model-select">Model</Label>
                   <Select
                     id="model-select"
                     value={options.models[0] || ''}
                     onChange={e => updateOption('models', [e.target.value])}
                   >
-                    {displayModels.map(model => (
-                      <option key={model.name} value={model.name}>
-                        {model.name} {model.count > 0 ? `(${model.count} workers)` : ''}
-                      </option>
+                    <optgroup label="Recommended Models">
+                      {RECOMMENDED_MODELS.map(name => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </optgroup>
+                    {displayModels.length > 0 && (
+                      <optgroup label="All Available Models">
+                        {displayModels
+                          .filter(m => !RECOMMENDED_MODELS.includes(m.name))
+                          .map(model => (
+                            <option key={model.name} value={model.name}>
+                              {model.name} ({model.count} workers)
+                            </option>
+                          ))}
+                      </optgroup>
+                    )}
+                  </Select>
+                  <HelpText>
+                    Models with more workers generate faster. Recommended models are optimized for anime/character art.
+                  </HelpText>
+                </FormGroup>
+              </SubSection>
+
+              {/* Sampling Settings */}
+              <SubSection>
+                <SubSectionTitle>Sampling</SubSectionTitle>
+                <FormRow>
+                  <FormGroup>
+                    <Label htmlFor="sampler-select">Sampler</Label>
+                    <Select
+                      id="sampler-select"
+                      value={params.sampler_name}
+                      onChange={e => updateParam('sampler_name', e.target.value)}
+                    >
+                      {SAMPLER_NAMES.map(name => (
+                        <option key={name} value={name}>
+                          {name}
+                        </option>
+                      ))}
+                    </Select>
+                  </FormGroup>
+                  <FormGroup>
+                    <Label htmlFor="n-select">Number of Images</Label>
+                    <Select
+                      id="n-select"
+                      value={params.n}
+                      onChange={e => updateParam('n', parseInt(e.target.value))}
+                    >
+                      <option value="1">1 image</option>
+                      <option value="2">2 images</option>
+                      <option value="3">3 images</option>
+                      <option value="4">4 images</option>
+                    </Select>
+                  </FormGroup>
+                </FormRow>
+
+                <FormRow>
+                  <RangeGroup>
+                    <RangeHeader>
+                      <Label>Steps</Label>
+                      <RangeValue>{params.steps}</RangeValue>
+                    </RangeHeader>
+                    <RangeInput
+                      type="range"
+                      min="10"
+                      max="100"
+                      value={params.steps}
+                      onChange={e => updateParam('steps', parseInt(e.target.value))}
+                    />
+                    <HelpText>More steps = better quality, longer wait</HelpText>
+                  </RangeGroup>
+
+                  <RangeGroup>
+                    <RangeHeader>
+                      <Label>CFG Scale</Label>
+                      <RangeValue>{params.cfg_scale}</RangeValue>
+                    </RangeHeader>
+                    <RangeInput
+                      type="range"
+                      min="1"
+                      max="20"
+                      step="0.5"
+                      value={params.cfg_scale}
+                      onChange={e => updateParam('cfg_scale', parseFloat(e.target.value))}
+                    />
+                    <HelpText>Higher = closer to prompt, lower = more creative</HelpText>
+                  </RangeGroup>
+                </FormRow>
+
+                <FormRow>
+                  <RangeGroup>
+                    <RangeHeader>
+                      <Label>CLIP Skip</Label>
+                      <RangeValue>{params.clip_skip}</RangeValue>
+                    </RangeHeader>
+                    <RangeInput
+                      type="range"
+                      min="1"
+                      max="12"
+                      value={params.clip_skip}
+                      onChange={e => updateParam('clip_skip', parseInt(e.target.value))}
+                    />
+                    <HelpText>2 recommended for anime models</HelpText>
+                  </RangeGroup>
+
+                  <FormGroup>
+                    <Label htmlFor="seed-input">Seed (optional)</Label>
+                    <TextInput
+                      id="seed-input"
+                      type="text"
+                      value={params.seed}
+                      onChange={e => updateParam('seed', e.target.value)}
+                      placeholder="Random"
+                    />
+                    <HelpText>Same seed = reproducible results</HelpText>
+                  </FormGroup>
+                </FormRow>
+
+                <CheckboxGroup>
+                  <CheckboxLabel>
+                    <input
+                      type="checkbox"
+                      checked={params.karras}
+                      onChange={e => updateParam('karras', e.target.checked)}
+                    />
+                    Karras Scheduler
+                  </CheckboxLabel>
+                </CheckboxGroup>
+              </SubSection>
+
+              {/* Image Dimensions */}
+              <SubSection>
+                <SubSectionTitle>Image Size</SubSectionTitle>
+                <FormRow>
+                  <FormGroup>
+                    <Label htmlFor="width-select">Width</Label>
+                    <Select
+                      id="width-select"
+                      value={params.width}
+                      onChange={e => updateParam('width', parseInt(e.target.value))}
+                    >
+                      <option value="384">384px</option>
+                      <option value="448">448px</option>
+                      <option value="512">512px</option>
+                      <option value="576">576px</option>
+                      <option value="640">640px</option>
+                      <option value="704">704px</option>
+                      <option value="768">768px</option>
+                      <option value="832">832px</option>
+                      <option value="896">896px</option>
+                      <option value="960">960px</option>
+                      <option value="1024">1024px</option>
+                    </Select>
+                  </FormGroup>
+                  <FormGroup>
+                    <Label htmlFor="height-select">Height</Label>
+                    <Select
+                      id="height-select"
+                      value={params.height}
+                      onChange={e => updateParam('height', parseInt(e.target.value))}
+                    >
+                      <option value="384">384px</option>
+                      <option value="448">448px</option>
+                      <option value="512">512px</option>
+                      <option value="576">576px</option>
+                      <option value="640">640px</option>
+                      <option value="704">704px</option>
+                      <option value="768">768px</option>
+                      <option value="832">832px</option>
+                      <option value="896">896px</option>
+                      <option value="960">960px</option>
+                      <option value="1024">1024px</option>
+                    </Select>
+                  </FormGroup>
+                </FormRow>
+                <HelpText>
+                  Portrait: 512x768 | Landscape: 768x512 | Square: 512x512 | Larger = longer wait
+                </HelpText>
+              </SubSection>
+
+              {/* Post-Processing */}
+              <SubSection>
+                <SubSectionTitle>Post-Processing (Upscaling & Enhancement)</SubSectionTitle>
+                <MultiSelectContainer>
+                  <MultiSelectChips>
+                    {POST_PROCESSORS.map(processor => (
+                      <Chip
+                        key={processor}
+                        type="button"
+                        $selected={(params.post_processing || []).includes(processor)}
+                        onClick={() => togglePostProcessor(processor)}
+                      >
+                        {processor}
+                      </Chip>
                     ))}
-                  </Select>
-                </FormGroup>
-                <FormGroup>
-                  <Label htmlFor="sampler-select">Sampler</Label>
-                  <Select
-                    id="sampler-select"
-                    value={params.sampler_name}
-                    onChange={e => updateParam('sampler_name', e.target.value)}
-                  >
-                    {SAMPLER_NAMES.map(name => (
-                      <option key={name} value={name}>
-                        {name}
-                      </option>
-                    ))}
-                  </Select>
-                </FormGroup>
-              </FormRow>
-
-              <FormRow>
-                <RangeGroup>
-                  <RangeHeader>
-                    <Label>Steps</Label>
-                    <RangeValue>{params.steps}</RangeValue>
-                  </RangeHeader>
-                  <RangeInput
-                    type="range"
-                    min="10"
-                    max="100"
-                    value={params.steps}
-                    onChange={e => updateParam('steps', parseInt(e.target.value))}
-                  />
-                </RangeGroup>
-
-                <RangeGroup>
-                  <RangeHeader>
-                    <Label>CFG Scale</Label>
-                    <RangeValue>{params.cfg_scale}</RangeValue>
-                  </RangeHeader>
-                  <RangeInput
-                    type="range"
-                    min="1"
-                    max="20"
-                    step="0.5"
-                    value={params.cfg_scale}
-                    onChange={e => updateParam('cfg_scale', parseFloat(e.target.value))}
-                  />
-                </RangeGroup>
-              </FormRow>
-
-              <FormRow>
-                <FormGroup>
-                  <Label htmlFor="width-select">Width</Label>
-                  <Select
-                    id="width-select"
-                    value={params.width}
-                    onChange={e => updateParam('width', parseInt(e.target.value))}
-                  >
-                    <option value="384">384</option>
-                    <option value="448">448</option>
-                    <option value="512">512</option>
-                    <option value="576">576</option>
-                    <option value="640">640</option>
-                    <option value="704">704</option>
-                    <option value="768">768</option>
-                  </Select>
-                </FormGroup>
-                <FormGroup>
-                  <Label htmlFor="height-select">Height</Label>
-                  <Select
-                    id="height-select"
-                    value={params.height}
-                    onChange={e => updateParam('height', parseInt(e.target.value))}
-                  >
-                    <option value="512">512</option>
-                    <option value="576">576</option>
-                    <option value="640">640</option>
-                    <option value="704">704</option>
-                    <option value="768">768</option>
-                    <option value="832">832</option>
-                    <option value="896">896</option>
-                  </Select>
-                </FormGroup>
-              </FormRow>
+                  </MultiSelectChips>
+                  <HelpText>
+                    GFPGAN/CodeFormers: Face enhancement | RealESRGAN: Upscaling | strip_background: Remove background
+                  </HelpText>
+                </MultiSelectContainer>
+              </SubSection>
             </SectionContent>
           )}
         </AnimatePresence>
