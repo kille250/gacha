@@ -211,7 +211,7 @@ const GlobalStyle = createGlobalStyle`
 
   body {
     font-family: ${theme.fonts.primary};
-    background: ${theme.colors.pageGradient};
+    background: ${theme.colors.background};
     color: ${theme.colors.text};
     line-height: ${theme.lineHeights.normal};
     overflow-x: hidden;

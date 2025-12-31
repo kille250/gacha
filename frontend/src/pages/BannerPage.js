@@ -11,7 +11,7 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity, useImagePreload } from '../hooks';
-import { onVisibilityChange, invalidateFor, VISIBILITY_CALLBACK_IDS, CACHE_ACTIONS } from '../cache';
+import { onVisibilityChange, invalidateFor, VISIBILITY_CALLBACK_IDS, CACHE_ACTIONS, SESSION_KEYS } from '../cache';
 import { executeBannerRoll, executeBannerMultiRoll } from '../actions/gachaActions';
 import { fetchWithRetry, createFetchGuard } from '../utils/fetchWithRetry';
 
@@ -507,7 +507,7 @@ const BannerPage = () => {
   // Check for pending roll on mount (handles page reload during roll)
   useEffect(() => {
     try {
-      const pendingRoll = sessionStorage.getItem('gacha_pendingRoll');
+      const pendingRoll = sessionStorage.getItem(SESSION_KEYS.PENDING_ROLL);
       if (pendingRoll) {
         const { bannerId: pendingBannerId, timestamp } = JSON.parse(pendingRoll);
         // Only process if it's recent (within 30 seconds) and matches current banner
@@ -518,11 +518,11 @@ const BannerPage = () => {
           // Also refresh tickets to ensure sync
           api.get('/banners/user/tickets').then(res => setTickets(res.data)).catch(() => {});
         }
-        sessionStorage.removeItem('gacha_pendingRoll');
+        sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL);
       }
       
       // Check for unviewed roll results (user navigated away during animation)
-      const unviewedRoll = sessionStorage.getItem('gacha_unviewedRoll');
+      const unviewedRoll = sessionStorage.getItem(SESSION_KEYS.UNVIEWED_ROLL);
       if (unviewedRoll) {
         const { bannerId: unviewedBannerId, timestamp } = JSON.parse(unviewedRoll);
         // Only notify if it's recent (within 5 minutes)
@@ -532,7 +532,7 @@ const BannerPage = () => {
             : t('banner.unviewedRollOtherBanner') || 'You have unviewed pulls from another banner. Check your collection!';
           setError(message);
         }
-        sessionStorage.removeItem('gacha_unviewedRoll');
+        sessionStorage.removeItem(SESSION_KEYS.UNVIEWED_ROLL);
       }
     } catch {
       // Ignore sessionStorage errors
@@ -574,7 +574,7 @@ const BannerPage = () => {
         
         // Save pending roll state for recovery after page reload
         try {
-          sessionStorage.setItem('gacha_pendingRoll', JSON.stringify({ 
+          sessionStorage.setItem(SESSION_KEYS.PENDING_ROLL, JSON.stringify({ 
             bannerId, 
             timestamp: Date.now(),
             type: 'single'
@@ -589,7 +589,7 @@ const BannerPage = () => {
         
         // Clear pending roll state on success
         try {
-          sessionStorage.removeItem('gacha_pendingRoll');
+          sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL);
         } catch {
           // Ignore sessionStorage errors
         }
@@ -609,7 +609,7 @@ const BannerPage = () => {
         } else {
           // Persist roll result before animation for recovery if user navigates away
           try {
-            sessionStorage.setItem('gacha_unviewedRoll', JSON.stringify({
+            sessionStorage.setItem(SESSION_KEYS.UNVIEWED_ROLL, JSON.stringify({
               bannerId,
               character,
               timestamp: Date.now(),
@@ -628,7 +628,7 @@ const BannerPage = () => {
       } catch (err) {
         // Clear pending roll state on error
         try {
-          sessionStorage.removeItem('gacha_pendingRoll');
+          sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL);
         } catch {
           // Ignore sessionStorage errors
         }
@@ -665,7 +665,7 @@ const BannerPage = () => {
     }
     // Clear unviewed roll since animation was viewed
     try {
-      sessionStorage.removeItem('gacha_unviewedRoll');
+      sessionStorage.removeItem(SESSION_KEYS.UNVIEWED_ROLL);
     } catch {
       // Ignore sessionStorage errors
     }
@@ -707,7 +707,7 @@ const BannerPage = () => {
         
         // Save pending roll state for recovery after page reload
         try {
-          sessionStorage.setItem('gacha_pendingRoll', JSON.stringify({ 
+          sessionStorage.setItem(SESSION_KEYS.PENDING_ROLL, JSON.stringify({ 
             bannerId, 
             timestamp: Date.now(),
             type: 'multi',
@@ -723,7 +723,7 @@ const BannerPage = () => {
         
         // Clear pending roll state on success
         try {
-          sessionStorage.removeItem('gacha_pendingRoll');
+          sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL);
         } catch {
           // Ignore sessionStorage errors
         }
@@ -750,7 +750,7 @@ const BannerPage = () => {
         } else {
           // Persist roll results before animation for recovery if user navigates away
           try {
-            sessionStorage.setItem('gacha_unviewedRoll', JSON.stringify({
+            sessionStorage.setItem(SESSION_KEYS.UNVIEWED_ROLL, JSON.stringify({
               bannerId,
               characters,
               timestamp: Date.now(),
@@ -769,7 +769,7 @@ const BannerPage = () => {
       } catch (err) {
         // Clear pending roll state on error
         try {
-          sessionStorage.removeItem('gacha_pendingRoll');
+          sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL);
         } catch {
           // Ignore sessionStorage errors
         }
@@ -809,7 +809,7 @@ const BannerPage = () => {
     
     // Clear unviewed roll since animation was viewed
     try {
-      sessionStorage.removeItem('gacha_unviewedRoll');
+      sessionStorage.removeItem(SESSION_KEYS.UNVIEWED_ROLL);
     } catch {
       // Ignore sessionStorage errors
     }

@@ -11,7 +11,7 @@ import { isVideo } from '../utils/mediaUtils';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
 import { useActionLock, useAutoDismissError, useSkipAnimations, getErrorSeverity } from '../hooks';
-import { onVisibilityChange, VISIBILITY_CALLBACK_IDS } from '../cache';
+import { onVisibilityChange, VISIBILITY_CALLBACK_IDS, SESSION_KEYS } from '../cache';
 import { executeStandardRoll, executeStandardMultiRoll } from '../actions/gachaActions';
 
 // Design System
@@ -267,7 +267,7 @@ const RollPage = () => {
   // Check for pending roll on mount (handles page reload during roll)
   useEffect(() => {
     try {
-      const pendingRoll = sessionStorage.getItem('gacha_pendingRoll_standard');
+      const pendingRoll = sessionStorage.getItem(SESSION_KEYS.PENDING_ROLL_STANDARD);
       if (pendingRoll) {
         const { timestamp } = JSON.parse(pendingRoll);
         // Only process if it's recent (within 30 seconds)
@@ -275,18 +275,18 @@ const RollPage = () => {
           setError(t('roll.rollInterrupted') || 'A roll may have been interrupted. Your data has been refreshed.');
           refreshUser();
         }
-        sessionStorage.removeItem('gacha_pendingRoll_standard');
+        sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL_STANDARD);
       }
       
       // Check for unviewed roll results (user navigated away during animation)
-      const unviewedRoll = sessionStorage.getItem('gacha_unviewedRoll_standard');
+      const unviewedRoll = sessionStorage.getItem(SESSION_KEYS.UNVIEWED_ROLL_STANDARD);
       if (unviewedRoll) {
         const { timestamp } = JSON.parse(unviewedRoll);
         // Only notify if it's recent (within 5 minutes)
         if (Date.now() - timestamp < 5 * 60 * 1000) {
           setError(t('roll.unviewedRoll') || 'You have unviewed pulls! Check your collection.');
         }
-        sessionStorage.removeItem('gacha_unviewedRoll_standard');
+        sessionStorage.removeItem(SESSION_KEYS.UNVIEWED_ROLL_STANDARD);
       }
     } catch {
       // Ignore sessionStorage errors
@@ -332,7 +332,7 @@ const RollPage = () => {
         
         // Save pending roll state for recovery after page reload
         try {
-          sessionStorage.setItem('gacha_pendingRoll_standard', JSON.stringify({ 
+          sessionStorage.setItem(SESSION_KEYS.PENDING_ROLL_STANDARD, JSON.stringify({ 
             timestamp: Date.now(),
             type: 'single'
           }));
@@ -346,7 +346,7 @@ const RollPage = () => {
         
         // Clear pending roll state on success
         try {
-          sessionStorage.removeItem('gacha_pendingRoll_standard');
+          sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL_STANDARD);
         } catch {
           // Ignore sessionStorage errors
         }
@@ -360,7 +360,7 @@ const RollPage = () => {
         } else {
           // Persist roll result before animation for recovery if user navigates away
           try {
-            sessionStorage.setItem('gacha_unviewedRoll_standard', JSON.stringify({
+            sessionStorage.setItem(SESSION_KEYS.UNVIEWED_ROLL_STANDARD, JSON.stringify({
               character,
               timestamp: Date.now(),
               type: 'single'
@@ -375,7 +375,7 @@ const RollPage = () => {
       } catch (err) {
         // Clear pending roll state on error
         try {
-          sessionStorage.removeItem('gacha_pendingRoll_standard');
+          sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL_STANDARD);
         } catch {
           // Ignore sessionStorage errors
         }
@@ -399,7 +399,7 @@ const RollPage = () => {
     }
     // Clear unviewed roll since animation was viewed
     try {
-      sessionStorage.removeItem('gacha_unviewedRoll_standard');
+      sessionStorage.removeItem(SESSION_KEYS.UNVIEWED_ROLL_STANDARD);
     } catch {
       // Ignore sessionStorage errors
     }
@@ -430,7 +430,7 @@ const RollPage = () => {
         
         // Save pending roll state for recovery after page reload
         try {
-          sessionStorage.setItem('gacha_pendingRoll_standard', JSON.stringify({ 
+          sessionStorage.setItem(SESSION_KEYS.PENDING_ROLL_STANDARD, JSON.stringify({ 
             timestamp: Date.now(),
             type: 'multi',
             count
@@ -445,7 +445,7 @@ const RollPage = () => {
         
         // Clear pending roll state on success
         try {
-          sessionStorage.removeItem('gacha_pendingRoll_standard');
+          sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL_STANDARD);
         } catch {
           // Ignore sessionStorage errors
         }
@@ -466,7 +466,7 @@ const RollPage = () => {
         } else {
           // Persist roll results before animation for recovery if user navigates away
           try {
-            sessionStorage.setItem('gacha_unviewedRoll_standard', JSON.stringify({
+            sessionStorage.setItem(SESSION_KEYS.UNVIEWED_ROLL_STANDARD, JSON.stringify({
               characters,
               timestamp: Date.now(),
               type: 'multi'
@@ -481,7 +481,7 @@ const RollPage = () => {
       } catch (err) {
         // Clear pending roll state on error
         try {
-          sessionStorage.removeItem('gacha_pendingRoll_standard');
+          sessionStorage.removeItem(SESSION_KEYS.PENDING_ROLL_STANDARD);
         } catch {
           // Ignore sessionStorage errors
         }
@@ -508,7 +508,7 @@ const RollPage = () => {
     
     // Clear unviewed roll since animation was viewed
     try {
-      sessionStorage.removeItem('gacha_unviewedRoll_standard');
+      sessionStorage.removeItem(SESSION_KEYS.UNVIEWED_ROLL_STANDARD);
     } catch {
       // Ignore sessionStorage errors
     }

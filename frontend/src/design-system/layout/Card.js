@@ -35,13 +35,11 @@ export const Section = styled(GlassCard)`
 `;
 
 /**
- * PageWrapper - Full-page wrapper with ambient gradient background
- *
- * Uses the page gradient for a premium atmospheric effect.
+ * PageWrapper - Full-page wrapper
  */
 export const PageWrapper = styled.div`
   min-height: 100vh;
-  background: ${theme.colors.pageGradient};
+  background: ${theme.colors.background};
   color: ${theme.colors.text};
   font-family: ${theme.fonts.primary};
   position: relative;

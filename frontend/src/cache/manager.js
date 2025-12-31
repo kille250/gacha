@@ -42,6 +42,7 @@
  */
 
 import { clearCache } from '../utils/api';
+import { SESSION_KEYS } from './constants';
 
 // Re-export CACHE_ACTIONS for convenience
 export {
@@ -55,7 +56,10 @@ export {
   MODAL_ACTIONS,
   PRE_TRANSACTION_ACTIONS,
   ENHANCEMENT_ACTIONS,
-  VISIBILITY_CALLBACK_IDS
+  FORTUNE_WHEEL_ACTIONS,
+  VISIBILITY_CALLBACK_IDS,
+  SESSION_KEYS,
+  LOCAL_STORAGE_KEYS
 } from './constants';
 
 // ===========================================
@@ -230,6 +234,14 @@ const ENHANCEMENT_PATTERNS = {
 };
 
 /**
+ * Fortune Wheel invalidation patterns
+ * Spinning the wheel may grant points, tickets, or XP multipliers
+ */
+const FORTUNE_WHEEL_PATTERNS = {
+  spin: ['/fortune-wheel/status', '/fortune-wheel/multiplier', '/auth/me', '/banners/user/tickets']
+};
+
+/**
  * Helper to invalidate patterns for an action
  */
 const invalidatePatterns = (patterns) => {
@@ -370,7 +382,7 @@ const MAX_PERSISTED_EVENTS = 20;
 const persistCacheEvents = () => {
   if (typeof sessionStorage === 'undefined') return;
   try {
-    sessionStorage.setItem('__cache_debug_events', 
+    sessionStorage.setItem(SESSION_KEYS.CACHE_DEBUG_EVENTS, 
       JSON.stringify(cacheEvents.slice(-MAX_PERSISTED_EVENTS))
     );
   } catch (e) {
@@ -384,7 +396,7 @@ const persistCacheEvents = () => {
 const restorePersistedEvents = () => {
   if (typeof sessionStorage === 'undefined') return;
   try {
-    const stored = sessionStorage.getItem('__cache_debug_events');
+    const stored = sessionStorage.getItem(SESSION_KEYS.CACHE_DEBUG_EVENTS);
     if (stored) {
       const events = JSON.parse(stored);
       // Mark as restored
@@ -506,7 +518,12 @@ const ACTION_HANDLERS = {
   'enhancement:claim_milestone': () => invalidatePatterns(ENHANCEMENT_PATTERNS.claim_milestone),
   'enhancement:exchange_fate_points': () => invalidatePatterns(ENHANCEMENT_PATTERNS.exchange_fate_points),
   'enhancement:claim_return_bonus': () => invalidatePatterns(ENHANCEMENT_PATTERNS.claim_return_bonus),
-  'enhancement:use_selector': () => invalidatePatterns(ENHANCEMENT_PATTERNS.use_selector)
+  'enhancement:use_selector': () => invalidatePatterns(ENHANCEMENT_PATTERNS.use_selector),
+
+  // ===========================================
+  // FORTUNE WHEEL ACTIONS
+  // ===========================================
+  'fortune:spin': () => invalidatePatterns(FORTUNE_WHEEL_PATTERNS.spin)
 };
 
 /**
@@ -623,6 +640,8 @@ export const getInvalidationPatterns = (action) => {
       return PRE_TRANSACTION_PATTERNS[actionName] || null;
     case 'enhancement':
       return ENHANCEMENT_PATTERNS[actionName] || null;
+    case 'fortune':
+      return FORTUNE_WHEEL_PATTERNS[actionName] || null;
     default:
       return null;
   }
@@ -735,7 +754,8 @@ export const enableCacheDebugging = () => {
       gacha: { ...GACHA_PATTERNS },
       coupon: { ...COUPON_PATTERNS },
       pre: { ...PRE_TRANSACTION_PATTERNS },
-      enhancement: { ...ENHANCEMENT_PATTERNS }
+      enhancement: { ...ENHANCEMENT_PATTERNS },
+      fortune: { ...FORTUNE_WHEEL_PATTERNS }
     }),
 
     /**

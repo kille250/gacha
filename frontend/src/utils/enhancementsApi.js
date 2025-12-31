@@ -6,10 +6,14 @@
  * - Fishing enhancements (double-or-nothing)
  * - Gacha enhancements (milestones, fate points, pity)
  * - Retention systems (mastery, return bonus)
+ *
+ * NOTE: For state-changing actions that need cache invalidation and user state updates,
+ * prefer using the action helpers in `src/actions/enhancementActions.js`.
+ * These raw API functions are provided for read-only operations and for use
+ * by the action helpers themselves.
  */
 
 import api from './api';
-import { invalidateFor, CACHE_ACTIONS } from '../cache';
 
 // ===========================================
 // DOJO ENHANCEMENTS
@@ -25,12 +29,12 @@ export const dojoEnhancements = {
   },
 
   /**
-   * Upgrade to next facility tier
-   * NOTE: Cache invalidation is handled via invalidateFor for consistency
+   * Upgrade to next facility tier (raw API call)
+   * NOTE: Prefer using upgradeFacility from actions/enhancementActions.js
+   * which handles cache invalidation and user state updates.
    */
   upgradeFacility: async (tierId) => {
     const response = await api.post('/enhancements/dojo/facility/upgrade', { tierId });
-    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_DOJO_FACILITY_UPGRADE);
     return response.data;
   },
 
@@ -43,14 +47,14 @@ export const dojoEnhancements = {
   },
 
   /**
-   * Apply specialization to a character (permanent)
-   * NOTE: Cache invalidation is handled via invalidateFor for consistency
+   * Apply specialization to a character (permanent) (raw API call)
+   * NOTE: Prefer using applySpecialization from actions/enhancementActions.js
+   * which handles cache invalidation.
    */
   applySpecialization: async (characterId, specializationId) => {
     const response = await api.post(`/enhancements/dojo/character/${characterId}/specialize`, {
       specializationId
     });
-    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_DOJO_SPECIALIZE);
     return response.data;
   }
 };
@@ -105,15 +109,15 @@ export const gachaEnhancements = {
   },
 
   /**
-   * Claim a milestone reward
-   * NOTE: Cache invalidation is handled via invalidateFor for consistency
+   * Claim a milestone reward (raw API call)
+   * NOTE: Prefer using claimMilestone from actions/enhancementActions.js
+   * which handles cache invalidation and user state updates.
    */
   claimMilestone: async (bannerId, milestonePulls) => {
     const response = await api.post('/enhancements/gacha/milestones/claim', {
       bannerId,
       milestonePulls
     });
-    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_CLAIM_MILESTONE);
     return response.data;
   },
 
@@ -129,19 +133,17 @@ export const gachaEnhancements = {
   },
 
   /**
-   * Exchange fate points for rewards (selectors, pity reset)
+   * Exchange fate points for rewards (raw API call)
    * @param {string} exchangeType - Type of exchange: 'rare_selector', 'epic_selector', 'legendary_selector', 'banner_pity_reset'
    * @param {string} bannerId - Banner ID (optional, used for pity reset context)
-   * NOTE: Uses PRE_PURCHASE for defensive revalidation before spending fate points
+   * NOTE: Prefer using exchangeFatePoints from actions/enhancementActions.js
+   * which handles pre-transaction validation, cache invalidation, and user state updates.
    */
   exchangeFatePoints: async (exchangeType, bannerId = null) => {
-    // Defensive revalidation - ensure fresh user data before exchange
-    invalidateFor(CACHE_ACTIONS.PRE_PURCHASE);
     const response = await api.post('/enhancements/gacha/fate-points/exchange', {
       exchangeType,
       bannerId
     });
-    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_EXCHANGE_FATE_POINTS);
     return response.data;
   }
 };
@@ -176,12 +178,12 @@ export const retentionSystems = {
   },
 
   /**
-   * Claim rest-and-return bonus
-   * NOTE: Cache invalidation is handled via invalidateFor for consistency
+   * Claim rest-and-return bonus (raw API call)
+   * NOTE: Prefer using claimReturnBonus from actions/enhancementActions.js
+   * which handles cache invalidation and user state updates.
    */
   claimReturnBonus: async () => {
     const response = await api.post('/enhancements/return-bonus/claim');
-    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_CLAIM_RETURN_BONUS);
     return response.data;
   }
 };
@@ -249,19 +251,17 @@ export const selectorApi = {
   },
 
   /**
-   * Use a selector to claim a specific character
+   * Use a selector to claim a specific character (raw API call)
    * @param {number} selectorIndex - Index of the selector to use
    * @param {number} characterId - ID of the character to claim
-   * NOTE: Uses PRE_PURCHASE for defensive revalidation before spending selector
+   * NOTE: Prefer using useSelector from actions/enhancementActions.js
+   * which handles pre-transaction validation, cache invalidation, and user state updates.
    */
   useSelector: async (selectorIndex, characterId) => {
-    // Defensive revalidation - ensure fresh user data before using selector
-    invalidateFor(CACHE_ACTIONS.PRE_PURCHASE);
     const response = await api.post('/enhancements/selectors/use', {
       selectorIndex,
       characterId
     });
-    invalidateFor(CACHE_ACTIONS.ENHANCEMENT_USE_SELECTOR);
     return response.data;
   }
 };

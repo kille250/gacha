@@ -35,7 +35,7 @@ export const PageContainer = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${theme.colors.pageGradient};
+  background: ${theme.colors.background};
   font-family: ${theme.fonts.primary};
   position: relative;
   overflow: hidden;

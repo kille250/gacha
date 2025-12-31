@@ -250,6 +250,56 @@ export const ENHANCEMENT_ACTIONS = {
 };
 
 // ===========================================
+// FORTUNE WHEEL ACTIONS
+// ===========================================
+
+/**
+ * Fortune wheel actions for spin and reward invalidation.
+ */
+export const FORTUNE_WHEEL_ACTIONS = {
+  /** Spinning the fortune wheel - may grant points, tickets, or XP multiplier */
+  SPIN: 'fortune:spin',
+};
+
+// ===========================================
+// SESSION STORAGE KEYS
+// ===========================================
+
+/**
+ * Centralized sessionStorage keys for operation recovery and state persistence.
+ * Use these instead of string literals to prevent typos and enable easy searching.
+ */
+export const SESSION_KEYS = {
+  /** Pending gacha roll state (banner rolls) */
+  PENDING_ROLL: 'gacha_pendingRoll',
+  /** Unviewed roll results (user navigated away during animation) */
+  UNVIEWED_ROLL: 'gacha_unviewedRoll',
+  /** Pending standard gacha roll state */
+  PENDING_ROLL_STANDARD: 'gacha_pendingRoll_standard',
+  /** Unviewed standard roll results */
+  UNVIEWED_ROLL_STANDARD: 'gacha_unviewedRoll_standard',
+  /** Cache debug events for crash debugging */
+  CACHE_DEBUG_EVENTS: '__cache_debug_events',
+};
+
+// ===========================================
+// LOCAL STORAGE KEYS
+// ===========================================
+
+/**
+ * Centralized localStorage keys for persistent settings.
+ * Use these instead of string literals to prevent typos and enable easy searching.
+ */
+export const LOCAL_STORAGE_KEYS = {
+  /** Cache debug mode flag */
+  CACHE_DEBUG: 'CACHE_DEBUG',
+  /** Cross-tab ticket synchronization */
+  TICKET_SYNC: 'gacha_tickets_sync',
+  /** Animation skip preference */
+  SKIP_ANIMATIONS: 'gacha_skipAnimations',
+};
+
+// ===========================================
 // COMBINED EXPORT
 // ===========================================
 
@@ -344,6 +394,9 @@ export const CACHE_ACTIONS = {
   ENHANCEMENT_EXCHANGE_FATE_POINTS: ENHANCEMENT_ACTIONS.EXCHANGE_FATE_POINTS,
   ENHANCEMENT_CLAIM_RETURN_BONUS: ENHANCEMENT_ACTIONS.CLAIM_RETURN_BONUS,
   ENHANCEMENT_USE_SELECTOR: ENHANCEMENT_ACTIONS.USE_SELECTOR,
+
+  // Fortune Wheel actions
+  FORTUNE_WHEEL_SPIN: FORTUNE_WHEEL_ACTIONS.SPIN,
 };
 
 // NOTE: Default export removed - use named exports instead for better tree-shaking

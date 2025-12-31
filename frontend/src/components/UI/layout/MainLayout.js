@@ -51,7 +51,7 @@ const LayoutContainer = styled.div`
   flex-direction: column;
   min-height: 100vh;
   min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
-  background: ${theme.colors.pageGradient};
+  background: ${theme.colors.background};
 `;
 
 const PageContent = styled.main.attrs({

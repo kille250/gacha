@@ -33,7 +33,7 @@ export const glow = keyframes`
 
 export const PageContainer = styled.div`
   min-height: 100vh;
-  background: ${theme.colors.pageGradient};
+  background: ${theme.colors.background};
   padding-bottom: env(safe-area-inset-bottom, 20px);
 `;
 

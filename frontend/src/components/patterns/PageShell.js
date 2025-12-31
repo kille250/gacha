@@ -34,7 +34,7 @@ const PageWrapper = styled.div`
   padding-bottom: ${theme.spacing['2xl']};
   position: relative;
   z-index: 1;
-  background: ${theme.colors.pageGradient};
+  background: ${theme.colors.background};
 `;
 
 const Container = styled(BaseContainer)`

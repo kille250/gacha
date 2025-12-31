@@ -161,14 +161,7 @@ export const colors = {
     legendary: 'rgba(255, 215, 0, 0.06)',
     epic: 'rgba(191, 90, 242, 0.05)',
     primary: 'rgba(0, 113, 227, 0.04)',
-  },
-
-  // Page background gradient for depth
-  pageGradient: `
-    radial-gradient(ellipse at 20% 0%, rgba(88, 86, 214, 0.08) 0%, transparent 50%),
-    radial-gradient(ellipse at 80% 100%, rgba(245, 166, 35, 0.05) 0%, transparent 40%),
-    #000000
-  `
+  }
 };
 
 export default colors;
