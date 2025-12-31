@@ -480,7 +480,7 @@ const PromptBuilder = ({
   isGenerating,
   availableModels
 }) => {
-  const { success } = useToast();
+  const { success, info } = useToast();
 
   // Expanded sections state
   const [expandedSections, setExpandedSections] = useState({
@@ -517,6 +517,38 @@ const PromptBuilder = ({
     nsfw: false,
     censor_nsfw: true
   });
+
+  // Check for pending prompt from Prompt Browser on mount
+  React.useEffect(() => {
+    try {
+      const pendingPromptJson = sessionStorage.getItem('pendingPrompt');
+      if (pendingPromptJson) {
+        const pendingPrompt = JSON.parse(pendingPromptJson);
+        sessionStorage.removeItem('pendingPrompt');
+
+        if (pendingPrompt.prompt) {
+          setOptions(prev => ({
+            ...prev,
+            customPrompt: pendingPrompt.prompt
+          }));
+
+          // Also apply advanced params if available
+          if (pendingPrompt.steps || pendingPrompt.cfgScale || pendingPrompt.sampler) {
+            setParams(prev => ({
+              ...prev,
+              ...(pendingPrompt.steps && { steps: pendingPrompt.steps }),
+              ...(pendingPrompt.cfgScale && { cfg_scale: pendingPrompt.cfgScale }),
+              ...(pendingPrompt.sampler && { sampler_name: pendingPrompt.sampler })
+            }));
+          }
+
+          info('Prompt loaded', 'Prompt from library has been applied');
+        }
+      }
+    } catch (err) {
+      console.error('Failed to load pending prompt:', err);
+    }
+  }, [info]);
 
   // Build preview prompt
   const previewPrompt = useMemo(() => {
