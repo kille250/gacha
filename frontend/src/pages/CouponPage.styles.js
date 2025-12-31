@@ -11,9 +11,13 @@ import { theme, PageWrapper, Section, Alert } from '../design-system';
 
 // ==================== PAGE LAYOUT ====================
 
-// StyledPageWrapper - extends PageWrapper with top padding only (bottom padding is built-in)
+// StyledPageWrapper - adds horizontal and top padding for page content spacing
 export const StyledPageWrapper = styled(PageWrapper)`
-  padding-top: ${theme.spacing.xl};
+  padding: ${theme.spacing.xl} ${theme.spacing.md} 0;
+
+  @media (min-width: ${theme.breakpoints.md}) {
+    padding: ${theme.spacing.xl} ${theme.spacing.lg} 0;
+  }
 `;
 
 export const Header = styled.div`

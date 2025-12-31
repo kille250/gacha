@@ -7,12 +7,12 @@
 
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, PageWrapper } from '../design-system';
+import { theme } from '../design-system';
 
 // ==================== PAGE LAYOUT ====================
 
-// PageContainer - uses design-system PageWrapper for consistency
-export const PageContainer = styled(PageWrapper)``;
+// Re-export PageWrapper directly as PageContainer for backwards compatibility
+export { PageWrapper as PageContainer } from '../design-system';
 
 export const Header = styled.header`
   display: flex;

@@ -6,7 +6,7 @@
 
 import styled, { keyframes, css } from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme } from '../../../design-system';
+import { theme, PageWrapper } from '../../../design-system';
 
 // ===========================================
 // ANIMATIONS
@@ -31,12 +31,9 @@ export const glow = keyframes`
 // PAGE LAYOUT
 // ===========================================
 
-export const PageContainer = styled.div`
-  min-height: 100vh;
-  /* Background handled by MainLayout */
-  /* Use CSS variable for consistent bottom padding */
-  padding-bottom: var(--page-bottom-padding, env(safe-area-inset-bottom, 20px));
-`;
+// PageContainer - extends design system PageWrapper
+// Bottom padding is handled by MainLayout's PageContent
+export const PageContainer = styled(PageWrapper)``;
 
 // NOTE: Prefer LoadingState from design-system for standard loading states.
 // These are kept for Dojo-specific styling needs:

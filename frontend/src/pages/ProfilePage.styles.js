@@ -11,9 +11,13 @@ import { theme, PageWrapper as BasePageWrapper } from '../design-system';
 
 // ==================== PAGE LAYOUT ====================
 
-// PageWrapper - extends design-system PageWrapper with top padding
+// PageWrapper - adds horizontal and top padding for page content spacing
 export const PageWrapper = styled(BasePageWrapper)`
-  padding-top: ${theme.spacing.lg};
+  padding: ${theme.spacing.lg} ${theme.spacing.md} 0;
+
+  @media (min-width: ${theme.breakpoints.md}) {
+    padding: ${theme.spacing.lg} ${theme.spacing.lg} 0;
+  }
 `;
 
 // ==================== PROFILE HEADER ====================

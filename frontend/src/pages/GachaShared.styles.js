@@ -9,7 +9,6 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import {
   theme,
-  PageWrapper,
   Section,
   Chip,
   scrollbarStyles,
@@ -17,8 +16,9 @@ import {
 
 // ==================== PAGE LAYOUT ====================
 
-// StyledPageWrapper - just use base PageWrapper, padding is now built-in
-export const StyledPageWrapper = styled(PageWrapper)``;
+// Re-export PageWrapper directly - no custom styling needed
+// Bottom padding is handled by MainLayout's PageContent
+export { PageWrapper as StyledPageWrapper } from '../design-system';
 
 export const HeroBackground = styled.div`
   position: fixed;

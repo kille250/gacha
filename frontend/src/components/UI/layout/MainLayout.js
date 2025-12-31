@@ -52,9 +52,7 @@ const NavHeightVariables = createGlobalStyle`
 const LayoutContainer = styled.div`
   display: flex;
   flex-direction: column;
-  min-height: 100vh;
-  min-height: 100dvh; /* Dynamic viewport height for mobile browsers */
-  background: ${theme.colors.background};
+  flex: 1;
 `;
 
 const PageContent = styled.main.attrs({
@@ -64,11 +62,8 @@ const PageContent = styled.main.attrs({
   flex: 1;
   display: flex;
   flex-direction: column;
-
-  /* Add bottom padding on mobile to account for bottom nav */
-  @media (max-width: ${theme.breakpoints.md}) {
-    padding-bottom: calc(var(--nav-bottom-height, ${theme.navHeights.bottom.default}) + env(safe-area-inset-bottom, 0px));
-  }
+  /* Bottom padding accounts for bottom nav + safe area on all screen sizes */
+  padding-bottom: var(--page-bottom-padding, ${theme.spacing.xl});
 
   &:focus {
     outline: none; /* Remove focus ring when skip-linked */
