@@ -31,10 +31,10 @@ import { IconEmpty } from '../../constants/icons';
 
 const PageWrapper = styled.div`
   min-height: 100vh;
-  padding-bottom: ${theme.spacing['2xl']};
+  padding-bottom: var(--page-bottom-padding, ${theme.spacing['2xl']});
   position: relative;
   z-index: 1;
-  background: ${theme.colors.background};
+  /* Background is handled by MainLayout */
 `;
 
 const Container = styled(BaseContainer)`

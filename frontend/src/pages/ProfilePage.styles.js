@@ -14,8 +14,9 @@ import { theme } from '../design-system';
 export const PageWrapper = styled.div`
   min-height: 100vh;
   padding: ${theme.spacing.lg} 0;
-  padding-bottom: calc(${theme.spacing.xl} + 80px);
-  background: ${theme.colors.background};
+  /* Use CSS variable for consistent bottom padding (accounts for bottom nav) */
+  padding-bottom: var(--page-bottom-padding, calc(${theme.spacing.xl} + 80px));
+  /* Background handled by MainLayout */
 `;
 
 // ==================== PROFILE HEADER ====================

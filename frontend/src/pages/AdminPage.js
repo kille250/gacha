@@ -469,8 +469,9 @@ const AdminPage = () => {
 // ============================================
 
 const StyledPageWrapper = styled(PageWrapper)`
-  padding-bottom: ${theme.spacing['3xl']};
-  /* Smooth background for admin context */
+  /* Use CSS variable for consistent bottom padding */
+  padding-bottom: var(--page-bottom-padding, ${theme.spacing['3xl']});
+  /* Smooth background for admin context - intentionally different from standard pages */
   background: linear-gradient(
     180deg,
     ${theme.colors.background} 0%,

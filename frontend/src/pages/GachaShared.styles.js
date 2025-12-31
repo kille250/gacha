@@ -18,7 +18,8 @@ import {
 // ==================== PAGE LAYOUT ====================
 
 export const StyledPageWrapper = styled(PageWrapper)`
-  padding-bottom: ${theme.spacing['3xl']};
+  /* Use CSS variable for consistent bottom padding across all pages */
+  padding-bottom: var(--page-bottom-padding, ${theme.spacing['3xl']});
 `;
 
 export const HeroBackground = styled.div`
@@ -63,7 +64,7 @@ export const LoadingPage = styled.div`
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  background: ${theme.colors.background};
+  /* Background handled by MainLayout */
   gap: ${theme.spacing.lg};
 `;
 

@@ -22,7 +22,7 @@ import { BottomNav } from '../../Navigation';
 import { ReturnBonusModal } from '../../GameEnhancements';
 
 /**
- * Global CSS custom properties for navigation heights.
+ * Global CSS custom properties for navigation heights and page spacing.
  * These update dynamically based on orientation and viewport size,
  * allowing dependent components to stay in sync.
  */
@@ -31,6 +31,9 @@ const NavHeightVariables = createGlobalStyle`
     /* Default (portrait) values */
     --nav-top-height: ${theme.navHeights.top.default};
     --nav-bottom-height: ${theme.navHeights.bottom.default};
+
+    /* Standard page bottom padding - accounts for bottom nav + safe area + content spacing */
+    --page-bottom-padding: calc(var(--nav-bottom-height) + env(safe-area-inset-bottom, 0px) + ${theme.spacing.xl});
 
     /* Landscape mode - more compact */
     @media (max-width: ${theme.breakpoints.md}) and (orientation: landscape) {

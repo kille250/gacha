@@ -33,8 +33,9 @@ export const glow = keyframes`
 
 export const PageContainer = styled.div`
   min-height: 100vh;
-  background: ${theme.colors.background};
-  padding-bottom: env(safe-area-inset-bottom, 20px);
+  /* Background handled by MainLayout */
+  /* Use CSS variable for consistent bottom padding */
+  padding-bottom: var(--page-bottom-padding, env(safe-area-inset-bottom, 20px));
 `;
 
 // NOTE: Prefer LoadingState from design-system for standard loading states.

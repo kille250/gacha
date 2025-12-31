@@ -13,6 +13,8 @@ import { theme, PageWrapper, Section, Alert } from '../design-system';
 
 export const StyledPageWrapper = styled(PageWrapper)`
   padding: ${theme.spacing.xl} 0;
+  /* Use CSS variable for consistent bottom padding */
+  padding-bottom: var(--page-bottom-padding, ${theme.spacing['3xl']});
 `;
 
 export const Header = styled.div`

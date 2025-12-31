@@ -13,13 +13,10 @@
 
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, PageWrapper } from '../design-system';
+import { theme } from '../design-system';
 
-// ==================== PAGE WRAPPER ====================
-
-export const StyledPageWrapper = styled(PageWrapper)`
-  padding-bottom: ${theme.spacing['3xl']};
-`;
+// Re-export StyledPageWrapper from shared styles to avoid duplication
+export { StyledPageWrapper } from './GachaShared.styles';
 
 // ==================== HERO SECTION ====================
 
