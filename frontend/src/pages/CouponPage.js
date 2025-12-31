@@ -10,8 +10,7 @@
 import React, { useState, useContext, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
-import { MdClose } from 'react-icons/md';
+import { FaTicketAlt, FaCoins, FaGift, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
 import { getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -31,7 +30,6 @@ import {
   PageSubtitle,
   PointsDisplay,
   StyledAlert,
-  CloseBtn,
   ContentGrid,
   CouponSection,
   RewardSection,
@@ -153,13 +151,10 @@ const CouponPage = () => {
           {error && (
             <StyledAlert
               variant="error"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              <FaTimes /> {error}
-              <CloseBtn onClick={() => setError(null)}><MdClose /></CloseBtn>
-            </StyledAlert>
+              message={error}
+              dismissible
+              onDismiss={() => setError(null)}
+            />
           )}
         </AnimatePresence>
 
@@ -167,13 +162,10 @@ const CouponPage = () => {
           {success && (
             <StyledAlert
               variant="success"
-              initial={{ opacity: 0, y: -10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0 }}
-            >
-              <FaCheck /> {success}
-              <CloseBtn onClick={() => setSuccess(null)}><MdClose /></CloseBtn>
-            </StyledAlert>
+              message={success}
+              dismissible
+              onDismiss={() => setSuccess(null)}
+            />
           )}
         </AnimatePresence>
 
