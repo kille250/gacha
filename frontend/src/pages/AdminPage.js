@@ -27,7 +27,6 @@ import { useAdminKeyboardShortcuts } from '../hooks/useKeyboardShortcuts';
 // Utils
 import { getAssetUrl } from '../utils/api';
 import { PLACEHOLDER_IMAGE, PLACEHOLDER_BANNER } from '../utils/mediaUtils';
-import { downloadProxiedImageAsFile } from '../utils/imageUtils';
 
 // Components
 import BannerFormModal from '../components/UI/BannerFormModal';
@@ -163,26 +162,6 @@ const AdminPage = () => {
     }
     return result;
   }, [selectedFile, newCharacter, adminState, resetCharacterForm, t]);
-
-  // AI Image Generation handler
-  const handleAIImageGenerated = useCallback(async (imageData) => {
-    try {
-      // Download the image via backend proxy (bypasses CORS for R2/StableHorde URLs)
-      const { file, dataUrl } = await downloadProxiedImageAsFile(
-        imageData.url,
-        `ai-generated-${imageData.seed || Date.now()}.png`
-      );
-
-      // Set the file and preview
-      setSelectedFile(file);
-      setUploadedImage(dataUrl);
-
-      adminState.showSuccess(t('admin.aiImageReady', 'AI image ready! Fill in the character details and save.'));
-    } catch (error) {
-      console.error('Failed to process AI image:', error);
-      adminState.showError(t('admin.aiImageError', 'Failed to process AI-generated image. Please try again.'));
-    }
-  }, [adminState, t]);
 
   // Coin form handlers
   const handleCoinFormChange = useCallback((e) => {
@@ -346,7 +325,6 @@ const AdminPage = () => {
                       onMultiUpload={modals.openMultiUploadModal}
                       onAnimeImport={modals.openAnimeImportModal}
                       onCreateFromDanbooru={modals.openCreateFromDanbooruModal}
-                      onAIImageGenerated={handleAIImageGenerated}
                       newCharacter={newCharacter}
                       onCharacterChange={handleCharacterChange}
                       selectedFile={selectedFile}

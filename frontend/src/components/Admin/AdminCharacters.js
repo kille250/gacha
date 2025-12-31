@@ -21,7 +21,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload, FaSpinner, FaTheaterMasks, FaCheckSquare, FaSquare, FaTimes, FaRobot } from 'react-icons/fa';
+import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload, FaSpinner, FaTheaterMasks, FaCheckSquare, FaSquare, FaTimes } from 'react-icons/fa';
 import { theme, motionVariants, AriaLiveRegion } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import { IconR18 } from '../../constants/icons';
@@ -29,7 +29,6 @@ import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE } from '../../utils/mediaU
 import { useRarity } from '../../context/RarityContext';
 import { isDuplicateError, getDuplicateInfo } from '../../utils/errorHandler';
 import DuplicateWarningBanner from '../UI/DuplicateWarningBanner';
-import { AIGeneratorModal } from './AIImageGenerator';
 import {
   AdminContainer,
   HeaderRow,
@@ -80,7 +79,6 @@ const AdminCharacters = ({
   onMultiUpload,
   onAnimeImport,
   onCreateFromDanbooru,
-  onAIImageGenerated,
   newCharacter,
   onCharacterChange,
   selectedFile,
@@ -98,9 +96,6 @@ const AdminCharacters = ({
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
-
-  // AI Image Generator state
-  const [showAIGenerator, setShowAIGenerator] = useState(false);
 
   // Multi-select state
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -319,9 +314,6 @@ const AdminCharacters = ({
               <FaImage aria-hidden="true" /> {t('admin.createFromDanbooru', 'Danbooru')}
             </ActionButton>
           )}
-          <ActionButton $variant="accent" onClick={() => setShowAIGenerator(true)} aria-label={t('admin.aiGenerator', 'AI Generator')}>
-            <FaRobot aria-hidden="true" /> {t('admin.aiGenerator', 'AI Generate')}
-          </ActionButton>
         </ActionGroup>
         <ViewToggle role="group" aria-label={t('admin.viewMode', 'View mode')}>
           <ViewButton
@@ -679,27 +671,6 @@ const AdminCharacters = ({
           </ModalOverlay>
         )}
       </AnimatePresence>
-
-      {/* AI Image Generator Modal */}
-      <AIGeneratorModal
-        isOpen={showAIGenerator}
-        onClose={() => setShowAIGenerator(false)}
-        characterData={{
-          name: newCharacter.name,
-          series: newCharacter.series,
-          rarity: newCharacter.rarity
-        }}
-        onImageGenerated={(imageData) => {
-          // Close the AI generator modal
-          setShowAIGenerator(false);
-          // Call the parent handler to process the image
-          if (onAIImageGenerated) {
-            onAIImageGenerated(imageData);
-          }
-          // Open the add character modal
-          setShowAddModal(true);
-        }}
-      />
     </AdminContainer>
   );
 };
@@ -1011,8 +982,6 @@ AdminCharacters.propTypes = {
   onAnimeImport: PropTypes.func.isRequired,
   /** Handler for opening create from Danbooru modal */
   onCreateFromDanbooru: PropTypes.func,
-  /** Handler for AI-generated image (receives { url, seed, model, prompt }) */
-  onAIImageGenerated: PropTypes.func,
   /** Current new character form data */
   newCharacter: PropTypes.shape({
     name: PropTypes.string,
@@ -1034,7 +1003,6 @@ AdminCharacters.defaultProps = {
   selectedFile: null,
   uploadedImage: null,
   onCreateFromDanbooru: null,
-  onAIImageGenerated: null,
 };
 
 export default AdminCharacters;
