@@ -10,6 +10,7 @@ import { FaGavel, FaCheck, FaTimes, FaUser, FaClock, FaShieldAlt } from 'react-i
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { approveAppeal, denyAppeal } from '../../utils/api';
+import { IconWarning, IconStats } from '../../constants/icons';
 import {
   ModalOverlay,
   ModalContent,
@@ -122,14 +123,14 @@ const AppealReviewModal = ({ show, appeal, onClose, onSuccess }) => {
               </InfoRow>
               {appeal.user?.warningCount > 0 && (
                 <InfoRow>
-                  <span>⚠️</span>
+                  <IconWarning />
                   <InfoLabel>{t('admin.security.warnings')}:</InfoLabel>
                   <InfoValue>{appeal.user.warningCount}</InfoValue>
                 </InfoRow>
               )}
               {appeal.user?.riskScore > 0 && (
                 <InfoRow>
-                  <span>📊</span>
+                  <IconStats />
                   <InfoLabel>{t('admin.security.riskScore')}:</InfoLabel>
                   <RiskScore $score={appeal.user.riskScore}>
                     {appeal.user.riskScore}

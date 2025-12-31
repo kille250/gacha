@@ -10,6 +10,7 @@ import styled, { keyframes } from 'styled-components';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
+import { IconFlame } from '../../constants/icons';
 
 // Animations
 const fireFlicker = keyframes`
@@ -214,7 +215,7 @@ export function StreakDisplay({
         onClick={onStreakClick}
         style={{ cursor: onStreakClick ? 'pointer' : 'default' }}
       >
-        <span style={{ fontSize: '1.5rem', opacity: 0.5 }}>🔥</span>
+        <span style={{ fontSize: '1.5rem', opacity: 0.5 }}><IconFlame /></span>
         <StreakContent>
           <StreakTitle>
             <StreakCount style={{ color: theme.colors.textMuted, background: 'none', WebkitTextFillColor: theme.colors.textMuted }}>
@@ -248,7 +249,7 @@ export function StreakDisplay({
         </AtRiskBadge>
       )}
 
-      <FireIcon>🔥</FireIcon>
+      <FireIcon><IconFlame /></FireIcon>
 
       <StreakContent>
         <StreakTitle>
@@ -318,7 +319,7 @@ export function StreakBadge({ streakDays = 0, onClick }) {
         cursor: onClick ? 'pointer' : 'default',
       }}
     >
-      <span style={{ fontSize: '0.9em' }}>🔥</span>
+      <span style={{ fontSize: '0.9em' }}><IconFlame /></span>
       {streakDays}
     </motion.div>
   );

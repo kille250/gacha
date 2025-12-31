@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { MdArrowBack } from 'react-icons/md';
 import { FaCoins } from 'react-icons/fa';
 import { AnimatePresence } from 'framer-motion';
+import { IconDojo } from '../../../constants/icons';
 
 import {
   Header,
@@ -42,7 +43,7 @@ const DojoHeader = ({ user }) => {
             <MdArrowBack aria-hidden="true" />
           </BackButton>
           <HeaderContent>
-            <HeaderIcon aria-hidden="true">🏯</HeaderIcon>
+            <HeaderIcon aria-hidden="true"><IconDojo /></HeaderIcon>
             <HeaderTitle>{t('dojo.title')}</HeaderTitle>
           </HeaderContent>
           <HeaderStats>

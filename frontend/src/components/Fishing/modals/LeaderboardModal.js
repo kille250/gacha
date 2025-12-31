@@ -4,6 +4,7 @@ import { MdClose, MdAutorenew } from 'react-icons/md';
 import { FaTrophy, FaCrown } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../design-system';
+import { IconLocked } from '../../../constants/icons';
 import {
   CozyModal, ModalTitle, CloseButton, CoinDot,
   YourRankSection, RankBanner, YourRankValue, RankSubtext,
@@ -46,7 +47,7 @@ export const LeaderboardModal = ({ show, onClose, rankData, leaderboard }) => {
                     {rankData.canAutofish ? (
                       <><MdAutorenew style={{ color: '#558b2f' }} /><span>{t('fishing.autofishUnlocked')}</span></>
                     ) : (
-                      <><span style={{ opacity: 0.6 }}>●</span><span>{t('fishing.autofishLocked', { rank: rankData.requiredRank })}</span></>
+                      <><IconLocked style={{ opacity: 0.6 }} /><span>{t('fishing.autofishLocked', { rank: rankData.requiredRank })}</span></>
                     )}
                   </AutofishUnlockStatus>
                 </YourRankSection>

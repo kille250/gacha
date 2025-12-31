@@ -18,11 +18,12 @@ import {
   recalculateUserRisk, resetUserRisk, resetUserPassword
 } from '../../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../../cache';
-import { 
-  RESTRICTION_TYPES, 
-  DURATION_OPTIONS, 
-  getRestrictionColor 
+import {
+  RESTRICTION_TYPES,
+  DURATION_OPTIONS,
+  getRestrictionColor
 } from '../../constants/securityConstants';
+import { IconWarning, IconCheckmark } from '../../constants/icons';
 import LinkedAccountsModal from './LinkedAccountsModal';
 import DeviceHistoryPanel from './DeviceHistoryPanel';
 import SessionActivityPanel from './SessionActivityPanel';
@@ -391,7 +392,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                       <InfoCard>
                         <InfoLabel>{t('admin.security.warnings')}</InfoLabel>
                         <WarningCount>
-                          ⚠️ {userData.warningCount || 0}
+                          <IconWarning /> {userData.warningCount || 0}
                         </WarningCount>
                         {userData.warningCount > 0 && (
                           <ResetButton onClick={handleResetWarnings} disabled={actionLoading}>
@@ -468,7 +469,7 @@ const UserSecurityModal = ({ show, userId, onClose, onSuccess, onViewUser }) => 
                         
                         {ipCollisions.length === 0 ? (
                           <NoCollisions>
-                            ✓ {t('admin.security.noIpCollisions')}
+                            <IconCheckmark /> {t('admin.security.noIpCollisions')}
                           </NoCollisions>
                         ) : (
                           <CollisionList>

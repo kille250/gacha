@@ -7,12 +7,13 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { AnimatePresence } from 'framer-motion';
-import { 
-  FaCog, FaSave, FaUndo, FaExclamationTriangle 
+import {
+  FaCog, FaSave, FaUndo, FaExclamationTriangle
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { getSecurityConfig, updateSecurityConfig } from '../../utils/api';
+import { IconPower, IconWarning } from '../../constants/icons';
 import {
   ModalOverlay,
   ModalContent,
@@ -198,7 +199,7 @@ const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
                   <ConfigForm>
                     {activeCategory === 'rate_limits' && (
                       <InfoNote>
-                        ⚡ {t('admin.security.rateLimitNote')}
+                        <IconPower /> {t('admin.security.rateLimitNote')}
                       </InfoNote>
                     )}
                     {config?.config?.[activeCategory]?.map(item => (
@@ -241,7 +242,7 @@ const SecurityConfigEditor = ({ show, onClose, onSuccess }) => {
                 {t('admin.security.confirmChangesText')}
               </ConfirmText>
               <WarningNote>
-                ⚠️ {t('admin.security.propagationNote')}
+                <IconWarning /> {t('admin.security.propagationNote')}
               </WarningNote>
               
               <ChangesList>

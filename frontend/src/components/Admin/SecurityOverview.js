@@ -6,12 +6,13 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { 
-  FaBan, FaClock, FaEyeSlash, FaExclamationTriangle, 
-  FaShieldAlt, FaUserShield, FaGavel 
+import {
+  FaBan, FaClock, FaEyeSlash, FaExclamationTriangle,
+  FaShieldAlt, FaUserShield, FaGavel
 } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
+import { IconWarning } from '../../constants/icons';
 
 const SecurityOverview = ({ data, appealStats, onViewHighRisk, onViewAppeals }) => {
   const { t } = useTranslation();
@@ -126,7 +127,7 @@ const SecurityOverview = ({ data, appealStats, onViewHighRisk, onViewAppeals }) 
                 </UserInfo>
                 <WarningCount>
                   {user.warningCount > 0 && (
-                    <span>⚠️ {user.warningCount}</span>
+                    <span><IconWarning /> {user.warningCount}</span>
                   )}
                 </WarningCount>
               </HighRiskItem>

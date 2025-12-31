@@ -22,7 +22,7 @@ import styled, { keyframes, css } from 'styled-components';
 import { AnimatePresence, motion } from 'framer-motion';
 import { theme } from '../tokens';
 import { haptic } from '../utilities/microInteractions';
-import { IconStarFilled } from '../../constants/icons';
+import { IconStarFilled, IconTriangleUp, IconTriangleDown } from '../../constants/icons';
 
 // ==================== ANIMATIONS ====================
 
@@ -303,7 +303,7 @@ const AnimatedValue = memo(function AnimatedValue({
         }}
       >
         <DeltaIcon aria-hidden="true">
-          {currentDelta > 0 ? '▲' : '▼'}
+          {currentDelta > 0 ? <IconTriangleUp /> : <IconTriangleDown />}
         </DeltaIcon>
         {currentDelta > 0 ? '+' : ''}{currentDelta.toLocaleString()}
       </DeltaIndicator>

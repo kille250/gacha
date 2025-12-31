@@ -19,6 +19,8 @@ import {
   IconEconomy,
   IconAppeal,
   IconLog,
+  IconArrowLeft,
+  IconArrowRight,
 } from '../../constants/icons';
 import {
   HeaderRow,
@@ -359,20 +361,20 @@ const AuditLogViewer = () => {
       </EventsTable>
       
       <Pagination>
-        <PaginationButton 
-          onClick={handlePrevPage} 
+        <PaginationButton
+          onClick={handlePrevPage}
           disabled={filters.offset === 0}
         >
-          ← {t('common.previous')}
+          <IconArrowLeft /> {t('common.previous')}
         </PaginationButton>
         <PageInfo>
           {filters.offset + 1} - {Math.min(filters.offset + filters.limit, total)} {t('common.of')} {total}
         </PageInfo>
-        <PaginationButton 
-          onClick={handleNextPage} 
+        <PaginationButton
+          onClick={handleNextPage}
           disabled={filters.offset + filters.limit >= total}
         >
-          {t('common.next')} →
+          {t('common.next')} <IconArrowRight />
         </PaginationButton>
       </Pagination>
     </Container>

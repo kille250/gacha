@@ -11,6 +11,7 @@ import { FaGem, FaDice, FaTrophy, FaStar } from 'react-icons/fa';
 
 import { RarityBadge, motionVariants } from '../../../design-system';
 import { isVideo } from '../../../utils/mediaUtils';
+import { IconSearch, IconCheckmark, IconStarFilled } from '../../../constants/icons';
 
 import {
   CharacterCard,
@@ -86,14 +87,14 @@ const BannerResultCard = ({
           />
         )}
         <CardOverlay>
-          <span>🔍 {t('common.view')}</span>
+          <span><IconSearch /> {t('common.view')}</span>
         </CardOverlay>
         <CollectedBadge aria-label={t('common.collected')}>
-          ✓ {t('common.collected')}
+          <IconCheckmark /> {t('common.collected')}
         </CollectedBadge>
         {character.isBannerCharacter && (
           <BannerCharBadge aria-label={t('banner.bannerChar')}>
-            ★ {t('banner.bannerChar')}
+            <IconStarFilled /> {t('banner.bannerChar')}
           </BannerCharBadge>
         )}
       </CardImageWrapper>

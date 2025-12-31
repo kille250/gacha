@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { MdCelebration, MdClose } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
+import { IconPoints } from '../../constants/icons';
 
 /**
  * RewardPopup Component
@@ -40,7 +41,7 @@ const RewardPopup = ({ show, amount, onDismiss }) => {
             <CelebrationIcon />
             <Content>
               <Title>{t('nav.hourlyReward')}</Title>
-              <Amount>+{amount} 🪙</Amount>
+              <Amount>+{amount} <IconPoints /></Amount>
             </Content>
             <DismissButton
               onClick={onDismiss}

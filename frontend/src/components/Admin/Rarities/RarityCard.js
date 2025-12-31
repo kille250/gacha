@@ -17,6 +17,7 @@ import PropTypes from 'prop-types';
 import { FaPercent, FaPalette, FaEdit, FaTrash } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { motionVariants } from '../../../design-system';
+import { IconArrowRight } from '../../../constants/icons';
 import { IconButton } from '../Admin.styles';
 import {
   RarityCard as StyledRarityCard,
@@ -81,7 +82,7 @@ const RarityCard = ({
               </RateValue>
               {rateTotals && (
                 <EffectiveRate>
-                  → {getEffectiveRate('standardSingle')}% / {getEffectiveRate('standardMulti')}%
+                  <IconArrowRight /> {getEffectiveRate('standardSingle')}% / {getEffectiveRate('standardMulti')}%
                 </EffectiveRate>
               )}
             </RateItem>
@@ -92,7 +93,7 @@ const RarityCard = ({
               </RateValue>
               {rateTotals && (
                 <EffectiveRate>
-                  → {getEffectiveRate('bannerSingle')}% / {getEffectiveRate('bannerMulti')}%
+                  <IconArrowRight /> {getEffectiveRate('bannerSingle')}% / {getEffectiveRate('bannerMulti')}%
                 </EffectiveRate>
               )}
             </RateItem>
@@ -103,7 +104,7 @@ const RarityCard = ({
               </RateValue>
               {rateTotals && (
                 <EffectiveRate>
-                  → {getEffectiveRate('premiumSingle')}% / {getEffectiveRate('premiumMulti')}%
+                  <IconArrowRight /> {getEffectiveRate('premiumSingle')}% / {getEffectiveRate('premiumMulti')}%
                 </EffectiveRate>
               )}
             </RateItem>
@@ -112,7 +113,7 @@ const RarityCard = ({
               <RateValue>{rarity.dropRatePity}%</RateValue>
               {rateTotals && (
                 <EffectiveRate>
-                  → {getEffectiveRate('pity')}%
+                  <IconArrowRight /> {getEffectiveRate('pity')}%
                 </EffectiveRate>
               )}
             </RateItem>

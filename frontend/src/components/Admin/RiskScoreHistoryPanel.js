@@ -10,6 +10,7 @@ import { FaChartLine, FaSync, FaArrowUp, FaArrowDown, FaMinus, FaShieldAlt } fro
 import { useTranslation } from 'react-i18next';
 import { theme, motionVariants } from '../../design-system';
 import { getUserRiskHistory } from '../../utils/api';
+import { IconArrowRight } from '../../constants/icons';
 
 const RiskScoreHistoryPanel = ({ userId }) => {
   const { t } = useTranslation();
@@ -152,7 +153,7 @@ const RiskScoreHistoryPanel = ({ userId }) => {
                       {item.oldScore !== undefined && item.oldScore !== null && (
                         <>
                           <OldScore>{item.oldScore}</OldScore>
-                          <span>→</span>
+                          <span><IconArrowRight /></span>
                         </>
                       )}
                       <NewScore $color={getScoreColor(item.newScore || item.score)}>

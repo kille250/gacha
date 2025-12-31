@@ -7,12 +7,12 @@ import de from './locales/de.json';
 import ja from './locales/ja.json';
 import es from './locales/es.json';
 
-// Language display names and flags
+// Language display names and codes (no emojis - use text codes for cross-platform compatibility)
 export const languages = {
-  en: { name: 'English', nativeName: 'English', flag: '🇬🇧' },
-  de: { name: 'German', nativeName: 'Deutsch', flag: '🇩🇪' },
-  ja: { name: 'Japanese', nativeName: '日本語', flag: '🇯🇵' },
-  es: { name: 'Spanish', nativeName: 'Español', flag: '🇪🇸' }
+  en: { name: 'English', nativeName: 'English', flag: 'EN' },
+  de: { name: 'German', nativeName: 'Deutsch', flag: 'DE' },
+  ja: { name: 'Japanese', nativeName: '日本語', flag: 'JA' },
+  es: { name: 'Spanish', nativeName: 'Español', flag: 'ES' }
 };
 
 // Get stored language or browser language

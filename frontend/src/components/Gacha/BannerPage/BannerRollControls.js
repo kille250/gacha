@@ -9,6 +9,8 @@ import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { MdFastForward } from 'react-icons/md';
 
+import { IconSparkles, IconArrowRight, IconPoints } from '../../../constants/icons';
+
 import {
   ControlsSection,
   PullActionsContainer,
@@ -89,7 +91,7 @@ const BannerRollControls = ({
           whileTap={{ scale: 0.98 }}
           aria-label={`${t('common.single')} - ${singlePullCost} ${t('common.points')}`}
         >
-          <PullCardIcon aria-hidden="true">💫</PullCardIcon>
+          <PullCardIcon aria-hidden="true"><IconSparkles /></PullCardIcon>
           <PullCardContent>
             <PullCardTitle>
               {isRolling ? t('common.summoning') : t('common.single')}
@@ -99,7 +101,7 @@ const BannerRollControls = ({
               <CostUnit>{t('common.points')}</CostUnit>
             </PullCardCost>
           </PullCardContent>
-          <PullCardArrow aria-hidden="true">→</PullCardArrow>
+          <PullCardArrow aria-hidden="true"><IconArrowRight /></PullCardArrow>
         </PrimaryPullCard>
 
         {/* Multi-Pull Options Grid */}
@@ -140,7 +142,7 @@ const BannerRollControls = ({
       {/* Footer with points and fast mode */}
       <ControlsFooter>
         <PointsDisplay>
-          <PointsIcon aria-hidden="true">🪙</PointsIcon>
+          <PointsIcon aria-hidden="true"><IconPoints /></PointsIcon>
           <PointsValue aria-label={`${user?.points || 0} ${t('common.points')}`}>
             {user?.points || 0}
           </PointsValue>

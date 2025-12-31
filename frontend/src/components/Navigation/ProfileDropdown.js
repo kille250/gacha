@@ -21,6 +21,7 @@ import { theme } from '../../design-system';
 import { useAnimatedCounter } from '../../hooks';
 import LanguageSelector from './LanguageSelector';
 import api from '../../utils/api';
+import { IconPoints, IconAdultContent } from '../../constants/icons';
 
 /**
  * ProfileDropdown Component
@@ -103,7 +104,7 @@ const ProfileDropdown = ({
         type="button"
       >
         <PointsBadge>
-          <span>🪙</span>
+          <IconPoints />
           <span>{animatedPoints}</span>
         </PointsBadge>
         <Avatar>
@@ -127,7 +128,7 @@ const ProfileDropdown = ({
             <Header>
               <Username>{user?.username || 'User'}</Username>
               <Points>
-                <span>🪙</span>
+                <IconPoints />
                 <span>{user?.points || 0} {t('common.points')}</span>
               </Points>
             </Header>
@@ -141,7 +142,7 @@ const ProfileDropdown = ({
                 disabled={isTogglingR18}
                 role="menuitem"
               >
-                <MenuIcon $active={user?.showR18}>🔞</MenuIcon>
+                <MenuIcon $active={user?.showR18}><IconAdultContent /></MenuIcon>
                 <span>{user?.showR18 ? t('nav.r18Enabled') : t('nav.r18Disabled')}</span>
                 <ToggleSwitch $active={user?.showR18} aria-hidden="true" />
               </MenuItem>

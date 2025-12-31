@@ -12,6 +12,7 @@ import { MdLanguage } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { languages } from '../../i18n';
+import { IconCheckmark } from '../../constants/icons';
 
 /**
  * LanguageSelector Component
@@ -95,7 +96,7 @@ const LanguageSelector = ({
               >
                 <span>{lang.flag}</span>
                 <span>{lang.nativeName}</span>
-                {i18n.language === code && <CheckMark>✓</CheckMark>}
+                {i18n.language === code && <CheckMark><IconCheckmark /></CheckMark>}
               </DropdownOption>
             ))}
           </DropdownMenu>

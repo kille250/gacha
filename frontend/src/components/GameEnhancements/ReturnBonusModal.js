@@ -10,6 +10,7 @@ import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { useReturnBonus } from '../../hooks/useGameEnhancements';
+import { IconConfetti, IconPoints, IconTicket, IconDojo, IconCheckmarkCircle } from '../../constants/icons';
 
 const Overlay = styled(motion.div)`
   position: fixed;
@@ -250,7 +251,7 @@ export function ReturnBonusModal({ onClose, autoShow: _autoShow = true }) {
                 animate={{ scale: 1, rotate: 0 }}
                 transition={{ type: 'spring', damping: 10, delay: 0.2 }}
               >
-                🎊
+                <IconConfetti />
               </WelcomeIcon>
 
               <Title>{t('returnBonus.welcomeBack')}</Title>
@@ -269,7 +270,7 @@ export function ReturnBonusModal({ onClose, autoShow: _autoShow = true }) {
                       transition={{ delay: 0.3 }}
                     >
                       <RewardInfo>
-                        <RewardIcon>💰</RewardIcon>
+                        <RewardIcon><IconPoints /></RewardIcon>
                         <RewardName>{t('returnBonus.bonusPoints')}</RewardName>
                       </RewardInfo>
                       <RewardValue>+{rewards.points.toLocaleString()}</RewardValue>
@@ -283,7 +284,7 @@ export function ReturnBonusModal({ onClose, autoShow: _autoShow = true }) {
                       transition={{ delay: 0.4 }}
                     >
                       <RewardInfo>
-                        <RewardIcon>🎟️</RewardIcon>
+                        <RewardIcon><IconTicket /></RewardIcon>
                         <RewardName>{t('returnBonus.pullTickets')}</RewardName>
                       </RewardInfo>
                       <RewardValue>+{rewards.tickets}</RewardValue>
@@ -297,7 +298,7 @@ export function ReturnBonusModal({ onClose, autoShow: _autoShow = true }) {
                       transition={{ delay: 0.6 }}
                     >
                       <RewardInfo>
-                        <RewardIcon>🏯</RewardIcon>
+                        <RewardIcon><IconDojo /></RewardIcon>
                         <RewardName>{t('returnBonus.dojoBoost')}</RewardName>
                       </RewardInfo>
                       <RewardValue>{t('returnBonus.dojoBoostDuration')}</RewardValue>
@@ -337,7 +338,7 @@ export function ReturnBonusModal({ onClose, autoShow: _autoShow = true }) {
                 animate={{ scale: [0, 1.2, 1] }}
                 transition={{ duration: 0.5 }}
               >
-                ✅
+                <IconCheckmarkCircle />
               </ClaimedIcon>
               <ClaimedText>{t('returnBonus.rewardsClaimed')}</ClaimedText>
             </ClaimedState>

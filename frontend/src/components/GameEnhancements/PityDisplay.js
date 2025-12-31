@@ -10,7 +10,7 @@ import styled from 'styled-components';
 import { motion } from 'framer-motion';
 import { usePityState } from '../../hooks/useGameEnhancements';
 import { useTranslation } from 'react-i18next';
-import { IconFire, IconSparkle } from '../../constants/icons';
+import { IconFire, IconSparkle, IconHeart, IconCheckmark } from '../../constants/icons';
 
 const Container = styled(motion.div)`
   background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
@@ -469,7 +469,7 @@ export function PityDisplay({ bannerId = null, compact = false, pullResult = nul
             <FiftyFiftyBadge $guaranteed={banner.guaranteedFeatured}>
               {banner.guaranteedFeatured ? (
                 <>
-                  <span>✓</span>
+                  <IconCheckmark />
                   {t('pity.guaranteedFeatured', 'GUARANTEED Featured')}
                 </>
               ) : (
@@ -565,7 +565,7 @@ export function PityDisplay({ bannerId = null, compact = false, pullResult = nul
           animate={{ opacity: 1 }}
           $urgency="low"
         >
-          <NearPityIcon $urgency="low">💜</NearPityIcon>
+          <NearPityIcon $urgency="low"><IconHeart style={{ color: '#ba68c8' }} /></NearPityIcon>
           <NearPityContent>
             <NearPityTitle $urgency="low">
               {t('pity.epicSoon', 'Epic incoming!')}

@@ -100,7 +100,10 @@ import {
 import { TbDiamond, TbDiamondFilled } from 'react-icons/tb';
 import { RiVipCrownFill, RiMedalFill, RiMedal2Fill } from 'react-icons/ri';
 import { BiSolidUpArrow } from 'react-icons/bi';
-import { MdGrade, Md18UpRating } from 'react-icons/md';
+import { MdGrade, Md18UpRating, MdKeyboardArrowUp, MdKeyboardArrowDown, MdArrowForward, MdArrowBack } from 'react-icons/md';
+import { HiSparkles } from 'react-icons/hi2';
+import { PiConfettiBold } from 'react-icons/pi';
+import { LuSwords } from 'react-icons/lu';
 
 // ==================== CURRENCY & ECONOMY ====================
 
@@ -436,4 +439,30 @@ export const getCategoryIcon = (categoryId) => {
     default: return IconCategoryTag;
   }
 };
+
+// ==================== ADDITIONAL UI ICONS ====================
+
+/** Confetti/celebration icon */
+export const IconConfetti = (props) => <PiConfettiBold {...props} />;
+
+/** Money/coins icon (alt) */
+export const IconMoney = (props) => <FaCoins {...props} />;
+
+/** Sparkles icon (hi2 version) */
+export const IconSparkles = (props) => <HiSparkles {...props} />;
+
+/** Arrow right */
+export const IconArrowRight = (props) => <MdArrowForward {...props} />;
+
+/** Arrow left */
+export const IconArrowLeft = (props) => <MdArrowBack {...props} />;
+
+/** Triangle up indicator */
+export const IconTriangleUp = (props) => <MdKeyboardArrowUp {...props} />;
+
+/** Triangle down indicator */
+export const IconTriangleDown = (props) => <MdKeyboardArrowDown {...props} />;
+
+/** Sword/battle icon */
+export const IconSword = (props) => <LuSwords {...props} />;
 

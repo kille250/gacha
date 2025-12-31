@@ -20,7 +20,7 @@ import styled, { keyframes, css } from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { useRecaptcha } from '../../context/RecaptchaContext';
-import { IconSearch, IconSuccess, IconInfo, IconCheckmark, IconCrossmark } from '../../constants/icons';
+import { IconSearch, IconSuccess, IconInfo, IconCheckmark, IconCrossmark, IconWarning } from '../../constants/icons';
 
 // State icons mapping (use react-icons for consistent cross-platform display)
 const STATE_ICONS = {
@@ -721,7 +721,7 @@ const CaptchaModal = ({
         {submitError && (
           <ErrorDetails>
             <ErrorTitle>
-              <span>⚠️</span>
+              <IconWarning />
               {t('captcha.requestCouldNotComplete')}
             </ErrorTitle>
             <ErrorMessage>
@@ -737,7 +737,7 @@ const CaptchaModal = ({
         {internalError && !submitError && (
           <StatusSection>
             <StatusCard $variant="error">
-              <StatusIcon $variant="error">⚠</StatusIcon>
+              <StatusIcon $variant="error"><IconWarning /></StatusIcon>
               <StatusContent>
                 <StatusTitle>{t('captcha.unableToVerify')}</StatusTitle>
                 <StatusText>{internalError}</StatusText>

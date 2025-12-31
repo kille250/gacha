@@ -13,6 +13,7 @@ import { useToast } from '../../context/ToastContext';
 import { getRarities, createRarity, updateRarity, deleteRarity, resetDefaultRarities } from '../../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../../cache';
 import { useRarity } from '../../context/RarityContext';
+import { IconArrowRight } from '../../constants/icons';
 import {
   AdminContainer,
   HeaderRow,
@@ -703,7 +704,7 @@ const AdminRarities = ({ onRefresh }) => {
                   <RateTotalLabel>{pool.label}</RateTotalLabel>
                   <RateTotalValue $isValid={pool.isValid}>
                     {pool.total.toFixed(1)}%
-                    {!pool.isValid && <span> → normalized</span>}
+                    {!pool.isValid && <span> <IconArrowRight /> normalized</span>}
                   </RateTotalValue>
                 </RateTotalItem>
               ))}
@@ -745,7 +746,7 @@ const AdminRarities = ({ onRefresh }) => {
                         <RateValue>{rarity.dropRateStandardSingle}% / {rarity.dropRateStandardMulti}%</RateValue>
                         {rateTotals && (
                           <EffectiveRate>
-                            → {rateTotals.find(p => p.key === 'standardSingle')?.effectiveRates[rarity.name]}% / {rateTotals.find(p => p.key === 'standardMulti')?.effectiveRates[rarity.name]}%
+                            <IconArrowRight /> {rateTotals.find(p => p.key === 'standardSingle')?.effectiveRates[rarity.name]}% / {rateTotals.find(p => p.key === 'standardMulti')?.effectiveRates[rarity.name]}%
                           </EffectiveRate>
                         )}
                       </RateItem>
@@ -754,7 +755,7 @@ const AdminRarities = ({ onRefresh }) => {
                         <RateValue>{rarity.dropRateBannerSingle}% / {rarity.dropRateBannerMulti}%</RateValue>
                         {rateTotals && (
                           <EffectiveRate>
-                            → {rateTotals.find(p => p.key === 'bannerSingle')?.effectiveRates[rarity.name]}% / {rateTotals.find(p => p.key === 'bannerMulti')?.effectiveRates[rarity.name]}%
+                            <IconArrowRight /> {rateTotals.find(p => p.key === 'bannerSingle')?.effectiveRates[rarity.name]}% / {rateTotals.find(p => p.key === 'bannerMulti')?.effectiveRates[rarity.name]}%
                           </EffectiveRate>
                         )}
                       </RateItem>
@@ -763,7 +764,7 @@ const AdminRarities = ({ onRefresh }) => {
                         <RateValue>{rarity.dropRatePremiumSingle}% / {rarity.dropRatePremiumMulti}%</RateValue>
                         {rateTotals && (
                           <EffectiveRate>
-                            → {rateTotals.find(p => p.key === 'premiumSingle')?.effectiveRates[rarity.name]}% / {rateTotals.find(p => p.key === 'premiumMulti')?.effectiveRates[rarity.name]}%
+                            <IconArrowRight /> {rateTotals.find(p => p.key === 'premiumSingle')?.effectiveRates[rarity.name]}% / {rateTotals.find(p => p.key === 'premiumMulti')?.effectiveRates[rarity.name]}%
                           </EffectiveRate>
                         )}
                       </RateItem>
@@ -772,7 +773,7 @@ const AdminRarities = ({ onRefresh }) => {
                         <RateValue>{rarity.dropRatePity}%</RateValue>
                         {rateTotals && (
                           <EffectiveRate>
-                            → {rateTotals.find(p => p.key === 'pity')?.effectiveRates[rarity.name]}%
+                            <IconArrowRight /> {rateTotals.find(p => p.key === 'pity')?.effectiveRates[rarity.name]}%
                           </EffectiveRate>
                         )}
                       </RateItem>
