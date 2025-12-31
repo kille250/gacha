@@ -194,15 +194,32 @@ export class SummonScene {
       return;
     }
 
+    // Verify stage has children array (PixiJS v8 requirement)
+    if (!this.app.stage.children) {
+      console.error('SummonScene: stage.children is undefined - PixiJS not properly initialized');
+      throw new Error('PixiJS stage not properly initialized - children array missing');
+    }
+
     const { width, height } = this.config;
     const centerX = width / 2;
     const centerY = height / 2;
 
     // Background layer
-    this.layers.background = new BackgroundLayer({
-      width,
-      height,
-    });
+    try {
+      this.layers.background = new BackgroundLayer({
+        width,
+        height,
+      });
+    } catch (err) {
+      console.error('SummonScene: Failed to create BackgroundLayer:', err);
+      throw err;
+    }
+
+    if (!this.layers.background?.container) {
+      console.error('SummonScene: BackgroundLayer container is undefined');
+      throw new Error('BackgroundLayer container not created');
+    }
+
     this.app.stage.addChild(this.layers.background.container);
 
     // Effects container

@@ -11,6 +11,13 @@ import { lerpColor } from '../utils/colors';
 export class BackgroundLayer {
   constructor(options = {}) {
     this.container = new Container();
+
+    // Verify container was created properly (PixiJS v8 sanity check)
+    if (!this.container || !this.container.children) {
+      console.error('BackgroundLayer: Container not properly initialized', this.container);
+      throw new Error('PixiJS Container failed to initialize properly');
+    }
+
     this.container.label = 'background-layer';
 
     this.width = options.width || 800;
