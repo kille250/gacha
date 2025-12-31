@@ -35,27 +35,18 @@ export const Section = styled(GlassCard)`
 `;
 
 /**
- * PageWrapper - Full-page wrapper with gradient background
+ * PageWrapper - Full-page wrapper with ambient gradient background
+ *
+ * Uses the default page gradient for a premium atmospheric effect.
+ * Individual pages can override with specific gradients (gacha, collection, dojo).
  */
 export const PageWrapper = styled.div`
   min-height: 100vh;
-  background: ${theme.colors.background};
+  background: ${theme.colors.pageGradient.default};
   color: ${theme.colors.text};
   font-family: ${theme.fonts.primary};
   position: relative;
   overflow-x: hidden;
-
-  &::before {
-    content: "";
-    position: fixed;
-    inset: 0;
-    background:
-      radial-gradient(ellipse 80% 50% at 50% -20%, rgba(99, 102, 241, 0.15), transparent),
-      radial-gradient(ellipse 60% 40% at 80% 100%, rgba(168, 85, 247, 0.1), transparent),
-      radial-gradient(ellipse 50% 30% at 20% 80%, rgba(14, 165, 233, 0.08), transparent);
-    pointer-events: none;
-    z-index: 0;
-  }
 `;
 
 const CardComponents = { GlassCard, Section, PageWrapper };
