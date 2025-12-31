@@ -177,11 +177,11 @@ const MODAL_PATTERNS = {
 
 /**
  * Gacha action invalidation patterns
- * Note: Fate points are invalidated because rolls award points
+ * Note: Fate points and pity state are invalidated because rolls award points and update counters
  */
 const GACHA_PATTERNS = {
-  roll: ['/characters/collection', '/auth/me', '/enhancements/gacha/fate-points'],
-  roll_banner: ['/characters/collection', '/auth/me', '/banners/user/tickets', '/enhancements/gacha/fate-points'],
+  roll: ['/characters/collection', '/auth/me', '/enhancements/gacha/fate-points', '/enhancements/gacha/pity'],
+  roll_banner: ['/characters/collection', '/auth/me', '/banners/user/tickets', '/enhancements/gacha/fate-points', '/enhancements/gacha/pity'],
   level_up: ['/characters/collection', '/auth/me']
 };
 

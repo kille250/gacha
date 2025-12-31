@@ -15,6 +15,7 @@ import { rollCharacter, rollMultipleCharacters, rollOnBanner, multiRollOnBanner,
 import { invalidateFor, CACHE_ACTIONS } from '../cache';
 import { applyPointsUpdate } from '../utils/userStateUpdates';
 import fatePointsEvents, { FP_EVENTS } from '../events/fatePointsEvents';
+import pityEvents, { PITY_EVENTS } from '../events/pityEvents';
 
 /**
  * Execute a standard gacha roll with proper cache invalidation and state updates.
@@ -35,6 +36,11 @@ export const executeStandardRoll = async (setUser) => {
   // Emit fate points update for immediate UI refresh
   if (result.fatePoints) {
     fatePointsEvents.emit(FP_EVENTS.EARNED, result.fatePoints);
+  }
+
+  // Emit pity state update for immediate UI refresh
+  if (result.pityState) {
+    pityEvents.emit(PITY_EVENTS.UPDATED, result.pityState);
   }
 
   // Invalidate gacha-related caches
@@ -63,6 +69,11 @@ export const executeStandardMultiRoll = async (count, setUser) => {
   // Emit fate points update for immediate UI refresh
   if (result.fatePoints) {
     fatePointsEvents.emit(FP_EVENTS.EARNED, result.fatePoints);
+  }
+
+  // Emit pity state update for immediate UI refresh
+  if (result.pityState) {
+    pityEvents.emit(PITY_EVENTS.UPDATED, result.pityState);
   }
 
   // Invalidate gacha-related caches
@@ -95,6 +106,11 @@ export const executeBannerRoll = async (bannerId, useTicket, ticketType, setUser
     fatePointsEvents.emit(FP_EVENTS.EARNED, result.fatePoints);
   }
 
+  // Emit pity state update for immediate UI refresh
+  if (result.pityState) {
+    pityEvents.emit(PITY_EVENTS.UPDATED, result.pityState);
+  }
+
   // Invalidate banner roll caches (includes tickets)
   invalidateFor(CACHE_ACTIONS.GACHA_ROLL_BANNER);
 
@@ -124,6 +140,11 @@ export const executeBannerMultiRoll = async (bannerId, count, useTickets, ticket
   // Emit fate points update for immediate UI refresh
   if (result.fatePoints) {
     fatePointsEvents.emit(FP_EVENTS.EARNED, result.fatePoints);
+  }
+
+  // Emit pity state update for immediate UI refresh
+  if (result.pityState) {
+    pityEvents.emit(PITY_EVENTS.UPDATED, result.pityState);
   }
 
   // Invalidate banner roll caches (includes tickets)

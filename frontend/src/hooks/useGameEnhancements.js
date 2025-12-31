@@ -11,6 +11,7 @@
 import { useState, useEffect, useCallback, useRef } from 'react';
 import enhancementsApi from '../utils/enhancementsApi';
 import fatePointsEvents, { FP_EVENTS } from '../events/fatePointsEvents';
+import pityEvents, { PITY_EVENTS } from '../events/pityEvents';
 
 // ===========================================
 // PITY STATE HOOK
@@ -37,6 +38,21 @@ export function usePityState(bannerId = null) {
   useEffect(() => {
     fetchPityState();
   }, [fetchPityState]);
+
+  // Subscribe to pity events for immediate state updates after rolls
+  useEffect(() => {
+    const unsubUpdated = pityEvents.on(PITY_EVENTS.UPDATED, (newPityState) => {
+      // Update state immediately with new pity data from roll response
+      setPityState(prev => ({
+        ...prev,
+        ...newPityState
+      }));
+    });
+
+    return () => {
+      unsubUpdated();
+    };
+  }, []);
 
   return {
     pityState,
