@@ -99,6 +99,9 @@ export class BackgroundLayer {
    * Update animation
    */
   update(dt = 1) {
+    // Skip update if layer has been destroyed
+    if (!this.container) return;
+
     this.time += dt / 60;
 
     // Smooth intensity transition
@@ -113,6 +116,9 @@ export class BackgroundLayer {
    * Draw animated gradient
    */
   drawGradient() {
+    // Safety check - ensure graphics objects still exist
+    if (!this.gradient) return;
+
     const { width, height } = this;
     const centerX = width / 2;
     const centerY = height / 2;
@@ -140,6 +146,9 @@ export class BackgroundLayer {
    * Draw ambient glow
    */
   drawAmbientGlow() {
+    // Safety check - ensure graphics objects still exist
+    if (!this.ambientGlow) return;
+
     const { width, height } = this;
     const centerX = width / 2;
     const centerY = height / 2;
