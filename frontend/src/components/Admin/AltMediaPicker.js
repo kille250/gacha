@@ -248,6 +248,7 @@ const AltMediaPicker = ({
                 <option value="score">{t('animeImport.sortScore') || 'By Score'}</option>
                 <option value="favorites">{t('animeImport.sortFavorites') || 'By Favorites'}</option>
                 <option value="newest">{t('animeImport.sortNewest') || 'Newest'}</option>
+                <option value="random">{t('animeImport.sortRandom') || 'Random'}</option>
               </SortSelect>
             )}
           </SearchRow>

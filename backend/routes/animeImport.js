@@ -964,8 +964,8 @@ router.get('/search-danbooru-tag', auth, adminAuth, async (req, res) => {
     }
     
     const limit = 40; // Fetch more to compensate for client-side filtering
-    // Sort options: score, favcount, id (newest)
-    const orderTag = sort === 'newest' ? 'order:id_desc' : sort === 'favorites' ? 'order:favcount' : 'order:score';
+    // Sort options: score, favcount, id (newest), random
+    const orderTag = sort === 'newest' ? 'order:id_desc' : sort === 'favorites' ? 'order:favcount' : sort === 'random' ? 'order:random' : 'order:score';
     
     // Build tags array for proper encoding
     const tagsList = [tag];
