@@ -29,6 +29,13 @@ export const HeroBackground = styled.div`
   overflow: hidden;
   /* Fallback background color */
   background-color: ${theme.colors.backgroundSecondary};
+  /* Background image applied via $bgUrl prop - more stable than <img> element */
+  background-image: ${props => props.$bgUrl ? `url(${props.$bgUrl})` : 'none'};
+  background-size: cover;
+  background-position: center top;
+  background-repeat: no-repeat;
+  /* Fade in when image is ready */
+  opacity: ${props => props.$bgUrl ? 0.15 : 1};
 
   &::after {
     content: '';
@@ -37,21 +44,6 @@ export const HeroBackground = styled.div`
     background: linear-gradient(to bottom, transparent 0%, ${theme.colors.background} 100%);
     z-index: 1;
   }
-`;
-
-// Use an actual img element for better control over loading behavior
-export const HeroBackgroundImage = styled.img`
-  position: absolute;
-  inset: 0;
-  width: 100%;
-  height: 100%;
-  object-fit: cover;
-  object-position: center top;
-  opacity: ${props => props.$loaded ? 0.15 : 0};
-  transition: opacity 0.4s ease-out;
-  /* Hardware acceleration */
-  will-change: opacity;
-  transform: translateZ(0);
 `;
 
 // ==================== LOADING & ERROR PAGES ====================

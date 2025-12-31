@@ -34,7 +34,6 @@ import {
 import {
   StyledPageWrapper,
   HeroBackground,
-  HeroBackgroundImage,
   ErrorPage,
   ErrorBox,
   NavBar,
@@ -267,7 +266,7 @@ const BannerPage = () => {
       .slice(0, 6);
   }, [banner?.Characters]);
 
-  // Preload hero background image to prevent layout shift
+  // Preload hero background image before displaying
   const bannerBgUrl = useMemo(() =>
     banner?.image ? getAssetUrl(banner.image) : null,
   [banner?.image]);
@@ -928,21 +927,12 @@ const BannerPage = () => {
   }
 
   return (
-    <PageTransition>
-      <StyledPageWrapper>
-        {/* Hero Background - uses img element for stable loading without realignment */}
-        <HeroBackground>
-          {bannerBgUrl && (
-            <HeroBackgroundImage
-              src={bannerBgUrl}
-              alt=""
-              $loaded={bgImageLoaded}
-              onLoad={() => {}} // Loading handled by useImagePreload
-            />
-          )}
-        </HeroBackground>
-
-      <Container>
+    <>
+      {/* Hero Background - outside PageTransition to avoid scale animation affecting fixed positioning */}
+      <HeroBackground $bgUrl={bgImageLoaded ? bannerBgUrl : null} />
+      <PageTransition>
+        <StyledPageWrapper>
+          <Container>
         {/* Navigation Bar */}
         <NavBar>
           <BackButton onClick={() => navigate('/gacha')}>
@@ -1578,8 +1568,9 @@ const BannerPage = () => {
           </ModalOverlay>
         )}
       </AnimatePresence>
-    </StyledPageWrapper>
-    </PageTransition>
+        </StyledPageWrapper>
+      </PageTransition>
+    </>
   );
 };
 
