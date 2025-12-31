@@ -80,14 +80,31 @@ export const StyledAlert = styled(Alert)`
 `;
 
 export const CloseBtn = styled.button`
-  background: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  background: rgba(255, 255, 255, 0.1);
   border: none;
-  color: inherit;
-  font-size: 20px;
+  border-radius: 50%;
+  color: ${theme.colors.textSecondary};
+  font-size: 14px;
   cursor: pointer;
   margin-left: auto;
   padding: 0;
   line-height: 1;
+  transition: all 0.15s ease;
+  flex-shrink: 0;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.2);
+    color: ${theme.colors.text};
+  }
+
+  &:active {
+    transform: scale(0.9);
+  }
 `;
 
 // ==================== CONTENT GRID ====================

@@ -11,6 +11,7 @@ import React, { useState, useContext, useEffect } from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { FaTicketAlt, FaCoins, FaGift, FaCheck, FaTimes, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
+import { MdClose } from 'react-icons/md';
 import { getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
@@ -157,7 +158,7 @@ const CouponPage = () => {
               exit={{ opacity: 0 }}
             >
               <FaTimes /> {error}
-              <CloseBtn onClick={() => setError(null)}>×</CloseBtn>
+              <CloseBtn onClick={() => setError(null)}><MdClose /></CloseBtn>
             </StyledAlert>
           )}
         </AnimatePresence>
@@ -171,7 +172,7 @@ const CouponPage = () => {
               exit={{ opacity: 0 }}
             >
               <FaCheck /> {success}
-              <CloseBtn onClick={() => setSuccess(null)}>×</CloseBtn>
+              <CloseBtn onClick={() => setSuccess(null)}><MdClose /></CloseBtn>
             </StyledAlert>
           )}
         </AnimatePresence>

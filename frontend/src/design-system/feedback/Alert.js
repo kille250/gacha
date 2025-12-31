@@ -11,35 +11,39 @@ import { IconButton } from '../primitives';
 
 const alertVariants = {
   info: css`
-    background: rgba(90, 200, 250, 0.15);
-    border-color: rgba(90, 200, 250, 0.3);
-    color: ${theme.colors.info};
+    background: linear-gradient(135deg, rgba(90, 200, 250, 0.12) 0%, rgba(90, 200, 250, 0.08) 100%);
+    border-color: rgba(90, 200, 250, 0.2);
+    --alert-accent: ${theme.colors.info};
   `,
   success: css`
-    background: rgba(52, 199, 89, 0.15);
-    border-color: rgba(52, 199, 89, 0.3);
-    color: ${theme.colors.success};
+    background: linear-gradient(135deg, rgba(52, 199, 89, 0.12) 0%, rgba(52, 199, 89, 0.08) 100%);
+    border-color: rgba(52, 199, 89, 0.2);
+    --alert-accent: ${theme.colors.success};
   `,
   warning: css`
-    background: rgba(255, 159, 10, 0.15);
-    border-color: rgba(255, 159, 10, 0.3);
-    color: ${theme.colors.warning};
+    background: linear-gradient(135deg, rgba(255, 159, 10, 0.12) 0%, rgba(255, 159, 10, 0.08) 100%);
+    border-color: rgba(255, 159, 10, 0.2);
+    --alert-accent: ${theme.colors.warning};
   `,
   error: css`
-    background: rgba(255, 59, 48, 0.15);
-    border-color: rgba(255, 59, 48, 0.3);
-    color: ${theme.colors.error};
+    background: linear-gradient(135deg, rgba(255, 59, 48, 0.12) 0%, rgba(255, 59, 48, 0.08) 100%);
+    border-color: rgba(255, 59, 48, 0.2);
+    --alert-accent: ${theme.colors.error};
   `
 };
 
 const Container = styled(motion.div)`
   display: flex;
-  align-items: flex-start;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  border-radius: ${theme.radius.lg};
+  align-items: center;
+  gap: ${theme.spacing.sm};
+  padding: 12px 16px;
+  border-radius: 12px;
   border: 1px solid;
   font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.text};
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
 
   ${props => alertVariants[props.$variant || 'info']}
 `;
@@ -47,7 +51,13 @@ const Container = styled(motion.div)`
 const IconWrapper = styled.span`
   display: flex;
   align-items: center;
-  font-size: 20px;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 8px;
+  background: rgba(255, 255, 255, 0.05);
+  color: var(--alert-accent);
+  font-size: 16px;
   flex-shrink: 0;
 `;
 
