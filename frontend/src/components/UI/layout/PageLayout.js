@@ -13,7 +13,7 @@ import { theme, motionVariants, IconButton } from '../../../design-system';
 
 const PageWrapper = styled.div`
   min-height: 100vh;
-  background: ${theme.colors.pageGradient.default};
+  background: ${theme.colors.pageGradient};
   color: ${theme.colors.text};
   font-family: ${theme.fonts.primary};
   position: relative;

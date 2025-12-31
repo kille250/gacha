@@ -19,7 +19,6 @@ import { theme, PageWrapper, Section } from '../design-system';
 
 export const StyledPageWrapper = styled(PageWrapper)`
   padding: ${theme.spacing.lg} 0 ${theme.spacing['3xl']};
-  background: ${theme.colors.pageGradient.collection};
 `;
 
 // ==================== HEADER ====================

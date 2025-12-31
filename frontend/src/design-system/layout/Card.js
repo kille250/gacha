@@ -37,12 +37,11 @@ export const Section = styled(GlassCard)`
 /**
  * PageWrapper - Full-page wrapper with ambient gradient background
  *
- * Uses the default page gradient for a premium atmospheric effect.
- * Individual pages can override with specific gradients (gacha, collection, dojo).
+ * Uses the page gradient for a premium atmospheric effect.
  */
 export const PageWrapper = styled.div`
   min-height: 100vh;
-  background: ${theme.colors.pageGradient.default};
+  background: ${theme.colors.pageGradient};
   color: ${theme.colors.text};
   font-family: ${theme.fonts.primary};
   position: relative;

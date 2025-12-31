@@ -15,7 +15,7 @@ export const PageWrapper = styled.div`
   min-height: 100vh;
   padding: ${theme.spacing.lg} 0;
   padding-bottom: calc(${theme.spacing.xl} + 80px);
-  background: ${theme.colors.pageGradient.default};
+  background: ${theme.colors.pageGradient};
 `;
 
 // ==================== PROFILE HEADER ====================

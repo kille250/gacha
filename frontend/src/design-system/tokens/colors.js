@@ -163,29 +163,12 @@ export const colors = {
     primary: 'rgba(0, 113, 227, 0.04)',
   },
 
-  // Page background gradients for depth
-  pageGradient: {
-    default: `
-      radial-gradient(ellipse at 20% 0%, rgba(88, 86, 214, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 100%, rgba(245, 166, 35, 0.05) 0%, transparent 40%),
-      #000000
-    `,
-    gacha: `
-      radial-gradient(ellipse at 30% 20%, rgba(245, 166, 35, 0.08) 0%, transparent 50%),
-      radial-gradient(ellipse at 70% 80%, rgba(88, 86, 214, 0.06) 0%, transparent 40%),
-      #000000
-    `,
-    collection: `
-      radial-gradient(ellipse at 50% 0%, rgba(88, 86, 214, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 100%, rgba(191, 90, 242, 0.04) 0%, transparent 40%),
-      #000000
-    `,
-    dojo: `
-      radial-gradient(ellipse at 20% 30%, rgba(52, 199, 89, 0.06) 0%, transparent 50%),
-      radial-gradient(ellipse at 80% 70%, rgba(245, 166, 35, 0.05) 0%, transparent 40%),
-      #000000
-    `,
-  }
+  // Page background gradient for depth
+  pageGradient: `
+    radial-gradient(ellipse at 20% 0%, rgba(88, 86, 214, 0.08) 0%, transparent 50%),
+    radial-gradient(ellipse at 80% 100%, rgba(245, 166, 35, 0.05) 0%, transparent 40%),
+    #000000
+  `
 };
 
 export default colors;

@@ -19,7 +19,6 @@ import { theme, PageWrapper } from '../design-system';
 
 export const StyledPageWrapper = styled(PageWrapper)`
   padding-bottom: ${theme.spacing['3xl']};
-  background: ${theme.colors.pageGradient.gacha};
 `;
 
 // ==================== HERO SECTION ====================
