@@ -11,7 +11,7 @@
  * } = useCivitaiSearch();
  */
 
-import { useState, useCallback, useRef, useEffect } from 'react';
+import { useState, useCallback, useRef, useEffect, useMemo } from 'react';
 import {
   CIVITAI_IMAGES_ENDPOINT,
   DEFAULTS,
@@ -335,7 +335,7 @@ export function useCivitaiSearch(options = {}) {
   }, []);
 
   // Extract unique base models from loaded images for dynamic filter options
-  const availableModels = React.useMemo(() => {
+  const availableModels = useMemo(() => {
     const models = new Set();
     images.forEach(img => {
       if (img.baseModel) {
