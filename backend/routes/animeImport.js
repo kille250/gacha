@@ -19,7 +19,7 @@ const JIKAN_API = 'https://api.jikan.moe/v4';
 let lastRequestTime = 0;
 const MIN_REQUEST_INTERVAL = 500; // 500ms between requests (safer than 350ms)
 const MAX_RETRIES = 3;
-const FETCH_TIMEOUT = 30000; // 30 second timeout for API requests (increased for slow Danbooru tag searches)
+const FETCH_TIMEOUT = 60000; // 60 second timeout for API requests (popular tags like large_breasts can be very slow)
 
 /**
  * Fetch with timeout using AbortController
