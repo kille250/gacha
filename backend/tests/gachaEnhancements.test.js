@@ -98,8 +98,8 @@ describe('Pity System', () => {
       };
       const state = gachaEnhanced.getPityState(user, null);
 
-      expect(state.standard.softPity.epic).toBe(true);
-      expect(state.standard.softPity.legendary).toBe(true);
+      expect(state.standard.softPity.epic.active).toBe(true);
+      expect(state.standard.softPity.legendary.active).toBe(true);
     });
   });
 
@@ -377,7 +377,7 @@ describe('Fate Points System', () => {
 
       expect(status.exchangeOptions).toBeDefined();
       expect(Array.isArray(status.exchangeOptions)).toBe(true);
-      expect(status.exchangeOptions.length).toBe(4);
+      expect(status.exchangeOptions.length).toBe(7);
     });
   });
 

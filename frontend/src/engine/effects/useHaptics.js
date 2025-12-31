@@ -93,7 +93,7 @@ export const useHaptics = () => {
     if (!isSupported) return;
     try {
       navigator.vibrate(0);
-    } catch (e) {
+    } catch (_e) {
       // Ignore errors
     }
   }, [isSupported]);

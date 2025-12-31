@@ -6,7 +6,6 @@
  */
 
 const {
-  WHEELS,
   SPIN_CONFIG,
   MULTIPLIER_EFFECTS,
   getWheelForLevel,
@@ -20,13 +19,6 @@ const {
  */
 function getTodayString() {
   return new Date().toISOString().split('T')[0];
-}
-
-/**
- * Check if a date is from today
- */
-function isToday(dateString) {
-  return dateString === getTodayString();
 }
 
 /**

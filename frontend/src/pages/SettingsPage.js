@@ -242,7 +242,7 @@ const SettingsPage = () => {
       } else {
         setGoogleError(result.error);
       }
-    } catch (err) {
+    } catch (_err) {
       setGoogleError(t('settings.googleLinkFailed'));
     } finally {
       setGoogleLoading(false);
@@ -262,7 +262,7 @@ const SettingsPage = () => {
       } else {
         setGoogleError(result.error);
       }
-    } catch (err) {
+    } catch (_err) {
       setGoogleError(t('settings.googleUnlinkFailed'));
     } finally {
       setGoogleLoading(false);

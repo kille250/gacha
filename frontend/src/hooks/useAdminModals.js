@@ -189,7 +189,7 @@ export const useAdminModals = () => {
     try {
       await confirmDialog.onConfirm();
       closeConfirmDialog();
-    } catch (error) {
+    } catch (_error) {
       // Keep dialog open on error, let handler show error toast
       setConfirmDialog(prev => ({ ...prev, loading: false }));
     }

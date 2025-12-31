@@ -156,7 +156,7 @@ export const SummonAnimation = forwardRef(({
     if (sceneRef.current) {
       try {
         sceneRef.current.destroy();
-      } catch (e) {
+      } catch (_e) {
         // Ignore cleanup errors
       }
       sceneRef.current = null;

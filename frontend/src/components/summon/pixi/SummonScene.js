@@ -109,7 +109,7 @@ export class SummonScene {
         if (this.app.renderer) {
           this.app.destroy(true, { children: true });
         }
-      } catch (e) {
+      } catch (_e) {
         // Ignore cleanup errors
       }
       this.app = null;

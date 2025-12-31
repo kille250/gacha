@@ -278,7 +278,7 @@ const NetworkStatusBanner = ({
       setIsRetrying(true);
       try {
         await onRetry();
-      } catch (e) {
+      } catch (_e) {
         // Ignore errors - the offline state will persist
       } finally {
         setIsRetrying(false);

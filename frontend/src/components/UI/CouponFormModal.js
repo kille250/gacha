@@ -36,7 +36,7 @@ const CouponFormModal = ({ show, onClose, onSubmit, coupon, characters }) => {
       // Check if the date is valid
       if (isNaN(date.getTime())) return '';
       return date.toISOString().split('T')[0];
-    } catch (e) {
+    } catch (_e) {
       return '';
     }
   };

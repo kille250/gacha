@@ -385,7 +385,7 @@ const persistCacheEvents = () => {
     sessionStorage.setItem(SESSION_KEYS.CACHE_DEBUG_EVENTS, 
       JSON.stringify(cacheEvents.slice(-MAX_PERSISTED_EVENTS))
     );
-  } catch (e) {
+  } catch (_e) {
     // Silent fail - sessionStorage might be full or disabled
   }
 };
@@ -403,7 +403,7 @@ const restorePersistedEvents = () => {
       events.forEach(e => e.restored = true);
       cacheEvents.push(...events);
     }
-  } catch (e) {
+  } catch (_e) {
     // Silent fail
   }
 };

@@ -24,7 +24,7 @@ function getOrCreateDeviceId() {
     }
     
     return deviceId;
-  } catch (e) {
+  } catch (_e) {
     // localStorage not available
     return generateUUID();
   }
@@ -93,7 +93,7 @@ function isStorageAvailable(type) {
     storage.setItem(x, x);
     storage.removeItem(x);
     return true;
-  } catch (e) {
+  } catch (_e) {
     return false;
   }
 }
@@ -142,7 +142,7 @@ export function getDeviceFingerprint() {
     }));
     
     return fingerprint;
-  } catch (e) {
+  } catch (_e) {
     // Fallback if anything fails
     return 'unknown';
   }
@@ -172,7 +172,7 @@ export function clearDeviceData() {
   try {
     localStorage.removeItem(DEVICE_ID_KEY);
     sessionStorage.removeItem(FINGERPRINT_CACHE_KEY);
-  } catch (e) {
+  } catch (_e) {
     // Ignore
   }
 }

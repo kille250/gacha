@@ -408,11 +408,11 @@ const BannerPage = () => {
         channel.postMessage({ type: 'TICKETS_UPDATED', tickets: newTickets });
         channel.close();
         return;
-      } catch (err) {
+      } catch (_err) {
         // Fall through to localStorage fallback
       }
     }
-    
+
     // Fallback: use localStorage for cross-tab sync (Safari, etc.)
     try {
       // Write with timestamp to ensure storage event fires even with same data

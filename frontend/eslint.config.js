@@ -64,6 +64,7 @@ export default [
       'no-unused-vars': ['warn', {
         argsIgnorePattern: '^_',
         varsIgnorePattern: '^_|^[A-Z]',
+        caughtErrorsIgnorePattern: '^_',
         ignoreRestSiblings: true
       }],
       'no-console': 'off',
