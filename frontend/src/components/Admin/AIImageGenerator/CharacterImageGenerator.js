@@ -309,7 +309,7 @@ const CharacterImageGenerator = ({
   } = useImageGeneration();
 
   // Available models
-  const { models: _models, recommendedModels, refresh: refreshModels } = useAvailableModels();
+  const { models: allModels, refresh: refreshModels } = useAvailableModels();
 
   // API health check
   const { isHealthy, checking: checkingHealth } = useStableHordeHealth();
@@ -447,7 +447,7 @@ const CharacterImageGenerator = ({
           <PromptBuilder
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
-            availableModels={recommendedModels}
+            availableModels={allModels}
           />
 
           {/* Generation Progress */}
