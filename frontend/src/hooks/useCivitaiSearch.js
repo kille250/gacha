@@ -146,6 +146,7 @@ export function useCivitaiSearch(options = {}) {
   const abortControllerRef = useRef(null);
   const lastRequestTimeRef = useRef(0);
   const mountedRef = useRef(true);
+  const performSearchRef = useRef(null);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -242,6 +243,11 @@ export function useCivitaiSearch(options = {}) {
     }
   }, [query, nsfw, sort, period, baseModel, cursor, initialLimit]);
 
+  // Keep ref updated with latest performSearch to avoid stale closures
+  useEffect(() => {
+    performSearchRef.current = performSearch;
+  }, [performSearch]);
+
   /**
    * Debounced search for query changes
    */
@@ -251,13 +257,13 @@ export function useCivitaiSearch(options = {}) {
   useEffect(() => {
     debouncedSearchRef.current = debounce(() => {
       setCursor(null);
-      performSearch(false);
+      performSearchRef.current?.(false);
     }, debounceMs);
 
     return () => {
       debouncedSearchRef.current?.cancel();
     };
-  }, [performSearch, debounceMs]);
+  }, [debounceMs]);
 
   /**
    * Initial search on mount
