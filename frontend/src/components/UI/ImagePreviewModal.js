@@ -219,8 +219,6 @@ const ModalContent = styled(motion.div)`
   width: 100%;
   max-height: 85vh;
   overflow: hidden;
-  overflow-y: auto;
-  -webkit-overflow-scrolling: touch;
   display: flex;
   flex-direction: column;
 
@@ -294,34 +292,34 @@ const MediaWrapper = styled.div`
   justify-content: center;
   background: #000;
   min-height: 200px;
-  max-height: 55vh;
+  max-height: 50vh;
   overflow: hidden;
   flex-shrink: 0;
 
   @media (max-width: ${theme.breakpoints.sm}) {
     min-height: 150px;
-    max-height: 45vh;
+    max-height: 40vh;
   }
 
   @media (max-width: ${theme.breakpoints.xs}) {
     min-height: 120px;
-    max-height: 40vh;
+    max-height: 35vh;
   }
 `;
 
 const Media = styled.div`
   width: 100%;
   height: auto;
-  max-height: 55vh;
+  max-height: 50vh;
   object-fit: contain;
   display: block;
 
   @media (max-width: ${theme.breakpoints.sm}) {
-    max-height: 45vh;
+    max-height: 40vh;
   }
 
   @media (max-width: ${theme.breakpoints.xs}) {
-    max-height: 40vh;
+    max-height: 35vh;
   }
 `;
 
@@ -345,8 +343,29 @@ const InfoBar = styled.div`
   border-top: 1px solid rgba(255, 255, 255, 0.06);
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
-  flex: 1;
+  flex: 1 1 auto;
   min-height: 0;
+
+  /* Hide scrollbar but allow scrolling when needed */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.2) transparent;
+
+  &::-webkit-scrollbar {
+    width: 4px;
+  }
+
+  &::-webkit-scrollbar-track {
+    background: transparent;
+  }
+
+  &::-webkit-scrollbar-thumb {
+    background: rgba(255, 255, 255, 0.2);
+    border-radius: 2px;
+  }
+
+  &::-webkit-scrollbar-thumb:hover {
+    background: rgba(255, 255, 255, 0.3);
+  }
 
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.md};
