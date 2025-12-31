@@ -7,7 +7,7 @@
 
 import React from 'react';
 import PropTypes from 'prop-types';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaClock, FaUsers, FaCog, FaTimes, FaExclamationTriangle } from 'react-icons/fa';
 import { theme, motionVariants } from '../../../design-system';
@@ -93,7 +93,9 @@ const StatusBadge = styled.div`
   font-weight: ${theme.fontWeights.medium};
 
   svg {
-    animation: ${props => props.$status === GENERATION_STATUS.PROCESSING ? rotate : 'none'} 2s linear infinite;
+    ${props => props.$status === GENERATION_STATUS.PROCESSING && css`
+      animation: ${rotate} 2s linear infinite;
+    `}
   }
 `;
 
@@ -195,7 +197,9 @@ const StatValue = styled.div`
   font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.bold};
   color: ${theme.colors.text};
-  animation: ${props => props.$pulse ? pulse : 'none'} 1.5s ease-in-out infinite;
+  ${props => props.$pulse && css`
+    animation: ${pulse} 1.5s ease-in-out infinite;
+  `}
 `;
 
 const StatLabel = styled.div`
@@ -225,7 +229,9 @@ const PhaseDot = styled.div`
   border-radius: 50%;
   background: ${props => props.$active ? theme.colors.primary : theme.colors.surfaceBorder};
   transition: background 0.3s ease;
-  animation: ${props => props.$active ? `${pulse} 1s ease-in-out infinite` : 'none'};
+  ${props => props.$active && css`
+    animation: ${pulse} 1s ease-in-out infinite;
+  `}
 `;
 
 const PhaseLine = styled.div`
