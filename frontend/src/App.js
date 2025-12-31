@@ -42,7 +42,6 @@ const FishingPage = lazy(() => import('./pages/FishingPage'));
 const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const DojoPage = lazy(() => import('./pages/DojoPage'));
 const FortuneWheelPage = lazy(() => import('./pages/FortuneWheelPage'));
-const PromptBrowserPage = lazy(() => import('./pages/PromptBrowserPage'));
 
 // Initialize cache manager visibility handler (runs once on app load)
 initVisibilityHandler({
@@ -181,7 +180,6 @@ const AnimatedRoutes = () => {
         <Route path="/coupons" element={<CouponPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/prompts" element={<PromptBrowserPage />} />
       </Route>
 
       {/* Full-screen immersive routes (no navigation) */}
