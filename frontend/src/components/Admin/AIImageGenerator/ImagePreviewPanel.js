@@ -6,6 +6,7 @@
  */
 
 import React, { useState } from 'react';
+import { createPortal } from 'react-dom';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -263,20 +264,29 @@ const ActionButton = styled.button`
 // Lightbox for full-size view
 const LightboxOverlay = styled(motion.div)`
   position: fixed;
-  inset: 0;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  width: 100vw;
+  height: 100vh;
   background: rgba(0,0,0,0.9);
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: ${theme.zIndex.modal};
+  z-index: ${theme.zIndex.modal + 100};
   padding: ${theme.spacing.lg};
+  overflow: hidden;
 `;
 
 const LightboxImage = styled(motion.img)`
   max-width: 90vw;
   max-height: 90vh;
+  width: auto;
+  height: auto;
   object-fit: contain;
   border-radius: ${theme.radius.lg};
+  margin: auto;
 `;
 
 const LightboxClose = styled.button`
@@ -531,32 +541,35 @@ const ImagePreviewPanel = ({
         </ActionBar>
       </PreviewContainer>
 
-      {/* Lightbox */}
-      <AnimatePresence>
-        {lightboxImage && (
-          <LightboxOverlay
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={() => setLightboxImage(null)}
-          >
-            <LightboxClose
+      {/* Lightbox - rendered in portal to avoid parent container issues */}
+      {createPortal(
+        <AnimatePresence>
+          {lightboxImage && (
+            <LightboxOverlay
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
               onClick={() => setLightboxImage(null)}
-              aria-label="Close lightbox"
             >
-              <FaCompress />
-            </LightboxClose>
-            <LightboxImage
-              src={lightboxImage}
-              alt="Full size preview"
-              initial={{ scale: 0.8 }}
-              animate={{ scale: 1 }}
-              exit={{ scale: 0.8 }}
-              onClick={e => e.stopPropagation()}
-            />
-          </LightboxOverlay>
-        )}
-      </AnimatePresence>
+              <LightboxClose
+                onClick={() => setLightboxImage(null)}
+                aria-label="Close lightbox"
+              >
+                <FaCompress />
+              </LightboxClose>
+              <LightboxImage
+                src={lightboxImage}
+                alt="Full size preview"
+                initial={{ scale: 0.8 }}
+                animate={{ scale: 1 }}
+                exit={{ scale: 0.8 }}
+                onClick={e => e.stopPropagation()}
+              />
+            </LightboxOverlay>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
     </>
   );
 };
