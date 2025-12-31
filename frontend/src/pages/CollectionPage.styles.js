@@ -619,40 +619,30 @@ export const gridItemVariants = {
 
 export const CharacterGrid = styled(motion.div)`
   display: grid;
-  /* Mobile: 2 columns with minimum card size for readability */
-  grid-template-columns: repeat(2, 1fr);
+  /* Auto-fill columns with minimum 140px width for readable cards */
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
   gap: ${theme.spacing.sm};
 
-  /* Small screens: 3 columns */
+  /* Small screens: slightly larger minimum */
   @media (min-width: ${theme.breakpoints.sm}) {
-    grid-template-columns: repeat(3, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
     gap: ${theme.spacing.md};
   }
 
-  /* Tablet: 4 columns */
+  /* Tablet: comfortable card size */
   @media (min-width: ${theme.breakpoints.md}) {
-    grid-template-columns: repeat(4, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
   }
 
-  /* Desktop: 5 columns */
+  /* Desktop: larger cards */
   @media (min-width: ${theme.breakpoints.lg}) {
-    grid-template-columns: repeat(5, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(170px, 1fr));
     gap: ${theme.spacing.lg};
   }
 
-  /* Large desktop: 6 columns */
+  /* Large desktop: optimal card size */
   @media (min-width: ${theme.breakpoints.xl}) {
-    grid-template-columns: repeat(6, 1fr);
-  }
-
-  /* Extra large desktop: 8 columns for maximum density */
-  @media (min-width: 1600px) {
-    grid-template-columns: repeat(8, 1fr);
-  }
-
-  /* Ultra-wide: 10 columns */
-  @media (min-width: 2000px) {
-    grid-template-columns: repeat(10, 1fr);
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   }
 `;
 

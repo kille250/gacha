@@ -7,13 +7,13 @@
  * - ticket: Regular gacha ticket reward display
  * - premium_ticket: Premium gacha ticket reward display
  */
-import React, { useState, useContext, useEffect } from 'react';
-import { AnimatePresence } from 'framer-motion';
+import React, { useState, useContext } from 'react';
 import { useTranslation } from 'react-i18next';
 import { FaTicketAlt, FaCoins, FaGift, FaDice, FaGem, FaTrophy, FaStar } from 'react-icons/fa';
 import { getAssetUrl } from '../utils/api';
 import { AuthContext } from '../context/AuthContext';
 import { useRarity } from '../context/RarityContext';
+import { useToast } from '../context/ToastContext';
 import { redeemCoupon as redeemCouponAction } from '../actions/couponActions';
 import { Container, Heading2, PageTransition } from '../design-system';
 
@@ -29,7 +29,6 @@ import {
   TitleAccent,
   PageSubtitle,
   PointsDisplay,
-  StyledAlert,
   ContentGrid,
   CouponSection,
   RewardSection,
@@ -72,17 +71,10 @@ const CouponPage = () => {
   const { t } = useTranslation();
   const { user, setUser } = useContext(AuthContext);
   const { getRarityColor } = useRarity();
+  const toast = useToast();
   const [couponCode, setCouponCode] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState(null);
-  const [success, setSuccess] = useState(null);
   const [rewardInfo, setRewardInfo] = useState(null);
-
-  useEffect(() => {
-    setError(null);
-    setSuccess(null);
-    setRewardInfo(null);
-  }, []);
 
   const handleInputChange = (e) => {
     setCouponCode(e.target.value.trim().toUpperCase());
@@ -92,24 +84,22 @@ const CouponPage = () => {
     e.preventDefault();
 
     if (!couponCode) {
-      setError(t('coupon.pleaseEnterCode'));
+      toast.error(t('coupon.pleaseEnterCode'));
       return;
     }
 
     setLoading(true);
-    setError(null);
-    setSuccess(null);
     setRewardInfo(null);
 
     try {
       // Use centralized action helper for consistent cache invalidation and state updates
       const result = await redeemCouponAction(couponCode, setUser);
 
-      setSuccess(result.message);
+      toast.success(result.message);
       setRewardInfo(result);
       setCouponCode('');
     } catch (err) {
-      setError(err.response?.data?.error || t('coupon.failedRedeem'));
+      toast.error(err.response?.data?.error || t('coupon.failedRedeem'));
     } finally {
       setLoading(false);
     }
@@ -145,29 +135,6 @@ const CouponPage = () => {
             <span>{user?.points || 0}</span>
           </PointsDisplay>
         </Header>
-
-        {/* Alerts */}
-        <AnimatePresence>
-          {error && (
-            <StyledAlert
-              variant="error"
-              message={error}
-              dismissible
-              onDismiss={() => setError(null)}
-            />
-          )}
-        </AnimatePresence>
-
-        <AnimatePresence>
-          {success && (
-            <StyledAlert
-              variant="success"
-              message={success}
-              dismissible
-              onDismiss={() => setSuccess(null)}
-            />
-          )}
-        </AnimatePresence>
 
         <ContentGrid>
           {/* Coupon Input Section */}
