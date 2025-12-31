@@ -16,19 +16,14 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaPaintBrush,
   FaMagic,
-  FaImage,
   FaCog,
   FaChevronDown,
   FaChevronUp,
-  FaRandom,
   FaCopy,
   FaUndo
 } from 'react-icons/fa';
 import { theme, motionVariants } from '../../../design-system';
 import {
-  ART_STYLES,
-  POSE_PRESETS,
-  BACKGROUND_PRESETS,
   DEFAULT_PARAMS,
   NEGATIVE_PROMPT_TEMPLATE
 } from '../../../config/characterPrompts.config';
@@ -191,31 +186,6 @@ const TextArea = styled.textarea`
 
   &::placeholder {
     color: ${theme.colors.textSecondary};
-  }
-`;
-
-const PresetGrid = styled.div`
-  display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-  gap: ${theme.spacing.xs};
-`;
-
-const PresetButton = styled.button`
-  padding: ${theme.spacing.sm} ${theme.spacing.xs};
-  background: ${props => props.$selected ? `${theme.colors.primary}20` : theme.colors.backgroundTertiary};
-  border: 1px solid ${props => props.$selected ? theme.colors.primary : theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${props => props.$selected ? theme.colors.primary : theme.colors.text};
-  font-size: ${theme.fontSizes.xs};
-  cursor: pointer;
-  transition: all 0.2s ease;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-
-  &:hover {
-    border-color: ${theme.colors.primary};
-    background: ${theme.colors.primary}10;
   }
 `;
 
@@ -447,24 +417,6 @@ const buildPrompt = (options) => {
     parts.push(options.customPrompt.trim());
   }
 
-  // Art style
-  const artStyle = ART_STYLES[options.artStyle];
-  if (artStyle?.suffix) {
-    parts.push(artStyle.suffix);
-  }
-
-  // Pose
-  const pose = POSE_PRESETS[options.pose];
-  if (pose?.suffix) {
-    parts.push(pose.suffix);
-  }
-
-  // Background
-  const background = BACKGROUND_PRESETS[options.background];
-  if (background?.suffix) {
-    parts.push(background.suffix);
-  }
-
   // Base quality tags
   parts.push('high quality', 'detailed', 'professional artwork');
 
@@ -484,16 +436,12 @@ const PromptBuilder = ({
 
   // Expanded sections state
   const [expandedSections, setExpandedSections] = useState({
-    style: true,
     advanced: false
   });
 
   // Prompt options state
   const [options, setOptions] = useState({
     customPrompt: '',
-    artStyle: 'anime',
-    pose: 'portrait',
-    background: 'simple',
     models: RECOMMENDED_MODELS.slice(0, 3)
   });
 
@@ -564,27 +512,10 @@ const PromptBuilder = ({
     setParams(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  // Randomize style selections
-  const randomize = useCallback(() => {
-    const artStyleKeys = Object.keys(ART_STYLES);
-    const poseKeys = Object.keys(POSE_PRESETS);
-    const bgKeys = Object.keys(BACKGROUND_PRESETS);
-
-    setOptions(prev => ({
-      ...prev,
-      artStyle: artStyleKeys[Math.floor(Math.random() * artStyleKeys.length)],
-      pose: poseKeys[Math.floor(Math.random() * poseKeys.length)],
-      background: bgKeys[Math.floor(Math.random() * bgKeys.length)]
-    }));
-  }, []);
-
   // Reset to defaults
   const reset = useCallback(() => {
     setOptions({
       customPrompt: '',
-      artStyle: 'anime',
-      pose: 'portrait',
-      background: 'simple',
       models: RECOMMENDED_MODELS.slice(0, 3)
     });
     setParams({
@@ -669,9 +600,6 @@ const PromptBuilder = ({
           Prompt Builder
         </BuilderTitle>
         <HeaderActions>
-          <IconBtn onClick={randomize} title="Randomize styles">
-            <FaRandom aria-hidden="true" />
-          </IconBtn>
           <IconBtn onClick={reset} title="Reset to defaults">
             <FaUndo aria-hidden="true" />
           </IconBtn>
@@ -688,72 +616,6 @@ const PromptBuilder = ({
           placeholder="e.g., a cute anime girl with blue hair, wearing a school uniform, smiling"
         />
       </FormGroup>
-
-      {/* Style Section */}
-      <Section>
-        <SectionHeader onClick={() => toggleSection('style')}>
-          <SectionTitle>
-            <FaImage aria-hidden="true" />
-            Style Options
-          </SectionTitle>
-          {expandedSections.style ? <FaChevronUp /> : <FaChevronDown />}
-        </SectionHeader>
-
-        <AnimatePresence>
-          {expandedSections.style && (
-            <SectionContent
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              <FormGroup>
-                <Label>Art Style</Label>
-                <PresetGrid>
-                  {Object.entries(ART_STYLES).map(([key, style]) => (
-                    <PresetButton
-                      key={key}
-                      $selected={options.artStyle === key}
-                      onClick={() => updateOption('artStyle', key)}
-                    >
-                      {style.label}
-                    </PresetButton>
-                  ))}
-                </PresetGrid>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Pose</Label>
-                <PresetGrid>
-                  {Object.entries(POSE_PRESETS).map(([key, pose]) => (
-                    <PresetButton
-                      key={key}
-                      $selected={options.pose === key}
-                      onClick={() => updateOption('pose', key)}
-                    >
-                      {pose.label}
-                    </PresetButton>
-                  ))}
-                </PresetGrid>
-              </FormGroup>
-
-              <FormGroup>
-                <Label>Background</Label>
-                <PresetGrid>
-                  {Object.entries(BACKGROUND_PRESETS).map(([key, bg]) => (
-                    <PresetButton
-                      key={key}
-                      $selected={options.background === key}
-                      onClick={() => updateOption('background', key)}
-                    >
-                      {bg.label}
-                    </PresetButton>
-                  ))}
-                </PresetGrid>
-              </FormGroup>
-            </SectionContent>
-          )}
-        </AnimatePresence>
-      </Section>
 
       {/* Advanced Section */}
       <Section>
