@@ -79,28 +79,41 @@ const ToastContainer = styled.div`
   position: relative;
   display: flex;
   align-items: center;
-  gap: ${theme.spacing.md};
-  padding: ${theme.spacing.md} ${theme.spacing.lg};
-  background: ${props => toastVariants[props.$variant].bg};
-  border: 1px solid ${props => toastVariants[props.$variant].border};
-  border-radius: ${theme.radius.xl};
-  box-shadow: ${theme.shadows.lg};
-  backdrop-filter: blur(${theme.blur.lg});
-  -webkit-backdrop-filter: blur(${theme.blur.lg});
-  max-width: 420px;
-  width: calc(100vw - 32px);
+  gap: ${theme.spacing.sm};
+  padding: 12px 16px;
+  background: linear-gradient(
+    135deg,
+    rgba(30, 30, 35, 0.95) 0%,
+    rgba(25, 25, 30, 0.98) 100%
+  );
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 12px;
+  box-shadow:
+    0 4px 24px rgba(0, 0, 0, 0.4),
+    0 2px 8px rgba(0, 0, 0, 0.3),
+    inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  max-width: 380px;
+  width: auto;
+  min-width: 280px;
   overflow: hidden;
-  transition: box-shadow ${theme.timing.fast} ${theme.easing.easeOut};
+  transition:
+    box-shadow ${theme.timing.fast} ${theme.easing.easeOut},
+    transform ${theme.timing.fast} ${theme.easing.easeOut};
 
-  @media (min-width: ${theme.breakpoints.sm}) {
-    width: auto;
-    min-width: 320px;
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: calc(100vw - 32px);
+    min-width: unset;
   }
 
   /* Subtle lift on hover */
   @media (hover: hover) and (pointer: fine) {
     ${ToastWrapper}:hover & {
-      box-shadow: ${theme.shadows.xl};
+      box-shadow:
+        0 8px 32px rgba(0, 0, 0, 0.5),
+        0 4px 12px rgba(0, 0, 0, 0.4),
+        inset 0 1px 0 rgba(255, 255, 255, 0.08);
     }
   }
 `;
@@ -110,12 +123,13 @@ const ProgressBar = styled.div`
   bottom: 0;
   left: 0;
   right: 0;
-  height: 3px;
+  height: 2px;
   background: ${props => toastVariants[props.$variant].progressColor};
-  opacity: 0.6;
+  opacity: 0.5;
   transform-origin: left;
   animation: ${progressShrink} ${props => props.$duration}ms linear forwards;
   animation-play-state: ${props => props.$paused ? 'paused' : 'running'};
+  border-radius: 0 0 12px 12px;
 
   @media (prefers-reduced-motion: reduce) {
     display: none;
@@ -126,14 +140,15 @@ const IconWrapper = styled.div`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
-  border-radius: ${theme.radius.full};
-  background: ${props => `${toastVariants[props.$variant].color}20`};
+  width: 32px;
+  height: 32px;
+  border-radius: 8px;
+  background: ${props => `${toastVariants[props.$variant].color}18`};
   color: ${props => toastVariants[props.$variant].color};
   font-size: 18px;
   flex-shrink: 0;
   animation: ${iconPop} 0.4s ${theme.easing.appleSpring} forwards;
+  box-shadow: inset 0 0 0 1px ${props => `${toastVariants[props.$variant].color}25`};
 
   @media (prefers-reduced-motion: reduce) {
     animation: none;
@@ -166,13 +181,13 @@ const CloseButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 32px;
-  height: 32px;
+  width: 24px;
+  height: 24px;
   padding: 0;
-  background: transparent;
+  background: rgba(255, 255, 255, 0.08);
   border: none;
-  border-radius: ${theme.radius.lg};
-  color: ${theme.colors.textTertiary};
+  border-radius: ${theme.radius.full};
+  color: ${theme.colors.textSecondary};
   cursor: pointer;
   transition:
     background ${theme.timing.fast} ${theme.easing.easeOut},
@@ -180,16 +195,18 @@ const CloseButton = styled.button`
     transform ${theme.timing.fast} ${theme.easing.appleSpring};
   flex-shrink: 0;
   -webkit-tap-highlight-color: transparent;
+  font-size: 14px;
+  margin-left: ${theme.spacing.xs};
 
   @media (hover: hover) and (pointer: fine) {
     &:hover {
-      background: ${theme.colors.glass};
+      background: rgba(255, 255, 255, 0.15);
       color: ${theme.colors.text};
     }
   }
 
   &:active {
-    transform: scale(0.9);
+    transform: scale(0.85);
   }
 
   &:focus-visible {
