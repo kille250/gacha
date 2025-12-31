@@ -8,7 +8,7 @@
  * showToast({ variant: 'success', title: 'Saved!' });
  */
 
-import React, { createContext, useContext, useState, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useCallback, useRef, useMemo } from 'react';
 import { ToastList } from '../components/UI';
 import { theme } from '../design-system';
 
@@ -108,7 +108,8 @@ export const ToastProvider = ({ children }) => {
     return showToast({ variant: 'info', title, description });
   }, [showToast]);
 
-  const value = {
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value = useMemo(() => ({
     toasts,
     showToast,
     dismissToast,
@@ -117,7 +118,7 @@ export const ToastProvider = ({ children }) => {
     error,
     warning,
     info
-  };
+  }), [toasts, showToast, dismissToast, dismissAll, success, error, warning, info]);
 
   return (
     <ToastContext.Provider value={value}>

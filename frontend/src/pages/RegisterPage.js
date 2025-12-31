@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { AnimatePresence } from 'framer-motion';
 import { FaUser, FaLock, FaDice, FaArrowRight, FaGem, FaEnvelope } from 'react-icons/fa';
 import { MdLanguage } from 'react-icons/md';
-import { useTranslation } from 'react-i18next';
+import { useTranslation, Trans } from 'react-i18next';
 import { GoogleLogin } from '@react-oauth/google';
 import { AuthContext } from '../context/AuthContext';
 import { motionVariants, LoadingSpinner, PageTransition } from '../design-system';
@@ -290,7 +290,11 @@ const RegisterPage = () => {
 
           <BonusInfo>
             <FaGem />
-            <span dangerouslySetInnerHTML={{ __html: t('auth.bonusInfo', { gems: 100 }) }} />
+            <span>
+              <Trans i18nKey="auth.bonusInfo" values={{ gems: 100 }}>
+                Get <strong>{{ gems: 100 }}</strong> bonus gems on signup!
+              </Trans>
+            </span>
           </BonusInfo>
 
           {GOOGLE_CLIENT_ID && (

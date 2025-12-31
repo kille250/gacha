@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import { getRarityConfig } from '../utils/api';
 import { onVisibilityChange, STALE_THRESHOLDS } from '../cache';
 
@@ -141,7 +141,8 @@ export const RarityProvider = ({ children }) => {
     return `0 0 20px ${color}50, 0 0 40px ${color}30`;
   }, [getRarityColor]);
 
-  const value = {
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value = useMemo(() => ({
     config,
     loading,
     error,
@@ -155,7 +156,16 @@ export const RarityProvider = ({ children }) => {
     animation: config.animation,
     ordered: config.ordered,
     dropRates: config.dropRates
-  };
+  }), [
+    config,
+    loading,
+    error,
+    fetchConfig,
+    getRarityColor,
+    getRarityAnimation,
+    getOrderedRarities,
+    getRarityGlow
+  ]);
 
   return (
     <RarityContext.Provider value={value}>

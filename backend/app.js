@@ -420,9 +420,17 @@ app.use((err, req, res, _next) => {
 // Run migrations and start server
 async function startServer() {
   try {
-    await sequelize.sync();
-    console.log('Database synced');
-    
+    // Only sync schema in development - production should use migrations only
+    // sequelize.sync() can be dangerous in production as it may alter schema
+    if (!isProduction) {
+      await sequelize.sync();
+      console.log('Database synced (development mode)');
+    } else {
+      // In production, just verify database connection
+      await sequelize.authenticate();
+      console.log('Database connection verified');
+    }
+
     await runMigrations();
     
     // Seed default rarities if none exist

@@ -1,5 +1,5 @@
 // src/context/AuthContext.js
-import React, { createContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 import api, { AUTH_ERROR_EVENT } from '../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../cache';
 import {
@@ -120,7 +120,7 @@ export const AuthProvider = ({ children }) => {
     return () => window.removeEventListener(AUTH_ERROR_EVENT, handleAuthError);
   }, []);
 
-  const login = async (username, password) => {
+  const login = useCallback(async (username, password) => {
     try {
       // Reset local state before login attempt
       setCurrentUser(null);
@@ -168,78 +168,78 @@ export const AuthProvider = ({ children }) => {
       setError(err.response?.data?.error || 'Login failed');
       return false;
     }
-  };
+  }, []);
 
-  const register = async (username, email, password) => {
+  const register = useCallback(async (username, email, password) => {
     try {
       // Reset local state before registration attempt
       setCurrentUser(null);
       removeStoredUser();
-      
+
       const response = await api.post('/auth/signup', {
         username,
         email,
         password
       });
-      
+
       setToken(response.data.token);
-      
+
       // Clear cache after token is set (new token = new cache namespace)
       // Single invalidation is sufficient since cache is keyed by token hash
       invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
-      
+
       // Get user data from backend (fresh, uncached)
       const userResponse = await api.get('/auth/me');
-      
+
       const userData = userResponse.data;
       setCurrentUser(userData);
       setStoredUser(userData);
-      
+
       return true;
     } catch (err) {
       console.error("Registration error:", err);
       setError(err.response?.data?.error || 'Registration failed');
       return false;
     }
-  };
+  }, []);
 
-  const googleLogin = async (credential) => {
+  const googleLogin = useCallback(async (credential) => {
     try {
       // Reset local state before login attempt
       setCurrentUser(null);
       removeStoredUser();
-      
+
       const response = await api.post('/auth/google', { credential });
-      
+
       setToken(response.data.token);
-      
+
       // Clear cache after token is set (new token = new cache namespace)
       // Single invalidation is sufficient since cache is keyed by token hash
       invalidateFor(CACHE_ACTIONS.AUTH_LOGIN);
-      
+
       // Get user data from backend (fresh, uncached)
       const userResponse = await api.get('/auth/me');
-      
+
       const userData = userResponse.data;
       setCurrentUser(userData);
       setStoredUser(userData);
-      
+
       return true;
     } catch (err) {
       console.error("Google login error:", err);
       setError(err.response?.data?.error || 'Google login failed');
       return false;
     }
-  };
+  }, []);
 
-  const googleRelink = async (credential) => {
+  const googleRelink = useCallback(async (credential) => {
     try {
       setError(null);
       const response = await api.post('/auth/google/relink', { credential });
-      
+
       // Refresh user data to get updated Google info
       await refreshUser();
-      
+
       return { success: true, message: response.data.message };
     } catch (err) {
       console.error("Google relink error:", err);
@@ -247,16 +247,16 @@ export const AuthProvider = ({ children }) => {
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
-  };
+  }, [refreshUser]);
 
-  const googleUnlink = async () => {
+  const googleUnlink = useCallback(async () => {
     try {
       setError(null);
       const response = await api.post('/auth/google/unlink');
-      
+
       // Refresh user data to get updated state
       await refreshUser();
-      
+
       return { success: true, message: response.data.message };
     } catch (err) {
       console.error("Google unlink error:", err);
@@ -264,14 +264,14 @@ export const AuthProvider = ({ children }) => {
       setError(errorMessage);
       return { success: false, error: errorMessage };
     }
-  };
+  }, [refreshUser]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     // Clear all cached API data first (before removing token)
     invalidateFor(CACHE_ACTIONS.AUTH_LOGOUT);
     clearAuthStorage();
     setCurrentUser(null);
-  };
+  }, []);
 
   // Clear session expired flag when user successfully logs in
   const clearSessionExpired = useCallback(() => {
@@ -285,25 +285,44 @@ export const AuthProvider = ({ children }) => {
     setPasswordResetExpiry(null);
   }, []);
 
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value = useMemo(() => ({
+    user: currentUser,
+    loading,
+    error,
+    login,
+    register,
+    googleLogin,
+    googleRelink,
+    googleUnlink,
+    logout,
+    setUser: setCurrentUser,
+    refreshUser,
+    sessionExpired,
+    clearSessionExpired,
+    requiresPasswordChange,
+    passwordResetExpiry,
+    clearPasswordChangeRequired
+  }), [
+    currentUser,
+    loading,
+    error,
+    login,
+    register,
+    googleLogin,
+    googleRelink,
+    googleUnlink,
+    logout,
+    refreshUser,
+    sessionExpired,
+    clearSessionExpired,
+    requiresPasswordChange,
+    passwordResetExpiry,
+    clearPasswordChangeRequired
+  ]);
+
   return (
-    <AuthContext.Provider value={{
-      user: currentUser,
-      loading,
-      error,
-      login,
-      register,
-      googleLogin,
-      googleRelink,
-      googleUnlink,
-      logout,
-      setUser: setCurrentUser,
-      refreshUser,
-      sessionExpired,
-      clearSessionExpired,
-      requiresPasswordChange,
-      passwordResetExpiry,
-      clearPasswordChangeRequired
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

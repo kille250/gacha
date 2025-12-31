@@ -23,7 +23,7 @@ export default [
   js.configs.recommended,
   {
     languageOptions: {
-      ecmaVersion: 2022,
+      ecmaVersion: 'latest',
       sourceType: 'module',
       globals: {
         ...cleanGlobals(globals.browser),
@@ -69,9 +69,9 @@ export default [
       }],
       'no-console': 'off',
 
-      // React rules - detect JSX usage
-      'react/jsx-uses-react': 'error',
-      'react/jsx-uses-vars': 'error',
+      // React 19+ with new JSX transform - no need to import React
+      'react/react-in-jsx-scope': 'off',
+      'react/jsx-uses-react': 'off',
 
       // React hooks rules
       'react-hooks/rules-of-hooks': 'error',

@@ -9,7 +9,7 @@
  *   const token = await executeRecaptcha('trade');
  */
 
-import React, { createContext, useContext, useState, useEffect, useCallback, useRef } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback, useRef, useMemo } from 'react';
 
 const RecaptchaContext = createContext(null);
 
@@ -139,15 +139,16 @@ export const RecaptchaProvider = ({ children, siteKey: propSiteKey }) => {
     }
   }, [siteKey]);
   
-  const value = {
+  // Memoize context value to prevent unnecessary re-renders of consumers
+  const value = useMemo(() => ({
     isReady,
     isEnabled: !!siteKey,
     siteKey,
     error,
     executeRecaptcha,
     updateSiteKey
-  };
-  
+  }), [isReady, siteKey, error, executeRecaptcha, updateSiteKey]);
+
   return (
     <RecaptchaContext.Provider value={value}>
       {children}

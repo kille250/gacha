@@ -20,7 +20,7 @@
     "backfill:video:dry": "node scripts/backfillVideoFingerprints.js --dry-run"
   },
   "engines": {
-    "node": ">=18.0.0"
+    "node": ">=20.0.0"
   },
   "dependencies": {
     "bcryptjs": "^3.0.3",
