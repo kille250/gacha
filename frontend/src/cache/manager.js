@@ -539,7 +539,7 @@ const validateAction = (action) => {
     const availableActions = Object.keys(ACTION_HANDLERS).join(', ');
     const message = `[CacheManager] Unknown action: "${action}". Available actions: ${availableActions}`;
     
-    if (process.env.NODE_ENV === 'development') {
+    if (import.meta.env.DEV) {
       console.error(message);
       // Throw in development to catch typos early
       throw new Error(message);

@@ -68,7 +68,7 @@ class AdminErrorBoundary extends Component {
 
     if (this.state.hasError) {
       const { error } = this.state;
-      const isDevelopment = process.env.NODE_ENV === 'development';
+      const isDevelopment = import.meta.env.DEV;
 
       return (
         <ErrorContainer>

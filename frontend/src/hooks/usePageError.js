@@ -125,7 +125,7 @@ export function usePageError(options = {}) {
       inline = true,
       autoDismiss = true,
       fallbackMessage = defaultMessage,
-      log = process.env.NODE_ENV === 'development'
+      log = import.meta.env.DEV
     } = handlerOptions;
 
     const message = extractErrorMessage(err, fallbackMessage);

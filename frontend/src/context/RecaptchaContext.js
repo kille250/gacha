@@ -14,7 +14,7 @@ import React, { createContext, useContext, useState, useEffect, useCallback, use
 const RecaptchaContext = createContext(null);
 
 // Get site key from environment or dynamically from server
-const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY || null;
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY || null;
 
 // Script loading state
 let scriptLoadPromise = null;

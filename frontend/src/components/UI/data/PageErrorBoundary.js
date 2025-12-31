@@ -191,7 +191,7 @@ class PageErrorBoundary extends Component {
    */
   reportError = (_error, _errorInfo) => {
     // In production, you might send this to Sentry, LogRocket, etc.
-    if (process.env.NODE_ENV === 'production') {
+    if (import.meta.env.PROD) {
       // Example: window.Sentry?.captureException(error, { extra: errorInfo });
     }
   };
@@ -249,7 +249,7 @@ class PageErrorBoundary extends Component {
       fallback,
       pageName,
       fullHeight = true,
-      showDetails = process.env.NODE_ENV === 'development',
+      showDetails = import.meta.env.DEV,
       t,
     } = this.props;
 

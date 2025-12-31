@@ -4,9 +4,9 @@ import { getDeviceHeaders } from './deviceFingerprint';
 
 // Use environment variable for API URL, with fallback for local development
 const getApiBase = () => {
-  const envUrl = process.env.REACT_APP_API_URL;
+  const envUrl = import.meta.env.VITE_API_URL;
   if (!envUrl) return 'http://localhost:5000';
-  
+
   // If URL already has a dot, it's a full domain
   if (envUrl.includes('.')) {
     return `https://${envUrl}`;

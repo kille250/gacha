@@ -103,7 +103,7 @@ const DefaultFallback = ({ error, resetError, fullScreen }) => {
           </Button>
         )}
       </Actions>
-      {process.env.NODE_ENV === 'development' && error && (
+      {import.meta.env.DEV && error && (
         <ErrorDetails>
           <ErrorSummary>{t('errorBoundary.errorDetails')}</ErrorSummary>
           <ErrorStack>

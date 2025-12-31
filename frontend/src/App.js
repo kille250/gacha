@@ -45,20 +45,20 @@ const FortuneWheelPage = lazy(() => import('./pages/FortuneWheelPage'));
 
 // Initialize cache manager visibility handler (runs once on app load)
 initVisibilityHandler({
-  debug: process.env.NODE_ENV === 'development'
+  debug: import.meta.env.DEV
 });
 
 // Enable cache debugging in development or when explicitly enabled via localStorage
 // In production, run: localStorage.setItem('CACHE_DEBUG', 'true') then refresh
-if (process.env.NODE_ENV === 'development' || localStorage.getItem('CACHE_DEBUG') === 'true') {
+if (import.meta.env.DEV || localStorage.getItem('CACHE_DEBUG') === 'true') {
   enableCacheDebugging();
 }
 
 // Google OAuth Client ID from environment variable
-const GOOGLE_CLIENT_ID = process.env.REACT_APP_GOOGLE_CLIENT_ID;
+const GOOGLE_CLIENT_ID = import.meta.env.VITE_GOOGLE_CLIENT_ID;
 
 // reCAPTCHA Site Key from environment variable
-const RECAPTCHA_SITE_KEY = process.env.REACT_APP_RECAPTCHA_SITE_KEY;
+const RECAPTCHA_SITE_KEY = import.meta.env.VITE_RECAPTCHA_SITE_KEY;
 
 // ==================== PAGE LOADER ====================
 // Suspense fallback component for lazy-loaded pages - Branded experience
