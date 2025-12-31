@@ -28,7 +28,6 @@ import { useToast } from '../../../context/ToastContext';
 import PromptBuilder from './PromptBuilder';
 import GenerationProgress from './GenerationProgress';
 import ImagePreviewPanel from './ImagePreviewPanel';
-import { NEGATIVE_PROMPT_TEMPLATE } from '../../../config/characterPrompts.config';
 
 // ===========================================
 // STYLED COMPONENTS
@@ -290,7 +289,6 @@ const ApiWarning = styled(motion.div)`
 // ===========================================
 
 const CharacterImageGenerator = ({
-  characterData,
   onImageGenerated,
   onClose
 }) => {
@@ -319,7 +317,7 @@ const CharacterImageGenerator = ({
   // UI state
   const [showHistory, setShowHistory] = useState(false);
   const [selectedImageIndex, setSelectedImageIndex] = useState(0);
-  const [lastOptions, setLastOptions] = useState(null);
+  const [lastRequest, setLastRequest] = useState(null);
 
   // Refresh models on mount
   useEffect(() => {
@@ -327,19 +325,15 @@ const CharacterImageGenerator = ({
   }, []); // eslint-disable-line react-hooks/exhaustive-deps
 
   /**
-   * Handle generation request
+   * Handle generation request from PromptBuilder
+   * PromptBuilder sends a complete request object with prompt, negative_prompt, models, params
    */
-  const handleGenerate = useCallback(async (options) => {
-    setLastOptions(options);
+  const handleGenerate = useCallback(async (request) => {
+    setLastRequest(request);
     setSelectedImageIndex(0);
 
     try {
-      await generate({
-        prompt: options.builtPrompt || buildPromptFromOptions(options),
-        negative_prompt: NEGATIVE_PROMPT_TEMPLATE,
-        models: options.models || ['Anything Diffusion'],
-        params: options.params || {}
-      });
+      await generate(request);
     } catch (err) {
       console.error('Generation failed:', err);
       showError('Generation failed', err.message);
@@ -347,27 +341,13 @@ const CharacterImageGenerator = ({
   }, [generate, showError]);
 
   /**
-   * Build prompt from options (fallback if not using PromptBuilder's built prompt)
-   */
-  const buildPromptFromOptions = (options) => {
-    const parts = [
-      options.characterName,
-      `${options.characterClass || ''} character`,
-      'anime style',
-      'high quality',
-      'detailed'
-    ].filter(Boolean);
-    return parts.join(', ');
-  };
-
-  /**
-   * Handle regeneration with same options
+   * Handle regeneration with same request
    */
   const handleRegenerate = useCallback(() => {
-    if (lastOptions) {
-      handleGenerate(lastOptions);
+    if (lastRequest) {
+      handleGenerate(lastRequest);
     }
-  }, [lastOptions, handleGenerate]);
+  }, [lastRequest, handleGenerate]);
 
   /**
    * Handle accepting generated image
@@ -378,12 +358,12 @@ const CharacterImageGenerator = ({
         url: image.img,
         seed: image.seed,
         model: image.model,
-        prompt: result?.prompt,
-        negativePrompt: result?.negativePrompt
+        prompt: lastRequest?.prompt,
+        negativePrompt: lastRequest?.negative_prompt
       });
       success('Image selected for character');
     }
-  }, [onImageGenerated, result, success]);
+  }, [onImageGenerated, lastRequest, success]);
 
   /**
    * Handle discarding results
@@ -465,9 +445,6 @@ const CharacterImageGenerator = ({
         <GeneratorContent>
           {/* Prompt Builder */}
           <PromptBuilder
-            characterName={characterData?.name}
-            characterClass={characterData?.characterClass}
-            rarity={characterData?.rarity}
             onGenerate={handleGenerate}
             isGenerating={isGenerating}
             availableModels={recommendedModels}
@@ -583,13 +560,6 @@ const CharacterImageGenerator = ({
 };
 
 CharacterImageGenerator.propTypes = {
-  /** Pre-filled character data */
-  characterData: PropTypes.shape({
-    name: PropTypes.string,
-    series: PropTypes.string,
-    rarity: PropTypes.string,
-    characterClass: PropTypes.string
-  }),
   /** Handler called when an image is selected/accepted */
   onImageGenerated: PropTypes.func,
   /** Handler for closing the generator */
@@ -597,7 +567,6 @@ CharacterImageGenerator.propTypes = {
 };
 
 CharacterImageGenerator.defaultProps = {
-  characterData: null,
   onImageGenerated: null,
   onClose: null
 };

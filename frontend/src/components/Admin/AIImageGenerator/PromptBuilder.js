@@ -1,8 +1,8 @@
 /**
- * PromptBuilder - Interactive prompt builder for character image generation
+ * PromptBuilder - Simple prompt builder for character image generation
  *
  * Provides UI controls for building prompts with:
- * - Character attributes (name, class, element)
+ * - Custom prompt text
  * - Art style selection
  * - Pose and background presets
  * - Model selection
@@ -16,7 +16,6 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   FaPaintBrush,
   FaMagic,
-  FaUser,
   FaImage,
   FaCog,
   FaChevronDown,
@@ -30,10 +29,8 @@ import {
   ART_STYLES,
   POSE_PRESETS,
   BACKGROUND_PRESETS,
-  ELEMENT_THEMES,
-  RARITY_MODIFIERS,
-  buildPromptFromSelections,
-  DEFAULT_PARAMS
+  DEFAULT_PARAMS,
+  NEGATIVE_PROMPT_TEMPLATE
 } from '../../../config/characterPrompts.config';
 import { SAMPLER_NAMES, RECOMMENDED_MODELS } from '../../../services/stableHordeService';
 import { useToast } from '../../../context/ToastContext';
@@ -158,26 +155,6 @@ const Label = styled.label`
   color: ${theme.colors.textSecondary};
 `;
 
-const Input = styled.input`
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  background: ${theme.colors.backgroundTertiary};
-  border: 1px solid ${theme.colors.surfaceBorder};
-  border-radius: ${theme.radius.md};
-  color: ${theme.colors.text};
-  font-size: ${theme.fontSizes.sm};
-  transition: all 0.2s ease;
-
-  &:focus {
-    outline: none;
-    border-color: ${theme.colors.primary};
-    box-shadow: 0 0 0 2px ${theme.colors.primary}20;
-  }
-
-  &::placeholder {
-    color: ${theme.colors.textSecondary};
-  }
-`;
-
 const Select = styled.select`
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: ${theme.colors.backgroundTertiary};
@@ -202,7 +179,7 @@ const TextArea = styled.textarea`
   border-radius: ${theme.radius.md};
   color: ${theme.colors.text};
   font-size: ${theme.fontSizes.sm};
-  min-height: 80px;
+  min-height: 100px;
   resize: vertical;
   transition: all 0.2s ease;
 
@@ -310,11 +287,6 @@ const PromptText = styled.div`
   color: ${theme.colors.text};
   line-height: 1.5;
   word-break: break-word;
-
-  .highlight {
-    color: ${theme.colors.primary};
-    font-weight: ${theme.fontWeights.medium};
-  }
 `;
 
 const CharCount = styled.span`
@@ -322,15 +294,84 @@ const CharCount = styled.span`
   color: ${props => props.$warning ? theme.colors.warning : theme.colors.textSecondary};
 `;
 
+const GenerateButton = styled.button`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: ${theme.spacing.sm};
+  padding: ${theme.spacing.md} ${theme.spacing.xl};
+  background: ${props => props.$isGenerating
+    ? `${theme.colors.primary}80`
+    : `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`
+  };
+  border: none;
+  border-radius: ${theme.radius.lg};
+  color: white;
+  font-size: ${theme.fontSizes.md};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
+  transition: all 0.2s ease;
+  opacity: ${props => props.disabled ? 0.6 : 1};
+
+  &:hover:not(:disabled) {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 20px ${theme.colors.primary}40;
+  }
+
+  svg {
+    animation: ${props => props.$isGenerating ? 'spin 2s linear infinite' : 'none'};
+  }
+
+  @keyframes spin {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+`;
+
+// ===========================================
+// HELPER FUNCTIONS
+// ===========================================
+
+/**
+ * Build a prompt from the selected options
+ */
+const buildPrompt = (options) => {
+  const parts = [];
+
+  // Add custom prompt first (main description)
+  if (options.customPrompt?.trim()) {
+    parts.push(options.customPrompt.trim());
+  }
+
+  // Art style
+  const artStyle = ART_STYLES[options.artStyle];
+  if (artStyle?.suffix) {
+    parts.push(artStyle.suffix);
+  }
+
+  // Pose
+  const pose = POSE_PRESETS[options.pose];
+  if (pose?.suffix) {
+    parts.push(pose.suffix);
+  }
+
+  // Background
+  const background = BACKGROUND_PRESETS[options.background];
+  if (background?.suffix) {
+    parts.push(background.suffix);
+  }
+
+  // Base quality tags
+  parts.push('high quality', 'detailed', 'professional artwork');
+
+  return parts.filter(Boolean).join(', ');
+};
+
 // ===========================================
 // COMPONENT
 // ===========================================
 
 const PromptBuilder = ({
-  characterName,
-  characterClass,
-  rarity,
-  onChange,
   onGenerate,
   isGenerating,
   availableModels
@@ -339,21 +380,16 @@ const PromptBuilder = ({
 
   // Expanded sections state
   const [expandedSections, setExpandedSections] = useState({
-    character: true,
     style: true,
     advanced: false
   });
 
   // Prompt options state
   const [options, setOptions] = useState({
-    characterName: characterName || '',
-    characterClass: characterClass || '',
-    rarity: rarity || 'common',
+    customPrompt: '',
     artStyle: 'anime',
     pose: 'portrait',
     background: 'simple',
-    element: 'none',
-    customPrompt: '',
     models: RECOMMENDED_MODELS.slice(0, 3)
   });
 
@@ -367,19 +403,9 @@ const PromptBuilder = ({
     sampler_name: 'k_euler_a'
   });
 
-  // Update options when props change
-  React.useEffect(() => {
-    setOptions(prev => ({
-      ...prev,
-      characterName: characterName || prev.characterName,
-      characterClass: characterClass || prev.characterClass,
-      rarity: rarity || prev.rarity
-    }));
-  }, [characterName, characterClass, rarity]);
-
   // Build preview prompt
   const previewPrompt = useMemo(() => {
-    return buildPromptFromSelections(options);
+    return buildPrompt(options);
   }, [options]);
 
   // Toggle section
@@ -392,49 +418,46 @@ const PromptBuilder = ({
 
   // Update option
   const updateOption = useCallback((key, value) => {
-    setOptions(prev => {
-      const newOptions = { ...prev, [key]: value };
-      onChange?.(newOptions);
-      return newOptions;
-    });
-  }, [onChange]);
+    setOptions(prev => ({ ...prev, [key]: value }));
+  }, []);
 
   // Update param
   const updateParam = useCallback((key, value) => {
     setParams(prev => ({ ...prev, [key]: value }));
   }, []);
 
-  // Randomize selections
+  // Randomize style selections
   const randomize = useCallback(() => {
     const artStyleKeys = Object.keys(ART_STYLES);
     const poseKeys = Object.keys(POSE_PRESETS);
     const bgKeys = Object.keys(BACKGROUND_PRESETS);
-    const elementKeys = Object.keys(ELEMENT_THEMES);
 
     setOptions(prev => ({
       ...prev,
       artStyle: artStyleKeys[Math.floor(Math.random() * artStyleKeys.length)],
       pose: poseKeys[Math.floor(Math.random() * poseKeys.length)],
-      background: bgKeys[Math.floor(Math.random() * bgKeys.length)],
-      element: elementKeys[Math.floor(Math.random() * elementKeys.length)]
+      background: bgKeys[Math.floor(Math.random() * bgKeys.length)]
     }));
   }, []);
 
   // Reset to defaults
   const reset = useCallback(() => {
     setOptions({
-      characterName: characterName || '',
-      characterClass: characterClass || '',
-      rarity: rarity || 'common',
+      customPrompt: '',
       artStyle: 'anime',
       pose: 'portrait',
       background: 'simple',
-      element: 'none',
-      customPrompt: '',
       models: RECOMMENDED_MODELS.slice(0, 3)
     });
-    setParams(DEFAULT_PARAMS);
-  }, [characterName, characterClass, rarity]);
+    setParams({
+      ...DEFAULT_PARAMS,
+      width: 512,
+      height: 768,
+      steps: 30,
+      cfg_scale: 7,
+      sampler_name: 'k_euler_a'
+    });
+  }, []);
 
   // Copy prompt
   const copyPrompt = useCallback(async () => {
@@ -449,10 +472,12 @@ const PromptBuilder = ({
   // Handle generate
   const handleGenerate = useCallback(() => {
     onGenerate?.({
-      ...options,
+      prompt: previewPrompt,
+      negative_prompt: NEGATIVE_PROMPT_TEMPLATE,
+      models: options.models,
       params
     });
-  }, [options, params, onGenerate]);
+  }, [previewPrompt, options.models, params, onGenerate]);
 
   // Get models to display
   const displayModels = availableModels?.length > 0
@@ -480,87 +505,23 @@ const PromptBuilder = ({
         </HeaderActions>
       </BuilderHeader>
 
-      {/* Character Section */}
-      <Section>
-        <SectionHeader onClick={() => toggleSection('character')}>
-          <SectionTitle>
-            <FaUser aria-hidden="true" />
-            Character Details
-          </SectionTitle>
-          {expandedSections.character ? <FaChevronUp /> : <FaChevronDown />}
-        </SectionHeader>
-
-        <AnimatePresence>
-          {expandedSections.character && (
-            <SectionContent
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-            >
-              <FormRow>
-                <FormGroup>
-                  <Label htmlFor="char-name">Character Name</Label>
-                  <Input
-                    id="char-name"
-                    type="text"
-                    value={options.characterName}
-                    onChange={e => updateOption('characterName', e.target.value)}
-                    placeholder="Enter character name"
-                  />
-                </FormGroup>
-                <FormGroup>
-                  <Label htmlFor="char-class">Class / Type</Label>
-                  <Input
-                    id="char-class"
-                    type="text"
-                    value={options.characterClass}
-                    onChange={e => updateOption('characterClass', e.target.value)}
-                    placeholder="e.g., warrior, mage, rogue"
-                  />
-                </FormGroup>
-              </FormRow>
-
-              <FormRow>
-                <FormGroup>
-                  <Label htmlFor="char-rarity">Rarity</Label>
-                  <Select
-                    id="char-rarity"
-                    value={options.rarity}
-                    onChange={e => updateOption('rarity', e.target.value)}
-                  >
-                    {Object.keys(RARITY_MODIFIERS).map(key => (
-                      <option key={key} value={key}>
-                        {key.charAt(0).toUpperCase() + key.slice(1)}
-                      </option>
-                    ))}
-                  </Select>
-                </FormGroup>
-                <FormGroup>
-                  <Label htmlFor="char-element">Element</Label>
-                  <Select
-                    id="char-element"
-                    value={options.element}
-                    onChange={e => updateOption('element', e.target.value)}
-                  >
-                    {Object.entries(ELEMENT_THEMES).map(([key, theme]) => (
-                      <option key={key} value={key}>
-                        {theme.label}
-                      </option>
-                    ))}
-                  </Select>
-                </FormGroup>
-              </FormRow>
-            </SectionContent>
-          )}
-        </AnimatePresence>
-      </Section>
+      {/* Main Prompt */}
+      <FormGroup>
+        <Label htmlFor="custom-prompt">Describe what you want to generate</Label>
+        <TextArea
+          id="custom-prompt"
+          value={options.customPrompt}
+          onChange={e => updateOption('customPrompt', e.target.value)}
+          placeholder="e.g., a cute anime girl with blue hair, wearing a school uniform, smiling"
+        />
+      </FormGroup>
 
       {/* Style Section */}
       <Section>
         <SectionHeader onClick={() => toggleSection('style')}>
           <SectionTitle>
             <FaImage aria-hidden="true" />
-            Style & Composition
+            Style Options
           </SectionTitle>
           {expandedSections.style ? <FaChevronUp /> : <FaChevronDown />}
         </SectionHeader>
@@ -615,16 +576,6 @@ const PromptBuilder = ({
                     </PresetButton>
                   ))}
                 </PresetGrid>
-              </FormGroup>
-
-              <FormGroup>
-                <Label htmlFor="custom-prompt">Custom Additions</Label>
-                <TextArea
-                  id="custom-prompt"
-                  value={options.customPrompt}
-                  onChange={e => updateOption('customPrompt', e.target.value)}
-                  placeholder="Add custom prompt text (optional)"
-                />
               </FormGroup>
             </SectionContent>
           )}
@@ -752,7 +703,7 @@ const PromptBuilder = ({
       {/* Prompt Preview */}
       <PromptPreview>
         <PromptPreviewHeader>
-          <PromptPreviewLabel>Prompt Preview</PromptPreviewLabel>
+          <PromptPreviewLabel>Final Prompt</PromptPreviewLabel>
           <div style={{ display: 'flex', gap: theme.spacing.sm, alignItems: 'center' }}>
             <CharCount $warning={previewPrompt.length > 500}>
               {previewPrompt.length} chars
@@ -763,14 +714,14 @@ const PromptBuilder = ({
           </div>
         </PromptPreviewHeader>
         <PromptText>
-          {previewPrompt || <span style={{ color: theme.colors.textSecondary }}>Fill in character details to see prompt</span>}
+          {previewPrompt || <span style={{ color: theme.colors.textSecondary }}>Enter a description above to see the prompt</span>}
         </PromptText>
       </PromptPreview>
 
       {/* Generate Button */}
       <GenerateButton
         onClick={handleGenerate}
-        disabled={isGenerating || !options.characterName}
+        disabled={isGenerating || !options.customPrompt?.trim()}
         $isGenerating={isGenerating}
       >
         <FaMagic aria-hidden="true" />
@@ -780,50 +731,7 @@ const PromptBuilder = ({
   );
 };
 
-// Generate button styled component
-const GenerateButton = styled.button`
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.sm};
-  padding: ${theme.spacing.md} ${theme.spacing.xl};
-  background: ${props => props.$isGenerating
-    ? `${theme.colors.primary}80`
-    : `linear-gradient(135deg, ${theme.colors.primary}, ${theme.colors.secondary})`
-  };
-  border: none;
-  border-radius: ${theme.radius.lg};
-  color: white;
-  font-size: ${theme.fontSizes.md};
-  font-weight: ${theme.fontWeights.semibold};
-  cursor: ${props => props.disabled ? 'not-allowed' : 'pointer'};
-  transition: all 0.2s ease;
-  opacity: ${props => props.disabled ? 0.6 : 1};
-
-  &:hover:not(:disabled) {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 20px ${theme.colors.primary}40;
-  }
-
-  svg {
-    animation: ${props => props.$isGenerating ? 'spin 2s linear infinite' : 'none'};
-  }
-
-  @keyframes spin {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
-  }
-`;
-
 PromptBuilder.propTypes = {
-  /** Pre-filled character name */
-  characterName: PropTypes.string,
-  /** Pre-filled character class */
-  characterClass: PropTypes.string,
-  /** Pre-filled rarity */
-  rarity: PropTypes.string,
-  /** Handler for option changes */
-  onChange: PropTypes.func,
   /** Handler for generate button */
   onGenerate: PropTypes.func,
   /** Whether generation is in progress */
@@ -836,10 +744,6 @@ PromptBuilder.propTypes = {
 };
 
 PromptBuilder.defaultProps = {
-  characterName: '',
-  characterClass: '',
-  rarity: 'common',
-  onChange: null,
   onGenerate: null,
   isGenerating: false,
   availableModels: []
