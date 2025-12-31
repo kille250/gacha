@@ -4,6 +4,10 @@ import { MdClose, MdSettings } from 'react-icons/md';
 import { useTranslation } from 'react-i18next';
 import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../design-system';
 import {
+  IconAreaLake, IconFishing, IconClock, IconSparkleSymbol,
+  IconStarFilled, IconLocked, IconPoints
+} from '../../../constants/icons';
+import {
   CozyModal, ModalTitle, CloseButton,
   EquipmentTabs, EquipmentTab, EquipmentList, EquipmentCard,
   EquipmentIcon, EquipmentInfo, EquipmentName, EquipmentDesc, EquipmentBonus,
@@ -50,17 +54,17 @@ export const EquipmentModal = ({
             <ModalBody>
               {/* Tab Selector */}
               <EquipmentTabs>
-                <EquipmentTab 
-                  $active={equipmentTab === 'areas'} 
+                <EquipmentTab
+                  $active={equipmentTab === 'areas'}
                   onClick={() => setEquipmentTab('areas')}
                 >
-                  🏞️ {t('fishing.areas') || 'Areas'}
+                  <IconAreaLake /> {t('fishing.areas') || 'Areas'}
                 </EquipmentTab>
-                <EquipmentTab 
-                  $active={equipmentTab === 'rods'} 
+                <EquipmentTab
+                  $active={equipmentTab === 'rods'}
                   onClick={() => setEquipmentTab('rods')}
                 >
-                  🎣 {t('fishing.rods') || 'Rods'}
+                  <IconFishing /> {t('fishing.rods') || 'Rods'}
                 </EquipmentTab>
               </EquipmentTabs>
               
@@ -96,7 +100,7 @@ export const EquipmentModal = ({
                           disabled={equipmentActionLoading || !area.canUnlock}
                           $canAfford={userPoints >= area.unlockCost}
                         >
-                          <span>🪙 {area.unlockCost.toLocaleString()}</span>
+                          <span><IconPoints /> {area.unlockCost.toLocaleString()}</span>
                           {area.unlockRank && <span style={{ fontSize: '10px', opacity: 0.8 }}>{t('fishing.rankRequired', { rank: area.unlockRank })}</span>}
                         </UnlockButton>
                       )}
@@ -120,9 +124,9 @@ export const EquipmentModal = ({
                         <EquipmentName>{rod.name}</EquipmentName>
                         <EquipmentDesc>{rod.description}</EquipmentDesc>
                         <RodBonuses>
-                          {rod.timingBonus > 0 && <span>⏱️ +{rod.timingBonus}ms</span>}
-                          {rod.rarityBonus > 0 && <span>✨ +{Math.round(rod.rarityBonus * 100)}%</span>}
-                          {rod.perfectBonus > 0 && <span>⭐ +{Math.round(rod.perfectBonus * 100)}%</span>}
+                          {rod.timingBonus > 0 && <span><IconClock /> +{rod.timingBonus}ms</span>}
+                          {rod.rarityBonus > 0 && <span><IconSparkleSymbol /> +{Math.round(rod.rarityBonus * 100)}%</span>}
+                          {rod.perfectBonus > 0 && <span><IconStarFilled /> +{Math.round(rod.perfectBonus * 100)}%</span>}
                         </RodBonuses>
                       </EquipmentInfo>
                       {rod.equipped ? (
@@ -135,13 +139,13 @@ export const EquipmentModal = ({
                           {equipmentActionLoading ? '...' : (t('fishing.equip') || 'Equip')}
                         </SelectButton>
                       ) : rod.locked ? (
-                        <LockedBadge>🔒 {t('fishing.prestigeRequired', { level: rod.requiresPrestige })}</LockedBadge>
+                        <LockedBadge><IconLocked /> {t('fishing.prestigeRequired', { level: rod.requiresPrestige })}</LockedBadge>
                       ) : (
-                        <BuyButton 
+                        <BuyButton
                           onClick={() => onBuyRod(rod.id)}
                           disabled={equipmentActionLoading || !rod.canBuy}
                         >
-                          {equipmentActionLoading ? '...' : `🪙 ${rod.cost.toLocaleString()}`}
+                          {equipmentActionLoading ? '...' : <><IconPoints /> {rod.cost.toLocaleString()}</>}
                         </BuyButton>
                       )}
                     </EquipmentCard>

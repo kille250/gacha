@@ -4,6 +4,7 @@ import { MdClose, MdEmojiEvents, MdAutorenew, MdCheckCircle } from 'react-icons/
 import { FaFish } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../design-system';
+import { IconPoints, IconTicket, IconPremiumTicket } from '../../../constants/icons';
 import {
   CozyModal, ModalTitle, CloseButton, TradingLoadingState,
   ChallengesList, ChallengeCard, ChallengeHeader, ChallengeName, DifficultyBadge,
@@ -73,9 +74,9 @@ export const ChallengesModal = ({
                         <ProgressText>{challenge.progress}/{challenge.target}</ProgressText>
                       </ChallengeProgress>
                       <ChallengeReward>
-                        {challenge.reward.points && <span>🪙 {challenge.reward.points}</span>}
-                        {challenge.reward.rollTickets && <span>🎟️ {challenge.reward.rollTickets}</span>}
-                        {challenge.reward.premiumTickets && <span>🌟 {challenge.reward.premiumTickets}</span>}
+                        {challenge.reward.points && <span><IconPoints /> {challenge.reward.points}</span>}
+                        {challenge.reward.rollTickets && <span><IconTicket /> {challenge.reward.rollTickets}</span>}
+                        {challenge.reward.premiumTickets && <span><IconPremiumTicket /> {challenge.reward.premiumTickets}</span>}
                       </ChallengeReward>
                       {challenge.progress >= challenge.target && !challenge.completed && (
                         <ClaimButton 

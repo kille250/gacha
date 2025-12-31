@@ -20,8 +20,8 @@ import { theme } from '../design-system';
 export function formatChallengeReward(challenge) {
   const rewardParts = [];
   if (challenge.reward?.points) rewardParts.push(`${challenge.reward.points} points`);
-  if (challenge.reward?.rollTickets) rewardParts.push(`${challenge.reward.rollTickets} 🎟️`);
-  if (challenge.reward?.premiumTickets) rewardParts.push(`${challenge.reward.premiumTickets} 🌟`);
+  if (challenge.reward?.rollTickets) rewardParts.push(`${challenge.reward.rollTickets} tickets`);
+  if (challenge.reward?.premiumTickets) rewardParts.push(`${challenge.reward.premiumTickets} premium tickets`);
   return rewardParts.length > 0 ? ` +${rewardParts.join(', ')}` : '';
 }
 
@@ -53,7 +53,7 @@ export function useFishingNotifications() {
     challenges.forEach(ch => {
       const rewardStr = formatChallengeReward(ch);
       const challengeName = t(`fishing.challengeNames.${ch.id}`) || ch.id;
-      showNotification(`🏆 ${t('fishing.challengeComplete')}: ${challengeName}${rewardStr}`, 'success');
+      showNotification(`${t('fishing.challengeComplete')}: ${challengeName}${rewardStr}`, 'success');
     });
   }, [t, showNotification]);
   

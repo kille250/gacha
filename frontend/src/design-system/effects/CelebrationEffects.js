@@ -102,7 +102,7 @@ const StarBurst = styled.div`
 
   &::before,
   &::after {
-    content: '✦';
+    content: '\\2726';
     position: absolute;
     font-size: 40px;
     color: ${props => props.$color || theme.colors.featured};

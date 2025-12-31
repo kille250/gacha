@@ -13,6 +13,7 @@
 import React from 'react';
 import styled, { keyframes } from 'styled-components';
 import { theme } from '../../../design-system';
+import { IconSparkleSymbol } from '../../../constants/icons';
 
 const spin = keyframes`
   to { transform: rotate(360deg); }
@@ -292,7 +293,7 @@ const LoadingBar = styled.div`
   }
 `;
 
-export const LogoSpinner = ({ icon = '✦', label }) => (
+export const LogoSpinner = ({ icon = <IconSparkleSymbol size={48} />, label }) => (
   <LogoSpinnerWrapper>
     <LogoPulse>{icon}</LogoPulse>
     <LoadingBar />

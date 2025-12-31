@@ -248,15 +248,15 @@ export class CollectionCardLayer {
     const textAreaTop = -this.cardHeight / 2 + imageSize + this.borderWidth + 12;
     const textX = -this.cardWidth / 2 + 16;
 
-    // Rarity symbol
+    // Rarity symbol - using plain ASCII symbols for PixiJS text compatibility
     const raritySymbols = {
-      common: '●',
-      uncommon: '◆',
-      rare: '★',
-      epic: '✦',
-      legendary: '✧',
+      common: '*',
+      uncommon: '+',
+      rare: '**',
+      epic: '***',
+      legendary: '****',
     };
-    const symbol = raritySymbols[this.rarity] || '●';
+    const symbol = raritySymbols[this.rarity] || '*';
 
     // Name text with rarity symbol
     this.nameText = new Text({

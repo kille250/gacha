@@ -7,6 +7,7 @@
 import React from 'react';
 import { AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
+import { IconFish } from '../../../constants/icons';
 
 import {
   AutofishBubblesContainer,
@@ -42,7 +43,7 @@ export const FishingAutofishBubbles = ({ autofishLog }) => {
             <BubbleContent>
               <BubbleFishName>{entry.fish?.name}</BubbleFishName>
               <BubbleReward $success={entry.success}>
-                {entry.success ? '+1 🐟' : t('fishing.escaped')}
+                {entry.success ? <span>+1 <IconFish /></span> : t('fishing.escaped')}
               </BubbleReward>
             </BubbleContent>
           </AutofishBubble>

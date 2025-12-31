@@ -12,6 +12,7 @@ import { MdAutorenew } from 'react-icons/md';
 import { FaCoins } from 'react-icons/fa';
 import styled from 'styled-components';
 import { theme, useReducedMotion } from '../../../design-system';
+import { IconArrowUp } from '../../../constants/icons';
 
 import {
   UpgradesSection,
@@ -68,7 +69,7 @@ const DojoUpgradesSection = ({
 
   return (
     <UpgradesSection role="region" aria-label={t('dojo.upgrades')}>
-      <UpgradesTitle>⬆️ {t('dojo.upgrades')}</UpgradesTitle>
+      <UpgradesTitle><IconArrowUp aria-hidden="true" /> {t('dojo.upgrades')}</UpgradesTitle>
       <UpgradesGrid>
         {availableUpgrades.map((upgrade, idx) => {
           const isUpgrading = upgrading === (upgrade.type + (upgrade.rarity || ''));

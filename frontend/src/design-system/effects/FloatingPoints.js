@@ -15,6 +15,7 @@ import { createPortal } from 'react-dom';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { theme } from '../tokens';
+import { IconSparkleSymbol } from '../../constants/icons';
 
 // Float up and fade out animation
 const floatUp = keyframes`
@@ -122,8 +123,8 @@ const FloatingPoint = ({ id, value, x, y, type, onComplete }) => {
     >
       {!isNegative && (
         <>
-          <Sparkle>✦</Sparkle>
-          <Sparkle>✦</Sparkle>
+          <Sparkle><IconSparkleSymbol size={12} /></Sparkle>
+          <Sparkle><IconSparkleSymbol size={12} /></Sparkle>
         </>
       )}
       {prefix}{displayValue.toLocaleString()}

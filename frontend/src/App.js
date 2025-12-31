@@ -13,6 +13,7 @@ import { theme } from './design-system';
 import { CelebrationProvider, FloatingPointsProvider } from './design-system/effects';
 import { initVisibilityHandler, enableCacheDebugging } from './cache';
 import { ErrorBoundary, MainLayout } from './components/UI';
+import { IconSparkleSymbol } from './constants/icons';
 
 // i18n
 import './i18n';
@@ -69,7 +70,7 @@ const PageLoader = () => (
       animate={{ opacity: 1, scale: 1 }}
       transition={{ duration: 0.4, ease: [0.25, 0.1, 0.25, 1] }}
     >
-      <LoaderLogo>✦</LoaderLogo>
+      <LoaderLogo><IconSparkleSymbol /></LoaderLogo>
       <LoaderRing />
     </LoaderBrand>
     <LoaderText

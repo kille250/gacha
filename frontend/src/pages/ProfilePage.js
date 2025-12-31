@@ -25,6 +25,7 @@ import {
   MdLanguage
 } from 'react-icons/md';
 import { FaStar } from 'react-icons/fa';
+import { IconPoints, IconAdultContent } from '../constants/icons';
 import { AuthContext } from '../context/AuthContext';
 import { springs, Container, Modal, PageTransition } from '../design-system';
 import { LanguageSelector } from '../components/Navigation';
@@ -131,7 +132,7 @@ const ProfilePage = () => {
               <Username>{user?.username || 'User'}</Username>
               <BadgeRow>
                 <PointsBadge>
-                  <span>🪙</span>
+                  <span><IconPoints /></span>
                   <span>{user?.points?.toLocaleString() || 0}</span>
                 </PointsBadge>
               </BadgeRow>
@@ -230,7 +231,7 @@ const ProfilePage = () => {
               disabled={isTogglingR18}
               type="button"
             >
-              <SettingsIcon>🔞</SettingsIcon>
+              <SettingsIcon><IconAdultContent /></SettingsIcon>
               <SettingsLabel>
                 <span>{t('profile.r18Content')}</span>
                 <SettingsHint>

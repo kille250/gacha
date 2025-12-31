@@ -20,7 +20,7 @@ import { useRarity } from '../context/RarityContext';
 import { Container, motionVariants, LoadingState, EmptyState, PageTransition } from '../design-system';
 
 // Icon Constants
-import { IconSearch, IconCombat } from '../constants/icons';
+import { IconSearch, IconCombat, IconDiamond, IconArrowUp, IconStarFilled } from '../constants/icons';
 
 // Extracted styles
 import {
@@ -358,15 +358,15 @@ const CollectionPage = () => {
               </LegendHeader>
               <LegendItems>
                 <LegendItem>
-                  <LegendIcon $type="shard" aria-hidden="true">◆</LegendIcon>
+                  <LegendIcon $type="shard" aria-hidden="true"><IconDiamond /></LegendIcon>
                   <span>{t('collection.shardsFromDuplicates') || 'Shards from duplicates'}</span>
                 </LegendItem>
                 <LegendItem>
-                  <LegendIcon $type="levelup" aria-hidden="true">⬆</LegendIcon>
+                  <LegendIcon $type="levelup" aria-hidden="true"><IconArrowUp /></LegendIcon>
                   <span>{t('collection.readyToLevelUp') || 'Ready to level up!'}</span>
                 </LegendItem>
                 <LegendItem>
-                  <LegendIcon $type="max" aria-hidden="true">★</LegendIcon>
+                  <LegendIcon $type="max" aria-hidden="true"><IconStarFilled /></LegendIcon>
                   <span>{t('collection.maxLevel') || 'Max level (Lv.5)'}</span>
                 </LegendItem>
               </LegendItems>

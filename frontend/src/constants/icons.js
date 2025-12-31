@@ -70,7 +70,37 @@ import {
   FaSkull,
   FaMagic,
 } from 'react-icons/fa';
-import { GiCastle, GiCrossedSwords, GiFishingPole, GiSpermWhale, GiRollingDiceCup } from 'react-icons/gi';
+import {
+  GiCastle,
+  GiCrossedSwords,
+  GiFishingPole,
+  GiSpermWhale,
+  GiRollingDiceCup,
+  GiDiamonds,
+  GiUpgrade,
+  GiQueenCrown,
+  GiMountainRoad,
+  GiMountains,
+  GiWaves,
+  GiMoon,
+  GiTropicalFish,
+  GiDoubleFish,
+  GiFlatfish,
+  GiSharkFin,
+} from 'react-icons/gi';
+import {
+  IoSparkles,
+  IoCheckmarkCircle,
+  IoCheckmark,
+  IoClose,
+  IoRefresh,
+  IoFlame,
+  IoWarning,
+} from 'react-icons/io5';
+import { TbDiamond, TbDiamondFilled } from 'react-icons/tb';
+import { RiVipCrownFill, RiMedalFill, RiMedal2Fill } from 'react-icons/ri';
+import { BiSolidUpArrow } from 'react-icons/bi';
+import { MdGrade, Md18UpRating } from 'react-icons/md';
 
 // ==================== CURRENCY & ECONOMY ====================
 
@@ -309,6 +339,88 @@ export const IconMap = (props) => <FaGlobe {...props} />;
 
 /** Target/precision icon */
 export const IconTarget = (props) => <FaBullseye {...props} />;
+
+// ==================== SYMBOL REPLACEMENTS ====================
+// Icons that replace Unicode symbols (checkmarks, stars, arrows, etc.)
+
+/** Checkmark - replaces ✓ */
+export const IconCheckmark = (props) => <IoCheckmark {...props} />;
+
+/** Checkmark circle - replaces ✓ in badges */
+export const IconCheckmarkCircle = (props) => <IoCheckmarkCircle {...props} />;
+
+/** Close/X mark - replaces ✕ */
+export const IconCrossmark = (props) => <IoClose {...props} />;
+
+/** Up arrow - replaces ⬆ */
+export const IconArrowUp = (props) => <BiSolidUpArrow {...props} />;
+
+/** Diamond/shard - replaces ◆ */
+export const IconDiamond = (props) => <TbDiamondFilled {...props} />;
+
+/** Sparkle/star - replaces ✦ */
+export const IconSparkleSymbol = (props) => <IoSparkles {...props} />;
+
+/** Star filled - replaces ★ */
+export const IconStarFilled = (props) => <FaStar {...props} />;
+
+/** Crown - replaces ♛ */
+export const IconCrownSymbol = (props) => <RiVipCrownFill {...props} />;
+
+/** Flame/fire - replaces fire emoji */
+export const IconFlame = (props) => <IoFlame {...props} />;
+
+/** Warning triangle - replaces warning emoji */
+export const IconWarningTriangle = (props) => <IoWarning {...props} />;
+
+/** R18/adult content icon - replaces 🔞 */
+export const IconAdultContent = (props) => <Md18UpRating {...props} />;
+
+/** Grade/star outline - replaces ✧ */
+export const IconStarOutline = (props) => <MdGrade {...props} />;
+
+/** Bronze medal */
+export const IconBronzeMedal = (props) => <RiMedal2Fill style={{ color: '#CD7F32' }} {...props} />;
+
+/** Silver medal */
+export const IconSilverMedal = (props) => <RiMedal2Fill style={{ color: '#C0C0C0' }} {...props} />;
+
+/** Gold medal */
+export const IconGoldMedal = (props) => <RiMedalFill style={{ color: '#FFD700' }} {...props} />;
+
+/** Refresh/sync - replaces refresh emoji */
+export const IconRefresh = (props) => <IoRefresh {...props} />;
+
+// ==================== FISHING RARITY ICONS ====================
+
+/** Common fish icon */
+export const IconFishCommon = (props) => <FaFish {...props} />;
+
+/** Uncommon fish icon */
+export const IconFishUncommon = (props) => <GiTropicalFish {...props} />;
+
+/** Rare fish icon */
+export const IconFishRare = (props) => <GiDoubleFish {...props} />;
+
+/** Epic fish icon */
+export const IconFishEpic = (props) => <GiSharkFin {...props} />;
+
+/** Legendary fish icon */
+export const IconFishLegendary = (props) => <GiSpermWhale {...props} />;
+
+// ==================== FISHING AREA ICONS ====================
+
+/** Lake/river area */
+export const IconAreaLake = (props) => <GiMountainRoad {...props} />;
+
+/** Mountain lake area */
+export const IconAreaMountain = (props) => <GiMountains {...props} />;
+
+/** Ocean area */
+export const IconAreaOcean = (props) => <GiWaves {...props} />;
+
+/** Night/deep area */
+export const IconAreaDeep = (props) => <GiMoon {...props} />;
 
 // ==================== HELPER: Category Icons Map ====================
 

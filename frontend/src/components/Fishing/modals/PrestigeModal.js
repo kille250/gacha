@@ -5,6 +5,11 @@ import { FaFish } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { ModalOverlay, ModalHeader, ModalBody, motionVariants } from '../../../design-system';
 import {
+  IconFishing, IconClock, IconSparkleSymbol, IconStarFilled,
+  IconRefresh, IconPremiumTicket, IconPity, IconCheckmark,
+  IconLocked, IconTrophy, IconFire, IconParty
+} from '../../../constants/icons';
+import {
   CozyModal, ModalTitle, CloseButton, TradingLoadingState,
   PrestigeCurrentLevel, PrestigeLevelEmoji, PrestigeLevelInfo,
   PrestigeLevelTitle, PrestigeLevelSubtitle,
@@ -44,7 +49,7 @@ export const PrestigeModal = ({
           <CozyModal variants={motionVariants.modal}>
             <ModalHeader>
               <ModalTitle>
-                <span style={{ marginRight: '8px' }}>{prestigeData?.currentEmoji || '🎣'}</span>
+                <span style={{ marginRight: '8px' }}>{prestigeData?.currentEmoji || <IconFishing />}</span>
                 {t('fishing.prestige') || 'Prestige'}
               </ModalTitle>
               <CloseButton onClick={onClose}><MdClose /></CloseButton>
@@ -54,11 +59,11 @@ export const PrestigeModal = ({
                 <>
                   {/* Current Level Display */}
                   <PrestigeCurrentLevel $level={prestigeData.currentLevel}>
-                    <PrestigeLevelEmoji>{prestigeData.currentEmoji || '🎣'}</PrestigeLevelEmoji>
+                    <PrestigeLevelEmoji>{prestigeData.currentEmoji || <IconFishing />}</PrestigeLevelEmoji>
                     <PrestigeLevelInfo>
                       <PrestigeLevelTitle>{prestigeData.currentName || t('fishing.noviceAngler')}</PrestigeLevelTitle>
                       <PrestigeLevelSubtitle>
-                        {prestigeData.currentLevel > 0 
+                        {prestigeData.currentLevel > 0
                           ? t('fishing.prestigeLevel', { level: prestigeData.currentLevel, max: 5 }) || `Prestige Level ${prestigeData.currentLevel} of 5`
                           : t('fishing.notPrestigedYet') || 'Not prestiged yet'}
                       </PrestigeLevelSubtitle>
@@ -72,37 +77,37 @@ export const PrestigeModal = ({
                       <PrestigeBonusList>
                         {prestigeData.currentBonuses.timingBonus > 0 && (
                           <PrestigeBonusItem>
-                            <span>⏱️</span>
+                            <IconClock />
                             <span>+{prestigeData.currentBonuses.timingBonus}ms {t('fishing.timingWindow') || 'timing window'}</span>
                           </PrestigeBonusItem>
                         )}
                         {prestigeData.currentBonuses.rarityBonus > 0 && (
                           <PrestigeBonusItem>
-                            <span>✨</span>
+                            <IconSparkleSymbol />
                             <span>+{Math.round(prestigeData.currentBonuses.rarityBonus * 100)}% {t('fishing.rareChance') || 'rare fish chance'}</span>
                           </PrestigeBonusItem>
                         )}
                         {prestigeData.currentBonuses.autofishLimit > 0 && (
                           <PrestigeBonusItem>
-                            <span>🔄</span>
+                            <IconRefresh />
                             <span>+{prestigeData.currentBonuses.autofishLimit} {t('fishing.dailyAutofish') || 'daily autofish'}</span>
                           </PrestigeBonusItem>
                         )}
                         {prestigeData.currentBonuses.premiumTicketBonus > 0 && (
                           <PrestigeBonusItem>
-                            <span>🌟</span>
+                            <IconPremiumTicket />
                             <span>+{prestigeData.currentBonuses.premiumTicketBonus} {t('fishing.dailyPremiumTickets') || 'daily premium tickets'}</span>
                           </PrestigeBonusItem>
                         )}
                         {prestigeData.currentBonuses.autofishPerfectChance > 0 && (
                           <PrestigeBonusItem>
-                            <span>⭐</span>
+                            <IconStarFilled />
                             <span>{Math.round(prestigeData.currentBonuses.autofishPerfectChance * 100)}% {t('fishing.autofishPerfect') || 'autofish perfect chance'}</span>
                           </PrestigeBonusItem>
                         )}
                         {prestigeData.currentBonuses.pityReduction > 0 && (
                           <PrestigeBonusItem>
-                            <span>🐋</span>
+                            <IconPity />
                             <span>{Math.round(prestigeData.currentBonuses.pityReduction * 100)}% {t('fishing.fasterPity') || 'faster pity buildup'}</span>
                           </PrestigeBonusItem>
                         )}
@@ -130,7 +135,7 @@ export const PrestigeModal = ({
                       <PrestigeRequirementsList>
                         {prestigeData.progress.progress?.catches && (
                           <PrestigeRequirementItem $complete={prestigeData.progress.progress.catches.percent >= 100}>
-                            <PrestigeReqIcon>{prestigeData.progress.progress.catches.percent >= 100 ? '✓' : '🐟'}</PrestigeReqIcon>
+                            <PrestigeReqIcon>{prestigeData.progress.progress.catches.percent >= 100 ? <IconCheckmark /> : <FaFish />}</PrestigeReqIcon>
                             <PrestigeReqContent>
                               <PrestigeReqLabel>{t('fishing.totalCatches') || 'Total Catches'}</PrestigeReqLabel>
                               <PrestigeReqBar>
@@ -144,7 +149,7 @@ export const PrestigeModal = ({
                         )}
                         {prestigeData.progress.progress?.legendaries && (
                           <PrestigeRequirementItem $complete={prestigeData.progress.progress.legendaries.percent >= 100}>
-                            <PrestigeReqIcon>{prestigeData.progress.progress.legendaries.percent >= 100 ? '✓' : '🐋'}</PrestigeReqIcon>
+                            <PrestigeReqIcon>{prestigeData.progress.progress.legendaries.percent >= 100 ? <IconCheckmark /> : <IconPity />}</PrestigeReqIcon>
                             <PrestigeReqContent>
                               <PrestigeReqLabel>{t('fishing.legendaryCatches') || 'Legendary Catches'}</PrestigeReqLabel>
                               <PrestigeReqBar>
@@ -158,7 +163,7 @@ export const PrestigeModal = ({
                         )}
                         {prestigeData.progress.progress?.perfects && (
                           <PrestigeRequirementItem $complete={prestigeData.progress.progress.perfects.percent >= 100}>
-                            <PrestigeReqIcon>{prestigeData.progress.progress.perfects.percent >= 100 ? '✓' : '⭐'}</PrestigeReqIcon>
+                            <PrestigeReqIcon>{prestigeData.progress.progress.perfects.percent >= 100 ? <IconCheckmark /> : <IconStarFilled />}</PrestigeReqIcon>
                             <PrestigeReqContent>
                               <PrestigeReqLabel>{t('fishing.perfectCatches') || 'Perfect Catches'}</PrestigeReqLabel>
                               <PrestigeReqBar>
@@ -172,7 +177,7 @@ export const PrestigeModal = ({
                         )}
                         {prestigeData.progress.progress?.streak && (
                           <PrestigeRequirementItem $complete={prestigeData.progress.progress.streak.percent >= 100}>
-                            <PrestigeReqIcon>{prestigeData.progress.progress.streak.percent >= 100 ? '✓' : '🔥'}</PrestigeReqIcon>
+                            <PrestigeReqIcon>{prestigeData.progress.progress.streak.percent >= 100 ? <IconCheckmark /> : <IconFire />}</PrestigeReqIcon>
                             <PrestigeReqContent>
                               <PrestigeReqLabel>{t('fishing.longestStreak') || 'Longest Streak'}</PrestigeReqLabel>
                               <PrestigeReqBar>
@@ -186,7 +191,7 @@ export const PrestigeModal = ({
                         )}
                         {prestigeData.progress.progress?.challenges && (
                           <PrestigeRequirementItem $complete={prestigeData.progress.progress.challenges.percent >= 100}>
-                            <PrestigeReqIcon>{prestigeData.progress.progress.challenges.percent >= 100 ? '✓' : '🏆'}</PrestigeReqIcon>
+                            <PrestigeReqIcon>{prestigeData.progress.progress.challenges.percent >= 100 ? <IconCheckmark /> : <IconTrophy />}</PrestigeReqIcon>
                             <PrestigeReqContent>
                               <PrestigeReqLabel>{t('fishing.challengesCompleted') || 'Challenges Completed'}</PrestigeReqLabel>
                               <PrestigeReqBar>
@@ -208,7 +213,7 @@ export const PrestigeModal = ({
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                         >
-                          {claimingPrestige ? '...' : (t('fishing.claimPrestige') || '🎉 Claim Prestige!')}
+                          {claimingPrestige ? '...' : <><IconParty /> {t('fishing.claimPrestige') || 'Claim Prestige!'}</>}
                         </PrestigeClaimButton>
                       )}
                     </PrestigeProgressSection>
@@ -217,7 +222,7 @@ export const PrestigeModal = ({
                   {/* Max Prestige Message */}
                   {prestigeData.progress?.maxPrestige && (
                     <PrestigeMaxLevel>
-                      <PrestigeMaxIcon>🌟</PrestigeMaxIcon>
+                      <PrestigeMaxIcon><IconPremiumTicket /></PrestigeMaxIcon>
                       <PrestigeMaxText>{t('fishing.maxPrestige') || 'Maximum Prestige Achieved!'}</PrestigeMaxText>
                       <PrestigeMaxSubtext>{t('fishing.maxPrestigeDesc') || 'You have mastered the art of fishing.'}</PrestigeMaxSubtext>
                     </PrestigeMaxLevel>
@@ -229,9 +234,9 @@ export const PrestigeModal = ({
                       <PrestigeSectionTitle>{t('fishing.allLevels') || 'All Prestige Levels'}</PrestigeSectionTitle>
                       <PrestigeLevelsList>
                         {prestigeData.allLevels.map(level => (
-                          <PrestigeLevelCard 
-                            key={level.level} 
-                            $unlocked={level.unlocked} 
+                          <PrestigeLevelCard
+                            key={level.level}
+                            $unlocked={level.unlocked}
                             $current={level.current}
                           >
                             <PrestigeLevelCardEmoji>{level.emoji}</PrestigeLevelCardEmoji>
@@ -239,8 +244,8 @@ export const PrestigeModal = ({
                               <PrestigeLevelCardName $unlocked={level.unlocked}>{level.name}</PrestigeLevelCardName>
                               {level.current && <PrestigeLevelCardBadge>{t('fishing.current') || 'Current'}</PrestigeLevelCardBadge>}
                             </PrestigeLevelCardInfo>
-                            {level.unlocked && !level.current && <PrestigeLevelCardCheck>✓</PrestigeLevelCardCheck>}
-                            {!level.unlocked && <PrestigeLevelCardLock>🔒</PrestigeLevelCardLock>}
+                            {level.unlocked && !level.current && <PrestigeLevelCardCheck><IconCheckmark /></PrestigeLevelCardCheck>}
+                            {!level.unlocked && <PrestigeLevelCardLock><IconLocked /></PrestigeLevelCardLock>}
                           </PrestigeLevelCard>
                         ))}
                       </PrestigeLevelsList>
