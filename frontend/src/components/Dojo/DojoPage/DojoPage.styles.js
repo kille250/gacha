@@ -1044,10 +1044,10 @@ export const RemoveButton = styled.button`
   position: absolute;
   top: ${theme.spacing.xs};
   right: ${theme.spacing.xs};
-  width: 32px;
-  height: 32px;
-  min-width: 32px;
-  min-height: 32px;
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  min-height: 28px;
   border-radius: 50%;
   background: rgba(0, 0, 0, 0.7);
   border: 1px solid rgba(255, 255, 255, 0.2);
@@ -1058,7 +1058,7 @@ export const RemoveButton = styled.button`
   justify-content: center;
   opacity: 0.8;
   transition: all ${theme.transitions.fast};
-  font-size: 14px;
+  font-size: 12px;
 
   @media (hover: none) {
     opacity: 1;
@@ -1078,13 +1078,24 @@ export const RemoveButton = styled.button`
     transform: scale(1.1);
   }
 
-  /* Mobile: Maintain 44px minimum touch target for WCAG compliance */
+  /* Mobile: Keep visual size small but expand touch target via padding */
   @media (max-width: ${theme.breakpoints.sm}) {
-    width: 44px;
-    height: 44px;
-    min-width: 44px;
-    min-height: 44px;
-    font-size: 14px;
+    width: 24px;
+    height: 24px;
+    min-width: 24px;
+    min-height: 24px;
+    font-size: 11px;
+    /* Extend touch target to 44px while keeping visual size small */
+    &::before {
+      content: '';
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+    }
   }
 `;
 
