@@ -1458,6 +1458,7 @@
     "sortScore": "Most Popular",
     "sortFavorites": "Most Favorited",
     "sortNewest": "Newest",
+    "sortRandom": "Random",
     "typeToSearch": "Type to search for tags...",
     "searchingVideos": "Searching...",
     "noVideosFound": "No results found for this tag",
