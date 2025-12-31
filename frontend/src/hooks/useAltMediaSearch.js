@@ -25,6 +25,7 @@ export const useAltMediaSearch = (onMediaSelected) => {
   const [altMediaResults, setAltMediaResults] = useState([]);
   const [altMediaLoading, setAltMediaLoading] = useState(false);
   const [altMediaLoadingMore, setAltMediaLoadingMore] = useState(false);
+  const [altMediaError, setAltMediaError] = useState(null);
 
   // Pagination
   const [altMediaPage, setAltMediaPage] = useState(1);
@@ -47,15 +48,20 @@ export const useAltMediaSearch = (onMediaSelected) => {
   const searchTags = useCallback(async (query) => {
     if (!query || query.length < 2) {
       setAltMediaTags([]);
+      setAltMediaError(null);
       return;
     }
 
     setAltMediaLoading(true);
+    setAltMediaError(null);
     try {
       const response = await api.get(`/anime-import/sakuga-tags?q=${encodeURIComponent(query)}`);
       setAltMediaTags(response.data.tags || []);
     } catch (err) {
       console.error('Tag search failed:', err);
+      const isTimeout = err.message?.includes('timeout') || err.code === 'ECONNABORTED';
+      setAltMediaError(isTimeout ? 'Search timed out. The tag may have too many results - try a more specific search.' : 'Failed to search tags. Please try again.');
+      setAltMediaTags([]);
     } finally {
       setAltMediaLoading(false);
     }
@@ -68,6 +74,7 @@ export const useAltMediaSearch = (onMediaSelected) => {
       setAltMediaLoading(true);
       setAltMediaResults([]);
       setAltMediaPage(1);
+      setAltMediaError(null);
     } else {
       setAltMediaLoadingMore(true);
     }
@@ -93,6 +100,8 @@ export const useAltMediaSearch = (onMediaSelected) => {
       setAltMediaPage(page);
     } catch (err) {
       console.error('Image search failed:', err);
+      const isTimeout = err.message?.includes('timeout') || err.code === 'ECONNABORTED';
+      setAltMediaError(isTimeout ? 'Search timed out. Please try again.' : 'Failed to load images. Please try again.');
     } finally {
       setAltMediaLoading(false);
       setAltMediaLoadingMore(false);
@@ -177,6 +186,7 @@ export const useAltMediaSearch = (onMediaSelected) => {
     setAltMediaHasMore(false);
     setAltMediaExtraTags('');
     setAltMediaTypeFilter('all');
+    setAltMediaError(null);
   }, []);
 
   // Select media
@@ -203,6 +213,7 @@ export const useAltMediaSearch = (onMediaSelected) => {
     setAltMediaResults([]);
     setAltMediaExtraTags('');
     setAltMediaTypeFilter('all');
+    setAltMediaError(null);
   }, []);
 
   // Hover preview handlers
@@ -265,6 +276,7 @@ export const useAltMediaSearch = (onMediaSelected) => {
     results: altMediaResults,
     loading: altMediaLoading,
     loadingMore: altMediaLoadingMore,
+    error: altMediaError,
     page: altMediaPage,
     hasMore: altMediaHasMore,
     sort: altMediaSort,
