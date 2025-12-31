@@ -9,10 +9,11 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { MdAutorenew } from 'react-icons/md';
-import { FaCoins } from 'react-icons/fa';
+import { FaCoins, FaPlusCircle } from 'react-icons/fa';
+import { GiUpgrade } from 'react-icons/gi';
 import styled from 'styled-components';
 import { theme, useReducedMotion } from '../../../design-system';
-import { IconArrowUp } from '../../../constants/icons';
+import { IconArrowUp, IconClock, IconMuscle } from '../../../constants/icons';
 
 import {
   UpgradesSection,
@@ -42,6 +43,22 @@ const DeficitBadge = styled.div`
   margin-top: 4px;
   white-space: nowrap;
 `;
+
+// Map icon identifiers to React Icon components
+const getUpgradeIcon = (iconId) => {
+  switch (iconId) {
+    case 'slot':
+      return <FaPlusCircle />;
+    case 'cap':
+      return <IconClock />;
+    case 'intensity':
+      return <IconMuscle />;
+    case 'mastery':
+      return <GiUpgrade />;
+    default:
+      return <GiUpgrade />;
+  }
+};
 
 const DojoUpgradesSection = ({
   status,
@@ -91,7 +108,7 @@ const DojoUpgradesSection = ({
               aria-label={`${upgrade.name} - ${upgrade.cost.toLocaleString()} ${t('common.points')}`}
               aria-disabled={isDisabled}
             >
-              <UpgradeIcon aria-hidden="true">{upgrade.icon}</UpgradeIcon>
+              <UpgradeIcon aria-hidden="true">{getUpgradeIcon(upgrade.icon)}</UpgradeIcon>
               <UpgradeInfo>
                 <UpgradeName>{upgrade.name}</UpgradeName>
                 <UpgradeDesc>{upgrade.description}</UpgradeDesc>

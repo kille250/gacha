@@ -22,12 +22,12 @@ const noEmojisRule = {
     const emojiRegex = /[\u{1F300}-\u{1F9FF}]|[\u{2600}-\u{26FF}]|[\u{2700}-\u{27BF}]/u;
 
     // Files with documented intentional emoji usage (game data)
+    // Note: Only files with user-facing emotes (chat, reactions) should be here
     const allowedFiles = [
       'config/fishing.js',
       'config/fishing/prestige.js',
       'config/fishing/validator.js',
-      'config/dojo.js',
-      'routes/fishingMultiplayer.js',
+      'routes/fishingMultiplayer.js',  // Chat emotes
       'routes/fishing/prestige.js'
     ];
 
@@ -99,7 +99,7 @@ module.exports = [
     rules: {
       'no-unused-vars': ['warn', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrorsIgnorePattern: '^_' }],
       'no-console': 'off',
-      'custom/no-emojis': 'warn'
+      'custom/no-emojis': 'error'
     }
   },
   {
