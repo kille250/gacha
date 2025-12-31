@@ -390,6 +390,7 @@ export const useDojoPage = () => {
         }, UNDO_WINDOW_MS);
 
         fetchStatus();
+        fetchAvailableCharacters();
       } catch (err) {
         if (!isMountedRef.current) return;
         console.error('Failed to assign character:', err);
@@ -397,7 +398,7 @@ export const useDojoPage = () => {
         setError(err.response?.data?.error || t('dojo.failedAssign'));
       }
     });
-  }, [selectedSlot, availableCharacters, status, withLock, fetchStatus, t, setError, toast]);
+  }, [selectedSlot, availableCharacters, status, withLock, fetchStatus, fetchAvailableCharacters, t, setError, toast]);
 
   // Remove character from slot
   const handleUnassign = useCallback(async (slotIndex) => {
@@ -417,6 +418,7 @@ export const useDojoPage = () => {
         await dojoUnassignCharacter(slotIndex);
         if (!isMountedRef.current) return;
         fetchStatus();
+        fetchAvailableCharacters();
       } catch (err) {
         if (!isMountedRef.current) return;
         console.error('Failed to unassign character:', err);
@@ -424,7 +426,7 @@ export const useDojoPage = () => {
         setError(err.response?.data?.error || t('dojo.failedUnassign'));
       }
     });
-  }, [status, withLock, fetchStatus, t, setError]);
+  }, [status, withLock, fetchStatus, fetchAvailableCharacters, t, setError]);
 
   // Claim rewards
   const handleClaim = useCallback(async () => {

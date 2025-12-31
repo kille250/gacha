@@ -74,6 +74,13 @@
     "copied": "コピー済み！",
     "done": "完了"
   },
+  "rarity": {
+    "common": "コモン",
+    "uncommon": "アンコモン",
+    "rare": "レア",
+    "epic": "エピック",
+    "legendary": "レジェンダリー"
+  },
   "nav": {
     "banners": "バナー",
     "roll": "ガチャ",
@@ -1209,6 +1216,7 @@
     "upgrades": "アップグレード",
     "allUpgradesPurchased": "全てのアップグレード購入済み！",
     "selectCharacter": "キャラクターを選択",
+    "confirmSelect": "{{name}}を選択",
     "searchCharacters": "キャラクター検索...",
     "loadingCharacters": "キャラクター読み込み中...",
     "noMatchingCharacters": "一致するキャラクターが見つかりません",

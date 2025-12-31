@@ -77,6 +77,13 @@
     "done": "Done",
     "new": "New"
   },
+  "rarity": {
+    "common": "Common",
+    "uncommon": "Uncommon",
+    "rare": "Rare",
+    "epic": "Epic",
+    "legendary": "Legendary"
+  },
   "nav": {
     "banners": "Gacha",
     "roll": "Roll",
@@ -1308,6 +1315,7 @@
     "upgrades": "Upgrades",
     "allUpgradesPurchased": "All upgrades purchased!",
     "selectCharacter": "Select Character",
+    "confirmSelect": "Select {{name}}",
     "searchCharacters": "Search characters...",
     "loadingCharacters": "Loading characters...",
     "noMatchingCharacters": "No matching characters found",

@@ -1065,6 +1065,7 @@
     "upgrades": "Mejoras",
     "allUpgradesPurchased": "¡Todas las mejoras compradas!",
     "selectCharacter": "Seleccionar Personaje",
+    "confirmSelect": "Seleccionar {{name}}",
     "searchCharacters": "Buscar personajes...",
     "loadingCharacters": "Cargando personajes...",
     "noMatchingCharacters": "No se encontraron personajes",

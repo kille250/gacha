@@ -76,6 +76,13 @@
     "copied": "Kopiert!",
     "done": "Fertig"
   },
+  "rarity": {
+    "common": "Gewöhnlich",
+    "uncommon": "Ungewöhnlich",
+    "rare": "Selten",
+    "epic": "Episch",
+    "legendary": "Legendär"
+  },
   "nav": {
     "banners": "Banner",
     "roll": "Ziehen",
@@ -1238,6 +1245,7 @@
     "upgrades": "Upgrades",
     "allUpgradesPurchased": "Alle Upgrades gekauft!",
     "selectCharacter": "Charakter auswählen",
+    "confirmSelect": "{{name}} auswählen",
     "searchCharacters": "Charaktere suchen...",
     "loadingCharacters": "Lade Charaktere...",
     "noMatchingCharacters": "Keine passenden Charaktere gefunden",
