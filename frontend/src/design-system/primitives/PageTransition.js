@@ -90,8 +90,6 @@ export const staggerItem = {
 const PageWrapper = styled(motion.div)`
   min-height: 100%;
   width: 100%;
-  /* GPU acceleration for smooth animations */
-  will-change: opacity, transform;
 `;
 
 // ==================== COMPONENT ====================

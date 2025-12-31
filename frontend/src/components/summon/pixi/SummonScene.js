@@ -27,13 +27,10 @@ import {
 export class SummonScene {
   constructor(canvas, config = {}) {
     this.canvas = canvas;
-    // Use the canvas parent's dimensions if available, otherwise fall back to window
-    const container = canvas?.parentElement;
-    const containerWidth = container?.clientWidth || window.innerWidth;
-    const containerHeight = container?.clientHeight || window.innerHeight;
+    // Use window.innerWidth/innerHeight for fixed overlay dimensions
     this.config = {
-      width: config.width || containerWidth,
-      height: config.height || containerHeight,
+      width: config.width || window.innerWidth,
+      height: config.height || window.innerHeight,
       resolution: config.resolution || window.devicePixelRatio || 1,
       antialias: config.antialias !== false,
     };
