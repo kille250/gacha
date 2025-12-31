@@ -21,7 +21,7 @@ import React, { useState, useRef, useEffect, useCallback } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload, FaSpinner, FaTheaterMasks, FaCheckSquare, FaSquare, FaTimes } from 'react-icons/fa';
+import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownload, FaSpinner, FaTheaterMasks, FaCheckSquare, FaSquare, FaTimes, FaRobot } from 'react-icons/fa';
 import { theme, motionVariants, AriaLiveRegion } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import { IconR18 } from '../../constants/icons';
@@ -29,6 +29,7 @@ import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE } from '../../utils/mediaU
 import { useRarity } from '../../context/RarityContext';
 import { isDuplicateError, getDuplicateInfo } from '../../utils/errorHandler';
 import DuplicateWarningBanner from '../UI/DuplicateWarningBanner';
+import { AIGeneratorModal } from './AIImageGenerator';
 import {
   AdminContainer,
   HeaderRow,
@@ -96,6 +97,10 @@ const AdminCharacters = ({
 
   const [showAddModal, setShowAddModal] = useState(false);
   const [viewMode, setViewMode] = useState('grid');
+
+  // AI Image Generator state
+  const [showAIGenerator, setShowAIGenerator] = useState(false);
+  const [_aiGeneratedImage, setAiGeneratedImage] = useState(null);
 
   // Multi-select state
   const [selectedIds, setSelectedIds] = useState(new Set());
@@ -314,6 +319,9 @@ const AdminCharacters = ({
               <FaImage aria-hidden="true" /> {t('admin.createFromDanbooru', 'Danbooru')}
             </ActionButton>
           )}
+          <ActionButton $variant="accent" onClick={() => setShowAIGenerator(true)} aria-label={t('admin.aiGenerator', 'AI Generator')}>
+            <FaRobot aria-hidden="true" /> {t('admin.aiGenerator', 'AI Generate')}
+          </ActionButton>
         </ActionGroup>
         <ViewToggle role="group" aria-label={t('admin.viewMode', 'View mode')}>
           <ViewButton
@@ -671,6 +679,23 @@ const AdminCharacters = ({
           </ModalOverlay>
         )}
       </AnimatePresence>
+
+      {/* AI Image Generator Modal */}
+      <AIGeneratorModal
+        isOpen={showAIGenerator}
+        onClose={() => setShowAIGenerator(false)}
+        characterData={{
+          name: newCharacter.name,
+          series: newCharacter.series,
+          rarity: newCharacter.rarity
+        }}
+        onImageGenerated={(imageData) => {
+          setAiGeneratedImage(imageData);
+          // The imageData contains { url, seed, model, prompt }
+          // User can then use this to create a character
+          console.log('AI Generated Image:', imageData);
+        }}
+      />
     </AdminContainer>
   );
 };
