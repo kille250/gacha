@@ -627,10 +627,10 @@ function getAvailableUpgrades(currentUpgrades) {
       name: 'Extra Training Slot',
       description: `Unlock slot ${(currentUpgrades.slots || DOJO_CONFIG.defaultSlots) + 1}`,
       cost: slotCost,
-      icon: '➕'
+      icon: 'slot'
     });
   }
-  
+
   // Cap upgrade
   const capCost = getUpgradeCost('cap', currentUpgrades);
   if (capCost !== null) {
@@ -640,10 +640,10 @@ function getAvailableUpgrades(currentUpgrades) {
       name: 'Extended Storage',
       description: `Increase offline cap to ${newCap} hours`,
       cost: capCost,
-      icon: '⏰'
+      icon: 'cap'
     });
   }
-  
+
   // Intensity upgrade
   const intensityCost = getUpgradeCost('intensity', currentUpgrades);
   if (intensityCost !== null) {
@@ -654,10 +654,10 @@ function getAvailableUpgrades(currentUpgrades) {
       name: 'Training Intensity',
       description: `+${totalBonus}% base rates (Level ${nextLevel})`,
       cost: intensityCost,
-      icon: '💪'
+      icon: 'intensity'
     });
   }
-  
+
   // Mastery upgrades
   const rarities = ['common', 'uncommon', 'rare', 'epic', 'legendary'];
   rarities.forEach(rarity => {
@@ -669,7 +669,7 @@ function getAvailableUpgrades(currentUpgrades) {
         name: `${rarity.charAt(0).toUpperCase() + rarity.slice(1)} Mastery`,
         description: `+50% rate for ${rarity} characters`,
         cost: masteryCost,
-        icon: '🎓'
+        icon: 'mastery'
       });
     }
   });
