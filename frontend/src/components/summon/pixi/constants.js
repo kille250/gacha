@@ -42,10 +42,10 @@ export const PHASE_DURATIONS = {
     showcase: 1200,
   },
   legendary: {
-    initiation: 500,
-    buildUp: 2000,
-    reveal: 800,
-    showcase: 1500,
+    initiation: 600,
+    buildUp: 2500,
+    reveal: 1000,
+    showcase: 1800,
   },
 };
 
@@ -68,7 +68,7 @@ export const PARTICLE_COUNTS = {
   uncommon: { base: 30, burst: 60 },
   rare: { base: 45, burst: 90 },
   epic: { base: 60, burst: 120 },
-  legendary: { base: 80, burst: 160 },
+  legendary: { base: 120, burst: 240 },
 };
 
 /**
@@ -104,11 +104,11 @@ export const EFFECT_INTENSITY = {
     orbCount: 8,
   },
   legendary: {
-    glowIntensity: 0.9,
-    shakeIntensity: 14,
-    flashOpacity: 0.95,
-    ringCount: 3,
-    orbCount: 12,
+    glowIntensity: 1.0,
+    shakeIntensity: 18,
+    flashOpacity: 1.0,
+    ringCount: 4,
+    orbCount: 16,
   },
 };
 
@@ -168,8 +168,8 @@ export const CARD_FRAME_SETTINGS = {
   legendary: {
     showFrame: true,
     showShine: true,
-    shineSpeed: 1.5,
-    framePadding: 22,
+    shineSpeed: 2.0,
+    framePadding: 24,
   },
 };
 

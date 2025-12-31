@@ -370,7 +370,7 @@ export const motionVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.05, delayChildren: 0.08 }
+      transition: { staggerChildren: 0.035, delayChildren: 0.06 }
     }
   },
 
@@ -378,7 +378,7 @@ export const motionVariants = {
     hidden: { opacity: 0 },
     visible: {
       opacity: 1,
-      transition: { staggerChildren: 0.03, delayChildren: 0.05 }
+      transition: { staggerChildren: 0.025, delayChildren: 0.04 }
     }
   },
 
@@ -443,11 +443,12 @@ export const motionVariants = {
       transition: { duration: 0.15 }
     },
     hover: {
-      y: -3,  // Reduced from -6 for subtler lift
-      transition: { ...springs.snappy }
+      y: -6,
+      scale: 1.02,
+      transition: { ...springs.bouncy }
     },
     tap: {
-      scale: 0.98,
+      scale: 0.97,
       transition: { ...springs.quick }
     }
   },

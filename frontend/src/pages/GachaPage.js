@@ -30,6 +30,7 @@ import {
   SkeletonBannerCarousel,
   Skeleton,
   PageTransition,
+  AmbientParticles,
 } from '../design-system';
 
 // Extracted styles
@@ -272,6 +273,8 @@ const GachaPage = () => {
   return (
     <PageTransition>
       <StyledPageWrapper>
+        {/* Ambient floating particles for premium feel */}
+        <AmbientParticles color="gold" density="low" showDrifting={false} />
         <Container>
         {/* Hero Section */}
         <HeroSection>

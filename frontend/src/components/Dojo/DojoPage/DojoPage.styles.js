@@ -33,11 +33,7 @@ export const glow = keyframes`
 
 export const PageContainer = styled.div`
   min-height: 100vh;
-  background: linear-gradient(180deg,
-    ${theme.colors.background} 0%,
-    ${theme.colors.backgroundSecondary} 50%,
-    ${theme.colors.background} 100%
-  );
+  background: ${theme.colors.pageGradient.dojo};
   padding-bottom: env(safe-area-inset-bottom, 20px);
 `;
 
@@ -462,6 +458,15 @@ export const AccumulatedReward = styled.div`
   }
 `;
 
+const claimPulse = keyframes`
+  0%, 100% {
+    box-shadow: 0 0 0 0 rgba(255, 215, 0, 0.5);
+  }
+  50% {
+    box-shadow: 0 0 20px 4px rgba(255, 215, 0, 0.4);
+  }
+`;
+
 export const ClaimButton = styled(motion.button)`
   width: 100%;
   padding: ${theme.spacing.md} ${theme.spacing.lg};
@@ -480,6 +485,22 @@ export const ClaimButton = styled(motion.button)`
   align-items: center;
   justify-content: center;
   gap: ${theme.spacing.sm};
+
+  /* Pulsing glow animation when claimable */
+  ${props => props.$canClaim && css`
+    animation: ${claimPulse} 2s ease-in-out infinite;
+
+    @media (prefers-reduced-motion: reduce) {
+      animation: none;
+      box-shadow: 0 0 15px rgba(255, 215, 0, 0.4);
+    }
+
+    &:hover {
+      animation: none;
+      box-shadow: 0 0 25px rgba(255, 215, 0, 0.6);
+      transform: translateY(-2px);
+    }
+  `}
 
   .spin {
     animation: spin 1s linear infinite;

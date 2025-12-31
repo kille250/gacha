@@ -292,7 +292,8 @@ const Card = styled(motion.div)`
     &:hover {
       border-color: ${props => props.$color};
       box-shadow:
-        ${theme.shadows.cardHover},
+        0 20px 40px rgba(0, 0, 0, 0.35),
+        0 10px 20px rgba(0, 0, 0, 0.25),
         ${props => props.$glow || 'none'};
     }
   }

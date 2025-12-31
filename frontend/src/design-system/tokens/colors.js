@@ -152,7 +152,40 @@ export const colors = {
   statusSuccess: 'rgba(52, 199, 89, 0.12)',
   statusWarning: 'rgba(255, 159, 10, 0.12)',
   statusError: 'rgba(255, 59, 48, 0.12)',
-  statusInfo: 'rgba(90, 200, 250, 0.12)'
+  statusInfo: 'rgba(90, 200, 250, 0.12)',
+
+  // Ambient lighting colors for atmospheric backgrounds
+  ambient: {
+    warm: 'rgba(245, 166, 35, 0.04)',
+    cool: 'rgba(88, 86, 214, 0.05)',
+    legendary: 'rgba(255, 215, 0, 0.06)',
+    epic: 'rgba(191, 90, 242, 0.05)',
+    primary: 'rgba(0, 113, 227, 0.04)',
+  },
+
+  // Page background gradients for depth
+  pageGradient: {
+    default: `
+      radial-gradient(ellipse at 20% 0%, rgba(88, 86, 214, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(245, 166, 35, 0.05) 0%, transparent 40%),
+      #000000
+    `,
+    gacha: `
+      radial-gradient(ellipse at 30% 20%, rgba(245, 166, 35, 0.08) 0%, transparent 50%),
+      radial-gradient(ellipse at 70% 80%, rgba(88, 86, 214, 0.06) 0%, transparent 40%),
+      #000000
+    `,
+    collection: `
+      radial-gradient(ellipse at 50% 0%, rgba(88, 86, 214, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 100%, rgba(191, 90, 242, 0.04) 0%, transparent 40%),
+      #000000
+    `,
+    dojo: `
+      radial-gradient(ellipse at 20% 30%, rgba(52, 199, 89, 0.06) 0%, transparent 50%),
+      radial-gradient(ellipse at 80% 70%, rgba(245, 166, 35, 0.05) 0%, transparent 40%),
+      #000000
+    `,
+  }
 };
 
 export default colors;

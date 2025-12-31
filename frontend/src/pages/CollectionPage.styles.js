@@ -19,6 +19,8 @@ import { theme, PageWrapper, Section } from '../design-system';
 
 export const StyledPageWrapper = styled(PageWrapper)`
   padding: ${theme.spacing.lg} 0 ${theme.spacing['3xl']};
+  background: ${theme.colors.pageGradient.collection};
+  min-height: 100vh;
 `;
 
 // ==================== HEADER ====================
@@ -629,15 +631,25 @@ export const CharacterGrid = styled(motion.div)`
     grid-template-columns: repeat(4, 1fr);
   }
 
-  /* Desktop: responsive with max column width */
+  /* Desktop: 5 columns */
   @media (min-width: ${theme.breakpoints.lg}) {
-    grid-template-columns: repeat(auto-fill, minmax(200px, 1fr));
+    grid-template-columns: repeat(5, 1fr);
     gap: ${theme.spacing.lg};
   }
 
-  /* Large desktop: max 6 columns for readability */
+  /* Large desktop: 6 columns */
   @media (min-width: ${theme.breakpoints.xl}) {
     grid-template-columns: repeat(6, 1fr);
+  }
+
+  /* Extra large desktop: 8 columns for maximum density */
+  @media (min-width: 1600px) {
+    grid-template-columns: repeat(8, 1fr);
+  }
+
+  /* Ultra-wide: 10 columns */
+  @media (min-width: 2000px) {
+    grid-template-columns: repeat(10, 1fr);
   }
 `;
 
