@@ -367,6 +367,8 @@ export class CollectionCardLayer {
    * Update animation
    */
   update(dt = 1) {
+    // Skip update if layer has been destroyed
+    if (!this.container || this.container.destroyed) return;
     if (!this.isActive && this.opacity < 0.01) return;
 
     this.time += dt / 60;

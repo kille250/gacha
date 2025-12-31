@@ -296,7 +296,8 @@ export class CharacterLayer {
    * Update animation
    */
   update(dt = 1) {
-    if (this.isDestroyed) return;
+    // Skip update if layer has been destroyed
+    if (this.isDestroyed || !this.container || this.container.destroyed) return;
     this.time += dt / 60;
 
     if (this.phase === 'hidden') {

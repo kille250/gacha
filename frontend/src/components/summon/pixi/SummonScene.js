@@ -711,7 +711,8 @@ export class SummonScene {
    * Update loop
    */
   update() {
-    if (this.isPaused) return;
+    // Skip update if scene has been destroyed
+    if (this.isDestroyed || this.isPaused) return;
 
     const dt = this.ticker?.deltaTime ?? 1;
 

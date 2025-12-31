@@ -68,6 +68,9 @@ export class ForegroundLayer {
    * Update animation
    */
   update(_dt = 1) {
+    // Skip update if layer has been destroyed
+    if (!this.container || this.container.destroyed) return;
+
     // Update flash
     if (this.flashAlpha > 0.001) {
       this.flashAlpha = lerp(this.flashAlpha, this.flashTargetAlpha, this.flashDecay);
@@ -86,7 +89,12 @@ export class ForegroundLayer {
    * Draw flash overlay
    */
   drawFlash() {
-    this.flashOverlay.clear();
+    if (!this.flashOverlay || this.flashOverlay.destroyed) return;
+    try {
+      this.flashOverlay.clear();
+    } catch (e) {
+      return;
+    }
 
     if (this.flashAlpha <= 0) return;
 
@@ -98,7 +106,12 @@ export class ForegroundLayer {
    * Draw dim overlay
    */
   drawDim() {
-    this.dimOverlay.clear();
+    if (!this.dimOverlay || this.dimOverlay.destroyed) return;
+    try {
+      this.dimOverlay.clear();
+    } catch (e) {
+      return;
+    }
 
     if (this.dimAlpha <= 0.001) return;
 
