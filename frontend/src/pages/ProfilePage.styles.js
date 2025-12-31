@@ -12,9 +12,10 @@ import { theme } from '../design-system';
 // ==================== PAGE LAYOUT ====================
 
 export const PageWrapper = styled.div`
-  min-height: 100%;
+  min-height: 100vh;
   padding: ${theme.spacing.lg} 0;
   padding-bottom: calc(${theme.spacing.xl} + 80px);
+  background: ${theme.colors.pageGradient.default};
 `;
 
 // ==================== PROFILE HEADER ====================
