@@ -470,7 +470,7 @@ const AnnouncementCenter = ({ className }) => {
   const { t } = useTranslation();
   const { announcements, unreadCount, markAsRead, acknowledge } = useAnnouncements();
   const [filter, setFilter] = useState('all'); // all, unread, read
-  const [typeFilter, setTypeFilter] = useState(null);
+  const [typeFilter, _setTypeFilter] = useState(null);
 
   const filteredAnnouncements = useMemo(() => {
     let result = [...announcements];
