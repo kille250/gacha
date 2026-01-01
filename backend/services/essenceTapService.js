@@ -1835,8 +1835,8 @@ function checkRepeatableMilestones(state) {
   const currentWeek = getCurrentISOWeek();
 
   // Check weekly essence milestone
-  const weeklyMilestone = REPEATABLE_MILESTONES.weeklyEssence;
-  if (state.weekly?.essenceEarned >= weeklyMilestone.threshold &&
+  const weeklyMilestone = REPEATABLE_MILESTONES?.weeklyEssence;
+  if (weeklyMilestone && state.weekly?.essenceEarned >= weeklyMilestone.threshold &&
       state.repeatableMilestones?.weeklyEssenceLastClaimed !== currentWeek) {
     claimable.push({
       type: 'weeklyEssence',
@@ -1846,17 +1846,19 @@ function checkRepeatableMilestones(state) {
     });
   }
 
-  // Check per-100B milestone
-  const per100BMilestone = REPEATABLE_MILESTONES.per100BLifetime;
-  const claimedCount = state.repeatableMilestones?.per100BCount || 0;
-  const eligibleCount = Math.floor(state.lifetimeEssence / per100BMilestone.threshold);
-  if (eligibleCount > claimedCount) {
-    claimable.push({
-      type: 'per100BLifetime',
-      fatePoints: per100BMilestone.fatePoints,
-      count: eligibleCount - claimedCount,
-      totalFatePoints: (eligibleCount - claimedCount) * per100BMilestone.fatePoints
-    });
+  // Check per-100B milestone (config uses essencePer100B)
+  const per100BMilestone = REPEATABLE_MILESTONES?.essencePer100B;
+  if (per100BMilestone) {
+    const claimedCount = state.repeatableMilestones?.per100BCount || 0;
+    const eligibleCount = Math.floor((state.lifetimeEssence || 0) / per100BMilestone.threshold);
+    if (eligibleCount > claimedCount) {
+      claimable.push({
+        type: 'essencePer100B',
+        fatePoints: per100BMilestone.fatePoints,
+        count: eligibleCount - claimedCount,
+        totalFatePoints: (eligibleCount - claimedCount) * per100BMilestone.fatePoints
+      });
+    }
   }
 
   return claimable;
@@ -1890,10 +1892,13 @@ function claimRepeatableMilestone(state, milestoneType) {
     };
   }
 
-  if (milestoneType === 'per100BLifetime') {
-    const per100BMilestone = REPEATABLE_MILESTONES.per100BLifetime;
+  if (milestoneType === 'essencePer100B') {
+    const per100BMilestone = REPEATABLE_MILESTONES?.essencePer100B;
+    if (!per100BMilestone) {
+      return { success: false, error: 'Milestone config not found' };
+    }
     const claimedCount = state.repeatableMilestones?.per100BCount || 0;
-    const eligibleCount = Math.floor(state.lifetimeEssence / per100BMilestone.threshold);
+    const eligibleCount = Math.floor((state.lifetimeEssence || 0) / per100BMilestone.threshold);
 
     if (eligibleCount <= claimedCount) {
       return { success: false, error: 'No new 100B milestones to claim' };
