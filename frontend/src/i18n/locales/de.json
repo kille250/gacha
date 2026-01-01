@@ -91,6 +91,7 @@
     "fortuneWheel": "Rad",
     "collection": "Sammlung",
     "coupons": "Gutscheine",
+    "announcements": "Ankündigungen",
     "admin": "Admin",
     "menu": "Menü",
     "logout": "Abmelden",
@@ -1624,6 +1625,13 @@
     "dismissNotification": "Benachrichtigung schließen"
   },
   "announcements": {
+    "title": "Ankündigungen",
+    "subtitle": "Bleiben Sie mit den neuesten Nachrichten auf dem Laufenden",
+    "notifications": "Benachrichtigungen",
+    "unread": "ungelesen",
+    "noNew": "Keine neuen Ankündigungen",
+    "actionRequired": "Aktion erforderlich",
+    "viewAll": "Alle Ankündigungen anzeigen",
     "center": "Ankündigungen",
     "noAnnouncements": "Keine Ankündigungen",
     "noUnread": "Keine ungelesenen Ankündigungen",

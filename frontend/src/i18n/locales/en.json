@@ -92,6 +92,7 @@
     "fortuneWheel": "Fortune Wheel",
     "collection": "Collection",
     "coupons": "Coupons",
+    "announcements": "Announcements",
     "admin": "Admin",
     "menu": "Menu",
     "logout": "Logout",
@@ -1796,6 +1797,13 @@
     "dismissNotification": "Dismiss notification"
   },
   "announcements": {
+    "title": "Announcements",
+    "subtitle": "Stay updated with the latest news and updates",
+    "notifications": "Notifications",
+    "unread": "unread",
+    "noNew": "No new announcements",
+    "actionRequired": "Action required",
+    "viewAll": "View all announcements",
     "center": "Announcements",
     "noAnnouncements": "No announcements",
     "noUnread": "No unread announcements",
