@@ -16,7 +16,7 @@
  * <InlineAnnouncement />
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import styled, { css, keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
