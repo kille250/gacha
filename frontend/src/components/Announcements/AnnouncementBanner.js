@@ -13,7 +13,7 @@
  * <AnnouncementBanner />
  */
 
-import React, { useState, useCallback, useMemo } from 'react';
+import React, { useState, useCallback, useMemo, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import styled, { css, keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -115,20 +115,30 @@ const pulse = keyframes`
 
 const BannerContainer = styled.div`
   position: fixed;
-  top: 0;
+  /* Position below navigation bar */
+  top: var(--nav-top-height, 56px);
   left: 0;
   right: 0;
-  z-index: ${theme.zIndex?.banner || 1000};
+  z-index: ${theme.zIndex.banner};
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: ${theme.spacing.xs};
-  padding-top: calc(${theme.spacing.xs} + env(safe-area-inset-top, 0px));
   pointer-events: none;
 
   @supports (padding: max(0px)) {
     padding-left: max(${theme.spacing.xs}, env(safe-area-inset-left));
     padding-right: max(${theme.spacing.xs}, env(safe-area-inset-right));
+  }
+
+  /* Landscape mode - adjust for compact nav */
+  @media (max-width: ${theme.breakpoints.md}) and (orientation: landscape) {
+    top: var(--nav-top-height, 48px);
+  }
+
+  /* Very short viewports */
+  @media (max-height: 400px) {
+    top: var(--nav-top-height, 44px);
   }
 `;
 
@@ -302,7 +312,7 @@ const CloseButton = styled.button`
 
 const bannerVariants = {
   hidden: {
-    y: -100,
+    y: -20,
     opacity: 0,
   },
   visible: {
@@ -310,15 +320,15 @@ const bannerVariants = {
     opacity: 1,
     transition: {
       type: 'spring',
-      stiffness: 300,
+      stiffness: 400,
       damping: 30,
     },
   },
   exit: {
-    y: -100,
+    y: -20,
     opacity: 0,
     transition: {
-      duration: 0.2,
+      duration: 0.15,
       ease: 'easeIn',
     },
   },
@@ -357,14 +367,30 @@ const AnnouncementBannerItem = ({ announcement, onDismiss, onAcknowledge }) => {
   );
 
   const handleDismiss = useCallback((e) => {
-    e.stopPropagation();
-    onDismiss(announcement.id);
-  }, [announcement.id, onDismiss]);
+    if (e) e.stopPropagation?.();
+    if (announcement.dismissible) {
+      onDismiss(announcement.id);
+    }
+  }, [announcement.id, announcement.dismissible, onDismiss]);
 
   const handleAcknowledge = useCallback((e) => {
     e.stopPropagation();
     onAcknowledge(announcement.id);
   }, [announcement.id, onAcknowledge]);
+
+  // Escape key handler for dismissible banners
+  useEffect(() => {
+    if (!announcement.dismissible) return;
+
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        handleDismiss();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [announcement.dismissible, handleDismiss]);
 
   const prefersReducedMotion = typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;

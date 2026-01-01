@@ -49,17 +49,26 @@ const spin = keyframes`
 
 const BannerWrapper = styled(motion.div)`
   position: fixed;
-  top: 0;
+  /* Position below navigation bar */
+  top: var(--nav-top-height, 56px);
   left: 0;
   right: 0;
-  z-index: ${theme.zIndex?.banner || 1000};
+  z-index: ${theme.zIndex.banner};
   padding: ${theme.spacing.sm};
-  padding-top: calc(${theme.spacing.sm} + env(safe-area-inset-top, 0px));
 
-  /* Ensure it's above the navigation */
   @supports (padding: max(0px)) {
     padding-left: max(${theme.spacing.sm}, env(safe-area-inset-left));
     padding-right: max(${theme.spacing.sm}, env(safe-area-inset-right));
+  }
+
+  /* Landscape mode - adjust for compact nav */
+  @media (max-width: ${theme.breakpoints.md}) and (orientation: landscape) {
+    top: var(--nav-top-height, 48px);
+  }
+
+  /* Very short viewports */
+  @media (max-height: 400px) {
+    top: var(--nav-top-height, 44px);
   }
 `;
 
@@ -206,7 +215,7 @@ const CloseButton = styled.button`
 
 const bannerVariants = {
   hidden: {
-    y: -100,
+    y: -20,
     opacity: 0,
   },
   visible: {
@@ -214,15 +223,15 @@ const bannerVariants = {
     opacity: 1,
     transition: {
       type: 'spring',
-      stiffness: 300,
+      stiffness: 400,
       damping: 30,
     },
   },
   exit: {
-    y: -100,
+    y: -20,
     opacity: 0,
     transition: {
-      duration: 0.2,
+      duration: 0.15,
       ease: 'easeIn',
     },
   },

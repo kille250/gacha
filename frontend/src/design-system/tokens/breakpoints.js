@@ -26,6 +26,7 @@ export const zIndex = {
   sticky: 200,
   stickySecondary: 190, // For secondary sticky elements (e.g., admin tabs below main nav)
   stickyDropdown: 250, // For dropdowns inside sticky elements
+  banner: 300, // Notification banners - above navigation but below modals
   modal: 1000,
   toast: 1100,
   tooltip: 1200
