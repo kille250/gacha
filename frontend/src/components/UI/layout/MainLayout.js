@@ -20,7 +20,7 @@ import { theme, SkipLink } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
 import { ReturnBonusModal } from '../../GameEnhancements';
-import { AnnouncementBanner, AnnouncementModal } from '../../Announcements';
+import { AnnouncementModal } from '../../Announcements';
 
 /**
  * Global CSS custom properties for navigation heights and page spacing.
@@ -163,8 +163,6 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
         {!hideBottomNav && <BottomNav />}
       </LayoutContainer>
 
-      {/* Announcement Banner - fixed position below nav, outside layout stacking context */}
-      <AnnouncementBanner />
 
       {/* Return Bonus Modal - shows welcome back rewards for returning players */}
       <AnimatePresence>
