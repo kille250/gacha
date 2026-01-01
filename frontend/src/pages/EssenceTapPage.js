@@ -336,7 +336,7 @@ const EssenceTapPage = memo(() => {
         <MainLayout>
           <GeneratorsPanel>
             <PanelHeader>
-              {t('essenceTap.generators', { defaultValue: 'Generators' })}
+              {t('essenceTap.generators.title', { defaultValue: 'Generators' })}
             </PanelHeader>
             <PanelContent>
               <GeneratorList
@@ -377,7 +377,7 @@ const EssenceTapPage = memo(() => {
 
           <UpgradesPanel>
             <PanelHeader>
-              {t('essenceTap.upgrades', { defaultValue: 'Upgrades' })}
+              {t('essenceTap.upgrades.title', { defaultValue: 'Upgrades' })}
             </PanelHeader>
             <PanelContent>
               <UpgradeList
