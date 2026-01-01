@@ -401,7 +401,7 @@ router.get('/collection', auth, async (req, res) => {
         };
       });
     
-    res.json(filterR18Characters(collection, allowR18));
+    res.json({ collection: filterR18Characters(collection, allowR18) });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: 'Server error' });
