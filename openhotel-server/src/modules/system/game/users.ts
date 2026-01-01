@@ -92,6 +92,14 @@ export const users = () => {
     const preMoveToRoom = async (roomId: string) => {
       const foundRoom = await System.game.rooms.get(roomId);
 
+      if (!foundRoom) {
+        // Room not found - emit error event
+        emit(ProxyEvent.SYSTEM_MESSAGE, {
+          message: `Room ${roomId} not found`,
+        });
+        return;
+      }
+
       const room =
         foundRoom.type === "public"
           ? {

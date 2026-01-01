@@ -7,6 +7,7 @@ import { PublicRoomMutable } from "shared/types/rooms/public.types.ts";
 export const listRequest: ProxyRequestType = {
   pathname: "/list",
   method: RequestMethod.GET,
+  public: true, // Allow unauthenticated access to room list
   func: async ({ data: { type, ownerId }, user }) => {
     if (type !== "public" && type !== "private")
       return {

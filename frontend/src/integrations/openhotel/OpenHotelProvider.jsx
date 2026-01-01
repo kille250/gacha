@@ -144,6 +144,11 @@ export function OpenHotelProvider({ children }) {
 
   /**
    * Join a room
+   *
+   * OpenHotel room join flow:
+   * 1. Send PRE_JOIN_ROOM to get room preview (optional, for loading screens)
+   * 2. Send JOIN_ROOM to actually enter the room
+   * 3. Receive LOAD_ROOM with full room data
    */
   const joinRoom = useCallback(async (roomId) => {
     if (connectionState !== CONNECTION_STATE.CONNECTED) {
@@ -153,28 +158,32 @@ export function OpenHotelProvider({ children }) {
       }
     }
 
-    // Send pre-join to get room preview
-    socketRef.current.emit(OH_EVENT.PRE_JOIN_ROOM, { roomId });
-
     // Wait for room data
     return new Promise((resolve, reject) => {
       const timeout = setTimeout(() => {
         reject(new Error('Room join timeout'));
       }, 10000);
 
+      // Listen for LOAD_ROOM response
       const unsubscribe = socketRef.current.once(OH_EVENT.LOAD_ROOM, (data) => {
         clearTimeout(timeout);
-        setCurrentRoom(data);
-        setRoomUsers(data.users || []);
-        setRoomFurniture(data.furniture || []);
-        resolve(data);
+        setCurrentRoom(data.room || data);
+        setRoomUsers(data.room?.users || data.users || []);
+        setRoomFurniture(data.room?.furniture || data.furniture || []);
+        resolve(data.room || data);
       });
 
-      // Handle join error
-      const unsubError = socketRef.current.once('error', (error) => {
-        clearTimeout(timeout);
-        reject(new Error(error.message || 'Failed to join room'));
+      // Listen for system message (room not found error)
+      const unsubError = socketRef.current.once(OH_EVENT.SYSTEM_MESSAGE, (data) => {
+        if (data.message?.includes('not found')) {
+          clearTimeout(timeout);
+          reject(new Error(data.message));
+        }
       });
+
+      // Send JOIN_ROOM to enter the room
+      // (PRE_JOIN_ROOM is optional for loading preview, we skip straight to joining)
+      socketRef.current.emit(OH_EVENT.JOIN_ROOM, { roomId });
     });
   }, [connectionState, connect]);
 

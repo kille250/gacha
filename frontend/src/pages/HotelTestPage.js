@@ -4,10 +4,11 @@
  * Simple test page to verify OpenHotel integration is working.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import styled from 'styled-components';
 import { useOpenHotel, CONNECTION_STATE } from '../integrations/openhotel';
 import { theme } from '../design-system';
+import { OPENHOTEL_CONFIG } from '../integrations/openhotel/config';
 
 const HotelTestPage = () => {
   const {
@@ -29,7 +30,87 @@ const HotelTestPage = () => {
   } = useOpenHotel();
 
   const [message, setMessage] = useState('');
-  const [roomId, setRoomId] = useState('demo');
+  const [roomId, setRoomId] = useState('');
+  const [roomList, setRoomList] = useState([]);
+  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [roomError, setRoomError] = useState(null);
+  const [newRoomTitle, setNewRoomTitle] = useState('');
+  const [creatingRoom, setCreatingRoom] = useState(false);
+
+  // Fetch room list from the server
+  const fetchRoomList = useCallback(async () => {
+    setLoadingRooms(true);
+    setRoomError(null);
+    try {
+      // Fetch both public and private rooms
+      const [publicRes, privateRes] = await Promise.all([
+        fetch(`${OPENHOTEL_CONFIG.httpUrl}/room/list?type=public`),
+        fetch(`${OPENHOTEL_CONFIG.httpUrl}/room/list?type=private`)
+      ]);
+
+      const publicData = await publicRes.json();
+      const privateData = await privateRes.json();
+
+      const allRooms = [
+        ...(publicData.rooms || []).map(r => ({ ...r, type: 'public' })),
+        ...(privateData.rooms || []).map(r => ({ ...r, type: 'private' }))
+      ];
+
+      setRoomList(allRooms);
+
+      // Auto-select first room if available
+      if (allRooms.length > 0 && !roomId) {
+        setRoomId(allRooms[0].id);
+      }
+    } catch (error) {
+      console.error('Failed to fetch room list:', error);
+      setRoomError('Failed to load rooms: ' + error.message);
+    } finally {
+      setLoadingRooms(false);
+    }
+  }, [roomId]);
+
+  // Create a new room
+  const createRoom = async () => {
+    if (!newRoomTitle.trim()) return;
+
+    setCreatingRoom(true);
+    setRoomError(null);
+    try {
+      const response = await fetch(`${OPENHOTEL_CONFIG.httpUrl}/room`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title: newRoomTitle.trim(),
+          description: 'Created from gacha game',
+          layoutId: 0 // Default layout
+        })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to create room');
+      }
+
+      const data = await response.json();
+      setNewRoomTitle('');
+      setRoomId(data.room.id);
+
+      // Refresh room list
+      await fetchRoomList();
+    } catch (error) {
+      console.error('Failed to create room:', error);
+      setRoomError('Failed to create room: ' + error.message);
+    } finally {
+      setCreatingRoom(false);
+    }
+  };
+
+  // Fetch rooms when connected
+  useEffect(() => {
+    if (isConnected) {
+      fetchRoomList();
+    }
+  }, [isConnected, fetchRoomList]);
 
   const handleConnect = async () => {
     const success = await connect();
@@ -127,26 +208,69 @@ const HotelTestPage = () => {
       {isConnected && (
         <Section>
           <h3>Room</h3>
+
+          {/* Room List */}
+          {loadingRooms ? (
+            <InfoCard>Loading rooms...</InfoCard>
+          ) : roomList.length > 0 ? (
+            <>
+              <RoomListLabel>Available Rooms:</RoomListLabel>
+              <RoomListContainer>
+                {roomList.map((room) => (
+                  <RoomItem
+                    key={room.id}
+                    $selected={roomId === room.id}
+                    onClick={() => setRoomId(room.id)}
+                  >
+                    <RoomItemTitle>{room.title}</RoomItemTitle>
+                    <RoomItemMeta>
+                      <span>{room.type}</span>
+                      <span>{room.userCount || 0} users</span>
+                    </RoomItemMeta>
+                  </RoomItem>
+                ))}
+              </RoomListContainer>
+            </>
+          ) : (
+            <InfoCard>No rooms available. Create one below!</InfoCard>
+          )}
+
+          {roomError && <ErrorText>{roomError}</ErrorText>}
+
+          {/* Join/Leave Controls */}
           <InputGroup>
-            <Input
-              type="text"
-              value={roomId}
-              onChange={(e) => setRoomId(e.target.value)}
-              placeholder="Room ID"
-            />
-            <Button onClick={handleJoinRoom} disabled={!!currentRoom}>
+            <Button onClick={handleJoinRoom} disabled={!!currentRoom || !roomId}>
               Join Room
             </Button>
             <Button onClick={leaveRoom} disabled={!currentRoom} $variant="secondary">
               Leave Room
             </Button>
+            <Button onClick={fetchRoomList} disabled={loadingRooms} $variant="secondary">
+              Refresh
+            </Button>
           </InputGroup>
+
+          {/* Create Room */}
+          <CreateRoomSection>
+            <h4>Create New Room</h4>
+            <InputGroup>
+              <Input
+                type="text"
+                value={newRoomTitle}
+                onChange={(e) => setNewRoomTitle(e.target.value)}
+                placeholder="Room name"
+              />
+              <Button onClick={createRoom} disabled={creatingRoom || !newRoomTitle.trim()}>
+                {creatingRoom ? 'Creating...' : 'Create'}
+              </Button>
+            </InputGroup>
+          </CreateRoomSection>
 
           {currentRoom && (
             <InfoCard>
               <InfoRow>
-                <InfoLabel>Room:</InfoLabel>
-                <InfoValue>{currentRoom.name || currentRoom.id}</InfoValue>
+                <InfoLabel>Current Room:</InfoLabel>
+                <InfoValue>{currentRoom.title || currentRoom.id}</InfoValue>
               </InfoRow>
               <InfoRow>
                 <InfoLabel>Users:</InfoLabel>
@@ -442,6 +566,76 @@ const UserAvatar = styled.span`
 const UserName = styled.span`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.text};
+`;
+
+// Room list styles
+const RoomListLabel = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.sm};
+`;
+
+const RoomListContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.xs};
+  max-height: 200px;
+  overflow-y: auto;
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const RoomItem = styled.div`
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${props => props.$selected
+    ? 'rgba(99, 102, 241, 0.2)'
+    : 'rgba(255, 255, 255, 0.05)'};
+  border: 1px solid ${props => props.$selected
+    ? theme.colors.primary
+    : 'rgba(255, 255, 255, 0.1)'};
+  border-radius: ${theme.radius.md};
+  cursor: pointer;
+  transition: all ${theme.transitions.fast};
+
+  &:hover {
+    background: rgba(99, 102, 241, 0.1);
+    border-color: ${theme.colors.primary};
+  }
+`;
+
+const RoomItemTitle = styled.span`
+  color: ${theme.colors.text};
+  font-weight: ${theme.fontWeights.medium};
+`;
+
+const RoomItemMeta = styled.div`
+  display: flex;
+  gap: ${theme.spacing.md};
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+`;
+
+const CreateRoomSection = styled.div`
+  margin-top: ${theme.spacing.lg};
+  padding-top: ${theme.spacing.md};
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+
+  h4 {
+    font-size: ${theme.fontSizes.md};
+    margin-bottom: ${theme.spacing.sm};
+    color: ${theme.colors.text};
+  }
+`;
+
+const ErrorText = styled.div`
+  color: ${theme.colors.error || '#ef4444'};
+  font-size: ${theme.fontSizes.sm};
+  padding: ${theme.spacing.sm};
+  background: rgba(239, 68, 68, 0.1);
+  border-radius: ${theme.radius.md};
+  margin-bottom: ${theme.spacing.md};
 `;
 
 export default HotelTestPage;
