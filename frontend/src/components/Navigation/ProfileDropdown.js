@@ -9,7 +9,7 @@
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { createPortal } from 'react-dom';
 import styled from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
@@ -147,20 +147,15 @@ const ProfileDropdown = ({
         </Arrow>
       </TriggerButton>
 
-      <AnimatePresence>
-        {isOpen && createPortal(
-          <DropdownPortal
-            ref={dropdownRef}
-            style={{
-              top: dropdownPosition.top,
-              right: dropdownPosition.right,
-            }}
-            initial={{ opacity: 0, y: -10, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -10, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            role="menu"
-          >
+      {isOpen && createPortal(
+        <DropdownPortal
+          ref={dropdownRef}
+          style={{
+            top: dropdownPosition.top,
+            right: dropdownPosition.right,
+          }}
+          role="menu"
+        >
             {/* User Info Header */}
             <Header>
               <Username>{user?.username || 'User'}</Username>
@@ -213,10 +208,9 @@ const ProfileDropdown = ({
               <MenuIcon><MdExitToApp /></MenuIcon>
               <span>{t('nav.logout')}</span>
             </MenuItem>
-          </DropdownPortal>,
-          document.body
-        )}
-      </AnimatePresence>
+        </DropdownPortal>,
+        document.body
+      )}
     </Container>
   );
 };
@@ -286,7 +280,7 @@ const Arrow = styled.div`
   transform: ${props => props.$isOpen ? 'rotate(180deg)' : 'rotate(0deg)'};
 `;
 
-const DropdownPortal = styled(motion.div)`
+const DropdownPortal = styled.div`
   position: fixed;
   /* Respect viewport bounds - don't overflow on narrow screens */
   width: min(260px, calc(100vw - 32px));

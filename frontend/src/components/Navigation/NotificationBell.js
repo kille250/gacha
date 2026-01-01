@@ -164,21 +164,16 @@ const NotificationBell = ({ variant = 'desktop' }) => {
         </AnimatePresence>
       </BellButton>
 
-      <AnimatePresence>
-        {isOpen && createPortal(
-          <DropdownPortal
-            ref={dropdownRef}
-            style={{
-              top: dropdownPosition.top,
-              right: dropdownPosition.right,
-            }}
-            initial={{ opacity: 0, y: -8, scale: 0.95 }}
-            animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -8, scale: 0.95 }}
-            transition={{ duration: 0.15 }}
-            role="menu"
-            onKeyDown={handleKeyDown}
-          >
+      {isOpen && createPortal(
+        <DropdownPortal
+          ref={dropdownRef}
+          style={{
+            top: dropdownPosition.top,
+            right: dropdownPosition.right,
+          }}
+          role="menu"
+          onKeyDown={handleKeyDown}
+        >
             <DropdownHeader>
               <DropdownTitle>{t('announcements.title', 'Announcements')}</DropdownTitle>
               {unreadCount > 0 && (
@@ -228,10 +223,9 @@ const NotificationBell = ({ variant = 'desktop' }) => {
                 </ViewAllLink>
               </DropdownFooter>
             )}
-          </DropdownPortal>,
-          document.body
-        )}
-      </AnimatePresence>
+        </DropdownPortal>,
+        document.body
+      )}
     </BellWrapper>
   );
 };
@@ -348,7 +342,7 @@ const MobileBadge = styled.span`
   border-radius: ${theme.radius.full};
 `;
 
-const DropdownPortal = styled(motion.div)`
+const DropdownPortal = styled.div`
   position: fixed;
   width: 340px;
   max-width: calc(100vw - ${theme.spacing.lg} * 2);
