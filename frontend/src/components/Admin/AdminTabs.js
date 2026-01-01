@@ -22,7 +22,7 @@ import React, { useRef, useCallback, useState, useEffect } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaChartBar, FaUsers, FaImage, FaFlag, FaTicketAlt, FaStar, FaShieldAlt, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
+import { FaChartBar, FaUsers, FaImage, FaFlag, FaTicketAlt, FaStar, FaShieldAlt, FaBullhorn, FaChevronLeft, FaChevronRight } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme, useReducedMotion, AriaLiveRegion } from '../../design-system';
 
@@ -32,6 +32,7 @@ const TAB_CONFIG = [
   { id: 'characters', labelKey: 'admin.tabs.characters', icon: FaImage },
   { id: 'banners', labelKey: 'admin.tabs.banners', icon: FaFlag },
   { id: 'coupons', labelKey: 'admin.tabs.coupons', icon: FaTicketAlt },
+  { id: 'announcements', labelKey: 'admin.tabs.announcements', icon: FaBullhorn },
   { id: 'rarities', labelKey: 'admin.tabs.rarities', icon: FaStar },
   { id: 'security', labelKey: 'admin.tabs.security', icon: FaShieldAlt },
 ];
@@ -586,7 +587,7 @@ const ActiveIndicatorStatic = styled.div`
 // PropTypes
 AdminTabs.propTypes = {
   /** Currently active tab ID */
-  activeTab: PropTypes.oneOf(['dashboard', 'users', 'characters', 'banners', 'coupons', 'rarities', 'security']).isRequired,
+  activeTab: PropTypes.oneOf(['dashboard', 'users', 'characters', 'banners', 'coupons', 'announcements', 'rarities', 'security']).isRequired,
   /** Callback when a tab is selected */
   onTabChange: PropTypes.func.isRequired,
 };

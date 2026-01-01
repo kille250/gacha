@@ -13,6 +13,8 @@ const Appeal = require('./appeal');
 const SecurityConfig = require('./securityConfig');
 const ImportJob = require('./importJob');
 const PasswordResetHistory = require('./passwordResetHistory');
+const Announcement = require('./announcement');
+const UserAnnouncementStatus = require('./userAnnouncementStatus');
 
 // ===========================================
 // USER CHARACTERS JUNCTION TABLE (with leveling)
@@ -113,6 +115,18 @@ PasswordResetHistory.belongsTo(User, { foreignKey: 'targetUserId', as: 'targetUs
 User.hasMany(PasswordResetHistory, { foreignKey: 'adminId', as: 'adminPasswordResets' });
 PasswordResetHistory.belongsTo(User, { foreignKey: 'adminId', as: 'admin' });
 
+// Announcement <-> User (creator)
+User.hasMany(Announcement, { foreignKey: 'createdBy', as: 'announcements' });
+Announcement.belongsTo(User, { foreignKey: 'createdBy', as: 'creator' });
+
+// User <-> UserAnnouncementStatus
+User.hasMany(UserAnnouncementStatus, { foreignKey: 'userId', as: 'announcementStatuses' });
+UserAnnouncementStatus.belongsTo(User, { foreignKey: 'userId', as: 'user' });
+
+// Announcement <-> UserAnnouncementStatus
+Announcement.hasMany(UserAnnouncementStatus, { foreignKey: 'announcementId', as: 'userStatuses' });
+UserAnnouncementStatus.belongsTo(Announcement, { foreignKey: 'announcementId', as: 'announcement' });
+
 module.exports = {
   sequelize,
   User,
@@ -127,5 +141,7 @@ module.exports = {
   Appeal,
   SecurityConfig,
   ImportJob,
-  PasswordResetHistory
+  PasswordResetHistory,
+  Announcement,
+  UserAnnouncementStatus
 };

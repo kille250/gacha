@@ -458,6 +458,7 @@
       "characters": "Personajes",
       "banners": "Banners",
       "coupons": "Cupones",
+      "announcements": "Anuncios",
       "rarities": "Rarezas",
       "security": "Seguridad"
     },
@@ -1396,6 +1397,46 @@
     "retry": "Reintentar",
     "retryConnection": "Reintentar conexión",
     "dismissNotification": "Cerrar notificación"
+  },
+  "announcements": {
+    "center": "Anuncios",
+    "noAnnouncements": "No hay anuncios",
+    "noUnread": "No hay anuncios sin leer",
+    "acknowledge": "Confirmar",
+    "acknowledged": "Confirmado",
+    "dismiss": "Cerrar",
+    "gotIt": "Entendido",
+    "mustAcknowledge": "Debes confirmar este anuncio",
+    "filterAll": "Todos",
+    "filterUnread": "Sin leer",
+    "filterRead": "Leídos",
+    "types": {
+      "maintenance": "Mantenimiento",
+      "update": "Actualización",
+      "event": "Evento",
+      "patch_notes": "Notas de Parche",
+      "promotion": "Promoción",
+      "warning": "Advertencia",
+      "info": "Información"
+    },
+    "priority": {
+      "low": "Baja",
+      "medium": "Media",
+      "high": "Alta",
+      "critical": "Crítica"
+    },
+    "displayMode": {
+      "banner": "Banner",
+      "modal": "Modal",
+      "toast": "Toast",
+      "inline": "Inline"
+    },
+    "audience": {
+      "all": "Todos los Usuarios",
+      "admins": "Solo Admins",
+      "premium": "Usuarios Premium",
+      "new_users": "Nuevos Usuarios"
+    }
   },
   "errorBoundary": {
     "title": "Algo salió mal",
