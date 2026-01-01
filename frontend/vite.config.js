@@ -13,7 +13,7 @@ export default defineConfig({
     open: true,
   },
   build: {
-    outDir: 'build',
+    outDir: 'dist',
     sourcemap: true,
     // Chunk size warning limit adjusted for this feature-rich SPA:
     // - The main bundle (~1.1MB raw, ~307KB gzip) contains shared app code
