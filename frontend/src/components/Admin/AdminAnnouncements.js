@@ -51,6 +51,7 @@ import {
   duplicateAnnouncement,
   deleteAnnouncement
 } from '../../services/announcementService';
+import { invalidateFor, CACHE_ACTIONS } from '../../cache/manager';
 import {
   AdminContainer,
   HeaderRow,
@@ -142,9 +143,11 @@ const AdminAnnouncements = () => {
     try {
       if (editingAnnouncement) {
         await updateAnnouncement(editingAnnouncement.id, formData);
+        invalidateFor(CACHE_ACTIONS.ANNOUNCEMENT_UPDATE);
         toast.success(t('admin.announcementUpdated'));
       } else {
         await createAnnouncement(formData);
+        invalidateFor(CACHE_ACTIONS.ANNOUNCEMENT_CREATE);
         toast.success(t('admin.announcementCreated'));
       }
       setFormModalOpen(false);
@@ -158,6 +161,7 @@ const AdminAnnouncements = () => {
   const handlePublish = useCallback(async (ann) => {
     try {
       await publishAnnouncement(ann.id);
+      invalidateFor(CACHE_ACTIONS.ANNOUNCEMENT_PUBLISH);
       toast.success(t('admin.announcementPublished'));
       setAnnouncement(`${ann.title} published`);
       fetchAnnouncements();
@@ -170,6 +174,7 @@ const AdminAnnouncements = () => {
   const handleArchive = useCallback(async (ann) => {
     try {
       await archiveAnnouncement(ann.id);
+      invalidateFor(CACHE_ACTIONS.ANNOUNCEMENT_ARCHIVE);
       toast.success(t('admin.announcementArchived'));
       setAnnouncement(`${ann.title} archived`);
       fetchAnnouncements();
@@ -194,6 +199,7 @@ const AdminAnnouncements = () => {
     if (!confirmDelete) return;
     try {
       await deleteAnnouncement(confirmDelete.id);
+      invalidateFor(CACHE_ACTIONS.ANNOUNCEMENT_DELETE);
       toast.success(t('admin.announcementDeleted'));
       setConfirmDelete(null);
       fetchAnnouncements();

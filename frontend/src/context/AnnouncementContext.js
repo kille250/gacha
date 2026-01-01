@@ -17,6 +17,7 @@ import {
   dismissAnnouncement as dismissAnnouncementAPI
 } from '../services/announcementService';
 import { useAuth } from './AuthContext';
+import { onCacheInvalidation, ANNOUNCEMENT_ACTIONS } from '../cache/manager';
 
 const AnnouncementContext = createContext(null);
 
@@ -281,6 +282,30 @@ export const AnnouncementProvider = ({ children }) => {
       document.removeEventListener('visibilitychange', handleVisibilityChange);
     };
   }, [user, lastFetched, fetchAnnouncements]);
+
+  // Subscribe to cache invalidation events for announcements
+  // This ensures React state stays in sync when admin actions clear the cache
+  useEffect(() => {
+    if (!user) return;
+
+    const announcementActions = [
+      ANNOUNCEMENT_ACTIONS.CREATE,
+      ANNOUNCEMENT_ACTIONS.UPDATE,
+      ANNOUNCEMENT_ACTIONS.DELETE,
+      ANNOUNCEMENT_ACTIONS.PUBLISH,
+      ANNOUNCEMENT_ACTIONS.ARCHIVE
+    ];
+
+    return onCacheInvalidation(
+      'announcement-context',
+      () => {
+        // Refetch announcements when cache is invalidated
+        fetchAnnouncements(true);
+        fetchUnacknowledged();
+      },
+      announcementActions
+    );
+  }, [user, fetchAnnouncements, fetchUnacknowledged]);
 
   // Memoize context value
   const value = useMemo(() => ({

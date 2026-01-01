@@ -262,6 +262,26 @@ export const FORTUNE_WHEEL_ACTIONS = {
 };
 
 // ===========================================
+// ANNOUNCEMENT ACTIONS
+// ===========================================
+
+/**
+ * Announcement actions for admin management and user-facing cache invalidation.
+ */
+export const ANNOUNCEMENT_ACTIONS = {
+  /** Creating a new announcement */
+  CREATE: 'announcement:create',
+  /** Updating an existing announcement */
+  UPDATE: 'announcement:update',
+  /** Deleting an announcement */
+  DELETE: 'announcement:delete',
+  /** Publishing an announcement */
+  PUBLISH: 'announcement:publish',
+  /** Archiving an announcement */
+  ARCHIVE: 'announcement:archive',
+};
+
+// ===========================================
 // SESSION STORAGE KEYS
 // ===========================================
 
@@ -397,6 +417,13 @@ export const CACHE_ACTIONS = {
 
   // Fortune Wheel actions
   FORTUNE_WHEEL_SPIN: FORTUNE_WHEEL_ACTIONS.SPIN,
+
+  // Announcement actions
+  ANNOUNCEMENT_CREATE: ANNOUNCEMENT_ACTIONS.CREATE,
+  ANNOUNCEMENT_UPDATE: ANNOUNCEMENT_ACTIONS.UPDATE,
+  ANNOUNCEMENT_DELETE: ANNOUNCEMENT_ACTIONS.DELETE,
+  ANNOUNCEMENT_PUBLISH: ANNOUNCEMENT_ACTIONS.PUBLISH,
+  ANNOUNCEMENT_ARCHIVE: ANNOUNCEMENT_ACTIONS.ARCHIVE,
 };
 
 // NOTE: Default export removed - use named exports instead for better tree-shaking

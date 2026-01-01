@@ -57,6 +57,7 @@ export {
   PRE_TRANSACTION_ACTIONS,
   ENHANCEMENT_ACTIONS,
   FORTUNE_WHEEL_ACTIONS,
+  ANNOUNCEMENT_ACTIONS,
   VISIBILITY_CALLBACK_IDS,
   SESSION_KEYS,
   LOCAL_STORAGE_KEYS
@@ -242,10 +243,74 @@ const FORTUNE_WHEEL_PATTERNS = {
 };
 
 /**
+ * Announcement invalidation patterns
+ * Admin announcement changes should invalidate user-facing announcement caches
+ */
+const ANNOUNCEMENT_PATTERNS = {
+  create: ['/announcements', '/announcements/unacknowledged'],
+  update: ['/announcements', '/announcements/unacknowledged'],
+  delete: ['/announcements', '/announcements/unacknowledged'],
+  publish: ['/announcements', '/announcements/unacknowledged'],
+  archive: ['/announcements', '/announcements/unacknowledged']
+};
+
+/**
  * Helper to invalidate patterns for an action
  */
 const invalidatePatterns = (patterns) => {
   patterns.forEach(p => clearCache(p));
+};
+
+// ===========================================
+// CACHE INVALIDATION CALLBACKS
+// ===========================================
+
+/**
+ * Registry for cache invalidation callbacks.
+ * Components/contexts can register callbacks that run when specific cache actions occur.
+ * This allows React state to stay in sync with cache invalidation.
+ */
+const invalidationCallbacks = new Map();
+
+/**
+ * Register a callback to run when a cache action is invalidated.
+ * Use this to trigger React state updates when cache is cleared.
+ *
+ * @param {string} id - Unique identifier for this callback
+ * @param {Function} callback - Function to call: (action) => void
+ * @param {string[]} [actions] - Optional array of actions to listen for. If not provided, listens to all.
+ * @returns {Function} Cleanup function to unregister the callback
+ *
+ * @example
+ * // In AnnouncementContext:
+ * useEffect(() => {
+ *   return onCacheInvalidation('announcement-context', (action) => {
+ *     refetch();
+ *   }, ['announcement:delete', 'announcement:create', 'announcement:update']);
+ * }, [refetch]);
+ */
+export const onCacheInvalidation = (id, callback, actions = null) => {
+  invalidationCallbacks.set(id, { callback, actions });
+  return () => {
+    invalidationCallbacks.delete(id);
+  };
+};
+
+/**
+ * Notify all registered callbacks about a cache invalidation.
+ * @param {string} action - The action that was invalidated
+ */
+const notifyInvalidationCallbacks = (action) => {
+  invalidationCallbacks.forEach(({ callback, actions }, id) => {
+    try {
+      // If actions filter is specified, only call if action matches
+      if (actions === null || actions.includes(action)) {
+        callback(action);
+      }
+    } catch (err) {
+      console.error(`[CacheManager] Error in invalidation callback '${id}':`, err);
+    }
+  });
 };
 
 // ===========================================
@@ -523,7 +588,16 @@ const ACTION_HANDLERS = {
   // ===========================================
   // FORTUNE WHEEL ACTIONS
   // ===========================================
-  'fortune:spin': () => invalidatePatterns(FORTUNE_WHEEL_PATTERNS.spin)
+  'fortune:spin': () => invalidatePatterns(FORTUNE_WHEEL_PATTERNS.spin),
+
+  // ===========================================
+  // ANNOUNCEMENT ACTIONS
+  // ===========================================
+  'announcement:create': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.create),
+  'announcement:update': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.update),
+  'announcement:delete': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.delete),
+  'announcement:publish': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.publish),
+  'announcement:archive': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.archive)
 };
 
 /**
@@ -573,6 +647,10 @@ export const invalidateFor = (action, options = {}) => {
   const startTime = performance.now();
   const handler = ACTION_HANDLERS[action];
   handler();
+
+  // Notify registered callbacks about this invalidation
+  notifyInvalidationCallbacks(action);
+
   const duration = performance.now() - startTime;
 
   // Track invalidation for debugging
@@ -642,6 +720,8 @@ export const getInvalidationPatterns = (action) => {
       return ENHANCEMENT_PATTERNS[actionName] || null;
     case 'fortune':
       return FORTUNE_WHEEL_PATTERNS[actionName] || null;
+    case 'announcement':
+      return ANNOUNCEMENT_PATTERNS[actionName] || null;
     default:
       return null;
   }
