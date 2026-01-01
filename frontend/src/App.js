@@ -45,6 +45,7 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const DojoPage = lazy(() => import('./pages/DojoPage'));
 const FortuneWheelPage = lazy(() => import('./pages/FortuneWheelPage'));
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'));
+const EssenceTapPage = lazy(() => import('./pages/EssenceTapPage'));
 
 // Initialize cache manager visibility handler (runs once on app load)
 initVisibilityHandler({
@@ -182,6 +183,7 @@ const AnimatedRoutes = () => {
         <Route path="/fortune-wheel" element={<FortuneWheelPage />} />
         <Route path="/coupons" element={<CouponPage />} />
         <Route path="/announcements" element={<AnnouncementsPage />} />
+        <Route path="/essence-tap" element={<EssenceTapPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/admin" element={<AdminPage />} />
       </Route>
