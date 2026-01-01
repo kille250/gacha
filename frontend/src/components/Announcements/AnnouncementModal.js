@@ -379,13 +379,40 @@ const reducedMotionVariants = {
 // COMPONENT
 // ============================================
 
+// Session storage key for tracking handled announcements
+const HANDLED_IDS_KEY = 'announcement_modal_handled';
+
+/**
+ * Load handled IDs from sessionStorage
+ */
+const loadHandledIds = () => {
+  try {
+    const stored = sessionStorage.getItem(HANDLED_IDS_KEY);
+    return stored ? new Set(JSON.parse(stored)) : new Set();
+  } catch {
+    return new Set();
+  }
+};
+
+/**
+ * Save handled IDs to sessionStorage
+ */
+const saveHandledIds = (ids) => {
+  try {
+    sessionStorage.setItem(HANDLED_IDS_KEY, JSON.stringify([...ids]));
+  } catch {
+    // Ignore storage errors
+  }
+};
+
 const AnnouncementModal = () => {
   const { t } = useTranslation();
   const { unacknowledgedAnnouncements, modalAnnouncements, acknowledge, dismiss } = useAnnouncements();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   // Track IDs that user has dismissed/acknowledged in this session to prevent re-showing
-  const [handledIds, setHandledIds] = useState(() => new Set());
+  // Persisted in sessionStorage to survive re-renders and refetches
+  const [handledIds, setHandledIds] = useState(loadHandledIds);
 
   // Combine unacknowledged (priority) and modal display mode announcements
   // Filter out any announcements we've already handled in this session
@@ -431,7 +458,11 @@ const AnnouncementModal = () => {
     const announcementId = currentAnnouncement.id;
 
     // Immediately mark as handled to prevent re-showing
-    setHandledIds(prev => new Set([...prev, announcementId]));
+    setHandledIds(prev => {
+      const next = new Set([...prev, announcementId]);
+      saveHandledIds(next);
+      return next;
+    });
 
     try {
       await acknowledge(announcementId);
@@ -441,6 +472,7 @@ const AnnouncementModal = () => {
       setHandledIds(prev => {
         const next = new Set(prev);
         next.delete(announcementId);
+        saveHandledIds(next);
         return next;
       });
     }
@@ -452,7 +484,11 @@ const AnnouncementModal = () => {
     const announcementId = currentAnnouncement.id;
 
     // Immediately mark as handled to prevent re-showing
-    setHandledIds(prev => new Set([...prev, announcementId]));
+    setHandledIds(prev => {
+      const next = new Set([...prev, announcementId]);
+      saveHandledIds(next);
+      return next;
+    });
 
     try {
       await dismiss(announcementId);
@@ -462,6 +498,7 @@ const AnnouncementModal = () => {
       setHandledIds(prev => {
         const next = new Set(prev);
         next.delete(announcementId);
+        saveHandledIds(next);
         return next;
       });
     }
@@ -470,7 +507,11 @@ const AnnouncementModal = () => {
   const handleClose = useCallback(() => {
     if (canClose && currentAnnouncement) {
       // Mark as handled so it doesn't reopen
-      setHandledIds(prev => new Set([...prev, currentAnnouncement.id]));
+      setHandledIds(prev => {
+        const next = new Set([...prev, currentAnnouncement.id]);
+        saveHandledIds(next);
+        return next;
+      });
       setIsOpen(false);
     }
   }, [canClose, currentAnnouncement]);
