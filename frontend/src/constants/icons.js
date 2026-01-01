@@ -466,3 +466,47 @@ export const IconTriangleDown = (props) => <MdKeyboardArrowDown {...props} />;
 /** Sword/battle icon */
 export const IconSword = (props) => <LuSwords {...props} />;
 
+// ==================== ESSENCE TAP ICONS ====================
+
+/** Gem/essence icon */
+export const IconGem = (props) => <FaGem {...props} />;
+
+/** Diamond (outline) */
+export const IconDiamondOutline = (props) => <TbDiamond {...props} />;
+
+/** Tornado/storm icon */
+export const IconStorm = (props) => <IoFlame {...props} />;
+
+/** Lightning/bolt for abilities */
+export const IconLightning = (props) => <FaBolt {...props} />;
+
+/** Water drop icon */
+export const IconWater = (props) => <GiWaves {...props} />;
+
+/** Leaf/earth icon */
+export const IconEarth = (props) => <GiMountains {...props} />;
+
+/** Wind/air icon */
+export const IconAir = (props) => <GiWaves {...props} />;
+
+/** Sun/light icon */
+export const IconLight = (props) => <IoSparkles {...props} />;
+
+/** Moon/dark icon */
+export const IconDark = (props) => <GiMoon {...props} />;
+
+/** Circle/neutral icon */
+export const IconNeutral = (props) => <GiDiamonds {...props} />;
+
+/** Hand/tap icon */
+export const IconTap = (props) => <FaHandPaper {...props} />;
+
+/** Plus icon */
+export const IconPlus = (props) => <FaPlusCircle {...props} />;
+
+/** Upgrade icon */
+export const IconUpgrade = (props) => <GiUpgrade {...props} />;
+
+/** Crown/prestige icon */
+export const IconPrestige = (props) => <GiQueenCrown {...props} />;
+

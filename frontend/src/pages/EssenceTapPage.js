@@ -8,9 +8,13 @@
  * - Upgrades panel for enhancements
  * - Prestige system for permanent progression
  * - Offline progress notification
+ * - Character selection for bonuses
+ * - Daily modifiers for variety
+ * - Active abilities for strategic depth
+ * - New player onboarding
  */
 
-import React, { useState, useCallback, memo } from 'react';
+import React, { useState, useCallback, useEffect, memo } from 'react';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -19,7 +23,6 @@ import {
   GlassCard,
   Button,
   Modal,
-  ModalHeader,
   ModalBody,
   ModalFooter,
   LoadingState,
@@ -32,8 +35,15 @@ import {
   TapTarget,
   GeneratorList,
   UpgradeList,
-  PrestigePanel
+  PrestigePanel,
+  CharacterSelector,
+  OnboardingOverlay,
+  DailyModifierBanner,
+  ActiveAbilities
 } from '../components/EssenceTap';
+
+// Local storage key for onboarding
+const ONBOARDING_COMPLETE_KEY = 'essenceTap_onboardingComplete';
 
 // Animations
 const shimmer = keyframes`
@@ -221,6 +231,14 @@ const StatItem = styled.div`
   padding: ${theme.spacing.xs} ${theme.spacing.sm};
   background: rgba(255, 255, 255, 0.03);
   border-radius: ${theme.radius.md};
+  cursor: ${props => props.$clickable ? 'pointer' : 'default'};
+  transition: all 0.2s ease;
+
+  ${props => props.$clickable && `
+    &:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+  `}
 `;
 
 const StatLabel = styled.span`
@@ -232,9 +250,23 @@ const StatValue = styled.span`
   font-weight: ${theme.fontWeights.medium};
 `;
 
+const CharacterBonusButton = styled(StatItem)`
+  cursor: pointer;
+  border: 1px solid rgba(138, 43, 226, 0.3);
+
+  &:hover {
+    background: rgba(138, 43, 226, 0.15);
+    border-color: rgba(138, 43, 226, 0.5);
+  }
+`;
+
 const EssenceTapPage = memo(() => {
   const { t } = useTranslation();
   const [showPrestige, setShowPrestige] = useState(false);
+  const [showCharacterSelector, setShowCharacterSelector] = useState(false);
+  const [showOnboarding, setShowOnboarding] = useState(false);
+  const [_dailyModifier, setDailyModifier] = useState(null);
+  const [activeAbilityEffects, setActiveAbilityEffects] = useState({});
 
   const {
     gameState,
@@ -252,8 +284,31 @@ const EssenceTapPage = memo(() => {
     performPrestige,
     purchasePrestigeUpgrade,
     claimMilestone,
+    assignCharacter,
+    unassignCharacter,
     refresh
   } = useEssenceTap();
+
+  // Check if onboarding should be shown
+  useEffect(() => {
+    const onboardingComplete = localStorage.getItem(ONBOARDING_COMPLETE_KEY);
+    if (!onboardingComplete && !loading && gameState) {
+      // Show onboarding for new players (low lifetime essence)
+      if ((gameState.lifetimeEssence || 0) < 100) {
+        setShowOnboarding(true);
+      }
+    }
+  }, [loading, gameState]);
+
+  const handleOnboardingComplete = useCallback(() => {
+    localStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+    setShowOnboarding(false);
+  }, []);
+
+  const handleOnboardingSkip = useCallback(() => {
+    localStorage.setItem(ONBOARDING_COMPLETE_KEY, 'true');
+    setShowOnboarding(false);
+  }, []);
 
   const handleClaimMilestones = useCallback(() => {
     if (gameState?.claimableMilestones?.length > 0) {
@@ -262,6 +317,30 @@ const EssenceTapPage = memo(() => {
       });
     }
   }, [gameState?.claimableMilestones, claimMilestone]);
+
+  const handleDailyModifierChange = useCallback((modifier) => {
+    setDailyModifier(modifier);
+  }, []);
+
+  const handleAbilityActivate = useCallback((abilityId, effects) => {
+    if (effects) {
+      setActiveAbilityEffects(prev => ({ ...prev, [abilityId]: effects }));
+    } else {
+      setActiveAbilityEffects(prev => {
+        const newEffects = { ...prev };
+        delete newEffects[abilityId];
+        return newEffects;
+      });
+    }
+  }, []);
+
+  const handleCharacterAssign = useCallback(async (characterId) => {
+    await assignCharacter(characterId);
+  }, [assignCharacter]);
+
+  const handleCharacterUnassign = useCallback(async (characterId) => {
+    await unassignCharacter(characterId);
+  }, [unassignCharacter]);
 
   if (loading) {
     return (
@@ -297,6 +376,9 @@ const EssenceTapPage = memo(() => {
         initial="initial"
         animate="animate"
       >
+        {/* Daily Modifier Banner */}
+        <DailyModifierBanner onModifierChange={handleDailyModifierChange} />
+
         <Header>
           <EssenceDisplay>
             {formatNumber(essence)} Essence
@@ -330,6 +412,15 @@ const EssenceTapPage = memo(() => {
                 </StatValue>
               </StatItem>
             )}
+            <CharacterBonusButton onClick={() => setShowCharacterSelector(true)}>
+              <StatLabel>Characters:</StatLabel>
+              <StatValue $color="#10B981">
+                {gameState?.assignedCharacters?.length || 0}/{gameState?.maxAssignedCharacters || 5}
+              </StatValue>
+              <span style={{ fontSize: '12px' }}>
+                (x{(gameState?.characterBonus || 1).toFixed(2)})
+              </span>
+            </CharacterBonusButton>
           </StatsBar>
         </Header>
 
@@ -353,6 +444,13 @@ const EssenceTapPage = memo(() => {
               clickPower={gameState?.clickPower || 1}
               lastClickResult={lastClickResult}
               comboMultiplier={comboMultiplier}
+            />
+
+            {/* Active Abilities */}
+            <ActiveAbilities
+              onActivate={handleAbilityActivate}
+              activeEffects={activeAbilityEffects}
+              prestigeLevel={gameState?.prestige?.prestigeLevel || 0}
             />
 
             <ActionButtons>
@@ -396,6 +494,24 @@ const EssenceTapPage = memo(() => {
           onPurchaseUpgrade={purchasePrestigeUpgrade}
           isOpen={showPrestige}
           onClose={() => setShowPrestige(false)}
+        />
+
+        {/* Character Selector Modal */}
+        <CharacterSelector
+          isOpen={showCharacterSelector}
+          onClose={() => setShowCharacterSelector(false)}
+          assignedCharacters={gameState?.assignedCharacters || []}
+          maxCharacters={gameState?.maxAssignedCharacters || 5}
+          characterBonus={gameState?.characterBonus || 1}
+          onAssign={handleCharacterAssign}
+          onUnassign={handleCharacterUnassign}
+        />
+
+        {/* Onboarding Overlay */}
+        <OnboardingOverlay
+          isOpen={showOnboarding}
+          onComplete={handleOnboardingComplete}
+          onSkip={handleOnboardingSkip}
         />
 
         {/* Offline Progress Modal */}

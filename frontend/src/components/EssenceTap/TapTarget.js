@@ -14,9 +14,11 @@ import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { theme } from '../../design-system';
 import { formatNumber } from '../../hooks/useEssenceTap';
+import { IconGem, IconSparkles } from '../../constants/icons';
 
 // Animations
-const pulse = keyframes`
+// Note: pulse animation defined but currently unused - kept for potential future use
+const _pulse = `
   0% { transform: scale(1); }
   50% { transform: scale(1.05); }
   100% { transform: scale(1); }
@@ -39,7 +41,8 @@ const goldenGlow = keyframes`
   100% { box-shadow: 0 0 80px rgba(255, 215, 0, 0.8), 0 0 150px rgba(255, 215, 0, 0.5), 0 0 200px rgba(255, 165, 0, 0.3); }
 `;
 
-const floatUp = keyframes`
+// Note: floatUp used in DamageNumber styled component below
+const _floatUp = `
   0% {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -234,7 +237,7 @@ const TapTarget = memo(({
         transition={{ type: 'spring', stiffness: 400, damping: 17 }}
       >
         <TapIcon>
-          {lastClickResult?.isGolden ? '✨' : '💎'}
+          {lastClickResult?.isGolden ? <IconSparkles size={48} /> : <IconGem size={48} />}
         </TapIcon>
         <TapLabel>TAP!</TapLabel>
 

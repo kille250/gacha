@@ -4,24 +4,37 @@
 
 import React, { memo, useCallback, useState } from 'react';
 import styled from 'styled-components';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
-import { theme, Button, GlassCard } from '../../design-system';
+import { theme, Button } from '../../design-system';
 import { formatNumber } from '../../hooks/useEssenceTap';
+import {
+  IconSparkle,
+  IconWater,
+  IconGem,
+  IconMagic,
+  IconFlame,
+  IconStorm,
+  IconStar,
+  IconSparkles,
+  IconDiamond,
+  IconLightning,
+  IconLocked
+} from '../../constants/icons';
 
-// Generator icons mapping
+// Generator icons mapping using React Icons
 const GENERATOR_ICONS = {
-  essence_sprite: '🧚',
-  mana_well: '💧',
-  crystal_node: '💎',
-  arcane_altar: '🔮',
-  spirit_beacon: '🔥',
-  void_rift: '🌀',
-  celestial_gate: '⭐',
-  eternal_nexus: '🌟',
-  primordial_core: '💫',
-  infinity_engine: '♾️',
-  default: '⚡'
+  essence_sprite: IconSparkle,
+  mana_well: IconWater,
+  crystal_node: IconGem,
+  arcane_altar: IconMagic,
+  spirit_beacon: IconFlame,
+  void_rift: IconStorm,
+  celestial_gate: IconStar,
+  eternal_nexus: IconSparkles,
+  primordial_core: IconDiamond,
+  infinity_engine: IconLightning,
+  default: IconLightning
 };
 
 const ListContainer = styled.div`
@@ -259,7 +272,7 @@ const GeneratorList = memo(({
               whileTap={canAffordBulk ? { scale: 0.99 } : {}}
             >
               <GeneratorIcon>
-                {GENERATOR_ICONS[generator.id] || GENERATOR_ICONS.default}
+                {React.createElement(GENERATOR_ICONS[generator.id] || GENERATOR_ICONS.default, { size: 24 })}
               </GeneratorIcon>
 
               <GeneratorInfo>
@@ -297,7 +310,7 @@ const GeneratorList = memo(({
             $canAfford={false}
             $unlocked={false}
           >
-            <GeneratorIcon>🔒</GeneratorIcon>
+            <GeneratorIcon><IconLocked size={24} /></GeneratorIcon>
 
             <GeneratorInfo>
               <GeneratorName>{generator.name}</GeneratorName>

@@ -11,6 +11,71 @@ const { User, UserCharacter } = require('../models');
 const essenceTapService = require('../services/essenceTapService');
 const accountLevelService = require('../services/accountLevelService');
 
+// ===========================================
+// SERVER-SIDE RATE LIMITING
+// ===========================================
+
+/**
+ * In-memory rate limiter for click requests
+ * Tracks last click timestamp and click count per user
+ */
+const clickRateLimiter = new Map();
+const RATE_LIMIT_WINDOW_MS = 1000; // 1 second window
+const MAX_CLICKS_PER_WINDOW = 25; // Slightly higher than client-side to account for network batching
+const RATE_LIMIT_CLEANUP_INTERVAL = 60000; // Clean up old entries every minute
+
+// Clean up old rate limit entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [userId, data] of clickRateLimiter.entries()) {
+    if (now - data.windowStart > RATE_LIMIT_WINDOW_MS * 10) {
+      clickRateLimiter.delete(userId);
+    }
+  }
+}, RATE_LIMIT_CLEANUP_INTERVAL);
+
+/**
+ * Check and update rate limit for a user
+ * @param {number} userId - User ID
+ * @param {number} clickCount - Number of clicks in this request
+ * @returns {{ allowed: boolean, remaining: number, resetIn: number }}
+ */
+function checkClickRateLimit(userId, clickCount) {
+  const now = Date.now();
+  const userLimit = clickRateLimiter.get(userId);
+
+  if (!userLimit || now - userLimit.windowStart >= RATE_LIMIT_WINDOW_MS) {
+    // New window
+    clickRateLimiter.set(userId, {
+      windowStart: now,
+      clicks: clickCount
+    });
+    return {
+      allowed: true,
+      remaining: MAX_CLICKS_PER_WINDOW - clickCount,
+      resetIn: RATE_LIMIT_WINDOW_MS
+    };
+  }
+
+  // Same window - check if adding clicks would exceed limit
+  const newTotal = userLimit.clicks + clickCount;
+  if (newTotal > MAX_CLICKS_PER_WINDOW) {
+    return {
+      allowed: false,
+      remaining: Math.max(0, MAX_CLICKS_PER_WINDOW - userLimit.clicks),
+      resetIn: RATE_LIMIT_WINDOW_MS - (now - userLimit.windowStart)
+    };
+  }
+
+  // Update click count
+  userLimit.clicks = newTotal;
+  return {
+    allowed: true,
+    remaining: MAX_CLICKS_PER_WINDOW - newTotal,
+    resetIn: RATE_LIMIT_WINDOW_MS - (now - userLimit.windowStart)
+  };
+}
+
 /**
  * GET /api/essence-tap/status
  * Get current clicker state and calculate offline progress
@@ -75,8 +140,20 @@ router.post('/click', auth, async (req, res) => {
   try {
     const { count = 1, comboMultiplier = 1 } = req.body;
 
-    // Rate limit clicks
-    const clickCount = Math.min(Math.max(1, count), essenceTapService.GAME_CONFIG.maxClicksPerSecond);
+    // Server-side rate limit check
+    const requestedClicks = Math.min(Math.max(1, count), essenceTapService.GAME_CONFIG.maxClicksPerSecond);
+    const rateLimit = checkClickRateLimit(req.user.id, requestedClicks);
+
+    if (!rateLimit.allowed) {
+      return res.status(429).json({
+        error: 'Rate limit exceeded',
+        remaining: rateLimit.remaining,
+        resetIn: rateLimit.resetIn
+      });
+    }
+
+    // Use the allowed click count (may be less than requested if near limit)
+    const clickCount = Math.min(requestedClicks, rateLimit.remaining + requestedClicks);
 
     const user = await User.findByPk(req.user.id);
     if (!user) {

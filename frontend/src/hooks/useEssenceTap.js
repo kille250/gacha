@@ -46,7 +46,7 @@ export function formatPerSecond(num) {
 
 export const useEssenceTap = () => {
   const { t } = useTranslation();
-  const { user, refreshUser } = useContext(AuthContext);
+  const { refreshUser } = useContext(AuthContext);
   const toast = useToast();
 
   // Core state
@@ -157,6 +157,7 @@ export const useEssenceTap = () => {
         passiveTickRef.current = null;
       }
     };
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- Only re-run when production rate changes, not all gameState changes
   }, [gameState?.productionPerSecond]);
 
   // Auto-save (runs every 30 seconds, uses refs to avoid dependency issues)

@@ -147,7 +147,7 @@ const TABS = [
 
 const UpgradeList = memo(({
   upgrades = {},
-  essence = 0,
+  _essence = 0,
   onPurchase
 }) => {
   const { t } = useTranslation();

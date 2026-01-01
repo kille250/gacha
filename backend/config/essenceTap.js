@@ -620,6 +620,223 @@ const DAILY_CHALLENGES = [
 ];
 
 // ===========================================
+// CHARACTER ABILITIES BY ELEMENT
+// ===========================================
+
+/**
+ * Character element abilities for Essence Tap
+ * Each element provides a unique bonus when assigned
+ */
+const CHARACTER_ABILITIES = {
+  fire: {
+    id: 'fire',
+    name: 'Flame Fury',
+    description: '+10% crit chance per Fire character',
+    type: 'crit_chance',
+    bonusPerCharacter: 0.10
+  },
+  water: {
+    id: 'water',
+    name: 'Flow State',
+    description: '+15% generator production per Water character',
+    type: 'production',
+    bonusPerCharacter: 0.15
+  },
+  earth: {
+    id: 'earth',
+    name: 'Steady Ground',
+    description: '+20% offline efficiency per Earth character',
+    type: 'offline',
+    bonusPerCharacter: 0.20
+  },
+  air: {
+    id: 'air',
+    name: 'Swift Strikes',
+    description: '+500ms combo decay time per Air character',
+    type: 'combo_duration',
+    bonusPerCharacter: 500
+  },
+  light: {
+    id: 'light',
+    name: 'Golden Touch',
+    description: '+0.05% golden essence chance per Light character',
+    type: 'golden_chance',
+    bonusPerCharacter: 0.0005
+  },
+  dark: {
+    id: 'dark',
+    name: 'Shadow Power',
+    description: '+20% click power per Dark character',
+    type: 'click_power',
+    bonusPerCharacter: 0.20
+  },
+  neutral: {
+    id: 'neutral',
+    name: 'Balance',
+    description: '+5% to all stats per Neutral character',
+    type: 'all_stats',
+    bonusPerCharacter: 0.05
+  }
+};
+
+/**
+ * Element synergy bonuses when multiple characters of same element
+ */
+const ELEMENT_SYNERGIES = {
+  // +5% bonus per matching pair of elements
+  pairBonus: 0.05,
+  // Full team (5 same element) special bonus
+  fullTeamBonus: 0.25,
+  // Mixed team (all different elements) bonus
+  diversityBonus: 0.10
+};
+
+// ===========================================
+// DAILY MODIFIERS
+// ===========================================
+
+/**
+ * Daily rotating modifiers that change gameplay each day
+ * Frontend calculates which modifier is active based on day of week
+ */
+const DAILY_MODIFIERS = {
+  0: { // Sunday
+    id: 'golden_sunday',
+    name: 'Golden Sunday',
+    description: '5x Golden Essence chance!',
+    effects: { goldenChanceMultiplier: 5 }
+  },
+  1: { // Monday
+    id: 'momentum_monday',
+    name: 'Momentum Monday',
+    description: '2x combo growth rate!',
+    effects: { comboGrowthMultiplier: 2 }
+  },
+  2: { // Tuesday
+    id: 'tap_tuesday',
+    name: 'Tap Tuesday',
+    description: '+50% click power!',
+    effects: { clickPowerBonus: 0.5 }
+  },
+  3: { // Wednesday
+    id: 'wealth_wednesday',
+    name: 'Wealth Wednesday',
+    description: '+25% generator output!',
+    effects: { generatorOutputBonus: 0.25 }
+  },
+  4: { // Thursday
+    id: 'critical_thursday',
+    name: 'Critical Thursday',
+    description: '2x crit multiplier!',
+    effects: { critMultiplierBonus: 2 }
+  },
+  5: { // Friday
+    id: 'fortune_friday',
+    name: 'Fortune Friday',
+    description: '+15% crit chance!',
+    effects: { critChanceBonus: 0.15 }
+  },
+  6: { // Saturday
+    id: 'super_saturday',
+    name: 'Super Saturday',
+    description: '+50% ALL production!',
+    effects: { allProductionBonus: 0.5 }
+  }
+};
+
+// ===========================================
+// ACTIVE ABILITIES
+// ===========================================
+
+/**
+ * Player-activated abilities with cooldowns
+ * Unlocked through prestige progression
+ */
+const ACTIVE_ABILITIES = {
+  essenceStorm: {
+    id: 'essenceStorm',
+    name: 'Essence Storm',
+    description: '10x production for 5 seconds',
+    duration: 5000,
+    cooldown: 60000,
+    unlockPrestige: 0,
+    effects: { productionMultiplier: 10 }
+  },
+  criticalFocus: {
+    id: 'criticalFocus',
+    name: 'Critical Focus',
+    description: 'Guaranteed crits for 3 seconds',
+    duration: 3000,
+    cooldown: 45000,
+    unlockPrestige: 1,
+    effects: { guaranteedCrits: true }
+  },
+  goldenRush: {
+    id: 'goldenRush',
+    name: 'Golden Rush',
+    description: '50x golden chance for 10 seconds',
+    duration: 10000,
+    cooldown: 120000,
+    unlockPrestige: 3,
+    effects: { goldenChanceMultiplier: 50 }
+  },
+  timeWarp: {
+    id: 'timeWarp',
+    name: 'Time Warp',
+    description: 'Collect 30 minutes of offline progress',
+    duration: 0, // Instant
+    cooldown: 300000,
+    unlockPrestige: 5,
+    effects: { instantOfflineMinutes: 30 }
+  }
+};
+
+// ===========================================
+// RISK/REWARD MECHANICS
+// ===========================================
+
+/**
+ * Gamble system - risk essence for multiplied rewards
+ */
+const GAMBLE_CONFIG = {
+  // Minimum essence required to gamble
+  minimumEssence: 1000,
+
+  // Maximum percentage of current essence that can be gambled
+  maxGamblePercent: 0.5, // 50%
+
+  // Gamble options with win chances and multipliers
+  options: [
+    { id: 'safe', name: 'Safe Bet', winChance: 0.70, multiplier: 1.5 },
+    { id: 'risky', name: 'Risky Bet', winChance: 0.50, multiplier: 2.5 },
+    { id: 'yolo', name: 'All or Nothing', winChance: 0.30, multiplier: 5.0 }
+  ],
+
+  // Cooldown between gambles (ms)
+  cooldown: 30000,
+
+  // Daily gamble limit
+  dailyLimit: 10
+};
+
+/**
+ * Infusion system - permanent production boost for essence cost
+ */
+const INFUSION_CONFIG = {
+  // Base cost is 50% of current essence
+  costPercent: 0.5,
+
+  // Production boost per infusion
+  boostPerInfusion: 0.10, // +10% permanent
+
+  // Maximum infusions per run
+  maxPerRun: 5,
+
+  // Infusions reset on prestige
+  resetsOnPrestige: true
+};
+
+// ===========================================
 // EXPORTS
 // ===========================================
 
@@ -634,5 +851,11 @@ module.exports = {
   FATE_POINT_MILESTONES,
   PRESTIGE_FATE_REWARDS,
   XP_REWARDS,
-  DAILY_CHALLENGES
+  DAILY_CHALLENGES,
+  CHARACTER_ABILITIES,
+  ELEMENT_SYNERGIES,
+  DAILY_MODIFIERS,
+  ACTIVE_ABILITIES,
+  GAMBLE_CONFIG,
+  INFUSION_CONFIG
 };
