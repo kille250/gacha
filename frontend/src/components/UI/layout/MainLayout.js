@@ -20,7 +20,7 @@ import { theme, SkipLink } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
 import { ReturnBonusModal } from '../../GameEnhancements';
-import { AnnouncementModal } from '../../Announcements';
+import { AnnouncementModal, AnnouncementBanner, AnnouncementToastBridge } from '../../Announcements';
 
 /**
  * Global CSS custom properties for navigation heights and page spacing.
@@ -173,6 +173,12 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
 
       {/* Announcement Modal - for high-priority announcements requiring acknowledgment */}
       <AnnouncementModal />
+
+      {/* Announcement Banner - for banner display mode announcements */}
+      <AnnouncementBanner />
+
+      {/* Toast Bridge - shows toast display mode announcements via ToastContext */}
+      <AnnouncementToastBridge />
     </>
   );
 };

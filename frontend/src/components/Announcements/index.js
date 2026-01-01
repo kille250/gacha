@@ -7,3 +7,4 @@
 export { default as AnnouncementBanner } from './AnnouncementBanner';
 export { default as AnnouncementModal } from './AnnouncementModal';
 export { default as AnnouncementCenter } from './AnnouncementCenter';
+export { default as AnnouncementToastBridge } from './AnnouncementToastBridge';
