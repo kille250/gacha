@@ -10,21 +10,25 @@ WORKDIR /app
 RUN addgroup --system --gid 1001 openhotel && \
     adduser --system --uid 1001 openhotel
 
-# Create data directory for persistent storage
-RUN mkdir -p /app/data && \
-    chown -R openhotel:openhotel /app
+# Create directories and set permissions
+# /deno-dir is where Deno caches dependencies at runtime
+RUN mkdir -p /app/data /deno-dir && \
+    chown -R openhotel:openhotel /app /deno-dir
+
+# Set Deno cache directory
+ENV DENO_DIR=/deno-dir
 
 # Copy OpenHotel server files from current directory
 COPY --chown=openhotel:openhotel . ./
 
-# Cache dependencies
+# Switch to non-root user before caching
+USER openhotel
+
+# Cache dependencies as the non-root user
 RUN deno cache mod.ts || true
 
 # Expose the port (Render assigns PORT env var)
 EXPOSE 3005
-
-# Switch to non-root user
-USER openhotel
 
 # Health check for Render
 HEALTHCHECK --interval=30s --timeout=10s --start-period=5s --retries=3 \
