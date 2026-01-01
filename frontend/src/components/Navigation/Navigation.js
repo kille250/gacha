@@ -301,8 +301,10 @@ const NavContainer = styled.nav`
   -webkit-backdrop-filter: blur(${theme.blur.xl});
   border-bottom: 1px solid ${theme.colors.surfaceBorder};
   padding: ${theme.spacing.sm} ${theme.spacing.lg};
-  position: sticky;
+  position: fixed;
   top: 0;
+  left: 0;
+  right: 0;
   z-index: ${theme.zIndex.sticky};
   box-shadow: 0 2px 12px rgba(0, 0, 0, 0.04);
   /* Use CSS variable for height synchronization with dependent components */

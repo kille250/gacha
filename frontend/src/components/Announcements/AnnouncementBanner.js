@@ -114,9 +114,12 @@ const pulse = keyframes`
 // ============================================
 
 const BannerContainer = styled.div`
-  /* Part of document flow - scrolls with page content */
-  position: relative;
-  z-index: ${theme.zIndex.dropdown};
+  /* Fixed below navigation - stays visible while scrolling */
+  position: fixed;
+  top: var(--nav-top-height, 56px);
+  left: 0;
+  right: 0;
+  z-index: ${theme.zIndex.banner};
   display: flex;
   flex-direction: column;
   gap: 4px;

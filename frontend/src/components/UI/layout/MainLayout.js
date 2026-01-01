@@ -56,6 +56,12 @@ const LayoutContainer = styled.div`
   flex: 1;
 `;
 
+// Spacer to push content below fixed navigation
+const NavSpacer = styled.div`
+  height: var(--nav-top-height, ${theme.navHeights.top.default});
+  flex-shrink: 0;
+`;
+
 const PageContent = styled.main.attrs({
   id: 'main-content',
   tabIndex: -1, // Allow programmatic focus for skip link
@@ -154,8 +160,7 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
       <LayoutContainer>
         <SkipLink href="#main-content">{t('accessibility.skipToMain', 'Skip to main content')}</SkipLink>
         <Navigation />
-        {/* Announcement Banner - placed after nav so it scrolls with content */}
-        <AnnouncementBanner />
+        <NavSpacer />
         <PageContent>
           {/* Suspense boundary inside layout keeps navigation visible during lazy page loads */}
           <Suspense fallback={<PageLoader t={t} />}>
@@ -165,6 +170,9 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
         {!hideBottomNav && <BottomNav />}
       </LayoutContainer>
 
+
+      {/* Announcement Banner - fixed below nav, stays visible while scrolling */}
+      <AnnouncementBanner />
 
       {/* Return Bonus Modal - shows welcome back rewards for returning players */}
       <AnimatePresence>
