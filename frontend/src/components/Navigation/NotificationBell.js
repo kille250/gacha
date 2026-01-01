@@ -14,7 +14,7 @@
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { Link } from 'react-router-dom';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaBell, FaCheck, FaTimes, FaChevronRight } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
@@ -262,7 +262,7 @@ const BellIcon = styled.span`
   color: ${props => props.$hasUnread ? theme.colors.primary : theme.colors.textSecondary};
   transition: color ${theme.timing.fast} ${theme.easing.easeOut};
 
-  ${props => props.$hasUnread && `
+  ${props => props.$hasUnread && css`
     animation: ${pulse} 2s ease-in-out infinite;
   `}
 `;
