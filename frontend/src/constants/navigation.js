@@ -14,7 +14,7 @@
  */
 
 import { MdCasino, MdCollections, MdLocalActivity, MdAdminPanelSettings, MdSettings, MdPerson, MdMoreHoriz } from 'react-icons/md';
-import { GiFishingPole, GiDoubleDragon, GiCartwheel } from 'react-icons/gi';
+import { GiFishingPole, GiDoubleDragon, GiCartwheel, GiGems } from 'react-icons/gi';
 import { FaDice, FaGamepad, FaBullhorn } from 'react-icons/fa';
 
 /**
@@ -33,7 +33,8 @@ import { FaDice, FaGamepad, FaBullhorn } from 'react-icons/fa';
 export const GAMES_ITEMS = [
   { path: '/fishing', labelKey: 'nav.fishing', icon: GiFishingPole },
   { path: '/dojo', labelKey: 'nav.dojo', icon: GiDoubleDragon },
-  { path: '/fortune-wheel', labelKey: 'nav.fortuneWheel', icon: GiCartwheel, isNew: true },
+  { path: '/fortune-wheel', labelKey: 'nav.fortuneWheel', icon: GiCartwheel },
+  { path: '/essence-tap', labelKey: 'nav.essenceTap', icon: GiGems, isNew: true },
 ];
 
 /**
@@ -92,7 +93,7 @@ export const BOTTOM_NAV_ITEMS = [
     type: 'sheet',
     items: GAMES_ITEMS,
     // Paths that should highlight this tab
-    activePaths: ['/fishing', '/dojo', '/fortune-wheel'],
+    activePaths: ['/fishing', '/dojo', '/fortune-wheel', '/essence-tap'],
   },
   {
     id: 'collection',

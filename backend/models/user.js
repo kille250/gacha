@@ -748,6 +748,28 @@ User.init(
         this.setDataValue('fortuneWheelHistory', JSON.stringify(arr));
       }
     },
+
+    // ===========================================
+    // ESSENCE TAP CLICKER FIELDS
+    // ===========================================
+
+    // Essence Tap clicker game state (JSON object)
+    essenceTap: {
+      type: DataTypes.TEXT,
+      allowNull: true,
+      defaultValue: null,
+      get() {
+        const value = this.getDataValue('essenceTap');
+        try {
+          return value ? JSON.parse(value) : null;
+        } catch {
+          return null;
+        }
+      },
+      set(value) {
+        this.setDataValue('essenceTap', value ? JSON.stringify(value) : null);
+      }
+    },
   },
   {
     sequelize,

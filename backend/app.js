@@ -343,6 +343,9 @@ app.use('/api/enhancements', require('./routes/gameEnhancements'));
 // Announcements routes
 app.use('/api/announcements', require('./routes/announcements'));
 
+// Essence Tap clicker minigame routes
+app.use('/api/essence-tap', require('./routes/essenceTap'));
+
 const PORT = process.env.PORT || 5000;
 
 // Create HTTP server for Express + Socket.IO
