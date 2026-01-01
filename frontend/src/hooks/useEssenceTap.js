@@ -86,9 +86,9 @@ export const useEssenceTap = () => {
   }, []);
 
   // Fetch initial game state
-  const fetchGameState = useCallback(async () => {
+  const fetchGameState = useCallback(async (showLoading = true) => {
     try {
-      setLoading(true);
+      if (showLoading) setLoading(true);
       const response = await api.get('/essence-tap/status');
 
       if (!isMountedRef.current) return;
@@ -97,8 +97,8 @@ export const useEssenceTap = () => {
       setLocalEssence(response.data.essence || 0);
       setLocalLifetimeEssence(response.data.lifetimeEssence || 0);
 
-      // Show offline progress modal if applicable
-      if (response.data.offlineProgress && response.data.offlineProgress.essenceEarned > 0) {
+      // Show offline progress modal if applicable (only on initial load)
+      if (showLoading && response.data.offlineProgress && response.data.offlineProgress.essenceEarned > 0) {
         setOfflineProgress(response.data.offlineProgress);
       }
 
@@ -109,7 +109,7 @@ export const useEssenceTap = () => {
         setError(err.response?.data?.error || t('essenceTap.failedToLoad', { defaultValue: 'Failed to load game' }));
       }
     } finally {
-      if (isMountedRef.current) setLoading(false);
+      if (isMountedRef.current && showLoading) setLoading(false);
     }
   }, [t]);
 
@@ -259,8 +259,8 @@ export const useEssenceTap = () => {
       // Update local essence
       setLocalEssence(response.data.essence);
 
-      // Refresh full state to get updated generators
-      await fetchGameState();
+      // Refresh full state to get updated generators (without showing loading)
+      await fetchGameState(false);
 
       toast.success(
         t('essenceTap.generatorPurchased', {
@@ -290,7 +290,7 @@ export const useEssenceTap = () => {
       if (!isMountedRef.current) return { success: false };
 
       setLocalEssence(response.data.essence);
-      await fetchGameState();
+      await fetchGameState(false);
 
       toast.success(
         t('essenceTap.upgradePurchased', {
@@ -316,7 +316,7 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
-      await fetchGameState();
+      await fetchGameState(false);
       await refreshUser();
 
       toast.success(
@@ -353,7 +353,7 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
-      await fetchGameState();
+      await fetchGameState(false);
 
       toast.success(
         t('essenceTap.prestigeUpgradePurchased', {
@@ -380,7 +380,7 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
-      await fetchGameState();
+      await fetchGameState(false);
       await refreshUser();
 
       toast.success(
@@ -407,7 +407,7 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
-      await fetchGameState();
+      await fetchGameState(false);
 
       toast.success(t('essenceTap.characterAssigned', { defaultValue: 'Character assigned!' }));
 
@@ -428,7 +428,7 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
-      await fetchGameState();
+      await fetchGameState(false);
 
       return { success: true, ...response.data };
     } catch (err) {
