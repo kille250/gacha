@@ -30,12 +30,12 @@ router.get('/status', auth, async (req, res) => {
 
     // Get user's characters for bonus calculation
     const userCharacters = await UserCharacter.findAll({
-      where: { userId: user.id },
+      where: { UserId: user.id },
       include: ['Character']
     });
 
     const characters = userCharacters.map(uc => ({
-      id: uc.characterId,
+      id: uc.CharacterId,
       rarity: uc.Character?.rarity || 'common'
     }));
 
@@ -88,12 +88,12 @@ router.post('/click', auth, async (req, res) => {
 
     // Get user's characters for bonus calculation
     const userCharacters = await UserCharacter.findAll({
-      where: { userId: user.id },
+      where: { UserId: user.id },
       include: ['Character']
     });
 
     const characters = userCharacters.map(uc => ({
-      id: uc.characterId,
+      id: uc.CharacterId,
       rarity: uc.Character?.rarity || 'common'
     }));
 
@@ -184,12 +184,12 @@ router.post('/generator/buy', auth, async (req, res) => {
 
     // Get updated game state
     const userCharacters = await UserCharacter.findAll({
-      where: { userId: user.id },
+      where: { UserId: user.id },
       include: ['Character']
     });
 
     const characters = userCharacters.map(uc => ({
-      id: uc.characterId,
+      id: uc.CharacterId,
       rarity: uc.Character?.rarity || 'common'
     }));
 
@@ -245,12 +245,12 @@ router.post('/upgrade/buy', auth, async (req, res) => {
 
     // Get updated game state
     const userCharacters = await UserCharacter.findAll({
-      where: { userId: user.id },
+      where: { UserId: user.id },
       include: ['Character']
     });
 
     const characters = userCharacters.map(uc => ({
-      id: uc.characterId,
+      id: uc.CharacterId,
       rarity: uc.Character?.rarity || 'common'
     }));
 
@@ -436,12 +436,12 @@ router.post('/character/assign', auth, async (req, res) => {
 
     // Get user's characters
     const userCharacters = await UserCharacter.findAll({
-      where: { userId: user.id },
+      where: { UserId: user.id },
       include: ['Character']
     });
 
     const ownedCharacters = userCharacters.map(uc => ({
-      id: uc.characterId,
+      id: uc.CharacterId,
       rarity: uc.Character?.rarity || 'common'
     }));
 
@@ -504,12 +504,12 @@ router.post('/character/unassign', auth, async (req, res) => {
 
     // Get user's characters for bonus calculation
     const userCharacters = await UserCharacter.findAll({
-      where: { userId: user.id },
+      where: { UserId: user.id },
       include: ['Character']
     });
 
     const ownedCharacters = userCharacters.map(uc => ({
-      id: uc.characterId,
+      id: uc.CharacterId,
       rarity: uc.Character?.rarity || 'common'
     }));
 
