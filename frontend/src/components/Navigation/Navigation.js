@@ -46,6 +46,7 @@ const Navigation = () => {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownRef = useRef(null);
   const triggerRef = useRef(null);
+  const cleanupRef = useRef(null);
 
   // Hourly reward state
   const hourlyReward = useHourlyReward();
@@ -55,24 +56,32 @@ const Navigation = () => {
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      // Check if click is outside both the trigger and the dropdown menu
-      const isOutsideTrigger = triggerRef.current && !triggerRef.current.contains(event.target);
-      const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target);
+    if (!gamesDropdownOpen) return;
 
-      if (isOutsideTrigger && isOutsideDropdown) {
-        setGamesDropdownOpen(false);
-      }
-    };
+    // Small delay to avoid catching the opening click
+    const timeoutId = setTimeout(() => {
+      const handleClickOutside = (event) => {
+        // Check if click is outside both the trigger and the dropdown menu
+        const isOutsideTrigger = triggerRef.current && !triggerRef.current.contains(event.target);
+        const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target);
 
-    if (gamesDropdownOpen) {
+        if (isOutsideTrigger && isOutsideDropdown) {
+          setGamesDropdownOpen(false);
+        }
+      };
+
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
-    }
+
+      cleanupRef.current = () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+      };
+    }, 10);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      clearTimeout(timeoutId);
+      cleanupRef.current?.();
     };
   }, [gamesDropdownOpen]);
 

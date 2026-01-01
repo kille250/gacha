@@ -41,6 +41,7 @@ const ProfileDropdown = ({
   const navigate = useNavigate();
   const triggerRef = useRef(null);
   const dropdownRef = useRef(null);
+  const cleanupRef = useRef(null);
 
   const [isOpen, setIsOpen] = useState(false);
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
@@ -52,20 +53,31 @@ const ProfileDropdown = ({
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      const isOutsideTrigger = triggerRef.current && !triggerRef.current.contains(event.target);
-      const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target);
+    if (!isOpen) return;
 
-      if (isOutsideTrigger && isOutsideDropdown) {
-        setIsOpen(false);
-        setShowLanguageSubmenu(false);
-      }
-    };
+    // Small delay to avoid catching the opening click
+    const timeoutId = setTimeout(() => {
+      const handleClickOutside = (event) => {
+        const isOutsideTrigger = triggerRef.current && !triggerRef.current.contains(event.target);
+        const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target);
 
-    if (isOpen) {
+        if (isOutsideTrigger && isOutsideDropdown) {
+          setIsOpen(false);
+          setShowLanguageSubmenu(false);
+        }
+      };
+
       document.addEventListener('mousedown', handleClickOutside);
-    }
-    return () => document.removeEventListener('mousedown', handleClickOutside);
+
+      cleanupRef.current = () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+      };
+    }, 10);
+
+    return () => {
+      clearTimeout(timeoutId);
+      cleanupRef.current?.();
+    };
   }, [isOpen]);
 
   // Update dropdown position when opened

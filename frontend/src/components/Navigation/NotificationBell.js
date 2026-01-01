@@ -29,6 +29,7 @@ const NotificationBell = ({ variant = 'desktop' }) => {
   const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
+  const cleanupRef = useRef(null);
 
   // Get recent unread announcements (max 5)
   const recentAnnouncements = announcements
@@ -37,24 +38,32 @@ const NotificationBell = ({ variant = 'desktop' }) => {
 
   // Close dropdown when clicking outside
   useEffect(() => {
-    const handleClickOutside = (event) => {
-      if (
-        dropdownRef.current &&
-        !dropdownRef.current.contains(event.target) &&
-        !buttonRef.current?.contains(event.target)
-      ) {
-        setIsOpen(false);
-      }
-    };
+    if (!isOpen) return;
 
-    if (isOpen) {
+    // Small delay to avoid catching the opening click
+    const timeoutId = setTimeout(() => {
+      const handleClickOutside = (event) => {
+        const isOutsideButton = buttonRef.current && !buttonRef.current.contains(event.target);
+        const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target);
+
+        if (isOutsideButton && isOutsideDropdown) {
+          setIsOpen(false);
+        }
+      };
+
       document.addEventListener('mousedown', handleClickOutside);
       document.addEventListener('touchstart', handleClickOutside);
-    }
+
+      // Store cleanup function
+      cleanupRef.current = () => {
+        document.removeEventListener('mousedown', handleClickOutside);
+        document.removeEventListener('touchstart', handleClickOutside);
+      };
+    }, 10);
 
     return () => {
-      document.removeEventListener('mousedown', handleClickOutside);
-      document.removeEventListener('touchstart', handleClickOutside);
+      clearTimeout(timeoutId);
+      cleanupRef.current?.();
     };
   }, [isOpen]);
 

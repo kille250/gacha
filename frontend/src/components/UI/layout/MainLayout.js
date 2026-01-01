@@ -20,7 +20,7 @@ import { theme, SkipLink } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
 import { ReturnBonusModal } from '../../GameEnhancements';
-import { AnnouncementModal, AnnouncementBanner, AnnouncementToastBridge } from '../../Announcements';
+import { AnnouncementModal, AnnouncementBanner, AnnouncementToastBridge, InlineAnnouncement } from '../../Announcements';
 
 /**
  * Global CSS custom properties for navigation heights and page spacing.
@@ -161,6 +161,8 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
         <SkipLink href="#main-content">{t('accessibility.skipToMain', 'Skip to main content')}</SkipLink>
         <Navigation />
         <NavSpacer />
+        {/* Inline announcements - part of document flow, scrolls with content */}
+        <InlineAnnouncement />
         <PageContent>
           {/* Suspense boundary inside layout keeps navigation visible during lazy page loads */}
           <Suspense fallback={<PageLoader t={t} />}>
