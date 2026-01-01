@@ -35,11 +35,11 @@ services:
         generateValue: true
     healthCheckPath: /api/health
     autoDeploy: true
-    # Persistent disk for file uploads (10GB at /var/data)
-    disk:
-      name: gacha-uploads
-      mountPath: /var/data
-      sizeGB: 10
+    # NOTE: Persistent disk requires paid plan
+    # disk:
+    #   name: gacha-uploads
+    #   mountPath: /var/data
+    #   sizeGB: 10
 
   # OpenHotel Server (Social Rooms)
   # Uncomment this section to deploy OpenHotel alongside your app
@@ -62,11 +62,11 @@ services:
         value: "false"
     healthCheckPath: /info
     autoDeploy: true
-    # Persistent disk for OpenHotel database
-    disk:
-      name: openhotel-data
-      mountPath: /app/data
-      sizeGB: 1
+    # NOTE: Persistent disk requires paid plan
+    # disk:
+    #   name: openhotel-data
+    #   mountPath: /app/data
+    #   sizeGB: 1
 
   # Frontend Static Site
   - type: web
