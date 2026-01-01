@@ -363,17 +363,16 @@ const AdminAnnouncements = () => {
       )}
 
       {/* Delete Confirmation */}
-      {confirmDelete && (
-        <ConfirmDialog
-          title={t('admin.deleteAnnouncement')}
-          message={t('admin.confirmDeleteAnnouncement', { title: confirmDelete.title })}
-          confirmLabel={t('common.delete')}
-          cancelLabel={t('common.cancel')}
-          onConfirm={handleDelete}
-          onCancel={() => setConfirmDelete(null)}
-          variant="danger"
-        />
-      )}
+      <ConfirmDialog
+        isOpen={!!confirmDelete}
+        title={t('admin.deleteAnnouncement')}
+        message={t('admin.confirmDeleteAnnouncement', { title: confirmDelete?.title })}
+        confirmLabel={t('common.delete')}
+        cancelLabel={t('common.cancel')}
+        onConfirm={handleDelete}
+        onClose={() => setConfirmDelete(null)}
+        variant="danger"
+      />
     </AdminContainer>
   );
 };
