@@ -1,0 +1,50 @@
+# OpenHotel Server Configuration for Render.com
+# This file configures the OpenHotel server for production deployment
+
+# Server settings
+server:
+  # Port will be overridden by Render's PORT env variable
+  port: 3005
+  # Hostname - use 0.0.0.0 to bind to all interfaces
+  hostname: "0.0.0.0"
+
+# Authentication settings
+# Set auth.enabled to false for internal auth via your main backend
+auth:
+  enabled: false
+  # If you want to use OpenHotel's auth, configure these:
+  # api: "https://your-auth-api.onrender.com"
+  # redirectUrl: "https://your-frontend.onrender.com"
+
+# Database settings
+# OpenHotel uses Deno KV, which works with Render's ephemeral storage
+# For persistence, consider Deno Deploy or external database
+database:
+  path: "./data/server-database"
+
+# Phantom (server-side rendering) settings
+phantom:
+  enabled: false
+
+# Catalog settings
+catalog:
+  path: "./assets/catalog.yml"
+
+# Logging
+logging:
+  level: "info"
+  # Set to true for production debugging
+  verbose: false
+
+# Rate limiting
+rateLimit:
+  enabled: true
+  maxRequests: 100
+  windowMs: 60000
+
+# CORS settings - allow your frontend domain
+cors:
+  enabled: true
+  # These will be configured via environment variables
+  # origins:
+  #   - "https://your-frontend.onrender.com"

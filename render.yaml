@@ -1,5 +1,11 @@
 # Render Blueprint - Auto-deploy configuration
 # Push to GitHub and connect repo to Render for automatic deployments
+#
+# OPENHOTEL INTEGRATION:
+# The openhotel-server service is optional. To enable:
+# 1. Run: cd openhotel-server && bash setup.sh
+# 2. Uncomment the openhotel-server service below
+# 3. Add VITE_OPENHOTEL_ENABLED=true to frontend envVars
 
 databases:
   - name: gacha-db
@@ -35,22 +41,57 @@ services:
       mountPath: /var/data
       sizeGB: 10
 
+  # OpenHotel Server (Social Rooms)
+  # Uncomment this section to deploy OpenHotel alongside your app
+  # - type: web
+  #   name: openhotel-server
+  #   runtime: docker
+  #   region: frankfurt
+  #   plan: free
+  #   rootDir: openhotel-server
+  #   dockerfilePath: ./Dockerfile
+  #   envVars:
+  #     - key: PORT
+  #       value: "3005"
+  #     - key: FRONTEND_URL
+  #       fromService:
+  #         type: web
+  #         name: gacha-frontend
+  #         property: host
+  #     - key: AUTH_ENABLED
+  #       value: "false"
+  #   healthCheckPath: /info
+  #   autoDeploy: true
+  #   # Persistent disk for OpenHotel database
+  #   disk:
+  #     name: openhotel-data
+  #     mountPath: /app/data
+  #     sizeGB: 1
+
   # Frontend Static Site
   - type: web
     name: gacha-frontend
     runtime: static
     rootDir: frontend
     buildCommand: npm ci && npm run build
-    staticPublishPath: build
+    staticPublishPath: dist
     buildFilter:
       paths:
         - frontend/**
     envVars:
-      - key: REACT_APP_API_URL
+      - key: VITE_API_URL
         fromService:
           type: web
           name: gacha-api
           property: host
+      # OpenHotel integration - uncomment when openhotel-server is deployed
+      # - key: VITE_OPENHOTEL_ENABLED
+      #   value: "true"
+      # - key: VITE_OPENHOTEL_HTTP_URL
+      #   fromService:
+      #     type: web
+      #     name: openhotel-server
+      #     property: host
     headers:
       - path: /*
         name: Cache-Control
