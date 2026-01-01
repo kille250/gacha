@@ -15,7 +15,7 @@
 
 import { MdCasino, MdCollections, MdLocalActivity, MdAdminPanelSettings, MdSettings, MdPerson, MdMoreHoriz } from 'react-icons/md';
 import { GiFishingPole, GiDoubleDragon, GiCartwheel } from 'react-icons/gi';
-import { FaDice, FaGamepad } from 'react-icons/fa';
+import { FaDice, FaGamepad, FaBullhorn } from 'react-icons/fa';
 
 /**
  * Navigation item definition
@@ -41,6 +41,7 @@ export const GAMES_ITEMS = [
  */
 export const MORE_ITEMS = [
   { path: '/profile', labelKey: 'nav.profile', icon: MdPerson },
+  { path: '/announcements', labelKey: 'nav.announcements', icon: FaBullhorn },
   { path: '/coupons', labelKey: 'nav.coupons', icon: MdLocalActivity },
   { path: '/settings', labelKey: 'nav.settings', icon: MdSettings },
 ];
@@ -107,7 +108,7 @@ export const BOTTOM_NAV_ITEMS = [
     type: 'sheet',
     items: MORE_ITEMS,
     // Paths that should highlight this tab
-    activePaths: ['/profile', '/settings', '/coupons', '/admin'],
+    activePaths: ['/profile', '/settings', '/coupons', '/announcements', '/admin'],
   },
 ];
 

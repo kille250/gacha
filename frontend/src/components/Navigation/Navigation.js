@@ -32,6 +32,7 @@ import { AccountLevelBadge } from '../AccountLevel';
 import HourlyReward from './HourlyReward';
 import ProfileDropdown from './ProfileDropdown';
 import RewardPopup from './RewardPopup';
+import NotificationBell from './NotificationBell';
 
 const Navigation = () => {
   const { t } = useTranslation();
@@ -221,6 +222,13 @@ const Navigation = () => {
                 onClick={() => navigate('/profile')}
               />
             </AccountLevelBadgeWrapper>
+          )}
+
+          {/* Notification Bell - Desktop only */}
+          {user && (
+            <NotificationBellWrapper>
+              <NotificationBell variant="desktop" />
+            </NotificationBellWrapper>
           )}
 
           {/* Hourly Reward Button - Always visible */}
@@ -590,6 +598,15 @@ const UserControls = styled.div`
 `;
 
 const AccountLevelBadgeWrapper = styled.div`
+  display: none;
+
+  /* Only show on desktop */
+  @media (min-width: ${theme.breakpoints.md}) {
+    display: block;
+  }
+`;
+
+const NotificationBellWrapper = styled.div`
   display: none;
 
   /* Only show on desktop */

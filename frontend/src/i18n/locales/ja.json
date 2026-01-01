@@ -89,6 +89,7 @@
     "fortuneWheel": "ルーレット",
     "collection": "コレクション",
     "coupons": "クーポン",
+    "announcements": "お知らせ",
     "admin": "管理",
     "menu": "メニュー",
     "logout": "ログアウト",
@@ -1678,6 +1679,13 @@
     "dismissNotification": "通知を閉じる"
   },
   "announcements": {
+    "title": "お知らせ",
+    "subtitle": "最新のニュースとアップデートをチェック",
+    "notifications": "通知",
+    "unread": "未読",
+    "noNew": "新しいお知らせはありません",
+    "actionRequired": "対応が必要です",
+    "viewAll": "すべてのお知らせを表示",
     "center": "お知らせ",
     "noAnnouncements": "お知らせはありません",
     "noUnread": "未読のお知らせはありません",

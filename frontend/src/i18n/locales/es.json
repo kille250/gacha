@@ -84,6 +84,7 @@
     "fortuneWheel": "Ruleta",
     "collection": "Colección",
     "coupons": "Cupones",
+    "announcements": "Anuncios",
     "admin": "Admin",
     "menu": "Menú",
     "logout": "Cerrar sesión",
@@ -1399,6 +1400,13 @@
     "dismissNotification": "Cerrar notificación"
   },
   "announcements": {
+    "title": "Anuncios",
+    "subtitle": "Mantente actualizado con las últimas noticias",
+    "notifications": "Notificaciones",
+    "unread": "sin leer",
+    "noNew": "No hay anuncios nuevos",
+    "actionRequired": "Acción requerida",
+    "viewAll": "Ver todos los anuncios",
     "center": "Anuncios",
     "noAnnouncements": "No hay anuncios",
     "noUnread": "No hay anuncios sin leer",
