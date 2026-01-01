@@ -1,10 +1,13 @@
 import { ConfigTypes } from "shared/types/config.types.ts";
 
+// Use PORT env variable for Render.com compatibility, fallback to 1994
+const serverPort = parseInt(Deno.env.get("PORT") || "1994", 10);
+
 export const CONFIG_DEFAULT: ConfigTypes = {
   version: "latest",
   name: "Open Hotel",
   description: "Welcome to the Hotel!",
-  port: 1994,
+  port: serverPort,
   limits: {
     players: 100,
   },
