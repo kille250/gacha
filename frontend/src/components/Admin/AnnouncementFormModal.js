@@ -10,7 +10,7 @@
  * - Live preview of content
  */
 
-import React, { useState, useCallback } from 'react';
+import React, { useState, useCallback, useEffect, useRef } from 'react';
 import PropTypes from 'prop-types';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
@@ -88,6 +88,25 @@ const AnnouncementFormModal = ({ announcement, onSubmit, onClose }) => {
   });
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const modalRef = useRef(null);
+
+  // Handle escape key to close modal
+  useEffect(() => {
+    const handleKeyDown = (e) => {
+      if (e.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', handleKeyDown);
+
+    // Focus the modal container when opened
+    if (modalRef.current) {
+      modalRef.current.focus();
+    }
+
+    return () => document.removeEventListener('keydown', handleKeyDown);
+  }, [onClose]);
 
   const handleChange = useCallback((field, value) => {
     setFormData(prev => ({ ...prev, [field]: value }));
@@ -114,9 +133,16 @@ const AnnouncementFormModal = ({ announcement, onSubmit, onClose }) => {
 
   return (
     <Overlay onClick={onClose}>
-      <ModalContainer onClick={e => e.stopPropagation()}>
+      <ModalContainer
+        ref={modalRef}
+        onClick={e => e.stopPropagation()}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="announcement-form-title"
+      >
         <ModalHeader>
-          <ModalTitle>
+          <ModalTitle id="announcement-form-title">
             {isEditing ? t('admin.editAnnouncement') : t('admin.createAnnouncement')}
           </ModalTitle>
           <CloseButton onClick={onClose} aria-label={t('common.close')}>

@@ -457,7 +457,17 @@ const AnnouncementItem = ({ announcement, onMarkAsRead, onAcknowledge }) => {
 };
 
 AnnouncementItem.propTypes = {
-  announcement: PropTypes.object.isRequired,
+  announcement: PropTypes.shape({
+    id: PropTypes.string.isRequired,
+    title: PropTypes.string.isRequired,
+    content: PropTypes.string.isRequired,
+    type: PropTypes.string.isRequired,
+    priority: PropTypes.string.isRequired,
+    isRead: PropTypes.bool,
+    isAcknowledged: PropTypes.bool,
+    requiresAcknowledgment: PropTypes.bool,
+    createdAt: PropTypes.string,
+  }).isRequired,
   onMarkAsRead: PropTypes.func.isRequired,
   onAcknowledge: PropTypes.func.isRequired
 };
@@ -470,7 +480,7 @@ const AnnouncementCenter = ({ className }) => {
   const { t } = useTranslation();
   const { announcements, unreadCount, markAsRead, acknowledge } = useAnnouncements();
   const [filter, setFilter] = useState('all'); // all, unread, read
-  const [typeFilter, _setTypeFilter] = useState(null);
+  const [typeFilter] = useState(null);
 
   const filteredAnnouncements = useMemo(() => {
     let result = [...announcements];

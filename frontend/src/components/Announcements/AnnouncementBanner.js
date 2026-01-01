@@ -266,8 +266,9 @@ const CloseButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  /* Minimum 44x44px touch target for accessibility */
+  width: 44px;
+  height: 44px;
   padding: 0;
   background: rgba(255, 255, 255, 0.1);
   border: none;
@@ -285,11 +286,6 @@ const CloseButton = styled.button`
   &:focus-visible {
     outline: 2px solid white;
     outline-offset: 2px;
-  }
-
-  @media (max-width: 480px) {
-    width: 24px;
-    height: 24px;
   }
 `;
 
