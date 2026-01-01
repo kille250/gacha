@@ -18,6 +18,12 @@ const Character = sequelize.define('Character', {
     type: DataTypes.STRING,
     defaultValue: 'common'
   },
+  // Element for Essence Tap bonuses: fire, water, earth, air, light, dark, neutral
+  element: {
+    type: DataTypes.STRING(20),
+    allowNull: true,
+    defaultValue: null
+  },
   isR18: {
     type: DataTypes.BOOLEAN,
     defaultValue: false

@@ -13,7 +13,11 @@ const {
   SYNERGY_UPGRADES,
   PRESTIGE_CONFIG,
   GAME_CONFIG,
+  CHARACTER_MASTERY,
+  ESSENCE_TYPES,
+  SERIES_SYNERGIES,
   FATE_POINT_MILESTONES,
+  REPEATABLE_MILESTONES,
   PRESTIGE_FATE_REWARDS,
   XP_REWARDS,
   DAILY_CHALLENGES,
@@ -22,7 +26,10 @@ const {
   DAILY_MODIFIERS,
   ACTIVE_ABILITIES,
   GAMBLE_CONFIG,
-  INFUSION_CONFIG
+  INFUSION_CONFIG,
+  WEEKLY_TOURNAMENT,
+  TICKET_GENERATION,
+  deriveElement
 } = require('../config/essenceTap');
 
 const _accountLevelService = require('./accountLevelService');
@@ -70,11 +77,18 @@ function getInitialState() {
       essenceEarned: 0,
       generatorsBought: 0,
       completedChallenges: [],
-      gamblesUsed: 0
+      gamblesUsed: 0,
+      ticketChallengesCompleted: 0
     },
 
     // Milestones claimed
     claimedMilestones: [],
+
+    // Repeatable milestones tracking
+    repeatableMilestones: {
+      weeklyEssenceLastClaimed: null,  // ISO week string
+      per100BCount: 0  // Number of 100B milestones claimed
+    },
 
     // Stats
     stats: {
@@ -84,7 +98,9 @@ function getInitialState() {
       goldenEssenceClicks: 0,
       totalGambleWins: 0,
       totalGambleLosses: 0,
-      totalInfusions: 0
+      totalInfusions: 0,
+      jackpotsWon: 0,
+      totalJackpotWinnings: 0
     },
 
     // Infusion system (resets on prestige)
@@ -96,6 +112,36 @@ function getInitialState() {
 
     // Character XP earned in essence tap { charId: xp }
     characterXP: {},
+
+    // Character mastery tracking { charId: { hoursUsed, level } }
+    characterMastery: {},
+
+    // Weekly tournament tracking
+    weekly: {
+      weekId: null,  // ISO week string
+      essenceEarned: 0,
+      rank: null,
+      rewardsClaimed: false
+    },
+
+    // Progressive jackpot contribution tracking
+    jackpotContributions: 0,
+
+    // Roll ticket generation tracking
+    ticketGeneration: {
+      dailyStreakDays: 0,
+      lastStreakDate: null,
+      exchangedThisWeek: 0,
+      lastExchangeWeek: null
+    },
+
+    // Essence types tracking
+    essenceTypes: {
+      pure: 0,
+      ambient: 0,
+      golden: 0,
+      prismatic: 0
+    },
 
     // Timestamps
     lastOnlineTimestamp: Date.now(),
@@ -277,6 +323,197 @@ function calculateElementSynergy(state, characters = []) {
 }
 
 /**
+ * Calculate series synergy bonus from assigned characters
+ * @param {Object} state - Clicker state
+ * @param {Array} characters - User's character collection
+ * @returns {Object} Series synergy bonus info
+ */
+function calculateSeriesSynergy(state, characters = []) {
+  const result = {
+    bonus: 0,
+    seriesMatches: [],
+    diversityBonus: 0,
+    totalBonus: 0
+  };
+
+  if (!state.assignedCharacters || state.assignedCharacters.length === 0) {
+    return result;
+  }
+
+  const assignedChars = state.assignedCharacters.slice(0, GAME_CONFIG.maxAssignedCharacters);
+  const seriesCounts = {};
+  const uniqueSeries = new Set();
+
+  for (const charId of assignedChars) {
+    const char = characters.find(c => c.id === charId || c.characterId === charId);
+    if (!char || !char.series) continue;
+
+    const series = char.series.toLowerCase();
+    seriesCounts[series] = (seriesCounts[series] || 0) + 1;
+    uniqueSeries.add(series);
+  }
+
+  // Calculate series match bonuses
+  for (const [series, count] of Object.entries(seriesCounts)) {
+    if (count >= 2) {
+      const bonus = SERIES_SYNERGIES.matchBonuses[Math.min(count, 5)] || 0;
+      result.bonus += bonus;
+      result.seriesMatches.push({ series, count, bonus });
+    }
+  }
+
+  // Calculate diversity bonus (many different series)
+  if (uniqueSeries.size >= SERIES_SYNERGIES.diversityThreshold) {
+    result.diversityBonus = SERIES_SYNERGIES.diversityBonus;
+    result.bonus += result.diversityBonus;
+  }
+
+  result.totalBonus = result.bonus;
+  return result;
+}
+
+/**
+ * Calculate character mastery level and bonuses
+ * @param {Object} state - Clicker state
+ * @param {string} characterId - Character ID
+ * @returns {Object} Mastery info for the character
+ */
+function calculateCharacterMastery(state, characterId) {
+  const masteryData = state.characterMastery?.[characterId] || { hoursUsed: 0, level: 1 };
+  const hoursUsed = masteryData.hoursUsed || 0;
+
+  // Find current level based on hours
+  let level = 1;
+  for (const lvl of CHARACTER_MASTERY.levels) {
+    if (hoursUsed >= lvl.hoursRequired) {
+      level = lvl.level;
+    } else {
+      break;
+    }
+  }
+
+  const levelData = CHARACTER_MASTERY.levels.find(l => l.level === level) || CHARACTER_MASTERY.levels[0];
+  const nextLevel = CHARACTER_MASTERY.levels.find(l => l.level === level + 1);
+
+  return {
+    level,
+    hoursUsed,
+    productionBonus: levelData.productionBonus,
+    unlockedAbility: levelData.unlockedAbility || null,
+    hoursToNextLevel: nextLevel ? nextLevel.hoursRequired - hoursUsed : null,
+    maxLevel: level >= CHARACTER_MASTERY.maxLevel
+  };
+}
+
+/**
+ * Calculate total mastery bonus from all assigned characters
+ * @param {Object} state - Clicker state
+ * @returns {Object} Total mastery bonuses
+ */
+function calculateTotalMasteryBonus(state) {
+  const result = {
+    productionBonus: 0,
+    unlockedAbilities: []
+  };
+
+  if (!state.assignedCharacters || state.assignedCharacters.length === 0) {
+    return result;
+  }
+
+  for (const charId of state.assignedCharacters) {
+    const mastery = calculateCharacterMastery(state, charId);
+    result.productionBonus += mastery.productionBonus;
+    if (mastery.unlockedAbility) {
+      result.unlockedAbilities.push({
+        characterId: charId,
+        ability: mastery.unlockedAbility
+      });
+    }
+  }
+
+  return result;
+}
+
+/**
+ * Update character mastery hours (call this periodically during gameplay)
+ * @param {Object} state - Clicker state
+ * @param {number} hoursElapsed - Hours played since last update
+ * @returns {Object} Updated state and level-up info
+ */
+function updateCharacterMastery(state, hoursElapsed) {
+  if (!state.assignedCharacters || state.assignedCharacters.length === 0) {
+    return { newState: state, levelUps: [] };
+  }
+
+  const newState = { ...state };
+  newState.characterMastery = { ...state.characterMastery };
+  const levelUps = [];
+
+  for (const charId of state.assignedCharacters) {
+    const oldMastery = calculateCharacterMastery(state, charId);
+    const oldData = state.characterMastery?.[charId] || { hoursUsed: 0, level: 1 };
+
+    newState.characterMastery[charId] = {
+      hoursUsed: oldData.hoursUsed + hoursElapsed,
+      level: oldMastery.level
+    };
+
+    const newMastery = calculateCharacterMastery(newState, charId);
+    if (newMastery.level > oldMastery.level) {
+      newState.characterMastery[charId].level = newMastery.level;
+      levelUps.push({
+        characterId: charId,
+        oldLevel: oldMastery.level,
+        newLevel: newMastery.level,
+        unlockedAbility: newMastery.unlockedAbility
+      });
+    }
+  }
+
+  return { newState, levelUps };
+}
+
+/**
+ * Calculate click power scaling based on generator count
+ * @param {Object} state - Clicker state
+ * @returns {number} Click power multiplier from generators
+ */
+function calculateClickGeneratorScaling(state) {
+  const totalGenerators = Object.values(state.generators || {}).reduce((sum, count) => sum + count, 0);
+  const bonusPerGenerator = GAME_CONFIG.clickPowerPerGenerator || 0.001;
+  const maxBonus = GAME_CONFIG.maxClickPowerFromGenerators || 2.0;
+
+  return Math.min(1 + (totalGenerators * bonusPerGenerator), 1 + maxBonus);
+}
+
+/**
+ * Calculate underdog bonus for using common/uncommon characters
+ * @param {Object} state - Clicker state
+ * @param {Array} characters - User's character collection
+ * @returns {number} Underdog bonus multiplier
+ */
+function calculateUnderdogBonus(state, characters = []) {
+  if (!state.assignedCharacters || state.assignedCharacters.length === 0) {
+    return 0;
+  }
+
+  let bonus = 0;
+  const underdogBonuses = GAME_CONFIG.underdogBonuses || { common: 0.15, uncommon: 0.10 };
+
+  for (const charId of state.assignedCharacters) {
+    const char = characters.find(c => c.id === charId || c.characterId === charId);
+    if (!char) continue;
+
+    const rarity = (char.rarity || 'common').toLowerCase();
+    if (underdogBonuses[rarity]) {
+      bonus += underdogBonuses[rarity];
+    }
+  }
+
+  return bonus;
+}
+
+/**
  * Calculate total click power for a state
  * @param {Object} state - Clicker state
  * @param {Array} characters - User's character collection
@@ -311,6 +548,22 @@ function calculateClickPower(state, characters = []) {
   // Apply element synergy bonus
   const synergy = calculateElementSynergy(state, characters);
   power *= (1 + synergy.bonus);
+
+  // Apply series synergy bonus
+  const seriesSynergy = calculateSeriesSynergy(state, characters);
+  power *= (1 + seriesSynergy.totalBonus);
+
+  // Apply character mastery bonus
+  const masteryBonus = calculateTotalMasteryBonus(state);
+  power *= (1 + masteryBonus.productionBonus);
+
+  // Apply click power scaling from generators (keeps clicking relevant)
+  const generatorScaling = calculateClickGeneratorScaling(state);
+  power *= generatorScaling;
+
+  // Apply underdog bonus for using common/uncommon characters
+  const underdogBonus = calculateUnderdogBonus(state, characters);
+  power *= (1 + underdogBonus);
 
   // Apply global multipliers
   const globalMult = calculateGlobalMultiplier(state);
@@ -448,6 +701,18 @@ function calculateProductionPerSecond(state, characters = []) {
   // Apply element synergy bonus
   const synergy = calculateElementSynergy(state, characters);
   total *= (1 + synergy.bonus);
+
+  // Apply series synergy bonus
+  const seriesSynergy = calculateSeriesSynergy(state, characters);
+  total *= (1 + seriesSynergy.totalBonus);
+
+  // Apply character mastery bonus
+  const masteryBonus = calculateTotalMasteryBonus(state);
+  total *= (1 + masteryBonus.productionBonus);
+
+  // Apply underdog bonus for using common/uncommon characters
+  const underdogBonus = calculateUnderdogBonus(state, characters);
+  total *= (1 + underdogBonus);
 
   // Apply prestige shard bonus
   const shardBonus = 1 + Math.min(state.lifetimeShards || 0, PRESTIGE_CONFIG.maxEffectiveShards) * PRESTIGE_CONFIG.shardMultiplier;
@@ -1143,7 +1408,18 @@ function getGameState(state, characters = []) {
   const comboDecayTime = calculateComboDecayTime(state, characters);
   const elementBonuses = calculateElementBonuses(state, characters);
   const elementSynergy = calculateElementSynergy(state, characters);
+  const seriesSynergy = calculateSeriesSynergy(state, characters);
+  const masteryBonus = calculateTotalMasteryBonus(state);
+  const underdogBonus = calculateUnderdogBonus(state, characters);
+  const clickGeneratorScaling = calculateClickGeneratorScaling(state);
+  const essenceTypeBonuses = getEssenceTypeBonuses(state);
   const dailyModifier = getCurrentDailyModifier();
+
+  // Build character mastery info for assigned characters
+  const characterMasteryInfo = {};
+  for (const charId of state.assignedCharacters || []) {
+    characterMasteryInfo[charId] = calculateCharacterMastery(state, charId);
+  }
 
   return {
     essence: state.essence || 0,
@@ -1162,13 +1438,21 @@ function getGameState(state, characters = []) {
     characterBonus: calculateCharacterBonus(state, characters),
     elementBonuses,
     elementSynergy,
+    seriesSynergy,
+    masteryBonus,
+    characterMasteryInfo,
+    underdogBonus,
+    clickGeneratorScaling,
     infusion: {
       count: state.infusionCount || 0,
       bonus: state.infusionBonus || 0,
       cost: calculateInfusionCost(state),
       maxPerPrestige: INFUSION_CONFIG.maxPerPrestige
     },
-    gamble: getGambleInfo(state),
+    gamble: {
+      ...getGambleInfo(state),
+      jackpot: getJackpotInfo(state)
+    },
     activeAbilities: getActiveAbilitiesInfo(state),
     dailyModifier: {
       ...dailyModifier,
@@ -1177,6 +1461,15 @@ function getGameState(state, characters = []) {
     stats: state.stats || {},
     daily: state.daily || {},
     claimableMilestones: checkMilestones(state),
+    claimableRepeatableMilestones: checkRepeatableMilestones(state),
+    weeklyTournament: getWeeklyTournamentInfo(state),
+    ticketGeneration: {
+      streakDays: state.ticketGeneration?.dailyStreakDays || 0,
+      exchangedThisWeek: state.ticketGeneration?.exchangedThisWeek || 0,
+      weeklyExchangeLimit: TICKET_GENERATION.fatePointExchange.weeklyLimit
+    },
+    essenceTypes: state.essenceTypes || { pure: 0, ambient: 0, golden: 0, prismatic: 0 },
+    essenceTypeBonuses,
     lastOnlineTimestamp: state.lastOnlineTimestamp,
     characterXP: state.characterXP || {}
   };
@@ -1517,6 +1810,562 @@ function getTimeUntilNextModifier() {
   return tomorrow.getTime() - now.getTime();
 }
 
+// ===========================================
+// REPEATABLE MILESTONES SYSTEM
+// ===========================================
+
+/**
+ * Get current ISO week string (YYYY-WW)
+ * @returns {string} ISO week identifier
+ */
+function getCurrentISOWeek() {
+  const now = new Date();
+  const oneJan = new Date(now.getFullYear(), 0, 1);
+  const weekNum = Math.ceil((((now - oneJan) / 86400000) + oneJan.getDay() + 1) / 7);
+  return `${now.getFullYear()}-W${weekNum.toString().padStart(2, '0')}`;
+}
+
+/**
+ * Check and claim repeatable milestones
+ * @param {Object} state - Current state
+ * @returns {Object} Claimable repeatable milestones
+ */
+function checkRepeatableMilestones(state) {
+  const claimable = [];
+  const currentWeek = getCurrentISOWeek();
+
+  // Check weekly essence milestone
+  const weeklyMilestone = REPEATABLE_MILESTONES.weeklyEssence;
+  if (state.weekly?.essenceEarned >= weeklyMilestone.threshold &&
+      state.repeatableMilestones?.weeklyEssenceLastClaimed !== currentWeek) {
+    claimable.push({
+      type: 'weeklyEssence',
+      fatePoints: weeklyMilestone.fatePoints,
+      threshold: weeklyMilestone.threshold,
+      currentProgress: state.weekly?.essenceEarned || 0
+    });
+  }
+
+  // Check per-100B milestone
+  const per100BMilestone = REPEATABLE_MILESTONES.per100BLifetime;
+  const claimedCount = state.repeatableMilestones?.per100BCount || 0;
+  const eligibleCount = Math.floor(state.lifetimeEssence / per100BMilestone.threshold);
+  if (eligibleCount > claimedCount) {
+    claimable.push({
+      type: 'per100BLifetime',
+      fatePoints: per100BMilestone.fatePoints,
+      count: eligibleCount - claimedCount,
+      totalFatePoints: (eligibleCount - claimedCount) * per100BMilestone.fatePoints
+    });
+  }
+
+  return claimable;
+}
+
+/**
+ * Claim a repeatable milestone
+ * @param {Object} state - Current state
+ * @param {string} milestoneType - Type of milestone to claim
+ * @returns {Object} Result
+ */
+function claimRepeatableMilestone(state, milestoneType) {
+  const currentWeek = getCurrentISOWeek();
+  const newState = { ...state };
+  newState.repeatableMilestones = { ...state.repeatableMilestones };
+
+  if (milestoneType === 'weeklyEssence') {
+    const weeklyMilestone = REPEATABLE_MILESTONES.weeklyEssence;
+    if (state.weekly?.essenceEarned < weeklyMilestone.threshold) {
+      return { success: false, error: 'Weekly essence milestone not reached' };
+    }
+    if (state.repeatableMilestones?.weeklyEssenceLastClaimed === currentWeek) {
+      return { success: false, error: 'Already claimed this week' };
+    }
+
+    newState.repeatableMilestones.weeklyEssenceLastClaimed = currentWeek;
+    return {
+      success: true,
+      newState,
+      fatePoints: weeklyMilestone.fatePoints
+    };
+  }
+
+  if (milestoneType === 'per100BLifetime') {
+    const per100BMilestone = REPEATABLE_MILESTONES.per100BLifetime;
+    const claimedCount = state.repeatableMilestones?.per100BCount || 0;
+    const eligibleCount = Math.floor(state.lifetimeEssence / per100BMilestone.threshold);
+
+    if (eligibleCount <= claimedCount) {
+      return { success: false, error: 'No new 100B milestones to claim' };
+    }
+
+    const countToClaim = eligibleCount - claimedCount;
+    newState.repeatableMilestones.per100BCount = eligibleCount;
+
+    return {
+      success: true,
+      newState,
+      fatePoints: countToClaim * per100BMilestone.fatePoints,
+      count: countToClaim
+    };
+  }
+
+  return { success: false, error: 'Invalid milestone type' };
+}
+
+// ===========================================
+// PROGRESSIVE JACKPOT SYSTEM
+// ===========================================
+
+/**
+ * Get jackpot info (this would need server-side storage in production)
+ * For now, we simulate with a seed + contributions
+ * @param {Object} state - Current state
+ * @returns {Object} Jackpot info
+ */
+function getJackpotInfo(state) {
+  const jackpotConfig = GAMBLE_CONFIG.jackpot;
+  // In production, this would be stored server-side and shared across users
+  // For single-player, we use contributions to grow it
+  const baseJackpot = jackpotConfig.seedAmount;
+  const playerContributions = state.jackpotContributions || 0;
+
+  return {
+    currentAmount: baseJackpot + playerContributions,
+    contributionRate: jackpotConfig.contributionRate,
+    winChance: jackpotConfig.winChance,
+    minBetToQualify: jackpotConfig.minBetToQualify
+  };
+}
+
+/**
+ * Contribute to jackpot pool from gamble bet
+ * @param {Object} state - Current state
+ * @param {number} betAmount - Amount bet
+ * @returns {Object} Updated state and contribution amount
+ */
+function contributeToJackpot(state, betAmount) {
+  const contribution = Math.floor(betAmount * GAMBLE_CONFIG.jackpot.contributionRate);
+  const newState = { ...state };
+  newState.jackpotContributions = (state.jackpotContributions || 0) + contribution;
+  return { newState, contribution };
+}
+
+/**
+ * Check for jackpot win during gamble
+ * @param {Object} state - Current state
+ * @param {number} betAmount - Amount bet
+ * @returns {Object} Jackpot result
+ */
+function checkJackpotWin(state, betAmount) {
+  const jackpotConfig = GAMBLE_CONFIG.jackpot;
+
+  // Must meet minimum bet to qualify
+  if (betAmount < jackpotConfig.minBetToQualify) {
+    return { won: false, reason: 'bet_too_small' };
+  }
+
+  const roll = Math.random();
+  if (roll < jackpotConfig.winChance) {
+    const jackpotAmount = jackpotConfig.seedAmount + (state.jackpotContributions || 0);
+    return {
+      won: true,
+      amount: jackpotAmount
+    };
+  }
+
+  return { won: false };
+}
+
+/**
+ * Reset jackpot after win
+ * @param {Object} state - Current state
+ * @returns {Object} Updated state
+ */
+function resetJackpot(state) {
+  const newState = { ...state };
+  newState.jackpotContributions = 0;
+  newState.stats = {
+    ...state.stats,
+    jackpotsWon: (state.stats?.jackpotsWon || 0) + 1
+  };
+  return newState;
+}
+
+// ===========================================
+// WEEKLY TOURNAMENT SYSTEM
+// ===========================================
+
+/**
+ * Update weekly tournament progress
+ * @param {Object} state - Current state
+ * @param {number} essenceEarned - Essence earned to add
+ * @returns {Object} Updated state
+ */
+function updateWeeklyProgress(state, essenceEarned) {
+  const currentWeek = getCurrentISOWeek();
+  const newState = { ...state };
+
+  // Check if we need to reset for a new week
+  if (state.weekly?.weekId !== currentWeek) {
+    newState.weekly = {
+      weekId: currentWeek,
+      essenceEarned: essenceEarned,
+      rank: null,
+      rewardsClaimed: false
+    };
+  } else {
+    newState.weekly = {
+      ...state.weekly,
+      essenceEarned: (state.weekly?.essenceEarned || 0) + essenceEarned
+    };
+  }
+
+  return newState;
+}
+
+/**
+ * Get weekly tournament info
+ * @param {Object} state - Current state
+ * @returns {Object} Tournament info
+ */
+function getWeeklyTournamentInfo(state) {
+  const currentWeek = getCurrentISOWeek();
+  const isCurrentWeek = state.weekly?.weekId === currentWeek;
+
+  // Calculate estimated tier based on essence earned
+  let estimatedTier = null;
+  const essenceEarned = isCurrentWeek ? (state.weekly?.essenceEarned || 0) : 0;
+
+  for (const tier of WEEKLY_TOURNAMENT.tiers) {
+    if (essenceEarned >= tier.minEssence) {
+      estimatedTier = tier;
+    }
+  }
+
+  return {
+    weekId: currentWeek,
+    essenceEarned,
+    estimatedTier,
+    tiers: WEEKLY_TOURNAMENT.tiers,
+    rewards: WEEKLY_TOURNAMENT.rewards,
+    isCurrentWeek,
+    canClaimRewards: !isCurrentWeek && state.weekly?.weekId && !state.weekly?.rewardsClaimed
+  };
+}
+
+/**
+ * Claim weekly tournament rewards
+ * @param {Object} state - Current state
+ * @returns {Object} Result with rewards
+ */
+function claimWeeklyRewards(state) {
+  const currentWeek = getCurrentISOWeek();
+
+  // Can only claim rewards from previous weeks
+  if (state.weekly?.weekId === currentWeek) {
+    return { success: false, error: 'Cannot claim rewards for current week' };
+  }
+
+  if (!state.weekly?.weekId) {
+    return { success: false, error: 'No weekly data to claim' };
+  }
+
+  if (state.weekly?.rewardsClaimed) {
+    return { success: false, error: 'Rewards already claimed' };
+  }
+
+  // Determine tier achieved
+  const essenceEarned = state.weekly?.essenceEarned || 0;
+  let achievedTier = null;
+
+  for (const tier of WEEKLY_TOURNAMENT.tiers) {
+    if (essenceEarned >= tier.minEssence) {
+      achievedTier = tier;
+    }
+  }
+
+  if (!achievedTier) {
+    return { success: false, error: 'No tier achieved' };
+  }
+
+  const rewards = WEEKLY_TOURNAMENT.rewards[achievedTier.name] || { fatePoints: 0, rollTickets: 0 };
+
+  const newState = { ...state };
+  newState.weekly = {
+    ...state.weekly,
+    rewardsClaimed: true
+  };
+
+  return {
+    success: true,
+    newState,
+    tier: achievedTier.name,
+    rewards
+  };
+}
+
+// ===========================================
+// ROLL TICKET GENERATION SYSTEM
+// ===========================================
+
+/**
+ * Check and award daily streak tickets
+ * @param {Object} state - Current state
+ * @returns {Object} Result with ticket award info
+ */
+function checkDailyStreakTickets(state) {
+  const today = new Date().toISOString().split('T')[0];
+  const lastStreakDate = state.ticketGeneration?.lastStreakDate;
+  const currentStreak = state.ticketGeneration?.dailyStreakDays || 0;
+
+  // If already claimed today, no reward
+  if (lastStreakDate === today) {
+    return { awarded: false, reason: 'already_claimed' };
+  }
+
+  const newState = { ...state };
+  newState.ticketGeneration = { ...state.ticketGeneration };
+
+  // Check if streak continues (played yesterday)
+  const yesterday = new Date();
+  yesterday.setDate(yesterday.getDate() - 1);
+  const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+  let newStreak;
+  if (lastStreakDate === yesterdayStr) {
+    newStreak = currentStreak + 1;
+  } else {
+    newStreak = 1; // Reset streak
+  }
+
+  newState.ticketGeneration.dailyStreakDays = newStreak;
+  newState.ticketGeneration.lastStreakDate = today;
+
+  // Check if we hit a ticket milestone
+  const ticketMilestone = TICKET_GENERATION.dailyStreak.ticketMilestones.find(
+    m => m.days === newStreak
+  );
+
+  if (ticketMilestone) {
+    return {
+      awarded: true,
+      tickets: ticketMilestone.tickets,
+      streakDays: newStreak,
+      newState,
+      nextMilestone: TICKET_GENERATION.dailyStreak.ticketMilestones.find(m => m.days > newStreak)
+    };
+  }
+
+  return {
+    awarded: false,
+    reason: 'no_milestone',
+    streakDays: newStreak,
+    newState,
+    nextMilestone: TICKET_GENERATION.dailyStreak.ticketMilestones.find(m => m.days > newStreak)
+  };
+}
+
+/**
+ * Exchange fate points for roll tickets
+ * @param {Object} state - Current state
+ * @param {number} userFatePoints - User's current fate points
+ * @returns {Object} Exchange result
+ */
+function exchangeFatePointsForTickets(state, userFatePoints) {
+  const currentWeek = getCurrentISOWeek();
+  const exchangeConfig = TICKET_GENERATION.fatePointExchange;
+
+  // Reset weekly limit if new week
+  if (state.ticketGeneration?.lastExchangeWeek !== currentWeek) {
+    const newState = { ...state };
+    newState.ticketGeneration = {
+      ...state.ticketGeneration,
+      exchangedThisWeek: 0,
+      lastExchangeWeek: currentWeek
+    };
+    state = newState;
+  }
+
+  const exchangedThisWeek = state.ticketGeneration?.exchangedThisWeek || 0;
+
+  if (exchangedThisWeek >= exchangeConfig.weeklyLimit) {
+    return { success: false, error: 'Weekly exchange limit reached' };
+  }
+
+  if (userFatePoints < exchangeConfig.cost) {
+    return { success: false, error: `Need ${exchangeConfig.cost} Fate Points` };
+  }
+
+  const newState = { ...state };
+  newState.ticketGeneration = {
+    ...state.ticketGeneration,
+    exchangedThisWeek: exchangedThisWeek + 1,
+    lastExchangeWeek: currentWeek
+  };
+
+  return {
+    success: true,
+    newState,
+    fatePointsCost: exchangeConfig.cost,
+    ticketsReceived: exchangeConfig.tickets,
+    exchangesRemaining: exchangeConfig.weeklyLimit - exchangedThisWeek - 1
+  };
+}
+
+/**
+ * Check daily challenge ticket rewards
+ * @param {Object} state - Current state
+ * @returns {Object} Available ticket rewards from challenges
+ */
+function checkDailyChallengeTickets(state) {
+  const completedToday = state.daily?.ticketChallengesCompleted || 0;
+  const challengeConfig = TICKET_GENERATION.dailyChallenges;
+
+  if (completedToday >= challengeConfig.maxPerDay) {
+    return { available: false, reason: 'daily_limit' };
+  }
+
+  // Check if any new challenges completed that give tickets
+  const dailyChallenges = checkDailyChallenges(state);
+  const ticketRewardChallenges = dailyChallenges.filter(c => c.ticketReward);
+
+  return {
+    available: ticketRewardChallenges.length > 0,
+    challenges: ticketRewardChallenges,
+    completedToday,
+    maxPerDay: challengeConfig.maxPerDay
+  };
+}
+
+// ===========================================
+// ELEMENT DERIVATION FOR EXISTING CHARACTERS
+// ===========================================
+
+/**
+ * Get derived element for a character (uses config's deriveElement)
+ * @param {Object} character - Character object
+ * @returns {string} Derived element
+ */
+function getCharacterElement(character) {
+  // If character already has element set, use it
+  if (character.element) {
+    return character.element;
+  }
+
+  // Otherwise derive from character properties
+  return deriveElement(character.id, character.name, character.series);
+}
+
+/**
+ * Get element breakdown for assigned characters
+ * @param {Object} state - Current state
+ * @param {Array} characters - User's character collection
+ * @returns {Object} Element breakdown
+ */
+function getAssignedCharacterElements(state, characters = []) {
+  const breakdown = {
+    fire: [],
+    water: [],
+    earth: [],
+    air: [],
+    light: [],
+    dark: [],
+    neutral: []
+  };
+
+  if (!state.assignedCharacters || state.assignedCharacters.length === 0) {
+    return breakdown;
+  }
+
+  for (const charId of state.assignedCharacters) {
+    const char = characters.find(c => c.id === charId || c.characterId === charId);
+    if (!char) continue;
+
+    const element = getCharacterElement(char);
+    if (breakdown[element]) {
+      breakdown[element].push({
+        id: charId,
+        name: char.name,
+        element
+      });
+    }
+  }
+
+  return breakdown;
+}
+
+// ===========================================
+// ESSENCE TYPE CONVERSION
+// ===========================================
+
+/**
+ * Classify essence earned into types
+ * @param {number} essenceEarned - Raw essence earned
+ * @param {boolean} isGolden - Was it from a golden click
+ * @param {boolean} isCrit - Was it a critical hit
+ * @returns {Object} Essence type breakdown
+ */
+function classifyEssence(essenceEarned, isGolden = false, isCrit = false) {
+  const result = {
+    pure: 0,
+    ambient: 0,
+    golden: 0,
+    prismatic: 0,
+    total: essenceEarned
+  };
+
+  if (isGolden) {
+    // Golden clicks give golden essence
+    result.golden = essenceEarned;
+  } else if (isCrit) {
+    // Crits give a mix of pure and prismatic
+    result.pure = Math.floor(essenceEarned * 0.7);
+    result.prismatic = essenceEarned - result.pure;
+  } else {
+    // Normal clicks give ambient with some pure
+    result.ambient = Math.floor(essenceEarned * 0.8);
+    result.pure = essenceEarned - result.ambient;
+  }
+
+  return result;
+}
+
+/**
+ * Update essence type totals
+ * @param {Object} state - Current state
+ * @param {Object} essenceTypes - Essence type breakdown to add
+ * @returns {Object} Updated state
+ */
+function updateEssenceTypes(state, essenceTypes) {
+  const newState = { ...state };
+  newState.essenceTypes = {
+    pure: (state.essenceTypes?.pure || 0) + (essenceTypes.pure || 0),
+    ambient: (state.essenceTypes?.ambient || 0) + (essenceTypes.ambient || 0),
+    golden: (state.essenceTypes?.golden || 0) + (essenceTypes.golden || 0),
+    prismatic: (state.essenceTypes?.prismatic || 0) + (essenceTypes.prismatic || 0)
+  };
+  return newState;
+}
+
+/**
+ * Get essence type bonuses (for future features)
+ * @param {Object} state - Current state
+ * @returns {Object} Bonuses from essence types
+ */
+function getEssenceTypeBonuses(state) {
+  const types = state.essenceTypes || { pure: 0, ambient: 0, golden: 0, prismatic: 0 };
+
+  // Prismatic essence gives permanent bonuses
+  const prismaticBonus = Math.min(types.prismatic / ESSENCE_TYPES.prismatic.requirement, 0.5);
+
+  return {
+    productionBonus: prismaticBonus * 0.1,  // Up to 5% production
+    critBonus: prismaticBonus * 0.02,       // Up to 1% crit chance
+    goldenBonus: prismaticBonus * 0.005     // Up to 0.25% golden chance
+  };
+}
+
 module.exports = {
   // Core functions
   getInitialState,
@@ -1536,6 +2385,11 @@ module.exports = {
   calculateComboDecayTime,
   calculateElementBonuses,
   calculateElementSynergy,
+  calculateSeriesSynergy,
+  calculateCharacterMastery,
+  calculateTotalMasteryBonus,
+  calculateClickGeneratorScaling,
+  calculateUnderdogBonus,
   calculateInfusionCost,
 
   // Game actions
@@ -1556,6 +2410,12 @@ module.exports = {
   getGambleInfo,
   performGamble,
 
+  // Jackpot system
+  getJackpotInfo,
+  contributeToJackpot,
+  checkJackpotWin,
+  resetJackpot,
+
   // Infusion system
   performInfusion,
 
@@ -1564,12 +2424,37 @@ module.exports = {
   activateAbility,
   getActiveAbilityEffects,
 
-  // Character XP
+  // Character XP & Mastery
   awardCharacterXP,
+  updateCharacterMastery,
 
   // Daily modifiers
   getCurrentDailyModifier,
   getTimeUntilNextModifier,
+
+  // Repeatable milestones
+  checkRepeatableMilestones,
+  claimRepeatableMilestone,
+  getCurrentISOWeek,
+
+  // Weekly tournament
+  updateWeeklyProgress,
+  getWeeklyTournamentInfo,
+  claimWeeklyRewards,
+
+  // Ticket generation
+  checkDailyStreakTickets,
+  exchangeFatePointsForTickets,
+  checkDailyChallengeTickets,
+
+  // Element derivation
+  getCharacterElement,
+  getAssignedCharacterElements,
+
+  // Essence types
+  classifyEssence,
+  updateEssenceTypes,
+  getEssenceTypeBonuses,
 
   // UI helpers
   getAvailableGenerators,
@@ -1579,5 +2464,11 @@ module.exports = {
 
   // Config exports
   GENERATORS,
-  GAME_CONFIG
+  GAME_CONFIG,
+  CHARACTER_MASTERY,
+  ESSENCE_TYPES,
+  SERIES_SYNERGIES,
+  WEEKLY_TOURNAMENT,
+  TICKET_GENERATION,
+  REPEATABLE_MILESTONES
 };

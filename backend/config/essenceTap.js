@@ -11,6 +11,17 @@
  * - Prestige viable after ~1-2 hours of play
  * - Character bonuses impactful but not mandatory
  * - Offline gains ~50% of active play efficiency
+ *
+ * v2.0 ENHANCEMENT UPDATE:
+ * - Added repeatable essence milestones for ongoing FP rewards
+ * - Click power now scales with generator count (+0.1% per generator)
+ * - Character mastery system (1-10 levels per character)
+ * - Essence type variety (Pure, Ambient, Golden)
+ * - Series synergy bonuses matching dojo system
+ * - Weekly tournament/leaderboard system
+ * - Enhanced gamble system with progressive jackpot
+ * - Additional roll ticket generation paths
+ * - Element derivation for characters without explicit element
  */
 
 // ===========================================
@@ -491,6 +502,11 @@ const GAME_CONFIG = {
   baseCritMultiplier: 10,    // 10x damage on crit
   maxClicksPerSecond: 20,    // Anti-macro rate limit
 
+  // NEW: Click power scaling with generators
+  // Click power increases by this percentage per total generator owned
+  clickPowerPerGenerator: 0.001,  // +0.1% per generator
+  maxClickPowerFromGenerators: 2.0,  // Cap at +200%
+
   // Combo system
   comboDecayTime: 1000,      // ms before combo resets
   maxComboMultiplier: 2.0,   // Max combo bonus
@@ -509,6 +525,12 @@ const GAME_CONFIG = {
     legendary: 0.50    // +50%
   },
 
+  // NEW: Underdog bonus - common/uncommon characters get bonus when used
+  underdogBonuses: {
+    common: 0.15,      // +15% extra when using common characters
+    uncommon: 0.10     // +10% extra when using uncommon characters
+  },
+
   // Maximum assigned characters for bonus
   maxAssignedCharacters: 5,
 
@@ -521,11 +543,139 @@ const GAME_CONFIG = {
 };
 
 // ===========================================
+// CHARACTER MASTERY SYSTEM (NEW)
+// ===========================================
+
+/**
+ * Character mastery for Essence Tap
+ * Characters gain mastery XP when assigned and used
+ * Each mastery level provides additional bonuses
+ */
+const CHARACTER_MASTERY = {
+  // Maximum mastery level per character
+  maxLevel: 10,
+
+  // XP required per level (cumulative)
+  xpPerLevel: [
+    0,        // Level 1 (start)
+    1000,     // Level 2
+    3000,     // Level 3
+    7000,     // Level 4
+    15000,    // Level 5
+    30000,    // Level 6
+    60000,    // Level 7
+    120000,   // Level 8
+    250000,   // Level 9
+    500000    // Level 10 (max)
+  ],
+
+  // XP earned per hour while assigned
+  xpPerHour: 100,
+
+  // Bonus per mastery level (+2% per level, max +20%)
+  bonusPerLevel: 0.02,
+
+  // Special ability unlocks at certain levels
+  abilityUnlocks: {
+    5: 'enhanced_element',    // Element bonus doubled
+    10: 'mastery_aura'        // Boosts other characters by 5%
+  },
+
+  // Account XP reward for reaching max mastery
+  maxMasteryAccountXP: 50
+};
+
+// ===========================================
+// ESSENCE TYPES (NEW)
+// ===========================================
+
+/**
+ * Essence type variety for strategic depth
+ * Different essence types are produced by different sources
+ */
+const ESSENCE_TYPES = {
+  pure: {
+    id: 'pure',
+    name: 'Pure Essence',
+    description: 'Generated from clicks only',
+    color: '#A855F7',
+    sources: ['clicks', 'crits', 'golden'],
+    conversionRate: 1.0  // 1:1 to base essence
+  },
+  ambient: {
+    id: 'ambient',
+    name: 'Ambient Essence',
+    description: 'Generated passively from generators',
+    color: '#3B82F6',
+    sources: ['generators', 'offline'],
+    conversionRate: 1.0
+  },
+  golden: {
+    id: 'golden',
+    name: 'Golden Essence',
+    description: 'Rare essence from golden events',
+    color: '#F59E0B',
+    sources: ['golden_clicks', 'golden_rush'],
+    conversionRate: 10.0  // 10x value
+  },
+  prismatic: {
+    id: 'prismatic',
+    name: 'Prismatic Essence',
+    description: 'Ultra-rare essence from special events',
+    color: '#EC4899',
+    sources: ['jackpot', 'weekly_tournament', 'mastery_complete'],
+    conversionRate: 100.0  // 100x value
+  }
+};
+
+/**
+ * Essence type requirements for upgrades
+ * Some upgrades require specific essence types
+ */
+const ESSENCE_REQUIREMENTS = {
+  // Premium upgrades require golden essence percentage
+  premium_upgrades: {
+    requiredGoldenPercent: 0.10  // 10% of cost must be golden
+  },
+  // Prestige upgrades require prismatic
+  prestige_premium: {
+    requiredPrismaticPercent: 0.05  // 5% of cost must be prismatic
+  }
+};
+
+// ===========================================
+// SERIES SYNERGY BONUSES (NEW)
+// ===========================================
+
+/**
+ * Series synergy bonuses (matching dojo system)
+ * Characters from the same series provide bonus when used together
+ */
+const SERIES_SYNERGIES = {
+  // Bonus per matching character from same series
+  pairBonus: {
+    2: 0.10,   // 2 from same series: +10%
+    3: 0.25,   // 3 from same series: +25%
+    4: 0.45,   // 4 from same series: +45%
+    5: 0.70    // Full team same series: +70%
+  },
+
+  // Maximum total synergy bonus (prevents stacking exploits)
+  maxSynergyBonus: 1.00,  // Cap at +100%
+
+  // Diversity bonus (all different series)
+  diversityBonus: 0.15,  // +15% if all 5 characters from different series
+
+  // Featured series rotation (changes weekly)
+  featuredSeriesBonus: 0.25  // +25% extra for using featured series
+};
+
+// ===========================================
 // FATE POINTS INTEGRATION
 // ===========================================
 
 /**
- * Milestones that reward Fate Points
+ * Milestones that reward Fate Points (one-time)
  */
 const FATE_POINT_MILESTONES = [
   { lifetimeEssence: 1000000, fatePoints: 5, claimed: false },
@@ -534,6 +684,37 @@ const FATE_POINT_MILESTONES = [
   { lifetimeEssence: 1000000000, fatePoints: 50, claimed: false },
   { lifetimeEssence: 10000000000, fatePoints: 100, claimed: false }
 ];
+
+/**
+ * Repeatable milestones for ongoing FP rewards (NEW)
+ * These reset weekly and provide continuous engagement
+ */
+const REPEATABLE_MILESTONES = {
+  // Weekly essence milestone
+  weeklyEssence: {
+    threshold: 100000000,  // 100M essence per week
+    fatePoints: 25,
+    rollTickets: 3
+  },
+  // Weekly click goal
+  weeklyClicks: {
+    threshold: 10000,      // 10,000 clicks per week
+    fatePoints: 10,
+    rollTickets: 2
+  },
+  // Weekly prestige goal (prestige at least once per week)
+  weeklyPrestige: {
+    threshold: 1,
+    fatePoints: 15,
+    premiumTickets: 1
+  },
+  // Essence earned per 100B (repeatable indefinitely)
+  essencePer100B: {
+    threshold: 100000000000,  // 100B
+    fatePoints: 50,
+    repeatable: true
+  }
+};
 
 /**
  * Prestige rewards Fate Points
@@ -802,6 +983,7 @@ const ACTIVE_ABILITIES = [
 
 /**
  * Gamble system - risk essence for multiplied rewards
+ * Enhanced with progressive jackpot system
  */
 const GAMBLE_CONFIG = {
   // Minimum bet amount
@@ -818,9 +1000,42 @@ const GAMBLE_CONFIG = {
 
   // Bet types with win chances and multipliers
   betTypes: {
-    safe: { name: 'Safe Bet', winChance: 0.70, multiplier: 1.5 },
-    risky: { name: 'Risky Bet', winChance: 0.50, multiplier: 2.5 },
-    extreme: { name: 'All or Nothing', winChance: 0.30, multiplier: 5.0 }
+    safe: { name: 'Safe Bet', winChance: 0.70, multiplier: 1.5, jackpotContribution: 0.01 },
+    risky: { name: 'Risky Bet', winChance: 0.50, multiplier: 2.5, jackpotContribution: 0.03 },
+    extreme: { name: 'All or Nothing', winChance: 0.30, multiplier: 5.0, jackpotContribution: 0.05 }
+  },
+
+  // NEW: Progressive jackpot system
+  jackpot: {
+    // Base jackpot amount (minimum)
+    baseAmount: 1000000,
+
+    // Percentage of lost bets that go to jackpot pool
+    lossContribution: 0.10,  // 10% of lost essence goes to jackpot
+
+    // Chance to win jackpot on any gamble
+    baseChance: 0.001,  // 0.1% base chance
+
+    // Jackpot chance increases with bet type
+    chanceMultipliers: {
+      safe: 1.0,
+      risky: 2.0,
+      extreme: 5.0
+    },
+
+    // Streak bonus - jackpot chance increases with consecutive gambles
+    streakBonus: {
+      threshold: 5,         // After 5 consecutive gambles
+      bonusPerGamble: 0.0005  // +0.05% per gamble after threshold
+    },
+
+    // Jackpot rewards
+    rewards: {
+      essence: 1.0,         // Full jackpot amount in essence
+      fatePoints: 25,       // Bonus fate points
+      rollTickets: 5,       // Bonus roll tickets
+      prismaticEssence: 100 // Bonus prismatic essence
+    }
   }
 };
 
@@ -849,25 +1064,255 @@ const INFUSION_CONFIG = {
 };
 
 // ===========================================
+// WEEKLY TOURNAMENT SYSTEM (NEW)
+// ===========================================
+
+/**
+ * Weekly tournament configuration
+ * Players compete for essence earned during the week
+ */
+const WEEKLY_TOURNAMENT = {
+  // Tournament runs Monday 00:00 UTC to Sunday 23:59 UTC
+  startDay: 1,  // Monday
+  endDay: 0,    // Sunday
+
+  // Ranking tiers and rewards
+  tiers: [
+    {
+      rank: 1,
+      name: 'Essence Champion',
+      rewards: { fatePoints: 100, premiumTickets: 5, rollTickets: 20, prismaticEssence: 500 }
+    },
+    {
+      rank: [2, 3],
+      name: 'Essence Master',
+      rewards: { fatePoints: 75, premiumTickets: 3, rollTickets: 15, prismaticEssence: 250 }
+    },
+    {
+      rank: [4, 10],
+      name: 'Essence Expert',
+      rewards: { fatePoints: 50, premiumTickets: 2, rollTickets: 10, prismaticEssence: 100 }
+    },
+    {
+      rank: [11, 25],
+      name: 'Essence Adept',
+      rewards: { fatePoints: 30, premiumTickets: 1, rollTickets: 7 }
+    },
+    {
+      rank: [26, 50],
+      name: 'Essence Apprentice',
+      rewards: { fatePoints: 20, rollTickets: 5 }
+    },
+    {
+      rank: [51, 100],
+      name: 'Essence Initiate',
+      rewards: { fatePoints: 10, rollTickets: 3 }
+    }
+  ],
+
+  // Participation rewards (for anyone who played)
+  participationReward: {
+    minimumEssence: 1000000,  // Must earn at least 1M essence
+    rewards: { fatePoints: 5, rollTickets: 1 }
+  },
+
+  // Featured series for the week (20% bonus for using these characters)
+  featuredSeriesCount: 3,  // 3 random series featured each week
+
+  // Leaderboard display settings
+  leaderboardSize: 100,
+  refreshInterval: 300000  // 5 minutes
+};
+
+// ===========================================
+// ADDITIONAL TICKET GENERATION (NEW)
+// ===========================================
+
+/**
+ * Additional ways to earn roll tickets from Essence Tap
+ * Balanced to provide ~5-10 tickets per day of active play
+ */
+const TICKET_GENERATION = {
+  // Daily challenges that award tickets
+  dailyTicketChallenges: [
+    {
+      id: 'daily_essence_5m',
+      name: 'Daily Grinder',
+      description: 'Earn 5,000,000 essence today',
+      target: 5000000,
+      reward: { rollTickets: 2 }
+    },
+    {
+      id: 'daily_crits_250',
+      name: 'Critical Expert',
+      description: 'Land 250 critical clicks today',
+      target: 250,
+      reward: { rollTickets: 1 }
+    },
+    {
+      id: 'daily_golden_5',
+      name: 'Golden Hunter',
+      description: 'Get 5 golden essence clicks today',
+      target: 5,
+      reward: { rollTickets: 2, premiumTickets: 1 }
+    },
+    {
+      id: 'daily_generators_100',
+      name: 'Empire Builder',
+      description: 'Purchase 100 generators today',
+      target: 100,
+      reward: { rollTickets: 1 }
+    }
+  ],
+
+  // Essence-to-ticket exchange (using golden essence)
+  essenceExchange: {
+    // Exchange rate: golden essence to roll tickets
+    goldenToRoll: {
+      cost: 10000,  // 10,000 golden essence
+      tickets: 1
+    },
+    // Exchange rate: golden essence to premium tickets
+    goldenToPremium: {
+      cost: 50000,  // 50,000 golden essence
+      tickets: 1
+    },
+    // Daily exchange limits
+    dailyRollLimit: 5,
+    dailyPremiumLimit: 2
+  },
+
+  // Streak bonuses for consecutive days of play
+  streakTickets: {
+    3: { rollTickets: 1 },   // 3-day streak
+    7: { rollTickets: 3, premiumTickets: 1 },  // 7-day streak
+    14: { rollTickets: 5, premiumTickets: 2 }, // 14-day streak
+    30: { rollTickets: 10, premiumTickets: 5 } // 30-day streak
+  },
+
+  // Generator milestone tickets
+  generatorMilestones: [
+    { totalGenerators: 100, reward: { rollTickets: 2 } },
+    { totalGenerators: 500, reward: { rollTickets: 5 } },
+    { totalGenerators: 1000, reward: { rollTickets: 10, premiumTickets: 2 } },
+    { totalGenerators: 5000, reward: { rollTickets: 25, premiumTickets: 5 } }
+  ]
+};
+
+// ===========================================
+// ELEMENT DERIVATION (NEW)
+// ===========================================
+
+/**
+ * Derive element for characters that don't have one explicitly set
+ * Uses a deterministic algorithm based on character properties
+ */
+const ELEMENT_DERIVATION = {
+  // Element weights by rarity (some rarities favor certain elements)
+  rarityWeights: {
+    common: { neutral: 0.40, fire: 0.12, water: 0.12, earth: 0.12, air: 0.12, light: 0.06, dark: 0.06 },
+    uncommon: { neutral: 0.30, fire: 0.14, water: 0.14, earth: 0.14, air: 0.14, light: 0.07, dark: 0.07 },
+    rare: { neutral: 0.20, fire: 0.16, water: 0.16, earth: 0.16, air: 0.16, light: 0.08, dark: 0.08 },
+    epic: { neutral: 0.15, fire: 0.15, water: 0.15, earth: 0.15, air: 0.15, light: 0.125, dark: 0.125 },
+    legendary: { neutral: 0.10, fire: 0.15, water: 0.15, earth: 0.15, air: 0.15, light: 0.15, dark: 0.15 }
+  },
+
+  // Series-specific element affinities (optional, for thematic consistency)
+  seriesAffinities: {
+    // Example: 'Fire Emblem' series has fire affinity
+    // These would be populated based on actual series in the database
+  },
+
+  // Fallback element if derivation fails
+  fallbackElement: 'neutral'
+};
+
+/**
+ * Helper function to derive element from character ID
+ * Uses a hash of the character ID for deterministic results
+ * @param {number} characterId - The character's database ID
+ * @param {string} rarity - The character's rarity
+ * @returns {string} - The derived element
+ */
+function deriveElement(characterId, rarity = 'common') {
+  const elements = ['fire', 'water', 'earth', 'air', 'light', 'dark', 'neutral'];
+  const weights = ELEMENT_DERIVATION.rarityWeights[rarity] || ELEMENT_DERIVATION.rarityWeights.common;
+
+  // Use character ID as seed for deterministic element
+  const seed = characterId * 2654435761 % 4294967296;
+  const normalized = seed / 4294967296;
+
+  let cumulative = 0;
+  for (const element of elements) {
+    cumulative += weights[element];
+    if (normalized < cumulative) {
+      return element;
+    }
+  }
+
+  return ELEMENT_DERIVATION.fallbackElement;
+}
+
+// ===========================================
 // EXPORTS
 // ===========================================
 
 module.exports = {
+  // Generators and upgrades
   GENERATORS,
   CLICK_UPGRADES,
   GENERATOR_UPGRADES,
   GLOBAL_UPGRADES,
   SYNERGY_UPGRADES,
+
+  // Prestige system
   PRESTIGE_CONFIG,
+
+  // Core game config
   GAME_CONFIG,
+
+  // NEW: Character mastery
+  CHARACTER_MASTERY,
+
+  // NEW: Essence types
+  ESSENCE_TYPES,
+  ESSENCE_REQUIREMENTS,
+
+  // NEW: Series synergies
+  SERIES_SYNERGIES,
+
+  // Fate points integration
   FATE_POINT_MILESTONES,
+  REPEATABLE_MILESTONES,
   PRESTIGE_FATE_REWARDS,
+
+  // XP rewards
   XP_REWARDS,
+
+  // Challenges
   DAILY_CHALLENGES,
+
+  // Character abilities
   CHARACTER_ABILITIES,
   ELEMENT_SYNERGIES,
+
+  // Daily modifiers
   DAILY_MODIFIERS,
+
+  // Active abilities
   ACTIVE_ABILITIES,
+
+  // Risk/reward mechanics
   GAMBLE_CONFIG,
-  INFUSION_CONFIG
+  INFUSION_CONFIG,
+
+  // NEW: Weekly tournament
+  WEEKLY_TOURNAMENT,
+
+  // NEW: Ticket generation
+  TICKET_GENERATION,
+
+  // NEW: Element derivation
+  ELEMENT_DERIVATION,
+  deriveElement
 };
