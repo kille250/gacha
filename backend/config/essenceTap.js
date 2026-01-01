@@ -424,6 +424,10 @@ const PRESTIGE_CONFIG = {
   // Minimum lifetime essence to prestige
   minimumEssence: 1000000,
 
+  // Prestige cooldown to prevent FP farming (in milliseconds)
+  // Players must wait 1 hour between prestiges
+  cooldownMs: 3600000,  // 1 hour = 60 * 60 * 1000
+
   // Formula for awakening shards: floor(sqrt(lifetimeEssence / divisor))
   shardDivisor: 1000000,
 
@@ -1009,7 +1013,7 @@ const GAMBLE_CONFIG = {
   maxBetPercent: 0.5, // 50%
 
   // Cooldown between gambles (seconds)
-  cooldownSeconds: 30,
+  cooldownSeconds: 15,
 
   // Maximum gambles per day
   maxDailyGambles: 10,

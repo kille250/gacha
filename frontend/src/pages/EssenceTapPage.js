@@ -39,8 +39,14 @@ import {
   CharacterSelector,
   OnboardingOverlay,
   DailyModifierBanner,
-  ActiveAbilities
+  ActiveAbilities,
+  GamblePanel,
+  InfusionPanel,
+  WeeklyTournament,
+  CharacterMasteryDisplay,
+  EssenceTypesDisplay
 } from '../components/EssenceTap';
+import { IconDice, IconSparkles, IconTrophy, IconStar, IconGem } from '../constants/icons';
 
 // Local storage key for onboarding
 const ONBOARDING_COMPLETE_KEY = 'essenceTap_onboardingComplete';
@@ -260,11 +266,32 @@ const CharacterBonusButton = styled(StatItem)`
   }
 `;
 
+const FeatureButtonsRow = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  flex-wrap: wrap;
+  justify-content: center;
+  margin-top: ${theme.spacing.md};
+`;
+
+const FeatureButton = styled(Button)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  font-size: ${theme.fontSizes.sm};
+`;
+
 const EssenceTapPage = memo(() => {
   const { t } = useTranslation();
   const [showPrestige, setShowPrestige] = useState(false);
   const [showCharacterSelector, setShowCharacterSelector] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
+  const [showGamble, setShowGamble] = useState(false);
+  const [showInfusion, setShowInfusion] = useState(false);
+  const [showTournament, setShowTournament] = useState(false);
+  const [showMastery, setShowMastery] = useState(false);
+  const [showEssenceTypes, setShowEssenceTypes] = useState(false);
   const [_dailyModifier, setDailyModifier] = useState(null);
   const [activeAbilityEffects, setActiveAbilityEffects] = useState({});
 
@@ -286,6 +313,13 @@ const EssenceTapPage = memo(() => {
     claimMilestone,
     assignCharacter,
     unassignCharacter,
+    performGamble,
+    performInfusion,
+    getGambleInfo,
+    getTournamentInfo,
+    claimTournamentRewards,
+    getMasteryInfo,
+    getEssenceTypes,
     refresh
   } = useEssenceTap();
 
@@ -471,6 +505,49 @@ const EssenceTapPage = memo(() => {
                 </MilestoneButton>
               )}
             </ActionButtons>
+
+            {/* Feature Buttons Row */}
+            <FeatureButtonsRow>
+              <FeatureButton
+                variant="secondary"
+                onClick={() => setShowGamble(true)}
+              >
+                <IconDice size={16} />
+                {t('essenceTap.gamble', { defaultValue: 'Gamble' })}
+              </FeatureButton>
+
+              <FeatureButton
+                variant="secondary"
+                onClick={() => setShowInfusion(true)}
+              >
+                <IconSparkles size={16} />
+                {t('essenceTap.infuse', { defaultValue: 'Infuse' })}
+              </FeatureButton>
+
+              <FeatureButton
+                variant="secondary"
+                onClick={() => setShowTournament(true)}
+              >
+                <IconTrophy size={16} />
+                {t('essenceTap.tournament', { defaultValue: 'Tournament' })}
+              </FeatureButton>
+
+              <FeatureButton
+                variant="secondary"
+                onClick={() => setShowMastery(true)}
+              >
+                <IconStar size={16} />
+                {t('essenceTap.mastery', { defaultValue: 'Mastery' })}
+              </FeatureButton>
+
+              <FeatureButton
+                variant="secondary"
+                onClick={() => setShowEssenceTypes(true)}
+              >
+                <IconGem size={16} />
+                {t('essenceTap.types', { defaultValue: 'Types' })}
+              </FeatureButton>
+            </FeatureButtonsRow>
           </TapSection>
 
           <UpgradesPanel>
@@ -512,6 +589,47 @@ const EssenceTapPage = memo(() => {
           isOpen={showOnboarding}
           onComplete={handleOnboardingComplete}
           onSkip={handleOnboardingSkip}
+        />
+
+        {/* Gamble Panel */}
+        <GamblePanel
+          isOpen={showGamble}
+          onClose={() => setShowGamble(false)}
+          essence={essence}
+          onGamble={performGamble}
+          getGambleInfo={getGambleInfo}
+        />
+
+        {/* Infusion Panel */}
+        <InfusionPanel
+          isOpen={showInfusion}
+          onClose={() => setShowInfusion(false)}
+          essence={essence}
+          gameState={gameState}
+          onInfuse={performInfusion}
+        />
+
+        {/* Weekly Tournament */}
+        <WeeklyTournament
+          isOpen={showTournament}
+          onClose={() => setShowTournament(false)}
+          getTournamentInfo={getTournamentInfo}
+          onClaimRewards={claimTournamentRewards}
+        />
+
+        {/* Character Mastery Display */}
+        <CharacterMasteryDisplay
+          isOpen={showMastery}
+          onClose={() => setShowMastery(false)}
+          getMasteryInfo={getMasteryInfo}
+          assignedCharacters={gameState?.assignedCharacters || []}
+        />
+
+        {/* Essence Types Display */}
+        <EssenceTypesDisplay
+          isOpen={showEssenceTypes}
+          onClose={() => setShowEssenceTypes(false)}
+          getEssenceTypes={getEssenceTypes}
         />
 
         {/* Offline Progress Modal */}

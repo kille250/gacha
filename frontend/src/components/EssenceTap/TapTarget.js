@@ -7,11 +7,13 @@
  * - Critical hit effects
  * - Golden essence effects
  * - Combo indicator
+ * - Pixi.js particle effects
  */
 
-import React, { useState, useCallback, useRef, memo } from 'react';
+import React, { useState, useCallback, useRef, memo, useEffect } from 'react';
 import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
+import * as PIXI from 'pixi.js';
 import { theme } from '../../design-system';
 import { formatNumber } from '../../hooks/useEssenceTap';
 import { IconGem, IconSparkles } from '../../constants/icons';
@@ -60,6 +62,17 @@ const TapContainer = styled.div`
   justify-content: center;
   padding: ${theme.spacing.xl};
   position: relative;
+`;
+
+const ParticleCanvas = styled.div`
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
+  z-index: 5;
+  overflow: visible;
 `;
 
 const TapButton = styled(motion.button)`
@@ -170,6 +183,54 @@ const ClickPowerLabel = styled.div`
   color: ${theme.colors.text};
 `;
 
+// Particle colors for different click types
+const PARTICLE_COLORS = {
+  normal: [0xA855F7, 0xC084FC, 0x9333EA], // Purple shades
+  crit: [0xFFC107, 0xFFD54F, 0xFFB300],   // Golden/amber shades
+  golden: [0xFFD700, 0xFFA500, 0xFFE135]  // Bright gold shades
+};
+
+// Create a simple particle class
+class EssenceParticle {
+  constructor(x, y, color, isGolden = false, isCrit = false) {
+    this.x = x;
+    this.y = y;
+    this.color = color;
+    this.isGolden = isGolden;
+    this.isCrit = isCrit;
+
+    // Random velocity - particles burst outward
+    const angle = Math.random() * Math.PI * 2;
+    const speed = (isGolden ? 6 : isCrit ? 5 : 4) + Math.random() * 3;
+    this.vx = Math.cos(angle) * speed;
+    this.vy = Math.sin(angle) * speed - 2; // Slight upward bias
+
+    this.gravity = 0.15;
+    this.friction = 0.98;
+    this.alpha = 1;
+    this.alphaDecay = isGolden ? 0.015 : 0.02;
+    this.scale = (isGolden ? 1.2 : isCrit ? 1.0 : 0.8) + Math.random() * 0.4;
+    this.rotation = Math.random() * Math.PI * 2;
+    this.rotationSpeed = (Math.random() - 0.5) * 0.2;
+    this.alive = true;
+  }
+
+  update() {
+    this.vx *= this.friction;
+    this.vy *= this.friction;
+    this.vy += this.gravity;
+    this.x += this.vx;
+    this.y += this.vy;
+    this.alpha -= this.alphaDecay;
+    this.rotation += this.rotationSpeed;
+    this.scale *= 0.98;
+
+    if (this.alpha <= 0) {
+      this.alive = false;
+    }
+  }
+}
+
 const TapTarget = memo(({
   onClick,
   clickPower = 1,
@@ -179,6 +240,104 @@ const TapTarget = memo(({
   const [floatingNumbers, setFloatingNumbers] = useState([]);
   const nextIdRef = useRef(0);
   const buttonRef = useRef(null);
+  const canvasRef = useRef(null);
+  const pixiAppRef = useRef(null);
+  const particlesRef = useRef([]);
+  const graphicsRef = useRef(null);
+
+  // Initialize Pixi.js application
+  useEffect(() => {
+    if (!canvasRef.current || pixiAppRef.current) return;
+
+    const app = new PIXI.Application();
+
+    app.init({
+      width: 400,
+      height: 400,
+      backgroundAlpha: 0,
+      antialias: true,
+      resolution: window.devicePixelRatio || 1,
+      autoDensity: true
+    }).then(() => {
+      if (canvasRef.current && app.canvas) {
+        canvasRef.current.appendChild(app.canvas);
+        pixiAppRef.current = app;
+
+        // Create graphics object for particles
+        const graphics = new PIXI.Graphics();
+        app.stage.addChild(graphics);
+        graphicsRef.current = graphics;
+
+        // Animation loop
+        app.ticker.add(() => {
+          if (!graphicsRef.current) return;
+
+          graphicsRef.current.clear();
+
+          // Update and draw particles
+          particlesRef.current = particlesRef.current.filter(p => {
+            p.update();
+            if (!p.alive) return false;
+
+            // Draw particle as a star/diamond shape
+            const g = graphicsRef.current;
+            g.save();
+            g.translate(p.x, p.y);
+            g.rotate(p.rotation);
+            g.scale(p.scale, p.scale);
+
+            // Draw a 4-point star
+            g.beginFill({ color: p.color, alpha: p.alpha });
+            g.moveTo(0, -8);
+            g.lineTo(2, -2);
+            g.lineTo(8, 0);
+            g.lineTo(2, 2);
+            g.lineTo(0, 8);
+            g.lineTo(-2, 2);
+            g.lineTo(-8, 0);
+            g.lineTo(-2, -2);
+            g.closePath();
+            g.endFill();
+
+            // Add glow for golden/crit
+            if (p.isGolden || p.isCrit) {
+              g.beginFill({ color: 0xFFFFFF, alpha: p.alpha * 0.5 });
+              g.circle(0, 0, 3);
+              g.endFill();
+            }
+
+            g.restore();
+
+            return true;
+          });
+        });
+      }
+    });
+
+    return () => {
+      if (pixiAppRef.current) {
+        pixiAppRef.current.destroy(true, { children: true });
+        pixiAppRef.current = null;
+        graphicsRef.current = null;
+      }
+    };
+  }, []);
+
+  // Spawn particles on click
+  const spawnParticles = useCallback((x, y, isCrit, isGolden) => {
+    const colors = isGolden ? PARTICLE_COLORS.golden :
+                   isCrit ? PARTICLE_COLORS.crit :
+                   PARTICLE_COLORS.normal;
+
+    const particleCount = isGolden ? 25 : isCrit ? 18 : 12;
+
+    for (let i = 0; i < particleCount; i++) {
+      const color = colors[Math.floor(Math.random() * colors.length)];
+      particlesRef.current.push(
+        new EssenceParticle(x, y, color, isGolden, isCrit)
+      );
+    }
+  }, []);
 
   const handleClick = useCallback((e) => {
     // Get click position relative to button center
@@ -193,6 +352,11 @@ const TapTarget = memo(({
     const offsetY = -20 + (Math.random() - 0.5) * 20;
 
     onClick?.();
+
+    // Spawn particles at click position (offset for canvas position)
+    const canvasX = 200 + (clickX - centerX);
+    const canvasY = 200 + (clickY - centerY);
+    spawnParticles(canvasX, canvasY, lastClickResult?.isCrit, lastClickResult?.isGolden);
 
     // Add floating number at click position
     if (lastClickResult) {
@@ -211,10 +375,13 @@ const TapTarget = memo(({
         setFloatingNumbers(prev => prev.filter(n => n.id !== id));
       }, 600);
     }
-  }, [onClick, lastClickResult]);
+  }, [onClick, lastClickResult, spawnParticles]);
 
   return (
     <TapContainer>
+      {/* Pixi.js particle canvas */}
+      <ParticleCanvas ref={canvasRef} />
+
       <AnimatePresence>
         {comboMultiplier > 1.05 && (
           <ComboIndicator

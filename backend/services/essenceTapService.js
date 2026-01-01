@@ -1048,6 +1048,21 @@ function performPrestige(state, _user) {
     return { success: false, error: 'Not enough lifetime essence to prestige' };
   }
 
+  // Check prestige cooldown to prevent FP farming
+  const now = Date.now();
+  const lastPrestigeTime = state.lastPrestigeTimestamp || 0;
+  const cooldownMs = PRESTIGE_CONFIG.cooldownMs || 3600000; // Default 1 hour
+  const timeRemaining = Math.max(0, (lastPrestigeTime + cooldownMs) - now);
+
+  if (timeRemaining > 0) {
+    const minutesRemaining = Math.ceil(timeRemaining / 60000);
+    return {
+      success: false,
+      error: `Prestige on cooldown. Please wait ${minutesRemaining} minute(s).`,
+      cooldownRemaining: timeRemaining
+    };
+  }
+
   const shardsEarned = calculatePrestigeShards(state.lifetimeEssence);
   if (shardsEarned <= 0) {
     return { success: false, error: 'Would not earn any shards' };
@@ -1076,6 +1091,7 @@ function performPrestige(state, _user) {
       totalPrestigeCount: (state.stats?.totalPrestigeCount || 0) + 1
     },
     lastOnlineTimestamp: Date.now(),
+    lastPrestigeTimestamp: now,
     createdAt: state.createdAt
   };
 

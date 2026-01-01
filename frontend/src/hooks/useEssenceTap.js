@@ -227,18 +227,19 @@ export const useEssenceTap = () => {
     });
 
     // Set click result for visual feedback
+    const clickTimestamp = Date.now();
     setLastClickResult({
       essenceGained,
       isCrit,
       isGolden,
       comboMultiplier,
-      timestamp: Date.now()
+      timestamp: clickTimestamp
     });
 
-    // Clear click result after animation
+    // Clear click result after animation (using the captured timestamp)
     setTimeout(() => {
       setLastClickResult(prev =>
-        prev?.timestamp === lastClickResult?.timestamp ? null : prev
+        prev?.timestamp === clickTimestamp ? null : prev
       );
     }, 500);
 
@@ -268,7 +269,7 @@ export const useEssenceTap = () => {
     } catch (err) {
       console.error('Click sync failed:', err);
     }
-  }, [gameState, comboMultiplier, clicksThisSecond, lastClickResult, t, toast]);
+  }, [gameState, comboMultiplier, clicksThisSecond, t, toast]);
 
   // Purchase generator
   const purchaseGenerator = useCallback(async (generatorId, count = 1) => {
@@ -485,6 +486,251 @@ export const useEssenceTap = () => {
     setOfflineProgress(null);
   }, []);
 
+  // Gamble with essence
+  const performGamble = useCallback(async (betType, betAmount) => {
+    try {
+      const response = await api.post('/essence-tap/gamble', {
+        betType,
+        betAmount
+      });
+
+      if (!isMountedRef.current) return { success: false };
+
+      // Update local essence
+      setLocalEssence(response.data.newEssence);
+      localEssenceRef.current = response.data.newEssence;
+
+      if (response.data.won) {
+        toast.success(
+          t('essenceTap.gambleWon', {
+            amount: formatNumber(response.data.essenceChange),
+            defaultValue: `You won! +${formatNumber(response.data.essenceChange)} essence!`
+          })
+        );
+      } else {
+        toast.info(
+          t('essenceTap.gambleLost', {
+            amount: formatNumber(Math.abs(response.data.essenceChange)),
+            defaultValue: `You lost ${formatNumber(Math.abs(response.data.essenceChange))} essence`
+          })
+        );
+      }
+
+      if (response.data.jackpotWin) {
+        toast.success(
+          t('essenceTap.jackpotWon', {
+            amount: formatNumber(response.data.jackpotWin),
+            defaultValue: `JACKPOT! +${formatNumber(response.data.jackpotWin)} essence!`
+          })
+        );
+      }
+
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to gamble:', err);
+      toast.error(err.response?.data?.error || t('essenceTap.gambleFailed', { defaultValue: 'Gamble failed' }));
+      return { success: false, error: err.response?.data?.error };
+    }
+  }, [t, toast]);
+
+  // Perform infusion for permanent bonus
+  const performInfusion = useCallback(async () => {
+    try {
+      const response = await api.post('/essence-tap/infusion');
+
+      if (!isMountedRef.current) return { success: false };
+
+      setLocalEssence(response.data.essence);
+      localEssenceRef.current = response.data.essence;
+
+      toast.success(
+        t('essenceTap.infusionComplete', {
+          bonus: (response.data.bonusGained * 100).toFixed(1),
+          total: (response.data.totalBonus * 100).toFixed(1),
+          defaultValue: `Infusion complete! +${(response.data.bonusGained * 100).toFixed(1)}% (Total: +${(response.data.totalBonus * 100).toFixed(1)}%)`
+        })
+      );
+
+      await fetchGameState(false);
+
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to infuse:', err);
+      toast.error(err.response?.data?.error || t('essenceTap.infusionFailed', { defaultValue: 'Infusion failed' }));
+      return { success: false, error: err.response?.data?.error };
+    }
+  }, [fetchGameState, t, toast]);
+
+  // Get gamble info
+  const getGambleInfo = useCallback(async () => {
+    try {
+      const response = await api.get('/essence-tap/jackpot');
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to get gamble info:', err);
+      return { success: false };
+    }
+  }, []);
+
+  // Get weekly tournament info
+  const getTournamentInfo = useCallback(async () => {
+    try {
+      const response = await api.get('/essence-tap/tournament/weekly');
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to get tournament info:', err);
+      return { success: false };
+    }
+  }, []);
+
+  // Claim weekly tournament rewards
+  const claimTournamentRewards = useCallback(async () => {
+    try {
+      const response = await api.post('/essence-tap/tournament/weekly/claim');
+
+      if (!isMountedRef.current) return { success: false };
+
+      await refreshUser();
+
+      toast.success(
+        t('essenceTap.tournamentRewardsClaimed', {
+          tier: response.data.tier,
+          fatePoints: response.data.rewards.fatePoints,
+          defaultValue: `${response.data.tier} rewards claimed! +${response.data.rewards.fatePoints} Fate Points!`
+        })
+      );
+
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to claim tournament rewards:', err);
+      toast.error(err.response?.data?.error || t('essenceTap.claimFailed', { defaultValue: 'Claim failed' }));
+      return { success: false, error: err.response?.data?.error };
+    }
+  }, [refreshUser, t, toast]);
+
+  // Get character mastery info
+  const getMasteryInfo = useCallback(async () => {
+    try {
+      const response = await api.get('/essence-tap/mastery');
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to get mastery info:', err);
+      return { success: false };
+    }
+  }, []);
+
+  // Get essence types breakdown
+  const getEssenceTypes = useCallback(async () => {
+    try {
+      const response = await api.get('/essence-tap/essence-types');
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to get essence types:', err);
+      return { success: false };
+    }
+  }, []);
+
+  // Claim daily streak
+  const claimDailyStreak = useCallback(async () => {
+    try {
+      const response = await api.post('/essence-tap/tickets/streak/claim');
+
+      if (!isMountedRef.current) return { success: false };
+
+      if (response.data.awarded && response.data.tickets > 0) {
+        toast.success(
+          t('essenceTap.streakReward', {
+            tickets: response.data.tickets,
+            days: response.data.streakDays,
+            defaultValue: `${response.data.streakDays} day streak! +${response.data.tickets} roll tickets!`
+          })
+        );
+      } else {
+        toast.info(
+          t('essenceTap.streakContinued', {
+            days: response.data.streakDays,
+            defaultValue: `Streak continued! ${response.data.streakDays} days`
+          })
+        );
+      }
+
+      await refreshUser();
+
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to claim streak:', err);
+      toast.error(err.response?.data?.error || t('essenceTap.claimFailed', { defaultValue: 'Claim failed' }));
+      return { success: false, error: err.response?.data?.error };
+    }
+  }, [refreshUser, t, toast]);
+
+  // Claim repeatable milestones
+  const claimRepeatableMilestone = useCallback(async (milestoneType) => {
+    try {
+      const response = await api.post('/essence-tap/milestones/repeatable/claim', {
+        milestoneType
+      });
+
+      if (!isMountedRef.current) return { success: false };
+
+      await fetchGameState(false);
+      await refreshUser();
+
+      toast.success(
+        t('essenceTap.repeatableMilestoneClaimed', {
+          points: response.data.fatePoints,
+          defaultValue: `Milestone claimed! +${response.data.fatePoints} Fate Points!`
+        })
+      );
+
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to claim repeatable milestone:', err);
+      toast.error(err.response?.data?.error || t('essenceTap.claimFailed', { defaultValue: 'Claim failed' }));
+      return { success: false, error: err.response?.data?.error };
+    }
+  }, [fetchGameState, refreshUser, t, toast]);
+
+  // Activate ability
+  const activateAbility = useCallback(async (abilityId) => {
+    try {
+      const response = await api.post('/essence-tap/ability/activate', {
+        abilityId
+      });
+
+      if (!isMountedRef.current) return { success: false };
+
+      if (response.data.bonusEssence > 0) {
+        setLocalEssence(response.data.essence);
+        localEssenceRef.current = response.data.essence;
+      }
+
+      toast.success(
+        t('essenceTap.abilityActivated', {
+          name: response.data.ability?.name || abilityId,
+          defaultValue: `${response.data.ability?.name || abilityId} activated!`
+        })
+      );
+
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to activate ability:', err);
+      toast.error(err.response?.data?.error || t('essenceTap.abilityFailed', { defaultValue: 'Ability activation failed' }));
+      return { success: false, error: err.response?.data?.error };
+    }
+  }, [t, toast]);
+
+  // Get daily modifier
+  const getDailyModifier = useCallback(async () => {
+    try {
+      const response = await api.get('/essence-tap/daily-modifier');
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to get daily modifier:', err);
+      return { success: false };
+    }
+  }, []);
+
   return {
     // State
     gameState,
@@ -514,6 +760,21 @@ export const useEssenceTap = () => {
     claimMilestone,
     assignCharacter,
     unassignCharacter,
+
+    // New actions
+    performGamble,
+    performInfusion,
+    claimTournamentRewards,
+    claimDailyStreak,
+    claimRepeatableMilestone,
+    activateAbility,
+
+    // Data fetchers
+    getGambleInfo,
+    getTournamentInfo,
+    getMasteryInfo,
+    getEssenceTypes,
+    getDailyModifier,
 
     // Refresh
     refresh: fetchGameState,
