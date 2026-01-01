@@ -6,6 +6,13 @@
 
 Run the setup script to copy OpenHotel files:
 
+**Windows (PowerShell):**
+```powershell
+cd openhotel-server
+powershell -ExecutionPolicy Bypass -File setup.ps1
+```
+
+**Linux/Mac:**
 ```bash
 cd openhotel-server
 bash setup.sh
