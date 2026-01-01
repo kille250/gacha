@@ -11,7 +11,7 @@ module.exports = {
     });
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     await queryInterface.removeColumn('Users', 'essenceTap');
   }
 };

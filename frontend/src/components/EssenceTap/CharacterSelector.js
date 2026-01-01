@@ -34,15 +34,15 @@ const RARITY_COLORS = {
   legendary: '#F59E0B'
 };
 
-// Element colors and icons using React Icons
+// Element colors, icons, and ability descriptions
 const ELEMENT_CONFIG = {
-  fire: { color: '#EF4444', Icon: IconFlame, name: 'Fire' },
-  water: { color: '#3B82F6', Icon: IconWater, name: 'Water' },
-  earth: { color: '#84CC16', Icon: IconEarth, name: 'Earth' },
-  air: { color: '#06B6D4', Icon: IconAir, name: 'Air' },
-  light: { color: '#FCD34D', Icon: IconLight, name: 'Light' },
-  dark: { color: '#6366F1', Icon: IconDark, name: 'Dark' },
-  neutral: { color: '#9CA3AF', Icon: IconNeutral, name: 'Neutral' }
+  fire: { color: '#EF4444', Icon: IconFlame, name: 'Fire', ability: '+10% Crit Chance', abilityType: 'crit_chance' },
+  water: { color: '#3B82F6', Icon: IconWater, name: 'Water', ability: '+15% Production', abilityType: 'production' },
+  earth: { color: '#84CC16', Icon: IconEarth, name: 'Earth', ability: '+20% Offline Efficiency', abilityType: 'offline' },
+  air: { color: '#06B6D4', Icon: IconAir, name: 'Air', ability: '+500ms Combo Time', abilityType: 'combo_duration' },
+  light: { color: '#FCD34D', Icon: IconLight, name: 'Light', ability: '+0.05% Golden Chance', abilityType: 'golden_chance' },
+  dark: { color: '#6366F1', Icon: IconDark, name: 'Dark', ability: '+20% Click Power', abilityType: 'click_power' },
+  neutral: { color: '#9CA3AF', Icon: IconNeutral, name: 'Neutral', ability: '+5% All Stats', abilityType: 'all_stats' }
 };
 
 // Rarity bonus percentages
@@ -419,6 +419,34 @@ const CharacterSelector = memo(({
     return synergies;
   }, [assignedCharacters, ownedCharacters]);
 
+  // Calculate element ability bonuses
+  const calculateElementAbilities = useCallback(() => {
+    const abilities = [];
+    const elementCounts = {};
+
+    assignedCharacters.forEach(charId => {
+      const char = ownedCharacters.find(c => c.id === charId);
+      if (char) {
+        const element = (char.element || 'neutral').toLowerCase();
+        elementCounts[element] = (elementCounts[element] || 0) + 1;
+      }
+    });
+
+    Object.entries(elementCounts).forEach(([element, count]) => {
+      const config = ELEMENT_CONFIG[element];
+      if (config) {
+        abilities.push({
+          element,
+          count,
+          ability: config.ability,
+          totalBonus: count > 1 ? `${count}x ${config.ability}` : config.ability
+        });
+      }
+    });
+
+    return abilities;
+  }, [assignedCharacters, ownedCharacters]);
+
   // Filter characters
   const filteredCharacters = ownedCharacters.filter(char => {
     if (filter === 'all') return true;
@@ -447,6 +475,7 @@ const CharacterSelector = memo(({
   const totalBonus = calculateTotalBonus();
   const synergies = calculateSynergies();
   const synergyBonus = synergies.reduce((sum, s) => sum + s.bonus, 0);
+  const elementAbilities = calculateElementAbilities();
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
@@ -514,10 +543,29 @@ const CharacterSelector = memo(({
             </BonusItem>
           </BonusSummary>
 
+          {/* Element Abilities */}
+          {elementAbilities.length > 0 && (
+            <SynergyInfo>
+              <SynergyTitle>{t('essenceTap.elementAbilities', { defaultValue: 'Element Abilities' })}</SynergyTitle>
+              <SynergyList>
+                {elementAbilities.map(ability => {
+                  const config = ELEMENT_CONFIG[ability.element] || ELEMENT_CONFIG.neutral;
+                  return (
+                    <SynergyBadge key={ability.element} $active>
+                      <span><config.Icon size={14} /></span>
+                      <span>{config.name}</span>
+                      <span style={{ color: config.color }}>{ability.totalBonus}</span>
+                    </SynergyBadge>
+                  );
+                })}
+              </SynergyList>
+            </SynergyInfo>
+          )}
+
           {/* Synergy Info */}
           {synergies.length > 0 && (
             <SynergyInfo>
-              <SynergyTitle>{t('essenceTap.activeSynergies', { defaultValue: 'Active Synergies' })}</SynergyTitle>
+              <SynergyTitle>{t('essenceTap.activeSynergies', { defaultValue: 'Active Synergies (Pair Bonus)' })}</SynergyTitle>
               <SynergyList>
                 {synergies.map(synergy => {
                   const config = ELEMENT_CONFIG[synergy.element] || ELEMENT_CONFIG.neutral;

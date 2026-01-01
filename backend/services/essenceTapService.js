@@ -16,10 +16,25 @@ const {
   FATE_POINT_MILESTONES,
   PRESTIGE_FATE_REWARDS,
   XP_REWARDS,
-  DAILY_CHALLENGES
+  DAILY_CHALLENGES,
+  CHARACTER_ABILITIES,
+  ELEMENT_SYNERGIES,
+  DAILY_MODIFIERS,
+  ACTIVE_ABILITIES,
+  GAMBLE_CONFIG,
+  INFUSION_CONFIG
 } = require('../config/essenceTap');
 
-const accountLevelService = require('./accountLevelService');
+const _accountLevelService = require('./accountLevelService');
+
+/**
+ * Get the current daily modifier based on day of week
+ * @returns {Object} Current daily modifier
+ */
+function getCurrentDailyModifier() {
+  const dayOfWeek = new Date().getDay();
+  return DAILY_MODIFIERS[dayOfWeek] || DAILY_MODIFIERS[0];
+}
 
 /**
  * Get initial clicker state for a new user
@@ -54,7 +69,8 @@ function getInitialState() {
       crits: 0,
       essenceEarned: 0,
       generatorsBought: 0,
-      completedChallenges: []
+      completedChallenges: [],
+      gamblesUsed: 0
     },
 
     // Milestones claimed
@@ -65,12 +81,26 @@ function getInitialState() {
       totalGeneratorsBought: 0,
       totalUpgradesPurchased: 0,
       highestCombo: 0,
-      goldenEssenceClicks: 0
+      goldenEssenceClicks: 0,
+      totalGambleWins: 0,
+      totalGambleLosses: 0,
+      totalInfusions: 0
     },
+
+    // Infusion system (resets on prestige)
+    infusionCount: 0,
+    infusionBonus: 0,
+
+    // Active ability cooldowns (stored as timestamps)
+    abilityCooldowns: {},
+
+    // Character XP earned in essence tap { charId: xp }
+    characterXP: {},
 
     // Timestamps
     lastOnlineTimestamp: Date.now(),
     lastSaveTimestamp: Date.now(),
+    lastGambleTimestamp: 0,
     createdAt: Date.now()
   };
 }
@@ -129,6 +159,124 @@ function getMaxPurchasable(generatorId, owned, essence) {
 }
 
 /**
+ * Calculate element-based bonuses from assigned characters
+ * @param {Object} state - Clicker state
+ * @param {Array} characters - User's character collection with element info
+ * @returns {Object} Element bonuses breakdown
+ */
+function calculateElementBonuses(state, characters = []) {
+  const bonuses = {
+    critChance: 0,
+    production: 0,
+    offline: 0,
+    comboDuration: 0,
+    goldenChance: 0,
+    clickPower: 0,
+    allStats: 0
+  };
+
+  if (!state.assignedCharacters || state.assignedCharacters.length === 0) {
+    return bonuses;
+  }
+
+  const assignedChars = state.assignedCharacters.slice(0, GAME_CONFIG.maxAssignedCharacters);
+
+  for (const charId of assignedChars) {
+    const char = characters.find(c => c.id === charId || c.characterId === charId);
+    if (!char) continue;
+
+    const element = (char.element || 'neutral').toLowerCase();
+    const ability = CHARACTER_ABILITIES[element];
+
+    if (!ability) continue;
+
+    switch (ability.type) {
+      case 'crit_chance':
+        bonuses.critChance += ability.bonusPerCharacter;
+        break;
+      case 'production':
+        bonuses.production += ability.bonusPerCharacter;
+        break;
+      case 'offline':
+        bonuses.offline += ability.bonusPerCharacter;
+        break;
+      case 'combo_duration':
+        bonuses.comboDuration += ability.bonusPerCharacter;
+        break;
+      case 'golden_chance':
+        bonuses.goldenChance += ability.bonusPerCharacter;
+        break;
+      case 'click_power':
+        bonuses.clickPower += ability.bonusPerCharacter;
+        break;
+      case 'all_stats':
+        bonuses.allStats += ability.bonusPerCharacter;
+        break;
+    }
+  }
+
+  return bonuses;
+}
+
+/**
+ * Calculate element synergy bonus from team composition
+ * @param {Object} state - Clicker state
+ * @param {Array} characters - User's character collection
+ * @returns {Object} Synergy bonus info
+ */
+function calculateElementSynergy(state, characters = []) {
+  const result = {
+    bonus: 0,
+    synergies: [],
+    isFullTeam: false,
+    isDiverseTeam: false
+  };
+
+  if (!state.assignedCharacters || state.assignedCharacters.length === 0) {
+    return result;
+  }
+
+  const assignedChars = state.assignedCharacters.slice(0, GAME_CONFIG.maxAssignedCharacters);
+  const elementCounts = {};
+  const elements = new Set();
+
+  for (const charId of assignedChars) {
+    const char = characters.find(c => c.id === charId || c.characterId === charId);
+    if (!char) continue;
+
+    const element = (char.element || 'neutral').toLowerCase();
+    elementCounts[element] = (elementCounts[element] || 0) + 1;
+    elements.add(element);
+  }
+
+  // Check for element pair bonuses
+  for (const [element, count] of Object.entries(elementCounts)) {
+    if (count >= 2) {
+      const pairBonus = (count - 1) * ELEMENT_SYNERGIES.pairBonus;
+      result.bonus += pairBonus;
+      result.synergies.push({ element, count, bonus: pairBonus });
+    }
+  }
+
+  // Check for full team bonus (5 same element)
+  for (const count of Object.values(elementCounts)) {
+    if (count >= 5) {
+      result.bonus += ELEMENT_SYNERGIES.fullTeamBonus;
+      result.isFullTeam = true;
+      break;
+    }
+  }
+
+  // Check for diversity bonus (all different elements with 5 characters)
+  if (assignedChars.length >= 5 && elements.size >= 5) {
+    result.bonus += ELEMENT_SYNERGIES.diversityBonus;
+    result.isDiverseTeam = true;
+  }
+
+  return result;
+}
+
+/**
  * Calculate total click power for a state
  * @param {Object} state - Clicker state
  * @param {Array} characters - User's character collection
@@ -138,7 +286,7 @@ function calculateClickPower(state, characters = []) {
   let power = GAME_CONFIG.baseClickPower;
 
   // Add from purchased click upgrades
-  for (const upgradeId of state.purchasedUpgrades) {
+  for (const upgradeId of state.purchasedUpgrades || []) {
     const upgrade = CLICK_UPGRADES.find(u => u.id === upgradeId);
     if (upgrade && upgrade.type === 'click_power') {
       power += upgrade.bonus;
@@ -152,9 +300,17 @@ function calculateClickPower(state, characters = []) {
     power += prestigeClick * prestigeUpgrade.bonusPerLevel;
   }
 
-  // Apply character bonuses
+  // Apply character rarity bonuses
   const characterMultiplier = calculateCharacterBonus(state, characters);
   power *= characterMultiplier;
+
+  // Apply element-based click power bonus (Dark element)
+  const elementBonuses = calculateElementBonuses(state, characters);
+  power *= (1 + elementBonuses.clickPower + elementBonuses.allStats);
+
+  // Apply element synergy bonus
+  const synergy = calculateElementSynergy(state, characters);
+  power *= (1 + synergy.bonus);
 
   // Apply global multipliers
   const globalMult = calculateGlobalMultiplier(state);
@@ -164,19 +320,30 @@ function calculateClickPower(state, characters = []) {
   const shardBonus = 1 + Math.min(state.lifetimeShards || 0, PRESTIGE_CONFIG.maxEffectiveShards) * PRESTIGE_CONFIG.shardMultiplier;
   power *= shardBonus;
 
+  // Apply infusion bonus
+  const infusionBonus = state.infusionBonus || 0;
+  power *= (1 + infusionBonus);
+
+  // Apply daily modifier click power bonus
+  const dailyMod = getCurrentDailyModifier();
+  if (dailyMod.effects?.clickPowerBonus) {
+    power *= (1 + dailyMod.effects.clickPowerBonus);
+  }
+
   return Math.floor(power);
 }
 
 /**
  * Calculate critical hit chance
  * @param {Object} state - Clicker state
+ * @param {Array} characters - User's character collection
  * @returns {number} Crit chance (0-1)
  */
-function calculateCritChance(state) {
+function calculateCritChance(state, characters = []) {
   let chance = GAME_CONFIG.baseCritChance;
 
   // Add from purchased crit upgrades
-  for (const upgradeId of state.purchasedUpgrades) {
+  for (const upgradeId of state.purchasedUpgrades || []) {
     const upgrade = CLICK_UPGRADES.find(u => u.id === upgradeId);
     if (upgrade && upgrade.type === 'crit_chance') {
       chance += upgrade.bonus;
@@ -188,6 +355,16 @@ function calculateCritChance(state) {
   const prestigeUpgrade = PRESTIGE_CONFIG.upgrades.find(u => u.id === 'prestige_crit');
   if (prestigeUpgrade) {
     chance += prestigeCrit * prestigeUpgrade.bonusPerLevel;
+  }
+
+  // Add element-based crit bonus (Fire element)
+  const elementBonuses = calculateElementBonuses(state, characters);
+  chance += elementBonuses.critChance + elementBonuses.allStats;
+
+  // Apply daily modifier crit bonus
+  const dailyMod = getCurrentDailyModifier();
+  if (dailyMod.effects?.critChanceBonus) {
+    chance += dailyMod.effects.critChanceBonus;
   }
 
   return Math.min(chance, 0.9); // Cap at 90%
@@ -202,11 +379,17 @@ function calculateCritMultiplier(state) {
   let mult = GAME_CONFIG.baseCritMultiplier;
 
   // Add from purchased crit multiplier upgrades
-  for (const upgradeId of state.purchasedUpgrades) {
+  for (const upgradeId of state.purchasedUpgrades || []) {
     const upgrade = CLICK_UPGRADES.find(u => u.id === upgradeId);
     if (upgrade && upgrade.type === 'crit_multiplier') {
       mult += upgrade.bonus;
     }
+  }
+
+  // Apply daily modifier crit multiplier bonus
+  const dailyMod = getCurrentDailyModifier();
+  if (dailyMod.effects?.critMultiplierBonus) {
+    mult *= dailyMod.effects.critMultiplierBonus;
   }
 
   return mult;
@@ -231,7 +414,7 @@ function calculateProductionPerSecond(state, characters = []) {
     let output = generator.baseOutput * count;
 
     // Apply generator-specific upgrades
-    for (const upgradeId of state.purchasedUpgrades) {
+    for (const upgradeId of state.purchasedUpgrades || []) {
       const upgrade = GENERATOR_UPGRADES.find(u => u.id === upgradeId);
       if (upgrade && upgrade.generatorId === generatorId) {
         output *= upgrade.multiplier;
@@ -239,7 +422,7 @@ function calculateProductionPerSecond(state, characters = []) {
     }
 
     // Apply synergy bonuses
-    for (const upgradeId of state.purchasedUpgrades) {
+    for (const upgradeId of state.purchasedUpgrades || []) {
       const synergy = SYNERGY_UPGRADES.find(u => u.id === upgradeId);
       if (synergy && synergy.targetGenerator === generatorId) {
         const sourceCount = state.generators[synergy.sourceGenerator] || 0;
@@ -254,9 +437,17 @@ function calculateProductionPerSecond(state, characters = []) {
   const globalMult = calculateGlobalMultiplier(state);
   total *= globalMult;
 
-  // Apply character bonuses
+  // Apply character rarity bonuses
   const characterMultiplier = calculateCharacterBonus(state, characters);
   total *= characterMultiplier;
+
+  // Apply element-based production bonus (Water element)
+  const elementBonuses = calculateElementBonuses(state, characters);
+  total *= (1 + elementBonuses.production + elementBonuses.allStats);
+
+  // Apply element synergy bonus
+  const synergy = calculateElementSynergy(state, characters);
+  total *= (1 + synergy.bonus);
 
   // Apply prestige shard bonus
   const shardBonus = 1 + Math.min(state.lifetimeShards || 0, PRESTIGE_CONFIG.maxEffectiveShards) * PRESTIGE_CONFIG.shardMultiplier;
@@ -267,6 +458,19 @@ function calculateProductionPerSecond(state, characters = []) {
   const prestigeUpgrade = PRESTIGE_CONFIG.upgrades.find(u => u.id === 'prestige_production');
   if (prestigeUpgrade) {
     total *= (1 + prestigeProd * prestigeUpgrade.bonusPerLevel);
+  }
+
+  // Apply infusion bonus
+  const infusionBonus = state.infusionBonus || 0;
+  total *= (1 + infusionBonus);
+
+  // Apply daily modifier generator/production bonuses
+  const dailyMod = getCurrentDailyModifier();
+  if (dailyMod.effects?.generatorOutputBonus) {
+    total *= (1 + dailyMod.effects.generatorOutputBonus);
+  }
+  if (dailyMod.effects?.allProductionBonus) {
+    total *= (1 + dailyMod.effects.allProductionBonus);
   }
 
   return total;
@@ -342,6 +546,10 @@ function calculateOfflineProgress(state, characters = []) {
     offlineEfficiency += prestigeOffline * prestigeUpgrade.bonusPerLevel;
   }
 
+  // Add element-based offline bonus (Earth element)
+  const elementBonuses = calculateElementBonuses(state, characters);
+  offlineEfficiency += elementBonuses.offline + elementBonuses.allStats;
+
   // Cap at 100%
   offlineEfficiency = Math.min(offlineEfficiency, 1.0);
 
@@ -356,21 +564,79 @@ function calculateOfflineProgress(state, characters = []) {
 }
 
 /**
+ * Calculate golden essence chance including all bonuses
+ * @param {Object} state - Current state
+ * @param {Array} characters - User's character collection
+ * @returns {number} Golden essence chance (0-1)
+ */
+function calculateGoldenChance(state, characters = []) {
+  let chance = GAME_CONFIG.goldenEssenceChance;
+
+  // Add element-based golden chance bonus (Light element)
+  const elementBonuses = calculateElementBonuses(state, characters);
+  chance += elementBonuses.goldenChance + (elementBonuses.allStats * 0.001); // allStats gives small golden bonus
+
+  // Apply daily modifier golden chance multiplier
+  const dailyMod = getCurrentDailyModifier();
+  if (dailyMod.effects?.goldenChanceMultiplier) {
+    chance *= dailyMod.effects.goldenChanceMultiplier;
+  }
+
+  return Math.min(chance, 0.1); // Cap at 10%
+}
+
+/**
+ * Calculate combo decay time including all bonuses
+ * @param {Object} state - Current state
+ * @param {Array} characters - User's character collection
+ * @returns {number} Combo decay time in ms
+ */
+function calculateComboDecayTime(state, characters = []) {
+  let decayTime = GAME_CONFIG.comboDecayTime;
+
+  // Add element-based combo duration bonus (Air element)
+  const elementBonuses = calculateElementBonuses(state, characters);
+  decayTime += elementBonuses.comboDuration;
+
+  // Apply daily modifier combo growth multiplier (affects decay inversely)
+  const dailyMod = getCurrentDailyModifier();
+  if (dailyMod.effects?.comboGrowthMultiplier) {
+    decayTime *= dailyMod.effects.comboGrowthMultiplier;
+  }
+
+  return decayTime;
+}
+
+/**
  * Process a click action
  * @param {Object} state - Current state
  * @param {Array} characters - User's character collection
  * @param {number} comboMultiplier - Current combo multiplier
+ * @param {Object} activeAbilityEffects - Currently active ability effects
  * @returns {Object} Click result
  */
-function processClick(state, characters = [], comboMultiplier = 1) {
+function processClick(state, characters = [], comboMultiplier = 1, activeAbilityEffects = {}) {
   const clickPower = calculateClickPower(state, characters);
-  const critChance = calculateCritChance(state);
+  const critChance = calculateCritChance(state, characters);
   const critMultiplier = calculateCritMultiplier(state);
+  const goldenChance = calculateGoldenChance(state, characters);
 
-  const isCrit = Math.random() < critChance;
-  const isGolden = Math.random() < GAME_CONFIG.goldenEssenceChance;
+  // Check for guaranteed crits from active ability
+  const isCrit = activeAbilityEffects.guaranteedCrits || Math.random() < critChance;
+
+  // Calculate golden chance with ability boost
+  let effectiveGoldenChance = goldenChance;
+  if (activeAbilityEffects.goldenChanceMultiplier) {
+    effectiveGoldenChance *= activeAbilityEffects.goldenChanceMultiplier;
+  }
+  const isGolden = Math.random() < effectiveGoldenChance;
 
   let essenceGained = clickPower * comboMultiplier;
+
+  // Apply active ability production multiplier
+  if (activeAbilityEffects.productionMultiplier) {
+    essenceGained *= activeAbilityEffects.productionMultiplier;
+  }
 
   if (isCrit) {
     essenceGained *= critMultiplier;
@@ -387,7 +653,9 @@ function processClick(state, characters = [], comboMultiplier = 1) {
     isCrit,
     isGolden,
     clickPower,
-    comboMultiplier
+    comboMultiplier,
+    critChance,
+    goldenChance: effectiveGoldenChance
   };
 }
 
@@ -507,10 +775,10 @@ function calculatePrestigeShards(lifetimeEssence) {
 /**
  * Perform prestige (awakening)
  * @param {Object} state - Current state
- * @param {Object} user - User object for rewards
+ * @param {Object} _user - User object for rewards (reserved for future use)
  * @returns {Object} Prestige result
  */
-function performPrestige(state, user) {
+function performPrestige(state, _user) {
   if (state.lifetimeEssence < PRESTIGE_CONFIG.minimumEssence) {
     return { success: false, error: 'Not enough lifetime essence to prestige' };
   }
@@ -869,8 +1137,13 @@ function getPrestigeInfo(state) {
 function getGameState(state, characters = []) {
   const clickPower = calculateClickPower(state, characters);
   const productionPerSecond = calculateProductionPerSecond(state, characters);
-  const critChance = calculateCritChance(state);
+  const critChance = calculateCritChance(state, characters);
   const critMultiplier = calculateCritMultiplier(state);
+  const goldenChance = calculateGoldenChance(state, characters);
+  const comboDecayTime = calculateComboDecayTime(state, characters);
+  const elementBonuses = calculateElementBonuses(state, characters);
+  const elementSynergy = calculateElementSynergy(state, characters);
+  const dailyModifier = getCurrentDailyModifier();
 
   return {
     essence: state.essence || 0,
@@ -879,24 +1152,379 @@ function getGameState(state, characters = []) {
     productionPerSecond,
     critChance,
     critMultiplier,
+    goldenChance,
+    comboDecayTime,
     generators: getAvailableGenerators(state),
     upgrades: getAvailableUpgrades(state),
     prestige: getPrestigeInfo(state),
     assignedCharacters: state.assignedCharacters || [],
     maxAssignedCharacters: GAME_CONFIG.maxAssignedCharacters,
     characterBonus: calculateCharacterBonus(state, characters),
+    elementBonuses,
+    elementSynergy,
+    infusion: {
+      count: state.infusionCount || 0,
+      bonus: state.infusionBonus || 0,
+      cost: calculateInfusionCost(state),
+      maxPerPrestige: INFUSION_CONFIG.maxPerPrestige
+    },
+    gamble: getGambleInfo(state),
+    activeAbilities: getActiveAbilitiesInfo(state),
+    dailyModifier: {
+      ...dailyModifier,
+      nextChangeIn: getTimeUntilNextModifier()
+    },
     stats: state.stats || {},
     daily: state.daily || {},
     claimableMilestones: checkMilestones(state),
-    lastOnlineTimestamp: state.lastOnlineTimestamp
+    lastOnlineTimestamp: state.lastOnlineTimestamp,
+    characterXP: state.characterXP || {}
   };
 }
 
+// ===========================================
+// GAMBLE SYSTEM
+// ===========================================
+
+/**
+ * Calculate gamble cooldown status
+ * @param {Object} state - Current state
+ * @returns {Object} Gamble availability info
+ */
+function getGambleInfo(state) {
+  const now = Date.now();
+  const lastGamble = state.lastGambleTimestamp || 0;
+  const cooldownMs = GAMBLE_CONFIG.cooldownSeconds * 1000;
+  const cooldownRemaining = Math.max(0, cooldownMs - (now - lastGamble));
+  const dailyGamblesUsed = state.daily?.gamblesUsed || 0;
+
+  return {
+    available: cooldownRemaining === 0 && dailyGamblesUsed < GAMBLE_CONFIG.maxDailyGambles,
+    cooldownRemaining,
+    dailyGamblesUsed,
+    maxDailyGambles: GAMBLE_CONFIG.maxDailyGambles,
+    betTypes: GAMBLE_CONFIG.betTypes
+  };
+}
+
+/**
+ * Perform a gamble
+ * @param {Object} state - Current state
+ * @param {string} betType - Type of bet (safe, risky, extreme)
+ * @param {number} betAmount - Amount to bet
+ * @returns {Object} Gamble result
+ */
+function performGamble(state, betType, betAmount) {
+  const now = Date.now();
+  const lastGamble = state.lastGambleTimestamp || 0;
+  const cooldownMs = GAMBLE_CONFIG.cooldownSeconds * 1000;
+
+  // Check cooldown
+  if (now - lastGamble < cooldownMs) {
+    const remaining = Math.ceil((cooldownMs - (now - lastGamble)) / 1000);
+    return { success: false, error: `Gamble on cooldown. ${remaining}s remaining.` };
+  }
+
+  // Check daily limit
+  const dailyGamblesUsed = state.daily?.gamblesUsed || 0;
+  if (dailyGamblesUsed >= GAMBLE_CONFIG.maxDailyGambles) {
+    return { success: false, error: 'Daily gamble limit reached' };
+  }
+
+  // Validate bet type
+  const bet = GAMBLE_CONFIG.betTypes[betType];
+  if (!bet) {
+    return { success: false, error: 'Invalid bet type' };
+  }
+
+  // Validate bet amount
+  if (betAmount < GAMBLE_CONFIG.minBet) {
+    return { success: false, error: `Minimum bet is ${GAMBLE_CONFIG.minBet} essence` };
+  }
+
+  const maxBet = Math.floor(state.essence * GAMBLE_CONFIG.maxBetPercent);
+  if (betAmount > maxBet) {
+    return { success: false, error: `Maximum bet is ${maxBet} essence (${GAMBLE_CONFIG.maxBetPercent * 100}% of current essence)` };
+  }
+
+  if (betAmount > state.essence) {
+    return { success: false, error: 'Not enough essence' };
+  }
+
+  // Perform gamble
+  const roll = Math.random();
+  const won = roll < bet.winChance;
+  let essenceChange;
+
+  if (won) {
+    essenceChange = Math.floor(betAmount * bet.multiplier) - betAmount;
+  } else {
+    essenceChange = -betAmount;
+  }
+
+  const newState = { ...state };
+  newState.essence = Math.max(0, state.essence + essenceChange);
+  newState.lastGambleTimestamp = now;
+  newState.daily = {
+    ...state.daily,
+    gamblesUsed: dailyGamblesUsed + 1
+  };
+  newState.stats = {
+    ...state.stats,
+    totalGambleWins: (state.stats?.totalGambleWins || 0) + (won ? 1 : 0),
+    totalGambleLosses: (state.stats?.totalGambleLosses || 0) + (won ? 0 : 1)
+  };
+
+  return {
+    success: true,
+    won,
+    betAmount,
+    betType,
+    multiplier: bet.multiplier,
+    winChance: bet.winChance,
+    essenceChange,
+    newEssence: newState.essence,
+    newState
+  };
+}
+
+// ===========================================
+// INFUSION SYSTEM
+// ===========================================
+
+/**
+ * Calculate the cost of the next infusion
+ * @param {Object} state - Current state
+ * @returns {number} Cost in essence (percentage of current)
+ */
+function calculateInfusionCost(state) {
+  const infusionCount = state.infusionCount || 0;
+  // Cost increases with each infusion: 50%, 55%, 60%, etc.
+  return Math.min(
+    INFUSION_CONFIG.baseCostPercent + (infusionCount * INFUSION_CONFIG.costIncreasePerUse),
+    INFUSION_CONFIG.maxCostPercent
+  );
+}
+
+/**
+ * Perform an infusion
+ * @param {Object} state - Current state
+ * @returns {Object} Infusion result
+ */
+function performInfusion(state) {
+  const infusionCount = state.infusionCount || 0;
+
+  // Check if max infusions reached
+  if (infusionCount >= INFUSION_CONFIG.maxPerPrestige) {
+    return { success: false, error: 'Maximum infusions reached for this prestige' };
+  }
+
+  const costPercent = calculateInfusionCost(state);
+  const cost = Math.floor(state.essence * costPercent);
+
+  if (cost < INFUSION_CONFIG.minimumEssence) {
+    return { success: false, error: `Need at least ${INFUSION_CONFIG.minimumEssence} essence to infuse` };
+  }
+
+  if (cost > state.essence) {
+    return { success: false, error: 'Not enough essence' };
+  }
+
+  const bonusGained = INFUSION_CONFIG.bonusPerUse;
+  const newBonus = (state.infusionBonus || 0) + bonusGained;
+
+  const newState = { ...state };
+  newState.essence = state.essence - cost;
+  newState.infusionCount = infusionCount + 1;
+  newState.infusionBonus = newBonus;
+  newState.stats = {
+    ...state.stats,
+    totalInfusions: (state.stats?.totalInfusions || 0) + 1
+  };
+
+  return {
+    success: true,
+    cost,
+    costPercent,
+    bonusGained,
+    totalBonus: newBonus,
+    infusionCount: newState.infusionCount,
+    newState
+  };
+}
+
+// ===========================================
+// ACTIVE ABILITIES SYSTEM
+// ===========================================
+
+/**
+ * Get active abilities info for UI
+ * @param {Object} state - Current state
+ * @returns {Object} Active abilities info
+ */
+function getActiveAbilitiesInfo(state) {
+  const now = Date.now();
+  const abilities = {};
+
+  for (const ability of ACTIVE_ABILITIES) {
+    const lastUsed = state.abilityCooldowns?.[ability.id] || 0;
+    const cooldownRemaining = Math.max(0, ability.cooldown - (now - lastUsed));
+    const isActive = lastUsed > 0 && (now - lastUsed) < ability.duration;
+    const activeRemaining = isActive ? ability.duration - (now - lastUsed) : 0;
+
+    abilities[ability.id] = {
+      ...ability,
+      available: cooldownRemaining === 0 && state.prestigeLevel >= ability.unlockPrestige,
+      cooldownRemaining,
+      isActive,
+      activeRemaining,
+      unlocked: state.prestigeLevel >= ability.unlockPrestige
+    };
+  }
+
+  return abilities;
+}
+
+/**
+ * Activate an ability
+ * @param {Object} state - Current state
+ * @returns {Object} Result
+ */
+function activateAbility(state, abilityId) {
+  const ability = ACTIVE_ABILITIES.find(a => a.id === abilityId);
+  if (!ability) {
+    return { success: false, error: 'Invalid ability' };
+  }
+
+  // Check prestige unlock requirement
+  if ((state.prestigeLevel || 0) < ability.unlockPrestige) {
+    return { success: false, error: `Requires Prestige ${ability.unlockPrestige}` };
+  }
+
+  // Check cooldown
+  const now = Date.now();
+  const lastUsed = state.abilityCooldowns?.[abilityId] || 0;
+  if (now - lastUsed < ability.cooldown) {
+    const remaining = Math.ceil((ability.cooldown - (now - lastUsed)) / 1000);
+    return { success: false, error: `On cooldown. ${remaining}s remaining.` };
+  }
+
+  const newState = { ...state };
+  newState.abilityCooldowns = {
+    ...state.abilityCooldowns,
+    [abilityId]: now
+  };
+
+  // For time_warp, also add offline essence
+  let bonusEssence = 0;
+  if (ability.id === 'time_warp' && ability.effects?.offlineMinutes) {
+    const offlineMinutes = ability.effects.offlineMinutes;
+    const productionPerSecond = calculateProductionPerSecond(state, []);
+    bonusEssence = Math.floor(productionPerSecond * offlineMinutes * 60 * GAME_CONFIG.offlineEfficiency);
+    newState.essence = (state.essence || 0) + bonusEssence;
+    newState.lifetimeEssence = (state.lifetimeEssence || 0) + bonusEssence;
+  }
+
+  return {
+    success: true,
+    ability,
+    duration: ability.duration,
+    effects: ability.effects,
+    bonusEssence,
+    newState
+  };
+}
+
+/**
+ * Get current active ability effects
+ * @param {Object} state - Current state
+ * @returns {Object} Current active effects
+ */
+function getActiveAbilityEffects(state) {
+  const now = Date.now();
+  const effects = {
+    productionMultiplier: 1,
+    guaranteedCrits: false,
+    goldenChanceMultiplier: 1
+  };
+
+  for (const ability of ACTIVE_ABILITIES) {
+    const lastUsed = state.abilityCooldowns?.[ability.id] || 0;
+    const isActive = lastUsed > 0 && (now - lastUsed) < ability.duration;
+
+    if (isActive && ability.effects) {
+      if (ability.effects.productionMultiplier) {
+        effects.productionMultiplier *= ability.effects.productionMultiplier;
+      }
+      if (ability.effects.guaranteedCrits) {
+        effects.guaranteedCrits = true;
+      }
+      if (ability.effects.goldenChanceMultiplier) {
+        effects.goldenChanceMultiplier *= ability.effects.goldenChanceMultiplier;
+      }
+    }
+  }
+
+  return effects;
+}
+
+// ===========================================
+// CHARACTER XP SYSTEM
+// ===========================================
+
+/**
+ * Award XP to characters used in essence tap
+ * @param {Object} state - Current state
+ * @param {number} essenceEarned - Essence earned this session
+ * @returns {Object} XP awards
+ */
+function awardCharacterXP(state, essenceEarned) {
+  if (!state.assignedCharacters || state.assignedCharacters.length === 0) {
+    return { xpAwarded: {}, newState: state };
+  }
+
+  const xpAwarded = {};
+  const xpPerMillion = XP_REWARDS.perMillionEssence || 10;
+  const baseXP = Math.floor((essenceEarned / 1000000) * xpPerMillion);
+
+  // Each assigned character gets XP based on essence earned
+  for (const charId of state.assignedCharacters) {
+    const charXP = Math.max(1, Math.floor(baseXP / state.assignedCharacters.length));
+    xpAwarded[charId] = charXP;
+  }
+
+  const newState = { ...state };
+  newState.characterXP = { ...state.characterXP };
+
+  for (const [charId, xp] of Object.entries(xpAwarded)) {
+    newState.characterXP[charId] = (state.characterXP?.[charId] || 0) + xp;
+  }
+
+  return { xpAwarded, newState };
+}
+
+// ===========================================
+// DAILY MODIFIER HELPERS
+// ===========================================
+
+/**
+ * Get time until next daily modifier change
+ * @returns {number} Milliseconds until next midnight UTC
+ */
+function getTimeUntilNextModifier() {
+  const now = new Date();
+  const tomorrow = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1));
+  return tomorrow.getTime() - now.getTime();
+}
+
 module.exports = {
+  // Core functions
   getInitialState,
   getGeneratorCost,
   getBulkGeneratorCost,
   getMaxPurchasable,
+
+  // Calculation functions
   calculateClickPower,
   calculateCritChance,
   calculateCritMultiplier,
@@ -904,6 +1532,13 @@ module.exports = {
   calculateGlobalMultiplier,
   calculateCharacterBonus,
   calculateOfflineProgress,
+  calculateGoldenChance,
+  calculateComboDecayTime,
+  calculateElementBonuses,
+  calculateElementSynergy,
+  calculateInfusionCost,
+
+  // Game actions
   processClick,
   purchaseGenerator,
   purchaseUpgrade,
@@ -916,10 +1551,33 @@ module.exports = {
   unassignCharacter,
   resetDaily,
   checkDailyChallenges,
+
+  // Gamble system
+  getGambleInfo,
+  performGamble,
+
+  // Infusion system
+  performInfusion,
+
+  // Active abilities
+  getActiveAbilitiesInfo,
+  activateAbility,
+  getActiveAbilityEffects,
+
+  // Character XP
+  awardCharacterXP,
+
+  // Daily modifiers
+  getCurrentDailyModifier,
+  getTimeUntilNextModifier,
+
+  // UI helpers
   getAvailableGenerators,
   getAvailableUpgrades,
   getPrestigeInfo,
   getGameState,
+
+  // Config exports
   GENERATORS,
   GAME_CONFIG
 };

@@ -550,23 +550,28 @@ const PRESTIGE_FATE_REWARDS = {
 
 /**
  * XP earned from clicker activities
+ * BALANCED: Adjusted to be competitive with fishing (60-120 XP/hr active)
+ * and dojo (3-6 XP/hr passive)
  */
 const XP_REWARDS = {
-  // XP per million essence earned (lifetime)
-  perMillionEssence: 5,
+  // XP per million essence earned (lifetime) - INCREASED from 5 to 10
+  perMillionEssence: 10,
 
-  // XP for purchasing upgrades
-  perUpgrade: 2,
+  // XP for purchasing upgrades - INCREASED from 2 to 3
+  perUpgrade: 3,
 
-  // XP for prestige
+  // XP for prestige - Kept at 50 (significant milestone)
   perPrestige: 50,
 
-  // Daily essence goals
+  // Daily essence goals - INCREASED rewards
   dailyGoals: [
-    { essence: 100000, xp: 10 },
-    { essence: 1000000, xp: 25 },
-    { essence: 10000000, xp: 50 }
-  ]
+    { essence: 100000, xp: 15 },      // was 10
+    { essence: 1000000, xp: 35 },     // was 25
+    { essence: 10000000, xp: 75 }     // was 50
+  ],
+
+  // XP for character participation (distributed to assigned characters)
+  characterXPPerMillion: 5
 };
 
 // ===========================================
@@ -752,9 +757,9 @@ const DAILY_MODIFIERS = {
  * Player-activated abilities with cooldowns
  * Unlocked through prestige progression
  */
-const ACTIVE_ABILITIES = {
-  essenceStorm: {
-    id: 'essenceStorm',
+const ACTIVE_ABILITIES = [
+  {
+    id: 'essence_storm',
     name: 'Essence Storm',
     description: '10x production for 5 seconds',
     duration: 5000,
@@ -762,8 +767,8 @@ const ACTIVE_ABILITIES = {
     unlockPrestige: 0,
     effects: { productionMultiplier: 10 }
   },
-  criticalFocus: {
-    id: 'criticalFocus',
+  {
+    id: 'critical_focus',
     name: 'Critical Focus',
     description: 'Guaranteed crits for 3 seconds',
     duration: 3000,
@@ -771,8 +776,8 @@ const ACTIVE_ABILITIES = {
     unlockPrestige: 1,
     effects: { guaranteedCrits: true }
   },
-  goldenRush: {
-    id: 'goldenRush',
+  {
+    id: 'golden_rush',
     name: 'Golden Rush',
     description: '50x golden chance for 10 seconds',
     duration: 10000,
@@ -780,16 +785,16 @@ const ACTIVE_ABILITIES = {
     unlockPrestige: 3,
     effects: { goldenChanceMultiplier: 50 }
   },
-  timeWarp: {
-    id: 'timeWarp',
+  {
+    id: 'time_warp',
     name: 'Time Warp',
-    description: 'Collect 30 minutes of offline progress',
+    description: 'Collect 30 minutes of offline progress instantly',
     duration: 0, // Instant
     cooldown: 300000,
     unlockPrestige: 5,
-    effects: { instantOfflineMinutes: 30 }
+    effects: { offlineMinutes: 30 }
   }
-};
+];
 
 // ===========================================
 // RISK/REWARD MECHANICS
@@ -799,41 +804,48 @@ const ACTIVE_ABILITIES = {
  * Gamble system - risk essence for multiplied rewards
  */
 const GAMBLE_CONFIG = {
-  // Minimum essence required to gamble
-  minimumEssence: 1000,
+  // Minimum bet amount
+  minBet: 1000,
 
   // Maximum percentage of current essence that can be gambled
-  maxGamblePercent: 0.5, // 50%
+  maxBetPercent: 0.5, // 50%
 
-  // Gamble options with win chances and multipliers
-  options: [
-    { id: 'safe', name: 'Safe Bet', winChance: 0.70, multiplier: 1.5 },
-    { id: 'risky', name: 'Risky Bet', winChance: 0.50, multiplier: 2.5 },
-    { id: 'yolo', name: 'All or Nothing', winChance: 0.30, multiplier: 5.0 }
-  ],
+  // Cooldown between gambles (seconds)
+  cooldownSeconds: 30,
 
-  // Cooldown between gambles (ms)
-  cooldown: 30000,
+  // Maximum gambles per day
+  maxDailyGambles: 10,
 
-  // Daily gamble limit
-  dailyLimit: 10
+  // Bet types with win chances and multipliers
+  betTypes: {
+    safe: { name: 'Safe Bet', winChance: 0.70, multiplier: 1.5 },
+    risky: { name: 'Risky Bet', winChance: 0.50, multiplier: 2.5 },
+    extreme: { name: 'All or Nothing', winChance: 0.30, multiplier: 5.0 }
+  }
 };
 
 /**
  * Infusion system - permanent production boost for essence cost
+ * Resets on prestige, providing an interesting decision point
  */
 const INFUSION_CONFIG = {
   // Base cost is 50% of current essence
-  costPercent: 0.5,
+  baseCostPercent: 0.5,
 
-  // Production boost per infusion
-  boostPerInfusion: 0.10, // +10% permanent
+  // Cost increases by this amount per infusion
+  costIncreasePerUse: 0.05,
 
-  // Maximum infusions per run
-  maxPerRun: 5,
+  // Maximum cost percentage
+  maxCostPercent: 0.80,
 
-  // Infusions reset on prestige
-  resetsOnPrestige: true
+  // Minimum essence required to infuse
+  minimumEssence: 100000,
+
+  // Production bonus per infusion
+  bonusPerUse: 0.10, // +10% permanent
+
+  // Maximum infusions per prestige
+  maxPerPrestige: 5
 };
 
 // ===========================================

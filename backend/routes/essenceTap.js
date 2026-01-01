@@ -101,7 +101,8 @@ router.get('/status', auth, async (req, res) => {
 
     const characters = userCharacters.map(uc => ({
       id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common'
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
     }));
 
     // Calculate offline progress
@@ -171,8 +172,12 @@ router.post('/click', auth, async (req, res) => {
 
     const characters = userCharacters.map(uc => ({
       id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common'
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
     }));
+
+    // Get active ability effects
+    const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
 
     // Process clicks
     let totalEssence = 0;
@@ -180,7 +185,7 @@ router.post('/click', auth, async (req, res) => {
     let goldenClicks = 0;
 
     for (let i = 0; i < clickCount; i++) {
-      const result = essenceTapService.processClick(state, characters, comboMultiplier);
+      const result = essenceTapService.processClick(state, characters, comboMultiplier, activeAbilityEffects);
       totalEssence += result.essenceGained;
       if (result.isCrit) totalCrits++;
       if (result.isGolden) goldenClicks++;
@@ -267,7 +272,8 @@ router.post('/generator/buy', auth, async (req, res) => {
 
     const characters = userCharacters.map(uc => ({
       id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common'
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
     }));
 
     const gameState = essenceTapService.getGameState(result.newState, characters);
@@ -328,7 +334,8 @@ router.post('/upgrade/buy', auth, async (req, res) => {
 
     const characters = userCharacters.map(uc => ({
       id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common'
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
     }));
 
     const gameState = essenceTapService.getGameState(result.newState, characters);
@@ -519,7 +526,8 @@ router.post('/character/assign', auth, async (req, res) => {
 
     const ownedCharacters = userCharacters.map(uc => ({
       id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common'
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
     }));
 
     let state = user.essenceTap || essenceTapService.getInitialState();
@@ -535,13 +543,17 @@ router.post('/character/assign', auth, async (req, res) => {
     user.essenceTap = result.newState;
     await user.save();
 
-    // Calculate new bonus
+    // Calculate new bonuses
     const characterBonus = essenceTapService.calculateCharacterBonus(result.newState, ownedCharacters);
+    const elementBonuses = essenceTapService.calculateElementBonuses(result.newState, ownedCharacters);
+    const elementSynergy = essenceTapService.calculateElementSynergy(result.newState, ownedCharacters);
 
     res.json({
       success: true,
       assignedCharacters: result.newState.assignedCharacters,
-      characterBonus
+      characterBonus,
+      elementBonuses,
+      elementSynergy
     });
   } catch (error) {
     console.error('Error assigning character:', error);
@@ -587,15 +599,20 @@ router.post('/character/unassign', auth, async (req, res) => {
 
     const ownedCharacters = userCharacters.map(uc => ({
       id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common'
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
     }));
 
     const characterBonus = essenceTapService.calculateCharacterBonus(result.newState, ownedCharacters);
+    const elementBonuses = essenceTapService.calculateElementBonuses(result.newState, ownedCharacters);
+    const elementSynergy = essenceTapService.calculateElementSynergy(result.newState, ownedCharacters);
 
     res.json({
       success: true,
       assignedCharacters: result.newState.assignedCharacters,
-      characterBonus
+      characterBonus,
+      elementBonuses,
+      elementSynergy
     });
   } catch (error) {
     console.error('Error unassigning character:', error);
@@ -606,10 +623,181 @@ router.post('/character/unassign', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/save
  * Save current game state (for periodic auto-save)
+ * NOTE: Server recalculates essence based on production rate for security
  */
 router.post('/save', auth, async (req, res) => {
   try {
-    const { essence, lifetimeEssence } = req.body;
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let state = user.essenceTap || essenceTapService.getInitialState();
+
+    // Get user's characters for calculation
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: user.id },
+      include: ['Character']
+    });
+
+    const characters = userCharacters.map(uc => ({
+      id: uc.CharacterId,
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
+    }));
+
+    // Calculate expected essence gain since last save (server-side validation)
+    const now = Date.now();
+    const lastSave = state.lastSaveTimestamp || state.lastOnlineTimestamp || now;
+    const elapsedSeconds = Math.min((now - lastSave) / 1000, 300); // Max 5 minutes between saves
+
+    // Calculate production (with active abilities)
+    const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
+    let productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
+    if (activeAbilityEffects.productionMultiplier) {
+      productionPerSecond *= activeAbilityEffects.productionMultiplier;
+    }
+
+    const expectedGain = Math.floor(productionPerSecond * elapsedSeconds);
+    state.essence = (state.essence || 0) + expectedGain;
+    state.lifetimeEssence = (state.lifetimeEssence || 0) + expectedGain;
+
+    // Award character XP for essence earned
+    if (expectedGain > 0) {
+      const xpResult = essenceTapService.awardCharacterXP(state, expectedGain);
+      state = xpResult.newState;
+    }
+
+    state.lastOnlineTimestamp = now;
+    state.lastSaveTimestamp = now;
+
+    user.essenceTap = state;
+    await user.save();
+
+    res.json({
+      success: true,
+      savedAt: state.lastSaveTimestamp,
+      essenceGained: expectedGain,
+      essence: state.essence,
+      lifetimeEssence: state.lifetimeEssence
+    });
+  } catch (error) {
+    console.error('Error saving state:', error);
+    res.status(500).json({ error: 'Failed to save' });
+  }
+});
+
+// ===========================================
+// GAMBLE SYSTEM ROUTES
+// ===========================================
+
+/**
+ * POST /api/essence-tap/gamble
+ * Perform a gamble with essence
+ */
+router.post('/gamble', auth, async (req, res) => {
+  try {
+    const { betType, betAmount } = req.body;
+
+    if (!betType || betAmount === undefined) {
+      return res.status(400).json({ error: 'Bet type and amount required' });
+    }
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let state = user.essenceTap || essenceTapService.getInitialState();
+    state = essenceTapService.resetDaily(state);
+
+    const result = essenceTapService.performGamble(state, betType, betAmount);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    result.newState.lastOnlineTimestamp = Date.now();
+
+    user.essenceTap = result.newState;
+    await user.save();
+
+    res.json({
+      success: true,
+      won: result.won,
+      betAmount: result.betAmount,
+      betType: result.betType,
+      multiplier: result.multiplier,
+      winChance: result.winChance,
+      essenceChange: result.essenceChange,
+      newEssence: result.newEssence,
+      gambleInfo: essenceTapService.getGambleInfo(result.newState)
+    });
+  } catch (error) {
+    console.error('Error performing gamble:', error);
+    res.status(500).json({ error: 'Failed to gamble' });
+  }
+});
+
+// ===========================================
+// INFUSION SYSTEM ROUTES
+// ===========================================
+
+/**
+ * POST /api/essence-tap/infusion
+ * Perform an essence infusion for permanent bonus
+ */
+router.post('/infusion', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let state = user.essenceTap || essenceTapService.getInitialState();
+
+    const result = essenceTapService.performInfusion(state);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    result.newState.lastOnlineTimestamp = Date.now();
+
+    user.essenceTap = result.newState;
+    await user.save();
+
+    res.json({
+      success: true,
+      cost: result.cost,
+      costPercent: result.costPercent,
+      bonusGained: result.bonusGained,
+      totalBonus: result.totalBonus,
+      infusionCount: result.infusionCount,
+      nextCost: essenceTapService.calculateInfusionCost(result.newState),
+      essence: result.newState.essence
+    });
+  } catch (error) {
+    console.error('Error performing infusion:', error);
+    res.status(500).json({ error: 'Failed to infuse' });
+  }
+});
+
+// ===========================================
+// ACTIVE ABILITIES ROUTES
+// ===========================================
+
+/**
+ * POST /api/essence-tap/ability/activate
+ * Activate an ability
+ */
+router.post('/ability/activate', auth, async (req, res) => {
+  try {
+    const { abilityId } = req.body;
+
+    if (!abilityId) {
+      return res.status(400).json({ error: 'Ability ID required' });
+    }
 
     const user = await User.findByPk(req.user.id);
     if (!user) {
@@ -618,24 +806,48 @@ router.post('/save', auth, async (req, res) => {
 
     let state = user.essenceTap || essenceTapService.getInitialState();
 
-    // Only update essence values if they're higher (prevent cheating by lowering values)
-    if (essence !== undefined && essence >= (state.essence || 0)) {
-      state.essence = essence;
-    }
-    if (lifetimeEssence !== undefined && lifetimeEssence >= (state.lifetimeEssence || 0)) {
-      state.lifetimeEssence = lifetimeEssence;
+    const result = essenceTapService.activateAbility(state, abilityId);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
     }
 
-    state.lastOnlineTimestamp = Date.now();
-    state.lastSaveTimestamp = Date.now();
+    result.newState.lastOnlineTimestamp = Date.now();
 
-    user.essenceTap = state;
+    user.essenceTap = result.newState;
     await user.save();
 
-    res.json({ success: true, savedAt: state.lastSaveTimestamp });
+    res.json({
+      success: true,
+      ability: result.ability,
+      duration: result.duration,
+      effects: result.effects,
+      bonusEssence: result.bonusEssence,
+      essence: result.newState.essence,
+      activeAbilities: essenceTapService.getActiveAbilitiesInfo(result.newState)
+    });
   } catch (error) {
-    console.error('Error saving state:', error);
-    res.status(500).json({ error: 'Failed to save' });
+    console.error('Error activating ability:', error);
+    res.status(500).json({ error: 'Failed to activate ability' });
+  }
+});
+
+/**
+ * GET /api/essence-tap/daily-modifier
+ * Get current daily modifier info
+ */
+router.get('/daily-modifier', auth, async (req, res) => {
+  try {
+    const modifier = essenceTapService.getCurrentDailyModifier();
+    const nextChangeIn = essenceTapService.getTimeUntilNextModifier();
+
+    res.json({
+      ...modifier,
+      nextChangeIn
+    });
+  } catch (error) {
+    console.error('Error getting daily modifier:', error);
+    res.status(500).json({ error: 'Failed to get daily modifier' });
   }
 });
 
