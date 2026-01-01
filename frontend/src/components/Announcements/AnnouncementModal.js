@@ -384,16 +384,19 @@ const AnnouncementModal = () => {
   const { unacknowledgedAnnouncements, modalAnnouncements, acknowledge, dismiss } = useAnnouncements();
   const [currentIndex, setCurrentIndex] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
+  // Track IDs that user has dismissed/acknowledged in this session to prevent re-showing
+  const [handledIds, setHandledIds] = useState(() => new Set());
 
   // Combine unacknowledged (priority) and modal display mode announcements
+  // Filter out any announcements we've already handled in this session
   const announcements = useMemo(() => {
     const unackSet = new Set(unacknowledgedAnnouncements.map(a => a.id));
     const combined = [
-      ...unacknowledgedAnnouncements,
-      ...modalAnnouncements.filter(a => !unackSet.has(a.id) && !a.isDismissed)
+      ...unacknowledgedAnnouncements.filter(a => !handledIds.has(a.id)),
+      ...modalAnnouncements.filter(a => !unackSet.has(a.id) && !a.isDismissed && !handledIds.has(a.id))
     ];
     return combined;
-  }, [unacknowledgedAnnouncements, modalAnnouncements]);
+  }, [unacknowledgedAnnouncements, modalAnnouncements, handledIds]);
 
   // Auto-open when there are announcements to show
   useEffect(() => {
@@ -425,43 +428,52 @@ const AnnouncementModal = () => {
   const handleAcknowledge = useCallback(async () => {
     if (!currentAnnouncement) return;
 
-    try {
-      await acknowledge(currentAnnouncement.id);
+    const announcementId = currentAnnouncement.id;
 
-      // Move to next or close
-      if (currentIndex < announcements.length - 1) {
-        // Don't increment index, the current one will be removed from list
-      } else if (announcements.length === 1) {
-        setIsOpen(false);
-      } else {
-        setCurrentIndex(prev => Math.max(0, prev - 1));
-      }
+    // Immediately mark as handled to prevent re-showing
+    setHandledIds(prev => new Set([...prev, announcementId]));
+
+    try {
+      await acknowledge(announcementId);
     } catch (err) {
       console.error('Failed to acknowledge:', err);
+      // Revert if API call fails
+      setHandledIds(prev => {
+        const next = new Set(prev);
+        next.delete(announcementId);
+        return next;
+      });
     }
-  }, [currentAnnouncement, currentIndex, announcements.length, acknowledge]);
+  }, [currentAnnouncement, acknowledge]);
 
   const handleDismiss = useCallback(async () => {
     if (!currentAnnouncement || !canClose) return;
 
-    try {
-      await dismiss(currentAnnouncement.id);
+    const announcementId = currentAnnouncement.id;
 
-      if (announcements.length === 1) {
-        setIsOpen(false);
-      } else if (currentIndex >= announcements.length - 1) {
-        setCurrentIndex(prev => Math.max(0, prev - 1));
-      }
+    // Immediately mark as handled to prevent re-showing
+    setHandledIds(prev => new Set([...prev, announcementId]));
+
+    try {
+      await dismiss(announcementId);
     } catch (err) {
       console.error('Failed to dismiss:', err);
+      // Revert if API call fails
+      setHandledIds(prev => {
+        const next = new Set(prev);
+        next.delete(announcementId);
+        return next;
+      });
     }
-  }, [currentAnnouncement, canClose, currentIndex, announcements.length, dismiss]);
+  }, [currentAnnouncement, canClose, dismiss]);
 
   const handleClose = useCallback(() => {
-    if (canClose) {
+    if (canClose && currentAnnouncement) {
+      // Mark as handled so it doesn't reopen
+      setHandledIds(prev => new Set([...prev, currentAnnouncement.id]));
       setIsOpen(false);
     }
-  }, [canClose]);
+  }, [canClose, currentAnnouncement]);
 
   const prefersReducedMotion = typeof window !== 'undefined' &&
     window.matchMedia?.('(prefers-reduced-motion: reduce)').matches;

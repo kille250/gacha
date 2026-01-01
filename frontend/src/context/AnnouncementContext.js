@@ -154,6 +154,11 @@ export const AnnouncementProvider = ({ children }) => {
           : a
       ));
 
+      // Also remove from unacknowledged list (dismissed = no longer needs acknowledgment)
+      setUnacknowledgedAnnouncements(prev =>
+        prev.filter(a => a.id !== announcementId)
+      );
+
       // Recalculate unread count (dismissed announcements don't count as unread)
       setUnreadCount(prev => {
         const announcement = announcements.find(a => a.id === announcementId);
