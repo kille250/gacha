@@ -9,7 +9,6 @@ import { ToastProvider } from './context/ToastContext';
 import { AnnouncementProvider } from './context/AnnouncementContext';
 import { AudioProvider } from './engine/audio/AudioProvider';
 import { PixiOverlayProvider } from './engine/pixi/PixiOverlayProvider';
-import { OpenHotelProvider } from './integrations/openhotel';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
 import { theme } from './design-system';
 import { CelebrationProvider, FloatingPointsProvider } from './design-system/effects';
@@ -46,7 +45,6 @@ const SettingsPage = lazy(() => import('./pages/SettingsPage'));
 const DojoPage = lazy(() => import('./pages/DojoPage'));
 const FortuneWheelPage = lazy(() => import('./pages/FortuneWheelPage'));
 const AnnouncementsPage = lazy(() => import('./pages/AnnouncementsPage'));
-const HotelTestPage = lazy(() => import('./pages/HotelTestPage'));
 
 // Initialize cache manager visibility handler (runs once on app load)
 initVisibilityHandler({
@@ -186,7 +184,6 @@ const AnimatedRoutes = () => {
         <Route path="/announcements" element={<AnnouncementsPage />} />
         <Route path="/settings" element={<SettingsPage />} />
         <Route path="/admin" element={<AdminPage />} />
-        <Route path="/hotel-test" element={<HotelTestPage />} />
       </Route>
 
       {/* Full-screen immersive routes (no navigation) */}
@@ -350,7 +347,6 @@ function App() {
     <ErrorBoundary fullScreen>
       <RecaptchaProvider siteKey={RECAPTCHA_SITE_KEY}>
         <AuthProvider>
-          <OpenHotelProvider>
           <RarityProvider>
             <ToastProvider>
             <AnnouncementProvider>
@@ -381,7 +377,6 @@ function App() {
             </AnnouncementProvider>
             </ToastProvider>
           </RarityProvider>
-          </OpenHotelProvider>
         </AuthProvider>
       </RecaptchaProvider>
     </ErrorBoundary>
