@@ -13,7 +13,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../../design-system';
-import api from '../../utils/api';
+import api, { getAssetUrl } from '../../utils/api';
 import {
   IconFlame,
   IconWater,
@@ -507,7 +507,7 @@ const CharacterSelector = memo(({
                 >
                   {character ? (
                     <>
-                      <SlotImage src={character.image} alt={character.name} />
+                      <SlotImage src={getAssetUrl(character.image)} alt={character.name} />
                       <SlotName>{character.name}</SlotName>
                       <SlotBonus $color={rarityColor}>
                         +{RARITY_BONUSES[character.rarity]}%
@@ -631,7 +631,7 @@ const CharacterSelector = memo(({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
                     >
-                      <CharacterImage src={character.image} alt={character.name} />
+                      <CharacterImage src={getAssetUrl(character.image)} alt={character.name} />
                       <CharacterBadges>
                         <RarityBadge $color={rarityColor} />
                         <ElementBadge><ElementIcon size={10} /></ElementBadge>
