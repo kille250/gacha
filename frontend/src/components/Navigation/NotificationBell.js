@@ -13,6 +13,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { Link } from 'react-router-dom';
 import styled, { keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { FaBell, FaCheck, FaTimes, FaChevronRight } from 'react-icons/fa';
@@ -68,13 +69,18 @@ const NotificationBell = ({ variant = 'desktop' }) => {
     setIsOpen(prev => !prev);
   }, []);
 
-  // Handle announcement click
-  const handleAnnouncementClick = useCallback((announcement) => {
-    if (!announcement.isRead) {
-      markAsRead(announcement.id);
-    }
-    if (announcement.requiresAcknowledgment && !announcement.isAcknowledged) {
-      acknowledge(announcement.id);
+  // Handle announcement click with error handling
+  const handleAnnouncementClick = useCallback(async (announcement) => {
+    try {
+      if (!announcement.isRead) {
+        await markAsRead(announcement.id);
+      }
+      if (announcement.requiresAcknowledgment && !announcement.isAcknowledged) {
+        await acknowledge(announcement.id);
+      }
+    } catch (err) {
+      // Silently handle error - don't crash the navigation
+      console.error('Error handling announcement click:', err);
     }
   }, [markAsRead, acknowledge]);
 
@@ -462,8 +468,6 @@ const DropdownFooter = styled.div`
   border-top: 1px solid ${theme.colors.surfaceBorder};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
 `;
-
-import { Link } from 'react-router-dom';
 
 const ViewAllLink = styled(Link)`
   display: flex;
