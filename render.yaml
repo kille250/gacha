@@ -43,30 +43,30 @@ services:
 
   # OpenHotel Server (Social Rooms)
   # Uncomment this section to deploy OpenHotel alongside your app
-  # - type: web
-  #   name: openhotel-server
-  #   runtime: docker
-  #   region: frankfurt
-  #   plan: free
-  #   rootDir: openhotel-server
-  #   dockerfilePath: ./Dockerfile
-  #   envVars:
-  #     - key: PORT
-  #       value: "3005"
-  #     - key: FRONTEND_URL
-  #       fromService:
-  #         type: web
-  #         name: gacha-frontend
-  #         property: host
-  #     - key: AUTH_ENABLED
-  #       value: "false"
-  #   healthCheckPath: /info
-  #   autoDeploy: true
-  #   # Persistent disk for OpenHotel database
-  #   disk:
-  #     name: openhotel-data
-  #     mountPath: /app/data
-  #     sizeGB: 1
+  - type: web
+    name: openhotel-server
+    runtime: docker
+    region: frankfurt
+    plan: free
+    rootDir: openhotel-server
+    dockerfilePath: ./Dockerfile
+    envVars:
+      - key: PORT
+        value: "3005"
+      - key: FRONTEND_URL
+        fromService:
+          type: web
+          name: gacha-frontend
+          property: host
+      - key: AUTH_ENABLED
+        value: "false"
+    healthCheckPath: /info
+    autoDeploy: true
+    # Persistent disk for OpenHotel database
+    disk:
+      name: openhotel-data
+      mountPath: /app/data
+      sizeGB: 1
 
   # Frontend Static Site
   - type: web
@@ -85,13 +85,13 @@ services:
           name: gacha-api
           property: host
       # OpenHotel integration - uncomment when openhotel-server is deployed
-      # - key: VITE_OPENHOTEL_ENABLED
-      #   value: "true"
-      # - key: VITE_OPENHOTEL_HTTP_URL
-      #   fromService:
-      #     type: web
-      #     name: openhotel-server
-      #     property: host
+      - key: VITE_OPENHOTEL_ENABLED
+        value: "true"
+      - key: VITE_OPENHOTEL_HTTP_URL
+        fromService:
+          type: web
+          name: openhotel-server
+          property: host
     headers:
       - path: /*
         name: Cache-Control
