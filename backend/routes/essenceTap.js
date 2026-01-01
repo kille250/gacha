@@ -1506,6 +1506,213 @@ router.get('/weekly-fp-budget', auth, async (req, res) => {
 });
 
 /**
+ * GET /api/essence-tap/config
+ * Get game configuration for frontend display
+ * This ensures frontend stays in sync with backend balance values
+ */
+router.get('/config', auth, async (_req, res) => {
+  try {
+    const config = essenceTapService.getGameConfig();
+    res.json(config);
+  } catch (error) {
+    console.error('Error getting game config:', error);
+    res.status(500).json({ error: 'Failed to get config' });
+  }
+});
+
+/**
+ * GET /api/essence-tap/daily-challenges
+ * Get daily challenges with progress
+ */
+router.get('/daily-challenges', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const state = user.essenceTap || essenceTapService.getInitialState();
+    const challenges = essenceTapService.getDailyChallengesWithProgress(state);
+
+    res.json({
+      challenges,
+      dailyStats: state.daily || {}
+    });
+  } catch (error) {
+    console.error('Error getting daily challenges:', error);
+    res.status(500).json({ error: 'Failed to get challenges' });
+  }
+});
+
+/**
+ * POST /api/essence-tap/daily-challenges/claim
+ * Claim a completed daily challenge
+ */
+router.post('/daily-challenges/claim', auth, async (req, res) => {
+  try {
+    const { challengeId } = req.body;
+
+    if (!challengeId) {
+      return res.status(400).json({ error: 'Challenge ID required' });
+    }
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let state = user.essenceTap || essenceTapService.getInitialState();
+    const result = essenceTapService.claimDailyChallenge(state, challengeId);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    result.newState.lastOnlineTimestamp = Date.now();
+    user.essenceTap = result.newState;
+
+    // Award FP if challenge gives it
+    if (result.rewards.fatePoints > 0) {
+      const fpResult = essenceTapService.applyFPWithCap(
+        result.newState,
+        result.rewards.fatePoints,
+        'daily_challenge'
+      );
+      user.essenceTap = fpResult.newState;
+
+      const fatePoints = user.fatePoints || {};
+      fatePoints.global = fatePoints.global || { points: 0 };
+      fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
+      user.fatePoints = fatePoints;
+    }
+
+    // Award roll tickets
+    if (result.rewards.rollTickets > 0) {
+      user.rollTickets = (user.rollTickets || 0) + result.rewards.rollTickets;
+    }
+
+    await user.save();
+
+    res.json({
+      success: true,
+      rewards: result.rewards,
+      challenge: result.challenge
+    });
+  } catch (error) {
+    console.error('Error claiming challenge:', error);
+    res.status(500).json({ error: 'Failed to claim challenge' });
+  }
+});
+
+/**
+ * GET /api/essence-tap/boss
+ * Get current boss encounter status
+ */
+router.get('/boss', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const state = user.essenceTap || essenceTapService.getInitialState();
+    const bossInfo = essenceTapService.getBossEncounterInfo(state);
+
+    res.json(bossInfo);
+  } catch (error) {
+    console.error('Error getting boss info:', error);
+    res.status(500).json({ error: 'Failed to get boss info' });
+  }
+});
+
+/**
+ * POST /api/essence-tap/boss/attack
+ * Attack the current boss
+ */
+router.post('/boss/attack', auth, async (req, res) => {
+  try {
+    const { damage } = req.body;
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let state = user.essenceTap || essenceTapService.getInitialState();
+
+    // Get user's characters for damage calculation
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: user.id },
+      include: ['Character']
+    });
+
+    const characters = userCharacters.map(uc => ({
+      id: uc.CharacterId,
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
+    }));
+
+    const result = essenceTapService.attackBoss(state, damage, characters);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    result.newState.lastOnlineTimestamp = Date.now();
+    user.essenceTap = result.newState;
+
+    // If boss defeated, award rewards
+    if (result.defeated) {
+      // Award essence
+      if (result.rewards.essence) {
+        result.newState.essence = (result.newState.essence || 0) + result.rewards.essence;
+        result.newState.lifetimeEssence = (result.newState.lifetimeEssence || 0) + result.rewards.essence;
+      }
+
+      // Award FP
+      if (result.rewards.fatePoints) {
+        const fpResult = essenceTapService.applyFPWithCap(
+          result.newState,
+          result.rewards.fatePoints,
+          'boss_defeat'
+        );
+        result.newState = fpResult.newState;
+
+        const fatePoints = user.fatePoints || {};
+        fatePoints.global = fatePoints.global || { points: 0 };
+        fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
+        user.fatePoints = fatePoints;
+      }
+
+      // Award tickets
+      if (result.rewards.rollTickets) {
+        user.rollTickets = (user.rollTickets || 0) + result.rewards.rollTickets;
+      }
+
+      // Award XP
+      if (result.rewards.xp) {
+        user.accountXP = (user.accountXP || 0) + result.rewards.xp;
+      }
+    }
+
+    user.essenceTap = result.newState;
+    await user.save();
+
+    res.json({
+      success: true,
+      damageDealt: result.damageDealt,
+      bossHealth: result.bossHealth,
+      defeated: result.defeated,
+      rewards: result.rewards,
+      nextBossIn: result.nextBossIn
+    });
+  } catch (error) {
+    console.error('Error attacking boss:', error);
+    res.status(500).json({ error: 'Failed to attack boss' });
+  }
+});
+
+/**
  * GET /api/essence-tap/synergy-preview
  * Get synergy preview for team composition
  */

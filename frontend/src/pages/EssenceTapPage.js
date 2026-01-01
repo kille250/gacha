@@ -47,9 +47,11 @@ import {
   EssenceTypesDisplay,
   SessionStatsPanel,
   SynergyPreviewPanel,
-  EssenceTapErrorBoundary
+  EssenceTapErrorBoundary,
+  DailyChallengesPanel,
+  BossEncounter
 } from '../components/EssenceTap';
-import { IconDice, IconSparkles, IconTrophy, IconStar, IconGem, IconChart, IconUsers } from '../constants/icons';
+import { IconDice, IconSparkles, IconTrophy, IconStar, IconGem, IconChart, IconUsers, IconTarget, IconFlag } from '../constants/icons';
 
 // Local storage key for onboarding
 const ONBOARDING_COMPLETE_KEY = 'essenceTap_onboardingComplete';
@@ -297,7 +299,8 @@ const EssenceTapPage = memo(() => {
   const [showEssenceTypes, setShowEssenceTypes] = useState(false);
   const [showSessionStats, setShowSessionStats] = useState(false);
   const [showSynergyPreview, setShowSynergyPreview] = useState(false);
-  const [_dailyModifier, setDailyModifier] = useState(null);
+  const [showChallenges, setShowChallenges] = useState(false);
+  const [showBoss, setShowBoss] = useState(false);
   const [activeAbilityEffects, setActiveAbilityEffects] = useState({});
 
   const {
@@ -357,8 +360,8 @@ const EssenceTapPage = memo(() => {
     }
   }, [gameState?.claimableMilestones, claimMilestone]);
 
-  const handleDailyModifierChange = useCallback((modifier) => {
-    setDailyModifier(modifier);
+  const handleDailyModifierChange = useCallback(() => {
+    // Daily modifier state now handled by DailyModifierBanner component
   }, []);
 
   const handleAbilityActivate = useCallback((abilityId, effects) => {
@@ -569,6 +572,22 @@ const EssenceTapPage = memo(() => {
                 <IconUsers size={16} />
                 {t('essenceTap.synergy', { defaultValue: 'Synergy' })}
               </FeatureButton>
+
+              <FeatureButton
+                variant="secondary"
+                onClick={() => setShowChallenges(true)}
+              >
+                <IconFlag size={16} />
+                {t('essenceTap.challenges', { defaultValue: 'Challenges' })}
+              </FeatureButton>
+
+              <FeatureButton
+                variant="secondary"
+                onClick={() => setShowBoss(true)}
+              >
+                <IconTarget size={16} />
+                {t('essenceTap.boss', { defaultValue: 'Boss' })}
+              </FeatureButton>
             </FeatureButtonsRow>
           </TapSection>
 
@@ -664,6 +683,21 @@ const EssenceTapPage = memo(() => {
         <SynergyPreviewPanel
           isOpen={showSynergyPreview}
           onClose={() => setShowSynergyPreview(false)}
+        />
+
+        {/* Daily Challenges Panel */}
+        <DailyChallengesPanel
+          isOpen={showChallenges}
+          onClose={() => setShowChallenges(false)}
+          onChallengeComplete={refresh}
+        />
+
+        {/* Boss Encounter */}
+        <BossEncounter
+          isOpen={showBoss}
+          onClose={() => setShowBoss(false)}
+          clickPower={gameState?.clickPower || 1}
+          onBossDefeat={refresh}
         />
 
         {/* Offline Progress Modal */}

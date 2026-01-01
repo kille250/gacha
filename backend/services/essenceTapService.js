@@ -2785,6 +2785,445 @@ function getEssenceTypeBonuses(state) {
   };
 }
 
+// ===========================================
+// GAME CONFIG EXPORT FOR FRONTEND
+// ===========================================
+
+/**
+ * Get game configuration for frontend display
+ * This ensures frontend stays in sync with backend balance values
+ * @returns {Object} Game configuration
+ */
+function getGameConfig() {
+  return {
+    characterBonuses: GAME_CONFIG.characterBonuses,
+    underdogBonuses: GAME_CONFIG.underdogBonuses,
+    maxAssignedCharacters: GAME_CONFIG.maxAssignedCharacters,
+    goldenEssenceChance: GAME_CONFIG.goldenEssenceChance,
+    goldenEssenceMultiplier: GAME_CONFIG.goldenEssenceMultiplier,
+    comboDecayTime: GAME_CONFIG.comboDecayTime,
+    maxComboMultiplier: GAME_CONFIG.maxComboMultiplier,
+    comboGrowthRate: GAME_CONFIG.comboGrowthRate,
+    characterAbilities: CHARACTER_ABILITIES,
+    elementSynergies: ELEMENT_SYNERGIES,
+    seriesSynergies: SERIES_SYNERGIES,
+    essenceTypes: ESSENCE_TYPES,
+    dailyModifiers: DAILY_MODIFIERS,
+    dailyChallenges: DAILY_CHALLENGES,
+    miniMilestones: MINI_MILESTONES,
+    weeklyFpCap: WEEKLY_FP_CAP,
+    prestigeConfig: {
+      minimumEssence: PRESTIGE_CONFIG.minimumEssence,
+      cooldownMs: PRESTIGE_CONFIG.cooldownMs
+    },
+    bossConfig: BOSS_CONFIG
+  };
+}
+
+// ===========================================
+// DAILY CHALLENGES SYSTEM
+// ===========================================
+
+/**
+ * Get daily challenges with current progress
+ * @param {Object} state - Current state
+ * @returns {Array} Daily challenges with progress
+ */
+function getDailyChallengesWithProgress(state) {
+  const daily = state.daily || {};
+
+  return DAILY_CHALLENGES.map(challenge => {
+    let progress = 0;
+
+    switch (challenge.type) {
+      case 'clicks':
+        progress = daily.clicks || 0;
+        break;
+      case 'crits':
+        progress = daily.crits || 0;
+        break;
+      case 'essence_earned':
+        progress = daily.essenceEarned || 0;
+        break;
+      case 'generators_bought':
+        progress = daily.generatorsBought || 0;
+        break;
+      case 'golden_clicks':
+        progress = state.stats?.goldenEssenceClicks || 0;
+        break;
+    }
+
+    const completed = progress >= challenge.target;
+    const claimed = daily.claimedChallenges?.includes(challenge.id) || false;
+
+    return {
+      ...challenge,
+      progress,
+      completed,
+      claimed,
+      canClaim: completed && !claimed
+    };
+  });
+}
+
+/**
+ * Claim a completed daily challenge
+ * @param {Object} state - Current state
+ * @param {string} challengeId - Challenge ID to claim
+ * @returns {Object} Result with rewards
+ */
+function claimDailyChallenge(state, challengeId) {
+  const challenge = DAILY_CHALLENGES.find(c => c.id === challengeId);
+  if (!challenge) {
+    return { success: false, error: 'Invalid challenge' };
+  }
+
+  const daily = state.daily || {};
+  if (daily.claimedChallenges?.includes(challengeId)) {
+    return { success: false, error: 'Already claimed' };
+  }
+
+  // Check if challenge is completed
+  let progress = 0;
+  switch (challenge.type) {
+    case 'clicks':
+      progress = daily.clicks || 0;
+      break;
+    case 'crits':
+      progress = daily.crits || 0;
+      break;
+    case 'essence_earned':
+      progress = daily.essenceEarned || 0;
+      break;
+    case 'generators_bought':
+      progress = daily.generatorsBought || 0;
+      break;
+    case 'golden_clicks':
+      progress = state.stats?.goldenEssenceClicks || 0;
+      break;
+  }
+
+  if (progress < challenge.target) {
+    return { success: false, error: 'Challenge not completed' };
+  }
+
+  const newState = { ...state };
+  newState.daily = {
+    ...daily,
+    claimedChallenges: [...(daily.claimedChallenges || []), challengeId]
+  };
+
+  // Add essence reward
+  if (challenge.rewards.essence) {
+    newState.essence = (newState.essence || 0) + challenge.rewards.essence;
+    newState.lifetimeEssence = (newState.lifetimeEssence || 0) + challenge.rewards.essence;
+  }
+
+  return {
+    success: true,
+    newState,
+    rewards: challenge.rewards,
+    challenge
+  };
+}
+
+// ===========================================
+// BOSS ENCOUNTER SYSTEM
+// ===========================================
+
+/**
+ * Boss configuration
+ */
+const BOSS_CONFIG = {
+  // Bosses spawn every X clicks during active play
+  spawnInterval: 500,
+
+  // Boss types with scaling difficulty
+  bosses: [
+    {
+      id: 'essence_drake',
+      name: 'Essence Drake',
+      tier: 1,
+      baseHealth: 10000,
+      timeLimit: 30000, // 30 seconds
+      rewards: {
+        essence: 50000,
+        fatePoints: 5,
+        xp: 25
+      },
+      elementWeakness: 'fire'
+    },
+    {
+      id: 'void_serpent',
+      name: 'Void Serpent',
+      tier: 2,
+      baseHealth: 50000,
+      timeLimit: 45000, // 45 seconds
+      rewards: {
+        essence: 250000,
+        fatePoints: 10,
+        rollTickets: 2,
+        xp: 50
+      },
+      elementWeakness: 'light'
+    },
+    {
+      id: 'arcane_titan',
+      name: 'Arcane Titan',
+      tier: 3,
+      baseHealth: 200000,
+      timeLimit: 60000, // 60 seconds
+      rewards: {
+        essence: 1000000,
+        fatePoints: 20,
+        rollTickets: 5,
+        xp: 100
+      },
+      elementWeakness: 'dark'
+    },
+    {
+      id: 'prismatic_dragon',
+      name: 'Prismatic Dragon',
+      tier: 4,
+      baseHealth: 1000000,
+      timeLimit: 90000, // 90 seconds
+      rewards: {
+        essence: 5000000,
+        fatePoints: 50,
+        rollTickets: 10,
+        prismaticEssence: 50,
+        xp: 250
+      },
+      elementWeakness: null // No weakness
+    }
+  ],
+
+  // Cooldown between boss encounters
+  cooldownMs: 300000, // 5 minutes
+
+  // Element weakness bonus damage
+  weaknessMultiplier: 2.0,
+
+  // Character rarity damage bonuses
+  rarityDamageBonus: {
+    common: 1.0,
+    uncommon: 1.1,
+    rare: 1.25,
+    epic: 1.5,
+    legendary: 2.0
+  }
+};
+
+/**
+ * Get boss encounter info
+ * @param {Object} state - Current state
+ * @returns {Object} Boss encounter status
+ */
+function getBossEncounterInfo(state) {
+  const now = Date.now();
+  const bossState = state.bossEncounter || {};
+
+  // Check if there's an active boss
+  if (bossState.active && bossState.expiresAt > now) {
+    const boss = BOSS_CONFIG.bosses.find(b => b.id === bossState.bossId);
+    return {
+      active: true,
+      boss: boss,
+      currentHealth: bossState.currentHealth,
+      maxHealth: bossState.maxHealth,
+      timeRemaining: Math.max(0, bossState.expiresAt - now),
+      damageDealt: bossState.damageDealt || 0
+    };
+  }
+
+  // Check if on cooldown
+  const lastDefeat = bossState.lastDefeatTime || 0;
+  const cooldownRemaining = Math.max(0, (lastDefeat + BOSS_CONFIG.cooldownMs) - now);
+
+  // Check if eligible to spawn a new boss
+  const clicksSinceLastBoss = (state.totalClicks || 0) - (bossState.clicksAtLastSpawn || 0);
+  const canSpawn = clicksSinceLastBoss >= BOSS_CONFIG.spawnInterval && cooldownRemaining === 0;
+
+  // Auto-spawn if eligible
+  if (canSpawn) {
+    return {
+      active: false,
+      canSpawn: true,
+      nextBossTier: getBossForPrestigeLevel(state.prestigeLevel || 0),
+      cooldownRemaining: 0,
+      clicksUntilSpawn: 0
+    };
+  }
+
+  return {
+    active: false,
+    canSpawn: false,
+    cooldownRemaining,
+    clicksUntilSpawn: Math.max(0, BOSS_CONFIG.spawnInterval - clicksSinceLastBoss)
+  };
+}
+
+/**
+ * Get appropriate boss tier for prestige level
+ * @param {number} prestigeLevel - Current prestige level
+ * @returns {Object} Boss data
+ */
+function getBossForPrestigeLevel(prestigeLevel) {
+  // Higher prestige = access to harder bosses
+  let maxTier = 1;
+  if (prestigeLevel >= 5) maxTier = 4;
+  else if (prestigeLevel >= 3) maxTier = 3;
+  else if (prestigeLevel >= 1) maxTier = 2;
+
+  // Random tier up to max
+  const tier = Math.floor(Math.random() * maxTier) + 1;
+  return BOSS_CONFIG.bosses.find(b => b.tier === tier) || BOSS_CONFIG.bosses[0];
+}
+
+/**
+ * Spawn a boss encounter
+ * @param {Object} state - Current state
+ * @returns {Object} Result with new state
+ */
+function spawnBoss(state) {
+  const boss = getBossForPrestigeLevel(state.prestigeLevel || 0);
+  const now = Date.now();
+
+  // Scale health with prestige
+  const healthMultiplier = 1 + (state.prestigeLevel || 0) * 0.5;
+  const maxHealth = Math.floor(boss.baseHealth * healthMultiplier);
+
+  const newState = { ...state };
+  newState.bossEncounter = {
+    active: true,
+    bossId: boss.id,
+    currentHealth: maxHealth,
+    maxHealth: maxHealth,
+    expiresAt: now + boss.timeLimit,
+    spawnedAt: now,
+    clicksAtLastSpawn: state.totalClicks || 0,
+    damageDealt: 0
+  };
+
+  return {
+    success: true,
+    newState,
+    boss
+  };
+}
+
+/**
+ * Attack the current boss
+ * @param {Object} state - Current state
+ * @param {number} damage - Base damage from clicks
+ * @param {Array} characters - User's characters
+ * @returns {Object} Result
+ */
+function attackBoss(state, damage, characters) {
+  const now = Date.now();
+  const bossState = state.bossEncounter || {};
+
+  // Check if boss should spawn first
+  if (!bossState.active || bossState.expiresAt <= now) {
+    // Try to spawn a new boss
+    const spawnResult = spawnBoss(state);
+    if (spawnResult.success) {
+      return {
+        success: true,
+        newState: spawnResult.newState,
+        damageDealt: 0,
+        bossHealth: spawnResult.newState.bossEncounter.currentHealth,
+        defeated: false,
+        bossSpawned: true,
+        boss: spawnResult.boss
+      };
+    }
+    return { success: false, error: 'No active boss encounter' };
+  }
+
+  const boss = BOSS_CONFIG.bosses.find(b => b.id === bossState.bossId);
+  if (!boss) {
+    return { success: false, error: 'Invalid boss' };
+  }
+
+  // Calculate actual damage with bonuses
+  let totalDamage = damage || state.clickPower || 1;
+
+  // Apply character damage bonuses
+  const assignedChars = state.assignedCharacters || [];
+  for (const charId of assignedChars) {
+    const char = characters.find(c => c.id === charId || c.characterId === charId);
+    if (!char) continue;
+
+    // Rarity bonus
+    const rarityBonus = BOSS_CONFIG.rarityDamageBonus[char.rarity] || 1.0;
+    totalDamage *= rarityBonus;
+
+    // Element weakness bonus
+    const charElement = getCharacterElement(char);
+    if (boss.elementWeakness && charElement === boss.elementWeakness) {
+      totalDamage *= BOSS_CONFIG.weaknessMultiplier;
+    }
+  }
+
+  totalDamage = Math.floor(totalDamage);
+
+  const newState = { ...state };
+  const newHealth = Math.max(0, bossState.currentHealth - totalDamage);
+
+  newState.bossEncounter = {
+    ...bossState,
+    currentHealth: newHealth,
+    damageDealt: (bossState.damageDealt || 0) + totalDamage
+  };
+
+  // Check if boss defeated
+  if (newHealth <= 0) {
+    // Scale rewards with prestige
+    const rewardMultiplier = 1 + (state.prestigeLevel || 0) * 0.25;
+    const scaledRewards = {
+      essence: Math.floor((boss.rewards.essence || 0) * rewardMultiplier),
+      fatePoints: boss.rewards.fatePoints || 0,
+      rollTickets: boss.rewards.rollTickets || 0,
+      prismaticEssence: boss.rewards.prismaticEssence || 0,
+      xp: boss.rewards.xp || 0
+    };
+
+    // Update boss state
+    newState.bossEncounter = {
+      active: false,
+      lastDefeatTime: now,
+      clicksAtLastSpawn: state.totalClicks || 0,
+      totalDefeated: (bossState.totalDefeated || 0) + 1
+    };
+
+    // Track stats
+    newState.stats = {
+      ...newState.stats,
+      bossesDefeated: (newState.stats?.bossesDefeated || 0) + 1
+    };
+
+    return {
+      success: true,
+      newState,
+      damageDealt: totalDamage,
+      bossHealth: 0,
+      defeated: true,
+      rewards: scaledRewards,
+      nextBossIn: BOSS_CONFIG.cooldownMs
+    };
+  }
+
+  return {
+    success: true,
+    newState,
+    damageDealt: totalDamage,
+    bossHealth: newHealth,
+    defeated: false,
+    timeRemaining: bossState.expiresAt - now
+  };
+}
+
 module.exports = {
   // Core functions
   getInitialState,
@@ -2905,5 +3344,19 @@ module.exports = {
   TICKET_GENERATION,
   REPEATABLE_MILESTONES,
   WEEKLY_FP_CAP,
-  MINI_MILESTONES
+  MINI_MILESTONES,
+  BOSS_CONFIG,
+
+  // Game config for frontend
+  getGameConfig,
+
+  // Daily challenges
+  getDailyChallengesWithProgress,
+  claimDailyChallenge,
+
+  // Boss encounters
+  getBossEncounterInfo,
+  getBossForPrestigeLevel,
+  spawnBoss,
+  attackBoss
 };

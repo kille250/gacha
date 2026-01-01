@@ -8,7 +8,7 @@
  * - Shows character abilities and synergies
  */
 
-import React, { useState, useCallback, useEffect, memo } from 'react';
+import React, { useState, useCallback, useEffect, memo, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -34,24 +34,40 @@ const RARITY_COLORS = {
   legendary: '#F59E0B'
 };
 
-// Element colors, icons, and ability descriptions
-const ELEMENT_CONFIG = {
-  fire: { color: '#EF4444', Icon: IconFlame, name: 'Fire', ability: '+10% Crit Chance', abilityType: 'crit_chance' },
-  water: { color: '#3B82F6', Icon: IconWater, name: 'Water', ability: '+15% Production', abilityType: 'production' },
-  earth: { color: '#84CC16', Icon: IconEarth, name: 'Earth', ability: '+20% Offline Efficiency', abilityType: 'offline' },
-  air: { color: '#06B6D4', Icon: IconAir, name: 'Air', ability: '+500ms Combo Time', abilityType: 'combo_duration' },
-  light: { color: '#FCD34D', Icon: IconLight, name: 'Light', ability: '+0.05% Golden Chance', abilityType: 'golden_chance' },
-  dark: { color: '#6366F1', Icon: IconDark, name: 'Dark', ability: '+20% Click Power', abilityType: 'click_power' },
-  neutral: { color: '#9CA3AF', Icon: IconNeutral, name: 'Neutral', ability: '+5% All Stats', abilityType: 'all_stats' }
+// Element icons mapping
+const ELEMENT_ICONS = {
+  fire: IconFlame,
+  water: IconWater,
+  earth: IconEarth,
+  air: IconAir,
+  light: IconLight,
+  dark: IconDark,
+  neutral: IconNeutral
 };
 
-// Rarity bonus percentages
-const RARITY_BONUSES = {
-  common: 5,
-  uncommon: 10,
-  rare: 20,
-  epic: 35,
-  legendary: 50
+// Element colors
+const ELEMENT_COLORS = {
+  fire: '#EF4444',
+  water: '#3B82F6',
+  earth: '#84CC16',
+  air: '#06B6D4',
+  light: '#FCD34D',
+  dark: '#6366F1',
+  neutral: '#9CA3AF'
+};
+
+// Fallback config in case API fails (matches backend defaults)
+const FALLBACK_CONFIG = {
+  characterBonuses: { common: 0.05, uncommon: 0.10, rare: 0.20, epic: 0.35, legendary: 0.50 },
+  characterAbilities: {
+    fire: { name: 'Flame Fury', description: '+10% crit chance per Fire character', bonusPerCharacter: 0.10 },
+    water: { name: 'Flow State', description: '+15% generator production per Water character', bonusPerCharacter: 0.15 },
+    earth: { name: 'Steady Ground', description: '+20% offline efficiency per Earth character', bonusPerCharacter: 0.20 },
+    air: { name: 'Swift Strikes', description: '+500ms combo decay time per Air character', bonusPerCharacter: 500 },
+    light: { name: 'Golden Touch', description: '+0.05% golden essence chance per Light character', bonusPerCharacter: 0.0005 },
+    dark: { name: 'Shadow Power', description: '+20% click power per Dark character', bonusPerCharacter: 0.20 },
+    neutral: { name: 'Balance', description: '+5% to all stats per Neutral character', bonusPerCharacter: 0.05 }
+  }
 };
 
 const Container = styled.div`
@@ -345,7 +361,6 @@ const CharacterSelector = memo(({
   onClose,
   assignedCharacters = [],
   maxCharacters = 5,
-  _characterBonus = 1,
   onAssign,
   onUnassign
 }) => {
@@ -353,8 +368,36 @@ const CharacterSelector = memo(({
   const [ownedCharacters, setOwnedCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
+  const [gameConfig, setGameConfig] = useState(null);
 
-  // Fetch owned characters
+  // Derive config values with fallbacks
+  const characterBonuses = useMemo(() => {
+    const bonuses = gameConfig?.characterBonuses || FALLBACK_CONFIG.characterBonuses;
+    // Convert decimal to percentage (e.g., 0.05 -> 5)
+    return Object.fromEntries(
+      Object.entries(bonuses).map(([rarity, value]) => [rarity, Math.round(value * 100)])
+    );
+  }, [gameConfig]);
+
+  const characterAbilities = useMemo(() => {
+    return gameConfig?.characterAbilities || FALLBACK_CONFIG.characterAbilities;
+  }, [gameConfig]);
+
+  // Fetch game config from backend
+  useEffect(() => {
+    const fetchConfig = async () => {
+      try {
+        const response = await api.get('/essence-tap/config');
+        setGameConfig(response.data);
+      } catch (err) {
+        console.error('Failed to fetch game config, using fallbacks:', err);
+        setGameConfig(FALLBACK_CONFIG);
+      }
+    };
+    fetchConfig();
+  }, []);
+
+  // Fetch owned characters when modal opens
   useEffect(() => {
     if (isOpen) {
       fetchOwnedCharacters();
@@ -382,17 +425,17 @@ const CharacterSelector = memo(({
     }
   };
 
-  // Calculate total bonus
+  // Calculate total bonus using backend config
   const calculateTotalBonus = useCallback(() => {
     let bonus = 0;
     assignedCharacters.forEach(charId => {
       const char = ownedCharacters.find(c => c.id === charId);
       if (char) {
-        bonus += RARITY_BONUSES[char.rarity] || 5;
+        bonus += characterBonuses[char.rarity] || 5;
       }
     });
     return bonus;
-  }, [assignedCharacters, ownedCharacters]);
+  }, [assignedCharacters, ownedCharacters, characterBonuses]);
 
   // Calculate element synergies
   const calculateSynergies = useCallback(() => {
@@ -419,7 +462,7 @@ const CharacterSelector = memo(({
     return synergies;
   }, [assignedCharacters, ownedCharacters]);
 
-  // Calculate element ability bonuses
+  // Calculate element ability bonuses using backend config
   const calculateElementAbilities = useCallback(() => {
     const abilities = [];
     const elementCounts = {};
@@ -433,19 +476,20 @@ const CharacterSelector = memo(({
     });
 
     Object.entries(elementCounts).forEach(([element, count]) => {
-      const config = ELEMENT_CONFIG[element];
-      if (config) {
+      const ability = characterAbilities[element];
+      if (ability) {
         abilities.push({
           element,
           count,
-          ability: config.ability,
-          totalBonus: count > 1 ? `${count}x ${config.ability}` : config.ability
+          name: ability.name,
+          ability: ability.description,
+          totalBonus: count > 1 ? `${count}x ${ability.description}` : ability.description
         });
       }
     });
 
     return abilities;
-  }, [assignedCharacters, ownedCharacters]);
+  }, [assignedCharacters, ownedCharacters, characterAbilities]);
 
   // Filter characters
   const filteredCharacters = ownedCharacters.filter(char => {
@@ -510,7 +554,7 @@ const CharacterSelector = memo(({
                       <SlotImage src={getAssetUrl(character.image)} alt={character.name} />
                       <SlotName>{character.name}</SlotName>
                       <SlotBonus $color={rarityColor}>
-                        +{RARITY_BONUSES[character.rarity]}%
+                        +{characterBonuses[character.rarity]}%
                       </SlotBonus>
                       <RemoveButton onClick={(e) => {
                         e.stopPropagation();
@@ -549,12 +593,13 @@ const CharacterSelector = memo(({
               <SynergyTitle>{t('essenceTap.elementAbilities', { defaultValue: 'Element Abilities' })}</SynergyTitle>
               <SynergyList>
                 {elementAbilities.map(ability => {
-                  const config = ELEMENT_CONFIG[ability.element] || ELEMENT_CONFIG.neutral;
+                  const ElementIcon = ELEMENT_ICONS[ability.element] || ELEMENT_ICONS.neutral;
+                  const color = ELEMENT_COLORS[ability.element] || ELEMENT_COLORS.neutral;
                   return (
                     <SynergyBadge key={ability.element} $active>
-                      <span><config.Icon size={14} /></span>
-                      <span>{config.name}</span>
-                      <span style={{ color: config.color }}>{ability.totalBonus}</span>
+                      <span><ElementIcon size={14} /></span>
+                      <span>{ability.name}</span>
+                      <span style={{ color }}>{ability.totalBonus}</span>
                     </SynergyBadge>
                   );
                 })}
@@ -568,11 +613,12 @@ const CharacterSelector = memo(({
               <SynergyTitle>{t('essenceTap.activeSynergies', { defaultValue: 'Active Synergies (Pair Bonus)' })}</SynergyTitle>
               <SynergyList>
                 {synergies.map(synergy => {
-                  const config = ELEMENT_CONFIG[synergy.element] || ELEMENT_CONFIG.neutral;
+                  const ElementIcon = ELEMENT_ICONS[synergy.element] || ELEMENT_ICONS.neutral;
+                  const elementName = synergy.element.charAt(0).toUpperCase() + synergy.element.slice(1);
                   return (
                     <SynergyBadge key={synergy.element} $active>
-                      <span><config.Icon size={14} /></span>
-                      <span>{config.name} x{synergy.count}</span>
+                      <span><ElementIcon size={14} /></span>
+                      <span>{elementName} x{synergy.count}</span>
                       <span style={{ color: '#10B981' }}>+{synergy.bonus}%</span>
                     </SynergyBadge>
                   );
@@ -616,7 +662,7 @@ const CharacterSelector = memo(({
                   const assigned = isAssigned(character.id);
                   const canAssign = !assigned && assignedCharacters.length < maxCharacters;
                   const rarityColor = RARITY_COLORS[character.rarity];
-                  const ElementIcon = (ELEMENT_CONFIG[character.element] || ELEMENT_CONFIG.neutral).Icon;
+                  const ElementIcon = ELEMENT_ICONS[character.element] || ELEMENT_ICONS.neutral;
 
                   return (
                     <CharacterCard

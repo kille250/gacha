@@ -19,13 +19,6 @@ import { formatNumber } from '../../hooks/useEssenceTap';
 import { IconGem, IconSparkles } from '../../constants/icons';
 
 // Animations
-// Note: pulse animation defined but currently unused - kept for potential future use
-const _pulse = `
-  0% { transform: scale(1); }
-  50% { transform: scale(1.05); }
-  100% { transform: scale(1); }
-`;
-
 const glow = keyframes`
   0%, 100% { box-shadow: 0 0 30px rgba(138, 43, 226, 0.3), 0 0 60px rgba(138, 43, 226, 0.1); }
   50% { box-shadow: 0 0 50px rgba(138, 43, 226, 0.5), 0 0 100px rgba(138, 43, 226, 0.2); }
@@ -41,18 +34,6 @@ const goldenGlow = keyframes`
   0% { box-shadow: 0 0 80px rgba(255, 215, 0, 0.8), 0 0 150px rgba(255, 215, 0, 0.5), 0 0 200px rgba(255, 165, 0, 0.3); }
   50% { box-shadow: 0 0 120px rgba(255, 215, 0, 1), 0 0 200px rgba(255, 215, 0, 0.7), 0 0 300px rgba(255, 165, 0, 0.5); }
   100% { box-shadow: 0 0 80px rgba(255, 215, 0, 0.8), 0 0 150px rgba(255, 215, 0, 0.5), 0 0 200px rgba(255, 165, 0, 0.3); }
-`;
-
-// Note: floatUp used in DamageNumber styled component below
-const _floatUp = `
-  0% {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
-  100% {
-    opacity: 0;
-    transform: translateY(-80px) scale(1.2);
-  }
 `;
 
 const TapContainer = styled.div`
