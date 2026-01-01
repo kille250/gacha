@@ -7,8 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const User = require('../models/user');
-const UserCharacter = require('../models/userCharacter');
+const { User, UserCharacter } = require('../models');
 const essenceTapService = require('../services/essenceTapService');
 const accountLevelService = require('../services/accountLevelService');
 
