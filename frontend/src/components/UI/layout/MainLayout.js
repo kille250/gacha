@@ -154,8 +154,6 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
       <LayoutContainer>
         <SkipLink href="#main-content">{t('accessibility.skipToMain', 'Skip to main content')}</SkipLink>
         <Navigation />
-        {/* Announcement Banner - in document flow to push content down */}
-        <AnnouncementBanner />
         <PageContent>
           {/* Suspense boundary inside layout keeps navigation visible during lazy page loads */}
           <Suspense fallback={<PageLoader t={t} />}>
@@ -164,6 +162,9 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
         </PageContent>
         {!hideBottomNav && <BottomNav />}
       </LayoutContainer>
+
+      {/* Announcement Banner - fixed position below nav, outside layout stacking context */}
+      <AnnouncementBanner />
 
       {/* Return Bonus Modal - shows welcome back rewards for returning players */}
       <AnimatePresence>

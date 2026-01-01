@@ -114,15 +114,17 @@ const pulse = keyframes`
 // ============================================
 
 const BannerContainer = styled.div`
-  /* Sticky below navigation - stays visible when scrolling */
-  position: sticky;
+  /* Fixed below navigation */
+  position: fixed;
   top: var(--nav-top-height, 56px);
+  left: 0;
+  right: 0;
   z-index: ${theme.zIndex.banner};
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: ${theme.spacing.xs};
-  background: ${theme.colors.background};
+  pointer-events: none;
 
   @supports (padding: max(0px)) {
     padding-left: max(${theme.spacing.xs}, env(safe-area-inset-left));
@@ -140,7 +142,9 @@ const BannerContainer = styled.div`
   }
 `;
 
-const BannerWrapper = styled(motion.div)``;
+const BannerWrapper = styled(motion.div)`
+  pointer-events: auto;
+`;
 
 const BannerContent = styled.div`
   display: flex;
