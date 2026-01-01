@@ -10,6 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
+import { invalidateFor, CACHE_ACTIONS } from '../cache/manager';
 
 // Constants
 const COMBO_DECAY_TIME = 1000; // ms before combo resets
@@ -284,7 +285,8 @@ export const useEssenceTap = () => {
       setLocalEssence(response.data.essence);
       localEssenceRef.current = response.data.essence;
 
-      // Refresh full state to get updated generators (without showing loading)
+      // Invalidate cache before fetching to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_GENERATOR_PURCHASE);
       await fetchGameState(false);
 
       toast.success(
@@ -316,6 +318,9 @@ export const useEssenceTap = () => {
 
       setLocalEssence(response.data.essence);
       localEssenceRef.current = response.data.essence;
+
+      // Invalidate cache before fetching to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_UPGRADE_PURCHASE);
       await fetchGameState(false);
 
       toast.success(
@@ -342,6 +347,8 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Invalidate cache before fetching to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_PRESTIGE);
       await fetchGameState(false);
       await refreshUser();
 
@@ -379,6 +386,8 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Invalidate cache before fetching to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_PRESTIGE_UPGRADE);
       await fetchGameState(false);
 
       toast.success(
@@ -406,6 +415,8 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Invalidate cache before fetching to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_MILESTONE_CLAIM);
       await fetchGameState(false);
       await refreshUser();
 
@@ -433,6 +444,8 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Invalidate cache before fetching to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_CHARACTER_ASSIGN);
       await fetchGameState(false);
 
       toast.success(t('essenceTap.characterAssigned', { defaultValue: 'Character assigned!' }));
@@ -454,6 +467,8 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Invalidate cache before fetching to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_CHARACTER_UNASSIGN);
       await fetchGameState(false);
 
       return { success: true, ...response.data };

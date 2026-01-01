@@ -58,6 +58,7 @@ export {
   ENHANCEMENT_ACTIONS,
   FORTUNE_WHEEL_ACTIONS,
   ANNOUNCEMENT_ACTIONS,
+  ESSENCE_TAP_ACTIONS,
   VISIBILITY_CALLBACK_IDS,
   SESSION_KEYS,
   LOCAL_STORAGE_KEYS
@@ -252,6 +253,20 @@ const ANNOUNCEMENT_PATTERNS = {
   delete: ['/announcements', '/announcements/unacknowledged'],
   publish: ['/announcements', '/announcements/unacknowledged'],
   archive: ['/announcements', '/announcements/unacknowledged']
+};
+
+/**
+ * Essence Tap invalidation patterns
+ * Clicker game actions that modify game state
+ */
+const ESSENCE_TAP_PATTERNS = {
+  generator_purchase: ['/essence-tap/status'],
+  upgrade_purchase: ['/essence-tap/status'],
+  prestige: ['/essence-tap/status', '/auth/me'],
+  prestige_upgrade: ['/essence-tap/status'],
+  milestone_claim: ['/essence-tap/status', '/auth/me'],
+  character_assign: ['/essence-tap/status'],
+  character_unassign: ['/essence-tap/status']
 };
 
 /**
@@ -597,7 +612,18 @@ const ACTION_HANDLERS = {
   'announcement:update': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.update),
   'announcement:delete': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.delete),
   'announcement:publish': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.publish),
-  'announcement:archive': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.archive)
+  'announcement:archive': () => invalidatePatterns(ANNOUNCEMENT_PATTERNS.archive),
+
+  // ===========================================
+  // ESSENCE TAP ACTIONS
+  // ===========================================
+  'essence_tap:generator_purchase': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.generator_purchase),
+  'essence_tap:upgrade_purchase': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.upgrade_purchase),
+  'essence_tap:prestige': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.prestige),
+  'essence_tap:prestige_upgrade': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.prestige_upgrade),
+  'essence_tap:milestone_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.milestone_claim),
+  'essence_tap:character_assign': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.character_assign),
+  'essence_tap:character_unassign': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.character_unassign)
 };
 
 /**
@@ -722,6 +748,8 @@ export const getInvalidationPatterns = (action) => {
       return FORTUNE_WHEEL_PATTERNS[actionName] || null;
     case 'announcement':
       return ANNOUNCEMENT_PATTERNS[actionName] || null;
+    case 'essence_tap':
+      return ESSENCE_TAP_PATTERNS[actionName] || null;
     default:
       return null;
   }
@@ -835,7 +863,8 @@ export const enableCacheDebugging = () => {
       coupon: { ...COUPON_PATTERNS },
       pre: { ...PRE_TRANSACTION_PATTERNS },
       enhancement: { ...ENHANCEMENT_PATTERNS },
-      fortune: { ...FORTUNE_WHEEL_PATTERNS }
+      fortune: { ...FORTUNE_WHEEL_PATTERNS },
+      essence_tap: { ...ESSENCE_TAP_PATTERNS }
     }),
 
     /**

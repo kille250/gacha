@@ -282,6 +282,30 @@ export const ANNOUNCEMENT_ACTIONS = {
 };
 
 // ===========================================
+// ESSENCE TAP ACTIONS
+// ===========================================
+
+/**
+ * Essence Tap clicker game actions for cache invalidation.
+ */
+export const ESSENCE_TAP_ACTIONS = {
+  /** Purchasing a generator - updates essence, production rate */
+  GENERATOR_PURCHASE: 'essence_tap:generator_purchase',
+  /** Purchasing an upgrade - updates essence, click power, crit, etc. */
+  UPGRADE_PURCHASE: 'essence_tap:upgrade_purchase',
+  /** Performing prestige/awakening - resets progress, awards shards */
+  PRESTIGE: 'essence_tap:prestige',
+  /** Purchasing a prestige upgrade with shards */
+  PRESTIGE_UPGRADE: 'essence_tap:prestige_upgrade',
+  /** Claiming a milestone reward */
+  MILESTONE_CLAIM: 'essence_tap:milestone_claim',
+  /** Assigning a character for bonuses */
+  CHARACTER_ASSIGN: 'essence_tap:character_assign',
+  /** Unassigning a character */
+  CHARACTER_UNASSIGN: 'essence_tap:character_unassign',
+};
+
+// ===========================================
 // SESSION STORAGE KEYS
 // ===========================================
 
@@ -424,6 +448,15 @@ export const CACHE_ACTIONS = {
   ANNOUNCEMENT_DELETE: ANNOUNCEMENT_ACTIONS.DELETE,
   ANNOUNCEMENT_PUBLISH: ANNOUNCEMENT_ACTIONS.PUBLISH,
   ANNOUNCEMENT_ARCHIVE: ANNOUNCEMENT_ACTIONS.ARCHIVE,
+
+  // Essence Tap actions
+  ESSENCE_TAP_GENERATOR_PURCHASE: ESSENCE_TAP_ACTIONS.GENERATOR_PURCHASE,
+  ESSENCE_TAP_UPGRADE_PURCHASE: ESSENCE_TAP_ACTIONS.UPGRADE_PURCHASE,
+  ESSENCE_TAP_PRESTIGE: ESSENCE_TAP_ACTIONS.PRESTIGE,
+  ESSENCE_TAP_PRESTIGE_UPGRADE: ESSENCE_TAP_ACTIONS.PRESTIGE_UPGRADE,
+  ESSENCE_TAP_MILESTONE_CLAIM: ESSENCE_TAP_ACTIONS.MILESTONE_CLAIM,
+  ESSENCE_TAP_CHARACTER_ASSIGN: ESSENCE_TAP_ACTIONS.CHARACTER_ASSIGN,
+  ESSENCE_TAP_CHARACTER_UNASSIGN: ESSENCE_TAP_ACTIONS.CHARACTER_UNASSIGN,
 };
 
 // NOTE: Default export removed - use named exports instead for better tree-shaking
