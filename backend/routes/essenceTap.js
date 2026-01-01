@@ -333,7 +333,8 @@ router.post('/upgrade/buy', auth, async (req, res) => {
     await user.save();
 
     // Award XP for upgrade purchase
-    await accountLevelService.awardXP(user.id, essenceTapService.GAME_CONFIG.xpPerUpgrade || 2, 'essence_tap_upgrade');
+    accountLevelService.addXP(user, essenceTapService.GAME_CONFIG.xpPerUpgrade || 2, 'essence_tap_upgrade');
+    await user.save();
 
     // Get updated game state
     const userCharacters = await UserCharacter.findAll({
