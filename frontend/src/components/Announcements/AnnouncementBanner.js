@@ -114,37 +114,21 @@ const pulse = keyframes`
 // ============================================
 
 const BannerContainer = styled.div`
-  position: fixed;
-  /* Position below navigation bar */
-  top: var(--nav-top-height, 56px);
-  left: 0;
-  right: 0;
+  /* In document flow - pushes content down */
+  position: relative;
   z-index: ${theme.zIndex.banner};
   display: flex;
   flex-direction: column;
   gap: 4px;
   padding: ${theme.spacing.xs};
-  pointer-events: none;
 
   @supports (padding: max(0px)) {
     padding-left: max(${theme.spacing.xs}, env(safe-area-inset-left));
     padding-right: max(${theme.spacing.xs}, env(safe-area-inset-right));
   }
-
-  /* Landscape mode - adjust for compact nav */
-  @media (max-width: ${theme.breakpoints.md}) and (orientation: landscape) {
-    top: var(--nav-top-height, 48px);
-  }
-
-  /* Very short viewports */
-  @media (max-height: 400px) {
-    top: var(--nav-top-height, 44px);
-  }
 `;
 
-const BannerWrapper = styled(motion.div)`
-  pointer-events: auto;
-`;
+const BannerWrapper = styled(motion.div)``;
 
 const BannerContent = styled.div`
   display: flex;
