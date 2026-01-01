@@ -753,7 +753,8 @@ router.post('/:id/roll', [auth, lockoutMiddleware(), enforcementMiddleware, devi
       needsPity: false,
       isMulti: false,
       isLast3: false,
-      softPityState
+      softPityState,
+      pityCounters: userPity  // Pass raw counters for hard pity check
     });
     
     // Refund on failure

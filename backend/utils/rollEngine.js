@@ -37,8 +37,33 @@ const {
 } = require('../services/standardBannerService');
 
 // ===========================================
-// SOFT PITY SYSTEM
+// PITY SYSTEM (SOFT + HARD)
 // ===========================================
+
+/**
+ * Check if hard pity should force a specific rarity
+ * Hard pity guarantees the rarity when counter reaches threshold
+ *
+ * @param {number} pullsSinceLegendary - Pulls since last legendary
+ * @param {number} pullsSinceEpic - Pulls since last epic
+ * @returns {{ forcedRarity: string|null, isHardPity: boolean }}
+ */
+const checkHardPity = (pullsSinceLegendary, pullsSinceEpic) => {
+  const legendaryConfig = GACHA_PITY_CONFIG.standard.legendary;
+  const epicConfig = GACHA_PITY_CONFIG.standard.epic;
+
+  // Legendary hard pity takes priority
+  if (pullsSinceLegendary >= legendaryConfig.hardPity) {
+    return { forcedRarity: 'legendary', isHardPity: true };
+  }
+
+  // Epic hard pity
+  if (pullsSinceEpic >= epicConfig.hardPity) {
+    return { forcedRarity: 'epic', isHardPity: true };
+  }
+
+  return { forcedRarity: null, isHardPity: false };
+};
 
 /**
  * Calculate soft pity progress for a given rarity
@@ -46,7 +71,7 @@ const {
  *
  * @param {number} pullsSince - Current pulls since last hit of this rarity
  * @param {string} rarity - 'legendary' or 'epic'
- * @returns {number} - 0 if not in soft pity, 0-1 if in soft pity range
+ * @returns {number} - 0 if not in soft pity, 0-1 if in soft pity range (capped before hard pity)
  */
 const getSoftPityProgress = (pullsSince, rarity) => {
   const config = GACHA_PITY_CONFIG.standard[rarity];
@@ -54,7 +79,8 @@ const getSoftPityProgress = (pullsSince, rarity) => {
 
   const { softPity, hardPity } = config;
   if (pullsSince < softPity) return 0;
-  if (pullsSince >= hardPity) return 1;
+  // Cap at just below hard pity - hard pity is handled separately by checkHardPity
+  if (pullsSince >= hardPity - 1) return 0.99;
 
   return (pullsSince - softPity) / (hardPity - softPity);
 };
@@ -302,13 +328,14 @@ const executeSingleStandardRoll = async (context, isMulti = false) => {
  * @param {BannerRollContext} context - Banner roll context
  * @param {Object} options
  * @param {boolean} options.isPremium - Premium roll flag
- * @param {boolean} options.needsPity - Pity trigger flag
+ * @param {boolean} options.needsPity - Pity trigger flag (for 10-pull rare+ guarantee)
  * @param {boolean} options.isMulti - Multi-pull flag
  * @param {boolean} options.isLast3 - Whether this is one of the last 3 rolls (higher banner pool chance)
  * @param {Object} options.softPityState - Current soft pity state { legendary: 0-1, epic: 0-1 }
+ * @param {Object} options.pityCounters - Raw pity counters for hard pity check { pullsSinceLegendary, pullsSinceEpic }
  * @returns {Promise<RollResult>}
  */
-const executeSingleBannerRoll = async (context, { isPremium = false, needsPity = false, isMulti = false, isLast3 = false, softPityState = null } = {}) => {
+const executeSingleBannerRoll = async (context, { isPremium = false, needsPity = false, isMulti = false, isLast3 = false, softPityState = null, pityCounters = null } = {}) => {
   const {
     allCharacters,
     raritiesData,
@@ -319,25 +346,43 @@ const executeSingleBannerRoll = async (context, { isPremium = false, needsPity =
     luckBonus = 0
   } = context;
 
-  // Select rates based on roll type (with luck bonus and soft pity from specializations)
-  const rates = await selectRates({
-    isPremium,
-    needsPity,
-    isMulti,
-    isBanner: true,
-    rateMultiplier,
-    raritiesData,
-    luckBonus,
-    softPityState
-  });
-  
-  // Roll for rarity
-  const selectedRarity = rollRarity(rates, orderedRarities);
-  
+  let selectedRarity;
+  let wasHardPity = false;
+
+  // Check for hard pity FIRST - this takes absolute priority
+  if (pityCounters) {
+    const { forcedRarity, isHardPity } = checkHardPity(
+      pityCounters.pullsSinceLegendary || 0,
+      pityCounters.pullsSinceEpic || 0
+    );
+    if (isHardPity && forcedRarity) {
+      selectedRarity = forcedRarity;
+      wasHardPity = true;
+    }
+  }
+
+  // If not hard pity, do normal roll
+  if (!selectedRarity) {
+    // Select rates based on roll type (with luck bonus and soft pity from specializations)
+    const rates = await selectRates({
+      isPremium,
+      needsPity,
+      isMulti,
+      isBanner: true,
+      rateMultiplier,
+      raritiesData,
+      luckBonus,
+      softPityState
+    });
+
+    // Roll for rarity
+    selectedRarity = rollRarity(rates, orderedRarities);
+  }
+
   // Determine pool: banner vs standard
   // This is separate from rates - affects which CHARACTER you get, not the rarity odds
   const pullFromBannerPool = Math.random() < getBannerPullChance(isLast3);
-  
+
   // Select character with appropriate pool priority
   const primaryPool = pullFromBannerPool ? bannerCharactersByRarity : null;
   const { character, actualRarity } = selectCharacterWithFallback(
@@ -347,12 +392,13 @@ const executeSingleBannerRoll = async (context, { isPremium = false, needsPity =
     allCharacters,
     raritiesData
   );
-  
+
   return {
     character,
     actualRarity,
     isPremium,
-    wasPity: needsPity
+    wasPity: needsPity || wasHardPity,
+    wasHardPity
   };
 };
 
@@ -447,46 +493,74 @@ const executeBannerMultiRoll = async (context, count, premiumCount = 0, initialP
   const results = [];
   let hasRarePlus = false;
 
-  // Track pity state during multi-roll for soft pity calculations
+  // Track pity state during multi-roll for hard pity and soft pity calculations
   let currentPullsSinceLegendary = initialPityState?.pullsSinceLegendary || 0;
   let currentPullsSinceEpic = initialPityState?.pullsSinceEpic || 0;
+
+  // Track if we've already given a hard pity legendary/epic in this multi-roll
+  // Only the FIRST hard pity trigger should be marked as guaranteed
+  let hardPityLegendaryGiven = false;
+  let hardPityEpicGiven = false;
 
   for (let i = 0; i < count; i++) {
     const isLastRoll = i === count - 1;
     const isPremiumRoll = i < premiumCount;
-    const needsPity = guaranteedRare && isLastRoll && !hasRarePlus;
+    const needsRarePlusPity = guaranteedRare && isLastRoll && !hasRarePlus;
     const isLast3 = i >= count - 3;
 
-    // Calculate soft pity state for this roll
-    const softPityState = {
-      legendary: getSoftPityProgress(currentPullsSinceLegendary, 'legendary'),
-      epic: getSoftPityProgress(currentPullsSinceEpic, 'epic')
-    };
+    // Check for hard pity FIRST - this takes absolute priority
+    const { forcedRarity, isHardPity } = checkHardPity(currentPullsSinceLegendary, currentPullsSinceEpic);
 
-    // Select rates: premium > pity > soft pity > banner
-    let currentRates;
-    if (isPremiumRoll) {
-      currentRates = premiumRates;
-    } else if (needsPity) {
-      currentRates = pityRates;
+    let selectedRarity;
+    let wasHardPity = false;
+
+    if (isHardPity && forcedRarity) {
+      // Hard pity forces this rarity - no RNG involved
+      selectedRarity = forcedRarity;
+      wasHardPity = true;
+
+      // Only mark as "guaranteed" pity if this is the first hard pity of this type
+      if (forcedRarity === 'legendary' && !hardPityLegendaryGiven) {
+        hardPityLegendaryGiven = true;
+      } else if (forcedRarity === 'epic' && !hardPityEpicGiven) {
+        hardPityEpicGiven = true;
+      } else {
+        // Subsequent hard pity triggers in same multi-roll are not marked as "wasPity"
+        wasHardPity = false;
+      }
     } else {
-      // Apply soft pity boost to banner rates
-      currentRates = bannerRates;
-      if (softPityState.legendary > 0) {
-        currentRates = applySoftPityBoost(currentRates, pityRates, softPityState.legendary, 'legendary');
-      }
-      if (softPityState.epic > 0) {
-        currentRates = applySoftPityBoost(currentRates, pityRates, softPityState.epic, 'epic');
-      }
-    }
+      // Normal roll with soft pity boost
+      // Calculate soft pity state for this roll
+      const softPityState = {
+        legendary: getSoftPityProgress(currentPullsSinceLegendary, 'legendary'),
+        epic: getSoftPityProgress(currentPullsSinceEpic, 'epic')
+      };
 
-    const selectedRarity = rollRarity(currentRates, orderedRarities);
+      // Select rates: premium > rare+ pity (10-pull guarantee) > soft pity > banner
+      let currentRates;
+      if (isPremiumRoll) {
+        currentRates = premiumRates;
+      } else if (needsRarePlusPity) {
+        currentRates = pityRates;
+      } else {
+        // Apply soft pity boost to banner rates
+        currentRates = bannerRates;
+        if (softPityState.legendary > 0) {
+          currentRates = applySoftPityBoost(currentRates, pityRates, softPityState.legendary, 'legendary');
+        }
+        if (softPityState.epic > 0) {
+          currentRates = applySoftPityBoost(currentRates, pityRates, softPityState.epic, 'epic');
+        }
+      }
+
+      selectedRarity = rollRarity(currentRates, orderedRarities);
+    }
 
     if (isRarePlus(selectedRarity, raritiesData)) {
       hasRarePlus = true;
     }
 
-    // Update pity counters for soft pity tracking within this multi-roll
+    // Update pity counters for tracking within this multi-roll
     if (selectedRarity === 'legendary') {
       currentPullsSinceLegendary = 0;
       currentPullsSinceEpic = 0;
@@ -515,12 +589,13 @@ const executeBannerMultiRoll = async (context, count, premiumCount = 0, initialP
         character,
         actualRarity,
         isPremium: isPremiumRoll,
-        wasPity: needsPity,
+        wasPity: needsRarePlusPity || wasHardPity,
+        wasHardPity: wasHardPity,
         isBannerCharacter: bannerCharacters.some(c => c.id === character.id)
       });
     }
   }
-  
+
   return results;
 };
 
@@ -532,7 +607,8 @@ module.exports = {
   // Rate selection
   selectRates,
 
-  // Soft pity utilities
+  // Pity utilities
+  checkHardPity,
   getSoftPityProgress,
   applySoftPityBoost,
 
