@@ -11,7 +11,7 @@ databases:
   - name: gacha-db
     databaseName: gacha
     user: gacha_user
-    plan: free
+    plan: basic-256mb
     region: frankfurt
 
 services:
