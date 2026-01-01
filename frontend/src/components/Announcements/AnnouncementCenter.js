@@ -333,6 +333,22 @@ const ActionButton = styled.button`
   `}
 `;
 
+const AcknowledgedBadge = styled.span`
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: ${theme.colors.success};
+  font-size: ${theme.fontSizes.xs};
+
+  svg {
+    vertical-align: middle;
+  }
+`;
+
+const FilterIcon = styled(MdFilterList)`
+  color: ${theme.colors.textTertiary};
+`;
+
 // ============================================
 // ANIMATION VARIANTS
 // ============================================
@@ -382,11 +398,11 @@ const AnnouncementItem = ({ announcement, onMarkAsRead, onAcknowledge }) => {
     const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return t('common.today');
+      return t('time.today');
     } else if (diffDays === 1) {
-      return t('common.yesterday');
+      return t('time.yesterday');
     } else if (diffDays < 7) {
-      return t('common.daysAgo', { count: diffDays });
+      return t('time.daysAgo', { count: diffDays });
     } else {
       return date.toLocaleDateString();
     }
@@ -443,10 +459,10 @@ const AnnouncementItem = ({ announcement, onMarkAsRead, onAcknowledge }) => {
                 </ActionButton>
               )}
               {announcement.isAcknowledged && (
-                <span style={{ color: theme.colors.success, fontSize: theme.fontSizes.xs }}>
-                  <MdCheckCircle style={{ verticalAlign: 'middle', marginRight: 4 }} />
+                <AcknowledgedBadge>
+                  <MdCheckCircle aria-hidden="true" />
                   {t('announcements.acknowledged')}
-                </span>
+                </AcknowledgedBadge>
               )}
             </CardActions>
           </ExpandedContent>
@@ -529,7 +545,7 @@ const AnnouncementCenter = ({ className }) => {
         </Title>
 
         <FilterBar>
-          <MdFilterList aria-hidden="true" style={{ color: theme.colors.textTertiary }} />
+          <FilterIcon aria-hidden="true" />
 
           <FilterButton
             $active={filter === 'all'}
