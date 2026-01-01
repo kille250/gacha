@@ -141,7 +141,7 @@ const HotelTestPage = () => {
       <Container>
         <Title>OpenHotel Integration</Title>
         <StatusCard $status="disabled">
-          <StatusIcon>🔴</StatusIcon>
+          <StatusDot $color="error" />
           <StatusText>OpenHotel is disabled</StatusText>
           <StatusDetail>
             Set VITE_OPENHOTEL_ENABLED=true in your environment to enable.
@@ -161,11 +161,11 @@ const HotelTestPage = () => {
 
       {/* Connection Status */}
       <StatusCard $status={connectionState}>
-        <StatusIcon>
-          {connectionState === CONNECTION_STATE.CONNECTED ? '🟢' :
-           connectionState === CONNECTION_STATE.CONNECTING ? '🟡' :
-           connectionState === CONNECTION_STATE.ERROR ? '🔴' : '⚪'}
-        </StatusIcon>
+        <StatusDot $color={
+          connectionState === CONNECTION_STATE.CONNECTED ? 'success' :
+          connectionState === CONNECTION_STATE.CONNECTING ? 'warning' :
+          connectionState === CONNECTION_STATE.ERROR ? 'error' : 'neutral'
+        } />
         <StatusText>
           {connectionState === CONNECTION_STATE.CONNECTED ? 'Connected' :
            connectionState === CONNECTION_STATE.CONNECTING ? 'Connecting...' :
@@ -372,8 +372,19 @@ const StatusCard = styled.div`
   };
 `;
 
-const StatusIcon = styled.span`
-  font-size: 24px;
+const StatusDot = styled.div`
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background-color: ${props => {
+    switch (props.$color) {
+      case 'success': return 'rgb(34, 197, 94)';
+      case 'warning': return 'rgb(234, 179, 8)';
+      case 'error': return 'rgb(239, 68, 68)';
+      default: return 'rgb(156, 163, 175)';
+    }
+  }};
+  flex-shrink: 0;
 `;
 
 const StatusText = styled.span`

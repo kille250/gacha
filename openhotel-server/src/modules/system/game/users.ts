@@ -447,6 +447,16 @@ export const users = () => {
   };
 
   const add = async (user: User, privateUser: PrivateUser) => {
+    // Validate required fields to prevent Deno KV errors
+    if (!user.accountId || typeof user.accountId !== "string") {
+      console.error("Invalid user.accountId:", user.accountId);
+      return;
+    }
+    if (!user.username || typeof user.username !== "string") {
+      console.error("Invalid user.username:", user.username);
+      return;
+    }
+
     const $user = $getUser(user);
     $userMap[user.accountId] = $user;
 
