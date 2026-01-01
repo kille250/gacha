@@ -14,11 +14,24 @@
 // Detect if we're in production (Render.com)
 const isProduction = import.meta.env.PROD;
 
-// Build WebSocket URL from HTTP URL if not explicitly set
+// Normalize URL - add https:// if missing (Render's fromService gives just hostname)
+const normalizeHttpUrl = (url) => {
+  if (!url) return null;
+  // If it's already a full URL, return as-is
+  if (url.startsWith('http://') || url.startsWith('https://')) {
+    return url.replace(/\/$/, '');
+  }
+  // Add https:// for production hosts, http:// for localhost
+  const protocol = url.includes('localhost') ? 'http://' : 'https://';
+  return `${protocol}${url}`.replace(/\/$/, '');
+};
+
+// Build WebSocket URL from HTTP URL
 const buildWsUrl = (httpUrl) => {
-  if (!httpUrl) return null;
+  const normalized = normalizeHttpUrl(httpUrl);
+  if (!normalized) return null;
   try {
-    const url = new URL(httpUrl);
+    const url = new URL(normalized);
     url.protocol = url.protocol === 'https:' ? 'wss:' : 'ws:';
     return url.toString().replace(/\/$/, '');
   } catch {
@@ -42,7 +55,7 @@ const getServerUrl = () => {
 
 const getHttpUrl = () => {
   if (import.meta.env.VITE_OPENHOTEL_HTTP_URL) {
-    return import.meta.env.VITE_OPENHOTEL_HTTP_URL;
+    return normalizeHttpUrl(import.meta.env.VITE_OPENHOTEL_HTTP_URL);
   }
   return 'http://localhost:3005';
 };
