@@ -555,7 +555,21 @@ const CHARACTER_MASTERY = {
   // Maximum mastery level per character
   maxLevel: 10,
 
-  // XP required per level (cumulative)
+  // Mastery levels with hours required and bonuses
+  levels: [
+    { level: 1, hoursRequired: 0, productionBonus: 0.00, unlockedAbility: null },
+    { level: 2, hoursRequired: 1, productionBonus: 0.02, unlockedAbility: null },
+    { level: 3, hoursRequired: 3, productionBonus: 0.04, unlockedAbility: null },
+    { level: 4, hoursRequired: 7, productionBonus: 0.06, unlockedAbility: null },
+    { level: 5, hoursRequired: 15, productionBonus: 0.08, unlockedAbility: 'enhanced_element' },
+    { level: 6, hoursRequired: 30, productionBonus: 0.10, unlockedAbility: null },
+    { level: 7, hoursRequired: 60, productionBonus: 0.12, unlockedAbility: null },
+    { level: 8, hoursRequired: 120, productionBonus: 0.14, unlockedAbility: null },
+    { level: 9, hoursRequired: 250, productionBonus: 0.16, unlockedAbility: null },
+    { level: 10, hoursRequired: 500, productionBonus: 0.20, unlockedAbility: 'mastery_aura' }
+  ],
+
+  // XP required per level (cumulative) - legacy
   xpPerLevel: [
     0,        // Level 1 (start)
     1000,     // Level 2
@@ -624,7 +638,8 @@ const ESSENCE_TYPES = {
     description: 'Ultra-rare essence from special events',
     color: '#EC4899',
     sources: ['jackpot', 'weekly_tournament', 'mastery_complete'],
-    conversionRate: 100.0  // 100x value
+    conversionRate: 100.0,  // 100x value
+    requirement: 10000  // Prismatic essence needed for max bonus scaling
   }
 };
 
@@ -653,7 +668,7 @@ const ESSENCE_REQUIREMENTS = {
  */
 const SERIES_SYNERGIES = {
   // Bonus per matching character from same series
-  pairBonus: {
+  matchBonuses: {
     2: 0.10,   // 2 from same series: +10%
     3: 0.25,   // 3 from same series: +25%
     4: 0.45,   // 4 from same series: +45%
@@ -665,6 +680,7 @@ const SERIES_SYNERGIES = {
 
   // Diversity bonus (all different series)
   diversityBonus: 0.15,  // +15% if all 5 characters from different series
+  diversityThreshold: 5,  // Need 5 different series for diversity bonus
 
   // Featured series rotation (changes weekly)
   featuredSeriesBonus: 0.25  // +25% extra for using featured series
@@ -1007,14 +1023,17 @@ const GAMBLE_CONFIG = {
 
   // NEW: Progressive jackpot system
   jackpot: {
-    // Base jackpot amount (minimum)
-    baseAmount: 1000000,
+    // Base jackpot amount (minimum/seed)
+    seedAmount: 1000000,
 
-    // Percentage of lost bets that go to jackpot pool
-    lossContribution: 0.10,  // 10% of lost essence goes to jackpot
+    // Percentage of bets that go to jackpot pool
+    contributionRate: 0.10,  // 10% of bet goes to jackpot
 
-    // Chance to win jackpot on any gamble
-    baseChance: 0.001,  // 0.1% base chance
+    // Chance to win jackpot on any qualifying gamble
+    winChance: 0.001,  // 0.1% base chance
+
+    // Minimum bet amount to qualify for jackpot
+    minBetToQualify: 10000,
 
     // Jackpot chance increases with bet type
     chanceMultipliers: {
@@ -1076,39 +1095,25 @@ const WEEKLY_TOURNAMENT = {
   startDay: 1,  // Monday
   endDay: 0,    // Sunday
 
-  // Ranking tiers and rewards
+  // Tier thresholds based on essence earned (for single-player tier determination)
   tiers: [
-    {
-      rank: 1,
-      name: 'Essence Champion',
-      rewards: { fatePoints: 100, premiumTickets: 5, rollTickets: 20, prismaticEssence: 500 }
-    },
-    {
-      rank: [2, 3],
-      name: 'Essence Master',
-      rewards: { fatePoints: 75, premiumTickets: 3, rollTickets: 15, prismaticEssence: 250 }
-    },
-    {
-      rank: [4, 10],
-      name: 'Essence Expert',
-      rewards: { fatePoints: 50, premiumTickets: 2, rollTickets: 10, prismaticEssence: 100 }
-    },
-    {
-      rank: [11, 25],
-      name: 'Essence Adept',
-      rewards: { fatePoints: 30, premiumTickets: 1, rollTickets: 7 }
-    },
-    {
-      rank: [26, 50],
-      name: 'Essence Apprentice',
-      rewards: { fatePoints: 20, rollTickets: 5 }
-    },
-    {
-      rank: [51, 100],
-      name: 'Essence Initiate',
-      rewards: { fatePoints: 10, rollTickets: 3 }
-    }
+    { name: 'Bronze', minEssence: 1000000 },
+    { name: 'Silver', minEssence: 10000000 },
+    { name: 'Gold', minEssence: 50000000 },
+    { name: 'Platinum', minEssence: 200000000 },
+    { name: 'Diamond', minEssence: 1000000000 },
+    { name: 'Champion', minEssence: 10000000000 }
   ],
+
+  // Rewards by tier name
+  rewards: {
+    Bronze: { fatePoints: 5, rollTickets: 1 },
+    Silver: { fatePoints: 15, rollTickets: 3 },
+    Gold: { fatePoints: 30, rollTickets: 5 },
+    Platinum: { fatePoints: 50, rollTickets: 10 },
+    Diamond: { fatePoints: 100, rollTickets: 20 },
+    Champion: { fatePoints: 200, rollTickets: 50 }
+  },
 
   // Participation rewards (for anyone who played)
   participationReward: {
@@ -1196,7 +1201,30 @@ const TICKET_GENERATION = {
     { totalGenerators: 500, reward: { rollTickets: 5 } },
     { totalGenerators: 1000, reward: { rollTickets: 10, premiumTickets: 2 } },
     { totalGenerators: 5000, reward: { rollTickets: 25, premiumTickets: 5 } }
-  ]
+  ],
+
+  // Fate Point to Ticket exchange
+  fatePointExchange: {
+    cost: 50,           // 50 Fate Points per exchange
+    tickets: 3,         // 3 roll tickets per exchange
+    weeklyLimit: 5      // Max 5 exchanges per week
+  },
+
+  // Daily streak system
+  dailyStreak: {
+    // Ticket milestones for consecutive days played
+    ticketMilestones: [
+      { days: 3, tickets: 1 },
+      { days: 7, tickets: 3 },
+      { days: 14, tickets: 5 },
+      { days: 30, tickets: 10 }
+    ]
+  },
+
+  // Daily challenge ticket limits
+  dailyChallenges: {
+    maxPerDay: 3  // Max ticket rewards from daily challenges per day
+  }
 };
 
 // ===========================================
