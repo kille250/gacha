@@ -2,10 +2,11 @@ import { load as loadEnv } from "loadenv";
 import { getProcessedEnvs } from "shared/utils/main.ts";
 import { System } from "modules/system/main.ts";
 
+// Use "production" to avoid development mode port multiplication
 const envs = getProcessedEnvs({
-  version: "__VERSION__",
+  version: "production",
   //@ts-ignore
-  upgrade: "__UPGRADE__",
+  upgrade: false,
 });
 
 await loadEnv();
