@@ -71,6 +71,8 @@ export const useEssenceTap = () => {
   // Auto-save tracking
   const lastSaveRef = useRef(Date.now());
   const pendingEssenceRef = useRef(0);
+  const localEssenceRef = useRef(0);
+  const localLifetimeEssenceRef = useRef(0);
 
   // Refs for intervals
   const passiveTickRef = useRef(null);
@@ -94,8 +96,12 @@ export const useEssenceTap = () => {
       if (!isMountedRef.current) return;
 
       setGameState(response.data);
-      setLocalEssence(response.data.essence || 0);
-      setLocalLifetimeEssence(response.data.lifetimeEssence || 0);
+      const essenceVal = response.data.essence || 0;
+      const lifetimeVal = response.data.lifetimeEssence || 0;
+      setLocalEssence(essenceVal);
+      setLocalLifetimeEssence(lifetimeVal);
+      localEssenceRef.current = essenceVal;
+      localLifetimeEssenceRef.current = lifetimeVal;
 
       // Show offline progress modal if applicable (only on initial load)
       if (showLoading && response.data.offlineProgress && response.data.offlineProgress.essenceEarned > 0) {
@@ -131,8 +137,16 @@ export const useEssenceTap = () => {
     const essencePerTick = (gameState.productionPerSecond * PASSIVE_TICK_RATE) / 1000;
 
     passiveTickRef.current = setInterval(() => {
-      setLocalEssence(prev => prev + essencePerTick);
-      setLocalLifetimeEssence(prev => prev + essencePerTick);
+      setLocalEssence(prev => {
+        const newVal = prev + essencePerTick;
+        localEssenceRef.current = newVal;
+        return newVal;
+      });
+      setLocalLifetimeEssence(prev => {
+        const newVal = prev + essencePerTick;
+        localLifetimeEssenceRef.current = newVal;
+        return newVal;
+      });
       pendingEssenceRef.current += essencePerTick;
     }, PASSIVE_TICK_RATE);
 
@@ -144,14 +158,14 @@ export const useEssenceTap = () => {
     };
   }, [gameState?.productionPerSecond]);
 
-  // Auto-save
+  // Auto-save (runs every 30 seconds, uses refs to avoid dependency issues)
   useEffect(() => {
     const saveInterval = setInterval(async () => {
       if (pendingEssenceRef.current > 0) {
         try {
           await api.post('/essence-tap/save', {
-            essence: Math.floor(localEssence),
-            lifetimeEssence: Math.floor(localLifetimeEssence)
+            essence: Math.floor(localEssenceRef.current),
+            lifetimeEssence: Math.floor(localLifetimeEssenceRef.current)
           });
           pendingEssenceRef.current = 0;
           lastSaveRef.current = Date.now();
@@ -162,7 +176,7 @@ export const useEssenceTap = () => {
     }, AUTO_SAVE_INTERVAL);
 
     return () => clearInterval(saveInterval);
-  }, [localEssence, localLifetimeEssence]);
+  }, []);
 
   // Handle click
   const handleClick = useCallback(async () => {
@@ -199,8 +213,16 @@ export const useEssenceTap = () => {
     if (isGolden) essenceGained = Math.floor(essenceGained * 100);
 
     // Optimistic update
-    setLocalEssence(prev => prev + essenceGained);
-    setLocalLifetimeEssence(prev => prev + essenceGained);
+    setLocalEssence(prev => {
+      const newVal = prev + essenceGained;
+      localEssenceRef.current = newVal;
+      return newVal;
+    });
+    setLocalLifetimeEssence(prev => {
+      const newVal = prev + essenceGained;
+      localLifetimeEssenceRef.current = newVal;
+      return newVal;
+    });
 
     // Set click result for visual feedback
     setLastClickResult({
@@ -230,6 +252,8 @@ export const useEssenceTap = () => {
       // Update with server values
       setLocalEssence(response.data.essence);
       setLocalLifetimeEssence(response.data.lifetimeEssence);
+      localEssenceRef.current = response.data.essence;
+      localLifetimeEssenceRef.current = response.data.lifetimeEssence;
 
       // Handle completed challenges
       if (response.data.completedChallenges?.length > 0) {
@@ -258,6 +282,7 @@ export const useEssenceTap = () => {
 
       // Update local essence
       setLocalEssence(response.data.essence);
+      localEssenceRef.current = response.data.essence;
 
       // Refresh full state to get updated generators (without showing loading)
       await fetchGameState(false);
@@ -290,6 +315,7 @@ export const useEssenceTap = () => {
       if (!isMountedRef.current) return { success: false };
 
       setLocalEssence(response.data.essence);
+      localEssenceRef.current = response.data.essence;
       await fetchGameState(false);
 
       toast.success(
