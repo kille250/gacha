@@ -16,7 +16,7 @@
  * <InlineAnnouncement />
  */
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import React, { useState, useCallback, useMemo } from 'react';
 import PropTypes from 'prop-types';
 import styled, { css, keyframes } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -258,8 +258,9 @@ const CloseButton = styled.button`
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 28px;
-  height: 28px;
+  /* Minimum 44x44px touch target for accessibility */
+  width: 44px;
+  height: 44px;
   padding: 0;
   background: rgba(255, 255, 255, 0.1);
   border: none;
@@ -277,11 +278,6 @@ const CloseButton = styled.button`
   &:focus-visible {
     outline: 2px solid white;
     outline-offset: 2px;
-  }
-
-  @media (max-width: 480px) {
-    width: 24px;
-    height: 24px;
   }
 `;
 
