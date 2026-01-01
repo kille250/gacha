@@ -15,6 +15,7 @@ const ImportJob = require('./importJob');
 const PasswordResetHistory = require('./passwordResetHistory');
 const Announcement = require('./announcement');
 const UserAnnouncementStatus = require('./userAnnouncementStatus');
+const SharedJackpot = require('./sharedJackpot');
 
 // ===========================================
 // USER CHARACTERS JUNCTION TABLE (with leveling)
@@ -127,6 +128,9 @@ UserAnnouncementStatus.belongsTo(User, { foreignKey: 'userId', as: 'user' });
 Announcement.hasMany(UserAnnouncementStatus, { foreignKey: 'announcementId', as: 'userStatuses' });
 UserAnnouncementStatus.belongsTo(Announcement, { foreignKey: 'announcementId', as: 'announcement' });
 
+// SharedJackpot <-> User (last winner)
+SharedJackpot.belongsTo(User, { foreignKey: 'lastWinnerId', as: 'lastWinner' });
+
 module.exports = {
   sequelize,
   User,
@@ -143,5 +147,6 @@ module.exports = {
   ImportJob,
   PasswordResetHistory,
   Announcement,
-  UserAnnouncementStatus
+  UserAnnouncementStatus,
+  SharedJackpot
 };

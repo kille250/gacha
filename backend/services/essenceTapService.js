@@ -19,6 +19,8 @@ const {
   FATE_POINT_MILESTONES,
   REPEATABLE_MILESTONES,
   PRESTIGE_FATE_REWARDS,
+  WEEKLY_FP_CAP,
+  MINI_MILESTONES,
   XP_REWARDS,
   DAILY_CHALLENGES,
   CHARACTER_ABILITIES,
@@ -133,6 +135,25 @@ function getInitialState() {
       lastStreakDate: null,
       exchangedThisWeek: 0,
       lastExchangeWeek: null
+    },
+
+    // Weekly FP cap tracking
+    weeklyFP: {
+      weekId: null,  // ISO week string
+      earnedThisWeek: 0
+    },
+
+    // Session stats for mini-milestones
+    sessionStats: {
+      sessionStartTime: null,
+      sessionEssence: 0,
+      currentCombo: 0,
+      maxCombo: 0,
+      critStreak: 0,
+      maxCritStreak: 0,
+      claimedSessionMilestones: [],
+      claimedComboMilestones: [],
+      claimedCritMilestones: []
     },
 
     // Essence types tracking
@@ -1209,6 +1230,278 @@ function claimMilestone(state, milestoneKey) {
   };
 }
 
+// ===========================================
+// WEEKLY FP CAP ENFORCEMENT
+// ===========================================
+
+/**
+ * Get current ISO week string
+ * @returns {string} ISO week string (e.g., "2025-W01")
+ */
+function getCurrentWeekId() {
+  const now = new Date();
+  const yearStart = new Date(now.getFullYear(), 0, 1);
+  const weekNum = Math.ceil((((now - yearStart) / 86400000) + yearStart.getDay() + 1) / 7);
+  return `${now.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+}
+
+/**
+ * Check and reset weekly FP tracking if new week
+ * @param {Object} state - Current state
+ * @returns {Object} Updated state
+ */
+function resetWeeklyFPIfNeeded(state) {
+  const currentWeek = getCurrentWeekId();
+  const newState = { ...state };
+
+  if (!newState.weeklyFP) {
+    newState.weeklyFP = { weekId: currentWeek, earnedThisWeek: 0 };
+  } else if (newState.weeklyFP.weekId !== currentWeek) {
+    newState.weeklyFP = { weekId: currentWeek, earnedThisWeek: 0 };
+  }
+
+  return newState;
+}
+
+/**
+ * Check remaining FP budget for the week
+ * @param {Object} state - Current state
+ * @returns {Object} { remaining, cap, earned }
+ */
+function getWeeklyFPBudget(state) {
+  const stateWithReset = resetWeeklyFPIfNeeded(state);
+  const earned = stateWithReset.weeklyFP?.earnedThisWeek || 0;
+  const cap = WEEKLY_FP_CAP.maxFatePointsPerWeek;
+  return {
+    remaining: Math.max(0, cap - earned),
+    cap,
+    earned,
+    atCap: earned >= cap
+  };
+}
+
+/**
+ * Apply FP reward with cap enforcement
+ * @param {Object} state - Current state
+ * @param {number} fatePoints - FP to award
+ * @param {string} source - Source of FP (for logging)
+ * @returns {Object} { newState, actualFP, capped }
+ */
+function applyFPWithCap(state, fatePoints, source = 'unknown') {
+  const newState = resetWeeklyFPIfNeeded(state);
+  const budget = getWeeklyFPBudget(newState);
+
+  // One-time milestones don't count toward cap
+  const isOneTimeMilestone = source === 'one_time_milestone';
+  if (isOneTimeMilestone) {
+    return { newState, actualFP: fatePoints, capped: false };
+  }
+
+  // Apply cap
+  const actualFP = Math.min(fatePoints, budget.remaining);
+  const capped = actualFP < fatePoints;
+
+  // Update weekly tracking
+  newState.weeklyFP.earnedThisWeek += actualFP;
+
+  return { newState, actualFP, capped };
+}
+
+// ===========================================
+// MINI-MILESTONES FOR SHORT SESSIONS
+// ===========================================
+
+/**
+ * Check and process session mini-milestones
+ * @param {Object} state - Current state
+ * @param {number} sessionEssence - Essence earned this session
+ * @returns {Object} { newState, achievements }
+ */
+function checkSessionMilestones(state, sessionEssence) {
+  const newState = { ...state };
+  if (!newState.sessionStats) {
+    newState.sessionStats = {
+      sessionStartTime: Date.now(),
+      sessionEssence: 0,
+      currentCombo: 0,
+      maxCombo: 0,
+      critStreak: 0,
+      maxCritStreak: 0,
+      claimedSessionMilestones: [],
+      claimedComboMilestones: [],
+      claimedCritMilestones: []
+    };
+  }
+
+  newState.sessionStats.sessionEssence = sessionEssence;
+  const achievements = [];
+
+  for (const milestone of MINI_MILESTONES.sessionMilestones) {
+    if (sessionEssence >= milestone.essence &&
+        !newState.sessionStats.claimedSessionMilestones.includes(milestone.name)) {
+      newState.sessionStats.claimedSessionMilestones.push(milestone.name);
+      achievements.push({
+        type: 'session',
+        name: milestone.name,
+        reward: milestone.reward
+      });
+    }
+  }
+
+  return { newState, achievements };
+}
+
+/**
+ * Check and process combo milestones
+ * @param {Object} state - Current state
+ * @param {number} currentCombo - Current combo count
+ * @returns {Object} { newState, achievements }
+ */
+function checkComboMilestones(state, currentCombo) {
+  const newState = { ...state };
+  if (!newState.sessionStats) {
+    newState.sessionStats = {
+      sessionStartTime: Date.now(),
+      sessionEssence: 0,
+      currentCombo: 0,
+      maxCombo: 0,
+      critStreak: 0,
+      maxCritStreak: 0,
+      claimedSessionMilestones: [],
+      claimedComboMilestones: [],
+      claimedCritMilestones: []
+    };
+  }
+
+  newState.sessionStats.currentCombo = currentCombo;
+  if (currentCombo > newState.sessionStats.maxCombo) {
+    newState.sessionStats.maxCombo = currentCombo;
+  }
+
+  const achievements = [];
+
+  for (const milestone of MINI_MILESTONES.comboMilestones) {
+    if (currentCombo >= milestone.combo &&
+        !newState.sessionStats.claimedComboMilestones.includes(milestone.name)) {
+      newState.sessionStats.claimedComboMilestones.push(milestone.name);
+      achievements.push({
+        type: 'combo',
+        name: milestone.name,
+        reward: milestone.reward
+      });
+    }
+  }
+
+  return { newState, achievements };
+}
+
+/**
+ * Check and process crit streak milestones
+ * @param {Object} state - Current state
+ * @param {boolean} wasCrit - Whether last click was a crit
+ * @returns {Object} { newState, achievements }
+ */
+function checkCritStreakMilestones(state, wasCrit) {
+  const newState = { ...state };
+  if (!newState.sessionStats) {
+    newState.sessionStats = {
+      sessionStartTime: Date.now(),
+      sessionEssence: 0,
+      currentCombo: 0,
+      maxCombo: 0,
+      critStreak: 0,
+      maxCritStreak: 0,
+      claimedSessionMilestones: [],
+      claimedComboMilestones: [],
+      claimedCritMilestones: []
+    };
+  }
+
+  if (wasCrit) {
+    newState.sessionStats.critStreak++;
+    if (newState.sessionStats.critStreak > newState.sessionStats.maxCritStreak) {
+      newState.sessionStats.maxCritStreak = newState.sessionStats.critStreak;
+    }
+  } else {
+    newState.sessionStats.critStreak = 0;
+  }
+
+  const achievements = [];
+
+  for (const milestone of MINI_MILESTONES.critStreakMilestones) {
+    if (newState.sessionStats.critStreak >= milestone.streak &&
+        !newState.sessionStats.claimedCritMilestones.includes(milestone.name)) {
+      newState.sessionStats.claimedCritMilestones.push(milestone.name);
+      achievements.push({
+        type: 'critStreak',
+        name: milestone.name,
+        reward: milestone.reward
+      });
+    }
+  }
+
+  return { newState, achievements };
+}
+
+/**
+ * Reset session stats (called when session starts)
+ * @param {Object} state - Current state
+ * @returns {Object} New state with reset session stats
+ */
+function resetSessionStats(state) {
+  const newState = { ...state };
+  newState.sessionStats = {
+    sessionStartTime: Date.now(),
+    sessionEssence: 0,
+    currentCombo: 0,
+    maxCombo: 0,
+    critStreak: 0,
+    maxCritStreak: 0,
+    claimedSessionMilestones: [],
+    claimedComboMilestones: [],
+    claimedCritMilestones: []
+  };
+  return newState;
+}
+
+/**
+ * Get session stats summary
+ * @param {Object} state - Current state
+ * @returns {Object} Session stats summary
+ */
+function getSessionStats(state) {
+  const stats = state.sessionStats || {};
+  const sessionDuration = stats.sessionStartTime
+    ? Math.floor((Date.now() - stats.sessionStartTime) / 1000)
+    : 0;
+
+  return {
+    duration: sessionDuration,
+    durationFormatted: formatSessionDuration(sessionDuration),
+    essenceEarned: stats.sessionEssence || 0,
+    maxCombo: stats.maxCombo || 0,
+    maxCritStreak: stats.maxCritStreak || 0,
+    milestonesAchieved: (stats.claimedSessionMilestones?.length || 0) +
+                        (stats.claimedComboMilestones?.length || 0) +
+                        (stats.claimedCritMilestones?.length || 0)
+  };
+}
+
+/**
+ * Format session duration for display
+ * @param {number} seconds - Duration in seconds
+ * @returns {string} Formatted duration
+ */
+function formatSessionDuration(seconds) {
+  if (seconds < 60) return `${seconds}s`;
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  if (mins < 60) return `${mins}m ${secs}s`;
+  const hours = Math.floor(mins / 60);
+  const remainingMins = mins % 60;
+  return `${hours}h ${remainingMins}m`;
+}
+
 /**
  * Assign a character for production bonus
  * @param {Object} state - Current state
@@ -1935,50 +2228,109 @@ function claimRepeatableMilestone(state, milestoneType) {
 }
 
 // ===========================================
-// PROGRESSIVE JACKPOT SYSTEM
+// PROGRESSIVE JACKPOT SYSTEM (SHARED)
 // ===========================================
 
 /**
- * Get jackpot info (this would need server-side storage in production)
- * For now, we simulate with a seed + contributions
- * @param {Object} state - Current state
- * @returns {Object} Jackpot info
+ * Get jackpot info from the shared jackpot
+ * This fetches from the SharedJackpot model for server-wide jackpot
+ * @param {Object} _state - Current state (unused, kept for API compatibility)
+ * @returns {Object} Jackpot info (sync version for state calculation)
  */
-function getJackpotInfo(state) {
+function getJackpotInfo(_state) {
   const jackpotConfig = GAMBLE_CONFIG.jackpot;
-  // In production, this would be stored server-side and shared across users
-  // For single-player, we use contributions to grow it
-  const baseJackpot = jackpotConfig.seedAmount;
-  const playerContributions = state.jackpotContributions || 0;
-
+  // This returns basic info - the actual amount comes from getSharedJackpotInfo async
   return {
-    currentAmount: baseJackpot + playerContributions,
+    currentAmount: jackpotConfig.seedAmount, // Base amount, real value fetched async
     contributionRate: jackpotConfig.contributionRate,
     winChance: jackpotConfig.winChance,
-    minBetToQualify: jackpotConfig.minBetToQualify
+    minBetToQualify: jackpotConfig.minBetToQualify,
+    isShared: true
   };
 }
 
 /**
- * Contribute to jackpot pool from gamble bet
+ * Get shared jackpot info from database (async)
+ * @returns {Promise<Object>} Shared jackpot info
+ */
+async function getSharedJackpotInfo() {
+  const { SharedJackpot, User } = require('../models');
+  const jackpotConfig = GAMBLE_CONFIG.jackpot;
+
+  let jackpot = await SharedJackpot.findOne({
+    where: { jackpotType: 'essence_tap_main' },
+    include: [{ model: User, as: 'lastWinner', attributes: ['id', 'username'] }]
+  });
+
+  // Create if doesn't exist
+  if (!jackpot) {
+    jackpot = await SharedJackpot.create({
+      jackpotType: 'essence_tap_main',
+      currentAmount: jackpotConfig.seedAmount,
+      seedAmount: jackpotConfig.seedAmount
+    });
+  }
+
+  return {
+    currentAmount: Number(jackpot.currentAmount),
+    seedAmount: Number(jackpot.seedAmount),
+    totalContributions: Number(jackpot.totalContributions),
+    totalWins: jackpot.totalWins,
+    contributorCount: jackpot.contributorCount,
+    lastWinner: jackpot.lastWinner ? {
+      id: jackpot.lastWinner.id,
+      username: jackpot.lastWinner.username
+    } : null,
+    lastWinAmount: jackpot.lastWinAmount ? Number(jackpot.lastWinAmount) : null,
+    lastWinDate: jackpot.lastWinDate,
+    largestWin: Number(jackpot.largestWin),
+    contributionRate: jackpotConfig.contributionRate,
+    winChance: jackpotConfig.winChance,
+    minBetToQualify: jackpotConfig.minBetToQualify,
+    isShared: true
+  };
+}
+
+/**
+ * Contribute to shared jackpot pool from gamble bet
  * @param {Object} state - Current state
  * @param {number} betAmount - Amount bet
- * @returns {Object} Updated state and contribution amount
+ * @param {number} userId - User ID for tracking
+ * @returns {Promise<Object>} Updated state and contribution amount
  */
-function contributeToJackpot(state, betAmount) {
+async function contributeToJackpot(state, betAmount, userId = null) {
+  const { SharedJackpot } = require('../models');
   const contribution = Math.floor(betAmount * GAMBLE_CONFIG.jackpot.contributionRate);
+
+  // Update the shared jackpot in database
+  const jackpot = await SharedJackpot.findOne({
+    where: { jackpotType: 'essence_tap_main' }
+  });
+
+  if (jackpot) {
+    await jackpot.update({
+      currentAmount: Number(jackpot.currentAmount) + contribution,
+      totalContributions: Number(jackpot.totalContributions) + contribution,
+      contributorCount: jackpot.contributorCount + (userId ? 1 : 0)
+    });
+  }
+
+  // Also track personal contributions in state for stats
   const newState = { ...state };
   newState.jackpotContributions = (state.jackpotContributions || 0) + contribution;
+
   return { newState, contribution };
 }
 
 /**
- * Check for jackpot win during gamble
+ * Check for jackpot win during gamble (uses shared jackpot)
  * @param {Object} state - Current state
  * @param {number} betAmount - Amount bet
- * @returns {Object} Jackpot result
+ * @param {string} betType - Type of bet (safe/risky/extreme)
+ * @returns {Promise<Object>} Jackpot result
  */
-function checkJackpotWin(state, betAmount) {
+async function checkJackpotWin(state, betAmount, betType = 'safe') {
+  const { SharedJackpot } = require('../models');
   const jackpotConfig = GAMBLE_CONFIG.jackpot;
 
   // Must meet minimum bet to qualify
@@ -1986,30 +2338,76 @@ function checkJackpotWin(state, betAmount) {
     return { won: false, reason: 'bet_too_small' };
   }
 
+  // Get bet type multiplier for win chance
+  const chanceMultiplier = jackpotConfig.chanceMultipliers[betType] || 1.0;
+
+  // Calculate win chance with streak bonus
+  let winChance = jackpotConfig.winChance * chanceMultiplier;
+
+  // Add streak bonus if applicable
+  const gamblesInSession = state.daily?.gamblesUsed || 0;
+  if (gamblesInSession >= jackpotConfig.streakBonus.threshold) {
+    const extraGambles = gamblesInSession - jackpotConfig.streakBonus.threshold;
+    winChance += extraGambles * jackpotConfig.streakBonus.bonusPerGamble;
+  }
+
   const roll = Math.random();
-  if (roll < jackpotConfig.winChance) {
-    const jackpotAmount = jackpotConfig.seedAmount + (state.jackpotContributions || 0);
-    return {
-      won: true,
-      amount: jackpotAmount
-    };
+  if (roll < winChance) {
+    // Get the shared jackpot amount
+    const jackpot = await SharedJackpot.findOne({
+      where: { jackpotType: 'essence_tap_main' }
+    });
+
+    if (jackpot) {
+      const jackpotAmount = Number(jackpot.currentAmount);
+      return {
+        won: true,
+        amount: jackpotAmount,
+        rewards: jackpotConfig.rewards
+      };
+    }
   }
 
   return { won: false };
 }
 
 /**
- * Reset jackpot after win
+ * Reset shared jackpot after win and record winner
  * @param {Object} state - Current state
- * @returns {Object} Updated state
+ * @param {number} userId - Winner's user ID
+ * @param {number} winAmount - Amount won
+ * @returns {Promise<Object>} Updated state
  */
-function resetJackpot(state) {
+async function resetJackpot(state, userId, winAmount) {
+  const { SharedJackpot } = require('../models');
+  const jackpotConfig = GAMBLE_CONFIG.jackpot;
+
+  const jackpot = await SharedJackpot.findOne({
+    where: { jackpotType: 'essence_tap_main' }
+  });
+
+  if (jackpot) {
+    await jackpot.update({
+      currentAmount: jackpotConfig.seedAmount,
+      totalContributions: 0,
+      contributorCount: 0,
+      totalWins: jackpot.totalWins + 1,
+      lastWinnerId: userId,
+      lastWinAmount: winAmount,
+      lastWinDate: new Date(),
+      largestWin: Math.max(Number(jackpot.largestWin), winAmount)
+    });
+  }
+
+  // Update player state
   const newState = { ...state };
   newState.jackpotContributions = 0;
   newState.stats = {
     ...state.stats,
-    jackpotsWon: (state.stats?.jackpotsWon || 0) + 1
+    jackpotsWon: (state.stats?.jackpotsWon || 0) + 1,
+    totalJackpotWinnings: (state.stats?.totalJackpotWinnings || 0) + winAmount
   };
+
   return newState;
 }
 
@@ -2431,8 +2829,9 @@ module.exports = {
   getGambleInfo,
   performGamble,
 
-  // Jackpot system
+  // Jackpot system (shared progressive)
   getJackpotInfo,
+  getSharedJackpotInfo,
   contributeToJackpot,
   checkJackpotWin,
   resetJackpot,
@@ -2483,6 +2882,19 @@ module.exports = {
   getPrestigeInfo,
   getGameState,
 
+  // Weekly FP cap
+  getCurrentWeekId,
+  resetWeeklyFPIfNeeded,
+  getWeeklyFPBudget,
+  applyFPWithCap,
+
+  // Mini-milestones
+  checkSessionMilestones,
+  checkComboMilestones,
+  checkCritStreakMilestones,
+  resetSessionStats,
+  getSessionStats,
+
   // Config exports
   GENERATORS,
   GAME_CONFIG,
@@ -2491,5 +2903,7 @@ module.exports = {
   SERIES_SYNERGIES,
   WEEKLY_TOURNAMENT,
   TICKET_GENERATION,
-  REPEATABLE_MILESTONES
+  REPEATABLE_MILESTONES,
+  WEEKLY_FP_CAP,
+  MINI_MILESTONES
 };

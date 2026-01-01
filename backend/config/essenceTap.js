@@ -511,10 +511,10 @@ const GAME_CONFIG = {
   clickPowerPerGenerator: 0.001,  // +0.1% per generator
   maxClickPowerFromGenerators: 2.0,  // Cap at +200%
 
-  // Combo system
-  comboDecayTime: 1000,      // ms before combo resets
-  maxComboMultiplier: 2.0,   // Max combo bonus
-  comboGrowthRate: 0.1,      // Multiplier increase per click
+  // Combo system - increased decay time for mobile friendliness
+  comboDecayTime: 1500,      // ms before combo resets (was 1000, increased for mobile)
+  maxComboMultiplier: 2.5,   // Max combo bonus (increased from 2.0)
+  comboGrowthRate: 0.08,     // Multiplier increase per click (slightly slower for balance)
 
   // Offline progress
   maxOfflineHours: 8,        // Maximum hours of offline gains
@@ -713,36 +713,75 @@ const REPEATABLE_MILESTONES = {
   // Weekly essence milestone
   weeklyEssence: {
     threshold: 100000000,  // 100M essence per week
-    fatePoints: 25,
+    fatePoints: 20,  // Reduced from 25 to balance economy
     rollTickets: 3
   },
   // Weekly click goal
   weeklyClicks: {
     threshold: 10000,      // 10,000 clicks per week
-    fatePoints: 10,
+    fatePoints: 8,  // Reduced from 10
     rollTickets: 2
   },
   // Weekly prestige goal (prestige at least once per week)
   weeklyPrestige: {
     threshold: 1,
-    fatePoints: 15,
+    fatePoints: 12,  // Reduced from 15
     premiumTickets: 1
   },
   // Essence earned per 100B (repeatable indefinitely)
   essencePer100B: {
     threshold: 100000000000,  // 100B
-    fatePoints: 50,
+    fatePoints: 25,  // Reduced from 50 to prevent late-game FP explosion
     repeatable: true
   }
+};
+
+/**
+ * Weekly FP cap for Essence Tap to prevent economic imbalance
+ * This ensures Essence Tap doesn't outpace gacha FP generation
+ */
+const WEEKLY_FP_CAP = {
+  maxFatePointsPerWeek: 100,  // Max 100 FP from Essence Tap per week (vs 500 from gacha)
+  includesMilestones: true,   // One-time milestones don't count toward cap
+  includesPrestige: true,     // Prestige FP counts toward cap
+  includesTournament: true    // Tournament FP counts toward cap
 };
 
 /**
  * Prestige rewards Fate Points
  */
 const PRESTIGE_FATE_REWARDS = {
-  firstPrestige: 25,
-  perPrestige: 10,
+  firstPrestige: 20,  // Reduced from 25
+  perPrestige: 8,     // Reduced from 10
   maxPrestigeRewards: 10  // After 10 prestiges, no more FP from prestige
+};
+
+/**
+ * Mini-milestones for short mobile sessions
+ * These provide frequent dopamine hits in 2-5 minute sessions
+ */
+const MINI_MILESTONES = {
+  // Session-based milestones (reset on page load)
+  sessionMilestones: [
+    { essence: 10000, reward: { xp: 5 }, name: 'Quick Start' },
+    { essence: 50000, reward: { xp: 10 }, name: 'Warming Up' },
+    { essence: 100000, reward: { xp: 15, rollTickets: 1 }, name: 'Getting Going' },
+    { essence: 500000, reward: { xp: 25 }, name: 'In the Zone' },
+    { essence: 1000000, reward: { xp: 50, rollTickets: 2 }, name: 'Million Club' }
+  ],
+  // Click combo milestones (during active session)
+  comboMilestones: [
+    { combo: 10, reward: { essenceMultiplier: 1.1 }, name: '10 Hit Combo' },
+    { combo: 25, reward: { essenceMultiplier: 1.25 }, name: '25 Hit Combo' },
+    { combo: 50, reward: { essenceMultiplier: 1.5, xp: 10 }, name: '50 Hit Combo' },
+    { combo: 100, reward: { essenceMultiplier: 2.0, xp: 25, rollTickets: 1 }, name: 'Century' }
+  ],
+  // Critical hit streak milestones
+  critStreakMilestones: [
+    { streak: 3, reward: { essenceMultiplier: 1.5 }, name: 'Lucky Streak' },
+    { streak: 5, reward: { essenceMultiplier: 2.0, xp: 15 }, name: 'On Fire' },
+    { streak: 10, reward: { essenceMultiplier: 3.0, xp: 50, rollTickets: 1 }, name: 'Unstoppable' }
+  ]
 };
 
 // ===========================================
@@ -1317,6 +1356,10 @@ module.exports = {
   FATE_POINT_MILESTONES,
   REPEATABLE_MILESTONES,
   PRESTIGE_FATE_REWARDS,
+  WEEKLY_FP_CAP,
+
+  // Mini-milestones for mobile sessions
+  MINI_MILESTONES,
 
   // XP rewards
   XP_REWARDS,

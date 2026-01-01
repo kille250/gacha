@@ -15,3 +15,6 @@ export { default as InfusionPanel } from './InfusionPanel';
 export { default as WeeklyTournament } from './WeeklyTournament';
 export { default as CharacterMasteryDisplay } from './CharacterMasteryDisplay';
 export { default as EssenceTypesDisplay } from './EssenceTypesDisplay';
+export { default as SessionStatsPanel } from './SessionStatsPanel';
+export { default as SynergyPreviewPanel } from './SynergyPreviewPanel';
+export { default as EssenceTapErrorBoundary } from './EssenceTapErrorBoundary';

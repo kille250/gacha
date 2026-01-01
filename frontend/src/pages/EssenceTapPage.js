@@ -44,9 +44,12 @@ import {
   InfusionPanel,
   WeeklyTournament,
   CharacterMasteryDisplay,
-  EssenceTypesDisplay
+  EssenceTypesDisplay,
+  SessionStatsPanel,
+  SynergyPreviewPanel,
+  EssenceTapErrorBoundary
 } from '../components/EssenceTap';
-import { IconDice, IconSparkles, IconTrophy, IconStar, IconGem } from '../constants/icons';
+import { IconDice, IconSparkles, IconTrophy, IconStar, IconGem, IconChart, IconUsers } from '../constants/icons';
 
 // Local storage key for onboarding
 const ONBOARDING_COMPLETE_KEY = 'essenceTap_onboardingComplete';
@@ -292,6 +295,8 @@ const EssenceTapPage = memo(() => {
   const [showTournament, setShowTournament] = useState(false);
   const [showMastery, setShowMastery] = useState(false);
   const [showEssenceTypes, setShowEssenceTypes] = useState(false);
+  const [showSessionStats, setShowSessionStats] = useState(false);
+  const [showSynergyPreview, setShowSynergyPreview] = useState(false);
   const [_dailyModifier, setDailyModifier] = useState(null);
   const [activeAbilityEffects, setActiveAbilityEffects] = useState({});
 
@@ -404,14 +409,15 @@ const EssenceTapPage = memo(() => {
   }
 
   return (
-    <PageTransition>
-      <PageContainer
-        variants={pageEnterVariants}
-        initial="initial"
-        animate="animate"
-      >
-        {/* Daily Modifier Banner */}
-        <DailyModifierBanner onModifierChange={handleDailyModifierChange} />
+    <EssenceTapErrorBoundary>
+      <PageTransition>
+        <PageContainer
+          variants={pageEnterVariants}
+          initial="initial"
+          animate="animate"
+        >
+          {/* Daily Modifier Banner */}
+          <DailyModifierBanner onModifierChange={handleDailyModifierChange} />
 
         <Header>
           <EssenceDisplay>
@@ -547,6 +553,22 @@ const EssenceTapPage = memo(() => {
                 <IconGem size={16} />
                 {t('essenceTap.types', { defaultValue: 'Types' })}
               </FeatureButton>
+
+              <FeatureButton
+                variant="secondary"
+                onClick={() => setShowSessionStats(true)}
+              >
+                <IconChart size={16} />
+                {t('essenceTap.session', { defaultValue: 'Session' })}
+              </FeatureButton>
+
+              <FeatureButton
+                variant="secondary"
+                onClick={() => setShowSynergyPreview(true)}
+              >
+                <IconUsers size={16} />
+                {t('essenceTap.synergy', { defaultValue: 'Synergy' })}
+              </FeatureButton>
             </FeatureButtonsRow>
           </TapSection>
 
@@ -632,6 +654,18 @@ const EssenceTapPage = memo(() => {
           getEssenceTypes={getEssenceTypes}
         />
 
+        {/* Session Stats Panel */}
+        <SessionStatsPanel
+          isOpen={showSessionStats}
+          onClose={() => setShowSessionStats(false)}
+        />
+
+        {/* Synergy Preview Panel */}
+        <SynergyPreviewPanel
+          isOpen={showSynergyPreview}
+          onClose={() => setShowSynergyPreview(false)}
+        />
+
         {/* Offline Progress Modal */}
         <AnimatePresence>
           {offlineProgress && (
@@ -662,8 +696,9 @@ const EssenceTapPage = memo(() => {
             </Modal>
           )}
         </AnimatePresence>
-      </PageContainer>
-    </PageTransition>
+        </PageContainer>
+      </PageTransition>
+    </EssenceTapErrorBoundary>
   );
 });
 

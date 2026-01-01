@@ -12,10 +12,10 @@ import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../cache/manager';
 
-// Constants
-const COMBO_DECAY_TIME = 1000; // ms before combo resets
-const MAX_COMBO_MULTIPLIER = 2.0;
-const COMBO_GROWTH_RATE = 0.1;
+// Constants - synced with backend config
+const COMBO_DECAY_TIME = 1500; // ms before combo resets (increased for mobile)
+const MAX_COMBO_MULTIPLIER = 2.5; // Max combo bonus
+const COMBO_GROWTH_RATE = 0.08; // Multiplier increase per click
 const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
 const PASSIVE_TICK_RATE = 100; // ms between passive ticks
 

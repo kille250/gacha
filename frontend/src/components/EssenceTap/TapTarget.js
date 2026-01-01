@@ -88,6 +88,23 @@ const TapButton = styled(motion.button)`
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
 
+  /* Mobile touch optimizations */
+  -webkit-touch-callout: none;
+  -webkit-user-select: none;
+  -ms-touch-action: manipulation;
+  outline: none;
+
+  /* Prevent double-tap zoom */
+  touch-action: manipulation;
+
+  /* Faster touch response */
+  @media (hover: none) and (pointer: coarse) {
+    &:active {
+      transform: scale(0.92);
+      transition: transform 0.05s ease-out;
+    }
+  }
+
   ${props => props.$isCrit && css`
     animation: ${critGlow} 0.3s ease-out;
   `}
@@ -339,6 +356,24 @@ const TapTarget = memo(({
     }
   }, []);
 
+  // Haptic feedback for mobile
+  const triggerHaptic = useCallback((type = 'light') => {
+    if (window.navigator && window.navigator.vibrate) {
+      switch (type) {
+        case 'heavy':
+          window.navigator.vibrate([30, 10, 30]); // Golden click
+          break;
+        case 'medium':
+          window.navigator.vibrate(20); // Crit click
+          break;
+        case 'light':
+        default:
+          window.navigator.vibrate(10); // Normal click
+          break;
+      }
+    }
+  }, []);
+
   const handleClick = useCallback((e) => {
     // Get click position relative to button center
     const rect = buttonRef.current?.getBoundingClientRect();
@@ -352,6 +387,15 @@ const TapTarget = memo(({
     const offsetY = -20 + (Math.random() - 0.5) * 20;
 
     onClick?.();
+
+    // Trigger haptic feedback
+    if (lastClickResult?.isGolden) {
+      triggerHaptic('heavy');
+    } else if (lastClickResult?.isCrit) {
+      triggerHaptic('medium');
+    } else {
+      triggerHaptic('light');
+    }
 
     // Spawn particles at click position (offset for canvas position)
     const canvasX = 200 + (clickX - centerX);
@@ -375,7 +419,7 @@ const TapTarget = memo(({
         setFloatingNumbers(prev => prev.filter(n => n.id !== id));
       }, 600);
     }
-  }, [onClick, lastClickResult, spawnParticles]);
+  }, [onClick, lastClickResult, spawnParticles, triggerHaptic]);
 
   return (
     <TapContainer>
