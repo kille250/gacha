@@ -16,6 +16,7 @@
  */
 
 import React, { useMemo, useContext, useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import styled from 'styled-components';
 // motion/AnimatePresence available if needed for future animations
@@ -42,7 +43,9 @@ const Navigation = () => {
 
   // Dropdown state
   const [gamesDropdownOpen, setGamesDropdownOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, left: 0 });
   const dropdownRef = useRef(null);
+  const triggerRef = useRef(null);
 
   // Hourly reward state
   const hourlyReward = useHourlyReward();
@@ -53,7 +56,11 @@ const Navigation = () => {
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      // Check if click is outside both the trigger and the dropdown menu
+      const isOutsideTrigger = triggerRef.current && !triggerRef.current.contains(event.target);
+      const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target);
+
+      if (isOutsideTrigger && isOutsideDropdown) {
         setGamesDropdownOpen(false);
       }
     };
@@ -67,6 +74,17 @@ const Navigation = () => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
+  }, [gamesDropdownOpen]);
+
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (gamesDropdownOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 4, // 4px gap below trigger
+        left: rect.left + rect.width / 2, // Center horizontally
+      });
+    }
   }, [gamesDropdownOpen]);
 
   // Close dropdown on route change
@@ -136,8 +154,9 @@ const Navigation = () => {
             // Dropdown item (Games)
             if (item.isDropdown) {
               return (
-                <DropdownWrapper key={item.id} ref={dropdownRef}>
+                <DropdownWrapper key={item.id}>
                   <DropdownTrigger
+                    ref={triggerRef}
                     onClick={toggleGamesDropdown}
                     onKeyDown={handleKeyDown}
                     $isActive={isGamesActive || gamesDropdownOpen}
@@ -151,8 +170,15 @@ const Navigation = () => {
                     </DropdownArrow>
                   </DropdownTrigger>
 
-                  {gamesDropdownOpen && (
-                    <DropdownMenuContainer>
+                  {/* Portal dropdown to document body to escape NavContainer stacking context */}
+                  {gamesDropdownOpen && createPortal(
+                    <DropdownMenuPortal
+                      ref={dropdownRef}
+                      style={{
+                        top: dropdownPosition.top,
+                        left: dropdownPosition.left,
+                      }}
+                    >
                       <DropdownMenuInner role="menu">
                         {item.items.map((subItem) => {
                           const isSubActive = location.pathname === subItem.path;
@@ -173,7 +199,8 @@ const Navigation = () => {
                           );
                         })}
                       </DropdownMenuInner>
-                    </DropdownMenuContainer>
+                    </DropdownMenuPortal>,
+                    document.body
                   )}
                 </DropdownWrapper>
               );
@@ -513,10 +540,8 @@ const DropdownArrow = styled.span`
   `}
 `;
 
-const DropdownMenuContainer = styled.div`
-  position: absolute;
-  top: calc(100% + ${theme.spacing.xs});
-  left: 50%;
+const DropdownMenuPortal = styled.div`
+  position: fixed;
   transform: translateX(-50%);
   z-index: ${theme.zIndex.stickyDropdown};
 `;

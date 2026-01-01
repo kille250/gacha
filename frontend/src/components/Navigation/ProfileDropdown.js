@@ -7,6 +7,7 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useNavigate } from 'react-router-dom';
@@ -38,9 +39,11 @@ const ProfileDropdown = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const triggerRef = useRef(null);
   const dropdownRef = useRef(null);
 
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   const [showLanguageSubmenu, setShowLanguageSubmenu] = useState(false);
   const [isTogglingR18, setIsTogglingR18] = useState(false);
 
@@ -50,15 +53,31 @@ const ProfileDropdown = ({
   // Close dropdown when clicking outside
   useEffect(() => {
     const handleClickOutside = (event) => {
-      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+      const isOutsideTrigger = triggerRef.current && !triggerRef.current.contains(event.target);
+      const isOutsideDropdown = dropdownRef.current && !dropdownRef.current.contains(event.target);
+
+      if (isOutsideTrigger && isOutsideDropdown) {
         setIsOpen(false);
         setShowLanguageSubmenu(false);
       }
     };
 
-    document.addEventListener('mousedown', handleClickOutside);
+    if (isOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+    }
     return () => document.removeEventListener('mousedown', handleClickOutside);
-  }, []);
+  }, [isOpen]);
+
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && triggerRef.current) {
+      const rect = triggerRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
+  }, [isOpen]);
 
   // Close dropdown on navigation
   const handleNavigate = (path) => {
@@ -93,8 +112,9 @@ const ProfileDropdown = ({
   }, [isTogglingR18, user, setUser]);
 
   return (
-    <Container ref={dropdownRef}>
+    <Container>
       <TriggerButton
+        ref={triggerRef}
         onClick={() => setIsOpen(!isOpen)}
         $isOpen={isOpen}
         whileHover={{ scale: 1.02 }}
@@ -116,8 +136,13 @@ const ProfileDropdown = ({
       </TriggerButton>
 
       <AnimatePresence>
-        {isOpen && (
-          <Dropdown
+        {isOpen && createPortal(
+          <DropdownPortal
+            ref={dropdownRef}
+            style={{
+              top: dropdownPosition.top,
+              right: dropdownPosition.right,
+            }}
             initial={{ opacity: 0, y: -10, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -10, scale: 0.95 }}
@@ -176,7 +201,8 @@ const ProfileDropdown = ({
               <MenuIcon><MdExitToApp /></MenuIcon>
               <span>{t('nav.logout')}</span>
             </MenuItem>
-          </Dropdown>
+          </DropdownPortal>,
+          document.body
         )}
       </AnimatePresence>
     </Container>
@@ -248,10 +274,8 @@ const Arrow = styled.div`
   transform: ${props => props.$isOpen ? 'rotate(180deg)' : 'rotate(0deg)'};
 `;
 
-const Dropdown = styled(motion.div)`
-  position: absolute;
-  top: calc(100% + 8px);
-  right: 0;
+const DropdownPortal = styled(motion.div)`
+  position: fixed;
   /* Respect viewport bounds - don't overflow on narrow screens */
   width: min(260px, calc(100vw - 32px));
   /* Prevent vertical overflow on short viewports */
@@ -261,14 +285,8 @@ const Dropdown = styled(motion.div)`
   border: 1px solid ${theme.colors.surfaceBorder};
   border-radius: ${theme.radius.lg};
   box-shadow: ${theme.shadows.lg};
-  /* Use stickyDropdown to appear above other sticky elements */
+  /* Use stickyDropdown to appear above banner and other elements */
   z-index: ${theme.zIndex.stickyDropdown};
-
-  /* Very narrow screens - adjust position */
-  @media (max-width: 320px) {
-    right: -8px;
-    width: calc(100vw - 16px);
-  }
 
   /* Very short viewports - more compact */
   @media (max-height: 500px) {

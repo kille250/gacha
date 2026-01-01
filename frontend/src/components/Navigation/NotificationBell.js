@@ -13,10 +13,11 @@
  */
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
+import { createPortal } from 'react-dom';
 import { Link } from 'react-router-dom';
 import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
-import { FaBell, FaCheck, FaTimes, FaChevronRight } from 'react-icons/fa';
+import { FaBell, FaCheck, FaChevronRight } from 'react-icons/fa';
 import { useTranslation } from 'react-i18next';
 import { theme } from '../../design-system';
 import { useAnnouncements } from '../../context/AnnouncementContext';
@@ -25,6 +26,7 @@ const NotificationBell = ({ variant = 'desktop' }) => {
   const { t } = useTranslation();
   const { announcements, unreadCount, markAsRead, acknowledge } = useAnnouncements();
   const [isOpen, setIsOpen] = useState(false);
+  const [dropdownPosition, setDropdownPosition] = useState({ top: 0, right: 0 });
   const dropdownRef = useRef(null);
   const buttonRef = useRef(null);
 
@@ -54,6 +56,17 @@ const NotificationBell = ({ variant = 'desktop' }) => {
       document.removeEventListener('mousedown', handleClickOutside);
       document.removeEventListener('touchstart', handleClickOutside);
     };
+  }, [isOpen]);
+
+  // Update dropdown position when opened
+  useEffect(() => {
+    if (isOpen && buttonRef.current) {
+      const rect = buttonRef.current.getBoundingClientRect();
+      setDropdownPosition({
+        top: rect.bottom + 8,
+        right: window.innerWidth - rect.right,
+      });
+    }
   }, [isOpen]);
 
   // Handle keyboard navigation
@@ -143,9 +156,13 @@ const NotificationBell = ({ variant = 'desktop' }) => {
       </BellButton>
 
       <AnimatePresence>
-        {isOpen && (
-          <Dropdown
+        {isOpen && createPortal(
+          <DropdownPortal
             ref={dropdownRef}
+            style={{
+              top: dropdownPosition.top,
+              right: dropdownPosition.right,
+            }}
             initial={{ opacity: 0, y: -8, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: -8, scale: 0.95 }}
@@ -202,7 +219,8 @@ const NotificationBell = ({ variant = 'desktop' }) => {
                 </ViewAllLink>
               </DropdownFooter>
             )}
-          </Dropdown>
+          </DropdownPortal>,
+          document.body
         )}
       </AnimatePresence>
     </BellWrapper>
@@ -321,10 +339,8 @@ const MobileBadge = styled.span`
   border-radius: ${theme.radius.full};
 `;
 
-const Dropdown = styled(motion.div)`
-  position: absolute;
-  top: calc(100% + ${theme.spacing.sm});
-  right: 0;
+const DropdownPortal = styled(motion.div)`
+  position: fixed;
   width: 340px;
   max-width: calc(100vw - ${theme.spacing.lg} * 2);
   background: ${theme.colors.surface};
