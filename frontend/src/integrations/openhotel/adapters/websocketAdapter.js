@@ -179,6 +179,10 @@ export class OpenHotelWebSocket {
           const connectionTime = Date.now() - this.connectionStartTime;
           this.log(`Connected in ${connectionTime}ms`);
 
+          // Send $$load event to complete handshake with OpenHotel server
+          // This triggers the USER_JOINED event on the server
+          this.send('$$load', {});
+
           // Start heartbeat
           this.startHeartbeat();
 
