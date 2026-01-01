@@ -1,0 +1,14 @@
+# Ignore documentation and scripts
+DEPLOY.md
+setup.sh
+setup.ps1
+.env
+.env.example
+*.md
+
+# Ignore git
+.git
+.gitignore
+
+# Ignore local data
+data/

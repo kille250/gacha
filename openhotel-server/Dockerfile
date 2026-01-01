@@ -11,15 +11,14 @@ RUN addgroup --system --gid 1001 openhotel && \
     adduser --system --uid 1001 openhotel
 
 # Create data directory for persistent storage
-RUN mkdir -p /app/data /app/assets && \
+RUN mkdir -p /app/data && \
     chown -R openhotel:openhotel /app
 
-# Copy OpenHotel server files
-# Note: You'll need to copy files from openhotel-reference/app/server
-COPY --chown=openhotel:openhotel ./app/server/ ./
+# Copy OpenHotel server files from current directory
+COPY --chown=openhotel:openhotel . ./
 
-# Copy shared assets if needed
-COPY --chown=openhotel:openhotel ./assets/ ./assets/
+# Cache dependencies
+RUN deno cache mod.ts || true
 
 # Expose the port (Render assigns PORT env var)
 EXPOSE 3005
