@@ -340,6 +340,9 @@ app.use('/api/fortune-wheel', require('./routes/fortuneWheel'));
 // Game enhancements routes (specializations, breakthroughs, mastery, etc.)
 app.use('/api/enhancements', require('./routes/gameEnhancements'));
 
+// Announcements routes
+app.use('/api/announcements', require('./routes/announcements'));
+
 const PORT = process.env.PORT || 5000;
 
 // Create HTTP server for Express + Socket.IO

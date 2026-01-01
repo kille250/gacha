@@ -549,6 +549,7 @@
       "characters": "Charaktere",
       "banners": "Banner",
       "coupons": "Gutscheine",
+      "announcements": "Ankündigungen",
       "rarities": "Seltenheiten",
       "security": "Sicherheit"
     },
@@ -1621,6 +1622,46 @@
     "retry": "Wiederholen",
     "retryConnection": "Verbindung erneut versuchen",
     "dismissNotification": "Benachrichtigung schließen"
+  },
+  "announcements": {
+    "center": "Ankündigungen",
+    "noAnnouncements": "Keine Ankündigungen",
+    "noUnread": "Keine ungelesenen Ankündigungen",
+    "acknowledge": "Bestätigen",
+    "acknowledged": "Bestätigt",
+    "dismiss": "Schließen",
+    "gotIt": "Verstanden",
+    "mustAcknowledge": "Du musst diese Ankündigung bestätigen",
+    "filterAll": "Alle",
+    "filterUnread": "Ungelesen",
+    "filterRead": "Gelesen",
+    "types": {
+      "maintenance": "Wartung",
+      "update": "Update",
+      "event": "Event",
+      "patch_notes": "Patch-Notizen",
+      "promotion": "Aktion",
+      "warning": "Warnung",
+      "info": "Info"
+    },
+    "priority": {
+      "low": "Niedrig",
+      "medium": "Mittel",
+      "high": "Hoch",
+      "critical": "Kritisch"
+    },
+    "displayMode": {
+      "banner": "Banner",
+      "modal": "Modal",
+      "toast": "Toast",
+      "inline": "Inline"
+    },
+    "audience": {
+      "all": "Alle Benutzer",
+      "admins": "Nur Admins",
+      "premium": "Premium-Benutzer",
+      "new_users": "Neue Benutzer"
+    }
   },
   "errorBoundary": {
     "title": "Etwas ist schiefgelaufen",

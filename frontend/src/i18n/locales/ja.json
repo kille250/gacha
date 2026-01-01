@@ -545,6 +545,7 @@
       "characters": "キャラクター",
       "banners": "バナー",
       "coupons": "クーポン",
+      "announcements": "お知らせ",
       "rarities": "レアリティ",
       "security": "セキュリティ"
     },
@@ -1675,6 +1676,46 @@
     "retry": "再試行",
     "retryConnection": "再接続",
     "dismissNotification": "通知を閉じる"
+  },
+  "announcements": {
+    "center": "お知らせ",
+    "noAnnouncements": "お知らせはありません",
+    "noUnread": "未読のお知らせはありません",
+    "acknowledge": "確認",
+    "acknowledged": "確認済み",
+    "dismiss": "閉じる",
+    "gotIt": "了解",
+    "mustAcknowledge": "このお知らせを確認する必要があります",
+    "filterAll": "すべて",
+    "filterUnread": "未読",
+    "filterRead": "既読",
+    "types": {
+      "maintenance": "メンテナンス",
+      "update": "アップデート",
+      "event": "イベント",
+      "patch_notes": "パッチノート",
+      "promotion": "プロモーション",
+      "warning": "警告",
+      "info": "お知らせ"
+    },
+    "priority": {
+      "low": "低",
+      "medium": "中",
+      "high": "高",
+      "critical": "緊急"
+    },
+    "displayMode": {
+      "banner": "バナー",
+      "modal": "モーダル",
+      "toast": "トースト",
+      "inline": "インライン"
+    },
+    "audience": {
+      "all": "全ユーザー",
+      "admins": "管理者のみ",
+      "premium": "プレミアムユーザー",
+      "new_users": "新規ユーザー"
+    }
   },
   "errorBoundary": {
     "title": "エラーが発生しました",

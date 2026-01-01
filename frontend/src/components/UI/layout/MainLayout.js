@@ -20,6 +20,7 @@ import { theme, SkipLink } from '../../../design-system';
 import Navigation from '../../Navigation/Navigation';
 import { BottomNav } from '../../Navigation';
 import { ReturnBonusModal } from '../../GameEnhancements';
+import { AnnouncementBanner, AnnouncementModal } from '../../Announcements';
 
 /**
  * Global CSS custom properties for navigation heights and page spacing.
@@ -168,6 +169,10 @@ const MainLayout = ({ children, hideBottomNav = false }) => {
           <ReturnBonusModal onClose={handleCloseReturnBonus} />
         )}
       </AnimatePresence>
+
+      {/* Announcement System - banners and modals for system announcements */}
+      <AnnouncementBanner />
+      <AnnouncementModal />
     </>
   );
 };

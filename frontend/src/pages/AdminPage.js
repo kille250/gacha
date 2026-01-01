@@ -43,6 +43,7 @@ import {
   AdminCharacters,
   AdminBanners,
   AdminCoupons,
+  AdminAnnouncements,
   AdminRarities,
   AdminSecurity,
   AdminErrorBoundary
@@ -99,6 +100,7 @@ const AdminPage = () => {
         users: 'users',
         characters: 'characters',
         banners: 'banners',
+        announcements: 'announcements',
         security: 'security',
       };
       if (tabMap[tab]) {
@@ -356,6 +358,12 @@ const AdminPage = () => {
                       onEditCoupon={modals.openEditCouponModal}
                       onDeleteCoupon={handleDeleteCouponWithConfirm}
                     />
+                  </TabPanel>
+                )}
+
+                {activeTab === 'announcements' && (
+                  <TabPanel key="announcements" role="tabpanel" aria-labelledby="tab-announcements">
+                    <AdminAnnouncements />
                   </TabPanel>
                 )}
 

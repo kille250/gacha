@@ -6,6 +6,7 @@ import { AuthProvider, AuthContext } from './context/AuthContext';
 import { RarityProvider } from './context/RarityContext';
 import { RecaptchaProvider } from './context/RecaptchaContext';
 import { ToastProvider } from './context/ToastContext';
+import { AnnouncementProvider } from './context/AnnouncementContext';
 import { AudioProvider } from './engine/audio/AudioProvider';
 import { PixiOverlayProvider } from './engine/pixi/PixiOverlayProvider';
 import styled, { createGlobalStyle, keyframes } from 'styled-components';
@@ -346,6 +347,7 @@ function App() {
         <AuthProvider>
           <RarityProvider>
             <ToastProvider>
+            <AnnouncementProvider>
             <AudioProvider>
               <PixiOverlayProvider>
               <CelebrationProvider>
@@ -370,6 +372,7 @@ function App() {
               </CelebrationProvider>
               </PixiOverlayProvider>
             </AudioProvider>
+            </AnnouncementProvider>
             </ToastProvider>
           </RarityProvider>
         </AuthProvider>
