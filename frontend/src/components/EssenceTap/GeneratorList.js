@@ -130,7 +130,6 @@ const BuyModeButtons = styled.div`
   gap: ${theme.spacing.xs};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: rgba(0, 0, 0, 0.2);
-  flex-shrink: 0;
 `;
 
 const BuyModeButton = styled.button`
