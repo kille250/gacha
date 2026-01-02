@@ -175,11 +175,20 @@ export const useEssenceTap = () => {
       const essenceVal = response.data.essence || 0;
       const lifetimeVal = response.data.lifetimeEssence || 0;
       const totalClicksVal = response.data.totalClicks || 0;
-      setLocalEssence(essenceVal);
-      setLocalLifetimeEssence(lifetimeVal);
+
+      // Use functional updates even for full state fetch to ensure consistency
+      // fetchGameState is called after visibility change when passive timer is stopped,
+      // so server value should be authoritative
+      setLocalEssence(() => {
+        localEssenceRef.current = essenceVal;
+        return essenceVal;
+      });
+      setLocalLifetimeEssence(() => {
+        localLifetimeEssenceRef.current = lifetimeVal;
+        return lifetimeVal;
+      });
       setLocalTotalClicks(totalClicksVal);
-      localEssenceRef.current = essenceVal;
-      localLifetimeEssenceRef.current = lifetimeVal;
+
       // Reset sync tracking on full state fetch
       lastSyncTimeRef.current = Date.now();
       lastSyncEssenceRef.current = essenceVal;
@@ -321,15 +330,34 @@ export const useEssenceTap = () => {
           });
 
           // CRITICAL: Reconcile with backend's authoritative values
-          // This ensures frontend stays in sync even if predictions drifted
+          // Use functional update to avoid race conditions with passive income/clicks
+          // Only accept server value if it's higher (we shouldn't lose essence)
+          // or if it's a purchase/spend that legitimately reduces essence
           if (response.data.essence !== undefined) {
-            setLocalEssence(response.data.essence);
-            localEssenceRef.current = response.data.essence;
+            const serverEssence = response.data.essence;
+            setLocalEssence(prev => {
+              // Accept server value if it's higher or if local hasn't changed much
+              // This prevents overwriting taps that happened during the API call
+              const localGainsSinceSync = prev - lastSyncEssenceRef.current;
+              if (serverEssence >= prev || localGainsSinceSync < 1) {
+                localEssenceRef.current = serverEssence;
+                return serverEssence;
+              }
+              // Server is lower but we have local gains - keep the higher value
+              // The next sync will reconcile properly
+              return prev;
+            });
             lastSyncEssenceRef.current = response.data.essence;
           }
           if (response.data.lifetimeEssence !== undefined) {
-            setLocalLifetimeEssence(response.data.lifetimeEssence);
-            localLifetimeEssenceRef.current = response.data.lifetimeEssence;
+            const serverLifetime = response.data.lifetimeEssence;
+            setLocalLifetimeEssence(prev => {
+              if (serverLifetime >= prev) {
+                localLifetimeEssenceRef.current = serverLifetime;
+                return serverLifetime;
+              }
+              return prev;
+            });
           }
 
           pendingEssenceRef.current = 0;
@@ -438,12 +466,30 @@ export const useEssenceTap = () => {
 
         if (!isMountedRef.current) return;
 
-        // Update with server values (backend is source of truth)
-        setLocalEssence(response.data.essence);
-        setLocalLifetimeEssence(response.data.lifetimeEssence);
-        localEssenceRef.current = response.data.essence;
-        localLifetimeEssenceRef.current = response.data.lifetimeEssence;
-        lastSyncEssenceRef.current = response.data.essence;
+        // Update with server values using functional updates to avoid race conditions
+        // The server value should be authoritative, but we need to preserve any
+        // taps/passive income that occurred during the API call
+        const serverEssence = response.data.essence;
+        const serverLifetime = response.data.lifetimeEssence;
+        setLocalEssence(prev => {
+          // Server value accounts for this click, so it should be >= our optimistic value
+          // Only use server value if it's higher to avoid losing concurrent taps
+          if (serverEssence >= prev) {
+            localEssenceRef.current = serverEssence;
+            return serverEssence;
+          }
+          // If local is higher, taps/passive accumulated during API call - keep local
+          // The ref stays at our local value; next sync will reconcile
+          return prev;
+        });
+        setLocalLifetimeEssence(prev => {
+          if (serverLifetime >= prev) {
+            localLifetimeEssenceRef.current = serverLifetime;
+            return serverLifetime;
+          }
+          return prev;
+        });
+        lastSyncEssenceRef.current = serverEssence;
         lastSyncTimeRef.current = Date.now();
         // Note: We don't reset pendingEssenceRef here because passive essence
         // may have accumulated since our last save
@@ -489,9 +535,15 @@ export const useEssenceTap = () => {
       // Play purchase sound
       sounds.playPurchase();
 
-      // Update local essence
-      setLocalEssence(response.data.essence);
-      localEssenceRef.current = response.data.essence;
+      // Update local essence - purchases reduce essence, so always use server value
+      // This is a spending action, not an earning action
+      const serverEssence = response.data.essence;
+      setLocalEssence(() => {
+        localEssenceRef.current = serverEssence;
+        return serverEssence;
+      });
+      lastSyncEssenceRef.current = serverEssence;
+      lastSyncTimeRef.current = Date.now();
 
       // Check for first generator achievement
       const tracking = achievementTrackingRef.current;
@@ -539,8 +591,14 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
-      setLocalEssence(response.data.essence);
-      localEssenceRef.current = response.data.essence;
+      // Update local essence - purchases reduce essence, so always use server value
+      const serverEssence = response.data.essence;
+      setLocalEssence(() => {
+        localEssenceRef.current = serverEssence;
+        return serverEssence;
+      });
+      lastSyncEssenceRef.current = serverEssence;
+      lastSyncTimeRef.current = Date.now();
 
       // Invalidate cache before fetching to ensure fresh data
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_UPGRADE_PURCHASE);
@@ -728,10 +786,20 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
-      // Update local essence (backend is source of truth)
-      setLocalEssence(response.data.newEssence);
-      localEssenceRef.current = response.data.newEssence;
-      lastSyncEssenceRef.current = response.data.newEssence;
+      // Update local essence - gambling can win or lose, so use functional update
+      // but since we're betting, server value is authoritative after the bet resolves
+      const serverEssence = response.data.newEssence;
+      setLocalEssence(prev => {
+        // If we won, server should be higher; if we lost, server is lower
+        // Either way, use server value but preserve any passive gains during API call
+        const passiveGainsDuringCall = Math.max(0, prev - lastSyncEssenceRef.current);
+        // For gambling, server is authoritative for the bet result
+        // Add back any passive that accumulated during the API call
+        const finalValue = serverEssence + passiveGainsDuringCall;
+        localEssenceRef.current = finalValue;
+        return finalValue;
+      });
+      lastSyncEssenceRef.current = serverEssence;
       lastSyncTimeRef.current = Date.now();
 
       // Invalidate cache - gamble may award jackpot which gives FP/tickets
@@ -782,8 +850,14 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
-      setLocalEssence(response.data.essence);
-      localEssenceRef.current = response.data.essence;
+      // Update local essence - infusion spends essence, so server is authoritative
+      const serverEssence = response.data.essence;
+      setLocalEssence(() => {
+        localEssenceRef.current = serverEssence;
+        return serverEssence;
+      });
+      lastSyncEssenceRef.current = serverEssence;
+      lastSyncTimeRef.current = Date.now();
 
       // Invalidate cache before fetching to ensure fresh data
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_INFUSION);
@@ -959,9 +1033,18 @@ export const useEssenceTap = () => {
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_ABILITY_ACTIVATE);
 
       if (response.data.bonusEssence > 0) {
-        setLocalEssence(response.data.essence);
-        localEssenceRef.current = response.data.essence;
-        lastSyncEssenceRef.current = response.data.essence;
+        // Ability granted bonus essence - use functional update to preserve passive gains
+        const serverEssence = response.data.essence;
+        setLocalEssence(prev => {
+          // Server value includes bonus, should be higher than before
+          if (serverEssence >= prev) {
+            localEssenceRef.current = serverEssence;
+            return serverEssence;
+          }
+          // Preserve any passive/taps that happened during API call
+          return prev;
+        });
+        lastSyncEssenceRef.current = serverEssence;
         lastSyncTimeRef.current = Date.now();
 
         // Refresh game state if essence was awarded
