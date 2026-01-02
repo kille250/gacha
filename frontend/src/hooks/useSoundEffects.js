@@ -123,21 +123,11 @@ export function useSoundEffects() {
   }, []);
 
   // Helper to play fallback audio when Web Audio buffer not loaded
-  const playFallbackAudio = useCallback((soundId, vol, variation) => {
-    const path = SOUND_PATHS[soundId];
-    if (!path) return;
-
-    const filePath = variation ? `${path}-${variation}.mp3` : `${path}.mp3`;
-
-    try {
-      const audio = new Audio(filePath);
-      audio.volume = vol;
-      audio.play().catch(() => {
-        // Ignore playback errors
-      });
-    } catch {
-      // Ignore errors
-    }
+  // Note: Sound files must exist in public/sounds/essence-tap/ directory
+  const playFallbackAudio = useCallback(() => {
+    // Disabled - sound files not present in project
+    // To enable sounds, add MP3 files to public/sounds/essence-tap/
+    // e.g., click-1.mp3, click-2.mp3, click-3.mp3, crit-1.mp3, etc.
   }, []);
 
   // Play a sound
