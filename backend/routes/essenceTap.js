@@ -278,7 +278,8 @@ router.post('/click', auth, async (req, res) => {
     const essenceTypeBreakdown = essenceTapService.classifyEssence(totalEssence, goldenClicks > 0, totalCrits > 0);
     state = essenceTapService.updateEssenceTypes(state, essenceTypeBreakdown);
 
-    state.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    state.lastOnlineTimestamp = now;
 
     // Check for new daily challenge completions
     const completedChallenges = essenceTapService.checkDailyChallenges(state);
@@ -293,6 +294,8 @@ router.post('/click', auth, async (req, res) => {
 
     // Save
     user.essenceTap = state;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
     await user.save();
 
     res.json({
@@ -351,7 +354,8 @@ router.post('/generator/buy', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     // Check for new daily challenge completions
     const completedChallenges = essenceTapService.checkDailyChallenges(result.newState);
@@ -365,6 +369,8 @@ router.post('/generator/buy', auth, async (req, res) => {
     }
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
     await user.save();
 
     // Get updated game state (reuse characters from earlier fetch)
@@ -425,9 +431,12 @@ router.post('/upgrade/buy', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
     await user.save();
 
     // Award XP for upgrade purchase
@@ -471,7 +480,8 @@ router.post('/prestige', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     // Apply FP with cap enforcement (prestige counts toward weekly cap)
     let actualFP = 0;
@@ -488,6 +498,8 @@ router.post('/prestige', auth, async (req, res) => {
     }
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
 
     // Award Fate Points (with cap applied)
     if (actualFP > 0) {
@@ -545,9 +557,12 @@ router.post('/prestige/upgrade', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
     await user.save();
 
     res.json({
@@ -588,7 +603,8 @@ router.post('/milestone/claim', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     // Apply FP with cap enforcement (one-time milestones exempt from cap)
     const fpResult = essenceTapService.applyFPWithCap(
@@ -599,6 +615,8 @@ router.post('/milestone/claim', auth, async (req, res) => {
     result.newState = fpResult.newState;
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
 
     // Award Fate Points (one-time milestones get full value)
     if (fpResult.actualFP > 0) {
@@ -658,9 +676,12 @@ router.post('/character/assign', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
     await user.save();
 
     // Calculate new bonuses
@@ -719,9 +740,12 @@ router.post('/character/unassign', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
     await user.save();
 
     // Get user's characters for bonus calculation
@@ -954,9 +978,12 @@ router.post('/gamble', auth, async (req, res) => {
       result.newState = await essenceTapService.resetJackpot(result.newState, req.user.id, jackpotResult.amount);
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
     await user.save();
 
     // Fetch updated jackpot info for response
@@ -1021,9 +1048,12 @@ router.post('/infusion', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
     await user.save();
 
     res.json({
@@ -1071,9 +1101,12 @@ router.post('/ability/activate', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
     await user.save();
 
     res.json({
@@ -1163,7 +1196,8 @@ router.post('/milestones/repeatable/claim', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     // Apply FP with cap enforcement (repeatable milestones count toward weekly cap)
     let actualFP = 0;
@@ -1180,6 +1214,8 @@ router.post('/milestones/repeatable/claim', auth, async (req, res) => {
     }
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
 
     // Award Fate Points (with cap applied)
     if (actualFP > 0) {
@@ -1300,7 +1336,8 @@ router.post('/tournament/weekly/claim', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
 
     // Apply FP with cap enforcement (tournament counts toward weekly cap)
     let actualFP = 0;
@@ -1317,6 +1354,8 @@ router.post('/tournament/weekly/claim', auth, async (req, res) => {
     }
 
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
 
     // Award Fate Points (with cap applied)
     if (actualFP > 0) {
@@ -1398,8 +1437,11 @@ router.post('/tickets/streak/claim', auth, async (req, res) => {
       return res.status(400).json({ error: result.reason || 'Already claimed today' });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
 
     // Award tickets if milestone reached
     if (result.awarded && result.tickets > 0) {
@@ -1443,8 +1485,11 @@ router.post('/tickets/exchange', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
 
     // Deduct Fate Points
     const userFatePoints = user.fatePoints || {};
@@ -1713,8 +1758,11 @@ router.post('/daily-challenges/claim', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
 
     // Award FP if challenge gives it
     if (result.rewards.fatePoints > 0) {
@@ -1803,8 +1851,11 @@ router.post('/boss/attack', auth, async (req, res) => {
       return res.status(400).json({ error: result.error });
     }
 
-    result.newState.lastOnlineTimestamp = Date.now();
+    const now = Date.now();
+    result.newState.lastOnlineTimestamp = now;
     user.essenceTap = result.newState;
+    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+    user.lastEssenceTapRequest = now;
 
     // If boss defeated, award rewards
     if (result.defeated) {
