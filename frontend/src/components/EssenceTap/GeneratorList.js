@@ -386,6 +386,24 @@ const EmptyState = styled.div`
   color: ${theme.colors.textSecondary};
 `;
 
+// Calculate max purchasable client-side using current essence
+const calculateMaxPurchasable = (generator, currentEssence) => {
+  let count = 0;
+  let totalCost = 0;
+  const r = generator.costMultiplier || 1.15;
+  const baseCost = generator.baseCost || generator.cost;
+  const owned = generator.owned || 0;
+
+  while (count < 1000) { // Safety limit
+    const nextCost = Math.floor(baseCost * Math.pow(r, owned + count));
+    if (totalCost + nextCost > currentEssence) break;
+    totalCost += nextCost;
+    count++;
+  }
+
+  return count;
+};
+
 const GeneratorList = memo(({
   generators = [],
   essence = 0,
@@ -402,10 +420,13 @@ const GeneratorList = memo(({
   const handlePurchase = useCallback((generator) => {
     if (!generator.unlocked) return;
 
+    // Calculate max purchasable using current essence
+    const maxPurchasable = calculateMaxPurchasable(generator, essence);
+
     let count = 1;
-    if (buyMode === '10') count = Math.min(10, generator.maxPurchasable);
-    else if (buyMode === '100') count = Math.min(100, generator.maxPurchasable);
-    else if (buyMode === 'max') count = generator.maxPurchasable;
+    if (buyMode === '10') count = Math.min(10, maxPurchasable);
+    else if (buyMode === '100') count = Math.min(100, maxPurchasable);
+    else if (buyMode === 'max') count = maxPurchasable;
 
     // Calculate cost for the buy count
     const r = generator.costMultiplier || 1.15;
@@ -429,10 +450,13 @@ const GeneratorList = memo(({
   const getDisplayCost = useCallback((generator) => {
     if (buyMode === '1') return generator.cost;
 
+    // Calculate max purchasable using current essence
+    const maxPurchasable = calculateMaxPurchasable(generator, essence);
+
     let count = 1;
-    if (buyMode === '10') count = Math.min(10, generator.maxPurchasable);
-    else if (buyMode === '100') count = Math.min(100, generator.maxPurchasable);
-    else if (buyMode === 'max') count = generator.maxPurchasable;
+    if (buyMode === '10') count = Math.min(10, maxPurchasable);
+    else if (buyMode === '100') count = Math.min(100, maxPurchasable);
+    else if (buyMode === 'max') count = maxPurchasable;
 
     if (count <= 1) return generator.cost;
 
@@ -445,7 +469,7 @@ const GeneratorList = memo(({
       total += Math.floor(baseCost * Math.pow(r, owned + i));
     }
     return total;
-  }, [buyMode]);
+  }, [buyMode, essence]);
 
   const unlockedGenerators = generators.filter(g => g.unlocked);
   const lockedGenerators = generators.filter(g => !g.unlocked);
@@ -510,12 +534,14 @@ const GeneratorList = memo(({
               animate="visible"
             >
               {unlockedGenerators.map(generator => {
+                // Calculate max purchasable using current essence (not stale server value)
+                const maxPurchasable = calculateMaxPurchasable(generator, essence);
                 const displayCost = getDisplayCost(generator);
                 const canAffordBulk = essence >= displayCost;
                 const buyCount = buyMode === '1' ? 1 :
-                  buyMode === '10' ? Math.min(10, generator.maxPurchasable) :
-                  buyMode === '100' ? Math.min(100, generator.maxPurchasable) :
-                  generator.maxPurchasable;
+                  buyMode === '10' ? Math.min(10, maxPurchasable) :
+                  buyMode === '100' ? Math.min(100, maxPurchasable) :
+                  maxPurchasable;
                 const color = GENERATOR_COLORS[generator.id] || GENERATOR_COLORS.default;
                 const IconComponent = GENERATOR_ICONS[generator.id] || GENERATOR_ICONS.default;
                 const productionPercentage = totalProduction > 0
