@@ -15,7 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../../design-system';
 import api from '../../utils/api';
 import { formatNumber } from '../../hooks/useEssenceTap';
-import { IconTrophy, IconClock, IconGift, IconBronzeMedal, IconSilverMedal, IconGoldMedal, IconDiamond, IconCrownSymbol, IconStar, IconUsers, IconRefresh } from '../../constants/icons';
+import { IconTrophy, IconClock, IconGift, IconBronzeMedal, IconSilverMedal, IconGoldMedal, IconDiamond, IconCrownSymbol, IconStar, IconCategoryPerson, IconRefresh } from '../../constants/icons';
 
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
@@ -624,7 +624,7 @@ const WeeklyTournament = memo(({
       <LeaderboardContainer>
         <LeaderboardHeader>
           <LeaderboardTitle>
-            <IconUsers size={20} />
+            <IconCategoryPerson size={20} />
             {t('essenceTap.tournament.leaderboard', { defaultValue: 'Leaderboard' })}
           </LeaderboardTitle>
           <RefreshButton
@@ -782,7 +782,7 @@ const WeeklyTournament = memo(({
                   $active={activeTab === 'leaderboard'}
                   onClick={() => setActiveTab('leaderboard')}
                 >
-                  <IconUsers size={16} />
+                  <IconCategoryPerson size={16} />
                   Leaderboard
                 </Tab>
               </TabContainer>
