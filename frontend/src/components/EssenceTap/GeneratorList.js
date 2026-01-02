@@ -118,8 +118,6 @@ const CollapseIcon = styled(motion.div)`
 `;
 
 const ContentWrapper = styled(motion.div)`
-  display: flex;
-  flex-direction: column;
   overflow: hidden;
 `;
 
@@ -153,11 +151,7 @@ const ListContainer = styled(motion.div)`
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.md};
   overflow-y: auto;
-  max-height: 400px;
-
-  @media (min-width: ${theme.breakpoints.lg}) {
-    max-height: 500px;
-  }
+  flex: 1;
 
   /* Scrollbar styling */
   &::-webkit-scrollbar {

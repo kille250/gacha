@@ -95,9 +95,10 @@ const CollapseIcon = styled(motion.div)`
 `;
 
 const ContentWrapper = styled(motion.div)`
+  overflow: hidden;
   display: flex;
   flex-direction: column;
-  overflow: hidden;
+  flex: 1;
 `;
 
 const TabBar = styled.div`
@@ -152,11 +153,7 @@ const UpgradeGrid = styled(motion.div)`
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.md};
   overflow-y: auto;
-  max-height: 400px;
-
-  @media (min-width: ${theme.breakpoints.lg}) {
-    max-height: 500px;
-  }
+  flex: 1;
 
   /* Scrollbar styling */
   &::-webkit-scrollbar {
