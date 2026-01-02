@@ -273,9 +273,7 @@ const ProductionBar = styled.div`
 
 const ProductionFill = styled.div`
   height: 100%;
-  background: ${props => props.$color || '#A855F7'};
   border-radius: 2px;
-  width: ${props => Math.min(props.$percentage, 100)}%;
   transition: width 0.3s ease;
 `;
 
@@ -379,7 +377,6 @@ const ProgressFill = styled.div`
   height: 100%;
   background: linear-gradient(90deg, #A855F7, #EC4899);
   border-radius: 2px;
-  width: ${props => props.$percentage}%;
   transition: width 0.3s ease;
 `;
 
@@ -556,8 +553,10 @@ const GeneratorList = memo(({
                       {generator.owned > 0 && totalProduction > 0 && (
                         <ProductionBar>
                           <ProductionFill
-                            $color={color}
-                            $percentage={productionPercentage}
+                            style={{
+                              background: color,
+                              width: `${Math.min(productionPercentage, 100)}%`
+                            }}
                           />
                         </ProductionBar>
                       )}
@@ -605,7 +604,7 @@ const GeneratorList = memo(({
                         })}
                       </LockedRequirement>
                       <ProgressToUnlock>
-                        <ProgressFill $percentage={unlockProgress} />
+                        <ProgressFill style={{ width: `${unlockProgress}%` }} />
                       </ProgressToUnlock>
                     </LockedInfo>
                   </LockedCard>
