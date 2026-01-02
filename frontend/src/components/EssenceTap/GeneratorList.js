@@ -125,6 +125,19 @@ const ContentWrapper = styled(motion.div)`
   min-height: 0;
 `;
 
+const ScrollableContent = styled.div`
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  max-height: 400px;
+  overflow: hidden;
+
+  @media (min-width: ${theme.breakpoints.lg}) {
+    max-height: 500px;
+  }
+`;
+
 const BuyModeButtons = styled.div`
   display: flex;
   gap: ${theme.spacing.xs};
@@ -483,6 +496,7 @@ const GeneratorList = memo(({
             exit={{ height: 0, opacity: 0 }}
             transition={{ duration: 0.3, ease: [0.4, 0, 0.2, 1] }}
           >
+            <ScrollableContent>
             <BuyModeButtons>
               {['1', '10', '100', 'max'].map(mode => (
                 <BuyModeButton
@@ -600,6 +614,7 @@ const GeneratorList = memo(({
                 );
               })}
             </ListContainer>
+            </ScrollableContent>
           </ContentWrapper>
         )}
       </AnimatePresence>
