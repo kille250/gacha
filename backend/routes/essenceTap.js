@@ -1763,7 +1763,7 @@ router.get('/synergy-preview', auth, async (req, res) => {
       elementSynergy: essenceTapService.calculateElementSynergy(state, characters),
       seriesSynergy: essenceTapService.calculateSeriesSynergy(state, characters),
       underdogBonus: essenceTapService.calculateUnderdogBonus(state, characters),
-      masteryBonus: essenceTapService.calculateTotalMasteryBonus(state)
+      masteryBonus: essenceTapService.calculateTotalMasteryBonus(state).productionBonus || 0
     };
 
     // Group characters by series for synergy suggestions

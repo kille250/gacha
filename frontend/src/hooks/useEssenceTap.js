@@ -87,7 +87,9 @@ export const useEssenceTap = () => {
     totalGenerators: 0,
     prestigeLevel: 0,
     assignedCharacters: 0,
-    bossesDefeated: []
+    bossesDefeated: [],
+    // Track which achievements have been shown to prevent re-triggering
+    shownAchievements: new Set()
   });
 
   // Auto-save tracking
@@ -101,13 +103,14 @@ export const useEssenceTap = () => {
   const isMountedRef = useRef(true);
 
   // Check and trigger achievements
-  const checkAchievements = useCallback((stats, unlockedAchievements = []) => {
+  const checkAchievements = useCallback((stats) => {
     const tracking = achievementTrackingRef.current;
-    const unlocked = new Set(unlockedAchievements);
+    const shown = tracking.shownAchievements;
 
-    // Helper to unlock achievement
+    // Helper to unlock achievement - only shows if not already shown
     const unlock = (achievementId) => {
-      if (!unlocked.has(achievementId) && ACHIEVEMENTS[achievementId]) {
+      if (!shown.has(achievementId) && ACHIEVEMENTS[achievementId]) {
+        shown.add(achievementId);
         setUnlockedAchievement({
           id: achievementId,
           ...ACHIEVEMENTS[achievementId],
@@ -120,16 +123,12 @@ export const useEssenceTap = () => {
     };
 
     // Check click-based achievements
-    if (stats.totalClicks >= 1 && tracking.totalClicks === 0) {
-      unlock('firstClick');
-    }
+    if (stats.totalClicks >= 1) unlock('firstClick');
     if (stats.totalClicks >= 1000) unlock('thousandClicks');
     if (stats.totalClicks >= 10000) unlock('tenThousandClicks');
 
     // Check golden essence achievements
-    if (stats.totalGolden >= 1 && tracking.totalGolden === 0) {
-      unlock('firstGolden');
-    }
+    if (stats.totalGolden >= 1) unlock('firstGolden');
     if (stats.totalGolden >= 100) unlock('hundredGolden');
 
     // Check combo achievements
@@ -138,8 +137,8 @@ export const useEssenceTap = () => {
     // Check crit streak achievements
     if (stats.maxCritStreak >= 10) unlock('critStreak');
 
-    // Update tracking
-    achievementTrackingRef.current = { ...tracking, ...stats };
+    // Update tracking stats (shownAchievements is already updated via reference)
+    achievementTrackingRef.current = { ...tracking, ...stats, shownAchievements: shown };
   }, [sounds]);
 
   // Dismiss achievement toast
@@ -175,17 +174,34 @@ export const useEssenceTap = () => {
       // Initialize achievement tracking from backend state to prevent re-triggering
       // achievements that should have already been earned
       if (showLoading) {
+        const totalClicks = response.data.totalClicks || 0;
+        const totalGolden = response.data.stats?.goldenEssenceClicks || 0;
+        const totalGenerators = Object.values(response.data.generators || {}).reduce((a, b) => a + b, 0);
+        const prestigeLevel = response.data.prestige?.level || 0;
+
+        // Pre-populate shownAchievements based on current stats
+        // This prevents showing achievements the user has already earned
+        const shownAchievements = new Set();
+        if (totalClicks >= 1) shownAchievements.add('firstClick');
+        if (totalClicks >= 1000) shownAchievements.add('thousandClicks');
+        if (totalClicks >= 10000) shownAchievements.add('tenThousandClicks');
+        if (totalGolden >= 1) shownAchievements.add('firstGolden');
+        if (totalGolden >= 100) shownAchievements.add('hundredGolden');
+        if (totalGenerators >= 1) shownAchievements.add('firstGenerator');
+        if (prestigeLevel >= 1) shownAchievements.add('firstPrestige');
+
         achievementTrackingRef.current = {
-          totalClicks: response.data.totalClicks || 0,
+          totalClicks,
           totalCrits: response.data.totalCrits || 0,
-          totalGolden: response.data.stats?.goldenEssenceClicks || 0,
+          totalGolden,
           maxCombo: achievementTrackingRef.current.maxCombo || 0,
           critStreak: 0,
           maxCritStreak: achievementTrackingRef.current.maxCritStreak || 0,
-          totalGenerators: Object.values(response.data.generators || {}).reduce((a, b) => a + b, 0),
-          prestigeLevel: response.data.prestige?.level || 0,
+          totalGenerators,
+          prestigeLevel,
           assignedCharacters: response.data.assignedCharacters?.length || 0,
-          bossesDefeated: response.data.bossEncounter?.totalDefeated || 0
+          bossesDefeated: response.data.bossEncounter?.totalDefeated || 0,
+          shownAchievements
         };
       }
 
@@ -316,7 +332,7 @@ export const useEssenceTap = () => {
       critStreak: newCritStreak,
       maxCritStreak: newMaxCritStreak,
       maxCombo: newMaxCombo
-    }, gameState.unlockedAchievements || []);
+    });
 
     // Optimistic update
     setLocalEssence(prev => {
@@ -400,7 +416,7 @@ export const useEssenceTap = () => {
         checkAchievements({
           ...tracking,
           totalGenerators: 1
-        }, gameState.unlockedAchievements || []);
+        });
       }
 
       // Invalidate cache before fetching to ensure fresh data
@@ -474,7 +490,7 @@ export const useEssenceTap = () => {
       checkAchievements({
         ...tracking,
         prestigeLevel: newPrestigeLevel
-      }, gameState.unlockedAchievements || []);
+      });
 
       // Invalidate cache before fetching to ensure fresh data
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_PRESTIGE);
