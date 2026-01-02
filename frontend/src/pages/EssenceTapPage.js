@@ -66,14 +66,16 @@ const PageContainer = styled(motion.div)`
   position: relative;
 
   @media (max-width: ${theme.breakpoints.md}) {
-    padding-top: ${theme.spacing.md};
-    /* Account for StatsHUD (approx 60px) + FeatureNav (approx 60px) + safe area */
-    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+    /* Top: StatsHUD is fixed at top ~60px, add spacing */
+    padding-top: 80px;
+    /* Bottom: Main app nav (72px) + FeatureNav (~54px) + spacing */
+    padding-bottom: calc(${theme.navHeights.bottom.default} + 70px + env(safe-area-inset-bottom, 0px));
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {
     padding: ${theme.spacing.sm};
-    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
+    padding-top: 75px;
+    padding-bottom: calc(${theme.navHeights.bottom.default} + 70px + env(safe-area-inset-bottom, 0px));
   }
 `;
 
