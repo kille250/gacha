@@ -95,11 +95,7 @@ const CollapseIcon = styled(motion.div)`
 `;
 
 const ContentWrapper = styled(motion.div)`
-  overflow: visible;
-  display: flex;
-  flex-direction: column;
-  flex: 1;
-  min-height: 0;
+  overflow: hidden;
 `;
 
 const TabBar = styled.div`
@@ -108,7 +104,6 @@ const TabBar = styled.div`
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: rgba(0, 0, 0, 0.2);
   overflow-x: auto;
-  flex-shrink: 0;
 
   /* Hide scrollbar */
   &::-webkit-scrollbar {
@@ -134,7 +129,6 @@ const Tab = styled.button`
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.medium};
   white-space: nowrap;
-  flex-shrink: 0;
   cursor: pointer;
   transition: all 0.2s ease;
 
