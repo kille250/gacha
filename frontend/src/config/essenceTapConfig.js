@@ -2,10 +2,17 @@
  * Essence Tap Frontend Configuration
  *
  * This file contains frontend constants that should stay in sync with
- * the backend config (backend/config/essenceTap.js).
+ * the backend config (backend/config/essenceTap.js) and the shared
+ * constants file (shared/balanceConstants.js ESSENCE_TAP_DISPLAY).
  *
  * These values are used for optimistic UI updates before server validation.
  * The actual authoritative values come from the backend via /essence-tap/config.
+ *
+ * SYNCHRONIZATION PATTERN:
+ * - Backend is the SOURCE OF TRUTH for all essence calculations
+ * - Frontend uses these values for optimistic UI predictions only
+ * - On every sync/save, frontend reconciles with backend values
+ * - See useEssenceTap.js auto-save effect for reconciliation logic
  */
 
 // ===========================================

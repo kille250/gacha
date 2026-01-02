@@ -227,6 +227,60 @@ const ACCOUNT_LEVEL_DISPLAY = {
 };
 
 // ===========================================
+// ESSENCE TAP BALANCE CONSTANTS
+// ===========================================
+
+const ESSENCE_TAP_DISPLAY = {
+  // UI timing constants (shared for consistent calculations)
+  timing: {
+    passiveTickRate: 100,       // ms between passive ticks
+    autoSaveInterval: 30000,    // 30 seconds
+    maxOfflineHours: 8
+  },
+
+  // Core game mechanics (must match backend/config/essenceTap.js)
+  mechanics: {
+    baseClickPower: 1,
+    baseCritChance: 0.01,       // 1%
+    baseCritMultiplier: 10,
+    maxClicksPerSecond: 20,
+    offlineEfficiency: 0.50,    // 50%
+    goldenEssenceChance: 0.001, // 0.1%
+    goldenEssenceMultiplier: 100
+  },
+
+  // Combo system
+  combo: {
+    decayTime: 1500,            // ms
+    maxMultiplier: 2.5,
+    growthRate: 0.08
+  },
+
+  // Character bonuses by rarity
+  characterBonuses: {
+    common: 0.05,      // +5%
+    uncommon: 0.10,    // +10%
+    rare: 0.20,        // +20%
+    epic: 0.35,        // +35%
+    legendary: 0.50    // +50%
+  },
+
+  // Underdog bonuses (common/uncommon get extra)
+  underdogBonuses: {
+    common: 0.15,      // +15%
+    uncommon: 0.10     // +10%
+  },
+
+  // Prestige requirements
+  prestige: {
+    minimumEssence: 1000000,
+    cooldownMs: 3600000,        // 1 hour
+    maxEffectiveShards: 1000,
+    shardMultiplier: 0.01
+  }
+};
+
+// ===========================================
 // UI THRESHOLDS
 // ===========================================
 
@@ -269,6 +323,7 @@ if (typeof module !== 'undefined' && module.exports) {
     FISHING_DISPLAY,
     GACHA_DISPLAY,
     ACCOUNT_LEVEL_DISPLAY,
+    ESSENCE_TAP_DISPLAY,
     UI_THRESHOLDS,
     HELP_TEXT
   };

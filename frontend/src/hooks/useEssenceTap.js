@@ -97,6 +97,9 @@ export const useEssenceTap = () => {
   const pendingEssenceRef = useRef(0);
   const localEssenceRef = useRef(0);
   const localLifetimeEssenceRef = useRef(0);
+  // Track last sync time for accurate time-based calculation
+  const lastSyncTimeRef = useRef(Date.now());
+  const lastSyncEssenceRef = useRef(0);
 
   // Refs for intervals
   const passiveTickRef = useRef(null);
@@ -170,6 +173,10 @@ export const useEssenceTap = () => {
       setLocalLifetimeEssence(lifetimeVal);
       localEssenceRef.current = essenceVal;
       localLifetimeEssenceRef.current = lifetimeVal;
+      // Reset sync tracking on full state fetch
+      lastSyncTimeRef.current = Date.now();
+      lastSyncEssenceRef.current = essenceVal;
+      pendingEssenceRef.current = 0;
 
       // Initialize achievement tracking from backend state to prevent re-triggering
       // achievements that should have already been earned
@@ -262,16 +269,34 @@ export const useEssenceTap = () => {
   }, [gameState?.productionPerSecond]);
 
   // Auto-save (runs every 30 seconds, uses refs to avoid dependency issues)
+  // IMPORTANT: Backend is the source of truth for essence calculations.
+  // Frontend predictions are for smooth UI only; we always reconcile with backend values.
   useEffect(() => {
     const saveInterval = setInterval(async () => {
       if (pendingEssenceRef.current > 0) {
         try {
-          await api.post('/essence-tap/save', {
+          const response = await api.post('/essence-tap/save', {
+            // Note: Backend ignores these values and recalculates from production rate
+            // We send them for logging/debugging purposes only
             essence: Math.floor(localEssenceRef.current),
             lifetimeEssence: Math.floor(localLifetimeEssenceRef.current)
           });
+
+          // CRITICAL: Reconcile with backend's authoritative values
+          // This ensures frontend stays in sync even if predictions drifted
+          if (response.data.essence !== undefined) {
+            setLocalEssence(response.data.essence);
+            localEssenceRef.current = response.data.essence;
+            lastSyncEssenceRef.current = response.data.essence;
+          }
+          if (response.data.lifetimeEssence !== undefined) {
+            setLocalLifetimeEssence(response.data.lifetimeEssence);
+            localLifetimeEssenceRef.current = response.data.lifetimeEssence;
+          }
+
           pendingEssenceRef.current = 0;
           lastSaveRef.current = Date.now();
+          lastSyncTimeRef.current = Date.now();
         } catch (err) {
           console.error('Auto-save failed:', err);
         }
@@ -372,11 +397,15 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return;
 
-      // Update with server values
+      // Update with server values (backend is source of truth)
       setLocalEssence(response.data.essence);
       setLocalLifetimeEssence(response.data.lifetimeEssence);
       localEssenceRef.current = response.data.essence;
       localLifetimeEssenceRef.current = response.data.lifetimeEssence;
+      lastSyncEssenceRef.current = response.data.essence;
+      lastSyncTimeRef.current = Date.now();
+      // Note: We don't reset pendingEssenceRef here because passive essence
+      // may have accumulated since our last save
 
       // Handle completed challenges
       if (response.data.completedChallenges?.length > 0) {
@@ -639,9 +668,11 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
-      // Update local essence
+      // Update local essence (backend is source of truth)
       setLocalEssence(response.data.newEssence);
       localEssenceRef.current = response.data.newEssence;
+      lastSyncEssenceRef.current = response.data.newEssence;
+      lastSyncTimeRef.current = Date.now();
 
       // Invalidate cache - gamble may award jackpot which gives FP/tickets
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_GAMBLE);
@@ -864,6 +895,8 @@ export const useEssenceTap = () => {
       if (response.data.bonusEssence > 0) {
         setLocalEssence(response.data.essence);
         localEssenceRef.current = response.data.essence;
+        lastSyncEssenceRef.current = response.data.essence;
+        lastSyncTimeRef.current = Date.now();
       }
 
       toast.success(

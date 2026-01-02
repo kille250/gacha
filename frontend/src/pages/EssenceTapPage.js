@@ -10,7 +10,7 @@
  * - Smooth animations throughout
  */
 
-import React, { useState, useCallback, useEffect, memo } from 'react';
+import React, { useState, useCallback, useEffect, memo, useContext } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -26,6 +26,7 @@ import {
   PageTransition
 } from '../design-system';
 import { pageEnterVariants } from '../App';
+import { AuthContext } from '../context/AuthContext';
 import { useEssenceTap, formatNumber } from '../hooks/useEssenceTap';
 import {
   TapTarget,
@@ -169,6 +170,7 @@ const OfflineDetails = styled.div`
 
 const EssenceTapPage = memo(() => {
   const { t } = useTranslation();
+  const { refreshUser } = useContext(AuthContext);
   const [showPrestige, setShowPrestige] = useState(false);
   const [showCharacterSelector, setShowCharacterSelector] = useState(false);
   const [showOnboarding, setShowOnboarding] = useState(false);
@@ -308,6 +310,16 @@ const EssenceTapPage = memo(() => {
       setActiveFeature(null);
     };
   }, []);
+
+  // Handle challenge completion - refresh both game state and user data (FP/tickets)
+  const handleChallengeComplete = useCallback(async (rewards) => {
+    await Promise.all([refresh(), refreshUser()]);
+  }, [refresh, refreshUser]);
+
+  // Handle boss defeat - refresh both game state and user data (FP/tickets)
+  const handleBossDefeat = useCallback(async (rewards) => {
+    await Promise.all([refresh(), refreshUser()]);
+  }, [refresh, refreshUser]);
 
   if (loading) {
     return (
@@ -515,7 +527,7 @@ const EssenceTapPage = memo(() => {
           <DailyChallengesPanel
             isOpen={showChallenges}
             onClose={handleModalClose(setShowChallenges)}
-            onChallengeComplete={refresh}
+            onChallengeComplete={handleChallengeComplete}
           />
 
           {/* Boss Encounter */}
@@ -523,7 +535,7 @@ const EssenceTapPage = memo(() => {
             isOpen={showBoss}
             onClose={handleModalClose(setShowBoss)}
             clickPower={gameState?.clickPower || 1}
-            onBossDefeat={refresh}
+            onBossDefeat={handleBossDefeat}
           />
 
           {/* Offline Progress Modal */}

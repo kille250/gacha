@@ -16,6 +16,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalBody } from '../../design-system';
 import api from '../../utils/api';
 import { formatNumber } from '../../hooks/useEssenceTap';
+import { invalidateFor, CACHE_ACTIONS } from '../../cache/manager';
 import {
   IconFlame,
   IconLight,
@@ -333,6 +334,8 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, onBossDefeat }) =
 
         // Update boss info
         if (response.data.defeated) {
+          // Invalidate cache - boss defeat can award essence, FP, tickets, XP
+          invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_BOSS_DEFEAT);
           setVictory(response.data.rewards);
           onBossDefeat?.(response.data.rewards);
         } else if (response.data.bossSpawned) {

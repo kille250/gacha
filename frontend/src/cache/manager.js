@@ -280,7 +280,9 @@ const ESSENCE_TAP_PATTERNS = {
   // Streak claim awards roll tickets
   streak_claim: ['/essence-tap/status', '/banners/user/tickets'],
   // Daily challenge claim can award FP, tickets, and essence
-  daily_challenge_claim: ['/essence-tap/status', '/auth/me', '/banners/user/tickets']
+  daily_challenge_claim: ['/essence-tap/status', '/auth/me', '/banners/user/tickets'],
+  // Boss defeat awards essence, FP, tickets, and XP
+  boss_defeat: ['/essence-tap/status', '/auth/me', '/banners/user/tickets']
 };
 
 /**
@@ -644,7 +646,8 @@ const ACTION_HANDLERS = {
   'essence_tap:repeatable_milestone_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.repeatable_milestone_claim),
   'essence_tap:tournament_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.tournament_claim),
   'essence_tap:streak_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.streak_claim),
-  'essence_tap:daily_challenge_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.daily_challenge_claim)
+  'essence_tap:daily_challenge_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.daily_challenge_claim),
+  'essence_tap:boss_defeat': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.boss_defeat)
 };
 
 /**

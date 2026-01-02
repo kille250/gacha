@@ -177,6 +177,9 @@ const DailyChallengesPanel = memo(({ isOpen, onClose, onChallengeComplete }) => 
             c.id === challengeId ? { ...c, claimed: true, canClaim: false } : c
           )
         );
+
+        // Notify parent to refresh game state and user data
+        // This ensures essence, FP, and tickets are updated in the UI
         onChallengeComplete?.(response.data.rewards);
       }
     } catch (err) {
