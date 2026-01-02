@@ -14,8 +14,7 @@
 import React from 'react';
 import styled from 'styled-components';
 import { motion } from 'framer-motion';
-import { theme, motionVariants } from '../../design-system';
-import { EmptyState, ErrorState } from '../UI/feedback';
+import { theme, motionVariants, EmptyState, ErrorState } from '../../design-system';
 import { SkeletonGrid } from './SkeletonCard';
 import { IconEmpty } from '../../constants/icons';
 
