@@ -7,7 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
-const { User, UserCharacter } = require('../models');
+const { User, UserCharacter, sequelize } = require('../models');
 const essenceTapService = require('../services/essenceTapService');
 const accountLevelService = require('../services/accountLevelService');
 
@@ -284,25 +284,27 @@ router.get('/status', auth, async (req, res) => {
  * Process click(s) and return result
  */
 router.post('/click', auth, async (req, res) => {
-  try {
-    const { count = 1, comboMultiplier = 1 } = req.body;
+  // Server-side rate limit check (do this BEFORE acquiring lock to avoid holding lock during 429)
+  const { count = 1, comboMultiplier = 1 } = req.body;
+  const requestedClicks = Math.min(Math.max(1, count), essenceTapService.GAME_CONFIG.maxClicksPerSecond);
+  const rateLimit = checkClickRateLimit(req.user.id, requestedClicks);
 
-    // Server-side rate limit check
-    const requestedClicks = Math.min(Math.max(1, count), essenceTapService.GAME_CONFIG.maxClicksPerSecond);
-    const rateLimit = checkClickRateLimit(req.user.id, requestedClicks);
+  if (!rateLimit.allowed) {
+    return res.status(429).json({
+      error: 'Rate limit exceeded',
+      remaining: rateLimit.remaining,
+      resetIn: rateLimit.resetIn
+    });
+  }
 
-    if (!rateLimit.allowed) {
-      return res.status(429).json({
-        error: 'Rate limit exceeded',
-        remaining: rateLimit.remaining,
-        resetIn: rateLimit.resetIn
-      });
-    }
+  // Use essence lock to prevent race conditions with /status, /save, and concurrent clicks
+  // This ensures only one request modifies essence state at a time
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      // Use the allowed click count (may be less than requested if near limit)
+      const clickCount = Math.min(requestedClicks, rateLimit.remaining + requestedClicks);
 
-    // Use the allowed click count (may be less than requested if near limit)
-    const clickCount = Math.min(requestedClicks, rateLimit.remaining + requestedClicks);
-
-    const user = await User.findByPk(req.user.id);
+      const user = await User.findByPk(req.user.id);
     if (!user) {
       return res.status(404).json({ error: 'User not found' });
     }
@@ -396,10 +398,11 @@ router.post('/click', auth, async (req, res) => {
       essenceTypes: essenceTypeBreakdown,
       completedChallenges: completedChallenges.length > 0 ? completedChallenges : undefined
     });
-  } catch (error) {
-    console.error('Error processing click:', error);
-    res.status(500).json({ error: 'Failed to process click' });
-  }
+    } catch (error) {
+      console.error('Error processing click:', error);
+      res.status(500).json({ error: 'Failed to process click' });
+    }
+  });
 });
 
 /**
@@ -407,77 +410,80 @@ router.post('/click', auth, async (req, res) => {
  * Purchase generator(s)
  */
 router.post('/generator/buy', auth, async (req, res) => {
-  try {
-    const { generatorId, count = 1 } = req.body;
+  const { generatorId, count = 1 } = req.body;
 
-    if (!generatorId) {
-      return res.status(400).json({ error: 'Generator ID required' });
-    }
-
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    // Get user's characters for passive calculation
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
-
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
-    // Apply passive essence before purchase check
-    const passiveResult = applyPassiveGains(state, characters);
-    state = passiveResult.state;
-
-    const result = essenceTapService.purchaseGenerator(state, generatorId, count);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    // Check for new daily challenge completions
-    const completedChallenges = essenceTapService.checkDailyChallenges(result.newState);
-
-    // Mark completed challenges as done so they don't trigger again
-    if (completedChallenges.length > 0) {
-      result.newState.daily.completedChallenges = [
-        ...(result.newState.daily.completedChallenges || []),
-        ...completedChallenges.map(c => c.id)
-      ];
-    }
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-    await user.save();
-
-    // Get updated game state (reuse characters from earlier fetch)
-    const gameState = essenceTapService.getGameState(result.newState, characters);
-
-    res.json({
-      success: true,
-      generator: result.generator,
-      newCount: result.newCount,
-      cost: result.cost,
-      productionPerSecond: gameState.productionPerSecond,
-      essence: result.newState.essence,
-      completedChallenges: completedChallenges.length > 0 ? completedChallenges : undefined
-    });
-  } catch (error) {
-    console.error('Error purchasing generator:', error);
-    res.status(500).json({ error: 'Failed to purchase generator' });
+  if (!generatorId) {
+    return res.status(400).json({ error: 'Generator ID required' });
   }
+
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      // Get user's characters for passive calculation
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: user.id },
+        include: ['Character']
+      });
+
+      const characters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
+
+      // Apply passive essence before purchase check
+      const passiveResult = applyPassiveGains(state, characters);
+      state = passiveResult.state;
+
+      const result = essenceTapService.purchaseGenerator(state, generatorId, count);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      // Check for new daily challenge completions
+      const completedChallenges = essenceTapService.checkDailyChallenges(result.newState);
+
+      // Mark completed challenges as done so they don't trigger again
+      if (completedChallenges.length > 0) {
+        result.newState.daily.completedChallenges = [
+          ...(result.newState.daily.completedChallenges || []),
+          ...completedChallenges.map(c => c.id)
+        ];
+      }
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+      await user.save();
+
+      // Get updated game state (reuse characters from earlier fetch)
+      const gameState = essenceTapService.getGameState(result.newState, characters);
+
+      res.json({
+        success: true,
+        generator: result.generator,
+        newCount: result.newCount,
+        cost: result.cost,
+        productionPerSecond: gameState.productionPerSecond,
+        essence: result.newState.essence,
+        completedChallenges: completedChallenges.length > 0 ? completedChallenges : undefined
+      });
+    } catch (error) {
+      console.error('Error purchasing generator:', error);
+      res.status(500).json({ error: 'Failed to purchase generator' });
+    }
+  });
 });
 
 /**
@@ -485,70 +491,73 @@ router.post('/generator/buy', auth, async (req, res) => {
  * Purchase an upgrade
  */
 router.post('/upgrade/buy', auth, async (req, res) => {
-  try {
-    const { upgradeId } = req.body;
+  const { upgradeId } = req.body;
 
-    if (!upgradeId) {
-      return res.status(400).json({ error: 'Upgrade ID required' });
-    }
-
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    // Get user's characters for passive calculation
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
-
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
-    // Apply passive essence before purchase check
-    const passiveResult = applyPassiveGains(state, characters);
-    state = passiveResult.state;
-
-    const result = essenceTapService.purchaseUpgrade(state, upgradeId);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-    await user.save();
-
-    // Award XP for upgrade purchase
-    accountLevelService.addXP(user, essenceTapService.GAME_CONFIG.xpPerUpgrade || 2, 'essence_tap_upgrade');
-    await user.save();
-
-    // Get updated game state (reuse characters from earlier fetch)
-    const gameState = essenceTapService.getGameState(result.newState, characters);
-
-    res.json({
-      success: true,
-      upgrade: result.upgrade,
-      clickPower: gameState.clickPower,
-      productionPerSecond: gameState.productionPerSecond,
-      critChance: gameState.critChance,
-      critMultiplier: gameState.critMultiplier,
-      essence: result.newState.essence
-    });
-  } catch (error) {
-    console.error('Error purchasing upgrade:', error);
-    res.status(500).json({ error: 'Failed to purchase upgrade' });
+  if (!upgradeId) {
+    return res.status(400).json({ error: 'Upgrade ID required' });
   }
+
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      // Get user's characters for passive calculation
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: user.id },
+        include: ['Character']
+      });
+
+      const characters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
+
+      // Apply passive essence before purchase check
+      const passiveResult = applyPassiveGains(state, characters);
+      state = passiveResult.state;
+
+      const result = essenceTapService.purchaseUpgrade(state, upgradeId);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+      await user.save();
+
+      // Award XP for upgrade purchase
+      accountLevelService.addXP(user, essenceTapService.GAME_CONFIG.xpPerUpgrade || 2, 'essence_tap_upgrade');
+      await user.save();
+
+      // Get updated game state (reuse characters from earlier fetch)
+      const gameState = essenceTapService.getGameState(result.newState, characters);
+
+      res.json({
+        success: true,
+        upgrade: result.upgrade,
+        clickPower: gameState.clickPower,
+        productionPerSecond: gameState.productionPerSecond,
+        critChance: gameState.critChance,
+        critMultiplier: gameState.critMultiplier,
+        essence: result.newState.essence
+      });
+    } catch (error) {
+      console.error('Error purchasing upgrade:', error);
+      res.status(500).json({ error: 'Failed to purchase upgrade' });
+    }
+  });
 });
 
 /**
@@ -556,9 +565,13 @@ router.post('/upgrade/buy', auth, async (req, res) => {
  * Perform prestige (awakening)
  */
 router.post('/prestige', auth, async (req, res) => {
+  // Use transaction to ensure atomicity when modifying user state and awarding FP/XP
+  const transaction = await sequelize.transaction();
+
   try {
-    const user = await User.findByPk(req.user.id);
+    const user = await User.findByPk(req.user.id, { transaction, lock: true });
     if (!user) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -567,6 +580,7 @@ router.post('/prestige', auth, async (req, res) => {
     const result = essenceTapService.performPrestige(state, user);
 
     if (!result.success) {
+      await transaction.rollback();
       return res.status(400).json({ error: result.error });
     }
 
@@ -604,7 +618,8 @@ router.post('/prestige', auth, async (req, res) => {
       user.accountXP = (user.accountXP || 0) + result.xpReward;
     }
 
-    await user.save();
+    await user.save({ transaction });
+    await transaction.commit();
 
     res.json({
       success: true,
@@ -617,6 +632,7 @@ router.post('/prestige', auth, async (req, res) => {
       startingEssence: result.startingEssence
     });
   } catch (error) {
+    await transaction.rollback();
     console.error('Error performing prestige:', error);
     res.status(500).json({ error: 'Failed to prestige' });
   }
@@ -1398,9 +1414,13 @@ router.get('/tournament/leaderboard', auth, async (req, res) => {
  * Claim weekly tournament rewards
  */
 router.post('/tournament/weekly/claim', auth, async (req, res) => {
+  // Use transaction to ensure atomicity when awarding FP and tickets
+  const transaction = await sequelize.transaction();
+
   try {
-    const user = await User.findByPk(req.user.id);
+    const user = await User.findByPk(req.user.id, { transaction, lock: true });
     if (!user) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -1409,6 +1429,7 @@ router.post('/tournament/weekly/claim', auth, async (req, res) => {
     const result = essenceTapService.claimWeeklyRewards(state);
 
     if (!result.success) {
+      await transaction.rollback();
       return res.status(400).json({ error: result.error });
     }
 
@@ -1446,7 +1467,8 @@ router.post('/tournament/weekly/claim', auth, async (req, res) => {
       user.rollTickets = (user.rollTickets || 0) + result.rewards.rollTickets;
     }
 
-    await user.save();
+    await user.save({ transaction });
+    await transaction.commit();
 
     res.json({
       success: true,
@@ -1458,6 +1480,7 @@ router.post('/tournament/weekly/claim', auth, async (req, res) => {
       }
     });
   } catch (error) {
+    await transaction.rollback();
     console.error('Error claiming weekly rewards:', error);
     res.status(500).json({ error: 'Failed to claim rewards' });
   }
@@ -1815,15 +1838,19 @@ router.get('/daily-challenges', auth, async (req, res) => {
  * Claim a completed daily challenge
  */
 router.post('/daily-challenges/claim', auth, async (req, res) => {
+  const { challengeId } = req.body;
+
+  if (!challengeId) {
+    return res.status(400).json({ error: 'Challenge ID required' });
+  }
+
+  // Use transaction to ensure atomicity when awarding FP and tickets
+  const transaction = await sequelize.transaction();
+
   try {
-    const { challengeId } = req.body;
-
-    if (!challengeId) {
-      return res.status(400).json({ error: 'Challenge ID required' });
-    }
-
-    const user = await User.findByPk(req.user.id);
+    const user = await User.findByPk(req.user.id, { transaction, lock: true });
     if (!user) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -1831,6 +1858,7 @@ router.post('/daily-challenges/claim', auth, async (req, res) => {
     const result = essenceTapService.claimDailyChallenge(state, challengeId);
 
     if (!result.success) {
+      await transaction.rollback();
       return res.status(400).json({ error: result.error });
     }
 
@@ -1860,7 +1888,8 @@ router.post('/daily-challenges/claim', auth, async (req, res) => {
       user.rollTickets = (user.rollTickets || 0) + result.rewards.rollTickets;
     }
 
-    await user.save();
+    await user.save({ transaction });
+    await transaction.commit();
 
     res.json({
       success: true,
@@ -1868,6 +1897,7 @@ router.post('/daily-challenges/claim', auth, async (req, res) => {
       challenge: result.challenge
     });
   } catch (error) {
+    await transaction.rollback();
     console.error('Error claiming challenge:', error);
     res.status(500).json({ error: 'Failed to claim challenge' });
   }
@@ -1899,11 +1929,15 @@ router.get('/boss', auth, async (req, res) => {
  * Attack the current boss
  */
 router.post('/boss/attack', auth, async (req, res) => {
-  try {
-    const { damage } = req.body;
+  const { damage } = req.body;
 
-    const user = await User.findByPk(req.user.id);
+  // Use transaction to ensure atomicity when awarding FP, tickets, XP on boss defeat
+  const transaction = await sequelize.transaction();
+
+  try {
+    const user = await User.findByPk(req.user.id, { transaction, lock: true });
     if (!user) {
+      await transaction.rollback();
       return res.status(404).json({ error: 'User not found' });
     }
 
@@ -1912,7 +1946,8 @@ router.post('/boss/attack', auth, async (req, res) => {
     // Get user's characters for damage calculation
     const userCharacters = await UserCharacter.findAll({
       where: { UserId: user.id },
-      include: ['Character']
+      include: ['Character'],
+      transaction
     });
 
     const characters = userCharacters.map(uc => ({
@@ -1924,6 +1959,7 @@ router.post('/boss/attack', auth, async (req, res) => {
     const result = essenceTapService.attackBoss(state, damage, characters);
 
     if (!result.success) {
+      await transaction.rollback();
       return res.status(400).json({ error: result.error });
     }
 
@@ -1968,7 +2004,8 @@ router.post('/boss/attack', auth, async (req, res) => {
     }
 
     user.essenceTap = result.newState;
-    await user.save();
+    await user.save({ transaction });
+    await transaction.commit();
 
     res.json({
       success: true,
@@ -1979,6 +2016,7 @@ router.post('/boss/attack', auth, async (req, res) => {
       nextBossIn: result.nextBossIn
     });
   } catch (error) {
+    await transaction.rollback();
     console.error('Error attacking boss:', error);
     res.status(500).json({ error: 'Failed to attack boss' });
   }
