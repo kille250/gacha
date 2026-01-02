@@ -308,7 +308,8 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, onBossDefeat }) =
   }, [bossInfo?.active, fetchBossInfo]);
 
   const handleAttack = async (e) => {
-    if (attackingRef.current || !bossInfo?.active) return;
+    // Allow attack if boss is active OR if boss can spawn (backend handles spawning)
+    if (attackingRef.current || (!bossInfo?.active && !bossInfo?.canSpawn)) return;
     attackingRef.current = true;
 
     try {

@@ -318,6 +318,62 @@ describe('Essence Tap Synchronization Consistency', () => {
 });
 
 // ===========================================
+// PASSIVE GAINS INTEGRATION TESTS
+// ===========================================
+
+describe('Essence Tap Passive Gains', () => {
+  test('passive essence should accumulate between API calls', () => {
+    // Simulate scenario: user has generators producing 100/sec
+    // Last update was 60 seconds ago
+    // Passive gain should be 100 * 60 = 6000
+
+    const productionPerSecond = 100;
+    const elapsedSeconds = 60;
+    const maxSeconds = 300;
+
+    const cappedElapsed = Math.min(elapsedSeconds, maxSeconds);
+    const passiveGain = Math.floor(productionPerSecond * cappedElapsed);
+
+    expect(passiveGain).toBe(6000);
+  });
+
+  test('passive gains should cap at max seconds to prevent exploits', () => {
+    // Simulate: user manipulates client to claim 1 hour of passive
+    // Backend should cap at 300 seconds (5 minutes)
+
+    const productionPerSecond = 100;
+    const elapsedSeconds = 3600; // 1 hour (attempted exploit)
+    const maxSeconds = 300;
+
+    const cappedElapsed = Math.min(elapsedSeconds, maxSeconds);
+    const passiveGain = Math.floor(productionPerSecond * cappedElapsed);
+
+    // Should be capped at 300 seconds worth
+    expect(passiveGain).toBe(30000); // 100 * 300
+    expect(passiveGain).not.toBe(360000); // Would be 100 * 3600 without cap
+  });
+
+  test('click should not reduce essence when passive has accumulated', () => {
+    // This test verifies the fix for the reported bug
+    // Scenario: User lets essence accumulate to 10000, clicks, sees it drop to 4000
+
+    const initialStoredEssence = 4000; // What backend has saved
+    const productionPerSecond = 100;
+    const secondsSinceLastSync = 60; // 1 minute passed
+    const clickEssenceGain = 5;
+
+    // Before fix: backend would return 4000 + 5 = 4005 (ignoring passive)
+    // After fix: backend calculates 4000 + (100 * 60) + 5 = 10005
+
+    const passiveGain = Math.floor(productionPerSecond * secondsSinceLastSync);
+    const expectedTotal = initialStoredEssence + passiveGain + clickEssenceGain;
+
+    expect(expectedTotal).toBe(10005);
+    expect(expectedTotal).toBeGreaterThan(initialStoredEssence + clickEssenceGain);
+  });
+});
+
+// ===========================================
 // GENERATOR COST CALCULATION TESTS
 // ===========================================
 

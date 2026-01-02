@@ -77,6 +77,40 @@ function checkClickRateLimit(userId, clickCount) {
 }
 
 /**
+ * Helper function to calculate and apply passive essence gains since last update.
+ * This ensures any API endpoint that returns essence values includes accumulated passive income.
+ *
+ * @param {Object} state - Current essence tap state
+ * @param {Array} characters - User's characters with rarity/element info
+ * @param {number} maxSeconds - Maximum seconds to credit (prevents exploits)
+ * @returns {Object} Updated state with passive gains applied
+ */
+function applyPassiveGains(state, characters, maxSeconds = 300) {
+  const now = Date.now();
+  const lastUpdate = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
+  const elapsedSeconds = Math.min((now - lastUpdate) / 1000, maxSeconds);
+
+  if (elapsedSeconds <= 0) {
+    return state;
+  }
+
+  const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
+  let productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
+  if (activeAbilityEffects.productionMultiplier) {
+    productionPerSecond *= activeAbilityEffects.productionMultiplier;
+  }
+
+  const passiveGain = Math.floor(productionPerSecond * elapsedSeconds);
+  if (passiveGain > 0) {
+    state.essence = (state.essence || 0) + passiveGain;
+    state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveGain;
+    state = essenceTapService.updateWeeklyProgress(state, passiveGain);
+  }
+
+  return state;
+}
+
+/**
  * GET /api/essence-tap/status
  * Get current clicker state and calculate offline progress
  */
@@ -201,6 +235,10 @@ router.post('/click', auth, async (req, res) => {
       element: uc.Character?.element || 'neutral'
     }));
 
+    // Apply passive essence accumulated since last update
+    // This ensures clicking doesn't cause essence to drop when frontend has accumulated passive income
+    state = applyPassiveGains(state, characters);
+
     // Get active ability effects
     const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
 
@@ -292,6 +330,21 @@ router.post('/generator/buy', auth, async (req, res) => {
 
     let state = user.essenceTap || essenceTapService.getInitialState();
 
+    // Get user's characters for passive calculation
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: user.id },
+      include: ['Character']
+    });
+
+    const characters = userCharacters.map(uc => ({
+      id: uc.CharacterId,
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
+    }));
+
+    // Apply passive essence before purchase check
+    state = applyPassiveGains(state, characters);
+
     const result = essenceTapService.purchaseGenerator(state, generatorId, count);
 
     if (!result.success) {
@@ -314,18 +367,7 @@ router.post('/generator/buy', auth, async (req, res) => {
     user.essenceTap = result.newState;
     await user.save();
 
-    // Get updated game state
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
-
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
+    // Get updated game state (reuse characters from earlier fetch)
     const gameState = essenceTapService.getGameState(result.newState, characters);
 
     res.json({
@@ -362,6 +404,21 @@ router.post('/upgrade/buy', auth, async (req, res) => {
 
     let state = user.essenceTap || essenceTapService.getInitialState();
 
+    // Get user's characters for passive calculation
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: user.id },
+      include: ['Character']
+    });
+
+    const characters = userCharacters.map(uc => ({
+      id: uc.CharacterId,
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
+    }));
+
+    // Apply passive essence before purchase check
+    state = applyPassiveGains(state, characters);
+
     const result = essenceTapService.purchaseUpgrade(state, upgradeId);
 
     if (!result.success) {
@@ -377,18 +434,7 @@ router.post('/upgrade/buy', auth, async (req, res) => {
     accountLevelService.addXP(user, essenceTapService.GAME_CONFIG.xpPerUpgrade || 2, 'essence_tap_upgrade');
     await user.save();
 
-    // Get updated game state
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
-
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
+    // Get updated game state (reuse characters from earlier fetch)
     const gameState = essenceTapService.getGameState(result.newState, characters);
 
     res.json({
@@ -846,6 +892,21 @@ router.post('/gamble', auth, async (req, res) => {
     let state = user.essenceTap || essenceTapService.getInitialState();
     state = essenceTapService.resetDaily(state);
 
+    // Get user's characters for passive calculation
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: user.id },
+      include: ['Character']
+    });
+
+    const characters = userCharacters.map(uc => ({
+      id: uc.CharacterId,
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
+    }));
+
+    // Apply passive essence before gamble
+    state = applyPassiveGains(state, characters);
+
     const result = essenceTapService.performGamble(state, betType, betAmount);
 
     if (!result.success) {
@@ -938,6 +999,21 @@ router.post('/infusion', auth, async (req, res) => {
     }
 
     let state = user.essenceTap || essenceTapService.getInitialState();
+
+    // Get user's characters for passive calculation
+    const userCharacters = await UserCharacter.findAll({
+      where: { UserId: user.id },
+      include: ['Character']
+    });
+
+    const characters = userCharacters.map(uc => ({
+      id: uc.CharacterId,
+      rarity: uc.Character?.rarity || 'common',
+      element: uc.Character?.element || 'neutral'
+    }));
+
+    // Apply passive essence before infusion
+    state = applyPassiveGains(state, characters);
 
     const result = essenceTapService.performInfusion(state);
 
