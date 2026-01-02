@@ -317,6 +317,10 @@ export const ESSENCE_TAP_ACTIONS = {
   STREAK_CLAIM: 'essence_tap:streak_claim',
   /** Claiming daily challenge rewards - awards FP, tickets, essence */
   DAILY_CHALLENGE_CLAIM: 'essence_tap:daily_challenge_claim',
+  /** Opening boss modal - needs fresh boss state */
+  BOSS_OPEN: 'essence_tap:boss_open',
+  /** Attacking a boss - updates boss HP */
+  BOSS_ATTACK: 'essence_tap:boss_attack',
   /** Defeating a boss - awards essence, FP, tickets, XP */
   BOSS_DEFEAT: 'essence_tap:boss_defeat',
 };
@@ -480,6 +484,8 @@ export const CACHE_ACTIONS = {
   ESSENCE_TAP_TOURNAMENT_CLAIM: ESSENCE_TAP_ACTIONS.TOURNAMENT_CLAIM,
   ESSENCE_TAP_STREAK_CLAIM: ESSENCE_TAP_ACTIONS.STREAK_CLAIM,
   ESSENCE_TAP_DAILY_CHALLENGE_CLAIM: ESSENCE_TAP_ACTIONS.DAILY_CHALLENGE_CLAIM,
+  ESSENCE_TAP_BOSS_OPEN: ESSENCE_TAP_ACTIONS.BOSS_OPEN,
+  ESSENCE_TAP_BOSS_ATTACK: ESSENCE_TAP_ACTIONS.BOSS_ATTACK,
   ESSENCE_TAP_BOSS_DEFEAT: ESSENCE_TAP_ACTIONS.BOSS_DEFEAT,
 };
 

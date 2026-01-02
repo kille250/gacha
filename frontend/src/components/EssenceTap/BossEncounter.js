@@ -267,13 +267,21 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
   const [victory, setVictory] = useState(null);
   const nextDamageId = useRef(0);
   const attackingRef = useRef(false);
+  // Track clicks when bossInfo was fetched to calculate live clicksUntilSpawn
+  const clicksAtFetchRef = useRef(0);
+  // Store totalClicks in ref to access latest value without recreating fetchBossInfo
+  const totalClicksRef = useRef(totalClicks);
+  totalClicksRef.current = totalClicks;
 
-  // Fetch boss info
+  // Fetch boss info - clear cache first to ensure fresh data
   const fetchBossInfo = useCallback(async () => {
     try {
       setLoading(true);
+      // Clear boss cache to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_BOSS_OPEN);
       const response = await api.get('/essence-tap/boss');
       setBossInfo(response.data);
+      clicksAtFetchRef.current = totalClicksRef.current;
       setVictory(null);
     } catch (err) {
       console.error('Failed to fetch boss info:', err);
@@ -288,13 +296,10 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
     }
   }, [isOpen, fetchBossInfo]);
 
-  // Refetch boss info when totalClicks changes (to update clicksUntilSpawn)
-  // Only refetch if modal is open and boss is not active (waiting for spawn)
-  useEffect(() => {
-    if (isOpen && !bossInfo?.active && !loading) {
-      fetchBossInfo();
-    }
-  }, [totalClicks]); // eslint-disable-line react-hooks/exhaustive-deps
+  // Calculate live clicksUntilSpawn based on clicks since last fetch
+  const liveClicksUntilSpawn = bossInfo?.clicksUntilSpawn != null
+    ? Math.max(0, bossInfo.clicksUntilSpawn - (totalClicks - clicksAtFetchRef.current))
+    : null;
 
   // Timer countdown
   useEffect(() => {
@@ -324,6 +329,9 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
       const response = await api.post('/essence-tap/boss/attack', { damage: clickPower });
 
       if (response.data.success) {
+        // Clear boss cache to prevent stale data on any re-fetch
+        invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_BOSS_ATTACK);
+
         // Show damage number
         const id = nextDamageId.current++;
         const rect = e.currentTarget.getBoundingClientRect();
@@ -488,7 +496,7 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
               </CooldownText>
             ) : (
               <CooldownText>
-                Clicks until spawn: {bossInfo?.clicksUntilSpawn || 'Unknown'}
+                Clicks until spawn: {liveClicksUntilSpawn ?? 'Unknown'}
               </CooldownText>
             )}
             <Button variant="secondary" onClick={onClose} style={{ marginTop: theme.spacing.lg }}>
