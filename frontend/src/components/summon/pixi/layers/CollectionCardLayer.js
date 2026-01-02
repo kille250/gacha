@@ -30,17 +30,6 @@ const ELEMENT_COLORS = {
   neutral: 0x9CA3AF,
 };
 
-// Element abbreviations for Pixi.js text display (ASCII only to pass linter)
-const ELEMENT_SYMBOLS = {
-  fire: 'F',
-  water: 'W',
-  earth: 'E',
-  air: 'A',
-  light: 'L',
-  dark: 'D',
-  neutral: 'N',
-};
-
 // Element names for accessibility
 const ELEMENT_NAMES = {
   fire: 'Fire',
@@ -51,6 +40,96 @@ const ELEMENT_NAMES = {
   dark: 'Dark',
   neutral: 'Neutral',
 };
+
+/**
+ * Draw element icon shape using Pixi.js Graphics
+ * @param {Graphics} graphics - Pixi Graphics object to draw on
+ * @param {string} element - Element type
+ * @param {number} cx - Center X position
+ * @param {number} cy - Center Y position
+ * @param {number} size - Icon size (radius)
+ * @param {number} color - Fill color
+ */
+function drawElementIcon(graphics, element, cx, cy, size, color) {
+  const r = size * 0.4; // Scale factor for icons
+
+  switch (element) {
+    case 'fire':
+      // Flame shape - teardrop pointing up
+      graphics.moveTo(cx, cy - r * 1.2);
+      graphics.bezierCurveTo(cx + r * 0.8, cy - r * 0.3, cx + r * 0.6, cy + r * 0.8, cx, cy + r);
+      graphics.bezierCurveTo(cx - r * 0.6, cy + r * 0.8, cx - r * 0.8, cy - r * 0.3, cx, cy - r * 1.2);
+      graphics.fill({ color });
+      break;
+
+    case 'water':
+      // Water drop shape - teardrop pointing down
+      graphics.moveTo(cx, cy + r * 1.2);
+      graphics.bezierCurveTo(cx + r * 0.8, cy + r * 0.3, cx + r * 0.6, cy - r * 0.8, cx, cy - r);
+      graphics.bezierCurveTo(cx - r * 0.6, cy - r * 0.8, cx - r * 0.8, cy + r * 0.3, cx, cy + r * 1.2);
+      graphics.fill({ color });
+      break;
+
+    case 'earth':
+      // Mountain/triangle shape
+      graphics.moveTo(cx, cy - r);
+      graphics.lineTo(cx + r * 1.1, cy + r * 0.8);
+      graphics.lineTo(cx - r * 1.1, cy + r * 0.8);
+      graphics.closePath();
+      graphics.fill({ color });
+      break;
+
+    case 'air':
+      // Wind/swirl - three curved lines
+      for (let i = 0; i < 3; i++) {
+        const offsetY = (i - 1) * r * 0.5;
+        const lineR = r * (0.8 - i * 0.1);
+        graphics.moveTo(cx - lineR, cy + offsetY);
+        graphics.quadraticCurveTo(cx, cy + offsetY - r * 0.3, cx + lineR, cy + offsetY);
+        graphics.stroke({ color, width: 2 });
+      }
+      break;
+
+    case 'light': {
+      // Star/sparkle shape - 4-pointed star
+      const outerR = r;
+      const innerR = r * 0.4;
+      for (let i = 0; i < 8; i++) {
+        const angle = (i * Math.PI) / 4 - Math.PI / 2;
+        const radius = i % 2 === 0 ? outerR : innerR;
+        const px = cx + Math.cos(angle) * radius;
+        const py = cy + Math.sin(angle) * radius;
+        if (i === 0) {
+          graphics.moveTo(px, py);
+        } else {
+          graphics.lineTo(px, py);
+        }
+      }
+      graphics.closePath();
+      graphics.fill({ color });
+      break;
+    }
+
+    case 'dark':
+      // Crescent moon shape
+      graphics.arc(cx, cy, r * 0.9, Math.PI * 0.75, Math.PI * 2.25);
+      graphics.arc(cx + r * 0.4, cy - r * 0.1, r * 0.65, Math.PI * 2.25, Math.PI * 0.75, true);
+      graphics.closePath();
+      graphics.fill({ color });
+      break;
+
+    case 'neutral':
+    default:
+      // Diamond shape
+      graphics.moveTo(cx, cy - r);
+      graphics.lineTo(cx + r * 0.7, cy);
+      graphics.lineTo(cx, cy + r);
+      graphics.lineTo(cx - r * 0.7, cy);
+      graphics.closePath();
+      graphics.fill({ color });
+      break;
+  }
+}
 
 export class CollectionCardLayer {
   constructor(options = {}) {
@@ -614,7 +693,7 @@ export class CollectionCardLayer {
     // Only draw once and only if element exists
     if (this.elementBadge.children.length > 0 || !this.element) return;
 
-    const badgeSize = 24;
+    const badgeSize = 28;
     const imageSize = this.cardWidth - this.borderWidth * 2;
     const halfW = this.cardWidth / 2;
     const halfH = this.cardHeight / 2;
@@ -626,7 +705,7 @@ export class CollectionCardLayer {
     const badgeGraphics = new Graphics();
 
     // Background circle with blur effect (dark backdrop)
-    badgeGraphics.circle(badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize / 2 + 2);
+    badgeGraphics.circle(badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize / 2 + 3);
     badgeGraphics.fill({ color: 0x000000, alpha: 0.6 });
 
     // Main circle with element color border
@@ -636,20 +715,12 @@ export class CollectionCardLayer {
 
     this.elementBadge.addChild(badgeGraphics);
 
-    // Element symbol/icon text
-    const symbol = ELEMENT_SYMBOLS[this.element] || '\u25C6';
-    const symbolText = new Text({
-      text: symbol,
-      style: {
-        fontFamily: 'system-ui, -apple-system, sans-serif',
-        fontSize: 12,
-        fontWeight: '700',
-        fill: this.elementColor,
-      },
-    });
-    symbolText.anchor.set(0.5);
-    symbolText.position.set(badgeX + badgeSize / 2, badgeY + badgeSize / 2);
-    this.elementBadge.addChild(symbolText);
+    // Draw element icon using graphics shapes
+    const iconGraphics = new Graphics();
+    const cx = badgeX + badgeSize / 2;
+    const cy = badgeY + badgeSize / 2;
+    drawElementIcon(iconGraphics, this.element, cx, cy, badgeSize, this.elementColor);
+    this.elementBadge.addChild(iconGraphics);
   }
 
   /**
