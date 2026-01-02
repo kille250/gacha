@@ -352,12 +352,12 @@ const EssenceTapPage = memo(() => {
   }, []);
 
   // Handle challenge completion - refresh both game state and user data (FP/tickets)
-  const handleChallengeComplete = useCallback(async (rewards) => {
+  const handleChallengeComplete = useCallback(async (_rewards) => {
     await Promise.all([refresh(), refreshUser()]);
   }, [refresh, refreshUser]);
 
   // Handle boss defeat - refresh both game state and user data (FP/tickets)
-  const handleBossDefeat = useCallback(async (rewards) => {
+  const handleBossDefeat = useCallback(async (_rewards) => {
     await Promise.all([refresh(), refreshUser()]);
   }, [refresh, refreshUser]);
 

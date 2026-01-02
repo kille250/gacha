@@ -15,6 +15,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../../design-system';
 import { formatNumber } from '../../hooks/useEssenceTap';
 import { IconDice, IconTrophy, IconWarning } from '../../constants/icons';
+import { BET_TYPES } from '../../config/essenceTapConfig';
 
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
@@ -261,12 +262,6 @@ const WarningText = styled.div`
   font-size: ${theme.fontSizes.sm};
   margin-bottom: ${theme.spacing.md};
 `;
-
-const BET_TYPES = {
-  safe: { name: 'Safe Bet', winChance: 70, multiplier: 1.5, color: '#10B981' },
-  risky: { name: 'Risky Bet', winChance: 50, multiplier: 2.5, color: '#F59E0B' },
-  extreme: { name: 'All or Nothing', winChance: 30, multiplier: 5.0, color: '#EF4444' }
-};
 
 const GamblePanel = memo(({
   isOpen,

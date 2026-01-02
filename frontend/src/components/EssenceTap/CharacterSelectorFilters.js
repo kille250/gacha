@@ -50,6 +50,7 @@ const FilterBar = styled.div`
 
 const FilterButton = styled.button`
   padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  min-height: 44px; /* Touch-friendly minimum height */
   background: ${props => props.$active ? 'rgba(138, 43, 226, 0.3)' : 'rgba(255, 255, 255, 0.05)'};
   border: 1px solid ${props => props.$active ? 'rgba(138, 43, 226, 0.6)' : 'rgba(255, 255, 255, 0.1)'};
   border-radius: ${theme.radius.md};
@@ -76,8 +77,13 @@ const CharacterSelectorFilters = memo(({
       <SectionTitle style={{ marginTop: theme.spacing.lg }}>
         {t('essenceTap.filterByRarity', { defaultValue: 'Filter by Rarity' })}
       </SectionTitle>
-      <FilterBar>
-        <FilterButton $active={rarityFilter === 'all'} onClick={() => setRarityFilter('all')}>
+      <FilterBar role="group" aria-label="Filter characters by rarity">
+        <FilterButton
+          $active={rarityFilter === 'all'}
+          onClick={() => setRarityFilter('all')}
+          aria-label="Show all rarities"
+          aria-pressed={rarityFilter === 'all'}
+        >
           All
         </FilterButton>
         {Object.entries(RARITY_COLORS).map(([rarity, color]) => (
@@ -86,6 +92,8 @@ const CharacterSelectorFilters = memo(({
             $active={rarityFilter === rarity}
             onClick={() => setRarityFilter(rarity)}
             style={{ borderColor: rarityFilter === rarity ? color : undefined }}
+            aria-label={`Filter by ${rarity} rarity`}
+            aria-pressed={rarityFilter === rarity}
           >
             {rarity.charAt(0).toUpperCase() + rarity.slice(1)}
           </FilterButton>
@@ -96,8 +104,13 @@ const CharacterSelectorFilters = memo(({
       <SectionTitle>
         {t('essenceTap.filterByElement', { defaultValue: 'Filter by Element' })}
       </SectionTitle>
-      <FilterBar>
-        <FilterButton $active={elementFilter === 'all'} onClick={() => setElementFilter('all')}>
+      <FilterBar role="group" aria-label="Filter characters by element">
+        <FilterButton
+          $active={elementFilter === 'all'}
+          onClick={() => setElementFilter('all')}
+          aria-label="Show all elements"
+          aria-pressed={elementFilter === 'all'}
+        >
           All
         </FilterButton>
         {Object.entries(ELEMENT_ICONS).map(([element]) => {
@@ -114,6 +127,8 @@ const CharacterSelectorFilters = memo(({
                 alignItems: 'center',
                 gap: '4px'
               }}
+              aria-label={`Filter by ${element} element`}
+              aria-pressed={elementFilter === element}
             >
               <ElementIcon size={14} color={elementFilter === element ? color : undefined} />
               {element.charAt(0).toUpperCase() + element.slice(1)}

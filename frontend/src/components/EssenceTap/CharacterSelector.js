@@ -433,14 +433,8 @@ const CharacterSelector = memo(({
     );
   }, []);
 
-  // Fetch owned characters when modal opens
-  useEffect(() => {
-    if (isOpen) {
-      fetchOwnedCharacters();
-    }
-  }, [isOpen]);
-
-  const fetchOwnedCharacters = async () => {
+  // Fetch owned characters - wrapped in useCallback for stable reference
+  const fetchOwnedCharacters = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
@@ -461,7 +455,14 @@ const CharacterSelector = memo(({
     } finally {
       setLoading(false);
     }
-  };
+  }, [t]);
+
+  // Fetch owned characters when modal opens
+  useEffect(() => {
+    if (isOpen) {
+      fetchOwnedCharacters();
+    }
+  }, [isOpen, fetchOwnedCharacters]);
 
   // Calculate total bonus using backend config
   const calculateTotalBonus = useCallback(() => {

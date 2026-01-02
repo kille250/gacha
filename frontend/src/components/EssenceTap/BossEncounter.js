@@ -18,14 +18,12 @@ import api from '../../utils/api';
 import { formatNumber } from '../../hooks/useEssenceTap';
 import { invalidateFor, CACHE_ACTIONS } from '../../cache/manager';
 import {
-  IconFlame,
-  IconLight,
-  IconDark,
   IconGem,
   IconStar,
   IconSparkles,
   IconSkull
 } from '../../constants/icons';
+import { ELEMENT_ICONS, ELEMENT_COLORS } from './CharacterSelectorFilters';
 
 const glow = keyframes`
   0%, 100% { filter: drop-shadow(0 0 10px rgba(239, 68, 68, 0.5)); }
@@ -238,18 +236,6 @@ const CooldownText = styled.div`
   font-size: ${theme.fontSizes.base};
   color: ${theme.colors.textSecondary};
 `;
-
-const ELEMENT_ICONS = {
-  fire: IconFlame,
-  light: IconLight,
-  dark: IconDark
-};
-
-const ELEMENT_COLORS = {
-  fire: '#EF4444',
-  light: '#FCD34D',
-  dark: '#6366F1'
-};
 
 // Boss uses skull icon with different colors per tier
 const BOSS_COLORS = {

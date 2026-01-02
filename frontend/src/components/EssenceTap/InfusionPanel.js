@@ -14,6 +14,7 @@ import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../../design-system';
 import { formatNumber } from '../../hooks/useEssenceTap';
 import { IconSparkles, IconArrowUp } from '../../constants/icons';
+import { INFUSION_CONFIG } from '../../config/essenceTapConfig';
 
 const pulse = keyframes`
   0%, 100% { box-shadow: 0 0 20px rgba(138, 43, 226, 0.3); }
@@ -233,14 +234,16 @@ const InfusionPanel = memo(({
   const [loading, setLoading] = useState(false);
   const [lastResult, setLastResult] = useState(null);
 
-  // Calculate infusion values from gameState
+  // Calculate infusion values from gameState using shared config
   const infusionCount = gameState?.infusion?.count || 0;
   const currentBonus = gameState?.infusion?.totalBonus || 0;
-  const nextBonus = 0.01; // Each infusion gives +1%
-  const baseCost = 1000000; // 1M base cost
-  const costMultiplier = Math.pow(1.5, infusionCount);
-  const nextCost = Math.floor(baseCost * costMultiplier);
-  const costPercent = Math.min(50, 10 + infusionCount * 2); // 10% base, +2% per infusion, max 50%
+  const nextBonus = INFUSION_CONFIG.bonusPerInfusion;
+  const costMultiplier = Math.pow(INFUSION_CONFIG.costMultiplier, infusionCount);
+  const nextCost = Math.floor(INFUSION_CONFIG.baseCost * costMultiplier);
+  const costPercent = Math.min(
+    INFUSION_CONFIG.maxCostPercent,
+    INFUSION_CONFIG.baseCostPercent + infusionCount * INFUSION_CONFIG.costPercentIncrease
+  );
 
   const canAfford = essence >= nextCost;
   const canInfuse = canAfford && !loading;

@@ -16,6 +16,7 @@ import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../..
 import api from '../../utils/api';
 import { formatNumber } from '../../hooks/useEssenceTap';
 import { IconTrophy, IconClock, IconGift, IconBronzeMedal, IconSilverMedal, IconGoldMedal, IconDiamond, IconCrownSymbol, IconStar, IconCategoryPerson, IconRefresh } from '../../constants/icons';
+import { TOURNAMENT_TIER_CONFIG, TOURNAMENT_TIER_REWARDS } from '../../config/essenceTapConfig';
 
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
@@ -450,22 +451,14 @@ const LoadingSpinner = styled(motion.div)`
   color: ${theme.colors.textSecondary};
 `;
 
-const TIER_CONFIG = {
-  Bronze: { color: '#CD7F32', colorEnd: '#8B4513', IconComponent: IconBronzeMedal, minEssence: 1000000 },
-  Silver: { color: '#C0C0C0', colorEnd: '#808080', IconComponent: IconSilverMedal, minEssence: 10000000 },
-  Gold: { color: '#FFD700', colorEnd: '#FFA500', IconComponent: IconGoldMedal, minEssence: 50000000 },
-  Platinum: { color: '#E5E4E2', colorEnd: '#B4B4B4', IconComponent: IconStar, minEssence: 200000000 },
-  Diamond: { color: '#B9F2FF', colorEnd: '#40E0D0', IconComponent: IconDiamond, minEssence: 1000000000 },
-  Champion: { color: '#FF6B6B', colorEnd: '#FFD93D', IconComponent: IconCrownSymbol, minEssence: 10000000000 }
-};
-
-const TIER_REWARDS = {
-  Bronze: { fatePoints: 5, rollTickets: 1 },
-  Silver: { fatePoints: 15, rollTickets: 3 },
-  Gold: { fatePoints: 30, rollTickets: 5 },
-  Platinum: { fatePoints: 50, rollTickets: 10 },
-  Diamond: { fatePoints: 100, rollTickets: 20 },
-  Champion: { fatePoints: 200, rollTickets: 50 }
+// Icon mapping for tiers (extends config with icon components)
+const TIER_ICONS = {
+  Bronze: IconBronzeMedal,
+  Silver: IconSilverMedal,
+  Gold: IconGoldMedal,
+  Platinum: IconStar,
+  Diamond: IconDiamond,
+  Champion: IconCrownSymbol
 };
 
 // Helper to get rank color
@@ -480,7 +473,7 @@ const getRankColor = (rank) => {
 
 // Helper to get player tier from essence
 const getPlayerTier = (essence) => {
-  return Object.entries(TIER_CONFIG)
+  return Object.entries(TOURNAMENT_TIER_CONFIG)
     .reverse()
     .find(([, config]) => essence >= config.minEssence)?.[0] || null;
 };
@@ -589,24 +582,26 @@ const WeeklyTournament = memo(({
 
   // Determine current tier (backend returns essenceEarned, not weeklyEssence)
   const weeklyEssence = tournamentInfo?.essenceEarned ?? tournamentInfo?.weeklyEssence ?? 0;
-  const currentTier = Object.entries(TIER_CONFIG)
+  const currentTier = Object.entries(TOURNAMENT_TIER_CONFIG)
     .reverse()
     .find(([, config]) => weeklyEssence >= config.minEssence)?.[0] || null;
 
   // Find next tier
-  const tiers = Object.keys(TIER_CONFIG);
+  const tiers = Object.keys(TOURNAMENT_TIER_CONFIG);
   const currentTierIndex = currentTier ? tiers.indexOf(currentTier) : -1;
   const nextTier = currentTierIndex < tiers.length - 1 ? tiers[currentTierIndex + 1] : null;
-  const nextTierConfig = nextTier ? TIER_CONFIG[nextTier] : null;
+  const nextTierConfig = nextTier ? TOURNAMENT_TIER_CONFIG[nextTier] : null;
 
   // Calculate progress to next tier
-  const currentThreshold = currentTier ? TIER_CONFIG[currentTier].minEssence : 0;
+  const currentThreshold = currentTier ? TOURNAMENT_TIER_CONFIG[currentTier].minEssence : 0;
   const nextThreshold = nextTierConfig?.minEssence || currentThreshold;
   const progressPercent = nextTier
     ? ((weeklyEssence - currentThreshold) / (nextThreshold - currentThreshold)) * 100
     : 100;
 
-  const tierConfig = currentTier ? TIER_CONFIG[currentTier] : { color: '#9CA3AF', IconComponent: IconTrophy };
+  const tierConfig = currentTier
+    ? { ...TOURNAMENT_TIER_CONFIG[currentTier], IconComponent: TIER_ICONS[currentTier] }
+    : { color: '#9CA3AF', IconComponent: IconTrophy };
 
   // Render leaderboard view
   const renderLeaderboard = () => {
@@ -657,7 +652,7 @@ const WeeklyTournament = memo(({
                   podiumOrder.map((player, idx) => {
                     const actualRank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
                     const tier = getPlayerTier(player.weeklyEssence);
-                    const tierConf = tier ? TIER_CONFIG[tier] : null;
+                    const tierConf = tier ? { ...TOURNAMENT_TIER_CONFIG[tier], IconComponent: TIER_ICONS[tier] } : null;
 
                     return (
                       <TopPlayer
@@ -689,7 +684,7 @@ const WeeklyTournament = memo(({
                   topThree.map((player, idx) => {
                     const rank = idx + 1;
                     const tier = getPlayerTier(player.weeklyEssence);
-                    const tierConf = tier ? TIER_CONFIG[tier] : null;
+                    const tierConf = tier ? { ...TOURNAMENT_TIER_CONFIG[tier], IconComponent: TIER_ICONS[tier] } : null;
 
                     return (
                       <TopPlayer
@@ -726,7 +721,7 @@ const WeeklyTournament = memo(({
                 const rank = idx + 4;
                 const isCurrentUser = player.id === currentUserId;
                 const tier = getPlayerTier(player.weeklyEssence);
-                const tierConf = tier ? TIER_CONFIG[tier] : null;
+                const tierConf = tier ? { ...TOURNAMENT_TIER_CONFIG[tier], IconComponent: TIER_ICONS[tier] } : null;
 
                 return (
                   <LeaderboardEntry
@@ -865,8 +860,8 @@ const WeeklyTournament = memo(({
                   <ProgressBar>
                     <ProgressFill
                       $percent={progressPercent}
-                      $color={TIER_CONFIG[nextTier].color}
-                      $colorEnd={TIER_CONFIG[nextTier].colorEnd}
+                      $color={TOURNAMENT_TIER_CONFIG[nextTier].color}
+                      $colorEnd={TOURNAMENT_TIER_CONFIG[nextTier].colorEnd}
                     />
                   </ProgressBar>
                 </ProgressSection>
@@ -874,12 +869,12 @@ const WeeklyTournament = memo(({
 
               {/* Tier List */}
               <TierList>
-                {Object.entries(TIER_CONFIG).map(([tierName, config]) => {
-                  const rewards = TIER_REWARDS[tierName];
+                {Object.entries(TOURNAMENT_TIER_CONFIG).map(([tierName, config]) => {
+                  const rewards = TOURNAMENT_TIER_REWARDS[tierName];
+                  const TierIconComponent = TIER_ICONS[tierName];
                   const achieved = weeklyEssence >= config.minEssence;
                   const isCurrent = tierName === currentTier;
                   const locked = weeklyEssence < config.minEssence;
-                  const TierIconComponent = config.IconComponent;
 
                   return (
                     <TierItem
@@ -913,7 +908,7 @@ const WeeklyTournament = memo(({
                     {t('essenceTap.tournament.rewardsReady', { defaultValue: 'Rewards Ready!' })}
                   </ClaimTitle>
                   <ClaimRewards>
-                    {TIER_REWARDS[currentTier].fatePoints} Fate Points + {TIER_REWARDS[currentTier].rollTickets} Roll Tickets
+                    {TOURNAMENT_TIER_REWARDS[currentTier].fatePoints} Fate Points + {TOURNAMENT_TIER_REWARDS[currentTier].rollTickets} Roll Tickets
                   </ClaimRewards>
                   <Button
                     variant="primary"

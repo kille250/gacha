@@ -677,6 +677,72 @@ export function getBossTierForEssence(lifetimeEssence) {
   return tiers[0]; // Default to first tier
 }
 
+// ===========================================
+// GAMBLE SYSTEM CONFIG
+// ===========================================
+
+export const BET_TYPES = {
+  safe: { name: 'Safe Bet', winChance: 70, multiplier: 1.5, color: '#10B981' },
+  risky: { name: 'Risky Bet', winChance: 50, multiplier: 2.5, color: '#F59E0B' },
+  extreme: { name: 'All or Nothing', winChance: 30, multiplier: 5.0, color: '#EF4444' }
+};
+
+// ===========================================
+// WEEKLY TOURNAMENT CONFIG
+// ===========================================
+
+export const TOURNAMENT_TIER_CONFIG = {
+  Bronze: { color: '#CD7F32', colorEnd: '#8B4513', minEssence: 1000000 },
+  Silver: { color: '#C0C0C0', colorEnd: '#808080', minEssence: 10000000 },
+  Gold: { color: '#FFD700', colorEnd: '#FFA500', minEssence: 50000000 },
+  Platinum: { color: '#E5E4E2', colorEnd: '#B4B4B4', minEssence: 200000000 },
+  Diamond: { color: '#B9F2FF', colorEnd: '#40E0D0', minEssence: 1000000000 },
+  Champion: { color: '#FF6B6B', colorEnd: '#FFD93D', minEssence: 10000000000 }
+};
+
+export const TOURNAMENT_TIER_REWARDS = {
+  Bronze: { fatePoints: 5, rollTickets: 1 },
+  Silver: { fatePoints: 15, rollTickets: 3 },
+  Gold: { fatePoints: 30, rollTickets: 5 },
+  Platinum: { fatePoints: 50, rollTickets: 10 },
+  Diamond: { fatePoints: 100, rollTickets: 20 },
+  Champion: { fatePoints: 200, rollTickets: 50 }
+};
+
+// ===========================================
+// INFUSION SYSTEM CONFIG
+// ===========================================
+
+export const INFUSION_CONFIG = {
+  bonusPerInfusion: 0.01,  // Each infusion gives +1%
+  baseCost: 1000000,       // 1M base cost
+  costMultiplier: 1.5,     // Cost increases 1.5x per infusion
+  baseCostPercent: 10,     // 10% base cost percent
+  costPercentIncrease: 2,  // +2% per infusion
+  maxCostPercent: 50       // Cap at 50%
+};
+
+// ===========================================
+// ELEMENT DISPLAY CONSTANTS
+// ===========================================
+
+// Element icons mapping for use across components
+// Keys correspond to icon component names from constants/icons
+export const ELEMENT_ICON_NAMES = {
+  fire: 'IconFlame',
+  water: 'IconWater',
+  earth: 'IconEarth',
+  air: 'IconAir',
+  light: 'IconLight',
+  dark: 'IconDark',
+  neutral: 'IconNeutral'
+};
+
+// Element colors derived from CHARACTER_ABILITIES
+export const ELEMENT_COLORS = Object.fromEntries(
+  Object.entries(CHARACTER_ABILITIES).map(([key, ability]) => [key, ability.color])
+);
+
 export default {
   COMBO_CONFIG,
   CLICK_CONFIG,
@@ -693,6 +759,12 @@ export default {
   ACHIEVEMENTS,
   SOUND_EFFECTS,
   UI_TIMING,
+  BET_TYPES,
+  TOURNAMENT_TIER_CONFIG,
+  TOURNAMENT_TIER_REWARDS,
+  INFUSION_CONFIG,
+  ELEMENT_ICON_NAMES,
+  ELEMENT_COLORS,
   getCurrentDailyModifier,
   calculateCharacterBonus,
   calculateElementBonuses,
