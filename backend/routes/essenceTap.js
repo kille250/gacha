@@ -2208,7 +2208,9 @@ router.post('/sync-on-leave', async (req, res) => {
       return res.status(200).json({ success: false, reason: 'invalid_token' });
     }
 
-    const userId = decoded.id;
+    // Support both token formats: { id: ... } and { user: { id: ... } }
+    // This matches the auth pattern used elsewhere in the codebase
+    const userId = decoded.user?.id || decoded.userId || decoded.id;
     if (!userId) {
       return res.status(200).json({ success: false, reason: 'invalid_user' });
     }
@@ -2259,22 +2261,35 @@ router.post('/sync-on-leave', async (req, res) => {
 
       // Process pending non-tap actions that haven't been confirmed
       // These are actions that were queued offline
+      // Use server-stored lastConfirmedSeq to prevent replay of already-processed actions
+      const serverLastConfirmedSeq = state.lastConfirmedSeq || 0;
+      let maxProcessedSeq = serverLastConfirmedSeq;
+
       for (const action of pendingActions) {
-        if (action.seq <= lastConfirmedSeq) continue; // Already processed
+        // Skip if this action was already processed (seq <= server's confirmed seq)
+        // Also skip if seq is less than or equal to client's reported lastConfirmedSeq
+        if (action.seq <= serverLastConfirmedSeq || action.seq <= lastConfirmedSeq) continue;
 
         // Only process certain action types that are safe to replay
         if (action.type === 'purchase_generator' && action.data?.generatorId) {
           const result = essenceTapService.purchaseGenerator(state, action.data.generatorId, action.data.count || 1);
           if (result.success) {
             state = result.newState;
+            maxProcessedSeq = Math.max(maxProcessedSeq, action.seq);
           }
         } else if (action.type === 'purchase_upgrade' && action.data?.upgradeId) {
           const result = essenceTapService.purchaseUpgrade(state, action.data.upgradeId);
           if (result.success) {
             state = result.newState;
+            maxProcessedSeq = Math.max(maxProcessedSeq, action.seq);
           }
         }
         // Skip other actions (prestige, gamble, infusion) - these require user confirmation
+      }
+
+      // Update the server-side lastConfirmedSeq to prevent replay attacks
+      if (maxProcessedSeq > serverLastConfirmedSeq) {
+        state.lastConfirmedSeq = maxProcessedSeq;
       }
 
       // Update timestamp
@@ -2383,27 +2398,37 @@ router.post('/initialize', auth, async (req, res) => {
       const lastActive = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
       const offlineSeconds = Math.floor((now - lastActive) / 1000);
 
+      // MULTI-TAB PROTECTION: Only grant offline earnings if user was away for at least 30 seconds
+      // This prevents duplicate rewards when multiple tabs call /initialize simultaneously
+      // The first tab to call /initialize updates lastOnlineTimestamp, so subsequent tabs
+      // within the same session will see offlineSeconds < 30 and get 0 earnings
+      const MIN_OFFLINE_SECONDS_FOR_EARNINGS = 30;
+
       // Cap offline time (max 8 hours)
       const cappedOfflineSeconds = Math.min(offlineSeconds, 8 * 60 * 60);
 
-      // Calculate offline earnings
+      // Calculate offline earnings only if user was away long enough
       const productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
-      // Apply offline efficiency (50% of normal production)
-      const offlineEfficiency = 0.5;
-      const offlineEarnings = Math.floor(cappedOfflineSeconds * productionPerSecond * offlineEfficiency);
+      let cappedOfflineEarnings = 0;
 
-      // Cap offline earnings (max 10 million or 4 hours worth of production at 100% efficiency)
-      const maxOfflineEarnings = Math.min(10000000, productionPerSecond * 4 * 60 * 60);
-      const cappedOfflineEarnings = Math.min(offlineEarnings, maxOfflineEarnings);
+      if (offlineSeconds >= MIN_OFFLINE_SECONDS_FOR_EARNINGS) {
+        // Apply offline efficiency (50% of normal production)
+        const offlineEfficiency = 0.5;
+        const offlineEarnings = Math.floor(cappedOfflineSeconds * productionPerSecond * offlineEfficiency);
 
-      // Apply offline earnings
-      if (cappedOfflineEarnings > 0) {
-        state.essence = (state.essence || 0) + cappedOfflineEarnings;
-        state.lifetimeEssence = (state.lifetimeEssence || 0) + cappedOfflineEarnings;
+        // Cap offline earnings (max 10 million or 4 hours worth of production at 100% efficiency)
+        const maxOfflineEarnings = Math.min(10000000, productionPerSecond * 4 * 60 * 60);
+        cappedOfflineEarnings = Math.min(offlineEarnings, maxOfflineEarnings);
 
-        // Track total offline earnings
-        state.stats = state.stats || {};
-        state.stats.totalOfflineEarnings = (state.stats.totalOfflineEarnings || 0) + cappedOfflineEarnings;
+        // Apply offline earnings
+        if (cappedOfflineEarnings > 0) {
+          state.essence = (state.essence || 0) + cappedOfflineEarnings;
+          state.lifetimeEssence = (state.lifetimeEssence || 0) + cappedOfflineEarnings;
+
+          // Track total offline earnings
+          state.stats = state.stats || {};
+          state.stats.totalOfflineEarnings = (state.stats.totalOfflineEarnings || 0) + cappedOfflineEarnings;
+        }
       }
 
       // Update timestamp
@@ -2423,7 +2448,7 @@ router.post('/initialize', auth, async (req, res) => {
         offlineEarnings: cappedOfflineEarnings,
         offlineDuration: cappedOfflineSeconds,
         productionPerSecond,
-        offlineEfficiency,
+        offlineEfficiency: 0.5,
         pendingActionsApplied: actionsApplied,
         weeklyFPBudget,
         sessionStats: essenceTapService.getSessionStats(state)

@@ -529,7 +529,12 @@ function initEssenceTapWebSocket(io) {
     // SYNC REQUEST
     // ===========================================
 
-    socket.on('sync_request', async () => {
+    socket.on('sync_request', async (data) => {
+      // Log reason for debugging if provided
+      if (data?.reason) {
+        console.log(`[EssenceTap WS] Player "${username}" sync request: ${data.reason}`);
+      }
+
       const state = await getFullState(userId);
       if (state) {
         socket.emit('state_full', state);
@@ -538,6 +543,49 @@ function initEssenceTapWebSocket(io) {
           code: 'SYNC_FAILED',
           message: 'Failed to get state'
         });
+      }
+    });
+
+    // ===========================================
+    // VISIBILITY CHANGE HANDLERS
+    // ===========================================
+
+    socket.on('visibility_hidden', async (data) => {
+      // User's tab was hidden (alt+tab, minimize, switch tabs)
+      // Save the current state and timestamp for offline calculation
+      console.log(`[EssenceTap WS] Player "${username}" tab hidden`);
+
+      // Process any pending taps before going idle
+      const pendingBatch = pendingTapBatches.get(userId);
+      if (pendingBatch) {
+        pendingTapBatches.delete(userId);
+        if (pendingBatch.timer) clearTimeout(pendingBatch.timer);
+        await processTapBatch(userId, pendingBatch.taps, pendingBatch.comboMultiplier, namespace);
+      }
+
+      // Update lastOnlineTimestamp in database
+      try {
+        const user = await User.findByPk(userId);
+        if (user) {
+          let state = user.essenceTap || essenceTapService.getInitialState();
+          state.lastOnlineTimestamp = Date.now();
+          user.essenceTap = state;
+          await user.save();
+        }
+      } catch (err) {
+        console.error('[EssenceTap WS] Error saving visibility_hidden state:', err);
+      }
+    });
+
+    socket.on('visibility_visible', async (data) => {
+      // User's tab became visible again after being hidden
+      const { hiddenSince, hiddenDuration } = data || {};
+      console.log(`[EssenceTap WS] Player "${username}" tab visible (hidden for ${Math.round((hiddenDuration || 0) / 1000)}s)`);
+
+      // Get fresh state with offline earnings calculated
+      const state = await getFullState(userId);
+      if (state) {
+        socket.emit('state_full', state);
       }
     });
 
