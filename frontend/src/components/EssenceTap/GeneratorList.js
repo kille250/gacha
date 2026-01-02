@@ -162,6 +162,7 @@ const ListContainer = styled(motion.div)`
   flex-direction: column;
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.md};
+  padding-top: ${theme.spacing.lg};
   overflow-y: auto;
   flex: 1;
   min-height: 300px;
