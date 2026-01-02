@@ -403,8 +403,11 @@ function initEssenceTapWebSocket(io) {
     // ===========================================
 
     socket.on('tap', async (data) => {
-      const { count = 1, comboMultiplier = 1, clientSeq } = data;
+      // Support both single clientSeq and clientSeqs array for backward compatibility
+      const { count = 1, comboMultiplier = 1, clientSeq, clientSeqs } = data;
       const tapCount = Math.min(Math.max(1, count), CONFIG.MAX_TAPS_PER_BATCH);
+      // Normalize to array for consistent handling
+      const incomingSeqs = clientSeqs || (clientSeq !== undefined ? [clientSeq] : []);
 
       // Rate limit check
       const rateCheck = checkTapRateLimit(userId, tapCount);
@@ -434,8 +437,9 @@ function initEssenceTapWebSocket(io) {
       // Add to batch
       batch.taps += tapCount;
       batch.comboMultiplier = Math.max(batch.comboMultiplier, comboMultiplier);
-      if (clientSeq !== undefined) {
-        batch.clientSeqs.push(clientSeq);
+      // Add all incoming sequence numbers to the batch
+      if (incomingSeqs.length > 0) {
+        batch.clientSeqs.push(...incomingSeqs);
       }
 
       // Clear existing timer
@@ -545,9 +549,13 @@ function initEssenceTapWebSocket(io) {
         await processTapBatch(userId, pendingBatch.taps, pendingBatch.comboMultiplier, namespace);
       }
 
+      // Use transaction to prevent race conditions with concurrent purchases
+      const transaction = await sequelize.transaction();
+
       try {
-        const user = await User.findByPk(userId);
+        const user = await User.findByPk(userId, { transaction, lock: true });
         if (!user) {
+          await transaction.rollback();
           socket.emit('action_rejected', {
             clientSeq,
             reason: 'User not found',
@@ -561,7 +569,8 @@ function initEssenceTapWebSocket(io) {
         // Get characters
         const userCharacters = await UserCharacter.findAll({
           where: { UserId: userId },
-          include: ['Character']
+          include: ['Character'],
+          transaction
         });
 
         const characters = userCharacters.map(uc => ({
@@ -581,6 +590,7 @@ function initEssenceTapWebSocket(io) {
         const result = essenceTapService.purchaseGenerator(state, generatorId, count);
 
         if (!result.success) {
+          await transaction.rollback();
           socket.emit('action_rejected', {
             clientSeq,
             reason: result.error,
@@ -595,14 +605,16 @@ function initEssenceTapWebSocket(io) {
 
         user.essenceTap = result.newState;
         user.lastEssenceTapRequest = now;
-        await user.save();
+        await user.save({ transaction });
+        await transaction.commit();
 
         const seq = getNextSequence(userId);
         const gameState = essenceTapService.getGameState(result.newState, characters);
 
-        // Broadcast to all tabs
+        // Broadcast full relevant state to all tabs for proper multi-tab sync
         broadcastToUser(namespace, userId, 'state_delta', {
           essence: result.newState.essence,
+          lifetimeEssence: result.newState.lifetimeEssence,
           generators: result.newState.generators,
           productionPerSecond: gameState.productionPerSecond,
           seq,
@@ -610,6 +622,7 @@ function initEssenceTapWebSocket(io) {
           serverTimestamp: now
         });
       } catch (err) {
+        await transaction.rollback();
         console.error('[EssenceTap WS] Purchase generator error:', err);
         socket.emit('error', { code: 'PURCHASE_ERROR', message: 'Purchase failed' });
       }
@@ -631,9 +644,13 @@ function initEssenceTapWebSocket(io) {
         await processTapBatch(userId, pendingBatch.taps, pendingBatch.comboMultiplier, namespace);
       }
 
+      // Use transaction to prevent race conditions with concurrent purchases
+      const transaction = await sequelize.transaction();
+
       try {
-        const user = await User.findByPk(userId);
+        const user = await User.findByPk(userId, { transaction, lock: true });
         if (!user) {
+          await transaction.rollback();
           socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
           return;
         }
@@ -642,7 +659,8 @@ function initEssenceTapWebSocket(io) {
 
         const userCharacters = await UserCharacter.findAll({
           where: { UserId: userId },
-          include: ['Character']
+          include: ['Character'],
+          transaction
         });
 
         const characters = userCharacters.map(uc => ({
@@ -661,6 +679,7 @@ function initEssenceTapWebSocket(io) {
         const result = essenceTapService.purchaseUpgrade(state, upgradeId);
 
         if (!result.success) {
+          await transaction.rollback();
           socket.emit('action_rejected', {
             clientSeq,
             reason: result.error,
@@ -674,13 +693,16 @@ function initEssenceTapWebSocket(io) {
 
         user.essenceTap = result.newState;
         user.lastEssenceTapRequest = now;
-        await user.save();
+        await user.save({ transaction });
+        await transaction.commit();
 
         const seq = getNextSequence(userId);
         const gameState = essenceTapService.getGameState(result.newState, characters);
 
+        // Broadcast full relevant state to all tabs for proper multi-tab sync
         broadcastToUser(namespace, userId, 'state_delta', {
           essence: result.newState.essence,
+          lifetimeEssence: result.newState.lifetimeEssence,
           purchasedUpgrades: result.newState.purchasedUpgrades,
           clickPower: gameState.clickPower,
           productionPerSecond: gameState.productionPerSecond,
@@ -691,8 +713,175 @@ function initEssenceTapWebSocket(io) {
           serverTimestamp: now
         });
       } catch (err) {
+        await transaction.rollback();
         console.error('[EssenceTap WS] Purchase upgrade error:', err);
         socket.emit('error', { code: 'PURCHASE_ERROR', message: 'Purchase failed' });
+      }
+    });
+
+    // ===========================================
+    // PRESTIGE HANDLER
+    // ===========================================
+
+    socket.on('prestige', async (data) => {
+      const { clientSeq } = data || {};
+
+      // Process any pending taps first
+      const pendingBatch = pendingTapBatches.get(userId);
+      if (pendingBatch) {
+        pendingTapBatches.delete(userId);
+        if (pendingBatch.timer) clearTimeout(pendingBatch.timer);
+        await processTapBatch(userId, pendingBatch.taps, pendingBatch.comboMultiplier, namespace);
+      }
+
+      // Use transaction for atomicity
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+        const result = essenceTapService.performPrestige(state, user);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'PRESTIGE_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        // Apply FP with cap enforcement
+        let actualFP = 0;
+        if (result.fatePointsReward > 0) {
+          const fpResult = essenceTapService.applyFPWithCap(
+            result.newState,
+            result.fatePointsReward,
+            'prestige'
+          );
+          result.newState = fpResult.newState;
+          actualFP = fpResult.actualFP;
+        }
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+
+        // Award Fate Points
+        if (actualFP > 0) {
+          const fatePoints = user.fatePoints || {};
+          fatePoints.global = fatePoints.global || { points: 0 };
+          fatePoints.global.points = (fatePoints.global.points || 0) + actualFP;
+          user.fatePoints = fatePoints;
+        }
+
+        // Award XP
+        if (result.xpReward > 0) {
+          user.accountXP = (user.accountXP || 0) + result.xpReward;
+        }
+
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Get full state for broadcast
+        const userCharacters = await UserCharacter.findAll({
+          where: { UserId: userId },
+          include: ['Character']
+        });
+
+        const characters = userCharacters.map(uc => ({
+          id: uc.CharacterId,
+          rarity: uc.Character?.rarity || 'common',
+          element: uc.Character?.element || 'neutral'
+        }));
+
+        const gameState = essenceTapService.getGameState(result.newState, characters);
+
+        // Broadcast prestige result to all tabs
+        broadcastToUser(namespace, userId, 'prestige_complete', {
+          ...gameState,
+          shardsEarned: result.shardsEarned,
+          totalShards: result.totalShards,
+          prestigeLevel: result.prestigeLevel,
+          fatePointsReward: actualFP,
+          xpReward: result.xpReward,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Prestige error:', err);
+        socket.emit('error', { code: 'PRESTIGE_ERROR', message: 'Prestige failed' });
+      }
+    });
+
+    // ===========================================
+    // ABILITY ACTIVATION HANDLER
+    // ===========================================
+
+    socket.on('activate_ability', async (data) => {
+      const { abilityId, clientSeq } = data;
+
+      if (!abilityId) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Ability ID required' });
+        return;
+      }
+
+      try {
+        const user = await User.findByPk(userId);
+        if (!user) {
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+        const result = essenceTapService.activateAbility(state, abilityId);
+
+        if (!result.success) {
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'ABILITY_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+        await user.save();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast ability activation to all tabs
+        broadcastToUser(namespace, userId, 'ability_activated', {
+          ability: result.ability,
+          duration: result.duration,
+          effects: result.effects,
+          bonusEssence: result.bonusEssence,
+          essence: result.newState.essence,
+          activeAbilities: essenceTapService.getActiveAbilitiesInfo(result.newState),
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        console.error('[EssenceTap WS] Ability activation error:', err);
+        socket.emit('error', { code: 'ABILITY_ERROR', message: 'Ability activation failed' });
       }
     });
 

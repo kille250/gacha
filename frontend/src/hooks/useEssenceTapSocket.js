@@ -134,12 +134,27 @@ export function useEssenceTapSocket(options = {}) {
       setIsConnected(true);
       reconnectAttemptRef.current = 0;
 
-      // Replay any queued actions
+      // CRITICAL: Clear optimistic updates on reconnect
+      // Server will send fresh state via state_full, making old optimistic updates stale
+      optimisticUpdatesRef.current.clear();
+
+      // Reset pending taps - server state_full will be authoritative
+      pendingTapsRef.current = { count: 0, comboMultiplier: 1, clientSeqs: [] };
+      if (tapBatchTimerRef.current) {
+        clearTimeout(tapBatchTimerRef.current);
+        tapBatchTimerRef.current = null;
+      }
+
+      // Replay any queued actions (only non-tap actions should be queued)
       if (pendingActionsRef.current.length > 0) {
-        console.log(`[EssenceTap WS] Replaying ${pendingActionsRef.current.length} queued actions`);
-        pendingActionsRef.current.forEach(action => {
-          socket.emit(action.type, action.data);
-        });
+        // Filter out tap actions - server state will already include them via offline calculation
+        const nonTapActions = pendingActionsRef.current.filter(a => a.type !== 'tap');
+        if (nonTapActions.length > 0) {
+          console.log(`[EssenceTap WS] Replaying ${nonTapActions.length} queued non-tap actions`);
+          nonTapActions.forEach(action => {
+            socket.emit(action.type, action.data);
+          });
+        }
         pendingActionsRef.current = [];
       }
     });
@@ -292,6 +307,55 @@ export function useEssenceTapSocket(options = {}) {
 
     socket.on('ping', () => {
       socket.emit('pong');
+    });
+
+    // ===========================================
+    // PRESTIGE HANDLER
+    // ===========================================
+
+    socket.on('prestige_complete', (data) => {
+      console.log('[EssenceTap WS] Prestige complete');
+      setEssenceState(data);
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdate) {
+        onStateUpdate(data, 'prestige_complete');
+      }
+    });
+
+    // ===========================================
+    // ABILITY ACTIVATION HANDLER
+    // ===========================================
+
+    socket.on('ability_activated', (data) => {
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          essence: data.essence,
+          activeAbilities: data.activeAbilities,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdate) {
+        onStateUpdate(data, 'ability_activated');
+      }
     });
   // Note: scheduleReconnect is excluded intentionally - it's stable and defined outside
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -476,6 +540,40 @@ export function useEssenceTapSocket(options = {}) {
     }
   }, []);
 
+  const performPrestige = useCallback(() => {
+    const clientSeq = ++clientSeqRef.current;
+
+    // Flush any pending taps first
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('prestige', { clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      // For prestige, don't queue - require WebSocket connection
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  const activateAbility = useCallback((abilityId) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('activate_ability', { abilityId, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      // Queue for later if disconnected
+      if (pendingActionsRef.current.length < CONFIG.MAX_QUEUED_ACTIONS) {
+        pendingActionsRef.current.push({
+          type: 'activate_ability',
+          data: { abilityId, clientSeq }
+        });
+        return { sent: false, queued: true, clientSeq };
+      }
+      return { sent: false, queued: false, reason: 'queue_full' };
+    }
+  }, []);
+
   // ===========================================
   // LIFECYCLE
   // ===========================================
@@ -517,6 +615,8 @@ export function useEssenceTapSocket(options = {}) {
     purchaseGenerator,
     purchaseUpgrade,
     requestSync,
+    performPrestige,
+    activateAbility,
 
     // Connection control
     connect,

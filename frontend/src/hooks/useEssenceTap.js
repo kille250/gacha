@@ -122,7 +122,7 @@ export const useEssenceTap = () => {
   // WebSocket callbacks
   const handleWsStateUpdate = useCallback((data, type) => {
     if (type === 'full') {
-      // Full state sync from WebSocket
+      // Full state sync from WebSocket - server state is authoritative
       setGameState(data);
       setLocalEssence(data.essence || 0);
       setLocalLifetimeEssence(data.lifetimeEssence || 0);
@@ -131,6 +131,9 @@ export const useEssenceTap = () => {
       localLifetimeEssenceRef.current = data.lifetimeEssence || 0;
       lastSyncEssenceRef.current = data.essence || 0;
       lastSyncTimeRef.current = Date.now();
+      // Reset pending essence tracking since server state is authoritative
+      // This prevents double-counting passive gains
+      pendingEssenceRef.current = 0;
     } else if (type === 'tap_confirmed') {
       // Tap confirmation - reconcile with server
       const serverEssence = data.essence;
@@ -159,12 +162,27 @@ export const useEssenceTap = () => {
       lastSyncEssenceRef.current = serverEssence;
       lastSyncTimeRef.current = Date.now();
     } else if (type === 'delta') {
-      // Delta update - apply changes
+      // Delta update - apply changes to gameState
+      // This handles multi-tab synchronization properly
       setGameState(prev => {
         if (!prev) return data;
-        return { ...prev, ...data };
+        const updated = { ...prev };
+
+        // Apply all delta fields that are present
+        if (data.essence !== undefined) updated.essence = data.essence;
+        if (data.lifetimeEssence !== undefined) updated.lifetimeEssence = data.lifetimeEssence;
+        if (data.generators !== undefined) updated.generators = data.generators;
+        if (data.purchasedUpgrades !== undefined) updated.purchasedUpgrades = data.purchasedUpgrades;
+        if (data.productionPerSecond !== undefined) updated.productionPerSecond = data.productionPerSecond;
+        if (data.clickPower !== undefined) updated.clickPower = data.clickPower;
+        if (data.critChance !== undefined) updated.critChance = data.critChance;
+        if (data.critMultiplier !== undefined) updated.critMultiplier = data.critMultiplier;
+        if (data.totalClicks !== undefined) updated.totalClicks = data.totalClicks;
+
+        return updated;
       });
 
+      // Update local display values
       if (data.essence !== undefined) {
         setLocalEssence(data.essence);
         localEssenceRef.current = data.essence;
@@ -173,6 +191,36 @@ export const useEssenceTap = () => {
       if (data.lifetimeEssence !== undefined) {
         setLocalLifetimeEssence(data.lifetimeEssence);
         localLifetimeEssenceRef.current = data.lifetimeEssence;
+      }
+      if (data.totalClicks !== undefined) {
+        setLocalTotalClicks(data.totalClicks);
+      }
+      lastSyncTimeRef.current = Date.now();
+    } else if (type === 'prestige_complete') {
+      // Prestige completed via WebSocket - full state replacement
+      setGameState(data);
+      setLocalEssence(data.essence || 0);
+      setLocalLifetimeEssence(data.lifetimeEssence || 0);
+      setLocalTotalClicks(data.totalClicks || 0);
+      localEssenceRef.current = data.essence || 0;
+      localLifetimeEssenceRef.current = data.lifetimeEssence || 0;
+      lastSyncEssenceRef.current = data.essence || 0;
+      lastSyncTimeRef.current = Date.now();
+      pendingEssenceRef.current = 0;
+    } else if (type === 'ability_activated') {
+      // Ability activated via WebSocket - update relevant fields
+      setGameState(prev => {
+        if (!prev) return data;
+        return {
+          ...prev,
+          essence: data.essence,
+          activeAbilities: data.activeAbilities,
+        };
+      });
+      if (data.essence !== undefined) {
+        setLocalEssence(data.essence);
+        localEssenceRef.current = data.essence;
+        lastSyncEssenceRef.current = data.essence;
       }
       lastSyncTimeRef.current = Date.now();
     }
@@ -646,20 +694,41 @@ export const useEssenceTap = () => {
       } catch (err) {
         console.error('Click sync failed:', err);
         // CRITICAL FIX: Roll back optimistic update on failure
+        // Use careful rollback that accounts for passive gains during the API call
         setLocalEssence(prev => {
           // Only roll back if we haven't received a server update since
-          if (prev === localEssenceRef.current) {
-            const rolledBack = preClickEssence;
-            localEssenceRef.current = rolledBack;
-            return rolledBack;
+          // Calculate what the essence should be: pre-click + passive gains during API
+          const timeSinceClick = Date.now() - clickTimestamp;
+          const passiveDuringApiMs = Math.min(timeSinceClick, 5000); // Cap at 5 seconds
+          const productionRate = gameState?.productionPerSecond || 0;
+          const passiveGainedDuringApi = (productionRate * passiveDuringApiMs) / 1000;
+
+          // Roll back to: pre-click essence + passive that accumulated
+          // This prevents the jarring drop while still correcting for the failed click
+          const targetEssence = Math.max(0, preClickEssence + passiveGainedDuringApi);
+
+          // Only apply rollback if it makes sense (we're still at roughly what we expected)
+          const expectedWithOptimistic = preClickEssence + essenceGained + passiveGainedDuringApi;
+          if (Math.abs(prev - expectedWithOptimistic) < essenceGained * 2) {
+            localEssenceRef.current = targetEssence;
+            return targetEssence;
           }
+          // If the values diverged significantly, a server update probably came in - keep current
           return prev;
         });
         setLocalLifetimeEssence(prev => {
-          if (prev === localLifetimeEssenceRef.current) {
-            const rolledBack = preClickLifetime;
-            localLifetimeEssenceRef.current = rolledBack;
-            return rolledBack;
+          // Same logic for lifetime essence
+          const timeSinceClick = Date.now() - clickTimestamp;
+          const passiveDuringApiMs = Math.min(timeSinceClick, 5000);
+          const productionRate = gameState?.productionPerSecond || 0;
+          const passiveGainedDuringApi = (productionRate * passiveDuringApiMs) / 1000;
+
+          const targetLifetime = Math.max(0, preClickLifetime + passiveGainedDuringApi);
+          const expectedWithOptimistic = preClickLifetime + essenceGained + passiveGainedDuringApi;
+
+          if (Math.abs(prev - expectedWithOptimistic) < essenceGained * 2) {
+            localLifetimeEssenceRef.current = targetLifetime;
+            return targetLifetime;
           }
           return prev;
         });
