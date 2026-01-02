@@ -140,29 +140,35 @@ export const useEssenceTap = () => {
       // This prevents double-counting passive gains
       pendingEssenceRef.current = 0;
 
+      // FIX B1: Invalidate user data cache on full sync if FP rewards were included
+      // This ensures fresh user FP/tickets after reconnection where offline rewards may have been granted
+      if (data.offlineProgress?.fatePointsEarned > 0 || data.pendingRewards) {
+        invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_PRESTIGE); // Covers /auth/me invalidation
+      }
+
       console.log('[EssenceTap] Full state sync received, essence:', serverEssence);
     } else if (type === 'tap_confirmed') {
-      // Tap confirmation - reconcile with server
+      // Tap confirmation - reconcile with server using optimistic essence tracking
       const serverEssence = data.essence;
       const serverLifetime = data.lifetimeEssence;
 
-      setLocalEssence(prev => {
-        // Server is authoritative, but preserve any additional local taps
-        // that happened during the API call
-        if (serverEssence >= prev) {
-          localEssenceRef.current = serverEssence;
-          return serverEssence;
-        }
-        // Local is ahead - keep local (concurrent taps during sync)
-        return prev;
+      // FIX A1: Get remaining optimistic essence that hasn't been confirmed yet
+      // This prevents the inflation bug where local > server causes us to keep
+      // the inflated local value during rapid tapping
+      const remainingOptimistic = getOptimisticEssence();
+
+      setLocalEssence(() => {
+        // Server state includes all confirmed taps. Add back any optimistic
+        // essence from taps that haven't been confirmed yet to maintain smooth UI
+        const reconciledEssence = serverEssence + remainingOptimistic;
+        localEssenceRef.current = reconciledEssence;
+        return reconciledEssence;
       });
 
-      setLocalLifetimeEssence(prev => {
-        if (serverLifetime >= prev) {
-          localLifetimeEssenceRef.current = serverLifetime;
-          return serverLifetime;
-        }
-        return prev;
+      setLocalLifetimeEssence(() => {
+        const reconciledLifetime = serverLifetime + remainingOptimistic;
+        localLifetimeEssenceRef.current = reconciledLifetime;
+        return reconciledLifetime;
       });
 
       setLocalTotalClicks(data.totalClicks);
@@ -189,15 +195,21 @@ export const useEssenceTap = () => {
         return updated;
       });
 
-      // Update local display values
+      // FIX A4: Update local display values while preserving pending optimistic updates
+      // When delta comes from another tab, we should use server values but add back
+      // any unconfirmed optimistic essence from this tab's pending taps
+      const remainingOptimistic = getOptimisticEssence();
+
       if (data.essence !== undefined) {
-        setLocalEssence(data.essence);
-        localEssenceRef.current = data.essence;
-        lastSyncEssenceRef.current = data.essence;
+        const reconciledEssence = data.essence + remainingOptimistic;
+        setLocalEssence(reconciledEssence);
+        localEssenceRef.current = reconciledEssence;
+        lastSyncEssenceRef.current = data.essence; // Track server value separately
       }
       if (data.lifetimeEssence !== undefined) {
-        setLocalLifetimeEssence(data.lifetimeEssence);
-        localLifetimeEssenceRef.current = data.lifetimeEssence;
+        const reconciledLifetime = data.lifetimeEssence + remainingOptimistic;
+        setLocalLifetimeEssence(reconciledLifetime);
+        localLifetimeEssenceRef.current = reconciledLifetime;
       }
       if (data.totalClicks !== undefined) {
         setLocalTotalClicks(data.totalClicks);

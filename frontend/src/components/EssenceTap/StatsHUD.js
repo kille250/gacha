@@ -185,6 +185,52 @@ const CharacterButton = styled(StatItem)`
   }
 `;
 
+// FIX C1: WebSocket connection status indicator
+const ConnectionIndicator = styled.div`
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 6px;
+  border-radius: ${theme.radius.sm};
+  background: ${props => {
+    if (props.$state === 'connected') return 'rgba(16, 185, 129, 0.1)';
+    if (props.$state === 'reconnecting') return 'rgba(251, 191, 36, 0.1)';
+    return 'rgba(239, 68, 68, 0.1)';
+  }};
+  border: 1px solid ${props => {
+    if (props.$state === 'connected') return 'rgba(16, 185, 129, 0.3)';
+    if (props.$state === 'reconnecting') return 'rgba(251, 191, 36, 0.3)';
+    return 'rgba(239, 68, 68, 0.3)';
+  }};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: 2px 4px;
+  }
+`;
+
+const ConnectionDot = styled.div`
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: ${props => {
+    if (props.$state === 'connected') return '#10B981';
+    if (props.$state === 'reconnecting') return '#FBBF24';
+    return '#EF4444';
+  }};
+  animation: ${props => props.$state === 'reconnecting' ? css`${shimmer} 1s ease-in-out infinite` : 'none'};
+`;
+
+const ConnectionText = styled.span`
+  font-size: 10px;
+  color: ${theme.colors.textTertiary};
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    display: none;
+  }
+`;
+
 const ProductionIndicator = styled.div`
   display: flex;
   align-items: center;
@@ -277,8 +323,15 @@ const StatsHUD = memo(({
   assignedCharacters = [],
   maxCharacters = 5,
   characterBonus = 1,
-  onCharacterClick
+  onCharacterClick,
+  // FIX C1: WebSocket connection state props
+  wsConnectionState = 'disconnected',
 }) => {
+  // Determine connection display state
+  const connectionDisplayState = wsConnectionState === 'connected' ? 'connected' :
+    wsConnectionState === 'reconnecting' ? 'reconnecting' : 'offline';
+  const connectionLabel = connectionDisplayState === 'connected' ? 'Live' :
+    connectionDisplayState === 'reconnecting' ? 'Reconnecting' : 'Offline';
   const animatedEssence = useAnimatedNumber(essence, 300);
   const [essenceFlash, setEssenceFlash] = useState(false);
   const prevEssenceRef = useRef(essence);
@@ -354,6 +407,12 @@ const StatsHUD = memo(({
           x{characterBonus.toFixed(2)}
         </StatValue>
       </CharacterButton>
+
+      {/* FIX C1: Connection Status Indicator */}
+      <ConnectionIndicator $state={connectionDisplayState}>
+        <ConnectionDot $state={connectionDisplayState} />
+        <ConnectionText>{connectionLabel}</ConnectionText>
+      </ConnectionIndicator>
     </HUDContainer>
   );
 });

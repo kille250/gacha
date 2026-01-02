@@ -249,7 +249,9 @@ const EssenceTapPage = memo(() => {
     claimTournamentRewards,
     getMasteryInfo,
     getEssenceTypes,
-    refresh
+    refresh,
+    // FIX C1: WebSocket connection state for UI indicator
+    wsConnectionState,
   } = useEssenceTap();
 
   // Check if onboarding should be shown
@@ -411,6 +413,7 @@ const EssenceTapPage = memo(() => {
             maxCharacters={gameState?.maxAssignedCharacters || 5}
             characterBonus={gameState?.characterBonus || 1}
             onCharacterClick={() => setShowCharacterSelector(true)}
+            wsConnectionState={wsConnectionState}
           />
 
           {/* Daily Modifier Banner */}
