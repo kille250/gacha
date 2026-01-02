@@ -587,8 +587,8 @@ const WeeklyTournament = memo(({
     }
   }, [tournamentInfo?.canClaim, onClaimRewards, getTournamentInfo]);
 
-  // Determine current tier
-  const weeklyEssence = tournamentInfo?.weeklyEssence || 0;
+  // Determine current tier (backend returns essenceEarned, not weeklyEssence)
+  const weeklyEssence = tournamentInfo?.essenceEarned ?? tournamentInfo?.weeklyEssence ?? 0;
   const currentTier = Object.entries(TIER_CONFIG)
     .reverse()
     .find(([, config]) => weeklyEssence >= config.minEssence)?.[0] || null;
