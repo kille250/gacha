@@ -63,6 +63,7 @@ export const useEssenceTap = () => {
   // Local state for smooth UI updates
   const [localEssence, setLocalEssence] = useState(0);
   const [localLifetimeEssence, setLocalLifetimeEssence] = useState(0);
+  const [localTotalClicks, setLocalTotalClicks] = useState(0);
 
   // Combo state
   const [comboMultiplier, setComboMultiplier] = useState(1);
@@ -169,8 +170,10 @@ export const useEssenceTap = () => {
       setGameState(response.data);
       const essenceVal = response.data.essence || 0;
       const lifetimeVal = response.data.lifetimeEssence || 0;
+      const totalClicksVal = response.data.totalClicks || 0;
       setLocalEssence(essenceVal);
       setLocalLifetimeEssence(lifetimeVal);
+      setLocalTotalClicks(totalClicksVal);
       localEssenceRef.current = essenceVal;
       localLifetimeEssenceRef.current = lifetimeVal;
       // Reset sync tracking on full state fetch
@@ -382,6 +385,8 @@ export const useEssenceTap = () => {
       localLifetimeEssenceRef.current = newVal;
       return newVal;
     });
+    // Update total clicks for real-time boss counter tracking
+    setLocalTotalClicks(prev => prev + 1);
 
     // Set click result for visual feedback
     const clickTimestamp = Date.now();
@@ -955,6 +960,8 @@ export const useEssenceTap = () => {
     // Local essence (smoothly updated)
     essence: localEssence,
     lifetimeEssence: localLifetimeEssence,
+    // Total clicks (updated in real-time for boss counter)
+    totalClicks: localTotalClicks,
 
     // Combo
     comboMultiplier,
