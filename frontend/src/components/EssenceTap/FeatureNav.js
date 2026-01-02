@@ -38,8 +38,10 @@ const activeGlow = keyframes`
 const NavContainer = styled(motion.nav)`
   position: fixed;
   bottom: 20px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   z-index: 100;
   ${glassmorphism}
   border-radius: ${theme.radius.full};
@@ -52,7 +54,7 @@ const NavContainer = styled(motion.nav)`
     bottom: 10px;
     left: 10px;
     right: 10px;
-    transform: none;
+    width: auto;
     border-radius: ${theme.radius.xl};
     justify-content: space-around;
     padding: ${theme.spacing.sm};

@@ -212,10 +212,10 @@ const TapIcon = styled.div`
 
 const TapLabel = styled.div`
   position: absolute;
-  bottom: -50px;
+  bottom: -40px;
   left: 50%;
   transform: translateX(-50%);
-  font-size: ${theme.fontSizes.base};
+  font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.textSecondary};
   white-space: nowrap;
@@ -267,7 +267,7 @@ const ComboFire = styled.span`
 `;
 
 const ClickPowerLabel = styled.div`
-  margin-top: ${theme.spacing.xl};
+  margin-top: 60px;
   font-size: ${theme.fontSizes.lg};
   font-weight: ${theme.fontWeights.semibold};
   color: ${theme.colors.text};
