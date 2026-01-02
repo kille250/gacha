@@ -1,21 +1,17 @@
 /**
- * EssenceTapPage - Main page for the Essence Tap clicker minigame
+ * EssenceTapPage - Redesigned main page for the Essence Tap clicker minigame
  *
  * Features:
- * - Central tap target for active clicking
- * - Essence counter with production rate
- * - Generators panel for passive income
- * - Upgrades panel for enhancements
- * - Prestige system for permanent progression
- * - Offline progress notification
- * - Character selection for bonuses
- * - Daily modifiers for variety
- * - Active abilities for strategic depth
- * - New player onboarding
+ * - Premium, immersive UI with glassmorphism
+ * - Floating Stats HUD with animated essence counter
+ * - Hero section with enhanced tap orb
+ * - Collapsible dual-panel layout for generators/upgrades
+ * - Bottom navigation bar for feature access
+ * - Smooth animations throughout
  */
 
 import React, { useState, useCallback, useEffect, memo } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import {
@@ -30,7 +26,7 @@ import {
   PageTransition
 } from '../design-system';
 import { pageEnterVariants } from '../App';
-import { useEssenceTap, formatNumber, formatPerSecond } from '../hooks/useEssenceTap';
+import { useEssenceTap, formatNumber } from '../hooks/useEssenceTap';
 import {
   TapTarget,
   GeneratorList,
@@ -50,154 +46,99 @@ import {
   EssenceTapErrorBoundary,
   DailyChallengesPanel,
   BossEncounter,
-  AchievementToast
+  AchievementToast,
+  StatsHUD,
+  FeatureNav
 } from '../components/EssenceTap';
-import { IconDice, IconSparkles, IconTrophy, IconStar, IconGem, IconStats, IconCategoryPerson, IconTarget, IconBanner } from '../constants/icons';
 
 // Local storage key for onboarding
 const ONBOARDING_COMPLETE_KEY = 'essenceTap_onboardingComplete';
 
-// Animations
-const shimmer = keyframes`
-  0% { background-position: -200% 0; }
-  100% { background-position: 200% 0; }
-`;
-
-const pulse = keyframes`
-  0%, 100% { opacity: 1; }
-  50% { opacity: 0.7; }
-`;
-
 const PageContainer = styled(motion.div)`
   min-height: 100vh;
   padding: ${theme.spacing.md};
-  padding-bottom: calc(${theme.spacing.xl} + 80px);
-  max-width: 1200px;
+  padding-top: 140px;
+  padding-bottom: 100px;
+  max-width: 1400px;
   margin: 0 auto;
+  position: relative;
 
-  @media (min-width: ${theme.breakpoints.md}) {
-    padding: ${theme.spacing.xl};
-    padding-bottom: ${theme.spacing.xl};
+  @media (max-width: ${theme.breakpoints.md}) {
+    padding-top: ${theme.spacing.md};
+    padding-bottom: 180px;
   }
 `;
 
-const Header = styled.div`
-  text-align: center;
-  margin-bottom: ${theme.spacing.lg};
-`;
-
-const EssenceDisplay = styled.div`
-  font-size: clamp(2rem, 8vw, 4rem);
-  font-weight: ${theme.fontWeights.bold};
-  background: linear-gradient(135deg, #A855F7, #EC4899, #F59E0B);
-  background-size: 200% 100%;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-  background-clip: text;
-  animation: ${shimmer} 3s linear infinite;
-  margin-bottom: ${theme.spacing.xs};
-`;
-
-const ProductionRate = styled.div`
-  font-size: ${theme.fontSizes.xl};
-  color: ${theme.colors.textSecondary};
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: ${theme.spacing.sm};
-`;
-
-const LifetimeEssence = styled.div`
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textTertiary};
-  margin-top: ${theme.spacing.xs};
-`;
-
-const MainLayout = styled.div`
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: ${theme.spacing.lg};
-
-  @media (min-width: ${theme.breakpoints.lg}) {
-    grid-template-columns: 300px 1fr 300px;
-  }
-`;
-
-const TapSection = styled.div`
+const HeroSection = styled.section`
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
   padding: ${theme.spacing.xl} 0;
+  margin-bottom: ${theme.spacing.xl};
 
   @media (min-width: ${theme.breakpoints.lg}) {
-    order: 2;
+    padding: ${theme.spacing.xxl} 0;
   }
 `;
 
-const SidePanel = styled(GlassCard)`
-  padding: 0;
-  overflow: hidden;
-  max-height: 500px;
-  display: flex;
-  flex-direction: column;
-
-  @media (min-width: ${theme.breakpoints.lg}) {
-    max-height: calc(100vh - 300px);
-    min-height: 400px;
-  }
-`;
-
-const PanelHeader = styled.div`
-  padding: ${theme.spacing.md};
-  background: rgba(255, 255, 255, 0.03);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-  font-size: ${theme.fontSizes.lg};
-  font-weight: ${theme.fontWeights.semibold};
-  color: ${theme.colors.text};
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-`;
-
-const PanelContent = styled.div`
-  flex: 1;
-  overflow: hidden;
-  display: flex;
-  flex-direction: column;
-`;
-
-const GeneratorsPanel = styled(SidePanel)`
-  @media (min-width: ${theme.breakpoints.lg}) {
-    order: 1;
-  }
-`;
-
-const UpgradesPanel = styled(SidePanel)`
-  @media (min-width: ${theme.breakpoints.lg}) {
-    order: 3;
-  }
-`;
-
-const ActionButtons = styled.div`
-  display: flex;
-  gap: ${theme.spacing.sm};
+const AbilitiesWrapper = styled.div`
   margin-top: ${theme.spacing.lg};
-  flex-wrap: wrap;
-  justify-content: center;
+  width: 100%;
+  max-width: 400px;
 `;
 
-const ActionButton = styled(Button)`
-  min-width: 120px;
+const AwakeningButton = styled(Button)`
+  margin-top: ${theme.spacing.lg};
+  background: linear-gradient(135deg, #EC4899, #8B5CF6);
+  border: none;
+  padding: ${theme.spacing.sm} ${theme.spacing.xl};
+  font-size: ${theme.fontSizes.base};
+
+  &:hover {
+    background: linear-gradient(135deg, #F472B6, #A78BFA);
+    transform: translateY(-2px);
+    box-shadow: 0 8px 25px rgba(236, 72, 153, 0.3);
+  }
 `;
 
 const MilestoneButton = styled(Button)`
+  margin-top: ${theme.spacing.md};
   background: linear-gradient(135deg, #FCD34D, #F59E0B);
   border: none;
-  animation: ${pulse} 2s ease-in-out infinite;
+  animation: pulse 2s ease-in-out infinite;
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; transform: scale(1); }
+    50% { opacity: 0.9; transform: scale(1.02); }
+  }
 
   &:hover {
     background: linear-gradient(135deg, #FDE68A, #FBBF24);
+  }
+`;
+
+const DualPanelSection = styled.section`
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: ${theme.spacing.lg};
+  margin-bottom: ${theme.spacing.xl};
+
+  @media (min-width: ${theme.breakpoints.lg}) {
+    grid-template-columns: 1fr 1fr;
+  }
+`;
+
+const PanelCard = styled(GlassCard)`
+  padding: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  max-height: 500px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+
+  @media (min-width: ${theme.breakpoints.lg}) {
+    max-height: 600px;
   }
 `;
 
@@ -226,68 +167,6 @@ const OfflineDetails = styled.div`
   color: ${theme.colors.textSecondary};
 `;
 
-const StatsBar = styled.div`
-  display: flex;
-  gap: ${theme.spacing.md};
-  justify-content: center;
-  flex-wrap: wrap;
-  margin-top: ${theme.spacing.sm};
-`;
-
-const StatItem = styled.div`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.xs};
-  font-size: ${theme.fontSizes.sm};
-  color: ${theme.colors.textSecondary};
-  padding: ${theme.spacing.xs} ${theme.spacing.sm};
-  background: rgba(255, 255, 255, 0.03);
-  border-radius: ${theme.radius.md};
-  cursor: ${props => props.$clickable ? 'pointer' : 'default'};
-  transition: all 0.2s ease;
-
-  ${props => props.$clickable && `
-    &:hover {
-      background: rgba(255, 255, 255, 0.08);
-    }
-  `}
-`;
-
-const StatLabel = styled.span`
-  color: ${theme.colors.textTertiary};
-`;
-
-const StatValue = styled.span`
-  color: ${props => props.$color || '#A855F7'};
-  font-weight: ${theme.fontWeights.medium};
-`;
-
-const CharacterBonusButton = styled(StatItem)`
-  cursor: pointer;
-  border: 1px solid rgba(138, 43, 226, 0.3);
-
-  &:hover {
-    background: rgba(138, 43, 226, 0.15);
-    border-color: rgba(138, 43, 226, 0.5);
-  }
-`;
-
-const FeatureButtonsRow = styled.div`
-  display: flex;
-  gap: ${theme.spacing.sm};
-  flex-wrap: wrap;
-  justify-content: center;
-  margin-top: ${theme.spacing.md};
-`;
-
-const FeatureButton = styled(Button)`
-  display: flex;
-  align-items: center;
-  gap: ${theme.spacing.xs};
-  padding: ${theme.spacing.sm} ${theme.spacing.md};
-  font-size: ${theme.fontSizes.sm};
-`;
-
 const EssenceTapPage = memo(() => {
   const { t } = useTranslation();
   const [showPrestige, setShowPrestige] = useState(false);
@@ -303,6 +182,9 @@ const EssenceTapPage = memo(() => {
   const [showChallenges, setShowChallenges] = useState(false);
   const [showBoss, setShowBoss] = useState(false);
   const [activeAbilityEffects, setActiveAbilityEffects] = useState({});
+  const [generatorsCollapsed, setGeneratorsCollapsed] = useState(false);
+  const [upgradesCollapsed, setUpgradesCollapsed] = useState(false);
+  const [activeFeature, setActiveFeature] = useState(null);
 
   const {
     gameState,
@@ -316,7 +198,6 @@ const EssenceTapPage = memo(() => {
     dismissOfflineProgress,
     unlockedAchievement,
     dismissAchievement,
-    sounds: _sounds, // Used by useSoundEffects internally, accessed via hook
     handleClick,
     purchaseGenerator,
     purchaseUpgrade,
@@ -339,7 +220,6 @@ const EssenceTapPage = memo(() => {
   useEffect(() => {
     const onboardingComplete = localStorage.getItem(ONBOARDING_COMPLETE_KEY);
     if (!onboardingComplete && !loading && gameState) {
-      // Show onboarding for new players (low lifetime essence)
       if ((gameState.lifetimeEssence || 0) < 100) {
         setShowOnboarding(true);
       }
@@ -364,10 +244,6 @@ const EssenceTapPage = memo(() => {
     }
   }, [gameState?.claimableMilestones, claimMilestone]);
 
-  const handleDailyModifierChange = useCallback(() => {
-    // Daily modifier state now handled by DailyModifierBanner component
-  }, []);
-
   const handleAbilityActivate = useCallback((abilityId, effects) => {
     if (effects) {
       setActiveAbilityEffects(prev => ({ ...prev, [abilityId]: effects }));
@@ -387,6 +263,51 @@ const EssenceTapPage = memo(() => {
   const handleCharacterUnassign = useCallback(async (characterId) => {
     await unassignCharacter(characterId);
   }, [unassignCharacter]);
+
+  // Handle feature nav clicks
+  const handleFeatureClick = useCallback((featureId) => {
+    setActiveFeature(featureId);
+
+    switch (featureId) {
+      case 'gamble':
+        setShowGamble(true);
+        break;
+      case 'infuse':
+        setShowInfusion(true);
+        break;
+      case 'boss':
+        setShowBoss(true);
+        break;
+      case 'tournament':
+        setShowTournament(true);
+        break;
+      case 'mastery':
+        setShowMastery(true);
+        break;
+      case 'challenges':
+        setShowChallenges(true);
+        break;
+      case 'types':
+        setShowEssenceTypes(true);
+        break;
+      case 'session':
+        setShowSessionStats(true);
+        break;
+      case 'synergy':
+        setShowSynergyPreview(true);
+        break;
+      default:
+        break;
+    }
+  }, []);
+
+  // Clear active feature when modals close
+  const handleModalClose = useCallback((setter) => {
+    return () => {
+      setter(false);
+      setActiveFeature(null);
+    };
+  }, []);
 
   if (loading) {
     return (
@@ -423,323 +344,224 @@ const EssenceTapPage = memo(() => {
           initial="initial"
           animate="animate"
         >
+          {/* Floating Stats HUD */}
+          <StatsHUD
+            essence={essence}
+            productionPerSecond={gameState?.productionPerSecond || 0}
+            clickPower={gameState?.clickPower || 1}
+            critChance={gameState?.critChance || 0}
+            assignedCharacters={gameState?.assignedCharacters || []}
+            maxCharacters={gameState?.maxAssignedCharacters || 5}
+            characterBonus={gameState?.characterBonus || 1}
+            onCharacterClick={() => setShowCharacterSelector(true)}
+          />
+
           {/* Daily Modifier Banner */}
-          <DailyModifierBanner onModifierChange={handleDailyModifierChange} />
+          <DailyModifierBanner />
 
-        <Header>
-          <EssenceDisplay>
-            {formatNumber(essence)} Essence
-          </EssenceDisplay>
-          <ProductionRate>
-            {formatPerSecond(gameState?.productionPerSecond || 0)}
-          </ProductionRate>
-          <LifetimeEssence>
-            {t('essenceTap.lifetime', {
-              amount: formatNumber(lifetimeEssence),
-              defaultValue: `Lifetime: ${formatNumber(lifetimeEssence)}`
-            })}
-          </LifetimeEssence>
-
-          <StatsBar>
-            <StatItem>
-              <StatLabel>Click:</StatLabel>
-              <StatValue>+{formatNumber(gameState?.clickPower || 1)}</StatValue>
-            </StatItem>
-            <StatItem>
-              <StatLabel>Crit:</StatLabel>
-              <StatValue $color="#FCD34D">
-                {((gameState?.critChance || 0) * 100).toFixed(1)}%
-              </StatValue>
-            </StatItem>
-            {gameState?.prestige?.prestigeLevel > 0 && (
-              <StatItem>
-                <StatLabel>Prestige:</StatLabel>
-                <StatValue $color="#EC4899">
-                  x{((gameState?.prestige?.currentBonus || 1)).toFixed(2)}
-                </StatValue>
-              </StatItem>
-            )}
-            <CharacterBonusButton onClick={() => setShowCharacterSelector(true)}>
-              <StatLabel>Characters:</StatLabel>
-              <StatValue $color="#10B981">
-                {gameState?.assignedCharacters?.length || 0}/{gameState?.maxAssignedCharacters || 5}
-              </StatValue>
-              <span style={{ fontSize: '12px' }}>
-                (x{(gameState?.characterBonus || 1).toFixed(2)})
-              </span>
-            </CharacterBonusButton>
-          </StatsBar>
-        </Header>
-
-        <MainLayout>
-          <GeneratorsPanel>
-            <PanelHeader>
-              {t('essenceTap.generators.title', { defaultValue: 'Generators' })}
-            </PanelHeader>
-            <PanelContent>
-              <GeneratorList
-                generators={gameState?.generators || []}
-                essence={essence}
-                onPurchase={purchaseGenerator}
-              />
-            </PanelContent>
-          </GeneratorsPanel>
-
-          <TapSection>
+          {/* Hero Section - Tap Orb */}
+          <HeroSection>
             <TapTarget
               onClick={handleClick}
               clickPower={gameState?.clickPower || 1}
               lastClickResult={lastClickResult}
               comboMultiplier={comboMultiplier}
+              prestigeLevel={gameState?.prestige?.prestigeLevel || 0}
+              productionRate={gameState?.productionPerSecond || 0}
             />
 
             {/* Active Abilities */}
-            <ActiveAbilities
-              onActivate={handleAbilityActivate}
-              activeEffects={activeAbilityEffects}
-              prestigeLevel={gameState?.prestige?.prestigeLevel || 0}
-            />
+            <AbilitiesWrapper>
+              <ActiveAbilities
+                onActivate={handleAbilityActivate}
+                activeEffects={activeAbilityEffects}
+                prestigeLevel={gameState?.prestige?.prestigeLevel || 0}
+              />
+            </AbilitiesWrapper>
 
-            <ActionButtons>
-              <ActionButton
-                variant="secondary"
-                onClick={() => setShowPrestige(true)}
-              >
-                {t('essenceTap.awakening', { defaultValue: 'Awakening' })}
-                {gameState?.prestige?.prestigeLevel > 0 && ` (${gameState.prestige.prestigeLevel})`}
-              </ActionButton>
+            {/* Awakening Button */}
+            <AwakeningButton onClick={() => setShowPrestige(true)}>
+              {t('essenceTap.awakening', { defaultValue: 'Awakening' })}
+              {gameState?.prestige?.prestigeLevel > 0 && ` (Level ${gameState.prestige.prestigeLevel})`}
+            </AwakeningButton>
 
-              {gameState?.claimableMilestones?.length > 0 && (
-                <MilestoneButton onClick={handleClaimMilestones}>
-                  {t('essenceTap.claimMilestones', {
-                    count: gameState.claimableMilestones.length,
-                    defaultValue: `Claim ${gameState.claimableMilestones.length} Milestone(s)!`
-                  })}
-                </MilestoneButton>
-              )}
-            </ActionButtons>
+            {/* Milestone Button */}
+            {gameState?.claimableMilestones?.length > 0 && (
+              <MilestoneButton onClick={handleClaimMilestones}>
+                {t('essenceTap.claimMilestones', {
+                  count: gameState.claimableMilestones.length,
+                  defaultValue: `Claim ${gameState.claimableMilestones.length} Milestone(s)!`
+                })}
+              </MilestoneButton>
+            )}
+          </HeroSection>
 
-            {/* Feature Buttons Row */}
-            <FeatureButtonsRow>
-              <FeatureButton
-                variant="secondary"
-                onClick={() => setShowGamble(true)}
-              >
-                <IconDice size={16} />
-                {t('essenceTap.gamble', { defaultValue: 'Gamble' })}
-              </FeatureButton>
+          {/* Dual Panel Section - Generators & Upgrades */}
+          <DualPanelSection>
+            <PanelCard>
+              <GeneratorList
+                generators={gameState?.generators || []}
+                essence={essence}
+                lifetimeEssence={lifetimeEssence}
+                totalProduction={gameState?.productionPerSecond || 0}
+                onPurchase={purchaseGenerator}
+                isCollapsed={generatorsCollapsed}
+                onToggleCollapse={() => setGeneratorsCollapsed(!generatorsCollapsed)}
+              />
+            </PanelCard>
 
-              <FeatureButton
-                variant="secondary"
-                onClick={() => setShowInfusion(true)}
-              >
-                <IconSparkles size={16} />
-                {t('essenceTap.infuse', { defaultValue: 'Infuse' })}
-              </FeatureButton>
-
-              <FeatureButton
-                variant="secondary"
-                onClick={() => setShowTournament(true)}
-              >
-                <IconTrophy size={16} />
-                {t('essenceTap.tournament', { defaultValue: 'Tournament' })}
-              </FeatureButton>
-
-              <FeatureButton
-                variant="secondary"
-                onClick={() => setShowMastery(true)}
-              >
-                <IconStar size={16} />
-                {t('essenceTap.mastery', { defaultValue: 'Mastery' })}
-              </FeatureButton>
-
-              <FeatureButton
-                variant="secondary"
-                onClick={() => setShowEssenceTypes(true)}
-              >
-                <IconGem size={16} />
-                {t('essenceTap.types', { defaultValue: 'Types' })}
-              </FeatureButton>
-
-              <FeatureButton
-                variant="secondary"
-                onClick={() => setShowSessionStats(true)}
-              >
-                <IconStats size={16} />
-                {t('essenceTap.session', { defaultValue: 'Session' })}
-              </FeatureButton>
-
-              <FeatureButton
-                variant="secondary"
-                onClick={() => setShowSynergyPreview(true)}
-              >
-                <IconCategoryPerson size={16} />
-                {t('essenceTap.synergy', { defaultValue: 'Synergy' })}
-              </FeatureButton>
-
-              <FeatureButton
-                variant="secondary"
-                onClick={() => setShowChallenges(true)}
-              >
-                <IconBanner size={16} />
-                {t('essenceTap.challenges', { defaultValue: 'Challenges' })}
-              </FeatureButton>
-
-              <FeatureButton
-                variant="secondary"
-                onClick={() => setShowBoss(true)}
-              >
-                <IconTarget size={16} />
-                {t('essenceTap.boss', { defaultValue: 'Boss' })}
-              </FeatureButton>
-            </FeatureButtonsRow>
-          </TapSection>
-
-          <UpgradesPanel>
-            <PanelHeader>
-              {t('essenceTap.upgrades.title', { defaultValue: 'Upgrades' })}
-            </PanelHeader>
-            <PanelContent>
+            <PanelCard>
               <UpgradeList
                 upgrades={gameState?.upgrades || {}}
                 essence={essence}
                 onPurchase={purchaseUpgrade}
+                isCollapsed={upgradesCollapsed}
+                onToggleCollapse={() => setUpgradesCollapsed(!upgradesCollapsed)}
               />
-            </PanelContent>
-          </UpgradesPanel>
-        </MainLayout>
+            </PanelCard>
+          </DualPanelSection>
 
-        {/* Prestige Panel */}
-        <PrestigePanel
-          prestige={gameState?.prestige}
-          onPrestige={performPrestige}
-          onPurchaseUpgrade={purchasePrestigeUpgrade}
-          isOpen={showPrestige}
-          onClose={() => setShowPrestige(false)}
-        />
+          {/* Bottom Navigation Bar */}
+          <FeatureNav
+            onFeatureClick={handleFeatureClick}
+            activeFeature={activeFeature}
+            notifications={{
+              challenges: gameState?.hasUnclaimedChallenges,
+              tournament: gameState?.hasUnclaimedTournamentRewards
+            }}
+          />
 
-        {/* Character Selector Modal */}
-        <CharacterSelector
-          isOpen={showCharacterSelector}
-          onClose={() => setShowCharacterSelector(false)}
-          assignedCharacters={gameState?.assignedCharacters || []}
-          maxCharacters={gameState?.maxAssignedCharacters || 5}
-          characterBonus={gameState?.characterBonus || 1}
-          onAssign={handleCharacterAssign}
-          onUnassign={handleCharacterUnassign}
-        />
+          {/* Prestige Panel */}
+          <PrestigePanel
+            prestige={gameState?.prestige}
+            onPrestige={performPrestige}
+            onPurchaseUpgrade={purchasePrestigeUpgrade}
+            isOpen={showPrestige}
+            onClose={() => setShowPrestige(false)}
+          />
 
-        {/* Onboarding Overlay */}
-        <OnboardingOverlay
-          isOpen={showOnboarding}
-          onComplete={handleOnboardingComplete}
-          onSkip={handleOnboardingSkip}
-        />
+          {/* Character Selector Modal */}
+          <CharacterSelector
+            isOpen={showCharacterSelector}
+            onClose={() => setShowCharacterSelector(false)}
+            assignedCharacters={gameState?.assignedCharacters || []}
+            maxCharacters={gameState?.maxAssignedCharacters || 5}
+            characterBonus={gameState?.characterBonus || 1}
+            onAssign={handleCharacterAssign}
+            onUnassign={handleCharacterUnassign}
+          />
 
-        {/* Gamble Panel */}
-        <GamblePanel
-          isOpen={showGamble}
-          onClose={() => setShowGamble(false)}
-          essence={essence}
-          onGamble={performGamble}
-          getGambleInfo={getGambleInfo}
-        />
+          {/* Onboarding Overlay */}
+          <OnboardingOverlay
+            isOpen={showOnboarding}
+            onComplete={handleOnboardingComplete}
+            onSkip={handleOnboardingSkip}
+          />
 
-        {/* Infusion Panel */}
-        <InfusionPanel
-          isOpen={showInfusion}
-          onClose={() => setShowInfusion(false)}
-          essence={essence}
-          gameState={gameState}
-          onInfuse={performInfusion}
-        />
+          {/* Gamble Panel */}
+          <GamblePanel
+            isOpen={showGamble}
+            onClose={handleModalClose(setShowGamble)}
+            essence={essence}
+            onGamble={performGamble}
+            getGambleInfo={getGambleInfo}
+          />
 
-        {/* Weekly Tournament */}
-        <WeeklyTournament
-          isOpen={showTournament}
-          onClose={() => setShowTournament(false)}
-          getTournamentInfo={getTournamentInfo}
-          onClaimRewards={claimTournamentRewards}
-        />
+          {/* Infusion Panel */}
+          <InfusionPanel
+            isOpen={showInfusion}
+            onClose={handleModalClose(setShowInfusion)}
+            essence={essence}
+            gameState={gameState}
+            onInfuse={performInfusion}
+          />
 
-        {/* Character Mastery Display */}
-        <CharacterMasteryDisplay
-          isOpen={showMastery}
-          onClose={() => setShowMastery(false)}
-          getMasteryInfo={getMasteryInfo}
-          assignedCharacters={gameState?.assignedCharacters || []}
-        />
+          {/* Weekly Tournament */}
+          <WeeklyTournament
+            isOpen={showTournament}
+            onClose={handleModalClose(setShowTournament)}
+            getTournamentInfo={getTournamentInfo}
+            onClaimRewards={claimTournamentRewards}
+          />
 
-        {/* Essence Types Display */}
-        <EssenceTypesDisplay
-          isOpen={showEssenceTypes}
-          onClose={() => setShowEssenceTypes(false)}
-          getEssenceTypes={getEssenceTypes}
-        />
+          {/* Character Mastery Display */}
+          <CharacterMasteryDisplay
+            isOpen={showMastery}
+            onClose={handleModalClose(setShowMastery)}
+            getMasteryInfo={getMasteryInfo}
+            assignedCharacters={gameState?.assignedCharacters || []}
+          />
 
-        {/* Session Stats Panel */}
-        <SessionStatsPanel
-          isOpen={showSessionStats}
-          onClose={() => setShowSessionStats(false)}
-        />
+          {/* Essence Types Display */}
+          <EssenceTypesDisplay
+            isOpen={showEssenceTypes}
+            onClose={handleModalClose(setShowEssenceTypes)}
+            getEssenceTypes={getEssenceTypes}
+          />
 
-        {/* Synergy Preview Panel */}
-        <SynergyPreviewPanel
-          isOpen={showSynergyPreview}
-          onClose={() => setShowSynergyPreview(false)}
-        />
+          {/* Session Stats Panel */}
+          <SessionStatsPanel
+            isOpen={showSessionStats}
+            onClose={handleModalClose(setShowSessionStats)}
+          />
 
-        {/* Daily Challenges Panel */}
-        <DailyChallengesPanel
-          isOpen={showChallenges}
-          onClose={() => setShowChallenges(false)}
-          onChallengeComplete={refresh}
-        />
+          {/* Synergy Preview Panel */}
+          <SynergyPreviewPanel
+            isOpen={showSynergyPreview}
+            onClose={handleModalClose(setShowSynergyPreview)}
+          />
 
-        {/* Boss Encounter */}
-        <BossEncounter
-          isOpen={showBoss}
-          onClose={() => setShowBoss(false)}
-          clickPower={gameState?.clickPower || 1}
-          onBossDefeat={refresh}
-        />
+          {/* Daily Challenges Panel */}
+          <DailyChallengesPanel
+            isOpen={showChallenges}
+            onClose={handleModalClose(setShowChallenges)}
+            onChallengeComplete={refresh}
+          />
 
-        {/* Offline Progress Modal */}
-        <AnimatePresence>
-          {offlineProgress && (
-            <Modal isOpen={true} onClose={dismissOfflineProgress}>
-              <ModalBody>
-                <OfflineModalContent>
-                  <OfflineTitle>
-                    {t('essenceTap.welcomeBack', { defaultValue: 'Welcome Back!' })}
-                  </OfflineTitle>
-                  <OfflineEssence>
-                    +{formatNumber(offlineProgress.essenceEarned)}
-                  </OfflineEssence>
-                  <OfflineDetails>
-                    {t('essenceTap.offlineEarned', {
-                      hours: offlineProgress.hoursAway.toFixed(1),
-                      rate: formatNumber(offlineProgress.productionRate),
-                      efficiency: Math.round(offlineProgress.efficiency * 100),
-                      defaultValue: `Earned while away for ${offlineProgress.hoursAway.toFixed(1)} hours at ${Math.round(offlineProgress.efficiency * 100)}% efficiency`
-                    })}
-                  </OfflineDetails>
-                </OfflineModalContent>
-              </ModalBody>
-              <ModalFooter>
-                <Button variant="primary" onClick={dismissOfflineProgress}>
-                  {t('essenceTap.collect', { defaultValue: 'Collect!' })}
-                </Button>
-              </ModalFooter>
-            </Modal>
-          )}
-        </AnimatePresence>
+          {/* Boss Encounter */}
+          <BossEncounter
+            isOpen={showBoss}
+            onClose={handleModalClose(setShowBoss)}
+            clickPower={gameState?.clickPower || 1}
+            onBossDefeat={refresh}
+          />
 
-        {/* Achievement Toast */}
-        <AchievementToast
-          achievement={unlockedAchievement}
-          onComplete={dismissAchievement}
-        />
+          {/* Offline Progress Modal */}
+          <AnimatePresence>
+            {offlineProgress && (
+              <Modal isOpen={true} onClose={dismissOfflineProgress}>
+                <ModalBody>
+                  <OfflineModalContent>
+                    <OfflineTitle>
+                      {t('essenceTap.welcomeBack', { defaultValue: 'Welcome Back!' })}
+                    </OfflineTitle>
+                    <OfflineEssence>
+                      +{formatNumber(offlineProgress.essenceEarned)}
+                    </OfflineEssence>
+                    <OfflineDetails>
+                      {t('essenceTap.offlineEarned', {
+                        hours: offlineProgress.hoursAway.toFixed(1),
+                        rate: formatNumber(offlineProgress.productionRate),
+                        efficiency: Math.round(offlineProgress.efficiency * 100),
+                        defaultValue: `Earned while away for ${offlineProgress.hoursAway.toFixed(1)} hours at ${Math.round(offlineProgress.efficiency * 100)}% efficiency`
+                      })}
+                    </OfflineDetails>
+                  </OfflineModalContent>
+                </ModalBody>
+                <ModalFooter>
+                  <Button variant="primary" onClick={dismissOfflineProgress}>
+                    {t('essenceTap.collect', { defaultValue: 'Collect!' })}
+                  </Button>
+                </ModalFooter>
+              </Modal>
+            )}
+          </AnimatePresence>
+
+          {/* Achievement Toast */}
+          <AchievementToast
+            achievement={unlockedAchievement}
+            onComplete={dismissAchievement}
+          />
         </PageContainer>
       </PageTransition>
     </EssenceTapErrorBoundary>
