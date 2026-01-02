@@ -99,6 +99,7 @@ const ContentWrapper = styled(motion.div)`
   display: flex;
   flex-direction: column;
   flex: 1;
+  min-height: 0;
 `;
 
 const TabBar = styled.div`
