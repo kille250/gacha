@@ -118,7 +118,6 @@ const CollapseIcon = styled(motion.div)`
 `;
 
 const ContentWrapper = styled(motion.div)`
-  overflow: hidden;
   display: flex;
   flex-direction: column;
   flex: 1;
@@ -404,19 +403,31 @@ const GeneratorList = memo(({
   const [justPurchased, setJustPurchased] = useState(null);
 
   const handlePurchase = useCallback((generator) => {
-    if (!generator.unlocked || !generator.canAfford) return;
+    if (!generator.unlocked) return;
 
     let count = 1;
     if (buyMode === '10') count = Math.min(10, generator.maxPurchasable);
     else if (buyMode === '100') count = Math.min(100, generator.maxPurchasable);
     else if (buyMode === 'max') count = generator.maxPurchasable;
 
+    // Calculate cost for the buy count
+    const r = generator.costMultiplier || 1.15;
+    const baseCost = generator.baseCost || generator.cost;
+    const owned = generator.owned || 0;
+    let totalCost = 0;
+    for (let i = 0; i < count; i++) {
+      totalCost += Math.floor(baseCost * Math.pow(r, owned + i));
+    }
+
+    // Use live essence prop instead of stale generator.canAfford
+    if (essence < totalCost) return;
+
     if (count > 0) {
       setJustPurchased(generator.id);
       setTimeout(() => setJustPurchased(null), 300);
       onPurchase?.(generator.id, count);
     }
-  }, [buyMode, onPurchase]);
+  }, [buyMode, onPurchase, essence]);
 
   const getDisplayCost = useCallback((generator) => {
     if (buyMode === '1') return generator.cost;

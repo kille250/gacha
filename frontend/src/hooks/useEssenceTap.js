@@ -105,6 +105,8 @@ export const useEssenceTap = () => {
   // Refs for intervals
   const passiveTickRef = useRef(null);
   const isMountedRef = useRef(true);
+  // Track pending click request to wait for it before purchases
+  const pendingClickRef = useRef(null);
 
   // Check and trigger achievements
   const checkAchievements = useCallback((stats) => {
@@ -406,40 +408,54 @@ export const useEssenceTap = () => {
     }, 500);
 
     // Sync with server (batched)
-    try {
-      const response = await api.post('/essence-tap/click', {
-        count: 1,
-        comboMultiplier
-      });
-
-      if (!isMountedRef.current) return;
-
-      // Update with server values (backend is source of truth)
-      setLocalEssence(response.data.essence);
-      setLocalLifetimeEssence(response.data.lifetimeEssence);
-      localEssenceRef.current = response.data.essence;
-      localLifetimeEssenceRef.current = response.data.lifetimeEssence;
-      lastSyncEssenceRef.current = response.data.essence;
-      lastSyncTimeRef.current = Date.now();
-      // Note: We don't reset pendingEssenceRef here because passive essence
-      // may have accumulated since our last save
-
-      // Handle completed challenges
-      if (response.data.completedChallenges?.length > 0) {
-        response.data.completedChallenges.forEach(challenge => {
-          toast.success(
-            t('essenceTap.challengeComplete', { name: challenge.name, defaultValue: `Challenge Complete: ${challenge.name}!` })
-          );
+    const clickPromise = (async () => {
+      try {
+        const response = await api.post('/essence-tap/click', {
+          count: 1,
+          comboMultiplier
         });
+
+        if (!isMountedRef.current) return;
+
+        // Update with server values (backend is source of truth)
+        setLocalEssence(response.data.essence);
+        setLocalLifetimeEssence(response.data.lifetimeEssence);
+        localEssenceRef.current = response.data.essence;
+        localLifetimeEssenceRef.current = response.data.lifetimeEssence;
+        lastSyncEssenceRef.current = response.data.essence;
+        lastSyncTimeRef.current = Date.now();
+        // Note: We don't reset pendingEssenceRef here because passive essence
+        // may have accumulated since our last save
+
+        // Handle completed challenges
+        if (response.data.completedChallenges?.length > 0) {
+          response.data.completedChallenges.forEach(challenge => {
+            toast.success(
+              t('essenceTap.challengeComplete', { name: challenge.name, defaultValue: `Challenge Complete: ${challenge.name}!` })
+            );
+          });
+        }
+      } catch (err) {
+        console.error('Click sync failed:', err);
+      } finally {
+        // Clear the pending click ref when done
+        pendingClickRef.current = null;
       }
-    } catch (err) {
-      console.error('Click sync failed:', err);
-    }
+    })();
+
+    // Store the promise so purchases can wait for it
+    pendingClickRef.current = clickPromise;
   }, [gameState, comboMultiplier, clicksThisSecond, t, toast, sounds, checkAchievements]);
 
   // Purchase generator
   const purchaseGenerator = useCallback(async (generatorId, count = 1) => {
     if (!gameState) return { success: false };
+
+    // Wait for any pending click to complete first
+    // This ensures the server has the latest essence from recent taps
+    if (pendingClickRef.current) {
+      await pendingClickRef.current;
+    }
 
     try {
       const response = await api.post('/essence-tap/generator/buy', {
@@ -488,6 +504,12 @@ export const useEssenceTap = () => {
   // Purchase upgrade
   const purchaseUpgrade = useCallback(async (upgradeId) => {
     if (!gameState) return { success: false };
+
+    // Wait for any pending click to complete first
+    // This ensures the server has the latest essence from recent taps
+    if (pendingClickRef.current) {
+      await pendingClickRef.current;
+    }
 
     try {
       const response = await api.post('/essence-tap/upgrade/buy', {

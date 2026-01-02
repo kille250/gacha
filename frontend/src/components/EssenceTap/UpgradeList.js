@@ -345,7 +345,7 @@ const EmptyIcon = styled.div`
 
 const UpgradeList = memo(({
   upgrades = {},
-  _essence = 0,
+  essence = 0,
   onPurchase,
   isCollapsed = false,
   onToggleCollapse
@@ -355,13 +355,15 @@ const UpgradeList = memo(({
   const [justPurchased, setJustPurchased] = useState(null);
 
   const handlePurchase = useCallback((upgrade) => {
-    if (upgrade.purchased || !upgrade.canAfford || !upgrade.unlocked || !upgrade.meetsRequirements) {
+    // Use live essence prop instead of stale upgrade.canAfford
+    const canAffordNow = essence >= upgrade.cost;
+    if (upgrade.purchased || !canAffordNow || !upgrade.unlocked || !upgrade.meetsRequirements) {
       return;
     }
     setJustPurchased(upgrade.id);
     setTimeout(() => setJustPurchased(null), 300);
     onPurchase?.(upgrade.id);
-  }, [onPurchase]);
+  }, [onPurchase, essence]);
 
   const currentUpgrades = upgrades[activeTab] || [];
   const activeTabConfig = TABS.find(t => t.id === activeTab);

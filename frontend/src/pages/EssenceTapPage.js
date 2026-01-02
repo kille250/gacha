@@ -144,11 +144,11 @@ const PanelCard = styled(GlassCard)`
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: ${props => props.$collapsed ? 'auto' : '500px'};
+  max-height: ${props => props.$collapsed ? 'auto' : '700px'};
   border: 1px solid rgba(255, 255, 255, 0.08);
 
   @media (min-width: ${theme.breakpoints.lg}) {
-    max-height: ${props => props.$collapsed ? 'auto' : '600px'};
+    max-height: ${props => props.$collapsed ? 'auto' : '800px'};
   }
 `;
 
