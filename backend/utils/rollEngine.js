@@ -295,17 +295,54 @@ const selectRates = async ({
 
 /**
  * Execute a single standard roll
- * 
+ *
  * @param {RollContext} context - Roll context with all prepared data
- * @param {boolean} isMulti - Whether this is part of a multi-pull (affects rates)
+ * @param {Object} options
+ * @param {boolean} options.isMulti - Whether this is part of a multi-pull (affects rates)
+ * @param {Object} options.pityCounters - Raw pity counters for hard pity check { pullsSinceLegendary, pullsSinceEpic }
  * @returns {Promise<RollResult>}
  */
-const executeSingleStandardRoll = async (context, isMulti = false) => {
+const executeSingleStandardRoll = async (context, { isMulti = false, pityCounters = null } = {}) => {
   const { allCharacters, raritiesData, orderedRarities, charactersByRarity } = context;
-  
-  const rates = await getStandardRates(isMulti, raritiesData);
-  const selectedRarity = rollRarity(rates, orderedRarities);
-  
+
+  let selectedRarity;
+  let wasHardPity = false;
+
+  // Check for hard pity FIRST - this takes absolute priority
+  if (pityCounters) {
+    const { forcedRarity, isHardPity } = checkHardPity(
+      pityCounters.pullsSinceLegendary || 0,
+      pityCounters.pullsSinceEpic || 0
+    );
+    if (isHardPity && forcedRarity) {
+      selectedRarity = forcedRarity;
+      wasHardPity = true;
+    }
+  }
+
+  // If not hard pity, do normal roll with soft pity boost
+  if (!selectedRarity) {
+    const pityRates = await getPityRates(raritiesData);
+    let rates = await getStandardRates(isMulti, raritiesData);
+
+    // Apply soft pity boost if in soft pity range
+    if (pityCounters) {
+      const softPityState = {
+        legendary: getSoftPityProgress(pityCounters.pullsSinceLegendary || 0, 'legendary'),
+        epic: getSoftPityProgress(pityCounters.pullsSinceEpic || 0, 'epic')
+      };
+
+      if (softPityState.legendary > 0) {
+        rates = applySoftPityBoost(rates, pityRates, softPityState.legendary, 'legendary');
+      }
+      if (softPityState.epic > 0) {
+        rates = applySoftPityBoost(rates, pityRates, softPityState.epic, 'epic');
+      }
+    }
+
+    selectedRarity = rollRarity(rates, orderedRarities);
+  }
+
   const { character, actualRarity } = selectCharacterWithFallback(
     null, // No primary pool for standard rolls
     charactersByRarity,
@@ -313,12 +350,13 @@ const executeSingleStandardRoll = async (context, isMulti = false) => {
     allCharacters,
     raritiesData
   );
-  
+
   return {
     character,
     actualRarity,
     isPremium: false,
-    wasPity: false
+    wasPity: wasHardPity,
+    wasHardPity
   };
 };
 
@@ -408,33 +446,81 @@ const executeSingleBannerRoll = async (context, { isPremium = false, needsPity =
 
 /**
  * Execute a standard multi-roll
- * 
+ *
  * @param {RollContext} context - Roll context
  * @param {number} count - Number of rolls
+ * @param {Object} initialPityState - Initial pity counters { pullsSinceLegendary, pullsSinceEpic }
  * @returns {Promise<Array<RollResult>>}
  */
-const executeStandardMultiRoll = async (context, count) => {
+const executeStandardMultiRoll = async (context, count, initialPityState = null) => {
   const { raritiesData, orderedRarities, charactersByRarity, allCharacters } = context;
-  
+
   const rates = await getStandardRates(true, raritiesData);
   const pityRates = await getPityRates(raritiesData);
-  
+
   const guaranteedRare = count >= PRICING_CONFIG.pityThreshold;
-  
+
   const results = [];
   let hasRarePlus = false;
-  
+
+  // Track pity state during multi-roll for hard pity and soft pity calculations
+  let currentPullsSinceLegendary = initialPityState?.pullsSinceLegendary || 0;
+  let currentPullsSinceEpic = initialPityState?.pullsSinceEpic || 0;
+
   for (let i = 0; i < count; i++) {
     const isLastRoll = i === count - 1;
-    const needsPity = guaranteedRare && isLastRoll && !hasRarePlus;
-    
-    const currentRates = needsPity ? pityRates : rates;
-    const selectedRarity = rollRarity(currentRates, orderedRarities);
-    
+    const needsRarePlusPity = guaranteedRare && isLastRoll && !hasRarePlus;
+
+    // Check for hard pity FIRST - this takes absolute priority
+    const { forcedRarity, isHardPity } = checkHardPity(currentPullsSinceLegendary, currentPullsSinceEpic);
+
+    let selectedRarity;
+    let wasHardPity = false;
+
+    if (isHardPity && forcedRarity) {
+      // Hard pity forces this rarity - no RNG involved
+      selectedRarity = forcedRarity;
+      wasHardPity = true;
+    } else {
+      // Normal roll with soft pity boost
+      const softPityState = {
+        legendary: getSoftPityProgress(currentPullsSinceLegendary, 'legendary'),
+        epic: getSoftPityProgress(currentPullsSinceEpic, 'epic')
+      };
+
+      // Select rates: rare+ pity (10-pull guarantee) > soft pity > standard
+      let currentRates;
+      if (needsRarePlusPity) {
+        currentRates = pityRates;
+      } else {
+        currentRates = rates;
+        if (softPityState.legendary > 0) {
+          currentRates = applySoftPityBoost(currentRates, pityRates, softPityState.legendary, 'legendary');
+        }
+        if (softPityState.epic > 0) {
+          currentRates = applySoftPityBoost(currentRates, pityRates, softPityState.epic, 'epic');
+        }
+      }
+
+      selectedRarity = rollRarity(currentRates, orderedRarities);
+    }
+
     if (isRarePlus(selectedRarity, raritiesData)) {
       hasRarePlus = true;
     }
-    
+
+    // Update pity counters for tracking within this multi-roll
+    if (selectedRarity === 'legendary') {
+      currentPullsSinceLegendary = 0;
+      currentPullsSinceEpic = 0;
+    } else if (selectedRarity === 'epic') {
+      currentPullsSinceLegendary++;
+      currentPullsSinceEpic = 0;
+    } else {
+      currentPullsSinceLegendary++;
+      currentPullsSinceEpic++;
+    }
+
     const { character, actualRarity } = selectCharacterWithFallback(
       null,
       charactersByRarity,
@@ -442,17 +528,18 @@ const executeStandardMultiRoll = async (context, count) => {
       allCharacters,
       raritiesData
     );
-    
+
     if (character) {
       results.push({
         character,
         actualRarity,
         isPremium: false,
-        wasPity: needsPity
+        wasPity: needsRarePlusPity || wasHardPity,
+        wasHardPity
       });
     }
   }
-  
+
   return results;
 };
 

@@ -74,8 +74,14 @@ router.post('/roll', [auth, lockoutMiddleware(), enforcementMiddleware, deviceBi
     const allCharacters = await Character.findAll();
     const context = await buildStandardRollContext(allCharacters, allowR18);
 
-    // Execute roll
-    const result = await executeSingleStandardRoll(context, false);
+    // Get user's pity state for hard pity and soft pity checks
+    const userPity = user.gachaPity || { pullsSinceLegendary: 0, pullsSinceEpic: 0 };
+
+    // Execute roll with pity counters
+    const result = await executeSingleStandardRoll(context, {
+      isMulti: false,
+      pityCounters: userPity
+    });
     
     // Safety check: refund if no character available
     if (!result.character) {
@@ -212,8 +218,15 @@ router.post('/roll-multi', [auth, lockoutMiddleware(), enforcementMiddleware, de
     const allCharacters = await Character.findAll();
     const context = await buildStandardRollContext(allCharacters, allowR18);
 
-    // Execute multi-roll
-    const results = await executeStandardMultiRoll(context, count);
+    // Get user's pity state for hard pity and soft pity checks
+    const userPity = user.gachaPity || { pullsSinceLegendary: 0, pullsSinceEpic: 0 };
+    const initialPityState = {
+      pullsSinceLegendary: userPity.pullsSinceLegendary || 0,
+      pullsSinceEpic: userPity.pullsSinceEpic || 0
+    };
+
+    // Execute multi-roll with pity state
+    const results = await executeStandardMultiRoll(context, count, initialPityState);
     
     // Add all characters to collection (shards on duplicates, bonus points if max)
     const characters = results.map(r => r.character).filter(c => c);
