@@ -391,7 +391,8 @@ const CharacterSelector = memo(({
   const { t } = useTranslation();
   const [ownedCharacters, setOwnedCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [filter, setFilter] = useState('all');
+  const [rarityFilter, setRarityFilter] = useState('all');
+  const [elementFilter, setElementFilter] = useState('all');
   const [hoveredCharacter, setHoveredCharacter] = useState(null);
 
   // Use shared config - convert decimal to percentage (e.g., 0.05 -> 5)
@@ -508,10 +509,11 @@ const CharacterSelector = memo(({
     return CHARACTER_ABILITIES[element?.toLowerCase()] || CHARACTER_ABILITIES.neutral;
   }, []);
 
-  // Filter characters
+  // Filter characters by rarity and element
   const filteredCharacters = ownedCharacters.filter(char => {
-    if (filter === 'all') return true;
-    return char.rarity === filter;
+    const rarityMatch = rarityFilter === 'all' || char.rarity === rarityFilter;
+    const elementMatch = elementFilter === 'all' || char.element === elementFilter;
+    return rarityMatch && elementMatch;
   });
 
   // Check if character is assigned

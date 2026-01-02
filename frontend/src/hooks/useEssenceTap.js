@@ -14,8 +14,10 @@ import { invalidateFor, CACHE_ACTIONS } from '../cache/manager';
 import {
   COMBO_CONFIG,
   GOLDEN_CONFIG,
-  UI_TIMING
+  UI_TIMING,
+  ACHIEVEMENTS
 } from '../config/essenceTapConfig';
+import { useSoundEffects } from './useSoundEffects';
 
 // Re-export config for convenience
 export { COMBO_CONFIG, GOLDEN_CONFIG } from '../config/essenceTapConfig';
@@ -50,6 +52,9 @@ export const useEssenceTap = () => {
   const { refreshUser } = useContext(AuthContext);
   const toast = useToast();
 
+  // Sound effects
+  const sounds = useSoundEffects();
+
   // Core state
   const [gameState, setGameState] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -70,6 +75,21 @@ export const useEssenceTap = () => {
   // Offline progress modal
   const [offlineProgress, setOfflineProgress] = useState(null);
 
+  // Achievement state
+  const [unlockedAchievement, setUnlockedAchievement] = useState(null);
+  const achievementTrackingRef = useRef({
+    totalClicks: 0,
+    totalCrits: 0,
+    totalGolden: 0,
+    maxCombo: 0,
+    critStreak: 0,
+    maxCritStreak: 0,
+    totalGenerators: 0,
+    prestigeLevel: 0,
+    assignedCharacters: 0,
+    bossesDefeated: []
+  });
+
   // Auto-save tracking
   const lastSaveRef = useRef(Date.now());
   const pendingEssenceRef = useRef(0);
@@ -79,6 +99,53 @@ export const useEssenceTap = () => {
   // Refs for intervals
   const passiveTickRef = useRef(null);
   const isMountedRef = useRef(true);
+
+  // Check and trigger achievements
+  const checkAchievements = useCallback((stats, unlockedAchievements = []) => {
+    const tracking = achievementTrackingRef.current;
+    const unlocked = new Set(unlockedAchievements);
+
+    // Helper to unlock achievement
+    const unlock = (achievementId) => {
+      if (!unlocked.has(achievementId) && ACHIEVEMENTS[achievementId]) {
+        setUnlockedAchievement({
+          id: achievementId,
+          ...ACHIEVEMENTS[achievementId],
+          timestamp: Date.now()
+        });
+        sounds.playMilestone();
+        return true;
+      }
+      return false;
+    };
+
+    // Check click-based achievements
+    if (stats.totalClicks >= 1 && tracking.totalClicks === 0) {
+      unlock('firstClick');
+    }
+    if (stats.totalClicks >= 1000) unlock('thousandClicks');
+    if (stats.totalClicks >= 10000) unlock('tenThousandClicks');
+
+    // Check golden essence achievements
+    if (stats.totalGolden >= 1 && tracking.totalGolden === 0) {
+      unlock('firstGolden');
+    }
+    if (stats.totalGolden >= 100) unlock('hundredGolden');
+
+    // Check combo achievements
+    if (stats.maxCombo >= 100) unlock('comboMaster');
+
+    // Check crit streak achievements
+    if (stats.maxCritStreak >= 10) unlock('critStreak');
+
+    // Update tracking
+    achievementTrackingRef.current = { ...tracking, ...stats };
+  }, [sounds]);
+
+  // Dismiss achievement toast
+  const dismissAchievement = useCallback(() => {
+    setUnlockedAchievement(null);
+  }, []);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -215,6 +282,25 @@ export const useEssenceTap = () => {
     if (isCrit) essenceGained = Math.floor(essenceGained * critMultiplier);
     if (isGolden) essenceGained = Math.floor(essenceGained * GOLDEN_CONFIG.multiplier);
 
+    // Play sound effect based on click type
+    sounds.playClick(isCrit, isGolden);
+
+    // Track for achievements
+    const tracking = achievementTrackingRef.current;
+    const newTotalClicks = tracking.totalClicks + 1;
+    const newTotalGolden = isGolden ? tracking.totalGolden + 1 : tracking.totalGolden;
+    const newCritStreak = isCrit ? tracking.critStreak + 1 : 0;
+    const newMaxCritStreak = Math.max(tracking.maxCritStreak, newCritStreak);
+    const newMaxCombo = Math.max(tracking.maxCombo, Math.floor(comboMultiplier * 10)); // Combo as hit count
+
+    checkAchievements({
+      totalClicks: newTotalClicks,
+      totalGolden: newTotalGolden,
+      critStreak: newCritStreak,
+      maxCritStreak: newMaxCritStreak,
+      maxCombo: newMaxCombo
+    }, gameState.unlockedAchievements || []);
+
     // Optimistic update
     setLocalEssence(prev => {
       const newVal = prev + essenceGained;
@@ -270,7 +356,7 @@ export const useEssenceTap = () => {
     } catch (err) {
       console.error('Click sync failed:', err);
     }
-  }, [gameState, comboMultiplier, clicksThisSecond, t, toast]);
+  }, [gameState, comboMultiplier, clicksThisSecond, t, toast, sounds, checkAchievements]);
 
   // Purchase generator
   const purchaseGenerator = useCallback(async (generatorId, count = 1) => {
@@ -284,9 +370,21 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Play purchase sound
+      sounds.playPurchase();
+
       // Update local essence
       setLocalEssence(response.data.essence);
       localEssenceRef.current = response.data.essence;
+
+      // Check for first generator achievement
+      const tracking = achievementTrackingRef.current;
+      if (tracking.totalGenerators === 0) {
+        checkAchievements({
+          ...tracking,
+          totalGenerators: 1
+        }, gameState.unlockedAchievements || []);
+      }
 
       // Invalidate cache before fetching to ensure fresh data
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_GENERATOR_PURCHASE);
@@ -306,7 +404,7 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.purchaseFailed', { defaultValue: 'Purchase failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [gameState, fetchGameState, t, toast]);
+  }, [gameState, fetchGameState, t, toast, sounds, checkAchievements]);
 
   // Purchase upgrade
   const purchaseUpgrade = useCallback(async (upgradeId) => {
@@ -350,6 +448,17 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Play prestige sound
+      sounds.playPrestige();
+
+      // Check for first prestige achievement
+      const tracking = achievementTrackingRef.current;
+      const newPrestigeLevel = response.data.prestigeLevel || 1;
+      checkAchievements({
+        ...tracking,
+        prestigeLevel: newPrestigeLevel
+      }, gameState.unlockedAchievements || []);
+
       // Invalidate cache before fetching to ensure fresh data
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_PRESTIGE);
       await fetchGameState(false);
@@ -378,7 +487,7 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.prestigeFailed', { defaultValue: 'Prestige failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [gameState, fetchGameState, refreshUser, t, toast]);
+  }, [gameState, fetchGameState, refreshUser, t, toast, sounds, checkAchievements]);
 
   // Purchase prestige upgrade
   const purchasePrestigeUpgrade = useCallback(async (upgradeId) => {
@@ -751,6 +860,13 @@ export const useEssenceTap = () => {
     // Offline progress
     offlineProgress,
     dismissOfflineProgress,
+
+    // Achievements
+    unlockedAchievement,
+    dismissAchievement,
+
+    // Sound controls
+    sounds,
 
     // Actions
     handleClick,

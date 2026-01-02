@@ -49,7 +49,8 @@ import {
   SynergyPreviewPanel,
   EssenceTapErrorBoundary,
   DailyChallengesPanel,
-  BossEncounter
+  BossEncounter,
+  AchievementToast
 } from '../components/EssenceTap';
 import { IconDice, IconSparkles, IconTrophy, IconStar, IconGem, IconStats, IconCategoryPerson, IconTarget, IconBanner } from '../constants/icons';
 
@@ -313,6 +314,9 @@ const EssenceTapPage = memo(() => {
     lastClickResult,
     offlineProgress,
     dismissOfflineProgress,
+    unlockedAchievement,
+    dismissAchievement,
+    sounds,
     handleClick,
     purchaseGenerator,
     purchaseUpgrade,
@@ -730,6 +734,12 @@ const EssenceTapPage = memo(() => {
             </Modal>
           )}
         </AnimatePresence>
+
+        {/* Achievement Toast */}
+        <AchievementToast
+          achievement={unlockedAchievement}
+          onComplete={dismissAchievement}
+        />
         </PageContainer>
       </PageTransition>
     </EssenceTapErrorBoundary>

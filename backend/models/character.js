@@ -1,5 +1,6 @@
 const { DataTypes } = require('sequelize');
 const sequelize = require('../config/db');
+const { deriveElement } = require('../config/essenceTap');
 
 const Character = sequelize.define('Character', {
   name: {
@@ -115,6 +116,25 @@ const Character = sequelize.define('Character', {
         this.setDataValue('danbooruTags', JSON.stringify(value));
       }
     }
+  }
+});
+
+// Auto-assign element for new characters if not explicitly set
+Character.beforeCreate((character) => {
+  if (!character.element) {
+    // Use a temporary ID based on timestamp for derivation before the real ID is assigned
+    // This ensures deterministic element assignment
+    const tempId = Date.now() % 1000000;
+    character.element = deriveElement(tempId, character.rarity || 'common');
+  }
+});
+
+// After create, update with the real ID-based element for consistency
+Character.afterCreate(async (character) => {
+  // Re-derive element using actual ID for deterministic results
+  const derivedElement = deriveElement(character.id, character.rarity || 'common');
+  if (character.element !== derivedElement) {
+    await character.update({ element: derivedElement });
   }
 });
 
