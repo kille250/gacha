@@ -14,6 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../../design-system';
 import api, { getAssetUrl } from '../../utils/api';
+import { isVideo, getVideoMimeType } from '../../utils/mediaUtils';
 import { IconCheckmark } from '../../constants/icons';
 import {
   CHARACTER_BONUSES,
@@ -88,6 +89,18 @@ const SlotCard = styled(motion.div)`
 `;
 
 const SlotImage = styled.img`
+  width: 60px;
+  height: 60px;
+  border-radius: ${theme.radius.md};
+  object-fit: cover;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 45px;
+    height: 45px;
+  }
+`;
+
+const SlotVideo = styled.video`
   width: 60px;
   height: 60px;
   border-radius: ${theme.radius.md};
@@ -237,6 +250,12 @@ const CharacterCard = styled(motion.div)`
 `;
 
 const CharacterImage = styled.img`
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+`;
+
+const CharacterVideo = styled.video`
   width: 100%;
   height: 100%;
   object-fit: cover;
@@ -597,7 +616,17 @@ const CharacterSelector = memo(({
                 >
                   {character ? (
                     <>
-                      <SlotImage src={getAssetUrl(character.image)} alt={character.name} />
+                      {isVideo(character.image) ? (
+                        <SlotVideo
+                          src={getAssetUrl(character.image)}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <SlotImage src={getAssetUrl(character.image)} alt={character.name} />
+                      )}
                       <SlotName>{character.name}</SlotName>
                       <SlotBonus $color={rarityColor}>
                         +{characterBonuses[character.rarity]}%
@@ -767,7 +796,17 @@ const CharacterSelector = memo(({
                       animate={{ opacity: 1, scale: 1 }}
                       exit={{ opacity: 0, scale: 0.8 }}
                     >
-                      <CharacterImage src={getAssetUrl(character.image)} alt={character.name} />
+                      {isVideo(character.image) ? (
+                        <CharacterVideo
+                          src={getAssetUrl(character.image)}
+                          autoPlay
+                          loop
+                          muted
+                          playsInline
+                        />
+                      ) : (
+                        <CharacterImage src={getAssetUrl(character.image)} alt={character.name} />
+                      )}
                       <CharacterBadges>
                         <RarityBadge $color={rarityColor} />
                         <ElementBadge><ElementIcon size={10} /></ElementBadge>
