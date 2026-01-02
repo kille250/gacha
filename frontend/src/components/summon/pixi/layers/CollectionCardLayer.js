@@ -150,6 +150,7 @@ export class CollectionCardLayer {
     this.entity = null;
     this.rarity = 'common';
     this.element = null;
+    this.isNew = true; // Whether this is a first-time acquisition
     this.colors = RARITY_COLORS.common;
     this.elementColor = null;
 
@@ -212,11 +213,13 @@ export class CollectionCardLayer {
     this.entity = entity;
     this.rarity = entity.rarity?.toLowerCase() || 'common';
     this.element = entity.element?.toLowerCase() || null;
+    this.isNew = entity.isNew ?? true; // Default to true if not specified
     this.colors = RARITY_COLORS[this.rarity] || RARITY_COLORS.common;
     this.elementColor = this.element ? ELEMENT_COLORS[this.element] : null;
 
-    // Clear existing element badge for new entity
+    // Clear existing badges for new entity (so they can be re-evaluated)
     this.elementBadge.removeChildren();
+    this.newBadge.removeChildren();
 
     // Load character image
     if (entity.image) {
@@ -644,11 +647,12 @@ export class CollectionCardLayer {
   }
 
   /**
-   * Draw NEW badge
+   * Draw NEW badge (only for first-time acquisitions)
    */
   drawNewBadge() {
-    // Only draw once
+    // Only draw once, and only if this is a new acquisition
     if (this.newBadge.children.length > 0) return;
+    if (!this.isNew) return;
 
     const badgeGraphics = new Graphics();
     const badgeWidth = 45;

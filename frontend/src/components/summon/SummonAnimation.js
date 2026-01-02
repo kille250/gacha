@@ -75,6 +75,8 @@ export const SummonAnimation = forwardRef(({
       rarity: rarity || ent.rarity || 'common',
       series: ent.series,
       element: ent.element || null,
+      // Pass through acquisition.isNew to indicate if this is a first-time pull
+      isNew: ent.acquisition?.isNew ?? true,
     };
   }, [entity, character, rarity]);
 

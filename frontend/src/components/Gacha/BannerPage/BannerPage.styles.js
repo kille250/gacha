@@ -452,6 +452,33 @@ export const CollectedBadge = styled.div`
   z-index: 3;
 `;
 
+export const NewBadge = styled.div`
+  position: absolute;
+  top: ${theme.spacing.md};
+  left: ${theme.spacing.md};
+  background: linear-gradient(135deg, #34C759, #2FB64E);
+  color: white;
+  padding: 6px 12px;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  z-index: 3;
+  letter-spacing: 0.5px;
+`;
+
+export const DuplicateBadge = styled.div`
+  position: absolute;
+  top: ${theme.spacing.md};
+  left: ${theme.spacing.md};
+  background: rgba(175, 82, 222, 0.9);
+  color: white;
+  padding: 6px 12px;
+  border-radius: ${theme.radius.full};
+  font-size: ${theme.fontSizes.xs};
+  font-weight: ${theme.fontWeights.bold};
+  z-index: 3;
+`;
+
 export const BannerCharBadge = styled.div`
   position: absolute;
   top: ${theme.spacing.md};
