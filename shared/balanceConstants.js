@@ -37,7 +37,7 @@
  * ============================================================================
  */
 
-const BALANCE_VERSION = '9.0';
+const BALANCE_VERSION = '10.0';  // v10.0: Essence Tap v3.0 rebalancing
 
 // ===========================================
 // DOJO BALANCE CONSTANTS
@@ -230,6 +230,14 @@ const ACCOUNT_LEVEL_DISPLAY = {
 // ESSENCE TAP BALANCE CONSTANTS
 // ===========================================
 
+/**
+ * v3.0 REBALANCING UPDATE:
+ * - Extended progression from ~2-4 hours to ~2-4 weeks
+ * - Increased prestige minimum from 1M to 50M
+ * - Increased shard multiplier from 1% to 2%
+ * - Reduced click power bonuses
+ * - See docs/ESSENCE_TAP_BALANCE_ANALYSIS.md for full details
+ */
 const ESSENCE_TAP_DISPLAY = {
   // UI timing constants (shared for consistent calculations)
   timing: {
@@ -271,12 +279,12 @@ const ESSENCE_TAP_DISPLAY = {
     uncommon: 0.10     // +10%
   },
 
-  // Prestige requirements
+  // Prestige requirements (v3.0 REBALANCED)
   prestige: {
-    minimumEssence: 1000000,
-    cooldownMs: 3600000,        // 1 hour
-    maxEffectiveShards: 1000,
-    shardMultiplier: 0.01
+    minimumEssence: 50000000,   // v3.0: Was 1M (50M for ~4-6 hours to first prestige)
+    cooldownMs: 14400000,       // v3.0: Was 1 hour (4 hours)
+    maxEffectiveShards: 500,    // v3.0: Was 1000
+    shardMultiplier: 0.02       // v3.0: Was 0.01 (2% per shard)
   }
 };
 

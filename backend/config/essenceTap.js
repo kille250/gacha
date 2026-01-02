@@ -5,12 +5,19 @@
  * The game is an idle/incremental clicker where players tap to generate essence,
  * purchase generators for passive income, and prestige for permanent multipliers.
  *
- * BALANCE PHILOSOPHY:
- * - First upgrade purchasable within 10-15 seconds of clicking
- * - New generator tier unlockable every 2-5 minutes early game
- * - Prestige viable after ~1-2 hours of play
- * - Character bonuses impactful but not mandatory
- * - Offline gains ~50% of active play efficiency
+ * BALANCE PHILOSOPHY (v3.0):
+ * - Early game (0-10 min): Fast, rewarding, hook the player with 2-3 upgrades
+ * - Mid game (hours 1-10): Steady progression with meaningful choices
+ * - Late game (days 1-7): Slower but satisfying, prestige farming begins
+ * - Endgame (weeks 2-4): Final generators, optimization, mastery
+ *
+ * v3.0 MAJOR REBALANCING:
+ * - Reduced generator base outputs for extended progression curve
+ * - Increased generator costs significantly (especially late tiers)
+ * - Raised unlock thresholds to require investment in current tier
+ * - Increased prestige minimum from 1M to 50M (4-6 hours to first prestige)
+ * - Reduced click upgrade bonuses and increased costs
+ * - Extended endgame from ~2-4 hours to ~2-4 weeks
  *
  * v2.0 ENHANCEMENT UPDATE:
  * - Added repeatable essence milestones for ongoing FP rewards
@@ -31,14 +38,20 @@
 /**
  * Generator tiers with exponentially scaling costs and output
  * Each generator produces essence per second automatically
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Reduced base outputs across all tiers (especially early game)
+ * - Increased costs significantly to extend progression
+ * - Unlock thresholds now require meaningful investment in current tier
+ * - Target: First generator in 30s, Tier 5 in 3-4 hours, Tier 10 in 2-3 weeks
  */
 const GENERATORS = [
   {
     id: 'essence_sprite',
     name: 'Essence Sprite',
     description: 'A tiny magical sprite that gathers essence',
-    baseOutput: 1,           // Essence per second per generator
-    baseCost: 15,            // Initial purchase cost
+    baseOutput: 0.5,         // v3.0: Reduced from 1 (slower early ramp)
+    baseCost: 15,            // Initial purchase cost (kept for quick hook)
     costMultiplier: 1.15,    // Cost increase per purchase
     unlockEssence: 0,        // Essence required to unlock (0 = available immediately)
     icon: 'sprite',
@@ -48,10 +61,10 @@ const GENERATORS = [
     id: 'mana_well',
     name: 'Mana Well',
     description: 'A mystical well that draws essence from the earth',
-    baseOutput: 8,
-    baseCost: 100,
+    baseOutput: 3,           // v3.0: Reduced from 8 (6x from sprite, was 8x)
+    baseCost: 150,           // v3.0: Increased from 100
     costMultiplier: 1.15,
-    unlockEssence: 50,
+    unlockEssence: 100,      // v3.0: Increased from 50 (requires investment)
     icon: 'well',
     tier: 2
   },
@@ -59,10 +72,10 @@ const GENERATORS = [
     id: 'crystal_node',
     name: 'Crystal Node',
     description: 'Crystalline formation resonating with magical energy',
-    baseOutput: 47,
-    baseCost: 1100,
+    baseOutput: 15,          // v3.0: Reduced from 47 (5x from well)
+    baseCost: 2000,          // v3.0: Increased from 1100
     costMultiplier: 1.15,
-    unlockEssence: 500,
+    unlockEssence: 1500,     // v3.0: Increased from 500
     icon: 'crystal',
     tier: 3
   },
@@ -70,10 +83,10 @@ const GENERATORS = [
     id: 'arcane_altar',
     name: 'Arcane Altar',
     description: 'Ancient altar channeling pure arcane power',
-    baseOutput: 260,
-    baseCost: 12000,
+    baseOutput: 75,          // v3.0: Reduced from 260 (5x from crystal)
+    baseCost: 30000,         // v3.0: Increased from 12000
     costMultiplier: 1.15,
-    unlockEssence: 5000,
+    unlockEssence: 25000,    // v3.0: Increased from 5000
     icon: 'altar',
     tier: 4
   },
@@ -81,10 +94,10 @@ const GENERATORS = [
     id: 'spirit_beacon',
     name: 'Spirit Beacon',
     description: 'A beacon that attracts wandering spirits',
-    baseOutput: 1400,
-    baseCost: 130000,
+    baseOutput: 400,         // v3.0: Reduced from 1400 (5.3x from altar)
+    baseCost: 500000,        // v3.0: Increased from 130000
     costMultiplier: 1.15,
-    unlockEssence: 50000,
+    unlockEssence: 400000,   // v3.0: Increased from 50000
     icon: 'beacon',
     tier: 5
   },
@@ -92,10 +105,10 @@ const GENERATORS = [
     id: 'void_rift',
     name: 'Void Rift',
     description: 'A tear in reality leaking pure essence',
-    baseOutput: 7800,
-    baseCost: 1400000,
+    baseOutput: 2500,        // v3.0: Reduced from 7800 (6.25x from beacon)
+    baseCost: 10000000,      // v3.0: Increased from 1400000 (10M)
     costMultiplier: 1.15,
-    unlockEssence: 500000,
+    unlockEssence: 8000000,  // v3.0: Increased from 500000 (8M)
     icon: 'rift',
     tier: 6
   },
@@ -103,10 +116,10 @@ const GENERATORS = [
     id: 'celestial_gate',
     name: 'Celestial Gate',
     description: 'A gateway to the celestial realm of infinite essence',
-    baseOutput: 44000,
-    baseCost: 20000000,
+    baseOutput: 15000,       // v3.0: Reduced from 44000 (6x from rift)
+    baseCost: 250000000,     // v3.0: Increased from 20000000 (250M)
     costMultiplier: 1.15,
-    unlockEssence: 5000000,
+    unlockEssence: 200000000, // v3.0: Increased from 5000000 (200M)
     icon: 'gate',
     tier: 7
   },
@@ -114,10 +127,10 @@ const GENERATORS = [
     id: 'eternal_nexus',
     name: 'Eternal Nexus',
     description: 'The convergence point of all magical energies',
-    baseOutput: 260000,
-    baseCost: 330000000,
+    baseOutput: 100000,      // v3.0: Reduced from 260000 (6.67x from gate)
+    baseCost: 7500000000,    // v3.0: Increased from 330000000 (7.5B)
     costMultiplier: 1.15,
-    unlockEssence: 50000000,
+    unlockEssence: 6000000000, // v3.0: Increased from 50000000 (6B)
     icon: 'nexus',
     tier: 8
   },
@@ -125,10 +138,10 @@ const GENERATORS = [
     id: 'primordial_core',
     name: 'Primordial Core',
     description: 'The heart of creation itself',
-    baseOutput: 1600000,
-    baseCost: 5100000000,
+    baseOutput: 750000,      // v3.0: Reduced from 1600000 (7.5x from nexus)
+    baseCost: 250000000000,  // v3.0: Increased from 5100000000 (250B)
     costMultiplier: 1.15,
-    unlockEssence: 500000000,
+    unlockEssence: 200000000000, // v3.0: Increased from 500000000 (200B)
     icon: 'core',
     tier: 9
   },
@@ -136,10 +149,10 @@ const GENERATORS = [
     id: 'infinity_engine',
     name: 'Infinity Engine',
     description: 'A machine that generates essence from nothing',
-    baseOutput: 10000000,
-    baseCost: 75000000000,
+    baseOutput: 5000000,     // v3.0: Reduced from 10000000 (6.67x from core)
+    baseCost: 10000000000000, // v3.0: Increased from 75000000000 (10T)
     costMultiplier: 1.15,
-    unlockEssence: 5000000000,
+    unlockEssence: 8000000000000, // v3.0: Increased from 5000000000 (8T)
     icon: 'engine',
     tier: 10
   }
@@ -151,122 +164,135 @@ const GENERATORS = [
 
 /**
  * Click upgrades - improve active clicking
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Reduced click power bonuses (slower power creep)
+ * - Significantly increased costs (10-50x increase)
+ * - Crit upgrades more expensive to prevent early burst damage
+ * - Total click power from upgrades: 32.5 (was 73)
+ * - Total crit chance from upgrades: 11% (was 20%)
+ * - Total crit multiplier from upgrades: 18x (was 40x)
  */
 const CLICK_UPGRADES = [
   {
     id: 'click_power_1',
     name: 'Focused Tap',
-    description: '+1 essence per click',
+    description: '+0.5 essence per click',
     type: 'click_power',
-    bonus: 1,
-    cost: 100,
-    unlockEssence: 0,
+    bonus: 0.5,              // v3.0: Reduced from 1
+    cost: 200,               // v3.0: Increased from 100
+    unlockEssence: 150,      // v3.0: Increased from 0
     tier: 1
   },
   {
     id: 'click_power_2',
     name: 'Empowered Tap',
-    description: '+2 essence per click',
+    description: '+1 essence per click',
     type: 'click_power',
-    bonus: 2,
-    cost: 500,
-    unlockEssence: 200,
+    bonus: 1,                // v3.0: Reduced from 2
+    cost: 2500,              // v3.0: Increased from 500
+    unlockEssence: 2000,     // v3.0: Increased from 200
     tier: 2
   },
   {
     id: 'click_power_3',
     name: 'Mighty Tap',
-    description: '+5 essence per click',
+    description: '+3 essence per click',
     type: 'click_power',
-    bonus: 5,
-    cost: 5000,
-    unlockEssence: 2000,
+    bonus: 3,                // v3.0: Reduced from 5
+    cost: 50000,             // v3.0: Increased from 5000
+    unlockEssence: 40000,    // v3.0: Increased from 2000
     tier: 3
   },
   {
     id: 'click_power_4',
     name: 'Devastating Tap',
-    description: '+15 essence per click',
+    description: '+8 essence per click',
     type: 'click_power',
-    bonus: 15,
-    cost: 50000,
-    unlockEssence: 20000,
+    bonus: 8,                // v3.0: Reduced from 15
+    cost: 1000000,           // v3.0: Increased from 50000
+    unlockEssence: 800000,   // v3.0: Increased from 20000
     tier: 4
   },
   {
     id: 'click_power_5',
     name: 'Legendary Tap',
-    description: '+50 essence per click',
+    description: '+20 essence per click',
     type: 'click_power',
-    bonus: 50,
-    cost: 500000,
-    unlockEssence: 200000,
+    bonus: 20,               // v3.0: Reduced from 50
+    cost: 25000000,          // v3.0: Increased from 500000
+    unlockEssence: 20000000, // v3.0: Increased from 200000
     tier: 5
   },
   {
     id: 'crit_chance_1',
     name: 'Lucky Strike',
-    description: '+5% critical click chance',
+    description: '+3% critical click chance',
     type: 'crit_chance',
-    bonus: 0.05,
-    cost: 1000,
-    unlockEssence: 500,
+    bonus: 0.03,             // v3.0: Reduced from 0.05
+    cost: 5000,              // v3.0: Increased from 1000
+    unlockEssence: 4000,     // v3.0: Increased from 500
     tier: 1
   },
   {
     id: 'crit_chance_2',
     name: 'Fortune\'s Favor',
-    description: '+5% critical click chance',
+    description: '+3% critical click chance',
     type: 'crit_chance',
-    bonus: 0.05,
-    cost: 10000,
-    unlockEssence: 5000,
+    bonus: 0.03,             // v3.0: Reduced from 0.05
+    cost: 100000,            // v3.0: Increased from 10000
+    unlockEssence: 80000,    // v3.0: Increased from 5000
     tier: 2
   },
   {
     id: 'crit_chance_3',
     name: 'Blessed Strikes',
-    description: '+10% critical click chance',
+    description: '+5% critical click chance',
     type: 'crit_chance',
-    bonus: 0.10,
-    cost: 100000,
-    unlockEssence: 50000,
+    bonus: 0.05,             // v3.0: Reduced from 0.10
+    cost: 2500000,           // v3.0: Increased from 100000
+    unlockEssence: 2000000,  // v3.0: Increased from 50000
     tier: 3
   },
   {
     id: 'crit_mult_1',
     name: 'Critical Mastery',
-    description: '+5x critical multiplier',
+    description: '+3x critical multiplier',
     type: 'crit_multiplier',
-    bonus: 5,
-    cost: 5000,
-    unlockEssence: 2000,
+    bonus: 3,                // v3.0: Reduced from 5
+    cost: 25000,             // v3.0: Increased from 5000
+    unlockEssence: 20000,    // v3.0: Increased from 2000
     tier: 1
   },
   {
     id: 'crit_mult_2',
     name: 'Devastating Criticals',
-    description: '+10x critical multiplier',
+    description: '+5x critical multiplier',
     type: 'crit_multiplier',
-    bonus: 10,
-    cost: 50000,
-    unlockEssence: 20000,
+    bonus: 5,                // v3.0: Reduced from 10
+    cost: 500000,            // v3.0: Increased from 50000
+    unlockEssence: 400000,   // v3.0: Increased from 20000
     tier: 2
   },
   {
     id: 'crit_mult_3',
     name: 'Legendary Criticals',
-    description: '+25x critical multiplier',
+    description: '+10x critical multiplier',
     type: 'crit_multiplier',
-    bonus: 25,
-    cost: 500000,
-    unlockEssence: 200000,
+    bonus: 10,               // v3.0: Reduced from 25
+    cost: 12500000,          // v3.0: Increased from 500000
+    unlockEssence: 10000000, // v3.0: Increased from 200000
     tier: 3
   }
 ];
 
 /**
  * Generator upgrades - boost generator output
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Increased costs significantly (5-100x increase)
+ * - Increased required ownership to unlock (10 -> 15, 50 -> 75)
+ * - These upgrades now represent meaningful mid-game investment
  */
 const GENERATOR_UPGRADES = [
   {
@@ -275,8 +301,8 @@ const GENERATOR_UPGRADES = [
     description: 'Essence Sprites produce 2x essence',
     generatorId: 'essence_sprite',
     multiplier: 2,
-    cost: 1000,
-    requiredOwned: 10
+    cost: 5000,              // v3.0: Increased from 1000
+    requiredOwned: 15        // v3.0: Increased from 10
   },
   {
     id: 'sprite_boost_2',
@@ -284,8 +310,8 @@ const GENERATOR_UPGRADES = [
     description: 'Essence Sprites produce 2x essence',
     generatorId: 'essence_sprite',
     multiplier: 2,
-    cost: 50000,
-    requiredOwned: 50
+    cost: 500000,            // v3.0: Increased from 50000
+    requiredOwned: 75        // v3.0: Increased from 50
   },
   {
     id: 'well_boost_1',
@@ -293,8 +319,8 @@ const GENERATOR_UPGRADES = [
     description: 'Mana Wells produce 2x essence',
     generatorId: 'mana_well',
     multiplier: 2,
-    cost: 10000,
-    requiredOwned: 10
+    cost: 100000,            // v3.0: Increased from 10000
+    requiredOwned: 15        // v3.0: Increased from 10
   },
   {
     id: 'well_boost_2',
@@ -302,8 +328,8 @@ const GENERATOR_UPGRADES = [
     description: 'Mana Wells produce 2x essence',
     generatorId: 'mana_well',
     multiplier: 2,
-    cost: 500000,
-    requiredOwned: 50
+    cost: 7500000,           // v3.0: Increased from 500000
+    requiredOwned: 75        // v3.0: Increased from 50
   },
   {
     id: 'crystal_boost_1',
@@ -311,8 +337,8 @@ const GENERATOR_UPGRADES = [
     description: 'Crystal Nodes produce 2x essence',
     generatorId: 'crystal_node',
     multiplier: 2,
-    cost: 100000,
-    requiredOwned: 10
+    cost: 2500000,           // v3.0: Increased from 100000
+    requiredOwned: 15        // v3.0: Increased from 10
   },
   {
     id: 'altar_boost_1',
@@ -320,8 +346,8 @@ const GENERATOR_UPGRADES = [
     description: 'Arcane Altars produce 2x essence',
     generatorId: 'arcane_altar',
     multiplier: 2,
-    cost: 1000000,
-    requiredOwned: 10
+    cost: 50000000,          // v3.0: Increased from 1000000
+    requiredOwned: 15        // v3.0: Increased from 10
   },
   {
     id: 'beacon_boost_1',
@@ -329,13 +355,18 @@ const GENERATOR_UPGRADES = [
     description: 'Spirit Beacons produce 2x essence',
     generatorId: 'spirit_beacon',
     multiplier: 2,
-    cost: 10000000,
-    requiredOwned: 10
+    cost: 1000000000,        // v3.0: Increased from 10000000
+    requiredOwned: 15        // v3.0: Increased from 10
   }
 ];
 
 /**
  * Global upgrades - affect all production
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Massively increased costs (10x-250x increase)
+ * - These are now late-game power spikes, not early purchases
+ * - Supremacy requires billions of essence
  */
 const GLOBAL_UPGRADES = [
   {
@@ -344,8 +375,8 @@ const GLOBAL_UPGRADES = [
     description: '+10% to all essence production',
     type: 'global_multiplier',
     multiplier: 1.10,
-    cost: 10000,
-    unlockEssence: 5000
+    cost: 100000,            // v3.0: Increased from 10000
+    unlockEssence: 80000     // v3.0: Increased from 5000
   },
   {
     id: 'global_mult_2',
@@ -353,8 +384,8 @@ const GLOBAL_UPGRADES = [
     description: '+25% to all essence production',
     type: 'global_multiplier',
     multiplier: 1.25,
-    cost: 100000,
-    unlockEssence: 50000
+    cost: 2500000,           // v3.0: Increased from 100000
+    unlockEssence: 2000000   // v3.0: Increased from 50000
   },
   {
     id: 'global_mult_3',
@@ -362,8 +393,8 @@ const GLOBAL_UPGRADES = [
     description: '+50% to all essence production',
     type: 'global_multiplier',
     multiplier: 1.50,
-    cost: 1000000,
-    unlockEssence: 500000
+    cost: 75000000,          // v3.0: Increased from 1000000
+    unlockEssence: 60000000  // v3.0: Increased from 500000
   },
   {
     id: 'global_mult_4',
@@ -371,13 +402,17 @@ const GLOBAL_UPGRADES = [
     description: '+100% to all essence production',
     type: 'global_multiplier',
     multiplier: 2.0,
-    cost: 10000000,
-    unlockEssence: 5000000
+    cost: 2500000000,        // v3.0: Increased from 10000000
+    unlockEssence: 2000000000 // v3.0: Increased from 5000000
   }
 ];
 
 /**
  * Synergy upgrades - generators boost each other
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Increased costs to match new economy (10-20x increase)
+ * - These are meaningful mid-game choices now
  */
 const SYNERGY_UPGRADES = [
   {
@@ -387,8 +422,8 @@ const SYNERGY_UPGRADES = [
     sourceGenerator: 'essence_sprite',
     targetGenerator: 'mana_well',
     bonusPerSource: 0.01,
-    cost: 50000,
-    unlockEssence: 20000
+    cost: 750000,            // v3.0: Increased from 50000
+    unlockEssence: 500000    // v3.0: Increased from 20000
   },
   {
     id: 'synergy_well_crystal',
@@ -397,8 +432,8 @@ const SYNERGY_UPGRADES = [
     sourceGenerator: 'mana_well',
     targetGenerator: 'crystal_node',
     bonusPerSource: 0.01,
-    cost: 500000,
-    unlockEssence: 200000
+    cost: 10000000,          // v3.0: Increased from 500000
+    unlockEssence: 8000000   // v3.0: Increased from 200000
   },
   {
     id: 'synergy_crystal_altar',
@@ -407,8 +442,8 @@ const SYNERGY_UPGRADES = [
     sourceGenerator: 'crystal_node',
     targetGenerator: 'arcane_altar',
     bonusPerSource: 0.01,
-    cost: 5000000,
-    unlockEssence: 2000000
+    cost: 150000000,         // v3.0: Increased from 5000000
+    unlockEssence: 100000000 // v3.0: Increased from 2000000
   }
 ];
 
@@ -419,64 +454,71 @@ const SYNERGY_UPGRADES = [
 /**
  * Prestige (Awakening) configuration
  * Players can reset progress for permanent multipliers
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Increased minimum essence from 1M to 50M (first prestige at ~4-6 hours)
+ * - Increased shard divisor from 1M to 10M (slower shard accumulation)
+ * - Increased shard multiplier from 1% to 2% (more impactful shards)
+ * - Increased cooldown from 1 hour to 4 hours (prevent farming)
+ * - Adjusted prestige upgrade costs to match longer progression
  */
 const PRESTIGE_CONFIG = {
   // Minimum lifetime essence to prestige
-  minimumEssence: 1000000,
+  minimumEssence: 50000000,  // v3.0: Increased from 1000000 (50M)
 
   // Prestige cooldown to prevent FP farming (in milliseconds)
-  // Players must wait 1 hour between prestiges
-  cooldownMs: 3600000,  // 1 hour = 60 * 60 * 1000
+  // Players must wait 4 hours between prestiges
+  cooldownMs: 14400000,  // v3.0: Increased from 3600000 (4 hours)
 
   // Formula for awakening shards: floor(sqrt(lifetimeEssence / divisor))
-  shardDivisor: 1000000,
+  shardDivisor: 10000000,  // v3.0: Increased from 1000000 (10M)
 
   // Shards provide permanent multiplier: 1 + (shards * shardMultiplier)
-  shardMultiplier: 0.01,
+  shardMultiplier: 0.02,  // v3.0: Increased from 0.01 (2% per shard)
 
   // Maximum shards (soft cap)
-  maxEffectiveShards: 1000,
+  maxEffectiveShards: 500,  // v3.0: Reduced from 1000 (balance with higher multiplier)
 
   // Prestige upgrades purchasable with shards
   upgrades: [
     {
       id: 'prestige_click',
       name: 'Awakened Tap',
-      description: 'Permanent +2 click power per level',
+      description: 'Permanent +1 click power per level',
       type: 'click_power',
-      bonusPerLevel: 2,
+      bonusPerLevel: 1,      // v3.0: Reduced from 2
       maxLevel: 50,
-      baseCost: 1,
+      baseCost: 2,           // v3.0: Increased from 1
       costMultiplier: 1.5
     },
     {
       id: 'prestige_crit',
       name: 'Awakened Fortune',
-      description: 'Permanent +1% crit chance per level',
+      description: 'Permanent +0.5% crit chance per level',
       type: 'crit_chance',
-      bonusPerLevel: 0.01,
+      bonusPerLevel: 0.005,  // v3.0: Reduced from 0.01
       maxLevel: 30,
-      baseCost: 2,
+      baseCost: 3,           // v3.0: Increased from 2
       costMultiplier: 1.8
     },
     {
       id: 'prestige_production',
       name: 'Awakened Flow',
-      description: 'Permanent +5% production per level',
+      description: 'Permanent +3% production per level',
       type: 'production',
-      bonusPerLevel: 0.05,
+      bonusPerLevel: 0.03,   // v3.0: Reduced from 0.05
       maxLevel: 100,
-      baseCost: 3,
+      baseCost: 4,           // v3.0: Increased from 3
       costMultiplier: 1.4
     },
     {
       id: 'prestige_offline',
       name: 'Awakened Dreams',
-      description: 'Permanent +5% offline efficiency per level',
+      description: 'Permanent +3% offline efficiency per level',
       type: 'offline',
-      bonusPerLevel: 0.05,
+      bonusPerLevel: 0.03,   // v3.0: Reduced from 0.05
       maxLevel: 20,
-      baseCost: 5,
+      baseCost: 6,           // v3.0: Increased from 5
       costMultiplier: 2.0
     },
     {
@@ -484,9 +526,9 @@ const PRESTIGE_CONFIG = {
       name: 'Awakened Beginning',
       description: 'Start with bonus essence after prestige',
       type: 'starting_essence',
-      bonusPerLevel: 1000,
+      bonusPerLevel: 5000,   // v3.0: Increased from 1000 (meaningful starting boost)
       maxLevel: 100,
-      baseCost: 2,
+      baseCost: 3,           // v3.0: Increased from 2
       costMultiplier: 1.3
     }
   ]
@@ -696,42 +738,54 @@ const SERIES_SYNERGIES = {
 
 /**
  * Milestones that reward Fate Points (one-time)
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Scaled thresholds to match new economy
+ * - First milestone now at 10M (was 1M) - ~2-3 hours of play
+ * - Added more late-game milestones for extended progression
  */
 const FATE_POINT_MILESTONES = [
-  { lifetimeEssence: 1000000, fatePoints: 5, claimed: false },
-  { lifetimeEssence: 10000000, fatePoints: 10, claimed: false },
-  { lifetimeEssence: 100000000, fatePoints: 20, claimed: false },
-  { lifetimeEssence: 1000000000, fatePoints: 50, claimed: false },
-  { lifetimeEssence: 10000000000, fatePoints: 100, claimed: false }
+  { lifetimeEssence: 10000000, fatePoints: 5, claimed: false },     // v3.0: Was 1M
+  { lifetimeEssence: 100000000, fatePoints: 10, claimed: false },   // v3.0: Was 10M
+  { lifetimeEssence: 1000000000, fatePoints: 15, claimed: false },  // v3.0: Was 100M
+  { lifetimeEssence: 10000000000, fatePoints: 25, claimed: false }, // v3.0: Was 1B
+  { lifetimeEssence: 100000000000, fatePoints: 40, claimed: false }, // v3.0: Was 10B
+  { lifetimeEssence: 1000000000000, fatePoints: 60, claimed: false }, // v3.0: NEW - 1T milestone
+  { lifetimeEssence: 10000000000000, fatePoints: 100, claimed: false } // v3.0: NEW - 10T endgame
 ];
 
 /**
- * Repeatable milestones for ongoing FP rewards (NEW)
+ * Repeatable milestones for ongoing FP rewards
  * These reset weekly and provide continuous engagement
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Scaled thresholds to match new economy
+ * - Weekly essence now 1B (was 100M)
+ * - Repeatable milestone now 1T (was 100B)
  */
 const REPEATABLE_MILESTONES = {
   // Weekly essence milestone
   weeklyEssence: {
-    threshold: 100000000,  // 100M essence per week
-    fatePoints: 20,  // Reduced from 25 to balance economy
+    threshold: 1000000000,  // v3.0: 1B essence per week (was 100M)
+    fatePoints: 20,
     rollTickets: 3
   },
   // Weekly click goal
   weeklyClicks: {
-    threshold: 10000,      // 10,000 clicks per week
-    fatePoints: 8,  // Reduced from 10
+    threshold: 10000,      // 10,000 clicks per week (unchanged)
+    fatePoints: 8,
     rollTickets: 2
   },
   // Weekly prestige goal (prestige at least once per week)
   weeklyPrestige: {
     threshold: 1,
-    fatePoints: 12,  // Reduced from 15
+    fatePoints: 12,
     premiumTickets: 1
   },
-  // Essence earned per 100B (repeatable indefinitely)
-  essencePer100B: {
-    threshold: 100000000000,  // 100B
-    fatePoints: 25,  // Reduced from 50 to prevent late-game FP explosion
+  // Essence earned per 1T (repeatable indefinitely)
+  essencePer1T: {
+    threshold: 1000000000000,  // v3.0: 1T (was 100B)
+    fatePoints: 25,
     repeatable: true
   }
 };
@@ -759,15 +813,19 @@ const PRESTIGE_FATE_REWARDS = {
 /**
  * Mini-milestones for short mobile sessions
  * These provide frequent dopamine hits in 2-5 minute sessions
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Kept early milestones achievable for mobile sessions
+ * - Scaled later milestones to match new economy
  */
 const MINI_MILESTONES = {
   // Session-based milestones (reset on page load)
   sessionMilestones: [
-    { essence: 10000, reward: { xp: 5 }, name: 'Quick Start' },
-    { essence: 50000, reward: { xp: 10 }, name: 'Warming Up' },
+    { essence: 5000, reward: { xp: 5 }, name: 'Quick Start' },        // v3.0: Reduced from 10k
+    { essence: 25000, reward: { xp: 10 }, name: 'Warming Up' },       // v3.0: Reduced from 50k
     { essence: 100000, reward: { xp: 15, rollTickets: 1 }, name: 'Getting Going' },
     { essence: 500000, reward: { xp: 25 }, name: 'In the Zone' },
-    { essence: 1000000, reward: { xp: 50, rollTickets: 2 }, name: 'Million Club' }
+    { essence: 2500000, reward: { xp: 50, rollTickets: 2 }, name: 'Million Club' } // v3.0: Increased
   ],
   // Click combo milestones (during active session)
   comboMilestones: [
@@ -820,6 +878,10 @@ const XP_REWARDS = {
 
 /**
  * Daily challenges for bonus rewards
+ *
+ * v3.0 REBALANCING NOTES:
+ * - Scaled essence rewards and targets to match new economy
+ * - Click targets unchanged (activity-based, not economy-based)
  */
 const DAILY_CHALLENGES = [
   {
@@ -828,7 +890,7 @@ const DAILY_CHALLENGES = [
     description: 'Click 1,000 times',
     type: 'clicks',
     target: 1000,
-    rewards: { essence: 10000, fatePoints: 2 }
+    rewards: { essence: 50000, fatePoints: 2 }  // v3.0: Essence increased
   },
   {
     id: 'clicks_5000',
@@ -836,14 +898,14 @@ const DAILY_CHALLENGES = [
     description: 'Click 5,000 times',
     type: 'clicks',
     target: 5000,
-    rewards: { essence: 50000, fatePoints: 5 }
+    rewards: { essence: 250000, fatePoints: 5 }  // v3.0: Essence increased
   },
   {
-    id: 'earn_million',
+    id: 'earn_10million',
     name: 'Essence Collector',
-    description: 'Earn 1,000,000 essence today',
+    description: 'Earn 10,000,000 essence today',
     type: 'essence_earned',
-    target: 1000000,
+    target: 10000000,  // v3.0: Was 1M
     rewards: { fatePoints: 3, rollTickets: 1 }
   },
   {
@@ -852,7 +914,7 @@ const DAILY_CHALLENGES = [
     description: 'Land 100 critical clicks',
     type: 'crits',
     target: 100,
-    rewards: { essence: 25000, fatePoints: 3 }
+    rewards: { essence: 100000, fatePoints: 3 }  // v3.0: Essence increased
   },
   {
     id: 'buy_generators',
@@ -860,7 +922,7 @@ const DAILY_CHALLENGES = [
     description: 'Purchase 50 generators',
     type: 'generators_bought',
     target: 50,
-    rewards: { essence: 100000 }
+    rewards: { essence: 500000 }  // v3.0: Essence increased
   }
 ];
 
@@ -1139,13 +1201,14 @@ const WEEKLY_TOURNAMENT = {
   endDay: 0,    // Sunday
 
   // Tier thresholds based on essence earned (for single-player tier determination)
+  // v3.0 REBALANCING: Scaled to match new economy
   tiers: [
-    { name: 'Bronze', minEssence: 1000000 },
-    { name: 'Silver', minEssence: 10000000 },
-    { name: 'Gold', minEssence: 50000000 },
-    { name: 'Platinum', minEssence: 200000000 },
-    { name: 'Diamond', minEssence: 1000000000 },
-    { name: 'Champion', minEssence: 10000000000 }
+    { name: 'Bronze', minEssence: 10000000 },        // v3.0: Was 1M
+    { name: 'Silver', minEssence: 100000000 },       // v3.0: Was 10M
+    { name: 'Gold', minEssence: 500000000 },         // v3.0: Was 50M
+    { name: 'Platinum', minEssence: 2000000000 },    // v3.0: Was 200M
+    { name: 'Diamond', minEssence: 10000000000 },    // v3.0: Was 1B
+    { name: 'Champion', minEssence: 100000000000 }   // v3.0: Was 10B
   ],
 
   // Rewards by tier name
@@ -1160,7 +1223,7 @@ const WEEKLY_TOURNAMENT = {
 
   // Participation rewards (for anyone who played)
   participationReward: {
-    minimumEssence: 1000000,  // Must earn at least 1M essence
+    minimumEssence: 10000000,  // v3.0: Must earn at least 10M essence (was 1M)
     rewards: { fatePoints: 5, rollTickets: 1 }
   },
 
@@ -1182,12 +1245,13 @@ const WEEKLY_TOURNAMENT = {
  */
 const TICKET_GENERATION = {
   // Daily challenges that award tickets
+  // v3.0 REBALANCING: Scaled essence targets
   dailyTicketChallenges: [
     {
-      id: 'daily_essence_5m',
+      id: 'daily_essence_50m',
       name: 'Daily Grinder',
-      description: 'Earn 5,000,000 essence today',
-      target: 5000000,
+      description: 'Earn 50,000,000 essence today',
+      target: 50000000,  // v3.0: Was 5M
       reward: { rollTickets: 2 }
     },
     {
@@ -1239,11 +1303,12 @@ const TICKET_GENERATION = {
   },
 
   // Generator milestone tickets
+  // v3.0 REBALANCING: Increased thresholds slightly
   generatorMilestones: [
-    { totalGenerators: 100, reward: { rollTickets: 2 } },
-    { totalGenerators: 500, reward: { rollTickets: 5 } },
-    { totalGenerators: 1000, reward: { rollTickets: 10, premiumTickets: 2 } },
-    { totalGenerators: 5000, reward: { rollTickets: 25, premiumTickets: 5 } }
+    { totalGenerators: 150, reward: { rollTickets: 2 } },    // v3.0: Was 100
+    { totalGenerators: 750, reward: { rollTickets: 5 } },    // v3.0: Was 500
+    { totalGenerators: 2000, reward: { rollTickets: 10, premiumTickets: 2 } },  // v3.0: Was 1000
+    { totalGenerators: 10000, reward: { rollTickets: 25, premiumTickets: 5 } }  // v3.0: Was 5000
   ],
 
   // Fate Point to Ticket exchange

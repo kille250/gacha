@@ -13,6 +13,10 @@
  * - Frontend uses these values for optimistic UI predictions only
  * - On every sync/save, frontend reconciles with backend values
  * - See useEssenceTap.js auto-save effect for reconciliation logic
+ *
+ * v3.0 REBALANCING UPDATE:
+ * - Extended progression from ~2-4 hours to ~2-4 weeks
+ * - See docs/ESSENCE_TAP_BALANCE_ANALYSIS.md for full details
  */
 
 // ===========================================
@@ -691,13 +695,14 @@ export const BET_TYPES = {
 // WEEKLY TOURNAMENT CONFIG
 // ===========================================
 
+// v3.0 REBALANCING: Tier thresholds scaled 10x to match new economy
 export const TOURNAMENT_TIER_CONFIG = {
-  Bronze: { color: '#CD7F32', colorEnd: '#8B4513', minEssence: 1000000 },
-  Silver: { color: '#C0C0C0', colorEnd: '#808080', minEssence: 10000000 },
-  Gold: { color: '#FFD700', colorEnd: '#FFA500', minEssence: 50000000 },
-  Platinum: { color: '#E5E4E2', colorEnd: '#B4B4B4', minEssence: 200000000 },
-  Diamond: { color: '#B9F2FF', colorEnd: '#40E0D0', minEssence: 1000000000 },
-  Champion: { color: '#FF6B6B', colorEnd: '#FFD93D', minEssence: 10000000000 }
+  Bronze: { color: '#CD7F32', colorEnd: '#8B4513', minEssence: 10000000 },        // Was 1M
+  Silver: { color: '#C0C0C0', colorEnd: '#808080', minEssence: 100000000 },       // Was 10M
+  Gold: { color: '#FFD700', colorEnd: '#FFA500', minEssence: 500000000 },         // Was 50M
+  Platinum: { color: '#E5E4E2', colorEnd: '#B4B4B4', minEssence: 2000000000 },    // Was 200M
+  Diamond: { color: '#B9F2FF', colorEnd: '#40E0D0', minEssence: 10000000000 },    // Was 1B
+  Champion: { color: '#FF6B6B', colorEnd: '#FFD93D', minEssence: 100000000000 }   // Was 10B
 };
 
 export const TOURNAMENT_TIER_REWARDS = {

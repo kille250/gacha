@@ -2173,17 +2173,17 @@ function checkRepeatableMilestones(state) {
     });
   }
 
-  // Check per-100B milestone (config uses essencePer100B)
-  const per100BMilestone = REPEATABLE_MILESTONES?.essencePer100B;
-  if (per100BMilestone) {
-    const claimedCount = state.repeatableMilestones?.per100BCount || 0;
-    const eligibleCount = Math.floor((state.lifetimeEssence || 0) / per100BMilestone.threshold);
+  // Check per-1T milestone (v3.0: renamed from essencePer100B, now uses essencePer1T)
+  const per1TMilestone = REPEATABLE_MILESTONES?.essencePer1T || REPEATABLE_MILESTONES?.essencePer100B;
+  if (per1TMilestone) {
+    const claimedCount = state.repeatableMilestones?.per100BCount || 0;  // Keep state field for backwards compatibility
+    const eligibleCount = Math.floor((state.lifetimeEssence || 0) / per1TMilestone.threshold);
     if (eligibleCount > claimedCount) {
       claimable.push({
-        type: 'essencePer100B',
-        fatePoints: per100BMilestone.fatePoints,
+        type: 'essencePer1T',
+        fatePoints: per1TMilestone.fatePoints,
         count: eligibleCount - claimedCount,
-        totalFatePoints: (eligibleCount - claimedCount) * per100BMilestone.fatePoints
+        totalFatePoints: (eligibleCount - claimedCount) * per1TMilestone.fatePoints
       });
     }
   }
@@ -2219,25 +2219,26 @@ function claimRepeatableMilestone(state, milestoneType) {
     };
   }
 
-  if (milestoneType === 'essencePer100B') {
-    const per100BMilestone = REPEATABLE_MILESTONES?.essencePer100B;
-    if (!per100BMilestone) {
+  // v3.0: Support both old (essencePer100B) and new (essencePer1T) milestone types
+  if (milestoneType === 'essencePer1T' || milestoneType === 'essencePer100B') {
+    const per1TMilestone = REPEATABLE_MILESTONES?.essencePer1T || REPEATABLE_MILESTONES?.essencePer100B;
+    if (!per1TMilestone) {
       return { success: false, error: 'Milestone config not found' };
     }
     const claimedCount = state.repeatableMilestones?.per100BCount || 0;
-    const eligibleCount = Math.floor((state.lifetimeEssence || 0) / per100BMilestone.threshold);
+    const eligibleCount = Math.floor((state.lifetimeEssence || 0) / per1TMilestone.threshold);
 
     if (eligibleCount <= claimedCount) {
-      return { success: false, error: 'No new 100B milestones to claim' };
+      return { success: false, error: 'No new 1T milestones to claim' };
     }
 
     const countToClaim = eligibleCount - claimedCount;
-    newState.repeatableMilestones.per100BCount = eligibleCount;
+    newState.repeatableMilestones.per100BCount = eligibleCount;  // Keep field name for backwards compatibility
 
     return {
       success: true,
       newState,
-      fatePoints: countToClaim * per100BMilestone.fatePoints,
+      fatePoints: countToClaim * per1TMilestone.fatePoints,
       count: countToClaim
     };
   }
