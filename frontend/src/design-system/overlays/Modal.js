@@ -20,6 +20,11 @@ import { MdClose } from 'react-icons/md';
 import { theme } from '../tokens';
 import { IconButton } from '../primitives';
 
+// Global scroll lock counter - prevents nested modals from incorrectly restoring scroll
+let scrollLockCount = 0;
+let originalOverflow = '';
+let originalPaddingRight = '';
+
 // Enhanced motion variants with spring physics
 const modalVariants = {
   hidden: {
@@ -302,21 +307,30 @@ const Modal = ({
 
     document.addEventListener('keydown', handleKeyDown);
 
-    // Lock body scroll
-    const originalOverflow = document.body.style.overflow;
-    const originalPaddingRight = document.body.style.paddingRight;
+    // Lock body scroll using counter to handle nested modals
+    if (scrollLockCount === 0) {
+      // Only save original values when first modal opens
+      originalOverflow = document.body.style.overflow;
+      originalPaddingRight = document.body.style.paddingRight;
 
-    // Calculate scrollbar width to prevent layout shift
-    const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
-    document.body.style.overflow = 'hidden';
-    if (scrollbarWidth > 0) {
-      document.body.style.paddingRight = `${scrollbarWidth}px`;
+      // Calculate scrollbar width to prevent layout shift
+      const scrollbarWidth = window.innerWidth - document.documentElement.clientWidth;
+      document.body.style.overflow = 'hidden';
+      if (scrollbarWidth > 0) {
+        document.body.style.paddingRight = `${scrollbarWidth}px`;
+      }
     }
+    scrollLockCount++;
 
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
-      document.body.style.overflow = originalOverflow;
-      document.body.style.paddingRight = originalPaddingRight;
+
+      // Only restore scroll when last modal closes
+      scrollLockCount--;
+      if (scrollLockCount === 0) {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.paddingRight = originalPaddingRight;
+      }
 
       // Restore focus to the element that opened the modal
       if (previousActiveElement.current && typeof previousActiveElement.current.focus === 'function') {

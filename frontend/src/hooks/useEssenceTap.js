@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, STALE_THRESHOLDS } from '../cache/manager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange } from '../cache/manager';
 import {
   COMBO_CONFIG,
   GOLDEN_CONFIG,
@@ -240,12 +240,15 @@ export const useEssenceTap = () => {
 
   // Visibility change handler - refresh data when user returns to tab
   useEffect(() => {
-    const cleanup = onVisibilityChange(() => {
+    const cleanup = onVisibilityChange('essence-tap-game-state', (staleLevel) => {
       if (!isMountedRef.current) return;
 
-      // Refresh game state to sync with server (handles offline progress)
-      fetchGameState(false);
-    }, STALE_THRESHOLDS.normal);
+      // Only refresh if stale enough (normal threshold = 2 min)
+      if (staleLevel && staleLevel !== 'static') {
+        // Refresh game state to sync with server (handles offline progress)
+        fetchGameState(false);
+      }
+    });
 
     return cleanup;
   }, [fetchGameState]);
