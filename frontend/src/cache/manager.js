@@ -280,7 +280,7 @@ const ESSENCE_TAP_PATTERNS = {
   // Streak claim awards roll tickets
   streak_claim: ['/essence-tap/status', '/banners/user/tickets'],
   // Daily challenge claim can award FP, tickets, and essence
-  daily_challenge_claim: ['/essence-tap/status', '/auth/me', '/banners/user/tickets'],
+  daily_challenge_claim: ['/essence-tap/status', '/essence-tap/daily-challenges', '/auth/me', '/banners/user/tickets'],
   // Boss modal open - needs fresh boss state
   boss_open: ['/essence-tap/boss'],
   // Boss attack - clear boss cache to prevent stale HP data
