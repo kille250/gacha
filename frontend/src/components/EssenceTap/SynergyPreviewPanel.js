@@ -12,7 +12,7 @@ import React, { memo, useEffect, useState, useCallback } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { theme, GlassCard, Modal, ModalBody, Button } from '../../design-system';
-import { IconUsers, IconSparkles, IconFlame, IconDroplet, IconWind, IconSun, IconMoon, IconLeaf } from '../../constants/icons';
+import { IconCategoryPerson, IconSparkles, IconFlame, IconWater, IconAir, IconLight, IconDark, IconEarth } from '../../constants/icons';
 import api from '../../utils/api';
 
 const Container = styled.div`
@@ -159,11 +159,11 @@ const ElementIcon = ({ element, size = 16 }) => {
   const iconProps = { size };
   switch (element) {
     case 'fire': return <IconFlame {...iconProps} style={{ color: '#EF4444' }} />;
-    case 'water': return <IconDroplet {...iconProps} style={{ color: '#3B82F6' }} />;
-    case 'air': return <IconWind {...iconProps} style={{ color: '#94A3B8' }} />;
-    case 'light': return <IconSun {...iconProps} style={{ color: '#FBBF24' }} />;
-    case 'dark': return <IconMoon {...iconProps} style={{ color: '#7C3AED' }} />;
-    case 'earth': return <IconLeaf {...iconProps} style={{ color: '#10B981' }} />;
+    case 'water': return <IconWater {...iconProps} style={{ color: '#3B82F6' }} />;
+    case 'air': return <IconAir {...iconProps} style={{ color: '#94A3B8' }} />;
+    case 'light': return <IconLight {...iconProps} style={{ color: '#FBBF24' }} />;
+    case 'dark': return <IconDark {...iconProps} style={{ color: '#7C3AED' }} />;
+    case 'earth': return <IconEarth {...iconProps} style={{ color: '#10B981' }} />;
     default: return <IconSparkles {...iconProps} style={{ color: '#6B7280' }} />;
   }
 };
@@ -258,7 +258,7 @@ const SynergyPreviewPanel = memo(({ isOpen, onClose, onApplySuggestion }) => {
           {/* Synergy Suggestions */}
           <Section>
             <SectionTitle>
-              <IconUsers size={20} />
+              <IconCategoryPerson size={20} />
               Synergy Suggestions
             </SectionTitle>
             <SuggestionList>
