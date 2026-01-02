@@ -8,7 +8,7 @@
 import React, { Component } from 'react';
 import styled from 'styled-components';
 import { theme, GlassCard, Button } from '../../design-system';
-import { IconAlertTriangle, IconRefresh } from '../../constants/icons';
+import { IconWarningTriangle, IconRefresh } from '../../constants/icons';
 
 const ErrorContainer = styled(GlassCard)`
   display: flex;
@@ -116,7 +116,7 @@ class EssenceTapErrorBoundary extends Component {
       return (
         <ErrorContainer>
           <ErrorIcon>
-            <IconAlertTriangle size={64} />
+            <IconWarningTriangle size={64} />
           </ErrorIcon>
 
           <ErrorTitle>Something went wrong</ErrorTitle>
