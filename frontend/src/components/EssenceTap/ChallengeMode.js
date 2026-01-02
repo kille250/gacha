@@ -765,6 +765,9 @@ const ChallengeMode = memo(({ isOpen, onClose, onRewardEarned }) => {
           onClick={handleTap}
           onTouchStart={(e) => { e.preventDefault(); handleTap(); }}
           whileTap={{ scale: 0.9 }}
+          role="button"
+          aria-label={`Challenge tap zone - ${activeChallenge.name}`}
+          tabIndex={0}
         >
           {activeChallenge.id === 'accuracy' && gameState.isGolden ? (
             <IconSparkles size={48} />

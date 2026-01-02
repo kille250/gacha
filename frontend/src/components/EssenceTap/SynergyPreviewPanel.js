@@ -170,7 +170,7 @@ const ElementIcon = ({ element, size = 16 }) => {
 
 const SynergyPreviewPanel = memo(({ isOpen, onClose, onApplySuggestion }) => {
   const [data, setData] = useState(null);
-  const [_loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   const fetchSynergyData = useCallback(async () => {
     try {
@@ -197,6 +197,11 @@ const SynergyPreviewPanel = memo(({ isOpen, onClose, onApplySuggestion }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Team Synergy Preview" size="large">
       <ModalBody>
+        {loading && !data ? (
+          <Container style={{ textAlign: 'center', padding: '40px' }}>
+            Loading synergy data...
+          </Container>
+        ) : (
         <Container>
           {/* Current Bonuses */}
           <Section>
@@ -319,6 +324,7 @@ const SynergyPreviewPanel = memo(({ isOpen, onClose, onApplySuggestion }) => {
             </SuggestionList>
           </Section>
         </Container>
+        )}
       </ModalBody>
     </Modal>
   );

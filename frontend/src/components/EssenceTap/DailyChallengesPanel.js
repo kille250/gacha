@@ -142,20 +142,23 @@ const DailyChallengesPanel = memo(({ isOpen, onClose, onChallengeComplete }) => 
   const { t } = useTranslation();
   const [challenges, setChallenges] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [claiming, setClaiming] = useState(null);
 
   // Fetch challenges
   const fetchChallenges = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await api.get('/essence-tap/daily-challenges');
       setChallenges(response.data.challenges || []);
     } catch (err) {
       console.error('Failed to fetch challenges:', err);
+      setError(t('essenceTap.challenges.fetchError', { defaultValue: 'Failed to load challenges. Please try again.' }));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (isOpen) {
@@ -166,6 +169,7 @@ const DailyChallengesPanel = memo(({ isOpen, onClose, onChallengeComplete }) => 
   const handleClaim = async (challengeId) => {
     try {
       setClaiming(challengeId);
+      setError(null);
       const response = await api.post('/essence-tap/daily-challenges/claim', { challengeId });
       if (response.data.success) {
         // Invalidate cache - daily challenges can award FP, tickets, and essence
@@ -184,6 +188,7 @@ const DailyChallengesPanel = memo(({ isOpen, onClose, onChallengeComplete }) => 
       }
     } catch (err) {
       console.error('Failed to claim challenge:', err);
+      setError(t('essenceTap.challenges.claimError', { defaultValue: 'Failed to claim reward. Please try again.' }));
     } finally {
       setClaiming(null);
     }
@@ -197,13 +202,21 @@ const DailyChallengesPanel = memo(({ isOpen, onClose, onChallengeComplete }) => 
 
       <ModalBody>
         <Container>
-          {loading ? (
+          {error && (
+            <EmptyState>
+              <div style={{ color: '#EF4444', marginBottom: '16px' }}>{error}</div>
+              <Button variant="secondary" onClick={fetchChallenges}>
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            </EmptyState>
+          )}
+          {!error && loading ? (
             <EmptyState>{t('common.loading', { defaultValue: 'Loading...' })}</EmptyState>
-          ) : challenges.length === 0 ? (
+          ) : !error && challenges.length === 0 ? (
             <EmptyState>
               {t('essenceTap.noChallenges', { defaultValue: 'No challenges available' })}
             </EmptyState>
-          ) : (
+          ) : !error && (
             <ChallengeList>
               <AnimatePresence>
                 {challenges.map(challenge => (

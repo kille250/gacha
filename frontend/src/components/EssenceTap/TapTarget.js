@@ -551,6 +551,9 @@ const TapTarget = memo(({
           $productionRate={normalizedProductionRate}
           whileTap={{ scale: 0.92 }}
           transition={{ type: 'spring', stiffness: 400, damping: 17 }}
+          role="button"
+          aria-label={`Tap to earn essence. Current power: ${formatNumber(clickPower)} per tap`}
+          tabIndex={0}
         >
           <TapIcon>
             {lastClickResult?.isGolden ? <IconSparkles size={72} /> : <IconGem size={72} />}

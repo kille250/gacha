@@ -14,46 +14,15 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../../design-system';
 import api, { getAssetUrl } from '../../utils/api';
-import {
-  IconFlame,
-  IconWater,
-  IconEarth,
-  IconAir,
-  IconLight,
-  IconDark,
-  IconNeutral,
-  IconCheckmark
-} from '../../constants/icons';
+import { IconCheckmark } from '../../constants/icons';
 import {
   CHARACTER_BONUSES,
   UNDERDOG_BONUSES,
   CHARACTER_ABILITIES
 } from '../../config/essenceTapConfig';
-
-// Rarity colors
-const RARITY_COLORS = {
-  common: '#9CA3AF',
-  uncommon: '#10B981',
-  rare: '#3B82F6',
-  epic: '#8B5CF6',
-  legendary: '#F59E0B'
-};
-
-// Element icons mapping
-const ELEMENT_ICONS = {
-  fire: IconFlame,
-  water: IconWater,
-  earth: IconEarth,
-  air: IconAir,
-  light: IconLight,
-  dark: IconDark,
-  neutral: IconNeutral
-};
-
-// Element colors from shared config
-const ELEMENT_COLORS = Object.fromEntries(
-  Object.entries(CHARACTER_ABILITIES).map(([key, ability]) => [key, ability.color])
-);
+// Import centralized constants to avoid duplication
+import { RARITY_COLORS } from './CharacterSelectorSlots';
+import { ELEMENT_ICONS, ELEMENT_COLORS } from './CharacterSelectorFilters';
 
 const Container = styled.div`
   padding: ${theme.spacing.lg};
@@ -445,6 +414,7 @@ const CharacterSelector = memo(({
   const { t } = useTranslation();
   const [ownedCharacters, setOwnedCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [rarityFilter, setRarityFilter] = useState('all');
   const [elementFilter, setElementFilter] = useState('all');
   const [hoveredCharacter, setHoveredCharacter] = useState(null);
@@ -473,6 +443,7 @@ const CharacterSelector = memo(({
   const fetchOwnedCharacters = async () => {
     try {
       setLoading(true);
+      setError(null);
       const response = await api.get('/characters/collection');
       // Map collection to include necessary fields
       const characters = (response.data.collection || []).map(char => ({
@@ -486,6 +457,7 @@ const CharacterSelector = memo(({
       setOwnedCharacters(characters);
     } catch (err) {
       console.error('Failed to fetch characters:', err);
+      setError(t('essenceTap.characters.fetchError', { defaultValue: 'Failed to load characters. Please try again.' }));
     } finally {
       setLoading(false);
     }
@@ -754,7 +726,14 @@ const CharacterSelector = memo(({
             {t('essenceTap.availableCharacters', { defaultValue: 'Available Characters' })} ({filteredCharacters.length})
           </SectionTitle>
 
-          {loading ? (
+          {error ? (
+            <EmptyState>
+              <div style={{ color: '#EF4444', marginBottom: '16px' }}>{error}</div>
+              <Button variant="secondary" onClick={fetchOwnedCharacters}>
+                {t('common.retry', { defaultValue: 'Retry' })}
+              </Button>
+            </EmptyState>
+          ) : loading ? (
             <EmptyState>{t('common.loading', { defaultValue: 'Loading...' })}</EmptyState>
           ) : filteredCharacters.length === 0 ? (
             <EmptyState>

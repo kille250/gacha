@@ -435,10 +435,11 @@ const GamblePanel = memo(({
                 value={betAmount}
                 onChange={handleBetAmountChange}
                 placeholder="Enter amount..."
+                aria-label="Bet amount in essence"
               />
-              <QuickBetButton onClick={() => handleQuickBet(0.1)}>10%</QuickBetButton>
-              <QuickBetButton onClick={() => handleQuickBet(0.25)}>25%</QuickBetButton>
-              <QuickBetButton onClick={() => handleQuickBet(0.5)}>50%</QuickBetButton>
+              <QuickBetButton onClick={() => handleQuickBet(0.1)} aria-label="Bet 10% of your essence">10%</QuickBetButton>
+              <QuickBetButton onClick={() => handleQuickBet(0.25)} aria-label="Bet 25% of your essence">25%</QuickBetButton>
+              <QuickBetButton onClick={() => handleQuickBet(0.5)} aria-label="Bet 50% of your essence">50%</QuickBetButton>
             </BetAmountInput>
             {betAmountNum >= 10000 && (
               <div style={{ fontSize: theme.fontSizes.xs, color: '#10B981', textAlign: 'center' }}>
@@ -449,7 +450,7 @@ const GamblePanel = memo(({
 
           {/* Bet Types */}
           <SectionTitle>{t('essenceTap.gamble.selectBetType', { defaultValue: 'Select Bet Type' })}</SectionTitle>
-          <BetTypeGrid>
+          <BetTypeGrid role="radiogroup" aria-label="Bet type selection">
             {Object.entries(BET_TYPES).map(([key, config]) => (
               <BetTypeCard
                 key={key}
@@ -459,6 +460,10 @@ const GamblePanel = memo(({
                 disabled={loading}
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
+                role="radio"
+                aria-checked={betType === key}
+                aria-label={`${config.name}: ${config.winChance}% win chance, ${config.multiplier}x multiplier`}
+                tabIndex={betType === key ? 0 : -1}
               >
                 <BetTypeName $color={config.color}>{config.name}</BetTypeName>
                 <BetTypeChance>{config.winChance}% chance</BetTypeChance>

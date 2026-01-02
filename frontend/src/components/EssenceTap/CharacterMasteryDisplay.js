@@ -15,6 +15,8 @@ import { useTranslation } from 'react-i18next';
 import { theme, Modal, ModalHeader, ModalBody, ModalFooter, Button } from '../../design-system';
 import api, { getAssetUrl } from '../../utils/api';
 import { IconStar, IconSparkles, IconClock } from '../../constants/icons';
+// Import centralized constants to avoid duplication
+import { RARITY_COLORS } from './CharacterSelectorSlots';
 
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
@@ -196,14 +198,6 @@ const EmptyState = styled.div`
   padding: ${theme.spacing.xl};
   color: ${theme.colors.textSecondary};
 `;
-
-const RARITY_COLORS = {
-  common: '#9CA3AF',
-  uncommon: '#10B981',
-  rare: '#3B82F6',
-  epic: '#8B5CF6',
-  legendary: '#F59E0B'
-};
 
 // Mastery levels config (from backend)
 const MASTERY_LEVELS = [

@@ -263,6 +263,7 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
   const { t } = useTranslation();
   const [bossInfo, setBossInfo] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [error, setError] = useState(null);
   const [damageNumbers, setDamageNumbers] = useState([]);
   const [victory, setVictory] = useState(null);
   const nextDamageId = useRef(0);
@@ -277,6 +278,7 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
   const fetchBossInfo = useCallback(async () => {
     try {
       setLoading(true);
+      setError(null);
       // Clear boss cache to ensure fresh data
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_BOSS_OPEN);
       const response = await api.get('/essence-tap/boss');
@@ -285,10 +287,11 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
       setVictory(null);
     } catch (err) {
       console.error('Failed to fetch boss info:', err);
+      setError(t('essenceTap.boss.fetchError', { defaultValue: 'Failed to load boss data. Please try again.' }));
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [t]);
 
   useEffect(() => {
     if (isOpen) {
@@ -375,6 +378,7 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
       }
     } catch (err) {
       console.error('Failed to attack boss:', err);
+      setError(t('essenceTap.boss.attackError', { defaultValue: 'Attack failed. Please try again.' }));
     } finally {
       attackingRef.current = false;
     }
@@ -396,6 +400,21 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
       <Modal isOpen={isOpen} onClose={onClose} size="md">
         <ModalBody>
           <Container>Loading...</Container>
+        </ModalBody>
+      </Modal>
+    );
+  }
+
+  if (error) {
+    return (
+      <Modal isOpen={isOpen} onClose={onClose} size="md">
+        <ModalBody>
+          <Container>
+            <div style={{ color: '#EF4444', marginBottom: '16px' }}>{error}</div>
+            <Button variant="primary" onClick={fetchBossInfo}>
+              {t('common.retry', { defaultValue: 'Retry' })}
+            </Button>
+          </Container>
         </ModalBody>
       </Modal>
     );

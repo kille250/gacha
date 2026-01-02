@@ -199,7 +199,7 @@ const ABILITIES = {
   }
 };
 
-const ActiveAbilities = memo(({ onActivate, _activeEffects = {}, prestigeLevel = 0 }) => {
+const ActiveAbilities = memo(({ onActivate, prestigeLevel = 0 }) => {
   const { t } = useTranslation();
   const [cooldowns, setCooldowns] = useState({});
   const [activeAbilities, setActiveAbilities] = useState({});

@@ -21,6 +21,8 @@ import {
   IconMagic,
   IconFlame
 } from '../../constants/icons';
+// Import base modifier config to ensure effects stay in sync
+import { DAILY_MODIFIERS as BASE_DAILY_MODIFIERS } from '../../config/essenceTapConfig';
 
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
@@ -104,79 +106,59 @@ const CountdownTime = styled.div`
   font-variant-numeric: tabular-nums;
 `;
 
-// Daily modifiers configuration with React Icons
-const DAILY_MODIFIERS = {
+// UI-specific styling data for daily modifiers (extends base config from essenceTapConfig)
+const MODIFIER_UI_DATA = {
   0: { // Sunday
-    id: 'golden_sunday',
     IconComponent: IconStar,
-    name: 'Golden Sunday',
-    description: '5x Golden Essence chance!',
     gradient: 'linear-gradient(135deg, rgba(251, 191, 36, 0.2), rgba(245, 158, 11, 0.2))',
     borderColor: 'rgba(251, 191, 36, 0.4)',
-    textGradient: 'linear-gradient(90deg, #FBBF24, #F59E0B)',
-    effects: { goldenChanceMultiplier: 5 }
+    textGradient: 'linear-gradient(90deg, #FBBF24, #F59E0B)'
   },
   1: { // Monday
-    id: 'momentum_monday',
     IconComponent: IconStorm,
-    name: 'Momentum Monday',
-    description: '2x combo growth rate!',
     gradient: 'linear-gradient(135deg, rgba(6, 182, 212, 0.2), rgba(59, 130, 246, 0.2))',
     borderColor: 'rgba(6, 182, 212, 0.4)',
-    textGradient: 'linear-gradient(90deg, #06B6D4, #3B82F6)',
-    effects: { comboGrowthMultiplier: 2 }
+    textGradient: 'linear-gradient(90deg, #06B6D4, #3B82F6)'
   },
   2: { // Tuesday
-    id: 'tap_tuesday',
     IconComponent: IconTap,
-    name: 'Tap Tuesday',
-    description: '+50% click power!',
     gradient: 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(139, 92, 246, 0.2))',
     borderColor: 'rgba(168, 85, 247, 0.4)',
-    textGradient: 'linear-gradient(90deg, #A855F7, #8B5CF6)',
-    effects: { clickPowerBonus: 0.5 }
+    textGradient: 'linear-gradient(90deg, #A855F7, #8B5CF6)'
   },
   3: { // Wednesday
-    id: 'wealth_wednesday',
     IconComponent: IconPoints,
-    name: 'Wealth Wednesday',
-    description: '+25% generator output!',
     gradient: 'linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(52, 211, 153, 0.2))',
     borderColor: 'rgba(16, 185, 129, 0.4)',
-    textGradient: 'linear-gradient(90deg, #10B981, #34D399)',
-    effects: { generatorOutputBonus: 0.25 }
+    textGradient: 'linear-gradient(90deg, #10B981, #34D399)'
   },
   4: { // Thursday
-    id: 'critical_thursday',
     IconComponent: IconLightning,
-    name: 'Critical Thursday',
-    description: '2x crit multiplier!',
     gradient: 'linear-gradient(135deg, rgba(245, 158, 11, 0.2), rgba(239, 68, 68, 0.2))',
     borderColor: 'rgba(245, 158, 11, 0.4)',
-    textGradient: 'linear-gradient(90deg, #F59E0B, #EF4444)',
-    effects: { critMultiplierBonus: 2 }
+    textGradient: 'linear-gradient(90deg, #F59E0B, #EF4444)'
   },
   5: { // Friday
-    id: 'fortune_friday',
     IconComponent: IconMagic,
-    name: 'Fortune Friday',
-    description: '+15% crit chance!',
     gradient: 'linear-gradient(135deg, rgba(34, 197, 94, 0.2), rgba(132, 204, 22, 0.2))',
     borderColor: 'rgba(34, 197, 94, 0.4)',
-    textGradient: 'linear-gradient(90deg, #22C55E, #84CC16)',
-    effects: { critChanceBonus: 0.15 }
+    textGradient: 'linear-gradient(90deg, #22C55E, #84CC16)'
   },
   6: { // Saturday
-    id: 'super_saturday',
     IconComponent: IconFlame,
-    name: 'Super Saturday',
-    description: '+50% ALL production!',
     gradient: 'linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(236, 72, 153, 0.2))',
     borderColor: 'rgba(239, 68, 68, 0.4)',
-    textGradient: 'linear-gradient(90deg, #EF4444, #EC4899)',
-    effects: { allProductionBonus: 0.5 }
+    textGradient: 'linear-gradient(90deg, #EF4444, #EC4899)'
   }
 };
+
+// Merge base config with UI-specific data
+const DAILY_MODIFIERS = Object.fromEntries(
+  Object.entries(BASE_DAILY_MODIFIERS).map(([day, baseConfig]) => [
+    day,
+    { ...baseConfig, ...MODIFIER_UI_DATA[day] }
+  ])
+);
 
 const DailyModifierBanner = memo(({ onModifierChange }) => {
   const { t } = useTranslation();

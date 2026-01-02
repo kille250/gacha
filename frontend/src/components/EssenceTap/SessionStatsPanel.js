@@ -143,7 +143,7 @@ const AchievementBadge = styled(motion.div)`
 
 const SessionStatsPanel = memo(({ isOpen, onClose }) => {
   const [stats, setStats] = useState(null);
-  const [_loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(true);
 
   const fetchStats = useCallback(async () => {
     try {
@@ -176,6 +176,11 @@ const SessionStatsPanel = memo(({ isOpen, onClose }) => {
   return (
     <Modal isOpen={isOpen} onClose={onClose} title="Session Stats">
       <ModalBody>
+        {loading && !stats ? (
+          <StatsContainer style={{ textAlign: 'center', padding: '40px' }}>
+            Loading session stats...
+          </StatsContainer>
+        ) : (
         <StatsContainer>
           <StatsGrid>
             <StatCard>
@@ -342,6 +347,7 @@ const SessionStatsPanel = memo(({ isOpen, onClose }) => {
             </MilestoneList>
           </MilestoneSection>
         </StatsContainer>
+        )}
       </ModalBody>
     </Modal>
   );
