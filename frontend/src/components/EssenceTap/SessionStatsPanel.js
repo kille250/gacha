@@ -14,7 +14,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { theme, GlassCard, Modal, ModalBody } from '../../design-system';
 import { formatNumber } from '../../hooks/useEssenceTap';
-import { IconClock, IconFlame, IconZap, IconStar, IconTrophy } from '../../constants/icons';
+import { IconClock, IconFlame, IconLightning, IconStar, IconTrophy } from '../../constants/icons';
 import api from '../../utils/api';
 
 const StatsContainer = styled(GlassCard)`
@@ -204,7 +204,7 @@ const SessionStatsPanel = memo(({ isOpen, onClose }) => {
 
             <StatCard>
               <StatIcon $color="#EF4444">
-                <IconZap size={24} />
+                <IconLightning size={24} />
               </StatIcon>
               <StatValue>{maxCritStreak}</StatValue>
               <StatLabel>Crit Streak</StatLabel>
@@ -302,7 +302,7 @@ const SessionStatsPanel = memo(({ isOpen, onClose }) => {
           {/* Crit Streak Milestones */}
           <MilestoneSection>
             <MilestoneTitle>
-              <IconZap size={16} />
+              <IconLightning size={16} />
               Crit Streak Milestones
             </MilestoneTitle>
             <MilestoneList>
