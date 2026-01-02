@@ -532,10 +532,10 @@ const WeeklyTournament = memo(({
 
   // Fetch leaderboard when tab changes to leaderboard
   useEffect(() => {
-    if (isOpen && activeTab === 'leaderboard' && leaderboard.length === 0) {
+    if (isOpen && activeTab === 'leaderboard') {
       fetchLeaderboard();
     }
-  }, [isOpen, activeTab, leaderboard.length, fetchLeaderboard]);
+  }, [isOpen, activeTab, fetchLeaderboard]);
 
   // Update time remaining
   useEffect(() => {
