@@ -32,8 +32,10 @@ const shimmer = keyframes`
 const HUDContainer = styled(motion.div)`
   position: fixed;
   top: 70px;
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   z-index: 100;
   ${glassmorphism}
   border-radius: ${theme.radius.xl};
