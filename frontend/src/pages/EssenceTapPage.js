@@ -134,11 +134,11 @@ const PanelCard = styled(GlassCard)`
   overflow: hidden;
   display: flex;
   flex-direction: column;
-  max-height: 500px;
+  max-height: ${props => props.$collapsed ? 'auto' : '500px'};
   border: 1px solid rgba(255, 255, 255, 0.08);
 
   @media (min-width: ${theme.breakpoints.lg}) {
-    max-height: 600px;
+    max-height: ${props => props.$collapsed ? 'auto' : '600px'};
   }
 `;
 
@@ -398,7 +398,7 @@ const EssenceTapPage = memo(() => {
 
           {/* Dual Panel Section - Generators & Upgrades */}
           <DualPanelSection>
-            <PanelCard>
+            <PanelCard $collapsed={generatorsCollapsed}>
               <GeneratorList
                 generators={gameState?.generators || []}
                 essence={essence}
@@ -410,7 +410,7 @@ const EssenceTapPage = memo(() => {
               />
             </PanelCard>
 
-            <PanelCard>
+            <PanelCard $collapsed={upgradesCollapsed}>
               <UpgradeList
                 upgrades={gameState?.upgrades || {}}
                 essence={essence}

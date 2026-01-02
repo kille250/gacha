@@ -1170,17 +1170,23 @@ router.get('/tournament/leaderboard', auth, async (req, res) => {
       }
     });
 
-    // Filter and map users with current week data
+    // Filter and map users - show all who have ever played
     const leaderboard = users
       .filter(user => {
         const state = user.essenceTap;
-        return state?.weekly?.weekId === currentWeek && (state?.weekly?.essenceEarned || 0) > 0;
+        return state?.totalEssence > 0 || state?.weekly?.essenceEarned > 0;
       })
-      .map(user => ({
-        id: user.id,
-        username: user.username,
-        weeklyEssence: user.essenceTap?.weekly?.essenceEarned || 0
-      }))
+      .map(user => {
+        const state = user.essenceTap;
+        const weeklyEssence = state?.weekly?.weekId === currentWeek
+          ? (state?.weekly?.essenceEarned || 0)
+          : 0;
+        return {
+          id: user.id,
+          username: user.username,
+          weeklyEssence
+        };
+      })
       .sort((a, b) => b.weeklyEssence - a.weeklyEssence)
       .slice(0, 100) // Top 100
       .map((entry, index) => ({

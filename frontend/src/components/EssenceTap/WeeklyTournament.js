@@ -650,38 +650,73 @@ const WeeklyTournament = memo(({
         ) : (
           <>
             {/* Top 3 Podium */}
-            {topThree.length >= 3 && (
+            {topThree.length > 0 && (
               <TopThreeContainer>
-                {podiumOrder.map((player, idx) => {
-                  const actualRank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
-                  const tier = getPlayerTier(player.weeklyEssence);
-                  const tierConf = tier ? TIER_CONFIG[tier] : null;
+                {topThree.length >= 3 ? (
+                  // Full podium display (2nd, 1st, 3rd order)
+                  podiumOrder.map((player, idx) => {
+                    const actualRank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
+                    const tier = getPlayerTier(player.weeklyEssence);
+                    const tierConf = tier ? TIER_CONFIG[tier] : null;
 
-                  return (
-                    <TopPlayer
-                      key={player.id}
-                      initial={{ opacity: 0, y: 20 }}
-                      animate={{ opacity: 1, y: 0 }}
-                      transition={{ delay: idx * 0.1 }}
-                    >
-                      <TopPlayerAvatar $rank={actualRank}>
-                        {actualRank}
-                      </TopPlayerAvatar>
-                      <TopPlayerName $rank={actualRank}>
-                        {player.username || `Player ${player.id}`}
-                      </TopPlayerName>
-                      {tierConf && (
-                        <PlayerTier $color={tierConf.color}>
-                          <tierConf.IconComponent size={12} />
-                          {tier}
-                        </PlayerTier>
-                      )}
-                      <TopPlayerEssence>
-                        {formatNumber(player.weeklyEssence)}
-                      </TopPlayerEssence>
-                    </TopPlayer>
-                  );
-                })}
+                    return (
+                      <TopPlayer
+                        key={player.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                      >
+                        <TopPlayerAvatar $rank={actualRank}>
+                          {actualRank}
+                        </TopPlayerAvatar>
+                        <TopPlayerName $rank={actualRank}>
+                          {player.username || `Player ${player.id}`}
+                        </TopPlayerName>
+                        {tierConf && (
+                          <PlayerTier $color={tierConf.color}>
+                            <tierConf.IconComponent size={12} />
+                            {tier}
+                          </PlayerTier>
+                        )}
+                        <TopPlayerEssence>
+                          {formatNumber(player.weeklyEssence)}
+                        </TopPlayerEssence>
+                      </TopPlayer>
+                    );
+                  })
+                ) : (
+                  // Fewer than 3 players - show in normal order
+                  topThree.map((player, idx) => {
+                    const rank = idx + 1;
+                    const tier = getPlayerTier(player.weeklyEssence);
+                    const tierConf = tier ? TIER_CONFIG[tier] : null;
+
+                    return (
+                      <TopPlayer
+                        key={player.id}
+                        initial={{ opacity: 0, y: 20 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        transition={{ delay: idx * 0.1 }}
+                      >
+                        <TopPlayerAvatar $rank={rank}>
+                          {rank}
+                        </TopPlayerAvatar>
+                        <TopPlayerName $rank={rank}>
+                          {player.username || `Player ${player.id}`}
+                        </TopPlayerName>
+                        {tierConf && (
+                          <PlayerTier $color={tierConf.color}>
+                            <tierConf.IconComponent size={12} />
+                            {tier}
+                          </PlayerTier>
+                        )}
+                        <TopPlayerEssence>
+                          {formatNumber(player.weeklyEssence)}
+                        </TopPlayerEssence>
+                      </TopPlayer>
+                    );
+                  })
+                )}
               </TopThreeContainer>
             )}
 
