@@ -321,11 +321,16 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
         // Clear boss cache to prevent stale data on any re-fetch
         invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_BOSS_ATTACK);
 
-        // Show damage number
+        // Show damage number (if we have a valid target element)
         const id = nextDamageId.current++;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const x = rect.left + rect.width / 2 + (Math.random() - 0.5) * 50;
-        const y = rect.top + (Math.random() - 0.5) * 50;
+        let x = window.innerWidth / 2;
+        let y = window.innerHeight / 2;
+
+        if (e?.currentTarget) {
+          const rect = e.currentTarget.getBoundingClientRect();
+          x = rect.left + rect.width / 2 + (Math.random() - 0.5) * 50;
+          y = rect.top + (Math.random() - 0.5) * 50;
+        }
 
         setDamageNumbers(prev => [...prev, {
           id,
