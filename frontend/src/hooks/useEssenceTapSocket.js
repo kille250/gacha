@@ -735,6 +735,39 @@ export function useEssenceTapSocket(options = {}) {
     };
   }, [flushTapBatch]);
 
+  // CRITICAL: Flush pending taps before page unload/reload
+  // This ensures no taps are lost when the user refreshes or navigates away
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Synchronously flush any pending taps before the page unloads
+      if (pendingTapsRef.current.count > 0 && socketRef.current?.connected) {
+        const batch = { ...pendingTapsRef.current };
+        pendingTapsRef.current = { count: 0, comboMultiplier: 1, clientSeqs: [] };
+
+        if (tapBatchTimerRef.current) {
+          clearTimeout(tapBatchTimerRef.current);
+          tapBatchTimerRef.current = null;
+        }
+
+        // Send synchronously before unload
+        socketRef.current.emit('tap', {
+          count: batch.count,
+          comboMultiplier: batch.comboMultiplier,
+          clientSeqs: batch.clientSeqs,
+        });
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    // Also listen to pagehide for mobile browsers
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, []);
+
   // ===========================================
   // RETURN VALUES
   // ===========================================

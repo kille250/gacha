@@ -161,6 +161,7 @@ async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
 
     let state = user.essenceTap || essenceTapService.getInitialState();
     state = essenceTapService.resetDaily(state);
+    state = essenceTapService.resetWeeklyFPIfNeeded(state);
 
     // Get characters for bonus calculation
     const userCharacters = await UserCharacter.findAll({

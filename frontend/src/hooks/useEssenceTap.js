@@ -378,6 +378,26 @@ export const useEssenceTap = () => {
     };
   }, []);
 
+  // CRITICAL: Ensure pending taps are flushed before page unload/reload
+  // The useEssenceTapSocket hook handles this, but we also need to ensure
+  // the flushTapBatch function is called from this hook's context
+  useEffect(() => {
+    const handleBeforeUnload = () => {
+      // Flush any pending WebSocket taps before the page unloads
+      if (flushTapBatch) {
+        flushTapBatch();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.addEventListener('pagehide', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('pagehide', handleBeforeUnload);
+    };
+  }, [flushTapBatch]);
+
   // Fetch initial game state
   const fetchGameState = useCallback(async (showLoading = true) => {
     try {
