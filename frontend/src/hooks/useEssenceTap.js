@@ -610,6 +610,9 @@ export const useEssenceTap = () => {
       setLocalEssence(response.data.newEssence);
       localEssenceRef.current = response.data.newEssence;
 
+      // Invalidate cache - gamble may award jackpot which gives FP/tickets
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_GAMBLE);
+
       if (response.data.won) {
         toast.success(
           t('essenceTap.gambleWon', {
@@ -633,6 +636,8 @@ export const useEssenceTap = () => {
             defaultValue: `JACKPOT! +${formatNumber(response.data.jackpotWin)} essence!`
           })
         );
+        // Refresh user data to show updated FP/tickets from jackpot
+        await refreshUser();
       }
 
       return { success: true, ...response.data };
@@ -641,7 +646,7 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.gambleFailed', { defaultValue: 'Gamble failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [t, toast]);
+  }, [t, toast, refreshUser]);
 
   // Perform infusion for permanent bonus
   const performInfusion = useCallback(async () => {
@@ -652,6 +657,9 @@ export const useEssenceTap = () => {
 
       setLocalEssence(response.data.essence);
       localEssenceRef.current = response.data.essence;
+
+      // Invalidate cache before fetching to ensure fresh data
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_INFUSION);
 
       toast.success(
         t('essenceTap.infusionComplete', {
@@ -700,6 +708,8 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Invalidate cache - tournament gives FP and roll tickets
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_TOURNAMENT_CLAIM);
       await refreshUser();
 
       toast.success(
@@ -747,6 +757,9 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Invalidate cache - streak claim awards roll tickets
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_STREAK_CLAIM);
+
       if (response.data.awarded && response.data.tickets > 0) {
         toast.success(
           t('essenceTap.streakReward', {
@@ -783,6 +796,8 @@ export const useEssenceTap = () => {
 
       if (!isMountedRef.current) return { success: false };
 
+      // Invalidate cache - repeatable milestones award FP
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_REPEATABLE_MILESTONE_CLAIM);
       await fetchGameState(false);
       await refreshUser();
 
@@ -809,6 +824,9 @@ export const useEssenceTap = () => {
       });
 
       if (!isMountedRef.current) return { success: false };
+
+      // Invalidate cache - ability activation may grant bonus essence
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_ABILITY_ACTIVATE);
 
       if (response.data.bonusEssence > 0) {
         setLocalEssence(response.data.essence);

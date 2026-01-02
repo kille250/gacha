@@ -16,6 +16,7 @@ import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../..
 import api from '../../utils/api';
 import { formatNumber } from '../../hooks/useEssenceTap';
 import { IconCheckmark, IconGem, IconStar } from '../../constants/icons';
+import { invalidateFor, CACHE_ACTIONS } from '../../cache/manager';
 
 const Container = styled.div`
   padding: ${theme.spacing.md};
@@ -167,6 +168,9 @@ const DailyChallengesPanel = memo(({ isOpen, onClose, onChallengeComplete }) => 
       setClaiming(challengeId);
       const response = await api.post('/essence-tap/daily-challenges/claim', { challengeId });
       if (response.data.success) {
+        // Invalidate cache - daily challenges can award FP, tickets, and essence
+        invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_DAILY_CHALLENGE_CLAIM);
+
         // Update local state
         setChallenges(prev =>
           prev.map(c =>

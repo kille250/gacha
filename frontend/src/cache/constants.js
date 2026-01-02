@@ -303,6 +303,20 @@ export const ESSENCE_TAP_ACTIONS = {
   CHARACTER_ASSIGN: 'essence_tap:character_assign',
   /** Unassigning a character */
   CHARACTER_UNASSIGN: 'essence_tap:character_unassign',
+  /** Gambling essence - updates essence, may award FP/tickets on jackpot */
+  GAMBLE: 'essence_tap:gamble',
+  /** Infusing essence - updates essence and permanent bonus */
+  INFUSION: 'essence_tap:infusion',
+  /** Activating an ability - may update essence */
+  ABILITY_ACTIVATE: 'essence_tap:ability_activate',
+  /** Claiming repeatable milestone - awards FP */
+  REPEATABLE_MILESTONE_CLAIM: 'essence_tap:repeatable_milestone_claim',
+  /** Claiming weekly tournament rewards - awards FP and tickets */
+  TOURNAMENT_CLAIM: 'essence_tap:tournament_claim',
+  /** Claiming daily streak - awards tickets */
+  STREAK_CLAIM: 'essence_tap:streak_claim',
+  /** Claiming daily challenge rewards - awards FP, tickets, essence */
+  DAILY_CHALLENGE_CLAIM: 'essence_tap:daily_challenge_claim',
 };
 
 // ===========================================
@@ -457,6 +471,13 @@ export const CACHE_ACTIONS = {
   ESSENCE_TAP_MILESTONE_CLAIM: ESSENCE_TAP_ACTIONS.MILESTONE_CLAIM,
   ESSENCE_TAP_CHARACTER_ASSIGN: ESSENCE_TAP_ACTIONS.CHARACTER_ASSIGN,
   ESSENCE_TAP_CHARACTER_UNASSIGN: ESSENCE_TAP_ACTIONS.CHARACTER_UNASSIGN,
+  ESSENCE_TAP_GAMBLE: ESSENCE_TAP_ACTIONS.GAMBLE,
+  ESSENCE_TAP_INFUSION: ESSENCE_TAP_ACTIONS.INFUSION,
+  ESSENCE_TAP_ABILITY_ACTIVATE: ESSENCE_TAP_ACTIONS.ABILITY_ACTIVATE,
+  ESSENCE_TAP_REPEATABLE_MILESTONE_CLAIM: ESSENCE_TAP_ACTIONS.REPEATABLE_MILESTONE_CLAIM,
+  ESSENCE_TAP_TOURNAMENT_CLAIM: ESSENCE_TAP_ACTIONS.TOURNAMENT_CLAIM,
+  ESSENCE_TAP_STREAK_CLAIM: ESSENCE_TAP_ACTIONS.STREAK_CLAIM,
+  ESSENCE_TAP_DAILY_CHALLENGE_CLAIM: ESSENCE_TAP_ACTIONS.DAILY_CHALLENGE_CLAIM,
 };
 
 // NOTE: Default export removed - use named exports instead for better tree-shaking

@@ -245,6 +245,14 @@ router.post('/click', auth, async (req, res) => {
     // Check for new daily challenge completions
     const completedChallenges = essenceTapService.checkDailyChallenges(state);
 
+    // Mark completed challenges as done so they don't trigger again
+    if (completedChallenges.length > 0) {
+      state.daily.completedChallenges = [
+        ...(state.daily.completedChallenges || []),
+        ...completedChallenges.map(c => c.id)
+      ];
+    }
+
     // Save
     user.essenceTap = state;
     await user.save();
@@ -294,6 +302,14 @@ router.post('/generator/buy', auth, async (req, res) => {
 
     // Check for new daily challenge completions
     const completedChallenges = essenceTapService.checkDailyChallenges(result.newState);
+
+    // Mark completed challenges as done so they don't trigger again
+    if (completedChallenges.length > 0) {
+      result.newState.daily.completedChallenges = [
+        ...(result.newState.daily.completedChallenges || []),
+        ...completedChallenges.map(c => c.id)
+      ];
+    }
 
     user.essenceTap = result.newState;
     await user.save();

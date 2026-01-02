@@ -266,7 +266,21 @@ const ESSENCE_TAP_PATTERNS = {
   prestige_upgrade: ['/essence-tap/status'],
   milestone_claim: ['/essence-tap/status', '/auth/me'],
   character_assign: ['/essence-tap/status'],
-  character_unassign: ['/essence-tap/status']
+  character_unassign: ['/essence-tap/status'],
+  // Gamble may award FP/tickets on jackpot - invalidate user data to reflect potential rewards
+  gamble: ['/essence-tap/status', '/auth/me', '/banners/user/tickets'],
+  // Infusion only modifies essence and permanent bonus
+  infusion: ['/essence-tap/status'],
+  // Ability activation may grant bonus essence
+  ability_activate: ['/essence-tap/status'],
+  // Repeatable milestones award FP
+  repeatable_milestone_claim: ['/essence-tap/status', '/auth/me'],
+  // Tournament rewards give FP and roll tickets
+  tournament_claim: ['/essence-tap/status', '/auth/me', '/banners/user/tickets'],
+  // Streak claim awards roll tickets
+  streak_claim: ['/essence-tap/status', '/banners/user/tickets'],
+  // Daily challenge claim can award FP, tickets, and essence
+  daily_challenge_claim: ['/essence-tap/status', '/auth/me', '/banners/user/tickets']
 };
 
 /**
@@ -623,7 +637,14 @@ const ACTION_HANDLERS = {
   'essence_tap:prestige_upgrade': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.prestige_upgrade),
   'essence_tap:milestone_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.milestone_claim),
   'essence_tap:character_assign': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.character_assign),
-  'essence_tap:character_unassign': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.character_unassign)
+  'essence_tap:character_unassign': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.character_unassign),
+  'essence_tap:gamble': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.gamble),
+  'essence_tap:infusion': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.infusion),
+  'essence_tap:ability_activate': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.ability_activate),
+  'essence_tap:repeatable_milestone_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.repeatable_milestone_claim),
+  'essence_tap:tournament_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.tournament_claim),
+  'essence_tap:streak_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.streak_claim),
+  'essence_tap:daily_challenge_claim': () => invalidatePatterns(ESSENCE_TAP_PATTERNS.daily_challenge_claim)
 };
 
 /**
