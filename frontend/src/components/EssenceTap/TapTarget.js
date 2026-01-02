@@ -379,32 +379,33 @@ const TapTarget = memo(({
             if (!p.alive) return false;
 
             const g = graphicsRef.current;
-            g.save();
-            g.translate(p.x, p.y);
-            g.rotate(p.rotation);
-            g.scale(p.scale, p.scale);
+            const s = p.scale;
+            const cos = Math.cos(p.rotation) * s;
+            const sin = Math.sin(p.rotation) * s;
 
-            // Draw a 4-point star
+            // Helper to transform a point by rotation and scale, then translate
+            const tx = (x, y) => p.x + x * cos - y * sin;
+            const ty = (x, y) => p.y + x * sin + y * cos;
+
+            // Draw a 4-point star with transformed coordinates
             g.beginFill({ color: p.color, alpha: p.alpha });
-            g.moveTo(0, -10);
-            g.lineTo(3, -3);
-            g.lineTo(10, 0);
-            g.lineTo(3, 3);
-            g.lineTo(0, 10);
-            g.lineTo(-3, 3);
-            g.lineTo(-10, 0);
-            g.lineTo(-3, -3);
+            g.moveTo(tx(0, -10), ty(0, -10));
+            g.lineTo(tx(3, -3), ty(3, -3));
+            g.lineTo(tx(10, 0), ty(10, 0));
+            g.lineTo(tx(3, 3), ty(3, 3));
+            g.lineTo(tx(0, 10), ty(0, 10));
+            g.lineTo(tx(-3, 3), ty(-3, 3));
+            g.lineTo(tx(-10, 0), ty(-10, 0));
+            g.lineTo(tx(-3, -3), ty(-3, -3));
             g.closePath();
             g.endFill();
 
             // Add glow for golden/crit
             if (p.isGolden || p.isCrit) {
               g.beginFill({ color: 0xFFFFFF, alpha: p.alpha * 0.5 });
-              g.circle(0, 0, 4);
+              g.circle(p.x, p.y, 4 * s);
               g.endFill();
             }
-
-            g.restore();
 
             return true;
           });
