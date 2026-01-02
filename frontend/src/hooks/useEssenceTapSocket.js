@@ -80,6 +80,16 @@ export function useEssenceTapSocket(options = {}) {
   const reconnectAttemptRef = useRef(0);
   const reconnectTimerRef = useRef(null);
 
+  // Refs for callbacks to prevent reconnection loops when callbacks change
+  const onStateUpdateRef = useRef(onStateUpdate);
+  const onErrorRef = useRef(onError);
+  const onChallengeCompleteRef = useRef(onChallengeComplete);
+
+  // Keep refs updated with latest callbacks
+  onStateUpdateRef.current = onStateUpdate;
+  onErrorRef.current = onError;
+  onChallengeCompleteRef.current = onChallengeComplete;
+
   // Tap batching refs
   const pendingTapsRef = useRef({ count: 0, comboMultiplier: 1, clientSeqs: [] });
   const tapBatchTimerRef = useRef(null);
@@ -192,8 +202,8 @@ export function useEssenceTapSocket(options = {}) {
       // Clear optimistic updates - server state is authoritative
       optimisticUpdatesRef.current.clear();
 
-      if (onStateUpdate) {
-        onStateUpdate(data, 'full');
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'full');
       }
     });
 
@@ -228,8 +238,8 @@ export function useEssenceTapSocket(options = {}) {
         confirmedSeqRef.current = data.seq;
       }
 
-      if (onStateUpdate) {
-        onStateUpdate(data, 'delta');
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'delta');
       }
     });
 
@@ -259,14 +269,14 @@ export function useEssenceTapSocket(options = {}) {
       }
 
       // Handle completed challenges
-      if (data.completedChallenges?.length > 0 && onChallengeComplete) {
+      if (data.completedChallenges?.length > 0 && onChallengeCompleteRef.current) {
         data.completedChallenges.forEach(challenge => {
-          onChallengeComplete(challenge);
+          onChallengeCompleteRef.current(challenge);
         });
       }
 
-      if (onStateUpdate) {
-        onStateUpdate(data, 'tap_confirmed');
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'tap_confirmed');
       }
     });
 
@@ -293,15 +303,15 @@ export function useEssenceTapSocket(options = {}) {
         }));
       }
 
-      if (onError) {
-        onError({ type: 'action_rejected', ...data });
+      if (onErrorRef.current) {
+        onErrorRef.current({ type: 'action_rejected', ...data });
       }
     });
 
     socket.on('error', (data) => {
       console.error('[EssenceTap WS] Server error:', data);
-      if (onError) {
-        onError(data);
+      if (onErrorRef.current) {
+        onErrorRef.current(data);
       }
     });
 
@@ -325,8 +335,8 @@ export function useEssenceTapSocket(options = {}) {
         confirmedSeqRef.current = data.seq;
       }
 
-      if (onStateUpdate) {
-        onStateUpdate(data, 'prestige_complete');
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'prestige_complete');
       }
     });
 
@@ -353,13 +363,14 @@ export function useEssenceTapSocket(options = {}) {
         confirmedSeqRef.current = data.seq;
       }
 
-      if (onStateUpdate) {
-        onStateUpdate(data, 'ability_activated');
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'ability_activated');
       }
     });
   // Note: scheduleReconnect is excluded intentionally - it's stable and defined outside
+  // Callbacks are accessed via refs to prevent reconnection loops when they change
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, serverUrl, onStateUpdate, onChallengeComplete, onError]);
+  }, [token, serverUrl]);
 
   const disconnect = useCallback(() => {
     if (reconnectTimerRef.current) {
