@@ -646,21 +646,53 @@ const CharacterSelector = memo(({
             </SynergyInfo>
           )}
 
-          {/* Filter Bar */}
+          {/* Filter Bars */}
+          <SectionTitle style={{ marginTop: theme.spacing.lg }}>
+            {t('essenceTap.filterByRarity', { defaultValue: 'Filter by Rarity' })}
+          </SectionTitle>
           <FilterBar>
-            <FilterButton $active={filter === 'all'} onClick={() => setFilter('all')}>
+            <FilterButton $active={rarityFilter === 'all'} onClick={() => setRarityFilter('all')}>
               All
             </FilterButton>
             {Object.entries(RARITY_COLORS).map(([rarity, color]) => (
               <FilterButton
                 key={rarity}
-                $active={filter === rarity}
-                onClick={() => setFilter(rarity)}
-                style={{ borderColor: filter === rarity ? color : undefined }}
+                $active={rarityFilter === rarity}
+                onClick={() => setRarityFilter(rarity)}
+                style={{ borderColor: rarityFilter === rarity ? color : undefined }}
               >
                 {rarity.charAt(0).toUpperCase() + rarity.slice(1)}
               </FilterButton>
             ))}
+          </FilterBar>
+
+          <SectionTitle>
+            {t('essenceTap.filterByElement', { defaultValue: 'Filter by Element' })}
+          </SectionTitle>
+          <FilterBar>
+            <FilterButton $active={elementFilter === 'all'} onClick={() => setElementFilter('all')}>
+              All
+            </FilterButton>
+            {Object.entries(ELEMENT_ICONS).map(([element]) => {
+              const color = ELEMENT_COLORS[element];
+              const ElementIcon = ELEMENT_ICONS[element];
+              return (
+                <FilterButton
+                  key={element}
+                  $active={elementFilter === element}
+                  onClick={() => setElementFilter(element)}
+                  style={{
+                    borderColor: elementFilter === element ? color : undefined,
+                    display: 'flex',
+                    alignItems: 'center',
+                    gap: '4px'
+                  }}
+                >
+                  <ElementIcon size={14} color={elementFilter === element ? color : undefined} />
+                  {element.charAt(0).toUpperCase() + element.slice(1)}
+                </FilterButton>
+              );
+            })}
           </FilterBar>
 
           {/* Character Grid */}

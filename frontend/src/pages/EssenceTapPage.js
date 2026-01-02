@@ -316,7 +316,7 @@ const EssenceTapPage = memo(() => {
     dismissOfflineProgress,
     unlockedAchievement,
     dismissAchievement,
-    sounds,
+    sounds: _sounds, // Used by useSoundEffects internally, accessed via hook
     handleClick,
     purchaseGenerator,
     purchaseUpgrade,
