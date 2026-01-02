@@ -10,10 +10,12 @@
 
 import React, { useState, useEffect, useCallback, memo } from 'react';
 import styled, { keyframes } from 'styled-components';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../../design-system';
+import api from '../../utils/api';
 import { formatNumber } from '../../hooks/useEssenceTap';
-import { IconTrophy, IconClock, IconGift, IconBronzeMedal, IconSilverMedal, IconGoldMedal, IconDiamond, IconCrownSymbol, IconStar } from '../../constants/icons';
+import { IconTrophy, IconClock, IconGift, IconBronzeMedal, IconSilverMedal, IconGoldMedal, IconDiamond, IconCrownSymbol, IconStar, IconUsers, IconRefresh } from '../../constants/icons';
 
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
@@ -219,6 +221,235 @@ const EssenceValue = styled.span`
   color: #A855F7;
 `;
 
+// Tabs for switching between views
+const TabContainer = styled.div`
+  display: flex;
+  gap: ${theme.spacing.sm};
+  margin-bottom: ${theme.spacing.lg};
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  padding-bottom: ${theme.spacing.sm};
+`;
+
+const Tab = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.sm} ${theme.spacing.md};
+  background: ${props => props.$active ? 'rgba(168, 85, 247, 0.2)' : 'transparent'};
+  border: none;
+  border-radius: ${theme.radius.md};
+  color: ${props => props.$active ? '#A855F7' : theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.05);
+    color: ${theme.colors.text};
+  }
+`;
+
+// Leaderboard styles
+const LeaderboardContainer = styled.div`
+  display: flex;
+  flex-direction: column;
+  gap: ${theme.spacing.sm};
+`;
+
+const LeaderboardHeader = styled.div`
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: ${theme.spacing.md};
+`;
+
+const LeaderboardTitle = styled.h3`
+  font-size: ${theme.fontSizes.lg};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.sm};
+`;
+
+const RefreshButton = styled.button`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: ${theme.radius.md};
+  color: ${theme.colors.textSecondary};
+  font-size: ${theme.fontSizes.xs};
+  cursor: pointer;
+  transition: all 0.2s ease;
+
+  &:hover {
+    background: rgba(255, 255, 255, 0.1);
+    color: ${theme.colors.text};
+  }
+
+  &:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+  }
+`;
+
+const LeaderboardEntry = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.md};
+  padding: ${theme.spacing.md};
+  background: ${props => props.$isCurrentUser
+    ? 'linear-gradient(135deg, rgba(168, 85, 247, 0.2), rgba(168, 85, 247, 0.05))'
+    : props.$rank <= 3
+      ? `linear-gradient(135deg, ${props.$rankColor}15, transparent)`
+      : 'rgba(255, 255, 255, 0.03)'};
+  border: 1px solid ${props => props.$isCurrentUser
+    ? 'rgba(168, 85, 247, 0.5)'
+    : props.$rank <= 3
+      ? `${props.$rankColor}40`
+      : 'rgba(255, 255, 255, 0.1)'};
+  border-radius: ${theme.radius.md};
+`;
+
+const RankBadge = styled.div`
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  background: ${props => {
+    switch (props.$rank) {
+      case 1: return 'linear-gradient(135deg, #FFD700, #FFA500)';
+      case 2: return 'linear-gradient(135deg, #C0C0C0, #808080)';
+      case 3: return 'linear-gradient(135deg, #CD7F32, #8B4513)';
+      default: return 'rgba(255, 255, 255, 0.1)';
+    }
+  }};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: ${props => props.$rank <= 3 ? theme.fontSizes.lg : theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.bold};
+  color: ${props => props.$rank <= 3 ? '#1a1a2e' : theme.colors.textSecondary};
+`;
+
+const PlayerInfo = styled.div`
+  flex: 1;
+  min-width: 0;
+`;
+
+const PlayerName = styled.div`
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const PlayerTier = styled.div`
+  display: flex;
+  align-items: center;
+  gap: ${theme.spacing.xs};
+  font-size: ${theme.fontSizes.xs};
+  color: ${props => props.$color || theme.colors.textSecondary};
+`;
+
+const PlayerEssence = styled.div`
+  font-size: ${theme.fontSizes.base};
+  font-weight: ${theme.fontWeights.bold};
+  color: #A855F7;
+  text-align: right;
+`;
+
+const TopThreeContainer = styled.div`
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  gap: ${theme.spacing.lg};
+  margin-bottom: ${theme.spacing.xl};
+  padding: ${theme.spacing.lg} 0;
+`;
+
+const TopPlayer = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  text-align: center;
+`;
+
+const TopPlayerAvatar = styled.div`
+  width: ${props => props.$rank === 1 ? '80px' : '60px'};
+  height: ${props => props.$rank === 1 ? '80px' : '60px'};
+  border-radius: 50%;
+  background: ${props => {
+    switch (props.$rank) {
+      case 1: return 'linear-gradient(135deg, #FFD700, #FFA500)';
+      case 2: return 'linear-gradient(135deg, #C0C0C0, #808080)';
+      case 3: return 'linear-gradient(135deg, #CD7F32, #8B4513)';
+      default: return 'rgba(255, 255, 255, 0.1)';
+    }
+  }};
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: ${props => props.$rank === 1 ? '32px' : '24px'};
+  font-weight: ${theme.fontWeights.bold};
+  color: #1a1a2e;
+  margin-bottom: ${theme.spacing.sm};
+  box-shadow: ${props => props.$rank === 1
+    ? '0 0 30px rgba(255, 215, 0, 0.4)'
+    : props.$rank === 2
+      ? '0 0 20px rgba(192, 192, 192, 0.3)'
+      : '0 0 15px rgba(205, 127, 50, 0.3)'};
+`;
+
+const TopPlayerName = styled.div`
+  font-size: ${props => props.$rank === 1 ? theme.fontSizes.base : theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${theme.colors.text};
+  max-width: 100px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+`;
+
+const TopPlayerEssence = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: #A855F7;
+  font-weight: ${theme.fontWeights.medium};
+`;
+
+const YourRankSection = styled.div`
+  margin-top: ${theme.spacing.lg};
+  padding: ${theme.spacing.md};
+  background: linear-gradient(135deg, rgba(168, 85, 247, 0.15), rgba(168, 85, 247, 0.05));
+  border: 1px solid rgba(168, 85, 247, 0.3);
+  border-radius: ${theme.radius.lg};
+`;
+
+const YourRankLabel = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  color: ${theme.colors.textSecondary};
+  margin-bottom: ${theme.spacing.xs};
+`;
+
+const YourRankValue = styled.div`
+  font-size: ${theme.fontSizes.xl};
+  font-weight: ${theme.fontWeights.bold};
+  color: #A855F7;
+`;
+
+const LoadingSpinner = styled(motion.div)`
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: ${theme.spacing.xl};
+  color: ${theme.colors.textSecondary};
+`;
+
 const TIER_CONFIG = {
   Bronze: { color: '#CD7F32', colorEnd: '#8B4513', IconComponent: IconBronzeMedal, minEssence: 1000000 },
   Silver: { color: '#C0C0C0', colorEnd: '#808080', IconComponent: IconSilverMedal, minEssence: 10000000 },
@@ -237,6 +468,23 @@ const TIER_REWARDS = {
   Champion: { fatePoints: 200, rollTickets: 50 }
 };
 
+// Helper to get rank color
+const getRankColor = (rank) => {
+  switch (rank) {
+    case 1: return '#FFD700';
+    case 2: return '#C0C0C0';
+    case 3: return '#CD7F32';
+    default: return '#9CA3AF';
+  }
+};
+
+// Helper to get player tier from essence
+const getPlayerTier = (essence) => {
+  return Object.entries(TIER_CONFIG)
+    .reverse()
+    .find(([, config]) => essence >= config.minEssence)?.[0] || null;
+};
+
 const WeeklyTournament = memo(({
   isOpen,
   onClose,
@@ -244,10 +492,14 @@ const WeeklyTournament = memo(({
   onClaimRewards
 }) => {
   const { t } = useTranslation();
+  const [activeTab, setActiveTab] = useState('progress');
   const [tournamentInfo, setTournamentInfo] = useState(null);
+  const [leaderboard, setLeaderboard] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [leaderboardLoading, setLeaderboardLoading] = useState(false);
   const [claiming, setClaiming] = useState(false);
   const [timeRemaining, setTimeRemaining] = useState('');
+  const [lastRefresh, setLastRefresh] = useState(null);
 
   // Fetch tournament info
   useEffect(() => {
@@ -261,6 +513,29 @@ const WeeklyTournament = memo(({
       });
     }
   }, [isOpen, getTournamentInfo]);
+
+  // Fetch leaderboard data
+  const fetchLeaderboard = useCallback(async () => {
+    setLeaderboardLoading(true);
+    try {
+      const response = await api.get('/essence-tap/tournament/leaderboard');
+      if (response.data.success) {
+        setLeaderboard(response.data.leaderboard || []);
+        setLastRefresh(Date.now());
+      }
+    } catch (err) {
+      console.error('Failed to fetch leaderboard:', err);
+    } finally {
+      setLeaderboardLoading(false);
+    }
+  }, []);
+
+  // Fetch leaderboard when tab changes to leaderboard
+  useEffect(() => {
+    if (isOpen && activeTab === 'leaderboard' && leaderboard.length === 0) {
+      fetchLeaderboard();
+    }
+  }, [isOpen, activeTab, leaderboard.length, fetchLeaderboard]);
 
   // Update time remaining
   useEffect(() => {
@@ -333,6 +608,152 @@ const WeeklyTournament = memo(({
 
   const tierConfig = currentTier ? TIER_CONFIG[currentTier] : { color: '#9CA3AF', IconComponent: IconTrophy };
 
+  // Render leaderboard view
+  const renderLeaderboard = () => {
+    const topThree = leaderboard.slice(0, 3);
+    const rest = leaderboard.slice(3, 20);
+    const currentUserRank = tournamentInfo?.rank || null;
+    const currentUserId = tournamentInfo?.userId || null;
+
+    // Reorder top three for podium display (2nd, 1st, 3rd)
+    const podiumOrder = topThree.length >= 3
+      ? [topThree[1], topThree[0], topThree[2]]
+      : topThree;
+
+    return (
+      <LeaderboardContainer>
+        <LeaderboardHeader>
+          <LeaderboardTitle>
+            <IconUsers size={20} />
+            {t('essenceTap.tournament.leaderboard', { defaultValue: 'Leaderboard' })}
+          </LeaderboardTitle>
+          <RefreshButton
+            onClick={fetchLeaderboard}
+            disabled={leaderboardLoading}
+          >
+            <IconRefresh size={14} />
+            {leaderboardLoading ? 'Loading...' : 'Refresh'}
+          </RefreshButton>
+        </LeaderboardHeader>
+
+        {leaderboardLoading && leaderboard.length === 0 ? (
+          <LoadingSpinner
+            animate={{ rotate: 360 }}
+            transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+          >
+            <IconRefresh size={24} />
+          </LoadingSpinner>
+        ) : leaderboard.length === 0 ? (
+          <div style={{ textAlign: 'center', padding: theme.spacing.xl, color: theme.colors.textSecondary }}>
+            {t('essenceTap.tournament.noPlayers', { defaultValue: 'No players yet this week' })}
+          </div>
+        ) : (
+          <>
+            {/* Top 3 Podium */}
+            {topThree.length >= 3 && (
+              <TopThreeContainer>
+                {podiumOrder.map((player, idx) => {
+                  const actualRank = idx === 0 ? 2 : idx === 1 ? 1 : 3;
+                  const tier = getPlayerTier(player.weeklyEssence);
+                  const tierConf = tier ? TIER_CONFIG[tier] : null;
+
+                  return (
+                    <TopPlayer
+                      key={player.id}
+                      initial={{ opacity: 0, y: 20 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: idx * 0.1 }}
+                    >
+                      <TopPlayerAvatar $rank={actualRank}>
+                        {actualRank}
+                      </TopPlayerAvatar>
+                      <TopPlayerName $rank={actualRank}>
+                        {player.username || `Player ${player.id}`}
+                      </TopPlayerName>
+                      {tierConf && (
+                        <PlayerTier $color={tierConf.color}>
+                          <tierConf.IconComponent size={12} />
+                          {tier}
+                        </PlayerTier>
+                      )}
+                      <TopPlayerEssence>
+                        {formatNumber(player.weeklyEssence)}
+                      </TopPlayerEssence>
+                    </TopPlayer>
+                  );
+                })}
+              </TopThreeContainer>
+            )}
+
+            {/* Rest of leaderboard */}
+            <AnimatePresence>
+              {rest.map((player, idx) => {
+                const rank = idx + 4;
+                const isCurrentUser = player.id === currentUserId;
+                const tier = getPlayerTier(player.weeklyEssence);
+                const tierConf = tier ? TIER_CONFIG[tier] : null;
+
+                return (
+                  <LeaderboardEntry
+                    key={player.id}
+                    $rank={rank}
+                    $rankColor={getRankColor(rank)}
+                    $isCurrentUser={isCurrentUser}
+                    initial={{ opacity: 0, x: -20 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: idx * 0.05 }}
+                  >
+                    <RankBadge $rank={rank}>
+                      {rank}
+                    </RankBadge>
+                    <PlayerInfo>
+                      <PlayerName>
+                        {player.username || `Player ${player.id}`}
+                        {isCurrentUser && ' (You)'}
+                      </PlayerName>
+                      {tierConf && (
+                        <PlayerTier $color={tierConf.color}>
+                          <tierConf.IconComponent size={10} />
+                          {tier}
+                        </PlayerTier>
+                      )}
+                    </PlayerInfo>
+                    <PlayerEssence>
+                      {formatNumber(player.weeklyEssence)}
+                    </PlayerEssence>
+                  </LeaderboardEntry>
+                );
+              })}
+            </AnimatePresence>
+
+            {/* Your rank if not in top 20 */}
+            {currentUserRank && currentUserRank > 20 && (
+              <YourRankSection>
+                <YourRankLabel>
+                  {t('essenceTap.tournament.yourRank', { defaultValue: 'Your Rank' })}
+                </YourRankLabel>
+                <YourRankValue>
+                  #{currentUserRank} ({formatNumber(weeklyEssence)} essence)
+                </YourRankValue>
+              </YourRankSection>
+            )}
+
+            {lastRefresh && (
+              <div style={{
+                textAlign: 'center',
+                fontSize: theme.fontSizes.xs,
+                color: theme.colors.textTertiary,
+                marginTop: theme.spacing.md
+              }}>
+                Last updated: {new Date(lastRefresh).toLocaleTimeString()}
+              </div>
+            )}
+          </>
+        )}
+      </LeaderboardContainer>
+    );
+  };
+
   return (
     <Modal isOpen={isOpen} onClose={onClose} size="lg">
       <ModalHeader onClose={onClose}>
@@ -348,6 +769,27 @@ const WeeklyTournament = memo(({
             </div>
           ) : (
             <>
+              {/* Tab Navigation */}
+              <TabContainer>
+                <Tab
+                  $active={activeTab === 'progress'}
+                  onClick={() => setActiveTab('progress')}
+                >
+                  <IconTrophy size={16} />
+                  Progress
+                </Tab>
+                <Tab
+                  $active={activeTab === 'leaderboard'}
+                  onClick={() => setActiveTab('leaderboard')}
+                >
+                  <IconUsers size={16} />
+                  Leaderboard
+                </Tab>
+              </TabContainer>
+
+              {/* Tab Content */}
+              {activeTab === 'leaderboard' ? renderLeaderboard() : (
+                <>
               {/* Current Tier */}
               <CurrentTierDisplay $color={tierConfig.color}>
                 <TierIcon>
@@ -448,6 +890,8 @@ const WeeklyTournament = memo(({
                       : t('essenceTap.tournament.claimRewards', { defaultValue: 'Claim Rewards' })}
                   </Button>
                 </ClaimSection>
+              )}
+              </>
               )}
             </>
           )}

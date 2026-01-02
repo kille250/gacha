@@ -200,6 +200,8 @@ const ActiveAbilities = memo(({ onActivate, _activeEffects = {}, prestigeLevel =
   const [cooldowns, setCooldowns] = useState({});
   const [activeAbilities, setActiveAbilities] = useState({});
   const [hoveredAbility, setHoveredAbility] = useState(null);
+  const [touchedAbility, setTouchedAbility] = useState(null);
+  const touchTimeoutRef = React.useRef(null);
 
   // Load cooldowns from localStorage
   useEffect(() => {
@@ -322,6 +324,51 @@ const ActiveAbilities = memo(({ onActivate, _activeEffects = {}, prestigeLevel =
 
   const unlockedAbilities = getUnlockedAbilities();
 
+  // Handle touch start for long-press tooltip on mobile
+  const handleTouchStart = useCallback((abilityId) => {
+    // Clear any existing timeout
+    if (touchTimeoutRef.current) {
+      clearTimeout(touchTimeoutRef.current);
+    }
+    // Show tooltip after 300ms hold
+    touchTimeoutRef.current = setTimeout(() => {
+      setTouchedAbility(abilityId);
+    }, 300);
+  }, []);
+
+  // Handle touch end
+  const handleTouchEnd = useCallback((abilityId, isReady) => {
+    // If tooltip is showing, just hide it
+    if (touchedAbility === abilityId) {
+      setTouchedAbility(null);
+      if (touchTimeoutRef.current) {
+        clearTimeout(touchTimeoutRef.current);
+      }
+      return;
+    }
+    // If no tooltip was showing (quick tap), activate the ability
+    if (touchTimeoutRef.current) {
+      clearTimeout(touchTimeoutRef.current);
+    }
+    if (isReady) {
+      handleActivate(abilityId);
+    }
+  }, [touchedAbility, handleActivate]);
+
+  // Clean up timeout on unmount
+  useEffect(() => {
+    return () => {
+      if (touchTimeoutRef.current) {
+        clearTimeout(touchTimeoutRef.current);
+      }
+    };
+  }, []);
+
+  // Determine if tooltip should show (hover or touch)
+  const shouldShowTooltip = useCallback((abilityId) => {
+    return hoveredAbility === abilityId || touchedAbility === abilityId;
+  }, [hoveredAbility, touchedAbility]);
+
   return (
     <Container>
       {Object.values(ABILITIES).map(ability => {
@@ -343,6 +390,12 @@ const ActiveAbilities = memo(({ onActivate, _activeEffects = {}, prestigeLevel =
             onClick={() => isReady && handleActivate(ability.id)}
             onMouseEnter={() => setHoveredAbility(ability.id)}
             onMouseLeave={() => setHoveredAbility(null)}
+            onTouchStart={() => handleTouchStart(ability.id)}
+            onTouchEnd={() => handleTouchEnd(ability.id, isReady)}
+            onTouchCancel={() => {
+              setTouchedAbility(null);
+              if (touchTimeoutRef.current) clearTimeout(touchTimeoutRef.current);
+            }}
             whileHover={isReady ? { scale: 1.1 } : {}}
             whileTap={isReady ? { scale: 0.95 } : {}}
           >
@@ -374,7 +427,7 @@ const ActiveAbilities = memo(({ onActivate, _activeEffects = {}, prestigeLevel =
             )}
 
             <AnimatePresence>
-              {hoveredAbility === ability.id && (
+              {shouldShowTooltip(ability.id) && (
                 <AbilityTooltip
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
