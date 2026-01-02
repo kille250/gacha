@@ -154,7 +154,7 @@ const TapButton = styled(motion.button)`
 
   /* Idle breathing animation */
   ${props => !props.$isCrit && !props.$isGolden && css`
-    animation: ${orbBreathe} ${props => 4 - Math.min(props.$productionRate || 0, 3)}s ease-in-out infinite,
+    animation: ${orbBreathe} ${4 - Math.min(props.$productionRate || 0, 3)}s ease-in-out infinite,
                ${orbGlow} 4s ease-in-out infinite;
   `}
 
