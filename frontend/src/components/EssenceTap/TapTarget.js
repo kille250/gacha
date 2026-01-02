@@ -388,7 +388,6 @@ const TapTarget = memo(({
             const ty = (x, y) => p.y + x * sin + y * cos;
 
             // Draw a 4-point star with transformed coordinates
-            g.beginFill({ color: p.color, alpha: p.alpha });
             g.moveTo(tx(0, -10), ty(0, -10));
             g.lineTo(tx(3, -3), ty(3, -3));
             g.lineTo(tx(10, 0), ty(10, 0));
@@ -398,13 +397,12 @@ const TapTarget = memo(({
             g.lineTo(tx(-10, 0), ty(-10, 0));
             g.lineTo(tx(-3, -3), ty(-3, -3));
             g.closePath();
-            g.endFill();
+            g.fill({ color: p.color, alpha: p.alpha });
 
             // Add glow for golden/crit
             if (p.isGolden || p.isCrit) {
-              g.beginFill({ color: 0xFFFFFF, alpha: p.alpha * 0.5 });
               g.circle(p.x, p.y, 4 * s);
-              g.endFill();
+              g.fill({ color: 0xFFFFFF, alpha: p.alpha * 0.5 });
             }
 
             return true;

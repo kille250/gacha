@@ -284,7 +284,8 @@ const CharacterMasteryDisplay = memo(({
   };
 
   // Calculate total bonus from all mastery
-  const totalBonus = masteryData?.totalBonus || 0;
+  // totalBonus is an object { productionBonus, unlockedAbilities } from backend
+  const totalBonus = masteryData?.totalBonus?.productionBonus || 0;
 
   // Get assigned character mastery data
   const assignedMastery = assignedCharacters.map(charId => {
