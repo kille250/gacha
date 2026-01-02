@@ -123,17 +123,24 @@ export const useEssenceTap = () => {
   const handleWsStateUpdate = useCallback((data, type) => {
     if (type === 'full') {
       // Full state sync from WebSocket - server state is authoritative
+      // CRITICAL: This handles reconnection sync properly
       setGameState(data);
-      setLocalEssence(data.essence || 0);
-      setLocalLifetimeEssence(data.lifetimeEssence || 0);
+      const serverEssence = data.essence || 0;
+      const serverLifetime = data.lifetimeEssence || 0;
+
+      // Server state is fully authoritative on full sync
+      setLocalEssence(serverEssence);
+      setLocalLifetimeEssence(serverLifetime);
       setLocalTotalClicks(data.totalClicks || 0);
-      localEssenceRef.current = data.essence || 0;
-      localLifetimeEssenceRef.current = data.lifetimeEssence || 0;
-      lastSyncEssenceRef.current = data.essence || 0;
+      localEssenceRef.current = serverEssence;
+      localLifetimeEssenceRef.current = serverLifetime;
+      lastSyncEssenceRef.current = serverEssence;
       lastSyncTimeRef.current = Date.now();
       // Reset pending essence tracking since server state is authoritative
       // This prevents double-counting passive gains
       pendingEssenceRef.current = 0;
+
+      console.log('[EssenceTap] Full state sync received, essence:', serverEssence);
     } else if (type === 'tap_confirmed') {
       // Tap confirmation - reconcile with server
       const serverEssence = data.essence;
@@ -263,6 +270,7 @@ export const useEssenceTap = () => {
     requestSync: wsRequestSync,
     flushTapBatch,
     getPendingTapCount: _getPendingTapCount,  // Available for debugging
+    getOptimisticEssence,  // Track unconfirmed essence for proper reconciliation
   } = useEssenceTapSocket({
     token,
     autoConnect: !!token,
@@ -279,6 +287,31 @@ export const useEssenceTap = () => {
   const isMountedRef = useRef(true);
   // Track pending click request to wait for it before purchases
   const pendingClickRef = useRef(null);
+  // Track previous connection state for reconnection detection
+  const prevConnectionStateRef = useRef(wsConnectionState);
+
+  // Handle WebSocket connection state changes
+  useEffect(() => {
+    const prevState = prevConnectionStateRef.current;
+    prevConnectionStateRef.current = wsConnectionState;
+
+    // If we just reconnected (was disconnected/reconnecting, now connected)
+    if (wsConnectionState === CONNECTION_STATES.CONNECTED &&
+        (prevState === CONNECTION_STATES.DISCONNECTED ||
+         prevState === CONNECTION_STATES.RECONNECTING ||
+         prevState === CONNECTION_STATES.ERROR)) {
+      console.log('[EssenceTap] WebSocket reconnected, syncing state...');
+      // Stop passive tick to prevent race with incoming sync
+      if (passiveTickRef.current) {
+        clearInterval(passiveTickRef.current);
+        passiveTickRef.current = null;
+      }
+      // Reset pending essence tracking - server will be authoritative
+      pendingEssenceRef.current = 0;
+      // Note: The WebSocket hook will automatically request a sync on reconnect
+      // and the full state sync callback will update all our state
+    }
+  }, [wsConnectionState]);
 
   // Check and trigger achievements
   const checkAchievements = useCallback((stats) => {
@@ -440,15 +473,23 @@ export const useEssenceTap = () => {
         // and we don't want to add our locally accumulated pending essence on top
         pendingEssenceRef.current = 0;
 
-        // Refresh game state to sync with server (handles offline progress)
-        // Note: passive tick will restart when gameState updates via the useEffect
-        // that watches gameState.productionPerSecond
-        fetchGameState(false);
+        // If using WebSocket, request sync via WebSocket for faster response
+        // Otherwise, fall back to REST fetch
+        if (wsConnected && wsConnectionState === CONNECTION_STATES.CONNECTED) {
+          // Flush any pending taps before requesting sync
+          flushTapBatch();
+          wsRequestSync();
+        } else {
+          // Refresh game state to sync with server (handles offline progress)
+          // Note: passive tick will restart when gameState updates via the useEffect
+          // that watches gameState.productionPerSecond
+          fetchGameState(false);
+        }
       }
     });
 
     return cleanup;
-  }, [fetchGameState]);
+  }, [fetchGameState, wsConnected, wsConnectionState, flushTapBatch, wsRequestSync]);
 
   // Passive income tick
   useEffect(() => {
@@ -765,6 +806,13 @@ export const useEssenceTap = () => {
       await pendingClickRef.current;
     }
 
+    // If using WebSocket, flush any pending taps first
+    if (useWebSocket) {
+      flushTapBatch();
+      // Small delay to allow batch to be processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+
     try {
       const response = await api.post('/essence-tap/generator/buy', {
         generatorId,
@@ -799,6 +847,11 @@ export const useEssenceTap = () => {
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_GENERATOR_PURCHASE);
       await fetchGameState(false);
 
+      // If using WebSocket, request a sync to ensure both paths are in agreement
+      if (useWebSocket) {
+        wsRequestSync();
+      }
+
       toast.success(
         t('essenceTap.generatorPurchased', {
           name: response.data.generator.name,
@@ -813,7 +866,7 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.purchaseFailed', { defaultValue: 'Purchase failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [gameState, fetchGameState, t, toast, sounds, checkAchievements]);
+  }, [gameState, fetchGameState, t, toast, sounds, checkAchievements, useWebSocket, flushTapBatch, wsRequestSync]);
 
   // Purchase upgrade
   const purchaseUpgrade = useCallback(async (upgradeId) => {
@@ -823,6 +876,13 @@ export const useEssenceTap = () => {
     // This ensures the server has the latest essence from recent taps
     if (pendingClickRef.current) {
       await pendingClickRef.current;
+    }
+
+    // If using WebSocket, flush any pending taps first
+    if (useWebSocket) {
+      flushTapBatch();
+      // Small delay to allow batch to be processed
+      await new Promise(resolve => setTimeout(resolve, 100));
     }
 
     try {
@@ -845,6 +905,11 @@ export const useEssenceTap = () => {
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_UPGRADE_PURCHASE);
       await fetchGameState(false);
 
+      // If using WebSocket, request a sync to ensure both paths are in agreement
+      if (useWebSocket) {
+        wsRequestSync();
+      }
+
       toast.success(
         t('essenceTap.upgradePurchased', {
           name: response.data.upgrade.name,
@@ -858,11 +923,18 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.purchaseFailed', { defaultValue: 'Purchase failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [gameState, fetchGameState, t, toast]);
+  }, [gameState, fetchGameState, t, toast, useWebSocket, flushTapBatch, wsRequestSync]);
 
   // Perform prestige
   const performPrestige = useCallback(async () => {
     if (!gameState?.prestige?.canPrestige) return { success: false };
+
+    // If using WebSocket, flush any pending taps first
+    if (useWebSocket) {
+      flushTapBatch();
+      // Small delay to allow batch to be processed
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
 
     try {
       const response = await api.post('/essence-tap/prestige');
@@ -884,6 +956,11 @@ export const useEssenceTap = () => {
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_PRESTIGE);
       await fetchGameState(false);
       await refreshUser();
+
+      // If using WebSocket, request a sync to ensure both paths are in agreement
+      if (useWebSocket) {
+        wsRequestSync();
+      }
 
       toast.success(
         t('essenceTap.prestigeComplete', {
@@ -908,7 +985,7 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.prestigeFailed', { defaultValue: 'Prestige failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [gameState, fetchGameState, refreshUser, t, toast, sounds, checkAchievements]);
+  }, [gameState, fetchGameState, refreshUser, t, toast, sounds, checkAchievements, useWebSocket, flushTapBatch, wsRequestSync]);
 
   // Purchase prestige upgrade
   const purchasePrestigeUpgrade = useCallback(async (upgradeId) => {

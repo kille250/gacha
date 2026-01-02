@@ -265,11 +265,18 @@ async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
 
 /**
  * Get full game state for sync
+ * Uses transaction to ensure consistency when applying passive gains
  */
 async function getFullState(userId) {
+  const transaction = await sequelize.transaction();
+
   try {
-    const user = await User.findByPk(userId);
-    if (!user) return null;
+    // Use row lock to prevent race conditions with other requests
+    const user = await User.findByPk(userId, { transaction, lock: true });
+    if (!user) {
+      await transaction.rollback();
+      return null;
+    }
 
     let state = user.essenceTap || essenceTapService.getInitialState();
     state = essenceTapService.resetDaily(state);
@@ -277,7 +284,8 @@ async function getFullState(userId) {
 
     const userCharacters = await UserCharacter.findAll({
       where: { UserId: userId },
-      include: ['Character']
+      include: ['Character'],
+      transaction
     });
 
     const characters = userCharacters.map(uc => ({
@@ -294,11 +302,13 @@ async function getFullState(userId) {
       state = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
       state.lastOnlineTimestamp = passiveResult.newTimestamp;
 
-      // Save the updated state
+      // Save the updated state atomically
       user.essenceTap = state;
       user.lastEssenceTapRequest = passiveResult.newTimestamp;
-      await user.save();
+      await user.save({ transaction });
     }
+
+    await transaction.commit();
 
     const gameState = essenceTapService.getGameState(state, characters);
     const seq = userSequences.get(userId) || 0;
@@ -309,6 +319,7 @@ async function getFullState(userId) {
       serverTimestamp: Date.now()
     };
   } catch (err) {
+    await transaction.rollback();
     console.error('[EssenceTap WS] Error getting full state:', err);
     return null;
   }
@@ -889,6 +900,232 @@ function initEssenceTapWebSocket(io) {
         await transaction.rollback();
         console.error('[EssenceTap WS] Ability activation error:', err);
         socket.emit('error', { code: 'ABILITY_ERROR', message: 'Ability activation failed' });
+      }
+    });
+
+    // ===========================================
+    // GAMBLE HANDLER
+    // ===========================================
+
+    socket.on('gamble', async (data) => {
+      const { betType, betAmount, clientSeq } = data;
+
+      if (!betType || betAmount === undefined) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Bet type and amount required' });
+        return;
+      }
+
+      // Process any pending taps first
+      const pendingBatch = pendingTapBatches.get(userId);
+      if (pendingBatch) {
+        pendingTapBatches.delete(userId);
+        if (pendingBatch.timer) clearTimeout(pendingBatch.timer);
+        await processTapBatch(userId, pendingBatch.taps, pendingBatch.comboMultiplier, namespace);
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+        state = essenceTapService.resetDaily(state);
+
+        // Get characters for passive calculation
+        const userCharacters = await UserCharacter.findAll({
+          where: { UserId: userId },
+          include: ['Character'],
+          transaction
+        });
+
+        const characters = userCharacters.map(uc => ({
+          id: uc.CharacterId,
+          rarity: uc.Character?.rarity || 'common',
+          element: uc.Character?.element || 'neutral'
+        }));
+
+        // Apply passive gains
+        const passiveResult = calculatePassiveGains(state, characters);
+        if (passiveResult.gains > 0) {
+          state.essence = (state.essence || 0) + passiveResult.gains;
+          state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
+          state = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          state.lastOnlineTimestamp = passiveResult.newTimestamp;
+        }
+
+        const result = essenceTapService.performGamble(state, betType, betAmount);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'GAMBLE_FAILED'
+          });
+          return;
+        }
+
+        // Contribute to shared jackpot (async)
+        const jackpotContribution = await essenceTapService.contributeToJackpot(result.newState, betAmount, userId);
+        result.newState = jackpotContribution.newState;
+
+        // Check for jackpot win
+        let jackpotWin = null;
+        let jackpotRewards = null;
+        const jackpotResult = await essenceTapService.checkJackpotWin(result.newState, betAmount, betType);
+        if (jackpotResult.won) {
+          jackpotWin = jackpotResult.amount;
+          jackpotRewards = jackpotResult.rewards;
+          result.newState.essence = (result.newState.essence || 0) + jackpotResult.amount;
+          result.newState.lifetimeEssence = (result.newState.lifetimeEssence || 0) + jackpotResult.amount;
+
+          if (jackpotRewards) {
+            if (jackpotRewards.fatePoints) {
+              const fpResult = essenceTapService.applyFPWithCap(result.newState, jackpotRewards.fatePoints, 'jackpot');
+              result.newState = fpResult.newState;
+              user.fatePoints = (user.fatePoints || 0) + fpResult.appliedFP;
+            }
+            if (jackpotRewards.rollTickets) {
+              user.rollTickets = (user.rollTickets || 0) + jackpotRewards.rollTickets;
+            }
+            if (jackpotRewards.prismaticEssence) {
+              result.newState.essenceTypes = {
+                ...result.newState.essenceTypes,
+                prismatic: (result.newState.essenceTypes?.prismatic || 0) + jackpotRewards.prismaticEssence
+              };
+            }
+          }
+
+          result.newState = await essenceTapService.resetJackpot(result.newState, userId, jackpotResult.amount);
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast gamble result to all tabs
+        broadcastToUser(namespace, userId, 'gamble_result', {
+          won: result.won,
+          betAmount: result.betAmount,
+          betType: result.betType,
+          multiplier: result.multiplier,
+          winChance: result.winChance,
+          essenceChange: result.essenceChange,
+          newEssence: result.newState.essence,
+          jackpotWin,
+          jackpotRewards,
+          jackpotContribution: jackpotContribution.contribution,
+          gambleInfo: essenceTapService.getGambleInfo(result.newState),
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Gamble error:', err);
+        socket.emit('error', { code: 'GAMBLE_ERROR', message: 'Gamble failed' });
+      }
+    });
+
+    // ===========================================
+    // INFUSION HANDLER
+    // ===========================================
+
+    socket.on('infusion', async (data) => {
+      const { clientSeq } = data;
+
+      // Process any pending taps first
+      const pendingBatch = pendingTapBatches.get(userId);
+      if (pendingBatch) {
+        pendingTapBatches.delete(userId);
+        if (pendingBatch.timer) clearTimeout(pendingBatch.timer);
+        await processTapBatch(userId, pendingBatch.taps, pendingBatch.comboMultiplier, namespace);
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        // Get characters for passive calculation
+        const userCharacters = await UserCharacter.findAll({
+          where: { UserId: userId },
+          include: ['Character'],
+          transaction
+        });
+
+        const characters = userCharacters.map(uc => ({
+          id: uc.CharacterId,
+          rarity: uc.Character?.rarity || 'common',
+          element: uc.Character?.element || 'neutral'
+        }));
+
+        // Apply passive gains
+        const passiveResult = calculatePassiveGains(state, characters);
+        if (passiveResult.gains > 0) {
+          state.essence = (state.essence || 0) + passiveResult.gains;
+          state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
+          state = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          state.lastOnlineTimestamp = passiveResult.newTimestamp;
+        }
+
+        const result = essenceTapService.performInfusion(state);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'INFUSION_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast infusion result to all tabs
+        broadcastToUser(namespace, userId, 'infusion_complete', {
+          cost: result.cost,
+          costPercent: result.costPercent,
+          bonusGained: result.bonusGained,
+          totalBonus: result.totalBonus,
+          infusionCount: result.infusionCount,
+          nextCost: essenceTapService.calculateInfusionCost(result.newState),
+          essence: result.newState.essence,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Infusion error:', err);
+        socket.emit('error', { code: 'INFUSION_ERROR', message: 'Infusion failed' });
       }
     });
 

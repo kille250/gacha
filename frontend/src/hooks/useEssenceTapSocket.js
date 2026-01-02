@@ -28,6 +28,9 @@ const CONFIG = {
 
   // Action queue for offline support
   MAX_QUEUED_ACTIONS: 100,
+
+  // Reconnection sync delay - wait for server to stabilize before syncing
+  RECONNECT_SYNC_DELAY_MS: 100,
 };
 
 // ===========================================
@@ -104,6 +107,12 @@ export function useEssenceTapSocket(options = {}) {
   // Optimistic updates tracking
   const optimisticUpdatesRef = useRef(new Map());
 
+  // Track total optimistic essence added (for proper reconciliation)
+  const optimisticEssenceRef = useRef(0);
+
+  // Track reconnection state for sync coordination
+  const isReconnectingRef = useRef(false);
+
   // ===========================================
   // CONNECTION MANAGEMENT
   // ===========================================
@@ -147,12 +156,25 @@ export function useEssenceTapSocket(options = {}) {
       // CRITICAL: Clear optimistic updates on reconnect
       // Server will send fresh state via state_full, making old optimistic updates stale
       optimisticUpdatesRef.current.clear();
+      optimisticEssenceRef.current = 0;
 
       // Reset pending taps - server state_full will be authoritative
       pendingTapsRef.current = { count: 0, comboMultiplier: 1, clientSeqs: [] };
       if (tapBatchTimerRef.current) {
         clearTimeout(tapBatchTimerRef.current);
         tapBatchTimerRef.current = null;
+      }
+
+      // If this is a reconnection (not initial connection), request a full sync
+      // after a small delay to ensure server is ready
+      if (isReconnectingRef.current) {
+        isReconnectingRef.current = false;
+        setTimeout(() => {
+          if (socket.connected) {
+            console.log('[EssenceTap WS] Requesting sync after reconnection');
+            socket.emit('sync_request');
+          }
+        }, CONFIG.RECONNECT_SYNC_DELAY_MS);
       }
 
       // Replay any queued actions (only non-tap actions should be queued)
@@ -177,6 +199,8 @@ export function useEssenceTapSocket(options = {}) {
         // Server disconnected us, don't reconnect
         setConnectionState(CONNECTION_STATES.DISCONNECTED);
       } else {
+        // Mark as reconnecting so connect handler knows to request sync
+        isReconnectingRef.current = true;
         // Try to reconnect
         scheduleReconnect();
       }
@@ -201,6 +225,7 @@ export function useEssenceTapSocket(options = {}) {
 
       // Clear optimistic updates - server state is authoritative
       optimisticUpdatesRef.current.clear();
+      optimisticEssenceRef.current = 0;
 
       if (onStateUpdateRef.current) {
         onStateUpdateRef.current(data, 'full');
@@ -247,6 +272,8 @@ export function useEssenceTapSocket(options = {}) {
       setEssenceState(prev => {
         if (!prev) return prev;
 
+        // Server state is authoritative for confirmed taps
+        // Reset optimistic tracking since server has processed these taps
         return {
           ...prev,
           essence: data.essence,
@@ -257,11 +284,18 @@ export function useEssenceTapSocket(options = {}) {
 
       setLastSyncTimestamp(data.serverTimestamp || Date.now());
 
-      // Remove confirmed optimistic updates
+      // Remove confirmed optimistic updates and calculate remaining optimistic essence
       if (data.confirmedClientSeqs) {
+        let confirmedEssence = 0;
         data.confirmedClientSeqs.forEach(seq => {
+          const update = optimisticUpdatesRef.current.get(seq);
+          if (update && update.estimatedGain) {
+            confirmedEssence += update.estimatedGain;
+          }
           optimisticUpdatesRef.current.delete(seq);
         });
+        // Reduce tracked optimistic essence by confirmed amount
+        optimisticEssenceRef.current = Math.max(0, optimisticEssenceRef.current - confirmedEssence);
       }
 
       if (data.seq !== undefined) {
@@ -367,6 +401,65 @@ export function useEssenceTapSocket(options = {}) {
         onStateUpdateRef.current(data, 'ability_activated');
       }
     });
+
+    // ===========================================
+    // GAMBLE RESULT HANDLER
+    // ===========================================
+
+    socket.on('gamble_result', (data) => {
+      console.log('[EssenceTap WS] Gamble result:', data.won ? 'WIN' : 'LOSS');
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          essence: data.newEssence,
+          gambleInfo: data.gambleInfo,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'gamble_result');
+      }
+    });
+
+    // ===========================================
+    // INFUSION RESULT HANDLER
+    // ===========================================
+
+    socket.on('infusion_complete', (data) => {
+      console.log('[EssenceTap WS] Infusion complete, new bonus:', data.totalBonus);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          essence: data.essence,
+          infusionBonus: data.totalBonus,
+          infusionCount: data.infusionCount,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'infusion_complete');
+      }
+    });
   // Note: scheduleReconnect is excluded intentionally - it's stable and defined outside
   // Callbacks are accessed via refs to prevent reconnection loops when they change
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -438,11 +531,15 @@ export function useEssenceTapSocket(options = {}) {
     const clickPower = essenceState?.clickPower || 1;
     const estimatedGain = Math.floor(clickPower * comboMultiplier) * count;
 
-    // Store optimistic update for potential rollback
+    // Store optimistic update for potential rollback (including estimated gain for reconciliation)
     optimisticUpdatesRef.current.set(clientSeq, {
       essence: essenceState?.essence || 0,
       lifetimeEssence: essenceState?.lifetimeEssence || 0,
+      estimatedGain, // Track for proper reconciliation
     });
+
+    // Track total optimistic essence for state reconciliation
+    optimisticEssenceRef.current += estimatedGain;
 
     // Apply optimistic update
     setEssenceState(prev => {
@@ -585,6 +682,36 @@ export function useEssenceTapSocket(options = {}) {
     }
   }, []);
 
+  const performGamble = useCallback((betType, betAmount) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    // Flush any pending taps first
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('gamble', { betType, betAmount, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      // For gamble, don't queue - require WebSocket connection
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  const performInfusion = useCallback(() => {
+    const clientSeq = ++clientSeqRef.current;
+
+    // Flush any pending taps first
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('infusion', { clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      // For infusion, don't queue - require WebSocket connection
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
   // ===========================================
   // LIFECYCLE
   // ===========================================
@@ -628,6 +755,8 @@ export function useEssenceTapSocket(options = {}) {
     requestSync,
     performPrestige,
     activateAbility,
+    performGamble,
+    performInfusion,
 
     // Connection control
     connect,
@@ -637,6 +766,8 @@ export function useEssenceTapSocket(options = {}) {
     flushTapBatch,
     getPendingTapCount: () => pendingTapsRef.current.count,
     getQueuedActionCount: () => pendingActionsRef.current.length,
+    getOptimisticEssence: () => optimisticEssenceRef.current,
+    isReconnecting: () => isReconnectingRef.current,
   };
 }
 
