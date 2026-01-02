@@ -164,11 +164,7 @@ const ListContainer = styled(motion.div)`
   padding: ${theme.spacing.md};
   overflow-y: auto;
   flex: 1;
-  max-height: 350px;
-
-  @media (min-width: ${theme.breakpoints.lg}) {
-    max-height: 450px;
-  }
+  min-height: 300px;
 
   /* Scrollbar styling */
   &::-webkit-scrollbar {
