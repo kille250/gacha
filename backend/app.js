@@ -9,6 +9,7 @@ const { initUploadDirs, UPLOAD_BASE, isProduction } = require('./config/upload')
 const schedule = require('node-schedule');
 const { Server } = require('socket.io');
 const { initMultiplayer } = require('./routes/fishingMultiplayer');
+const { initEssenceTapWebSocket } = require('./websocket/essenceTapHandler');
 const { collectDeviceSignals } = require('./middleware/deviceSignals');
 const {
   signupVelocityLimiter,
@@ -364,6 +365,10 @@ const io = new Server(server, {
 // Initialize fishing multiplayer
 initMultiplayer(io);
 console.log('[Socket.IO] Fishing multiplayer initialized');
+
+// Initialize Essence Tap WebSocket
+initEssenceTapWebSocket(io);
+console.log('[Socket.IO] Essence Tap WebSocket initialized');
 
 // ===========================================
 // DATABASE MIGRATIONS (using sequelize-cli)

@@ -2,7 +2,14 @@
  * useEssenceTap - Custom hook for Essence Tap clicker game state and logic
  *
  * Manages the clicker game state, click processing, passive income calculation,
- * and API synchronization.
+ * and API/WebSocket synchronization.
+ *
+ * SYNCHRONIZATION STRATEGY:
+ * 1. WebSocket is the primary sync method when available
+ * 2. REST API is used as fallback when WebSocket is disconnected
+ * 3. Optimistic updates are applied immediately for responsive UI
+ * 4. Server state is authoritative - client reconciles on confirmation
+ * 5. Actions wait for pending clicks to prevent race conditions
  */
 
 import { useState, useEffect, useCallback, useRef, useContext } from 'react';
@@ -18,6 +25,7 @@ import {
   ACHIEVEMENTS
 } from '../config/essenceTapConfig';
 import { useSoundEffects } from './useSoundEffects';
+import { useEssenceTapSocket, CONNECTION_STATES } from './useEssenceTapSocket';
 
 // Re-export config for convenience
 export { COMBO_CONFIG, GOLDEN_CONFIG } from '../config/essenceTapConfig';
@@ -103,6 +111,108 @@ export const useEssenceTap = () => {
   // Track last sync time for accurate time-based calculation
   const lastSyncTimeRef = useRef(Date.now());
   const lastSyncEssenceRef = useRef(0);
+
+  // ===========================================
+  // WEBSOCKET INTEGRATION
+  // ===========================================
+
+  // Get auth token for WebSocket
+  const token = typeof localStorage !== 'undefined' ? localStorage.getItem('token') : null;
+
+  // WebSocket callbacks
+  const handleWsStateUpdate = useCallback((data, type) => {
+    if (type === 'full') {
+      // Full state sync from WebSocket
+      setGameState(data);
+      setLocalEssence(data.essence || 0);
+      setLocalLifetimeEssence(data.lifetimeEssence || 0);
+      setLocalTotalClicks(data.totalClicks || 0);
+      localEssenceRef.current = data.essence || 0;
+      localLifetimeEssenceRef.current = data.lifetimeEssence || 0;
+      lastSyncEssenceRef.current = data.essence || 0;
+      lastSyncTimeRef.current = Date.now();
+    } else if (type === 'tap_confirmed') {
+      // Tap confirmation - reconcile with server
+      const serverEssence = data.essence;
+      const serverLifetime = data.lifetimeEssence;
+
+      setLocalEssence(prev => {
+        // Server is authoritative, but preserve any additional local taps
+        // that happened during the API call
+        if (serverEssence >= prev) {
+          localEssenceRef.current = serverEssence;
+          return serverEssence;
+        }
+        // Local is ahead - keep local (concurrent taps during sync)
+        return prev;
+      });
+
+      setLocalLifetimeEssence(prev => {
+        if (serverLifetime >= prev) {
+          localLifetimeEssenceRef.current = serverLifetime;
+          return serverLifetime;
+        }
+        return prev;
+      });
+
+      setLocalTotalClicks(data.totalClicks);
+      lastSyncEssenceRef.current = serverEssence;
+      lastSyncTimeRef.current = Date.now();
+    } else if (type === 'delta') {
+      // Delta update - apply changes
+      setGameState(prev => {
+        if (!prev) return data;
+        return { ...prev, ...data };
+      });
+
+      if (data.essence !== undefined) {
+        setLocalEssence(data.essence);
+        localEssenceRef.current = data.essence;
+        lastSyncEssenceRef.current = data.essence;
+      }
+      if (data.lifetimeEssence !== undefined) {
+        setLocalLifetimeEssence(data.lifetimeEssence);
+        localLifetimeEssenceRef.current = data.lifetimeEssence;
+      }
+      lastSyncTimeRef.current = Date.now();
+    }
+  }, []);
+
+  const handleWsError = useCallback((err) => {
+    console.error('[EssenceTap] WebSocket error:', err);
+    // Don't show toast for every error - let connection state handle it
+  }, []);
+
+  const handleWsChallengeComplete = useCallback((challenge) => {
+    toast.success(
+      t('essenceTap.challengeComplete', {
+        name: challenge.name,
+        defaultValue: `Challenge Complete: ${challenge.name}!`
+      })
+    );
+  }, [toast, t]);
+
+  // Initialize WebSocket connection
+  const {
+    isConnected: wsConnected,
+    connectionState: wsConnectionState,
+    essenceState: _wsEssenceState,  // State managed locally, WebSocket updates via callback
+    sendTap: wsSendTap,
+    purchaseGenerator: _wsPurchaseGenerator,  // Reserved for future WebSocket-first purchases
+    purchaseUpgrade: _wsPurchaseUpgrade,      // Reserved for future WebSocket-first purchases
+    requestSync: wsRequestSync,
+    flushTapBatch,
+    getPendingTapCount: _getPendingTapCount,  // Available for debugging
+  } = useEssenceTapSocket({
+    token,
+    autoConnect: !!token,
+    onStateUpdate: handleWsStateUpdate,
+    onError: handleWsError,
+    onChallengeComplete: handleWsChallengeComplete,
+  });
+
+  // Track whether to use WebSocket or REST
+  const useWebSocket = wsConnected && wsConnectionState === CONNECTION_STATES.CONNECTED;
 
   // Refs for intervals
   const passiveTickRef = useRef(null);
@@ -372,7 +482,7 @@ export const useEssenceTap = () => {
     return () => clearInterval(saveInterval);
   }, []);
 
-  // Handle click
+  // Handle click - uses WebSocket when available, REST as fallback
   const handleClick = useCallback(async () => {
     if (!gameState) return;
 
@@ -425,20 +535,6 @@ export const useEssenceTap = () => {
       maxCombo: newMaxCombo
     });
 
-    // Optimistic update
-    setLocalEssence(prev => {
-      const newVal = prev + essenceGained;
-      localEssenceRef.current = newVal;
-      return newVal;
-    });
-    setLocalLifetimeEssence(prev => {
-      const newVal = prev + essenceGained;
-      localLifetimeEssenceRef.current = newVal;
-      return newVal;
-    });
-    // Update total clicks for real-time boss counter tracking
-    setLocalTotalClicks(prev => prev + 1);
-
     // Set click result for visual feedback
     const clickTimestamp = Date.now();
     setLastClickResult({
@@ -455,6 +551,51 @@ export const useEssenceTap = () => {
         prev?.timestamp === clickTimestamp ? null : prev
       );
     }, 500);
+
+    // ===========================================
+    // WEBSOCKET PATH (Primary)
+    // ===========================================
+    if (useWebSocket) {
+      // WebSocket handles optimistic updates and batching internally
+      // We still apply local optimistic update for instant feedback
+      setLocalEssence(prev => {
+        const newVal = prev + essenceGained;
+        localEssenceRef.current = newVal;
+        return newVal;
+      });
+      setLocalLifetimeEssence(prev => {
+        const newVal = prev + essenceGained;
+        localLifetimeEssenceRef.current = newVal;
+        return newVal;
+      });
+      setLocalTotalClicks(prev => prev + 1);
+
+      // Send via WebSocket - batching handled by the socket hook
+      wsSendTap(1, comboMultiplier);
+      return;
+    }
+
+    // ===========================================
+    // REST API PATH (Fallback)
+    // ===========================================
+
+    // Optimistic update for REST path
+    setLocalEssence(prev => {
+      const newVal = prev + essenceGained;
+      localEssenceRef.current = newVal;
+      return newVal;
+    });
+    setLocalLifetimeEssence(prev => {
+      const newVal = prev + essenceGained;
+      localLifetimeEssenceRef.current = newVal;
+      return newVal;
+    });
+    // Update total clicks for real-time boss counter tracking
+    setLocalTotalClicks(prev => prev + 1);
+
+    // Store pre-click values for potential rollback
+    const preClickEssence = localEssenceRef.current - essenceGained;
+    const preClickLifetime = localLifetimeEssenceRef.current - essenceGained;
 
     // Sync with server (batched)
     const clickPromise = (async () => {
@@ -504,6 +645,25 @@ export const useEssenceTap = () => {
         }
       } catch (err) {
         console.error('Click sync failed:', err);
+        // CRITICAL FIX: Roll back optimistic update on failure
+        setLocalEssence(prev => {
+          // Only roll back if we haven't received a server update since
+          if (prev === localEssenceRef.current) {
+            const rolledBack = preClickEssence;
+            localEssenceRef.current = rolledBack;
+            return rolledBack;
+          }
+          return prev;
+        });
+        setLocalLifetimeEssence(prev => {
+          if (prev === localLifetimeEssenceRef.current) {
+            const rolledBack = preClickLifetime;
+            localLifetimeEssenceRef.current = rolledBack;
+            return rolledBack;
+          }
+          return prev;
+        });
+        setLocalTotalClicks(prev => Math.max(0, prev - 1));
       } finally {
         // Clear the pending click ref when done
         pendingClickRef.current = null;
@@ -512,7 +672,7 @@ export const useEssenceTap = () => {
 
     // Store the promise so purchases can wait for it
     pendingClickRef.current = clickPromise;
-  }, [gameState, comboMultiplier, clicksThisSecond, t, toast, sounds, checkAchievements]);
+  }, [gameState, comboMultiplier, clicksThisSecond, t, toast, sounds, checkAchievements, useWebSocket, wsSendTap]);
 
   // Purchase generator
   const purchaseGenerator = useCallback(async (generatorId, count = 1) => {
@@ -778,6 +938,18 @@ export const useEssenceTap = () => {
 
   // Gamble with essence
   const performGamble = useCallback(async (betType, betAmount) => {
+    // CRITICAL FIX: Wait for pending clicks before gambling
+    // This ensures server has accurate essence count
+    if (pendingClickRef.current) {
+      await pendingClickRef.current;
+    }
+    // Also flush WebSocket batch if connected
+    if (useWebSocket) {
+      flushTapBatch();
+      // Small delay to allow batch to process
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+
     try {
       const response = await api.post('/essence-tap/gamble', {
         betType,
@@ -841,10 +1013,19 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.gambleFailed', { defaultValue: 'Gamble failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [t, toast, refreshUser, fetchGameState]);
+  }, [t, toast, refreshUser, fetchGameState, useWebSocket, flushTapBatch]);
 
   // Perform infusion for permanent bonus
   const performInfusion = useCallback(async () => {
+    // CRITICAL FIX: Wait for pending clicks before infusion
+    if (pendingClickRef.current) {
+      await pendingClickRef.current;
+    }
+    if (useWebSocket) {
+      flushTapBatch();
+      await new Promise(resolve => setTimeout(resolve, 150));
+    }
+
     try {
       const response = await api.post('/essence-tap/infusion');
 
@@ -878,7 +1059,7 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.infusionFailed', { defaultValue: 'Infusion failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [fetchGameState, t, toast]);
+  }, [fetchGameState, t, toast, useWebSocket, flushTapBatch]);
 
   // Get gamble info
   const getGambleInfo = useCallback(async () => {
@@ -1105,6 +1286,15 @@ export const useEssenceTap = () => {
 
     // Sound controls
     sounds,
+
+    // ===========================================
+    // WEBSOCKET STATUS
+    // ===========================================
+    // Connection status for UI indicators
+    wsConnected,
+    wsConnectionState,
+    // Request a full sync from server (useful after connection restored)
+    requestSync: wsRequestSync,
 
     // Actions
     handleClick,
