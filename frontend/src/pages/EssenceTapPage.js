@@ -19,6 +19,7 @@ import {
   GlassCard,
   Button,
   Modal,
+  ModalHeader,
   ModalBody,
   ModalFooter,
   LoadingState,
@@ -66,7 +67,13 @@ const PageContainer = styled(motion.div)`
 
   @media (max-width: ${theme.breakpoints.md}) {
     padding-top: ${theme.spacing.md};
-    padding-bottom: 180px;
+    /* Account for StatsHUD (approx 60px) + FeatureNav (approx 60px) + safe area */
+    padding-bottom: calc(140px + env(safe-area-inset-bottom, 0px));
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.sm};
+    padding-bottom: calc(150px + env(safe-area-inset-bottom, 0px));
   }
 `;
 
@@ -168,6 +175,27 @@ const OfflineDetails = styled.div`
   color: ${theme.colors.textSecondary};
 `;
 
+// Mobile modal panel container - used for generators/upgrades on mobile
+const MobilePanelContainer = styled.div`
+  max-height: 70vh;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  margin: -${theme.spacing.lg};
+  margin-top: 0;
+
+  /* Override internal panel styles for modal context */
+  & > div {
+    max-height: none;
+    border: none;
+    background: transparent;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    margin: -${theme.spacing.md};
+    margin-top: 0;
+  }
+`;
+
 const EssenceTapPage = memo(() => {
   const { t } = useTranslation();
   const { refreshUser } = useContext(AuthContext);
@@ -187,6 +215,9 @@ const EssenceTapPage = memo(() => {
   const [generatorsCollapsed, setGeneratorsCollapsed] = useState(false);
   const [upgradesCollapsed, setUpgradesCollapsed] = useState(false);
   const [activeFeature, setActiveFeature] = useState(null);
+  // Mobile-specific modal states for generators/upgrades
+  const [showMobileGenerators, setShowMobileGenerators] = useState(false);
+  const [showMobileUpgrades, setShowMobileUpgrades] = useState(false);
 
   const {
     gameState,
@@ -272,6 +303,12 @@ const EssenceTapPage = memo(() => {
     setActiveFeature(featureId);
 
     switch (featureId) {
+      case 'generators':
+        setShowMobileGenerators(true);
+        break;
+      case 'upgrades':
+        setShowMobileUpgrades(true);
+        break;
       case 'gamble':
         setShowGamble(true);
         break;
@@ -545,6 +582,44 @@ const EssenceTapPage = memo(() => {
             onBossDefeat={handleBossDefeat}
             onBossSpawn={handleBossSpawn}
           />
+
+          {/* Mobile Generators Modal */}
+          <Modal
+            isOpen={showMobileGenerators}
+            onClose={handleModalClose(setShowMobileGenerators)}
+            title={t('essenceTap.generators', { defaultValue: 'Generators' })}
+            maxWidth="600px"
+          >
+            <MobilePanelContainer>
+              <GeneratorList
+                generators={gameState?.generators || []}
+                essence={essence}
+                lifetimeEssence={lifetimeEssence}
+                totalProduction={gameState?.productionPerSecond || 0}
+                onPurchase={purchaseGenerator}
+                isCollapsed={false}
+                onToggleCollapse={() => {}}
+              />
+            </MobilePanelContainer>
+          </Modal>
+
+          {/* Mobile Upgrades Modal */}
+          <Modal
+            isOpen={showMobileUpgrades}
+            onClose={handleModalClose(setShowMobileUpgrades)}
+            title={t('essenceTap.upgrades', { defaultValue: 'Upgrades' })}
+            maxWidth="600px"
+          >
+            <MobilePanelContainer>
+              <UpgradeList
+                upgrades={gameState?.upgrades || {}}
+                essence={essence}
+                onPurchase={purchaseUpgrade}
+                isCollapsed={false}
+                onToggleCollapse={() => {}}
+              />
+            </MobilePanelContainer>
+          </Modal>
 
           {/* Offline Progress Modal */}
           <AnimatePresence>

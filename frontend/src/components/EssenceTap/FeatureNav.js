@@ -49,21 +49,38 @@ const NavContainer = styled(motion.nav)`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.xs};
+  /* Safe area support for notched devices */
+  padding-bottom: max(${theme.spacing.sm}, env(safe-area-inset-bottom));
 
   @media (max-width: ${theme.breakpoints.sm}) {
     bottom: 10px;
     left: 10px;
     right: 10px;
     width: auto;
+    max-width: calc(100vw - 20px);
     border-radius: ${theme.radius.xl};
-    justify-content: space-around;
-    padding: ${theme.spacing.sm};
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    padding-bottom: max(${theme.spacing.xs}, env(safe-area-inset-bottom));
+    gap: 4px;
+    /* Enable horizontal scrolling on mobile */
+    overflow-x: auto;
+    justify-content: flex-start;
+    /* Hide scrollbar but allow scrolling */
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    &::-webkit-scrollbar {
+      display: none;
+    }
+    /* Scroll snap for better UX */
+    scroll-snap-type: x mandatory;
+    -webkit-overflow-scrolling: touch;
   }
 `;
 
 const NavButton = styled(motion.button)`
   width: 48px;
   height: 48px;
+  min-width: 48px;
   border-radius: ${theme.radius.lg};
   border: none;
   background: ${props => props.$active
@@ -78,6 +95,10 @@ const NavButton = styled(motion.button)`
   justify-content: center;
   position: relative;
   transition: all 0.2s ease;
+  flex-shrink: 0;
+  /* Touch optimization */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   ${props => props.$active && css`
     animation: ${activeGlow} 2s ease-in-out infinite;
@@ -90,8 +111,11 @@ const NavButton = styled(motion.button)`
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {
-    width: 40px;
-    height: 40px;
+    width: 44px;
+    height: 44px;
+    min-width: 44px;
+    /* Ensure proper touch target size */
+    scroll-snap-align: start;
   }
 `;
 
@@ -155,24 +179,27 @@ const NotificationDot = styled.div`
   border: 2px solid rgba(28, 28, 30, 0.9);
 `;
 
-// Feature definitions
+// Feature definitions - Mobile-first ordering with most important features first
 const FEATURES = [
+  // Core Game Mechanics (most important on mobile)
+  { id: 'generators', icon: IconSparkles, label: 'Generators', group: 'core', priority: true },
+  { id: 'upgrades', icon: IconStar, label: 'Upgrades', group: 'core', priority: true },
+  // Divider
+  { id: 'divider0', type: 'divider' },
   // Quick Actions
   { id: 'gamble', icon: IconDice, label: 'Gamble', group: 'quick' },
-  { id: 'infuse', icon: IconSparkles, label: 'Infuse', group: 'quick' },
+  { id: 'infuse', icon: IconGem, label: 'Infuse', group: 'quick' },
   { id: 'boss', icon: IconTarget, label: 'Boss Fight', group: 'quick' },
   // Divider
   { id: 'divider1', type: 'divider' },
   // Progress
   { id: 'tournament', icon: IconTrophy, label: 'Tournament', group: 'progress' },
-  { id: 'mastery', icon: IconStar, label: 'Mastery', group: 'progress' },
   { id: 'challenges', icon: IconBanner, label: 'Challenges', group: 'progress' },
   // Divider
   { id: 'divider2', type: 'divider' },
-  // Info
-  { id: 'types', icon: IconGem, label: 'Essence Types', group: 'info' },
-  { id: 'session', icon: IconStats, label: 'Session Stats', group: 'info' },
-  { id: 'synergy', icon: IconCategoryPerson, label: 'Synergy', group: 'info' }
+  // Info (lower priority on mobile)
+  { id: 'mastery', icon: IconCategoryPerson, label: 'Mastery', group: 'info' },
+  { id: 'session', icon: IconStats, label: 'Session Stats', group: 'info' }
 ];
 
 const FeatureNav = memo(({

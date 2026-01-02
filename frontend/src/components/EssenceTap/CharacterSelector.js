@@ -57,6 +57,10 @@ const ELEMENT_COLORS = Object.fromEntries(
 
 const Container = styled.div`
   padding: ${theme.spacing.lg};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.md};
+  }
 `;
 
 const SectionTitle = styled.h3`
@@ -72,6 +76,11 @@ const AssignedSlots = styled.div`
   margin-bottom: ${theme.spacing.xl};
   flex-wrap: wrap;
   justify-content: center;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
+    margin-bottom: ${theme.spacing.lg};
+  }
 `;
 
 const SlotCard = styled(motion.div)`
@@ -92,6 +101,9 @@ const SlotCard = styled(motion.div)`
   transition: all 0.2s ease;
   position: relative;
   overflow: hidden;
+  /* Touch optimization */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   ${props => props.$filled && `
     &:hover {
@@ -99,6 +111,11 @@ const SlotCard = styled(motion.div)`
       border-style: solid;
     }
   `}
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 70px;
+    height: 90px;
+  }
 `;
 
 const SlotImage = styled.img`
@@ -106,6 +123,11 @@ const SlotImage = styled.img`
   height: 60px;
   border-radius: ${theme.radius.md};
   object-fit: cover;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 45px;
+    height: 45px;
+  }
 `;
 
 const SlotName = styled.div`
@@ -186,6 +208,7 @@ const CharacterGrid = styled.div`
   max-height: 400px;
   overflow-y: auto;
   padding: ${theme.spacing.xs};
+  -webkit-overflow-scrolling: touch;
 
   &::-webkit-scrollbar {
     width: 6px;
@@ -196,6 +219,12 @@ const CharacterGrid = styled.div`
   &::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+    gap: ${theme.spacing.sm};
+    max-height: 50vh;
   }
 `;
 
@@ -289,6 +318,7 @@ const FilterBar = styled.div`
 
 const FilterButton = styled.button`
   padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  min-height: 36px;
   background: ${props => props.$active ? 'rgba(138, 43, 226, 0.3)' : 'rgba(255, 255, 255, 0.05)'};
   border: 1px solid ${props => props.$active ? 'rgba(138, 43, 226, 0.6)' : 'rgba(255, 255, 255, 0.1)'};
   border-radius: ${theme.radius.md};
@@ -296,9 +326,18 @@ const FilterButton = styled.button`
   font-size: ${theme.fontSizes.sm};
   cursor: pointer;
   transition: all 0.2s ease;
+  /* Touch optimization */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   &:hover {
     background: ${props => props.$active ? 'rgba(138, 43, 226, 0.4)' : 'rgba(255, 255, 255, 0.1)'};
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-height: 44px;
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+    font-size: ${theme.fontSizes.xs};
   }
 `;
 

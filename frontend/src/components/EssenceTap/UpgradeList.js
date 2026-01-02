@@ -121,6 +121,7 @@ const Tab = styled.button`
   align-items: center;
   gap: ${theme.spacing.xs};
   padding: ${theme.spacing.xs} ${theme.spacing.md};
+  min-height: 36px;
   background: ${props => props.$active
     ? `${props.$color}25`
     : 'rgba(255, 255, 255, 0.03)'};
@@ -134,11 +135,21 @@ const Tab = styled.button`
   white-space: nowrap;
   cursor: pointer;
   transition: all 0.2s ease;
+  /* Touch optimization */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  flex-shrink: 0;
 
   &:hover {
     background: ${props => props.$active
       ? `${props.$color}30`
       : 'rgba(255, 255, 255, 0.06)'};
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-height: 40px;
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+    font-size: ${theme.fontSizes.xs};
   }
 `;
 
@@ -273,6 +284,7 @@ const PurchasedBadge = styled.span`
 
 const BuyButton = styled.button`
   padding: ${theme.spacing.xs} ${theme.spacing.lg};
+  min-height: 36px;
   background: ${props => props.$canAfford
     ? 'linear-gradient(135deg, #A855F7, #8B5CF6)'
     : 'rgba(255, 255, 255, 0.05)'};
@@ -284,6 +296,9 @@ const BuyButton = styled.button`
   cursor: ${props => props.$canAfford ? 'pointer' : 'not-allowed'};
   opacity: ${props => props.$canAfford ? 1 : 0.5};
   transition: all 0.2s ease;
+  /* Touch optimization */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   ${props => props.$canAfford && `
     &:hover {
@@ -295,6 +310,11 @@ const BuyButton = styled.button`
       transform: scale(0.95);
     }
   `}
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-height: 44px;
+    padding: ${theme.spacing.sm} ${theme.spacing.lg};
+  }
 `;
 
 const LockedReason = styled.div`
