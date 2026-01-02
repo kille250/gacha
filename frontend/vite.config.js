@@ -1,8 +1,25 @@
-import { defineConfig } from 'vite';
+import { defineConfig, transformWithEsbuild } from 'vite';
 import react from '@vitejs/plugin-react-swc';
+
+// Custom plugin to handle JSX in .js files
+// This runs BEFORE vite:import-analysis to ensure proper parsing
+const jsxInJsPlugin = {
+  name: 'treat-js-files-as-jsx',
+  enforce: 'pre',
+  async transform(code, id) {
+    if (!id.match(/src\/.*\.js$/)) return null;
+    
+    // Use esbuild to transform JSX syntax
+    return transformWithEsbuild(code, id, {
+      loader: 'jsx',
+      jsx: 'automatic',
+    });
+  },
+};
 
 export default defineConfig({
   plugins: [
+    jsxInJsPlugin,
     react({
       // React 19 optimizations
       jsxImportSource: 'react',
@@ -55,10 +72,5 @@ export default defineConfig({
         '.js': 'jsx',
       },
     },
-  },
-  esbuild: {
-    loader: 'jsx',
-    include: /src\/.*\.[jt]sx?$/,
-    exclude: [],
   },
 });
