@@ -7,6 +7,7 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
+import { WS_URL } from '../utils/api';
 
 // ===========================================
 // CONFIGURATION
@@ -110,9 +111,10 @@ export function useEssenceTapSocket(options = {}) {
 
     setConnectionState(CONNECTION_STATES.CONNECTING);
 
-    const url = serverUrl || (typeof window !== 'undefined'
-      ? `${window.location.protocol}//${window.location.host}`
-      : 'http://localhost:5000');
+    // Use provided serverUrl, or fallback to the API's WS_URL
+    const url = serverUrl || WS_URL;
+
+    console.log('[EssenceTap WS] Connecting to:', `${url}/essence-tap`);
 
     const socket = io(`${url}/essence-tap`, {
       auth: { token },
