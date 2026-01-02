@@ -643,45 +643,48 @@ router.post('/prestige', auth, async (req, res) => {
  * Purchase a prestige upgrade
  */
 router.post('/prestige/upgrade', auth, async (req, res) => {
-  try {
-    const { upgradeId } = req.body;
+  const { upgradeId } = req.body;
 
-    if (!upgradeId) {
-      return res.status(400).json({ error: 'Upgrade ID required' });
-    }
-
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    const result = essenceTapService.purchasePrestigeUpgrade(state, upgradeId);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-    await user.save();
-
-    res.json({
-      success: true,
-      upgrade: result.upgrade,
-      newLevel: result.newLevel,
-      cost: result.cost,
-      remainingShards: result.newState.prestigeShards
-    });
-  } catch (error) {
-    console.error('Error purchasing prestige upgrade:', error);
-    res.status(500).json({ error: 'Failed to purchase prestige upgrade' });
+  if (!upgradeId) {
+    return res.status(400).json({ error: 'Upgrade ID required' });
   }
+
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      const result = essenceTapService.purchasePrestigeUpgrade(state, upgradeId);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+      await user.save();
+
+      res.json({
+        success: true,
+        upgrade: result.upgrade,
+        newLevel: result.newLevel,
+        cost: result.cost,
+        remainingShards: result.newState.prestigeShards
+      });
+    } catch (error) {
+      console.error('Error purchasing prestige upgrade:', error);
+      res.status(500).json({ error: 'Failed to purchase prestige upgrade' });
+    }
+  });
 });
 
 /**
@@ -689,60 +692,63 @@ router.post('/prestige/upgrade', auth, async (req, res) => {
  * Claim a Fate Points milestone
  */
 router.post('/milestone/claim', auth, async (req, res) => {
-  try {
-    const { milestoneKey } = req.body;
+  const { milestoneKey } = req.body;
 
-    if (!milestoneKey) {
-      return res.status(400).json({ error: 'Milestone key required' });
-    }
-
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    const result = essenceTapService.claimMilestone(state, milestoneKey);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    // Apply FP with cap enforcement (one-time milestones exempt from cap)
-    const fpResult = essenceTapService.applyFPWithCap(
-      result.newState,
-      result.fatePoints,
-      'one_time_milestone'
-    );
-    result.newState = fpResult.newState;
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-
-    // Award Fate Points (one-time milestones get full value)
-    if (fpResult.actualFP > 0) {
-      const fatePoints = user.fatePoints || {};
-      fatePoints.global = fatePoints.global || { points: 0 };
-      fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
-      user.fatePoints = fatePoints;
-    }
-
-    await user.save();
-
-    res.json({
-      success: true,
-      fatePoints: fpResult.actualFP,
-      capped: fpResult.capped
-    });
-  } catch (error) {
-    console.error('Error claiming milestone:', error);
-    res.status(500).json({ error: 'Failed to claim milestone' });
+  if (!milestoneKey) {
+    return res.status(400).json({ error: 'Milestone key required' });
   }
+
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      const result = essenceTapService.claimMilestone(state, milestoneKey);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      // Apply FP with cap enforcement (one-time milestones exempt from cap)
+      const fpResult = essenceTapService.applyFPWithCap(
+        result.newState,
+        result.fatePoints,
+        'one_time_milestone'
+      );
+      result.newState = fpResult.newState;
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+
+      // Award Fate Points (one-time milestones get full value)
+      if (fpResult.actualFP > 0) {
+        const fatePoints = user.fatePoints || {};
+        fatePoints.global = fatePoints.global || { points: 0 };
+        fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
+        user.fatePoints = fatePoints;
+      }
+
+      await user.save();
+
+      res.json({
+        success: true,
+        fatePoints: fpResult.actualFP,
+        capped: fpResult.capped
+      });
+    } catch (error) {
+      console.error('Error claiming milestone:', error);
+      res.status(500).json({ error: 'Failed to claim milestone' });
+    }
+  });
 });
 
 /**
@@ -750,75 +756,78 @@ router.post('/milestone/claim', auth, async (req, res) => {
  * Assign a character for production bonus
  */
 router.post('/character/assign', auth, async (req, res) => {
-  try {
-    const { characterId } = req.body;
+  const { characterId } = req.body;
 
-    if (!characterId) {
-      return res.status(400).json({ error: 'Character ID required' });
-    }
-
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    // Get user's characters
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
-
-    const ownedCharacters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    const result = essenceTapService.assignCharacter(state, characterId, ownedCharacters);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-    await user.save();
-
-    // Calculate new bonuses
-    const ownedCharsWithSeries = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral',
-      series: uc.Character?.series || 'Unknown'
-    }));
-
-    const characterBonus = essenceTapService.calculateCharacterBonus(result.newState, ownedCharacters);
-    const elementBonuses = essenceTapService.calculateElementBonuses(result.newState, ownedCharacters);
-    const elementSynergy = essenceTapService.calculateElementSynergy(result.newState, ownedCharacters);
-    const seriesSynergy = essenceTapService.calculateSeriesSynergy(result.newState, ownedCharsWithSeries);
-    const masteryBonus = essenceTapService.calculateTotalMasteryBonus(result.newState);
-    const underdogBonus = essenceTapService.calculateUnderdogBonus(result.newState, ownedCharacters);
-
-    res.json({
-      success: true,
-      assignedCharacters: result.newState.assignedCharacters,
-      characterBonus,
-      elementBonuses,
-      elementSynergy,
-      seriesSynergy,
-      masteryBonus,
-      underdogBonus
-    });
-  } catch (error) {
-    console.error('Error assigning character:', error);
-    res.status(500).json({ error: 'Failed to assign character' });
+  if (!characterId) {
+    return res.status(400).json({ error: 'Character ID required' });
   }
+
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get user's characters
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: user.id },
+        include: ['Character']
+      });
+
+      const ownedCharacters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      const result = essenceTapService.assignCharacter(state, characterId, ownedCharacters);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+      await user.save();
+
+      // Calculate new bonuses
+      const ownedCharsWithSeries = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral',
+        series: uc.Character?.series || 'Unknown'
+      }));
+
+      const characterBonus = essenceTapService.calculateCharacterBonus(result.newState, ownedCharacters);
+      const elementBonuses = essenceTapService.calculateElementBonuses(result.newState, ownedCharacters);
+      const elementSynergy = essenceTapService.calculateElementSynergy(result.newState, ownedCharacters);
+      const seriesSynergy = essenceTapService.calculateSeriesSynergy(result.newState, ownedCharsWithSeries);
+      const masteryBonus = essenceTapService.calculateTotalMasteryBonus(result.newState);
+      const underdogBonus = essenceTapService.calculateUnderdogBonus(result.newState, ownedCharacters);
+
+      res.json({
+        success: true,
+        assignedCharacters: result.newState.assignedCharacters,
+        characterBonus,
+        elementBonuses,
+        elementSynergy,
+        seriesSynergy,
+        masteryBonus,
+        underdogBonus
+      });
+    } catch (error) {
+      console.error('Error assigning character:', error);
+      res.status(500).json({ error: 'Failed to assign character' });
+    }
+  });
 });
 
 /**
@@ -826,68 +835,71 @@ router.post('/character/assign', auth, async (req, res) => {
  * Unassign a character
  */
 router.post('/character/unassign', auth, async (req, res) => {
-  try {
-    const { characterId } = req.body;
+  const { characterId } = req.body;
 
-    if (!characterId) {
-      return res.status(400).json({ error: 'Character ID required' });
-    }
-
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    const result = essenceTapService.unassignCharacter(state, characterId);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-    await user.save();
-
-    // Get user's characters for bonus calculation
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
-
-    const ownedCharacters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral',
-      series: uc.Character?.series || 'Unknown'
-    }));
-
-    const characterBonus = essenceTapService.calculateCharacterBonus(result.newState, ownedCharacters);
-    const elementBonuses = essenceTapService.calculateElementBonuses(result.newState, ownedCharacters);
-    const elementSynergy = essenceTapService.calculateElementSynergy(result.newState, ownedCharacters);
-    const seriesSynergy = essenceTapService.calculateSeriesSynergy(result.newState, ownedCharacters);
-    const masteryBonus = essenceTapService.calculateTotalMasteryBonus(result.newState);
-    const underdogBonus = essenceTapService.calculateUnderdogBonus(result.newState, ownedCharacters);
-
-    res.json({
-      success: true,
-      assignedCharacters: result.newState.assignedCharacters,
-      characterBonus,
-      elementBonuses,
-      elementSynergy,
-      seriesSynergy,
-      masteryBonus,
-      underdogBonus
-    });
-  } catch (error) {
-    console.error('Error unassigning character:', error);
-    res.status(500).json({ error: 'Failed to unassign character' });
+  if (!characterId) {
+    return res.status(400).json({ error: 'Character ID required' });
   }
+
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      const result = essenceTapService.unassignCharacter(state, characterId);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+      await user.save();
+
+      // Get user's characters for bonus calculation
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: user.id },
+        include: ['Character']
+      });
+
+      const ownedCharacters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral',
+        series: uc.Character?.series || 'Unknown'
+      }));
+
+      const characterBonus = essenceTapService.calculateCharacterBonus(result.newState, ownedCharacters);
+      const elementBonuses = essenceTapService.calculateElementBonuses(result.newState, ownedCharacters);
+      const elementSynergy = essenceTapService.calculateElementSynergy(result.newState, ownedCharacters);
+      const seriesSynergy = essenceTapService.calculateSeriesSynergy(result.newState, ownedCharacters);
+      const masteryBonus = essenceTapService.calculateTotalMasteryBonus(result.newState);
+      const underdogBonus = essenceTapService.calculateUnderdogBonus(result.newState, ownedCharacters);
+
+      res.json({
+        success: true,
+        assignedCharacters: result.newState.assignedCharacters,
+        characterBonus,
+        elementBonuses,
+        elementSynergy,
+        seriesSynergy,
+        masteryBonus,
+        underdogBonus
+      });
+    } catch (error) {
+      console.error('Error unassigning character:', error);
+      res.status(500).json({ error: 'Failed to unassign character' });
+    }
+  });
 });
 
 /**
@@ -991,114 +1003,117 @@ router.post('/save', auth, async (req, res) => {
  * Perform a gamble with essence
  */
 router.post('/gamble', auth, async (req, res) => {
-  try {
-    const { betType, betAmount } = req.body;
+  const { betType, betAmount } = req.body;
 
-    if (!betType || betAmount === undefined) {
-      return res.status(400).json({ error: 'Bet type and amount required' });
-    }
+  if (!betType || betAmount === undefined) {
+    return res.status(400).json({ error: 'Bet type and amount required' });
+  }
 
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-    state = essenceTapService.resetDaily(state);
-
-    // Get user's characters for passive calculation
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
-
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
-    // Apply passive essence before gamble
-    const passiveResult = applyPassiveGains(state, characters);
-    state = passiveResult.state;
-
-    const result = essenceTapService.performGamble(state, betType, betAmount);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    // Contribute to shared jackpot from bet (async)
-    const jackpotContribution = await essenceTapService.contributeToJackpot(result.newState, betAmount, req.user.id);
-    result.newState = jackpotContribution.newState;
-
-    // Check for jackpot win (async with shared jackpot)
-    let jackpotWin = null;
-    let jackpotRewards = null;
-    const jackpotResult = await essenceTapService.checkJackpotWin(result.newState, betAmount, betType);
-    if (jackpotResult.won) {
-      jackpotWin = jackpotResult.amount;
-      jackpotRewards = jackpotResult.rewards;
-      result.newState.essence = (result.newState.essence || 0) + jackpotResult.amount;
-      result.newState.lifetimeEssence = (result.newState.lifetimeEssence || 0) + jackpotResult.amount;
-
-      // Add bonus rewards from jackpot
-      if (jackpotRewards) {
-        // Add fate points (capped by weekly limit)
-        if (jackpotRewards.fatePoints) {
-          const fpResult = essenceTapService.applyFPWithCap(result.newState, jackpotRewards.fatePoints, 'jackpot');
-          result.newState = fpResult.newState;
-          user.fatePoints = (user.fatePoints || 0) + fpResult.appliedFP;
-        }
-
-        // Add roll tickets
-        if (jackpotRewards.rollTickets) {
-          user.rollTickets = (user.rollTickets || 0) + jackpotRewards.rollTickets;
-        }
-
-        // Add prismatic essence
-        if (jackpotRewards.prismaticEssence) {
-          result.newState.essenceTypes = {
-            ...result.newState.essenceTypes,
-            prismatic: (result.newState.essenceTypes?.prismatic || 0) + jackpotRewards.prismaticEssence
-          };
-        }
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
       }
 
-      // Reset the shared jackpot and record winner
-      result.newState = await essenceTapService.resetJackpot(result.newState, req.user.id, jackpotResult.amount);
+      let state = user.essenceTap || essenceTapService.getInitialState();
+      state = essenceTapService.resetDaily(state);
+
+      // Get user's characters for passive calculation
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: user.id },
+        include: ['Character']
+      });
+
+      const characters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
+
+      // Apply passive essence before gamble
+      const passiveResult = applyPassiveGains(state, characters);
+      state = passiveResult.state;
+
+      const result = essenceTapService.performGamble(state, betType, betAmount);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      // Contribute to shared jackpot from bet (async)
+      const jackpotContribution = await essenceTapService.contributeToJackpot(result.newState, betAmount, req.user.id);
+      result.newState = jackpotContribution.newState;
+
+      // Check for jackpot win (async with shared jackpot)
+      let jackpotWin = null;
+      let jackpotRewards = null;
+      const jackpotResult = await essenceTapService.checkJackpotWin(result.newState, betAmount, betType);
+      if (jackpotResult.won) {
+        jackpotWin = jackpotResult.amount;
+        jackpotRewards = jackpotResult.rewards;
+        result.newState.essence = (result.newState.essence || 0) + jackpotResult.amount;
+        result.newState.lifetimeEssence = (result.newState.lifetimeEssence || 0) + jackpotResult.amount;
+
+        // Add bonus rewards from jackpot
+        if (jackpotRewards) {
+          // Add fate points (capped by weekly limit)
+          if (jackpotRewards.fatePoints) {
+            const fpResult = essenceTapService.applyFPWithCap(result.newState, jackpotRewards.fatePoints, 'jackpot');
+            result.newState = fpResult.newState;
+            user.fatePoints = (user.fatePoints || 0) + fpResult.appliedFP;
+          }
+
+          // Add roll tickets
+          if (jackpotRewards.rollTickets) {
+            user.rollTickets = (user.rollTickets || 0) + jackpotRewards.rollTickets;
+          }
+
+          // Add prismatic essence
+          if (jackpotRewards.prismaticEssence) {
+            result.newState.essenceTypes = {
+              ...result.newState.essenceTypes,
+              prismatic: (result.newState.essenceTypes?.prismatic || 0) + jackpotRewards.prismaticEssence
+            };
+          }
+        }
+
+        // Reset the shared jackpot and record winner
+        result.newState = await essenceTapService.resetJackpot(result.newState, req.user.id, jackpotResult.amount);
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+      await user.save();
+
+      // Fetch updated jackpot info for response
+      const jackpotInfo = await essenceTapService.getSharedJackpotInfo();
+
+      res.json({
+        success: true,
+        won: result.won,
+        betAmount: result.betAmount,
+        betType: result.betType,
+        multiplier: result.multiplier,
+        winChance: result.winChance,
+        essenceChange: result.essenceChange,
+        newEssence: result.newState.essence,
+        jackpotWin,
+        jackpotRewards,
+        jackpotContribution: jackpotContribution.contribution,
+        gambleInfo: essenceTapService.getGambleInfo(result.newState),
+        jackpotInfo
+      });
+    } catch (error) {
+      console.error('Error performing gamble:', error);
+      res.status(500).json({ error: 'Failed to gamble' });
     }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-    await user.save();
-
-    // Fetch updated jackpot info for response
-    const jackpotInfo = await essenceTapService.getSharedJackpotInfo();
-
-    res.json({
-      success: true,
-      won: result.won,
-      betAmount: result.betAmount,
-      betType: result.betType,
-      multiplier: result.multiplier,
-      winChance: result.winChance,
-      essenceChange: result.essenceChange,
-      newEssence: result.newState.essence,
-      jackpotWin,
-      jackpotRewards,
-      jackpotContribution: jackpotContribution.contribution,
-      gambleInfo: essenceTapService.getGambleInfo(result.newState),
-      jackpotInfo
-    });
-  } catch (error) {
-    console.error('Error performing gamble:', error);
-    res.status(500).json({ error: 'Failed to gamble' });
-  }
+  });
 });
 
 // ===========================================
@@ -1110,58 +1125,61 @@ router.post('/gamble', auth, async (req, res) => {
  * Perform an essence infusion for permanent bonus
  */
 router.post('/infusion', auth, async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      // Get user's characters for passive calculation
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: user.id },
+        include: ['Character']
+      });
+
+      const characters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
+
+      // Apply passive essence before infusion
+      const passiveResult = applyPassiveGains(state, characters);
+      state = passiveResult.state;
+
+      const result = essenceTapService.performInfusion(state);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+      await user.save();
+
+      res.json({
+        success: true,
+        cost: result.cost,
+        costPercent: result.costPercent,
+        bonusGained: result.bonusGained,
+        totalBonus: result.totalBonus,
+        infusionCount: result.infusionCount,
+        nextCost: essenceTapService.calculateInfusionCost(result.newState),
+        essence: result.newState.essence
+      });
+    } catch (error) {
+      console.error('Error performing infusion:', error);
+      res.status(500).json({ error: 'Failed to infuse' });
     }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    // Get user's characters for passive calculation
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
-
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
-    // Apply passive essence before infusion
-    const passiveResult = applyPassiveGains(state, characters);
-    state = passiveResult.state;
-
-    const result = essenceTapService.performInfusion(state);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-    await user.save();
-
-    res.json({
-      success: true,
-      cost: result.cost,
-      costPercent: result.costPercent,
-      bonusGained: result.bonusGained,
-      totalBonus: result.totalBonus,
-      infusionCount: result.infusionCount,
-      nextCost: essenceTapService.calculateInfusionCost(result.newState),
-      essence: result.newState.essence
-    });
-  } catch (error) {
-    console.error('Error performing infusion:', error);
-    res.status(500).json({ error: 'Failed to infuse' });
-  }
+  });
 });
 
 // ===========================================
@@ -1173,47 +1191,50 @@ router.post('/infusion', auth, async (req, res) => {
  * Activate an ability
  */
 router.post('/ability/activate', auth, async (req, res) => {
-  try {
-    const { abilityId } = req.body;
+  const { abilityId } = req.body;
 
-    if (!abilityId) {
-      return res.status(400).json({ error: 'Ability ID required' });
-    }
-
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    const result = essenceTapService.activateAbility(state, abilityId);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-    await user.save();
-
-    res.json({
-      success: true,
-      ability: result.ability,
-      duration: result.duration,
-      effects: result.effects,
-      bonusEssence: result.bonusEssence,
-      essence: result.newState.essence,
-      activeAbilities: essenceTapService.getActiveAbilitiesInfo(result.newState)
-    });
-  } catch (error) {
-    console.error('Error activating ability:', error);
-    res.status(500).json({ error: 'Failed to activate ability' });
+  if (!abilityId) {
+    return res.status(400).json({ error: 'Ability ID required' });
   }
+
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      const result = essenceTapService.activateAbility(state, abilityId);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+      await user.save();
+
+      res.json({
+        success: true,
+        ability: result.ability,
+        duration: result.duration,
+        effects: result.effects,
+        bonusEssence: result.bonusEssence,
+        essence: result.newState.essence,
+        activeAbilities: essenceTapService.getActiveAbilitiesInfo(result.newState)
+      });
+    } catch (error) {
+      console.error('Error activating ability:', error);
+      res.status(500).json({ error: 'Failed to activate ability' });
+    }
+  });
 });
 
 /**
@@ -1268,67 +1289,70 @@ router.get('/milestones/repeatable', auth, async (req, res) => {
  * Claim a repeatable milestone
  */
 router.post('/milestones/repeatable/claim', auth, async (req, res) => {
-  try {
-    const { milestoneType } = req.body;
+  const { milestoneType } = req.body;
 
-    if (!milestoneType) {
-      return res.status(400).json({ error: 'Milestone type required' });
-    }
-
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    const result = essenceTapService.claimRepeatableMilestone(state, milestoneType);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-
-    // Apply FP with cap enforcement (repeatable milestones count toward weekly cap)
-    let actualFP = 0;
-    let fpCapped = false;
-    if (result.fatePoints > 0) {
-      const fpResult = essenceTapService.applyFPWithCap(
-        result.newState,
-        result.fatePoints,
-        'repeatable_milestone'
-      );
-      result.newState = fpResult.newState;
-      actualFP = fpResult.actualFP;
-      fpCapped = fpResult.capped;
-    }
-
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-
-    // Award Fate Points (with cap applied)
-    if (actualFP > 0) {
-      const fatePoints = user.fatePoints || {};
-      fatePoints.global = fatePoints.global || { points: 0 };
-      fatePoints.global.points = (fatePoints.global.points || 0) + actualFP;
-      user.fatePoints = fatePoints;
-    }
-
-    await user.save();
-
-    res.json({
-      success: true,
-      fatePoints: actualFP,
-      fatePointsCapped: fpCapped,
-      count: result.count || 1
-    });
-  } catch (error) {
-    console.error('Error claiming repeatable milestone:', error);
-    res.status(500).json({ error: 'Failed to claim milestone' });
+  if (!milestoneType) {
+    return res.status(400).json({ error: 'Milestone type required' });
   }
+
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      const result = essenceTapService.claimRepeatableMilestone(state, milestoneType);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+
+      // Apply FP with cap enforcement (repeatable milestones count toward weekly cap)
+      let actualFP = 0;
+      let fpCapped = false;
+      if (result.fatePoints > 0) {
+        const fpResult = essenceTapService.applyFPWithCap(
+          result.newState,
+          result.fatePoints,
+          'repeatable_milestone'
+        );
+        result.newState = fpResult.newState;
+        actualFP = fpResult.actualFP;
+        fpCapped = fpResult.capped;
+      }
+
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+
+      // Award Fate Points (with cap applied)
+      if (actualFP > 0) {
+        const fatePoints = user.fatePoints || {};
+        fatePoints.global = fatePoints.global || { points: 0 };
+        fatePoints.global.points = (fatePoints.global.points || 0) + actualFP;
+        user.fatePoints = fatePoints;
+      }
+
+      await user.save();
+
+      res.json({
+        success: true,
+        fatePoints: actualFP,
+        fatePointsCapped: fpCapped,
+        count: result.count || 1
+      });
+    } catch (error) {
+      console.error('Error claiming repeatable milestone:', error);
+      res.status(500).json({ error: 'Failed to claim milestone' });
+    }
+  });
 });
 
 // ===========================================
@@ -1521,45 +1545,48 @@ router.get('/tickets/streak', auth, async (req, res) => {
  * Claim daily streak and potentially earn tickets
  */
 router.post('/tickets/streak/claim', auth, async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      const result = essenceTapService.checkDailyStreakTickets(state);
+
+      if (!result.newState) {
+        // Already claimed today
+        return res.status(400).json({ error: result.reason || 'Already claimed today' });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+
+      // Award tickets if milestone reached
+      if (result.awarded && result.tickets > 0) {
+        user.rollTickets = (user.rollTickets || 0) + result.tickets;
+      }
+
+      await user.save();
+
+      res.json({
+        success: true,
+        awarded: result.awarded,
+        tickets: result.tickets || 0,
+        streakDays: result.streakDays,
+        nextMilestone: result.nextMilestone
+      });
+    } catch (error) {
+      console.error('Error claiming streak:', error);
+      res.status(500).json({ error: 'Failed to claim streak' });
     }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    const result = essenceTapService.checkDailyStreakTickets(state);
-
-    if (!result.newState) {
-      // Already claimed today
-      return res.status(400).json({ error: result.reason || 'Already claimed today' });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-
-    // Award tickets if milestone reached
-    if (result.awarded && result.tickets > 0) {
-      user.rollTickets = (user.rollTickets || 0) + result.tickets;
-    }
-
-    await user.save();
-
-    res.json({
-      success: true,
-      awarded: result.awarded,
-      tickets: result.tickets || 0,
-      streakDays: result.streakDays,
-      nextMilestone: result.nextMilestone
-    });
-  } catch (error) {
-    console.error('Error claiming streak:', error);
-    res.status(500).json({ error: 'Failed to claim streak' });
-  }
+  });
 });
 
 /**
@@ -1567,52 +1594,55 @@ router.post('/tickets/streak/claim', auth, async (req, res) => {
  * Exchange Fate Points for roll tickets
  */
 router.post('/tickets/exchange', auth, async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+  // Use essence lock to prevent race conditions with concurrent requests
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      // Get user's Fate Points
+      const fatePoints = user.fatePoints?.global?.points || 0;
+
+      const result = essenceTapService.exchangeFatePointsForTickets(state, fatePoints);
+
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
+      }
+
+      const now = Date.now();
+      result.newState.lastOnlineTimestamp = now;
+      user.essenceTap = result.newState;
+      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
+      user.lastEssenceTapRequest = now;
+
+      // Deduct Fate Points
+      const userFatePoints = user.fatePoints || {};
+      userFatePoints.global = userFatePoints.global || { points: 0 };
+      userFatePoints.global.points = Math.max(0, (userFatePoints.global.points || 0) - result.fatePointsCost);
+      user.fatePoints = userFatePoints;
+
+      // Add tickets
+      user.rollTickets = (user.rollTickets || 0) + result.ticketsReceived;
+
+      await user.save();
+
+      res.json({
+        success: true,
+        fatePointsCost: result.fatePointsCost,
+        ticketsReceived: result.ticketsReceived,
+        exchangesRemaining: result.exchangesRemaining,
+        newFatePoints: userFatePoints.global.points,
+        newTickets: user.rollTickets
+      });
+    } catch (error) {
+      console.error('Error exchanging for tickets:', error);
+      res.status(500).json({ error: 'Failed to exchange' });
     }
-
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    // Get user's Fate Points
-    const fatePoints = user.fatePoints?.global?.points || 0;
-
-    const result = essenceTapService.exchangeFatePointsForTickets(state, fatePoints);
-
-    if (!result.success) {
-      return res.status(400).json({ error: result.error });
-    }
-
-    const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
-    user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
-    user.lastEssenceTapRequest = now;
-
-    // Deduct Fate Points
-    const userFatePoints = user.fatePoints || {};
-    userFatePoints.global = userFatePoints.global || { points: 0 };
-    userFatePoints.global.points = Math.max(0, (userFatePoints.global.points || 0) - result.fatePointsCost);
-    user.fatePoints = userFatePoints;
-
-    // Add tickets
-    user.rollTickets = (user.rollTickets || 0) + result.ticketsReceived;
-
-    await user.save();
-
-    res.json({
-      success: true,
-      fatePointsCost: result.fatePointsCost,
-      ticketsReceived: result.ticketsReceived,
-      exchangesRemaining: result.exchangesRemaining,
-      newFatePoints: userFatePoints.global.points,
-      newTickets: user.rollTickets
-    });
-  } catch (error) {
-    console.error('Error exchanging for tickets:', error);
-    res.status(500).json({ error: 'Failed to exchange' });
-  }
+  });
 });
 
 // ===========================================

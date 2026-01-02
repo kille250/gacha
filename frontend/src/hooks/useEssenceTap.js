@@ -196,6 +196,14 @@ export const useEssenceTap = () => {
         setLocalTotalClicks(data.totalClicks);
       }
       lastSyncTimeRef.current = Date.now();
+
+      // Invalidate cache when generators or upgrades change (multi-tab sync)
+      if (data.generators !== undefined) {
+        invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_GENERATOR_PURCHASE);
+      }
+      if (data.purchasedUpgrades !== undefined) {
+        invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_UPGRADE_PURCHASE);
+      }
     } else if (type === 'prestige_complete') {
       // Prestige completed via WebSocket - full state replacement
       setGameState(data);
@@ -207,6 +215,8 @@ export const useEssenceTap = () => {
       lastSyncEssenceRef.current = data.essence || 0;
       lastSyncTimeRef.current = Date.now();
       pendingEssenceRef.current = 0;
+      // Invalidate user data cache since prestige awards FP
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_PRESTIGE);
     } else if (type === 'ability_activated') {
       // Ability activated via WebSocket - update relevant fields
       setGameState(prev => {
@@ -223,6 +233,8 @@ export const useEssenceTap = () => {
         lastSyncEssenceRef.current = data.essence;
       }
       lastSyncTimeRef.current = Date.now();
+      // Invalidate ability cache for consistency
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_ABILITY_ACTIVATE);
     }
   }, []);
 

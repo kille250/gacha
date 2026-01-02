@@ -839,9 +839,13 @@ function initEssenceTapWebSocket(io) {
         return;
       }
 
+      // Use transaction lock to prevent race conditions
+      const transaction = await sequelize.transaction();
+
       try {
-        const user = await User.findByPk(userId);
+        const user = await User.findByPk(userId, { transaction, lock: true });
         if (!user) {
+          await transaction.rollback();
           socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
           return;
         }
@@ -850,6 +854,7 @@ function initEssenceTapWebSocket(io) {
         const result = essenceTapService.activateAbility(state, abilityId);
 
         if (!result.success) {
+          await transaction.rollback();
           socket.emit('action_rejected', {
             clientSeq,
             reason: result.error,
@@ -863,7 +868,8 @@ function initEssenceTapWebSocket(io) {
 
         user.essenceTap = result.newState;
         user.lastEssenceTapRequest = now;
-        await user.save();
+        await user.save({ transaction });
+        await transaction.commit();
 
         const seq = getNextSequence(userId);
 
@@ -880,6 +886,7 @@ function initEssenceTapWebSocket(io) {
           serverTimestamp: now
         });
       } catch (err) {
+        await transaction.rollback();
         console.error('[EssenceTap WS] Ability activation error:', err);
         socket.emit('error', { code: 'ABILITY_ERROR', message: 'Ability activation failed' });
       }
