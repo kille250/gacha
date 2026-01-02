@@ -68,7 +68,11 @@ const AbilityButton = styled(motion.button)`
 
 const AbilityIcon = styled.div`
   font-size: 28px;
+  color: ${props => props.$color || 'rgba(255, 255, 255, 0.7)'};
   opacity: ${props => props.$ready ? 1 : 0.4};
+  display: flex;
+  align-items: center;
+  justify-content: center;
 `;
 
 const CooldownOverlay = styled.div`
@@ -399,7 +403,7 @@ const ActiveAbilities = memo(({ onActivate, _activeEffects = {}, prestigeLevel =
             whileHover={isReady ? { scale: 1.1 } : {}}
             whileTap={isReady ? { scale: 0.95 } : {}}
           >
-            <AbilityIcon $ready={isUnlocked}>
+            <AbilityIcon $ready={isUnlocked} $color={isUnlocked ? ability.color : undefined}>
               {isUnlocked ? <ability.IconComponent size={28} /> : <IconLocked size={28} />}
             </AbilityIcon>
 

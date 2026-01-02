@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next';
 import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
-import { invalidateFor, CACHE_ACTIONS } from '../cache/manager';
+import { invalidateFor, CACHE_ACTIONS, onVisibilityChange, STALE_THRESHOLDS } from '../cache/manager';
 import {
   COMBO_CONFIG,
   GOLDEN_CONFIG,
@@ -231,6 +231,18 @@ export const useEssenceTap = () => {
   // Initial fetch
   useEffect(() => {
     fetchGameState();
+  }, [fetchGameState]);
+
+  // Visibility change handler - refresh data when user returns to tab
+  useEffect(() => {
+    const cleanup = onVisibilityChange(() => {
+      if (!isMountedRef.current) return;
+
+      // Refresh game state to sync with server (handles offline progress)
+      fetchGameState(false);
+    }, STALE_THRESHOLDS.normal);
+
+    return cleanup;
   }, [fetchGameState]);
 
   // Passive income tick
@@ -704,13 +716,16 @@ export const useEssenceTap = () => {
         await refreshUser();
       }
 
+      // Refresh game state to ensure all UI components are updated
+      await fetchGameState(false);
+
       return { success: true, ...response.data };
     } catch (err) {
       console.error('Failed to gamble:', err);
       toast.error(err.response?.data?.error || t('essenceTap.gambleFailed', { defaultValue: 'Gamble failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [t, toast, refreshUser]);
+  }, [t, toast, refreshUser, fetchGameState]);
 
   // Perform infusion for permanent bonus
   const performInfusion = useCallback(async () => {
@@ -774,7 +789,9 @@ export const useEssenceTap = () => {
 
       // Invalidate cache - tournament gives FP and roll tickets
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_TOURNAMENT_CLAIM);
-      await refreshUser();
+
+      // Refresh both game state and user data in parallel
+      await Promise.all([fetchGameState(false), refreshUser()]);
 
       toast.success(
         t('essenceTap.tournamentRewardsClaimed', {
@@ -790,7 +807,7 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.claimFailed', { defaultValue: 'Claim failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [refreshUser, t, toast]);
+  }, [fetchGameState, refreshUser, t, toast]);
 
   // Get character mastery info
   const getMasteryInfo = useCallback(async () => {
@@ -841,7 +858,8 @@ export const useEssenceTap = () => {
         );
       }
 
-      await refreshUser();
+      // Refresh both game state and user data to ensure all UI is in sync
+      await Promise.all([fetchGameState(false), refreshUser()]);
 
       return { success: true, ...response.data };
     } catch (err) {
@@ -849,7 +867,7 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.claimFailed', { defaultValue: 'Claim failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [refreshUser, t, toast]);
+  }, [refreshUser, fetchGameState, t, toast]);
 
   // Claim repeatable milestones
   const claimRepeatableMilestone = useCallback(async (milestoneType) => {
@@ -897,6 +915,9 @@ export const useEssenceTap = () => {
         localEssenceRef.current = response.data.essence;
         lastSyncEssenceRef.current = response.data.essence;
         lastSyncTimeRef.current = Date.now();
+
+        // Refresh game state if essence was awarded
+        await fetchGameState(false);
       }
 
       toast.success(
@@ -912,7 +933,7 @@ export const useEssenceTap = () => {
       toast.error(err.response?.data?.error || t('essenceTap.abilityFailed', { defaultValue: 'Ability activation failed' }));
       return { success: false, error: err.response?.data?.error };
     }
-  }, [t, toast]);
+  }, [t, toast, fetchGameState]);
 
   // Get daily modifier
   const getDailyModifier = useCallback(async () => {
