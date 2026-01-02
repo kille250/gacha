@@ -899,11 +899,23 @@ router.post('/save', auth, async (req, res) => {
 
       let state = user.essenceTap || essenceTapService.getInitialState();
 
-      // Get user's characters for mastery persistence
+      // Get user's characters for passive calculation and mastery persistence
       const userCharacters = await UserCharacter.findAll({
         where: { UserId: user.id },
         include: ['Character']
       });
+
+      const characters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
+
+      // Apply passive gains since lastOnlineTimestamp (same as other endpoints)
+      // This uses the standard applyPassiveGains() which tracks from lastOnlineTimestamp,
+      // NOT lastSaveTimestamp, so it won't double-count with other endpoints
+      const passiveResult = applyPassiveGains(state, characters);
+      state = passiveResult.state;
 
       const now = Date.now();
 
