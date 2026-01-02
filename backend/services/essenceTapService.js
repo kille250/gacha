@@ -2137,6 +2137,22 @@ function getCurrentISOWeek() {
 }
 
 /**
+ * Get the end of the current ISO week (Sunday 23:59:59.999 UTC)
+ * @returns {Date} End of current week
+ */
+function getWeekEndDate() {
+  const now = new Date();
+  const dayOfWeek = now.getUTCDay(); // 0 = Sunday, 1 = Monday, etc.
+  const daysUntilSunday = dayOfWeek === 0 ? 0 : 7 - dayOfWeek;
+
+  const endOfWeek = new Date(now);
+  endOfWeek.setUTCDate(now.getUTCDate() + daysUntilSunday);
+  endOfWeek.setUTCHours(23, 59, 59, 999);
+
+  return endOfWeek;
+}
+
+/**
  * Check and claim repeatable milestones
  * @param {Object} state - Current state
  * @returns {Object} Claimable repeatable milestones
@@ -2471,7 +2487,8 @@ function getWeeklyTournamentInfo(state) {
     tiers: WEEKLY_TOURNAMENT.tiers,
     rewards: WEEKLY_TOURNAMENT.rewards,
     isCurrentWeek,
-    canClaimRewards: !isCurrentWeek && state.weekly?.weekId && !state.weekly?.rewardsClaimed
+    canClaimRewards: !isCurrentWeek && state.weekly?.weekId && !state.weekly?.rewardsClaimed,
+    endsAt: getWeekEndDate().toISOString()
   };
 }
 

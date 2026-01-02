@@ -55,7 +55,7 @@ const HUDContainer = styled(motion.div)`
 
   @media (max-width: ${theme.breakpoints.md}) {
     top: auto;
-    bottom: 80px;
+    bottom: 90px;
     padding: ${theme.spacing.xs} ${theme.spacing.md};
     gap: ${theme.spacing.md};
   }

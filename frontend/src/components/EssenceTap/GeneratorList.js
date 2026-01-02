@@ -118,7 +118,11 @@ const CollapseIcon = styled(motion.div)`
 `;
 
 const ContentWrapper = styled(motion.div)`
-  overflow: hidden;
+  overflow: visible;
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
 `;
 
 const BuyModeButtons = styled.div`
@@ -126,6 +130,7 @@ const BuyModeButtons = styled.div`
   gap: ${theme.spacing.xs};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: rgba(0, 0, 0, 0.2);
+  flex-shrink: 0;
 `;
 
 const BuyModeButton = styled.button`
