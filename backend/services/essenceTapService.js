@@ -1733,6 +1733,8 @@ function getGameState(state, characters = []) {
   return {
     essence: state.essence || 0,
     lifetimeEssence: state.lifetimeEssence || 0,
+    totalClicks: state.totalClicks || 0,
+    totalCrits: state.totalCrits || 0,
     clickPower,
     productionPerSecond,
     critChance,
