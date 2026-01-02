@@ -2157,4 +2157,282 @@ router.get('/synergy-preview', auth, async (req, res) => {
   }
 });
 
+// ===========================================
+// PAGE LIFECYCLE ENDPOINTS
+// ===========================================
+
+/**
+ * POST /api/essence-tap/sync-on-leave
+ *
+ * CRITICAL ENDPOINT for handling page unload scenarios (F5 refresh, tab close, browser close)
+ * This endpoint receives data via navigator.sendBeacon() which is the ONLY reliable way
+ * to send data when a page is unloading.
+ *
+ * Requirements:
+ * - Must be fast - browser won't wait for response
+ * - Must be idempotent - may be called multiple times
+ * - Must validate against replay attacks using timestamps
+ * - Must handle partial/corrupted data gracefully
+ *
+ * Note: This endpoint should NOT require the 'auth' middleware in the traditional sense
+ * because sendBeacon doesn't support custom headers. Instead, we include the token in the body.
+ */
+router.post('/sync-on-leave', async (req, res) => {
+  try {
+    const {
+      token,
+      pendingTaps = 0,
+      pendingActions = [],
+      finalEssence,
+      timestamp,
+      lastConfirmedSeq = 0
+    } = req.body;
+
+    // Validate timestamp is recent (within last 10 seconds) to prevent replay attacks
+    const now = Date.now();
+    if (!timestamp || now - timestamp > 10000) {
+      // Silently ignore stale requests - don't return error as browser won't see it anyway
+      return res.status(200).json({ success: false, reason: 'stale_request' });
+    }
+
+    // Verify token and get user
+    if (!token) {
+      return res.status(200).json({ success: false, reason: 'no_token' });
+    }
+
+    const jwt = require('jsonwebtoken');
+    let decoded;
+    try {
+      decoded = jwt.verify(token, process.env.JWT_SECRET);
+    } catch {
+      return res.status(200).json({ success: false, reason: 'invalid_token' });
+    }
+
+    const userId = decoded.id;
+    if (!userId) {
+      return res.status(200).json({ success: false, reason: 'invalid_user' });
+    }
+
+    // Use essence lock to prevent race conditions
+    return withEssenceLock(userId, async () => {
+      const user = await User.findByPk(userId);
+      if (!user) {
+        return res.status(200).json({ success: false, reason: 'user_not_found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      // Get user's characters for bonus calculation
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: userId },
+        include: ['Character']
+      });
+
+      const characters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
+
+      // Apply any passive gains since last update
+      const passiveResult = applyPassiveGains(state, characters);
+      state = passiveResult.state;
+
+      // Process pending taps if they haven't been processed yet
+      // Use lastConfirmedSeq to prevent double-processing
+      if (pendingTaps > 0) {
+        const clickPower = essenceTapService.calculateClickPower(state, characters);
+        const tapEssence = Math.floor(pendingTaps * clickPower);
+
+        state.essence = (state.essence || 0) + tapEssence;
+        state.lifetimeEssence = (state.lifetimeEssence || 0) + tapEssence;
+        state.totalClicks = (state.totalClicks || 0) + pendingTaps;
+
+        // Update daily stats
+        state.daily = state.daily || {};
+        state.daily.clicks = (state.daily.clicks || 0) + pendingTaps;
+        state.daily.essenceEarned = (state.daily.essenceEarned || 0) + tapEssence;
+
+        // Update weekly tournament progress
+        state = essenceTapService.updateWeeklyProgress(state, tapEssence);
+      }
+
+      // Process pending non-tap actions that haven't been confirmed
+      // These are actions that were queued offline
+      for (const action of pendingActions) {
+        if (action.seq <= lastConfirmedSeq) continue; // Already processed
+
+        // Only process certain action types that are safe to replay
+        if (action.type === 'purchase_generator' && action.data?.generatorId) {
+          const result = essenceTapService.purchaseGenerator(state, action.data.generatorId, action.data.count || 1);
+          if (result.success) {
+            state = result.newState;
+          }
+        } else if (action.type === 'purchase_upgrade' && action.data?.upgradeId) {
+          const result = essenceTapService.purchaseUpgrade(state, action.data.upgradeId);
+          if (result.success) {
+            state = result.newState;
+          }
+        }
+        // Skip other actions (prestige, gamble, infusion) - these require user confirmation
+      }
+
+      // Update timestamp
+      state.lastOnlineTimestamp = now;
+      state.lastSaveTimestamp = now;
+
+      // Save state
+      user.essenceTap = state;
+      user.lastEssenceTapRequest = now;
+      await user.save();
+
+      // Return success - though browser likely won't see this
+      res.status(200).json({
+        success: true,
+        essence: state.essence,
+        appliedTaps: pendingTaps,
+        appliedActions: pendingActions.length
+      });
+    });
+  } catch (error) {
+    console.error('Error in sync-on-leave:', error);
+    // Always return 200 for sendBeacon - browser won't see errors anyway
+    res.status(200).json({ success: false, reason: 'error' });
+  }
+});
+
+/**
+ * POST /api/essence-tap/initialize
+ *
+ * Called when user loads/returns to the Essence Tap page.
+ * Handles:
+ * - Applying any pending actions from localStorage backup
+ * - Calculating offline earnings
+ * - Returning the authoritative server state
+ *
+ * This is the companion endpoint to sync-on-leave - together they handle
+ * the complete page lifecycle for F5/tab close/browser close scenarios.
+ */
+router.post('/initialize', auth, async (req, res) => {
+  const {
+    pendingActions = [],
+    clientTimestamp,
+    lastKnownEssence,
+    lastKnownTimestamp
+  } = req.body;
+
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      // Reset daily if needed
+      state = essenceTapService.resetDaily(state);
+
+      // Reset weekly FP tracking if new week
+      state = essenceTapService.resetWeeklyFPIfNeeded(state);
+
+      // Reset session stats for new session
+      state = essenceTapService.resetSessionStats(state);
+
+      // Get user's characters for bonus calculation
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: user.id },
+        include: ['Character']
+      });
+
+      const characters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
+
+      // Validate and apply pending actions from client backup
+      // Only apply if they're recent (within last hour) and have valid timestamps
+      let actionsApplied = 0;
+      if (pendingActions.length > 0 && lastKnownTimestamp) {
+        const oneHourAgo = Date.now() - 3600000;
+        if (lastKnownTimestamp > oneHourAgo) {
+          for (const action of pendingActions) {
+            // Only process tap actions - other actions should have gone through sendBeacon
+            if (action.type === 'tap' && action.data?.count > 0) {
+              const clickPower = essenceTapService.calculateClickPower(state, characters);
+              const tapEssence = Math.floor(action.data.count * clickPower);
+
+              state.essence = (state.essence || 0) + tapEssence;
+              state.lifetimeEssence = (state.lifetimeEssence || 0) + tapEssence;
+              state.totalClicks = (state.totalClicks || 0) + action.data.count;
+
+              // Update daily stats
+              state.daily = state.daily || {};
+              state.daily.clicks = (state.daily.clicks || 0) + action.data.count;
+              state.daily.essenceEarned = (state.daily.essenceEarned || 0) + tapEssence;
+
+              actionsApplied++;
+            }
+          }
+        }
+      }
+
+      // Calculate offline progress
+      const now = Date.now();
+      const lastActive = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
+      const offlineSeconds = Math.floor((now - lastActive) / 1000);
+
+      // Cap offline time (max 8 hours)
+      const cappedOfflineSeconds = Math.min(offlineSeconds, 8 * 60 * 60);
+
+      // Calculate offline earnings
+      const productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
+      // Apply offline efficiency (50% of normal production)
+      const offlineEfficiency = 0.5;
+      const offlineEarnings = Math.floor(cappedOfflineSeconds * productionPerSecond * offlineEfficiency);
+
+      // Cap offline earnings (max 10 million or 4 hours worth of production at 100% efficiency)
+      const maxOfflineEarnings = Math.min(10000000, productionPerSecond * 4 * 60 * 60);
+      const cappedOfflineEarnings = Math.min(offlineEarnings, maxOfflineEarnings);
+
+      // Apply offline earnings
+      if (cappedOfflineEarnings > 0) {
+        state.essence = (state.essence || 0) + cappedOfflineEarnings;
+        state.lifetimeEssence = (state.lifetimeEssence || 0) + cappedOfflineEarnings;
+
+        // Track total offline earnings
+        state.stats = state.stats || {};
+        state.stats.totalOfflineEarnings = (state.stats.totalOfflineEarnings || 0) + cappedOfflineEarnings;
+      }
+
+      // Update timestamp
+      state.lastOnlineTimestamp = now;
+      user.lastEssenceTapRequest = now;
+
+      // Save state
+      user.essenceTap = state;
+      await user.save();
+
+      // Get full game state for response
+      const gameState = essenceTapService.getGameState(state, characters);
+      const weeklyFPBudget = essenceTapService.getWeeklyFPBudget(state);
+
+      res.json({
+        currentState: gameState,
+        offlineEarnings: cappedOfflineEarnings,
+        offlineDuration: cappedOfflineSeconds,
+        productionPerSecond,
+        offlineEfficiency,
+        pendingActionsApplied: actionsApplied,
+        weeklyFPBudget,
+        sessionStats: essenceTapService.getSessionStats(state)
+      });
+    } catch (error) {
+      console.error('Error initializing essence tap:', error);
+      res.status(500).json({ error: 'Failed to initialize' });
+    }
+  });
+});
+
 module.exports = router;

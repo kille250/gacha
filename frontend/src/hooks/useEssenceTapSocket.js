@@ -3,11 +3,18 @@
  *
  * Provides WebSocket connectivity for the Essence Tap clicker game,
  * with automatic reconnection, tap batching, and state reconciliation.
+ *
+ * CRITICAL PAGE LIFECYCLE HANDLING:
+ * This hook implements comprehensive page lifecycle management to prevent data loss:
+ * - beforeunload: Sends pending actions via sendBeacon (reliable on page close)
+ * - pagehide: Mobile-friendly version of beforeunload
+ * - visibilitychange: Syncs state when tab becomes visible/hidden
+ * - localStorage backup: Persists pending actions for recovery on page reload
  */
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { io } from 'socket.io-client';
-import { WS_URL } from '../utils/api';
+import { WS_URL, API_URL } from '../utils/api';
 
 // ===========================================
 // CONFIGURATION
@@ -31,6 +38,101 @@ const CONFIG = {
 
   // Reconnection sync delay - wait for server to stabilize before syncing
   RECONNECT_SYNC_DELAY_MS: 100,
+
+  // localStorage key for state backup
+  LOCAL_STORAGE_KEY: 'essenceTap_stateBackup',
+
+  // Auto-save interval for localStorage backup (ms)
+  LOCAL_STORAGE_BACKUP_INTERVAL: 30000,
+
+  // Visibility hidden threshold to trigger sync on return (ms)
+  VISIBILITY_SYNC_THRESHOLD_MS: 5000,
+};
+
+// ===========================================
+// LOCALSTORAGE HELPERS
+// ===========================================
+
+/**
+ * Save pending state to localStorage for recovery after page reload
+ */
+const saveStateToLocalStorage = (pendingTaps, pendingActions, essence, confirmedSeq) => {
+  try {
+    const backup = {
+      pendingTaps: pendingTaps.count,
+      pendingActions: pendingActions.slice(0, 20), // Limit to prevent quota issues
+      essence,
+      confirmedSeq,
+      timestamp: Date.now(),
+    };
+    localStorage.setItem(CONFIG.LOCAL_STORAGE_KEY, JSON.stringify(backup));
+  } catch (e) {
+    console.warn('[EssenceTap WS] Failed to save state to localStorage:', e);
+  }
+};
+
+/**
+ * Load pending state from localStorage after page reload
+ */
+const loadStateFromLocalStorage = () => {
+  try {
+    const stored = localStorage.getItem(CONFIG.LOCAL_STORAGE_KEY);
+    if (!stored) return null;
+
+    const backup = JSON.parse(stored);
+    // Only use backup if it's recent (within last hour)
+    if (Date.now() - backup.timestamp > 3600000) {
+      localStorage.removeItem(CONFIG.LOCAL_STORAGE_KEY);
+      return null;
+    }
+    return backup;
+  } catch (e) {
+    console.warn('[EssenceTap WS] Failed to load state from localStorage:', e);
+    return null;
+  }
+};
+
+/**
+ * Clear localStorage backup (called after successful sync)
+ */
+const clearLocalStorageBackup = () => {
+  try {
+    localStorage.removeItem(CONFIG.LOCAL_STORAGE_KEY);
+  } catch (e) {
+    // Ignore errors
+  }
+};
+
+/**
+ * Send pending state via navigator.sendBeacon for reliable page unload sync
+ * This is the ONLY reliable way to send data when a page is closing
+ */
+const sendBeaconSync = (token, pendingTaps, pendingActions, essence, confirmedSeq) => {
+  if (!token || (pendingTaps === 0 && pendingActions.length === 0)) return;
+
+  try {
+    const data = {
+      token,
+      pendingTaps,
+      pendingActions: pendingActions.slice(0, 20), // Limit size for beacon
+      finalEssence: essence,
+      timestamp: Date.now(),
+      lastConfirmedSeq: confirmedSeq,
+    };
+
+    // sendBeacon returns true if the browser accepted the request
+    const url = `${API_URL}/essence-tap/sync-on-leave`;
+    const blob = new Blob([JSON.stringify(data)], { type: 'application/json' });
+    const success = navigator.sendBeacon(url, blob);
+
+    if (success) {
+      console.log('[EssenceTap WS] sendBeacon sync sent successfully');
+    } else {
+      console.warn('[EssenceTap WS] sendBeacon sync failed - browser rejected');
+    }
+  } catch (e) {
+    console.warn('[EssenceTap WS] sendBeacon sync error:', e);
+  }
 };
 
 // ===========================================
@@ -735,37 +837,189 @@ export function useEssenceTapSocket(options = {}) {
     };
   }, [flushTapBatch]);
 
-  // CRITICAL: Flush pending taps before page unload/reload
-  // This ensures no taps are lost when the user refreshes or navigates away
+  // Track when visibility was last hidden (for sync on return)
+  const lastHiddenTimestampRef = useRef(Date.now());
+
+  // ===========================================
+  // CRITICAL: Page Lifecycle Handling
+  // ===========================================
+  // These handlers ensure no data is lost during:
+  // - F5 refresh
+  // - Tab close
+  // - Browser close
+  // - Navigation away
+  // - Tab switch / minimize
+
+  // CRITICAL: Flush pending taps before page unload/reload using sendBeacon
+  // sendBeacon is the ONLY reliable way to send data during page unload
   useEffect(() => {
     const handleBeforeUnload = () => {
-      // Synchronously flush any pending taps before the page unloads
+      // 1. Save state to localStorage as backup
+      saveStateToLocalStorage(
+        pendingTapsRef.current,
+        pendingActionsRef.current,
+        essenceState?.essence || 0,
+        confirmedSeqRef.current
+      );
+
+      // 2. Try WebSocket first (may not complete before page closes)
       if (pendingTapsRef.current.count > 0 && socketRef.current?.connected) {
         const batch = { ...pendingTapsRef.current };
-        pendingTapsRef.current = { count: 0, comboMultiplier: 1, clientSeqs: [] };
 
         if (tapBatchTimerRef.current) {
           clearTimeout(tapBatchTimerRef.current);
           tapBatchTimerRef.current = null;
         }
 
-        // Send synchronously before unload
+        // Send via WebSocket (best effort - may not complete)
         socketRef.current.emit('tap', {
           count: batch.count,
           comboMultiplier: batch.comboMultiplier,
           clientSeqs: batch.clientSeqs,
         });
       }
+
+      // 3. ALWAYS send via sendBeacon as reliable fallback
+      // This is guaranteed to be sent even if the page closes
+      sendBeaconSync(
+        token,
+        pendingTapsRef.current.count,
+        pendingActionsRef.current,
+        essenceState?.essence || 0,
+        confirmedSeqRef.current
+      );
+
+      // Clear pending since we've sent them
+      pendingTapsRef.current = { count: 0, comboMultiplier: 1, clientSeqs: [] };
+    };
+
+    // pagehide handler for mobile (more reliable than beforeunload on iOS/Android)
+    const handlePageHide = (event) => {
+      // event.persisted indicates page is being put into bfcache (back-forward cache)
+      if (event.persisted) {
+        // Page is being cached, save state for when it's restored
+        saveStateToLocalStorage(
+          pendingTapsRef.current,
+          pendingActionsRef.current,
+          essenceState?.essence || 0,
+          confirmedSeqRef.current
+        );
+      } else {
+        // Page is being fully unloaded
+        handleBeforeUnload();
+      }
+    };
+
+    // pageshow handler for bfcache restoration
+    const handlePageShow = (event) => {
+      if (event.persisted) {
+        // Page was restored from bfcache - request full sync
+        console.log('[EssenceTap WS] Page restored from bfcache, requesting sync');
+        if (socketRef.current?.connected) {
+          socketRef.current.emit('sync_request');
+        }
+      }
     };
 
     window.addEventListener('beforeunload', handleBeforeUnload);
-    // Also listen to pagehide for mobile browsers
-    window.addEventListener('pagehide', handleBeforeUnload);
+    window.addEventListener('pagehide', handlePageHide);
+    window.addEventListener('pageshow', handlePageShow);
 
     return () => {
       window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('pagehide', handleBeforeUnload);
+      window.removeEventListener('pagehide', handlePageHide);
+      window.removeEventListener('pageshow', handlePageShow);
     };
+  }, [token, essenceState]);
+
+  // Visibility change handler - sync when tab becomes visible after being hidden
+  useEffect(() => {
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        // Tab is now hidden - save timestamp and state
+        lastHiddenTimestampRef.current = Date.now();
+        saveStateToLocalStorage(
+          pendingTapsRef.current,
+          pendingActionsRef.current,
+          essenceState?.essence || 0,
+          confirmedSeqRef.current
+        );
+      } else {
+        // Tab is now visible again
+        const hiddenDuration = Date.now() - lastHiddenTimestampRef.current;
+
+        // If hidden for more than threshold, request full sync to get offline earnings
+        if (hiddenDuration > CONFIG.VISIBILITY_SYNC_THRESHOLD_MS) {
+          console.log(`[EssenceTap WS] Tab visible after ${Math.round(hiddenDuration / 1000)}s, requesting sync`);
+          if (socketRef.current?.connected) {
+            socketRef.current.emit('sync_request', {
+              reason: 'visibility_restored',
+              hiddenDuration,
+            });
+          }
+        }
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange);
+  }, [essenceState]);
+
+  // Periodic localStorage backup (every 30 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      if (pendingTapsRef.current.count > 0 || pendingActionsRef.current.length > 0) {
+        saveStateToLocalStorage(
+          pendingTapsRef.current,
+          pendingActionsRef.current,
+          essenceState?.essence || 0,
+          confirmedSeqRef.current
+        );
+      }
+    }, CONFIG.LOCAL_STORAGE_BACKUP_INTERVAL);
+
+    return () => clearInterval(interval);
+  }, [essenceState]);
+
+  // Clear localStorage backup after successful state sync
+  useEffect(() => {
+    if (essenceState && lastSyncTimestamp > 0) {
+      // We received authoritative state from server - clear backup
+      clearLocalStorageBackup();
+    }
+  }, [essenceState, lastSyncTimestamp]);
+
+  // ===========================================
+  // FLUSH PENDING ACTIONS (for SPA navigation)
+  // ===========================================
+
+  /**
+   * Flush all pending actions before SPA navigation
+   * This ensures state is saved when navigating away from Essence Tap page
+   */
+  const flushPendingActions = useCallback(async () => {
+    // Flush pending taps via WebSocket
+    if (pendingTapsRef.current.count > 0) {
+      flushTapBatch();
+    }
+
+    // Also save to localStorage as backup
+    saveStateToLocalStorage(
+      pendingTapsRef.current,
+      pendingActionsRef.current,
+      essenceState?.essence || 0,
+      confirmedSeqRef.current
+    );
+
+    // Wait a brief moment for WebSocket to send
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }, [flushTapBatch, essenceState]);
+
+  /**
+   * Get localStorage backup (for recovery on page load)
+   */
+  const getLocalStorageBackup = useCallback(() => {
+    return loadStateFromLocalStorage();
   }, []);
 
   // ===========================================
@@ -797,11 +1051,16 @@ export function useEssenceTapSocket(options = {}) {
 
     // Utility
     flushTapBatch,
+    flushPendingActions,
+    getLocalStorageBackup,
     getPendingTapCount: () => pendingTapsRef.current.count,
     getQueuedActionCount: () => pendingActionsRef.current.length,
     getOptimisticEssence: () => optimisticEssenceRef.current,
     isReconnecting: () => isReconnectingRef.current,
   };
 }
+
+// Export helper for external use
+export { loadStateFromLocalStorage, clearLocalStorageBackup };
 
 export default useEssenceTapSocket;

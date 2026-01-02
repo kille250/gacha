@@ -25,7 +25,7 @@ import {
   ACHIEVEMENTS
 } from '../config/essenceTapConfig';
 import { useSoundEffects } from './useSoundEffects';
-import { useEssenceTapSocket, CONNECTION_STATES } from './useEssenceTapSocket';
+import { useEssenceTapSocket, CONNECTION_STATES, loadStateFromLocalStorage, clearLocalStorageBackup } from './useEssenceTapSocket';
 
 // Re-export config for convenience
 export { COMBO_CONFIG, GOLDEN_CONFIG } from '../config/essenceTapConfig';
@@ -281,6 +281,7 @@ export const useEssenceTap = () => {
     purchaseUpgrade: _wsPurchaseUpgrade,      // Reserved for future WebSocket-first purchases
     requestSync: wsRequestSync,
     flushTapBatch,
+    flushPendingActions,  // For SPA navigation - ensures state is saved before leaving page
     getPendingTapCount: _getPendingTapCount,  // Available for debugging
     getOptimisticEssence,  // Track unconfirmed essence for proper reconciliation
   } = useEssenceTapSocket({
@@ -398,11 +399,69 @@ export const useEssenceTap = () => {
     };
   }, [flushTapBatch]);
 
+  // Track if we've done initial load with localStorage recovery
+  const hasInitializedRef = useRef(false);
+
   // Fetch initial game state
+  // On initial load (showLoading=true), uses /initialize endpoint with localStorage backup recovery
+  // On refresh (showLoading=false), uses regular /status endpoint
   const fetchGameState = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setLoading(true);
-      const response = await api.get('/essence-tap/status');
+
+      let response;
+
+      // Use /initialize endpoint on first load to handle:
+      // 1. localStorage backup recovery (pending actions from page close)
+      // 2. Proper offline earnings calculation
+      // 3. Multi-tab deduplication of offline rewards
+      if (showLoading && !hasInitializedRef.current) {
+        hasInitializedRef.current = true;
+
+        // Check for localStorage backup from previous session (F5/close/navigation)
+        const backup = loadStateFromLocalStorage();
+        const initializePayload = {
+          clientTimestamp: Date.now(),
+        };
+
+        if (backup) {
+          console.log('[EssenceTap] Found localStorage backup, including in initialize request');
+          initializePayload.pendingActions = backup.pendingActions || [];
+          initializePayload.lastKnownEssence = backup.essence;
+          initializePayload.lastKnownTimestamp = backup.timestamp;
+        }
+
+        response = await api.post('/essence-tap/initialize', initializePayload);
+
+        // Clear localStorage backup after successful initialization
+        clearLocalStorageBackup();
+
+        // Handle offline earnings display if applicable
+        if (response.data.offlineEarnings > 0) {
+          setOfflineProgress({
+            essenceEarned: response.data.offlineEarnings,
+            hoursAway: response.data.offlineDuration / 3600,
+            productionRate: response.data.productionPerSecond,
+            efficiency: response.data.offlineEfficiency || 0.5,
+          });
+        }
+
+        // If pending actions were applied from localStorage backup, log it
+        if (response.data.pendingActionsApplied > 0) {
+          console.log(`[EssenceTap] Applied ${response.data.pendingActionsApplied} pending actions from localStorage backup`);
+        }
+
+        // Extract currentState from initialize response
+        response.data = response.data.currentState;
+      } else {
+        // Regular status fetch for refreshes
+        response = await api.get('/essence-tap/status');
+
+        // Show offline progress modal if applicable (for non-initialize refreshes)
+        if (response.data.offlineProgress && response.data.offlineProgress.essenceEarned > 0) {
+          setOfflineProgress(response.data.offlineProgress);
+        }
+      }
 
       if (!isMountedRef.current) return;
 
@@ -463,10 +522,7 @@ export const useEssenceTap = () => {
         };
       }
 
-      // Show offline progress modal if applicable (only on initial load)
-      if (showLoading && response.data.offlineProgress && response.data.offlineProgress.essenceEarned > 0) {
-        setOfflineProgress(response.data.offlineProgress);
-      }
+      // Note: Offline progress modal is handled above based on the endpoint used
 
       setError(null);
     } catch (err) {
@@ -1485,6 +1541,8 @@ export const useEssenceTap = () => {
     wsConnectionState,
     // Request a full sync from server (useful after connection restored)
     requestSync: wsRequestSync,
+    // Flush pending actions before SPA navigation
+    flushPendingActions,
 
     // Actions
     handleClick,
