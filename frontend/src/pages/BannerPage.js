@@ -458,7 +458,11 @@ const BannerPage = () => {
   const fetchUserCollection = useCallback(async () => {
     try {
       const response = await api.get('/characters/collection');
-      setUserCollection(response.data);
+      // Ensure we always set an array (API might return object with characters property)
+      const characters = Array.isArray(response.data)
+        ? response.data
+        : (response.data?.characters || []);
+      setUserCollection(characters);
     } catch (err) {
       console.error("Error fetching collection:", err);
     }
