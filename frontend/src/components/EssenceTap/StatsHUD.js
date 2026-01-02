@@ -189,20 +189,59 @@ const ProductionIndicator = styled.div`
 `;
 
 /**
- * Animated number counter hook
+ * Animated number counter hook with debounced server sync
+ *
+ * Only syncs from server value if:
+ * - It's been more than 3 seconds since last sync
+ * - OR the difference is significant (>10% or >1000)
+ * - OR the server value is lower (spent essence)
+ *
+ * This prevents flickering while keeping the display accurate
  */
-const useAnimatedNumber = (value, duration = 500) => {
-  const [displayValue, setDisplayValue] = useState(value);
-  const prevValueRef = useRef(value);
+const useAnimatedNumber = (serverValue, duration = 500) => {
+  const [displayValue, setDisplayValue] = useState(serverValue);
+  const lastSyncRef = useRef(Date.now());
+  const lastServerValueRef = useRef(serverValue);
+  const animationRef = useRef(null);
 
   useEffect(() => {
-    const startValue = prevValueRef.current;
-    const endValue = value;
+    const timeSinceSync = Date.now() - lastSyncRef.current;
+    const diff = serverValue - displayValue;
+    const absDiff = Math.abs(diff);
+    const percentDiff = displayValue > 0 ? absDiff / displayValue : 1;
+
+    // Determine if we should sync to server value
+    const shouldSync =
+      // Server value decreased (spent essence) - always sync
+      diff < -1 ||
+      // Significant time passed
+      timeSinceSync > 3000 ||
+      // Large absolute difference
+      absDiff > 1000 ||
+      // Large percentage difference
+      percentDiff > 0.1;
+
+    if (!shouldSync) {
+      // Small increase from server - ignore to prevent flicker
+      // The display will catch up on next sync
+      lastServerValueRef.current = serverValue;
+      return;
+    }
+
+    // Cancel any ongoing animation
+    if (animationRef.current) {
+      cancelAnimationFrame(animationRef.current);
+    }
+
+    const startValue = displayValue;
+    const endValue = serverValue;
     const startTime = Date.now();
 
-    if (Math.abs(endValue - startValue) < 1) {
+    // For very small changes, just set directly
+    if (absDiff < 1) {
       setDisplayValue(endValue);
-      prevValueRef.current = endValue;
+      lastSyncRef.current = Date.now();
+      lastServerValueRef.current = serverValue;
       return;
     }
 
@@ -210,21 +249,29 @@ const useAnimatedNumber = (value, duration = 500) => {
       const elapsed = Date.now() - startTime;
       const progress = Math.min(elapsed / duration, 1);
 
-      // Ease out cubic
+      // Ease out cubic for smooth deceleration
       const eased = 1 - Math.pow(1 - progress, 3);
       const current = startValue + (endValue - startValue) * eased;
 
       setDisplayValue(current);
 
       if (progress < 1) {
-        requestAnimationFrame(animate);
+        animationRef.current = requestAnimationFrame(animate);
       } else {
-        prevValueRef.current = endValue;
+        lastSyncRef.current = Date.now();
+        lastServerValueRef.current = serverValue;
+        animationRef.current = null;
       }
     };
 
-    requestAnimationFrame(animate);
-  }, [value, duration]);
+    animationRef.current = requestAnimationFrame(animate);
+
+    return () => {
+      if (animationRef.current) {
+        cancelAnimationFrame(animationRef.current);
+      }
+    };
+  }, [serverValue, duration, displayValue]);
 
   return displayValue;
 };
