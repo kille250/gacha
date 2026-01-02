@@ -121,8 +121,6 @@ const ContentWrapper = styled(motion.div)`
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  flex: 1;
-  min-height: 0;
 `;
 
 const BuyModeButtons = styled.div`
@@ -155,7 +153,11 @@ const ListContainer = styled(motion.div)`
   gap: ${theme.spacing.sm};
   padding: ${theme.spacing.md};
   overflow-y: auto;
-  flex: 1;
+  max-height: 400px;
+
+  @media (min-width: ${theme.breakpoints.lg}) {
+    max-height: 500px;
+  }
 
   /* Scrollbar styling */
   &::-webkit-scrollbar {
