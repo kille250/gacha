@@ -24,6 +24,11 @@ import {
   IconNeutral,
   IconCheckmark
 } from '../../constants/icons';
+import {
+  CHARACTER_BONUSES,
+  UNDERDOG_BONUSES,
+  CHARACTER_ABILITIES
+} from '../../config/essenceTapConfig';
 
 // Rarity colors
 const RARITY_COLORS = {
@@ -45,30 +50,10 @@ const ELEMENT_ICONS = {
   neutral: IconNeutral
 };
 
-// Element colors
-const ELEMENT_COLORS = {
-  fire: '#EF4444',
-  water: '#3B82F6',
-  earth: '#84CC16',
-  air: '#06B6D4',
-  light: '#FCD34D',
-  dark: '#6366F1',
-  neutral: '#9CA3AF'
-};
-
-// Fallback config in case API fails (matches backend defaults)
-const FALLBACK_CONFIG = {
-  characterBonuses: { common: 0.05, uncommon: 0.10, rare: 0.20, epic: 0.35, legendary: 0.50 },
-  characterAbilities: {
-    fire: { name: 'Flame Fury', description: '+10% crit chance per Fire character', bonusPerCharacter: 0.10 },
-    water: { name: 'Flow State', description: '+15% generator production per Water character', bonusPerCharacter: 0.15 },
-    earth: { name: 'Steady Ground', description: '+20% offline efficiency per Earth character', bonusPerCharacter: 0.20 },
-    air: { name: 'Swift Strikes', description: '+500ms combo decay time per Air character', bonusPerCharacter: 500 },
-    light: { name: 'Golden Touch', description: '+0.05% golden essence chance per Light character', bonusPerCharacter: 0.0005 },
-    dark: { name: 'Shadow Power', description: '+20% click power per Dark character', bonusPerCharacter: 0.20 },
-    neutral: { name: 'Balance', description: '+5% to all stats per Neutral character', bonusPerCharacter: 0.05 }
-  }
-};
+// Element colors from shared config
+const ELEMENT_COLORS = Object.fromEntries(
+  Object.entries(CHARACTER_ABILITIES).map(([key, ability]) => [key, ability.color])
+);
 
 const Container = styled.div`
   padding: ${theme.spacing.lg};
@@ -356,6 +341,45 @@ const EmptyState = styled.div`
   color: ${theme.colors.textSecondary};
 `;
 
+const AbilityPreviewCard = styled.div`
+  background: rgba(0, 0, 0, 0.85);
+  border: 1px solid ${props => props.$color || 'rgba(255, 255, 255, 0.2)'};
+  border-radius: ${theme.radius.md};
+  padding: ${theme.spacing.sm};
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  white-space: nowrap;
+  z-index: 100;
+  pointer-events: none;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.5);
+`;
+
+const AbilityPreviewName = styled.div`
+  font-size: ${theme.fontSizes.sm};
+  font-weight: ${theme.fontWeights.semibold};
+  color: ${props => props.$color || theme.colors.text};
+  margin-bottom: 2px;
+`;
+
+const AbilityPreviewDesc = styled.div`
+  font-size: ${theme.fontSizes.xs};
+  color: ${theme.colors.textSecondary};
+`;
+
+const UnderdogBadge = styled.div`
+  position: absolute;
+  bottom: 4px;
+  right: 4px;
+  background: rgba(245, 158, 11, 0.9);
+  color: white;
+  font-size: 8px;
+  font-weight: ${theme.fontWeights.bold};
+  padding: 2px 4px;
+  border-radius: ${theme.radius.sm};
+`;
+
 const CharacterSelector = memo(({
   isOpen,
   onClose,
@@ -368,33 +392,20 @@ const CharacterSelector = memo(({
   const [ownedCharacters, setOwnedCharacters] = useState([]);
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('all');
-  const [gameConfig, setGameConfig] = useState(null);
+  const [hoveredCharacter, setHoveredCharacter] = useState(null);
 
-  // Derive config values with fallbacks
+  // Use shared config - convert decimal to percentage (e.g., 0.05 -> 5)
   const characterBonuses = useMemo(() => {
-    const bonuses = gameConfig?.characterBonuses || FALLBACK_CONFIG.characterBonuses;
-    // Convert decimal to percentage (e.g., 0.05 -> 5)
     return Object.fromEntries(
-      Object.entries(bonuses).map(([rarity, value]) => [rarity, Math.round(value * 100)])
+      Object.entries(CHARACTER_BONUSES).map(([rarity, value]) => [rarity, Math.round(value * 100)])
     );
-  }, [gameConfig]);
+  }, []);
 
-  const characterAbilities = useMemo(() => {
-    return gameConfig?.characterAbilities || FALLBACK_CONFIG.characterAbilities;
-  }, [gameConfig]);
-
-  // Fetch game config from backend
-  useEffect(() => {
-    const fetchConfig = async () => {
-      try {
-        const response = await api.get('/essence-tap/config');
-        setGameConfig(response.data);
-      } catch (err) {
-        console.error('Failed to fetch game config, using fallbacks:', err);
-        setGameConfig(FALLBACK_CONFIG);
-      }
-    };
-    fetchConfig();
+  // Underdog bonuses for common/uncommon (extra percentage)
+  const underdogBonuses = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(UNDERDOG_BONUSES).map(([rarity, value]) => [rarity, Math.round(value * 100)])
+    );
   }, []);
 
   // Fetch owned characters when modal opens
@@ -462,7 +473,7 @@ const CharacterSelector = memo(({
     return synergies;
   }, [assignedCharacters, ownedCharacters]);
 
-  // Calculate element ability bonuses using backend config
+  // Calculate element ability bonuses using shared config
   const calculateElementAbilities = useCallback(() => {
     const abilities = [];
     const elementCounts = {};
@@ -476,20 +487,26 @@ const CharacterSelector = memo(({
     });
 
     Object.entries(elementCounts).forEach(([element, count]) => {
-      const ability = characterAbilities[element];
+      const ability = CHARACTER_ABILITIES[element];
       if (ability) {
         abilities.push({
           element,
           count,
           name: ability.name,
           ability: ability.description,
+          color: ability.color,
           totalBonus: count > 1 ? `${count}x ${ability.description}` : ability.description
         });
       }
     });
 
     return abilities;
-  }, [assignedCharacters, ownedCharacters, characterAbilities]);
+  }, [assignedCharacters, ownedCharacters]);
+
+  // Get ability info for a character's element
+  const getCharacterAbility = useCallback((element) => {
+    return CHARACTER_ABILITIES[element?.toLowerCase()] || CHARACTER_ABILITIES.neutral;
+  }, []);
 
   // Filter characters
   const filteredCharacters = ownedCharacters.filter(char => {
@@ -663,6 +680,9 @@ const CharacterSelector = memo(({
                   const canAssign = !assigned && assignedCharacters.length < maxCharacters;
                   const rarityColor = RARITY_COLORS[character.rarity];
                   const ElementIcon = ELEMENT_ICONS[character.element] || ELEMENT_ICONS.neutral;
+                  const ability = getCharacterAbility(character.element);
+                  const hasUnderdogBonus = underdogBonuses[character.rarity];
+                  const isHovered = hoveredCharacter === character.id;
 
                   return (
                     <CharacterCard
@@ -671,6 +691,8 @@ const CharacterSelector = memo(({
                       $disabled={!assigned && !canAssign}
                       $rarityColor={rarityColor}
                       onClick={() => (assigned || canAssign) && handleCharacterClick(character)}
+                      onMouseEnter={() => setHoveredCharacter(character.id)}
+                      onMouseLeave={() => setHoveredCharacter(null)}
                       whileHover={(assigned || canAssign) ? { scale: 1.05 } : {}}
                       whileTap={(assigned || canAssign) ? { scale: 0.95 } : {}}
                       initial={{ opacity: 0, scale: 0.8 }}
@@ -684,6 +706,19 @@ const CharacterSelector = memo(({
                       </CharacterBadges>
                       {assigned && (
                         <AssignedCheck><IconCheckmark size={12} /></AssignedCheck>
+                      )}
+                      {hasUnderdogBonus && (
+                        <UnderdogBadge>+{hasUnderdogBonus}%</UnderdogBadge>
+                      )}
+                      {isHovered && (
+                        <AbilityPreviewCard $color={ability.color}>
+                          <AbilityPreviewName $color={ability.color}>
+                            {ability.name}
+                          </AbilityPreviewName>
+                          <AbilityPreviewDesc>
+                            {ability.description}
+                          </AbilityPreviewDesc>
+                        </AbilityPreviewCard>
                       )}
                       <CharacterOverlay>
                         <CharacterName>{character.name}</CharacterName>

@@ -13,7 +13,7 @@ import styled, { keyframes } from 'styled-components';
 import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../../design-system';
 import { formatNumber } from '../../hooks/useEssenceTap';
-import { IconTrophy, IconClock, IconGift, IconBronzeMedal, IconSilverMedal, IconGoldMedal, IconDiamond, IconCrown, IconStar } from '../../constants/icons';
+import { IconTrophy, IconClock, IconGift, IconBronzeMedal, IconSilverMedal, IconGoldMedal, IconDiamond, IconCrownSymbol, IconStar } from '../../constants/icons';
 
 const shimmer = keyframes`
   0% { background-position: -200% 0; }
@@ -225,7 +225,7 @@ const TIER_CONFIG = {
   Gold: { color: '#FFD700', colorEnd: '#FFA500', IconComponent: IconGoldMedal, minEssence: 50000000 },
   Platinum: { color: '#E5E4E2', colorEnd: '#B4B4B4', IconComponent: IconStar, minEssence: 200000000 },
   Diamond: { color: '#B9F2FF', colorEnd: '#40E0D0', IconComponent: IconDiamond, minEssence: 1000000000 },
-  Champion: { color: '#FF6B6B', colorEnd: '#FFD93D', IconComponent: IconCrown, minEssence: 10000000000 }
+  Champion: { color: '#FF6B6B', colorEnd: '#FFD93D', IconComponent: IconCrownSymbol, minEssence: 10000000000 }
 };
 
 const TIER_REWARDS = {

@@ -17,6 +17,7 @@ import * as PIXI from 'pixi.js';
 import { theme } from '../../design-system';
 import { formatNumber } from '../../hooks/useEssenceTap';
 import { IconGem, IconSparkles } from '../../constants/icons';
+import { UI_TIMING, COMBO_CONFIG } from '../../config/essenceTapConfig';
 
 // Animations
 const glow = keyframes`
@@ -36,6 +37,37 @@ const goldenGlow = keyframes`
   100% { box-shadow: 0 0 80px rgba(255, 215, 0, 0.8), 0 0 150px rgba(255, 215, 0, 0.5), 0 0 200px rgba(255, 165, 0, 0.3); }
 `;
 
+const screenShake = keyframes`
+  0%, 100% { transform: translate(0, 0); }
+  10% { transform: translate(-3px, -2px); }
+  20% { transform: translate(3px, 2px); }
+  30% { transform: translate(-2px, 1px); }
+  40% { transform: translate(2px, -1px); }
+  50% { transform: translate(-1px, 2px); }
+  60% { transform: translate(1px, -2px); }
+  70% { transform: translate(-1px, 1px); }
+  80% { transform: translate(1px, -1px); }
+  90% { transform: translate(0, 1px); }
+`;
+
+const goldenBurst = keyframes`
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.5); opacity: 0.7; }
+  100% { transform: scale(2); opacity: 0; }
+`;
+
+const pulseRing = keyframes`
+  0% { transform: scale(1); opacity: 0.6; }
+  100% { transform: scale(2.5); opacity: 0; }
+`;
+
+// Reserved for future combo flash effect
+const _comboFlash = keyframes`
+  0% { background: rgba(138, 43, 226, 0.6); }
+  50% { background: rgba(168, 85, 247, 0.8); }
+  100% { background: rgba(138, 43, 226, 0.6); }
+`;
+
 const TapContainer = styled.div`
   display: flex;
   flex-direction: column;
@@ -43,6 +75,42 @@ const TapContainer = styled.div`
   justify-content: center;
   padding: ${theme.spacing.xl};
   position: relative;
+
+  ${props => props.$shake && css`
+    animation: ${screenShake} 0.3s ease-out;
+  `}
+`;
+
+const GoldenBurstRing = styled.div`
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 4px solid rgba(255, 215, 0, 0.8);
+  pointer-events: none;
+  animation: ${goldenBurst} 0.5s ease-out forwards;
+  z-index: 4;
+
+  @media (min-width: ${theme.breakpoints.md}) {
+    width: 220px;
+    height: 220px;
+  }
+`;
+
+const PulseRing = styled.div`
+  position: absolute;
+  width: 180px;
+  height: 180px;
+  border-radius: 50%;
+  border: 2px solid ${props => props.$color || 'rgba(168, 85, 247, 0.6)'};
+  pointer-events: none;
+  animation: ${pulseRing} 0.4s ease-out forwards;
+  z-index: 3;
+
+  @media (min-width: ${theme.breakpoints.md}) {
+    width: 220px;
+    height: 220px;
+  }
 `;
 
 const ParticleCanvas = styled.div`
@@ -236,7 +304,11 @@ const TapTarget = memo(({
   comboMultiplier = 1
 }) => {
   const [floatingNumbers, setFloatingNumbers] = useState([]);
+  const [pulseRings, setPulseRings] = useState([]);
+  const [showGoldenBurst, setShowGoldenBurst] = useState(false);
+  const [shakeScreen, setShakeScreen] = useState(false);
   const nextIdRef = useRef(0);
+  const pulseIdRef = useRef(0);
   const buttonRef = useRef(null);
   const canvasRef = useRef(null);
   const pixiAppRef = useRef(null);
@@ -369,13 +441,29 @@ const TapTarget = memo(({
 
     onClick?.();
 
-    // Trigger haptic feedback
+    // Trigger haptic feedback and visual effects
     if (lastClickResult?.isGolden) {
       triggerHaptic('heavy');
+      // Golden burst effect
+      setShowGoldenBurst(true);
+      setShakeScreen(true);
+      setTimeout(() => setShowGoldenBurst(false), 500);
+      setTimeout(() => setShakeScreen(false), 300);
     } else if (lastClickResult?.isCrit) {
       triggerHaptic('medium');
+      // Screen shake for crits
+      setShakeScreen(true);
+      setTimeout(() => setShakeScreen(false), 200);
+      // Add pulse ring
+      const pulseId = pulseIdRef.current++;
+      setPulseRings(prev => [...prev, { id: pulseId, color: 'rgba(255, 193, 7, 0.6)' }]);
+      setTimeout(() => setPulseRings(prev => prev.filter(r => r.id !== pulseId)), 400);
     } else {
       triggerHaptic('light');
+      // Subtle pulse for normal clicks
+      const pulseId = pulseIdRef.current++;
+      setPulseRings(prev => [...prev, { id: pulseId, color: 'rgba(168, 85, 247, 0.4)' }]);
+      setTimeout(() => setPulseRings(prev => prev.filter(r => r.id !== pulseId)), 400);
     }
 
     // Spawn particles at click position (offset for canvas position)
@@ -395,17 +483,25 @@ const TapTarget = memo(({
         isGolden: lastClickResult.isGolden
       }]);
 
-      // Remove after animation
+      // Remove after animation using config timing
       setTimeout(() => {
         setFloatingNumbers(prev => prev.filter(n => n.id !== id));
-      }, 600);
+      }, UI_TIMING.floatingNumberDuration);
     }
   }, [onClick, lastClickResult, spawnParticles, triggerHaptic]);
 
   return (
-    <TapContainer>
+    <TapContainer $shake={shakeScreen}>
       {/* Pixi.js particle canvas */}
       <ParticleCanvas ref={canvasRef} />
+
+      {/* Pulse rings for click feedback */}
+      {pulseRings.map(ring => (
+        <PulseRing key={ring.id} $color={ring.color} />
+      ))}
+
+      {/* Golden burst effect */}
+      {showGoldenBurst && <GoldenBurstRing />}
 
       <AnimatePresence>
         {comboMultiplier > 1.05 && (

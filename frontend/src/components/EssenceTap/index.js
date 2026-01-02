@@ -20,3 +20,4 @@ export { default as SynergyPreviewPanel } from './SynergyPreviewPanel';
 export { default as EssenceTapErrorBoundary } from './EssenceTapErrorBoundary';
 export { default as DailyChallengesPanel } from './DailyChallengesPanel';
 export { default as BossEncounter } from './BossEncounter';
+export { default as AchievementToast } from './AchievementToast';

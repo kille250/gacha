@@ -11,13 +11,14 @@ import { AuthContext } from '../context/AuthContext';
 import { useToast } from '../context/ToastContext';
 import api from '../utils/api';
 import { invalidateFor, CACHE_ACTIONS } from '../cache/manager';
+import {
+  COMBO_CONFIG,
+  GOLDEN_CONFIG,
+  UI_TIMING
+} from '../config/essenceTapConfig';
 
-// Constants - synced with backend config
-const COMBO_DECAY_TIME = 1500; // ms before combo resets (increased for mobile)
-const MAX_COMBO_MULTIPLIER = 2.5; // Max combo bonus
-const COMBO_GROWTH_RATE = 0.08; // Multiplier increase per click
-const AUTO_SAVE_INTERVAL = 30000; // 30 seconds
-const PASSIVE_TICK_RATE = 100; // ms between passive ticks
+// Re-export config for convenience
+export { COMBO_CONFIG, GOLDEN_CONFIG } from '../config/essenceTapConfig';
 
 /**
  * Format large numbers with suffixes (K, M, B, T, etc.)
@@ -135,7 +136,7 @@ export const useEssenceTap = () => {
       return;
     }
 
-    const essencePerTick = (gameState.productionPerSecond * PASSIVE_TICK_RATE) / 1000;
+    const essencePerTick = (gameState.productionPerSecond * UI_TIMING.passiveTickRate) / 1000;
 
     passiveTickRef.current = setInterval(() => {
       setLocalEssence(prev => {
@@ -149,7 +150,7 @@ export const useEssenceTap = () => {
         return newVal;
       });
       pendingEssenceRef.current += essencePerTick;
-    }, PASSIVE_TICK_RATE);
+    }, UI_TIMING.passiveTickRate);
 
     return () => {
       if (passiveTickRef.current) {
@@ -175,7 +176,7 @@ export const useEssenceTap = () => {
           console.error('Auto-save failed:', err);
         }
       }
-    }, AUTO_SAVE_INTERVAL);
+    }, UI_TIMING.autoSaveInterval);
 
     return () => clearInterval(saveInterval);
   }, []);
@@ -195,12 +196,12 @@ export const useEssenceTap = () => {
     }
 
     // Update combo
-    setComboMultiplier(prev => Math.min(prev + COMBO_GROWTH_RATE, MAX_COMBO_MULTIPLIER));
+    setComboMultiplier(prev => Math.min(prev + COMBO_CONFIG.growthRate, COMBO_CONFIG.maxMultiplier));
 
     // Set decay timeout
     comboTimeoutRef.current = setTimeout(() => {
       setComboMultiplier(1);
-    }, COMBO_DECAY_TIME);
+    }, COMBO_CONFIG.decayTime);
 
     // Calculate local click result (optimistic)
     const clickPower = gameState.clickPower || 1;
@@ -208,11 +209,11 @@ export const useEssenceTap = () => {
     const critMultiplier = gameState.critMultiplier || 10;
 
     const isCrit = Math.random() < critChance;
-    const isGolden = Math.random() < 0.001;
+    const isGolden = Math.random() < GOLDEN_CONFIG.chance;
 
     let essenceGained = Math.floor(clickPower * comboMultiplier);
     if (isCrit) essenceGained = Math.floor(essenceGained * critMultiplier);
-    if (isGolden) essenceGained = Math.floor(essenceGained * 100);
+    if (isGolden) essenceGained = Math.floor(essenceGained * GOLDEN_CONFIG.multiplier);
 
     // Optimistic update
     setLocalEssence(prev => {
