@@ -31,6 +31,8 @@ export function formatNumber(num) {
   const absNum = Math.abs(num);
   const sign = num < 0 ? '-' : '';
 
+  // Handle small decimals (like 0.5/sec production rates)
+  if (absNum < 1 && absNum > 0) return sign + absNum.toFixed(1);
   if (absNum < 1000) return sign + Math.floor(absNum).toLocaleString();
   if (absNum < 1000000) return sign + (absNum / 1000).toFixed(1) + 'K';
   if (absNum < 1000000000) return sign + (absNum / 1000000).toFixed(2) + 'M';
