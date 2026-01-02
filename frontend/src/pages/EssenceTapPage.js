@@ -194,6 +194,7 @@ const EssenceTapPage = memo(() => {
     error,
     essence,
     lifetimeEssence,
+    totalClicks,
     comboMultiplier,
     lastClickResult,
     offlineProgress,
@@ -540,7 +541,7 @@ const EssenceTapPage = memo(() => {
             isOpen={showBoss}
             onClose={handleModalClose(setShowBoss)}
             clickPower={gameState?.clickPower || 1}
-            totalClicks={gameState?.totalClicks || 0}
+            totalClicks={totalClicks}
             onBossDefeat={handleBossDefeat}
             onBossSpawn={handleBossSpawn}
           />
