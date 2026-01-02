@@ -54,17 +54,16 @@ const HUDContainer = styled(motion.div)`
   scrollbar-width: none;
 
   @media (max-width: ${theme.breakpoints.md}) {
-    top: auto;
-    /* Position above FeatureNav (which is ~54px tall + 10px from bottom + safe area) */
-    bottom: calc(74px + env(safe-area-inset-bottom, 0px));
+    /* Keep at TOP on mobile to avoid conflicts with bottom navs */
+    top: 60px;
     padding: ${theme.spacing.xs} ${theme.spacing.md};
     gap: ${theme.spacing.md};
     max-width: calc(100vw - 20px);
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {
-    /* Smaller screens - more compact */
-    bottom: calc(70px + env(safe-area-inset-bottom, 0px));
+    /* Smaller screens - more compact, still at top */
+    top: 56px;
     padding: ${theme.spacing.xs} ${theme.spacing.sm};
     gap: ${theme.spacing.sm};
     border-radius: ${theme.radius.lg};

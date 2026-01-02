@@ -49,18 +49,16 @@ const NavContainer = styled(motion.nav)`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.xs};
-  /* Safe area support for notched devices */
-  padding-bottom: max(${theme.spacing.sm}, env(safe-area-inset-bottom));
 
-  @media (max-width: ${theme.breakpoints.sm}) {
-    bottom: 10px;
+  @media (max-width: ${theme.breakpoints.md}) {
+    /* Position above the main app bottom nav (72px) + spacing */
+    bottom: calc(${theme.navHeights.bottom.default} + 10px + env(safe-area-inset-bottom, 0px));
     left: 10px;
     right: 10px;
     width: auto;
     max-width: calc(100vw - 20px);
     border-radius: ${theme.radius.xl};
     padding: ${theme.spacing.xs} ${theme.spacing.sm};
-    padding-bottom: max(${theme.spacing.xs}, env(safe-area-inset-bottom));
     gap: 4px;
     /* Enable horizontal scrolling on mobile */
     overflow-x: auto;
@@ -71,8 +69,7 @@ const NavContainer = styled(motion.nav)`
     &::-webkit-scrollbar {
       display: none;
     }
-    /* Scroll snap for better UX */
-    scroll-snap-type: x mandatory;
+    /* Smooth scrolling */
     -webkit-overflow-scrolling: touch;
   }
 `;

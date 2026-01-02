@@ -203,7 +203,8 @@ const BonusLabel = styled.div`
 
 const CharacterGrid = styled.div`
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  /* Force 3 columns on mobile for better card sizing */
+  grid-template-columns: repeat(3, 1fr);
   gap: ${theme.spacing.md};
   max-height: 400px;
   overflow-y: auto;
@@ -221,16 +222,23 @@ const CharacterGrid = styled.div`
     border-radius: 3px;
   }
 
+  @media (min-width: ${theme.breakpoints.sm}) {
+    /* Larger screens: auto-fill with minimum 100px */
+    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  }
+
   @media (max-width: ${theme.breakpoints.sm}) {
-    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
     gap: ${theme.spacing.sm};
-    max-height: 50vh;
+    max-height: 45vh;
   }
 `;
 
 const CharacterCard = styled(motion.div)`
   width: 100%;
+  /* Use padding-bottom hack as fallback for aspect-ratio */
   aspect-ratio: 3/4;
+  /* Fallback for browsers without aspect-ratio support */
+  min-height: 120px;
   border-radius: ${theme.radius.lg};
   background: ${props => props.$assigned
     ? 'rgba(16, 185, 129, 0.15)'
@@ -243,6 +251,9 @@ const CharacterCard = styled(motion.div)`
   position: relative;
   overflow: hidden;
   transition: all 0.2s ease;
+  /* Touch optimization */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   ${props => !props.$disabled && !props.$assigned && `
     &:hover {
@@ -250,6 +261,10 @@ const CharacterCard = styled(motion.div)`
       border-color: ${props.$rarityColor || '#A855F7'};
     }
   `}
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-height: 100px;
+  }
 `;
 
 const CharacterImage = styled.img`
