@@ -877,7 +877,15 @@ router.post('/character/unassign', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/save
  * Save current game state (for periodic auto-save)
- * NOTE: Server recalculates essence based on production rate for security
+ *
+ * NOTE: This endpoint does NOT recalculate essence gains. Passive gains are
+ * already applied by other endpoints (click, buy, etc.) via applyPassiveGains().
+ * This endpoint simply persists the current state and updates timestamps.
+ *
+ * Calculating gains here would cause double-counting because:
+ * 1. User actions call endpoints that run applyPassiveGains() → updates state.essence
+ * 2. If /save also calculated gains from lastSaveTimestamp, it would add essence
+ *    for time periods already credited by applyPassiveGains()
  */
 router.post('/save', auth, async (req, res) => {
   // Use essence lock to prevent race conditions with /status endpoint
@@ -891,63 +899,24 @@ router.post('/save', auth, async (req, res) => {
 
       let state = user.essenceTap || essenceTapService.getInitialState();
 
-      // Get user's characters for calculation
+      // Get user's characters for mastery persistence
       const userCharacters = await UserCharacter.findAll({
         where: { UserId: user.id },
         include: ['Character']
       });
 
-      const characters = userCharacters.map(uc => ({
-        id: uc.CharacterId,
-        rarity: uc.Character?.rarity || 'common',
-        element: uc.Character?.element || 'neutral'
-      }));
-
-      // Calculate expected essence gain since last save (server-side validation)
       const now = Date.now();
-      const lastSave = state.lastSaveTimestamp || state.lastOnlineTimestamp || now;
-      const elapsedSeconds = Math.min((now - lastSave) / 1000, 300); // Max 5 minutes between saves
 
-      // Calculate production (with active abilities)
-      const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
-      let productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
-      if (activeAbilityEffects.productionMultiplier) {
-        productionPerSecond *= activeAbilityEffects.productionMultiplier;
-      }
-
-      const expectedGain = Math.floor(productionPerSecond * elapsedSeconds);
-      state.essence = (state.essence || 0) + expectedGain;
-      state.lifetimeEssence = (state.lifetimeEssence || 0) + expectedGain;
-
-      // Update weekly tournament progress
-      if (expectedGain > 0) {
-        state = essenceTapService.updateWeeklyProgress(state, expectedGain);
-      }
-
-      // Award character XP for essence earned
-      if (expectedGain > 0) {
-        const xpResult = essenceTapService.awardCharacterXP(state, expectedGain);
-        state = xpResult.newState;
-      }
-
-      // Update character mastery (time-based)
+      // Update character mastery (time-based tracking for assigned characters)
+      const lastUpdate = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
+      const elapsedSeconds = Math.min((now - lastUpdate) / 1000, 300);
       const elapsedHours = elapsedSeconds / 3600;
       if (elapsedHours > 0) {
         const masteryResult = essenceTapService.updateCharacterMastery(state, elapsedHours);
         state = masteryResult.newState;
       }
 
-      // Track essence types from production (generators produce ambient essence)
-      if (expectedGain > 0) {
-        const essenceTypes = { pure: 0, ambient: expectedGain, golden: 0, prismatic: 0 };
-        state = essenceTapService.updateEssenceTypes(state, essenceTypes);
-      }
-
-      // Update session stats for mini-milestones
-      if (expectedGain > 0 && state.sessionStats) {
-        state.sessionStats.sessionEssence = (state.sessionStats.sessionEssence || 0) + expectedGain;
-      }
-
+      // Update timestamps
       state.lastOnlineTimestamp = now;
       state.lastSaveTimestamp = now;
       user.lastEssenceTapRequest = now;
@@ -974,7 +943,6 @@ router.post('/save', auth, async (req, res) => {
       res.json({
         success: true,
         savedAt: state.lastSaveTimestamp,
-        essenceGained: expectedGain,
         essence: state.essence,
         lifetimeEssence: state.lifetimeEssence,
         sessionStats: essenceTapService.getSessionStats(state)
