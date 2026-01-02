@@ -12,7 +12,9 @@ import { FaGem, FaDice, FaTrophy, FaStar } from 'react-icons/fa';
 import { RarityBadge, motionVariants } from '../../../design-system';
 import { isVideo } from '../../../utils/mediaUtils';
 import { IconSearch, IconCheckmark, IconStarFilled } from '../../../constants/icons';
+import { ElementBadge } from '../../patterns';
 
+import styled from 'styled-components';
 import {
   CharacterCard,
   CardImageWrapper,
@@ -29,6 +31,14 @@ import {
   CardActions,
   RollAgainBtn,
 } from './BannerPage.styles';
+
+// Element badge positioned in bottom-right of the card image
+const ElementBadgeWrapper = styled.div`
+  position: absolute;
+  bottom: 12px;
+  right: 12px;
+  z-index: 3;
+`;
 
 const RARITY_ICONS = {
   common: <FaDice />,
@@ -96,6 +106,15 @@ const BannerResultCard = ({
           <BannerCharBadge aria-label={t('banner.bannerChar')}>
             <IconStarFilled /> {t('banner.bannerChar')}
           </BannerCharBadge>
+        )}
+        {character.element && (
+          <ElementBadgeWrapper>
+            <ElementBadge
+              element={character.element}
+              size="md"
+              variant="backdrop"
+            />
+          </ElementBadgeWrapper>
         )}
       </CardImageWrapper>
 

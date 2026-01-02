@@ -25,6 +25,7 @@ import { FaImage, FaSearch, FaPlus, FaEdit, FaTrash, FaCloudUploadAlt, FaDownloa
 import { theme, motionVariants, AriaLiveRegion } from '../../design-system';
 import { useTranslation } from 'react-i18next';
 import { IconR18 } from '../../constants/icons';
+import { ElementBadge } from '../patterns';
 import { isVideo, getVideoMimeType, PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useRarity } from '../../context/RarityContext';
 import { isDuplicateError, getDuplicateInfo } from '../../utils/errorHandler';
@@ -412,6 +413,11 @@ const AdminCharacters = ({
                     />
                   )}
                   {char.isR18 && <R18Badge aria-label={t('admin.r18Content', 'R18 content')}><IconR18 /></R18Badge>}
+                  {char.element && (
+                    <ElementBadgePosition>
+                      <ElementBadge element={char.element} size="sm" variant="backdrop" />
+                    </ElementBadgePosition>
+                  )}
                   <RarityOverlay $color={getRarityColor(char.rarity)} aria-hidden="true" />
                 </CardMedia>
                 <CardContent>
@@ -486,6 +492,9 @@ const AdminCharacters = ({
                   </ListName>
                   <ListSeries>{char.series}</ListSeries>
                 </ListInfo>
+                {char.element && (
+                  <ElementBadge element={char.element} size="sm" showLabel />
+                )}
                 <RarityTag $color={getRarityColor(char.rarity)} aria-label={`${t('admin.rarity')}: ${char.rarity}`}>
                   {char.rarity}
                 </RarityTag>
@@ -805,6 +814,13 @@ const R18Badge = styled.div`
   background: rgba(0,0,0,0.6);
   padding: 4px 8px;
   border-radius: ${theme.radius.md};
+`;
+
+const ElementBadgePosition = styled.div`
+  position: absolute;
+  bottom: 12px;
+  right: 8px;
+  z-index: 2;
 `;
 
 const RarityOverlay = styled.div`

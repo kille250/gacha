@@ -6,6 +6,7 @@ import { FaDice, FaGem, FaTrophy, FaStar, FaArrowUp } from 'react-icons/fa';
 import { useRarity } from '../../context/RarityContext';
 import { theme } from '../../design-system/tokens';
 import { IconStarFilled, IconSword, IconDiamond, IconInfo, IconConfetti, IconArrowRight } from '../../constants/icons';
+import { ElementBadge } from '../patterns';
 
 const rarityIcons = {
   common: <FaDice />,
@@ -15,8 +16,8 @@ const rarityIcons = {
   legendary: <FaTrophy />
 };
 
-const ImagePreviewModal = ({ 
-  isOpen, onClose, image, name, series, rarity, isOwned, isVideo, isBannerCharacter, 
+const ImagePreviewModal = ({
+  isOpen, onClose, image, name, series, rarity, element, isOwned, isVideo, isBannerCharacter,
   level, shards, shardsToNextLevel, canLevelUp, onLevelUp, characterId
 }) => {
   const { getRarityColor } = useRarity();
@@ -111,6 +112,13 @@ const ImagePreviewModal = ({
                     <Badge variant="banner">
                       <IconStarFilled /> Featured
                     </Badge>
+                  )}
+                  {element && (
+                    <ElementBadge
+                      element={element}
+                      size="md"
+                      showLabel
+                    />
                   )}
                   <RarityPill $color={rarityColor}>
                     {rarityIcons[rarity]}

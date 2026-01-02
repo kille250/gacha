@@ -436,6 +436,7 @@ const CollectionPage = () => {
         name={preview.character?.name || ''}
         series={preview.character?.series || ''}
         rarity={preview.character?.rarity || 'common'}
+        element={preview.character?.element}
         isOwned={preview.character?.isOwned}
         isVideo={preview.character?.isVideo || isVideo(preview.character?.image)}
         level={preview.character?.level || 1}

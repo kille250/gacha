@@ -20,6 +20,7 @@ import { theme, springs, useReducedMotion, VisuallyHidden } from '../../design-s
 import { PLACEHOLDER_IMAGE } from '../../utils/mediaUtils';
 import { useVideoVisibility } from '../../hooks';
 import { IconTrophy, IconMastery, IconDiamond, IconArrowUp, IconStarFilled, IconSparkleSymbol, IconStarOutline } from '../../constants/icons';
+import ElementBadge from './ElementBadge';
 
 // Premium shimmer animation for legendary/epic cards
 const shimmer = keyframes`
@@ -496,6 +497,13 @@ const MasteryProgressFill = styled.div`
   transition: width 0.3s ease;
 `;
 
+const ElementBadgeWrapper = styled.div`
+  position: absolute;
+  bottom: 8px;
+  right: 8px;
+  z-index: 2;
+`;
+
 const CardContent = styled.div`
   padding: ${theme.spacing.md};
 `;
@@ -614,11 +622,15 @@ const CharacterCard = memo(({
   // Get rarity symbol for accessibility
   const raritySymbol = RARITY_SYMBOLS[character.rarity] || RARITY_SYMBOLS.common;
 
+  // Get element from character data
+  const characterElement = character?.element || null;
+
   // Build accessible label
   const accessibleLabel = [
     character.name,
     character.series,
     t('patterns.rarityLabel', { rarity: character.rarity }),
+    characterElement ? t('patterns.elementLabel', { element: characterElement, defaultValue: `${characterElement} element` }) : '',
     isOwned ? t('patterns.levelNumber', { level }) : t('patterns.notOwned'),
     isOwned && canLevelUp ? t('patterns.readyToLevelUp') : '',
     isOwned && isMaxLevel ? t('patterns.maxLevel') : '',
@@ -704,6 +716,16 @@ const CharacterCard = memo(({
             )}
           </>
         )}
+        {/* Element Badge - shown for all characters with an element */}
+        {characterElement && (
+          <ElementBadgeWrapper>
+            <ElementBadge
+              element={characterElement}
+              size="sm"
+              variant="backdrop"
+            />
+          </ElementBadgeWrapper>
+        )}
         <RarityIndicator $color={rarityColor} $isOwned={isOwned} aria-hidden="true" />
       </ImageWrapper>
       <CardContent>
@@ -721,6 +743,7 @@ const CharacterCard = memo(({
   // Custom comparison for memo - only re-render when relevant props change
   return (
     prevProps.character.id === nextProps.character.id &&
+    prevProps.character.element === nextProps.character.element &&
     prevProps.isOwned === nextProps.isOwned &&
     prevProps.levelInfo?.level === nextProps.levelInfo?.level &&
     prevProps.levelInfo?.shards === nextProps.levelInfo?.shards &&

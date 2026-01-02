@@ -6,6 +6,7 @@
  */
 
 export { default as CharacterCard } from './CharacterCard';
+export { default as ElementBadge, ELEMENT_ICONS, ELEMENT_COLORS, ELEMENT_NAMES } from './ElementBadge';
 export { default as FilterBar } from './FilterBar';
 export { default as Pagination } from './Pagination';
 export { default as PageHeader } from './PageHeader';

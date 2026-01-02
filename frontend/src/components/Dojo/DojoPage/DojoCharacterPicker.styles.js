@@ -298,6 +298,19 @@ export const PickerCharSpecBadge = styled.div`
   }
 `;
 
+// Element badge positioned bottom-left (since top-left has spec, top-right has selection)
+export const PickerCharElementBadge = styled.div`
+  position: absolute;
+  bottom: 6px;
+  left: 6px;
+  z-index: 5;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    bottom: 4px;
+    left: 4px;
+  }
+`;
+
 // ===========================================
 // SELECTION INDICATOR
 // ===========================================

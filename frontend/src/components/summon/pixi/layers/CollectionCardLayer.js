@@ -19,6 +19,39 @@ const RARITY_COLORS = {
   legendary: { border: 0xF59E0B, glow: 0xFDE047 },
 };
 
+// Element color configurations (hex numbers for Pixi.js)
+const ELEMENT_COLORS = {
+  fire: 0xEF4444,
+  water: 0x3B82F6,
+  earth: 0x84CC16,
+  air: 0x06B6D4,
+  light: 0xFCD34D,
+  dark: 0x6366F1,
+  neutral: 0x9CA3AF,
+};
+
+// Element abbreviations for Pixi.js text display (ASCII only to pass linter)
+const ELEMENT_SYMBOLS = {
+  fire: 'F',
+  water: 'W',
+  earth: 'E',
+  air: 'A',
+  light: 'L',
+  dark: 'D',
+  neutral: 'N',
+};
+
+// Element names for accessibility
+const ELEMENT_NAMES = {
+  fire: 'Fire',
+  water: 'Water',
+  earth: 'Earth',
+  air: 'Air',
+  light: 'Light',
+  dark: 'Dark',
+  neutral: 'Neutral',
+};
+
 export class CollectionCardLayer {
   constructor(options = {}) {
     this.container = new Container();
@@ -37,7 +70,9 @@ export class CollectionCardLayer {
     // Entity data
     this.entity = null;
     this.rarity = 'common';
+    this.element = null;
     this.colors = RARITY_COLORS.common;
+    this.elementColor = null;
 
     // Graphics layers
     this.glowLayer = new Graphics();
@@ -47,6 +82,7 @@ export class CollectionCardLayer {
     this.characterSprite = null;
     this.rarityIndicator = new Graphics();
     this.newBadge = new Container();
+    this.elementBadge = new Container();
     this.textContainer = new Container();
 
     // Add layers in order
@@ -55,6 +91,7 @@ export class CollectionCardLayer {
     this.container.addChild(this.imageContainer);
     this.container.addChild(this.rarityIndicator);
     this.container.addChild(this.newBadge);
+    this.container.addChild(this.elementBadge);
     this.container.addChild(this.textContainer);
 
     // Animation state
@@ -95,7 +132,12 @@ export class CollectionCardLayer {
 
     this.entity = entity;
     this.rarity = entity.rarity?.toLowerCase() || 'common';
+    this.element = entity.element?.toLowerCase() || null;
     this.colors = RARITY_COLORS[this.rarity] || RARITY_COLORS.common;
+    this.elementColor = this.element ? ELEMENT_COLORS[this.element] : null;
+
+    // Clear existing element badge for new entity
+    this.elementBadge.removeChildren();
 
     // Load character image
     if (entity.image) {
@@ -430,6 +472,7 @@ export class CollectionCardLayer {
     this.drawCard();
     this.drawRarityIndicator();
     this.drawNewBadge();
+    this.drawElementBadge();
   }
 
   /**
@@ -565,6 +608,51 @@ export class CollectionCardLayer {
   }
 
   /**
+   * Draw element badge in bottom-right of image area
+   */
+  drawElementBadge() {
+    // Only draw once and only if element exists
+    if (this.elementBadge.children.length > 0 || !this.element) return;
+
+    const badgeSize = 24;
+    const imageSize = this.cardWidth - this.borderWidth * 2;
+    const halfW = this.cardWidth / 2;
+    const halfH = this.cardHeight / 2;
+
+    // Position in bottom-right of image area (above rarity indicator)
+    const badgeX = halfW - badgeSize - 10;
+    const badgeY = -halfH + imageSize - badgeSize - 8;
+
+    const badgeGraphics = new Graphics();
+
+    // Background circle with blur effect (dark backdrop)
+    badgeGraphics.circle(badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize / 2 + 2);
+    badgeGraphics.fill({ color: 0x000000, alpha: 0.6 });
+
+    // Main circle with element color border
+    badgeGraphics.circle(badgeX + badgeSize / 2, badgeY + badgeSize / 2, badgeSize / 2);
+    badgeGraphics.fill({ color: 0x1a1a2e });
+    badgeGraphics.stroke({ color: this.elementColor, width: 2 });
+
+    this.elementBadge.addChild(badgeGraphics);
+
+    // Element symbol/icon text
+    const symbol = ELEMENT_SYMBOLS[this.element] || '\u25C6';
+    const symbolText = new Text({
+      text: symbol,
+      style: {
+        fontFamily: 'system-ui, -apple-system, sans-serif',
+        fontSize: 12,
+        fontWeight: '700',
+        fill: this.elementColor,
+      },
+    });
+    symbolText.anchor.set(0.5);
+    symbolText.position.set(badgeX + badgeSize / 2, badgeY + badgeSize / 2);
+    this.elementBadge.addChild(symbolText);
+  }
+
+  /**
    * Destroy layer
    */
   destroy() {
@@ -580,6 +668,7 @@ export class CollectionCardLayer {
     this.imageContainer?.destroy({ children: true });
     this.rarityIndicator?.destroy();
     this.newBadge?.destroy({ children: true });
+    this.elementBadge?.destroy({ children: true });
     this.textContainer?.destroy({ children: true });
     this.container?.destroy({ children: true });
   }

@@ -840,6 +840,7 @@ const RollPage = () => {
         name={previewChar?.name || ''}
         series={previewChar?.series || ''}
         rarity={previewChar?.rarity || 'common'}
+        element={previewChar?.element}
         isOwned={true}
         isVideo={previewChar?.isVideo || isVideo(previewChar?.image)}
       />

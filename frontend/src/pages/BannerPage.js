@@ -1423,6 +1423,7 @@ const BannerPage = () => {
         name={previewChar?.name || ''}
         series={previewChar?.series || ''}
         rarity={previewChar?.rarity || 'common'}
+        element={previewChar?.element}
         isOwned={previewChar ? isInCollection(previewChar) : false}
         isBannerCharacter={previewChar?.isBannerCharacter}
         isVideo={previewChar ? isVideo(previewChar.image) : false}

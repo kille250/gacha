@@ -48,11 +48,13 @@ import {
   PickerCharLevel,
   PickerCharPowerBonus,
   PickerCharSpecBadge,
+  PickerCharElementBadge,
   PickerSelectedIndicator,
   PickerConfirmButton,
   PickerFooter,
   PickerCharSeries,
 } from './DojoCharacterPicker.styles';
+import { ElementBadge } from '../../patterns';
 
 // Specialization icon mapping
 const SPEC_ICONS = {
@@ -350,6 +352,17 @@ const CharacterCardContent = memo(React.forwardRef(({ char, isSelected, rarityCo
         >
           {React.createElement(SPEC_ICONS[char.specialization], { size: 12 })}
         </PickerCharSpecBadge>
+      )}
+
+      {/* Element badge */}
+      {char.element && (
+        <PickerCharElementBadge>
+          <ElementBadge
+            element={char.element}
+            size="sm"
+            variant="backdrop"
+          />
+        </PickerCharElementBadge>
       )}
 
       <KeyboardHint>Enter to select</KeyboardHint>

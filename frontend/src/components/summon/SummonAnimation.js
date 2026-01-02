@@ -74,6 +74,7 @@ export const SummonAnimation = forwardRef(({
       image: ent.image,
       rarity: rarity || ent.rarity || 'common',
       series: ent.series,
+      element: ent.element || null,
     };
   }, [entity, character, rarity]);
 
