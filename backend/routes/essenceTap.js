@@ -1153,6 +1153,53 @@ router.get('/tournament/weekly', auth, async (req, res) => {
 });
 
 /**
+ * GET /api/essence-tap/tournament/leaderboard
+ * Get weekly tournament leaderboard
+ */
+router.get('/tournament/leaderboard', auth, async (req, res) => {
+  try {
+    const currentWeek = essenceTapService.getCurrentISOWeek();
+
+    // Get all users with essence tap data for the current week
+    const users = await User.findAll({
+      attributes: ['id', 'username', 'essenceTap'],
+      where: {
+        essenceTap: {
+          [require('sequelize').Op.ne]: null
+        }
+      }
+    });
+
+    // Filter and map users with current week data
+    const leaderboard = users
+      .filter(user => {
+        const state = user.essenceTap;
+        return state?.weekly?.weekId === currentWeek && (state?.weekly?.essenceEarned || 0) > 0;
+      })
+      .map(user => ({
+        id: user.id,
+        username: user.username,
+        weeklyEssence: user.essenceTap?.weekly?.essenceEarned || 0
+      }))
+      .sort((a, b) => b.weeklyEssence - a.weeklyEssence)
+      .slice(0, 100) // Top 100
+      .map((entry, index) => ({
+        ...entry,
+        rank: index + 1
+      }));
+
+    res.json({
+      success: true,
+      leaderboard,
+      weekId: currentWeek
+    });
+  } catch (error) {
+    console.error('Error getting tournament leaderboard:', error);
+    res.status(500).json({ error: 'Failed to get leaderboard' });
+  }
+});
+
+/**
  * POST /api/essence-tap/tournament/weekly/claim
  * Claim weekly tournament rewards
  */

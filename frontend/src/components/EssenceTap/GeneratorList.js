@@ -118,7 +118,11 @@ const CollapseIcon = styled(motion.div)`
 `;
 
 const ContentWrapper = styled(motion.div)`
+  display: flex;
+  flex-direction: column;
   overflow: hidden;
+  flex: 1;
+  min-height: 0;
 `;
 
 const BuyModeButtons = styled.div`
