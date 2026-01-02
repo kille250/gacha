@@ -27,7 +27,7 @@ import {
   IconDiamond,
   IconLightning,
   IconLocked,
-  IconChevronDown
+  IconTriangleDown
 } from '../../constants/icons';
 import {
   affordableGlow,
@@ -449,7 +449,7 @@ const GeneratorList = memo(({
           animate={{ rotate: isCollapsed ? -90 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <IconChevronDown size={20} />
+          <IconTriangleDown size={20} />
         </CollapseIcon>
       </PanelHeader>
 

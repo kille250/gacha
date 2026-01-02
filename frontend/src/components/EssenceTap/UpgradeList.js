@@ -17,12 +17,12 @@ import { theme } from '../../design-system';
 import { formatNumber } from '../../hooks/useEssenceTap';
 import {
   IconLightning,
-  IconTrendingUp,
+  IconLevelUp,
   IconGlobe,
   IconCategoryPerson,
   IconCheck,
   IconLocked,
-  IconChevronDown
+  IconTriangleDown
 } from '../../constants/icons';
 import {
   affordableGlow,
@@ -33,7 +33,7 @@ import {
 // Tab configurations with icons and colors
 const TABS = [
   { id: 'click', label: 'Click', icon: IconLightning, color: '#F59E0B' },
-  { id: 'generator', label: 'Generators', icon: IconTrendingUp, color: '#10B981' },
+  { id: 'generator', label: 'Generators', icon: IconLevelUp, color: '#10B981' },
   { id: 'global', label: 'Global', icon: IconGlobe, color: '#3B82F6' },
   { id: 'synergy', label: 'Synergy', icon: IconCategoryPerson, color: '#EC4899' }
 ];
@@ -360,7 +360,7 @@ const UpgradeList = memo(({
     <Container>
       <PanelHeader onClick={onToggleCollapse}>
         <HeaderLeft>
-          <HeaderIcon><IconTrendingUp size={20} /></HeaderIcon>
+          <HeaderIcon><IconLevelUp size={20} /></HeaderIcon>
           Upgrades
           <PurchasedCount>
             ({totalPurchased}/{totalUpgrades})
@@ -370,7 +370,7 @@ const UpgradeList = memo(({
           animate={{ rotate: isCollapsed ? -90 : 0 }}
           transition={{ duration: 0.2 }}
         >
-          <IconChevronDown size={20} />
+          <IconTriangleDown size={20} />
         </CollapseIcon>
       </PanelHeader>
 

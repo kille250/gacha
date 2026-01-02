@@ -20,7 +20,7 @@ import {
   IconTarget,
   IconSparkles,
   IconCategoryPerson,
-  IconTrendingUp
+  IconLevelUp
 } from '../../constants/icons';
 import { glassmorphism, statsHudSlide, valueFlash } from './animations';
 
@@ -269,7 +269,7 @@ const StatsHUD = memo(({
       {/* Production Rate */}
       <StatItem>
         <StatIcon $color="#10B981">
-          <IconTrendingUp size={16} />
+          <IconLevelUp size={16} />
         </StatIcon>
         <ProductionIndicator $rate={productionPerSecond}>
           <StatValue $color="inherit">
