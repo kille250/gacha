@@ -241,13 +241,29 @@ export const useEssenceTap = () => {
   }, [fetchGameState]);
 
   // Visibility change handler - refresh data when user returns to tab
+  // CRITICAL: Must stop passive accumulation before fetching to prevent double-counting
   useEffect(() => {
     const cleanup = onVisibilityChange('essence-tap-game-state', (staleLevel) => {
       if (!isMountedRef.current) return;
 
       // Only refresh if stale enough (normal threshold = 2 min)
       if (staleLevel && staleLevel !== 'static') {
+        // CRITICAL FIX: Stop passive tick to prevent race condition with server sync
+        // The server will calculate all accumulated passive gains - we must not
+        // continue accumulating locally during the API call
+        if (passiveTickRef.current) {
+          clearInterval(passiveTickRef.current);
+          passiveTickRef.current = null;
+        }
+
+        // Clear pending essence since server state will be authoritative
+        // This prevents double-counting: server calculates offline progress,
+        // and we don't want to add our locally accumulated pending essence on top
+        pendingEssenceRef.current = 0;
+
         // Refresh game state to sync with server (handles offline progress)
+        // Note: passive tick will restart when gameState updates via the useEffect
+        // that watches gameState.productionPerSecond
         fetchGameState(false);
       }
     });

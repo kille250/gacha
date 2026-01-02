@@ -34,6 +34,68 @@ setInterval(() => {
   }
 }, RATE_LIMIT_CLEANUP_INTERVAL);
 
+// ===========================================
+// REQUEST DEDUPLICATION FOR PASSIVE GAINS
+// ===========================================
+
+/**
+ * Tracks pending essence-modifying requests per user to prevent race conditions.
+ * This prevents double-counting of passive gains when /status and /save are called
+ * within milliseconds of each other (e.g., tab visibility change + auto-save timer).
+ */
+const pendingEssenceRequests = new Map();
+const PASSIVE_GAIN_DEDUP_WINDOW_MS = 1000; // Window to deduplicate passive gain calculations
+
+/**
+ * Wrapper to serialize essence-modifying requests per user.
+ * Prevents race conditions where multiple endpoints try to apply passive gains simultaneously.
+ *
+ * @param {number} userId - User ID
+ * @param {Function} handler - Async handler function
+ * @returns {Promise} Handler result
+ */
+async function withEssenceLock(userId, handler) {
+  const key = `essence_${userId}`;
+  const existing = pendingEssenceRequests.get(key);
+
+  if (existing) {
+    // Wait for previous request to complete before starting ours
+    try {
+      await existing.promise;
+    } catch {
+      // Ignore errors from previous request, we still need to proceed
+    }
+  }
+
+  // Create our promise and store it
+  let resolve;
+  const promise = new Promise(r => { resolve = r; });
+  pendingEssenceRequests.set(key, { promise, timestamp: Date.now() });
+
+  try {
+    return await handler();
+  } finally {
+    resolve();
+    // Clean up after a delay to allow any immediately following requests to see our entry
+    setTimeout(() => {
+      const current = pendingEssenceRequests.get(key);
+      if (current && current.promise === promise) {
+        pendingEssenceRequests.delete(key);
+      }
+    }, PASSIVE_GAIN_DEDUP_WINDOW_MS);
+  }
+}
+
+// Clean up stale dedup entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, data] of pendingEssenceRequests.entries()) {
+    if (now - data.timestamp > PASSIVE_GAIN_DEDUP_WINDOW_MS * 10) {
+      pendingEssenceRequests.delete(key);
+    }
+  }
+}, RATE_LIMIT_CLEANUP_INTERVAL);
+
 /**
  * Check and update rate limit for a user
  * @param {number} userId - User ID
@@ -77,21 +139,39 @@ function checkClickRateLimit(userId, clickCount) {
 }
 
 /**
+ * Minimum time between passive gain applications to prevent double-counting.
+ * If passive gains were applied within this window, skip the calculation.
+ */
+const MIN_PASSIVE_GAIN_INTERVAL_MS = 1000;
+
+/**
  * Helper function to calculate and apply passive essence gains since last update.
  * This ensures any API endpoint that returns essence values includes accumulated passive income.
+ *
+ * IMPORTANT: This function includes a timestamp guard to prevent double-counting.
+ * If called twice within MIN_PASSIVE_GAIN_INTERVAL_MS, the second call will skip
+ * the gain calculation. This prevents race conditions where multiple endpoints
+ * try to apply passive gains for the same time period.
  *
  * @param {Object} state - Current essence tap state
  * @param {Array} characters - User's characters with rarity/element info
  * @param {number} maxSeconds - Maximum seconds to credit (prevents exploits)
- * @returns {Object} Updated state with passive gains applied
+ * @returns {{ state: Object, gainsApplied: number }} Updated state and gains applied
  */
 function applyPassiveGains(state, characters, maxSeconds = 300) {
   const now = Date.now();
   const lastUpdate = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
-  const elapsedSeconds = Math.min((now - lastUpdate) / 1000, maxSeconds);
+  const elapsedMs = now - lastUpdate;
+  const elapsedSeconds = Math.min(elapsedMs / 1000, maxSeconds);
+
+  // Guard: If gains were applied very recently, skip to prevent double-counting
+  // This can happen if /status and /save are called in rapid succession
+  if (elapsedMs < MIN_PASSIVE_GAIN_INTERVAL_MS) {
+    return { state, gainsApplied: 0 };
+  }
 
   if (elapsedSeconds <= 0) {
-    return state;
+    return { state, gainsApplied: 0 };
   }
 
   const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
@@ -107,7 +187,10 @@ function applyPassiveGains(state, characters, maxSeconds = 300) {
     state = essenceTapService.updateWeeklyProgress(state, passiveGain);
   }
 
-  return state;
+  // Update timestamp to mark when gains were last applied
+  state.lastOnlineTimestamp = now;
+
+  return { state, gainsApplied: passiveGain };
 }
 
 /**
@@ -115,81 +198,85 @@ function applyPassiveGains(state, characters, maxSeconds = 300) {
  * Get current clicker state and calculate offline progress
  */
 router.get('/status', auth, async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
+  // Use essence lock to prevent race conditions with /save endpoint
+  // This ensures only one request modifies essence state at a time
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
+
+      // Get or initialize clicker state
+      let state = user.essenceTap || essenceTapService.getInitialState();
+
+      // Reset daily if needed
+      state = essenceTapService.resetDaily(state);
+
+      // Reset weekly FP tracking if new week
+      state = essenceTapService.resetWeeklyFPIfNeeded(state);
+
+      // Reset session stats for new session
+      state = essenceTapService.resetSessionStats(state);
+
+      // Get user's characters for bonus calculation
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: user.id },
+        include: ['Character']
+      });
+
+      const characters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
+
+      // Validate offline progress with server-side timestamp check
+      // This prevents timestamp manipulation exploits
+      const now = Date.now();
+      const lastApiRequestTime = user.lastEssenceTapRequest || state.lastOnlineTimestamp || now;
+
+      // Only award offline progress if the time since last API request is reasonable
+      // Max offline is 8 hours = 28800000ms
+      const maxOfflineMs = 8 * 60 * 60 * 1000;
+      const timeSinceLastRequest = Math.min(now - lastApiRequestTime, maxOfflineMs);
+
+      // Calculate offline progress with validated time
+      const offlineProgress = essenceTapService.calculateOfflineProgress(
+        { ...state, lastOnlineTimestamp: now - timeSinceLastRequest },
+        characters
+      );
+
+      if (offlineProgress.essenceEarned > 0) {
+        state.essence = (state.essence || 0) + offlineProgress.essenceEarned;
+        state.lifetimeEssence = (state.lifetimeEssence || 0) + offlineProgress.essenceEarned;
+      }
+
+      // Update timestamps
+      state.lastOnlineTimestamp = now;
+      user.lastEssenceTapRequest = now;
+
+      // Save state
+      user.essenceTap = state;
+      await user.save();
+
+      // Get full game state for response
+      const gameState = essenceTapService.getGameState(state, characters);
+
+      // Add weekly FP budget info
+      const weeklyFPBudget = essenceTapService.getWeeklyFPBudget(state);
+
+      res.json({
+        ...gameState,
+        offlineProgress: offlineProgress.essenceEarned > 0 ? offlineProgress : null,
+        weeklyFPBudget,
+        sessionStats: essenceTapService.getSessionStats(state)
+      });
+    } catch (error) {
+      console.error('Error getting essence tap status:', error);
+      res.status(500).json({ error: 'Failed to get status' });
     }
-
-    // Get or initialize clicker state
-    let state = user.essenceTap || essenceTapService.getInitialState();
-
-    // Reset daily if needed
-    state = essenceTapService.resetDaily(state);
-
-    // Reset weekly FP tracking if new week
-    state = essenceTapService.resetWeeklyFPIfNeeded(state);
-
-    // Reset session stats for new session
-    state = essenceTapService.resetSessionStats(state);
-
-    // Get user's characters for bonus calculation
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
-
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
-    // Validate offline progress with server-side timestamp check
-    // This prevents timestamp manipulation exploits
-    const now = Date.now();
-    const lastApiRequestTime = user.lastEssenceTapRequest || state.lastOnlineTimestamp || now;
-
-    // Only award offline progress if the time since last API request is reasonable
-    // Max offline is 8 hours = 28800000ms
-    const maxOfflineMs = 8 * 60 * 60 * 1000;
-    const timeSinceLastRequest = Math.min(now - lastApiRequestTime, maxOfflineMs);
-
-    // Calculate offline progress with validated time
-    const offlineProgress = essenceTapService.calculateOfflineProgress(
-      { ...state, lastOnlineTimestamp: now - timeSinceLastRequest },
-      characters
-    );
-
-    if (offlineProgress.essenceEarned > 0) {
-      state.essence = (state.essence || 0) + offlineProgress.essenceEarned;
-      state.lifetimeEssence = (state.lifetimeEssence || 0) + offlineProgress.essenceEarned;
-    }
-
-    // Update timestamps
-    state.lastOnlineTimestamp = now;
-    user.lastEssenceTapRequest = now;
-
-    // Save state
-    user.essenceTap = state;
-    await user.save();
-
-    // Get full game state for response
-    const gameState = essenceTapService.getGameState(state, characters);
-
-    // Add weekly FP budget info
-    const weeklyFPBudget = essenceTapService.getWeeklyFPBudget(state);
-
-    res.json({
-      ...gameState,
-      offlineProgress: offlineProgress.essenceEarned > 0 ? offlineProgress : null,
-      weeklyFPBudget,
-      sessionStats: essenceTapService.getSessionStats(state)
-    });
-  } catch (error) {
-    console.error('Error getting essence tap status:', error);
-    res.status(500).json({ error: 'Failed to get status' });
-  }
+  });
 });
 
 /**
@@ -237,7 +324,8 @@ router.post('/click', auth, async (req, res) => {
 
     // Apply passive essence accumulated since last update
     // This ensures clicking doesn't cause essence to drop when frontend has accumulated passive income
-    state = applyPassiveGains(state, characters);
+    const passiveResult = applyPassiveGains(state, characters);
+    state = passiveResult.state;
 
     // Get active ability effects
     const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
@@ -346,7 +434,8 @@ router.post('/generator/buy', auth, async (req, res) => {
     }));
 
     // Apply passive essence before purchase check
-    state = applyPassiveGains(state, characters);
+    const passiveResult = applyPassiveGains(state, characters);
+    state = passiveResult.state;
 
     const result = essenceTapService.purchaseGenerator(state, generatorId, count);
 
@@ -423,7 +512,8 @@ router.post('/upgrade/buy', auth, async (req, res) => {
     }));
 
     // Apply passive essence before purchase check
-    state = applyPassiveGains(state, characters);
+    const passiveResult = applyPassiveGains(state, characters);
+    state = passiveResult.state;
 
     const result = essenceTapService.purchaseUpgrade(state, upgradeId);
 
@@ -790,106 +880,110 @@ router.post('/character/unassign', auth, async (req, res) => {
  * NOTE: Server recalculates essence based on production rate for security
  */
 router.post('/save', auth, async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
+  // Use essence lock to prevent race conditions with /status endpoint
+  // This ensures only one request modifies essence state at a time
+  return withEssenceLock(req.user.id, async () => {
+    try {
+      const user = await User.findByPk(req.user.id);
+      if (!user) {
+        return res.status(404).json({ error: 'User not found' });
+      }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || essenceTapService.getInitialState();
 
-    // Get user's characters for calculation
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character']
-    });
+      // Get user's characters for calculation
+      const userCharacters = await UserCharacter.findAll({
+        where: { UserId: user.id },
+        include: ['Character']
+      });
 
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
+      const characters = userCharacters.map(uc => ({
+        id: uc.CharacterId,
+        rarity: uc.Character?.rarity || 'common',
+        element: uc.Character?.element || 'neutral'
+      }));
 
-    // Calculate expected essence gain since last save (server-side validation)
-    const now = Date.now();
-    const lastSave = state.lastSaveTimestamp || state.lastOnlineTimestamp || now;
-    const elapsedSeconds = Math.min((now - lastSave) / 1000, 300); // Max 5 minutes between saves
+      // Calculate expected essence gain since last save (server-side validation)
+      const now = Date.now();
+      const lastSave = state.lastSaveTimestamp || state.lastOnlineTimestamp || now;
+      const elapsedSeconds = Math.min((now - lastSave) / 1000, 300); // Max 5 minutes between saves
 
-    // Calculate production (with active abilities)
-    const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
-    let productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
-    if (activeAbilityEffects.productionMultiplier) {
-      productionPerSecond *= activeAbilityEffects.productionMultiplier;
-    }
+      // Calculate production (with active abilities)
+      const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
+      let productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
+      if (activeAbilityEffects.productionMultiplier) {
+        productionPerSecond *= activeAbilityEffects.productionMultiplier;
+      }
 
-    const expectedGain = Math.floor(productionPerSecond * elapsedSeconds);
-    state.essence = (state.essence || 0) + expectedGain;
-    state.lifetimeEssence = (state.lifetimeEssence || 0) + expectedGain;
+      const expectedGain = Math.floor(productionPerSecond * elapsedSeconds);
+      state.essence = (state.essence || 0) + expectedGain;
+      state.lifetimeEssence = (state.lifetimeEssence || 0) + expectedGain;
 
-    // Update weekly tournament progress
-    if (expectedGain > 0) {
-      state = essenceTapService.updateWeeklyProgress(state, expectedGain);
-    }
+      // Update weekly tournament progress
+      if (expectedGain > 0) {
+        state = essenceTapService.updateWeeklyProgress(state, expectedGain);
+      }
 
-    // Award character XP for essence earned
-    if (expectedGain > 0) {
-      const xpResult = essenceTapService.awardCharacterXP(state, expectedGain);
-      state = xpResult.newState;
-    }
+      // Award character XP for essence earned
+      if (expectedGain > 0) {
+        const xpResult = essenceTapService.awardCharacterXP(state, expectedGain);
+        state = xpResult.newState;
+      }
 
-    // Update character mastery (time-based)
-    const elapsedHours = elapsedSeconds / 3600;
-    if (elapsedHours > 0) {
-      const masteryResult = essenceTapService.updateCharacterMastery(state, elapsedHours);
-      state = masteryResult.newState;
-    }
+      // Update character mastery (time-based)
+      const elapsedHours = elapsedSeconds / 3600;
+      if (elapsedHours > 0) {
+        const masteryResult = essenceTapService.updateCharacterMastery(state, elapsedHours);
+        state = masteryResult.newState;
+      }
 
-    // Track essence types from production (generators produce ambient essence)
-    if (expectedGain > 0) {
-      const essenceTypes = { pure: 0, ambient: expectedGain, golden: 0, prismatic: 0 };
-      state = essenceTapService.updateEssenceTypes(state, essenceTypes);
-    }
+      // Track essence types from production (generators produce ambient essence)
+      if (expectedGain > 0) {
+        const essenceTypes = { pure: 0, ambient: expectedGain, golden: 0, prismatic: 0 };
+        state = essenceTapService.updateEssenceTypes(state, essenceTypes);
+      }
 
-    // Update session stats for mini-milestones
-    if (expectedGain > 0 && state.sessionStats) {
-      state.sessionStats.sessionEssence = (state.sessionStats.sessionEssence || 0) + expectedGain;
-    }
+      // Update session stats for mini-milestones
+      if (expectedGain > 0 && state.sessionStats) {
+        state.sessionStats.sessionEssence = (state.sessionStats.sessionEssence || 0) + expectedGain;
+      }
 
-    state.lastOnlineTimestamp = now;
-    state.lastSaveTimestamp = now;
-    user.lastEssenceTapRequest = now;
+      state.lastOnlineTimestamp = now;
+      state.lastSaveTimestamp = now;
+      user.lastEssenceTapRequest = now;
 
-    // Persist character XP to UserCharacter model
-    // This syncs the essence tap XP tracking to the actual database records
-    if (state.characterXP && Object.keys(state.characterXP).length > 0) {
-      for (const [charId, xp] of Object.entries(state.characterXP)) {
-        if (xp > 0) {
-          const userChar = userCharacters.find(uc => String(uc.CharacterId) === String(charId));
-          if (userChar) {
-            userChar.masteryXp = (userChar.masteryXp || 0) + xp;
-            await userChar.save();
+      // Persist character XP to UserCharacter model
+      // This syncs the essence tap XP tracking to the actual database records
+      if (state.characterXP && Object.keys(state.characterXP).length > 0) {
+        for (const [charId, xp] of Object.entries(state.characterXP)) {
+          if (xp > 0) {
+            const userChar = userCharacters.find(uc => String(uc.CharacterId) === String(charId));
+            if (userChar) {
+              userChar.masteryXp = (userChar.masteryXp || 0) + xp;
+              await userChar.save();
+            }
           }
         }
+        // Clear the XP tracking after persistence
+        state.characterXP = {};
       }
-      // Clear the XP tracking after persistence
-      state.characterXP = {};
+
+      user.essenceTap = state;
+      await user.save();
+
+      res.json({
+        success: true,
+        savedAt: state.lastSaveTimestamp,
+        essenceGained: expectedGain,
+        essence: state.essence,
+        lifetimeEssence: state.lifetimeEssence,
+        sessionStats: essenceTapService.getSessionStats(state)
+      });
+    } catch (error) {
+      console.error('Error saving state:', error);
+      res.status(500).json({ error: 'Failed to save' });
     }
-
-    user.essenceTap = state;
-    await user.save();
-
-    res.json({
-      success: true,
-      savedAt: state.lastSaveTimestamp,
-      essenceGained: expectedGain,
-      essence: state.essence,
-      lifetimeEssence: state.lifetimeEssence,
-      sessionStats: essenceTapService.getSessionStats(state)
-    });
-  } catch (error) {
-    console.error('Error saving state:', error);
-    res.status(500).json({ error: 'Failed to save' });
-  }
+  });
 });
 
 // ===========================================
@@ -929,7 +1023,8 @@ router.post('/gamble', auth, async (req, res) => {
     }));
 
     // Apply passive essence before gamble
-    state = applyPassiveGains(state, characters);
+    const passiveResult = applyPassiveGains(state, characters);
+    state = passiveResult.state;
 
     const result = essenceTapService.performGamble(state, betType, betAmount);
 
@@ -1040,7 +1135,8 @@ router.post('/infusion', auth, async (req, res) => {
     }));
 
     // Apply passive essence before infusion
-    state = applyPassiveGains(state, characters);
+    const passiveResult = applyPassiveGains(state, characters);
+    state = passiveResult.state;
 
     const result = essenceTapService.performInfusion(state);
 
