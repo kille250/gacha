@@ -10,7 +10,7 @@
  */
 
 import React, { memo, useState } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { theme } from '../../design-system';
 import {
@@ -79,7 +79,7 @@ const NavButton = styled(motion.button)`
   position: relative;
   transition: all 0.2s ease;
 
-  ${props => props.$active && `
+  ${props => props.$active && css`
     animation: ${activeGlow} 2s ease-in-out infinite;
     border: 1px solid rgba(168, 85, 247, 0.4);
   `}

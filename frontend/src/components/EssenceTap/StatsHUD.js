@@ -10,7 +10,7 @@
  */
 
 import React, { memo, useState, useEffect, useRef } from 'react';
-import styled, { keyframes } from 'styled-components';
+import styled, { keyframes, css } from 'styled-components';
 import { motion } from 'framer-motion';
 import { theme } from '../../design-system';
 import { formatNumber, formatPerSecond } from '../../hooks/useEssenceTap';
@@ -79,7 +79,7 @@ const EssenceValue = styled.div`
   animation: ${shimmer} 3s linear infinite;
   white-space: nowrap;
 
-  ${props => props.$flash && `
+  ${props => props.$flash && css`
     animation: ${valueFlash} 0.3s ease-out;
   `}
 `;
