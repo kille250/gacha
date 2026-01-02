@@ -321,6 +321,11 @@ const EssenceTapPage = memo(() => {
     await Promise.all([refresh(), refreshUser()]);
   }, [refresh, refreshUser]);
 
+  // Handle boss spawn - refresh game state to sync clicksAtLastSpawn
+  const handleBossSpawn = useCallback(async () => {
+    await refresh();
+  }, [refresh]);
+
   if (loading) {
     return (
       <PageContainer
@@ -535,7 +540,9 @@ const EssenceTapPage = memo(() => {
             isOpen={showBoss}
             onClose={handleModalClose(setShowBoss)}
             clickPower={gameState?.clickPower || 1}
+            totalClicks={gameState?.totalClicks || 0}
             onBossDefeat={handleBossDefeat}
+            onBossSpawn={handleBossSpawn}
           />
 
           {/* Offline Progress Modal */}

@@ -259,7 +259,7 @@ const BOSS_COLORS = {
   prismatic_dragon: '#F59E0B'
 };
 
-const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, onBossDefeat }) => {
+const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, onBossDefeat, onBossSpawn }) => {
   const { t } = useTranslation();
   const [bossInfo, setBossInfo] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -287,6 +287,14 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, onBossDefeat }) =
       fetchBossInfo();
     }
   }, [isOpen, fetchBossInfo]);
+
+  // Refetch boss info when totalClicks changes (to update clicksUntilSpawn)
+  // Only refetch if modal is open and boss is not active (waiting for spawn)
+  useEffect(() => {
+    if (isOpen && !bossInfo?.active && !loading) {
+      fetchBossInfo();
+    }
+  }, [totalClicks]); // eslint-disable-line react-hooks/exhaustive-deps
 
   // Timer countdown
   useEffect(() => {
@@ -340,6 +348,7 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, onBossDefeat }) =
           setVictory(response.data.rewards);
           onBossDefeat?.(response.data.rewards);
         } else if (response.data.bossSpawned) {
+          // Boss spawned - update local state and notify parent to refresh game state
           setBossInfo({
             active: true,
             boss: response.data.boss,
@@ -347,6 +356,8 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, onBossDefeat }) =
             maxHealth: response.data.bossHealth,
             timeRemaining: response.data.boss?.timeLimit || 30000
           });
+          // Notify parent to refresh game state (updates clicksAtLastSpawn tracking)
+          onBossSpawn?.();
         } else {
           setBossInfo(prev => ({
             ...prev,
