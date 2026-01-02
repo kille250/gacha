@@ -51,7 +51,7 @@ import {
   DailyChallengesPanel,
   BossEncounter
 } from '../components/EssenceTap';
-import { IconDice, IconSparkles, IconTrophy, IconStar, IconGem, IconChart, IconUsers, IconTarget, IconFlag } from '../constants/icons';
+import { IconDice, IconSparkles, IconTrophy, IconStar, IconGem, IconStats, IconCategoryPerson, IconTarget, IconBanner } from '../constants/icons';
 
 // Local storage key for onboarding
 const ONBOARDING_COMPLETE_KEY = 'essenceTap_onboardingComplete';
@@ -561,7 +561,7 @@ const EssenceTapPage = memo(() => {
                 variant="secondary"
                 onClick={() => setShowSessionStats(true)}
               >
-                <IconChart size={16} />
+                <IconStats size={16} />
                 {t('essenceTap.session', { defaultValue: 'Session' })}
               </FeatureButton>
 
@@ -569,7 +569,7 @@ const EssenceTapPage = memo(() => {
                 variant="secondary"
                 onClick={() => setShowSynergyPreview(true)}
               >
-                <IconUsers size={16} />
+                <IconCategoryPerson size={16} />
                 {t('essenceTap.synergy', { defaultValue: 'Synergy' })}
               </FeatureButton>
 
@@ -577,7 +577,7 @@ const EssenceTapPage = memo(() => {
                 variant="secondary"
                 onClick={() => setShowChallenges(true)}
               >
-                <IconFlag size={16} />
+                <IconBanner size={16} />
                 {t('essenceTap.challenges', { defaultValue: 'Challenges' })}
               </FeatureButton>
 
