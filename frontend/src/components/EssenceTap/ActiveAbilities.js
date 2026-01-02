@@ -232,12 +232,14 @@ const ActiveAbilities = memo(({ onActivate, prestigeLevel = 0 }) => {
     localStorage.setItem('essenceTap_abilityCooldowns', JSON.stringify(cooldowns));
   }, [cooldowns]);
 
-  // Update cooldowns and active abilities every 100ms
+  // Force re-render every 100ms to update timer displays
+  const [, forceUpdate] = useState(0);
+
   useEffect(() => {
     const interval = setInterval(() => {
       const now = Date.now();
 
-      // Update cooldowns
+      // Update cooldowns - remove expired ones
       setCooldowns(prev => {
         const updated = { ...prev };
         let changed = false;
@@ -250,7 +252,7 @@ const ActiveAbilities = memo(({ onActivate, prestigeLevel = 0 }) => {
         return changed ? updated : prev;
       });
 
-      // Update active abilities
+      // Update active abilities - remove expired ones
       setActiveAbilities(prev => {
         const updated = { ...prev };
         let changed = false;
@@ -264,6 +266,9 @@ const ActiveAbilities = memo(({ onActivate, prestigeLevel = 0 }) => {
         });
         return changed ? updated : prev;
       });
+
+      // Force re-render to update displayed timer values
+      forceUpdate(n => n + 1);
     }, 100);
 
     return () => clearInterval(interval);
