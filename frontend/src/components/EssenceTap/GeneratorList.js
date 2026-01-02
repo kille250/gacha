@@ -131,6 +131,7 @@ const BuyModeButtons = styled.div`
 const BuyModeButton = styled.button`
   flex: 1;
   padding: ${theme.spacing.xs} ${theme.spacing.sm};
+  min-height: 36px;
   background: ${props => props.$active ? 'rgba(168, 85, 247, 0.3)' : 'rgba(255, 255, 255, 0.03)'};
   border: 1px solid ${props => props.$active ? 'rgba(168, 85, 247, 0.5)' : 'rgba(255, 255, 255, 0.08)'};
   border-radius: ${theme.radius.md};
@@ -139,9 +140,16 @@ const BuyModeButton = styled.button`
   font-weight: ${theme.fontWeights.medium};
   cursor: pointer;
   transition: all 0.2s ease;
+  /* Touch optimization */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   &:hover {
     background: ${props => props.$active ? 'rgba(168, 85, 247, 0.4)' : 'rgba(255, 255, 255, 0.08)'};
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-height: 44px;
   }
 `;
 
@@ -282,6 +290,7 @@ const CostLabel = styled.div`
 
 const BuyButton = styled.button`
   padding: ${theme.spacing.xs} ${theme.spacing.md};
+  min-height: 36px;
   background: ${props => props.$canAfford
     ? 'linear-gradient(135deg, #A855F7, #8B5CF6)'
     : 'rgba(255, 255, 255, 0.05)'};
@@ -293,6 +302,9 @@ const BuyButton = styled.button`
   cursor: ${props => props.$canAfford ? 'pointer' : 'not-allowed'};
   opacity: ${props => props.$canAfford ? 1 : 0.5};
   transition: all 0.2s ease;
+  /* Touch optimization */
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
 
   ${props => props.$canAfford && `
     &:hover {
@@ -304,6 +316,11 @@ const BuyButton = styled.button`
       transform: scale(0.95);
     }
   `}
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-height: 40px;
+    padding: ${theme.spacing.sm} ${theme.spacing.md};
+  }
 `;
 
 const LockedCard = styled(motion.div)`
