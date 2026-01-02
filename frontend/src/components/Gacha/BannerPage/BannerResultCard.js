@@ -11,7 +11,7 @@ import { FaGem, FaDice, FaTrophy, FaStar } from 'react-icons/fa';
 
 import { RarityBadge, motionVariants } from '../../../design-system';
 import { isVideo } from '../../../utils/mediaUtils';
-import { IconSearch, IconCheckmark, IconStarFilled } from '../../../constants/icons';
+import { IconSearch, IconCheckmark, IconStarFilled, IconDiamond } from '../../../constants/icons';
 import { ElementBadge } from '../../patterns';
 
 import styled from 'styled-components';
@@ -22,7 +22,8 @@ import {
   CardImage,
   CardVideo,
   CardOverlay,
-  CollectedBadge,
+  NewBadge,
+  DuplicateBadge,
   BannerCharBadge,
   CardContent,
   CardMeta,
@@ -99,9 +100,16 @@ const BannerResultCard = ({
         <CardOverlay>
           <span><IconSearch /> {t('common.view')}</span>
         </CardOverlay>
-        <CollectedBadge aria-label={t('common.collected')}>
-          <IconCheckmark /> {t('common.collected')}
-        </CollectedBadge>
+        {/* Show NEW badge for first-time acquisitions, DUPLICATE badge for already owned */}
+        {character.acquisition?.isNew !== false ? (
+          <NewBadge aria-label={t('common.new', 'New')}>
+            <IconCheckmark /> {t('common.new', 'NEW')}
+          </NewBadge>
+        ) : (
+          <DuplicateBadge aria-label={t('common.duplicate', 'Duplicate')}>
+            <IconDiamond /> {t('common.duplicate', 'Duplicate')}
+          </DuplicateBadge>
+        )}
         {character.isBannerCharacter && (
           <BannerCharBadge aria-label={t('banner.bannerChar')}>
             <IconStarFilled /> {t('banner.bannerChar')}

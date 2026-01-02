@@ -398,7 +398,39 @@ export const ResultsGrid = styled.div`
 
 // Result card wrapper - provides animation wrapper for CharacterCard
 export const ResultCardWrapper = styled(motion.div)`
+  position: relative;
   /* Minimal wrapper - CharacterCard provides all styling */
+`;
+
+// Badge for NEW acquisition in multi-results grid
+export const ResultNewBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 10px;
+  background: linear-gradient(135deg, #34C759, #2FB64E);
+  color: white;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(52, 199, 89, 0.4);
+`;
+
+// Badge for DUPLICATE in multi-results grid
+export const ResultDuplicateBadge = styled.div`
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  padding: 4px 10px;
+  background: rgba(175, 82, 222, 0.95);
+  color: white;
+  border-radius: 100px;
+  font-size: 10px;
+  font-weight: 700;
+  z-index: 10;
+  box-shadow: 0 2px 8px rgba(175, 82, 222, 0.3);
 `;
 
 export const CloseButton = styled(motion.button)`

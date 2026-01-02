@@ -16,6 +16,7 @@ import CharacterCard from '../patterns/CharacterCard';
 
 import { SummonAnimation } from './SummonAnimation';
 import * as S from './SummonAnimation.styles';
+import { ResultNewBadge, ResultDuplicateBadge } from './SummonAnimation.styles';
 
 // ==================== MAIN COMPONENT ====================
 
@@ -142,6 +143,8 @@ export const MultiSummonAnimation = ({
               // Use CharacterCard for consistent styling with collection
               const imagePath = getImagePath ? getImagePath(char.image) : char.image;
               const isVideoMedia = isVideo(char.image);
+              // Check if this is a new acquisition or a duplicate
+              const isNewAcquisition = char.acquisition?.isNew !== false;
 
               return (
                 <S.ResultCardWrapper
@@ -153,6 +156,12 @@ export const MultiSummonAnimation = ({
                     duration: 0.25,
                   }}
                 >
+                  {/* Show NEW or DUPLICATE badge based on acquisition status */}
+                  {isNewAcquisition ? (
+                    <ResultNewBadge>NEW</ResultNewBadge>
+                  ) : (
+                    <ResultDuplicateBadge>DUP</ResultDuplicateBadge>
+                  )}
                   <CharacterCard
                     character={char}
                     isOwned={true}
