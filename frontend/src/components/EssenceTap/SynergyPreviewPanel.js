@@ -13,7 +13,7 @@ import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { theme, GlassCard, Modal, ModalBody, Button } from '../../design-system';
 import { IconCategoryPerson, IconSparkles, IconFlame, IconWater, IconAir, IconLight, IconDark, IconEarth } from '../../constants/icons';
-import api from '../../utils/api';
+import api, { getAssetUrl } from '../../utils/api';
 
 const Container = styled.div`
   display: flex;
@@ -291,7 +291,7 @@ const SynergyPreviewPanel = memo(({ isOpen, onClose, onApplySuggestion }) => {
                         char.image ? (
                           <CharacterAvatar
                             key={idx}
-                            src={char.image}
+                            src={getAssetUrl(char.image)}
                             alt={char.name}
                             $rarity={char.rarity}
                           />

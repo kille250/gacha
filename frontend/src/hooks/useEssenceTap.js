@@ -172,6 +172,23 @@ export const useEssenceTap = () => {
       localEssenceRef.current = essenceVal;
       localLifetimeEssenceRef.current = lifetimeVal;
 
+      // Initialize achievement tracking from backend state to prevent re-triggering
+      // achievements that should have already been earned
+      if (showLoading) {
+        achievementTrackingRef.current = {
+          totalClicks: response.data.totalClicks || 0,
+          totalCrits: response.data.totalCrits || 0,
+          totalGolden: response.data.stats?.goldenEssenceClicks || 0,
+          maxCombo: achievementTrackingRef.current.maxCombo || 0,
+          critStreak: 0,
+          maxCritStreak: achievementTrackingRef.current.maxCritStreak || 0,
+          totalGenerators: Object.values(response.data.generators || {}).reduce((a, b) => a + b, 0),
+          prestigeLevel: response.data.prestige?.level || 0,
+          assignedCharacters: response.data.assignedCharacters?.length || 0,
+          bossesDefeated: response.data.bossEncounter?.totalDefeated || 0
+        };
+      }
+
       // Show offline progress modal if applicable (only on initial load)
       if (showLoading && response.data.offlineProgress && response.data.offlineProgress.essenceEarned > 0) {
         setOfflineProgress(response.data.offlineProgress);
