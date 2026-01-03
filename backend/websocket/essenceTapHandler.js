@@ -14,8 +14,14 @@
 
 const jwt = require('jsonwebtoken');
 const { User, UserCharacter, sequelize } = require('../models');
+// Legacy service - DEPRECATED. TODO: Migrate remaining functions:
+// - essenceTapService.classifyEssence
+// - essenceTapService.updateEssenceTypes
+// - essenceTapService.updateCharacterMastery
 const essenceTapService = require('../services/essenceTapService');
 const { actions } = require('../services/essenceTap');
+const stateService = require('../services/essenceTap/stateService');
+const calculations = require('../services/essenceTap/calculations');
 const shared = require('../services/essenceTap/shared');
 const { GAME_CONFIG } = require('../config/essenceTap');
 
@@ -199,9 +205,9 @@ async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
       return { success: false, error: 'User not found' };
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
-    state = essenceTapService.resetDaily(state);
-    state = essenceTapService.resetWeeklyFPIfNeeded(state);
+    let state = user.essenceTap || stateService.getInitialState();
+    state = stateService.resetDaily(state);
+    state = actions.resetWeeklyFPIfNeeded(state);
 
     // Get characters for bonus calculation (using shared utility)
     const characters = await shared.loadUserCharacters(userId, { transaction });
@@ -296,12 +302,14 @@ async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
     }
 
     // Update weekly tournament progress with burning hour bonus if active
-    const burningHourStatus = essenceTapService.getBurningHourStatus();
+    const burningHourStatus = actions.getBurningHourStatus();
     const burningHourActive = burningHourStatus?.isActive || false;
-    const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence, {
-      burningHourActive
+    const weeklyTournamentResult = actions.updateWeeklyProgress({
+      state,
+      essence: totalEssence,
+      options: { burningHourActive }
     });
-    state = weeklyTournamentResult.newState;
+    state = weeklyTournamentResult.newState || state;
 
     // Update essence types
     const essenceTypeBreakdown = essenceTapService.classifyEssence(totalEssence, goldenClicks > 0, totalCrits > 0);
@@ -311,7 +319,7 @@ async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
     state.lastOnlineTimestamp = now;
 
     // Check for daily challenge completions
-    const completedChallenges = essenceTapService.checkDailyChallenges(state);
+    const completedChallenges = actions.checkDailyChallenges({ state });
     if (completedChallenges.length > 0) {
       state.daily.completedChallenges = [
         ...(state.daily.completedChallenges || []),
@@ -381,9 +389,9 @@ async function getFullState(userId) {
       return null;
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
-    state = essenceTapService.resetDaily(state);
-    state = essenceTapService.resetWeeklyFPIfNeeded(state);
+    let state = user.essenceTap || stateService.getInitialState();
+    state = stateService.resetDaily(state);
+    state = actions.resetWeeklyFPIfNeeded(state);
 
     // Get characters (MIGRATED: now uses shared.loadUserCharacters)
     const characters = await shared.loadUserCharacters(userId, { transaction });
@@ -697,7 +705,7 @@ function initEssenceTapWebSocket(io) {
       try {
         const user = await User.findByPk(userId);
         if (user) {
-          let state = user.essenceTap || essenceTapService.getInitialState();
+          let state = user.essenceTap || stateService.getInitialState();
           state.lastOnlineTimestamp = Date.now();
           user.essenceTap = state;
           await user.save();
@@ -755,7 +763,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // Get characters (MIGRATED: now uses shared.loadUserCharacters)
         const characters = await shared.loadUserCharacters(userId, { transaction });
@@ -795,11 +803,11 @@ function initEssenceTapWebSocket(io) {
         // Calculate next costs for each generator and max affordable
         const generatorCosts = {};
         const maxAffordable = {};
-        const availableGenerators = essenceTapService.getAvailableGenerators(result.newState);
+        const availableGenerators = actions.getAllGenerators({ state: result.newState });
         for (const gen of availableGenerators) {
           const owned = result.newState.generators?.[gen.id] || 0;
-          generatorCosts[gen.id] = essenceTapService.getGeneratorCost(gen.id, owned);
-          maxAffordable[gen.id] = essenceTapService.getMaxPurchasable(gen.id, owned, result.newState.essence);
+          generatorCosts[gen.id] = calculations.getGeneratorCost(gen.id, owned);
+          maxAffordable[gen.id] = calculations.getMaxPurchasable(gen.id, owned, result.newState.essence);
         }
 
         // Broadcast full relevant state to all tabs for proper multi-tab sync
@@ -854,7 +862,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // Get characters (MIGRATED: now uses shared.loadUserCharacters)
         const characters = await shared.loadUserCharacters(userId, { transaction });
@@ -891,7 +899,7 @@ function initEssenceTapWebSocket(io) {
         const gameState = actions.getGameState({ state: result.newState, characters });
 
         // Get available upgrades with affordability info
-        const availableUpgrades = essenceTapService.getAvailableUpgrades(result.newState).map(upgrade => ({
+        const availableUpgrades = actions.getAvailableUpgrades({ state: result.newState }).map(upgrade => ({
           id: upgrade.id,
           name: upgrade.name,
           cost: upgrade.cost,
@@ -952,7 +960,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // BUG #6 FIX: Process pending taps within the same transaction (MIGRATED: now uses actions)
         if (pendingBatch && pendingBatch.taps > 0) {
@@ -1055,7 +1063,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
         // MIGRATED: now uses actions.activateAbility
         const result = actions.activateAbility({ state, abilityId });
 
@@ -1130,8 +1138,8 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
-        state = essenceTapService.resetDaily(state);
+        let state = user.essenceTap || stateService.getInitialState();
+        state = stateService.resetDaily(state);
 
         // Get characters for passive calculation
         const characters = await shared.loadUserCharacters(userId, { transaction });
@@ -1141,7 +1149,7 @@ function initEssenceTapWebSocket(io) {
         if (passiveResult.gains > 0) {
           state.essence = (state.essence || 0) + passiveResult.gains;
           state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-          const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          const weeklyResult = actions.updateWeeklyProgress({ state, essence: passiveResult.gains });
           state = weeklyResult.newState;
           state.lastOnlineTimestamp = passiveResult.newTimestamp;
         }
@@ -1227,7 +1235,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // Get characters for passive calculation
         const characters = await shared.loadUserCharacters(userId, { transaction });
@@ -1237,7 +1245,7 @@ function initEssenceTapWebSocket(io) {
         if (passiveResult.gains > 0) {
           state.essence = (state.essence || 0) + passiveResult.gains;
           state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-          const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          const weeklyResult = actions.updateWeeklyProgress({ state, essence: passiveResult.gains });
           state = weeklyResult.newState;
           state.lastOnlineTimestamp = passiveResult.newTimestamp;
         }
@@ -1305,8 +1313,8 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
-        state = essenceTapService.resetDaily(state);
+        let state = user.essenceTap || stateService.getInitialState();
+        state = stateService.resetDaily(state);
 
         // Get user's owned characters
         const userCharacters = await UserCharacter.findAll({
@@ -1323,7 +1331,7 @@ function initEssenceTapWebSocket(io) {
           series: uc.Character?.series || ''
         }));
 
-        const result = essenceTapService.assignCharacter(state, characterId, ownedCharacters);
+        const result = actions.assignCharacter({ state, characterId, ownedCharacters });
 
         if (!result.success) {
           await transaction.rollback();
@@ -1347,7 +1355,7 @@ function initEssenceTapWebSocket(io) {
 
         // Calculate updated bonuses with new character
         const characters = ownedCharacters;
-        const gameState = essenceTapService.getGameState(result.newState, characters);
+        const gameState = actions.getGameState({ state: result.newState, characters });
 
         // Broadcast to all user tabs
         broadcastToUser(namespace, userId, 'character_assigned', {
@@ -1389,9 +1397,9 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
-        const result = essenceTapService.unassignCharacter(state, characterId);
+        const result = actions.unassignCharacter({ state, characterId });
 
         if (!result.success) {
           await transaction.rollback();
@@ -1426,7 +1434,7 @@ function initEssenceTapWebSocket(io) {
           series: uc.Character?.series || ''
         }));
 
-        const gameState = essenceTapService.getGameState(result.newState, characters);
+        const gameState = actions.getGameState({ state: result.newState, characters });
 
         // Broadcast to all user tabs
         broadcastToUser(namespace, userId, 'character_unassigned', {
@@ -1472,8 +1480,8 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
-        state = essenceTapService.resetDaily(state);
+        let state = user.essenceTap || stateService.getInitialState();
+        state = stateService.resetDaily(state);
 
         // Check if challenge is completed but not claimed
         const completedChallenges = state.daily?.completedChallenges || [];
@@ -1532,7 +1540,7 @@ function initEssenceTapWebSocket(io) {
         // Award FP if applicable (with weekly cap)
         let fatePointsAwarded = 0;
         if (challenge.reward?.fatePoints) {
-          const fpResult = essenceTapService.applyFPWithCap(newState, challenge.reward.fatePoints, 'daily_challenge');
+          const fpResult = actions.applyFPWithCap(newState, challenge.reward.fatePoints, 'daily_challenge');
           user.essenceTap = fpResult.newState;
           fatePointsAwarded = fpResult.actualFP;
 
@@ -1594,9 +1602,9 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
-        const result = essenceTapService.purchasePrestigeUpgrade(state, upgradeId);
+        const result = actions.purchasePrestigeUpgrade({ state, upgradeId });
 
         if (!result.success) {
           await transaction.rollback();
@@ -1619,7 +1627,7 @@ function initEssenceTapWebSocket(io) {
         const seq = getNextSequence(userId);
 
         // Get updated prestige info
-        const prestigeInfo = essenceTapService.getPrestigeInfo(result.newState);
+        const prestigeInfo = actions.getPrestigePreview({ state: result.newState });
 
         // Broadcast to all user tabs
         broadcastToUser(namespace, userId, 'prestige_upgrade_purchased', {
@@ -1664,7 +1672,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        const state = user.essenceTap || essenceTapService.getInitialState();
+        const state = user.essenceTap || stateService.getInitialState();
 
         // Use unified action handler
         const result = actions.claimMilestone({ state, milestoneKey });
@@ -1729,10 +1737,10 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
-        state = essenceTapService.resetWeeklyFPIfNeeded(state);
+        let state = user.essenceTap || stateService.getInitialState();
+        state = actions.resetWeeklyFPIfNeeded(state);
 
-        const result = essenceTapService.claimRepeatableMilestone(state, milestoneType);
+        const result = actions.claimRepeatableMilestone({ state, milestoneType });
 
         if (!result.success) {
           await transaction.rollback();
@@ -1748,7 +1756,7 @@ function initEssenceTapWebSocket(io) {
         result.newState.lastOnlineTimestamp = now;
 
         // Apply FP with cap
-        const fpResult = essenceTapService.applyFPWithCap(result.newState, result.fatePoints, 'repeatable_milestone');
+        const fpResult = actions.applyFPWithCap(result.newState, result.fatePoints, 'repeatable_milestone');
         result.newState = fpResult.newState;
         const actualFP = fpResult.actualFP;
 
@@ -1775,8 +1783,8 @@ function initEssenceTapWebSocket(io) {
           count: result.count || 1,
           capped: fpResult.capped,
           repeatableMilestones: result.newState.repeatableMilestones,
-          claimableRepeatableMilestones: essenceTapService.checkRepeatableMilestones(result.newState),
-          weeklyFP: essenceTapService.getWeeklyFPBudget(result.newState),
+          claimableRepeatableMilestones: actions.checkMilestones(result.newState),
+          weeklyFP: actions.getWeeklyFPBudget(result.newState),
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now
@@ -1805,10 +1813,10 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // Check if rewards are available
-        const tournamentInfo = essenceTapService.getWeeklyTournamentInfo(state);
+        const tournamentInfo = actions.getWeeklyTournamentInfo({ state });
         if (!tournamentInfo.canClaimRewards) {
           await transaction.rollback();
           socket.emit('action_rejected', {
@@ -1840,7 +1848,7 @@ function initEssenceTapWebSocket(io) {
         newState.lastOnlineTimestamp = now;
 
         // Apply FP with cap
-        const fpResult = essenceTapService.applyFPWithCap(newState, tierRewards.fatePoints, 'tournament');
+        const fpResult = actions.applyFPWithCap(newState, tierRewards.fatePoints, 'tournament');
         user.essenceTap = fpResult.newState;
         const actualFP = fpResult.actualFP;
 
@@ -1871,7 +1879,7 @@ function initEssenceTapWebSocket(io) {
             rollTickets: tierRewards.rollTickets,
             capped: fpResult.capped
           },
-          weeklyTournament: essenceTapService.getWeeklyTournamentInfo(user.essenceTap),
+          weeklyTournament: actions.getWeeklyTournamentInfo({ state: user.essenceTap }),
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now
@@ -1901,7 +1909,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // Get checkpoint config
         const { WEEKLY_TOURNAMENT } = require('../config/essenceTap');
@@ -1951,7 +1959,7 @@ function initEssenceTapWebSocket(io) {
         newState.lastOnlineTimestamp = now;
 
         // Apply FP with cap
-        const fpResult = essenceTapService.applyFPWithCap(newState, checkpoint.rewards.fatePoints || 0, 'checkpoint');
+        const fpResult = actions.applyFPWithCap(newState, checkpoint.rewards.fatePoints || 0, 'checkpoint');
         user.essenceTap = fpResult.newState;
         const actualFP = fpResult.actualFP;
 
@@ -2012,8 +2020,8 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
-        state = essenceTapService.resetDaily(state);
+        let state = user.essenceTap || stateService.getInitialState();
+        state = stateService.resetDaily(state);
 
         // Check streak eligibility
         const today = new Date().toISOString().split('T')[0];
@@ -2114,7 +2122,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // Get session stats
         const sessionStats = state.sessionStats || {};
@@ -2204,7 +2212,7 @@ function initEssenceTapWebSocket(io) {
           milestoneName,
           reward: milestoneConfig.reward,
           essence: newState.essence,
-          sessionStats: essenceTapService.getSessionStats(newState),
+          sessionStats: actions.getSessionStats(newState),
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now
@@ -2233,9 +2241,9 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
-        const result = essenceTapService.spawnBoss(state);
+        const result = actions.spawnBoss({ state });
 
         if (!result.success) {
           await transaction.rollback();
@@ -2290,7 +2298,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // Get characters for damage calculation
         const userCharacters = await UserCharacter.findAll({
@@ -2306,7 +2314,7 @@ function initEssenceTapWebSocket(io) {
           element: uc.Character?.element || 'neutral'
         }));
 
-        const result = essenceTapService.attackBoss(state, damage, characters);
+        const result = actions.attackBoss({ state, damage, characters });
 
         if (!result.success) {
           await transaction.rollback();
@@ -2339,7 +2347,7 @@ function initEssenceTapWebSocket(io) {
 
           // Award Fate Points
           if (result.rewards.fatePoints > 0) {
-            const fpResult = essenceTapService.applyFPWithCap(result.newState, result.rewards.fatePoints, 'boss');
+            const fpResult = actions.applyFPWithCap(result.newState, result.rewards.fatePoints, 'boss');
             result.newState = fpResult.newState;
 
             if (fpResult.actualFP > 0) {
@@ -2376,7 +2384,7 @@ function initEssenceTapWebSocket(io) {
             essence: result.newState.essence,
             lifetimeEssence: result.newState.lifetimeEssence,
             nextBossIn: result.nextBossIn,
-            bossEncounter: essenceTapService.getBossEncounterInfo(result.newState),
+            bossEncounter: actions.getBossInfo(result.newState),
             seq,
             confirmedClientSeq: clientSeq,
             serverTimestamp: now
@@ -2420,8 +2428,8 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        const state = user.essenceTap || essenceTapService.getInitialState();
-        const bossInfo = essenceTapService.getBossEncounterInfo(state);
+        const state = user.essenceTap || stateService.getInitialState();
+        const bossInfo = actions.getBossInfo(state);
 
         socket.emit('boss_status', {
           ...bossInfo,
@@ -2442,7 +2450,7 @@ function initEssenceTapWebSocket(io) {
       const { clientSeq } = data || {};
 
       try {
-        const burningHourStatus = essenceTapService.getBurningHourStatus();
+        const burningHourStatus = actions.getBurningHourStatus();
 
         socket.emit('burning_hour_status', {
           ...burningHourStatus,
@@ -2472,12 +2480,12 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // Get user's current fate points
         const userFP = user.fatePoints?.global?.points || 0;
 
-        const result = essenceTapService.exchangeFatePointsForTickets(state, userFP);
+        const result = actions.exchangeFatePointsForTickets({ state, user: { fatePoints: userFP } });
 
         if (!result.success) {
           await transaction.rollback();
@@ -2549,7 +2557,7 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        let state = user.essenceTap || stateService.getInitialState();
 
         // Get user's owned characters
         const userCharacters = await UserCharacter.findAll({
@@ -2616,7 +2624,7 @@ function initEssenceTapWebSocket(io) {
         const seq = getNextSequence(userId);
 
         // Calculate updated bonuses
-        const gameState = essenceTapService.getGameState(newState, ownedCharacters);
+        const gameState = actions.getGameState({ state: newState, characters: ownedCharacters });
 
         // Broadcast to all user tabs
         broadcastToUser(namespace, userId, 'character_swapped', {

@@ -3,10 +3,14 @@
  *
  * API endpoints for the Essence Tap clicker minigame.
  *
- * REFACTORING NOTE (Phase 1):
- * Routes are being migrated to use unified action handlers from
- * services/essenceTap/actions/ to eliminate duplication with WebSocket handlers.
- * Legacy essenceTapService is being phased out in favor of the new modular structure.
+ * REFACTORED: Now uses unified action handlers from services/essenceTap/actions/
+ * to eliminate duplication with WebSocket handlers.
+ *
+ * The legacy essenceTapService is deprecated - all new code should use:
+ * - actions.* for business logic
+ * - stateService.* for state management
+ * - shared.* for utilities
+ * - calculations.* for pure computation functions
  */
 
 const express = require('express');
@@ -14,13 +18,39 @@ const router = express.Router();
 const auth = require('../middleware/auth');
 const { rewardClaimLimiter } = require('../middleware/rateLimiter');
 const { User, UserCharacter, sequelize } = require('../models');
-const essenceTapService = require('../services/essenceTapService');
 const accountLevelService = require('../services/accountLevelService');
 
-// New modular imports for refactoring
+// Modular essence tap imports (preferred)
 const actions = require('../services/essenceTap/actions');
 const shared = require('../services/essenceTap/shared');
 const stateService = require('../services/essenceTap/stateService');
+const calculations = require('../services/essenceTap/calculations');
+
+// Config imports - use directly instead of via legacy service
+const {
+  GAME_CONFIG,
+  CHARACTER_MASTERY,
+  ESSENCE_TYPES,
+  SERIES_SYNERGIES,
+  WEEKLY_FP_CAP,
+  MINI_MILESTONES,
+  RANK_REWARDS,
+  BRACKET_SYSTEM,
+  BURNING_HOURS,
+  TOURNAMENT_COSMETICS,
+  CHARACTER_ABILITIES,
+  ELEMENT_SYNERGIES,
+  DAILY_MODIFIERS,
+  DAILY_CHALLENGES,
+  PRESTIGE_CONFIG
+} = require('../config/essenceTap');
+
+// Legacy service - DEPRECATED, use actions/stateService/calculations instead
+// TODO: These functions still need migration to new modules:
+// - essenceTapService.classifyEssence
+// - essenceTapService.updateEssenceTypes
+// - essenceTapService.getEssenceTypeBonuses
+const essenceTapService = require('../services/essenceTapService');
 
 // ===========================================
 // SERVER-SIDE RATE LIMITING
@@ -224,19 +254,13 @@ function checkClickRateLimit(userId, clickCount) {
 }
 
 /**
- * Minimum time between passive gain applications to prevent double-counting.
- * If passive gains were applied within this window, skip the calculation.
- */
-const MIN_PASSIVE_GAIN_INTERVAL_MS = 1000;
-
-/**
  * Helper function to calculate and apply passive essence gains since last update.
  * This ensures any API endpoint that returns essence values includes accumulated passive income.
  *
  * IMPORTANT: This function includes a timestamp guard to prevent double-counting.
- * If called twice within MIN_PASSIVE_GAIN_INTERVAL_MS, the second call will skip
- * the gain calculation. This prevents race conditions where multiple endpoints
- * try to apply passive gains for the same time period.
+ * The guard is now handled internally by the shared module.
+ *
+ * REFACTORED: Now uses actions.applyPassiveGains from the modular service.
  *
  * @param {Object} state - Current essence tap state
  * @param {Array} characters - User's characters with rarity/element info
@@ -244,52 +268,18 @@ const MIN_PASSIVE_GAIN_INTERVAL_MS = 1000;
  * @returns {{ state: Object, gainsApplied: number }} Updated state and gains applied
  */
 function applyPassiveGains(state, characters, maxSeconds = 300) {
-  const now = Date.now();
-  const lastUpdate = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
-  const elapsedMs = now - lastUpdate;
-  const elapsedSeconds = Math.min(elapsedMs / 1000, maxSeconds);
-
-  // Guard: If gains were applied very recently, skip to prevent double-counting
-  // This can happen if /status and /save are called in rapid succession
-  if (elapsedMs < MIN_PASSIVE_GAIN_INTERVAL_MS) {
-    return { state, gainsApplied: 0 };
-  }
-
-  if (elapsedSeconds <= 0) {
-    return { state, gainsApplied: 0 };
-  }
-
-  const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
-  let productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
-  if (activeAbilityEffects.productionMultiplier) {
-    productionPerSecond *= activeAbilityEffects.productionMultiplier;
-  }
-
-  const passiveGain = Math.floor(productionPerSecond * elapsedSeconds);
-  if (passiveGain > 0) {
-    state.essence = (state.essence || 0) + passiveGain;
-    state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveGain;
-    // Check burning hour status for tournament multiplier
-    const burningHourStatus = essenceTapService.getBurningHourStatus();
-    const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveGain, {
-      burningHourActive: burningHourStatus.active
-    });
-    state = weeklyResult.newState;
-  }
-
-  // Update timestamp to mark when gains were last applied
-  state.lastOnlineTimestamp = now;
-
-  return { state, gainsApplied: passiveGain };
+  // Use the unified action handler which includes all ability/tournament logic
+  return actions.applyPassiveGains({ state, characters, maxSeconds });
 }
 
 /**
  * GET /api/essence-tap/status
  * Get current clicker state and calculate offline progress
+ *
+ * REFACTORED: Now uses actions.getStatus for unified logic
  */
 router.get('/status', auth, async (req, res) => {
   // Use essence lock to prevent race conditions with /save endpoint
-  // This ensures only one request modifies essence state at a time
   return withEssenceLock(req.user.id, async () => {
     try {
       const user = await User.findByPk(req.user.id);
@@ -297,70 +287,34 @@ router.get('/status', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      // Get or initialize clicker state
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      // Load user's characters for bonus calculation
+      const characters = await shared.loadUserCharacters(user.id);
 
-      // Reset daily if needed
-      state = essenceTapService.resetDaily(state);
+      // Get initial state
+      const state = user.essenceTap || stateService.getInitialState();
 
-      // Reset weekly FP tracking if new week
-      state = essenceTapService.resetWeeklyFPIfNeeded(state);
-
-      // Reset session stats for new session
-      state = essenceTapService.resetSessionStats(state);
-
-      // Get user's characters for bonus calculation
-      const userCharacters = await UserCharacter.findAll({
-        where: { UserId: user.id },
-        include: ['Character']
+      // Use unified status action
+      const result = actions.getStatus({
+        state,
+        characters,
+        lastApiRequestTime: user.lastEssenceTapRequest
       });
 
-      const characters = userCharacters.map(uc => ({
-        id: uc.CharacterId,
-        rarity: uc.Character?.rarity || 'common',
-        element: uc.Character?.element || 'neutral'
-      }));
-
-      // Validate offline progress with server-side timestamp check
-      // This prevents timestamp manipulation exploits
-      const now = Date.now();
-      const lastApiRequestTime = user.lastEssenceTapRequest || state.lastOnlineTimestamp || now;
-
-      // Only award offline progress if the time since last API request is reasonable
-      // Max offline is 8 hours = 28800000ms
-      const maxOfflineMs = 8 * 60 * 60 * 1000;
-      const timeSinceLastRequest = Math.min(now - lastApiRequestTime, maxOfflineMs);
-
-      // Calculate offline progress with validated time
-      const offlineProgress = essenceTapService.calculateOfflineProgress(
-        { ...state, lastOnlineTimestamp: now - timeSinceLastRequest },
-        characters
-      );
-
-      if (offlineProgress.essenceEarned > 0) {
-        state.essence = (state.essence || 0) + offlineProgress.essenceEarned;
-        state.lifetimeEssence = (state.lifetimeEssence || 0) + offlineProgress.essenceEarned;
+      if (!result.success) {
+        return res.status(500).json({ error: result.error, code: result.code });
       }
 
-      // Update timestamps
-      state.lastOnlineTimestamp = now;
+      // Update timestamps and save
+      const now = Date.now();
+      user.essenceTap = result.state;
       user.lastEssenceTapRequest = now;
-
-      // Save state
-      user.essenceTap = state;
       await user.save();
 
-      // Get full game state for response
-      const gameState = essenceTapService.getGameState(state, characters);
-
-      // Add weekly FP budget info
-      const weeklyFPBudget = essenceTapService.getWeeklyFPBudget(state);
-
       res.json({
-        ...gameState,
-        offlineProgress: offlineProgress.essenceEarned > 0 ? offlineProgress : null,
-        weeklyFPBudget,
-        sessionStats: essenceTapService.getSessionStats(state)
+        ...result.gameState,
+        offlineProgress: result.offlineProgress,
+        weeklyFPBudget: result.weeklyFPBudget,
+        sessionStats: result.sessionStats
       });
     } catch (error) {
       console.error('Error getting essence tap status:', error);
@@ -377,7 +331,7 @@ router.post('/click', auth, async (req, res) => {
   // Server-side rate limit check (do this BEFORE acquiring lock to avoid holding lock during 429)
   const { count = 1, comboMultiplier = 1 } = req.body;
   // SECURITY: Parse count as integer to prevent type coercion exploits (e.g., "Infinity", "25a")
-  const requestedClicks = Math.min(Math.max(1, parseInt(count, 10) || 1), essenceTapService.GAME_CONFIG.maxClicksPerSecond);
+  const requestedClicks = Math.min(Math.max(1, parseInt(count, 10) || 1), GAME_CONFIG.maxClicksPerSecond || 20);
   const rateLimit = checkClickRateLimit(req.user.id, requestedClicks);
 
   if (!rateLimit.allowed) {
@@ -400,8 +354,8 @@ router.post('/click', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
-    state = essenceTapService.resetDaily(state);
+    let state = user.essenceTap || stateService.getInitialState();
+    state = stateService.resetDaily(state);
 
     // Get user's characters for bonus calculation
     const userCharacters = await UserCharacter.findAll({
@@ -421,35 +375,22 @@ router.post('/click', auth, async (req, res) => {
     state = passiveResult.state;
 
     // Get active ability effects
-    const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
+    const activeAbilityEffects = actions.getActiveAbilityEffects({ state });
 
-    // Process clicks
-    let totalEssence = 0;
-    let totalCrits = 0;
-    let goldenClicks = 0;
+    // Process clicks using unified action
+    const tapResult = actions.processTaps({
+      state,
+      characters,
+      count: clickCount,
+      comboMultiplier,
+      activeAbilityEffects
+    });
 
-    for (let i = 0; i < clickCount; i++) {
-      const result = essenceTapService.processClick(state, characters, comboMultiplier, activeAbilityEffects);
-      totalEssence += result.essenceGained;
-      if (result.isCrit) totalCrits++;
-      if (result.isGolden) goldenClicks++;
-    }
-
-    // Update state
-    state.essence = (state.essence || 0) + totalEssence;
-    state.lifetimeEssence = (state.lifetimeEssence || 0) + totalEssence;
-    state.totalClicks = (state.totalClicks || 0) + clickCount;
-    state.totalCrits = (state.totalCrits || 0) + totalCrits;
-
-    // Update daily
-    state.daily = state.daily || {};
-    state.daily.clicks = (state.daily.clicks || 0) + clickCount;
-    state.daily.crits = (state.daily.crits || 0) + totalCrits;
-    state.daily.essenceEarned = (state.daily.essenceEarned || 0) + totalEssence;
-
-    // Update stats
-    state.stats = state.stats || {};
-    state.stats.goldenEssenceClicks = (state.stats.goldenEssenceClicks || 0) + goldenClicks;
+    // Extract results from tap action
+    state = tapResult.newState;
+    const totalEssence = tapResult.essenceEarned;
+    const totalCrits = tapResult.critCount;
+    const goldenClicks = tapResult.goldenCount;
 
     // Update session stats for mini-milestones
     if (!state.sessionStats) {
@@ -474,7 +415,7 @@ router.post('/click', auth, async (req, res) => {
 
     // Derive combo count from multiplier and track max combo
     // comboMultiplier = 1 + (comboCount * 0.08), so comboCount = (comboMultiplier - 1) / 0.08
-    const derivedComboCount = Math.round((comboMultiplier - 1) / (essenceTapService.GAME_CONFIG.comboGrowthRate || 0.08));
+    const derivedComboCount = Math.round((comboMultiplier - 1) / (GAME_CONFIG.comboGrowthRate || 0.08));
     if (derivedComboCount > 0) {
       state.sessionStats.currentCombo = derivedComboCount;
       if (derivedComboCount > (state.sessionStats.maxCombo || 0)) {
@@ -508,11 +449,13 @@ router.post('/click', auth, async (req, res) => {
     }
 
     // Update weekly tournament progress with burning hour check
-    const burningHourStatus = essenceTapService.getBurningHourStatus();
-    const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence, {
-      burningHourActive: burningHourStatus.active
+    const burningHourStatus = actions.getBurningHourStatus();
+    const weeklyTournamentResult = actions.updateWeeklyProgress({
+      state,
+      essence: totalEssence,
+      options: { burningHourActive: burningHourStatus?.active }
     });
-    state = weeklyTournamentResult.newState;
+    state = weeklyTournamentResult.newState || state;
 
     // Classify and track essence types
     // Note: For batch clicks, we use last click's golden status for simplicity
@@ -523,7 +466,7 @@ router.post('/click', auth, async (req, res) => {
     state.lastOnlineTimestamp = now;
 
     // Check for new daily challenge completions
-    const completedChallenges = essenceTapService.checkDailyChallenges(state);
+    const completedChallenges = actions.checkDailyChallenges({ state });
 
     // Mark completed challenges as done so they don't trigger again
     if (completedChallenges.length > 0) {
@@ -690,7 +633,7 @@ router.post('/upgrade/buy', auth, async (req, res) => {
       await user.save();
 
       // Award XP for upgrade purchase
-      accountLevelService.addXP(user, essenceTapService.GAME_CONFIG.xpPerUpgrade || 2, 'essence_tap_upgrade');
+      accountLevelService.addXP(user, GAME_CONFIG.xpPerUpgrade || 2, 'essence_tap_upgrade');
       await user.save();
 
       // Get updated game state (reuse characters from earlier fetch)
@@ -727,9 +670,9 @@ router.post('/prestige', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
+    let state = user.essenceTap || stateService.getInitialState();
 
-    const result = essenceTapService.performPrestige(state, user);
+    const result = actions.performPrestige({ state, user });
 
     if (!result.success) {
       await transaction.rollback();
@@ -743,7 +686,7 @@ router.post('/prestige', auth, async (req, res) => {
     let actualFP = 0;
     let fpCapped = false;
     if (result.fatePointsReward > 0) {
-      const fpResult = essenceTapService.applyFPWithCap(
+      const fpResult = actions.applyFPWithCap(
         result.newState,
         result.fatePointsReward,
         'prestige'
@@ -859,7 +802,7 @@ router.post('/milestone/claim', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      const state = user.essenceTap || essenceTapService.getInitialState();
+      const state = user.essenceTap || stateService.getInitialState();
 
       // Use unified action handler
       const result = actions.claimMilestone({ state, milestoneKey });
@@ -913,7 +856,7 @@ router.post('/character/assign', auth, async (req, res) => {
       // Get user's characters
       const ownedCharacters = await shared.loadUserCharacters(user.id);
 
-      const state = user.essenceTap || essenceTapService.getInitialState();
+      const state = user.essenceTap || stateService.getInitialState();
 
       // Use unified action handler
       const result = actions.assignCharacter({
@@ -963,7 +906,7 @@ router.post('/character/unassign', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      const state = user.essenceTap || essenceTapService.getInitialState();
+      const state = user.essenceTap || stateService.getInitialState();
 
       // Get user's characters for bonus recalculation
       const ownedCharacters = await shared.loadUserCharacters(user.id);
@@ -1105,8 +1048,8 @@ router.post('/gamble', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
-      state = essenceTapService.resetDaily(state);
+      let state = user.essenceTap || stateService.getInitialState();
+      state = stateService.resetDaily(state);
 
       // Get user's characters for passive calculation
       const characters = await shared.loadUserCharacters(user.id);
@@ -1180,7 +1123,7 @@ router.post('/infusion', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
       // Get user's characters for passive calculation
       const characters = await shared.loadUserCharacters(user.id);
@@ -1312,11 +1255,11 @@ router.get('/milestones/repeatable', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
-    const claimable = essenceTapService.checkRepeatableMilestones(state);
+    const state = user.essenceTap || stateService.getInitialState();
+    const milestones = actions.checkMilestones(state);
 
     res.json({
-      claimable,
+      claimable: milestones.repeatable,
       repeatableMilestones: state.repeatableMilestones || {}
     });
   } catch (error) {
@@ -1344,9 +1287,9 @@ router.post('/milestones/repeatable/claim', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
-      const result = essenceTapService.claimRepeatableMilestone(state, milestoneType);
+      const result = actions.claimRepeatableMilestone({ state, milestoneType });
 
       if (!result.success) {
         return res.status(400).json({ error: result.error });
@@ -1359,7 +1302,7 @@ router.post('/milestones/repeatable/claim', auth, async (req, res) => {
       let actualFP = 0;
       let fpCapped = false;
       if (result.fatePoints > 0) {
-        const fpResult = essenceTapService.applyFPWithCap(
+        const fpResult = actions.applyFPWithCap(
           result.newState,
           result.fatePoints,
           'repeatable_milestone'
@@ -1411,8 +1354,8 @@ router.get('/tournament/weekly', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
-    const tournamentInfo = essenceTapService.getWeeklyTournamentInfo(state);
+    const state = user.essenceTap || stateService.getInitialState();
+    const tournamentInfo = actions.getWeeklyTournamentInfo({ state });
 
     res.json(tournamentInfo);
   } catch (error) {
@@ -1427,7 +1370,7 @@ router.get('/tournament/weekly', auth, async (req, res) => {
  */
 router.get('/tournament/leaderboard', auth, async (req, res) => {
   try {
-    const currentWeek = essenceTapService.getCurrentISOWeek();
+    const currentWeek = actions.getCurrentWeekId();
 
     // Get all users with essence tap data for the current week
     const users = await User.findAll({
@@ -1489,9 +1432,9 @@ router.post('/tournament/weekly/claim', auth, rewardClaimLimiter, async (req, re
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
+    let state = user.essenceTap || stateService.getInitialState();
 
-    const result = essenceTapService.claimWeeklyRewards(state);
+    const result = actions.claimWeeklyRewards({ state });
 
     if (!result.success) {
       await transaction.rollback();
@@ -1505,7 +1448,7 @@ router.post('/tournament/weekly/claim', auth, rewardClaimLimiter, async (req, re
     let actualFP = 0;
     let fpCapped = false;
     if (result.rewards.fatePoints > 0) {
-      const fpResult = essenceTapService.applyFPWithCap(
+      const fpResult = actions.applyFPWithCap(
         result.newState,
         result.rewards.fatePoints,
         'tournament'
@@ -1570,9 +1513,9 @@ router.get('/tournament/bracket-leaderboard', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
+    const state = user.essenceTap || stateService.getInitialState();
     const userBracket = state.tournament?.bracket || 'C';
-    const currentWeek = essenceTapService.getCurrentISOWeek();
+    const currentWeek = actions.getCurrentWeekId();
 
     // Get all users with essence tap data
     const users = await User.findAll({
@@ -1604,7 +1547,7 @@ router.get('/tournament/bracket-leaderboard', auth, async (req, res) => {
         };
       })
       .sort((a, b) => b.weeklyEssence - a.weeklyEssence)
-      .slice(0, essenceTapService.tournamentService.BRACKET_SYSTEM.maxPlayersPerBracket)
+      .slice(0, BRACKET_SYSTEM.maxPlayersPerBracket)
       .map((entry, index) => ({
         ...entry,
         bracketRank: index + 1
@@ -1616,7 +1559,7 @@ router.get('/tournament/bracket-leaderboard', auth, async (req, res) => {
     res.json({
       success: true,
       bracket: userBracket,
-      bracketInfo: essenceTapService.tournamentService.BRACKET_SYSTEM.brackets[userBracket],
+      bracketInfo: BRACKET_SYSTEM.brackets[userBracket],
       leaderboard: bracketPlayers,
       userRank: userRank > 0 ? userRank : null,
       weekId: currentWeek
@@ -1648,8 +1591,8 @@ router.post('/tournament/checkpoint/claim', auth, rewardClaimLimiter, async (req
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
-    const result = essenceTapService.claimTournamentCheckpoint(state, day);
+    let state = user.essenceTap || stateService.getInitialState();
+    const result = actions.claimTournamentCheckpoint({ state, day });
 
     if (!result.success) {
       await transaction.rollback();
@@ -1662,7 +1605,7 @@ router.post('/tournament/checkpoint/claim', auth, rewardClaimLimiter, async (req
     let actualFP = 0;
     let fpCapped = false;
     if (result.rewards.fatePoints > 0) {
-      const fpResult = essenceTapService.applyFPWithCap(
+      const fpResult = actions.applyFPWithCap(
         result.newState,
         result.rewards.fatePoints,
         'checkpoint'
@@ -1709,14 +1652,14 @@ router.post('/tournament/checkpoint/claim', auth, rewardClaimLimiter, async (req
  */
 router.get('/tournament/burning-hour', auth, async (req, res) => {
   try {
-    const status = essenceTapService.getBurningHourStatus();
+    const status = actions.getBurningHourStatus();
 
     res.json({
       success: true,
       ...status,
       config: {
-        duration: essenceTapService.tournamentService.BURNING_HOURS.duration,
-        multiplier: essenceTapService.tournamentService.BURNING_HOURS.multiplier
+        duration: BURNING_HOURS.duration,
+        multiplier: BURNING_HOURS.multiplier
       }
     });
   } catch (error) {
@@ -1736,18 +1679,18 @@ router.get('/tournament/cosmetics', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
+    const state = user.essenceTap || stateService.getInitialState();
     const cosmetics = state.tournament?.cosmetics || { owned: [], equipped: {} };
 
     // Get full cosmetic details
     const ownedDetails = cosmetics.owned.map(id =>
-      essenceTapService.tournamentService.TOURNAMENT_COSMETICS.items[id]
+      TOURNAMENT_COSMETICS.items[id]
     ).filter(Boolean);
 
     const equippedDetails = {};
     for (const [slot, id] of Object.entries(cosmetics.equipped)) {
       if (id) {
-        equippedDetails[slot] = essenceTapService.tournamentService.TOURNAMENT_COSMETICS.items[id];
+        equippedDetails[slot] = TOURNAMENT_COSMETICS.items[id];
       }
     }
 
@@ -1756,7 +1699,7 @@ router.get('/tournament/cosmetics', auth, async (req, res) => {
       owned: ownedDetails,
       equipped: equippedDetails,
       equippedIds: cosmetics.equipped,
-      allCosmetics: essenceTapService.tournamentService.TOURNAMENT_COSMETICS.items
+      allCosmetics: TOURNAMENT_COSMETICS.items
     });
   } catch (error) {
     console.error('Error getting cosmetics:', error);
@@ -1781,8 +1724,8 @@ router.post('/tournament/cosmetics/equip', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
-    const result = essenceTapService.equipTournamentCosmetic(state, cosmeticId);
+    let state = user.essenceTap || stateService.getInitialState();
+    const result = actions.equipCosmetic({ state, cosmeticId });
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -1819,8 +1762,8 @@ router.post('/tournament/cosmetics/unequip', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
-    const result = essenceTapService.unequipTournamentCosmetic(state, slot);
+    let state = user.essenceTap || stateService.getInitialState();
+    const result = actions.unequipCosmetic({ state, slot });
 
     if (!result.success) {
       return res.status(400).json({ error: result.error });
@@ -1847,8 +1790,8 @@ router.get('/tournament/rank-rewards', auth, async (req, res) => {
   try {
     res.json({
       success: true,
-      rankRewards: essenceTapService.tournamentService.RANK_REWARDS.ranges,
-      brackets: essenceTapService.tournamentService.BRACKET_SYSTEM.brackets
+      rankRewards: RANK_REWARDS.ranges,
+      brackets: BRACKET_SYSTEM.brackets
     });
   } catch (error) {
     console.error('Error getting rank rewards:', error);
@@ -1871,8 +1814,8 @@ router.get('/tickets/streak', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
-    const streakInfo = essenceTapService.checkDailyStreakTickets(state);
+    const state = user.essenceTap || stateService.getInitialState();
+    const streakInfo = actions.checkDailyStreak(state);
 
     res.json({
       streakDays: streakInfo.streakDays || state.ticketGeneration?.dailyStreakDays || 0,
@@ -1899,9 +1842,9 @@ router.post('/tickets/streak/claim', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
-      const result = essenceTapService.checkDailyStreakTickets(state);
+      const result = actions.checkDailyStreak(state);
 
       if (!result.newState) {
         // Already claimed today
@@ -1948,12 +1891,12 @@ router.post('/tickets/exchange', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
       // Get user's Fate Points
       const fatePoints = user.fatePoints?.global?.points || 0;
 
-      const result = essenceTapService.exchangeFatePointsForTickets(state, fatePoints);
+      const result = actions.exchangeFatePointsForTickets({ state, user: { fatePoints } });
 
       if (!result.success) {
         return res.status(400).json({ error: result.error });
@@ -2006,19 +1949,19 @@ router.get('/mastery', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
+    const state = user.essenceTap || stateService.getInitialState();
     const masteryInfo = {};
 
     for (const charId of state.assignedCharacters || []) {
-      masteryInfo[charId] = essenceTapService.calculateCharacterMastery(state, charId);
+      masteryInfo[charId] = calculations.calculateCharacterMastery(state, charId);
     }
 
-    const totalBonus = essenceTapService.calculateTotalMasteryBonus(state);
+    const totalBonus = calculations.calculateTotalMasteryBonus(state);
 
     res.json({
       characterMastery: masteryInfo,
       totalBonus,
-      masteryConfig: essenceTapService.CHARACTER_MASTERY
+      masteryConfig: CHARACTER_MASTERY
     });
   } catch (error) {
     console.error('Error getting mastery info:', error);
@@ -2037,7 +1980,7 @@ router.get('/mastery', auth, async (req, res) => {
 router.get('/jackpot', auth, async (req, res) => {
   try {
     // Fetch shared jackpot info from database
-    const jackpotInfo = await essenceTapService.getSharedJackpotInfo();
+    const jackpotInfo = await actions.getSharedJackpotInfo();
 
     res.json(jackpotInfo);
   } catch (error) {
@@ -2061,7 +2004,7 @@ router.get('/synergy/series', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
+    const state = user.essenceTap || stateService.getInitialState();
 
     // Get user's characters
     const userCharacters = await UserCharacter.findAll({
@@ -2076,11 +2019,11 @@ router.get('/synergy/series', auth, async (req, res) => {
       series: uc.Character?.series || 'Unknown'
     }));
 
-    const seriesSynergy = essenceTapService.calculateSeriesSynergy(state, characters);
+    const seriesSynergy = calculations.calculateSeriesSynergy(state, characters);
 
     res.json({
       ...seriesSynergy,
-      config: essenceTapService.SERIES_SYNERGIES
+      config: SERIES_SYNERGIES
     });
   } catch (error) {
     console.error('Error getting series synergy:', error);
@@ -2103,14 +2046,14 @@ router.get('/essence-types', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
+    const state = user.essenceTap || stateService.getInitialState();
     const essenceTypes = state.essenceTypes || { pure: 0, ambient: 0, golden: 0, prismatic: 0 };
     const bonuses = essenceTapService.getEssenceTypeBonuses(state);
 
     res.json({
       essenceTypes,
       bonuses,
-      config: essenceTapService.ESSENCE_TYPES
+      config: ESSENCE_TYPES
     });
   } catch (error) {
     console.error('Error getting essence types:', error);
@@ -2133,12 +2076,12 @@ router.get('/session-stats', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
-    const sessionStats = essenceTapService.getSessionStats(state);
+    const state = user.essenceTap || stateService.getInitialState();
+    const sessionStats = actions.getSessionStats(state);
 
     res.json({
       ...sessionStats,
-      miniMilestones: essenceTapService.MINI_MILESTONES
+      miniMilestones: MINI_MILESTONES
     });
   } catch (error) {
     console.error('Error getting session stats:', error);
@@ -2157,12 +2100,12 @@ router.get('/weekly-fp-budget', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
-    const budget = essenceTapService.getWeeklyFPBudget(state);
+    const state = user.essenceTap || stateService.getInitialState();
+    const budget = actions.getWeeklyFPBudget(state);
 
     res.json({
       ...budget,
-      config: essenceTapService.WEEKLY_FP_CAP
+      config: WEEKLY_FP_CAP
     });
   } catch (error) {
     console.error('Error getting weekly FP budget:', error);
@@ -2177,7 +2120,29 @@ router.get('/weekly-fp-budget', auth, async (req, res) => {
  */
 router.get('/config', auth, async (_req, res) => {
   try {
-    const config = essenceTapService.getGameConfig();
+    // Return game config using imported constants
+    const config = {
+      characterBonuses: GAME_CONFIG.characterBonuses,
+      underdogBonuses: GAME_CONFIG.underdogBonuses,
+      maxAssignedCharacters: GAME_CONFIG.maxAssignedCharacters,
+      goldenEssenceChance: GAME_CONFIG.goldenEssenceChance,
+      goldenEssenceMultiplier: GAME_CONFIG.goldenEssenceMultiplier,
+      comboDecayTime: GAME_CONFIG.comboDecayTime,
+      maxComboMultiplier: GAME_CONFIG.maxComboMultiplier,
+      comboGrowthRate: GAME_CONFIG.comboGrowthRate,
+      characterAbilities: CHARACTER_ABILITIES,
+      elementSynergies: ELEMENT_SYNERGIES,
+      seriesSynergies: SERIES_SYNERGIES,
+      essenceTypes: ESSENCE_TYPES,
+      dailyModifiers: DAILY_MODIFIERS,
+      dailyChallenges: DAILY_CHALLENGES,
+      miniMilestones: MINI_MILESTONES,
+      weeklyFpCap: WEEKLY_FP_CAP,
+      prestigeConfig: {
+        minimumEssence: PRESTIGE_CONFIG.minimumEssence,
+        cooldownMs: PRESTIGE_CONFIG.cooldownMs
+      }
+    };
     res.json(config);
   } catch (error) {
     console.error('Error getting game config:', error);
@@ -2196,8 +2161,8 @@ router.get('/daily-challenges', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
-    const challenges = essenceTapService.getDailyChallengesWithProgress(state);
+    const state = user.essenceTap || stateService.getInitialState();
+    const challenges = actions.getDailyChallengesWithProgress({ state });
 
     res.json({
       challenges,
@@ -2232,7 +2197,7 @@ router.post('/daily-challenges/claim', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
+    const state = user.essenceTap || stateService.getInitialState();
 
     // Use unified action handler
     const result = actions.claimDailyChallenge({ state, challengeId });
@@ -2277,8 +2242,8 @@ router.get('/boss', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
-    const bossInfo = essenceTapService.getBossEncounterInfo(state);
+    const state = user.essenceTap || stateService.getInitialState();
+    const bossInfo = actions.getBossInfo(state);
 
     res.json(bossInfo);
   } catch (error) {
@@ -2306,7 +2271,7 @@ router.post('/boss/attack', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
+    const state = user.essenceTap || stateService.getInitialState();
 
     // Get user's characters for damage calculation
     const characters = await shared.loadUserCharacters(user.id, { transaction });
@@ -2366,7 +2331,7 @@ router.get('/synergy-preview', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    const state = user.essenceTap || essenceTapService.getInitialState();
+    const state = user.essenceTap || stateService.getInitialState();
 
     // Get user's characters
     const userCharacters = await UserCharacter.findAll({
@@ -2385,12 +2350,12 @@ router.get('/synergy-preview', auth, async (req, res) => {
 
     // Calculate current bonuses
     const currentBonuses = {
-      characterBonus: essenceTapService.calculateCharacterBonus(state, characters),
-      elementBonuses: essenceTapService.calculateElementBonuses(state, characters),
-      elementSynergy: essenceTapService.calculateElementSynergy(state, characters),
-      seriesSynergy: essenceTapService.calculateSeriesSynergy(state, characters),
-      underdogBonus: essenceTapService.calculateUnderdogBonus(state, characters),
-      masteryBonus: essenceTapService.calculateTotalMasteryBonus(state).productionBonus || 0
+      characterBonus: calculations.calculateCharacterBonus(state, characters),
+      elementBonuses: calculations.calculateElementBonuses(state, characters),
+      elementSynergy: calculations.calculateElementSynergy(state, characters),
+      seriesSynergy: calculations.calculateSeriesSynergy(state, characters),
+      underdogBonus: calculations.calculateUnderdogBonus(state, characters),
+      masteryBonus: calculations.calculateTotalMasteryBonus(state).productionBonus || 0
     };
 
     // Group characters by series for synergy suggestions
@@ -2422,7 +2387,7 @@ router.get('/synergy-preview', auth, async (req, res) => {
           name: series,
           characters: chars.slice(0, 5),
           count: chars.length,
-          potentialBonus: essenceTapService.SERIES_SYNERGIES.matchBonuses[Math.min(chars.length, 5)]
+          potentialBonus: SERIES_SYNERGIES.matchBonuses[Math.min(chars.length, 5)]
         });
       }
     }
@@ -2449,9 +2414,9 @@ router.get('/synergy-preview', auth, async (req, res) => {
       synergySuggestions: synergySuggestions.slice(0, 10),
       availableCharacters: characters,
       config: {
-        maxCharacters: essenceTapService.GAME_CONFIG.maxAssignedCharacters,
-        seriesSynergies: essenceTapService.SERIES_SYNERGIES,
-        elementBonuses: essenceTapService.calculateElementBonuses
+        maxCharacters: GAME_CONFIG.maxAssignedCharacters,
+        seriesSynergies: SERIES_SYNERGIES,
+        elementBonuses: calculations.calculateElementBonuses
       }
     });
   } catch (error) {
@@ -2525,7 +2490,7 @@ router.post('/sync-on-leave', async (req, res) => {
         return res.status(200).json({ success: false, reason: 'user_not_found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
       // Get user's characters for bonus calculation
       const userCharacters = await UserCharacter.findAll({
@@ -2546,7 +2511,7 @@ router.post('/sync-on-leave', async (req, res) => {
       // Process pending taps if they haven't been processed yet
       // Use lastConfirmedSeq to prevent double-processing
       if (pendingTaps > 0) {
-        const clickPower = essenceTapService.calculateClickPower(state, characters);
+        const clickPower = calculations.calculateClickPower(state, characters);
         const tapEssence = Math.floor(pendingTaps * clickPower);
 
         state.essence = (state.essence || 0) + tapEssence;
@@ -2559,11 +2524,13 @@ router.post('/sync-on-leave', async (req, res) => {
         state.daily.essenceEarned = (state.daily.essenceEarned || 0) + tapEssence;
 
         // Update weekly tournament progress with burning hour check
-        const tapBurningHourStatus = essenceTapService.getBurningHourStatus();
-        const weeklyResult = essenceTapService.updateWeeklyProgress(state, tapEssence, {
-          burningHourActive: tapBurningHourStatus.active
+        const tapBurningHourStatus = actions.getBurningHourStatus();
+        const weeklyResult = actions.updateWeeklyProgress({
+          state,
+          essence: tapEssence,
+          options: { burningHourActive: tapBurningHourStatus.active }
         });
-        state = weeklyResult.newState;
+        state = weeklyResult.newState || state;
       }
 
       // Process pending non-tap actions that haven't been confirmed
@@ -2579,13 +2546,20 @@ router.post('/sync-on-leave', async (req, res) => {
 
         // Only process certain action types that are safe to replay
         if (action.type === 'purchase_generator' && action.data?.generatorId) {
-          const result = essenceTapService.purchaseGenerator(state, action.data.generatorId, action.data.count || 1);
+          const result = actions.purchaseGenerator({
+            state,
+            generatorId: action.data.generatorId,
+            count: action.data.count || 1
+          });
           if (result.success) {
             state = result.newState;
             maxProcessedSeq = Math.max(maxProcessedSeq, action.seq);
           }
         } else if (action.type === 'purchase_upgrade' && action.data?.upgradeId) {
-          const result = essenceTapService.purchaseUpgrade(state, action.data.upgradeId);
+          const result = actions.purchaseUpgrade({
+            state,
+            upgradeId: action.data.upgradeId
+          });
           if (result.success) {
             state = result.newState;
             maxProcessedSeq = Math.max(maxProcessedSeq, action.seq);
@@ -2664,16 +2638,16 @@ router.post('/initialize', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
       // Reset daily if needed
-      state = essenceTapService.resetDaily(state);
+      state = stateService.resetDaily(state);
 
       // Reset weekly FP tracking if new week
-      state = essenceTapService.resetWeeklyFPIfNeeded(state);
+      state = actions.resetWeeklyFPIfNeeded(state);
 
       // Reset session stats for new session
-      state = essenceTapService.resetSessionStats(state);
+      state = stateService.resetSessionStats(state);
 
       // Get user's characters for bonus calculation
       const userCharacters = await UserCharacter.findAll({
@@ -2696,7 +2670,7 @@ router.post('/initialize', auth, async (req, res) => {
           for (const action of pendingActions) {
             // Only process tap actions - other actions should have gone through sendBeacon
             if (action.type === 'tap' && action.data?.count > 0) {
-              const clickPower = essenceTapService.calculateClickPower(state, characters);
+              const clickPower = calculations.calculateClickPower(state, characters);
               const tapEssence = Math.floor(action.data.count * clickPower);
 
               state.essence = (state.essence || 0) + tapEssence;
@@ -2733,7 +2707,7 @@ router.post('/initialize', auth, async (req, res) => {
       if (offlineSeconds >= MIN_OFFLINE_SECONDS_FOR_EARNINGS) {
         // Temporarily set lastOnlineTimestamp for calculation
         const stateForCalc = { ...state, lastOnlineTimestamp: now - (offlineSeconds * 1000) };
-        offlineProgress = essenceTapService.calculateOfflineProgress(stateForCalc, characters);
+        offlineProgress = calculations.calculateOfflineProgress(stateForCalc, characters);
 
         // Apply offline earnings
         if (offlineProgress.essenceEarned > 0) {
@@ -2755,18 +2729,18 @@ router.post('/initialize', auth, async (req, res) => {
       await user.save();
 
       // Get full game state for response
-      const gameState = essenceTapService.getGameState(state, characters);
-      const weeklyFPBudget = essenceTapService.getWeeklyFPBudget(state);
+      const gameState = actions.getGameState({ state, characters });
+      const weeklyFPBudget = actions.getWeeklyFPBudget(state);
 
       const response = {
         currentState: gameState,
         offlineEarnings: offlineProgress.essenceEarned,
         offlineDuration: offlineProgress.hoursAway * 3600, // Convert hours to seconds for consistency
-        productionPerSecond: offlineProgress.productionRate || essenceTapService.calculateProductionPerSecond(state, characters),
+        productionPerSecond: offlineProgress.productionRate || calculations.calculateProductionPerSecond(state, characters),
         offlineEfficiency: offlineProgress.efficiency,
         pendingActionsApplied: actionsApplied,
         weeklyFPBudget,
-        sessionStats: essenceTapService.getSessionStats(state)
+        sessionStats: actions.getSessionStats(state)
       };
 
       // BUG #3 & #8 FIX: Cache this initialization for deduplication

@@ -46,6 +46,12 @@ export { usePassiveProduction } from './usePassiveProduction';
 export { useOptimisticEssence } from './useOptimisticEssence';
 export { useEssenceTapSounds } from './useEssenceTapSounds';
 
+// Decomposed focused hooks (new architecture)
+export { useComboMultiplier } from './useComboMultiplier';
+export { usePassiveIncome } from './usePassiveIncome';
+export { useAchievements } from './useAchievements';
+export { useAutoSave } from './useAutoSave';
+
 // Re-export from parent hooks for backward compatibility
 // These are the main hooks that should be used
 export { useEssenceTap } from '../useEssenceTap';
