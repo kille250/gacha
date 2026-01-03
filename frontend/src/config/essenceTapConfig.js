@@ -701,26 +701,247 @@ export const BET_TYPES = {
 };
 
 // ===========================================
-// WEEKLY TOURNAMENT CONFIG
+// WEEKLY TOURNAMENT CONFIG (v4.0 ENHANCED)
 // ===========================================
 
-// v3.0 REBALANCING: Tier thresholds scaled 10x to match new economy
+// v4.0: Champion tier rebalanced from 100B to 25B for achievability
 export const TOURNAMENT_TIER_CONFIG = {
-  Bronze: { color: '#CD7F32', colorEnd: '#8B4513', minEssence: 10000000 },        // Was 1M
-  Silver: { color: '#C0C0C0', colorEnd: '#808080', minEssence: 100000000 },       // Was 10M
-  Gold: { color: '#FFD700', colorEnd: '#FFA500', minEssence: 500000000 },         // Was 50M
-  Platinum: { color: '#E5E4E2', colorEnd: '#B4B4B4', minEssence: 2000000000 },    // Was 200M
-  Diamond: { color: '#B9F2FF', colorEnd: '#40E0D0', minEssence: 10000000000 },    // Was 1B
-  Champion: { color: '#FF6B6B', colorEnd: '#FFD93D', minEssence: 100000000000 }   // Was 10B
+  Bronze: { color: '#CD7F32', colorEnd: '#8B4513', minEssence: 10000000 },        // 10M
+  Silver: { color: '#C0C0C0', colorEnd: '#808080', minEssence: 100000000 },       // 100M
+  Gold: { color: '#FFD700', colorEnd: '#FFA500', minEssence: 500000000 },         // 500M
+  Platinum: { color: '#E5E4E2', colorEnd: '#B4B4B4', minEssence: 2000000000 },    // 2B
+  Diamond: { color: '#B9F2FF', colorEnd: '#40E0D0', minEssence: 10000000000 },    // 10B
+  Champion: { color: '#FF6B6B', colorEnd: '#FFD93D', minEssence: 25000000000 }    // v4.0: 25B (was 100B)
 };
 
+// v4.0: Rebalanced to fit within FP cap
 export const TOURNAMENT_TIER_REWARDS = {
-  Bronze: { fatePoints: 5, rollTickets: 1 },
-  Silver: { fatePoints: 15, rollTickets: 3 },
-  Gold: { fatePoints: 30, rollTickets: 5 },
-  Platinum: { fatePoints: 50, rollTickets: 10 },
-  Diamond: { fatePoints: 100, rollTickets: 20 },
-  Champion: { fatePoints: 200, rollTickets: 50 }
+  Bronze: { fatePoints: 5, rollTickets: 2 },
+  Silver: { fatePoints: 12, rollTickets: 4 },
+  Gold: { fatePoints: 25, rollTickets: 8 },
+  Platinum: { fatePoints: 40, rollTickets: 15 },
+  Diamond: { fatePoints: 60, rollTickets: 25 },
+  Champion: { fatePoints: 75, rollTickets: 40 }
+};
+
+// ===========================================
+// RANK-BASED REWARDS (NEW v4.0)
+// ===========================================
+
+export const RANK_REWARDS = [
+  {
+    minRank: 1, maxRank: 1,
+    rewards: { fatePoints: 25, rollTickets: 10, premiumTickets: 3 },
+    cosmetics: ['frame_champion_gold', 'title_weekly_champion'],
+    title: 'Weekly Champion'
+  },
+  {
+    minRank: 2, maxRank: 2,
+    rewards: { fatePoints: 15, rollTickets: 7, premiumTickets: 2 },
+    cosmetics: ['frame_podium_silver'],
+    title: 'Runner Up'
+  },
+  {
+    minRank: 3, maxRank: 3,
+    rewards: { fatePoints: 10, rollTickets: 5, premiumTickets: 1 },
+    cosmetics: ['frame_podium_bronze'],
+    title: 'Third Place'
+  },
+  {
+    minRank: 4, maxRank: 10,
+    rewards: { fatePoints: 5, rollTickets: 3, premiumTickets: 0 },
+    cosmetics: ['badge_top_10'],
+    title: null
+  },
+  {
+    minRank: 11, maxRank: 25,
+    rewards: { fatePoints: 3, rollTickets: 2, premiumTickets: 0 },
+    cosmetics: [],
+    title: null
+  },
+  {
+    minRank: 26, maxRank: 50,
+    rewards: { fatePoints: 0, rollTickets: 2, premiumTickets: 0 },
+    cosmetics: [],
+    title: null
+  },
+  {
+    minRank: 51, maxRank: 100,
+    rewards: { fatePoints: 0, rollTickets: 1, premiumTickets: 0 },
+    cosmetics: [],
+    title: null
+  }
+];
+
+// ===========================================
+// BRACKET SYSTEM (NEW v4.0)
+// ===========================================
+
+export const BRACKET_SYSTEM = {
+  S: {
+    name: 'Champion',
+    description: 'Top performers compete for ultimate glory',
+    color: '#FFD700',
+    icon: 'crown'
+  },
+  A: {
+    name: 'Challenger',
+    description: 'Skilled players pushing for the top',
+    color: '#C0C0C0',
+    icon: 'sword'
+  },
+  B: {
+    name: 'Competitor',
+    description: 'Active participants making their mark',
+    color: '#CD7F32',
+    icon: 'shield'
+  },
+  C: {
+    name: 'Newcomer',
+    description: 'New or casual players finding their footing',
+    color: '#9CA3AF',
+    icon: 'star'
+  }
+};
+
+// ===========================================
+// DAILY CHECKPOINTS (NEW v4.0)
+// ===========================================
+
+export const DAILY_CHECKPOINTS = [
+  { day: 1, cumulativeTarget: 50000000, rewards: { rollTickets: 1 }, name: 'Monday Start' },
+  { day: 2, cumulativeTarget: 150000000, rewards: { rollTickets: 1 }, name: 'Tuesday Push' },
+  { day: 3, cumulativeTarget: 300000000, rewards: { rollTickets: 1, fatePoints: 3 }, name: 'Midweek Milestone' },
+  { day: 4, cumulativeTarget: 500000000, rewards: { rollTickets: 2 }, name: 'Thursday Threshold' },
+  { day: 5, cumulativeTarget: 800000000, rewards: { rollTickets: 2 }, name: 'Friday Focus' },
+  { day: 6, cumulativeTarget: 1200000000, rewards: { rollTickets: 2, fatePoints: 5 }, name: 'Saturday Sprint' },
+  { day: 7, cumulativeTarget: 2000000000, rewards: { rollTickets: 3 }, name: 'Sunday Finish' }
+];
+
+// ===========================================
+// BURNING HOURS (NEW v4.0)
+// ===========================================
+
+export const BURNING_HOURS = {
+  duration: 7200000,        // 2 hours
+  multiplier: 2.0,          // 2x essence
+  colors: {
+    active: '#EF4444',
+    upcoming: '#F59E0B',
+    inactive: '#6B7280'
+  }
+};
+
+// ===========================================
+// TOURNAMENT STREAKS (NEW v4.0)
+// ===========================================
+
+export const TOURNAMENT_STREAKS = [
+  { weeks: 2, essenceBonus: 0.05, rewards: null, cosmetics: null },
+  { weeks: 4, essenceBonus: 0.10, rewards: { rollTickets: 3 }, cosmetics: ['badge_streak_4'] },
+  { weeks: 8, essenceBonus: 0.15, rewards: { rollTickets: 5, premiumTickets: 1 }, cosmetics: ['badge_streak_8', 'frame_dedicated'] },
+  { weeks: 12, essenceBonus: 0.20, rewards: { rollTickets: 10, premiumTickets: 3 }, cosmetics: ['badge_streak_12', 'frame_veteran', 'title_tournament_veteran'] }
+];
+
+// ===========================================
+// TOURNAMENT COSMETICS (NEW v4.0)
+// ===========================================
+
+export const TOURNAMENT_COSMETICS = {
+  frame_champion_gold: {
+    id: 'frame_champion_gold',
+    type: 'avatar_frame',
+    name: "Champion's Laurel",
+    description: 'Awarded to #1 tournament finisher',
+    rarity: 'legendary'
+  },
+  title_weekly_champion: {
+    id: 'title_weekly_champion',
+    type: 'profile_title',
+    name: 'Weekly Champion',
+    description: 'Finished #1 in weekly tournament',
+    rarity: 'legendary',
+    displayText: 'Weekly Champion'
+  },
+  frame_podium_silver: {
+    id: 'frame_podium_silver',
+    type: 'avatar_frame',
+    name: 'Silver Podium',
+    description: 'Finished 2nd in weekly tournament',
+    rarity: 'epic'
+  },
+  frame_podium_bronze: {
+    id: 'frame_podium_bronze',
+    type: 'avatar_frame',
+    name: 'Bronze Podium',
+    description: 'Finished 3rd in weekly tournament',
+    rarity: 'rare'
+  },
+  badge_top_10: {
+    id: 'badge_top_10',
+    type: 'badge',
+    name: 'Top 10',
+    description: 'Finished in top 10 of tournament bracket',
+    rarity: 'rare'
+  },
+  badge_streak_4: {
+    id: 'badge_streak_4',
+    type: 'badge',
+    name: '4-Week Streak',
+    description: 'Participated in 4 consecutive tournaments',
+    rarity: 'uncommon'
+  },
+  badge_streak_8: {
+    id: 'badge_streak_8',
+    type: 'badge',
+    name: '8-Week Streak',
+    description: 'Participated in 8 consecutive tournaments',
+    rarity: 'rare'
+  },
+  badge_streak_12: {
+    id: 'badge_streak_12',
+    type: 'badge',
+    name: '12-Week Streak',
+    description: 'Participated in 12 consecutive tournaments',
+    rarity: 'epic'
+  },
+  frame_dedicated: {
+    id: 'frame_dedicated',
+    type: 'avatar_frame',
+    name: 'Dedicated Player',
+    description: '8-week tournament streak achievement',
+    rarity: 'rare'
+  },
+  frame_veteran: {
+    id: 'frame_veteran',
+    type: 'avatar_frame',
+    name: 'Tournament Veteran',
+    description: '12-week tournament streak achievement',
+    rarity: 'epic'
+  },
+  title_tournament_veteran: {
+    id: 'title_tournament_veteran',
+    type: 'profile_title',
+    name: 'Tournament Veteran',
+    description: '12-week tournament streak achievement',
+    rarity: 'epic',
+    displayText: 'Tournament Veteran'
+  },
+  frame_bracket_champion: {
+    id: 'frame_bracket_champion',
+    type: 'avatar_frame',
+    name: 'Bracket Champion',
+    description: 'Won first place in your bracket',
+    rarity: 'rare'
+  },
+  title_champion_tier: {
+    id: 'title_champion_tier',
+    type: 'profile_title',
+    name: 'Essence Champion',
+    description: 'Reached Champion tier in tournament',
+    rarity: 'legendary',
+    displayText: 'Essence Champion'
+  }
 };
 
 // ===========================================
@@ -776,6 +997,12 @@ export default {
   BET_TYPES,
   TOURNAMENT_TIER_CONFIG,
   TOURNAMENT_TIER_REWARDS,
+  RANK_REWARDS,
+  BRACKET_SYSTEM,
+  DAILY_CHECKPOINTS,
+  BURNING_HOURS,
+  TOURNAMENT_STREAKS,
+  TOURNAMENT_COSMETICS,
   INFUSION_CONFIG,
   ELEMENT_ICON_NAMES,
   ELEMENT_COLORS,

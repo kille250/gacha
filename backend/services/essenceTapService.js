@@ -2446,41 +2446,108 @@ async function resetJackpot(state, userId, winAmount) {
 }
 
 // ===========================================
-// WEEKLY TOURNAMENT SYSTEM
+// WEEKLY TOURNAMENT SYSTEM (v4.0 ENHANCED)
 // ===========================================
 
+// Import tournament service for enhanced features
+const tournamentService = require('./tournamentService');
+
+// Import enhanced tournament config
+const {
+  BURNING_HOURS,
+  TOURNAMENT_STREAKS,
+  BRACKET_SYSTEM
+} = require('../config/essenceTap');
+
 /**
- * Update weekly tournament progress
+ * Update weekly tournament progress with v4.0 enhancements
+ * Now includes: burning hour multipliers, streak bonuses, underdog bonuses
  * @param {Object} state - Current state
- * @param {number} essenceEarned - Essence earned to add
+ * @param {number} essenceEarned - Base essence earned to add
+ * @param {Object} options - Optional multiplier context
  * @returns {Object} Updated state
  */
-function updateWeeklyProgress(state, essenceEarned) {
+function updateWeeklyProgress(state, essenceEarned, options = {}) {
   const currentWeek = getCurrentISOWeek();
   const newState = { ...state };
 
+  // Initialize tournament state if needed
+  if (!state.tournament) {
+    newState.tournament = tournamentService.initializeTournamentState(state.tournament);
+  }
+
   // Check if we need to reset for a new week
   if (state.weekly?.weekId !== currentWeek) {
+    // Update streak before resetting
+    const participated = (state.weekly?.essenceEarned || 0) >= TOURNAMENT_STREAKS.minimumEssenceToMaintain;
+    const streakResult = tournamentService.updateStreak(state.tournament || {}, participated);
+
+    newState.tournament = {
+      ...tournamentService.initializeTournamentState(state.tournament),
+      streak: streakResult.streak,
+      lastParticipationWeek: streakResult.broken ? null : state.tournament?.lastParticipationWeek,
+      totalTournamentsPlayed: (state.tournament?.totalTournamentsPlayed || 0) + (participated ? 1 : 0)
+    };
+
     newState.weekly = {
       weekId: currentWeek,
-      essenceEarned: essenceEarned,
+      essenceEarned: 0,
       rank: null,
-      rewardsClaimed: false
-    };
-  } else {
-    newState.weekly = {
-      ...state.weekly,
-      essenceEarned: (state.weekly?.essenceEarned || 0) + essenceEarned
+      bracketRank: null,
+      rewardsClaimed: false,
+      checkpointsClaimed: []
     };
   }
 
-  return newState;
+  // Calculate multipliers
+  let totalMultiplier = 1.0;
+
+  // Streak bonus
+  const streakBonus = tournamentService.getStreakBonus(newState.tournament?.streak || 0);
+  totalMultiplier += streakBonus;
+
+  // Burning hour bonus (if active)
+  if (options.burningHourActive) {
+    totalMultiplier += (BURNING_HOURS.multiplier - 1);
+  }
+
+  // Underdog bonuses
+  if (newState.tournament?.bracketRank && options.bracketSize) {
+    const underdogBonuses = tournamentService.getUnderdogBonuses(newState.tournament, options.bracketSize);
+    totalMultiplier += underdogBonuses.total;
+  }
+
+  // Cap multiplier
+  totalMultiplier = Math.min(totalMultiplier, BURNING_HOURS.maxMultiplierStack);
+
+  // Apply multiplier to essence
+  const adjustedEssence = Math.floor(essenceEarned * totalMultiplier);
+
+  newState.weekly = {
+    ...newState.weekly,
+    essenceEarned: (newState.weekly?.essenceEarned || 0) + adjustedEssence
+  };
+
+  // Update tournament essence as well
+  if (newState.tournament) {
+    newState.tournament.essenceEarned = newState.weekly.essenceEarned;
+  }
+
+  return {
+    newState,
+    adjustedEssence,
+    multiplier: totalMultiplier,
+    bonuses: {
+      streak: streakBonus,
+      burningHour: options.burningHourActive ? (BURNING_HOURS.multiplier - 1) : 0
+    }
+  };
 }
 
 /**
- * Get weekly tournament info
+ * Get weekly tournament info with v4.0 enhancements
  * @param {Object} state - Current state
- * @returns {Object} Tournament info
+ * @returns {Object} Enhanced tournament info
  */
 function getWeeklyTournamentInfo(state) {
   const currentWeek = getCurrentISOWeek();
@@ -2496,6 +2563,18 @@ function getWeeklyTournamentInfo(state) {
     }
   }
 
+  // Get checkpoint status
+  const checkpointsClaimed = state.weekly?.checkpointsClaimed || [];
+  const checkpoints = tournamentService.getCheckpointStatus(essenceEarned, checkpointsClaimed);
+
+  // Get streak info
+  const streak = state.tournament?.streak || 0;
+  const streakBonus = tournamentService.getStreakBonus(streak);
+
+  // Get bracket info
+  const bracket = state.tournament?.bracket || BRACKET_SYSTEM.defaultBracket;
+  const bracketInfo = BRACKET_SYSTEM.brackets[bracket];
+
   return {
     weekId: currentWeek,
     essenceEarned,
@@ -2504,14 +2583,29 @@ function getWeeklyTournamentInfo(state) {
     rewards: WEEKLY_TOURNAMENT.rewards,
     isCurrentWeek,
     canClaimRewards: !isCurrentWeek && state.weekly?.weekId && !state.weekly?.rewardsClaimed,
-    endsAt: getWeekEndDate().toISOString()
+    endsAt: getWeekEndDate().toISOString(),
+
+    // v4.0 enhancements
+    bracket,
+    bracketInfo,
+    bracketRank: state.weekly?.bracketRank || null,
+    checkpoints,
+    claimableCheckpoints: checkpoints.filter(c => c.claimable),
+    streak,
+    streakBonus,
+    nextStreakMilestone: TOURNAMENT_STREAKS.milestones.find(m => m.weeks > streak),
+    cosmetics: state.tournament?.cosmetics || { owned: [], equipped: {} },
+    totalTournamentsPlayed: state.tournament?.totalTournamentsPlayed || 0,
+    bestRank: state.tournament?.bestRank || null,
+    podiumFinishes: state.tournament?.podiumFinishes || 0
   };
 }
 
 /**
- * Claim weekly tournament rewards
+ * Claim weekly tournament rewards with v4.0 enhancements
+ * Now includes: tier rewards, rank rewards, streak rewards, cosmetics
  * @param {Object} state - Current state
- * @returns {Object} Result with rewards
+ * @returns {Object} Result with combined rewards
  */
 function claimWeeklyRewards(state) {
   const currentWeek = getCurrentISOWeek();
@@ -2543,7 +2637,15 @@ function claimWeeklyRewards(state) {
     return { success: false, error: 'No tier achieved' };
   }
 
-  const rewards = WEEKLY_TOURNAMENT.rewards[achievedTier.name] || { fatePoints: 0, rollTickets: 0 };
+  // Calculate total rewards using tournament service
+  const tournamentState = {
+    ...state.tournament,
+    essenceEarned,
+    bracketRank: state.weekly?.bracketRank || null,
+    streak: state.tournament?.streak || 0
+  };
+
+  const totalRewards = tournamentService.calculateTotalRewards(tournamentState);
 
   const newState = { ...state };
   newState.weekly = {
@@ -2551,11 +2653,152 @@ function claimWeeklyRewards(state) {
     rewardsClaimed: true
   };
 
+  // Update tournament state with new stats
+  newState.tournament = {
+    ...state.tournament,
+    totalTournamentsPlayed: (state.tournament?.totalTournamentsPlayed || 0) + 1
+  };
+
+  // Update best rank if applicable
+  const bracketRank = state.weekly?.bracketRank;
+  if (bracketRank && (!newState.tournament.bestRank || bracketRank < newState.tournament.bestRank)) {
+    newState.tournament.bestRank = bracketRank;
+  }
+
+  // Update podium finishes
+  if (bracketRank && bracketRank <= 3) {
+    newState.tournament.podiumFinishes = (newState.tournament.podiumFinishes || 0) + 1;
+  }
+
+  // Unlock cosmetics
+  if (totalRewards.combined.cosmetics.length > 0) {
+    const cosmeticResult = tournamentService.unlockCosmetics(newState.tournament, totalRewards.combined.cosmetics);
+    newState.tournament.cosmetics = cosmeticResult.cosmetics;
+  }
+
   return {
     success: true,
     newState,
     tier: achievedTier.name,
-    rewards
+    rewards: totalRewards.combined,
+    breakdown: {
+      tierRewards: totalRewards.tierRewards,
+      rankRewards: totalRewards.rankRewards,
+      streakRewards: totalRewards.streakRewards
+    },
+    bracketRank,
+    streak: tournamentState.streak
+  };
+}
+
+/**
+ * Claim a daily checkpoint reward
+ * @param {Object} state - Current state
+ * @param {number} day - Checkpoint day (1-7)
+ * @returns {Object} Result with rewards
+ */
+function claimTournamentCheckpoint(state, day) {
+  const currentWeek = getCurrentISOWeek();
+
+  if (state.weekly?.weekId !== currentWeek) {
+    return { success: false, error: 'No active tournament week' };
+  }
+
+  const tournamentState = {
+    essenceEarned: state.weekly?.essenceEarned || 0,
+    checkpointsClaimed: state.weekly?.checkpointsClaimed || []
+  };
+
+  const result = tournamentService.claimCheckpoint(tournamentState, day);
+
+  if (!result.success) {
+    return result;
+  }
+
+  const newState = { ...state };
+  newState.weekly = {
+    ...state.weekly,
+    checkpointsClaimed: [...(state.weekly?.checkpointsClaimed || []), day]
+  };
+
+  return {
+    success: true,
+    newState,
+    rewards: result.rewards,
+    checkpointName: result.checkpointName,
+    day
+  };
+}
+
+/**
+ * Get burning hour status for the current week
+ * @returns {Object} Burning hour status
+ */
+function getBurningHourStatus() {
+  // In production, schedule would be stored in database
+  // For now, generate deterministically based on week
+  const currentWeek = getCurrentISOWeek();
+  const schedule = tournamentService.generateBurningHourSchedule(currentWeek);
+
+  return tournamentService.getBurningHourStatus(schedule);
+}
+
+/**
+ * Equip a tournament cosmetic
+ * @param {Object} state - Current state
+ * @param {string} cosmeticId - Cosmetic ID to equip
+ * @returns {Object} Result
+ */
+function equipTournamentCosmetic(state, cosmeticId) {
+  if (!state.tournament) {
+    return { success: false, error: 'No tournament data' };
+  }
+
+  const result = tournamentService.equipCosmetic(state.tournament, cosmeticId);
+
+  if (!result.success) {
+    return result;
+  }
+
+  const newState = { ...state };
+  newState.tournament = {
+    ...state.tournament,
+    cosmetics: result.cosmetics
+  };
+
+  return {
+    success: true,
+    newState,
+    equippedSlot: result.equippedSlot
+  };
+}
+
+/**
+ * Unequip a tournament cosmetic from a slot
+ * @param {Object} state - Current state
+ * @param {string} slot - Slot to unequip
+ * @returns {Object} Result
+ */
+function unequipTournamentCosmetic(state, slot) {
+  if (!state.tournament) {
+    return { success: false, error: 'No tournament data' };
+  }
+
+  const result = tournamentService.unequipCosmetic(state.tournament, slot);
+
+  if (!result.success) {
+    return result;
+  }
+
+  const newState = { ...state };
+  newState.tournament = {
+    ...state.tournament,
+    cosmetics: result.cosmetics
+  };
+
+  return {
+    success: true,
+    newState
   };
 }
 
@@ -3287,10 +3530,15 @@ module.exports = {
   claimRepeatableMilestone,
   getCurrentISOWeek,
 
-  // Weekly tournament
+  // Weekly tournament (v4.0 Enhanced)
   updateWeeklyProgress,
   getWeeklyTournamentInfo,
   claimWeeklyRewards,
+  claimTournamentCheckpoint,
+  getBurningHourStatus,
+  equipTournamentCosmetic,
+  unequipTournamentCosmetic,
+  tournamentService,
 
   // Ticket generation
   checkDailyStreakTickets,

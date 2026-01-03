@@ -1575,12 +1575,317 @@ router.post('/tournament/weekly/claim', auth, async (req, res) => {
         ...result.rewards,
         fatePoints: actualFP,
         fatePointsCapped: fpCapped
-      }
+      },
+      // v4.0 additions
+      breakdown: result.breakdown,
+      bracketRank: result.bracketRank,
+      streak: result.streak
     });
   } catch (error) {
     await transaction.rollback();
     console.error('Error claiming weekly rewards:', error);
     res.status(500).json({ error: 'Failed to claim rewards' });
+  }
+});
+
+// ===========================================
+// TOURNAMENT v4.0 ENHANCED ROUTES
+// ===========================================
+
+/**
+ * GET /api/essence-tap/tournament/bracket-leaderboard
+ * Get bracket-specific leaderboard
+ */
+router.get('/tournament/bracket-leaderboard', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const state = user.essenceTap || essenceTapService.getInitialState();
+    const userBracket = state.tournament?.bracket || 'C';
+    const currentWeek = essenceTapService.getCurrentISOWeek();
+
+    // Get all users with essence tap data
+    const users = await User.findAll({
+      attributes: ['id', 'username', 'essenceTap'],
+      where: {
+        essenceTap: {
+          [require('sequelize').Op.ne]: null
+        }
+      }
+    });
+
+    // Filter to users in the same bracket
+    const bracketPlayers = users
+      .filter(u => {
+        const uState = u.essenceTap;
+        const uBracket = uState?.tournament?.bracket || 'C';
+        return uBracket === userBracket;
+      })
+      .map(u => {
+        const uState = u.essenceTap;
+        const weeklyEssence = uState?.weekly?.weekId === currentWeek
+          ? (uState?.weekly?.essenceEarned || 0)
+          : 0;
+        return {
+          id: u.id,
+          username: u.username,
+          weeklyEssence,
+          bracket: uState?.tournament?.bracket || 'C'
+        };
+      })
+      .sort((a, b) => b.weeklyEssence - a.weeklyEssence)
+      .slice(0, essenceTapService.tournamentService.BRACKET_SYSTEM.maxPlayersPerBracket)
+      .map((entry, index) => ({
+        ...entry,
+        bracketRank: index + 1
+      }));
+
+    // Find user's rank in bracket
+    const userRank = bracketPlayers.findIndex(p => p.id === req.user.id) + 1;
+
+    res.json({
+      success: true,
+      bracket: userBracket,
+      bracketInfo: essenceTapService.tournamentService.BRACKET_SYSTEM.brackets[userBracket],
+      leaderboard: bracketPlayers,
+      userRank: userRank > 0 ? userRank : null,
+      weekId: currentWeek
+    });
+  } catch (error) {
+    console.error('Error getting bracket leaderboard:', error);
+    res.status(500).json({ error: 'Failed to get bracket leaderboard' });
+  }
+});
+
+/**
+ * POST /api/essence-tap/tournament/checkpoint/claim
+ * Claim a daily checkpoint reward
+ */
+router.post('/tournament/checkpoint/claim', auth, async (req, res) => {
+  const transaction = await sequelize.transaction();
+
+  try {
+    const { day } = req.body;
+
+    if (!day || day < 1 || day > 7) {
+      await transaction.rollback();
+      return res.status(400).json({ error: 'Invalid checkpoint day (1-7)' });
+    }
+
+    const user = await User.findByPk(req.user.id, { transaction, lock: true });
+    if (!user) {
+      await transaction.rollback();
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let state = user.essenceTap || essenceTapService.getInitialState();
+    const result = essenceTapService.claimTournamentCheckpoint(state, day);
+
+    if (!result.success) {
+      await transaction.rollback();
+      return res.status(400).json({ error: result.error });
+    }
+
+    user.essenceTap = result.newState;
+
+    // Award FP with cap
+    let actualFP = 0;
+    let fpCapped = false;
+    if (result.rewards.fatePoints > 0) {
+      const fpResult = essenceTapService.applyFPWithCap(
+        result.newState,
+        result.rewards.fatePoints,
+        'checkpoint'
+      );
+      user.essenceTap = fpResult.newState;
+      actualFP = fpResult.actualFP;
+      fpCapped = fpResult.capped;
+
+      // Update user FP
+      const fatePoints = user.fatePoints || {};
+      fatePoints.global = fatePoints.global || { points: 0 };
+      fatePoints.global.points = (fatePoints.global.points || 0) + actualFP;
+      user.fatePoints = fatePoints;
+    }
+
+    // Award tickets
+    if (result.rewards.rollTickets > 0) {
+      user.rollTickets = (user.rollTickets || 0) + result.rewards.rollTickets;
+    }
+
+    await user.save({ transaction });
+    await transaction.commit();
+
+    res.json({
+      success: true,
+      day: result.day,
+      checkpointName: result.checkpointName,
+      rewards: {
+        ...result.rewards,
+        fatePoints: actualFP,
+        fatePointsCapped: fpCapped
+      }
+    });
+  } catch (error) {
+    await transaction.rollback();
+    console.error('Error claiming checkpoint:', error);
+    res.status(500).json({ error: 'Failed to claim checkpoint' });
+  }
+});
+
+/**
+ * GET /api/essence-tap/tournament/burning-hour
+ * Get current burning hour status
+ */
+router.get('/tournament/burning-hour', auth, async (req, res) => {
+  try {
+    const status = essenceTapService.getBurningHourStatus();
+
+    res.json({
+      success: true,
+      ...status,
+      config: {
+        duration: essenceTapService.tournamentService.BURNING_HOURS.duration,
+        multiplier: essenceTapService.tournamentService.BURNING_HOURS.multiplier
+      }
+    });
+  } catch (error) {
+    console.error('Error getting burning hour status:', error);
+    res.status(500).json({ error: 'Failed to get burning hour status' });
+  }
+});
+
+/**
+ * GET /api/essence-tap/tournament/cosmetics
+ * Get user's tournament cosmetics
+ */
+router.get('/tournament/cosmetics', auth, async (req, res) => {
+  try {
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    const state = user.essenceTap || essenceTapService.getInitialState();
+    const cosmetics = state.tournament?.cosmetics || { owned: [], equipped: {} };
+
+    // Get full cosmetic details
+    const ownedDetails = cosmetics.owned.map(id =>
+      essenceTapService.tournamentService.TOURNAMENT_COSMETICS.items[id]
+    ).filter(Boolean);
+
+    const equippedDetails = {};
+    for (const [slot, id] of Object.entries(cosmetics.equipped)) {
+      if (id) {
+        equippedDetails[slot] = essenceTapService.tournamentService.TOURNAMENT_COSMETICS.items[id];
+      }
+    }
+
+    res.json({
+      success: true,
+      owned: ownedDetails,
+      equipped: equippedDetails,
+      equippedIds: cosmetics.equipped,
+      allCosmetics: essenceTapService.tournamentService.TOURNAMENT_COSMETICS.items
+    });
+  } catch (error) {
+    console.error('Error getting cosmetics:', error);
+    res.status(500).json({ error: 'Failed to get cosmetics' });
+  }
+});
+
+/**
+ * POST /api/essence-tap/tournament/cosmetics/equip
+ * Equip a tournament cosmetic
+ */
+router.post('/tournament/cosmetics/equip', auth, async (req, res) => {
+  try {
+    const { cosmeticId } = req.body;
+
+    if (!cosmeticId) {
+      return res.status(400).json({ error: 'Cosmetic ID required' });
+    }
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let state = user.essenceTap || essenceTapService.getInitialState();
+    const result = essenceTapService.equipTournamentCosmetic(state, cosmeticId);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    user.essenceTap = result.newState;
+    await user.save();
+
+    res.json({
+      success: true,
+      equippedSlot: result.equippedSlot,
+      equipped: result.newState.tournament.cosmetics.equipped
+    });
+  } catch (error) {
+    console.error('Error equipping cosmetic:', error);
+    res.status(500).json({ error: 'Failed to equip cosmetic' });
+  }
+});
+
+/**
+ * POST /api/essence-tap/tournament/cosmetics/unequip
+ * Unequip a tournament cosmetic from a slot
+ */
+router.post('/tournament/cosmetics/unequip', auth, async (req, res) => {
+  try {
+    const { slot } = req.body;
+
+    if (!slot || !['avatarFrame', 'profileTitle', 'tapSkin'].includes(slot)) {
+      return res.status(400).json({ error: 'Valid slot required (avatarFrame, profileTitle, tapSkin)' });
+    }
+
+    const user = await User.findByPk(req.user.id);
+    if (!user) {
+      return res.status(404).json({ error: 'User not found' });
+    }
+
+    let state = user.essenceTap || essenceTapService.getInitialState();
+    const result = essenceTapService.unequipTournamentCosmetic(state, slot);
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
+
+    user.essenceTap = result.newState;
+    await user.save();
+
+    res.json({
+      success: true,
+      equipped: result.newState.tournament.cosmetics.equipped
+    });
+  } catch (error) {
+    console.error('Error unequipping cosmetic:', error);
+    res.status(500).json({ error: 'Failed to unequip cosmetic' });
+  }
+});
+
+/**
+ * GET /api/essence-tap/tournament/rank-rewards
+ * Get rank reward tiers info
+ */
+router.get('/tournament/rank-rewards', auth, async (req, res) => {
+  try {
+    res.json({
+      success: true,
+      rankRewards: essenceTapService.tournamentService.RANK_REWARDS.ranges,
+      brackets: essenceTapService.tournamentService.BRACKET_SYSTEM.brackets
+    });
+  } catch (error) {
+    console.error('Error getting rank rewards:', error);
+    res.status(500).json({ error: 'Failed to get rank rewards' });
   }
 });
 

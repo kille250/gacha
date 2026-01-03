@@ -1188,51 +1188,535 @@ const INFUSION_CONFIG = {
 };
 
 // ===========================================
-// WEEKLY TOURNAMENT SYSTEM (NEW)
+// WEEKLY TOURNAMENT SYSTEM (ENHANCED v4.0)
 // ===========================================
 
 /**
- * Weekly tournament configuration
- * Players compete for essence earned during the week
+ * Weekly tournament configuration - ENHANCED
+ * Now includes: brackets, rank rewards, daily checkpoints, burning hours, streaks, cosmetics
+ *
+ * v4.0 TOURNAMENT OVERHAUL:
+ * - Rebalanced Champion tier (100B → 25B for achievability)
+ * - Added rank-based rewards (position matters!)
+ * - Bracket system for fair competition
+ * - Daily checkpoints for mid-week engagement
+ * - Burning hour events for excitement
+ * - Streak bonuses for retention
+ * - Tournament-exclusive cosmetics
  */
 const WEEKLY_TOURNAMENT = {
   // Tournament runs Monday 00:00 UTC to Sunday 23:59 UTC
   startDay: 1,  // Monday
   endDay: 0,    // Sunday
 
-  // Tier thresholds based on essence earned (for single-player tier determination)
-  // v3.0 REBALANCING: Scaled to match new economy
+  // Tier thresholds based on essence earned
+  // v4.0: Champion rebalanced from 100B to 25B (was unreachable)
   tiers: [
-    { name: 'Bronze', minEssence: 10000000 },        // v3.0: Was 1M
-    { name: 'Silver', minEssence: 100000000 },       // v3.0: Was 10M
-    { name: 'Gold', minEssence: 500000000 },         // v3.0: Was 50M
-    { name: 'Platinum', minEssence: 2000000000 },    // v3.0: Was 200M
-    { name: 'Diamond', minEssence: 10000000000 },    // v3.0: Was 1B
-    { name: 'Champion', minEssence: 100000000000 }   // v3.0: Was 10B
+    { name: 'Bronze', minEssence: 10000000 },        // 10M
+    { name: 'Silver', minEssence: 100000000 },       // 100M
+    { name: 'Gold', minEssence: 500000000 },         // 500M
+    { name: 'Platinum', minEssence: 2000000000 },    // 2B
+    { name: 'Diamond', minEssence: 10000000000 },    // 10B
+    { name: 'Champion', minEssence: 25000000000 }    // v4.0: 25B (was 100B)
   ],
 
-  // Rewards by tier name
+  // Tier rewards - v4.0: Rebalanced to fit within FP cap
   rewards: {
-    Bronze: { fatePoints: 5, rollTickets: 1 },
-    Silver: { fatePoints: 15, rollTickets: 3 },
-    Gold: { fatePoints: 30, rollTickets: 5 },
-    Platinum: { fatePoints: 50, rollTickets: 10 },
-    Diamond: { fatePoints: 100, rollTickets: 20 },
-    Champion: { fatePoints: 200, rollTickets: 50 }
+    Bronze: { fatePoints: 5, rollTickets: 2 },
+    Silver: { fatePoints: 12, rollTickets: 4 },
+    Gold: { fatePoints: 25, rollTickets: 8 },
+    Platinum: { fatePoints: 40, rollTickets: 15 },
+    Diamond: { fatePoints: 60, rollTickets: 25 },
+    Champion: { fatePoints: 75, rollTickets: 40 }
   },
 
   // Participation rewards (for anyone who played)
   participationReward: {
-    minimumEssence: 10000000,  // v3.0: Must earn at least 10M essence (was 1M)
+    minimumEssence: 10000000,
     rewards: { fatePoints: 5, rollTickets: 1 }
   },
 
   // Featured series for the week (20% bonus for using these characters)
-  featuredSeriesCount: 3,  // 3 random series featured each week
+  featuredSeriesCount: 3,
+  featuredSeriesBonus: 0.20,  // 20% essence bonus
 
   // Leaderboard display settings
   leaderboardSize: 100,
   refreshInterval: 300000  // 5 minutes
+};
+
+// ===========================================
+// RANK-BASED REWARDS (NEW v4.0)
+// ===========================================
+
+/**
+ * Rewards based on leaderboard position within bracket
+ * Makes leaderboard position meaningful
+ */
+const RANK_REWARDS = {
+  // Rank ranges and their rewards
+  ranges: [
+    {
+      minRank: 1,
+      maxRank: 1,
+      rewards: {
+        fatePoints: 25,
+        rollTickets: 10,
+        premiumTickets: 3
+      },
+      cosmetics: ['frame_champion_gold', 'title_weekly_champion'],
+      title: 'Weekly Champion'
+    },
+    {
+      minRank: 2,
+      maxRank: 2,
+      rewards: {
+        fatePoints: 15,
+        rollTickets: 7,
+        premiumTickets: 2
+      },
+      cosmetics: ['frame_podium_silver'],
+      title: 'Runner Up'
+    },
+    {
+      minRank: 3,
+      maxRank: 3,
+      rewards: {
+        fatePoints: 10,
+        rollTickets: 5,
+        premiumTickets: 1
+      },
+      cosmetics: ['frame_podium_bronze'],
+      title: 'Third Place'
+    },
+    {
+      minRank: 4,
+      maxRank: 10,
+      rewards: {
+        fatePoints: 5,
+        rollTickets: 3,
+        premiumTickets: 0
+      },
+      cosmetics: ['badge_top_10'],
+      title: null
+    },
+    {
+      minRank: 11,
+      maxRank: 25,
+      rewards: {
+        fatePoints: 3,
+        rollTickets: 2,
+        premiumTickets: 0
+      },
+      cosmetics: [],
+      title: null
+    },
+    {
+      minRank: 26,
+      maxRank: 50,
+      rewards: {
+        fatePoints: 0,
+        rollTickets: 2,
+        premiumTickets: 0
+      },
+      cosmetics: [],
+      title: null
+    },
+    {
+      minRank: 51,
+      maxRank: 100,
+      rewards: {
+        fatePoints: 0,
+        rollTickets: 1,
+        premiumTickets: 0
+      },
+      cosmetics: [],
+      title: null
+    }
+  ],
+
+  // Helper to get rewards for a specific rank
+  getRewardsForRank: function(rank) {
+    for (const range of this.ranges) {
+      if (rank >= range.minRank && rank <= range.maxRank) {
+        return range;
+      }
+    }
+    return null;
+  }
+};
+
+// ===========================================
+// BRACKET SYSTEM (NEW v4.0)
+// ===========================================
+
+/**
+ * Bracket system for fair competition
+ * Players compete within their skill bracket, not globally
+ */
+const BRACKET_SYSTEM = {
+  // Bracket definitions
+  brackets: {
+    S: {
+      name: 'Champion',
+      description: 'Top performers compete for ultimate glory',
+      color: '#FFD700',
+      icon: 'crown',
+      percentile: { min: 0, max: 10 }  // Top 10%
+    },
+    A: {
+      name: 'Challenger',
+      description: 'Skilled players pushing for the top',
+      color: '#C0C0C0',
+      icon: 'sword',
+      percentile: { min: 10, max: 35 }  // 10-35%
+    },
+    B: {
+      name: 'Competitor',
+      description: 'Active participants making their mark',
+      color: '#CD7F32',
+      icon: 'shield',
+      percentile: { min: 35, max: 75 }  // 35-75%
+    },
+    C: {
+      name: 'Newcomer',
+      description: 'New or casual players finding their footing',
+      color: '#9CA3AF',
+      icon: 'star',
+      percentile: { min: 75, max: 100 }  // Bottom 25%
+    }
+  },
+
+  // Bracket size limits
+  maxPlayersPerBracket: 50,
+
+  // Promotion/demotion rules
+  promotionThreshold: 0.20,  // Top 20% of bracket promotes
+  demotionThreshold: 0.20,   // Bottom 20% of bracket demotes
+  protectionWeeks: 1,        // New bracket players protected from demotion for 1 week
+
+  // Default bracket for new players
+  defaultBracket: 'C',
+
+  // Minimum participation to be ranked in bracket
+  minimumEssenceForRanking: 1000000  // 1M essence minimum
+};
+
+// ===========================================
+// DAILY CHECKPOINTS (NEW v4.0)
+// ===========================================
+
+/**
+ * Daily checkpoint rewards during tournament week
+ * Creates mid-week engagement hooks
+ */
+const DAILY_CHECKPOINTS = {
+  // Checkpoints are cumulative (not daily resets)
+  checkpoints: [
+    {
+      day: 1,  // Monday
+      cumulativeTarget: 50000000,  // 50M
+      rewards: { rollTickets: 1 },
+      name: 'Monday Start'
+    },
+    {
+      day: 2,  // Tuesday
+      cumulativeTarget: 150000000,  // 150M
+      rewards: { rollTickets: 1 },
+      name: 'Tuesday Push'
+    },
+    {
+      day: 3,  // Wednesday
+      cumulativeTarget: 300000000,  // 300M
+      rewards: { rollTickets: 1, fatePoints: 3 },
+      name: 'Midweek Milestone'
+    },
+    {
+      day: 4,  // Thursday
+      cumulativeTarget: 500000000,  // 500M
+      rewards: { rollTickets: 2 },
+      name: 'Thursday Threshold'
+    },
+    {
+      day: 5,  // Friday
+      cumulativeTarget: 800000000,  // 800M
+      rewards: { rollTickets: 2 },
+      name: 'Friday Focus'
+    },
+    {
+      day: 6,  // Saturday
+      cumulativeTarget: 1200000000,  // 1.2B
+      rewards: { rollTickets: 2, fatePoints: 5 },
+      name: 'Saturday Sprint'
+    },
+    {
+      day: 7,  // Sunday
+      cumulativeTarget: 2000000000,  // 2B
+      rewards: { rollTickets: 3 },
+      name: 'Sunday Finish'
+    }
+  ],
+
+  // Total possible rewards from checkpoints
+  totalRewards: {
+    rollTickets: 12,
+    fatePoints: 8
+  }
+};
+
+// ===========================================
+// BURNING HOUR EVENTS (NEW v4.0)
+// ===========================================
+
+/**
+ * Burning hour events - limited time 2x essence multipliers
+ * Creates appointment gaming and excitement
+ */
+const BURNING_HOURS = {
+  // Event configuration
+  duration: 7200000,          // 2 hours in ms
+  multiplier: 2.0,            // 2x essence during burning hour
+  eventsPerDay: 1,            // One burning hour per day
+
+  // Scheduling window (UTC hours)
+  scheduleWindow: {
+    earliest: 6,   // 6:00 UTC
+    latest: 22     // 22:00 UTC (ends by midnight)
+  },
+
+  // Notification settings
+  notifyMinutesBefore: 30,    // Push notification 30 min before
+
+  // Visual indicator colors
+  colors: {
+    active: '#EF4444',
+    upcoming: '#F59E0B',
+    inactive: '#6B7280'
+  },
+
+  // Bonus stacking rules
+  stacksWithFeaturedSeries: true,
+  stacksWithDailyModifiers: true,
+  maxMultiplierStack: 5.0     // Cap total multiplier at 5x
+};
+
+// ===========================================
+// TOURNAMENT STREAKS (NEW v4.0)
+// ===========================================
+
+/**
+ * Streak bonuses for consecutive weekly participation
+ * Rewards loyalty and retention
+ */
+const TOURNAMENT_STREAKS = {
+  // Streak milestones
+  milestones: [
+    {
+      weeks: 2,
+      essenceBonus: 0.05,  // +5% essence earned
+      rewards: null,
+      cosmetics: null
+    },
+    {
+      weeks: 4,
+      essenceBonus: 0.10,  // +10% essence earned
+      rewards: { rollTickets: 3 },
+      cosmetics: ['badge_streak_4']
+    },
+    {
+      weeks: 8,
+      essenceBonus: 0.15,  // +15% essence earned
+      rewards: { rollTickets: 5, premiumTickets: 1 },
+      cosmetics: ['badge_streak_8', 'frame_dedicated']
+    },
+    {
+      weeks: 12,
+      essenceBonus: 0.20,  // +20% essence earned
+      rewards: { rollTickets: 10, premiumTickets: 3 },
+      cosmetics: ['badge_streak_12', 'frame_veteran', 'title_tournament_veteran']
+    }
+  ],
+
+  // Participation requirements to maintain streak
+  minimumEssenceToMaintain: 10000000,  // 10M essence minimum
+
+  // Grace period for missed weeks
+  gracePeriodWeeks: 0,  // No grace period (miss a week, lose streak)
+
+  // Maximum streak bonus cap
+  maxEssenceBonus: 0.25  // Cap at 25% bonus
+};
+
+// ===========================================
+// TOURNAMENT COSMETICS (NEW v4.0)
+// ===========================================
+
+/**
+ * Tournament-exclusive cosmetic rewards
+ * Creates prestige and visible achievement
+ */
+const TOURNAMENT_COSMETICS = {
+  // Cosmetic types
+  types: {
+    AVATAR_FRAME: 'avatar_frame',
+    PROFILE_TITLE: 'profile_title',
+    TAP_SKIN: 'tap_skin',
+    LEADERBOARD_FLAIR: 'leaderboard_flair',
+    BADGE: 'badge'
+  },
+
+  // All available tournament cosmetics
+  items: {
+    // Champion rewards
+    frame_champion_gold: {
+      id: 'frame_champion_gold',
+      type: 'avatar_frame',
+      name: 'Champion\'s Laurel',
+      description: 'Awarded to #1 tournament finisher',
+      rarity: 'legendary',
+      asset: '/frames/champion_gold.png'
+    },
+    title_weekly_champion: {
+      id: 'title_weekly_champion',
+      type: 'profile_title',
+      name: 'Weekly Champion',
+      description: 'Finished #1 in weekly tournament',
+      rarity: 'legendary',
+      displayText: 'Weekly Champion'
+    },
+
+    // Podium rewards
+    frame_podium_silver: {
+      id: 'frame_podium_silver',
+      type: 'avatar_frame',
+      name: 'Silver Podium',
+      description: 'Finished 2nd in weekly tournament',
+      rarity: 'epic',
+      asset: '/frames/podium_silver.png'
+    },
+    frame_podium_bronze: {
+      id: 'frame_podium_bronze',
+      type: 'avatar_frame',
+      name: 'Bronze Podium',
+      description: 'Finished 3rd in weekly tournament',
+      rarity: 'rare',
+      asset: '/frames/podium_bronze.png'
+    },
+
+    // Top 10 badge
+    badge_top_10: {
+      id: 'badge_top_10',
+      type: 'badge',
+      name: 'Top 10',
+      description: 'Finished in top 10 of tournament bracket',
+      rarity: 'rare',
+      asset: '/badges/top_10.png'
+    },
+
+    // Streak badges
+    badge_streak_4: {
+      id: 'badge_streak_4',
+      type: 'badge',
+      name: '4-Week Streak',
+      description: 'Participated in 4 consecutive tournaments',
+      rarity: 'uncommon',
+      asset: '/badges/streak_4.png'
+    },
+    badge_streak_8: {
+      id: 'badge_streak_8',
+      type: 'badge',
+      name: '8-Week Streak',
+      description: 'Participated in 8 consecutive tournaments',
+      rarity: 'rare',
+      asset: '/badges/streak_8.png'
+    },
+    badge_streak_12: {
+      id: 'badge_streak_12',
+      type: 'badge',
+      name: '12-Week Streak',
+      description: 'Participated in 12 consecutive tournaments',
+      rarity: 'epic',
+      asset: '/badges/streak_12.png'
+    },
+
+    // Streak frames
+    frame_dedicated: {
+      id: 'frame_dedicated',
+      type: 'avatar_frame',
+      name: 'Dedicated Player',
+      description: '8-week tournament streak achievement',
+      rarity: 'rare',
+      asset: '/frames/dedicated.png'
+    },
+    frame_veteran: {
+      id: 'frame_veteran',
+      type: 'avatar_frame',
+      name: 'Tournament Veteran',
+      description: '12-week tournament streak achievement',
+      rarity: 'epic',
+      asset: '/frames/veteran.png'
+    },
+
+    // Veteran title
+    title_tournament_veteran: {
+      id: 'title_tournament_veteran',
+      type: 'profile_title',
+      name: 'Tournament Veteran',
+      description: '12-week tournament streak achievement',
+      rarity: 'epic',
+      displayText: 'Tournament Veteran'
+    },
+
+    // Bracket champion cosmetics (earned by winning your bracket)
+    frame_bracket_champion: {
+      id: 'frame_bracket_champion',
+      type: 'avatar_frame',
+      name: 'Bracket Champion',
+      description: 'Won first place in your bracket',
+      rarity: 'rare',
+      asset: '/frames/bracket_champion.png'
+    },
+
+    // Tier achievement cosmetics
+    title_champion_tier: {
+      id: 'title_champion_tier',
+      type: 'profile_title',
+      name: 'Essence Champion',
+      description: 'Reached Champion tier in tournament',
+      rarity: 'legendary',
+      displayText: 'Essence Champion'
+    }
+  }
+};
+
+// ===========================================
+// UNDERDOG MECHANICS (NEW v4.0)
+// ===========================================
+
+/**
+ * Comeback mechanics for players who fall behind
+ * Keeps engagement for players not in the lead
+ */
+const UNDERDOG_MECHANICS = {
+  // Catch-up bonus during final 48 hours
+  finalPushBonus: {
+    hoursBeforeEnd: 48,
+    bottomPercentile: 50,  // Bottom 50% of bracket
+    essenceBonus: 0.25     // +25% essence
+  },
+
+  // Welcome back bonus for returning players
+  welcomeBackBonus: {
+    daysInactive: 3,
+    essenceBonus: 0.50,    // +50% essence for first session
+    duration: 3600000      // Lasts 1 hour
+  },
+
+  // Never-won bonus (for players who never placed top 3)
+  neverWonBonus: {
+    essenceBonus: 0.10,    // +10% permanent until first podium
+    enabled: true
+  }
 };
 
 // ===========================================
@@ -1446,13 +1930,20 @@ module.exports = {
   GAMBLE_CONFIG,
   INFUSION_CONFIG,
 
-  // NEW: Weekly tournament
+  // Weekly tournament (v4.0 Enhanced)
   WEEKLY_TOURNAMENT,
+  RANK_REWARDS,
+  BRACKET_SYSTEM,
+  DAILY_CHECKPOINTS,
+  BURNING_HOURS,
+  TOURNAMENT_STREAKS,
+  TOURNAMENT_COSMETICS,
+  UNDERDOG_MECHANICS,
 
-  // NEW: Ticket generation
+  // Ticket generation
   TICKET_GENERATION,
 
-  // NEW: Element derivation
+  // Element derivation
   ELEMENT_DERIVATION,
   deriveElement
 };

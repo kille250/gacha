@@ -1370,6 +1370,91 @@ export const useEssenceTap = () => {
     }
   }, [fetchGameState, refreshUser, t, toast]);
 
+  // Get bracket leaderboard (v4.0)
+  const getBracketLeaderboard = useCallback(async () => {
+    try {
+      const response = await api.get('/essence-tap/tournament/bracket-leaderboard');
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to get bracket leaderboard:', err);
+      return { success: false };
+    }
+  }, []);
+
+  // Get burning hour status (v4.0)
+  const getBurningHourStatus = useCallback(async () => {
+    try {
+      const response = await api.get('/essence-tap/tournament/burning-hour');
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to get burning hour status:', err);
+      return { success: false };
+    }
+  }, []);
+
+  // Claim tournament checkpoint (v4.0)
+  const claimTournamentCheckpoint = useCallback(async (day) => {
+    try {
+      const response = await api.post('/essence-tap/tournament/checkpoint/claim', { day });
+
+      if (!isMountedRef.current) return { success: false };
+
+      // Invalidate cache - checkpoint gives FP and tickets
+      invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_TOURNAMENT_CLAIM);
+
+      // Refresh game state and user data
+      await Promise.all([fetchGameState(false), refreshUser()]);
+
+      toast.success(
+        t('essenceTap.checkpointClaimed', {
+          checkpoint: response.data.checkpointName,
+          defaultValue: `${response.data.checkpointName} checkpoint claimed!`
+        })
+      );
+
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to claim checkpoint:', err);
+      toast.error(err.response?.data?.error || t('essenceTap.claimFailed', { defaultValue: 'Claim failed' }));
+      return { success: false, error: err.response?.data?.error };
+    }
+  }, [fetchGameState, refreshUser, t, toast]);
+
+  // Get tournament cosmetics (v4.0)
+  const getTournamentCosmetics = useCallback(async () => {
+    try {
+      const response = await api.get('/essence-tap/tournament/cosmetics');
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to get tournament cosmetics:', err);
+      return { success: false };
+    }
+  }, []);
+
+  // Equip tournament cosmetic (v4.0)
+  const equipTournamentCosmetic = useCallback(async (cosmeticId) => {
+    try {
+      const response = await api.post('/essence-tap/tournament/cosmetics/equip', { cosmeticId });
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to equip cosmetic:', err);
+      toast.error(err.response?.data?.error || 'Failed to equip cosmetic');
+      return { success: false, error: err.response?.data?.error };
+    }
+  }, [toast]);
+
+  // Unequip tournament cosmetic (v4.0)
+  const unequipTournamentCosmetic = useCallback(async (slot) => {
+    try {
+      const response = await api.post('/essence-tap/tournament/cosmetics/unequip', { slot });
+      return { success: true, ...response.data };
+    } catch (err) {
+      console.error('Failed to unequip cosmetic:', err);
+      toast.error(err.response?.data?.error || 'Failed to unequip cosmetic');
+      return { success: false, error: err.response?.data?.error };
+    }
+  }, [toast]);
+
   // Get character mastery info
   const getMasteryInfo = useCallback(async () => {
     try {
@@ -1574,9 +1659,17 @@ export const useEssenceTap = () => {
     claimRepeatableMilestone,
     activateAbility,
 
+    // Tournament v4.0 actions
+    claimTournamentCheckpoint,
+    equipTournamentCosmetic,
+    unequipTournamentCosmetic,
+
     // Data fetchers
     getGambleInfo,
     getTournamentInfo,
+    getBracketLeaderboard,
+    getBurningHourStatus,
+    getTournamentCosmetics,
     getMasteryInfo,
     getEssenceTypes,
     getDailyModifier,
