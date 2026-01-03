@@ -134,6 +134,9 @@ export const IconError = (props) => <FaTimes {...props} />;
 /** Locked/unavailable state */
 export const IconLocked = (props) => <FaLock {...props} />;
 
+/** Lock icon (alias for IconLocked) */
+export const IconLock = (props) => <FaLock {...props} />;
+
 /** Unlocked/available state */
 export const IconUnlocked = (props) => <FaLockOpen {...props} />;
 
