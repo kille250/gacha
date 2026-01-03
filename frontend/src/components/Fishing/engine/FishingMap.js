@@ -680,3 +680,4 @@ export const updateSky = (container, timeOfDay) => {
   sky.fill(skyColors[0]);
 };
 
+

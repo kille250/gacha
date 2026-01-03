@@ -8,3 +8,4 @@ export { FishingGameCanvas } from './FishingGameCanvas';
 export { FishingMobileControls } from './FishingMobileControls';
 export { FishingAutofishBubbles } from './FishingAutofishBubbles';
 
+

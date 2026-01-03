@@ -39,3 +39,4 @@ FishingGameCanvas.displayName = 'FishingGameCanvas';
 
 export default FishingGameCanvas;
 
+

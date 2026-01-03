@@ -167,3 +167,4 @@ export function useFishingEquipment({
 
 export default useFishingEquipment;
 
+

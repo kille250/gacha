@@ -112,3 +112,4 @@ export function useMultiModalData(isOpen, fetchers, cacheAction = null) {
 
 export default useModalData;
 
+

@@ -641,6 +641,10 @@ function calculateCritChance(state, characters = []) {
     chance += dailyMod.effects.critChanceBonus;
   }
 
+  // FIX: Apply essence type bonuses (prismatic essence crit bonus)
+  const essenceTypeBonuses = getEssenceTypeBonuses(state);
+  chance += essenceTypeBonuses.critBonus;
+
   return Math.min(chance, 0.9); // Cap at 90%
 }
 
@@ -759,6 +763,10 @@ function calculateProductionPerSecond(state, characters = []) {
     total *= (1 + dailyMod.effects.allProductionBonus);
   }
 
+  // FIX: Apply essence type bonuses (prismatic essence production bonus)
+  const essenceTypeBonuses = getEssenceTypeBonuses(state);
+  total *= (1 + essenceTypeBonuses.productionBonus);
+
   return total;
 }
 
@@ -867,6 +875,10 @@ function calculateGoldenChance(state, characters = []) {
   if (dailyMod.effects?.goldenChanceMultiplier) {
     chance *= dailyMod.effects.goldenChanceMultiplier;
   }
+
+  // FIX: Apply essence type bonuses (prismatic essence golden chance bonus)
+  const essenceTypeBonuses = getEssenceTypeBonuses(state);
+  chance += essenceTypeBonuses.goldenBonus;
 
   return Math.min(chance, 0.1); // Cap at 10%
 }
@@ -2693,7 +2705,8 @@ function getCharacterElement(character) {
   }
 
   // Otherwise derive from character properties
-  return deriveElement(character.id, character.name, character.series);
+  // FIX: deriveElement takes (characterId, rarity), not (id, name, series)
+  return deriveElement(character.id, character.rarity || 'common');
 }
 
 /**

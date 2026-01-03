@@ -33,3 +33,4 @@ export const FishingNotification = ({ notification }) => {
 
 export default FishingNotification;
 
+

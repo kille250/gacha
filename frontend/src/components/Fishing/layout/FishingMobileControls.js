@@ -95,3 +95,4 @@ export const FishingMobileControls = ({
 
 export default FishingMobileControls;
 
+

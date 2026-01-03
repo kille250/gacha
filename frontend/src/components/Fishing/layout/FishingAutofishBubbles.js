@@ -55,3 +55,4 @@ export const FishingAutofishBubbles = ({ autofishLog }) => {
 
 export default FishingAutofishBubbles;
 
+

@@ -20,6 +20,7 @@ import {
   IconClock,
   IconLocked
 } from '../../constants/icons';
+import { ACTIVE_ABILITIES } from '../../config/essenceTapConfig';
 
 const pulseGlow = keyframes`
   0%, 100% { box-shadow: 0 0 10px currentColor; }
@@ -155,49 +156,24 @@ const TooltipCooldown = styled.div`
   margin-top: ${theme.spacing.xs};
 `;
 
-// Ability definitions with React Icons
-const ABILITIES = {
-  essenceStorm: {
-    id: 'essenceStorm',
-    name: 'Essence Storm',
-    description: '10x production for 5 seconds',
-    IconComponent: IconStorm,
-    color: '#8B5CF6',
-    duration: 5000, // 5 seconds
-    cooldown: 60000, // 60 seconds
-    effects: { productionMultiplier: 10 }
-  },
-  criticalFocus: {
-    id: 'criticalFocus',
-    name: 'Critical Focus',
-    description: 'Guaranteed crits for 3 seconds',
-    IconComponent: IconLightning,
-    color: '#F59E0B',
-    duration: 3000, // 3 seconds
-    cooldown: 45000, // 45 seconds
-    effects: { guaranteedCrits: true }
-  },
-  goldenRush: {
-    id: 'goldenRush',
-    name: 'Golden Rush',
-    description: '50x golden chance for 10 seconds',
-    IconComponent: IconSparkles,
-    color: '#FCD34D',
-    duration: 10000, // 10 seconds
-    cooldown: 120000, // 2 minutes
-    effects: { goldenChanceMultiplier: 50 }
-  },
-  timeWarp: {
-    id: 'timeWarp',
-    name: 'Time Warp',
-    description: 'Collect 30 minutes of offline progress',
-    IconComponent: IconClock,
-    color: '#06B6D4',
-    duration: 0, // Instant
-    cooldown: 300000, // 5 minutes
-    effects: { instantOfflineMinutes: 30 }
-  }
+// Icon mapping for abilities (synced with ACTIVE_ABILITIES from config)
+const ABILITY_ICONS = {
+  essence_storm: IconStorm,
+  critical_focus: IconLightning,
+  golden_rush: IconSparkles,
+  time_warp: IconClock
 };
+
+// Build ABILITIES map from shared config, adding icons
+const ABILITIES = Object.fromEntries(
+  ACTIVE_ABILITIES.map(ability => [
+    ability.id,
+    {
+      ...ability,
+      IconComponent: ABILITY_ICONS[ability.id] || IconSparkles
+    }
+  ])
+);
 
 const ActiveAbilities = memo(({ onActivate, prestigeLevel = 0 }) => {
   const { t } = useTranslation();

@@ -719,12 +719,12 @@ export const TOURNAMENT_TIER_REWARDS = {
 // ===========================================
 
 export const INFUSION_CONFIG = {
-  bonusPerInfusion: 0.01,  // Each infusion gives +1%
-  baseCost: 1000000,       // 1M base cost
-  costMultiplier: 1.5,     // Cost increases 1.5x per infusion
-  baseCostPercent: 10,     // 10% base cost percent
-  costPercentIncrease: 2,  // +2% per infusion
-  maxCostPercent: 50       // Cap at 50%
+  bonusPerInfusion: 0.10,  // Each infusion gives +10% (synced with backend INFUSION_CONFIG.bonusPerUse)
+  baseCostPercent: 0.5,    // 50% base cost percent (synced with backend)
+  costIncreasePerUse: 0.05,// +5% per infusion (synced with backend)
+  maxCostPercent: 0.80,    // Cap at 80% (synced with backend)
+  minimumEssence: 100000,  // Minimum essence required (synced with backend)
+  maxPerPrestige: 5        // Maximum infusions per prestige (synced with backend)
 };
 
 // ===========================================

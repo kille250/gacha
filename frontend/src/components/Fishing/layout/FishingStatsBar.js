@@ -72,3 +72,4 @@ export const FishingStatsBar = ({ sessionStats, fishInfo }) => {
 
 export default FishingStatsBar;
 
+
