@@ -1133,6 +1133,7 @@ function performPrestige(state, _user) {
   const newState = {
     ...getInitialState(),
     essence: startingEssence,
+    lifetimeEssence: state.lifetimeEssence || 0, // Preserve lifetime essence for upgrade unlock requirements
     prestigeLevel: (state.prestigeLevel || 0) + 1,
     prestigeShards: (state.prestigeShards || 0) + shardsEarned,
     lifetimeShards: (state.lifetimeShards || 0) + shardsEarned,

@@ -68,6 +68,9 @@ function performPrestige({ state }) {
   newState.lifetimeShards = (state.lifetimeShards || 0) + shardsGained;
   newState.prestigeUpgrades = { ...state.prestigeUpgrades };
 
+  // Preserve lifetime essence (used for upgrade unlock requirements)
+  newState.lifetimeEssence = state.lifetimeEssence || 0;
+
   // Preserve character assignments and mastery
   newState.assignedCharacters = [...(state.assignedCharacters || [])];
   newState.characterMastery = { ...state.characterMastery };
