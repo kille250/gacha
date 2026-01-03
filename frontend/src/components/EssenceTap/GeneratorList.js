@@ -508,8 +508,14 @@ const GeneratorList = memo(({
     return total;
   }, [buyMode, essence]);
 
-  const unlockedGenerators = generators.filter(g => g.unlocked);
-  const lockedGenerators = generators.filter(g => !g.unlocked);
+  // Recalculate unlock status based on current lifetimeEssence (not stale server value)
+  const generatorsWithUnlock = generators.map(g => ({
+    ...g,
+    unlocked: lifetimeEssence >= g.unlockEssence
+  }));
+
+  const unlockedGenerators = generatorsWithUnlock.filter(g => g.unlocked);
+  const lockedGenerators = generatorsWithUnlock.filter(g => !g.unlocked);
 
   if (generators.length === 0) {
     return (

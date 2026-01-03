@@ -979,6 +979,11 @@ function purchaseGenerator(state, generatorId, count = 1) {
     return { success: false, error: 'Generator not unlocked yet' };
   }
 
+  // Ensure generators object exists
+  if (!state.generators) {
+    state.generators = {};
+  }
+
   const owned = state.generators[generatorId] || 0;
   const cost = getBulkGeneratorCost(generatorId, owned, count);
 
@@ -2471,6 +2476,12 @@ const {
 function updateWeeklyProgress(state, essenceEarned, options = {}) {
   const currentWeek = getCurrentISOWeek();
   const newState = { ...state };
+
+  // Ensure required state properties exist
+  if (!newState.generators) newState.generators = state.generators || {};
+  if (!newState.purchasedUpgrades) newState.purchasedUpgrades = state.purchasedUpgrades || [];
+  if (!newState.daily) newState.daily = state.daily || {};
+  if (!newState.stats) newState.stats = state.stats || {};
 
   // Initialize tournament state if needed
   if (!state.tournament) {
