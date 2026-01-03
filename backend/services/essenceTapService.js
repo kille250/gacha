@@ -3119,8 +3119,31 @@ function getBossForPrestigeLevel(prestigeLevel) {
  * @returns {Object} Result with new state
  */
 function spawnBoss(state) {
-  const boss = getBossForPrestigeLevel(state.prestigeLevel || 0);
   const now = Date.now();
+  const bossState = state.bossEncounter || {};
+
+  // Check cooldown - cannot spawn if on cooldown
+  const lastDefeat = bossState.lastDefeatTime || 0;
+  const cooldownRemaining = Math.max(0, (lastDefeat + BOSS_CONFIG.cooldownMs) - now);
+  if (cooldownRemaining > 0) {
+    return {
+      success: false,
+      error: 'Boss on cooldown',
+      cooldownRemaining
+    };
+  }
+
+  // Check click requirement
+  const clicksSinceLastBoss = (state.totalClicks || 0) - (bossState.clicksAtLastSpawn || 0);
+  if (clicksSinceLastBoss < BOSS_CONFIG.spawnInterval) {
+    return {
+      success: false,
+      error: 'Not enough clicks to spawn boss',
+      clicksUntilSpawn: BOSS_CONFIG.spawnInterval - clicksSinceLastBoss
+    };
+  }
+
+  const boss = getBossForPrestigeLevel(state.prestigeLevel || 0);
 
   // Scale health with prestige
   const healthMultiplier = 1 + (state.prestigeLevel || 0) * 0.5;
@@ -3128,6 +3151,7 @@ function spawnBoss(state) {
 
   const newState = { ...state };
   newState.bossEncounter = {
+    ...bossState,
     active: true,
     bossId: boss.id,
     currentHealth: maxHealth,
@@ -3136,6 +3160,7 @@ function spawnBoss(state) {
     spawnedAt: now,
     clicksAtLastSpawn: state.totalClicks || 0,
     damageDealt: 0
+    // Preserve lastDefeatTime and totalDefeated from previous state
   };
 
   return {
