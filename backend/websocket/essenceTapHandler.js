@@ -222,7 +222,8 @@ async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
     if (passiveResult.gains > 0) {
       state.essence = (state.essence || 0) + passiveResult.gains;
       state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-      state = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+      const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+      state = weeklyResult.newState;
     }
 
     // Get active ability effects
@@ -257,7 +258,8 @@ async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
     state.stats.goldenEssenceClicks = (state.stats.goldenEssenceClicks || 0) + goldenClicks;
 
     // Update weekly tournament progress
-    state = essenceTapService.updateWeeklyProgress(state, totalEssence);
+    const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence);
+    state = weeklyTournamentResult.newState;
 
     // Update essence types
     const essenceTypeBreakdown = essenceTapService.classifyEssence(totalEssence, goldenClicks > 0, totalCrits > 0);
@@ -346,7 +348,8 @@ async function getFullState(userId) {
     if (passiveResult.gains > 0) {
       state.essence = (state.essence || 0) + passiveResult.gains;
       state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-      state = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+      const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+      state = weeklyResult.newState;
       state.lastOnlineTimestamp = passiveResult.newTimestamp;
 
       // Save the updated state atomically
@@ -690,7 +693,8 @@ function initEssenceTapWebSocket(io) {
         if (passiveResult.gains > 0) {
           state.essence = (state.essence || 0) + passiveResult.gains;
           state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-          state = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          state = weeklyResult.newState;
         }
 
         const result = essenceTapService.purchaseGenerator(state, generatorId, count);
@@ -1090,7 +1094,8 @@ function initEssenceTapWebSocket(io) {
         if (passiveResult.gains > 0) {
           state.essence = (state.essence || 0) + passiveResult.gains;
           state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-          state = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          state = weeklyResult.newState;
           state.lastOnlineTimestamp = passiveResult.newTimestamp;
         }
 
@@ -1219,7 +1224,8 @@ function initEssenceTapWebSocket(io) {
         if (passiveResult.gains > 0) {
           state.essence = (state.essence || 0) + passiveResult.gains;
           state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-          state = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+          state = weeklyResult.newState;
           state.lastOnlineTimestamp = passiveResult.newTimestamp;
         }
 

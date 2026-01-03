@@ -258,7 +258,8 @@ function applyPassiveGains(state, characters, maxSeconds = 300) {
   if (passiveGain > 0) {
     state.essence = (state.essence || 0) + passiveGain;
     state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveGain;
-    state = essenceTapService.updateWeeklyProgress(state, passiveGain);
+    const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveGain);
+    state = weeklyResult.newState;
   }
 
   // Update timestamp to mark when gains were last applied
@@ -435,7 +436,8 @@ router.post('/click', auth, async (req, res) => {
     state.stats.goldenEssenceClicks = (state.stats.goldenEssenceClicks || 0) + goldenClicks;
 
     // Update weekly tournament progress
-    state = essenceTapService.updateWeeklyProgress(state, totalEssence);
+    const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence);
+    state = weeklyTournamentResult.newState;
 
     // Classify and track essence types
     // Note: For batch clicks, we use last click's golden status for simplicity
@@ -2644,7 +2646,8 @@ router.post('/sync-on-leave', async (req, res) => {
         state.daily.essenceEarned = (state.daily.essenceEarned || 0) + tapEssence;
 
         // Update weekly tournament progress
-        state = essenceTapService.updateWeeklyProgress(state, tapEssence);
+        const weeklyResult = essenceTapService.updateWeeklyProgress(state, tapEssence);
+        state = weeklyResult.newState;
       }
 
       // Process pending non-tap actions that haven't been confirmed
