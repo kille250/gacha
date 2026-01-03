@@ -6,6 +6,9 @@
  */
 
 const gambleService = require('../domains/gamble.service');
+const { SharedJackpot } = require('../../../models');
+const { GAMBLE_CONFIG } = require('../../../config/essenceTap');
+const { applyFPWithCap } = require('../shared');
 
 /**
  * Gamble action result
@@ -18,9 +21,91 @@ const gambleService = require('../domains/gamble.service');
  * @property {number} [essenceChange] - Net essence change
  * @property {number} [newEssence] - New essence total
  * @property {Object} [jackpotWin] - Jackpot win info if applicable
+ * @property {Object} [jackpotRewards] - Rewards from jackpot win (FP, tickets, etc.)
+ * @property {number} [jackpotContribution] - Amount contributed to jackpot
+ * @property {Object} [userChanges] - Changes to apply to user model (FP, tickets)
  * @property {string} [error] - Error message if failed
  * @property {string} [code] - Error code if failed
  */
+
+/**
+ * Contribute to shared jackpot from bet
+ * @param {number} betAmount - Amount bet
+ * @param {number} userId - User ID
+ * @returns {Promise<{contribution: number}>} Contribution info
+ */
+async function contributeToJackpot(betAmount, userId) {
+  const jackpotConfig = GAMBLE_CONFIG.jackpot;
+  const contribution = Math.floor(betAmount * jackpotConfig.contributionRate);
+
+  if (contribution <= 0) {
+    return { contribution: 0 };
+  }
+
+  try {
+    const [jackpot] = await SharedJackpot.findOrCreate({
+      where: { jackpotType: 'essence_tap_main' },
+      defaults: {
+        currentAmount: jackpotConfig.seedAmount,
+        totalContributions: 0,
+        contributorCount: 0,
+        totalWins: 0
+      }
+    });
+
+    await jackpot.increment('currentAmount', { by: contribution });
+    await jackpot.increment('totalContributions', { by: contribution });
+
+    // Track unique contributors (simplistic - just count)
+    if (userId) {
+      await jackpot.increment('contributorCount', { by: 1 });
+    }
+
+    return { contribution };
+  } catch (error) {
+    console.error('Error contributing to jackpot:', error);
+    return { contribution: 0 };
+  }
+}
+
+/**
+ * Get shared jackpot info
+ * @returns {Promise<Object>} Jackpot info
+ */
+async function getSharedJackpotInfo() {
+  try {
+    const jackpot = await SharedJackpot.findOne({
+      where: { jackpotType: 'essence_tap_main' }
+    });
+
+    if (!jackpot) {
+      return {
+        currentAmount: GAMBLE_CONFIG.jackpot.seedAmount,
+        totalContributions: 0,
+        contributorCount: 0,
+        lastWinDate: null
+      };
+    }
+
+    return {
+      currentAmount: Number(jackpot.currentAmount),
+      totalContributions: Number(jackpot.totalContributions),
+      contributorCount: jackpot.contributorCount,
+      totalWins: jackpot.totalWins,
+      lastWinDate: jackpot.lastWinDate,
+      lastWinAmount: jackpot.lastWinAmount ? Number(jackpot.lastWinAmount) : null,
+      largestWin: jackpot.largestWin ? Number(jackpot.largestWin) : null
+    };
+  } catch (error) {
+    console.error('Error getting jackpot info:', error);
+    return {
+      currentAmount: GAMBLE_CONFIG.jackpot.seedAmount,
+      totalContributions: 0,
+      contributorCount: 0,
+      lastWinDate: null
+    };
+  }
+}
 
 /**
  * Perform a gamble
@@ -53,18 +138,50 @@ async function performGamble({ state, betAmount, betType, userId }) {
 
   let newState = result.newState;
   let jackpotWin = null;
+  let jackpotRewards = null;
+  const userChanges = {};
+
+  // Contribute to shared jackpot
+  const contributionResult = await contributeToJackpot(result.betAmount, userId);
 
   // Check for jackpot win (async operation)
   if (userId) {
-    const jackpotResult = await gambleService.checkJackpot(state, betAmount, betType);
+    const jackpotResult = await gambleService.checkJackpot(state, result.betAmount, betType);
     if (jackpotResult.won) {
-      // Award jackpot
+      jackpotWin = jackpotResult.amount;
+      jackpotRewards = jackpotResult.rewards;
+
+      // Award jackpot essence
+      newState.essence = (newState.essence || 0) + jackpotResult.amount;
+      newState.lifetimeEssence = (newState.lifetimeEssence || 0) + jackpotResult.amount;
+
+      // Process jackpot rewards
+      if (jackpotRewards) {
+        // Add fate points (capped by weekly limit)
+        if (jackpotRewards.fatePoints) {
+          const fpResult = applyFPWithCap(newState, jackpotRewards.fatePoints, 'jackpot');
+          newState = fpResult.newState;
+          if (fpResult.actualFP > 0) {
+            userChanges.fatePoints = fpResult.actualFP;
+          }
+        }
+
+        // Add roll tickets
+        if (jackpotRewards.rollTickets) {
+          userChanges.rollTickets = jackpotRewards.rollTickets;
+        }
+
+        // Add prismatic essence
+        if (jackpotRewards.prismaticEssence) {
+          newState.essenceTypes = {
+            ...newState.essenceTypes,
+            prismatic: (newState.essenceTypes?.prismatic || 0) + jackpotRewards.prismaticEssence
+          };
+        }
+      }
+
+      // Reset the shared jackpot and record winner
       newState = await gambleService.resetJackpot(newState, userId, jackpotResult.amount);
-      newState.essence += jackpotResult.amount;
-      jackpotWin = {
-        amount: jackpotResult.amount,
-        rewards: jackpotResult.rewards
-      };
     }
   }
 
@@ -80,7 +197,11 @@ async function performGamble({ state, betAmount, betType, userId }) {
     winChance: result.winChance,
     essenceChange: result.essenceChange,
     newEssence: newState.essence,
-    jackpotWin
+    jackpotWin,
+    jackpotRewards,
+    jackpotContribution: contributionResult.contribution,
+    userChanges,
+    gambleInfo: gambleService.getGambleInfo(newState)
   };
 }
 
@@ -111,5 +232,7 @@ function mapErrorToCode(error) {
 
 module.exports = {
   performGamble,
-  getGambleInfo
+  getGambleInfo,
+  getSharedJackpotInfo,
+  contributeToJackpot
 };

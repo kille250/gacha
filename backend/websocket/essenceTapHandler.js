@@ -16,6 +16,7 @@ const jwt = require('jsonwebtoken');
 const { User, UserCharacter, sequelize } = require('../models');
 const essenceTapService = require('../services/essenceTapService');
 const { actions } = require('../services/essenceTap');
+const shared = require('../services/essenceTap/shared');
 const { GAME_CONFIG } = require('../config/essenceTap');
 
 // ===========================================
@@ -1209,6 +1210,7 @@ function initEssenceTapWebSocket(io) {
     // GAMBLE HANDLER
     // ===========================================
 
+    // REFACTORED: Now uses unified action handler from services/essenceTap/actions
     socket.on('gamble', async (data) => {
       const { betType, betAmount, clientSeq } = data;
 
@@ -1239,17 +1241,7 @@ function initEssenceTapWebSocket(io) {
         state = essenceTapService.resetDaily(state);
 
         // Get characters for passive calculation
-        const userCharacters = await UserCharacter.findAll({
-          where: { UserId: userId },
-          include: ['Character'],
-          transaction
-        });
-
-        const characters = userCharacters.map(uc => ({
-          id: uc.CharacterId,
-          rarity: uc.Character?.rarity || 'common',
-          element: uc.Character?.element || 'neutral'
-        }));
+        const characters = await shared.loadUserCharacters(userId, { transaction });
 
         // Apply passive gains
         const passiveResult = calculatePassiveGains(state, characters);
@@ -1261,61 +1253,30 @@ function initEssenceTapWebSocket(io) {
           state.lastOnlineTimestamp = passiveResult.newTimestamp;
         }
 
-        const result = essenceTapService.performGamble(state, betType, betAmount);
+        // Use unified action handler
+        const result = await actions.performGamble({
+          state,
+          betAmount,
+          betType,
+          userId
+        });
 
         if (!result.success) {
           await transaction.rollback();
           socket.emit('action_rejected', {
             clientSeq,
             reason: result.error,
-            code: 'GAMBLE_FAILED'
+            code: result.code || 'GAMBLE_FAILED'
           });
           return;
         }
 
-        // Contribute to shared jackpot (async)
-        const jackpotContribution = await essenceTapService.contributeToJackpot(result.newState, betAmount, userId);
-        result.newState = jackpotContribution.newState;
-
-        // Check for jackpot win
-        let jackpotWin = null;
-        let jackpotRewards = null;
-        const jackpotResult = await essenceTapService.checkJackpotWin(result.newState, betAmount, betType);
-        if (jackpotResult.won) {
-          jackpotWin = jackpotResult.amount;
-          jackpotRewards = jackpotResult.rewards;
-          result.newState.essence = (result.newState.essence || 0) + jackpotResult.amount;
-          result.newState.lifetimeEssence = (result.newState.lifetimeEssence || 0) + jackpotResult.amount;
-
-          if (jackpotRewards) {
-            if (jackpotRewards.fatePoints) {
-              const fpResult = essenceTapService.applyFPWithCap(result.newState, jackpotRewards.fatePoints, 'jackpot');
-              result.newState = fpResult.newState;
-              // Award Fate Points with correct object structure
-              if (fpResult.actualFP > 0) {
-                const fatePoints = user.fatePoints || {};
-                fatePoints.global = fatePoints.global || { points: 0 };
-                fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
-                user.fatePoints = fatePoints;
-              }
-            }
-            if (jackpotRewards.rollTickets) {
-              user.rollTickets = (user.rollTickets || 0) + jackpotRewards.rollTickets;
-            }
-            if (jackpotRewards.prismaticEssence) {
-              result.newState.essenceTypes = {
-                ...result.newState.essenceTypes,
-                prismatic: (result.newState.essenceTypes?.prismatic || 0) + jackpotRewards.prismaticEssence
-              };
-            }
-          }
-
-          result.newState = await essenceTapService.resetJackpot(result.newState, userId, jackpotResult.amount);
+        // Apply user changes (FP, tickets) from action result
+        if (result.userChanges) {
+          shared.applyUserChanges(user, result.userChanges);
         }
 
         const now = Date.now();
-        result.newState.lastOnlineTimestamp = now;
-
         user.essenceTap = result.newState;
         user.lastEssenceTapRequest = now;
         await user.save({ transaction });
@@ -1331,11 +1292,11 @@ function initEssenceTapWebSocket(io) {
           multiplier: result.multiplier,
           winChance: result.winChance,
           essenceChange: result.essenceChange,
-          newEssence: result.newState.essence,
-          jackpotWin,
-          jackpotRewards,
-          jackpotContribution: jackpotContribution.contribution,
-          gambleInfo: essenceTapService.getGambleInfo(result.newState),
+          newEssence: result.newEssence,
+          jackpotWin: result.jackpotWin,
+          jackpotRewards: result.jackpotRewards,
+          jackpotContribution: result.jackpotContribution,
+          gambleInfo: result.gambleInfo,
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now
@@ -1351,6 +1312,7 @@ function initEssenceTapWebSocket(io) {
     // INFUSION HANDLER
     // ===========================================
 
+    // REFACTORED: Now uses unified action handler from services/essenceTap/actions
     socket.on('infusion', async (data) => {
       const { clientSeq } = data;
 
@@ -1375,17 +1337,7 @@ function initEssenceTapWebSocket(io) {
         let state = user.essenceTap || essenceTapService.getInitialState();
 
         // Get characters for passive calculation
-        const userCharacters = await UserCharacter.findAll({
-          where: { UserId: userId },
-          include: ['Character'],
-          transaction
-        });
-
-        const characters = userCharacters.map(uc => ({
-          id: uc.CharacterId,
-          rarity: uc.Character?.rarity || 'common',
-          element: uc.Character?.element || 'neutral'
-        }));
+        const characters = await shared.loadUserCharacters(userId, { transaction });
 
         // Apply passive gains
         const passiveResult = calculatePassiveGains(state, characters);
@@ -1397,21 +1349,20 @@ function initEssenceTapWebSocket(io) {
           state.lastOnlineTimestamp = passiveResult.newTimestamp;
         }
 
-        const result = essenceTapService.performInfusion(state);
+        // Use unified action handler
+        const result = actions.performInfusion({ state });
 
         if (!result.success) {
           await transaction.rollback();
           socket.emit('action_rejected', {
             clientSeq,
             reason: result.error,
-            code: 'INFUSION_FAILED'
+            code: result.code || 'INFUSION_FAILED'
           });
           return;
         }
 
         const now = Date.now();
-        result.newState.lastOnlineTimestamp = now;
-
         user.essenceTap = result.newState;
         user.lastEssenceTapRequest = now;
         await user.save({ transaction });
@@ -1426,8 +1377,8 @@ function initEssenceTapWebSocket(io) {
           bonusGained: result.bonusGained,
           totalBonus: result.totalBonus,
           infusionCount: result.infusionCount,
-          nextCost: essenceTapService.calculateInfusionCost(result.newState),
-          essence: result.newState.essence,
+          nextCost: actions.getInfusionInfo(result.newState).nextCost,
+          essence: result.essence,
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now
@@ -1801,6 +1752,7 @@ function initEssenceTapWebSocket(io) {
     // MILESTONE CLAIM HANDLERS
     // ===========================================
 
+    // REFACTORED: Now uses unified action handler from services/essenceTap/actions
     socket.on('claim_milestone', async (data) => {
       const { milestoneKey, clientSeq } = data;
 
@@ -1819,33 +1771,28 @@ function initEssenceTapWebSocket(io) {
           return;
         }
 
-        let state = user.essenceTap || essenceTapService.getInitialState();
+        const state = user.essenceTap || essenceTapService.getInitialState();
 
-        const result = essenceTapService.claimMilestone(state, milestoneKey);
+        // Use unified action handler
+        const result = actions.claimMilestone({ state, milestoneKey });
 
         if (!result.success) {
           await transaction.rollback();
           socket.emit('action_rejected', {
             clientSeq,
             reason: result.error,
-            code: 'MILESTONE_FAILED'
+            code: result.code || 'MILESTONE_FAILED'
           });
           return;
         }
 
         const now = Date.now();
-        result.newState.lastOnlineTimestamp = now;
-
         user.essenceTap = result.newState;
         user.lastEssenceTapRequest = now;
 
-        // Award FP (one-time milestones don't count toward weekly cap)
-        let fatePointsAwarded = result.fatePoints;
-        if (fatePointsAwarded > 0) {
-          const fatePoints = user.fatePoints || {};
-          fatePoints.global = fatePoints.global || { points: 0 };
-          fatePoints.global.points = (fatePoints.global.points || 0) + fatePointsAwarded;
-          user.fatePoints = fatePoints;
+        // Apply user changes (FP)
+        if (result.userChanges) {
+          shared.applyUserChanges(user, result.userChanges);
         }
 
         await user.save({ transaction });
@@ -1856,9 +1803,10 @@ function initEssenceTapWebSocket(io) {
         // Broadcast to all user tabs
         broadcastToUser(namespace, userId, 'milestone_claimed', {
           milestoneKey,
-          fatePoints: fatePointsAwarded,
-          claimedMilestones: result.newState.claimedMilestones,
-          claimableMilestones: essenceTapService.checkMilestones(result.newState),
+          fatePoints: result.fatePoints,
+          capped: result.capped,
+          claimedMilestones: result.claimedMilestones,
+          claimableMilestones: actions.checkMilestones(result.newState),
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now

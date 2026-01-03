@@ -6,6 +6,7 @@
  */
 
 const { DAILY_CHALLENGES } = require('../../../config/essenceTap');
+const { applyFPWithCap } = require('../shared');
 
 /**
  * Daily challenge action result
@@ -109,7 +110,7 @@ function checkDailyChallenges(state) {
  * @param {Object} params - Action parameters
  * @param {Object} params.state - Current player state
  * @param {string} params.challengeId - Challenge ID to claim
- * @returns {DailyChallengeResult} Claim result
+ * @returns {DailyChallengeResult} Claim result with userChanges for FP/tickets
  */
 function claimDailyChallenge({ state, challengeId }) {
   if (!challengeId) {
@@ -148,7 +149,7 @@ function claimDailyChallenge({ state, challengeId }) {
   }
 
   const today = getTodayString();
-  const newState = { ...state };
+  let newState = { ...state };
 
   // Track claimed challenges
   newState.dailyChallengesClaimed = { ...state.dailyChallengesClaimed };
@@ -159,6 +160,26 @@ function claimDailyChallenge({ state, challengeId }) {
 
   newState.lastOnlineTimestamp = Date.now();
 
+  // Process rewards and track user changes
+  const userChanges = {};
+  const rewards = { ...challenge.rewards };
+
+  // Apply FP with cap
+  if (rewards.fatePoints && rewards.fatePoints > 0) {
+    const fpResult = applyFPWithCap(newState, rewards.fatePoints, 'daily_challenge');
+    newState = fpResult.newState;
+    if (fpResult.actualFP > 0) {
+      userChanges.fatePoints = fpResult.actualFP;
+    }
+    rewards.fatePointsAwarded = fpResult.actualFP;
+    rewards.fatePointsCapped = fpResult.capped;
+  }
+
+  // Track ticket rewards
+  if (rewards.rollTickets && rewards.rollTickets > 0) {
+    userChanges.rollTickets = rewards.rollTickets;
+  }
+
   return {
     success: true,
     newState,
@@ -167,7 +188,8 @@ function claimDailyChallenge({ state, challengeId }) {
       name: challenge.name,
       description: challenge.description
     },
-    rewards: challenge.rewards
+    rewards,
+    userChanges
   };
 }
 

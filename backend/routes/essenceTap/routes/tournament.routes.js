@@ -2,13 +2,22 @@
  * Tournament Routes
  *
  * Handles weekly tournament, leaderboards, checkpoints, burning hours, and cosmetics.
+ * Uses unified action handlers and middleware.
  */
 
 const express = require('express');
 const router = express.Router();
+const { Op } = require('sequelize');
 const { User } = require('../../../models');
-const essenceTapService = require('../../../services/essenceTapService');
-const { createRoute, createGetRoute } = require('../createRoute');
+const { actions, getCurrentISOWeek } = require('../../../services/essenceTap');
+const {
+  loadGameState,
+  saveGameState,
+  asyncHandler,
+  awardFP,
+  awardTickets
+} = require('../middleware');
+const config = require('../../../config/essenceTap');
 
 // ===========================================
 // TOURNAMENT INFO & LEADERBOARDS
@@ -18,32 +27,30 @@ const { createRoute, createGetRoute } = require('../createRoute');
  * GET /tournament/weekly
  * Get weekly tournament info for current user
  */
-router.get('/weekly', createGetRoute((state) => {
-  return essenceTapService.getWeeklyTournamentInfo(state);
-}));
+router.get('/weekly',
+  loadGameState,
+  asyncHandler(async (req, res) => {
+    const tournamentInfo = actions.getWeeklyTournamentInfo(req.gameState);
+    return res.json(tournamentInfo);
+  })
+);
 
 /**
  * GET /tournament/bracket-leaderboard
  * Get bracket-specific leaderboard
  */
-router.get('/bracket-leaderboard', async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const state = user.essenceTap || essenceTapService.getInitialState();
+router.get('/bracket-leaderboard',
+  loadGameState,
+  asyncHandler(async (req, res) => {
+    const state = req.gameState;
     const userBracket = state.tournament?.bracket || 'C';
-    const currentWeek = essenceTapService.getCurrentISOWeek();
+    const currentWeek = getCurrentISOWeek();
 
     // Get all users with essence tap data
     const users = await User.findAll({
       attributes: ['id', 'username', 'essenceTap'],
       where: {
-        essenceTap: {
-          [require('sequelize').Op.ne]: null
-        }
+        essenceTap: { [Op.ne]: null }
       }
     });
 
@@ -67,7 +74,7 @@ router.get('/bracket-leaderboard', async (req, res) => {
         };
       })
       .sort((a, b) => b.weeklyEssence - a.weeklyEssence)
-      .slice(0, essenceTapService.tournamentService.BRACKET_SYSTEM.maxPlayersPerBracket)
+      .slice(0, config.BRACKET_SYSTEM?.maxPlayersPerBracket || 100)
       .map((entry, index) => ({
         ...entry,
         bracketRank: index + 1
@@ -79,38 +86,32 @@ router.get('/bracket-leaderboard', async (req, res) => {
     res.json({
       success: true,
       bracket: userBracket,
-      bracketInfo: essenceTapService.tournamentService.BRACKET_SYSTEM.brackets[userBracket],
+      bracketInfo: config.BRACKET_SYSTEM?.brackets?.[userBracket],
       leaderboard: bracketPlayers,
       userRank: userRank > 0 ? userRank : null,
       weekId: currentWeek
     });
-  } catch (error) {
-    console.error('Error getting bracket leaderboard:', error);
-    res.status(500).json({ error: 'Failed to get bracket leaderboard' });
-  }
-});
+  })
+);
 
 /**
  * GET /tournament/burning-hour
  * Get current burning hour status
  */
-router.get('/burning-hour', async (req, res) => {
-  try {
-    const status = essenceTapService.getBurningHourStatus();
+router.get('/burning-hour',
+  asyncHandler(async (req, res) => {
+    const status = actions.getBurningHourStatus();
 
     res.json({
       success: true,
       ...status,
       config: {
-        duration: essenceTapService.tournamentService.BURNING_HOURS.duration,
-        multiplier: essenceTapService.tournamentService.BURNING_HOURS.multiplier
+        duration: config.BURNING_HOURS?.duration || 3600000,
+        multiplier: config.BURNING_HOURS?.multiplier || 2
       }
     });
-  } catch (error) {
-    console.error('Error getting burning hour status:', error);
-    res.status(500).json({ error: 'Failed to get burning hour status' });
-  }
-});
+  })
+);
 
 // ===========================================
 // REWARD CLAIMING
@@ -120,98 +121,138 @@ router.get('/burning-hour', async (req, res) => {
  * POST /tournament/weekly/claim
  * Claim weekly tournament rewards
  */
-router.post('/weekly/claim', createRoute({
-  execute: async (ctx) => {
-    const result = essenceTapService.claimWeeklyRewards(ctx.state);
+router.post('/weekly/claim',
+  loadGameState,
+  asyncHandler(async (req, res, next) => {
+    const result = actions.claimWeeklyRewards({ state: req.gameState });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
-    // Apply FP with cap enforcement (tournament counts toward weekly cap)
+    let newState = result.newState;
     let actualFP = 0;
     let fpCapped = false;
-    if (result.rewards.fatePoints > 0) {
-      const fpResult = essenceTapService.applyFPWithCap(
-        result.newState,
-        result.rewards.fatePoints,
-        'tournament'
-      );
-      result.newState = fpResult.newState;
+
+    // Apply FP with cap enforcement
+    if (result.rewards?.fatePoints > 0) {
+      const fpResult = awardFP({
+        user: req.gameUser,
+        state: newState,
+        amount: result.rewards.fatePoints,
+        source: 'tournament'
+      });
+      newState = fpResult.newState;
       actualFP = fpResult.actualFP;
       fpCapped = fpResult.capped;
+      req.gameUser.fatePoints = fpResult.fatePoints;
     }
 
-    return {
+    // Apply tickets
+    if (result.rewards?.rollTickets > 0) {
+      awardTickets({
+        user: req.gameUser,
+        amount: result.rewards.rollTickets
+      });
+    }
+
+    // Update state for saving
+    req.gameState = newState;
+    req.gameStateChanged = true;
+
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      fatePointsToAward: actualFP,
-      rollTicketsToAward: result.rewards.rollTickets,
-      data: {
-        tier: result.tier,
-        rewards: {
-          ...result.rewards,
-          fatePoints: actualFP,
-          fatePointsCapped: fpCapped
-        },
-        // v4.0 additions
-        breakdown: result.breakdown,
-        bracketRank: result.bracketRank,
-        streak: result.streak
-      }
+      tier: result.tier,
+      rewards: {
+        ...result.rewards,
+        fatePoints: actualFP,
+        fatePointsCapped: fpCapped
+      },
+      breakdown: result.breakdown,
+      bracketRank: result.bracketRank,
+      streak: result.streak
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
 
 /**
  * POST /tournament/checkpoint/claim
  * Claim a daily checkpoint reward
  */
-router.post('/checkpoint/claim', createRoute({
-  validate: (body) => {
-    if (!body.day || body.day < 1 || body.day > 7) {
-      return 'Invalid checkpoint day (1-7)';
+router.post('/checkpoint/claim',
+  loadGameState,
+  asyncHandler(async (req, res, next) => {
+    const { day } = req.body;
+
+    if (!day || day < 1 || day > 7) {
+      return res.status(400).json({ error: 'Invalid checkpoint day (1-7)' });
     }
-    return null;
-  },
-  execute: async (ctx) => {
-    const result = essenceTapService.claimTournamentCheckpoint(ctx.state, ctx.body.day);
+
+    const result = actions.claimTournamentCheckpoint({
+      state: req.gameState,
+      day: parseInt(day, 10)
+    });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
-    // Apply FP with cap
+    let newState = result.newState;
     let actualFP = 0;
     let fpCapped = false;
-    if (result.rewards.fatePoints > 0) {
-      const fpResult = essenceTapService.applyFPWithCap(
-        result.newState,
-        result.rewards.fatePoints,
-        'checkpoint'
-      );
-      result.newState = fpResult.newState;
+
+    // Apply FP with cap
+    if (result.rewards?.fatePoints > 0) {
+      const fpResult = awardFP({
+        user: req.gameUser,
+        state: newState,
+        amount: result.rewards.fatePoints,
+        source: 'checkpoint'
+      });
+      newState = fpResult.newState;
       actualFP = fpResult.actualFP;
       fpCapped = fpResult.capped;
+      req.gameUser.fatePoints = fpResult.fatePoints;
     }
 
-    return {
+    // Apply tickets
+    if (result.rewards?.rollTickets > 0) {
+      awardTickets({
+        user: req.gameUser,
+        amount: result.rewards.rollTickets
+      });
+    }
+
+    // Update state for saving
+    req.gameState = newState;
+    req.gameStateChanged = true;
+
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      fatePointsToAward: actualFP,
-      rollTicketsToAward: result.rewards.rollTickets,
-      data: {
-        day: result.day,
-        checkpointName: result.checkpointName,
-        rewards: {
-          ...result.rewards,
-          fatePoints: actualFP,
-          fatePointsCapped: fpCapped
-        }
+      day: result.day,
+      checkpointName: result.checkpointName,
+      rewards: {
+        ...result.rewards,
+        fatePoints: actualFP,
+        fatePointsCapped: fpCapped
       }
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
 
 // ===========================================
 // COSMETICS
@@ -221,25 +262,22 @@ router.post('/checkpoint/claim', createRoute({
  * GET /tournament/cosmetics
  * Get user's tournament cosmetics
  */
-router.get('/cosmetics', async (req, res) => {
-  try {
-    const user = await User.findByPk(req.user.id);
-    if (!user) {
-      return res.status(404).json({ error: 'User not found' });
-    }
-
-    const state = user.essenceTap || essenceTapService.getInitialState();
+router.get('/cosmetics',
+  loadGameState,
+  asyncHandler(async (req, res) => {
+    const state = req.gameState;
     const cosmetics = state.tournament?.cosmetics || { owned: [], equipped: {} };
 
     // Get full cosmetic details
-    const ownedDetails = cosmetics.owned.map(id =>
-      essenceTapService.tournamentService.TOURNAMENT_COSMETICS.items[id]
-    ).filter(Boolean);
+    const cosmeticItems = config.TOURNAMENT_COSMETICS?.items || {};
+    const ownedDetails = cosmetics.owned
+      .map(id => cosmeticItems[id])
+      .filter(Boolean);
 
     const equippedDetails = {};
     for (const [slot, id] of Object.entries(cosmetics.equipped)) {
-      if (id) {
-        equippedDetails[slot] = essenceTapService.tournamentService.TOURNAMENT_COSMETICS.items[id];
+      if (id && cosmeticItems[id]) {
+        equippedDetails[slot] = cosmeticItems[id];
       }
     }
 
@@ -248,71 +286,90 @@ router.get('/cosmetics', async (req, res) => {
       owned: ownedDetails,
       equipped: equippedDetails,
       equippedIds: cosmetics.equipped,
-      allCosmetics: essenceTapService.tournamentService.TOURNAMENT_COSMETICS.items
+      allCosmetics: cosmeticItems
     });
-  } catch (error) {
-    console.error('Error getting cosmetics:', error);
-    res.status(500).json({ error: 'Failed to get cosmetics' });
-  }
-});
+  })
+);
 
 /**
  * POST /tournament/cosmetics/equip
  * Equip a tournament cosmetic
  */
-router.post('/cosmetics/equip', createRoute({
-  validate: (body) => {
-    if (!body.cosmeticId) {
-      return 'Cosmetic ID required';
+router.post('/cosmetics/equip',
+  loadGameState,
+  asyncHandler(async (req, res, next) => {
+    const { cosmeticId } = req.body;
+
+    if (!cosmeticId) {
+      return res.status(400).json({ error: 'Cosmetic ID required' });
     }
-    return null;
-  },
-  lockUser: false,
-  execute: async (ctx) => {
-    const result = essenceTapService.equipTournamentCosmetic(ctx.state, ctx.body.cosmeticId);
+
+    const result = actions.equipCosmetic({
+      state: req.gameState,
+      cosmeticId
+    });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
-    return {
+    // Update state for saving
+    req.gameState = result.newState;
+    req.gameStateChanged = true;
+
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      data: {
-        equippedSlot: result.equippedSlot,
-        equipped: result.newState.tournament.cosmetics.equipped
-      }
+      equippedSlot: result.equippedSlot,
+      equipped: result.newState.tournament.cosmetics.equipped
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
 
 /**
  * POST /tournament/cosmetics/unequip
  * Unequip a tournament cosmetic from a slot
  */
-router.post('/cosmetics/unequip', createRoute({
-  validate: (body) => {
-    if (!body.slot || !['avatarFrame', 'profileTitle', 'tapSkin'].includes(body.slot)) {
-      return 'Valid slot required (avatarFrame, profileTitle, tapSkin)';
+router.post('/cosmetics/unequip',
+  loadGameState,
+  asyncHandler(async (req, res, next) => {
+    const { slot } = req.body;
+
+    if (!slot || !['avatarFrame', 'profileTitle', 'tapSkin'].includes(slot)) {
+      return res.status(400).json({ error: 'Valid slot required (avatarFrame, profileTitle, tapSkin)' });
     }
-    return null;
-  },
-  lockUser: false,
-  execute: async (ctx) => {
-    const result = essenceTapService.unequipTournamentCosmetic(ctx.state, ctx.body.slot);
+
+    const result = actions.unequipCosmetic({
+      state: req.gameState,
+      slot
+    });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
-    return {
+    // Update state for saving
+    req.gameState = result.newState;
+    req.gameStateChanged = true;
+
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      data: {
-        equipped: result.newState.tournament.cosmetics.equipped
-      }
+      equipped: result.newState.tournament.cosmetics.equipped
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
 
 module.exports = router;

@@ -13,7 +13,7 @@
  */
 
 const { User, UserCharacter, Character } = require('../../../models');
-const { getInitialState, resetDaily, applyPassiveGains } = require('../../essenceTap');
+const { getInitialState, resetDaily } = require('../../essenceTap');
 const { deriveElement } = require('../../../config/essenceTap');
 
 /**

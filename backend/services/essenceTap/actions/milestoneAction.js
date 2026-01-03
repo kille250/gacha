@@ -6,13 +6,17 @@
  */
 
 const milestoneService = require('../domains/milestone.service');
+const { applyFPWithCap } = require('../shared');
 
 /**
  * Milestone action result
  * @typedef {Object} MilestoneResult
  * @property {boolean} success - Whether action succeeded
  * @property {Object} [newState] - Updated state
- * @property {number} [fatePoints] - FP awarded
+ * @property {number} [fatePoints] - FP awarded (after cap)
+ * @property {number} [requestedFP] - FP before cap
+ * @property {boolean} [capped] - Whether FP was capped
+ * @property {Object} [userChanges] - Changes to apply to user model
  * @property {Object} [rollTickets] - Tickets awarded
  * @property {string} [error] - Error message if failed
  * @property {string} [code] - Error code if failed
@@ -44,14 +48,34 @@ function claimMilestone({ state, milestoneKey }) {
     };
   }
 
-  result.newState.lastOnlineTimestamp = Date.now();
+  let newState = result.newState;
+  newState.lastOnlineTimestamp = Date.now();
+
+  // Apply FP with cap (one-time milestones exempt from cap, but we track it)
+  const userChanges = {};
+  let actualFP = result.fatePoints;
+  let capped = false;
+
+  if (result.fatePoints > 0) {
+    const fpResult = applyFPWithCap(newState, result.fatePoints, 'one_time_milestone');
+    newState = fpResult.newState;
+    actualFP = fpResult.actualFP;
+    capped = fpResult.capped;
+
+    if (fpResult.actualFP > 0) {
+      userChanges.fatePoints = fpResult.actualFP;
+    }
+  }
 
   return {
     success: true,
-    newState: result.newState,
+    newState,
     milestoneKey,
-    fatePoints: result.fatePoints,
-    claimedMilestones: result.newState.claimedMilestones
+    fatePoints: actualFP,
+    requestedFP: result.fatePoints,
+    capped,
+    userChanges,
+    claimedMilestones: newState.claimedMilestones
   };
 }
 
@@ -81,13 +105,33 @@ function claimRepeatableMilestone({ state, milestoneType }) {
     };
   }
 
-  result.newState.lastOnlineTimestamp = Date.now();
+  let newState = result.newState;
+  newState.lastOnlineTimestamp = Date.now();
+
+  // Apply FP with cap for repeatable milestones
+  const userChanges = {};
+  let actualFP = result.fatePoints;
+  let capped = false;
+
+  if (result.fatePoints > 0) {
+    const fpResult = applyFPWithCap(newState, result.fatePoints, 'repeatable_milestone');
+    newState = fpResult.newState;
+    actualFP = fpResult.actualFP;
+    capped = fpResult.capped;
+
+    if (fpResult.actualFP > 0) {
+      userChanges.fatePoints = fpResult.actualFP;
+    }
+  }
 
   return {
     success: true,
-    newState: result.newState,
+    newState,
     milestoneType,
-    fatePoints: result.fatePoints,
+    fatePoints: actualFP,
+    requestedFP: result.fatePoints,
+    capped,
+    userChanges,
     count: result.count || 1
   };
 }

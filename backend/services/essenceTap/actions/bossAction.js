@@ -6,6 +6,7 @@
  */
 
 const bossService = require('../domains/boss.service');
+const { applyFPWithCap } = require('../shared');
 
 /**
  * Boss action result
@@ -59,7 +60,7 @@ function spawnBoss({ state }) {
  * @param {Object} params.state - Current player state
  * @param {number} [params.damage] - Base damage from clicks
  * @param {Array} [params.characters] - User's characters
- * @returns {BossResult} Attack result
+ * @returns {BossResult} Attack result with userChanges for rewards
  */
 function attackBoss({ state, damage, characters = [] }) {
   const result = bossService.attackBoss(state, damage, characters);
@@ -72,15 +73,50 @@ function attackBoss({ state, damage, characters = [] }) {
     };
   }
 
-  result.newState.lastOnlineTimestamp = Date.now();
+  let newState = result.newState;
+  newState.lastOnlineTimestamp = Date.now();
+
+  const userChanges = {};
+  const rewards = { ...(result.rewards || {}) };
+
+  // If boss was defeated, process rewards
+  if (result.defeated && result.rewards) {
+    // Apply essence reward
+    if (result.rewards.essence) {
+      newState.essence = (newState.essence || 0) + result.rewards.essence;
+      newState.lifetimeEssence = (newState.lifetimeEssence || 0) + result.rewards.essence;
+    }
+
+    // Apply FP with cap
+    if (result.rewards.fatePoints && result.rewards.fatePoints > 0) {
+      const fpResult = applyFPWithCap(newState, result.rewards.fatePoints, 'boss_defeat');
+      newState = fpResult.newState;
+      if (fpResult.actualFP > 0) {
+        userChanges.fatePoints = fpResult.actualFP;
+      }
+      rewards.fatePointsAwarded = fpResult.actualFP;
+      rewards.fatePointsCapped = fpResult.capped;
+    }
+
+    // Track ticket rewards
+    if (result.rewards.rollTickets && result.rewards.rollTickets > 0) {
+      userChanges.rollTickets = result.rewards.rollTickets;
+    }
+
+    // Track XP rewards
+    if (result.rewards.xp && result.rewards.xp > 0) {
+      userChanges.xp = result.rewards.xp;
+    }
+  }
 
   return {
     success: true,
-    newState: result.newState,
+    newState,
     damageDealt: result.damageDealt,
     bossHealth: result.bossHealth,
     defeated: result.defeated,
-    rewards: result.rewards,
+    rewards,
+    userChanges,
     timeRemaining: result.timeRemaining,
     bossSpawned: result.bossSpawned,
     boss: result.boss,

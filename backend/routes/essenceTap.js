@@ -2,6 +2,11 @@
  * Essence Tap Routes
  *
  * API endpoints for the Essence Tap clicker minigame.
+ *
+ * REFACTORING NOTE (Phase 1):
+ * Routes are being migrated to use unified action handlers from
+ * services/essenceTap/actions/ to eliminate duplication with WebSocket handlers.
+ * Legacy essenceTapService is being phased out in favor of the new modular structure.
  */
 
 const express = require('express');
@@ -11,6 +16,10 @@ const { rewardClaimLimiter } = require('../middleware/rateLimiter');
 const { User, UserCharacter, sequelize } = require('../models');
 const essenceTapService = require('../services/essenceTapService');
 const accountLevelService = require('../services/accountLevelService');
+
+// New modular imports for refactoring
+const actions = require('../services/essenceTap/actions');
+const shared = require('../services/essenceTap/shared');
 
 // ===========================================
 // SERVER-SIDE RATE LIMITING
@@ -831,6 +840,8 @@ router.post('/prestige/upgrade', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/milestone/claim
  * Claim a Fate Points milestone
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/milestone/claim', auth, async (req, res) => {
   const { milestoneKey } = req.body;
@@ -839,7 +850,6 @@ router.post('/milestone/claim', auth, async (req, res) => {
     return res.status(400).json({ error: 'Milestone key required' });
   }
 
-  // Use essence lock to prevent race conditions with concurrent requests
   return withEssenceLock(req.user.id, async () => {
     try {
       const user = await User.findByPk(req.user.id);
@@ -847,43 +857,29 @@ router.post('/milestone/claim', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      const state = user.essenceTap || essenceTapService.getInitialState();
 
-      const result = essenceTapService.claimMilestone(state, milestoneKey);
+      // Use unified action handler
+      const result = actions.claimMilestone({ state, milestoneKey });
 
       if (!result.success) {
-        return res.status(400).json({ error: result.error });
+        return res.status(400).json({ error: result.error, code: result.code });
+      }
+
+      // Apply user changes (FP)
+      if (result.userChanges) {
+        shared.applyUserChanges(user, result.userChanges);
       }
 
       const now = Date.now();
-      result.newState.lastOnlineTimestamp = now;
-
-      // Apply FP with cap enforcement (one-time milestones exempt from cap)
-      const fpResult = essenceTapService.applyFPWithCap(
-        result.newState,
-        result.fatePoints,
-        'one_time_milestone'
-      );
-      result.newState = fpResult.newState;
-
       user.essenceTap = result.newState;
-      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
       user.lastEssenceTapRequest = now;
-
-      // Award Fate Points (one-time milestones get full value)
-      if (fpResult.actualFP > 0) {
-        const fatePoints = user.fatePoints || {};
-        fatePoints.global = fatePoints.global || { points: 0 };
-        fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
-        user.fatePoints = fatePoints;
-      }
-
       await user.save();
 
       res.json({
         success: true,
-        fatePoints: fpResult.actualFP,
-        capped: fpResult.capped
+        fatePoints: result.fatePoints,
+        capped: result.capped
       });
     } catch (error) {
       console.error('Error claiming milestone:', error);
@@ -895,6 +891,8 @@ router.post('/milestone/claim', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/character/assign
  * Assign a character for production bonus
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/character/assign', auth, async (req, res) => {
   const { characterId } = req.body;
@@ -903,7 +901,6 @@ router.post('/character/assign', auth, async (req, res) => {
     return res.status(400).json({ error: 'Character ID required' });
   }
 
-  // Use essence lock to prevent race conditions with concurrent requests
   return withEssenceLock(req.user.id, async () => {
     try {
       const user = await User.findByPk(req.user.id);
@@ -912,57 +909,30 @@ router.post('/character/assign', auth, async (req, res) => {
       }
 
       // Get user's characters
-      const userCharacters = await UserCharacter.findAll({
-        where: { UserId: user.id },
-        include: ['Character']
+      const ownedCharacters = await shared.loadUserCharacters(user.id);
+
+      const state = user.essenceTap || essenceTapService.getInitialState();
+
+      // Use unified action handler
+      const result = actions.assignCharacter({
+        state,
+        characterId,
+        ownedCharacters
       });
 
-      const ownedCharacters = userCharacters.map(uc => ({
-        id: uc.CharacterId,
-        rarity: uc.Character?.rarity || 'common',
-        element: uc.Character?.element || 'neutral'
-      }));
-
-      let state = user.essenceTap || essenceTapService.getInitialState();
-
-      const result = essenceTapService.assignCharacter(state, characterId, ownedCharacters);
-
       if (!result.success) {
-        return res.status(400).json({ error: result.error });
+        return res.status(400).json({ error: result.error, code: result.code });
       }
 
       const now = Date.now();
-      result.newState.lastOnlineTimestamp = now;
-
       user.essenceTap = result.newState;
-      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
       user.lastEssenceTapRequest = now;
       await user.save();
 
-      // Calculate new bonuses
-      const ownedCharsWithSeries = userCharacters.map(uc => ({
-        id: uc.CharacterId,
-        rarity: uc.Character?.rarity || 'common',
-        element: uc.Character?.element || 'neutral',
-        series: uc.Character?.series || 'Unknown'
-      }));
-
-      const characterBonus = essenceTapService.calculateCharacterBonus(result.newState, ownedCharacters);
-      const elementBonuses = essenceTapService.calculateElementBonuses(result.newState, ownedCharacters);
-      const elementSynergy = essenceTapService.calculateElementSynergy(result.newState, ownedCharacters);
-      const seriesSynergy = essenceTapService.calculateSeriesSynergy(result.newState, ownedCharsWithSeries);
-      const masteryBonus = essenceTapService.calculateTotalMasteryBonus(result.newState);
-      const underdogBonus = essenceTapService.calculateUnderdogBonus(result.newState, ownedCharacters);
-
       res.json({
         success: true,
-        assignedCharacters: result.newState.assignedCharacters,
-        characterBonus,
-        elementBonuses,
-        elementSynergy,
-        seriesSynergy,
-        masteryBonus,
-        underdogBonus
+        assignedCharacters: result.assignedCharacters,
+        ...result.bonuses
       });
     } catch (error) {
       console.error('Error assigning character:', error);
@@ -974,6 +944,8 @@ router.post('/character/assign', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/character/unassign
  * Unassign a character
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/character/unassign', auth, async (req, res) => {
   const { characterId } = req.body;
@@ -982,7 +954,6 @@ router.post('/character/unassign', auth, async (req, res) => {
     return res.status(400).json({ error: 'Character ID required' });
   }
 
-  // Use essence lock to prevent race conditions with concurrent requests
   return withEssenceLock(req.user.id, async () => {
     try {
       const user = await User.findByPk(req.user.id);
@@ -990,51 +961,31 @@ router.post('/character/unassign', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      const state = user.essenceTap || essenceTapService.getInitialState();
 
-      const result = essenceTapService.unassignCharacter(state, characterId);
+      // Get user's characters for bonus recalculation
+      const ownedCharacters = await shared.loadUserCharacters(user.id);
+
+      // Use unified action handler
+      const result = actions.unassignCharacter({
+        state,
+        characterId,
+        ownedCharacters
+      });
 
       if (!result.success) {
-        return res.status(400).json({ error: result.error });
+        return res.status(400).json({ error: result.error, code: result.code });
       }
 
       const now = Date.now();
-      result.newState.lastOnlineTimestamp = now;
-
       user.essenceTap = result.newState;
-      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
       user.lastEssenceTapRequest = now;
       await user.save();
 
-      // Get user's characters for bonus calculation
-      const userCharacters = await UserCharacter.findAll({
-        where: { UserId: user.id },
-        include: ['Character']
-      });
-
-      const ownedCharacters = userCharacters.map(uc => ({
-        id: uc.CharacterId,
-        rarity: uc.Character?.rarity || 'common',
-        element: uc.Character?.element || 'neutral',
-        series: uc.Character?.series || 'Unknown'
-      }));
-
-      const characterBonus = essenceTapService.calculateCharacterBonus(result.newState, ownedCharacters);
-      const elementBonuses = essenceTapService.calculateElementBonuses(result.newState, ownedCharacters);
-      const elementSynergy = essenceTapService.calculateElementSynergy(result.newState, ownedCharacters);
-      const seriesSynergy = essenceTapService.calculateSeriesSynergy(result.newState, ownedCharacters);
-      const masteryBonus = essenceTapService.calculateTotalMasteryBonus(result.newState);
-      const underdogBonus = essenceTapService.calculateUnderdogBonus(result.newState, ownedCharacters);
-
       res.json({
         success: true,
-        assignedCharacters: result.newState.assignedCharacters,
-        characterBonus,
-        elementBonuses,
-        elementSynergy,
-        seriesSynergy,
-        masteryBonus,
-        underdogBonus
+        assignedCharacters: result.assignedCharacters,
+        ...result.bonuses
       });
     } catch (error) {
       console.error('Error unassigning character:', error);
@@ -1142,6 +1093,8 @@ router.post('/save', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/gamble
  * Perform a gamble with essence
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/gamble', auth, async (req, res) => {
   const { betType, betAmount } = req.body;
@@ -1162,84 +1115,36 @@ router.post('/gamble', auth, async (req, res) => {
       state = essenceTapService.resetDaily(state);
 
       // Get user's characters for passive calculation
-      const userCharacters = await UserCharacter.findAll({
-        where: { UserId: user.id },
-        include: ['Character']
-      });
-
-      const characters = userCharacters.map(uc => ({
-        id: uc.CharacterId,
-        rarity: uc.Character?.rarity || 'common',
-        element: uc.Character?.element || 'neutral'
-      }));
+      const characters = await shared.loadUserCharacters(user.id);
 
       // Apply passive essence before gamble
       const passiveResult = applyPassiveGains(state, characters);
       state = passiveResult.state;
 
-      const result = essenceTapService.performGamble(state, betType, betAmount);
+      // Use unified action handler
+      const result = await actions.performGamble({
+        state,
+        betAmount,
+        betType,
+        userId: req.user.id
+      });
 
       if (!result.success) {
-        return res.status(400).json({ error: result.error });
+        return res.status(400).json({ error: result.error, code: result.code });
       }
 
-      // Contribute to shared jackpot from bet (async)
-      const jackpotContribution = await essenceTapService.contributeToJackpot(result.newState, betAmount, req.user.id);
-      result.newState = jackpotContribution.newState;
-
-      // Check for jackpot win (async with shared jackpot)
-      let jackpotWin = null;
-      let jackpotRewards = null;
-      const jackpotResult = await essenceTapService.checkJackpotWin(result.newState, betAmount, betType);
-      if (jackpotResult.won) {
-        jackpotWin = jackpotResult.amount;
-        jackpotRewards = jackpotResult.rewards;
-        result.newState.essence = (result.newState.essence || 0) + jackpotResult.amount;
-        result.newState.lifetimeEssence = (result.newState.lifetimeEssence || 0) + jackpotResult.amount;
-
-        // Add bonus rewards from jackpot
-        if (jackpotRewards) {
-          // Add fate points (capped by weekly limit)
-          if (jackpotRewards.fatePoints) {
-            const fpResult = essenceTapService.applyFPWithCap(result.newState, jackpotRewards.fatePoints, 'jackpot');
-            result.newState = fpResult.newState;
-            // Award Fate Points with correct object structure
-            if (fpResult.actualFP > 0) {
-              const fatePoints = user.fatePoints || {};
-              fatePoints.global = fatePoints.global || { points: 0 };
-              fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
-              user.fatePoints = fatePoints;
-            }
-          }
-
-          // Add roll tickets
-          if (jackpotRewards.rollTickets) {
-            user.rollTickets = (user.rollTickets || 0) + jackpotRewards.rollTickets;
-          }
-
-          // Add prismatic essence
-          if (jackpotRewards.prismaticEssence) {
-            result.newState.essenceTypes = {
-              ...result.newState.essenceTypes,
-              prismatic: (result.newState.essenceTypes?.prismatic || 0) + jackpotRewards.prismaticEssence
-            };
-          }
-        }
-
-        // Reset the shared jackpot and record winner
-        result.newState = await essenceTapService.resetJackpot(result.newState, req.user.id, jackpotResult.amount);
+      // Apply user changes (FP, tickets) from action result
+      if (result.userChanges) {
+        shared.applyUserChanges(user, result.userChanges);
       }
 
       const now = Date.now();
-      result.newState.lastOnlineTimestamp = now;
-
       user.essenceTap = result.newState;
-      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
       user.lastEssenceTapRequest = now;
       await user.save();
 
       // Fetch updated jackpot info for response
-      const jackpotInfo = await essenceTapService.getSharedJackpotInfo();
+      const jackpotInfo = await actions.getSharedJackpotInfo();
 
       res.json({
         success: true,
@@ -1249,11 +1154,11 @@ router.post('/gamble', auth, async (req, res) => {
         multiplier: result.multiplier,
         winChance: result.winChance,
         essenceChange: result.essenceChange,
-        newEssence: result.newState.essence,
-        jackpotWin,
-        jackpotRewards,
-        jackpotContribution: jackpotContribution.contribution,
-        gambleInfo: essenceTapService.getGambleInfo(result.newState),
+        newEssence: result.newEssence,
+        jackpotWin: result.jackpotWin,
+        jackpotRewards: result.jackpotRewards,
+        jackpotContribution: result.jackpotContribution,
+        gambleInfo: result.gambleInfo,
         jackpotInfo
       });
     } catch (error) {
@@ -1270,9 +1175,10 @@ router.post('/gamble', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/infusion
  * Perform an essence infusion for permanent bonus
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/infusion', auth, async (req, res) => {
-  // Use essence lock to prevent race conditions with concurrent requests
   return withEssenceLock(req.user.id, async () => {
     try {
       const user = await User.findByPk(req.user.id);
@@ -1283,32 +1189,21 @@ router.post('/infusion', auth, async (req, res) => {
       let state = user.essenceTap || essenceTapService.getInitialState();
 
       // Get user's characters for passive calculation
-      const userCharacters = await UserCharacter.findAll({
-        where: { UserId: user.id },
-        include: ['Character']
-      });
-
-      const characters = userCharacters.map(uc => ({
-        id: uc.CharacterId,
-        rarity: uc.Character?.rarity || 'common',
-        element: uc.Character?.element || 'neutral'
-      }));
+      const characters = await shared.loadUserCharacters(user.id);
 
       // Apply passive essence before infusion
       const passiveResult = applyPassiveGains(state, characters);
       state = passiveResult.state;
 
-      const result = essenceTapService.performInfusion(state);
+      // Use unified action handler
+      const result = actions.performInfusion({ state });
 
       if (!result.success) {
-        return res.status(400).json({ error: result.error });
+        return res.status(400).json({ error: result.error, code: result.code });
       }
 
       const now = Date.now();
-      result.newState.lastOnlineTimestamp = now;
-
       user.essenceTap = result.newState;
-      // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
       user.lastEssenceTapRequest = now;
       await user.save();
 
@@ -1319,8 +1214,8 @@ router.post('/infusion', auth, async (req, res) => {
         bonusGained: result.bonusGained,
         totalBonus: result.totalBonus,
         infusionCount: result.infusionCount,
-        nextCost: essenceTapService.calculateInfusionCost(result.newState),
-        essence: result.newState.essence
+        nextCost: actions.getInfusionInfo(result.newState).nextCost,
+        essence: result.essence
       });
     } catch (error) {
       console.error('Error performing infusion:', error);
@@ -2318,6 +2213,8 @@ router.get('/daily-challenges', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/daily-challenges/claim
  * Claim a completed daily challenge
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/daily-challenges/claim', auth, async (req, res) => {
   const { challengeId } = req.body;
@@ -2336,38 +2233,23 @@ router.post('/daily-challenges/claim', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
-    const result = essenceTapService.claimDailyChallenge(state, challengeId);
+    const state = user.essenceTap || essenceTapService.getInitialState();
+
+    // Use unified action handler
+    const result = actions.claimDailyChallenge({ state, challengeId });
 
     if (!result.success) {
       await transaction.rollback();
-      return res.status(400).json({ error: result.error });
+      return res.status(400).json({ error: result.error, code: result.code });
     }
 
     const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
     user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
     user.lastEssenceTapRequest = now;
 
-    // Award FP if challenge gives it
-    if (result.rewards.fatePoints > 0) {
-      const fpResult = essenceTapService.applyFPWithCap(
-        result.newState,
-        result.rewards.fatePoints,
-        'daily_challenge'
-      );
-      user.essenceTap = fpResult.newState;
-
-      const fatePoints = user.fatePoints || {};
-      fatePoints.global = fatePoints.global || { points: 0 };
-      fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
-      user.fatePoints = fatePoints;
-    }
-
-    // Award roll tickets
-    if (result.rewards.rollTickets > 0) {
-      user.rollTickets = (user.rollTickets || 0) + result.rewards.rollTickets;
+    // Apply user changes (FP, tickets)
+    if (result.userChanges) {
+      shared.applyUserChanges(user, result.userChanges);
     }
 
     await user.save({ transaction });
@@ -2409,6 +2291,8 @@ router.get('/boss', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/boss/attack
  * Attack the current boss
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/boss/attack', auth, async (req, res) => {
   const { damage } = req.body;
@@ -2423,69 +2307,28 @@ router.post('/boss/attack', auth, async (req, res) => {
       return res.status(404).json({ error: 'User not found' });
     }
 
-    let state = user.essenceTap || essenceTapService.getInitialState();
+    const state = user.essenceTap || essenceTapService.getInitialState();
 
     // Get user's characters for damage calculation
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: user.id },
-      include: ['Character'],
-      transaction
-    });
+    const characters = await shared.loadUserCharacters(user.id, { transaction });
 
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
-    const result = essenceTapService.attackBoss(state, damage, characters);
+    // Use unified action handler
+    const result = actions.attackBoss({ state, damage, characters });
 
     if (!result.success) {
       await transaction.rollback();
-      return res.status(400).json({ error: result.error });
+      return res.status(400).json({ error: result.error, code: result.code });
     }
 
     const now = Date.now();
-    result.newState.lastOnlineTimestamp = now;
     user.essenceTap = result.newState;
-    // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
     user.lastEssenceTapRequest = now;
 
-    // If boss defeated, award rewards
-    if (result.defeated) {
-      // Award essence
-      if (result.rewards.essence) {
-        result.newState.essence = (result.newState.essence || 0) + result.rewards.essence;
-        result.newState.lifetimeEssence = (result.newState.lifetimeEssence || 0) + result.rewards.essence;
-      }
-
-      // Award FP
-      if (result.rewards.fatePoints) {
-        const fpResult = essenceTapService.applyFPWithCap(
-          result.newState,
-          result.rewards.fatePoints,
-          'boss_defeat'
-        );
-        result.newState = fpResult.newState;
-
-        const fatePoints = user.fatePoints || {};
-        fatePoints.global = fatePoints.global || { points: 0 };
-        fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
-        user.fatePoints = fatePoints;
-      }
-
-      // Award tickets
-      if (result.rewards.rollTickets) {
-        user.rollTickets = (user.rollTickets || 0) + result.rewards.rollTickets;
-      }
-
-      // Award XP
-      if (result.rewards.xp) {
-        user.accountXP = (user.accountXP || 0) + result.rewards.xp;
-      }
+    // Apply user changes (FP, tickets, XP) from action result
+    if (result.userChanges) {
+      shared.applyUserChanges(user, result.userChanges);
     }
 
-    user.essenceTap = result.newState;
     await user.save({ transaction });
     await transaction.commit();
 

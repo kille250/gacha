@@ -83,6 +83,8 @@ module.exports = {
   // ==========================================
   performGamble: gambleAction.performGamble,
   getGambleInfo: gambleAction.getGambleInfo,
+  getSharedJackpotInfo: gambleAction.getSharedJackpotInfo,
+  contributeToJackpot: gambleAction.contributeToJackpot,
 
   // ==========================================
   // INFUSION ACTIONS

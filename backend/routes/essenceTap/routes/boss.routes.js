@@ -2,39 +2,20 @@
  * Boss Routes
  *
  * Handles boss encounter operations: spawning, attacking, status, and rewards.
+ * Uses unified action handlers and middleware.
  */
 
 const express = require('express');
 const router = express.Router();
-const { UserCharacter } = require('../../../models');
-const essenceTapService = require('../../../services/essenceTapService');
-const { createRoute, createGetRoute } = require('../createRoute');
 
-// ===========================================
-// HELPER FUNCTIONS
-// ===========================================
-
-/**
- * Get user's characters for damage calculation
- */
-async function getUserCharacters(userId, transaction = null) {
-  const options = {
-    where: { UserId: userId },
-    include: ['Character']
-  };
-
-  if (transaction) {
-    options.transaction = transaction;
-  }
-
-  const userCharacters = await UserCharacter.findAll(options);
-
-  return userCharacters.map(uc => ({
-    id: uc.CharacterId,
-    rarity: uc.Character?.rarity || 'common',
-    element: uc.Character?.element || 'neutral'
-  }));
-}
+const { actions } = require('../../../services/essenceTap');
+const {
+  loadGameState,
+  applyPassiveGains,
+  saveGameState,
+  asyncHandler,
+  awardRewards
+} = require('../middleware');
 
 // ===========================================
 // BOSS ENCOUNTERS
@@ -44,109 +25,158 @@ async function getUserCharacters(userId, transaction = null) {
  * POST /boss/spawn
  * Spawn a boss encounter
  */
-router.post('/spawn', createRoute({
-  execute: async (ctx) => {
-    const result = essenceTapService.spawnBoss(ctx.state);
+router.post('/spawn',
+  loadGameState,
+  asyncHandler(async (req, res, next) => {
+    const result = actions.spawnBoss({ state: req.gameState });
 
     if (!result.success) {
-      return {
-        success: false,
+      return res.status(400).json({
         error: result.error,
-        errorData: {
-          cooldownRemaining: result.cooldownRemaining,
-          clicksUntilSpawn: result.clicksUntilSpawn
-        }
-      };
+        code: result.code,
+        cooldownRemaining: result.cooldownRemaining,
+        clicksUntilSpawn: result.clicksUntilSpawn
+      });
     }
 
-    return {
+    // Update state for saving
+    req.gameState = result.newState;
+    req.gameStateChanged = true;
+
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      data: {
-        boss: result.boss,
-        bossEncounter: result.newState.bossEncounter
-      }
+      boss: result.boss,
+      bossEncounter: result.newState.bossEncounter
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
 
 /**
  * POST /boss/attack
  * Attack the current boss
  */
-router.post('/attack', createRoute({
-  validate: (body) => {
-    if (body.damage === undefined || body.damage < 0) {
-      return 'Valid damage value required';
+router.post('/attack',
+  loadGameState,
+  applyPassiveGains,
+  asyncHandler(async (req, res, next) => {
+    const { damage } = req.body;
+
+    if (damage === undefined || damage < 0) {
+      return res.status(400).json({ error: 'Valid damage value required' });
     }
-    return null;
-  },
-  execute: async (ctx) => {
-    const { damage } = ctx.body;
 
-    // Get user's characters for damage calculation
-    const characters = await getUserCharacters(ctx.user.id, ctx.transaction);
-
-    const result = essenceTapService.attackBoss(ctx.state, damage, characters);
+    const result = actions.attackBoss({
+      state: req.gameState,
+      damage: parseInt(damage, 10),
+      characters: req.characters || []
+    });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
+    let newState = result.newState;
+
+    // Award rewards if boss defeated
+    if (result.defeated && result.reward) {
+      const rewardResult = awardRewards({
+        user: req.gameUser,
+        state: newState,
+        rewards: result.reward,
+        source: 'boss_defeat'
+      });
+      newState = rewardResult.newState;
+    }
+
+    // Update state for saving
+    req.gameState = newState;
+    req.gameStateChanged = true;
+
+    // Set response
     const responseData = {
+      success: true,
       damage: result.damage,
       currentHealth: result.currentHealth,
       defeated: result.defeated,
-      bossEncounter: result.newState.bossEncounter
+      bossEncounter: newState.bossEncounter
     };
 
     if (result.defeated && result.reward) {
       responseData.reward = result.reward;
-      responseData.essence = result.newState.essence;
+      responseData.essence = newState.essence;
     }
 
-    return {
-      success: true,
-      newState: result.newState,
-      fatePointsToAward: result.reward?.fatePoints,
-      rollTicketsToAward: result.reward?.rollTickets,
-      data: responseData
-    };
-  }
-}));
+    res.locals.response = responseData;
+    next();
+  }),
+  saveGameState
+);
 
 /**
  * GET /boss/status
  * Get current boss encounter status
  */
-router.get('/status', createGetRoute((state) => {
-  return essenceTapService.getBossEncounterInfo(state);
-}));
+router.get('/status',
+  loadGameState,
+  asyncHandler(async (req, res) => {
+    const bossInfo = actions.getBossInfo(req.gameState);
+    return res.json(bossInfo);
+  })
+);
 
 /**
  * POST /boss/rewards/claim
  * Claim boss reward (if not auto-claimed)
  */
-router.post('/rewards/claim', createRoute({
-  execute: async (ctx) => {
-    const result = essenceTapService.claimBossReward(ctx.state);
+router.post('/rewards/claim',
+  loadGameState,
+  asyncHandler(async (req, res, next) => {
+    const result = actions.claimBossReward
+      ? actions.claimBossReward({ state: req.gameState })
+      : { success: false, error: 'Rewards auto-claimed on defeat' };
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
-    return {
+    let newState = result.newState;
+
+    // Award rewards
+    if (result.reward) {
+      const rewardResult = awardRewards({
+        user: req.gameUser,
+        state: newState,
+        rewards: result.reward,
+        source: 'boss_claim'
+      });
+      newState = rewardResult.newState;
+    }
+
+    // Update state for saving
+    req.gameState = newState;
+    req.gameStateChanged = true;
+
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      fatePointsToAward: result.reward?.fatePoints,
-      rollTicketsToAward: result.reward?.rollTickets,
-      data: {
-        reward: result.reward,
-        essence: result.newState.essence,
-        bossEncounter: result.newState.bossEncounter
-      }
+      reward: result.reward,
+      essence: newState.essence,
+      bossEncounter: newState.bossEncounter
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
 
 module.exports = router;

@@ -26,6 +26,12 @@
 // Pure calculation functions
 const calculations = require('./calculations');
 
+// Type definitions (for JSDoc)
+require('./types');
+
+// Validation utilities
+const validation = require('./validation');
+
 // Core services
 const stateService = require('./core/state.service');
 const statsService = require('./core/stats.service');
@@ -179,5 +185,16 @@ module.exports = {
   calculateElementBonuses: calculations.calculateElementBonuses,
   calculateElementSynergy: calculations.calculateElementSynergy,
   calculateSeriesSynergy: calculations.calculateSeriesSynergy,
-  calculateComboMultiplier: calculations.calculateComboMultiplier
+  calculateComboMultiplier: calculations.calculateComboMultiplier,
+
+  // ========================================
+  // VALIDATION UTILITIES
+  // ========================================
+  validation,
+  validateGeneratorPurchase: validation.validateGeneratorPurchase,
+  validateUpgradePurchase: validation.validateUpgradePurchase,
+  validateGamble: validation.validateGamble,
+  validateCharacterAssign: validation.validateCharacterAssign,
+  validateBossAttack: validation.validateBossAttack,
+  validateClicks: validation.validateClicks
 };

@@ -13,7 +13,7 @@
  */
 
 const { User, UserCharacter, sequelize } = require('../models');
-const { actions, getInitialState, resetDaily, resetWeeklyFPIfNeeded } = require('../services/essenceTap');
+const { actions, getInitialState, resetDaily, resetWeeklyFPIfNeeded, applyFPWithCap } = require('../services/essenceTap');
 const essenceTapService = require('../services/essenceTapService');
 
 /**
@@ -166,11 +166,15 @@ async function executeAction(options) {
 
   } catch (err) {
     await transaction.rollback();
-    console.error(`[EssenceTap WS] Action error:`, err);
+    console.error('[EssenceTap WS] Action error:', err);
     socket.emit('error', { code: errorCode, message: 'Action failed' });
     return { success: false, error: err.message };
   }
 }
+
+// ===========================================
+// PURCHASE HANDLERS
+// ===========================================
 
 /**
  * Create a handler for generator purchase via WebSocket
@@ -251,6 +255,81 @@ function createUpgradePurchaseHandler(broadcastToUser) {
 }
 
 /**
+ * Create a handler for prestige upgrade purchase via WebSocket
+ */
+function createPrestigeUpgradePurchaseHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, upgradeId, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'PURCHASE_FAILED',
+      action: async ({ state }) => {
+        return actions.purchasePrestigeUpgrade({
+          state,
+          upgradeId
+        });
+      },
+      getResponse: (result, { state }) => ({
+        prestigeShards: state.prestigeShards,
+        prestigeUpgrades: state.prestigeUpgrades,
+        upgrade: result.upgrade,
+        newLevel: result.newLevel,
+        cost: result.cost
+      }),
+      successEvent: 'prestige_upgrade_purchased'
+    });
+  };
+}
+
+// ===========================================
+// PRESTIGE HANDLER
+// ===========================================
+
+/**
+ * Create a handler for prestige action via WebSocket
+ */
+function createPrestigeHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'PRESTIGE_FAILED',
+      action: async ({ state }) => {
+        const result = actions.performPrestige({ state });
+        if (result.success) {
+          result.fatePointsToAward = result.fatePointsReward;
+          result.xpToAward = result.xpReward;
+        }
+        return result;
+      },
+      getResponse: (result, { state, characters }) => {
+        const gameState = essenceTapService.getGameState(state, characters);
+        return {
+          ...gameState,
+          shardsEarned: result.shardsEarned,
+          totalShards: result.totalShards,
+          prestigeLevel: result.prestigeLevel,
+          fatePointsReward: result.fatePointsReward,
+          xpReward: result.xpReward,
+          startingEssence: result.startingEssence
+        };
+      },
+      successEvent: 'prestige_complete'
+    });
+  };
+}
+
+// ===========================================
+// GAMBLE & INFUSION HANDLERS
+// ===========================================
+
+/**
  * Create a handler for gamble action via WebSocket
  */
 function createGambleHandler(broadcastToUser) {
@@ -313,6 +392,10 @@ function createInfusionHandler(broadcastToUser) {
   };
 }
 
+// ===========================================
+// ABILITY HANDLER
+// ===========================================
+
 /**
  * Create a handler for ability activation via WebSocket
  */
@@ -343,6 +426,10 @@ function createAbilityHandler(broadcastToUser) {
   };
 }
 
+// ===========================================
+// CHARACTER HANDLERS
+// ===========================================
+
 /**
  * Create a handler for character assignment via WebSocket
  */
@@ -362,21 +449,549 @@ function createCharacterAssignHandler(broadcastToUser) {
           ownedCharacters: characters
         });
       },
-      getResponse: (result, { state }) => ({
-        assignedCharacters: result.assignedCharacters,
-        bonuses: result.bonuses
-      }),
+      getResponse: (result, { state, characters }) => {
+        const gameState = essenceTapService.getGameState(state, characters);
+        return {
+          assignedCharacters: result.assignedCharacters,
+          characterBonus: gameState.characterBonus,
+          elementBonuses: gameState.elementBonuses,
+          elementSynergy: gameState.elementSynergy,
+          seriesSynergy: gameState.seriesSynergy,
+          masteryBonus: gameState.masteryBonus,
+          clickPower: gameState.clickPower,
+          productionPerSecond: gameState.productionPerSecond
+        };
+      },
       successEvent: 'character_assigned'
     });
   };
 }
 
+/**
+ * Create a handler for character unassignment via WebSocket
+ */
+function createCharacterUnassignHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, characterId, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'UNASSIGN_FAILED',
+      action: async ({ state, characters }) => {
+        return actions.unassignCharacter({
+          state,
+          characterId,
+          ownedCharacters: characters
+        });
+      },
+      getResponse: (result, { state, characters }) => {
+        const gameState = essenceTapService.getGameState(state, characters);
+        return {
+          assignedCharacters: result.assignedCharacters,
+          characterBonus: gameState.characterBonus,
+          elementBonuses: gameState.elementBonuses,
+          elementSynergy: gameState.elementSynergy,
+          seriesSynergy: gameState.seriesSynergy,
+          masteryBonus: gameState.masteryBonus,
+          clickPower: gameState.clickPower,
+          productionPerSecond: gameState.productionPerSecond
+        };
+      },
+      successEvent: 'character_unassigned'
+    });
+  };
+}
+
+/**
+ * Create a handler for character swap via WebSocket
+ */
+function createCharacterSwapHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, oldCharacterId, newCharacterId, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'SWAP_FAILED',
+      action: async ({ state, characters }) => {
+        return actions.swapCharacter({
+          state,
+          oldCharacterId,
+          newCharacterId,
+          ownedCharacters: characters
+        });
+      },
+      getResponse: (result, { state, characters }) => {
+        const gameState = essenceTapService.getGameState(state, characters);
+        return {
+          oldCharacterId,
+          newCharacterId,
+          assignedCharacters: result.assignedCharacters,
+          characterBonus: gameState.characterBonus,
+          elementBonuses: gameState.elementBonuses,
+          elementSynergy: gameState.elementSynergy,
+          seriesSynergy: gameState.seriesSynergy,
+          masteryBonus: gameState.masteryBonus,
+          clickPower: gameState.clickPower,
+          productionPerSecond: gameState.productionPerSecond
+        };
+      },
+      successEvent: 'character_swapped'
+    });
+  };
+}
+
+// ===========================================
+// MILESTONE & CHALLENGE HANDLERS
+// ===========================================
+
+/**
+ * Create a handler for milestone claim via WebSocket
+ */
+function createMilestoneClaimHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, milestoneKey, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'CLAIM_FAILED',
+      loadCharacters: false,
+      action: async ({ state }) => {
+        const result = actions.claimMilestone({ state, milestoneKey });
+        if (result.success && result.fatePoints > 0) {
+          result.fatePointsToAward = result.fatePoints;
+        }
+        return result;
+      },
+      getResponse: (result, { state }) => ({
+        milestoneKey,
+        fatePoints: result.fatePoints,
+        claimedMilestones: state.claimedMilestones
+      }),
+      successEvent: 'milestone_claimed'
+    });
+  };
+}
+
+/**
+ * Create a handler for repeatable milestone claim via WebSocket
+ */
+function createRepeatableMilestoneClaimHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, milestoneType, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'CLAIM_FAILED',
+      loadCharacters: false,
+      action: async ({ state }) => {
+        const result = actions.claimRepeatableMilestone({ state, milestoneType });
+        if (result.success && result.fatePoints > 0) {
+          result.fatePointsToAward = result.fatePoints;
+        }
+        return result;
+      },
+      getResponse: (result, { state }) => ({
+        milestoneType,
+        fatePoints: result.fatePoints,
+        count: result.count,
+        repeatableMilestones: state.repeatableMilestones
+      }),
+      successEvent: 'repeatable_milestone_claimed'
+    });
+  };
+}
+
+/**
+ * Create a handler for daily challenge claim via WebSocket
+ */
+function createDailyChallengeClaimHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, challengeId, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'CLAIM_FAILED',
+      loadCharacters: false,
+      action: async ({ state }) => {
+        const result = actions.claimDailyChallenge({ state, challengeId });
+        if (result.success && result.rewards) {
+          result.fatePointsToAward = result.rewards.fatePoints || 0;
+          result.rollTicketsToAward = result.rewards.rollTickets || 0;
+        }
+        return result;
+      },
+      getResponse: (result, { state }) => ({
+        challengeId,
+        challenge: result.challenge,
+        rewards: result.rewards,
+        essence: state.essence,
+        daily: state.daily
+      }),
+      successEvent: 'daily_challenge_claimed'
+    });
+  };
+}
+
+/**
+ * Create a handler for session milestone claim via WebSocket
+ */
+function createSessionMilestoneClaimHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, milestoneType, milestoneName, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'CLAIM_FAILED',
+      loadCharacters: false,
+      action: async ({ state }) => {
+        // Session milestones are tracked in sessionStats
+        const sessionStats = state.sessionStats || {};
+        const claimedList = sessionStats[`claimed${milestoneType.charAt(0).toUpperCase() + milestoneType.slice(1)}Milestones`] || [];
+
+        if (claimedList.includes(milestoneName)) {
+          return { success: false, error: 'Already claimed', code: 'ALREADY_CLAIMED' };
+        }
+
+        // Award essence based on milestone type
+        const rewards = { essence: 0 };
+        // This would normally look up the milestone reward from config
+        rewards.essence = 1000; // Placeholder
+
+        state.essence = (state.essence || 0) + rewards.essence;
+        claimedList.push(milestoneName);
+        sessionStats[`claimed${milestoneType.charAt(0).toUpperCase() + milestoneType.slice(1)}Milestones`] = claimedList;
+        state.sessionStats = sessionStats;
+
+        return {
+          success: true,
+          newState: state,
+          rewards,
+          milestoneName
+        };
+      },
+      getResponse: (result, { state }) => ({
+        milestoneName: result.milestoneName,
+        rewards: result.rewards,
+        essence: state.essence,
+        sessionStats: state.sessionStats
+      }),
+      successEvent: 'session_milestone_claimed'
+    });
+  };
+}
+
+// ===========================================
+// TOURNAMENT HANDLERS
+// ===========================================
+
+/**
+ * Create a handler for tournament reward claim via WebSocket
+ */
+function createTournamentRewardsClaimHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'CLAIM_FAILED',
+      loadCharacters: false,
+      action: async ({ state }) => {
+        const result = actions.claimWeeklyRewards({ state });
+        if (result.success && result.rewards) {
+          // Apply FP with cap
+          if (result.rewards.fatePoints > 0) {
+            const fpResult = applyFPWithCap(result.newState, result.rewards.fatePoints, 'tournament');
+            result.newState = fpResult.newState;
+            result.actualFP = fpResult.actualFP;
+            result.fatePointsToAward = fpResult.actualFP;
+          }
+          result.rollTicketsToAward = result.rewards.rollTickets || 0;
+        }
+        return result;
+      },
+      getResponse: (result, { state }) => ({
+        tier: result.tier,
+        rewards: result.rewards,
+        actualFP: result.actualFP,
+        weekly: state.weekly
+      }),
+      successEvent: 'tournament_rewards_claimed'
+    });
+  };
+}
+
+/**
+ * Create a handler for tournament checkpoint claim via WebSocket
+ */
+function createTournamentCheckpointClaimHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, day, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'CLAIM_FAILED',
+      loadCharacters: false,
+      action: async ({ state }) => {
+        const result = actions.claimTournamentCheckpoint({ state, day });
+        if (result.success && result.rewards) {
+          // Apply FP with cap
+          if (result.rewards.fatePoints > 0) {
+            const fpResult = applyFPWithCap(result.newState, result.rewards.fatePoints, 'checkpoint');
+            result.newState = fpResult.newState;
+            result.actualFP = fpResult.actualFP;
+            result.fatePointsToAward = fpResult.actualFP;
+          }
+          result.rollTicketsToAward = result.rewards.rollTickets || 0;
+        }
+        return result;
+      },
+      getResponse: (result, { state }) => ({
+        day: result.day,
+        checkpointName: result.checkpointName,
+        rewards: result.rewards,
+        claimedCheckpoints: state.weekly?.claimedCheckpoints
+      }),
+      successEvent: 'tournament_checkpoint_claimed'
+    });
+  };
+}
+
+// ===========================================
+// TICKET & STREAK HANDLERS
+// ===========================================
+
+/**
+ * Create a handler for daily streak claim via WebSocket
+ */
+function createDailyStreakClaimHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'CLAIM_FAILED',
+      loadCharacters: false,
+      action: async ({ state }) => {
+        const result = actions.claimDailyStreak({ state });
+        if (result.success && result.tickets > 0) {
+          result.rollTicketsToAward = result.tickets;
+        }
+        return result;
+      },
+      getResponse: (result, { state }) => ({
+        streakDays: result.streakDays,
+        ticketsAwarded: result.tickets || 0,
+        ticketGeneration: state.ticketGeneration
+      }),
+      successEvent: 'daily_streak_claimed'
+    });
+  };
+}
+
+/**
+ * Create a handler for FP to tickets exchange via WebSocket
+ */
+function createFPExchangeHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'EXCHANGE_FAILED',
+      loadCharacters: false,
+      action: async ({ state, user }) => {
+        const result = actions.exchangeFatePointsForTickets({ state, user });
+        if (result.success) {
+          result.rollTicketsToAward = result.ticketsReceived;
+        }
+        return result;
+      },
+      getResponse: (result, { state }) => ({
+        ticketsReceived: result.ticketsReceived,
+        fatePointsSpent: result.fatePointsSpent,
+        ticketGeneration: state.ticketGeneration
+      }),
+      successEvent: 'tickets_exchanged'
+    });
+  };
+}
+
+// ===========================================
+// BOSS HANDLERS
+// ===========================================
+
+/**
+ * Create a handler for boss spawn via WebSocket
+ */
+function createBossSpawnHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'SPAWN_FAILED',
+      loadCharacters: false,
+      action: async ({ state }) => {
+        return actions.spawnBoss({ state });
+      },
+      getResponse: (result, { state }) => ({
+        boss: result.boss,
+        currentHealth: state.bossEncounter?.currentHealth,
+        maxHealth: state.bossEncounter?.maxHealth,
+        expiresAt: state.bossEncounter?.expiresAt,
+        timeLimit: state.bossEncounter?.timeLimit
+      }),
+      successEvent: 'boss_spawned'
+    });
+  };
+}
+
+/**
+ * Create a handler for boss attack via WebSocket
+ */
+function createBossAttackHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, damage, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'ATTACK_FAILED',
+      action: async ({ state, characters }) => {
+        const result = actions.attackBoss({ state, damage, characters });
+        if (result.success && result.defeated && result.reward) {
+          result.fatePointsToAward = result.reward.fatePoints || 0;
+          result.rollTicketsToAward = result.reward.rollTickets || 0;
+        }
+        return result;
+      },
+      getResponse: (result, { state }) => {
+        if (result.defeated) {
+          return {
+            damage: result.damage,
+            defeated: true,
+            rewards: result.reward,
+            essence: state.essence,
+            lifetimeEssence: state.lifetimeEssence,
+            bossEncounter: state.bossEncounter
+          };
+        }
+        return {
+          damage: result.damage,
+          bossHealth: result.currentHealth,
+          timeRemaining: result.timeRemaining
+        };
+      },
+      successEvent: result => result.defeated ? 'boss_defeated' : 'boss_damage_dealt'
+    });
+  };
+}
+
+/**
+ * Create a handler for boss status check via WebSocket
+ */
+function createBossStatusHandler(broadcastToUser) {
+  return async ({ userId, socket, namespace, clientSeq }) => {
+    return executeAction({
+      userId,
+      socket,
+      namespace,
+      clientSeq,
+      broadcastToUser,
+      errorCode: 'STATUS_FAILED',
+      loadCharacters: false,
+      applyPassive: false,
+      action: async ({ state }) => {
+        const bossInfo = actions.getBossInfo(state);
+        return {
+          success: true,
+          newState: state,
+          ...bossInfo
+        };
+      },
+      getResponse: (result) => ({
+        active: result.active,
+        boss: result.boss,
+        currentHealth: result.currentHealth,
+        maxHealth: result.maxHealth,
+        expiresAt: result.expiresAt,
+        canSpawn: result.canSpawn
+      }),
+      successEvent: 'boss_status'
+    });
+  };
+}
+
+// ===========================================
+// BURNING HOUR HANDLER
+// ===========================================
+
+/**
+ * Create a handler for burning hour status via WebSocket
+ */
+function createBurningHourStatusHandler() {
+  return async ({ socket }) => {
+    const status = actions.getBurningHourStatus();
+    socket.emit('burning_hour_status', status);
+    return { success: true, ...status };
+  };
+}
+
 module.exports = {
   executeAction,
+  // Purchase handlers
   createGeneratorPurchaseHandler,
   createUpgradePurchaseHandler,
+  createPrestigeUpgradePurchaseHandler,
+  // Prestige
+  createPrestigeHandler,
+  // Gamble & Infusion
   createGambleHandler,
   createInfusionHandler,
+  // Ability
   createAbilityHandler,
-  createCharacterAssignHandler
+  // Character
+  createCharacterAssignHandler,
+  createCharacterUnassignHandler,
+  createCharacterSwapHandler,
+  // Milestones & Challenges
+  createMilestoneClaimHandler,
+  createRepeatableMilestoneClaimHandler,
+  createDailyChallengeClaimHandler,
+  createSessionMilestoneClaimHandler,
+  // Tournament
+  createTournamentRewardsClaimHandler,
+  createTournamentCheckpointClaimHandler,
+  // Tickets & Streak
+  createDailyStreakClaimHandler,
+  createFPExchangeHandler,
+  // Boss
+  createBossSpawnHandler,
+  createBossAttackHandler,
+  createBossStatusHandler,
+  // Burning Hour
+  createBurningHourStatusHandler
 };
