@@ -2492,30 +2492,24 @@ router.post('/initialize', auth, async (req, res) => {
       // within the same session will see offlineSeconds < 30 and get 0 earnings
       const MIN_OFFLINE_SECONDS_FOR_EARNINGS = 30;
 
-      // Cap offline time (max 8 hours)
-      const cappedOfflineSeconds = Math.min(offlineSeconds, 8 * 60 * 60);
-
       // Calculate offline earnings only if user was away long enough
-      const productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
-      let cappedOfflineEarnings = 0;
+      // FIX: Use shared calculateOfflineProgress function to properly apply all buffs
+      // (character bonuses, prestige upgrades, element bonuses, etc.)
+      let offlineProgress = { essenceEarned: 0, hoursAway: 0, efficiency: 0.5 };
 
       if (offlineSeconds >= MIN_OFFLINE_SECONDS_FOR_EARNINGS) {
-        // Apply offline efficiency (50% of normal production)
-        const offlineEfficiency = 0.5;
-        const offlineEarnings = Math.floor(cappedOfflineSeconds * productionPerSecond * offlineEfficiency);
-
-        // Cap offline earnings (max 10 million or 4 hours worth of production at 100% efficiency)
-        const maxOfflineEarnings = Math.min(10000000, productionPerSecond * 4 * 60 * 60);
-        cappedOfflineEarnings = Math.min(offlineEarnings, maxOfflineEarnings);
+        // Temporarily set lastOnlineTimestamp for calculation
+        const stateForCalc = { ...state, lastOnlineTimestamp: now - (offlineSeconds * 1000) };
+        offlineProgress = essenceTapService.calculateOfflineProgress(stateForCalc, characters);
 
         // Apply offline earnings
-        if (cappedOfflineEarnings > 0) {
-          state.essence = (state.essence || 0) + cappedOfflineEarnings;
-          state.lifetimeEssence = (state.lifetimeEssence || 0) + cappedOfflineEarnings;
+        if (offlineProgress.essenceEarned > 0) {
+          state.essence = (state.essence || 0) + offlineProgress.essenceEarned;
+          state.lifetimeEssence = (state.lifetimeEssence || 0) + offlineProgress.essenceEarned;
 
           // Track total offline earnings
           state.stats = state.stats || {};
-          state.stats.totalOfflineEarnings = (state.stats.totalOfflineEarnings || 0) + cappedOfflineEarnings;
+          state.stats.totalOfflineEarnings = (state.stats.totalOfflineEarnings || 0) + offlineProgress.essenceEarned;
         }
       }
 
@@ -2533,10 +2527,10 @@ router.post('/initialize', auth, async (req, res) => {
 
       const response = {
         currentState: gameState,
-        offlineEarnings: cappedOfflineEarnings,
-        offlineDuration: cappedOfflineSeconds,
-        productionPerSecond,
-        offlineEfficiency: 0.5,
+        offlineEarnings: offlineProgress.essenceEarned,
+        offlineDuration: offlineProgress.hoursAway * 3600, // Convert hours to seconds for consistency
+        productionPerSecond: offlineProgress.productionRate || essenceTapService.calculateProductionPerSecond(state, characters),
+        offlineEfficiency: offlineProgress.efficiency,
         pendingActionsApplied: actionsApplied,
         weeklyFPBudget,
         sessionStats: essenceTapService.getSessionStats(state)
