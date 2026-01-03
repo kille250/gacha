@@ -346,6 +346,17 @@ async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
       ];
     }
 
+    // Update character mastery (track play time in hours)
+    // Estimate hours based on session duration - roughly track active play sessions
+    const sessionDurationMs = now - (state.sessionStats?.sessionStartTime || now);
+    const sessionHours = Math.min(sessionDurationMs / (1000 * 60 * 60), 0.1); // Cap at 0.1 hours per batch to prevent abuse
+    let masteryLevelUps = [];
+    if (sessionHours > 0 && state.assignedCharacters?.length > 0) {
+      const masteryResult = essenceTapService.updateCharacterMastery(state, sessionHours);
+      state = masteryResult.newState;
+      masteryLevelUps = masteryResult.levelUps || [];
+    }
+
     // Save atomically
     user.essenceTap = state;
     user.lastEssenceTapRequest = now;
@@ -369,6 +380,7 @@ async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
       goldenClicks,
       totalClicks: state.totalClicks,
       completedChallenges,
+      masteryLevelUps,
       seq,
       serverTimestamp: now
     };
@@ -612,10 +624,24 @@ function initEssenceTapWebSocket(io) {
             goldenClicks: result.goldenClicks,
             totalClicks: result.totalClicks,
             completedChallenges: result.completedChallenges,
+            masteryLevelUps: result.masteryLevelUps,
             seq: result.seq,
             confirmedClientSeqs: batchToProcess.clientSeqs,
             serverTimestamp: result.serverTimestamp
           });
+
+          // Emit separate mastery level-up events for each character that leveled up
+          if (result.masteryLevelUps && result.masteryLevelUps.length > 0) {
+            for (const levelUp of result.masteryLevelUps) {
+              broadcastToUser(namespace, userId, 'mastery_level_up', {
+                characterId: levelUp.characterId,
+                oldLevel: levelUp.oldLevel,
+                newLevel: levelUp.newLevel,
+                unlockedAbility: levelUp.unlockedAbility,
+                serverTimestamp: result.serverTimestamp
+              });
+            }
+          }
         } else {
           socket.emit('error', {
             code: 'TAP_FAILED',
@@ -643,10 +669,24 @@ function initEssenceTapWebSocket(io) {
               goldenClicks: result.goldenClicks,
               totalClicks: result.totalClicks,
               completedChallenges: result.completedChallenges,
+              masteryLevelUps: result.masteryLevelUps,
               seq: result.seq,
               confirmedClientSeqs: batchToProcess.clientSeqs,
               serverTimestamp: result.serverTimestamp
             });
+
+            // Emit separate mastery level-up events for each character that leveled up
+            if (result.masteryLevelUps && result.masteryLevelUps.length > 0) {
+              for (const levelUp of result.masteryLevelUps) {
+                broadcastToUser(namespace, userId, 'mastery_level_up', {
+                  characterId: levelUp.characterId,
+                  oldLevel: levelUp.oldLevel,
+                  newLevel: levelUp.newLevel,
+                  unlockedAbility: levelUp.unlockedAbility,
+                  serverTimestamp: result.serverTimestamp
+                });
+              }
+            }
           } else {
             broadcastToUser(namespace, userId, 'error', {
               code: 'TAP_FAILED',
@@ -805,12 +845,30 @@ function initEssenceTapWebSocket(io) {
         const seq = getNextSequence(userId);
         const gameState = essenceTapService.getGameState(result.newState, characters);
 
+        // Calculate next costs for each generator and max affordable
+        const generatorCosts = {};
+        const maxAffordable = {};
+        const availableGenerators = essenceTapService.getAvailableGenerators(result.newState);
+        for (const gen of availableGenerators) {
+          const owned = result.newState.generators?.[gen.id] || 0;
+          generatorCosts[gen.id] = essenceTapService.getGeneratorCost(gen.id, owned);
+          maxAffordable[gen.id] = essenceTapService.getMaxPurchasable(gen.id, owned, result.newState.essence);
+        }
+
         // Broadcast full relevant state to all tabs for proper multi-tab sync
         broadcastToUser(namespace, userId, 'state_delta', {
           essence: result.newState.essence,
           lifetimeEssence: result.newState.lifetimeEssence,
           generators: result.newState.generators,
           productionPerSecond: gameState.productionPerSecond,
+          generatorCosts,
+          maxAffordable,
+          daily: {
+            generatorsBought: result.newState.daily?.generatorsBought || 0
+          },
+          stats: {
+            totalGeneratorsBought: result.newState.stats?.totalGeneratorsBought || 0
+          },
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now
@@ -893,6 +951,14 @@ function initEssenceTapWebSocket(io) {
         const seq = getNextSequence(userId);
         const gameState = essenceTapService.getGameState(result.newState, characters);
 
+        // Get available upgrades with affordability info
+        const availableUpgrades = essenceTapService.getAvailableUpgrades(result.newState).map(upgrade => ({
+          id: upgrade.id,
+          name: upgrade.name,
+          cost: upgrade.cost,
+          affordable: result.newState.essence >= upgrade.cost
+        }));
+
         // Broadcast full relevant state to all tabs for proper multi-tab sync
         broadcastToUser(namespace, userId, 'state_delta', {
           essence: result.newState.essence,
@@ -902,6 +968,10 @@ function initEssenceTapWebSocket(io) {
           productionPerSecond: gameState.productionPerSecond,
           critChance: gameState.critChance,
           critMultiplier: gameState.critMultiplier,
+          availableUpgrades,
+          stats: {
+            totalUpgradesPurchased: result.newState.stats?.totalUpgradesPurchased || 0
+          },
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now
@@ -2294,6 +2364,431 @@ function initEssenceTapWebSocket(io) {
         await transaction.rollback();
         console.error('[EssenceTap WS] Claim session milestone error:', err);
         socket.emit('error', { code: 'SESSION_MILESTONE_ERROR', message: 'Failed to claim milestone' });
+      }
+    });
+
+    // ===========================================
+    // BOSS ENCOUNTER HANDLERS
+    // ===========================================
+
+    socket.on('spawn_boss', async (data) => {
+      const { clientSeq } = data || {};
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        const result = essenceTapService.spawnBoss(state);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'BOSS_SPAWN_FAILED',
+            cooldownRemaining: result.cooldownRemaining,
+            clicksUntilSpawn: result.clicksUntilSpawn
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'boss_spawned', {
+          boss: result.boss,
+          currentHealth: result.newState.bossEncounter.currentHealth,
+          maxHealth: result.newState.bossEncounter.maxHealth,
+          expiresAt: result.newState.bossEncounter.expiresAt,
+          timeLimit: result.boss.timeLimit,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Spawn boss error:', err);
+        socket.emit('error', { code: 'BOSS_SPAWN_ERROR', message: 'Failed to spawn boss' });
+      }
+    });
+
+    socket.on('attack_boss', async (data) => {
+      const { damage, clientSeq } = data;
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        // Get characters for damage calculation
+        const userCharacters = await UserCharacter.findAll({
+          where: { UserId: userId },
+          include: ['Character'],
+          transaction
+        });
+
+        const characters = userCharacters.map(uc => ({
+          id: uc.CharacterId,
+          characterId: uc.CharacterId,
+          rarity: uc.Character?.rarity || 'common',
+          element: uc.Character?.element || 'neutral'
+        }));
+
+        const result = essenceTapService.attackBoss(state, damage, characters);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'BOSS_ATTACK_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        // If boss was defeated, apply rewards
+        if (result.defeated && result.rewards) {
+          // Add essence rewards
+          if (result.rewards.essence > 0) {
+            result.newState.essence = (result.newState.essence || 0) + result.rewards.essence;
+            result.newState.lifetimeEssence = (result.newState.lifetimeEssence || 0) + result.rewards.essence;
+          }
+
+          // Add prismatic essence
+          if (result.rewards.prismaticEssence > 0) {
+            result.newState.essenceTypes = {
+              ...result.newState.essenceTypes,
+              prismatic: (result.newState.essenceTypes?.prismatic || 0) + result.rewards.prismaticEssence
+            };
+          }
+
+          // Award Fate Points
+          if (result.rewards.fatePoints > 0) {
+            const fpResult = essenceTapService.applyFPWithCap(result.newState, result.rewards.fatePoints, 'boss');
+            result.newState = fpResult.newState;
+
+            if (fpResult.actualFP > 0) {
+              const fatePoints = user.fatePoints || {};
+              fatePoints.global = fatePoints.global || { points: 0 };
+              fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
+              user.fatePoints = fatePoints;
+            }
+          }
+
+          // Award roll tickets
+          if (result.rewards.rollTickets > 0) {
+            user.rollTickets = (user.rollTickets || 0) + result.rewards.rollTickets;
+          }
+
+          // Award XP
+          if (result.rewards.xp > 0) {
+            user.accountXP = (user.accountXP || 0) + result.rewards.xp;
+          }
+        }
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        if (result.defeated) {
+          // Broadcast boss defeated
+          broadcastToUser(namespace, userId, 'boss_defeated', {
+            damageDealt: result.damageDealt,
+            rewards: result.rewards,
+            essence: result.newState.essence,
+            lifetimeEssence: result.newState.lifetimeEssence,
+            nextBossIn: result.nextBossIn,
+            bossEncounter: essenceTapService.getBossEncounterInfo(result.newState),
+            seq,
+            confirmedClientSeq: clientSeq,
+            serverTimestamp: now
+          });
+        } else if (result.bossSpawned) {
+          // A new boss was spawned during attack
+          broadcastToUser(namespace, userId, 'boss_spawned', {
+            boss: result.boss,
+            currentHealth: result.bossHealth,
+            maxHealth: result.newState.bossEncounter.maxHealth,
+            expiresAt: result.newState.bossEncounter.expiresAt,
+            seq,
+            confirmedClientSeq: clientSeq,
+            serverTimestamp: now
+          });
+        } else {
+          // Normal damage dealt
+          broadcastToUser(namespace, userId, 'boss_damage_dealt', {
+            damageDealt: result.damageDealt,
+            bossHealth: result.bossHealth,
+            timeRemaining: result.timeRemaining,
+            seq,
+            confirmedClientSeq: clientSeq,
+            serverTimestamp: now
+          });
+        }
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Attack boss error:', err);
+        socket.emit('error', { code: 'BOSS_ATTACK_ERROR', message: 'Failed to attack boss' });
+      }
+    });
+
+    socket.on('get_boss_status', async (data) => {
+      const { clientSeq } = data || {};
+
+      try {
+        const user = await User.findByPk(userId);
+        if (!user) {
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        const state = user.essenceTap || essenceTapService.getInitialState();
+        const bossInfo = essenceTapService.getBossEncounterInfo(state);
+
+        socket.emit('boss_status', {
+          ...bossInfo,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: Date.now()
+        });
+      } catch (err) {
+        console.error('[EssenceTap WS] Get boss status error:', err);
+        socket.emit('error', { code: 'BOSS_STATUS_ERROR', message: 'Failed to get boss status' });
+      }
+    });
+
+    // ===========================================
+    // BURNING HOUR HANDLER
+    // ===========================================
+
+    socket.on('get_burning_hour_status', async (data) => {
+      const { clientSeq } = data || {};
+
+      try {
+        const burningHourStatus = essenceTapService.getBurningHourStatus();
+
+        socket.emit('burning_hour_status', {
+          ...burningHourStatus,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: Date.now()
+        });
+      } catch (err) {
+        console.error('[EssenceTap WS] Get burning hour status error:', err);
+        socket.emit('error', { code: 'BURNING_HOUR_ERROR', message: 'Failed to get burning hour status' });
+      }
+    });
+
+    // ===========================================
+    // TICKET EXCHANGE HANDLER
+    // ===========================================
+
+    socket.on('exchange_fp_for_tickets', async (data) => {
+      const { clientSeq } = data || {};
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        // Get user's current fate points
+        const userFP = user.fatePoints?.global?.points || 0;
+
+        const result = essenceTapService.exchangeFatePointsForTickets(state, userFP);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'EXCHANGE_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        // Deduct fate points
+        const fatePoints = user.fatePoints || {};
+        fatePoints.global = fatePoints.global || { points: 0 };
+        fatePoints.global.points = Math.max(0, (fatePoints.global.points || 0) - result.fatePointsCost);
+        user.fatePoints = fatePoints;
+
+        // Add roll tickets
+        user.rollTickets = (user.rollTickets || 0) + result.ticketsReceived;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'tickets_exchanged', {
+          fatePointsCost: result.fatePointsCost,
+          ticketsReceived: result.ticketsReceived,
+          exchangesRemaining: result.exchangesRemaining,
+          newFatePoints: fatePoints.global.points,
+          newRollTickets: user.rollTickets,
+          ticketGeneration: result.newState.ticketGeneration,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Exchange FP for tickets error:', err);
+        socket.emit('error', { code: 'EXCHANGE_ERROR', message: 'Failed to exchange' });
+      }
+    });
+
+    // ===========================================
+    // SWAP CHARACTER HANDLER (Atomic swap)
+    // ===========================================
+
+    socket.on('swap_character', async (data) => {
+      const { oldCharacterId, newCharacterId, clientSeq } = data;
+
+      if (!oldCharacterId || !newCharacterId) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Both character IDs required' });
+        return;
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        // Get user's owned characters
+        const userCharacters = await UserCharacter.findAll({
+          where: { UserId: userId },
+          include: ['Character'],
+          transaction
+        });
+
+        const ownedCharacters = userCharacters.map(uc => ({
+          id: uc.CharacterId,
+          characterId: uc.CharacterId,
+          rarity: uc.Character?.rarity || 'common',
+          element: uc.Character?.element || 'neutral',
+          series: uc.Character?.series || ''
+        }));
+
+        // Check old character is assigned
+        if (!state.assignedCharacters?.includes(oldCharacterId)) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Old character not assigned',
+            code: 'NOT_ASSIGNED'
+          });
+          return;
+        }
+
+        // Check new character is owned
+        if (!ownedCharacters.find(c => c.id === newCharacterId)) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'New character not owned',
+            code: 'NOT_OWNED'
+          });
+          return;
+        }
+
+        // Check new character isn't already assigned
+        if (state.assignedCharacters?.includes(newCharacterId)) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'New character already assigned',
+            code: 'ALREADY_ASSIGNED'
+          });
+          return;
+        }
+
+        // Perform atomic swap
+        const newState = { ...state };
+        newState.assignedCharacters = state.assignedCharacters.map(
+          id => id === oldCharacterId ? newCharacterId : id
+        );
+
+        const now = Date.now();
+        newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Calculate updated bonuses
+        const gameState = essenceTapService.getGameState(newState, ownedCharacters);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'character_swapped', {
+          oldCharacterId,
+          newCharacterId,
+          assignedCharacters: newState.assignedCharacters,
+          characterBonus: gameState.characterBonus,
+          elementBonuses: gameState.elementBonuses,
+          elementSynergy: gameState.elementSynergy,
+          seriesSynergy: gameState.seriesSynergy,
+          masteryBonus: gameState.masteryBonus,
+          clickPower: gameState.clickPower,
+          productionPerSecond: gameState.productionPerSecond,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Swap character error:', err);
+        socket.emit('error', { code: 'SWAP_ERROR', message: 'Failed to swap character' });
       }
     });
 

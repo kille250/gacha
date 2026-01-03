@@ -103,7 +103,7 @@ const loadStateFromLocalStorage = () => {
 const clearLocalStorageBackup = () => {
   try {
     localStorage.removeItem(CONFIG.LOCAL_STORAGE_KEY);
-  } catch (e) {
+  } catch (_e) {
     // Ignore errors
   }
 };
@@ -409,12 +409,12 @@ export function useEssenceTapSocket(options = {}) {
         // Server state is authoritative for confirmed taps
         // The server value reflects all confirmed taps including any bonuses
         // We add back any remaining optimistic essence from unconfirmed taps
-        const serverConfirmedEssence = data.essence;
-        const expectedWithOptimistic = serverConfirmedEssence + remainingOptimisticEssence;
+        // Note: _expectedWithOptimistic is calculated for debugging/documentation purposes
+        const _expectedWithOptimistic = data.essence + remainingOptimisticEssence;
 
         return {
           ...prev,
-          essence: serverConfirmedEssence,  // Use server's authoritative value
+          essence: data.essence,  // Use server's authoritative value
           lifetimeEssence: data.lifetimeEssence,
           totalClicks: data.totalClicks,
         };
@@ -880,6 +880,216 @@ export function useEssenceTapSocket(options = {}) {
       }
     });
 
+    // ===========================================
+    // BOSS ENCOUNTER HANDLERS
+    // ===========================================
+
+    socket.on('boss_spawned', (data) => {
+      console.log('[EssenceTap WS] Boss spawned:', data.boss?.name);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          bossEncounter: {
+            active: true,
+            boss: data.boss,
+            currentHealth: data.currentHealth,
+            maxHealth: data.maxHealth,
+            expiresAt: data.expiresAt,
+            timeLimit: data.timeLimit,
+          },
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'boss_spawned');
+      }
+    });
+
+    socket.on('boss_damage_dealt', (data) => {
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          bossEncounter: {
+            ...prev.bossEncounter,
+            currentHealth: data.bossHealth,
+            timeRemaining: data.timeRemaining,
+          },
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'boss_damage_dealt');
+      }
+    });
+
+    socket.on('boss_defeated', (data) => {
+      console.log('[EssenceTap WS] Boss defeated! Rewards:', data.rewards);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          essence: data.essence,
+          lifetimeEssence: data.lifetimeEssence,
+          bossEncounter: data.bossEncounter,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'boss_defeated');
+      }
+    });
+
+    socket.on('boss_status', (data) => {
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          bossEncounter: data,
+        };
+      });
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'boss_status');
+      }
+    });
+
+    // ===========================================
+    // BURNING HOUR STATUS HANDLER
+    // ===========================================
+
+    socket.on('burning_hour_status', (data) => {
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          burningHourStatus: data,
+        };
+      });
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'burning_hour_status');
+      }
+    });
+
+    // ===========================================
+    // TICKET EXCHANGE HANDLER
+    // ===========================================
+
+    socket.on('tickets_exchanged', (data) => {
+      console.log('[EssenceTap WS] Tickets exchanged:', data.ticketsReceived);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ticketGeneration: data.ticketGeneration,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'tickets_exchanged');
+      }
+    });
+
+    // ===========================================
+    // CHARACTER SWAP HANDLER
+    // ===========================================
+
+    socket.on('character_swapped', (data) => {
+      console.log('[EssenceTap WS] Character swapped:', data.oldCharacterId, '->', data.newCharacterId);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          assignedCharacters: data.assignedCharacters,
+          characterBonus: data.characterBonus,
+          elementBonuses: data.elementBonuses,
+          elementSynergy: data.elementSynergy,
+          seriesSynergy: data.seriesSynergy,
+          masteryBonus: data.masteryBonus,
+          clickPower: data.clickPower,
+          productionPerSecond: data.productionPerSecond,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'character_swapped');
+      }
+    });
+
+    // ===========================================
+    // MASTERY LEVEL UP HANDLER
+    // ===========================================
+
+    socket.on('mastery_level_up', (data) => {
+      console.log('[EssenceTap WS] Mastery level up:', data.characterId, 'level', data.newLevel);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        // Update character mastery in state if tracked
+        const newMastery = { ...prev.characterMastery };
+        if (data.characterId) {
+          newMastery[data.characterId] = {
+            ...newMastery[data.characterId],
+            level: data.newLevel,
+          };
+        }
+        return {
+          ...prev,
+          characterMastery: newMastery,
+        };
+      });
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'mastery_level_up');
+      }
+    });
+
   // Note: scheduleReconnect is excluded intentionally - it's stable and defined outside
   // Callbacks are accessed via refs to prevent reconnection loops when they change
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -1291,6 +1501,94 @@ export function useEssenceTapSocket(options = {}) {
   }, [flushTapBatch]);
 
   // ===========================================
+  // BOSS ENCOUNTER ACTIONS
+  // ===========================================
+
+  const spawnBoss = useCallback(() => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('spawn_boss', { clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  const attackBoss = useCallback((damage) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('attack_boss', { damage, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, []);
+
+  const getBossStatus = useCallback(() => {
+    const clientSeq = ++clientSeqRef.current;
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('get_boss_status', { clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, []);
+
+  // ===========================================
+  // BURNING HOUR ACTIONS
+  // ===========================================
+
+  const getBurningHourStatus = useCallback(() => {
+    const clientSeq = ++clientSeqRef.current;
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('get_burning_hour_status', { clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, []);
+
+  // ===========================================
+  // TICKET EXCHANGE ACTIONS
+  // ===========================================
+
+  const exchangeFPForTickets = useCallback(() => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('exchange_fp_for_tickets', { clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  // ===========================================
+  // CHARACTER SWAP ACTIONS
+  // ===========================================
+
+  const swapCharacter = useCallback((oldCharacterId, newCharacterId) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('swap_character', { oldCharacterId, newCharacterId, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  // ===========================================
   // LIFECYCLE
   // ===========================================
 
@@ -1524,6 +1822,7 @@ export function useEssenceTapSocket(options = {}) {
     // Character Assignment Actions
     assignCharacter,
     unassignCharacter,
+    swapCharacter,
 
     // Daily Challenge Actions
     claimDailyChallenge,
@@ -1541,9 +1840,18 @@ export function useEssenceTapSocket(options = {}) {
 
     // Ticket Actions
     claimDailyStreak,
+    exchangeFPForTickets,
 
     // Session Milestone Actions
     claimSessionMilestone,
+
+    // Boss Encounter Actions
+    spawnBoss,
+    attackBoss,
+    getBossStatus,
+
+    // Burning Hour Actions
+    getBurningHourStatus,
 
     // Connection control
     connect,

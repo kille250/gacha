@@ -14,7 +14,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
 import { theme, Button, Modal, ModalHeader, ModalBody, ModalFooter } from '../../design-system';
 import api, { getAssetUrl } from '../../utils/api';
-import { isVideo, getVideoMimeType } from '../../utils/mediaUtils';
+import { isVideo } from '../../utils/mediaUtils';
 import { IconCheckmark } from '../../constants/icons';
 import {
   CHARACTER_BONUSES,
