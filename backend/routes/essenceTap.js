@@ -20,6 +20,7 @@ const accountLevelService = require('../services/accountLevelService');
 // New modular imports for refactoring
 const actions = require('../services/essenceTap/actions');
 const shared = require('../services/essenceTap/shared');
+const stateService = require('../services/essenceTap/stateService');
 
 // ===========================================
 // SERVER-SIDE RATE LIMITING
@@ -558,6 +559,8 @@ router.post('/click', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/generator/buy
  * Purchase generator(s)
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/generator/buy', auth, async (req, res) => {
   const { generatorId, count = 1 } = req.body;
@@ -574,7 +577,7 @@ router.post('/generator/buy', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
       // Get user's characters for passive calculation
       const userCharacters = await UserCharacter.findAll({
@@ -592,17 +595,16 @@ router.post('/generator/buy', auth, async (req, res) => {
       const passiveResult = applyPassiveGains(state, characters);
       state = passiveResult.state;
 
-      const result = essenceTapService.purchaseGenerator(state, generatorId, count);
+      const result = actions.purchaseGenerator({ state, generatorId, count });
 
       if (!result.success) {
         return res.status(400).json({ error: result.error });
       }
 
       const now = Date.now();
-      result.newState.lastOnlineTimestamp = now;
 
       // Check for new daily challenge completions
-      const completedChallenges = essenceTapService.checkDailyChallenges(result.newState);
+      const completedChallenges = actions.checkDailyChallenges({ state: result.newState });
 
       // Mark completed challenges as done so they don't trigger again
       if (completedChallenges.length > 0) {
@@ -618,7 +620,7 @@ router.post('/generator/buy', auth, async (req, res) => {
       await user.save();
 
       // Get updated game state (reuse characters from earlier fetch)
-      const gameState = essenceTapService.getGameState(result.newState, characters);
+      const gameState = stateService.getGameState(result.newState, characters);
 
       res.json({
         success: true,
@@ -639,6 +641,8 @@ router.post('/generator/buy', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/upgrade/buy
  * Purchase an upgrade
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/upgrade/buy', auth, async (req, res) => {
   const { upgradeId } = req.body;
@@ -655,7 +659,7 @@ router.post('/upgrade/buy', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
       // Get user's characters for passive calculation
       const userCharacters = await UserCharacter.findAll({
@@ -673,15 +677,13 @@ router.post('/upgrade/buy', auth, async (req, res) => {
       const passiveResult = applyPassiveGains(state, characters);
       state = passiveResult.state;
 
-      const result = essenceTapService.purchaseUpgrade(state, upgradeId);
+      const result = actions.purchaseUpgrade({ state, upgradeId });
 
       if (!result.success) {
         return res.status(400).json({ error: result.error });
       }
 
       const now = Date.now();
-      result.newState.lastOnlineTimestamp = now;
-
       user.essenceTap = result.newState;
       // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
       user.lastEssenceTapRequest = now;
@@ -692,7 +694,7 @@ router.post('/upgrade/buy', auth, async (req, res) => {
       await user.save();
 
       // Get updated game state (reuse characters from earlier fetch)
-      const gameState = essenceTapService.getGameState(result.newState, characters);
+      const gameState = stateService.getGameState(result.newState, characters);
 
       res.json({
         success: true,
@@ -791,6 +793,8 @@ router.post('/prestige', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/prestige/upgrade
  * Purchase a prestige upgrade
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/prestige/upgrade', auth, async (req, res) => {
   const { upgradeId } = req.body;
@@ -807,17 +811,15 @@ router.post('/prestige/upgrade', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
-      const result = essenceTapService.purchasePrestigeUpgrade(state, upgradeId);
+      const result = actions.purchasePrestigeUpgrade({ state, upgradeId });
 
       if (!result.success) {
         return res.status(400).json({ error: result.error });
       }
 
       const now = Date.now();
-      result.newState.lastOnlineTimestamp = now;
-
       user.essenceTap = result.newState;
       // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
       user.lastEssenceTapRequest = now;
@@ -1007,6 +1009,12 @@ router.post('/character/unassign', auth, async (req, res) => {
  * 2. If /save also calculated gains from lastSaveTimestamp, it would add essence
  *    for time periods already credited by applyPassiveGains()
  */
+/**
+ * POST /api/essence-tap/save
+ * Save player state
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
+ */
 router.post('/save', auth, async (req, res) => {
   // Use essence lock to prevent race conditions with /status endpoint
   // This ensures only one request modifies essence state at a time
@@ -1017,7 +1025,7 @@ router.post('/save', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
       // Get user's characters for passive calculation and mastery persistence
       const userCharacters = await UserCharacter.findAll({
@@ -1031,32 +1039,17 @@ router.post('/save', auth, async (req, res) => {
         element: uc.Character?.element || 'neutral'
       }));
 
-      // Apply passive gains since lastOnlineTimestamp (same as other endpoints)
-      // This uses the standard applyPassiveGains() which tracks from lastOnlineTimestamp,
-      // NOT lastSaveTimestamp, so it won't double-count with other endpoints
-      const passiveResult = applyPassiveGains(state, characters);
-      state = passiveResult.state;
+      // Use action to save state (handles passive gains and mastery updates)
+      const result = actions.saveState({ state, characters });
 
-      const now = Date.now();
-
-      // Update character mastery (time-based tracking for assigned characters)
-      const lastUpdate = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
-      const elapsedSeconds = Math.min((now - lastUpdate) / 1000, 300);
-      const elapsedHours = elapsedSeconds / 3600;
-      if (elapsedHours > 0) {
-        const masteryResult = essenceTapService.updateCharacterMastery(state, elapsedHours);
-        state = masteryResult.newState;
+      if (!result.success) {
+        return res.status(400).json({ error: result.error });
       }
 
-      // Update timestamps
-      state.lastOnlineTimestamp = now;
-      state.lastSaveTimestamp = now;
-      user.lastEssenceTapRequest = now;
-
-      // Persist character XP to UserCharacter model
+      // Persist character XP to UserCharacter model (routes-layer responsibility)
       // This syncs the essence tap XP tracking to the actual database records
-      if (state.characterXP && Object.keys(state.characterXP).length > 0) {
-        for (const [charId, xp] of Object.entries(state.characterXP)) {
+      if (result.state.characterXP && Object.keys(result.state.characterXP).length > 0) {
+        for (const [charId, xp] of Object.entries(result.state.characterXP)) {
           if (xp > 0) {
             const userChar = userCharacters.find(uc => String(uc.CharacterId) === String(charId));
             if (userChar) {
@@ -1066,18 +1059,19 @@ router.post('/save', auth, async (req, res) => {
           }
         }
         // Clear the XP tracking after persistence
-        state.characterXP = {};
+        result.state.characterXP = {};
       }
 
-      user.essenceTap = state;
+      user.essenceTap = result.state;
+      user.lastEssenceTapRequest = result.savedAt;
       await user.save();
 
       res.json({
         success: true,
-        savedAt: state.lastSaveTimestamp,
-        essence: state.essence,
-        lifetimeEssence: state.lifetimeEssence,
-        sessionStats: essenceTapService.getSessionStats(state)
+        savedAt: result.savedAt,
+        essence: result.state.essence,
+        lifetimeEssence: result.state.lifetimeEssence,
+        sessionStats: result.sessionStats
       });
     } catch (error) {
       console.error('Error saving state:', error);
@@ -1231,6 +1225,8 @@ router.post('/infusion', auth, async (req, res) => {
 /**
  * POST /api/essence-tap/ability/activate
  * Activate an ability
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.post('/ability/activate', auth, async (req, res) => {
   const { abilityId } = req.body;
@@ -1247,17 +1243,15 @@ router.post('/ability/activate', auth, async (req, res) => {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      let state = user.essenceTap || essenceTapService.getInitialState();
+      let state = user.essenceTap || stateService.getInitialState();
 
-      const result = essenceTapService.activateAbility(state, abilityId);
+      const result = actions.activateAbility({ state, abilityId });
 
       if (!result.success) {
         return res.status(400).json({ error: result.error });
       }
 
       const now = Date.now();
-      result.newState.lastOnlineTimestamp = now;
-
       user.essenceTap = result.newState;
       // Update lastEssenceTapRequest to prevent /status from adding duplicate passive gains
       user.lastEssenceTapRequest = now;
@@ -1269,8 +1263,8 @@ router.post('/ability/activate', auth, async (req, res) => {
         duration: result.duration,
         effects: result.effects,
         bonusEssence: result.bonusEssence,
-        essence: result.newState.essence,
-        activeAbilities: essenceTapService.getActiveAbilitiesInfo(result.newState)
+        essence: result.essence,
+        activeAbilities: result.activeAbilities
       });
     } catch (error) {
       console.error('Error activating ability:', error);
@@ -1282,15 +1276,20 @@ router.post('/ability/activate', auth, async (req, res) => {
 /**
  * GET /api/essence-tap/daily-modifier
  * Get current daily modifier info
+ *
+ * REFACTORED: Now uses unified action handler from services/essenceTap/actions
  */
 router.get('/daily-modifier', auth, async (req, res) => {
   try {
-    const modifier = essenceTapService.getCurrentDailyModifier();
-    const nextChangeIn = essenceTapService.getTimeUntilNextModifier();
+    const result = actions.getDailyModifier();
+
+    if (!result.success) {
+      return res.status(400).json({ error: result.error });
+    }
 
     res.json({
-      ...modifier,
-      nextChangeIn
+      ...result.modifier,
+      nextChangeIn: result.nextChangeIn
     });
   } catch (error) {
     console.error('Error getting daily modifier:', error);

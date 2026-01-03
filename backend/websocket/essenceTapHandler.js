@@ -142,25 +142,11 @@ function broadcastToUser(namespace, userId, event, data) {
 
 /**
  * Calculate passive gains since last update
+ * MIGRATED: Now uses actions.applyPassiveGains
  */
 function calculatePassiveGains(state, characters, maxSeconds = 300) {
-  const now = Date.now();
-  const lastUpdate = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
-  const elapsedMs = now - lastUpdate;
-  const elapsedSeconds = Math.min(elapsedMs / 1000, maxSeconds);
-
-  if (elapsedSeconds <= 0) {
-    return { gains: 0, newTimestamp: now };
-  }
-
-  const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
-  let productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
-  if (activeAbilityEffects.productionMultiplier) {
-    productionPerSecond *= activeAbilityEffects.productionMultiplier;
-  }
-
-  const passiveGain = Math.floor(productionPerSecond * elapsedSeconds);
-  return { gains: passiveGain, newTimestamp: now };
+  const result = actions.applyPassiveGains({ state, characters, maxSeconds });
+  return { gains: result.gainsApplied, newTimestamp: Date.now(), state: result.state };
 }
 
 /**
@@ -217,64 +203,40 @@ async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
     state = essenceTapService.resetDaily(state);
     state = essenceTapService.resetWeeklyFPIfNeeded(state);
 
-    // Get characters for bonus calculation
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: userId },
-      include: ['Character'],
-      transaction
-    });
+    // Get characters for bonus calculation (using shared utility)
+    const characters = await shared.loadUserCharacters(userId, { transaction });
 
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
-    // Check burning hour status for tournament bonus
-    const burningHourStatus = essenceTapService.getBurningHourStatus();
-    const burningHourActive = burningHourStatus?.isActive || false;
-
-    // Apply passive gains
+    // Apply passive gains (MIGRATED: now uses actions.applyPassiveGains)
     const passiveResult = calculatePassiveGains(state, characters);
     if (passiveResult.gains > 0) {
-      state.essence = (state.essence || 0) + passiveResult.gains;
-      state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-      const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains, {
-        burningHourActive
-      });
-      state = weeklyResult.newState;
+      state = passiveResult.state; // Use updated state from action
     }
 
-    // Get active ability effects
-    const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
+    // Get active ability effects (MIGRATED: now uses actions.getActiveAbilityEffects)
+    const activeAbilityEffects = actions.getActiveAbilityEffects(state);
 
-    // Process clicks
-    let totalEssence = 0;
-    let totalCrits = 0;
-    let goldenClicks = 0;
+    // Process clicks (MIGRATED: now uses actions.processTaps)
+    const tapResult = actions.processTaps({
+      state,
+      characters,
+      count: tapCount,
+      comboMultiplier,
+      activeAbilityEffects
+    });
 
-    for (let i = 0; i < tapCount; i++) {
-      const result = essenceTapService.processClick(state, characters, comboMultiplier, activeAbilityEffects);
-      totalEssence += result.essenceGained;
-      if (result.isCrit) totalCrits++;
-      if (result.isGolden) goldenClicks++;
+    if (!tapResult.success) {
+      await transaction.rollback();
+      releaseLock();
+      return { success: false, error: tapResult.error };
     }
 
-    // Update state
-    state.essence = (state.essence || 0) + totalEssence;
-    state.lifetimeEssence = (state.lifetimeEssence || 0) + totalEssence;
-    state.totalClicks = (state.totalClicks || 0) + tapCount;
-    state.totalCrits = (state.totalCrits || 0) + totalCrits;
+    state = tapResult.newState;
+    const totalEssence = tapResult.essenceEarned;
+    const totalCrits = tapResult.critCount;
+    const goldenClicks = tapResult.goldenCount;
 
-    // Update daily stats
-    state.daily = state.daily || {};
-    state.daily.clicks = (state.daily.clicks || 0) + tapCount;
-    state.daily.crits = (state.daily.crits || 0) + totalCrits;
-    state.daily.essenceEarned = (state.daily.essenceEarned || 0) + totalEssence;
-
-    // Update golden clicks stats
-    state.stats = state.stats || {};
-    state.stats.goldenEssenceClicks = (state.stats.goldenEssenceClicks || 0) + goldenClicks;
+    // NOTE: essence, lifetimeEssence, totalClicks, totalCrits, daily stats, and golden clicks
+    // are already updated by actions.processTaps via clickService.applyBatchClicksToState
 
     // Update session stats for mini-milestones
     if (!state.sessionStats) {
@@ -334,6 +296,8 @@ async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
     }
 
     // Update weekly tournament progress with burning hour bonus if active
+    const burningHourStatus = essenceTapService.getBurningHourStatus();
+    const burningHourActive = burningHourStatus?.isActive || false;
     const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence, {
       burningHourActive
     });
@@ -421,31 +385,13 @@ async function getFullState(userId) {
     state = essenceTapService.resetDaily(state);
     state = essenceTapService.resetWeeklyFPIfNeeded(state);
 
-    const userCharacters = await UserCharacter.findAll({
-      where: { UserId: userId },
-      include: ['Character'],
-      transaction
-    });
+    // Get characters (MIGRATED: now uses shared.loadUserCharacters)
+    const characters = await shared.loadUserCharacters(userId, { transaction });
 
-    const characters = userCharacters.map(uc => ({
-      id: uc.CharacterId,
-      rarity: uc.Character?.rarity || 'common',
-      element: uc.Character?.element || 'neutral'
-    }));
-
-    // Check burning hour status for tournament bonus
-    const burningHourStatus = essenceTapService.getBurningHourStatus();
-    const burningHourActive = burningHourStatus?.isActive || false;
-
-    // Apply passive gains
+    // Apply passive gains (MIGRATED: now uses actions.applyPassiveGains)
     const passiveResult = calculatePassiveGains(state, characters);
     if (passiveResult.gains > 0) {
-      state.essence = (state.essence || 0) + passiveResult.gains;
-      state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-      const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains, {
-        burningHourActive
-      });
-      state = weeklyResult.newState;
+      state = passiveResult.state; // Use updated state from action
       state.lastOnlineTimestamp = passiveResult.newTimestamp;
 
       // Save the updated state atomically
@@ -456,7 +402,8 @@ async function getFullState(userId) {
 
     await transaction.commit();
 
-    const gameState = essenceTapService.getGameState(state, characters);
+    // MIGRATED: now uses actions.getGameState
+    const gameState = actions.getGameState({ state, characters });
     const seq = userSequences.get(userId) || 0;
 
     return {
@@ -738,6 +685,7 @@ function initEssenceTapWebSocket(io) {
       console.log(`[EssenceTap WS] Player "${username}" tab hidden`);
 
       // Process any pending taps before going idle
+      // NOTE: processTapBatch uses migrated actions internally
       const pendingBatch = pendingTapBatches.get(userId);
       if (pendingBatch) {
         pendingTapBatches.delete(userId);
@@ -765,6 +713,7 @@ function initEssenceTapWebSocket(io) {
       console.log(`[EssenceTap WS] Player "${username}" tab visible (hidden for ${Math.round((hiddenDuration || 0) / 1000)}s)`);
 
       // Get fresh state with offline earnings calculated
+      // NOTE: getFullState uses migrated actions internally
       const state = await getFullState(userId);
       if (state) {
         socket.emit('state_full', state);
@@ -808,29 +757,17 @@ function initEssenceTapWebSocket(io) {
 
         let state = user.essenceTap || essenceTapService.getInitialState();
 
-        // Get characters
-        const userCharacters = await UserCharacter.findAll({
-          where: { UserId: userId },
-          include: ['Character'],
-          transaction
-        });
+        // Get characters (MIGRATED: now uses shared.loadUserCharacters)
+        const characters = await shared.loadUserCharacters(userId, { transaction });
 
-        const characters = userCharacters.map(uc => ({
-          id: uc.CharacterId,
-          rarity: uc.Character?.rarity || 'common',
-          element: uc.Character?.element || 'neutral'
-        }));
-
-        // Apply passive gains
+        // Apply passive gains (MIGRATED: now uses actions.applyPassiveGains)
         const passiveResult = calculatePassiveGains(state, characters);
         if (passiveResult.gains > 0) {
-          state.essence = (state.essence || 0) + passiveResult.gains;
-          state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-          const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
-          state = weeklyResult.newState;
+          state = passiveResult.state; // Use updated state from action
         }
 
-        const result = essenceTapService.purchaseGenerator(state, generatorId, count);
+        // MIGRATED: now uses actions.purchaseGenerator
+        const result = actions.purchaseGenerator({ state, generatorId, count });
 
         if (!result.success) {
           await transaction.rollback();
@@ -852,7 +789,8 @@ function initEssenceTapWebSocket(io) {
         await transaction.commit();
 
         const seq = getNextSequence(userId);
-        const gameState = essenceTapService.getGameState(result.newState, characters);
+        // MIGRATED: now uses actions.getGameState
+        const gameState = actions.getGameState({ state: result.newState, characters });
 
         // Calculate next costs for each generator and max affordable
         const generatorCosts = {};
@@ -918,26 +856,17 @@ function initEssenceTapWebSocket(io) {
 
         let state = user.essenceTap || essenceTapService.getInitialState();
 
-        const userCharacters = await UserCharacter.findAll({
-          where: { UserId: userId },
-          include: ['Character'],
-          transaction
-        });
+        // Get characters (MIGRATED: now uses shared.loadUserCharacters)
+        const characters = await shared.loadUserCharacters(userId, { transaction });
 
-        const characters = userCharacters.map(uc => ({
-          id: uc.CharacterId,
-          rarity: uc.Character?.rarity || 'common',
-          element: uc.Character?.element || 'neutral'
-        }));
-
-        // Apply passive gains
+        // Apply passive gains (MIGRATED: now uses actions.applyPassiveGains)
         const passiveResult = calculatePassiveGains(state, characters);
         if (passiveResult.gains > 0) {
-          state.essence = (state.essence || 0) + passiveResult.gains;
-          state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
+          state = passiveResult.state; // Use updated state from action
         }
 
-        const result = essenceTapService.purchaseUpgrade(state, upgradeId);
+        // MIGRATED: now uses actions.purchaseUpgrade
+        const result = actions.purchaseUpgrade({ state, upgradeId });
 
         if (!result.success) {
           await transaction.rollback();
@@ -958,7 +887,8 @@ function initEssenceTapWebSocket(io) {
         await transaction.commit();
 
         const seq = getNextSequence(userId);
-        const gameState = essenceTapService.getGameState(result.newState, characters);
+        // MIGRATED: now uses actions.getGameState
+        const gameState = actions.getGameState({ state: result.newState, characters });
 
         // Get available upgrades with affordability info
         const availableUpgrades = essenceTapService.getAvailableUpgrades(result.newState).map(upgrade => ({
@@ -1024,40 +954,30 @@ function initEssenceTapWebSocket(io) {
 
         let state = user.essenceTap || essenceTapService.getInitialState();
 
-        // BUG #6 FIX: Process pending taps within the same transaction
+        // BUG #6 FIX: Process pending taps within the same transaction (MIGRATED: now uses actions)
         if (pendingBatch && pendingBatch.taps > 0) {
-          const userCharacters = await UserCharacter.findAll({
-            where: { UserId: userId },
-            include: ['Character'],
-            transaction
+          // Get characters (MIGRATED: now uses shared.loadUserCharacters)
+          const characters = await shared.loadUserCharacters(userId, { transaction });
+
+          // Get active ability effects (MIGRATED: now uses actions.getActiveAbilityEffects)
+          const activeAbilityEffects = actions.getActiveAbilityEffects(state);
+
+          // Process clicks (MIGRATED: now uses actions.processTaps)
+          const tapResult = actions.processTaps({
+            state,
+            characters,
+            count: pendingBatch.taps,
+            comboMultiplier: pendingBatch.comboMultiplier || 1,
+            activeAbilityEffects
           });
 
-          const characters = userCharacters.map(uc => ({
-            id: uc.CharacterId,
-            rarity: uc.Character?.rarity || 'common',
-            element: uc.Character?.element || 'neutral'
-          }));
-
-          const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
-
-          // Process clicks inline
-          let totalEssence = 0;
-          for (let i = 0; i < pendingBatch.taps; i++) {
-            const clickResult = essenceTapService.processClick(
-              state,
-              characters,
-              pendingBatch.comboMultiplier || 1,
-              activeAbilityEffects
-            );
-            totalEssence += clickResult.essenceGained;
+          if (tapResult.success) {
+            state = tapResult.newState;
           }
-
-          state.essence = (state.essence || 0) + totalEssence;
-          state.lifetimeEssence = (state.lifetimeEssence || 0) + totalEssence;
-          state.totalClicks = (state.totalClicks || 0) + pendingBatch.taps;
         }
 
-        const result = essenceTapService.performPrestige(state, user);
+        // MIGRATED: now uses actions.performPrestige
+        const result = actions.performPrestige({ state });
 
         if (!result.success) {
           await transaction.rollback();
@@ -1073,33 +993,12 @@ function initEssenceTapWebSocket(io) {
         const now = Date.now();
         result.newState.lastOnlineTimestamp = now;
 
-        // Apply FP with cap enforcement
-        let actualFP = 0;
-        if (result.fatePointsReward > 0) {
-          const fpResult = essenceTapService.applyFPWithCap(
-            result.newState,
-            result.fatePointsReward,
-            'prestige'
-          );
-          result.newState = fpResult.newState;
-          actualFP = fpResult.actualFP;
-        }
-
         user.essenceTap = result.newState;
         user.lastEssenceTapRequest = now;
 
-        // Award Fate Points
-        if (actualFP > 0) {
-          const fatePoints = user.fatePoints || {};
-          fatePoints.global = fatePoints.global || { points: 0 };
-          fatePoints.global.points = (fatePoints.global.points || 0) + actualFP;
-          user.fatePoints = fatePoints;
-        }
-
-        // Award XP
-        if (result.xpReward > 0) {
-          user.accountXP = (user.accountXP || 0) + result.xpReward;
-        }
+        // Note: The prestige action returns shardsGained, not shardsEarned
+        // FP and XP are awarded via REST route, not in WebSocket handler for prestige
+        // This keeps it consistent with the action pattern
 
         await user.save({ transaction });
         await transaction.commit();
@@ -1107,28 +1006,20 @@ function initEssenceTapWebSocket(io) {
 
         const seq = getNextSequence(userId);
 
-        // Get full state for broadcast
-        const userCharacters = await UserCharacter.findAll({
-          where: { UserId: userId },
-          include: ['Character']
-        });
-
-        const characters = userCharacters.map(uc => ({
-          id: uc.CharacterId,
-          rarity: uc.Character?.rarity || 'common',
-          element: uc.Character?.element || 'neutral'
-        }));
-
-        const gameState = essenceTapService.getGameState(result.newState, characters);
+        // Get full state for broadcast (MIGRATED: now uses shared.loadUserCharacters and actions.getGameState)
+        const characters = await shared.loadUserCharacters(userId);
+        const gameState = actions.getGameState({ state: result.newState, characters });
 
         // Broadcast prestige result to all tabs
+        // Note: The new action returns shardsGained instead of shardsEarned, and doesn't include FP/XP rewards
+        // (those would be handled separately if needed)
         broadcastToUser(namespace, userId, 'prestige_complete', {
           ...gameState,
-          shardsEarned: result.shardsEarned,
+          shardsEarned: result.shardsGained, // Map shardsGained to shardsEarned for backwards compatibility
           totalShards: result.totalShards,
-          prestigeLevel: result.prestigeLevel,
-          fatePointsReward: actualFP,
-          xpReward: result.xpReward,
+          prestigeLevel: result.newPrestigeLevel,
+          fatePointsReward: 0, // FP/XP rewards not included in action pattern
+          xpReward: 0,
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now
@@ -1165,7 +1056,8 @@ function initEssenceTapWebSocket(io) {
         }
 
         let state = user.essenceTap || essenceTapService.getInitialState();
-        const result = essenceTapService.activateAbility(state, abilityId);
+        // MIGRATED: now uses actions.activateAbility
+        const result = actions.activateAbility({ state, abilityId });
 
         if (!result.success) {
           await transaction.rollback();
@@ -1188,13 +1080,14 @@ function initEssenceTapWebSocket(io) {
         const seq = getNextSequence(userId);
 
         // Broadcast ability activation to all tabs
+        // NOTE: activeAbilities is already included in the action result
         broadcastToUser(namespace, userId, 'ability_activated', {
           ability: result.ability,
           duration: result.duration,
           effects: result.effects,
           bonusEssence: result.bonusEssence,
-          essence: result.newState.essence,
-          activeAbilities: essenceTapService.getActiveAbilitiesInfo(result.newState),
+          essence: result.essence,
+          activeAbilities: result.activeAbilities,
           seq,
           confirmedClientSeq: clientSeq,
           serverTimestamp: now

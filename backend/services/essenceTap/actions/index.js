@@ -28,6 +28,9 @@ const generatorAction = require('./generatorAction');
 const upgradeAction = require('./upgradeAction');
 const prestigeAction = require('./prestigeAction');
 const characterAction = require('./characterAction');
+const stateAction = require('./stateAction');
+const saveAction = require('./saveAction');
+const dailyModifierAction = require('./dailyModifierAction');
 
 // Feature actions
 const gambleAction = require('./gambleAction');
@@ -145,6 +148,34 @@ module.exports = {
   updateChallengeProgress: dailyChallengeAction.updateChallengeProgress,
 
   // ==========================================
+  // STATE ACTIONS
+  // ==========================================
+  getStatus: stateAction.getStatus,
+  getGameState: stateAction.getGameState,
+  applyPassiveGains: stateAction.applyPassiveGains,
+  getProductionPerSecond: stateAction.getProductionPerSecond,
+  getClickPower: stateAction.getClickPower,
+  getCritChance: stateAction.getCritChance,
+  getCritMultiplier: stateAction.getCritMultiplier,
+  resetWeeklyFPIfNeeded: stateAction.resetWeeklyFPIfNeeded,
+  getCurrentWeekId: stateAction.getCurrentWeekId,
+  getWeeklyFPBudget: stateAction.getWeeklyFPBudget,
+  applyFPWithCap: stateAction.applyFPWithCap,
+  getSessionStats: stateAction.getSessionStats,
+
+  // ==========================================
+  // SAVE ACTIONS
+  // ==========================================
+  saveState: saveAction.saveState,
+
+  // ==========================================
+  // DAILY MODIFIER ACTIONS
+  // ==========================================
+  getDailyModifier: dailyModifierAction.getDailyModifier,
+  getCurrentDailyModifier: dailyModifierAction.getCurrentDailyModifier,
+  getTimeUntilNextModifier: dailyModifierAction.getTimeUntilNextModifier,
+
+  // ==========================================
   // RE-EXPORT MODULES (for specific imports)
   // ==========================================
   tapAction,
@@ -152,6 +183,9 @@ module.exports = {
   upgradeAction,
   prestigeAction,
   characterAction,
+  stateAction,
+  saveAction,
+  dailyModifierAction,
   gambleAction,
   infusionAction,
   milestoneAction,
