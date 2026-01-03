@@ -108,6 +108,9 @@ const TabBar = styled.div`
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: rgba(0, 0, 0, 0.2);
   overflow-x: auto;
+  /* Smooth horizontal scrolling */
+  -webkit-overflow-scrolling: touch;
+  scroll-snap-type: x mandatory;
 
   /* Hide scrollbar */
   &::-webkit-scrollbar {
@@ -115,6 +118,11 @@ const TabBar = styled.div`
   }
   -ms-overflow-style: none;
   scrollbar-width: none;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    gap: 4px;
+  }
 `;
 
 const Tab = styled.button`
@@ -140,6 +148,7 @@ const Tab = styled.button`
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
   flex-shrink: 0;
+  scroll-snap-align: start;
 
   &:hover {
     background: ${props => props.$active
@@ -148,9 +157,10 @@ const Tab = styled.button`
   }
 
   @media (max-width: ${theme.breakpoints.sm}) {
-    min-height: 40px;
-    padding: ${theme.spacing.sm} ${theme.spacing.md};
+    min-height: 44px;
+    padding: ${theme.spacing.sm} ${theme.spacing.sm};
     font-size: ${theme.fontSizes.xs};
+    gap: 4px;
   }
 `;
 
@@ -167,6 +177,7 @@ const UpgradeGrid = styled(motion.div)`
   overflow-y: auto;
   flex: 1;
   min-height: 300px;
+  -webkit-overflow-scrolling: touch;
 
   /* Scrollbar styling */
   &::-webkit-scrollbar {
@@ -178,6 +189,12 @@ const UpgradeGrid = styled(motion.div)`
   &::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.sm};
+    gap: ${theme.spacing.xs};
+    min-height: 250px;
   }
 `;
 
@@ -215,6 +232,10 @@ const UpgradeCard = styled(motion.div)`
   ${props => props.$justPurchased && css`
     animation: ${purchaseFlash} 0.3s ease-out;
   `}
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.sm};
+  }
 `;
 
 const UpgradeHeader = styled.div`

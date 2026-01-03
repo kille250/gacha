@@ -129,6 +129,11 @@ const BuyModeButtons = styled.div`
   gap: ${theme.spacing.xs};
   padding: ${theme.spacing.sm} ${theme.spacing.md};
   background: rgba(0, 0, 0, 0.2);
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    gap: 4px;
+  }
 `;
 
 const BuyModeButton = styled.button`
@@ -165,6 +170,7 @@ const ListContainer = styled(motion.div)`
   overflow-y: auto;
   flex: 1;
   min-height: 300px;
+  -webkit-overflow-scrolling: touch;
 
   /* Scrollbar styling */
   &::-webkit-scrollbar {
@@ -176,6 +182,13 @@ const ListContainer = styled(motion.div)`
   &::-webkit-scrollbar-thumb {
     background: rgba(255, 255, 255, 0.1);
     border-radius: 3px;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.sm};
+    padding-top: ${theme.spacing.md};
+    gap: ${theme.spacing.xs};
+    min-height: 250px;
   }
 `;
 
@@ -210,6 +223,11 @@ const GeneratorCard = styled(motion.div)`
   ${props => props.$justPurchased && css`
     animation: ${purchaseBurst} 0.3s ease-out;
   `}
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    gap: ${theme.spacing.sm};
+    padding: ${theme.spacing.sm};
+  }
 `;
 
 const GeneratorIconWrapper = styled.div`
@@ -232,6 +250,12 @@ const GeneratorIconWrapper = styled.div`
   ${props => props.$owned > 0 && css`
     box-shadow: 0 0 15px ${props.$color}30;
   `}
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 44px;
+    height: 44px;
+    font-size: 22px;
+  }
 `;
 
 const GeneratorInfo = styled.div`
@@ -283,12 +307,23 @@ const BuySection = styled.div`
   align-items: flex-end;
   gap: 4px;
   min-width: 80px;
+  flex-shrink: 0;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-width: 70px;
+  }
 `;
 
 const CostLabel = styled.div`
   font-size: ${theme.fontSizes.sm};
   font-weight: ${theme.fontWeights.semibold};
   color: ${props => props.$canAfford ? '#10B981' : '#EF4444'};
+  text-align: right;
+  word-break: break-word;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.xs};
+  }
 `;
 
 const BuyButton = styled.button`
@@ -305,6 +340,7 @@ const BuyButton = styled.button`
   cursor: ${props => props.$canAfford ? 'pointer' : 'not-allowed'};
   opacity: ${props => props.$canAfford ? 1 : 0.5};
   transition: all 0.2s ease;
+  white-space: nowrap;
   /* Touch optimization */
   -webkit-tap-highlight-color: transparent;
   touch-action: manipulation;
@@ -321,8 +357,9 @@ const BuyButton = styled.button`
   `}
 
   @media (max-width: ${theme.breakpoints.sm}) {
-    min-height: 40px;
-    padding: ${theme.spacing.sm} ${theme.spacing.md};
+    min-height: 44px;
+    padding: ${theme.spacing.xs} ${theme.spacing.sm};
+    font-size: ${theme.fontSizes.xs};
   }
 `;
 

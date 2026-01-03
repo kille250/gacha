@@ -182,6 +182,7 @@ const MobilePanelContainer = styled.div`
   max-height: 70vh;
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior: contain;
   margin: -${theme.spacing.lg};
   margin-top: 0;
 
@@ -195,6 +196,7 @@ const MobilePanelContainer = styled.div`
   @media (max-width: ${theme.breakpoints.sm}) {
     margin: -${theme.spacing.md};
     margin-top: 0;
+    max-height: 65vh;
   }
 `;
 
@@ -592,7 +594,7 @@ const EssenceTapPage = memo(() => {
           <Modal
             isOpen={showMobileGenerators}
             onClose={handleModalClose(setShowMobileGenerators)}
-            title={t('essenceTap.generators', { defaultValue: 'Generators' })}
+            title={t('essenceTap.generators.title', { defaultValue: 'Generators' })}
             maxWidth="600px"
           >
             <MobilePanelContainer>
@@ -612,7 +614,7 @@ const EssenceTapPage = memo(() => {
           <Modal
             isOpen={showMobileUpgrades}
             onClose={handleModalClose(setShowMobileUpgrades)}
-            title={t('essenceTap.upgrades', { defaultValue: 'Upgrades' })}
+            title={t('essenceTap.upgrades.title', { defaultValue: 'Upgrades' })}
             maxWidth="600px"
           >
             <MobilePanelContainer>

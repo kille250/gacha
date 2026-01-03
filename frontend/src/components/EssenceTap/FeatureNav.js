@@ -63,6 +63,8 @@ const NavContainer = styled(motion.nav)`
     /* Enable horizontal scrolling on mobile */
     overflow-x: auto;
     justify-content: flex-start;
+    /* Scroll snap for smooth swiping */
+    scroll-snap-type: x mandatory;
     /* Hide scrollbar but allow scrolling */
     scrollbar-width: none;
     -ms-overflow-style: none;

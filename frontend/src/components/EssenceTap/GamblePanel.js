@@ -98,6 +98,11 @@ const BetAmountInput = styled.div`
   align-items: center;
   gap: ${theme.spacing.sm};
   margin-bottom: ${theme.spacing.md};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex-wrap: wrap;
+    gap: ${theme.spacing.xs};
+  }
 `;
 
 const BetInput = styled.input`
@@ -109,6 +114,7 @@ const BetInput = styled.input`
   color: ${theme.colors.text};
   font-size: ${theme.fontSizes.lg};
   text-align: center;
+  min-width: 0;
 
   &:focus {
     outline: none;
@@ -119,6 +125,13 @@ const BetInput = styled.input`
   &::-webkit-outer-spin-button {
     -webkit-appearance: none;
     margin: 0;
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    width: 100%;
+    flex: 1 1 100%;
+    font-size: ${theme.fontSizes.base};
+    padding: ${theme.spacing.sm};
   }
 `;
 
@@ -131,9 +144,15 @@ const QuickBetButton = styled.button`
   font-size: ${theme.fontSizes.sm};
   cursor: pointer;
   transition: all 0.2s ease;
+  flex-shrink: 0;
 
   &:hover {
     background: rgba(255, 255, 255, 0.1);
+  }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    flex: 1;
+    min-height: 44px;
   }
 `;
 
@@ -142,6 +161,16 @@ const BetTypeGrid = styled.div`
   grid-template-columns: repeat(3, 1fr);
   gap: ${theme.spacing.md};
   margin-bottom: ${theme.spacing.lg};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    grid-template-columns: repeat(3, 1fr);
+    gap: ${theme.spacing.sm};
+  }
+
+  @media (max-width: 400px) {
+    grid-template-columns: 1fr;
+    gap: ${theme.spacing.sm};
+  }
 `;
 
 const BetTypeCard = styled(motion.button)`
@@ -154,6 +183,7 @@ const BetTypeCard = styled(motion.button)`
   cursor: pointer;
   transition: all 0.2s ease;
   text-align: center;
+  min-width: 0;
 
   &:hover:not(:disabled) {
     transform: translateY(-2px);
@@ -164,6 +194,10 @@ const BetTypeCard = styled(motion.button)`
     opacity: 0.5;
     cursor: not-allowed;
   }
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    padding: ${theme.spacing.md};
+  }
 `;
 
 const BetTypeName = styled.div`
@@ -171,18 +205,31 @@ const BetTypeName = styled.div`
   font-weight: ${theme.fontWeights.semibold};
   color: ${props => props.$color || theme.colors.text};
   margin-bottom: ${theme.spacing.xs};
+  word-break: break-word;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.base};
+  }
 `;
 
 const BetTypeChance = styled.div`
   font-size: ${theme.fontSizes.sm};
   color: ${theme.colors.textSecondary};
   margin-bottom: ${theme.spacing.xs};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.xs};
+  }
 `;
 
 const BetTypeMultiplier = styled.div`
   font-size: ${theme.fontSizes.xl};
   font-weight: ${theme.fontWeights.bold};
   color: ${props => props.$color || '#10B981'};
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    font-size: ${theme.fontSizes.lg};
+  }
 `;
 
 const ResultDisplay = styled(motion.div)`
