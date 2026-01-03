@@ -2,76 +2,20 @@
  * Gamble Routes
  *
  * Handles gambling operations and jackpot information.
+ * Uses unified action handlers and middleware.
  */
 
 const express = require('express');
 const router = express.Router();
-const { UserCharacter } = require('../../../models');
-const essenceTapService = require('../../../services/essenceTapService');
-const { createRoute } = require('../createRoute');
 
-// ===========================================
-// HELPER FUNCTIONS
-// ===========================================
-
-/**
- * Get user's characters for passive calculation
- */
-async function getUserCharacters(userId) {
-  const userCharacters = await UserCharacter.findAll({
-    where: { UserId: userId },
-    include: ['Character']
-  });
-
-  return userCharacters.map(uc => ({
-    id: uc.CharacterId,
-    rarity: uc.Character?.rarity || 'common',
-    element: uc.Character?.element || 'neutral'
-  }));
-}
-
-/**
- * Apply passive essence gains before performing essence-modifying operations
- */
-async function applyPassiveGains(state, characters, maxSeconds = 300) {
-  const now = Date.now();
-  const lastUpdate = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
-  const elapsedMs = now - lastUpdate;
-  const elapsedSeconds = Math.min(elapsedMs / 1000, maxSeconds);
-
-  // Guard: If gains were applied very recently, skip to prevent double-counting
-  const MIN_PASSIVE_GAIN_INTERVAL_MS = 1000;
-  if (elapsedMs < MIN_PASSIVE_GAIN_INTERVAL_MS) {
-    return { state, gainsApplied: 0 };
-  }
-
-  if (elapsedSeconds <= 0) {
-    return { state, gainsApplied: 0 };
-  }
-
-  const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
-  let productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
-  if (activeAbilityEffects.productionMultiplier) {
-    productionPerSecond *= activeAbilityEffects.productionMultiplier;
-  }
-
-  const passiveGain = Math.floor(productionPerSecond * elapsedSeconds);
-  if (passiveGain > 0) {
-    state.essence = (state.essence || 0) + passiveGain;
-    state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveGain;
-    // Check burning hour status for tournament multiplier
-    const burningHourStatus = essenceTapService.getBurningHourStatus();
-    const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveGain, {
-      burningHourActive: burningHourStatus.active
-    });
-    state = weeklyResult.newState;
-  }
-
-  // Update timestamp to mark when gains were last applied
-  state.lastOnlineTimestamp = now;
-
-  return { state, gainsApplied: passiveGain };
-}
+const { actions } = require('../../../services/essenceTap');
+const { SharedJackpot } = require('../../../models');
+const {
+  loadGameState,
+  applyPassiveGains,
+  saveGameState,
+  asyncHandler
+} = require('../middleware');
 
 // ===========================================
 // GAMBLING
@@ -81,50 +25,68 @@ async function applyPassiveGains(state, characters, maxSeconds = 300) {
  * POST /gamble
  * Perform a gamble with essence
  */
-router.post('/gamble', createRoute({
-  resetDaily: true,
-  validate: (body) => {
-    if (!body.betAmount || body.betAmount < 1) {
-      return 'Invalid bet amount';
+router.post('/',
+  loadGameState,
+  applyPassiveGains,
+  asyncHandler(async (req, res, next) => {
+    const { betAmount, betType } = req.body;
+
+    if (!betAmount || betAmount < 1) {
+      return res.status(400).json({ error: 'Invalid bet amount' });
     }
-    if (!body.betType) {
-      return 'Bet type required';
+    if (!betType) {
+      return res.status(400).json({ error: 'Bet type required' });
     }
-    return null;
-  },
-  execute: async (ctx) => {
-    const { betAmount, betType } = ctx.body;
 
-    // Get user's characters for passive calculation
-    const characters = await getUserCharacters(ctx.user.id);
-
-    // Apply passive essence before gambling
-    const passiveResult = await applyPassiveGains(ctx.state, characters);
-    ctx.state = passiveResult.state;
-
-    const result = await essenceTapService.gamble(ctx.state, betAmount, betType);
+    // Use unified action handler
+    const result = await actions.performGamble({
+      state: req.gameState,
+      betAmount: parseInt(betAmount, 10),
+      betType,
+      userId: req.user.id
+    });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
-    return {
+    // Update state for saving
+    req.gameState = result.newState;
+    req.gameStateChanged = true;
+
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      data: {
-        won: result.won,
-        betAmount,
-        betType,
-        payout: result.payout,
-        multiplier: result.multiplier,
-        jackpot: result.jackpot,
-        jackpotAmount: result.jackpotAmount,
-        newEssence: result.newState.essence,
-        gambleInfo: essenceTapService.getGambleInfo(result.newState)
-      }
+      won: result.won,
+      betAmount: result.betAmount,
+      betType: result.betType,
+      multiplier: result.multiplier,
+      winChance: result.winChance,
+      essenceChange: result.essenceChange,
+      newEssence: result.newEssence,
+      jackpotWin: result.jackpotWin,
+      gambleInfo: actions.getGambleInfo(result.newState)
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
+
+/**
+ * GET /info
+ * Get gamble availability and info
+ */
+router.get('/info',
+  loadGameState,
+  asyncHandler(async (req, res) => {
+    const gambleInfo = actions.getGambleInfo(req.gameState);
+    return res.json(gambleInfo);
+  })
+);
 
 // ===========================================
 // JACKPOT INFO
@@ -134,16 +96,29 @@ router.post('/gamble', createRoute({
  * GET /jackpot
  * Get shared jackpot info
  */
-router.get('/jackpot', async (req, res) => {
-  try {
-    // Fetch shared jackpot info from database
-    const jackpotInfo = await essenceTapService.getSharedJackpotInfo();
+router.get('/jackpot',
+  asyncHandler(async (req, res) => {
+    const jackpot = await SharedJackpot.findOne({
+      where: { jackpotType: 'essence_tap_main' }
+    });
 
-    res.json(jackpotInfo);
-  } catch (error) {
-    console.error('Error getting jackpot info:', error);
-    res.status(500).json({ error: 'Failed to get jackpot info' });
-  }
-});
+    if (!jackpot) {
+      return res.json({
+        currentAmount: 0,
+        totalWins: 0,
+        lastWinner: null
+      });
+    }
+
+    return res.json({
+      currentAmount: Number(jackpot.currentAmount),
+      totalWins: jackpot.totalWins,
+      lastWinner: jackpot.lastWinnerId,
+      lastWinAmount: Number(jackpot.lastWinAmount),
+      lastWinDate: jackpot.lastWinDate,
+      largestWin: Number(jackpot.largestWin)
+    });
+  })
+);
 
 module.exports = router;

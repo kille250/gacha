@@ -4,76 +4,20 @@
  * Handles generator purchases and information:
  * - POST /generator/buy - Purchase generators
  * - GET /generator/info - Get generator information
+ *
+ * Uses unified action handlers and middleware.
  */
 
 const express = require('express');
 const router = express.Router();
-const { UserCharacter } = require('../../../models');
-const essenceTapService = require('../../../services/essenceTapService');
-const { createRoute, createGetRoute } = require('../createRoute');
 
-// ===========================================
-// HELPER FUNCTIONS
-// ===========================================
-
-/**
- * Apply passive essence gains before performing essence-modifying operations
- */
-async function applyPassiveGains(state, characters, maxSeconds = 300) {
-  const now = Date.now();
-  const lastUpdate = state.lastOnlineTimestamp || state.lastSaveTimestamp || now;
-  const elapsedMs = now - lastUpdate;
-  const elapsedSeconds = Math.min(elapsedMs / 1000, maxSeconds);
-
-  // Guard: If gains were applied very recently, skip to prevent double-counting
-  const MIN_PASSIVE_GAIN_INTERVAL_MS = 1000;
-  if (elapsedMs < MIN_PASSIVE_GAIN_INTERVAL_MS) {
-    return { state, gainsApplied: 0 };
-  }
-
-  if (elapsedSeconds <= 0) {
-    return { state, gainsApplied: 0 };
-  }
-
-  const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
-  let productionPerSecond = essenceTapService.calculateProductionPerSecond(state, characters);
-  if (activeAbilityEffects.productionMultiplier) {
-    productionPerSecond *= activeAbilityEffects.productionMultiplier;
-  }
-
-  const passiveGain = Math.floor(productionPerSecond * elapsedSeconds);
-  if (passiveGain > 0) {
-    state.essence = (state.essence || 0) + passiveGain;
-    state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveGain;
-    // Check burning hour status for tournament multiplier
-    const burningHourStatus = essenceTapService.getBurningHourStatus();
-    const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveGain, {
-      burningHourActive: burningHourStatus.active
-    });
-    state = weeklyResult.newState;
-  }
-
-  // Update timestamp to mark when gains were last applied
-  state.lastOnlineTimestamp = now;
-
-  return { state, gainsApplied: passiveGain };
-}
-
-/**
- * Get user's characters for bonus calculations
- */
-async function getUserCharacters(userId) {
-  const userCharacters = await UserCharacter.findAll({
-    where: { UserId: userId },
-    include: ['Character']
-  });
-
-  return userCharacters.map(uc => ({
-    id: uc.CharacterId,
-    rarity: uc.Character?.rarity || 'common',
-    element: uc.Character?.element || 'neutral'
-  }));
-}
+const { actions } = require('../../../services/essenceTap');
+const {
+  loadGameState,
+  applyPassiveGains,
+  saveGameState,
+  asyncHandler
+} = require('../middleware');
 
 // ===========================================
 // ROUTES
@@ -83,73 +27,85 @@ async function getUserCharacters(userId) {
  * POST /generator/buy
  * Purchase one or more generators
  */
-router.post('/buy', createRoute({
-  validate: (body) => {
-    if (!body.generatorId) {
-      return 'Generator ID required';
+router.post('/buy',
+  loadGameState,
+  applyPassiveGains,
+  asyncHandler(async (req, res, next) => {
+    const { generatorId, count = 1 } = req.body;
+
+    if (!generatorId) {
+      return res.status(400).json({ error: 'Generator ID required' });
     }
-    const count = parseInt(body.count, 10);
-    if (count && (isNaN(count) || count < 1)) {
-      return 'Invalid count';
+
+    const parsedCount = count === 'max' ? 'max' : parseInt(count, 10);
+    if (parsedCount !== 'max' && (isNaN(parsedCount) || parsedCount < 1)) {
+      return res.status(400).json({ error: 'Invalid count' });
     }
-    return null;
-  },
-  execute: async (ctx) => {
-    const { generatorId, count = 1 } = ctx.body;
 
-    // Get user's characters for passive calculation
-    const characters = await getUserCharacters(ctx.user.id);
-
-    // Apply passive essence before purchase check
-    const passiveResult = await applyPassiveGains(ctx.state, characters);
-    ctx.state = passiveResult.state;
-
-    const result = essenceTapService.purchaseGenerator(ctx.state, generatorId, count);
+    // Use unified action handler
+    const result = actions.purchaseGenerator({
+      state: req.gameState,
+      generatorId,
+      count: parsedCount
+    });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
-    // Check for new daily challenge completions
-    const completedChallenges = essenceTapService.checkDailyChallenges(result.newState);
+    // Update state for saving
+    req.gameState = result.newState;
+    req.gameStateChanged = true;
 
-    // Mark completed challenges as done so they don't trigger again
-    if (completedChallenges.length > 0) {
-      result.newState.daily.completedChallenges = [
-        ...(result.newState.daily.completedChallenges || []),
-        ...completedChallenges.map(c => c.id)
-      ];
-    }
-
-    // Get updated game state for production per second
-    const gameState = essenceTapService.getGameState(result.newState, characters);
-
-    return {
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      data: {
-        generator: result.generator,
-        newCount: result.newCount,
-        cost: result.cost,
-        productionPerSecond: gameState.productionPerSecond,
-        essence: result.newState.essence,
-        completedChallenges: completedChallenges.length > 0 ? completedChallenges : undefined
-      }
+      generator: result.generator,
+      newCount: result.newCount,
+      cost: result.cost,
+      essence: result.newState.essence
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
 
 /**
  * GET /generator/info
  * Get available generators and current state
  */
-router.get('/info', createGetRoute((state, _user) => {
-  const generators = essenceTapService.getAvailableGenerators(state);
+router.get('/info',
+  loadGameState,
+  asyncHandler(async (req, res) => {
+    const generators = actions.getAllGenerators(req.gameState);
 
-  return {
-    generators,
-    totalProduction: state.productionPerSecond || 0
-  };
-}));
+    return res.json({
+      generators,
+      totalProduction: req.gameState.productionPerSecond || 0
+    });
+  })
+);
+
+/**
+ * GET /generator/:id
+ * Get specific generator information
+ */
+router.get('/:id',
+  loadGameState,
+  asyncHandler(async (req, res) => {
+    const generatorId = req.params.id;
+    const generatorInfo = actions.getGeneratorInfo(req.gameState, generatorId);
+
+    if (!generatorInfo) {
+      return res.status(404).json({ error: 'Generator not found' });
+    }
+
+    return res.json(generatorInfo);
+  })
+);
 
 module.exports = router;

@@ -3,11 +3,19 @@
  *
  * Provides real-time synchronization for the Essence Tap clicker minigame.
  * Handles tap batching, state reconciliation, and multi-tab synchronization.
+ *
+ * NOTE: Many handlers in this file duplicate logic from REST routes.
+ * New handlers should use the unified action handlers from:
+ *   - ../services/essenceTap/actions - Pure action handlers
+ *   - ./essenceTapActions.js - WebSocket-specific wrappers
+ *
+ * See essenceTapActions.js for examples of how to refactor handlers.
  */
 
 const jwt = require('jsonwebtoken');
 const { User, UserCharacter, sequelize } = require('../models');
 const essenceTapService = require('../services/essenceTapService');
+const { actions } = require('../services/essenceTap');
 const { GAME_CONFIG } = require('../config/essenceTap');
 
 // ===========================================

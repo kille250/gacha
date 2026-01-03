@@ -7,11 +7,16 @@
  * Module Structure:
  *   - calculations/  - Pure calculation functions (no side effects)
  *   - core/          - Core services (state, stats, tap)
- *   - domains/       - Domain services organized by feature (RECOMMENDED)
+ *   - domains/       - Domain services organized by feature
+ *   - actions/       - Unified action handlers for REST + WebSocket (RECOMMENDED)
  *   - *Service.js    - Legacy domain-specific services (for backward compatibility)
  *
  * Recommended Import Patterns:
- *   // New code - use domains
+ *   // New code - use actions (unified handlers for routes + websocket)
+ *   const { actions } = require('./services/essenceTap');
+ *   const result = actions.purchaseGenerator({ state, generatorId });
+ *
+ *   // Domain services - for feature-specific logic
  *   const { click, generator, prestige } = require('./services/essenceTap/domains');
  *
  *   // Legacy code - direct imports still work
@@ -29,6 +34,9 @@ const tapService = require('./core/tap.service');
 // Domain services (organized by feature)
 const domains = require('./domains');
 
+// Unified action handlers (for REST + WebSocket)
+const actions = require('./actions');
+
 // Individual domain services (for backward compatibility)
 const clickService = require('./clickService');
 const generatorService = require('./generatorService');
@@ -42,7 +50,14 @@ const legacyService = require('../essenceTapService');
 
 module.exports = {
   // ========================================
-  // RECOMMENDED: Domain-based API
+  // RECOMMENDED: Unified Action Handlers
+  // ========================================
+  // Use these for new routes and WebSocket handlers
+  // Each action handles validation, business logic, and returns new state
+  actions,
+
+  // ========================================
+  // Domain Services
   // ========================================
   // Use these for new code - organized by game feature
   domains,

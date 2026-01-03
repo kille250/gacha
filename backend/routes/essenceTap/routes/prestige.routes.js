@@ -5,12 +5,20 @@
  * - POST /prestige - Perform prestige/awakening
  * - GET /prestige/info - Get prestige information
  * - POST /prestige/upgrade - Purchase prestige upgrade
+ *
+ * Uses unified action handlers and middleware.
  */
 
 const express = require('express');
 const router = express.Router();
-const essenceTapService = require('../../../services/essenceTapService');
-const { createRoute, createGetRoute } = require('../createRoute');
+
+const { actions } = require('../../../services/essenceTap');
+const {
+  loadGameState,
+  saveGameState,
+  asyncHandler,
+  awardFP
+} = require('../middleware');
 
 // ===========================================
 // ROUTES
@@ -20,98 +28,125 @@ const { createRoute, createGetRoute } = require('../createRoute');
  * POST /prestige
  * Perform prestige (awakening) to reset and gain prestige shards
  */
-router.post('/', createRoute({
-  lockUser: true,
-  execute: async (ctx) => {
-    const result = essenceTapService.performPrestige(ctx.state, ctx.user);
+router.post('/',
+  loadGameState,
+  asyncHandler(async (req, res, next) => {
+    // Use unified action handler
+    const result = actions.performPrestige({
+      state: req.gameState
+    });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
-    // Apply FP with cap enforcement (prestige counts toward weekly cap)
+    // Apply FP with cap enforcement
     let actualFP = 0;
     let fpCapped = false;
     if (result.fatePointsReward > 0) {
-      const fpResult = essenceTapService.applyFPWithCap(
-        result.newState,
-        result.fatePointsReward,
-        'prestige'
-      );
+      const fpResult = awardFP({
+        user: req.gameUser,
+        state: result.newState,
+        amount: result.fatePointsReward,
+        source: 'prestige'
+      });
       result.newState = fpResult.newState;
       actualFP = fpResult.actualFP;
       fpCapped = fpResult.capped;
+      req.gameUser.fatePoints = fpResult.fatePoints;
     }
 
     // Award XP
     if (result.xpReward > 0) {
-      ctx.user.accountXP = (ctx.user.accountXP || 0) + result.xpReward;
-      await ctx.user.save({ transaction: ctx.transaction });
+      req.gameUser.accountXP = (req.gameUser.accountXP || 0) + result.xpReward;
     }
 
-    return {
+    // Update state for saving
+    req.gameState = result.newState;
+    req.gameStateChanged = true;
+
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      fatePointsToAward: actualFP,
-      data: {
-        shardsEarned: result.shardsEarned,
-        totalShards: result.totalShards,
-        prestigeLevel: result.prestigeLevel,
-        fatePointsReward: actualFP,
-        fatePointsCapped: fpCapped,
-        xpReward: result.xpReward,
-        startingEssence: result.startingEssence
-      }
+      shardsEarned: result.shardsEarned,
+      totalShards: result.totalShards,
+      prestigeLevel: result.prestigeLevel,
+      fatePointsReward: actualFP,
+      fatePointsCapped: fpCapped,
+      xpReward: result.xpReward,
+      startingEssence: result.startingEssence,
+      prestigeMultiplier: result.prestigeMultiplier
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
 
 /**
  * GET /prestige/info
  * Get prestige information (shards, level, upgrades, next prestige preview)
  */
-router.get('/info', createGetRoute((state) => {
-  const prestigeInfo = essenceTapService.getPrestigeInfo(state);
+router.get('/info',
+  loadGameState,
+  asyncHandler(async (req, res) => {
+    const preview = actions.getPrestigePreview(req.gameState);
+    const canPrestige = actions.canPrestige(req.gameState);
 
-  return {
-    ...prestigeInfo,
-    prestigeShards: state.prestigeShards || 0,
-    prestigeLevel: state.prestigeLevel || 0
-  };
-}));
+    return res.json({
+      ...preview,
+      canPrestige,
+      prestigeShards: req.gameState.prestigeShards || 0,
+      prestigeLevel: req.gameState.prestigeLevel || 0
+    });
+  })
+);
 
 /**
  * POST /prestige/upgrade
  * Purchase a prestige upgrade
  */
-router.post('/upgrade', createRoute({
-  lockUser: false,
-  validate: (body) => {
-    if (!body.upgradeId) {
-      return 'Upgrade ID required';
-    }
-    return null;
-  },
-  execute: async (ctx) => {
-    const { upgradeId } = ctx.body;
+router.post('/upgrade',
+  loadGameState,
+  asyncHandler(async (req, res, next) => {
+    const { upgradeId } = req.body;
 
-    const result = essenceTapService.purchasePrestigeUpgrade(ctx.state, upgradeId);
+    if (!upgradeId) {
+      return res.status(400).json({ error: 'Upgrade ID required' });
+    }
+
+    // Use unified action handler
+    const result = actions.purchasePrestigeUpgrade({
+      state: req.gameState,
+      upgradeId
+    });
 
     if (!result.success) {
-      return { success: false, error: result.error };
+      return res.status(400).json({
+        error: result.error,
+        code: result.code
+      });
     }
 
-    return {
+    // Update state for saving
+    req.gameState = result.newState;
+    req.gameStateChanged = true;
+
+    // Set response
+    res.locals.response = {
       success: true,
-      newState: result.newState,
-      data: {
-        upgrade: result.upgrade,
-        newLevel: result.newLevel,
-        cost: result.cost,
-        remainingShards: result.newState.prestigeShards
-      }
+      upgrade: result.upgrade,
+      newLevel: result.newLevel,
+      cost: result.cost,
+      remainingShards: result.newState.prestigeShards
     };
-  }
-}));
+
+    next();
+  }),
+  saveGameState
+);
 
 module.exports = router;
