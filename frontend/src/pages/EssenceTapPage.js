@@ -249,6 +249,7 @@ const EssenceTapPage = memo(() => {
     getGambleInfo,
     getTournamentInfo,
     claimTournamentRewards,
+    claimTournamentCheckpoint,
     getMasteryInfo,
     getEssenceTypes,
     refresh,
@@ -556,6 +557,7 @@ const EssenceTapPage = memo(() => {
             onClose={handleModalClose(setShowTournament)}
             getTournamentInfo={getTournamentInfo}
             onClaimRewards={claimTournamentRewards}
+            onClaimCheckpoint={claimTournamentCheckpoint}
           />
 
           {/* Character Mastery Display */}

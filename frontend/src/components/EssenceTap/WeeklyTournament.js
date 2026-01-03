@@ -702,7 +702,8 @@ const WeeklyTournament = memo(({
   isOpen,
   onClose,
   getTournamentInfo,
-  onClaimRewards
+  onClaimRewards,
+  onClaimCheckpoint
 }) => {
   useTranslation(); // Reserved for future translations
   const [activeTab, setActiveTab] = useState('progress');
@@ -793,21 +794,20 @@ const WeeklyTournament = memo(({
     }
   }, [tournamentInfo?.canClaimRewards, onClaimRewards, getTournamentInfo]);
 
-  // Handle claim checkpoint
+  // Handle claim checkpoint - uses hook's function for proper toast/cache handling
   const handleClaimCheckpoint = useCallback(async (day) => {
+    if (!onClaimCheckpoint) return;
     setClaimingCheckpoint(day);
     try {
-      await api.post('/essence-tap/tournament/checkpoint/claim', { day });
+      await onClaimCheckpoint(day);
       if (getTournamentInfo) {
         const result = await getTournamentInfo();
         if (result.success) setTournamentInfo(result);
       }
-    } catch (err) {
-      console.error('Failed to claim checkpoint:', err);
     } finally {
       setClaimingCheckpoint(null);
     }
-  }, [getTournamentInfo]);
+  }, [onClaimCheckpoint, getTournamentInfo]);
 
   // Calculate current tier
   const weeklyEssence = tournamentInfo?.essenceEarned ?? 0;
