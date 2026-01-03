@@ -27,13 +27,33 @@ const {
 // ===========================================
 
 /**
+ * Calculate ISO 8601 week number for a given date
+ * ISO weeks start on Monday and week 1 is the week containing the first Thursday
+ * @param {Date} date - The date to calculate the week for
+ * @returns {{ year: number, week: number }} The ISO year and week number
+ */
+function getISOWeekData(date) {
+  const target = new Date(date.valueOf());
+  // ISO week starts on Monday, so adjust day number (0=Sun becomes 6, 1=Mon becomes 0, etc.)
+  const dayNumber = (date.getUTCDay() + 6) % 7;
+  // Set to nearest Thursday (current date + 4 - current day number)
+  target.setUTCDate(target.getUTCDate() - dayNumber + 3);
+  // Get first Thursday of the year
+  const firstThursday = new Date(Date.UTC(target.getUTCFullYear(), 0, 4));
+  const firstThursdayDay = (firstThursday.getUTCDay() + 6) % 7;
+  firstThursday.setUTCDate(firstThursday.getUTCDate() - firstThursdayDay + 3);
+  // Calculate week number
+  const weekNumber = 1 + Math.round((target.valueOf() - firstThursday.valueOf()) / 604800000);
+  return { year: target.getUTCFullYear(), week: weekNumber };
+}
+
+/**
  * Get current ISO week string (YYYY-Www)
+ * Follows ISO 8601 standard for week numbering
  */
 function getCurrentISOWeek() {
-  const now = new Date();
-  const onejan = new Date(now.getFullYear(), 0, 1);
-  const week = Math.ceil((((now - onejan) / 86400000) + onejan.getDay() + 1) / 7);
-  return `${now.getFullYear()}-W${week.toString().padStart(2, '0')}`;
+  const { year, week } = getISOWeekData(new Date());
+  return `${year}-W${week.toString().padStart(2, '0')}`;
 }
 
 /**
@@ -42,8 +62,8 @@ function getCurrentISOWeek() {
 function getWeekStartDate() {
   const now = new Date();
   const day = now.getUTCDay();
-  const diff = now.getUTCDate() - day + (day === 0 ? -6 : 1);
-  const monday = new Date(now.setUTCDate(diff));
+  const diff = day === 0 ? -6 : 1 - day; // Monday is day 1, Sunday is day 0
+  const monday = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + diff));
   monday.setUTCHours(0, 0, 0, 0);
   return monday;
 }
@@ -64,10 +84,9 @@ function getWeekEndDate() {
  */
 function getPreviousISOWeek() {
   const now = new Date();
-  now.setDate(now.getDate() - 7);
-  const onejan = new Date(now.getFullYear(), 0, 1);
-  const week = Math.ceil((((now - onejan) / 86400000) + onejan.getDay() + 1) / 7);
-  return `${now.getFullYear()}-W${week.toString().padStart(2, '0')}`;
+  const previousWeek = new Date(now.valueOf() - 7 * 24 * 60 * 60 * 1000);
+  const { year, week } = getISOWeekData(previousWeek);
+  return `${year}-W${week.toString().padStart(2, '0')}`;
 }
 
 /**
@@ -201,21 +220,43 @@ function calculateBracketMovement(bracketRank, bracketSize, protectionWeeks = 0)
 // ===========================================
 
 /**
+ * Simple seeded random number generator (Mulberry32)
+ * Provides deterministic pseudo-random numbers based on seed
+ * @param {number} seed - The seed value
+ * @returns {function} A function that returns pseudo-random numbers between 0 and 1
+ */
+function createSeededRandom(seed) {
+  return function() {
+    let t = seed += 0x6D2B79F5;
+    t = Math.imul(t ^ t >>> 15, t | 1);
+    t ^= t + Math.imul(t ^ t >>> 7, t | 61);
+    return ((t ^ t >>> 14) >>> 0) / 4294967296;
+  };
+}
+
+/**
  * Generate burning hour schedule for the week
- * @param {string} _weekId - The ISO week string (reserved for deterministic scheduling)
+ * Uses deterministic seeding based on weekId to ensure consistent schedules
+ * @param {string} weekId - The ISO week string (e.g., "2024-W01")
  * @returns {Array} Array of burning hour events for each day
  */
-function generateBurningHourSchedule(_weekId) {
+function generateBurningHourSchedule(weekId) {
   const schedule = [];
   const monday = getWeekStartDate();
+
+  // Create deterministic seed from weekId (e.g., "2024-W05" -> 202405)
+  const seedString = weekId.replace('-W', '').replace(/-/g, '');
+  const seed = parseInt(seedString, 10) || 202401;
 
   for (let day = 0; day < 7; day++) {
     const eventDate = new Date(monday);
     eventDate.setUTCDate(monday.getUTCDate() + day);
 
-    // Generate random hour within the allowed window
+    // Generate deterministic hour within the allowed window using seeded random
     const { earliest, latest } = BURNING_HOURS.scheduleWindow;
-    const randomHour = earliest + Math.floor(Math.random() * (latest - earliest - 2));
+    // Add day to seed for different hours each day
+    const dayRandom = createSeededRandom(seed + day * 1000);
+    const randomHour = earliest + Math.floor(dayRandom() * (latest - earliest - 2));
 
     eventDate.setUTCHours(randomHour, 0, 0, 0);
 

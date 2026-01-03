@@ -7,6 +7,7 @@
 const express = require('express');
 const router = express.Router();
 const auth = require('../middleware/auth');
+const { rewardClaimLimiter } = require('../middleware/rateLimiter');
 const { User, UserCharacter, sequelize } = require('../models');
 const essenceTapService = require('../services/essenceTapService');
 const accountLevelService = require('../services/accountLevelService');
@@ -1513,7 +1514,7 @@ router.get('/tournament/leaderboard', auth, async (req, res) => {
  * POST /api/essence-tap/tournament/weekly/claim
  * Claim weekly tournament rewards
  */
-router.post('/tournament/weekly/claim', auth, async (req, res) => {
+router.post('/tournament/weekly/claim', auth, rewardClaimLimiter, async (req, res) => {
   // Use transaction to ensure atomicity when awarding FP and tickets
   const transaction = await sequelize.transaction();
 
@@ -1666,7 +1667,7 @@ router.get('/tournament/bracket-leaderboard', auth, async (req, res) => {
  * POST /api/essence-tap/tournament/checkpoint/claim
  * Claim a daily checkpoint reward
  */
-router.post('/tournament/checkpoint/claim', auth, async (req, res) => {
+router.post('/tournament/checkpoint/claim', auth, rewardClaimLimiter, async (req, res) => {
   const transaction = await sequelize.transaction();
 
   try {
