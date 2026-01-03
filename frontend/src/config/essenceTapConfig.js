@@ -275,16 +275,23 @@ export const ACTIVE_ABILITIES = [
 // BOSS ENCOUNTER CONFIG
 // ===========================================
 
+/**
+ * Boss configuration - MUST be synced with shared/balanceConstants.js ESSENCE_TAP_DISPLAY.boss
+ * The backend uses the shared constants as the single source of truth.
+ * Frontend adds visual properties (color) for UI rendering.
+ *
+ * IMPORTANT: When updating boss values, update shared/balanceConstants.js first!
+ */
 export const BOSS_CONFIG = {
   tiers: [
     {
       id: 'essence_drake',
       name: 'Essence Drake',
       tier: 1,
-      baseHealth: 10000,
-      timeLimit: 30000,
+      baseHealth: 10000,       // Synced with shared/balanceConstants.js
+      timeLimit: 30000,        // Synced with shared/balanceConstants.js
       elementWeakness: 'fire',
-      color: '#EF4444',
+      color: '#EF4444',        // Frontend-only visual property
       rewards: {
         essence: 50000,
         fatePoints: 5,
@@ -296,14 +303,14 @@ export const BOSS_CONFIG = {
       id: 'void_serpent',
       name: 'Void Serpent',
       tier: 2,
-      baseHealth: 50000,
-      timeLimit: 45000,
+      baseHealth: 50000,       // Synced with shared/balanceConstants.js
+      timeLimit: 45000,        // Synced with shared/balanceConstants.js
       elementWeakness: 'light',
-      color: '#8B5CF6',
+      color: '#8B5CF6',        // Frontend-only visual property
       rewards: {
         essence: 250000,
         fatePoints: 10,
-        rollTickets: 3,
+        rollTickets: 2,        // Fixed: was 3, now matches backend (2)
         xp: 50
       }
     },
@@ -311,13 +318,13 @@ export const BOSS_CONFIG = {
       id: 'arcane_titan',
       name: 'Arcane Titan',
       tier: 3,
-      baseHealth: 250000,
-      timeLimit: 60000,
+      baseHealth: 200000,      // Fixed: was 250000, now matches backend (200000)
+      timeLimit: 60000,        // Synced with shared/balanceConstants.js
       elementWeakness: 'dark',
-      color: '#3B82F6',
+      color: '#3B82F6',        // Frontend-only visual property
       rewards: {
         essence: 1000000,
-        fatePoints: 25,
+        fatePoints: 20,        // Fixed: was 25, now matches backend (20)
         rollTickets: 5,
         xp: 100
       }
@@ -326,23 +333,25 @@ export const BOSS_CONFIG = {
       id: 'prismatic_dragon',
       name: 'Prismatic Dragon',
       tier: 4,
-      baseHealth: 1000000,
-      timeLimit: 90000,
+      baseHealth: 1000000,     // Synced with shared/balanceConstants.js
+      timeLimit: 90000,        // Synced with shared/balanceConstants.js
       elementWeakness: null,
-      color: '#F59E0B',
+      color: '#F59E0B',        // Frontend-only visual property
       rewards: {
         essence: 5000000,
         fatePoints: 50,
         rollTickets: 10,
-        xp: 200
+        prismaticEssence: 50,  // Added: missing from frontend, exists in backend
+        xp: 250                // Fixed: was 200, now matches backend (250)
       }
     }
   ],
+  // Spawn requirements - synced with shared/balanceConstants.js ESSENCE_TAP_DISPLAY.boss
   spawnRequirement: {
-    clicksPerSpawn: 500,
-    cooldownMs: 3600000 // 1 hour
+    clicksPerSpawn: 500,       // Synced with shared/balanceConstants.js
+    cooldownMs: 300000         // Fixed: was 3600000 (1hr), now matches backend (5min)
   },
-  weaknessDamageMultiplier: 2.0
+  weaknessDamageMultiplier: 2.0 // Synced with shared/balanceConstants.js
 };
 
 // ===========================================

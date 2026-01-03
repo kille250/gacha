@@ -259,6 +259,7 @@ export const useEssenceTap = () => {
       // Invalidate ability cache for consistency
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_ABILITY_ACTIVATE);
     }
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- getOptimisticEssence is a stable function from useEssenceTapSocket, intentionally excluded to keep callback stable
   }, []);
 
   const handleWsError = useCallback((err) => {
@@ -583,11 +584,14 @@ export const useEssenceTap = () => {
   // Passive income tick
   // BUG #4 FIX: Ticker now checks isWaitingForSyncRef to prevent double-counting
   useEffect(() => {
+    // Always clear existing interval before setting up new one to prevent memory leaks
+    // This handles the case where productionPerSecond changes rapidly
+    if (passiveTickRef.current) {
+      clearInterval(passiveTickRef.current);
+      passiveTickRef.current = null;
+    }
+
     if (!gameState || gameState.productionPerSecond <= 0) {
-      if (passiveTickRef.current) {
-        clearInterval(passiveTickRef.current);
-        passiveTickRef.current = null;
-      }
       return;
     }
 

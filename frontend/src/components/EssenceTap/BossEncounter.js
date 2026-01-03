@@ -36,6 +36,25 @@ import { ELEMENT_ICONS, ELEMENT_COLORS } from './CharacterSelectorFilters';
 import { glassmorphism } from './animations';
 
 // =============================================================================
+// ANIMATION TIMING CONSTANTS
+// =============================================================================
+
+/**
+ * Animation timing constants for boss encounter effects.
+ * Centralized here for easy adjustment and consistency.
+ */
+const ANIMATION_TIMING = {
+  HURT_DURATION_MS: 400,           // Duration of boss hurt animation
+  SCREEN_SHAKE_DURATION_MS: 300,   // Duration of screen shake effect
+  DAMAGE_NUMBER_FADE_MS: 800,      // Duration before damage numbers fade out
+  DEFEAT_ANIMATION_DELAY_MS: 800,  // Delay before showing victory screen
+  TIMER_TICK_INTERVAL_MS: 100,     // Timer countdown update interval
+  AMBIENT_PARTICLE_COUNT: 20,      // Number of ambient particles around boss
+  IMPACT_PARTICLE_COUNT_NORMAL: 15,// Particles on normal hit
+  IMPACT_PARTICLE_COUNT_CRIT: 25,  // Particles on critical hit
+};
+
+// =============================================================================
 // ANIMATIONS
 // =============================================================================
 
@@ -711,10 +730,15 @@ const ErrorText = styled.div`
 `;
 
 // =============================================================================
-// BOSS CONFIGURATION
+// BOSS VISUAL CONFIGURATION
 // =============================================================================
 
-const BOSS_CONFIG = {
+/**
+ * Visual-only boss configuration for particle effects and UI styling.
+ * Game balance values (health, rewards, etc.) come from the backend.
+ * This is intentionally separate from shared/balanceConstants.js.
+ */
+const BOSS_VISUAL_CONFIG = {
   essence_drake: {
     color: '#EF4444',
     icon: IconFlame,
@@ -740,6 +764,9 @@ const BOSS_CONFIG = {
     ambientParticles: true
   }
 };
+
+// Default visual config for unknown bosses
+const DEFAULT_BOSS_VISUAL = BOSS_VISUAL_CONFIG.essence_drake;
 
 // =============================================================================
 // PARTICLE SYSTEM
@@ -831,6 +858,9 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
   const totalClicksRef = useRef(totalClicks);
   totalClicksRef.current = totalClicks;
 
+  // Abort controller for API calls to prevent memory leaks and stale responses
+  const abortControllerRef = useRef(null);
+
   // Particle system refs
   const canvasRef = useRef(null);
   const pixiAppRef = useRef(null);
@@ -841,18 +871,30 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
   // Confetti for victory
   const { fire: fireConfetti, isActive: confettiActive } = useConfetti();
 
-  // Fetch boss info
+  // Fetch boss info with abort controller support
   const fetchBossInfo = useCallback(async () => {
+    // Cancel any pending fetch requests
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+    abortControllerRef.current = new AbortController();
+
     try {
       setLoading(true);
       setError(null);
       invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_BOSS_OPEN);
-      const response = await api.get('/essence-tap/boss');
+      const response = await api.get('/essence-tap/boss', {
+        signal: abortControllerRef.current.signal
+      });
       setBossInfo(response.data);
       clicksAtFetchRef.current = totalClicksRef.current;
       setVictory(null);
       setIsDefeating(false);
     } catch (err) {
+      // Don't show error for aborted requests
+      if (err.name === 'AbortError' || err.code === 'ERR_CANCELED') {
+        return;
+      }
       console.error('Failed to fetch boss info:', err);
       setError(t('essenceTap.boss.fetchError', { defaultValue: 'Failed to load boss data. Please try again.' }));
     } finally {
@@ -860,10 +902,21 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
     }
   }, [t]);
 
+  // Handle modal open/close and cleanup
   useEffect(() => {
     if (isOpen) {
       fetchBossInfo();
+    } else {
+      // Clear error state when modal closes to prevent stale errors on reopen
+      setError(null);
     }
+
+    // Cleanup: abort pending requests when modal closes or unmounts
+    return () => {
+      if (abortControllerRef.current) {
+        abortControllerRef.current.abort();
+      }
+    };
   }, [isOpen, fetchBossInfo]);
 
   // Live clicks until spawn calculation
@@ -895,9 +948,9 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
 
         // Initialize ambient particles if boss is active
         if (bossInfo?.active && bossInfo?.boss) {
-          const config = BOSS_CONFIG[bossInfo.boss.id] || BOSS_CONFIG.essence_drake;
+          const config = BOSS_VISUAL_CONFIG[bossInfo.boss.id] || DEFAULT_BOSS_VISUAL;
           if (config.ambientParticles) {
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < ANIMATION_TIMING.AMBIENT_PARTICLE_COUNT; i++) {
               const color = config.particleColors[Math.floor(Math.random() * config.particleColors.length)];
               ambientParticlesRef.current.push(new AmbientParticle(200, 200, 120, color));
             }
@@ -954,13 +1007,13 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
     const interval = setInterval(() => {
       setBossInfo(prev => {
         if (!prev?.active) return prev;
-        const newTime = Math.max(0, prev.timeRemaining - 100);
+        const newTime = Math.max(0, prev.timeRemaining - ANIMATION_TIMING.TIMER_TICK_INTERVAL_MS);
         if (newTime <= 0) {
           fetchBossInfo();
         }
         return { ...prev, timeRemaining: newTime };
       });
-    }, 100);
+    }, ANIMATION_TIMING.TIMER_TICK_INTERVAL_MS);
 
     return () => clearInterval(interval);
   }, [bossInfo?.active, fetchBossInfo]);
@@ -990,9 +1043,21 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
     }
   }, []);
 
-  // Handle attack
+  /**
+   * Handle attack on the boss.
+   * Race condition mitigation:
+   * - attackingRef prevents concurrent attacks from rapid clicks
+   * - Server is the source of truth for boss health (response.data.bossHealth)
+   * - Functional state updates (prev => ...) ensure fresh state during async operations
+   * - Server validates attack eligibility and returns authoritative state
+   */
   const handleAttack = useCallback(async () => {
-    if (attackingRef.current || (!bossInfo?.active && !bossInfo?.canSpawn)) return;
+    // Prevent concurrent attacks - this is the primary race condition guard
+    if (attackingRef.current) return;
+
+    // Early validation - use current ref values since bossInfo may be stale
+    if (!bossInfo?.active && !bossInfo?.canSpawn) return;
+
     attackingRef.current = true;
 
     try {
@@ -1015,9 +1080,9 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
 
           // Initialize ambient particles for new boss
           ambientParticlesRef.current = [];
-          const newConfig = BOSS_CONFIG[response.data.boss?.id] || BOSS_CONFIG.essence_drake;
+          const newConfig = BOSS_VISUAL_CONFIG[response.data.boss?.id] || DEFAULT_BOSS_VISUAL;
           if (newConfig.ambientParticles) {
-            for (let i = 0; i < 20; i++) {
+            for (let i = 0; i < ANIMATION_TIMING.AMBIENT_PARTICLE_COUNT; i++) {
               const color = newConfig.particleColors[Math.floor(Math.random() * newConfig.particleColors.length)];
               ambientParticlesRef.current.push(new AmbientParticle(200, 200, 120, color));
             }
@@ -1032,13 +1097,14 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
         setScreenShaking(true);
         triggerHaptic('medium');
 
-        setTimeout(() => setIsHurt(false), 400);
-        setTimeout(() => setScreenShaking(false), 300);
+        setTimeout(() => setIsHurt(false), ANIMATION_TIMING.HURT_DURATION_MS);
+        setTimeout(() => setScreenShaking(false), ANIMATION_TIMING.SCREEN_SHAKE_DURATION_MS);
 
         // Spawn particles
-        const config = bossInfo?.boss ? BOSS_CONFIG[bossInfo.boss.id] || BOSS_CONFIG.essence_drake : BOSS_CONFIG.essence_drake;
+        const config = bossInfo?.boss?.id ? BOSS_VISUAL_CONFIG[bossInfo.boss.id] || DEFAULT_BOSS_VISUAL : DEFAULT_BOSS_VISUAL;
         const isCrit = response.data.damageDealt > clickPower * 1.5;
-        spawnImpactParticles(200, 200, config.particleColors, isCrit ? 25 : 15, isCrit);
+        const particleCount = isCrit ? ANIMATION_TIMING.IMPACT_PARTICLE_COUNT_CRIT : ANIMATION_TIMING.IMPACT_PARTICLE_COUNT_NORMAL;
+        spawnImpactParticles(200, 200, config.particleColors, particleCount, isCrit);
 
         // Show damage number
         const id = nextDamageId.current++;
@@ -1056,7 +1122,7 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
 
         setTimeout(() => {
           setDamageNumbers(prev => prev.filter(d => d.id !== id));
-        }, 800);
+        }, ANIMATION_TIMING.DAMAGE_NUMBER_FADE_MS);
 
         // Handle boss defeat
         if (response.data.defeated) {
@@ -1070,7 +1136,7 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
             setVictory(response.data.rewards);
             fireConfetti();
             onBossDefeat?.(response.data.rewards);
-          }, 800);
+          }, ANIMATION_TIMING.DEFEAT_ANIMATION_DELAY_MS);
         } else {
           // Regular damage update
           setBossInfo(prev => ({
@@ -1101,7 +1167,7 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
 
   // Get boss visual config
   const getBossConfig = (bossId) => {
-    return BOSS_CONFIG[bossId] || BOSS_CONFIG.essence_drake;
+    return BOSS_VISUAL_CONFIG[bossId] || DEFAULT_BOSS_VISUAL;
   };
 
   if (!isOpen) return null;

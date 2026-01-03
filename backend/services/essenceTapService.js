@@ -34,6 +34,9 @@ const {
   deriveElement
 } = require('../config/essenceTap');
 
+// Import shared boss config - SINGLE SOURCE OF TRUTH
+const { ESSENCE_TAP_DISPLAY } = require('../../shared/balanceConstants');
+
 const _accountLevelService = require('./accountLevelService');
 
 /**
@@ -2965,86 +2968,16 @@ function claimDailyChallenge(state, challengeId) {
 // ===========================================
 
 /**
- * Boss configuration
+ * Boss configuration - uses shared constants as SINGLE SOURCE OF TRUTH
+ * See shared/balanceConstants.js ESSENCE_TAP_DISPLAY.boss for authoritative values
  */
 const BOSS_CONFIG = {
-  // Bosses spawn every X clicks during active play
-  spawnInterval: 500,
-
-  // Boss types with scaling difficulty
-  bosses: [
-    {
-      id: 'essence_drake',
-      name: 'Essence Drake',
-      tier: 1,
-      baseHealth: 10000,
-      timeLimit: 30000, // 30 seconds
-      rewards: {
-        essence: 50000,
-        fatePoints: 5,
-        xp: 25
-      },
-      elementWeakness: 'fire'
-    },
-    {
-      id: 'void_serpent',
-      name: 'Void Serpent',
-      tier: 2,
-      baseHealth: 50000,
-      timeLimit: 45000, // 45 seconds
-      rewards: {
-        essence: 250000,
-        fatePoints: 10,
-        rollTickets: 2,
-        xp: 50
-      },
-      elementWeakness: 'light'
-    },
-    {
-      id: 'arcane_titan',
-      name: 'Arcane Titan',
-      tier: 3,
-      baseHealth: 200000,
-      timeLimit: 60000, // 60 seconds
-      rewards: {
-        essence: 1000000,
-        fatePoints: 20,
-        rollTickets: 5,
-        xp: 100
-      },
-      elementWeakness: 'dark'
-    },
-    {
-      id: 'prismatic_dragon',
-      name: 'Prismatic Dragon',
-      tier: 4,
-      baseHealth: 1000000,
-      timeLimit: 90000, // 90 seconds
-      rewards: {
-        essence: 5000000,
-        fatePoints: 50,
-        rollTickets: 10,
-        prismaticEssence: 50,
-        xp: 250
-      },
-      elementWeakness: null // No weakness
-    }
-  ],
-
-  // Cooldown between boss encounters
-  cooldownMs: 300000, // 5 minutes
-
-  // Element weakness bonus damage
-  weaknessMultiplier: 2.0,
-
-  // Character rarity damage bonuses
-  rarityDamageBonus: {
-    common: 1.0,
-    uncommon: 1.1,
-    rare: 1.25,
-    epic: 1.5,
-    legendary: 2.0
-  }
+  // Use shared constants for all boss-related values
+  spawnInterval: ESSENCE_TAP_DISPLAY.boss.spawnInterval,
+  bosses: ESSENCE_TAP_DISPLAY.boss.tiers,
+  cooldownMs: ESSENCE_TAP_DISPLAY.boss.cooldownMs,
+  weaknessMultiplier: ESSENCE_TAP_DISPLAY.boss.weaknessMultiplier,
+  rarityDamageBonus: ESSENCE_TAP_DISPLAY.boss.rarityDamageBonus
 };
 
 /**

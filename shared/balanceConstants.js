@@ -37,7 +37,7 @@
  * ============================================================================
  */
 
-const BALANCE_VERSION = '10.0';  // v10.0: Essence Tap v3.0 rebalancing
+const BALANCE_VERSION = '11.0';  // v11.0: Boss config unification + code quality audit fixes
 
 // ===========================================
 // DOJO BALANCE CONSTANTS
@@ -285,6 +285,82 @@ const ESSENCE_TAP_DISPLAY = {
     cooldownMs: 14400000,       // v3.0: Was 1 hour (4 hours)
     maxEffectiveShards: 500,    // v3.0: Was 1000
     shardMultiplier: 0.02       // v3.0: Was 0.01 (2% per shard)
+  },
+
+  // Boss encounter config (v11.0 - SINGLE SOURCE OF TRUTH)
+  // These values MUST be used by both frontend and backend
+  boss: {
+    spawnInterval: 500,         // Clicks required between boss spawns
+    cooldownMs: 300000,         // 5 minutes between boss encounters
+    weaknessMultiplier: 2.0,    // Element weakness damage bonus
+    // Boss tiers with stats and rewards
+    tiers: [
+      {
+        id: 'essence_drake',
+        name: 'Essence Drake',
+        tier: 1,
+        baseHealth: 10000,
+        timeLimit: 30000,         // 30 seconds
+        elementWeakness: 'fire',
+        rewards: {
+          essence: 50000,
+          fatePoints: 5,
+          rollTickets: 1,
+          xp: 25
+        }
+      },
+      {
+        id: 'void_serpent',
+        name: 'Void Serpent',
+        tier: 2,
+        baseHealth: 50000,
+        timeLimit: 45000,         // 45 seconds
+        elementWeakness: 'light',
+        rewards: {
+          essence: 250000,
+          fatePoints: 10,
+          rollTickets: 2,
+          xp: 50
+        }
+      },
+      {
+        id: 'arcane_titan',
+        name: 'Arcane Titan',
+        tier: 3,
+        baseHealth: 200000,
+        timeLimit: 60000,         // 60 seconds
+        elementWeakness: 'dark',
+        rewards: {
+          essence: 1000000,
+          fatePoints: 20,
+          rollTickets: 5,
+          xp: 100
+        }
+      },
+      {
+        id: 'prismatic_dragon',
+        name: 'Prismatic Dragon',
+        tier: 4,
+        baseHealth: 1000000,
+        timeLimit: 90000,         // 90 seconds
+        elementWeakness: null,    // No weakness
+        rewards: {
+          essence: 5000000,
+          fatePoints: 50,
+          rollTickets: 10,
+          prismaticEssence: 50,
+          xp: 250
+        }
+      }
+    ],
+    // Character rarity damage bonuses
+    rarityDamageBonus: {
+      common: 1.0,
+      uncommon: 1.1,
+      rare: 1.25,
+      epic: 1.5,
+      legendary: 2.0
+    }
   }
 };
 
