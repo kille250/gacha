@@ -100,7 +100,8 @@ import {
 import { TbDiamond, TbDiamondFilled } from 'react-icons/tb';
 import { RiVipCrownFill, RiMedalFill, RiMedal2Fill } from 'react-icons/ri';
 import { BiSolidUpArrow } from 'react-icons/bi';
-import { MdGrade, Md18UpRating, MdKeyboardArrowUp, MdKeyboardArrowDown, MdArrowForward, MdArrowBack } from 'react-icons/md';
+import { MdGrade, Md18UpRating, MdKeyboardArrowUp, MdKeyboardArrowDown, MdArrowForward, MdArrowBack, MdTrendingUp } from 'react-icons/md';
+import { FaAward } from 'react-icons/fa6';
 import { HiSparkles } from 'react-icons/hi2';
 import { PiConfettiBold } from 'react-icons/pi';
 import { LuSwords } from 'react-icons/lu';
@@ -509,4 +510,10 @@ export const IconUpgrade = (props) => <GiUpgrade {...props} />;
 
 /** Crown/prestige icon */
 export const IconPrestige = (props) => <GiQueenCrown {...props} />;
+
+/** Trending up icon */
+export const IconTrendingUp = (props) => <MdTrendingUp {...props} />;
+
+/** Award/ribbon icon */
+export const IconAward = (props) => <FaAward {...props} />;
 
