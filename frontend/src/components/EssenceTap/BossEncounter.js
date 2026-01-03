@@ -182,19 +182,15 @@ const Overlay = styled(motion.div)`
 const ArenaContainer = styled(motion.div)`
   width: 100%;
   max-width: 600px;
-  max-height: 95vh;
   margin: ${theme.spacing.md};
   display: flex;
   flex-direction: column;
   align-items: center;
   position: relative;
-  overflow-y: auto;
-  overflow-x: hidden;
-  -webkit-overflow-scrolling: touch;
+  overflow: hidden;
 
   @media (max-width: ${theme.breakpoints.sm}) {
     margin: ${theme.spacing.sm};
-    max-height: 100vh;
     padding-bottom: env(safe-area-inset-bottom, 20px);
   }
 `;
