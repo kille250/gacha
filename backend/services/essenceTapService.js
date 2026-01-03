@@ -1607,7 +1607,10 @@ function resetDaily(state) {
       crits: 0,
       essenceEarned: 0,
       generatorsBought: 0,
-      completedChallenges: []
+      completedChallenges: [],
+      claimedChallenges: [],
+      gamblesUsed: 0,
+      ticketChallengesCompleted: 0
     }
   };
 }

@@ -299,15 +299,28 @@ async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
       }
     }
 
-    // Track crit streak - for batch taps, update based on crit count
-    // If we got crits, increment streak; if batch had any non-crits, reset streak
+    // Track crit streak - for batch taps, we need to handle mixed crit/non-crit batches
+    // Since we can't know the order of crits in a batch, we use a conservative approach:
+    // - If all taps were crits, add them all to the streak
+    // - If there were some crits but not all, add the crits first then reset
+    //   (this gives credit for the crits before the streak breaks)
     if (totalCrits === tapCount && tapCount > 0) {
+      // All crits - extend the streak
       state.sessionStats.critStreak = (state.sessionStats.critStreak || 0) + totalCrits;
       if (state.sessionStats.critStreak > (state.sessionStats.maxCritStreak || 0)) {
         state.sessionStats.maxCritStreak = state.sessionStats.critStreak;
       }
-    } else if (totalCrits < tapCount) {
-      // Had some non-crits, so streak is broken
+    } else if (totalCrits > 0 && totalCrits < tapCount) {
+      // Mixed batch - add crits to streak first, then reset
+      // This ensures max streak is properly tracked even in mixed batches
+      const newStreak = (state.sessionStats.critStreak || 0) + totalCrits;
+      if (newStreak > (state.sessionStats.maxCritStreak || 0)) {
+        state.sessionStats.maxCritStreak = newStreak;
+      }
+      // Then reset since we had non-crits
+      state.sessionStats.critStreak = 0;
+    } else if (totalCrits === 0 && tapCount > 0) {
+      // No crits at all - reset streak
       state.sessionStats.critStreak = 0;
     }
 

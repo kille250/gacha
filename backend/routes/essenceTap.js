@@ -472,17 +472,28 @@ router.post('/click', auth, async (req, res) => {
       }
     }
 
-    // Track crit streak - for batch clicks, update based on crit count
-    // If we got crits, increment streak; if batch had any non-crits, we can't track perfectly
-    // so we'll be conservative: only update if ALL clicks were crits, otherwise reset
+    // Track crit streak - for batch clicks, we need to handle mixed crit/non-crit batches
+    // Since we can't know the order of crits in a batch, we use a conservative approach:
+    // - If all clicks were crits, add them all to the streak
+    // - If there were some crits but not all, add the crits first then reset
+    //   (this gives credit for the crits before the streak breaks)
     if (totalCrits === clickCount && clickCount > 0) {
+      // All crits - extend the streak
       state.sessionStats.critStreak = (state.sessionStats.critStreak || 0) + totalCrits;
       if (state.sessionStats.critStreak > (state.sessionStats.maxCritStreak || 0)) {
         state.sessionStats.maxCritStreak = state.sessionStats.critStreak;
       }
-    } else if (totalCrits < clickCount) {
-      // Had some non-crits, so streak is broken - but count the trailing crits if any
-      // For simplicity, reset streak if not all crits (conservative approach)
+    } else if (totalCrits > 0 && totalCrits < clickCount) {
+      // Mixed batch - add crits to streak first, then reset
+      // This ensures max streak is properly tracked even in mixed batches
+      const newStreak = (state.sessionStats.critStreak || 0) + totalCrits;
+      if (newStreak > (state.sessionStats.maxCritStreak || 0)) {
+        state.sessionStats.maxCritStreak = newStreak;
+      }
+      // Then reset since we had non-crits
+      state.sessionStats.critStreak = 0;
+    } else if (totalCrits === 0 && clickCount > 0) {
+      // No crits at all - reset streak
       state.sessionStats.critStreak = 0;
     }
 
