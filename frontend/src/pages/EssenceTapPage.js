@@ -10,7 +10,7 @@
  * - Smooth animations throughout
  */
 
-import React, { useState, useCallback, useEffect, memo, useContext } from 'react';
+import React, { useState, useCallback, useEffect, memo, useContext, useMemo } from 'react';
 import styled from 'styled-components';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslation } from 'react-i18next';
@@ -256,6 +256,16 @@ const EssenceTapPage = memo(() => {
     wsConnectionState,
   } = useEssenceTap();
 
+  // Convert generators array to object keyed by id with owned counts
+  // This is needed for UpgradeList to check requiredOwned requirements
+  const generatorCounts = useMemo(() => {
+    if (!gameState?.generators) return {};
+    return gameState.generators.reduce((acc, gen) => {
+      acc[gen.id] = gen.owned || 0;
+      return acc;
+    }, {});
+  }, [gameState?.generators]);
+
   // Check if onboarding should be shown
   useEffect(() => {
     const onboardingComplete = localStorage.getItem(ONBOARDING_COMPLETE_KEY);
@@ -476,6 +486,8 @@ const EssenceTapPage = memo(() => {
               <UpgradeList
                 upgrades={gameState?.upgrades || {}}
                 essence={essence}
+                lifetimeEssence={lifetimeEssence}
+                generators={generatorCounts}
                 onPurchase={purchaseUpgrade}
                 isCollapsed={upgradesCollapsed}
                 onToggleCollapse={() => setUpgradesCollapsed(!upgradesCollapsed)}
@@ -621,6 +633,8 @@ const EssenceTapPage = memo(() => {
               <UpgradeList
                 upgrades={gameState?.upgrades || {}}
                 essence={essence}
+                lifetimeEssence={lifetimeEssence}
+                generators={generatorCounts}
                 onPurchase={purchaseUpgrade}
                 isCollapsed={false}
                 onToggleCollapse={() => {}}

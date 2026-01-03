@@ -364,9 +364,41 @@ const EmptyIcon = styled.div`
   opacity: 0.5;
 `;
 
+/**
+ * Enrich upgrade data with live computed values.
+ * This recalculates canAfford, unlocked, and meetsRequirements based on current
+ * essence, lifetimeEssence, and generator counts to fix stale cache issues.
+ *
+ * @param {Object} upgrade - The upgrade object from server
+ * @param {number} essence - Current essence (live)
+ * @param {number} lifetimeEssence - Lifetime essence (live)
+ * @param {Object} generators - Generator counts keyed by id { generatorId: count }
+ * @returns {Object} Upgrade with live computed values
+ */
+const enrichUpgrade = (upgrade, essence, lifetimeEssence, generators) => {
+  // Recalculate canAfford based on live essence
+  const canAfford = essence >= upgrade.cost;
+
+  // Recalculate unlocked based on live lifetime essence
+  const unlocked = !upgrade.unlockEssence || lifetimeEssence >= upgrade.unlockEssence;
+
+  // Recalculate meetsRequirements based on current generator counts
+  const meetsRequirements = !upgrade.requiredOwned ||
+    (generators[upgrade.generatorId] || 0) >= upgrade.requiredOwned;
+
+  return {
+    ...upgrade,
+    canAfford,
+    unlocked,
+    meetsRequirements
+  };
+};
+
 const UpgradeList = memo(({
   upgrades = {},
   essence = 0,
+  lifetimeEssence = 0,
+  generators = {},
   onPurchase,
   isCollapsed = false,
   onToggleCollapse
@@ -378,15 +410,23 @@ const UpgradeList = memo(({
   const handlePurchase = useCallback((upgrade) => {
     // Use live essence prop instead of stale upgrade.canAfford
     const canAffordNow = essence >= upgrade.cost;
-    if (upgrade.purchased || !canAffordNow || !upgrade.unlocked || !upgrade.meetsRequirements) {
+    // Also check live unlocked/meetsRequirements status
+    const unlockedNow = !upgrade.unlockEssence || lifetimeEssence >= upgrade.unlockEssence;
+    const meetsRequirementsNow = !upgrade.requiredOwned ||
+      (generators[upgrade.generatorId] || 0) >= upgrade.requiredOwned;
+
+    if (upgrade.purchased || !canAffordNow || !unlockedNow || !meetsRequirementsNow) {
       return;
     }
     setJustPurchased(upgrade.id);
     setTimeout(() => setJustPurchased(null), 300);
     onPurchase?.(upgrade.id);
-  }, [onPurchase, essence]);
+  }, [onPurchase, essence, lifetimeEssence, generators]);
 
-  const currentUpgrades = upgrades[activeTab] || [];
+  // Enrich current upgrades with live computed values
+  const currentUpgrades = (upgrades[activeTab] || []).map(upgrade =>
+    enrichUpgrade(upgrade, essence, lifetimeEssence, generators)
+  );
   const activeTabConfig = TABS.find(t => t.id === activeTab);
 
   // Sort: available first, then purchased, then locked
