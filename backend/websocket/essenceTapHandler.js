@@ -8,6 +8,7 @@
 const jwt = require('jsonwebtoken');
 const { User, UserCharacter, sequelize } = require('../models');
 const essenceTapService = require('../services/essenceTapService');
+const { GAME_CONFIG } = require('../config/essenceTap');
 
 // ===========================================
 // CONFIGURATION
@@ -29,6 +30,9 @@ const CONFIG = {
 
   // Sync intervals
   FULL_SYNC_INTERVAL_MS: 60000,    // Full state sync every 60 seconds
+
+  // Combo validation - max multiplier from game config (default 2.5)
+  MAX_COMBO_MULTIPLIER: GAME_CONFIG.comboMaxMultiplier || 2.5
 };
 
 // ===========================================
@@ -186,7 +190,7 @@ async function acquireBatchLock(userId) {
  * Process batched taps atomically
  * BUG #1 FIX: Now uses batch lock to prevent race conditions
  */
-async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
+async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
   // Acquire lock to prevent race conditions with concurrent tab submissions
   const releaseLock = await acquireBatchLock(userId);
 
@@ -217,12 +221,18 @@ async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
       element: uc.Character?.element || 'neutral'
     }));
 
+    // Check burning hour status for tournament bonus
+    const burningHourStatus = essenceTapService.getBurningHourStatus();
+    const burningHourActive = burningHourStatus?.isActive || false;
+
     // Apply passive gains
     const passiveResult = calculatePassiveGains(state, characters);
     if (passiveResult.gains > 0) {
       state.essence = (state.essence || 0) + passiveResult.gains;
       state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-      const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+      const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains, {
+        burningHourActive
+      });
       state = weeklyResult.newState;
     }
 
@@ -257,8 +267,10 @@ async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
     state.stats = state.stats || {};
     state.stats.goldenEssenceClicks = (state.stats.goldenEssenceClicks || 0) + goldenClicks;
 
-    // Update weekly tournament progress
-    const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence);
+    // Update weekly tournament progress with burning hour bonus if active
+    const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence, {
+      burningHourActive
+    });
     state = weeklyTournamentResult.newState;
 
     // Update essence types
@@ -343,12 +355,18 @@ async function getFullState(userId) {
       element: uc.Character?.element || 'neutral'
     }));
 
+    // Check burning hour status for tournament bonus
+    const burningHourStatus = essenceTapService.getBurningHourStatus();
+    const burningHourActive = burningHourStatus?.isActive || false;
+
     // Apply passive gains
     const passiveResult = calculatePassiveGains(state, characters);
     if (passiveResult.gains > 0) {
       state.essence = (state.essence || 0) + passiveResult.gains;
       state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveResult.gains;
-      const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains);
+      const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveResult.gains, {
+        burningHourActive
+      });
       state = weeklyResult.newState;
       state.lastOnlineTimestamp = passiveResult.newTimestamp;
 
@@ -407,7 +425,7 @@ function initEssenceTapWebSocket(io) {
 
       socket.user = user;
       next();
-    } catch (err) {
+    } catch (_err) {
       next(new Error('Authentication failed'));
     }
   });
@@ -470,6 +488,13 @@ function initEssenceTapWebSocket(io) {
       // Normalize to array for consistent handling
       const incomingSeqs = clientSeqs || (clientSeq !== undefined ? [clientSeq] : []);
 
+      // SECURITY: Validate and clamp combo multiplier to prevent exploitation
+      // Combo multiplier must be between 1 and the configured max (default 2.5)
+      const validatedComboMultiplier = Math.min(
+        Math.max(1, Number(comboMultiplier) || 1),
+        CONFIG.MAX_COMBO_MULTIPLIER
+      );
+
       // Rate limit check
       const rateCheck = checkTapRateLimit(userId, tapCount);
       if (!rateCheck.allowed) {
@@ -487,7 +512,7 @@ function initEssenceTapWebSocket(io) {
       if (!batch) {
         batch = {
           taps: 0,
-          comboMultiplier,
+          comboMultiplier: validatedComboMultiplier,
           timer: null,
           clientSeqs: [],
           startTime: Date.now()
@@ -497,7 +522,8 @@ function initEssenceTapWebSocket(io) {
 
       // Add to batch
       batch.taps += tapCount;
-      batch.comboMultiplier = Math.max(batch.comboMultiplier, comboMultiplier);
+      // Use validated multiplier, take max of current batch and incoming (both already validated)
+      batch.comboMultiplier = Math.max(batch.comboMultiplier, validatedComboMultiplier);
       // Add all incoming sequence numbers to the batch
       if (incomingSeqs.length > 0) {
         batch.clientSeqs.push(...incomingSeqs);
@@ -599,7 +625,7 @@ function initEssenceTapWebSocket(io) {
     // VISIBILITY CHANGE HANDLERS
     // ===========================================
 
-    socket.on('visibility_hidden', async (data) => {
+    socket.on('visibility_hidden', async (_data) => {
       // User's tab was hidden (alt+tab, minimize, switch tabs)
       // Save the current state and timestamp for offline calculation
       console.log(`[EssenceTap WS] Player "${username}" tab hidden`);
@@ -628,7 +654,7 @@ function initEssenceTapWebSocket(io) {
 
     socket.on('visibility_visible', async (data) => {
       // User's tab became visible again after being hidden
-      const { hiddenSince, hiddenDuration } = data || {};
+      const { hiddenDuration } = data || {};
       console.log(`[EssenceTap WS] Player "${username}" tab visible (hidden for ${Math.round((hiddenDuration || 0) / 1000)}s)`);
 
       // Get fresh state with offline earnings calculated

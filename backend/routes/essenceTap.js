@@ -2574,7 +2574,7 @@ router.post('/sync-on-leave', async (req, res) => {
       token,
       pendingTaps = 0,
       pendingActions = [],
-      finalEssence,
+      finalEssence: _finalEssence,
       timestamp,
       lastConfirmedSeq = 0
     } = req.body;
@@ -2724,7 +2724,7 @@ router.post('/initialize', auth, async (req, res) => {
   const {
     pendingActions = [],
     clientTimestamp,
-    lastKnownEssence,
+    lastKnownEssence: _lastKnownEssence,
     lastKnownTimestamp
   } = req.body;
 
