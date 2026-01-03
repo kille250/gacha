@@ -1370,6 +1370,9 @@ router.post('/reset-account', [auth, lockoutMiddleware(), enforcementMiddleware,
     };
     user.fortuneWheelHistory = [];
 
+    // Reset Essence Tap clicker game
+    user.essenceTap = null;
+
     await user.save();
     
     // SECURITY: Clear failed attempts only AFTER successful save
