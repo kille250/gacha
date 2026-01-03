@@ -268,14 +268,21 @@ const BossTierBadge = styled.div`
 const BossArena = styled.div`
   position: relative;
   width: 100%;
+  min-height: 320px;
   display: flex;
   flex-direction: column;
   align-items: center;
-  padding: ${theme.spacing.lg} 0;
+  justify-content: center;
+  padding: ${theme.spacing.xl} 0;
+
+  @media (max-width: ${theme.breakpoints.sm}) {
+    min-height: 280px;
+    padding: ${theme.spacing.lg} 0;
+  }
 `;
 
 const TimerRing = styled.div`
-  position: absolute;
+  position: relative;
   width: 280px;
   height: 280px;
   border-radius: 50%;
@@ -406,12 +413,12 @@ const WeaknessDisplay = styled(motion.div)`
   display: flex;
   align-items: center;
   gap: ${theme.spacing.sm};
-  margin-top: ${theme.spacing.lg};
-  padding: ${theme.spacing.sm} ${theme.spacing.lg};
-  background: rgba(0, 0, 0, 0.5);
+  margin-top: ${theme.spacing.md};
+  padding: ${theme.spacing.xs} ${theme.spacing.md};
+  background: rgba(0, 0, 0, 0.7);
   border-radius: ${theme.radius.full};
   border: 1px solid ${props => props.$color || 'rgba(255, 255, 255, 0.2)'};
-  font-size: ${theme.fontSizes.sm};
+  font-size: ${theme.fontSizes.xs};
   color: ${theme.colors.textSecondary};
   z-index: 2;
 `;
@@ -428,7 +435,7 @@ const HealthSection = styled.div`
   width: 100%;
   max-width: 450px;
   padding: 0 ${theme.spacing.md};
-  margin-top: ${theme.spacing.xl};
+  margin-top: ${theme.spacing.lg};
   z-index: 2;
 `;
 
@@ -998,7 +1005,33 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
       if (response.data.success) {
         invalidateFor(CACHE_ACTIONS.ESSENCE_TAP_BOSS_ATTACK);
 
-        // Visual feedback
+        // Handle boss spawn (when clicking "Start Fight")
+        if (response.data.bossSpawned) {
+          const newBossData = {
+            active: true,
+            boss: response.data.boss,
+            currentHealth: response.data.bossHealth,
+            maxHealth: response.data.bossHealth,
+            timeRemaining: response.data.boss?.timeLimit || 30000
+          };
+          setBossInfo(newBossData);
+          onBossSpawn?.();
+
+          // Initialize ambient particles for new boss
+          ambientParticlesRef.current = [];
+          const newConfig = BOSS_CONFIG[response.data.boss?.id] || BOSS_CONFIG.essence_drake;
+          if (newConfig.ambientParticles) {
+            for (let i = 0; i < 20; i++) {
+              const color = newConfig.particleColors[Math.floor(Math.random() * newConfig.particleColors.length)];
+              ambientParticlesRef.current.push(new AmbientParticle(200, 200, 120, color));
+            }
+          }
+          // Don't show damage effects for spawn, just return
+          attackingRef.current = false;
+          return;
+        }
+
+        // Visual feedback for actual attacks
         setIsHurt(true);
         setScreenShaking(true);
         triggerHaptic('medium');
@@ -1029,7 +1062,7 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
           setDamageNumbers(prev => prev.filter(d => d.id !== id));
         }, 800);
 
-        // Handle boss state changes
+        // Handle boss defeat
         if (response.data.defeated) {
           setIsDefeating(true);
           triggerHaptic('heavy');
@@ -1042,26 +1075,8 @@ const BossEncounter = memo(({ isOpen, onClose, clickPower = 1, totalClicks = 0, 
             fireConfetti();
             onBossDefeat?.(response.data.rewards);
           }, 800);
-        } else if (response.data.bossSpawned) {
-          setBossInfo({
-            active: true,
-            boss: response.data.boss,
-            currentHealth: response.data.bossHealth,
-            maxHealth: response.data.bossHealth,
-            timeRemaining: response.data.boss?.timeLimit || 30000
-          });
-          onBossSpawn?.();
-
-          // Reinitialize ambient particles for new boss
-          ambientParticlesRef.current = [];
-          const newConfig = BOSS_CONFIG[response.data.boss?.id] || BOSS_CONFIG.essence_drake;
-          if (newConfig.ambientParticles) {
-            for (let i = 0; i < 20; i++) {
-              const color = newConfig.particleColors[Math.floor(Math.random() * newConfig.particleColors.length)];
-              ambientParticlesRef.current.push(new AmbientParticle(200, 200, 120, color));
-            }
-          }
         } else {
+          // Regular damage update
           setBossInfo(prev => ({
             ...prev,
             currentHealth: response.data.bossHealth
