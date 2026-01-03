@@ -2111,14 +2111,23 @@ router.post('/boss/attack', auth, async (req, res) => {
     await user.save({ transaction });
     await transaction.commit();
 
-    res.json({
+    // Build response object
+    const response = {
       success: true,
       damageDealt: result.damageDealt,
       bossHealth: result.bossHealth,
       defeated: result.defeated,
       rewards: result.rewards,
       nextBossIn: result.nextBossIn
-    });
+    };
+
+    // Include boss spawn data if a new boss was spawned
+    if (result.bossSpawned) {
+      response.bossSpawned = true;
+      response.boss = result.boss;
+    }
+
+    res.json(response);
   } catch (error) {
     await transaction.rollback();
     console.error('Error attacking boss:', error);
