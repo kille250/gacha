@@ -267,6 +267,50 @@ async function processTapBatch(userId, tapCount, comboMultiplier, _namespace) {
     state.stats = state.stats || {};
     state.stats.goldenEssenceClicks = (state.stats.goldenEssenceClicks || 0) + goldenClicks;
 
+    // Update session stats for mini-milestones
+    if (!state.sessionStats) {
+      state.sessionStats = {
+        sessionStartTime: Date.now(),
+        sessionEssence: 0,
+        currentCombo: 0,
+        maxCombo: 0,
+        critStreak: 0,
+        maxCritStreak: 0,
+        claimedSessionMilestones: [],
+        claimedComboMilestones: [],
+        claimedCritMilestones: []
+      };
+    }
+    if (!state.sessionStats.sessionStartTime) {
+      state.sessionStats.sessionStartTime = Date.now();
+    }
+
+    // Track session essence
+    state.sessionStats.sessionEssence = (state.sessionStats.sessionEssence || 0) + totalEssence;
+
+    // Derive combo count from multiplier and track max combo
+    // comboMultiplier = 1 + (comboCount * 0.08), so comboCount = (comboMultiplier - 1) / 0.08
+    const comboGrowthRate = GAME_CONFIG.comboGrowthRate || 0.08;
+    const derivedComboCount = Math.round((comboMultiplier - 1) / comboGrowthRate);
+    if (derivedComboCount > 0) {
+      state.sessionStats.currentCombo = derivedComboCount;
+      if (derivedComboCount > (state.sessionStats.maxCombo || 0)) {
+        state.sessionStats.maxCombo = derivedComboCount;
+      }
+    }
+
+    // Track crit streak - for batch taps, update based on crit count
+    // If we got crits, increment streak; if batch had any non-crits, reset streak
+    if (totalCrits === tapCount && tapCount > 0) {
+      state.sessionStats.critStreak = (state.sessionStats.critStreak || 0) + totalCrits;
+      if (state.sessionStats.critStreak > (state.sessionStats.maxCritStreak || 0)) {
+        state.sessionStats.maxCritStreak = state.sessionStats.critStreak;
+      }
+    } else if (totalCrits < tapCount) {
+      // Had some non-crits, so streak is broken
+      state.sessionStats.critStreak = 0;
+    }
+
     // Update weekly tournament progress with burning hour bonus if active
     const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence, {
       burningHourActive
