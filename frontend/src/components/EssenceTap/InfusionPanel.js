@@ -236,16 +236,19 @@ const InfusionPanel = memo(({
 
   // Calculate infusion values from gameState using shared config
   const infusionCount = gameState?.infusion?.count || 0;
-  const currentBonus = gameState?.infusion?.totalBonus || 0;
+  const currentBonus = gameState?.infusion?.bonus || 0;
   const nextBonus = INFUSION_CONFIG.bonusPerInfusion;
-  const costMultiplier = Math.pow(INFUSION_CONFIG.costMultiplier, infusionCount);
-  const nextCost = Math.floor(INFUSION_CONFIG.baseCost * costMultiplier);
+
+  // Cost is a percentage of current essence (matches backend logic)
   const costPercent = Math.min(
     INFUSION_CONFIG.maxCostPercent,
-    INFUSION_CONFIG.baseCostPercent + infusionCount * INFUSION_CONFIG.costPercentIncrease
+    INFUSION_CONFIG.baseCostPercent + infusionCount * INFUSION_CONFIG.costIncreasePerUse
   );
+  const nextCost = Math.floor(essence * costPercent);
 
-  const canAfford = essence >= nextCost;
+  // Can afford if we have enough essence AND the cost meets minimum threshold
+  const meetsMinimum = nextCost >= INFUSION_CONFIG.minimumEssence;
+  const canAfford = essence >= nextCost && meetsMinimum;
   const canInfuse = canAfford && !loading;
 
   const handleInfuse = useCallback(async () => {
@@ -374,12 +377,12 @@ const InfusionPanel = memo(({
               <InfoLabel>{t('essenceTap.infusion.perInfusion', { defaultValue: 'Per Infusion' })}</InfoLabel>
             </InfoItem>
             <InfoItem>
-              <InfoValue $color="#FCD34D">{costPercent}%</InfoValue>
+              <InfoValue $color="#FCD34D">{(costPercent * 100).toFixed(0)}%</InfoValue>
               <InfoLabel>{t('essenceTap.infusion.costPercent', { defaultValue: 'Cost (% of Essence)' })}</InfoLabel>
             </InfoItem>
             <InfoItem>
-              <InfoValue $color="#EC4899">x1.5</InfoValue>
-              <InfoLabel>{t('essenceTap.infusion.costMultiplier', { defaultValue: 'Cost Multiplier' })}</InfoLabel>
+              <InfoValue $color="#EC4899">+{(INFUSION_CONFIG.costIncreasePerUse * 100).toFixed(0)}%</InfoValue>
+              <InfoLabel>{t('essenceTap.infusion.costIncrease', { defaultValue: 'Cost Increase/Use' })}</InfoLabel>
             </InfoItem>
           </InfoGrid>
         </Container>
@@ -396,9 +399,14 @@ const InfusionPanel = memo(({
         >
           {loading
             ? t('common.loading', { defaultValue: 'Loading...' })
-            : canAfford
-              ? t('essenceTap.infusion.infuse', { defaultValue: 'Infuse!' })
-              : t('essenceTap.infusion.notEnough', { defaultValue: 'Not Enough Essence' })}
+            : !meetsMinimum
+              ? t('essenceTap.infusion.needMinimum', {
+                  minimum: formatNumber(INFUSION_CONFIG.minimumEssence),
+                  defaultValue: `Need ${formatNumber(INFUSION_CONFIG.minimumEssence)} min`
+                })
+              : canAfford
+                ? t('essenceTap.infusion.infuse', { defaultValue: 'Infuse!' })
+                : t('essenceTap.infusion.notEnough', { defaultValue: 'Not Enough Essence' })}
         </Button>
       </ModalFooter>
     </Modal>
