@@ -11,7 +11,7 @@ const {
 
 /**
  * Get the initial state for a new player
- * @returns {import('../../../../shared/types/essenceTap.types').EssenceTapState}
+ * @returns {import('../../../../shared/types/essenceTap').EssenceTapState}
  */
 function getInitialState() {
   return {

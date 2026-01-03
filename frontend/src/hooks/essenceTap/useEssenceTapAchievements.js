@@ -1,7 +1,18 @@
 /**
  * useEssenceTapAchievements - Achievement tracking hook
  *
- * Manages achievement tracking, checking, and notifications.
+ * Manages achievement tracking, checking, and notifications for Essence Tap.
+ *
+ * Features:
+ * - Tracks achievement progress (clicks, golden essence, combos, crits, etc.)
+ * - Checks for newly unlocked achievements
+ * - Displays achievement notifications
+ * - Prevents duplicate achievement notifications
+ * - Initializes from server state to avoid re-triggering
+ *
+ * @param {Object} options - Hook options
+ * @param {function} options.playSound - Sound effect callback for achievements
+ * @returns {Object} Achievement state and handlers
  */
 
 import { useState, useCallback, useRef } from 'react';

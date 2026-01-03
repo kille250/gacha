@@ -20,9 +20,9 @@ const { broadcastToUser } = require('./utils/broadcast');
 const { getNextSequence } = require('./utils/sequence');
 
 /**
- * @typedef {import('../../../shared/types/essenceTap.types').HandlerOptions} HandlerOptions
- * @typedef {import('../../../shared/types/essenceTap.types').HandlerContext} HandlerContext
- * @typedef {import('../../../shared/types/essenceTap.types').HandlerResult} HandlerResult
+ * @typedef {import('../../../shared/types/essenceTap').HandlerOptions} HandlerOptions
+ * @typedef {import('../../../shared/types/essenceTap').HandlerContext} HandlerContext
+ * @typedef {import('../../../shared/types/essenceTap').HandlerResult} HandlerResult
  */
 
 /**

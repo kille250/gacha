@@ -3,6 +3,23 @@
  *
  * Manages the core game state including essence, generators, upgrades,
  * and provides utilities for state updates.
+ *
+ * Features:
+ * - Core game state (essence, generators, upgrades, etc.)
+ * - Local state for smooth optimistic UI updates
+ * - Loading and error states
+ * - State synchronization with server
+ * - Delta update application
+ * - Full state reset
+ *
+ * State Refs:
+ * - localEssenceRef: Current local essence value (without re-renders)
+ * - localLifetimeEssenceRef: Current lifetime essence value
+ * - lastSyncEssenceRef: Last synced server essence value
+ * - lastSyncTimeRef: Timestamp of last sync
+ * - pendingEssenceRef: Pending essence not yet saved to server
+ *
+ * @returns {Object} State values, refs, setters, and utility functions
  */
 
 import { useState, useCallback, useRef } from 'react';

@@ -2,12 +2,20 @@
  * Essence Tap Service - Main Entry Point
  *
  * Re-exports all domain services for backward compatibility.
- * New code should import from specific domain modules.
+ * New code should import from specific domain modules or the domains index.
  *
  * Module Structure:
  *   - calculations/  - Pure calculation functions (no side effects)
  *   - core/          - Core services (state, stats, tap)
- *   - *Service.js    - Domain-specific services
+ *   - domains/       - Domain services organized by feature (RECOMMENDED)
+ *   - *Service.js    - Legacy domain-specific services (for backward compatibility)
+ *
+ * Recommended Import Patterns:
+ *   // New code - use domains
+ *   const { click, generator, prestige } = require('./services/essenceTap/domains');
+ *
+ *   // Legacy code - direct imports still work
+ *   const essenceTap = require('./services/essenceTap');
  */
 
 // Pure calculation functions
@@ -18,7 +26,10 @@ const stateService = require('./core/state.service');
 const statsService = require('./core/stats.service');
 const tapService = require('./core/tap.service');
 
-// Domain services
+// Domain services (organized by feature)
+const domains = require('./domains');
+
+// Individual domain services (for backward compatibility)
 const clickService = require('./clickService');
 const generatorService = require('./generatorService');
 const upgradeService = require('./upgradeService');
@@ -30,7 +41,23 @@ const characterService = require('./characterService');
 const legacyService = require('../essenceTapService');
 
 module.exports = {
-  // Core state management
+  // ========================================
+  // RECOMMENDED: Domain-based API
+  // ========================================
+  // Use these for new code - organized by game feature
+  domains,
+
+  // Quick access to domain services (same as domains.click, domains.generator, etc.)
+  click: domains.click,
+  generator: domains.generator,
+  upgrade: domains.upgrade,
+  prestige: domains.prestige,
+  character: domains.character,
+
+  // ========================================
+  // CORE SERVICES
+  // ========================================
+  // State management
   getInitialState: stateService.getInitialState,
   resetDaily: stateService.resetDaily,
   getCurrentISOWeek: stateService.getCurrentISOWeek,
@@ -52,8 +79,11 @@ module.exports = {
   processMultipleTaps: tapService.processMultipleTaps,
   checkTapChallenges: tapService.checkTapChallenges,
 
-  // Forward all other functions to legacy service
-  // These will be migrated to domain modules over time
+  // ========================================
+  // LEGACY API (Backward Compatibility)
+  // ========================================
+  // These forward to the legacy service for features not yet refactored
+  // Will be migrated to domain modules over time
   purchaseGenerator: legacyService.purchaseGenerator,
   getGeneratorInfo: legacyService.getGeneratorInfo,
   getAvailableGenerators: legacyService.getAvailableGenerators,
@@ -66,7 +96,7 @@ module.exports = {
   processActiveAbilities: legacyService.processActiveAbilities,
   getAbilityInfo: legacyService.getAbilityInfo,
 
-  prestige: legacyService.prestige,
+  // Note: prestige domain exposed above via domains.prestige
   getPrestigeInfo: legacyService.getPrestigeInfo,
   purchasePrestigeUpgrade: legacyService.purchasePrestigeUpgrade,
   calculatePrestigeRewards: legacyService.calculatePrestigeRewards,
@@ -108,15 +138,20 @@ module.exports = {
 
   getGameConfig: legacyService.getGameConfig,
 
-  // New modular services - prefer these for new code
+  // ========================================
+  // UTILITIES & CALCULATIONS
+  // ========================================
+  // Calculation modules
   calculations,
+
+  // Legacy service modules (still available for backward compatibility)
   clickService,
   generatorService,
   upgradeService,
   prestigeService,
   characterService,
 
-  // Re-export key calculation functions at top level
+  // Common calculation functions re-exported at top level
   formatNumber: calculations.formatNumber,
   formatPerSecond: calculations.formatPerSecond,
   calculatePrestigeShards: calculations.calculatePrestigeShards,

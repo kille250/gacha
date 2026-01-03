@@ -181,6 +181,47 @@ function mergeWithDefaults(target = {}, defaults = {}) {
   return result;
 }
 
+/**
+ * Derive element for characters without an explicitly set element
+ * Uses a deterministic algorithm based on character properties
+ *
+ * @param {number} characterId - The character's database ID
+ * @param {string} rarity - The character's rarity (common, uncommon, rare, epic, legendary)
+ * @returns {string} The derived element (fire, water, earth, air, light, dark, neutral)
+ */
+function deriveElement(characterId, rarity = 'common') {
+  // Element derivation configuration
+  const ELEMENT_DERIVATION = {
+    // Element weights by rarity (some rarities favor certain elements)
+    rarityWeights: {
+      common: { neutral: 0.40, fire: 0.12, water: 0.12, earth: 0.12, air: 0.12, light: 0.06, dark: 0.06 },
+      uncommon: { neutral: 0.30, fire: 0.14, water: 0.14, earth: 0.14, air: 0.14, light: 0.07, dark: 0.07 },
+      rare: { neutral: 0.20, fire: 0.16, water: 0.16, earth: 0.16, air: 0.16, light: 0.08, dark: 0.08 },
+      epic: { neutral: 0.15, fire: 0.15, water: 0.15, earth: 0.15, air: 0.15, light: 0.125, dark: 0.125 },
+      legendary: { neutral: 0.10, fire: 0.15, water: 0.15, earth: 0.15, air: 0.15, light: 0.15, dark: 0.15 }
+    },
+    fallbackElement: 'neutral'
+  };
+
+  const elements = ['fire', 'water', 'earth', 'air', 'light', 'dark', 'neutral'];
+  const weights = ELEMENT_DERIVATION.rarityWeights[rarity] || ELEMENT_DERIVATION.rarityWeights.common;
+
+  // Use character ID as seed for deterministic element
+  // This ensures the same character always gets the same element
+  const seed = characterId * 2654435761 % 4294967296;
+  const normalized = seed / 4294967296;
+
+  let cumulative = 0;
+  for (const element of elements) {
+    cumulative += weights[element];
+    if (normalized < cumulative) {
+      return element;
+    }
+  }
+
+  return ELEMENT_DERIVATION.fallbackElement;
+}
+
 module.exports = {
   formatNumber,
   formatPerSecond,
@@ -193,5 +234,6 @@ module.exports = {
   safeParsePositiveInt,
   calculatePercentage,
   deepClone,
-  mergeWithDefaults
+  mergeWithDefaults,
+  deriveElement
 };
