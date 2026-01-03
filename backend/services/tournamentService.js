@@ -98,6 +98,16 @@ function getHoursUntilEnd() {
   return Math.max(0, (endDate - now) / (1000 * 60 * 60));
 }
 
+/**
+ * Get current ISO weekday (1=Monday, 7=Sunday)
+ * @returns {number} Day of week (1-7)
+ */
+function getCurrentISOWeekday() {
+  const day = new Date().getUTCDay();
+  // Convert from JS (0=Sunday, 1=Monday, ..., 6=Saturday) to ISO (1=Monday, ..., 7=Sunday)
+  return day === 0 ? 7 : day;
+}
+
 // ===========================================
 // BRACKET MANAGEMENT
 // ===========================================
@@ -339,13 +349,20 @@ function getBurningHourStatus(schedule) {
  * @returns {Array} Checkpoint status array
  */
 function getCheckpointStatus(essenceEarned, checkpointsClaimed = []) {
-  return DAILY_CHECKPOINTS.checkpoints.map(checkpoint => ({
-    ...checkpoint,
-    achieved: essenceEarned >= checkpoint.cumulativeTarget,
-    claimed: checkpointsClaimed.includes(checkpoint.day),
-    claimable: essenceEarned >= checkpoint.cumulativeTarget && !checkpointsClaimed.includes(checkpoint.day),
-    progress: Math.min(1, essenceEarned / checkpoint.cumulativeTarget)
-  }));
+  const currentDay = getCurrentISOWeekday();
+  return DAILY_CHECKPOINTS.checkpoints.map(checkpoint => {
+    const targetReached = essenceEarned >= checkpoint.cumulativeTarget;
+    const alreadyClaimed = checkpointsClaimed.includes(checkpoint.day);
+    const dayUnlocked = currentDay >= checkpoint.day;
+    return {
+      ...checkpoint,
+      achieved: targetReached,
+      claimed: alreadyClaimed,
+      claimable: targetReached && !alreadyClaimed && dayUnlocked,
+      locked: !dayUnlocked,
+      progress: Math.min(1, essenceEarned / checkpoint.cumulativeTarget)
+    };
+  });
 }
 
 /**
@@ -359,6 +376,12 @@ function claimCheckpoint(state, day) {
 
   if (!checkpoint) {
     return { success: false, error: 'Invalid checkpoint day' };
+  }
+
+  // Check if the day has been reached (1=Monday, 7=Sunday)
+  const currentDay = getCurrentISOWeekday();
+  if (currentDay < day) {
+    return { success: false, error: 'Checkpoint not yet available' };
   }
 
   if (state.essenceEarned < checkpoint.cumulativeTarget) {
