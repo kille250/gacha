@@ -132,8 +132,10 @@ const NavIcon = styled.div`
 const Tooltip = styled(motion.div)`
   position: absolute;
   bottom: calc(100% + 10px);
-  left: 50%;
-  transform: translateX(-50%);
+  left: 0;
+  right: 0;
+  margin: 0 auto;
+  width: fit-content;
   background: rgba(20, 20, 25, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.15);
   border-radius: ${theme.radius.md};
