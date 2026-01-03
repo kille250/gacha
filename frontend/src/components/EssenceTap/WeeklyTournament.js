@@ -828,12 +828,24 @@ const WeeklyTournament = memo(({
     : 100;
 
   // Get checkpoints
-  const checkpoints = tournamentInfo?.checkpoints || DAILY_CHECKPOINTS.map(cp => ({
-    ...cp,
-    achieved: weeklyEssence >= cp.cumulativeTarget,
-    claimed: false,
-    claimable: weeklyEssence >= cp.cumulativeTarget
-  }));
+  // Get current ISO weekday (1=Monday, 7=Sunday)
+  const getCurrentISOWeekday = () => {
+    const day = new Date().getUTCDay();
+    return day === 0 ? 7 : day;
+  };
+  const currentWeekday = getCurrentISOWeekday();
+
+  const checkpoints = tournamentInfo?.checkpoints || DAILY_CHECKPOINTS.map(cp => {
+    const targetReached = weeklyEssence >= cp.cumulativeTarget;
+    const dayUnlocked = currentWeekday >= cp.day;
+    return {
+      ...cp,
+      achieved: targetReached,
+      claimed: false,
+      claimable: targetReached && dayUnlocked,
+      locked: !dayUnlocked
+    };
+  });
   const claimableCheckpoints = checkpoints.filter(c => c.claimable && !c.claimed);
 
   // Streak info
@@ -939,13 +951,16 @@ const WeeklyTournament = memo(({
               $achieved={cp.achieved}
               $claimed={cp.claimed}
               $claimable={cp.claimable && !cp.claimed}
+              $locked={cp.locked}
               onClick={() => cp.claimable && !cp.claimed && handleClaimCheckpoint(cp.day)}
-              disabled={claimingCheckpoint === cp.day}
+              disabled={claimingCheckpoint === cp.day || cp.locked}
             >
               {cp.claimed ? (
                 <IconCheck size={16} color="#10B981" />
               ) : cp.claimable ? (
                 <IconGift size={16} color="#FCD34D" />
+              ) : cp.achieved && cp.locked ? (
+                <IconClock size={14} color="#A855F7" />
               ) : cp.achieved ? (
                 <IconCheck size={14} color="#A855F7" />
               ) : (
