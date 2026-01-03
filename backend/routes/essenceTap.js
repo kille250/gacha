@@ -1203,7 +1203,13 @@ router.post('/gamble', auth, async (req, res) => {
           if (jackpotRewards.fatePoints) {
             const fpResult = essenceTapService.applyFPWithCap(result.newState, jackpotRewards.fatePoints, 'jackpot');
             result.newState = fpResult.newState;
-            user.fatePoints = (user.fatePoints || 0) + fpResult.appliedFP;
+            // Award Fate Points with correct object structure
+            if (fpResult.actualFP > 0) {
+              const fatePoints = user.fatePoints || {};
+              fatePoints.global = fatePoints.global || { points: 0 };
+              fatePoints.global.points = (fatePoints.global.points || 0) + fpResult.actualFP;
+              user.fatePoints = fatePoints;
+            }
           }
 
           // Add roll tickets
