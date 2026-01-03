@@ -781,7 +781,8 @@ function calculateProductionPerSecond(state, characters = []) {
 function calculateGlobalMultiplier(state) {
   let mult = 1;
 
-  for (const upgradeId of state.purchasedUpgrades) {
+  const upgrades = Array.isArray(state.purchasedUpgrades) ? state.purchasedUpgrades : [];
+  for (const upgradeId of upgrades) {
     const upgrade = GLOBAL_UPGRADES.find(u => u.id === upgradeId);
     if (upgrade) {
       mult *= upgrade.multiplier;
