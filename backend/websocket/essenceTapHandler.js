@@ -41,6 +41,10 @@ const userConnections = new Map();
 // Track pending tap batches (userId -> { taps: number, timer: NodeJS.Timeout, seq: number })
 const pendingTapBatches = new Map();
 
+// BUG #1 FIX: Track batch processing locks to prevent race conditions
+// When a batch is being processed, new taps are queued until processing completes
+const batchProcessingLocks = new Map(); // userId -> Promise<void>
+
 // Track tap rate limiting (userId -> { count: number, windowStart: number })
 const tapRateLimits = new Map();
 
@@ -147,15 +151,52 @@ function calculatePassiveGains(state, characters, maxSeconds = 300) {
 }
 
 /**
+ * BUG #1 FIX: Acquire batch processing lock to prevent race conditions
+ * Multiple tabs sending taps simultaneously could previously clobber each other
+ */
+async function acquireBatchLock(userId) {
+  // Wait for any existing batch processing to complete
+  const existingLock = batchProcessingLocks.get(userId);
+  if (existingLock) {
+    try {
+      await existingLock;
+    } catch {
+      // Ignore errors from previous batch, we still need to proceed
+    }
+  }
+
+  // Create our lock promise
+  let resolve;
+  const promise = new Promise(r => { resolve = r; });
+  batchProcessingLocks.set(userId, promise);
+
+  return () => {
+    resolve();
+    // Clean up lock after a brief delay to catch any immediately following requests
+    setTimeout(() => {
+      const current = batchProcessingLocks.get(userId);
+      if (current === promise) {
+        batchProcessingLocks.delete(userId);
+      }
+    }, 50);
+  };
+}
+
+/**
  * Process batched taps atomically
+ * BUG #1 FIX: Now uses batch lock to prevent race conditions
  */
 async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
+  // Acquire lock to prevent race conditions with concurrent tab submissions
+  const releaseLock = await acquireBatchLock(userId);
+
   const transaction = await sequelize.transaction();
 
   try {
     const user = await User.findByPk(userId, { transaction, lock: true });
     if (!user) {
       await transaction.rollback();
+      releaseLock();
       return { success: false, error: 'User not found' };
     }
 
@@ -244,6 +285,9 @@ async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
     const seq = getNextSequence(userId);
     confirmedSequences.set(userId, seq);
 
+    // BUG #1 FIX: Release lock after successful processing
+    releaseLock();
+
     return {
       success: true,
       essence: state.essence,
@@ -259,6 +303,8 @@ async function processTapBatch(userId, tapCount, comboMultiplier, namespace) {
     };
   } catch (err) {
     await transaction.rollback();
+    // BUG #1 FIX: Release lock on error
+    releaseLock();
     console.error('[EssenceTap WS] Error processing tap batch:', err);
     return { success: false, error: 'Failed to process taps' };
   }
@@ -786,30 +832,69 @@ function initEssenceTapWebSocket(io) {
     socket.on('prestige', async (data) => {
       const { clientSeq } = data || {};
 
-      // Process any pending taps first
-      const pendingBatch = pendingTapBatches.get(userId);
-      if (pendingBatch) {
-        pendingTapBatches.delete(userId);
-        if (pendingBatch.timer) clearTimeout(pendingBatch.timer);
-        await processTapBatch(userId, pendingBatch.taps, pendingBatch.comboMultiplier, namespace);
-      }
+      // BUG #6 FIX: Acquire batch lock BEFORE starting transaction
+      // This ensures pending taps are processed atomically with prestige
+      const releaseLock = await acquireBatchLock(userId);
 
       // Use transaction for atomicity
       const transaction = await sequelize.transaction();
 
       try {
+        // Get any pending taps (process within same transaction)
+        const pendingBatch = pendingTapBatches.get(userId);
+        if (pendingBatch) {
+          pendingTapBatches.delete(userId);
+          if (pendingBatch.timer) clearTimeout(pendingBatch.timer);
+        }
+
         const user = await User.findByPk(userId, { transaction, lock: true });
         if (!user) {
           await transaction.rollback();
+          releaseLock();
           socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
           return;
         }
 
         let state = user.essenceTap || essenceTapService.getInitialState();
+
+        // BUG #6 FIX: Process pending taps within the same transaction
+        if (pendingBatch && pendingBatch.taps > 0) {
+          const userCharacters = await UserCharacter.findAll({
+            where: { UserId: userId },
+            include: ['Character'],
+            transaction
+          });
+
+          const characters = userCharacters.map(uc => ({
+            id: uc.CharacterId,
+            rarity: uc.Character?.rarity || 'common',
+            element: uc.Character?.element || 'neutral'
+          }));
+
+          const activeAbilityEffects = essenceTapService.getActiveAbilityEffects(state);
+
+          // Process clicks inline
+          let totalEssence = 0;
+          for (let i = 0; i < pendingBatch.taps; i++) {
+            const clickResult = essenceTapService.processClick(
+              state,
+              characters,
+              pendingBatch.comboMultiplier || 1,
+              activeAbilityEffects
+            );
+            totalEssence += clickResult.essenceGained;
+          }
+
+          state.essence = (state.essence || 0) + totalEssence;
+          state.lifetimeEssence = (state.lifetimeEssence || 0) + totalEssence;
+          state.totalClicks = (state.totalClicks || 0) + pendingBatch.taps;
+        }
+
         const result = essenceTapService.performPrestige(state, user);
 
         if (!result.success) {
           await transaction.rollback();
+          releaseLock();
           socket.emit('action_rejected', {
             clientSeq,
             reason: result.error,
@@ -851,6 +936,7 @@ function initEssenceTapWebSocket(io) {
 
         await user.save({ transaction });
         await transaction.commit();
+        releaseLock();
 
         const seq = getNextSequence(userId);
 
@@ -882,6 +968,7 @@ function initEssenceTapWebSocket(io) {
         });
       } catch (err) {
         await transaction.rollback();
+        releaseLock();
         console.error('[EssenceTap WS] Prestige error:', err);
         socket.emit('error', { code: 'PRESTIGE_ERROR', message: 'Prestige failed' });
       }

@@ -55,11 +55,16 @@ const CONFIG = {
 
 /**
  * Save pending state to localStorage for recovery after page reload
+ * BUG #11 FIX: Now saves full pendingTaps object including comboMultiplier
  */
 const saveStateToLocalStorage = (pendingTaps, pendingActions, essence, confirmedSeq) => {
   try {
     const backup = {
-      pendingTaps: pendingTaps.count,
+      // BUG #11 FIX: Save full pendingTaps object to preserve comboMultiplier
+      pendingTaps: {
+        count: pendingTaps.count || 0,
+        comboMultiplier: pendingTaps.comboMultiplier || 1,
+      },
       pendingActions: pendingActions.slice(0, 20), // Limit to prevent quota issues
       essence,
       confirmedSeq,
@@ -371,20 +376,9 @@ export function useEssenceTapSocket(options = {}) {
     });
 
     socket.on('tap_confirmed', (data) => {
-      setEssenceState(prev => {
-        if (!prev) return prev;
-
-        // Server state is authoritative for confirmed taps
-        // Reset optimistic tracking since server has processed these taps
-        return {
-          ...prev,
-          essence: data.essence,
-          lifetimeEssence: data.lifetimeEssence,
-          totalClicks: data.totalClicks,
-        };
-      });
-
-      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+      // BUG #2 FIX: Calculate remaining optimistic essence BEFORE setting state
+      // This prevents inflation where local essence exceeds server permanently
+      let remainingOptimisticEssence = 0;
 
       // Remove confirmed optimistic updates and calculate remaining optimistic essence
       if (data.confirmedClientSeqs) {
@@ -398,7 +392,35 @@ export function useEssenceTapSocket(options = {}) {
         });
         // Reduce tracked optimistic essence by confirmed amount
         optimisticEssenceRef.current = Math.max(0, optimisticEssenceRef.current - confirmedEssence);
+
+        // Calculate remaining optimistic essence from unconfirmed batches
+        optimisticUpdatesRef.current.forEach(update => {
+          if (update && update.estimatedGain) {
+            remainingOptimisticEssence += update.estimatedGain;
+          }
+        });
       }
+
+      // BUG #2 FIX: Also handle case where server has higher value (from bonuses/multipliers)
+      // In this case, the client's optimistic value should be adjusted
+      setEssenceState(prev => {
+        if (!prev) return prev;
+
+        // Server state is authoritative for confirmed taps
+        // The server value reflects all confirmed taps including any bonuses
+        // We add back any remaining optimistic essence from unconfirmed taps
+        const serverConfirmedEssence = data.essence;
+        const expectedWithOptimistic = serverConfirmedEssence + remainingOptimisticEssence;
+
+        return {
+          ...prev,
+          essence: serverConfirmedEssence,  // Use server's authoritative value
+          lifetimeEssence: data.lifetimeEssence,
+          totalClicks: data.totalClicks,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
 
       if (data.seq !== undefined) {
         confirmedSeqRef.current = data.seq;

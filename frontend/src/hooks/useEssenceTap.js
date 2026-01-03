@@ -111,6 +111,8 @@ export const useEssenceTap = () => {
   // Track last sync time for accurate time-based calculation
   const lastSyncTimeRef = useRef(Date.now());
   const lastSyncEssenceRef = useRef(0);
+  // BUG #4 FIX: Track when we're waiting for server sync to pause passive ticker
+  const isWaitingForSyncRef = useRef(false);
 
   // ===========================================
   // WEBSOCKET INTEGRATION
@@ -139,6 +141,8 @@ export const useEssenceTap = () => {
       // Reset pending essence tracking since server state is authoritative
       // This prevents double-counting passive gains
       pendingEssenceRef.current = 0;
+      // BUG #4 FIX: Clear waiting flag now that we have authoritative state
+      isWaitingForSyncRef.current = false;
 
       // FIX B1: Invalidate user data cache on full sync if FP rewards were included
       // This ensures fresh user FP/tickets after reconnection where offline rewards may have been granted
@@ -487,6 +491,8 @@ export const useEssenceTap = () => {
       lastSyncTimeRef.current = Date.now();
       lastSyncEssenceRef.current = essenceVal;
       pendingEssenceRef.current = 0;
+      // BUG #4 FIX: Clear waiting flag now that we have authoritative state
+      isWaitingForSyncRef.current = false;
 
       // Initialize achievement tracking from backend state to prevent re-triggering
       // achievements that should have already been earned
@@ -548,13 +554,8 @@ export const useEssenceTap = () => {
 
       // Only refresh if stale enough (normal threshold = 2 min)
       if (staleLevel && staleLevel !== 'static') {
-        // CRITICAL FIX: Stop passive tick to prevent race condition with server sync
-        // The server will calculate all accumulated passive gains - we must not
-        // continue accumulating locally during the API call
-        if (passiveTickRef.current) {
-          clearInterval(passiveTickRef.current);
-          passiveTickRef.current = null;
-        }
+        // BUG #4 FIX: Set waiting flag to pause passive ticker during sync
+        isWaitingForSyncRef.current = true;
 
         // Clear pending essence since server state will be authoritative
         // This prevents double-counting: server calculates offline progress,
@@ -580,6 +581,7 @@ export const useEssenceTap = () => {
   }, [fetchGameState, wsConnected, wsConnectionState, flushTapBatch, wsRequestSync]);
 
   // Passive income tick
+  // BUG #4 FIX: Ticker now checks isWaitingForSyncRef to prevent double-counting
   useEffect(() => {
     if (!gameState || gameState.productionPerSecond <= 0) {
       if (passiveTickRef.current) {
@@ -592,6 +594,12 @@ export const useEssenceTap = () => {
     const essencePerTick = (gameState.productionPerSecond * UI_TIMING.passiveTickRate) / 1000;
 
     passiveTickRef.current = setInterval(() => {
+      // BUG #4 FIX: Skip tick if we're waiting for server sync
+      // This prevents double-counting passive gains when server also calculates them
+      if (isWaitingForSyncRef.current) {
+        return;
+      }
+
       setLocalEssence(prev => {
         const newVal = prev + essencePerTick;
         localEssenceRef.current = newVal;

@@ -96,6 +96,80 @@ setInterval(() => {
   }
 }, RATE_LIMIT_CLEANUP_INTERVAL);
 
+// ===========================================
+// BUG #3 & #8 FIX: INITIALIZATION DEDUPLICATION
+// ===========================================
+
+/**
+ * Prevents multi-tab duplicate offline earnings and repeated initialization.
+ * Caches recent /initialize results to return idempotently within a short window.
+ */
+const initializationCache = new Map();
+const INITIALIZATION_DEDUP_WINDOW_MS = 5000; // 5 second window to deduplicate
+
+/**
+ * Check if this initialization can return a cached result.
+ * Returns null if no cached result, or the cached response if we should deduplicate.
+ *
+ * @param {number} userId - User ID
+ * @param {number} clientTimestamp - Client's timestamp for idempotency
+ * @returns {Object|null} Cached response or null
+ */
+function getCachedInitialization(userId, clientTimestamp) {
+  const key = `init_${userId}`;
+  const cached = initializationCache.get(key);
+
+  if (!cached) return null;
+
+  // If cached result is too old, discard it
+  if (Date.now() - cached.serverTimestamp > INITIALIZATION_DEDUP_WINDOW_MS) {
+    initializationCache.delete(key);
+    return null;
+  }
+
+  // If client timestamp is older than cached response, this is likely a
+  // duplicate request from another tab or a retry - return cached result
+  if (clientTimestamp && clientTimestamp <= cached.clientTimestamp) {
+    return { ...cached.response, fromCache: true };
+  }
+
+  return null;
+}
+
+/**
+ * Cache an initialization result for deduplication.
+ *
+ * @param {number} userId - User ID
+ * @param {number} clientTimestamp - Client's timestamp
+ * @param {Object} response - Response to cache
+ */
+function cacheInitialization(userId, clientTimestamp, response) {
+  const key = `init_${userId}`;
+  initializationCache.set(key, {
+    clientTimestamp,
+    serverTimestamp: Date.now(),
+    response
+  });
+
+  // Schedule cleanup
+  setTimeout(() => {
+    const current = initializationCache.get(key);
+    if (current && Date.now() - current.serverTimestamp > INITIALIZATION_DEDUP_WINDOW_MS) {
+      initializationCache.delete(key);
+    }
+  }, INITIALIZATION_DEDUP_WINDOW_MS + 1000);
+}
+
+// Clean up stale initialization cache entries periodically
+setInterval(() => {
+  const now = Date.now();
+  for (const [key, data] of initializationCache.entries()) {
+    if (now - data.serverTimestamp > INITIALIZATION_DEDUP_WINDOW_MS * 2) {
+      initializationCache.delete(key);
+    }
+  }
+}, RATE_LIMIT_CLEANUP_INTERVAL);
+
 /**
  * Check and update rate limit for a user
  * @param {number} userId - User ID
@@ -2336,6 +2410,20 @@ router.post('/initialize', auth, async (req, res) => {
     lastKnownTimestamp
   } = req.body;
 
+  // BUG #3 & #8 FIX: Check for cached/duplicate initialization
+  // This prevents multi-tab duplicate offline earnings
+  const cachedResult = getCachedInitialization(req.user.id, clientTimestamp);
+  if (cachedResult) {
+    console.log(`[EssenceTap] Returning cached initialization for user ${req.user.id}`);
+    // For cached results, don't include offline earnings again to prevent duplication
+    return res.json({
+      ...cachedResult,
+      offlineEarnings: 0,  // Already awarded in first request
+      offlineDuration: 0,
+      pendingActionsApplied: 0  // Already applied in first request
+    });
+  }
+
   return withEssenceLock(req.user.id, async () => {
     try {
       const user = await User.findByPk(req.user.id);
@@ -2443,7 +2531,7 @@ router.post('/initialize', auth, async (req, res) => {
       const gameState = essenceTapService.getGameState(state, characters);
       const weeklyFPBudget = essenceTapService.getWeeklyFPBudget(state);
 
-      res.json({
+      const response = {
         currentState: gameState,
         offlineEarnings: cappedOfflineEarnings,
         offlineDuration: cappedOfflineSeconds,
@@ -2452,7 +2540,12 @@ router.post('/initialize', auth, async (req, res) => {
         pendingActionsApplied: actionsApplied,
         weeklyFPBudget,
         sessionStats: essenceTapService.getSessionStats(state)
-      });
+      };
+
+      // BUG #3 & #8 FIX: Cache this initialization for deduplication
+      cacheInitialization(req.user.id, clientTimestamp, response);
+
+      res.json(response);
     } catch (error) {
       console.error('Error initializing essence tap:', error);
       res.status(500).json({ error: 'Failed to initialize' });
