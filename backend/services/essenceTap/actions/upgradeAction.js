@@ -57,8 +57,8 @@ function purchaseUpgrade({ state, upgradeId }) {
     };
   }
 
-  // Check if unlocked
-  if (!calculations.isUpgradeUnlocked(upgradeId, workingState)) {
+  // Check if unlocked (pass lifetimeEssence, not the whole state object)
+  if (!calculations.isUpgradeUnlocked(upgradeId, workingState.lifetimeEssence || 0)) {
     return {
       success: false,
       error: 'Upgrade not unlocked yet',
