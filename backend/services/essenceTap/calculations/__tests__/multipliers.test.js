@@ -48,7 +48,7 @@ describe('Multiplier Calculations', () => {
     it('should cap at max effective shards', () => {
       const bonus500 = calculateShardBonus(500);
       const bonus1000 = calculateShardBonus(1000);
-      const bonus10000 = calculateShardBonus(10000);
+      const _bonus10000 = calculateShardBonus(10000);
 
       // After cap, bonus should stop increasing
       expect(bonus1000).toBeGreaterThanOrEqual(bonus500);

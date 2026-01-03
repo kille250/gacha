@@ -173,7 +173,7 @@ describe('Click Calculations', () => {
     });
 
     it('should cap at max combo multiplier', () => {
-      const mult100 = calculateComboMultiplier(100);
+      const _mult100 = calculateComboMultiplier(100);
       const mult1000 = calculateComboMultiplier(1000);
 
       // Both should be at or near cap
@@ -218,7 +218,7 @@ describe('Click Calculations', () => {
     });
 
     it('should apply active ability effects', () => {
-      const resultNormal = calculateClickResult({
+      const _resultNormal = calculateClickResult({
         state: baseState,
         characters: [],
         comboMultiplier: 1,

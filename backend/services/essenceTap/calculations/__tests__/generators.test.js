@@ -150,7 +150,7 @@ describe('Generator Calculations', () => {
 
   describe('isGeneratorUnlocked', () => {
     it('should unlock first generator at 0 essence', () => {
-      const gen = getGeneratorById('essence_wisp');
+      const _gen = getGeneratorById('essence_wisp');
       // Assuming first generator has low/no unlock requirement
       const unlocked = isGeneratorUnlocked('essence_wisp', 0);
       expect(typeof unlocked).toBe('boolean');
