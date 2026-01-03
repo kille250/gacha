@@ -210,7 +210,7 @@ async function handlePurchasePrestigeUpgrade(userId, { upgradeId }) {
 /**
  * Activate an ability
  */
-async function handleActivateAbility(userId, { abilityId }, userCharacters = []) {
+async function handleActivateAbility(userId, { abilityId }, _userCharacters = []) {
   return withUserTransaction(userId, async (user) => {
     let state = getClickerState(user);
 

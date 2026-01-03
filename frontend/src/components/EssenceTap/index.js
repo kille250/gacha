@@ -41,3 +41,6 @@ export { default as EssenceTapErrorBoundary } from './EssenceTapErrorBoundary';
 
 // Animation utilities
 export * from './animations';
+
+// Shared reusable components
+export * from './shared';

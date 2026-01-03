@@ -3,6 +3,10 @@
  *
  * Business logic for the Essence Tap clicker minigame.
  * Handles state management, calculations, and integrations.
+ *
+ * NOTE: Pure calculation functions have been extracted to:
+ *   backend/services/essenceTap/calculations/
+ * This service imports and re-exports them for backward compatibility.
  */
 
 const {
@@ -38,6 +42,9 @@ const {
 const { ESSENCE_TAP_DISPLAY } = require('../../shared/balanceConstants');
 
 const _accountLevelService = require('./accountLevelService');
+
+// Import extracted calculation functions
+const calculations = require('./essenceTap/calculations');
 
 /**
  * Get the current daily modifier based on day of week
@@ -3629,5 +3636,14 @@ module.exports = {
   getBossEncounterInfo,
   getBossForPrestigeLevel,
   spawnBoss,
-  attackBoss
+  attackBoss,
+
+  // Re-export calculations module for direct access
+  calculations,
+
+  // Re-export utility functions from calculations module
+  formatNumber: calculations.formatNumber,
+  formatPerSecond: calculations.formatPerSecond,
+  formatSessionDuration: calculations.formatSessionDuration,
+  formatTimeRemaining: calculations.formatTimeRemaining
 };
