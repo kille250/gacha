@@ -584,6 +584,302 @@ export function useEssenceTapSocket(options = {}) {
         onStateUpdateRef.current(data, 'infusion_complete');
       }
     });
+
+    // ===========================================
+    // CHARACTER ASSIGNMENT HANDLERS
+    // ===========================================
+
+    socket.on('character_assigned', (data) => {
+      console.log('[EssenceTap WS] Character assigned:', data.characterId);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          assignedCharacters: data.assignedCharacters,
+          characterBonus: data.characterBonus,
+          elementBonuses: data.elementBonuses,
+          elementSynergy: data.elementSynergy,
+          seriesSynergy: data.seriesSynergy,
+          masteryBonus: data.masteryBonus,
+          clickPower: data.clickPower,
+          productionPerSecond: data.productionPerSecond,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'character_assigned');
+      }
+    });
+
+    socket.on('character_unassigned', (data) => {
+      console.log('[EssenceTap WS] Character unassigned:', data.characterId);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          assignedCharacters: data.assignedCharacters,
+          characterBonus: data.characterBonus,
+          elementBonuses: data.elementBonuses,
+          elementSynergy: data.elementSynergy,
+          seriesSynergy: data.seriesSynergy,
+          masteryBonus: data.masteryBonus,
+          clickPower: data.clickPower,
+          productionPerSecond: data.productionPerSecond,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'character_unassigned');
+      }
+    });
+
+    // ===========================================
+    // DAILY CHALLENGE CLAIM HANDLER
+    // ===========================================
+
+    socket.on('daily_challenge_claimed', (data) => {
+      console.log('[EssenceTap WS] Daily challenge claimed:', data.challengeId);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          essence: data.essence,
+          daily: {
+            ...prev.daily,
+            claimedChallenges: data.claimedChallenges,
+          },
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'daily_challenge_claimed');
+      }
+    });
+
+    // ===========================================
+    // PRESTIGE UPGRADE HANDLER
+    // ===========================================
+
+    socket.on('prestige_upgrade_purchased', (data) => {
+      console.log('[EssenceTap WS] Prestige upgrade purchased:', data.upgradeId, 'level:', data.newLevel);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          prestige: data.prestige,
+          prestigeShards: data.prestigeShards,
+          prestigeUpgrades: data.prestigeUpgrades,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'prestige_upgrade_purchased');
+      }
+    });
+
+    // ===========================================
+    // MILESTONE CLAIM HANDLERS
+    // ===========================================
+
+    socket.on('milestone_claimed', (data) => {
+      console.log('[EssenceTap WS] Milestone claimed:', data.milestoneKey, 'FP:', data.fatePoints);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          claimedMilestones: data.claimedMilestones,
+          claimableMilestones: data.claimableMilestones,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'milestone_claimed');
+      }
+    });
+
+    socket.on('repeatable_milestone_claimed', (data) => {
+      console.log('[EssenceTap WS] Repeatable milestone claimed:', data.milestoneType, 'FP:', data.fatePoints);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          repeatableMilestones: data.repeatableMilestones,
+          claimableRepeatableMilestones: data.claimableRepeatableMilestones,
+          weeklyFP: data.weeklyFP,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'repeatable_milestone_claimed');
+      }
+    });
+
+    // ===========================================
+    // WEEKLY TOURNAMENT HANDLERS
+    // ===========================================
+
+    socket.on('tournament_rewards_claimed', (data) => {
+      console.log('[EssenceTap WS] Tournament rewards claimed, tier:', data.tier);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          weeklyTournament: data.weeklyTournament,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'tournament_rewards_claimed');
+      }
+    });
+
+    socket.on('tournament_checkpoint_claimed', (data) => {
+      console.log('[EssenceTap WS] Tournament checkpoint claimed, day:', data.day);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          weekly: {
+            ...prev.weekly,
+            claimedCheckpoints: data.claimedCheckpoints,
+          },
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'tournament_checkpoint_claimed');
+      }
+    });
+
+    // ===========================================
+    // TICKET STREAK CLAIM HANDLER
+    // ===========================================
+
+    socket.on('daily_streak_claimed', (data) => {
+      console.log('[EssenceTap WS] Daily streak claimed, days:', data.streakDays, 'tickets:', data.ticketsAwarded);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ticketGeneration: data.ticketGeneration,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'daily_streak_claimed');
+      }
+    });
+
+    // ===========================================
+    // SESSION MILESTONE CLAIM HANDLER
+    // ===========================================
+
+    socket.on('session_milestone_claimed', (data) => {
+      console.log('[EssenceTap WS] Session milestone claimed:', data.milestoneName);
+      setEssenceState(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          essence: data.essence,
+          sessionStats: data.sessionStats,
+        };
+      });
+
+      setLastSyncTimestamp(data.serverTimestamp || Date.now());
+
+      if (data.confirmedClientSeq !== undefined) {
+        optimisticUpdatesRef.current.delete(data.confirmedClientSeq);
+      }
+      if (data.seq !== undefined) {
+        confirmedSeqRef.current = data.seq;
+      }
+
+      if (onStateUpdateRef.current) {
+        onStateUpdateRef.current(data, 'session_milestone_claimed');
+      }
+    });
+
   // Note: scheduleReconnect is excluded intentionally - it's stable and defined outside
   // Callbacks are accessed via refs to prevent reconnection loops when they change
   // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -837,6 +1133,164 @@ export function useEssenceTapSocket(options = {}) {
   }, [flushTapBatch]);
 
   // ===========================================
+  // CHARACTER ASSIGNMENT ACTIONS
+  // ===========================================
+
+  const assignCharacter = useCallback((characterId) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('assign_character', { characterId, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  const unassignCharacter = useCallback((characterId) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('unassign_character', { characterId, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  // ===========================================
+  // DAILY CHALLENGE ACTIONS
+  // ===========================================
+
+  const claimDailyChallenge = useCallback((challengeId) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('claim_daily_challenge', { challengeId, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  // ===========================================
+  // PRESTIGE UPGRADE ACTIONS
+  // ===========================================
+
+  const purchasePrestigeUpgrade = useCallback((upgradeId) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('purchase_prestige_upgrade', { upgradeId, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  // ===========================================
+  // MILESTONE CLAIM ACTIONS
+  // ===========================================
+
+  const claimMilestone = useCallback((milestoneKey) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('claim_milestone', { milestoneKey, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  const claimRepeatableMilestone = useCallback((milestoneType) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('claim_repeatable_milestone', { milestoneType, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  // ===========================================
+  // WEEKLY TOURNAMENT ACTIONS
+  // ===========================================
+
+  const claimTournamentRewards = useCallback(() => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('claim_tournament_rewards', { clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  const claimTournamentCheckpoint = useCallback((day) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('claim_tournament_checkpoint', { day, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  // ===========================================
+  // TICKET STREAK ACTIONS
+  // ===========================================
+
+  const claimDailyStreak = useCallback(() => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('claim_daily_streak', { clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  // ===========================================
+  // SESSION MILESTONE ACTIONS
+  // ===========================================
+
+  const claimSessionMilestone = useCallback((milestoneType, milestoneName) => {
+    const clientSeq = ++clientSeqRef.current;
+
+    flushTapBatch();
+
+    if (socketRef.current?.connected) {
+      socketRef.current.emit('claim_session_milestone', { milestoneType, milestoneName, clientSeq });
+      return { sent: true, clientSeq };
+    } else {
+      return { sent: false, reason: 'disconnected' };
+    }
+  }, [flushTapBatch]);
+
+  // ===========================================
   // LIFECYCLE
   // ===========================================
 
@@ -1057,7 +1511,7 @@ export function useEssenceTapSocket(options = {}) {
     essenceState,
     lastSyncTimestamp,
 
-    // Actions
+    // Core Actions
     sendTap,
     purchaseGenerator,
     purchaseUpgrade,
@@ -1066,6 +1520,30 @@ export function useEssenceTapSocket(options = {}) {
     activateAbility,
     performGamble,
     performInfusion,
+
+    // Character Assignment Actions
+    assignCharacter,
+    unassignCharacter,
+
+    // Daily Challenge Actions
+    claimDailyChallenge,
+
+    // Prestige Upgrade Actions
+    purchasePrestigeUpgrade,
+
+    // Milestone Actions
+    claimMilestone,
+    claimRepeatableMilestone,
+
+    // Weekly Tournament Actions
+    claimTournamentRewards,
+    claimTournamentCheckpoint,
+
+    // Ticket Actions
+    claimDailyStreak,
+
+    // Session Milestone Actions
+    claimSessionMilestone,
 
     // Connection control
     connect,

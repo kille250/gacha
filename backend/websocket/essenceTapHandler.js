@@ -1362,6 +1362,942 @@ function initEssenceTapWebSocket(io) {
     });
 
     // ===========================================
+    // CHARACTER ASSIGNMENT HANDLERS
+    // ===========================================
+
+    socket.on('assign_character', async (data) => {
+      const { characterId, clientSeq } = data;
+
+      if (!characterId) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Character ID required' });
+        return;
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+        state = essenceTapService.resetDaily(state);
+
+        // Get user's owned characters
+        const userCharacters = await UserCharacter.findAll({
+          where: { UserId: userId },
+          include: ['Character'],
+          transaction
+        });
+
+        const ownedCharacters = userCharacters.map(uc => ({
+          id: uc.CharacterId,
+          characterId: uc.CharacterId,
+          rarity: uc.Character?.rarity || 'common',
+          element: uc.Character?.element || 'neutral',
+          series: uc.Character?.series || ''
+        }));
+
+        const result = essenceTapService.assignCharacter(state, characterId, ownedCharacters);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'ASSIGN_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Calculate updated bonuses with new character
+        const characters = ownedCharacters;
+        const gameState = essenceTapService.getGameState(result.newState, characters);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'character_assigned', {
+          characterId,
+          assignedCharacters: result.newState.assignedCharacters,
+          characterBonus: gameState.characterBonus,
+          elementBonuses: gameState.elementBonuses,
+          elementSynergy: gameState.elementSynergy,
+          seriesSynergy: gameState.seriesSynergy,
+          masteryBonus: gameState.masteryBonus,
+          clickPower: gameState.clickPower,
+          productionPerSecond: gameState.productionPerSecond,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Assign character error:', err);
+        socket.emit('error', { code: 'ASSIGN_ERROR', message: 'Failed to assign character' });
+      }
+    });
+
+    socket.on('unassign_character', async (data) => {
+      const { characterId, clientSeq } = data;
+
+      if (!characterId) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Character ID required' });
+        return;
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        const result = essenceTapService.unassignCharacter(state, characterId);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'UNASSIGN_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Get characters for bonus calculation
+        const userCharacters = await UserCharacter.findAll({
+          where: { UserId: userId },
+          include: ['Character']
+        });
+
+        const characters = userCharacters.map(uc => ({
+          id: uc.CharacterId,
+          rarity: uc.Character?.rarity || 'common',
+          element: uc.Character?.element || 'neutral',
+          series: uc.Character?.series || ''
+        }));
+
+        const gameState = essenceTapService.getGameState(result.newState, characters);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'character_unassigned', {
+          characterId,
+          assignedCharacters: result.newState.assignedCharacters,
+          characterBonus: gameState.characterBonus,
+          elementBonuses: gameState.elementBonuses,
+          elementSynergy: gameState.elementSynergy,
+          seriesSynergy: gameState.seriesSynergy,
+          masteryBonus: gameState.masteryBonus,
+          clickPower: gameState.clickPower,
+          productionPerSecond: gameState.productionPerSecond,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Unassign character error:', err);
+        socket.emit('error', { code: 'UNASSIGN_ERROR', message: 'Failed to unassign character' });
+      }
+    });
+
+    // ===========================================
+    // DAILY CHALLENGE CLAIM HANDLER
+    // ===========================================
+
+    socket.on('claim_daily_challenge', async (data) => {
+      const { challengeId, clientSeq } = data;
+
+      if (!challengeId) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Challenge ID required' });
+        return;
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+        state = essenceTapService.resetDaily(state);
+
+        // Check if challenge is completed but not claimed
+        const completedChallenges = state.daily?.completedChallenges || [];
+        const claimedChallenges = state.daily?.claimedChallenges || [];
+
+        if (!completedChallenges.includes(challengeId)) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Challenge not completed',
+            code: 'CHALLENGE_NOT_COMPLETED'
+          });
+          return;
+        }
+
+        if (claimedChallenges.includes(challengeId)) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Challenge already claimed',
+            code: 'ALREADY_CLAIMED'
+          });
+          return;
+        }
+
+        // Find the challenge config to get reward
+        const { DAILY_CHALLENGES } = require('../config/essenceTap');
+        const challenge = DAILY_CHALLENGES.find(c => c.id === challengeId);
+        if (!challenge) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Invalid challenge',
+            code: 'INVALID_CHALLENGE'
+          });
+          return;
+        }
+
+        // Apply reward
+        const newState = { ...state };
+        newState.daily = { ...state.daily };
+        newState.daily.claimedChallenges = [...claimedChallenges, challengeId];
+
+        // Award essence bonus if applicable
+        if (challenge.reward?.essence) {
+          newState.essence = (state.essence || 0) + challenge.reward.essence;
+          newState.lifetimeEssence = (state.lifetimeEssence || 0) + challenge.reward.essence;
+        }
+
+        const now = Date.now();
+        newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = newState;
+        user.lastEssenceTapRequest = now;
+
+        // Award FP if applicable (with weekly cap)
+        let fatePointsAwarded = 0;
+        if (challenge.reward?.fatePoints) {
+          const fpResult = essenceTapService.applyFPWithCap(newState, challenge.reward.fatePoints, 'daily_challenge');
+          user.essenceTap = fpResult.newState;
+          fatePointsAwarded = fpResult.actualFP;
+
+          if (fatePointsAwarded > 0) {
+            const fatePoints = user.fatePoints || {};
+            fatePoints.global = fatePoints.global || { points: 0 };
+            fatePoints.global.points = (fatePoints.global.points || 0) + fatePointsAwarded;
+            user.fatePoints = fatePoints;
+          }
+        }
+
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'daily_challenge_claimed', {
+          challengeId,
+          challenge: {
+            id: challenge.id,
+            name: challenge.name,
+            type: challenge.type
+          },
+          reward: challenge.reward,
+          fatePointsAwarded,
+          essence: user.essenceTap.essence,
+          claimedChallenges: newState.daily.claimedChallenges,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Claim daily challenge error:', err);
+        socket.emit('error', { code: 'CLAIM_ERROR', message: 'Failed to claim challenge' });
+      }
+    });
+
+    // ===========================================
+    // PRESTIGE UPGRADE HANDLER
+    // ===========================================
+
+    socket.on('purchase_prestige_upgrade', async (data) => {
+      const { upgradeId, clientSeq } = data;
+
+      if (!upgradeId) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Upgrade ID required' });
+        return;
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        const result = essenceTapService.purchasePrestigeUpgrade(state, upgradeId);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'PRESTIGE_UPGRADE_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Get updated prestige info
+        const prestigeInfo = essenceTapService.getPrestigeInfo(result.newState);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'prestige_upgrade_purchased', {
+          upgradeId,
+          upgrade: result.upgrade,
+          newLevel: result.newLevel,
+          cost: result.cost,
+          prestigeShards: result.newState.prestigeShards,
+          prestigeUpgrades: result.newState.prestigeUpgrades,
+          prestige: prestigeInfo,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Purchase prestige upgrade error:', err);
+        socket.emit('error', { code: 'PRESTIGE_UPGRADE_ERROR', message: 'Failed to purchase upgrade' });
+      }
+    });
+
+    // ===========================================
+    // MILESTONE CLAIM HANDLERS
+    // ===========================================
+
+    socket.on('claim_milestone', async (data) => {
+      const { milestoneKey, clientSeq } = data;
+
+      if (!milestoneKey) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Milestone key required' });
+        return;
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        const result = essenceTapService.claimMilestone(state, milestoneKey);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'MILESTONE_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+
+        // Award FP (one-time milestones don't count toward weekly cap)
+        let fatePointsAwarded = result.fatePoints;
+        if (fatePointsAwarded > 0) {
+          const fatePoints = user.fatePoints || {};
+          fatePoints.global = fatePoints.global || { points: 0 };
+          fatePoints.global.points = (fatePoints.global.points || 0) + fatePointsAwarded;
+          user.fatePoints = fatePoints;
+        }
+
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'milestone_claimed', {
+          milestoneKey,
+          fatePoints: fatePointsAwarded,
+          claimedMilestones: result.newState.claimedMilestones,
+          claimableMilestones: essenceTapService.checkMilestones(result.newState),
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Claim milestone error:', err);
+        socket.emit('error', { code: 'MILESTONE_ERROR', message: 'Failed to claim milestone' });
+      }
+    });
+
+    socket.on('claim_repeatable_milestone', async (data) => {
+      const { milestoneType, clientSeq } = data;
+
+      if (!milestoneType) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Milestone type required' });
+        return;
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+        state = essenceTapService.resetWeeklyFPIfNeeded(state);
+
+        const result = essenceTapService.claimRepeatableMilestone(state, milestoneType);
+
+        if (!result.success) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: result.error,
+            code: 'REPEATABLE_MILESTONE_FAILED'
+          });
+          return;
+        }
+
+        const now = Date.now();
+        result.newState.lastOnlineTimestamp = now;
+
+        // Apply FP with cap
+        const fpResult = essenceTapService.applyFPWithCap(result.newState, result.fatePoints, 'repeatable_milestone');
+        result.newState = fpResult.newState;
+        const actualFP = fpResult.actualFP;
+
+        user.essenceTap = result.newState;
+        user.lastEssenceTapRequest = now;
+
+        // Award FP
+        if (actualFP > 0) {
+          const fatePoints = user.fatePoints || {};
+          fatePoints.global = fatePoints.global || { points: 0 };
+          fatePoints.global.points = (fatePoints.global.points || 0) + actualFP;
+          user.fatePoints = fatePoints;
+        }
+
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'repeatable_milestone_claimed', {
+          milestoneType,
+          fatePoints: actualFP,
+          count: result.count || 1,
+          capped: fpResult.capped,
+          repeatableMilestones: result.newState.repeatableMilestones,
+          claimableRepeatableMilestones: essenceTapService.checkRepeatableMilestones(result.newState),
+          weeklyFP: essenceTapService.getWeeklyFPBudget(result.newState),
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Claim repeatable milestone error:', err);
+        socket.emit('error', { code: 'REPEATABLE_MILESTONE_ERROR', message: 'Failed to claim milestone' });
+      }
+    });
+
+    // ===========================================
+    // WEEKLY TOURNAMENT HANDLERS
+    // ===========================================
+
+    socket.on('claim_tournament_rewards', async (data) => {
+      const { clientSeq } = data || {};
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        // Check if rewards are available
+        const tournamentInfo = essenceTapService.getWeeklyTournamentInfo(state);
+        if (!tournamentInfo.canClaimRewards) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'No tournament rewards available to claim',
+            code: 'NO_REWARDS'
+          });
+          return;
+        }
+
+        // Get rewards for the tier
+        const { WEEKLY_TOURNAMENT } = require('../config/essenceTap');
+        const tierRewards = WEEKLY_TOURNAMENT.tiers[tournamentInfo.tier];
+        if (!tierRewards) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Invalid tier',
+            code: 'INVALID_TIER'
+          });
+          return;
+        }
+
+        // Mark rewards as claimed
+        const newState = { ...state };
+        newState.weekly = { ...state.weekly, rewardsClaimed: true };
+
+        const now = Date.now();
+        newState.lastOnlineTimestamp = now;
+
+        // Apply FP with cap
+        const fpResult = essenceTapService.applyFPWithCap(newState, tierRewards.fatePoints, 'tournament');
+        user.essenceTap = fpResult.newState;
+        const actualFP = fpResult.actualFP;
+
+        // Award FP
+        if (actualFP > 0) {
+          const fatePoints = user.fatePoints || {};
+          fatePoints.global = fatePoints.global || { points: 0 };
+          fatePoints.global.points = (fatePoints.global.points || 0) + actualFP;
+          user.fatePoints = fatePoints;
+        }
+
+        // Award roll tickets
+        if (tierRewards.rollTickets > 0) {
+          user.rollTickets = (user.rollTickets || 0) + tierRewards.rollTickets;
+        }
+
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'tournament_rewards_claimed', {
+          tier: tournamentInfo.tier,
+          rewards: {
+            fatePoints: actualFP,
+            rollTickets: tierRewards.rollTickets,
+            capped: fpResult.capped
+          },
+          weeklyTournament: essenceTapService.getWeeklyTournamentInfo(user.essenceTap),
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Claim tournament rewards error:', err);
+        socket.emit('error', { code: 'TOURNAMENT_ERROR', message: 'Failed to claim tournament rewards' });
+      }
+    });
+
+    socket.on('claim_tournament_checkpoint', async (data) => {
+      const { day, clientSeq } = data;
+
+      if (day === undefined) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Checkpoint day required' });
+        return;
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        // Get checkpoint config
+        const { WEEKLY_TOURNAMENT } = require('../config/essenceTap');
+        const checkpoint = WEEKLY_TOURNAMENT.checkpoints?.find(cp => cp.day === day);
+        if (!checkpoint) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Invalid checkpoint',
+            code: 'INVALID_CHECKPOINT'
+          });
+          return;
+        }
+
+        // Check if checkpoint is already claimed
+        const claimedCheckpoints = state.weekly?.claimedCheckpoints || [];
+        if (claimedCheckpoints.includes(day)) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Checkpoint already claimed',
+            code: 'ALREADY_CLAIMED'
+          });
+          return;
+        }
+
+        // Check if checkpoint requirements are met
+        const weeklyEssence = state.weekly?.essenceEarned || 0;
+        if (weeklyEssence < checkpoint.essenceRequired) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Checkpoint requirements not met',
+            code: 'REQUIREMENTS_NOT_MET'
+          });
+          return;
+        }
+
+        // Claim checkpoint
+        const newState = { ...state };
+        newState.weekly = {
+          ...state.weekly,
+          claimedCheckpoints: [...claimedCheckpoints, day]
+        };
+
+        const now = Date.now();
+        newState.lastOnlineTimestamp = now;
+
+        // Apply FP with cap
+        const fpResult = essenceTapService.applyFPWithCap(newState, checkpoint.rewards.fatePoints || 0, 'checkpoint');
+        user.essenceTap = fpResult.newState;
+        const actualFP = fpResult.actualFP;
+
+        // Award FP
+        if (actualFP > 0) {
+          const fatePoints = user.fatePoints || {};
+          fatePoints.global = fatePoints.global || { points: 0 };
+          fatePoints.global.points = (fatePoints.global.points || 0) + actualFP;
+          user.fatePoints = fatePoints;
+        }
+
+        // Award roll tickets
+        if (checkpoint.rewards.rollTickets > 0) {
+          user.rollTickets = (user.rollTickets || 0) + checkpoint.rewards.rollTickets;
+        }
+
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'tournament_checkpoint_claimed', {
+          day,
+          checkpointName: checkpoint.name,
+          rewards: {
+            fatePoints: actualFP,
+            rollTickets: checkpoint.rewards.rollTickets || 0,
+            capped: fpResult.capped
+          },
+          claimedCheckpoints: newState.weekly.claimedCheckpoints,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Claim tournament checkpoint error:', err);
+        socket.emit('error', { code: 'CHECKPOINT_ERROR', message: 'Failed to claim checkpoint' });
+      }
+    });
+
+    // ===========================================
+    // TICKET STREAK CLAIM HANDLER
+    // ===========================================
+
+    socket.on('claim_daily_streak', async (data) => {
+      const { clientSeq } = data || {};
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+        state = essenceTapService.resetDaily(state);
+
+        // Check streak eligibility
+        const today = new Date().toISOString().split('T')[0];
+        const lastStreakDate = state.ticketGeneration?.lastStreakDate;
+
+        if (lastStreakDate === today) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Already claimed streak today',
+            code: 'ALREADY_CLAIMED'
+          });
+          return;
+        }
+
+        // Calculate streak
+        const newState = { ...state };
+        newState.ticketGeneration = { ...state.ticketGeneration };
+
+        const yesterday = new Date();
+        yesterday.setDate(yesterday.getDate() - 1);
+        const yesterdayStr = yesterday.toISOString().split('T')[0];
+
+        if (lastStreakDate === yesterdayStr) {
+          // Continue streak
+          newState.ticketGeneration.dailyStreakDays = (state.ticketGeneration?.dailyStreakDays || 0) + 1;
+        } else {
+          // Reset streak
+          newState.ticketGeneration.dailyStreakDays = 1;
+        }
+
+        newState.ticketGeneration.lastStreakDate = today;
+
+        // Award tickets based on streak
+        const { TICKET_GENERATION } = require('../config/essenceTap');
+        const streakDays = newState.ticketGeneration.dailyStreakDays;
+        let ticketsAwarded = 0;
+
+        // Check streak milestones
+        for (const milestone of TICKET_GENERATION.streakMilestones || []) {
+          if (streakDays === milestone.days) {
+            ticketsAwarded = milestone.tickets;
+            break;
+          }
+        }
+
+        const now = Date.now();
+        newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = newState;
+        user.lastEssenceTapRequest = now;
+
+        if (ticketsAwarded > 0) {
+          user.rollTickets = (user.rollTickets || 0) + ticketsAwarded;
+        }
+
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'daily_streak_claimed', {
+          streakDays,
+          ticketsAwarded,
+          awarded: ticketsAwarded > 0,
+          ticketGeneration: newState.ticketGeneration,
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Claim daily streak error:', err);
+        socket.emit('error', { code: 'STREAK_ERROR', message: 'Failed to claim streak' });
+      }
+    });
+
+    // ===========================================
+    // SESSION MILESTONE CLAIM HANDLER
+    // ===========================================
+
+    socket.on('claim_session_milestone', async (data) => {
+      const { milestoneType, milestoneName, clientSeq } = data;
+
+      if (!milestoneType || !milestoneName) {
+        socket.emit('error', { code: 'INVALID_REQUEST', message: 'Milestone type and name required' });
+        return;
+      }
+
+      const transaction = await sequelize.transaction();
+
+      try {
+        const user = await User.findByPk(userId, { transaction, lock: true });
+        if (!user) {
+          await transaction.rollback();
+          socket.emit('action_rejected', { clientSeq, reason: 'User not found' });
+          return;
+        }
+
+        let state = user.essenceTap || essenceTapService.getInitialState();
+
+        // Get session stats
+        const sessionStats = state.sessionStats || {};
+        let claimedList;
+        let milestoneConfig;
+
+        const { MINI_MILESTONES } = require('../config/essenceTap');
+
+        switch (milestoneType) {
+          case 'session':
+            claimedList = sessionStats.claimedSessionMilestones || [];
+            milestoneConfig = MINI_MILESTONES.sessionMilestones?.find(m => m.name === milestoneName);
+            break;
+          case 'combo':
+            claimedList = sessionStats.claimedComboMilestones || [];
+            milestoneConfig = MINI_MILESTONES.comboMilestones?.find(m => m.name === milestoneName);
+            break;
+          case 'critStreak':
+            claimedList = sessionStats.claimedCritMilestones || [];
+            milestoneConfig = MINI_MILESTONES.critStreakMilestones?.find(m => m.name === milestoneName);
+            break;
+          default:
+            await transaction.rollback();
+            socket.emit('action_rejected', {
+              clientSeq,
+              reason: 'Invalid milestone type',
+              code: 'INVALID_TYPE'
+            });
+            return;
+        }
+
+        if (!milestoneConfig) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Invalid milestone',
+            code: 'INVALID_MILESTONE'
+          });
+          return;
+        }
+
+        if (claimedList.includes(milestoneName)) {
+          await transaction.rollback();
+          socket.emit('action_rejected', {
+            clientSeq,
+            reason: 'Milestone already claimed',
+            code: 'ALREADY_CLAIMED'
+          });
+          return;
+        }
+
+        // Apply reward
+        const newState = { ...state };
+        newState.sessionStats = { ...sessionStats };
+
+        switch (milestoneType) {
+          case 'session':
+            newState.sessionStats.claimedSessionMilestones = [...claimedList, milestoneName];
+            break;
+          case 'combo':
+            newState.sessionStats.claimedComboMilestones = [...claimedList, milestoneName];
+            break;
+          case 'critStreak':
+            newState.sessionStats.claimedCritMilestones = [...claimedList, milestoneName];
+            break;
+        }
+
+        // Award essence bonus
+        if (milestoneConfig.reward?.essence) {
+          newState.essence = (state.essence || 0) + milestoneConfig.reward.essence;
+          newState.lifetimeEssence = (state.lifetimeEssence || 0) + milestoneConfig.reward.essence;
+        }
+
+        const now = Date.now();
+        newState.lastOnlineTimestamp = now;
+
+        user.essenceTap = newState;
+        user.lastEssenceTapRequest = now;
+        await user.save({ transaction });
+        await transaction.commit();
+
+        const seq = getNextSequence(userId);
+
+        // Broadcast to all user tabs
+        broadcastToUser(namespace, userId, 'session_milestone_claimed', {
+          milestoneType,
+          milestoneName,
+          reward: milestoneConfig.reward,
+          essence: newState.essence,
+          sessionStats: essenceTapService.getSessionStats(newState),
+          seq,
+          confirmedClientSeq: clientSeq,
+          serverTimestamp: now
+        });
+      } catch (err) {
+        await transaction.rollback();
+        console.error('[EssenceTap WS] Claim session milestone error:', err);
+        socket.emit('error', { code: 'SESSION_MILESTONE_ERROR', message: 'Failed to claim milestone' });
+      }
+    });
+
+    // ===========================================
     // DISCONNECT HANDLING
     // ===========================================
 
