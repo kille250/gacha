@@ -1119,6 +1119,7 @@ function performPrestige(state, _user) {
   }
 
   // Create new state (reset with bonuses kept)
+  // IMPORTANT: Preserve weekly tournament progress and tournament state across prestiges
   const newState = {
     ...getInitialState(),
     essence: startingEssence,
@@ -1128,6 +1129,13 @@ function performPrestige(state, _user) {
     prestigeUpgrades: { ...state.prestigeUpgrades },
     assignedCharacters: state.assignedCharacters,
     claimedMilestones: state.claimedMilestones,
+    // Preserve tournament state - weekly progress and tournament metadata should NOT reset on prestige
+    weekly: state.weekly,
+    tournament: state.tournament,
+    // Preserve weekly FP tracking
+    weeklyFP: state.weeklyFP,
+    // Preserve ticket generation tracking
+    ticketGeneration: state.ticketGeneration,
     stats: {
       ...state.stats,
       totalPrestigeCount: (state.stats?.totalPrestigeCount || 0) + 1

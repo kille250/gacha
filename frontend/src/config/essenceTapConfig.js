@@ -808,15 +808,25 @@ export const BRACKET_SYSTEM = {
 // DAILY CHECKPOINTS (NEW v4.0)
 // ===========================================
 
-export const DAILY_CHECKPOINTS = [
-  { day: 1, cumulativeTarget: 50000000, rewards: { rollTickets: 1 }, name: 'Monday Start' },
-  { day: 2, cumulativeTarget: 150000000, rewards: { rollTickets: 1 }, name: 'Tuesday Push' },
-  { day: 3, cumulativeTarget: 300000000, rewards: { rollTickets: 1, fatePoints: 3 }, name: 'Midweek Milestone' },
-  { day: 4, cumulativeTarget: 500000000, rewards: { rollTickets: 2 }, name: 'Thursday Threshold' },
-  { day: 5, cumulativeTarget: 800000000, rewards: { rollTickets: 2 }, name: 'Friday Focus' },
-  { day: 6, cumulativeTarget: 1200000000, rewards: { rollTickets: 2, fatePoints: 5 }, name: 'Saturday Sprint' },
-  { day: 7, cumulativeTarget: 2000000000, rewards: { rollTickets: 3 }, name: 'Sunday Finish' }
-];
+// Full config matching backend structure
+export const DAILY_CHECKPOINTS_CONFIG = {
+  checkpoints: [
+    { day: 1, cumulativeTarget: 50000000, rewards: { rollTickets: 1 }, name: 'Monday Start' },
+    { day: 2, cumulativeTarget: 150000000, rewards: { rollTickets: 1 }, name: 'Tuesday Push' },
+    { day: 3, cumulativeTarget: 300000000, rewards: { rollTickets: 1, fatePoints: 3 }, name: 'Midweek Milestone' },
+    { day: 4, cumulativeTarget: 500000000, rewards: { rollTickets: 2 }, name: 'Thursday Threshold' },
+    { day: 5, cumulativeTarget: 800000000, rewards: { rollTickets: 2 }, name: 'Friday Focus' },
+    { day: 6, cumulativeTarget: 1200000000, rewards: { rollTickets: 2, fatePoints: 5 }, name: 'Saturday Sprint' },
+    { day: 7, cumulativeTarget: 2000000000, rewards: { rollTickets: 3 }, name: 'Sunday Finish' }
+  ],
+  totalRewards: {
+    rollTickets: 12,
+    fatePoints: 8
+  }
+};
+
+// Export as array for backwards compatibility with UI components
+export const DAILY_CHECKPOINTS = DAILY_CHECKPOINTS_CONFIG.checkpoints;
 
 // ===========================================
 // BURNING HOURS (NEW v4.0)
@@ -836,12 +846,21 @@ export const BURNING_HOURS = {
 // TOURNAMENT STREAKS (NEW v4.0)
 // ===========================================
 
-export const TOURNAMENT_STREAKS = [
-  { weeks: 2, essenceBonus: 0.05, rewards: null, cosmetics: null },
-  { weeks: 4, essenceBonus: 0.10, rewards: { rollTickets: 3 }, cosmetics: ['badge_streak_4'] },
-  { weeks: 8, essenceBonus: 0.15, rewards: { rollTickets: 5, premiumTickets: 1 }, cosmetics: ['badge_streak_8', 'frame_dedicated'] },
-  { weeks: 12, essenceBonus: 0.20, rewards: { rollTickets: 10, premiumTickets: 3 }, cosmetics: ['badge_streak_12', 'frame_veteran', 'title_tournament_veteran'] }
-];
+// Full config matching backend structure
+export const TOURNAMENT_STREAKS_CONFIG = {
+  milestones: [
+    { weeks: 2, essenceBonus: 0.05, rewards: null, cosmetics: null },
+    { weeks: 4, essenceBonus: 0.10, rewards: { rollTickets: 3 }, cosmetics: ['badge_streak_4'] },
+    { weeks: 8, essenceBonus: 0.15, rewards: { rollTickets: 5, premiumTickets: 1 }, cosmetics: ['badge_streak_8', 'frame_dedicated'] },
+    { weeks: 12, essenceBonus: 0.20, rewards: { rollTickets: 10, premiumTickets: 3 }, cosmetics: ['badge_streak_12', 'frame_veteran', 'title_tournament_veteran'] }
+  ],
+  minimumEssenceToMaintain: 10000000,  // 10M essence minimum
+  gracePeriodWeeks: 0,                  // No grace period
+  maxEssenceBonus: 0.25                 // Cap at 25% bonus
+};
+
+// Export as array for backwards compatibility with UI components
+export const TOURNAMENT_STREAKS = TOURNAMENT_STREAKS_CONFIG.milestones;
 
 // ===========================================
 // TOURNAMENT COSMETICS (NEW v4.0)

@@ -259,7 +259,11 @@ function applyPassiveGains(state, characters, maxSeconds = 300) {
   if (passiveGain > 0) {
     state.essence = (state.essence || 0) + passiveGain;
     state.lifetimeEssence = (state.lifetimeEssence || 0) + passiveGain;
-    const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveGain);
+    // Check burning hour status for tournament multiplier
+    const burningHourStatus = essenceTapService.getBurningHourStatus();
+    const weeklyResult = essenceTapService.updateWeeklyProgress(state, passiveGain, {
+      burningHourActive: burningHourStatus.active
+    });
     state = weeklyResult.newState;
   }
 
@@ -481,8 +485,11 @@ router.post('/click', auth, async (req, res) => {
       state.sessionStats.critStreak = 0;
     }
 
-    // Update weekly tournament progress
-    const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence);
+    // Update weekly tournament progress with burning hour check
+    const burningHourStatus = essenceTapService.getBurningHourStatus();
+    const weeklyTournamentResult = essenceTapService.updateWeeklyProgress(state, totalEssence, {
+      burningHourActive: burningHourStatus.active
+    });
     state = weeklyTournamentResult.newState;
 
     // Classify and track essence types
@@ -2691,8 +2698,11 @@ router.post('/sync-on-leave', async (req, res) => {
         state.daily.clicks = (state.daily.clicks || 0) + pendingTaps;
         state.daily.essenceEarned = (state.daily.essenceEarned || 0) + tapEssence;
 
-        // Update weekly tournament progress
-        const weeklyResult = essenceTapService.updateWeeklyProgress(state, tapEssence);
+        // Update weekly tournament progress with burning hour check
+        const tapBurningHourStatus = essenceTapService.getBurningHourStatus();
+        const weeklyResult = essenceTapService.updateWeeklyProgress(state, tapEssence, {
+          burningHourActive: tapBurningHourStatus.active
+        });
         state = weeklyResult.newState;
       }
 
