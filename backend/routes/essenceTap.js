@@ -366,7 +366,8 @@ router.get('/status', auth, async (req, res) => {
 router.post('/click', auth, async (req, res) => {
   // Server-side rate limit check (do this BEFORE acquiring lock to avoid holding lock during 429)
   const { count = 1, comboMultiplier = 1 } = req.body;
-  const requestedClicks = Math.min(Math.max(1, count), essenceTapService.GAME_CONFIG.maxClicksPerSecond);
+  // SECURITY: Parse count as integer to prevent type coercion exploits (e.g., "Infinity", "25a")
+  const requestedClicks = Math.min(Math.max(1, parseInt(count, 10) || 1), essenceTapService.GAME_CONFIG.maxClicksPerSecond);
   const rateLimit = checkClickRateLimit(req.user.id, requestedClicks);
 
   if (!rateLimit.allowed) {

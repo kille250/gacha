@@ -528,7 +528,8 @@ function initEssenceTapWebSocket(io) {
     socket.on('tap', async (data) => {
       // Support both single clientSeq and clientSeqs array for backward compatibility
       const { count = 1, comboMultiplier = 1, clientSeq, clientSeqs } = data;
-      const tapCount = Math.min(Math.max(1, count), CONFIG.MAX_TAPS_PER_BATCH);
+      // SECURITY: Parse count as integer to prevent type coercion exploits (e.g., "Infinity", "25a")
+      const tapCount = Math.min(Math.max(1, parseInt(count, 10) || 1), CONFIG.MAX_TAPS_PER_BATCH);
       // Normalize to array for consistent handling
       const incomingSeqs = clientSeqs || (clientSeq !== undefined ? [clientSeq] : []);
 

@@ -969,6 +969,9 @@ function processClick(state, characters = [], comboMultiplier = 1, activeAbility
  * @returns {Object} Updated state and result
  */
 function purchaseGenerator(state, generatorId, count = 1) {
+  // Validate count is a positive integer to prevent negative/zero exploits
+  const purchaseCount = Math.max(1, Math.floor(Number(count) || 1));
+
   const generator = GENERATORS.find(g => g.id === generatorId);
   if (!generator) {
     return { success: false, error: 'Invalid generator' };
@@ -985,7 +988,7 @@ function purchaseGenerator(state, generatorId, count = 1) {
   }
 
   const owned = state.generators[generatorId] || 0;
-  const cost = getBulkGeneratorCost(generatorId, owned, count);
+  const cost = getBulkGeneratorCost(generatorId, owned, purchaseCount);
 
   if (state.essence < cost) {
     return { success: false, error: 'Not enough essence' };
@@ -995,22 +998,22 @@ function purchaseGenerator(state, generatorId, count = 1) {
   const newState = { ...state };
   newState.essence -= cost;
   newState.generators = { ...state.generators };
-  newState.generators[generatorId] = owned + count;
+  newState.generators[generatorId] = owned + purchaseCount;
 
   // Update stats
   newState.stats = { ...state.stats };
-  newState.stats.totalGeneratorsBought = (state.stats.totalGeneratorsBought || 0) + count;
+  newState.stats.totalGeneratorsBought = (state.stats.totalGeneratorsBought || 0) + purchaseCount;
 
   // Update daily
   newState.daily = { ...state.daily };
-  newState.daily.generatorsBought = (state.daily.generatorsBought || 0) + count;
+  newState.daily.generatorsBought = (state.daily.generatorsBought || 0) + purchaseCount;
 
   return {
     success: true,
     newState,
     cost,
     generator,
-    newCount: owned + count
+    newCount: owned + purchaseCount
   };
 }
 
@@ -1870,17 +1873,22 @@ function performGamble(state, betType, betAmount) {
     return { success: false, error: 'Invalid bet type' };
   }
 
-  // Validate bet amount
-  if (betAmount < GAMBLE_CONFIG.minBet) {
+  // Validate bet amount - must be a positive finite number
+  const sanitizedBetAmount = Math.floor(Number(betAmount));
+  if (!Number.isFinite(sanitizedBetAmount) || sanitizedBetAmount <= 0) {
+    return { success: false, error: 'Invalid bet amount' };
+  }
+
+  if (sanitizedBetAmount < GAMBLE_CONFIG.minBet) {
     return { success: false, error: `Minimum bet is ${GAMBLE_CONFIG.minBet} essence` };
   }
 
   const maxBet = Math.floor(state.essence * GAMBLE_CONFIG.maxBetPercent);
-  if (betAmount > maxBet) {
+  if (sanitizedBetAmount > maxBet) {
     return { success: false, error: `Maximum bet is ${maxBet} essence (${GAMBLE_CONFIG.maxBetPercent * 100}% of current essence)` };
   }
 
-  if (betAmount > state.essence) {
+  if (sanitizedBetAmount > state.essence) {
     return { success: false, error: 'Not enough essence' };
   }
 
@@ -1890,9 +1898,9 @@ function performGamble(state, betType, betAmount) {
   let essenceChange;
 
   if (won) {
-    essenceChange = Math.floor(betAmount * bet.multiplier) - betAmount;
+    essenceChange = Math.floor(sanitizedBetAmount * bet.multiplier) - sanitizedBetAmount;
   } else {
-    essenceChange = -betAmount;
+    essenceChange = -sanitizedBetAmount;
   }
 
   const newState = { ...state };
@@ -1911,7 +1919,7 @@ function performGamble(state, betType, betAmount) {
   return {
     success: true,
     won,
-    betAmount,
+    betAmount: sanitizedBetAmount,
     betType,
     multiplier: bet.multiplier,
     winChance: bet.winChance,
@@ -1952,12 +1960,13 @@ function performInfusion(state) {
     return { success: false, error: 'Maximum infusions reached for this prestige' };
   }
 
+  // Check minimum essence requirement - user must have at least minimumEssence to infuse
+  if ((state.essence || 0) < INFUSION_CONFIG.minimumEssence) {
+    return { success: false, error: `Need at least ${INFUSION_CONFIG.minimumEssence.toLocaleString()} essence to infuse` };
+  }
+
   const costPercent = calculateInfusionCost(state);
   const cost = Math.floor(state.essence * costPercent);
-
-  if (cost < INFUSION_CONFIG.minimumEssence) {
-    return { success: false, error: `Need at least ${INFUSION_CONFIG.minimumEssence} essence to infuse` };
-  }
 
   if (cost > state.essence) {
     return { success: false, error: 'Not enough essence' };
